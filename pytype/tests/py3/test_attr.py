@@ -41,6 +41,91 @@ class TestAttrib(test_base.TargetPython3BasicTest):
     """)
 
 
+class TestAttribConverters(test_base.TargetPython3BasicTest):
+  """Tests for attr.ib with converters."""
+
+  def test_annotated_converter(self):
+    self.Check("""
+      import attr
+      def convert(input: str) -> int:
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=convert)
+      Foo(x='123')
+    """)
+
+  def test_type_and_converter(self):
+    self.Check("""
+      import attr
+      def convert(input: str):
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(type=int, converter=convert)
+      Foo(x='123')
+    """)
+
+  def test_unannotated_converter_with_type(self):
+    # TODO(b/135553563): This test should fail once we get better type checking
+    # of converter functions.
+    self.Check("""
+      import attr
+      def convert(input):
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(type=int, converter=convert)
+      Foo(x='123')
+      Foo(x=[1,2,3])  # does not complain, input is treated as Any
+    """)
+
+  def test_annotated_converter_with_mismatched_type(self):
+    # TODO(b/135553563): This test should fail once we start checking the
+    # consistency of the converter and the explicit type.
+    self.Check("""
+      import attr
+      def convert(input) -> int:
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(type=str, converter=convert)
+      foo = Foo(x=123)
+      assert_type(foo.x, str)  # the explicit type overrides the converter
+    """)
+
+  def test_wrong_converter_arity(self):
+    # TODO(b/135553563): Add a custom error message
+    self.CheckWithErrors("""
+      import attr
+      def convert(x, y) -> int:
+        return 42
+      @attr.s
+      class Foo:
+        x = attr.ib(type=str, converter=convert)  # wrong-arg-types
+    """)
+
+  def test_converter_with_default_args(self):
+    self.Check("""
+      import attr
+      def convert(x, y=10) -> int:
+        return 42
+      @attr.s
+      class Foo:
+        x = attr.ib(type=str, converter=convert)
+    """)
+
+  def test_converter_with_varargs(self):
+    self.Check("""
+      import attr
+      def convert(*args, **kwargs) -> int:
+        return 42
+      @attr.s
+      class Foo:
+        x = attr.ib(type=str, converter=convert)
+    """)
+
+
 class TestAttribPy3(test_base.TargetPython3FeatureTest):
   """Tests for attr.ib using PEP526 syntax."""
 

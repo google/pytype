@@ -440,5 +440,38 @@ class TestExceptions(test_base.TargetIndependentTest):
         pass
     """)
 
+  def test_contextmanager(self):
+    # Tests that the with block doesn't get mistaken for an exception.
+    ty = self.Infer("""
+      _temporaries = {}
+      def f(name):
+        with __any_object__:
+          filename = _temporaries.get(name)
+          (filename, data) = __any_object__
+          if not filename:
+            assert data is not None
+        return filename
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Dict
+      _temporaries: Dict[nothing, nothing]
+      def f(name) -> Any: ...
+    """)
+
+  def test_no_except(self):
+    # Tests inference for a finally block without an except.
+    ty = self.Infer("""
+      def f():
+        try:
+          if __random__:
+            raise ValueError()
+        finally:
+          __any_object__()
+        return 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

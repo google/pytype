@@ -7,6 +7,10 @@ from pytype.tests import test_base
 class BuiltinTests(test_base.TargetPython27FeatureTest):
   """Tests for builtin methods and classes."""
 
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enforce_noniterable_strings=True)
+
   def test_long(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -44,24 +48,6 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       b = ...  # type: bytearray
       x2 = ...  # type: bytearray
-    """)
-
-  def test_iter(self):
-    ty = self.Infer("""
-      x = iter(u"hello")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Iterator
-      x = ...  # type: Iterator[unicode]
-    """)
-
-  def test_from_keys(self):
-    ty = self.Infer("""
-      d = dict.fromkeys(u"x")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Dict
-      d = ...  # type: Dict[unicode, None]
     """)
 
   def test_dict_iterators(self):
@@ -131,18 +117,8 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
       x8: List[str]
     """)
 
-  def test_sorted(self):
-    ty = self.Infer("""
-      x = sorted(u"hello")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import List
-      x = ...  # type: List[unicode]
-    """)
-
   def test_zip(self):
     ty = self.Infer("""
-      a = zip("foo", u"bar")
       b = zip(())
       c = zip((1, 2j))
       d = zip((1, 2, 3), ())
@@ -152,7 +128,6 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple, Union
-      a = ...  # type: List[Tuple[str, unicode]]
       b = ...  # type: List[nothing]
       c = ...  # type: List[Tuple[Union[int, complex]]]
       d = ...  # type: List[nothing]

@@ -382,10 +382,13 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-class NonIterableStringsTest(test_base.TargetPython3BasicTest):
+class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
   """Tests for non-iterable string behavior."""
 
-  @test_base.skip("failing until Implementation is approved.")
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enforce_noniterable_strings=True)
+
   def test_add_invalid_string(self):
     self.CheckWithErrors("""
       a = []
@@ -403,7 +406,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       a = ...  # type: List[str]
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_plain_iterable(self):
     self.CheckWithErrors("""
       from typing import Iterable
@@ -414,7 +416,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f(("abc", "def", "ghi"))
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_iterable(self):
     self.CheckWithErrors("""
       from typing import Iterable
@@ -425,7 +426,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f(("abc", "def", "ghi"))
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_plain_sequence(self):
     self.CheckWithErrors("""
       from typing import Sequence
@@ -435,7 +435,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f(["abc", "def", "ghi"])
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_sequence(self):
     self.CheckWithErrors("""
       from typing import Sequence
@@ -486,7 +485,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f(("abc", "def", "ghi"))
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_optional_str_against_iterable(self):
     self.CheckWithErrors("""
       from typing import Iterable, Optional
@@ -499,7 +497,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
         foo(os)  # wrong-arg-types
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_plain_collection(self):
     self.CheckWithErrors("""
       from typing import Collection
@@ -509,7 +506,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f(["abc", "def", "ghi"])
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_plain_container(self):
     self.CheckWithErrors("""
       from typing import Container
@@ -519,7 +515,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f(["abc", "def", "ghi"])
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_plain_mapping(self):
     self.CheckWithErrors("""
       from typing import Mapping
@@ -528,7 +523,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f("abcdef")  # wrong-arg-types
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_collection(self):
     self.CheckWithErrors("""
       from typing import Collection
@@ -537,7 +531,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f("abcdef")  # wrong-arg-types
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_container(self):
     self.CheckWithErrors("""
       from typing import Container
@@ -546,7 +539,6 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f("abcdef")  # wrong-arg-types
     """)
 
-  @test_base.skip("failing until Implementation is approved.")
   def test_str_against_mapping(self):
     self.CheckWithErrors("""
       from typing import Mapping
@@ -555,5 +547,50 @@ class NonIterableStringsTest(test_base.TargetPython3BasicTest):
       f("abcdef")  # wrong-arg-types
     """)
 
+  def test_star_unpacking_strings(self):
+    self.CheckWithErrors("""
+      *a, b = "hello world"  # wrong-arg-types
+    """)
+
+  def test_from_keys(self):
+    self.CheckWithErrors("""
+      d = dict.fromkeys(u"x")  # wrong-arg-types
+    """)
+
+  def test_filter(self):
+    self.CheckWithErrors("""
+      x = filter(None, "")  # wrong-arg-types
+    """)
+
+  def test_reduce(self):
+    self.CheckWithErrors("""
+      x = reduce(lambda x, y: 42, "abcdef")  # wrong-arg-types
+    """)
+
+  def test_sorted(self):
+    self.CheckWithErrors("""
+      x = sorted(u"hello")  # wrong-arg-types
+    """)
+
+  def test_iter(self):
+    self.CheckWithErrors("""
+      x = iter(u"hello")  # wrong-arg-types
+      x = iter("hello")  # wrong-arg-types
+    """)
+
+  def test_zip(self):
+    self.CheckWithErrors("""
+      x = zip("abc", "def")  # wrong-arg-types
+    """)
+
+  def test_tuple_init(self):
+    self.CheckWithErrors("""
+      x = tuple("abcdef")  # wrong-arg-types
+    """)
+
+  def test_frozenset_init(self):
+    self.CheckWithErrors("""
+      x = frozenset("abcdef")  # wrong-arg-types
+    """)
 
 test_base.main(globals(), __name__ == "__main__")

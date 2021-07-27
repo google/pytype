@@ -128,6 +128,10 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for builtin methods and classes."""
 
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enforce_noniterable_strings=True)
+
   def test_builtins(self):
     self.Check("""
       import builtins
@@ -213,15 +217,6 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       x2 = ...  # type: bytearray
     """)
 
-  def test_iter(self):
-    ty = self.Infer("""
-      x = iter(u"hello")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Iterator
-      x = ...  # type: Iterator[str]
-    """)
-
   def test_iter1(self):
     ty = self.Infer("""
       a = next(iter([1, 2, 3]))
@@ -233,15 +228,6 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       a = ...  # type: int
       b = ...  # type: int
       c = ...  # type: Union[int, str]
-    """)
-
-  def test_from_keys(self):
-    ty = self.Infer("""
-      d = dict.fromkeys(u"x")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Dict
-      d = ...  # type: Dict[str, None]
     """)
 
   def test_dict_keys(self):
@@ -305,25 +291,23 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
       import re
       def f(x: int):
         pass
-      x1 = filter(None, "")
-      x2 = filter(None, bytearray(""))
-      x3 = filter(None, (True, False))
-      x4 = filter(None, {True, False})
-      x5 = filter(f, {1: None}.keys())
-      x6 = filter(None, {1: None}.keys())
-      x7 = filter(re.compile("").search, ("",))
+      x1 = filter(None, bytearray(""))
+      x2 = filter(None, (True, False))
+      x3 = filter(None, {True, False})
+      x4 = filter(f, {1: None}.keys())
+      x5 = filter(None, {1: None}.keys())
+      x6 = filter(re.compile("").search, ("",))
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
       re: module
       def f(x: int) -> None: ...
-      x1 = ...  # type: Iterator[str]
-      x2 = ...  # type: Iterator[int]
-      x3 = ...  # type: Iterator[bool, ...]
-      x4 = ...  # type: Iterator[bool]
+      x1 = ...  # type: Iterator[int]
+      x2 = ...  # type: Iterator[bool, ...]
+      x3 = ...  # type: Iterator[bool]
+      x4 = ...  # type: Iterator[int]
       x5 = ...  # type: Iterator[int]
-      x6 = ...  # type: Iterator[int]
-      x7 = ...  # type: Iterator[str]
+      x6 = ...  # type: Iterator[str]
       """)
 
   def test_filter_types(self):
@@ -335,33 +319,22 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
         return filter(None, x)
     """)
 
-  def test_sorted(self):
-    ty = self.Infer("""
-      x = sorted(u"hello")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import List
-      x = ...  # type: List[str]
-    """)
-
   def test_zip(self):
     ty = self.Infer("""
-      a = zip("foo", u"bar")
-      b = zip(())
-      c = zip((1, 2j))
-      d = zip((1, 2, 3), ())
-      e = zip((), (1, 2, 3))
-      f = zip((1j, 2j), (1, 2))
+      a = zip(())
+      b = zip((1, 2j))
+      c = zip((1, 2, 3), ())
+      d = zip((), (1, 2, 3))
+      e = zip((1j, 2j), (1, 2))
       assert zip([], [], [])
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator, Tuple, Union
-      a = ...  # type: Iterator[Tuple[str, str]]
-      b = ...  # type: Iterator[nothing]
-      c = ...  # type: Iterator[Tuple[Union[int, complex]]]
+      a = ...  # type: Iterator[nothing]
+      b = ...  # type: Iterator[Tuple[Union[int, complex]]]
+      c = ...  # type: Iterator[nothing]
       d = ...  # type: Iterator[nothing]
-      e = ...  # type: Iterator[nothing]
-      f = ...  # type: Iterator[Tuple[complex, int]]
+      e = ...  # type: Iterator[Tuple[complex, int]]
       """)
 
   def test_map_basic(self):

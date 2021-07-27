@@ -793,8 +793,16 @@ def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
 def get_type_parameter_substitutions(
     val: _BaseValue, type_params: Iterable[_TypeParameter]
 ) -> Mapping[str, cfg.Variable]:
-  return {p.full_name: val.get_instance_type_parameter(p.name)
-          for p in type_params}
+  """Get values for type_params from val's type parameters."""
+  subst = {}
+  for p in type_params:
+    if val.isinstance_Class():
+      param_value = val.get_formal_type_parameter(p.name).instantiate(
+          val.vm.root_node)
+    else:
+      param_value = val.get_instance_type_parameter(p.name)
+    subst[p.full_name] = param_value
+  return subst
 
 
 def build_generic_template(

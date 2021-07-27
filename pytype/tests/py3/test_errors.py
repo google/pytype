@@ -443,4 +443,194 @@ class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {"e": r"\@.*A.*int.*__imatmul__ on A.*A"})
 
 
+class UnboundLocalErrorTest(test_base.TargetPython3FeatureTest):
+  """Tests for UnboundLocalError.
+
+  It is often confusing to users when a name error is logged due to a local
+  variable shadowing one from an outer scope and being referenced before its
+  local definition, e.g.:
+
+  def f():
+    x = 0
+    def g():
+      print(x)  # name error!
+      x = 1
+
+  In this case, we add some more details to the error message.
+  """
+
+  def test_function_in_function(self):
+    errors = self.CheckWithErrors("""
+      def f(x):
+        def g():
+          print(x)  # name-error[e]
+          x = 0
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Add `nonlocal x` in function 'f\.g' to reference 'x' from "
+              r"function 'f'")})
+
+  def test_global(self):
+    errors = self.CheckWithErrors("""
+      x = 0
+      def f():
+        print(x)  # name-error[e]
+        x = 1
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Add `global x` in function 'f' to reference 'x' from global "
+              r"scope")})
+
+  def test_class_in_function(self):
+    errors = self.CheckWithErrors("""
+      def f():
+        x = 0
+        class C:
+          print(x)  # name-error[e]
+          x = 1
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Add `nonlocal x` in class 'f\.C' to reference 'x' from "
+              r"function 'f'")})
+
+  def test_deep_nesting(self):
+    errors = self.CheckWithErrors("""
+      def f():
+        def g():
+          x = 0
+          class C:
+            class D:
+              print(x)  # name-error[e]
+              x = 1
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Add `nonlocal x` in class 'f\.g\.C\.D' to reference 'x' from "
+              r"function 'f\.g'")})
+
+  def test_duplicate_names(self):
+    # This is a plain old name error; make sure the UnboundLocalError details
+    # are *not* printed.
+    errors = self.CheckWithErrors("""
+      def f1():
+        def f2():
+          def f3():
+            x = 0
+        def f3():
+          def f4():
+            print(x)  # name-error[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"Name 'x' is not defined$"})
+
+  def test_precedence(self):
+    errors = self.CheckWithErrors("""
+      def f():
+        x = 0
+        def g():
+          x = 1
+          def h():
+            print(x)  # name-error[e]
+            x = 2
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Add `nonlocal x` in function 'f\.g\.h' to reference 'x' from "
+              r"function 'f\.g'")})
+
+
+class ClassAttributeNameErrorTest(test_base.TargetPython3FeatureTest):
+  """Tests for name errors on class attributes.
+
+  For code like:
+    class C:
+      x = 0
+      def f(self):
+        print(x)  # name error!
+  it's non-obvious that 'C.x' needs to be used to reference attribute 'x' from
+  class 'C', so we add a hint to the error message.
+  """
+
+  def test_nested_classes(self):
+    errors = self.CheckWithErrors("""
+      class C:
+        x = 0
+        class D:
+          y = 1
+          def f(self):
+            print(x)  # name-error[e1]
+            print(y)  # name-error[e2]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e1": r"Use 'C\.x' to reference 'x' from class 'C'",
+        "e2": r"Use 'C\.D\.y' to reference 'y' from class 'C\.D'"})
+
+  def test_outer_function(self):
+    errors = self.CheckWithErrors("""
+      def f():
+        class C:
+          x = 0
+          def f(self):
+            print(x)  # name-error[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": r"Use 'C\.x' to reference 'x' from class 'f\.C'"})
+
+
+class PartiallyDefinedClassNameErrorTest(test_base.TargetPython3FeatureTest):
+  """Test for name errors on the attributes of partially defined classes.
+
+  For code like:
+    class C:
+      x = 0
+      class D:
+        print(x)  # name error!
+  unlike the similar examples in ClassAttributeNameErrorTest, using 'C.x' does
+  not work because 'C' has not yet been fully defined. We add this explanation
+  to the error message.
+  """
+
+  def test_nested_classes(self):
+    errors = self.CheckWithErrors("""
+      class C:
+        x = 0
+        class D:
+          y = 1
+          class E:
+            print(x)  # name-error[e1]
+            print(y)  # name-error[e2]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e1": (r"Cannot reference 'x' from class 'C' before the class is fully "
+               r"defined"),
+        "e2": (r"Cannot reference 'y' from class 'C\.D' before the class is "
+               r"fully defined")})
+
+  def test_nested_classes_in_function(self):
+    errors = self.CheckWithErrors("""
+      def f():
+        class C:
+          x = 0
+          class D:
+            print(x)  # name-error[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Cannot reference 'x' from class 'f\.C' before the class is "
+              r"fully defined")})
+
+  def test_unbound_local_precedence(self):
+    # We should report the UnboundLocalError in preference to one about C not
+    # being fully defined, since print(x) would resolve to f.x, not f.C.x, if
+    # the redefinition in D were removed.
+    errors = self.CheckWithErrors("""
+      def f():
+        x = 0
+        class C:
+          x = 1
+          class D:
+            print(x)  # name-error[e]
+            x = 2
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"Add `nonlocal x` in class 'f\.C\.D' to reference 'x' from "
+              r"function 'f'")})
+
+
 test_base.main(globals(), __name__ == "__main__")

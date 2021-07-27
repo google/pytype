@@ -172,6 +172,13 @@ def add_basic_options(o):
       "--use-enum-overlay", action="store_true",
       dest="use_enum_overlay", default=False,
       help="Use the enum overlay for more precise enum checking. " + temporary)
+  o.add_argument(
+      "--enforce-noniterable-strings",
+      action="store_true",
+      dest="enforce_noniterable_strings",
+      default=False,
+      help=("Enforces type errors when attempting to pass a `str` into an "
+            "`Iterable` type."))
 
 
 def add_subtools(o):

@@ -37,7 +37,7 @@ class Overlay(abstract.Module):
     self.real_module = vm.convert.constant_to_value(
         ast, subst=datatypes.AliasingDict(), node=vm.root_node)
 
-  def _convert_member(self, member):
+  def _convert_member(self, member, subst=None):
     val = member(self.vm)
     val.module = self.name
     return val.to_variable(self.vm.root_node)

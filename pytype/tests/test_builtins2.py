@@ -10,6 +10,10 @@ from pytype.tests import test_base
 class BuiltinTests2(test_base.TargetIndependentTest):
   """Tests for builtin methods and classes."""
 
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enforce_noniterable_strings=True)
+
   def test_div_mod_with_unknown(self):
     ty = self.Infer("""
       def f(x, y):
@@ -298,19 +302,15 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     ty = self.Infer("""
       d1 = dict.fromkeys([1])
       d2 = dict.fromkeys([1], 0)
-      d3 = dict.fromkeys("123")
-      d4 = dict.fromkeys(bytearray("x"))
-      d6 = dict.fromkeys(iter("123"))
-      d7 = dict.fromkeys({True: False})
+      d3 = dict.fromkeys(bytearray("x"))
+      d4 = dict.fromkeys({True: False})
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       d1 = ...  # type: Dict[int, None]
       d2 = ...  # type: Dict[int, int]
-      d3 = ...  # type: Dict[str, None]
-      d4 = ...  # type: Dict[int, None]
-      d6 = ...  # type: Dict[str, None]
-      d7 = ...  # type: Dict[bool, None]
+      d3 = ...  # type: Dict[int, None]
+      d4 = ...  # type: Dict[bool, None]
     """)
 
   def test_redefined_builtin(self):
@@ -394,14 +394,12 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
 
   def test_reduce(self):
-    _, errors = self.InferWithErrors("""
+    self.Check("""
       reduce(lambda x, y: x+y, [1,2,3]).real
       reduce(lambda x, y: x+y, ["foo"]).upper()
-      reduce(lambda x, y: 4, "foo").real  # attribute-error[e]
       reduce(lambda x, y: 4, [], "foo").upper()
       reduce(lambda x, y: "s", [1,2,3], 0).upper()
     """)
-    self.assertErrorRegexes(errors, {"e": r"real.*str"})
 
   def test_dict_pop_item(self):
     ty = self.Infer("""
@@ -422,7 +420,6 @@ class BuiltinTests2(test_base.TargetIndependentTest):
 
   def test_iter(self):
     ty = self.Infer("""
-      x1 = iter("hello")
       x3 = iter(bytearray(42))
       x4 = iter(x for x in [42])
       x5 = iter([42])
@@ -433,7 +430,6 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator, Iterator
-      x1 = ...  # type: Iterator[str]
       x3 = ...  # type: bytearray_iterator
       x4 = ...  # type: Generator[int, Any, Any]
       x5 = ...  # type: listiterator[int]
@@ -486,7 +482,6 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       t8 = tuple(iter({42}))
       t9 = tuple((42,))
       t10 = tuple({42})
-      t11 = tuple("hello")
       t12 = tuple(iter(bytearray(42)))
       t13 = tuple(iter(range(42)))
       t14 = tuple(x for x in [42])
@@ -501,7 +496,6 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       t8 = ...  # type: Tuple[int, ...]
       t9 = ...  # type: Tuple[int, ...]
       t10 = ...  # type: Tuple[int, ...]
-      t11 = ...  # type: Tuple[str, ...]
       t12 = ...  # type: Tuple[int, ...]
       t13 = ...  # type: Tuple[int, ...]
       t14 = ...  # type: Tuple[int, ...]
@@ -536,14 +530,12 @@ class BuiltinTests2(test_base.TargetIndependentTest):
 
   def test_sorted(self):
     ty = self.Infer("""
-      x1 = sorted("hello")
       x3 = sorted(bytearray("hello"))
       x4 = sorted([])
       x5 = sorted([42], reversed=True)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      x1 = ...  # type: List[str]
       x3 = ...  # type: List[int]
       x4 = ...  # type: List[nothing]
       x5 = ...  # type: List[int]
@@ -567,12 +559,10 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     ty = self.Infer("""
       x1 = frozenset([42])
       x2 = frozenset({42})
-      x3 = frozenset("hello")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       x1 = ...  # type: frozenset[int]
       x2 = ...  # type: frozenset[int]
-      x3 = ...  # type: frozenset[str]
     """)
 
   def test_frozenset_literal(self):

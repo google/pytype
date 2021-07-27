@@ -1593,7 +1593,7 @@ class LazyConcreteDict(SimpleValue, mixin.PythonConstant, mixin.LazyMembers):
     mixin.PythonConstant.init_mixin(self, self.members)
     mixin.LazyMembers.init_mixin(self, member_map)
 
-  def _convert_member(self, member):
+  def _convert_member(self, member, subst=None):
     return self.vm.convert.constant_to_var(member)
 
   def is_empty(self):
@@ -2795,9 +2795,9 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
         for parent in self.pytd_cls.parents
     ]
 
-  def load_lazy_attribute(self, name):
+  def load_lazy_attribute(self, name, subst=None):
     try:
-      super().load_lazy_attribute(name)
+      super().load_lazy_attribute(name, subst)
     except self.vm.convert.TypeParameterError as e:
       self.vm.errorlog.unbound_type_param(
           self.vm.frames, self, name, e.type_param_name)
@@ -3623,10 +3623,12 @@ class InterpreterFunction(SignedFunction):
       callargs = self._map_args(node, args)
     first_arg = sig.get_first_arg(callargs)
     annotation_substs = substs
-    # Adds type parameter substitutions from all containing classes.
-    for frame in self.vm.frames:
+    # Adds type parameter substitutions from all containing classes. Note that
+    # lower frames (ones closer to the end of self.vm.frames) take precedence
+    # over higher ones.
+    for frame in reversed(self.vm.frames):
       annotation_substs = abstract_utils.combine_substs(
-          annotation_substs, frame.substs)
+          frame.substs, annotation_substs)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.vm.annotations_util.sub_annotations(
@@ -3927,6 +3929,7 @@ class BoundFunction(BaseValue):
     self._callself = callself
     self.underlying = underlying
     self.is_attribute_of_class = False
+    self.is_class_builder = False
 
     # If the function belongs to `ParameterizedClass`, we will annotate the
     # `self` when do argument matching
@@ -4239,7 +4242,7 @@ class Module(Instance, mixin.LazyMembers):
     self.ast = ast
     mixin.LazyMembers.init_mixin(self, member_map)
 
-  def _convert_member(self, member):
+  def _convert_member(self, member, subst=None):
     """Called to convert the items in _member_map to cfg.Variable."""
     var = self.vm.convert.constant_to_var(member)
     for value in var.data:

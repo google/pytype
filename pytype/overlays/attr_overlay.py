@@ -73,6 +73,7 @@ class Attrs(classgen.Decorator):
               name=name,
               typ=attrib.typ,
               init=attrib.init,
+              init_type=attrib.init_type,
               kw_only=attrib.kw_only,
               default=attrib.default)
           classgen.add_member(node, cls, name, attr.typ)
@@ -91,6 +92,7 @@ class Attrs(classgen.Decorator):
               name=name,
               typ=typ,
               init=attrib.init,
+              init_type=attrib.init_type,
               kw_only=attrib.kw_only,
               default=attrib.default)
         self.vm.check_annotation_type_mismatch(
@@ -124,12 +126,13 @@ class Attrs(classgen.Decorator):
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type, init, kw_only, default):
+  def __init__(self, vm, typ, has_type, init, init_type, kw_only, default):
     super().__init__("attrib", vm)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
     self.has_type = has_type
     self.init = init
+    self.init_type = init_type
     self.kw_only = kw_only
     self.default = default
     # TODO(rechen): attr.ib() returns an instance of attr._make._CountingAttr.
@@ -186,6 +189,7 @@ class Attrib(classgen.FieldConstructor):
     init = self.get_kwarg(args, "init", True)
     kw_only = self.get_kwarg(args, "kw_only", False)
     has_type = type_var is not None
+    converter, conv_in, conv_out = self._get_converter_types(args)
     if type_var:
       allowed_type_params = (
           self.vm.frame.type_params |
@@ -195,17 +199,59 @@ class Attrib(classgen.FieldConstructor):
           allowed_type_params=allowed_type_params, use_not_supported_yet=False)
     elif default_var:
       typ = get_type_from_default(default_var, self.vm)
+    elif conv_out:
+      # TODO(b/135553563): If we have a converter and a type/default/factory, we
+      # should check them for consistency and potentially raise a type error.
+      typ = conv_out
     else:
       typ = self.vm.convert.unsolvable
+    if converter:
+      init_type = conv_in or self.vm.convert.unsolvable
+    else:
+      init_type = None
     typ = AttribInstance(
-        self.vm, typ, has_type, init, kw_only, default_var).to_variable(node)
+        self.vm, typ, has_type, init, init_type, kw_only, default_var
+    ).to_variable(node)
     return node, typ
+
+  @property
+  def sig(self):
+    return self.signatures[0].signature
+
+  def _get_converter_types(self, args):
+    """Returns (has_converter_arg, input_type, output_type)."""
+    converter = args.namedargs.get("converter")
+    converter = converter and converter.data[0]
+    # TODO(b/135553563): We should treat the converter as a generic callable of
+    # one argument, and actually call it to get the output type.
+    if not (converter and converter.isinstance_SignedFunction()):
+      return False, None, None
+
+    sig = converter.signature
+    # We should be able to call converter with one argument.
+    valid_arity = (sig.mandatory_param_count() <= 1 and
+                   (sig.maximum_param_count() is None or
+                    sig.maximum_param_count() >= 1))
+    if not valid_arity:
+      anyt = self.vm.convert.unsolvable
+      wanted_type = abstract.CallableClass(
+          self.vm.convert.name_to_value("typing.Callable"),
+          {0: anyt, abstract_utils.ARGS: anyt, abstract_utils.RET: anyt},
+          self.vm
+      )
+      bad_param = function.BadParam("converter", wanted_type, None)
+      raise function.WrongArgTypes(self.sig, args, self.vm, bad_param)
+
+    annotations = sig.annotations
+    params = [v for k, v in annotations.items() if k != "return"]
+    inp = params[0] if params else None
+    ret = annotations.get("return")
+    return True, inp, ret
 
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "factory" in args.namedargs:
       # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
-      raise function.DuplicateKeyword(self.signatures[0].signature, args,
-                                      self.vm, "default")
+      raise function.DuplicateKeyword(self.sig, args, self.vm, "default")
     elif "default" in args.namedargs:
       default_var = args.namedargs["default"]
     elif "factory" in args.namedargs:

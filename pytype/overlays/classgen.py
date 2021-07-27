@@ -88,12 +88,13 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     for attr in attrs:
       if not attr.init:
         continue
+      typ = attr.init_type or attr.typ
       # call self.init_name in case the name differs from the field name -
       # e.g. attrs removes leading underscores from attrib names when
       # generating kwargs for __init__.
       param = Param(
           name=self.init_name(attr),
-          typ=attr.typ,
+          typ=typ,
           default=attr.default)
 
       # The kw_only arg is ignored in python2; using it is not an error.

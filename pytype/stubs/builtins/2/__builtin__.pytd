@@ -496,6 +496,10 @@ class list(List[_T]):
     __slots__ = []
     def __init__(self) -> NoneType:
         self = list[nothing]
+    @overload
+    def __init__(self, iterable: str) -> NoneType:
+        self = list[str]
+    @overload
     def __init__(self, iterable: Iterable[_T2]) -> NoneType:
         self = list[_T2]
     def __add__(self, y: list[_T2]) -> list[Union[_T, _T2]]: ...

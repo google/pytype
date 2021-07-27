@@ -537,6 +537,20 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
       assert_type(Foo(0).f(), int)
     """)
 
+  def test_self_annotation_in_base_class(self):
+    self.Check("""
+      from typing import TypeVar
+      T = TypeVar('T', bound='Base')
+      class Base:
+        def resolve(self: T) -> T:
+          return self
+      class Child(Base):
+        def resolve(self: T) -> T:
+          assert_type(Base().resolve(), Base)
+          return self
+      assert_type(Child().resolve(), Child)
+    """)
+
 
 class GenericTypeAliasTest(test_base.TargetPython3BasicTest):
   """Tests for generic type aliases ("type macros")."""

@@ -1043,5 +1043,53 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
       f(Bar(0))
     """)
 
+  def test_generic(self):
+    errors = self.CheckWithErrors("""
+      from typing import Generic, Protocol, Type, TypeVar
+
+      T = TypeVar('T')
+      class Foo(Protocol[T]):
+        x: T
+
+      T2 = TypeVar('T2', bound=Foo[int])
+      def f(cls: Type[T2]) -> T2:
+        return cls()
+
+      class Bar:
+        x = 0
+      class Baz:
+        x = ''
+
+      f(Bar)  # ok
+      f(Baz)  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"expected int, got str"})
+
+  def test_generic_from_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Protocol, TypeVar
+        T = TypeVar('T')
+        class Foo(Protocol[T]):
+          x: T
+      """)
+      errors = self.CheckWithErrors("""
+        from typing import Type, TypeVar
+        import foo
+
+        T = TypeVar('T', bound=foo.Foo[int])
+        def f(cls: Type[T]) -> T:
+          return cls()
+
+        class Bar:
+          x = 0
+        class Baz:
+          x = ''
+
+        f(Bar)  # ok
+        f(Baz)  # wrong-arg-types[e]
+      """, pythonpath=[d.path])
+      self.assertErrorRegexes(errors, {"e": r"expected int, got str"})
+
 
 test_base.main(globals(), __name__ == "__main__")

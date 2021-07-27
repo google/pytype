@@ -121,8 +121,12 @@ class HasSlots(metaclass=MixinMeta):
   def set_slot(self, name, method):
     """Add a new slot to this value."""
     assert name not in self._slots, "slot %s already occupied" % name
+    # For getting a slot value, we don't need a ParameterizedClass's type
+    # parameters, and evaluating them in the middle of constructing the class
+    # can trigger a recursion error, so use only the base class.
+    base = self.base_cls if self.isinstance_ParameterizedClass() else self
     _, attr = self.vm.attribute_handler.get_attribute(
-        self.vm.root_node, self, name, self.to_binding(self.vm.root_node))
+        self.vm.root_node, base, name, base.to_binding(self.vm.root_node))
     self._super[name] = attr
     f = self.make_native_function(name, method)
     self._slots[name] = f.to_variable(self.vm.root_node)
@@ -190,12 +194,12 @@ class LazyMembers(metaclass=MixinMeta):
   def init_mixin(self, member_map):
     self._member_map = member_map
 
-  def _convert_member(self, member):
+  def _convert_member(self, member, subst=None):
     raise NotImplementedError()
 
-  def load_lazy_attribute(self, name):
+  def load_lazy_attribute(self, name, subst=None):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
-      variable = self._convert_member(self._member_map[name])
+      variable = self._convert_member(self._member_map[name], subst)
       assert isinstance(variable, cfg.Variable)
       self.members[name] = variable

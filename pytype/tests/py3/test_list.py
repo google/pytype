@@ -28,7 +28,6 @@ class ListTest(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       from typing import List
       a, *b, c, d = 1, 2, 3, 4, 5, 6, 7
-      e, f, *g, h = "hello world"
       i, *j = 1, 2, 3, "4"
       *k, l = 4, 5, 6
       m, *n, o = [4, 5, "6", None, 7, 8]
@@ -42,10 +41,6 @@ class ListTest(test_base.TargetPython3FeatureTest):
       b = ... # type: List[int]
       c = ... # type: int
       d = ... # type: int
-      e = ... # type: str
-      f = ... # type: str
-      g = ... # type: List[str]
-      h = ... # type: str
       i = ... # type: int
       j = ... # type: List[Union[int, str]]
       k = ... # type: List[int]
