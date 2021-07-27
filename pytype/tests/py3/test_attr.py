@@ -41,7 +41,7 @@ class TestAttrib(test_base.TargetPython3BasicTest):
     """)
 
 
-class TestAttribConverters(test_base.TargetIndependentTest):
+class TestAttribConverters(test_base.TargetPython3BasicTest):
   """Tests for attr.ib with converters."""
 
   def test_annotated_converter(self):
