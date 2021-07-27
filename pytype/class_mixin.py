@@ -62,6 +62,7 @@ class Attribute:
   kw_only: bool
   default: Any
   kind: str = ""
+  init_type: Any = None
   pytd_const: Any = None
 
   @classmethod
