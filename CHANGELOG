@@ -1,3 +1,21 @@
+Version 2021.07.27
+
+New features and updates:
+* Add more detailed [name-error] messages for UnboundLocalError and the like.
+* Remove --check-parameter-types. Its behavior has been the default since
+  version 2021.07.19.
+* Support generic namedtuples.
+* Fix bugs and add features for --use-enum-overlay.
+* Add a flag, --enforce-noniterable-strings, that forbids implicit iteration
+  over strings.
+* Add support for attr converters.
+
+Bug fixes:
+* Get rid of a spurious 'appear only once in signature' TypeVar error.
+* Fix a few protocol matching bugs.
+* Fix exception handling bugs by tracking the frame state within
+  try/except/finally blocks.
+
 Version 2021.07.19
 
 New features and updates:
