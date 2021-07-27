@@ -120,16 +120,14 @@ class _FinallyStateTracker:
   """Track return state for try/except/finally blocks."""
   # Used in vm.run_frame()
 
-  SETUP_OPCODES = (opcodes.SETUP_EXCEPT,)
-
   RETURN_STATES = ("return", "exception")
 
   def __init__(self):
     self.stack = []
 
-  def process(self, op, state) -> Optional[str]:
+  def process(self, op, state, vm) -> Optional[str]:
     """Store state.why, or return it from a stored state."""
-    if isinstance(op, self.SETUP_OPCODES):
+    if vm.is_setup_except(op):
       self.stack.append([op, None])
     if isinstance(op, opcodes.END_FINALLY):
       if self.stack:
@@ -382,7 +380,7 @@ class VirtualMachine:
         state = self.run_instruction(op, state)
         # Check if we have to carry forward the return state from an except
         # block to the END_FINALLY opcode.
-        new_why = finally_tracker.process(op, state)
+        new_why = finally_tracker.process(op, state, self)
         if new_why:
           state = state.set_why(new_why)
         if state.why:
@@ -2926,17 +2924,28 @@ class VirtualMachine:
   def byte_SETUP_EXCEPT(self, state, op):
     return self._setup_except(state, op)
 
+  def is_setup_except(self, op):
+    """Check whether op is equivalent to a SETUP_EXCEPT opcode."""
+    # In Python 3.8+, exception setup is done using the SETUP_FINALLY opcode.
+    # Before that, there was a separate SETUP_EXCEPT opcode.
+    if self.python_version >= (3, 8):
+      if isinstance(op, opcodes.SETUP_FINALLY):
+        for i, block in enumerate(self.frame.f_code.order):
+          if block.id == op.arg:
+            if not any(isinstance(o, opcodes.BEGIN_FINALLY)
+                       for o in self.frame.f_code.order[i-1]):
+              return True
+            break
+      return False
+    else:
+      return isinstance(op, opcodes.SETUP_EXCEPT)
+
   def byte_SETUP_FINALLY(self, state, op):
     """Implements the SETUP_FINALLY opcode."""
     # In Python 3.8+, SETUP_FINALLY handles setup for both except and finally
     # blocks. Examine the targeted block to determine which setup to do.
-    if self.python_version >= (3, 8):
-      for i, block in enumerate(self.frame.f_code.order):
-        if block.id == op.arg:
-          if not any(isinstance(o, opcodes.BEGIN_FINALLY)
-                     for o in self.frame.f_code.order[i-1]):
-            return self._setup_except(state, op)
-          break
+    if self.is_setup_except(op):
+      return self._setup_except(state, op)
     # Emulate finally by connecting the try to the finally block (with
     # empty reason/why/continuation):
     self.store_jump(op.target, state.push(self.convert.build_none(state.node)))
