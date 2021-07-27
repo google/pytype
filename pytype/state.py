@@ -203,6 +203,7 @@ class SimpleFrame:
     self.current_opcode = opcode  # for memoization of unknowns
     self.node = node
     self.substs = ()
+    self.func = None
 
 
 class Frame(utils.VirtualMachineWeakrefMixin):

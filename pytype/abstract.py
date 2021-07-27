@@ -3929,6 +3929,7 @@ class BoundFunction(BaseValue):
     self._callself = callself
     self.underlying = underlying
     self.is_attribute_of_class = False
+    self.is_class_builder = False
 
     # If the function belongs to `ParameterizedClass`, we will annotate the
     # `self` when do argument matching

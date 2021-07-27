@@ -942,69 +942,6 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Optional\[Any\]"})
 
 
-class UnboundLocalTest(test_base.TargetIndependentTest):
-  """Tests for UnboundLocalError.
-
-  It is often confusing to users when a name error is logged due to a local
-  variable shadowing one from an outer scope and being referenced before its
-  local definition, e.g.:
-
-  def f():
-    x = 0
-    def g():
-      print(x)  # name error!
-      x = 1
-
-  In this case, we add some more details to the error message.
-  """
-
-  @test_base.skip("Not yet implemented")
-  def test_nested_function(self):
-    errors = self.CheckWithErrors("""
-      def f(x):
-        def g():
-          print(x)  # name-error[e]
-          x = 0
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": "Cannot reference 'x' from scope 'f' due to redefinition in 'g'"})
-
-  def test_global(self):
-    errors = self.CheckWithErrors("""
-      x = 0
-      def f():
-        print(x)  # name-error[e]
-        x = 1
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": "Cannot reference 'x' from global scope due to redefinition in 'f'"
-    })
-
-  @test_base.skip("Not yet implemented")
-  def test_class(self):
-    errors = self.CheckWithErrors("""
-      class C:
-        x = 0
-        def f(self):
-          print(x)  # name-error[e]
-          x = 1
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": "Cannot reference 'x' from scope 'C' due to redefinition in 'f'"})
-
-  @test_base.skip("Not yet implemented")
-  def test_nested_class(self):
-    errors = self.CheckWithErrors("""
-      def f():
-        x = 0
-        class C:
-          print(x)  # name-error[e]
-          x = 1
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": "Cannot reference 'x' from scope 'f' due to redefinition in 'C'"})
-
-
 class OperationsTest(test_base.TargetIndependentTest):
   """Test operations."""
 

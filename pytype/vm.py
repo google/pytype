@@ -13,13 +13,14 @@ program execution.
 # Bytecodes don't always use all their arguments:
 # pylint: disable=unused-argument
 
+import abc
 import collections
 import contextlib
 import itertools
 import logging
 import os
 import re
-from typing import Optional, Tuple
+from typing import Optional, Sequence, Tuple, Union
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -145,6 +146,56 @@ class _FinallyStateTracker:
 
   def __repr__(self):
     return repr(self.stack)
+
+
+class _NameErrorDetails(abc.ABC):
+  """Base class for detailed name error messages."""
+
+  @abc.abstractmethod
+  def to_error_message(self) -> str:
+    ...
+
+
+class _NameInInnerClassErrorDetails(_NameErrorDetails):
+
+  def __init__(self, attr, class_name):
+    self._attr = attr
+    self._class_name = class_name
+
+  def to_error_message(self):
+    return (f"Cannot reference {self._attr!r} from class {self._class_name!r} "
+            "before the class is fully defined")
+
+
+class _NameInOuterClassErrorDetails(_NameErrorDetails):
+  """Name error details for a name defined in an outer class."""
+
+  def __init__(self, attr, prefix, class_name):
+    self._attr = attr
+    self._prefix = prefix
+    self._class_name = class_name
+
+  def to_error_message(self):
+    full_attr_name = f"{self._class_name}.{self._attr}"
+    if self._prefix:
+      full_class_name = f"{self._prefix}.{self._class_name}"
+    else:
+      full_class_name = self._class_name
+    return (f"Use {full_attr_name!r} to reference {self._attr!r} from class "
+            f"{full_class_name!r}")
+
+
+class _NameInOuterFunctionErrorDetails(_NameErrorDetails):
+
+  def __init__(self, attr, outer_scope, inner_scope):
+    self._attr = attr
+    self._outer_scope = outer_scope
+    self._inner_scope = inner_scope
+
+  def to_error_message(self):
+    keyword = "global" if "global" in self._outer_scope else "nonlocal"
+    return (f"Add `{keyword} {self._attr}` in {self._inner_scope} to reference "
+            f"{self._attr!r} from {self._outer_scope}")
 
 
 class VirtualMachine:
@@ -2010,12 +2061,157 @@ class VirtualMachine:
   def _is_private(self, name):
     return name.startswith("_") and not name.startswith("__")
 
-  def _find_outer_scope_with_def(self, state, name):
-    try:
-      _ = self.load_global(state, name)
-    except KeyError:
-      return None
-    return "global scope"
+  def _get_scopes(
+      self, state, names: Sequence[str]
+  ) -> Sequence[Union[abstract.InterpreterClass, abstract.InterpreterFunction]]:
+    """Gets the class or function objects for a sequence of nested scope names.
+
+    For example, if the code under analysis is:
+      class Foo:
+        def f(self):
+          def g(): ...
+    then when called with ['Foo', 'f', 'g'], this method returns
+    [InterpreterClass(Foo), InterpreterFunction(f), InterpreterFunction(g)].
+
+    Arguments:
+      state: The current state.
+      names: A sequence of names for consecutive nested scopes in the module
+        under analysis. Must start with a module-level name.
+
+    Returns:
+      The class or function object corresponding to each name in 'names'.
+    """
+    scopes = []
+    for name in names:
+      prev = scopes[-1] if scopes else None
+      if not prev:
+        try:
+          _, var = self.load_global(state, name)
+        except KeyError:
+          break
+      elif isinstance(prev, abstract.InterpreterClass):
+        if name in prev.members:
+          var = prev.members[name]
+        else:
+          break
+      else:
+        assert isinstance(prev, abstract.InterpreterFunction)
+        # For last_frame to be populated, 'prev' has to have been called at
+        # least once. This has to be true for all functions except the innermost
+        # one, since pytype cannot detect a nested function without analyzing
+        # the code that defines the nested function.
+        if prev.last_frame and name in prev.last_frame.f_locals.pyval:
+          var = prev.last_frame.f_locals.pyval[name]
+        else:
+          break
+      try:
+        scopes.append(abstract_utils.get_atomic_value(
+            var, (abstract.InterpreterClass, abstract.InterpreterFunction)))
+      except abstract_utils.ConversionError:
+        break
+    return scopes
+
+  def _get_name_error_details(self, state, name: str) -> _NameErrorDetails:
+    """Gets a detailed error message for [name-error]."""
+    # 'name' is not defined in the current scope. To help the user better
+    # understand UnboundLocalError and other similarly confusing errors, we look
+    # for definitions of 'name' in outer scopes so we can print a more
+    # informative error message.
+
+    # Starting from the current (innermost) frame and moving outward, pytype
+    # represents any classes with their own frames until it hits the first
+    # function. It represents that function with its own frame and all remaining
+    # frames with a single SimpleFrame. For example, if we have:
+    #   def f():
+    #     class C:
+    #       def g():
+    #         class D:
+    #           class E:
+    # then self.frames looks like:
+    #   [SimpleFrame(), Frame(f.<locals>.C.g), Frame(D), Frame(E)]
+    class_frames = []
+    first_function_frame = None
+    for frame in reversed(self.frames):
+      if not frame.func:
+        break
+      if frame.func.data.is_class_builder:
+        class_frames.append(frame)
+      else:
+        first_function_frame = frame
+        break
+
+    # Nested function names include ".<locals>" after each outer function.
+    clean = lambda func_name: func_name.replace(".<locals>", "")
+
+    if first_function_frame:
+      # Functions have fully qualified names, so we can use the name of
+      # first_function_frame to look up the remaining frames.
+      parts = clean(first_function_frame.func.data.name).split(".")
+      if first_function_frame is self.frame:
+        parts = parts[:-1]
+    else:
+      parts = []
+
+    # Check if 'name' is defined in one of the outer classes and functions.
+    # Scope 'None' represents the global scope.
+    prefix, class_name_parts = None, []
+    for scope in itertools.chain(
+        reversed(self._get_scopes(state, parts)), [None]):
+      if class_name_parts:
+        # We have located a class that 'name' is defined in and are now
+        # constructing the name by which the class should be referenced.
+        if isinstance(scope, abstract.InterpreterClass):
+          class_name_parts.append(scope.name)
+        elif scope:
+          prefix = clean(scope.name)
+          break
+      elif isinstance(scope, abstract.InterpreterClass):
+        if name in scope.members:
+          # The user may have intended to reference <Class>.<name>
+          class_name_parts.append(scope.name)
+      else:
+        outer_scope = None
+        if scope:
+          # 'name' is defined in an outer function but not accessible, so it
+          # must be redefined in the current frame (an UnboundLocalError).
+          # Note that it is safe to assume that annotated_locals corresponds to
+          # 'scope' (rather than a different function with the same name) only
+          # when 'last_frame' is empty, since the latter being empty means that
+          # 'scope' is actively under analysis.
+          if ((scope.last_frame and name in scope.last_frame.f_locals.pyval) or
+              (not scope.last_frame and
+               name in self.annotated_locals[scope.name.rsplit(".", 1)[-1]])):
+            outer_scope = f"function {clean(scope.name)!r}"
+        else:
+          try:
+            _ = self.load_global(state, name)
+          except KeyError:
+            pass
+          else:
+            outer_scope = "global scope"
+        if outer_scope:
+          if self.frame.func.data.is_class_builder:
+            class_name = ".".join(parts + [
+                class_frame.func.data.name
+                for class_frame in reversed(class_frames)])
+            inner_scope = f"class {class_name!r}"
+          else:
+            inner_scope = f"function {clean(self.frame.func.data.name)!r}"
+          return _NameInOuterFunctionErrorDetails(
+              name, outer_scope, inner_scope)
+    if class_name_parts:
+      return _NameInOuterClassErrorDetails(
+          name, prefix, ".".join(reversed(class_name_parts)))
+
+    # Check if 'name' is defined in one of the classes with their own frames.
+    if class_frames:
+      for i, frame in enumerate(class_frames[1:]):
+        if name in self.annotated_locals[frame.func.data.name]:
+          class_parts = [part.func.data.name
+                         for part in reversed(class_frames[i+1:])]
+          class_name = ".".join(parts + class_parts)
+          return _NameInInnerClassErrorDetails(name, class_name)
+    return None
 
   def _name_error_or_late_annotation(self, state, name):
     """Returns a late annotation or returns Any and logs a name error."""
@@ -2025,16 +2221,9 @@ class VirtualMachine:
       self.late_annotations[name].append(annot)
       return annot
     else:
-      outer_scope = self._find_outer_scope_with_def(state, name)
-      if outer_scope:
-        # This name is defined in an outer scope but cannot be accessed, which
-        # means that the outer definition must be shadowed in the current scope.
-        assert self.frame.func
-        inner_scope = self.frame.func.data.name.rsplit(".")[-1]
-        details = (f"Note: Cannot reference {name!r} from {outer_scope} due to "
-                   f"redefinition in {inner_scope!r}")
-      else:
-        details = None
+      details = self._get_name_error_details(state, name)
+      if details:
+        details = "Note: " + details.to_error_message()
       self.errorlog.name_error(self.frames, name, details=details)
       return self.convert.unsolvable
 

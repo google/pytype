@@ -64,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-06-16T13:27-07:00 -->
+<!-- Added by: rechen, at: 2021-07-26T16:45-07:00 -->
 
 <!--te-->
 
@@ -569,6 +569,26 @@ MyListType = List[str]  # name-error
 from typing import List
 
 MyListType = List[str]
+```
+
+Note that a name from an outer namespace cannot be referenced if you redefine it
+in the current namespace, unless you use the `global` or `nonlocal` keyword:
+
+<!-- bad -->
+```python
+def f():
+  x = 0
+  def g():
+    x += 1  # name-error
+```
+
+<!-- good -->
+```python
+def f():
+  x = 0
+  def g():
+    nonlocal x
+    x += 1
 ```
 
 ## not-callable
