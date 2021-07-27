@@ -334,7 +334,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       from typing import Generic, NamedTuple, TypeVar
       T = TypeVar('T')
       class Foo(NamedTuple):
-        x: T  # not-supported-yet
+        x: T  # invalid-annotation
     """)
 
   def test_generic_callable(self):

@@ -211,8 +211,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       d.from_annotation = name
     return node, value
 
-  def extract_and_init_annotation(self, node, name, var,
-                                  use_not_supported_yet=False):
+  def extract_and_init_annotation(self, node, name, var):
     """Extracts an annotation from var and instantiates it."""
     frame = self.vm.frame
     substs = frame.substs
@@ -232,8 +231,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
         node, var, name, self.vm.simple_stack(),
-        allowed_type_params=allowed_type_params,
-        use_not_supported_yet=use_not_supported_yet)
+        allowed_type_params=allowed_type_params)
     if typ.formal:
       resolved_type = self.sub_one_annotation(node, typ, substs,
                                               instantiate_unbound=False)
@@ -256,12 +254,10 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if errorlog:
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
-    return self.extract_and_init_annotation(node, name, var,
-                                            use_not_supported_yet=True)
+    return self.extract_and_init_annotation(node, name, var)
 
   def extract_annotation(
-      self, node, var, name, stack, allowed_type_params=None,
-      use_not_supported_yet=True):
+      self, node, var, name, stack, allowed_type_params=None):
     """Returns an annotation extracted from 'var'.
 
     Args:
@@ -271,9 +267,6 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       stack: The frame stack.
       allowed_type_params: Type parameters that are allowed to appear in the
         annotation. 'None' means all are allowed.
-      use_not_supported_yet: Temporary parameter to help transition the error
-        class for reporting 'type parameter not in scope' errors from
-        [not-supported-yet] to [invalid-annotation].
     """
     try:
       typ = abstract_utils.get_atomic_value(var)
@@ -305,13 +298,7 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             str_type = "Union[str, bytes]"
           details += (
               f"\nNote: For all string types, use {str_type}.")
-        if use_not_supported_yet:
-          # TODO(b/186896951): Switch this to an [invalid-annotation] error.
-          self.vm.errorlog.not_supported_yet(
-              stack, "using type parameter in variable annotation",
-              details=details)
-        else:
-          self.vm.errorlog.invalid_annotation(stack, typ, details, name)
+        self.vm.errorlog.invalid_annotation(stack, typ, details, name)
         return self.vm.convert.unsolvable
     return typ
 

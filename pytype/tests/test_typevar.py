@@ -114,8 +114,8 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.InferWithErrors("""
       from typing import List, TypeVar
       T = TypeVar("T")
-      x = None  # type: T  # not-supported-yet
-      y = None  # type: List[T]  # not-supported-yet
+      x = None  # type: T  # invalid-annotation
+      y = None  # type: List[T]  # invalid-annotation
     """)
 
   def test_base_class_with_typevar(self):

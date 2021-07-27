@@ -1266,7 +1266,7 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
   def test_anystr_error(self):
     errors = self.CheckWithErrors("""
       from typing import AnyStr, List, Union
-      x: Union[List[AnyStr], List[int]]  # not-supported-yet[e]
+      x: Union[List[AnyStr], List[int]]  # invalid-annotation[e]
     """)
     self.assertErrorRegexes(errors, {"e": "'AnyStr' not in scope"})
 

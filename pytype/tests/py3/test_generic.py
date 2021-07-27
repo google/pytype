@@ -871,7 +871,7 @@ class GenericFeatureTest(test_base.TargetPython3FeatureTest):
       T1 = TypeVar('T1')
       T2 = TypeVar('T2')
       class Foo(Generic[T1]):
-        x: T2  # not-supported-yet[e]
+        x: T2  # invalid-annotation[e]
     """)
     self.assertErrorRegexes(
         errors, {"e": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'"})
@@ -906,8 +906,8 @@ class GenericFeatureTest(test_base.TargetPython3FeatureTest):
       T2 = TypeVar('T2')
       class Foo(Generic[T1]):
         def __init__(self, x, y):
-          self.x: T2 = x  # not-supported-yet[e1]
-          self.y = y  # type: T2  # not-supported-yet[e2]
+          self.x: T2 = x  # invalid-annotation[e1]
+          self.y = y  # type: T2  # invalid-annotation[e2]
     """)
     self.assertErrorRegexes(
         errors, {"e1": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'",

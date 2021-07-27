@@ -299,8 +299,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
             self.vm.annotations_util.get_callable_type_parameter_names(typ))
         annot = self.vm.annotations_util.extract_annotation(
             node, typ, name_py_constant, self.vm.simple_stack(),
-            allowed_type_params=allowed_type_params,
-            use_not_supported_yet=False)
+            allowed_type_params=allowed_type_params)
       else:
         # This NamedTuple was constructed with the class syntax. The field
         # annotations were already processed when added to __annotations__.

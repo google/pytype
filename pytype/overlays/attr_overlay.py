@@ -196,7 +196,7 @@ class Attrib(classgen.FieldConstructor):
           self.vm.annotations_util.get_callable_type_parameter_names(type_var))
       typ = self.vm.annotations_util.extract_annotation(
           node, type_var, "attr.ib", self.vm.simple_stack(),
-          allowed_type_params=allowed_type_params, use_not_supported_yet=False)
+          allowed_type_params=allowed_type_params)
     elif default_var:
       typ = get_type_from_default(default_var, self.vm)
     elif conv_out:
