@@ -950,11 +950,32 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         resolved_attribute.PasteBinding(b)
     return resolved_attribute
 
+  def _get_type(self, value):
+    cls = value.get_class()
+    if not cls:
+      return None
+    if (not isinstance(cls, (abstract.PyTDClass, abstract.InterpreterClass)) or
+        not cls.template):
+      return cls
+    parameters = {}
+    for param in cls.template:
+      param_value = value.get_instance_type_parameter(param.name)
+      types = list(filter(None, (self._get_type(v) for v in param_value.data)))
+      if not types:
+        break
+      parameters[param.name] = self.vm.merge_values(types)
+    else:
+      # If 'value' provides non-empty values for all of its class's parameters,
+      # then we construct a ParameterizedClass so that the parameter values are
+      # considered in matching.
+      return abstract.ParameterizedClass(cls, parameters, self.vm)
+    return cls
+
   def _get_attribute_types(self, other_type, attribute):
     if not abstract_utils.is_callable(attribute):
-      cls = attribute.get_class()
-      if cls:
-        yield cls
+      typ = self._get_type(attribute)
+      if typ:
+        yield typ
       return
     converter = self.vm.convert.pytd_convert
     for signature in abstract_utils.get_signatures(attribute):
@@ -1016,13 +1037,15 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     for protocol_attribute in protocol_attribute_var.data:
       protocol_attribute_types = list(
           self._get_attribute_types(other_type, protocol_attribute))
-      for v in left_attribute.data:
+      for new_view in abstract_utils.get_views([left_attribute], self._node):
+        new_view.update(view)
         new_substs = []
         for protocol_attribute_type in protocol_attribute_types:
-          match_result = self._match_type_against_type(
-              v, protocol_attribute_type, subst, view)
+          match_result = self.match_var_against_type(
+              left_attribute, protocol_attribute_type, subst, new_view)
           if match_result is None:
-            bad_matches.append((v, protocol_attribute))
+            bad_matches.append(
+                (new_view[left_attribute].data, protocol_attribute))
             break
           else:
             new_substs.append(match_result)
