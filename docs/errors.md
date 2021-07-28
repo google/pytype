@@ -64,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2021-07-27T17:52-07:00 -->
+<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
 
 <!--te-->
 
