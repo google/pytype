@@ -13,7 +13,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2021-05-07T17:26-07:00 -->
+<!-- Added by: mdemello, at: 2021-07-27T17:52-07:00 -->
 
 <!--te-->
 

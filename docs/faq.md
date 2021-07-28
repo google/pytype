@@ -15,7 +15,7 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: mdemello, at: 2021-06-08T15:24-07:00 -->
+<!-- Added by: mdemello, at: 2021-07-27T17:52-07:00 -->
 
 <!--te-->
 
@@ -181,14 +181,6 @@ You can nest it inside an `if typing.TYPE_CHECKING:` block. This is occasionally
 needed to, for instance,
 [conditionally import a module][style-guide-conditional-imports] that is only
 used to provide type annotations.
-
-Note that regardless of whether you use `TYPE_CHECKING`, if you're using a build
-system, you'll need to list all modules you import as dependencies of your
-target. That can lead to cycles in your build graph. Typically, that means that,
-short of rearranging your source tree, you won't be able to annotate with that
-specific type. You can typically work around the "inexpressible" type by
-inserting `Any` where you would have used it. See the
-[style guide][style-guide-circular-dependencies] for more information.
 
 ## How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?
 

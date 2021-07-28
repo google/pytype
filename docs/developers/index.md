@@ -12,7 +12,7 @@ pytype's core concepts and code layout, as well as tips on suggested workflow.
       * [Basic concepts](#basic-concepts)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
+<!-- Added by: mdemello, at: 2021-07-27T17:51-07:00 -->
 
 <!--te-->
 
