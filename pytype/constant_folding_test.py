@@ -192,6 +192,24 @@ class TestFolding(test_base.UnitTest):
     """)
     self.assertCountEqual(actual, [])
 
+  def test_function_call(self):
+    actual = self._process("""
+      a = {
+          'name': 'x'.isascii(),
+          'type': 'package',
+          'foo': sorted(set())
+      }
+    """)
+    self.assertCountEqual(actual, [])
+
+  def test_fstring(self):
+    actual = self._process("""
+      x = 'hello'
+      y = set(1, 2, 3)
+      a = f'foo{x}{y}'
+    """)
+    self.assertCountEqual(actual, [])
+
 
 class TypeBuilderTestBase(test_base.UnitTest):
   """Base class for constructing and testing vm types."""

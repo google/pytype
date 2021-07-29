@@ -162,38 +162,57 @@ class _Stack:
       self._preserve_constant(c)
     self.stack = []
 
+  def _pop_args(self, n):
+    """Try to get n args off the stack for a BUILD call."""
+    if len(self.stack) < n:
+      # We have started a new block in the middle of constructing a literal
+      # (e.g. due to an inline function call). Clear the stack, since the
+      # literal is not constant.
+      self.clear()
+      return None
+    elif any(x is None for x in self.stack[-n:]):
+      # We have something other than constants in the arg list. Pop all the args
+      # for this op off the stack, preserving constants.
+      for _ in range(n):
+        self._preserve_constant(self.pop())
+      return None
+    else:
+      return [self.pop() for _ in range(n)]
+
   def fold_args(self, n, op):
     """Collect the arguments to a build call."""
     ret = _CollectionBuilder()
-    assert len(self.stack) >= n, 'stack underflow!'
-    if any(x is None for x in self.stack[-n:]):
-      # We have something other than constants in the arg list. Pop all the args
-      # for this op off the stack, preserving constants, and push back a None.
-      for _ in range(n):
-        self._preserve_constant(self.pop())
+    args = self._pop_args(n)
+    if not args:
       self.push(None)
       return None
-    else:
-      for _ in range(n):
-        elt = self.pop()
-        ret.add(elt)
-        elt.op.folded = op
+
+    for elt in args:
+      ret.add(elt)
+      elt.op.folded = op
     return ret.build()
 
   def fold_map_args(self, n, op):
     """Collect the arguments to a BUILD_MAP call."""
     ret = _MapBuilder()
-    if len(self.stack) < 2 * n:
-      # We have something other than constants in the op list
+    args = self._pop_args(2 * n)
+    if not args:
+      self.push(None)
       return None
-    else:
-      for _ in range(n):
-        v_elt = self.pop()
-        k_elt = self.pop()
-        ret.add(k_elt, v_elt)
-        k_elt.op.folded = op
-        v_elt.op.folded = op
+
+    for i in range(0, 2 * n, 2):
+      v_elt, k_elt = args[i], args[i + 1]
+      ret.add(k_elt, v_elt)
+      k_elt.op.folded = op
+      v_elt.op.folded = op
     return ret.build()
+
+  def build_str(self, n, op):
+    ret = self.fold_args(n, op)
+    if ret:
+      self.push(_Constant(('prim', str), '', None, op))
+    else:
+      self.push(None)
 
   def build(self, python_type, op):
     collection = self.fold_args(op.arg, op)
@@ -254,11 +273,9 @@ class _FoldConstants:
         elif isinstance(op, opcodes.FORMAT_VALUE):
           if op.arg & loadmarshal.FVS_MASK:
             stack.pop()
-          _ = stack.fold_args(1, op)
-          stack.push(_Constant(('prim', str), '', None, op))
+          stack.build_str(1, op)
         elif isinstance(op, opcodes.BUILD_STRING):
-          _ = stack.fold_args(op.arg, op)
-          stack.push(_Constant(('prim', str), '', None, op))
+          stack.build_str(op.arg, op)
         elif isinstance(op, opcodes.BUILD_MAP):
           map_ = stack.fold_map_args(op.arg, op)
           if map_:
@@ -280,6 +297,7 @@ class _FoldConstants:
           # constant. Insert a None as a sentinel to the next BUILD op to
           # not fold itself.
           stack.push(None)
+
       # Clear the stack to save any folded constants before exiting the block
       stack.clear()
 
