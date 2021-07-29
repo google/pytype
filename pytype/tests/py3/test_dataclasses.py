@@ -18,12 +18,14 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: str
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
         z: str
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: bool, y: int, z: str) -> None: ...
     """)
 
@@ -36,11 +38,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: str
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: Foo
         y: str
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[Foo, str]]]
         def __init__(self, x: Foo, y: str) -> None: ...
     """)
 
@@ -56,11 +60,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y = 10
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: str
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
 
@@ -75,11 +81,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
           return 10
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: str
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
     self.assertErrorRegexes(
@@ -95,12 +103,14 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: str
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
         z: str
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
     """)
 
   def test_explicit_init(self):
@@ -115,11 +125,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
           self.y = 0
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, a: bool) -> None: ...
     """)
 
@@ -133,12 +145,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: List[int] = dataclasses.field(default_factory=list)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List
+      from typing import Dict, List, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: List[int]
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[bool, List[int]]]]
         def __init__(self, x: bool = ..., y: List[int] = ...) -> None: ...
     """)
 
@@ -198,11 +211,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int = dataclasses.field(init=False)
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: bool = ...) -> None: ...
     """)
 
@@ -215,11 +230,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: bool, y: int) -> None: ...
     """)
 
@@ -269,12 +286,14 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
           return self.y
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         w: float
         x: bool
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, float]]]
         def __init__(self, w: float, x: bool = ...) -> None: ...
       class Bar(Foo):
         def get_w(self) -> float: ...
@@ -296,17 +315,20 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: bool = dataclasses.field(default=True)
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         w: float
         x: bool
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, float]]]
         def __init__(self, w: float, x: bool = ...) -> None: ...
       @dataclasses.dataclass
       class Bar(Foo):
         w: int
-        z: bool = ...
+        z: bool
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, w: int, x: bool = ..., z: bool = ...) -> None: ...
     """)
 
@@ -324,18 +346,22 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         c: int
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class A(object):
         a: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, a: int) -> None: ...
       @dataclasses.dataclass
       class B(object):
         b: str
+        __dataclass_fields__: Dict[str, dataclasses.Field[str]]
         def __init__(self, b: str) -> None: ...
       @dataclasses.dataclass
       class C(B, A):
         c: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, a: int, b: str, c: int) -> None: ...
     """)
 
@@ -406,7 +432,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
     self.assertTypesMatchPytd(ty, """
-      from typing import Optional, Union
+      from typing import Dict, Optional, Union
 
       Node = Union[IntLeaf, StrLeaf, Tree]
       dataclasses: module
@@ -414,22 +440,26 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       @dataclasses.dataclass
       class IntLeaf:
           value: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
           def __init__(self, value: int) -> None: ...
 
       @dataclasses.dataclass
       class StrLeaf:
           label: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[str]]
           def __init__(self, label: str) -> None: ...
 
       @dataclasses.dataclass
       class Tree:
           children: Union[IntLeaf, StrLeaf, Tree]
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[IntLeaf, StrLeaf, Tree]]]
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
           def get_children(self) -> Union[IntLeaf, StrLeaf, Tree]: ...
           def get_leaf(self) -> int: ...
 
       @dataclasses.dataclass
       class Root(Tree):
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[IntLeaf, StrLeaf, Tree]]]
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
 
       def get_value(x: Root) -> Optional[Union[int, str]]: ...
@@ -459,10 +489,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int = 10
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class A:
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: str, y: int = ...) -> None: ...
     """)
 
@@ -476,11 +508,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int = 10
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class A:
         x: dataclasses.InitVar[str]
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
 
@@ -498,11 +532,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class A:
         x: dataclasses.InitVar[str]
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str, Foo]]]
         def __init__(self, w: Foo, x: str = ..., y: int = ...) -> None: ...
 
       class Foo: ...
@@ -522,15 +558,18 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         z: dataclasses.InitVar[int] = 42
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
       class A:
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: str, y: int = ...) -> None: ...
 
       @dataclasses.dataclass
       class B(A):
         z: dataclasses.InitVar[int]
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
     """)
 
@@ -545,12 +584,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import ClassVar
+      from typing import ClassVar, Dict
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         y: str
         x: ClassVar[int]
+        __dataclass_fields__: Dict[str, dataclasses.Field[str]]
         def __init__(self, y: str = ...) -> None: ...
     """)
 
@@ -569,7 +609,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       Inner2 = Bar.Inner
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Type
+      from typing import Dict, Type
       dataclasses: module
       class Foo:
         Inner: Type[Inner1]
@@ -578,10 +618,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       @dataclasses.dataclass
       class Inner1:
         a: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, a: int) -> None: ...
       @dataclasses.dataclass
       class Inner2:
         b: str
+        __dataclass_fields__: Dict[str, dataclasses.Field[str]]
         def __init__(self, b: str) -> None: ...
     """)
 
@@ -606,13 +648,14 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         y: int = field_wrapper(default=1)
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
+      from typing import Any, Dict
       dataclasses: module
       def field_wrapper(**kwargs) -> Any: ...
       @dataclasses.dataclass
       class Foo:
         x: int
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int = ..., y: int = ...) -> None: ...
     """)
 
@@ -628,12 +671,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
           return "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Annotated
+      from typing import Annotated, Dict
       dataclasses: module
       @dataclasses.dataclass
       class Foo(object):
         x: bool
         y: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         z: Annotated[str, 'property']
         def __init__(self, x: bool, y: int) -> None: ...
     """)
@@ -652,12 +696,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       x2 = foo2.x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Generic, TypeVar
+      from typing import Dict, Generic, TypeVar
       dataclasses: module
       T = TypeVar('T')
       @dataclasses.dataclass
       class Foo(Generic[T]):
         x: T
+        __dataclass_fields__: Dict[str, dataclasses.Field[T]]
         def __init__(self, x: T) -> None:
           self = Foo[T]
       foo1: Foo[int]
@@ -715,11 +760,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           z: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Dict, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class Foo(foo.A):
           z: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
       """)
 
@@ -744,11 +791,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Dict, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
       """)
 
@@ -776,11 +825,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Dict, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
       """)
 
@@ -808,11 +859,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Dict, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, x: bool, y: int = ..., z: str = ..., a: str = ...) -> None: ...
       """)
 
@@ -834,11 +887,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           z: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from typing import Dict, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class Foo(foo.A):
           z: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, y: int, z: str = ...) -> None: ...
       """)
 
@@ -864,12 +919,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
             return 42
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Annotated
+        from typing import Annotated, Dict, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class Foo(foo.A):
           a: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           b: Annotated[int, 'property']
           def __init__(self, x: bool, y: int, a: str = ...) -> None: ...
       """)
@@ -922,12 +978,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           w: int
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, List
+        from typing import Any, Dict, List, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class B(foo.A):
           w: int
+          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, x, y: str, z: list, w: int) -> None: ...
       """)
 
@@ -950,12 +1007,13 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           w: int
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, List
+        from typing import Any, Dict, List, Union
         dataclasses: module
         foo: module
         @dataclasses.dataclass
         class C(foo.A):
           w: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, foo.B]]]
           def __init__(self, x: foo.B, w: int) -> None: ...
       """)
 

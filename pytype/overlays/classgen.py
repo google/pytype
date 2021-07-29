@@ -253,3 +253,22 @@ def make_replace_method(vm, node, cls, *, kwargs_name="kwargs"):
       self_param=overlay_utils.Param("self", typevar),
       kwargs=overlay_utils.Param(kwargs_name),
   )
+
+
+def get_or_create_annotations_dict(members, vm):
+  """Get __annotations__ from members map, create and attach it if not present.
+
+  The returned dict is also referenced by members, so it is safe to mutate.
+
+  Args:
+    members: A dict of member name to variable.
+    vm: TypegraphVirtualMachine instance.
+
+  Returns:
+    members['__annotations__'] unpacked as a python dict
+  """
+  annotations_dict = abstract_utils.get_annotations_dict(members)
+  if annotations_dict is None:
+    annotations_dict = abstract.AnnotationsDict({}, vm)
+    members["__annotations__"] = annotations_dict.to_variable(vm.root_node)
+  return annotations_dict

@@ -79,11 +79,8 @@ class Attrs(classgen.Decorator):
           classgen.add_member(node, cls, name, attr.typ)
           if attrib.has_type and isinstance(cls, abstract.InterpreterClass):
             # Add the attrib to the class's __annotations__ dict.
-            annotations_dict = abstract_utils.get_annotations_dict(cls.members)
-            if annotations_dict is None:
-              annotations_dict = abstract.AnnotationsDict({}, self.vm)
-              cls.members["__annotations__"] = annotations_dict.to_variable(
-                  self.vm.root_node)
+            annotations_dict = classgen.get_or_create_annotations_dict(
+                cls.members, self.vm)
             annotations_dict.annotated_locals[name] = abstract_utils.Local(
                 node, None, attrib.typ, orig, self.vm)
         else:

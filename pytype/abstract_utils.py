@@ -209,6 +209,8 @@ def get_signatures(func):
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
   elif func.isinstance_ClassMethod() or func.isinstance_StaticMethod():
     return get_signatures(func.method)
+  elif func.isinstance_SimpleFunction():
+    return [func.signature]
   else:
     raise NotImplementedError(func.__class__.__name__)
 
