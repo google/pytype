@@ -538,6 +538,21 @@ class PrintTest(parser_test_base.ParserTest):
       x: Literal['x', 'y']
     """).strip())
 
+  def test_reuse_union_name(self):
+    src = """
+      import typing
+      from typing import Callable, Iterable, Tuple
+
+      class Node: ...
+
+      class Union:
+          _predicates: Tuple[Callable[[typing.Union[Iterable[Node], Node]], bool], ...]
+          def __init__(self, *predicates: Callable[[typing.Union[Iterable[Node], Node]], bool]) -> None: ...
+    """
+    ast = self.Parse(src)
+    self.assertMultiLineEqual(pytd_utils.Print(ast),
+                              textwrap.dedent(src).strip())
+
 
 if __name__ == "__main__":
   unittest.main()
