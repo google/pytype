@@ -570,7 +570,6 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
 
   def test_iter(self):
     self.Check("""
-      x = iter(u"hello")
       x = iter("hello")
     """)
 
