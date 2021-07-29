@@ -12,14 +12,10 @@ from pytype.tests import test_base
 def InitContents():
   with open(os.path.join(os.path.dirname(__file__), '__init__.py'), 'r') as f:
     lines = f.readlines()
-  # Remove the 'google_type_annotations' import, because tests will re-add it.
-  py2_annotations_line = 'from __future__ import google_type_annotations\n'
-  if py2_annotations_line in lines:
-    lines.remove(py2_annotations_line)
   return ''.join(lines)
 
 
-class CodeTest(test_base.TargetPython3BasicTest):
+class CodeTest(test_base.TargetPython3FeatureTest):
 
   def CheckWithErrors(self, code: Text) -> errors.ErrorLog:
     extensions_pyi = pytd_utils.Print(self.Infer(InitContents()))

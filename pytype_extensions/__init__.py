@@ -1,16 +1,71 @@
-# Lint as: python2, python3
 """Type system extensions for use with pytype."""
-from __future__ import google_type_annotations
-
+import dataclasses
 import typing
-from typing import Text, Dict, Any, TypeVar, Callable
+from typing import Any, Callable, Dict, Generic, Text, Type, TypeVar
+
+# pylint: disable=g-import-not-at-top
+try:
+  from typing import Protocol
+except ImportError:
+  # typing.Protocol was added in python 3.8.
+  from typing_extensions import Protocol
+# pylint: enable=g-import-not-at-top
+
+T = TypeVar('T')
+
+
+class Dataclass(Protocol[T]):
+  """Protocol that matches any dataclass (or instance thereof).
+
+  Can be used to match any dataclass. Example (modulo pytype bugs):
+  @dataclasses.dataclass
+  class Foo:
+    x: str
+    y: int
+
+  @dataclasses.dataclass
+  class Bar:
+    x: str
+    y: str
+
+  class Baz:
+    x: str
+    y: int
+
+  def foo(item: Dataclass):
+    pass
+
+  def bar(item: Dataclass[str]):
+    pass
+
+  def baz(item: Dataclass[Union[int, str]]):
+    pass
+
+  foo(Foo(x='yes', y=1))     # ok
+  foo(Bar(x='yes', y='no'))  # ok
+  foo(Baz(x='yes', y=1))     # error, not a dataclass
+
+  bar(Foo(x='yes', y=1))     # error, has a non-str field
+  bar(Bar(x='yes', y='no'))  # ok
+  bar(Baz(x='yes', y=1))     # error, not a dataclass
+
+  baz(Foo(x='yes', y=1))     # ok
+  baz(Bar(x='yes', y='no'))  # ok
+  baz(Baz(x='yes', y=1))     # error, not a dataclass
+
+  The only way to identify a dataclass is to test for the presense of the
+  __dataclass_fields__ member; that is what dataclasses.is_dataclass uses:
+  https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L1036.
+  """
+
+  __dataclass_fields__: Dict[str, 'dataclasses.Field[T]']
 
 
 if typing.TYPE_CHECKING:
 
   _GenericCallable = TypeVar('_GenericCallable', bound=Callable[..., Any])
 
-  class Decorator(object):
+  class Decorator:
     """A type annotation for decorators that do not change signatures.
 
     This is a stand-in for using `Callable[[T], T]` to represent a decorator.
@@ -52,7 +107,7 @@ if typing.TYPE_CHECKING:
 
     Shortlink: pytype_extensions.Decorator
     """
-    # pylint: disable=pointless-statement, line-too-long, unused-argument
+    # pylint: disable=line-too-long, unused-argument
 
     def __init__(self, decorator: Callable[[_GenericCallable], _GenericCallable]):
       ...
