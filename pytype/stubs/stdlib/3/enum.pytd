@@ -18,7 +18,7 @@ class EnumMeta(type, Iterable):
   def __len__(self) -> int: ...
 
 class Enum(metaclass=EnumMeta):
-  __members__ = ...  # type: collections.OrderedDict[str, Enum]
+  __members__: collections.OrderedDict[str, Enum]
   # These are copies of `name` and `value`. These are occasionally used in
   # methods on the enum, so set them here to guarantee pytype sees them.
   # Unlike `name` and `value`, these are never valid enum member names, so it's
@@ -39,10 +39,10 @@ def unique(enumeration: _EnumType) -> _EnumType: ...
 # with the exception of a tweak to the definition of IntFlag, documented below,
 # and the addition of the signature of auto.__init__.
 
-_auto_null = ...  # type: Any
+_auto_null: Any
 
 class auto:
-  value = ...  # type: Any
+  value: Any
   def __init__(self) -> None: ...
   def __getattribute__(self, name) -> Any: ...
   def __or__(self: _T, other: _T) -> _T: ...

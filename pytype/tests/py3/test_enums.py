@@ -296,6 +296,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       assert_type(M(1), "M")
       assert_type(M(1).value, "int")
       assert_type(M(-500), "M")
+      assert_type(M(M.A), "M")
       M("str")  # wrong-arg-types
       class N(enum.Enum):
         A = 1
@@ -321,6 +322,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         from typing import Union
         from m import M, N
         assert_type(M(1), "m.M")
+        assert_type(M(M.A), "m.M")
         # assert_type(M(1).value, "int")
         assert_type(M(-500), "m.M")
         M("str")  # wrong-arg-types

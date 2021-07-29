@@ -277,7 +277,8 @@ class EnumMetaInit(abstract.SimpleFunction):
         node=node,
         name="__new__",
         params=[
-            overlay_utils.Param("value", member_type)
+            overlay_utils.Param("value",
+                                abstract.Union([member_type, cls], self.vm))
         ],
         return_type=cls)
 
