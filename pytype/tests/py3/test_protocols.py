@@ -388,7 +388,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
         def _GetPortsWithDirection(self):
           return collections.OrderedDict(
-              (name, port) for name, port in self._flattened_ports)
+              (name, port) for name, port in self._flattened_ports.items())
     """)
 
   def test_custom_protocol(self):

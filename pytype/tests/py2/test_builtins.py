@@ -7,10 +7,6 @@ from pytype.tests import test_base
 class BuiltinTests(test_base.TargetPython27FeatureTest):
   """Tests for builtin methods and classes."""
 
-  def setUp(self):
-    super().setUp()
-    self.options.tweak(enforce_noniterable_strings=True)
-
   def test_long(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

@@ -117,7 +117,10 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       X = NamedTuple("X", "a b")  # wrong-arg-types[e1]
       Y = NamedTuple("Y", ["ab"])  # wrong-arg-types[e2]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"List.*str", "e2": r"Tuple.*str"})
+    self.assertErrorRegexes(errors, {
+        "e1": r"Sequence.*str",
+        "e2": r"Tuple.*str"
+    })
 
   def test_typevar(self):
     self.Check("""

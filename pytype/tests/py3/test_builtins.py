@@ -128,10 +128,6 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
   """Tests for builtin methods and classes."""
 
-  def setUp(self):
-    super().setUp()
-    self.options.tweak(enforce_noniterable_strings=True)
-
   def test_builtins(self):
     self.Check("""
       import builtins

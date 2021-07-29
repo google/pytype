@@ -165,7 +165,8 @@ class BaseTest(unittest.TestCase):
                                          bind_properties=True,
                                          chex_overlay=True,
                                          preserve_union_macros=True,
-                                         use_enum_overlay=True)
+                                         use_enum_overlay=True,
+                                         enforce_noniterable_strings=True)
 
   @property
   def loader(self):

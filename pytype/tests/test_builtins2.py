@@ -10,10 +10,6 @@ from pytype.tests import test_base
 class BuiltinTests2(test_base.TargetIndependentTest):
   """Tests for builtin methods and classes."""
 
-  def setUp(self):
-    super().setUp()
-    self.options.tweak(enforce_noniterable_strings=True)
-
   def test_div_mod_with_unknown(self):
     ty = self.Infer("""
       def f(x, y):
