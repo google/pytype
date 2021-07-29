@@ -150,19 +150,28 @@ class _Stack:
   def pop(self):
     return self.stack.pop()
 
+  def _preserve_constant(self, c):
+    if c and (
+        not isinstance(c.op, opcodes.LOAD_CONST) or
+        isinstance(c.op, opcodes.BUILD_STRING)):
+      self.consts[id(c.op)] = c
+
   def clear(self):
     # Preserve any constants in the stack before clearing it.
     for c in self.stack:
-      if (not isinstance(c.op, opcodes.LOAD_CONST) or
-          isinstance(c.op, opcodes.BUILD_STRING)):
-        self.consts[id(c.op)] = c
+      self._preserve_constant(c)
     self.stack = []
 
   def fold_args(self, n, op):
     """Collect the arguments to a build call."""
     ret = _CollectionBuilder()
-    if len(self.stack) < n:
-      # We have something other than constants in the op list
+    assert len(self.stack) >= n, 'stack underflow!'
+    if any(x is None for x in self.stack[-n:]):
+      # We have something other than constants in the arg list. Pop all the args
+      # for this op off the stack, preserving constants, and push back a None.
+      for _ in range(n):
+        self._preserve_constant(self.pop())
+      self.push(None)
       return None
     else:
       for _ in range(n):
@@ -268,9 +277,9 @@ class _FoldConstants:
             stack.push(_Constant(typ, val, elements, op))
         else:
           # If we hit any other bytecode, we are no longer building a literal
-          # constant. Clear the stack, but save any substructures that have
-          # already been folded from primitives.
-          stack.clear()
+          # constant. Insert a None as a sentinel to the next BUILD op to
+          # not fold itself.
+          stack.push(None)
       # Clear the stack to save any folded constants before exiting the block
       stack.clear()
 
@@ -284,6 +293,8 @@ class _FoldConstants:
           pretty_arg = t
           o = opcodes.LOAD_FOLDED_CONST(op.index, op.line, arg, pretty_arg)
           o.next = op.next
+          o.target = op.target
+          o.block_target = op.block_target
           op.folded = o
           folds.add(op)
           out.append(o)
