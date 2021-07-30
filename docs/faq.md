@@ -15,7 +15,7 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
 
-<!-- Added by: mdemello, at: 2021-06-08T15:24-07:00 -->
+<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
 
 <!--te-->
 

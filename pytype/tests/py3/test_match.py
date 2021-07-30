@@ -385,10 +385,6 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
 class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
   """Tests for non-iterable string behavior."""
 
-  def setUp(self):
-    super().setUp()
-    self.options.tweak(enforce_noniterable_strings=True)
-
   def test_add_invalid_string(self):
     self.CheckWithErrors("""
       a = []
@@ -573,9 +569,8 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_iter(self):
-    self.CheckWithErrors("""
-      x = iter(u"hello")  # wrong-arg-types
-      x = iter("hello")  # wrong-arg-types
+    self.Check("""
+      x = iter("hello")
     """)
 
   def test_zip(self):

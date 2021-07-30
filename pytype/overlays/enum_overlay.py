@@ -22,10 +22,6 @@ call_metaclass_init is called, allowing EnumMetaInit to transform the PyTDClass
 into a proper enum.
 """
 
-# TODO(tsudol):
-# - Flag b/194136075
-# - pyis that aren't formatted correctly
-
 import logging
 
 from pytype import abstract
@@ -281,7 +277,8 @@ class EnumMetaInit(abstract.SimpleFunction):
         node=node,
         name="__new__",
         params=[
-            overlay_utils.Param("value", member_type)
+            overlay_utils.Param("value",
+                                abstract.Union([member_type, cls], self.vm))
         ],
         return_type=cls)
 

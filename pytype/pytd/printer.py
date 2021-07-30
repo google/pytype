@@ -1,6 +1,7 @@
 """Printer to output pytd trees in pyi format."""
 
 import collections
+import copy
 import logging
 import re
 
@@ -31,6 +32,9 @@ class PrintVisitor(base_visitor.Visitor):
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
     self.multiline_args = multiline_args
+
+  def Print(self, node):
+    return node.Visit(copy.deepcopy(self))
 
   def _IsEmptyTuple(self, t):
     """Check if it is an empty tuple."""
@@ -94,9 +98,9 @@ class PrintVisitor(base_visitor.Visitor):
     formatted_type_params = []
     for t in type_params:
       args = ["'%s'" % t.name]
-      args += [c.Visit(PrintVisitor()) for c in t.constraints]
+      args += [self.Print(c) for c in t.constraints]
       if t.bound:
-        args.append("bound=" + t.bound.Visit(PrintVisitor()))
+        args.append("bound=" + self.Print(t.bound))
       formatted_type_params.append(
           "%s = TypeVar(%s)" % (t.name, ", ".join(args)))
     return sorted(formatted_type_params)
@@ -184,7 +188,7 @@ class PrintVisitor(base_visitor.Visitor):
         self.imports = self.old_imports  # undo unnecessary imports change
         return "from " + module + " import " + name + suffix
     elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):
-      return self.old_node.type.Replace(name=node.name).Visit(PrintVisitor())
+      return self.Print(self.old_node.type.Replace(name=node.name))
     elif isinstance(self.old_node.type, pytd.Module):
       return node.type
     return node.name + " = " + node.type
@@ -193,8 +197,7 @@ class PrintVisitor(base_visitor.Visitor):
     """Entering a class - record class name for children's use."""
     n = node.name
     if node.template:
-      n += "[{}]".format(
-          ", ".join(t.Visit(PrintVisitor()) for t in node.template))
+      n += "[{}]".format(", ".join(self.Print(t) for t in node.template))
     for member in node.methods + node.constants:
       self._class_members.add(member.name)
     self.class_names.append(n)
@@ -276,11 +279,10 @@ class PrintVisitor(base_visitor.Visitor):
       # transformed **kwargs, so it was incremented at least once already.
       if isinstance(node.type.parameters[-1], pytd.AnythingType):
         self._typing_import_counts["Any"] -= 1
-      return node.Replace(type=node.type.parameters[-1], optional=False).Visit(
-          PrintVisitor())
+      return self.Print(
+          node.Replace(type=node.type.parameters[-1], optional=False))
     else:
-      return node.Replace(type=pytd.AnythingType(), optional=False).Visit(
-          PrintVisitor())
+      return self.Print(node.Replace(type=pytd.AnythingType(), optional=False))
 
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
@@ -321,8 +323,7 @@ class PrintVisitor(base_visitor.Visitor):
     # pylint: enable=no-member
     for name, new_type in mutable_params:
       body.append("\n{indent}{name} = {new_type}".format(
-          indent=self.INDENT, name=name,
-          new_type=new_type.Visit(PrintVisitor())))
+          indent=self.INDENT, name=name, new_type=self.Print(new_type)))
     for exc in node.exceptions:
       body.append("\n{indent}raise {exc}()".format(indent=self.INDENT, exc=exc))
     if not body:

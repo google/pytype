@@ -388,7 +388,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
         def _GetPortsWithDirection(self):
           return collections.OrderedDict(
-              (name, port) for name, port in self._flattened_ports)
+              (name, port) for name, port in self._flattened_ports.items())
     """)
 
   def test_custom_protocol(self):
@@ -1090,6 +1090,34 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
         f(Baz)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"expected int, got str"})
+
+  def test_generic_used_in_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("protocol.pyi", """
+        from typing import Dict, List, Protocol, TypeVar
+        T = TypeVar('T')
+        class Foo(Protocol[T]):
+          x: Dict[str, List[T]]
+    """)
+      d.create_file("util.pyi", """
+        import protocol
+        from typing import Type, TypeVar
+        T = TypeVar('T', bound=protocol.Foo[int])
+        def f(x: Type[T]) -> T: ...
+      """)
+      errors = self.CheckWithErrors("""
+        from typing import Dict, List
+        import util
+        class Bar:
+          x: Dict[str, List[int]]
+        class Baz:
+          x: Dict[str, List[str]]
+        util.f(Bar)  # ok
+        util.f(Baz)  # wrong-arg-types[e]
+      """, pythonpath=[d.path])
+      self.assertErrorRegexes(errors, {
+          "e": (r"expected Dict\[str, List\[int\]\], "
+                r"got Dict\[str, List\[str\]\]")})
 
 
 test_base.main(globals(), __name__ == "__main__")

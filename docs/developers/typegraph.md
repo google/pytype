@@ -22,7 +22,7 @@ freshness: { owner: 'tsudol' reviewed: '2020-11-20' }
          * [A More Complex Example](#a-more-complex-example)
          * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
 
-<!-- Added by: rechen, at: 2021-05-07T17:10-07:00 -->
+<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
 
 <!--te-->
 
@@ -410,26 +410,27 @@ value that they bind together.
 2.  Binding `y=7`: `y = x + 2` at `n1`.
 
 A query for this very simple CFG would be, for example, "is `y = x + 2` visible
-at n2?" For this query, the list of _goals_ is `[y=7]`, and the _start node_ is
-`n2`. The tuple of the list of goals and the start node forms the state of the
-solver: `([y=7], n2)` is the initial state for this query.
+at n2?" For this query, the list of _goals_ is `[y={7}]`, and the _start node_
+is `n2`. The tuple of the list of goals and the start node forms the state of
+the solver: `([y={7}], n2)` is the initial state for this query.
 
 To answer this, the solver starts at `n2`. There are no relevant bindings here,
 so no goals are resolved. It then checks which node it should move to next.
-Since `y=7` is bound at `n1,` and `n1` can be reached moving backwards from
-`n2`, the solver chooses to move to `n1`. The new solver state is `([y=7], n1)`.
+Since `y={7}` is bound at `n1,` and `n1` can be reached moving backwards from
+`n2`, the solver chooses to move to `n1`. The new solver state is `([y={7}],
+n1)`.
 
-At `n1`, the solver finds binding `y=7`. This fulfills a goal! It removes `y=7`
-from the goal list, then checks `y=7`'s source set for new goals. The source set
-of a binding is the list of bindings that are used to construct a new binding.
-The value bound to `y` is `x + 2`, which contains the binding `x=5`, so that
-binding is in the source set of `y=7`. It then looks for a new node to move to,
-same as before. In this case, it's looking for the origin node for `x=5`, which
-is `n0`. Since there's a path between `n0` and `n1`, the new state is `([x=5],
-n0)`.
+At `n1`, the solver finds binding `y={7}`. This fulfills a goal! It removes
+`y={7}` from the goal list, then checks `y={7}`'s source set for new goals. The
+source set of a binding is the list of bindings that are used to construct a new
+binding. The value bound to `y` is `x + 2`, which contains the binding `x={5}`,
+so that binding is in the source set of `y={7}`. It then looks for a new node to
+move to, same as before. In this case, it's looking for the origin node for
+`x={5}`, which is `n0`. Since there's a path between `n0` and `n1`, the new
+state is `([x={5}], n0)`.
 
-Finally, at `n0`, the solver finds `x=5`. That goal is satisfied and therefore
-removed from the goal set. Since `x=5` has no bindings in its source set, the
+Finally, at `n0`, the solver finds `x={5}`. That goal is satisfied and therefore
+removed from the goal set. Since `x={5}` has no bindings in its source set, the
 solver stops here -- the query has been solved and the solver can answer `true`.
 
 ### A More Complex Example
@@ -448,56 +449,59 @@ else:          |  x2
 e = d + a      x3
 ```
 
-In this example, there are 6 bindings (`a=1`, `b=2`, `c=True`, `d=a2`, `d=ab`,
-`e=da`) across four nodes. Additionally, `x1` and `x2` both have conditions,
-which are the bindings `c=True` and `c=False`.
+In this example, there are 6 bindings (`a={1}`, `b={2}`, `c={True}`, `d={a, 2}`,
+`d={a, b}`, `e={d, a}`) across four nodes. Additionally, `x1` and `x2` both have
+conditions, which are the bindings `c={True}` and `c={False}`.
 
 The example query will be: "Is `e = d + a` visible from `x3`?"
 
-State 1: `([e=da], x3)`. The goal is immediately fulfilled. But the binding has
-two possible constructions: `d=a2 + a=1` or `d=ab + a=1`. The solver now has
-multiple states to consider: `([d=ab, a=1], x2)` and `([d=a2, a=1], x1)`.
+State 1: `([e={d, a}], x3)`. The goal is immediately fulfilled. But the binding
+has two possible constructions: `d={a, 2} + a={1}` or `d={a, b} + a={1}`. The
+solver now has multiple states to consider: `([d={a, b}, a={1}], x2)` and
+`([d={a, 2}, a={1}], x1)`.
 
-State 2.1: `([d=ab, a=1], x2)`. This node fulfills the first goal, creating a
-new goal set of `([b=2, a=1])`. Also, `x2` has the condition `c=False`, so
-that's added to the goal set. All three bindings have the same origin of `x0`,
-so that's the next node to visit: `([b=2, a=1, c=False], x0)`.
+State 2.1: `([d={a, b}, a={1}], x2)`. This node fulfills the first goal,
+creating a new goal set of `([b={2}, a={1}])`. Also, `x2` has the condition
+`c={False}`, so that's added to the goal set. All three bindings have the same
+origin of `x0`, so that's the next node to visit: `([b={2}, a={1}, c={False}],
+x0)`.
 
-State 2.2: `([b=2, a=1, c=False], x0)`. This node fulfills `a=1` and `b=2`,
-leaving just `c=False`. Since that binding has no source set, there are no more
-nodes to consider, and the solver returns false for this branch.
+State 2.2: `([b={2}, a={1}, c={False}], x0)`. This node fulfills `a={1}` and
+`b={2}`, leaving just `c={False}`. Since that binding has no source set, there
+are no more nodes to consider, and the solver returns false for this branch.
 
-State 3.1: `([d=a2, a=1]), x1)`. The goal `d=a2` is fulfilled, and its source
-set (just `a=1`, since `2` is a constant) is checked for new goals. Since `a=1`
-is already a goal, the goal set doesn't change. The node condition (`c=True`) is
-also added to the goal set. The new state is `([a=1, c=True], x0)`.
+State 3.1: `([d={a, 2}, a={1}]), x1)`. The goal `d={a, 2}` is fulfilled, and its
+source set (just `a={1}`, since `2` is a constant) is checked for new goals.
+Since `a={1}` is already a goal, the goal set doesn't change. The node condition
+(`c={True}`) is also added to the goal set. The new state is `([a={1},
+c={True}], x0)`.
 
-State 3.2: `([a=1, c=True], x0)`. At this node, the solver finds both goals are
-fulfilled. Since neither one has a source set, the solver finds no new goals,
-which means this branch succeeds.
+State 3.2: `([a={1}, c={True}], x0)`. At this node, the solver finds both goals
+are fulfilled. Since neither one has a source set, the solver finds no new
+goals, which means this branch succeeds.
 
 The queries can get more complex from here. One case to consider: it's possible
-to construct a goal set like `([d=a2, d=ab])`. The solver will detect this
-contradiction -- there's no way to satisfy two different bindings on one
+to construct a goal set like `([d={a, 2}, d={a, b}])`. The solver will detect
+this contradiction -- there's no way to satisfy two different bindings on one
 variable -- and reject the state.
 
 ### Shortcircuiting and the solver cache
 
-The solver employs two small optimizations for speading up queries.
+The solver employs two small optimizations for speeding up queries.
 
 The first trick is _shortcircuiting_. Queries with multiple bindings take longer
 to evaluate, so the solver first checks if the query is at all possible by
 breaking the initial goals into their own, individual queries.
 
-Consider the CFG used in the previous example. A query like `([d=a2, ...], x2)`
-will fail because there's no path from `x2` to where `d=a2` is bound in `x1`. Or,
-similarly, `([c=False, ...], x3)`, which will fail because `c` is only bound to
-`True` in the CFG. Larger queries with these bindings at these nodes will always
-fail, so the solver saves time by shortcircuiting them.
+Consider the CFG used in the previous example. A query like `([d={a, 2}, ...],
+x2)` will fail because there's no path from `x2` to where `d={a, 2}` is bound in
+`x1`. Or, similarly, `([c={False, ...}], x3)`, which will fail because `c` is
+only bound to `True` in the CFG. Larger queries with these bindings at these
+nodes will always fail, so the solver saves time by shortcircuiting them.
 
-Note that shortcircuiting only stops queries that are easily contradicted in this
-way. More complex queries that fail due to the interplay between bindings --
-such as `([d=ab, d=a2], x3)` -- will not be shortcircuited.
+Note that shortcircuiting only stops queries that are easily contradicted in
+this way. More complex queries that fail due to the interplay between
+bindings -- such as `([d={a, b}, d={a, 2}], x3)` -- will not be shortcircuited.
 
 In addition, each state the solver encounters is cached, including all the
 states created during shortcircuiting, with the solution that was found. Note

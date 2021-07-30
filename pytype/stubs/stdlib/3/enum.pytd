@@ -3,7 +3,6 @@
 # TODO(tsudol): The following changes are needed for the enum overlay:
 # - Remove EnumMeta.__getattribute__
 # - Remove Enum.__getattribute__
-# - Remove Enum.name and Enum.value
 # - Remove auto.__getattribute__
 
 from typing import Any, Dict, Iterable, Iterator, Tuple, Type, TypeVar, Union
@@ -19,19 +18,18 @@ class EnumMeta(type, Iterable):
   def __len__(self) -> int: ...
 
 class Enum(metaclass=EnumMeta):
-  __members__ = ...  # type: collections.OrderedDict[str, Enum]
+  __members__: collections.OrderedDict[str, Enum]
   # These are copies of `name` and `value`. These are occasionally used in
   # methods on the enum, so set them here to guarantee pytype sees them.
   # Unlike `name` and `value`, these are never valid enum member names, so it's
   # fine to set them here.
   _name_: str
   _value_: Any
+  name: str
+  value: Any
   def __new__(cls, value: str, names: Union[str, Iterable[str], Iterable[Tuple[str, Any]], Dict[str, Any]], module = ..., type: type = ..., start: complex = ...) -> Type[Enum]: ...
   def __new__(cls: Type[_T], value) -> _T: ...
   def __getattribute__(self, name) -> Any: ...
-
-  name = ...  # type: str
-  value = ...  # type: Any
 
 class IntEnum(int, Enum): ...
 
@@ -41,12 +39,16 @@ def unique(enumeration: _EnumType) -> _EnumType: ...
 # with the exception of a tweak to the definition of IntFlag, documented below,
 # and the addition of the signature of auto.__init__.
 
-_auto_null = ...  # type: Any
+_auto_null: Any
 
 class auto:
-  value = ...  # type: Any
+  value: Any
   def __init__(self) -> None: ...
   def __getattribute__(self, name) -> Any: ...
+  def __or__(self: _T, other: _T) -> _T: ...
+  def __and__(self: _T, other: _T) -> _T: ...
+  def __xor__(self: _T, other: _T) -> _T: ...
+  def __invert__(self: _T) -> _T: ...
 
 class Flag(Enum):
   def __contains__(self: _T, other: _T) -> bool: ...

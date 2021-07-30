@@ -68,7 +68,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       b: 123 = "2"  # invalid-annotation[e2]
       c: NoReturn = "3"  # invalid-annotation[e3]
       d: List[int] = []
-      e: List[T] = []  # not-supported-yet[e4]
+      e: List[T] = []  # invalid-annotation[e4]
       f: int if __random__ else str = 123  # invalid-annotation[e5]
       h: NoReturn = None  # invalid-annotation[e6]
     """)
@@ -292,7 +292,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       T = TypeVar('T')
       S = TypeVar('S')
       def f(x: T, y: T):
-        z: S = x  # not-supported-yet[e]
+        z: S = x  # invalid-annotation[e]
         return z
     """)
     self.assertErrorRegexes(errors, {"e": r"'S' not in scope for method 'f'"})
@@ -348,7 +348,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       from typing import Callable, TypeVar
       T = TypeVar('T')
-      f: Callable[[T], int]  # not-supported-yet
+      f: Callable[[T], int]  # invalid-annotation
       def g(x: T, y: T):
         f2: Callable[[T], int]  # ok, since T is from the signature of g
     """)

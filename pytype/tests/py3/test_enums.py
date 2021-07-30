@@ -157,6 +157,24 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_pytd_returns_enum(self):
+    # Ensure that canonical enums created by PytdSignature.instantiate_return
+    # have name and value fields.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class M(enum.Enum):
+          A: int
+        def get_m(name: str) -> M: ...
+      """)
+      self.CheckWithErrors("""
+        import foo
+        def print_m(name: str):
+          print(foo.get_m(name).name)
+          print(foo.get_m(name).value)
+      """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_value_overlap(self):
     # Make sure enum members named "name" and "value" work correctly.
     self.Check("""
@@ -278,6 +296,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       assert_type(M(1), "M")
       assert_type(M(1).value, "int")
       assert_type(M(-500), "M")
+      assert_type(M(M.A), "M")
       M("str")  # wrong-arg-types
       class N(enum.Enum):
         A = 1
@@ -303,6 +322,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         from typing import Union
         from m import M, N
         assert_type(M(1), "m.M")
+        assert_type(M(M.A), "m.M")
         # assert_type(M(1).value, "int")
         assert_type(M(-500), "m.M")
         M("str")  # wrong-arg-types
@@ -615,6 +635,26 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         assert_type(M.B.value, "int")
         assert_type(M._generate_next_value_, Callable[[str, int, int, list], str])
       """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_auto_flag(self):
+    # Flag enums can be defined using bitwise ops, even when using auto.
+    self.Check("""
+      from enum import auto, Flag
+      class Color(Flag):
+        RED = auto()
+        BLUE = auto()
+        GREEN = auto()
+        WHITE = RED | BLUE | GREEN
+      assert_type(Color.RED, Color)
+      assert_type(Color.BLUE, Color)
+      assert_type(Color.GREEN, Color)
+      assert_type(Color.WHITE, Color)
+      assert_type(Color.RED.value, int)
+      assert_type(Color.BLUE.value, int)
+      assert_type(Color.GREEN.value, int)
+      assert_type(Color.WHITE.value, int)
+    """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_subclassing_simple(self):

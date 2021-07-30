@@ -45,12 +45,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import Mapping, TypeVar
+      from typing import Dict, Mapping, TypeVar
       chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -67,12 +68,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import TypeVar
+      from typing import Dict, TypeVar
       chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo:
         x: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -104,12 +106,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import Mapping, TypeVar
+      from typing import Dict, Mapping, TypeVar
       chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -128,12 +131,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import Mapping, TypeVar
+      from typing import Dict, Mapping, TypeVar
       chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -152,12 +156,13 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import Mapping, TypeVar
+      from typing import Dict, Mapping, TypeVar
       chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
+        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod

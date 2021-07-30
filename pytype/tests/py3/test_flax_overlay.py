@@ -26,7 +26,7 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
           z: str
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
-        from typing import TypeVar
+        from typing import Dict, TypeVar, Union
         flax: module
 
         _TFoo = TypeVar('_TFoo', bound=Foo)
@@ -36,6 +36,7 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
           x: bool
           y: int
           z: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, x: bool, y: int, z: str) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -92,13 +93,14 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
         import flax.linen.module
-        from typing import TypeVar
+        from typing import Dict, TypeVar
         nn: module
         _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
+          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -115,13 +117,14 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         import builtins
         import flax.linen.module
-        from typing import TypeVar
+        from typing import Dict, TypeVar
         module: builtins.module
         _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
+          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -136,7 +139,7 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
           y: int = 10
         """, pythonpath=[d.path], module_name="flax.linen.foo")
       self.assertTypesMatchPytd(ty, """
-        from typing import Type, TypeVar
+        from typing import Dict, Type, TypeVar
         import flax.linen.module
         Module: Type[flax.linen.module.Module]
         _TFoo = TypeVar('_TFoo', bound=Foo)
@@ -144,6 +147,7 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
+          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -160,12 +164,13 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       self.assertTypesMatchPytd(ty, """
         import flax.linen.module
         linen: module
-        from typing import TypeVar
+        from typing import Dict, TypeVar
         _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
           y: int
+          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -222,13 +227,14 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import Any, TypeVar
+      from typing import Any, Dict, TypeVar
       foo: module
 
       _TBar = TypeVar('_TBar', bound=Bar)
       @dataclasses.dataclass
       class Bar(foo.Foo):
         x: int
+        __dataclass_fields__: Dict[str, dataclasses.Field]
         def __init__(
             self, x: int, name: str = ..., parent: Any = ...) -> None: ...
         def replace(self: _TBar, **kwargs) -> _TBar: ...

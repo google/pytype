@@ -21,7 +21,7 @@ class DataclassOverlay(overlay.Overlay):
   def __init__(self, vm):
     member_map = {
         "dataclass": Dataclass.make,
-        "field": Field.make,
+        "field": FieldFunction.make,
     }
     ast = vm.loader.import_name("dataclasses")
     super().__init__(vm, "dataclasses", member_map, ast)
@@ -110,6 +110,25 @@ class Dataclass(classgen.Decorator):
       init_method = self.make_init(node, cls, attrs)
       cls.members["__init__"] = init_method
 
+    # Add the __dataclass_fields__ attribute, the presence of which
+    # dataclasses.is_dataclass uses to determine if an object is a dataclass (or
+    # an instance of one).
+    attr_types = self.vm.merge_values({attr.typ for attr in attrs})
+    dataclass_ast = self.vm.loader.import_name("dataclasses")
+    generic_field = abstract.ParameterizedClass(
+        self.vm.convert.name_to_value("dataclasses.Field", ast=dataclass_ast),
+        {abstract_utils.T: attr_types}, self.vm)
+    dataclass_fields_params = {abstract_utils.K: self.vm.convert.str_type,
+                               abstract_utils.V: generic_field}
+    dataclass_fields_typ = abstract.ParameterizedClass(
+        self.vm.convert.dict_type, dataclass_fields_params, self.vm)
+    classgen.add_member(node, cls, "__dataclass_fields__", dataclass_fields_typ)
+
+    annotations_dict = classgen.get_or_create_annotations_dict(
+        cls.members, self.vm)
+    annotations_dict.annotated_locals["__dataclass_fields__"] = (
+        abstract_utils.Local(node, None, dataclass_fields_typ, None, self.vm))
+
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("dataclasses.dataclass")
       # Fix up type parameters in methods added by the decorator.
@@ -126,7 +145,7 @@ class FieldInstance(abstract.SimpleValue):
     self.cls = vm.convert.unsolvable
 
 
-class Field(classgen.FieldConstructor):
+class FieldFunction(classgen.FieldConstructor):
   """Implements dataclasses.field."""
 
   @classmethod

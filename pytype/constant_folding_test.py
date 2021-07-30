@@ -176,6 +176,40 @@ class TestFolding(test_base.UnitTest):
         (4, ("list", map_type), val, [map_type, map_type])
     ])
 
+  def test_nested_partial(self):
+    # Test that partial expressions get cleaned off the stack properly. The 'if'
+    # is there to introduce block boundaries.
+    actual = self._process("""
+      v = None
+      x = {
+         [{'a': 'c', 'b': v}],
+         [{'a': 'd', 'b': v}]
+      }
+      if __random__:
+        y = [{'value': v, 'type': 'a'}]
+      else:
+        y = [{'value': v, 'type': 'b'}]
+    """)
+    self.assertCountEqual(actual, [])
+
+  def test_function_call(self):
+    actual = self._process("""
+      a = {
+          'name': 'x'.isascii(),
+          'type': 'package',
+          'foo': sorted(set())
+      }
+    """)
+    self.assertCountEqual(actual, [])
+
+  def test_fstring(self):
+    actual = self._process("""
+      x = 'hello'
+      y = set(1, 2, 3)
+      a = f'foo{x}{y}'
+    """)
+    self.assertCountEqual(actual, [])
+
 
 class TypeBuilderTestBase(test_base.UnitTest):
   """Base class for constructing and testing vm types."""
