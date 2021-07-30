@@ -119,7 +119,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
     """)
     self.assertErrorRegexes(errors, {
         "e1": r"Sequence.*str",
-        "e2": r"Tuple.*str"
+        "e2": r"Sequence.*str"
     })
 
   def test_typevar(self):
