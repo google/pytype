@@ -1030,16 +1030,18 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # TODO(rechen): Even if other_type isn't parameterized, we should run
       # _match_protocol_attribute to catch mismatches in method signatures.
       return subst
-    # The entire match succeeds if left_attribute matches *any* binding of
-    # protocol_attribute_var. A binding matches if *any* options for
-    # left_attribute match *all* options for the binding's types.
-    bad_matches = []
-    for protocol_attribute in protocol_attribute_var.data:
-      protocol_attribute_types = list(
-          self._get_attribute_types(other_type, protocol_attribute))
-      for new_view in abstract_utils.get_views([left_attribute], self._node):
-        new_view.update(view)
-        new_substs = []
+    # Every binding of left_attribute needs to match at least one binding of
+    # protocol_attribute_var.
+    new_substs = []
+    for new_view in abstract_utils.get_views([left_attribute], self._node):
+      new_view.update(view)
+      bad_matches = []
+      for protocol_attribute in protocol_attribute_var.data:
+        # For this binding of left_attribute to match this binding of
+        # protocol_attribute_var, *all* options in protocol_attribute_types need
+        # to match.
+        protocol_attribute_types = list(
+            self._get_attribute_types(other_type, protocol_attribute))
         for protocol_attribute_type in protocol_attribute_types:
           match_result = self.match_var_against_type(
               left_attribute, protocol_attribute_type, subst, new_view)
@@ -1050,12 +1052,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           else:
             new_substs.append(match_result)
         else:
-          return self._merge_substs(subst, new_substs)
-    bad_left, bad_right = zip(*bad_matches)
-    self._protocol_error = ProtocolTypeError(
-        left_cls, other_type, attribute, self.vm.merge_values(bad_left),
-        self.vm.merge_values(bad_right))
-    return None
+          # We've successfully matched all options in protocol_attribute_types.
+          break
+      else:
+        # This binding of left_attribute has not matched any binding of
+        # protocol_attribute_var.
+        bad_left, bad_right = zip(*bad_matches)
+        self._protocol_error = ProtocolTypeError(
+            left_cls, other_type, attribute, self.vm.merge_values(bad_left),
+            self.vm.merge_values(bad_right))
+        return None
+    return self._merge_substs(subst, new_substs)
 
   def _get_concrete_values_and_classes(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete

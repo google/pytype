@@ -1119,5 +1119,29 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
           "e": (r"expected Dict\[str, List\[int\]\], "
                 r"got Dict\[str, List\[str\]\]")})
 
+  def test_match_multi_attributes_against_dataclass_protocol(self):
+    errors = self.CheckWithErrors("""
+      from typing import Dict, Protocol, TypeVar, Union
+      import dataclasses
+      T = TypeVar('T')
+      class Dataclass(Protocol[T]):
+        __dataclass_fields__: Dict[str, dataclasses.Field[T]]
+      def f(x: Dataclass[int]):
+        pass
+      @dataclasses.dataclass
+      class ShouldMatch:
+        x: int
+        y: int
+      @dataclasses.dataclass
+      class ShouldNotMatch:
+        x: int
+        y: str
+      f(ShouldMatch(0, 0))
+      f(ShouldNotMatch(0, ''))  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {
+        "e": (r"expected Dict\[str, dataclasses\.Field\[int\]\], "
+              r"got Dict\[str, dataclasses\.Field\[Union\[int, str\]\]\]")})
+
 
 test_base.main(globals(), __name__ == "__main__")
