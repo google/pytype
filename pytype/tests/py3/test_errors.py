@@ -96,7 +96,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {
         "e1": r"(int, str).*Not a type",
         "e2": r"instance of Tuple\[int, \.\.\.\].*Not a type",
-        "e3": r"Not a type",
+        "e3": r"{'a': '1'}.*Not a type",
         "e4": r"instance of Dict\[str, int\].*Not a type"})
 
   def test_move_union_inward(self):

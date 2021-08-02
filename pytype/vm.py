@@ -245,7 +245,7 @@ class VirtualMachine:
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
-    self._fold_constants = True and self.PY3  # feature in development
+    self._fold_constants = False and self.PY3  # feature in development
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
