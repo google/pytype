@@ -1128,11 +1128,18 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                               "typing.Collection", "typing.Container",
                               "typing.Mapping",]
     str_types = ["builtins.str", "builtins.unicode",]
-    if (left.full_name in str_types and
-        other_type.full_name in conflicting_iter_types):
-      return True
 
-    return False
+    if (other_type.full_name not in conflicting_iter_types
+        or left.full_name not in str_types):
+      return False  # Reject uninterested type combinations
+    if other_type.full_name == "typing.Mapping":
+      return True  # Enforce against Mapping
+
+    if isinstance(other_type, abstract.ParameterizedClass):
+      type_param = other_type.get_formal_type_parameter("_T").full_name
+      return type_param in str_types
+
+    return False  # Don't enforce against Iterable[Any]
 
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()

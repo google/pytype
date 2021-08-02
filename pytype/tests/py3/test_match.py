@@ -385,7 +385,6 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
 class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
   """Tests for non-iterable string behavior."""
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_add_string(self):
     ty = self.Infer("""
       a = []
@@ -398,7 +397,6 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       a = ...  # type: List[str]
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_str_against_plain_iterable(self):
     self.Check("""
       from typing import Iterable
@@ -419,7 +417,6 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       f(("abc", "def", "ghi"))
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_str_against_plain_sequence(self):
     self.Check("""
       from typing import Sequence
@@ -491,7 +488,6 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
         foo(os)  # wrong-arg-types
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_optional_str_against_plain_iterable(self):
     self.Check("""
       from typing import Iterable, Optional
@@ -504,7 +500,6 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
         foo(os)
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_str_against_plain_collection(self):
     self.Check("""
       from typing import Collection
@@ -514,7 +509,6 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       f(["abc", "def", "ghi"])
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_str_against_plain_container(self):
     self.Check("""
       from typing import Container
@@ -556,31 +550,26 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       f("abcdef")  # wrong-arg-types
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_star_unpacking_strings(self):
     self.Check("""
       *a, b = "hello world"
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_from_keys(self):
     self.Check("""
       d = dict.fromkeys(u"x")
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_filter(self):
     self.Check("""
       x = filter(None, "")
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_reduce(self):
     self.Check("""
       x = reduce(lambda x, y: 42, "abcdef")
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_sorted(self):
     self.Check("""
       x = sorted(u"hello")
@@ -591,19 +580,16 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       x = iter("hello")
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_zip(self):
     self.Check("""
       x = zip("abc", "def")
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_tuple_init(self):
     self.Check("""
       x = tuple("abcdef")
     """)
 
-  @test_base.skip("Failing until new matching logic is approved")
   def test_frozenset_init(self):
     self.Check("""
       x = frozenset("abcdef")
