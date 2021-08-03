@@ -563,6 +563,10 @@ class ErrorLog(ErrorLogBase):
       return (f"Attribute {error.attribute_name} of protocol {protocol} has "
               f"wrong type in {left}: expected {expected}, got {actual}")
 
+  def _print_noniterable_str_error(self, error):
+    return (f"If you wish to iterate over a {error.left_type.name}, please "
+            f"pass it into iter() or list().")
+
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
     types = sorted(set(types))  # dedup
@@ -711,6 +715,9 @@ class ErrorLog(ErrorLogBase):
         ")"])
     if bad_param and bad_param.protocol_error:
       details += "\n" + self._print_protocol_error(bad_param.protocol_error)
+    if bad_param and bad_param.noniterable_str_error:
+      details += "\n" + self._print_noniterable_str_error(
+          bad_param.noniterable_str_error)
     self.error(stack, message, details, bad_call=bad_call)
 
   @_error_name("wrong-arg-count")

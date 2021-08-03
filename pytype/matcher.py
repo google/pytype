@@ -30,6 +30,15 @@ def _is_callback_protocol(typ):
           "__call__" in typ.protocol_attributes)
 
 
+class NonIterableStrError(Exception):
+  """Error for matching `str` against `Iterable[str]`/`Sequence[str]`/etc."""
+
+  def __init__(self, left_type, other_type):
+    super().__init__()
+    self.left_type = left_type
+    self.other_type = other_type
+
+
 class ProtocolError(Exception):
 
   def __init__(self, left_type, other_type):
@@ -62,6 +71,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     self._node = node
     self._protocol_cache = set()
     self._protocol_error = None
+    self._noniterable_str_error = None
     self._error_subst = None
 
   @contextlib.contextmanager
@@ -106,6 +116,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if alias_map:
       subst.uf = alias_map
     self._protocol_error = None
+    self._noniterable_str_error = None
     self._error_subst = None
     self_subst = None
     for name, formal in formal_args:
@@ -114,8 +125,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if subst is None:
         formal = self.vm.annotations_util.sub_one_annotation(
             self._node, formal, [self._error_subst or {}])
+
         return None, function.BadParam(
-            name=name, expected=formal, protocol_error=self._protocol_error)
+            name=name, expected=formal, protocol_error=self._protocol_error,
+            noniterable_str_error=self._noniterable_str_error)
       if name == "self":
         self_subst = subst
     if self_subst:
@@ -151,8 +164,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       except StopIteration:
         break
       self._protocol_error = None
+      self._noniterable_str_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
+          # TODO(rpalaguachi): Append _noniterable_str_error here as well as any
+          # other bad_matches() calls to show the helpful error message.
           bad.append((view, self._protocol_error))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
@@ -687,6 +703,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(other_type, class_mixin.Class):
       if (self.vm.options.enforce_noniterable_strings and
           self._enforce_noniterable_str(left.get_class(), other_type)):
+        self._noniterable_str_error = NonIterableStrError(left.get_class(),
+                                                          other_type)
         return None
       base = self.match_from_mro(left.get_class(), other_type)
       if base is None:

@@ -362,6 +362,14 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
 class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
 
+  def test_noniterable_string_error(self):
+    errors = self.CheckWithErrors("""
+      from typing import Iterable
+      def f(x: Iterable[str]): ...
+      f("abc")  # wrong-arg-types[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"str.*iter.*list"})
+
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
       class Foo(object): pass

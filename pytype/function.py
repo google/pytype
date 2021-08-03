@@ -536,10 +536,13 @@ BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
 
 
 class BadParam(
-    collections.namedtuple("_", ["name", "expected", "protocol_error"])):
+    collections.namedtuple("_", ["name", "expected", "protocol_error",
+                                 "noniterable_str_error"])):
 
-  def __new__(cls, name, expected, protocol_error=None):
-    return super().__new__(cls, name, expected, protocol_error)
+  def __new__(cls, name, expected, protocol_error=None,
+              noniterable_str_error=None):
+    return super().__new__(cls, name, expected, protocol_error,
+                           noniterable_str_error)
 
 
 class InvalidParameters(FailedFunctionCall):
