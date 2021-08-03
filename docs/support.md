@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-08-03T11:23-07:00 -->
+<!-- Added by: rechen, at: 2021-08-03T13:23-07:00 -->
 
 <!--te-->
 
@@ -29,7 +29,7 @@ of pytype.
 Version | Analyzes   | Runs In    | Issue
 :-----: | :--------: | :--------: | :----------:
 2.7     | 2021.08.03 | 2020.04.01 | [#545][py27]
-3.5     | ✅          | 2020.10.8  | [#677][py35]
+3.5     | ✅          | 2020.10.08 | [#677][py35]
 3.6     | ✅          | ✅          |
 3.7     | ✅          | ✅          |
 3.8     | ✅          | ✅          |
