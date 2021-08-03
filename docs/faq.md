@@ -14,8 +14,9 @@
       * [How do I disable all pytype checks for a particular import?](#how-do-i-disable-all-pytype-checks-for-a-particular-import)
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
+      * [How do I get type information for third-party libraries?](#how-do-i-get-type-information-for-third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
+<!-- Added by: rechen, at: 2021-08-02T22:13-07:00 -->
 
 <!--te-->
 
@@ -90,9 +91,8 @@ will indeed result in a type error.
 
 ## How do I declare that something can be either byte string or unicode?
 
-Using `typing.Text` if it is conceptually a text object,
-`typing.Union[bytes, typing.Text]` otherwise. See the
-[style guide][style-guide-string-types] for more information.
+Use `str` if it is conceptually a text object and `typing.Union[bytes, str]`
+otherwise. See the [style guide][style-guide-string-types] for more information.
 
 ## I'm trying to use a mixin, but pytype raises errors about it. What should I do?
 
@@ -215,13 +215,24 @@ Note that if you modify the dictionary in a different scope from the one in
 which it is defined, you may need to re-annotate it at the modification site to
 indicate to pytype that you are intentionally doing something it deems unsafe.
 
+## How do I get type information for third-party libraries?
+
+The open-source version of pytype gets type information from the
+[typeshed][typeshed] project. Pytype treats all imports from third-party (that
+is, pip-installed) libraries that do not have stubs in typeshed as having type
+`Any`. Note that pytype does not yet support the [PEP 561][pep-561-issue]
+conventions for distributing and packaging type information.
+
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
 [how-do-i-disable-all-pytype-checks-for-a-particular-file]: #how-do-i-disable-all-pytype-checks-for-a-particular-file
 [lightning-talk]: https://youtu.be/yFcCuinRVnU?t=2300
 [lightning-talk-slides]: https://docs.google.com/presentation/d/1GYqLeLkknjYaYX2JrMzxX8LGw_rlO-6kTk-VNPVG9gY/edit?usp=sharing
 [lobsters-comment]: https://lobste.rs/s/0uv5hy/how_quickly_find_type_issues_your_python#c_6ojqaj
+[oss-pytype]: https://github.com/google/pytype
+[pep-561-issue]: https://github.com/google/pytype/issues/151
 [type-system-paper]: https://www.cs.rpi.edu/~milanova/docs/dls2020.pdf
+[typeshed]: https://github.com/python/typeshed
 [why-is-pytype-taking-so-long]: #why-is-pytype-taking-so-long
 
 <!-- References with different internal and external versions -->
