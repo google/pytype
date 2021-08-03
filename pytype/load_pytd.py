@@ -384,11 +384,18 @@ class _BuiltinLoader:
     return ast
 
   def get_builtin(self, subdir, module_name):
+    """Load a stub that ships with pytype."""
     builtin_dir = file_utils.get_versioned_path(subdir, self.python_version)
     mod = self._parse_predefined(builtin_dir, module_name)
-    if not mod:
+    # For stubs in pytype's stubs/ directory, we use the module name prefixed
+    # with "pytd:" for the filename. Package filenames need an "/__init__.pyi"
+    # suffix for Module.is_package to recognize them.
+    if mod:
+      filename = module_name
+    else:
       mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
-    return mod
+      filename = os.path.join(module_name, "__init__.pyi")
+    return filename, mod
 
 
 class Loader:
@@ -695,9 +702,9 @@ class Loader:
     """Load a pytd/pyi that ships with pytype or typeshed."""
     # Try our own type definitions first.
     if not third_party_only:
-      mod_ast = self._builtin_loader.get_builtin(subdir, module_name)
+      filename, mod_ast = self._builtin_loader.get_builtin(subdir, module_name)
       if mod_ast:
-        return self.load_file(filename=self.PREFIX + module_name,
+        return self.load_file(filename=self.PREFIX + filename,
                               module_name=module_name, mod_ast=mod_ast)
     if self.use_typeshed:
       return self._load_typeshed_builtin(subdir, module_name)

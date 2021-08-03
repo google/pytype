@@ -184,6 +184,9 @@ class EnumInstance(abstract.InterpreterClass):
 
 class EnumCmpEQ(abstract.SimpleFunction):
   """Implements the functionality of __eq__ for an enum."""
+  # b/195136939: Enum equality checks could be made more exact/precise by
+  # comparing the members' names. However, this causes issues when enums are
+  # used in an if statement; see the bug for examples.
 
   def __init__(self, vm):
     super().__init__(
@@ -209,11 +212,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
       other = abstract_utils.get_atomic_value(other_var)
     except abstract_utils.ConversionError:
       return node, self.vm.convert.build_bool(node)
-    return node, self.vm.convert.build_bool(
-        node,
-        this.cls == other.cls and
-        "name" in this.members and
-        this.members["name"] == other.members.get("name"))
+    return node, self.vm.convert.build_bool(node, this.cls == other.cls)
 
 
 class EnumMeta(abstract.PyTDClass):

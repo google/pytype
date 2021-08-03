@@ -385,16 +385,11 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
 class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
   """Tests for non-iterable string behavior."""
 
-  def test_add_invalid_string(self):
-    self.CheckWithErrors("""
-      a = []
-      a += "foo" # unsupported-operands
-    """)
-
   def test_add_string(self):
     ty = self.Infer("""
       a = []
       a += list("foo")
+      a += "bar"
     """)
     self.assertTypesMatchPytd(
         ty, """
@@ -403,11 +398,11 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_str_against_plain_iterable(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import Iterable
       def f (itr: Iterable):
         return
-      f("abcdef")  # wrong-arg-types
+      f("abcdef")
       f(["abc", "def", "ghi"])
       f(("abc", "def", "ghi"))
     """)
@@ -423,11 +418,11 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_str_against_plain_sequence(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import Sequence
       def f (itr: Sequence):
         return
-      f("abcdef")  # wrong-arg-types
+      f("abcdef")
       f(["abc", "def", "ghi"])
     """)
 
@@ -493,21 +488,33 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
         foo(os)  # wrong-arg-types
     """)
 
+  def test_optional_str_against_plain_iterable(self):
+    self.Check("""
+      from typing import Iterable, Optional
+      def foo(x: Iterable): ...
+
+      def bar(s: str):
+        foo(s)
+
+      def baz(os: Optional[str]):
+        foo(os)
+    """)
+
   def test_str_against_plain_collection(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import Collection
       def f(itr: Collection):
         return
-      f("abcdef")  # wrong-arg-types
+      f("abcdef")
       f(["abc", "def", "ghi"])
     """)
 
   def test_str_against_plain_container(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import Container
       def f(itr: Container):
         return
-      f("abcdef")  # wrong-arg-types
+      f("abcdef")
       f(["abc", "def", "ghi"])
     """)
 
@@ -544,28 +551,28 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_star_unpacking_strings(self):
-    self.CheckWithErrors("""
-      *a, b = "hello world"  # wrong-arg-types
+    self.Check("""
+      *a, b = "hello world"
     """)
 
   def test_from_keys(self):
-    self.CheckWithErrors("""
-      d = dict.fromkeys(u"x")  # wrong-arg-types
+    self.Check("""
+      d = dict.fromkeys(u"x")
     """)
 
   def test_filter(self):
-    self.CheckWithErrors("""
-      x = filter(None, "")  # wrong-arg-types
+    self.Check("""
+      x = filter(None, "")
     """)
 
   def test_reduce(self):
-    self.CheckWithErrors("""
-      x = reduce(lambda x, y: 42, "abcdef")  # wrong-arg-types
+    self.Check("""
+      x = reduce(lambda x, y: 42, "abcdef")
     """)
 
   def test_sorted(self):
-    self.CheckWithErrors("""
-      x = sorted(u"hello")  # wrong-arg-types
+    self.Check("""
+      x = sorted(u"hello")
     """)
 
   def test_iter(self):
@@ -574,18 +581,18 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
     """)
 
   def test_zip(self):
-    self.CheckWithErrors("""
-      x = zip("abc", "def")  # wrong-arg-types
+    self.Check("""
+      x = zip("abc", "def")
     """)
 
   def test_tuple_init(self):
-    self.CheckWithErrors("""
-      x = tuple("abcdef")  # wrong-arg-types
+    self.Check("""
+      x = tuple("abcdef")
     """)
 
   def test_frozenset_init(self):
-    self.CheckWithErrors("""
-      x = frozenset("abcdef")  # wrong-arg-types
+    self.Check("""
+      x = frozenset("abcdef")
     """)
 
 test_base.main(globals(), __name__ == "__main__")

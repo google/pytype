@@ -919,5 +919,31 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
           return result
     """)
 
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_if_statement_name_error(self):
+    # See b/195136939
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+        B = 2
+
+      def f(m: M) -> int:
+        if m == M.A:
+          x = 1
+        elif m == M.B:
+          x = 2
+        return x + 1
+
+      class A:
+        def __init__(self, m: M):
+          if m == M.A:
+            self._x = 1
+          elif m == M.B:
+            self._x = 2
+
+        def do(self):
+          return self._x + 1
+    """)
 
 test_base.main(globals(), __name__ == "__main__")

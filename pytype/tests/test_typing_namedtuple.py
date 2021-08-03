@@ -118,7 +118,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       Y = NamedTuple("Y", ["ab"])  # wrong-arg-types[e2]
     """)
     self.assertErrorRegexes(errors, {
-        "e1": r"Sequence.*str",
+        "e1": r"Tuple.*str",
         "e2": r"Tuple.*str"
     })
 

@@ -30,6 +30,15 @@ def _is_callback_protocol(typ):
           "__call__" in typ.protocol_attributes)
 
 
+class NonIterableStrError(Exception):
+  """Error for matching `str` against `Iterable[str]`/`Sequence[str]`/etc."""
+
+  def __init__(self, left_type, other_type):
+    super().__init__()
+    self.left_type = left_type
+    self.other_type = other_type
+
+
 class ProtocolError(Exception):
 
   def __init__(self, left_type, other_type):
@@ -62,6 +71,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     self._node = node
     self._protocol_cache = set()
     self._protocol_error = None
+    self._noniterable_str_error = None
     self._error_subst = None
 
   @contextlib.contextmanager
@@ -106,6 +116,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     if alias_map:
       subst.uf = alias_map
     self._protocol_error = None
+    self._noniterable_str_error = None
     self._error_subst = None
     self_subst = None
     for name, formal in formal_args:
@@ -114,8 +125,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if subst is None:
         formal = self.vm.annotations_util.sub_one_annotation(
             self._node, formal, [self._error_subst or {}])
+
         return None, function.BadParam(
-            name=name, expected=formal, protocol_error=self._protocol_error)
+            name=name, expected=formal, protocol_error=self._protocol_error,
+            noniterable_str_error=self._noniterable_str_error)
       if name == "self":
         self_subst = subst
     if self_subst:
@@ -151,8 +164,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       except StopIteration:
         break
       self._protocol_error = None
+      self._noniterable_str_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
+          # TODO(rpalaguachi): Append _noniterable_str_error here as well as any
+          # other bad_matches() calls to show the helpful error message.
           bad.append((view, self._protocol_error))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
@@ -687,6 +703,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     elif isinstance(other_type, class_mixin.Class):
       if (self.vm.options.enforce_noniterable_strings and
           self._enforce_noniterable_str(left.get_class(), other_type)):
+        self._noniterable_str_error = NonIterableStrError(left.get_class(),
+                                                          other_type)
         return None
       base = self.match_from_mro(left.get_class(), other_type)
       if base is None:
@@ -1030,16 +1048,18 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # TODO(rechen): Even if other_type isn't parameterized, we should run
       # _match_protocol_attribute to catch mismatches in method signatures.
       return subst
-    # The entire match succeeds if left_attribute matches *any* binding of
-    # protocol_attribute_var. A binding matches if *any* options for
-    # left_attribute match *all* options for the binding's types.
-    bad_matches = []
-    for protocol_attribute in protocol_attribute_var.data:
-      protocol_attribute_types = list(
-          self._get_attribute_types(other_type, protocol_attribute))
-      for new_view in abstract_utils.get_views([left_attribute], self._node):
-        new_view.update(view)
-        new_substs = []
+    # Every binding of left_attribute needs to match at least one binding of
+    # protocol_attribute_var.
+    new_substs = []
+    for new_view in abstract_utils.get_views([left_attribute], self._node):
+      new_view.update(view)
+      bad_matches = []
+      for protocol_attribute in protocol_attribute_var.data:
+        # For this binding of left_attribute to match this binding of
+        # protocol_attribute_var, *all* options in protocol_attribute_types need
+        # to match.
+        protocol_attribute_types = list(
+            self._get_attribute_types(other_type, protocol_attribute))
         for protocol_attribute_type in protocol_attribute_types:
           match_result = self.match_var_against_type(
               left_attribute, protocol_attribute_type, subst, new_view)
@@ -1050,12 +1070,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           else:
             new_substs.append(match_result)
         else:
-          return self._merge_substs(subst, new_substs)
-    bad_left, bad_right = zip(*bad_matches)
-    self._protocol_error = ProtocolTypeError(
-        left_cls, other_type, attribute, self.vm.merge_values(bad_left),
-        self.vm.merge_values(bad_right))
-    return None
+          # We've successfully matched all options in protocol_attribute_types.
+          break
+      else:
+        # This binding of left_attribute has not matched any binding of
+        # protocol_attribute_var.
+        bad_left, bad_right = zip(*bad_matches)
+        self._protocol_error = ProtocolTypeError(
+            left_cls, other_type, attribute, self.vm.merge_values(bad_left),
+            self.vm.merge_values(bad_right))
+        return None
+    return self._merge_substs(subst, new_substs)
 
   def _get_concrete_values_and_classes(self, var):
     # TODO(rechen): For type parameter instances, we should extract the concrete
@@ -1121,11 +1146,18 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
                               "typing.Collection", "typing.Container",
                               "typing.Mapping",]
     str_types = ["builtins.str", "builtins.unicode",]
-    if (left.full_name in str_types and
-        other_type.full_name in conflicting_iter_types):
-      return True
 
-    return False
+    if (other_type.full_name not in conflicting_iter_types
+        or left.full_name not in str_types):
+      return False  # Reject uninterested type combinations
+    if other_type.full_name == "typing.Mapping":
+      return True  # Enforce against Mapping
+
+    if isinstance(other_type, abstract.ParameterizedClass):
+      type_param = other_type.get_formal_type_parameter("_T").full_name
+      return type_param in str_types
+
+    return False  # Don't enforce against Iterable[Any]
 
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
