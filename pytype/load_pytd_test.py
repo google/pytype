@@ -483,6 +483,16 @@ class ImportPathsTest(_LoaderTest):
       from b import *
     """)
 
+  def test_import_class_from_parent_module(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo/__init__.pyi", "class Foo: ...")
+      d.create_file("foo/bar.pyi", """
+        from . import Foo
+        class Bar(Foo): ...
+      """)
+      loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
+      loader.import_name("foo.bar")
+
 
 class ImportTypeMacroTest(_LoaderTest):
 

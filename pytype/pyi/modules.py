@@ -1,8 +1,7 @@
 """Handling of module and package related details."""
 
-from typing import Any
-
 import dataclasses
+from typing import Any
 
 from pytype import file_utils
 from pytype import module_utils
@@ -91,20 +90,14 @@ class Module:
     else:
       name = new_name = item
     qualified_name = self.qualify_name("%s.%s" % (from_package, name))
-    if (from_package in ["__PACKAGE__", "__PARENT__"]
-        and isinstance(item, str)):
-      # This will always be a simple module import (from . cannot import a
-      # NamedType, and without 'as' the name will not be reexported).
-      t = pytd.Module(name=new_name, module_name=qualified_name)
-    else:
-      # We should ideally not need this check, but we have typing
-      # special-cased in some places.
-      if not qualified_name.startswith("typing.") and name != "*":
-        # Mark this as an externally imported type, so that AddNamePrefix
-        # does not prefix it with the current package name.
-        qualified_name = (parser_constants.EXTERNAL_NAME_PREFIX +
-                          qualified_name)
-      t = pytd.NamedType(qualified_name)
+    # We should ideally not need this check, but we have typing
+    # special-cased in some places.
+    if not qualified_name.startswith("typing.") and name != "*":
+      # Mark this as an externally imported type, so that AddNamePrefix
+      # does not prefix it with the current package name.
+      qualified_name = (parser_constants.EXTERNAL_NAME_PREFIX +
+                        qualified_name)
+    t = pytd.NamedType(qualified_name)
     if name == "*":
       # A star import is stored as
       # 'imported_mod.* = imported_mod.*'. The imported module needs to be
