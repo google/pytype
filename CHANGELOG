@@ -1,3 +1,17 @@
+Version 2021.08.03
+
+New features and updates:
+* This is the last release of pytype that supports analyzing code in Python 2.7.
+  From the next release onward, pytype will only support Python 3.5+.
+* Add a typing FAQ.
+* Add a pytype_extensions.Dataclass protocol for matching any dataclass.
+
+Bug fixes:
+* Use [invalid-annotation] rather than [not-supported-yet] to report stray
+  TypeVars in variable annotations.
+* Fix bugs in attribute matching for Protocol.
+* Fix a bug in pytype's import resolution for relative imports.
+
 Version 2021.07.27
 
 New features and updates:

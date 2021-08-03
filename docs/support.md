@@ -13,26 +13,28 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
+<!-- Added by: rechen, at: 2021-08-03T11:23-07:00 -->
 
 <!--te-->
 
 ## Python Version
 
-*   **Analyzes**: Whether pytype can analyze code written for this version
-*   **Runs In**: Whether pytype itself can run in this version
+*   **Analyzes**: Whether pytype can analyze code written for this version. For
+    deprecated versions, the last pytype release that supports this version.
+*   **Runs In**: Whether pytype itself can run in this version. For deprecated
+    versions, the last pytype release that supports this version.
 *   **Issue**: Tracking issue for dropping support (older versions) or adding it
     (upcoming versions), if applicable
 
-Version | Analyzes | Runs In | Issue
-:-----: | :------: | :-----: | :----------:
-2.7     | ✅        | ❌       | [#545][py27]
-3.5     | ✅        | ❌       | [#677][py35]
-3.6     | ✅        | ✅       |
-3.7     | ✅        | ✅       |
-3.8     | ✅        | ✅       |
-3.9     | ✅        | ✅       |
-3.10    | ❌        | ❌       |
+Version | Analyzes   | Runs In    | Issue
+:-----: | :--------: | :--------: | :----------:
+2.7     | 2021.08.03 | 2020.04.01 | [#545][py27]
+3.5     | ✅          | 2020.10.8  | [#677][py35]
+3.6     | ✅          | ✅          |
+3.7     | ✅          | ✅          |
+3.8     | ✅          | ✅          |
+3.9     | ✅          | ✅          |
+3.10    | ❌          | ❌          |
 
 ## Features
 
