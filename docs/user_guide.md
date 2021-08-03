@@ -9,9 +9,8 @@
       * [Hiding extra dependencies](#hiding-extra-dependencies)
       * [Pyi stub files](#pyi-stub-files)
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
-      * [Compatibility](#compatibility)
 
-<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
+<!-- Added by: rechen, at: 2021-08-02T22:13-07:00 -->
 
 <!--te-->
 
@@ -257,25 +256,14 @@ located in [pytype builtins][pytype-builtins], [pytype stdlib][pytype-stdlib],
 and [typeshed][typeshed]. If you find a mistake in one of these files, please
 [file a bug][new-bug].
 
-## Compatibility
-
-Both [PEP 3107][pep-3107] as well as [PEP 484][pep-484] are Python 3 features.
-
-Note that pytype only supports the single-type-comment syntax; the
-one-type-comment-per-parameter syntax isn't supported
-([#49][per-parameter-type-comments-bug]).
-
 <!-- General references -->
-[compatibility]: #compatibility
 [optional]: https://docs.python.org/3/library/typing.html#typing.Optional
 [pep-3107]: https://www.python.org/dev/peps/pep-3107
 [pep-484]: https://www.python.org/dev/peps/pep-0484
-[pep-484-2-7]: https://www.python.org/dev/peps/pep-0484/#suggested-syntax-for-python-2-7-and-straddling-code
 [pep-484-runtime-or-type-checking]: https://www.python.org/dev/peps/pep-0484/#runtime-or-type-checking
 [pep-484-stub-files]: https://www.python.org/dev/peps/pep-0484/#stub-files
 [pep-484-the-typing-module]: https://www.python.org/dev/peps/pep-0484/#the-typing-module
 [pep-526]: https://www.python.org/dev/peps/pep-0526/
-[per-parameter-type-comments-bug]: https://github.com/google/pytype/issues/49
 [pyi-examples]: https://github.com/python/typeshed/tree/master/stdlib
 [stdtypes]: https://docs.python.org/2/library/stdtypes.html
 
@@ -290,7 +278,5 @@ one-type-comment-per-parameter syntax isn't supported
 [pytype-stdlib]: https://github.com/google/pytype/tree/master/pytype/stubs/stdlib
 
 [style-guide-conditional-imports]: https://google.github.io/styleguide/pyguide.html#31913-conditional-imports
-
-[type-annotations-backport]: https://github.com/google/pytype/blob/master/2.7_patches/python_2_7_type_annotations.diff
 
 [typeshed]: https://github.com/python/typeshed
