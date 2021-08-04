@@ -44,6 +44,7 @@ class EnumOverlay(overlay.Overlay):
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
+          "IntEnum": IntEnumBuilder,
       }
     else:
       member_map = {}
@@ -54,10 +55,10 @@ class EnumOverlay(overlay.Overlay):
 class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
-  def __init__(self, vm):
+  def __init__(self, vm, name="Enum"):
     enum_ast = vm.loader.import_name("enum")
-    pyval = enum_ast.Lookup("enum.Enum")
-    super().__init__("Enum", pyval, vm)
+    pyval = enum_ast.Lookup(f"enum.{name}")
+    super().__init__(name, pyval, vm)
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
                  new_class_var=None, is_decorated=False):
@@ -83,8 +84,9 @@ class EnumBuilder(abstract.PyTDClass):
     # signature for __new__, rather than the value lookup signature.
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
-    self.load_lazy_attribute("__new__")
-    pytd_new = abstract_utils.get_atomic_value(self.members["__new__"])
+    node, pytd_new_var = self.vm.attribute_handler.get_attribute(
+        node, self, "__new__", self.to_binding(node))
+    pytd_new = abstract_utils.get_atomic_value(pytd_new_var)
     # There are two signatures for __new__. We want the longer one.
     sig = max(
         pytd_new.signatures, key=lambda s: s.signature.maximum_param_count())
@@ -146,6 +148,13 @@ class EnumBuilder(abstract.PyTDClass):
         class_dict_var=cls_dict.to_variable(node),
         cls_var=metaclass,
         class_type=EnumInstance)
+
+
+class IntEnumBuilder(EnumBuilder):
+  """Overlays enum.IntEnum using EnumBuilder."""
+
+  def __init__(self, vm):
+    super().__init__(vm, name="IntEnum")
 
 
 class EnumInstance(abstract.InterpreterClass):

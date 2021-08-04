@@ -505,7 +505,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       enum.Enum("Y", "A", start="4")  # wrong-arg-types
     """)
 
-  def test_functional_no_constants(self):
+  def test_functional_api_no_constants(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", "A: str")
       self.Check("""
@@ -515,6 +515,18 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         for x in F:
           print(x)
       """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_functional_api_intenum(self):
+    # Technically, any subclass of Enum without any members can be used for the
+    # functional API. This is annoying and hard to detect, but we should support
+    # it for the other classes in the enum library.
+    self.Check("""
+      import enum
+      FI = enum.IntEnum("FI", ["A", "B", "C"])
+      assert_type(FI.A, FI)
+      assert_type(FI.A.value, int)
+    """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_basic(self):
