@@ -220,6 +220,7 @@ class PytypeTest(test_base.UnitTest):
     single._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))
 
+  @test_base.skip("flaky; see b/195678773")
   def test_pickled_file_stableness(self):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
     l_1 = self.generate_pickled_simple_file("simple1.pickled")
