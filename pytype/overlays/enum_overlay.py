@@ -44,6 +44,7 @@ class EnumOverlay(overlay.Overlay):
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
+          "IntEnum": IntEnumBuilder,
       }
     else:
       member_map = {}
@@ -54,10 +55,10 @@ class EnumOverlay(overlay.Overlay):
 class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
-  def __init__(self, vm):
+  def __init__(self, vm, name="Enum"):
     enum_ast = vm.loader.import_name("enum")
-    pyval = enum_ast.Lookup("enum.Enum")
-    super().__init__("Enum", pyval, vm)
+    pyval = enum_ast.Lookup(f"enum.{name}")
+    super().__init__(name, pyval, vm)
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
                  new_class_var=None, is_decorated=False):
@@ -83,8 +84,9 @@ class EnumBuilder(abstract.PyTDClass):
     # signature for __new__, rather than the value lookup signature.
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
-    self.load_lazy_attribute("__new__")
-    pytd_new = abstract_utils.get_atomic_value(self.members["__new__"])
+    node, pytd_new_var = self.vm.attribute_handler.get_attribute(
+        node, self, "__new__", self.to_binding(node))
+    pytd_new = abstract_utils.get_atomic_value(pytd_new_var)
     # There are two signatures for __new__. We want the longer one.
     sig = max(
         pytd_new.signatures, key=lambda s: s.signature.maximum_param_count())
@@ -146,6 +148,13 @@ class EnumBuilder(abstract.PyTDClass):
         class_dict_var=cls_dict.to_variable(node),
         cls_var=metaclass,
         class_type=EnumInstance)
+
+
+class IntEnumBuilder(EnumBuilder):
+  """Overlays enum.IntEnum using EnumBuilder."""
+
+  def __init__(self, vm):
+    super().__init__(vm, name="IntEnum")
 
 
 class EnumInstance(abstract.InterpreterClass):
@@ -327,14 +336,29 @@ class EnumMetaInit(abstract.SimpleFunction):
     else:
       return node, self.vm.convert.build_int(node)
 
+  def _wrap_value(self, node, value, base_type):
+    # Process an enum member's value for use as an argument. Returns a tuple
+    # that can be used for Args.posargs.
+    # If value is not a tuple already, make it one.
+    # Then, if the base type is tuple, wrap it again.
+    arg = abstract_utils.maybe_extract_tuple(value)
+    if base_type.full_name == "builtins.tuple":
+      arg = (self.vm.convert.build_tuple(node, arg),)
+    return arg
+
   def _mark_dynamic_enum(self, cls):
     # Checks if the enum should be marked as having dynamic attributes.
-    # The most typical use of custom subclasses of EnumMeta is to add more
-    # members to the enum, or to (for example) make attribute access
-    # case-insensitive. Treat such enums as having dynamic attributes.
     # Of course, if it's already marked dynamic, don't accidentally unmark it.
     if cls.maybe_missing_members:
       return
+    # Custom __init__ or __new__ methods are used to add new members to enum
+    # members. Until we can support that better, just mark them as dynamic.
+    if "__init__" in cls or "__new__" in cls:
+      cls.maybe_missing_members = True
+      return
+    # The most typical use of custom subclasses of EnumMeta is to add more
+    # members to the enum, or to (for example) make attribute access
+    # case-insensitive. Treat such enums as having dynamic attributes.
     if cls.cls and cls.cls.full_name != "enum.EnumMeta":
       cls.maybe_missing_members = True
       return
@@ -357,7 +381,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       if self._is_orig_auto(value):
         node, value = self._call_generate_next_value(node, cls, name)
       if base_type:
-        args = function.Args(posargs=(value,))
+        args = function.Args(posargs=self._wrap_value(node, value, base_type))
         node, value = base_type.call(node, base_type.to_binding(node), args)
       member.members["value"] = value
       member.members["_value_"] = value
@@ -371,6 +395,9 @@ class EnumMetaInit(abstract.SimpleFunction):
     else:
       member_type = self.vm.convert.unsolvable
     cls.member_type = member_type
+    # Because we overwrite __new__, we need to mark dynamic enums here.
+    # Of course, this can be moved later once custom __init__ is supported.
+    self._mark_dynamic_enum(cls)
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     # _generate_next_value_ is used as a static method of the enum, not a class
@@ -383,7 +410,6 @@ class EnumMetaInit(abstract.SimpleFunction):
         node, new_gnv = self.vm.load_special_builtin("staticmethod").call(
             node, None, args)
         cls.members["_generate_next_value_"] = new_gnv
-    self._mark_dynamic_enum(cls)
     return node
 
   def _setup_pytdclass(self, node, cls):
@@ -416,13 +442,15 @@ class EnumMetaInit(abstract.SimpleFunction):
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
       member_types.append(value_type)
+    # Because we overwrite __new__, we need to mark dynamic enums here.
+    # Of course, this can be moved later once custom __init__ is supported.
+    self._mark_dynamic_enum(cls)
     if not member_types:
       member_types.append(pytd.AnythingType())
     member_type = self.vm.convert.constant_to_value(
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
-    self._mark_dynamic_enum(cls)
     return node
 
   def call(self, node, func, args, alias_map=None):

@@ -368,7 +368,7 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
       def f(x: Iterable[str]): ...
       f("abc")  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"str.*iter.*list"})
+    self.assertErrorRegexes(errors, {"e": r"str is not iterable by default"})
 
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""

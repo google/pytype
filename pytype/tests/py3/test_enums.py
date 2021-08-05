@@ -505,7 +505,7 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       enum.Enum("Y", "A", start="4")  # wrong-arg-types
     """)
 
-  def test_functional_no_constants(self):
+  def test_functional_api_no_constants(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", "A: str")
       self.Check("""
@@ -515,6 +515,18 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         for x in F:
           print(x)
       """, pythonpath=[d.path])
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_functional_api_intenum(self):
+    # Technically, any subclass of Enum without any members can be used for the
+    # functional API. This is annoying and hard to detect, but we should support
+    # it for the other classes in the enum library.
+    self.Check("""
+      import enum
+      FI = enum.IntEnum("FI", ["A", "B", "C"])
+      assert_type(FI.A, FI)
+      assert_type(FI.A.value, int)
+    """)
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_basic(self):
@@ -786,6 +798,19 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
   @test_base.skip("Fails due to __getattr__ in pytd.")
+  def test_base_types(self):
+    self.CheckWithErrors("""
+      import enum
+      from typing import Tuple
+      class T(tuple, enum.Enum):
+        A = (1, 2)
+      assert_type(T.A.value, Tuple[int, ...])
+
+      class S(str, enum.Enum):  # wrong-arg-types
+        A = (1, 2)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_submeta(self):
     self.Check("""
       import enum
@@ -945,5 +970,63 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
         def do(self):
           return self._x + 1
     """)
+
+  @test_base.skip("Fails due to __getattr__ in enum.pytd")
+  def test_own_init_simple(self):
+    self.Check("""
+      from enum import Enum
+      from typing import Any
+      class M(Enum):
+        A = 1
+        def __init__(self, a):
+          self._value_ = str(a + self._value_)
+
+      assert_type(M.A, Any)
+      assert_type(M.A.value, Any)
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in enum.pytd")
+  def test_own_init_tuple_value(self):
+    # https://docs.python.org/3/library/enum.html#planet
+    self.Check("""
+      from enum import Enum
+      from typing import Any, Tuple
+
+      class Planet(Enum):
+        MERCURY = (3.303e+23, 2.4397e6)
+        VENUS   = (4.869e+24, 6.0518e6)
+        EARTH   = (5.976e+24, 6.37814e6)
+        MARS    = (6.421e+23, 3.3972e6)
+        JUPITER = (1.9e+27,   7.1492e7)
+        SATURN  = (5.688e+26, 6.0268e7)
+        URANUS  = (8.686e+25, 2.5559e7)
+        NEPTUNE = (1.024e+26, 2.4746e7)
+        def __init__(self, mass, radius):
+          self.mass = mass       # in kilograms
+          self.radius = radius   # in meters
+        @property
+        def surface_gravity(self):
+          # universal gravitational constant  (m3 kg-1 s-2)
+          G = 6.67300E-11
+          return G * self.mass / (self.radius * self.radius)
+
+      assert_type(Planet.EARTH, Any)
+      assert_type(Planet.EARTH.name, Any)
+      assert_type(Planet.EARTH.value, Any)
+      assert_type(Planet.EARTH.mass, Any)
+      assert_type(Planet.EARTH.radius, Any)
+      assert_type(Planet.EARTH.surface_gravity, Any)
+    """)
+
+  def test_own_init_errors(self):
+    # This should raise a missing-parameter error on line 2.
+    self.Check("""
+      import enum
+      class X(enum.Enum):
+        A = 1
+        def __init__(self, a, b, c):
+          self.x = a + b + c
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

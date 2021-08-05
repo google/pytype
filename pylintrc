@@ -155,8 +155,11 @@ notes=FIXME,XXX
 # Maximum number of characters on a single line.
 max-line-length=80
 
-# Regexp for a line that is allowed to be longer than the limit.
-ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(^\s*#\s+http)|(from\styping\simport\s)
+# Regexp for a line that is allowed to be longer than the limit:
+# * `# pytype: disable=...`
+# * `from typing import ...`
+# * long URLs in comments or strings
+ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(from\styping\simport\s)|(^\s*#\s+http)|(^\s*"[^"]*\s+http)
 
 # Maximum number of lines in a module
 max-module-lines=99999
