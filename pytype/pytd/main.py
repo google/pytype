@@ -53,7 +53,7 @@ def make_parser():
       help="Remove mutable parameters.")
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
-      dest="python_version", default="2.7",
+      dest="python_version", default="3",
       help=("Python version to target (\"major.minor\", e.g. \"2.7\")"))
   o.add_argument(
       "--multiline-args", action="store_true",

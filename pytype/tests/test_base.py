@@ -465,7 +465,7 @@ class TargetIndependentTest(BaseTest):
   feature specific to a Python version, including type annotations.
   """
 
-  PY_MAJOR_VERSIONS = [2, 3]
+  PY_MAJOR_VERSIONS = [3]
 
 
 class TargetPython27FeatureTest(BaseTest):
@@ -486,7 +486,7 @@ class TargetPython3BasicTest(BaseTest):
   target Python version set to 2.7.
   """
 
-  PY_MAJOR_VERSIONS = [2, 3] if utils.USE_ANNOTATIONS_BACKPORT else [3]
+  PY_MAJOR_VERSIONS = [3]
 
 
 class TargetPython3FeatureTest(BaseTest):
@@ -530,8 +530,14 @@ def main(toplevels, is_main_module=True):
   # For tests that we want to run under multiple target Python versions, we
   # create a subclass for each additional version.
   new_tests = {}
+  # TODO(b/195453869): Remove all TargetPython27FeatureTest instances rather
+  # than filtering them out here.
+  tests_to_delete = set()
   for name, tp in toplevels.items():
     if not isinstance(tp, type) or not issubclass(tp, BaseTest):
+      continue
+    if issubclass(tp, TargetPython27FeatureTest):
+      tests_to_delete.add(name)
       continue
     if issubclass(tp, TargetPython3FeatureTest):
       # Many of our Python 3 feature tests are Python 3.6+, since they use
@@ -556,5 +562,7 @@ def main(toplevels, is_main_module=True):
   for tp, version in python_versions.items():
     setattr(tp, "python_version", version)
   toplevels.update(new_tests)
+  for test in tests_to_delete:
+    del toplevels[test]
   if is_main_module:
     unittest.main()
