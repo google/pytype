@@ -1,4 +1,22 @@
-"""Tests for vm.py."""
+"""Tests for vm.py.
+
+To create test cases, you can disassemble source code with the help of the dis
+module. For example, in Python 3.7, this snippet:
+
+  import dis
+  import opcode
+  def f(): return None
+  bytecode = dis.Bytecode(f)
+  for x in bytecode.codeobj.co_code:
+    print(f'{x} ({opcode.opname[x]})')
+
+prints:
+
+  100 (LOAD_CONST)
+  0 (<0>)
+  83 (RETURN_VALUE)
+  0 (<0>)
+"""
 
 import textwrap
 
@@ -15,7 +33,10 @@ from pytype.tests import test_utils
 
 import six
 
-_PY2_OPMAP = {v.__name__: k for k, v in opcodes.python2_mapping.items()}
+
+# The tests in this file check disassembled bytecode, which varies from version
+# to version, so we fix the test version.
+_OPMAP = {v.__name__: k for k, v in opcodes.python_3_7_mapping.items()}
 
 
 class TraceVM(vm.VirtualMachine):
@@ -40,8 +61,14 @@ class TraceVM(vm.VirtualMachine):
 class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for process_code in blocks.py and VM integration."""
 
-  # We only test Python 2 bytecode.
-  PY_MAJOR_VERSIONS = [2]
+  # We only test Python 3.7 bytecode (see setUpClass()), since the bytecode
+  # changes from version to version.
+  PY_MAJOR_VERSIONS = [3]
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls.python_version = (3, 7)
 
   def setUp(self):
     super().setUp()
@@ -52,8 +79,8 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     # Disassembled from:
     # | return None
     code = self.make_code([
-        0x64, 1, 0,  # 0 LOAD_CONST, arg=1 (1)
-        0x53,  # 3 RETURN_VALUE
+        0x64, 1,  # 0 LOAD_CONST, arg=1 (1)
+        0x53, 0,  # 3 RETURN_VALUE (0)
     ], name="simple")
     code = blocks.process_code(code, self.python_version)
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
@@ -68,25 +95,24 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     # | elif []:
     # |   y = None
     # | return y
-    o = test_utils.Py2Opcodes
+    o = test_utils.Py37Opcodes
     code = self.make_code([
-        o.BUILD_LIST, 0, 0,
-        o.POP_JUMP_IF_FALSE, 15, 0,
-        o.LOAD_CONST, 1, 0,
-        o.STORE_FAST, 1, 0,
-        o.JUMP_FORWARD, 30, 0,
-        o.BUILD_LIST, 0, 0,
-        o.POP_JUMP_IF_FALSE, 30, 0,
-        o.LOAD_CONST, 2, 0,
-        o.STORE_FAST, 1, 0,
-        o.JUMP_FORWARD, 15, 0,
-        o.BUILD_LIST, 0, 0,
-        o.POP_JUMP_IF_FALSE, 45, 0,
-        o.LOAD_CONST, 0, 0,
-        o.STORE_FAST, 1, 0,
-        o.JUMP_FORWARD, 0, 0,
-        o.LOAD_FAST, 1, 0,
-        o.RETURN_VALUE,
+        o.BUILD_LIST, 0,
+        o.POP_JUMP_IF_FALSE, 10,
+        o.LOAD_CONST, 1,
+        o.STORE_FAST, 0,
+        o.JUMP_FORWARD, 18,
+        o.BUILD_LIST, 0,
+        o.POP_JUMP_IF_FALSE, 20,
+        o.LOAD_CONST, 2,
+        o.STORE_FAST, 0,
+        o.JUMP_FORWARD, 8,
+        o.BUILD_LIST, 0,
+        o.POP_JUMP_IF_FALSE, 28,
+        o.LOAD_CONST, 0,
+        o.STORE_FAST, 0,
+        o.LOAD_FAST, 0,
+        o.RETURN_VALUE, 0,
     ])
     code = blocks.process_code(code, self.python_version)
     v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
@@ -101,38 +127,37 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
           z += x*a
     """)
   code_nested_loop = compat.int_array_to_bytes([
-      _PY2_OPMAP["LOAD_CONST"], 0, 0,          # [0], 0, arg=0
-      _PY2_OPMAP["LOAD_CONST"], 1, 0,          # [1], 3, arg=1
-      _PY2_OPMAP["LOAD_CONST"], 2, 0,          # [2], 6, arg=2
-      _PY2_OPMAP["BUILD_LIST"], 3, 0,          # [3], 9, arg=3
-      _PY2_OPMAP["STORE_NAME"], 0, 0,          # [4], 12, arg=0
-      _PY2_OPMAP["LOAD_CONST"], 3, 0,          # [5], 15, arg=3
-      _PY2_OPMAP["STORE_NAME"], 1, 0,          # [6], 18, arg=1
-      _PY2_OPMAP["SETUP_LOOP"], 54, 0,         # [7], 21, dest=78
-      _PY2_OPMAP["LOAD_NAME"], 0, 0,           # [8], 24, arg=0
-      _PY2_OPMAP["GET_ITER"],                  # [9], 27
-      _PY2_OPMAP["FOR_ITER"], 46, 0,           # [10], 28, dest=77
-      _PY2_OPMAP["STORE_NAME"], 2, 0,          # [11], 31, arg=2
-      _PY2_OPMAP["SETUP_LOOP"], 37, 0,         # [12], 34, dest=74
-      _PY2_OPMAP["LOAD_NAME"], 0, 0,           # [13], 37, arg=0
-      _PY2_OPMAP["GET_ITER"],                  # [14], 40
-      _PY2_OPMAP["FOR_ITER"], 29, 0,           # [15], 41, dest=73
-      _PY2_OPMAP["STORE_NAME"], 3, 0,          # [16], 44, arg=3
-      _PY2_OPMAP["LOAD_NAME"], 2, 0,           # [17], 47, arg=2
-      _PY2_OPMAP["POP_JUMP_IF_FALSE"], 41, 0,  # [18], 50, dest=41
-      _PY2_OPMAP["LOAD_NAME"], 1, 0,           # [19], 53, arg=1
-      _PY2_OPMAP["LOAD_NAME"], 2, 0,           # [20], 56, arg=2
-      _PY2_OPMAP["LOAD_NAME"], 3, 0,           # [21], 59, arg=3
-      _PY2_OPMAP["BINARY_MULTIPLY"],           # [22], 62
-      _PY2_OPMAP["INPLACE_ADD"],               # [23], 63
-      _PY2_OPMAP["STORE_NAME"], 1, 0,          # [24], 64, arg=1
-      _PY2_OPMAP["JUMP_ABSOLUTE"], 41, 0,      # [25], 67, dest=41
-      _PY2_OPMAP["JUMP_ABSOLUTE"], 41, 0,      # [26], 70 (unreachable), dest=41
-      _PY2_OPMAP["POP_BLOCK"],                 # [27], 73
-      _PY2_OPMAP["JUMP_ABSOLUTE"], 28, 0,      # [28], 74, dest=28
-      _PY2_OPMAP["POP_BLOCK"],                 # [29], 77
-      _PY2_OPMAP["LOAD_CONST"], 4, 0,          # [30], 78, arg=4
-      _PY2_OPMAP["RETURN_VALUE"],              # [31], 81
+      _OPMAP["LOAD_CONST"], 0,
+      _OPMAP["LOAD_CONST"], 1,
+      _OPMAP["LOAD_CONST"], 2,
+      _OPMAP["BUILD_LIST"], 3,
+      _OPMAP["STORE_NAME"], 0,
+      _OPMAP["LOAD_CONST"], 3,
+      _OPMAP["STORE_NAME"], 1,
+      _OPMAP["SETUP_LOOP"], 42,
+      _OPMAP["LOAD_NAME"], 0,
+      _OPMAP["GET_ITER"], 0,
+      _OPMAP["FOR_ITER"], 34,
+      _OPMAP["STORE_NAME"], 2,
+      _OPMAP["SETUP_LOOP"], 28,
+      _OPMAP["LOAD_NAME"], 0,
+      _OPMAP["GET_ITER"], 0,
+      _OPMAP["FOR_ITER"], 20,
+      _OPMAP["STORE_NAME"], 3,
+      _OPMAP["LOAD_NAME"], 2,
+      _OPMAP["POP_JUMP_IF_FALSE"], 30,
+      _OPMAP["LOAD_NAME"], 1,
+      _OPMAP["LOAD_NAME"], 2,
+      _OPMAP["LOAD_NAME"], 3,
+      _OPMAP["BINARY_MULTIPLY"], 0,
+      _OPMAP["INPLACE_ADD"], 0,
+      _OPMAP["STORE_NAME"], 1,
+      _OPMAP["JUMP_ABSOLUTE"], 30,
+      _OPMAP["POP_BLOCK"], 0,
+      _OPMAP["JUMP_ABSOLUTE"], 20,
+      _OPMAP["POP_BLOCK"], 0,
+      _OPMAP["LOAD_CONST"], 4,
+      _OPMAP["RETURN_VALUE"], 0,
   ])
 
   def test_each_instruction_once_loops(self):
@@ -144,9 +169,9 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
     self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10)
-    # We expect all instructions, except 26, in the above to execute.
+    # We expect all instructions in the above to execute.
     six.assertCountEqual(self, self.trace_vm.instructions_executed,
-                         set(range(32)) - {26})
+                         set(range(31)))
 
   src_deadcode = textwrap.dedent("""
     if False:
@@ -155,17 +180,12 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     x = 42
     """)
   code_deadcode = compat.int_array_to_bytes([
-      _PY2_OPMAP["LOAD_NAME"], 0, 0,           # [0] 0, arg=0
-      _PY2_OPMAP["POP_JUMP_IF_FALSE"], 15, 0,  # [1] 3, dest=15
-      _PY2_OPMAP["LOAD_CONST"], 0, 0,          # [2] 6, arg=0
-      _PY2_OPMAP["STORE_NAME"], 1, 0,          # [3] 9, arg=1
-      _PY2_OPMAP["JUMP_FORWARD"], 0, 0,        # [4] 12, dest=15
-      _PY2_OPMAP["LOAD_NAME"], 2, 0,           # [5] 15, arg=2
-      _PY2_OPMAP["RAISE_VARARGS"], 1, 0,       # [6] 18, arg=1
-      _PY2_OPMAP["LOAD_CONST"], 1, 0,          # [7] 21 (unreachable), arg=1
-      _PY2_OPMAP["STORE_NAME"], 1, 0,          # [8] 24 (unreachable), arg=1
-      _PY2_OPMAP["LOAD_CONST"], 2, 0,          # [9] 27 (unreachable), arg=2
-      _PY2_OPMAP["RETURN_VALUE"],              # [10] 30 (unreachable)
+      _OPMAP["LOAD_NAME"], 0,
+      _OPMAP["RAISE_VARARGS"], 1,
+      _OPMAP["LOAD_CONST"], 0,
+      _OPMAP["STORE_NAME"], 1,
+      _OPMAP["LOAD_CONST"], 1,
+      _OPMAP["RETURN_VALUE"], 0,
   ])
 
   def test_each_instruction_once_dead_code(self):
@@ -176,12 +196,8 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
-    try:
-      self.trace_vm.run_program(self.src_deadcode, "", maximum_depth=10)
-    except vm.VirtualMachineError:
-      pass  # The code we test throws an exception. Ignore it.
-    six.assertCountEqual(self,
-                         self.trace_vm.instructions_executed, [0, 1, 5, 6])
+    self.trace_vm.run_program(self.src_deadcode, "", maximum_depth=10)
+    six.assertCountEqual(self, self.trace_vm.instructions_executed, [0, 1])
 
 
 class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):

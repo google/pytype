@@ -7,16 +7,16 @@ class _TestBase(unittest.TestCase):
   """Base class for all opcodes.dis testing."""
 
   def dis(self, code, **kwargs):
-    """Return the opcodes from disassbling a code sequence."""
+    """Return the opcodes from disassembling a code sequence."""
     return opcodes.dis(compat.int_array_to_bytes(code),
                        self.python_version, **kwargs)
 
   def assertSimple(self, opcode, name):
-    """Assert that a single opcode byte diassembles to the given name."""
+    """Assert that a single opcode byte disassembles to the given name."""
     self.assertName([opcode], name)
 
   def assertName(self, code, name):
-    """Assert that the first diassembled opcode has the given name."""
+    """Assert that the first disassembled opcode has the given name."""
     self.assertEqual(self.dis(code)[0].name, name)
 
   def assertDisassembly(self, code, expected):
@@ -39,67 +39,58 @@ class _TestBase(unittest.TestCase):
 
 
 class CommonTest(_TestBase):
-  """Test bytecodes that are common to Python 2 and 3 using python 2."""
+  """Test bytecodes that are common to multiple Python versions."""
 
-  python_version = (2, 7, 6)
+  python_version = (3, 7)
 
   def test_pop_top(self):
     self.assertSimple(1, 'POP_TOP')
 
   def test_store_name(self):
-    self.assertName([90, 0, 0], 'STORE_NAME')
+    self.assertName([90, 0], 'STORE_NAME')
 
   def test_for_iter(self):
-    self.assertName([93, 0, 0, 9], 'FOR_ITER')
+    self.assertName([93, 0, 9], 'FOR_ITER')
 
   def test_extended_disassembly(self):
     code = [
-        0x7c, 0, 0,  # 0 LOAD_FAST, arg=0,
-        0x7c, 0, 0,  # 3 LOAD_FAST, arg=0,
+        0x7c, 0,  # 0 LOAD_FAST, arg=0,
+        0x7c, 0,  # 3 LOAD_FAST, arg=0,
         0x17,  # 6 BINARY_ADD,
         0x01,  # 7 POP_TOP,
-        0x7c, 0, 0,  # 8 LOAD_FAST, arg=0,
-        0x7c, 0, 0,  # 11 LOAD_FAST, arg=0,
+        0x7c, 0,  # 8 LOAD_FAST, arg=0,
+        0x7c, 0,  # 11 LOAD_FAST, arg=0,
         0x14,  # 14 BINARY_MULTIPLY,
         0x01,  # 15 POP_TOP,
-        0x7c, 0, 0,  # 16 LOAD_FAST, arg=0,
-        0x7c, 0, 0,  # 19 LOAD_FAST, arg=0,
+        0x7c, 0,  # 16 LOAD_FAST, arg=0,
+        0x7c, 0,  # 19 LOAD_FAST, arg=0,
         0x16,  # 22 BINARY_MODULO,
         0x01,  # 23 POP_TOP,
-        0x7c, 0, 0,  # 24 LOAD_FAST, arg=0,
-        0x7c, 0, 0,  # 27 LOAD_FAST, arg=0,
+        0x7c, 0,  # 24 LOAD_FAST, arg=0,
+        0x7c, 0,  # 27 LOAD_FAST, arg=0,
         0x1b,  # 30 BINARY_TRUE_DIVIDE,
         0x01,  # 31 POP_TOP,
-        0x64, 0, 0,  # 32 LOAD_CONST, arg=0,
-        0x53,  # 35 RETURN_VALUE
+        0x64, 0,  # 32 LOAD_CONST, arg=0,
+        0x53, 0,  # 35 RETURN_VALUE
     ]
+    # The POP_TOP instructions are discarded.
     expected = [
         ('LOAD_FAST', 0),
         ('LOAD_FAST', 0),
         ('BINARY_ADD',),
-        ('POP_TOP',),
         ('LOAD_FAST', 0),
         ('LOAD_FAST', 0),
         ('BINARY_MULTIPLY',),
-        ('POP_TOP',),
         ('LOAD_FAST', 0),
         ('LOAD_FAST', 0),
         ('BINARY_MODULO',),
-        ('POP_TOP',),
         ('LOAD_FAST', 0),
         ('LOAD_FAST', 0),
         ('BINARY_TRUE_DIVIDE',),
-        ('POP_TOP',),
         ('LOAD_CONST', 0),
         ('RETURN_VALUE',),
     ]
     self.assertDisassembly(code, expected)
-
-
-class CommonUnder3Test(CommonTest):
-  """Test the common bytecodes using Python 3.5."""
-
-  python_version = (3, 5, 0)
 
 
 class Python2Test(_TestBase):
