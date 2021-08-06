@@ -125,7 +125,7 @@ def list_pytype_files(suffix):
 
 # We allow analyzing Python 2 code with a custom interpreter to facilitate use
 # of the type annotations backport.
-CUSTOM_PY2_EXE = None
+CUSTOM_PY2_EXE = "google/python2.7"
 
 
 def get_custom_python_exe(python_version):
