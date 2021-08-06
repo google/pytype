@@ -625,7 +625,6 @@ py_test(
   SRCS
     pytype_source_utils_test.py
   DEPS
-    ._utils
     .pytype_source_utils
 )
 

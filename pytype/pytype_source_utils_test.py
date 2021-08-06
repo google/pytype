@@ -4,7 +4,6 @@ import os
 import sys
 
 from pytype import pytype_source_utils
-from pytype import utils
 
 import unittest
 
@@ -32,14 +31,16 @@ class PytypeSourceUtilsTest(unittest.TestCase):
     self.assertIn("_ctypes.pytd", l)
     self.assertIn("collections.pytd", l)
 
-  def test_get_custom_python_exe27(self):
-    exe = pytype_source_utils.get_custom_python_exe((2, 7))
-    if utils.USE_ANNOTATIONS_BACKPORT:
-      self.assertIn("2.7", exe)
+  def test_get_custom_python_exe37(self):
+    exe = pytype_source_utils.get_custom_python_exe((3, 7))
+    if sys.version_info[:2] == (3, 7):
+      self.assertIsNone(exe)
+    elif os.path.exists(pytype_source_utils.CUSTOM_PY37_EXE):
+      self.assertIn("3.7", exe)
     else:
       self.assertIsNone(exe)
 
-  def test_get_custom_python_exe3(self):
+  def test_get_custom_python_exe_host(self):
     exe = pytype_source_utils.get_custom_python_exe(sys.version_info[:2])
     self.assertIsNone(exe)
 
