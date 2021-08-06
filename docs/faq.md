@@ -15,8 +15,9 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
       * [How do I get type information for third-party libraries?](#how-do-i-get-type-information-for-third-party-libraries)
+      * [Why can't I iterate over a string?](#why-cant-i-iterate-over-a-string)
 
-<!-- Added by: rechen, at: 2021-08-02T22:13-07:00 -->
+<!-- Added by: rechen, at: 2021-08-05T17:23-07:00 -->
 
 <!--te-->
 
@@ -222,6 +223,38 @@ The open-source version of pytype gets type information from the
 is, pip-installed) libraries that do not have stubs in typeshed as having type
 `Any`. Note that pytype does not yet support the [PEP 561][pep-561-issue]
 conventions for distributing and packaging type information.
+
+## Why can't I iterate over a string?
+
+As of early August 2021, Pytype introduced a check that forbids matching `str`
+against the following types to prevent a common accidental bug:
+
+*   `Iterable[str]`
+
+*   `Sequence[str]`
+
+*   `Collection[str]`
+
+*   `Container[str]`
+
+*   `Mapping[int, str]`
+
+*   _`str` continues to match against the general `Iterable[Any]`,
+    `Sequence[Any]`, etc._
+
+If you wish to iterate over the characters of a string, first pass it into the
+builtin `iter()` function or the `list()` constructor.
+
+If you are annotating a function parameter that expects both iterating over a
+single string **and** multiple strings, you can use `Union` to explicitly allow
+this. For example,
+
+```py
+def f(x: Union[str, Iterable[str]]): ...
+
+# Alternatively, if your function expects any kind of Iterable
+def g(x: Iterable[Any]): ...
+```
 
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility

@@ -64,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-07-27T18:24-07:00 -->
+<!-- Added by: rechen, at: 2021-08-05T17:23-07:00 -->
 
 <!--te-->
 
@@ -745,6 +745,9 @@ def f(x: int):
 f(42.0)  # wrong-arg-types
 ```
 
+If you are seeing a Non-Iterable String Error, please see
+[FAQ][pytype-faq].
+
 If you believe you are seeing this error due to a bug on pytype's end, see
 [this section][pyi-stub-files] for where the type information we use is located.
 
@@ -765,6 +768,7 @@ If you believe you are seeing this error due to a bug on pytype's end, see
 <!-- General references -->
 [pyi-stub-files]: user_guide.md#pytypes-pyi-stub-files
 [silencing-errors]: user_guide.md#silencing-errors
+[pytype-faq]: faq.md#why-cant-i-iterate-over-a-string
 
 <!-- References with different internal and external versions -->
 [new-bug]: https://github.com/google/pytype/issues/new
