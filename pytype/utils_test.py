@@ -1,5 +1,7 @@
 """Tests for utils.py."""
 
+import sys
+
 from pytype import utils
 import six
 
@@ -63,24 +65,20 @@ class UtilsTest(unittest.TestCase):
     self.assertIsNone(var.get())
 
   def test_version_from_string_int(self):
-    self.assertEqual(utils.version_from_string("2"), (2, 7))
+    self.assertEqual(utils.version_from_string("3"), sys.version_info[:2])
 
   def test_version_from_string_tuple(self):
-    self.assertEqual(utils.version_from_string("2.7"), (2, 7))
+    self.assertEqual(utils.version_from_string("3.7"), (3, 7))
 
-  def test_full_version_from_major2(self):
-    self.assertEqual(utils.full_version_from_major(2), (2, 7))
-
-  @unittest.skipUnless(six.PY3, "py3 minor version depends on host version")
-  def test_full_version_from_major3(self):
+  def test_full_version_from_major(self):
     major, _ = utils.full_version_from_major(3)
     self.assertEqual(major, 3)
 
   def test_normalize_version_int(self):
-    self.assertEqual(utils.normalize_version(2), (2, 7))
+    self.assertEqual(utils.normalize_version(3), sys.version_info[:2])
 
   def test_normalize_version_tuple(self):
-    self.assertEqual(utils.normalize_version((2, 7)), (2, 7))
+    self.assertEqual(utils.normalize_version((3, 7)), (3, 7))
 
   def test_validate_version(self):
     old = utils._VALIDATE_PYTHON_VERSION_UPPER_BOUND
@@ -98,7 +96,6 @@ class UtilsTest(unittest.TestCase):
 
   def test_parse_interpreter_version(self):
     test_cases = (
-        ("Python 2.7.8", (2, 7)),
         ("Python 3.6.3", (3, 6)),
         ("Python 3.6.4 :: Something custom (64-bit)", (3, 6)),
         ("[OS-Y 64-bit] Python 3.7.1", (3, 7)),

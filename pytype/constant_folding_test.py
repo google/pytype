@@ -30,9 +30,9 @@ def show_op(op):
   typ = literal(op.arg.typ)
   elements = op.arg.elements
   if isinstance(elements, dict):
-    elements = {k: literal(v) for k, v in elements.items()}
+    elements = {k: literal(v.typ) for k, v in elements.items()}
   elif elements:
-    elements = [literal(v) for v in elements]
+    elements = [literal(v.typ) for v in elements]
   return (op.line, typ, op.arg.value, elements)
 
 
@@ -280,9 +280,6 @@ class PyvalTest(TypeBuilderTestBase):
     _, defs = self.vm.run_program(src, "", maximum_depth=4)
     return defs
 
-  def assertNoPyval(self, val):
-    self.assertFalse(hasattr(val, "pyval"))
-
   def test_simple_list(self):
     defs = self._process("""
       a = [1, '2', 3]
@@ -294,7 +291,6 @@ class PyvalTest(TypeBuilderTestBase):
     self.assertPytd(b, "str")
     self.assertEqual(a.pyval[0].data[0].pyval, 1)
 
-  @test_utils.skipFromPy((3, 9), "assertNoPyval check fails in 3.9")
   def test_nested_list(self):
     defs = self._process("""
       a = [[1, '2', 3], [4, 5]]
@@ -308,7 +304,6 @@ class PyvalTest(TypeBuilderTestBase):
     self.assertPytd(a, f"List[Union[{t2}, {t1}]]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
-    self.assertNoPyval(a.pyval[0].data[0])
 
   def test_long_list(self):
     elts = ["  [1, 2],", "  ['a'],"] * 42
@@ -318,7 +313,15 @@ class PyvalTest(TypeBuilderTestBase):
     t1 = "List[int]"
     t2 = "List[str]"
     self.assertPytd(a, f"List[Union[{t1}, {t2}]]")
-    self.assertNoPyval(a)
+
+  def test_long_list_of_tuples(self):
+    elts = ["  (1, 2),", "  ('a', False),"] * 42
+    src = ["a = ["] + elts + ["]"]
+    defs = self._process("\n".join(src))
+    a = defs["a"].data[0]
+    t1 = "Tuple[int, int]"
+    t2 = "Tuple[str, bool]"
+    self.assertPytd(a, f"List[Union[{t1}, {t2}]]")
 
   def test_simple_map(self):
     defs = self._process("""
@@ -334,24 +337,46 @@ class PyvalTest(TypeBuilderTestBase):
     self.assertPytd(c, "str")
     self.assertEqual(a.pyval["b"].data[0].pyval, 1)
 
-  @test_utils.skipFromPy((3, 9), "assertNoPyval check fails in 3.9")
+  def test_boolean(self):
+    defs = self._process("""
+      a = {'b': False, 'c': True, 'd': None}
+    """)
+    a = defs["a"].data[0]
+    # pylint: disable=g-generic-assert
+    self.assertEqual(a.pyval["b"].data[0].pyval, False)
+    self.assertEqual(a.pyval["c"].data[0].pyval, True)
+    self.assertEqual(a.pyval["d"].data[0].pyval, None)
+    # pylint: enable=g-generic-assert
+
   def test_nested_map(self):
     defs = self._process("""
-      a = {'b': [1, '2', 3], 'c': {'x': 4}}
+      a = {'b': [1, '2', 3], 'c': {'x': 4, 'y': True}}
       b = a['b']
       c = a['c']
+      d = a['c']['x']
     """)
     a = defs["a"].data[0]
     b = defs["b"].data[0]
     c = defs["c"].data[0]
+    d = defs["d"].data[0]
     t1 = "List[Union[int, str]]"
-    t2 = "Dict[str, int]"
+    t2 = "Dict[str, Union[bool, int]]"
     self.assertPytd(a, f"Dict[str, Union[{t2}, {t1}]]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
-    self.assertNoPyval(a.pyval["b"].data[0])
-    # We create an empty pyval by default for abstract.Dict
-    self.assertFalse(a.pyval["c"].data[0].pyval)
+    self.assertPytd(d, "int")
+    # Check the shape of the nested pyvals (their contents need to be unpacked
+    # from variables).
+    self.assertEqual(len(a.pyval["b"].data[0].pyval), 3)
+    self.assertEqual(list(a.pyval["c"].data[0].pyval.keys()), ["x", "y"])
+
+  def test_deep_nesting(self):
+    defs = self._process("""
+      a = {'b': [1, {'c': 1, 'd': {'x': 4, 'y': ({'p': 4, q: 3}, 1)}}]}
+      b = a['b'][1]['d']['y'][0]['p']
+    """)
+    b = defs["b"].data[0]
+    self.assertPytd(b, "int")
 
   def test_long_map(self):
     elts = [f"  'k{i}': [1, 2]," for i in range(64)]
@@ -361,6 +386,34 @@ class PyvalTest(TypeBuilderTestBase):
     self.assertPytd(a, "Dict[str, List[int]]")
     self.assertFalse(a.pyval)
 
+  def test_long_map_with_tuple_keys(self):
+    elts = [f"  ({i}, True): 'a'," for i in range(64)]
+    src = ["a = {"] + elts + ["}"]
+    defs = self._process("\n".join(src))
+    a = defs["a"].data[0]
+    self.assertPytd(a, "Dict[Tuple[int, bool], str]")
+    self.assertFalse(a.pyval)
+
+  def test_nested_long_map(self):
+    # Elements in the long map should be collapsed to a single type.
+    # Elements not in the long map should have pyvals (specifically, the
+    # container with the long map in it should not be collapsed).
+    elts = [f"  'k{i}': [1, True]," for i in range(64)]
+    src = ["x = [1, {"] + elts + ["}, {'x': 2}]"]
+    src += ["a = x[0]", "b = x[1]", "c = x[2]"]
+    src += ["d = c['x']", "e = [b['k0'][1]]"]
+    defs = self._process("\n".join(src))
+    a = defs["a"].data[0]
+    b = defs["b"].data[0]
+    c = defs["c"].data[0]
+    d = defs["d"].data[0]
+    e = defs["e"].data[0]
+    self.assertPytd(a, "int")
+    self.assertPytd(b, "Dict[str, List[Union[bool, int]]]")
+    self.assertFalse(b.pyval)
+    self.assertPytd(c, "Dict[str, int]")
+    self.assertPytd(d, "int")
+    self.assertPytd(e, "List[Union[bool, int]]")
 
 if __name__ == "__main__":
   unittest.main()

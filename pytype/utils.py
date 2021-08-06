@@ -69,12 +69,12 @@ def version_from_string(version_string):
   return full_version_from_major(version_int)
 
 
+# TODO(b/195453869): There's no longer any reason to accept just a major
+# version, since all supported versions are Python 3.x.
 def full_version_from_major(major_version):
   """Get a (major, minor) Python version tuple from a major version int."""
   if major_version == sys.version_info.major:
     return sys.version_info[:2]
-  elif major_version == 2:
-    return (2, 7)
   else:
     raise UsageError(
         "Cannot infer Python minor version for major version %d. "
@@ -96,7 +96,7 @@ def validate_version(python_version):
     # case we get python_version via a different entry point.
     raise UsageError("python_version must be <major>.<minor>: %r" %
                      format_version(python_version))
-  elif python_version < (2, 7):
+  elif python_version <= (2, 7):
     raise UsageError("Python version %r is not supported." %
                      format_version(python_version))
   elif (2, 8) <= python_version < (3, 0):

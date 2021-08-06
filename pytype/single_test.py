@@ -220,6 +220,7 @@ class PytypeTest(test_base.UnitTest):
     single._run_pytype(options)
     self.assertTrue(os.path.isfile(outfile))
 
+  @test_base.skip("flaky; see b/195678773")
   def test_pickled_file_stableness(self):
     # Tests that the pickled format is stable under a constant PYTHONHASHSEED.
     l_1 = self.generate_pickled_simple_file("simple1.pickled")
@@ -302,13 +303,7 @@ class PytypeTest(test_base.UnitTest):
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
-  def test_generate_builtins_py2(self):
-    self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.py")
-    self.pytype_args["--python_version"] = "2.7"
-    self._run_pytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-
-  def test_generate_builtins_py3(self):
+  def test_generate_builtins(self):
     self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.py")
     self.pytype_args["--python_version"] = utils.format_version(
         utils.full_version_from_major(3))
@@ -540,11 +535,7 @@ class PytypeTest(test_base.UnitTest):
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
-  def test_builtins_determinism2(self):
-    f1, f2 = self._generate_builtins_twice("2.7")
-    self.assertBuiltinsPickleEqual(f1, f2)
-
-  def test_builtins_determinism3(self):
+  def test_builtins_determinism(self):
     f1, f2 = self._generate_builtins_twice(
         utils.format_version(utils.full_version_from_major(3)))
     self.assertBuiltinsPickleEqual(f1, f2)

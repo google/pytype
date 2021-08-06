@@ -45,13 +45,16 @@ MAX_VAR_SIZE = 64
 #    elements: A list or map of top-level types
 #    value: The concrete python value
 #
-#  'elements' is an intermediate structure that tracks individual typestructs
-#  for every element in a map or list. So e.g. for the constant
+#  'elements' is an intermediate structure that tracks individual folded
+#  constants for every element in a map or list. So e.g. for the constant
 #    {'x': [1, 2], 'y': 3}
 #  we would have
 #    typ = ('map', {str}, {('list', {int}), int})
 #    value = {'x': [1, 2], 'y': 3}
-#    elements = {'x': ('list', {int}), 'y': int}
+#    elements = {'x': <<[1, 2]>>, 'y': <<3>>}
+#  where <<x>> is the folded constant corresponding to x. This lets us
+#  short-circuit pyval tracking at any level in the structure and fall back to
+#  abstract types.
 #
 #  Note that while we could in theory just track the python value, and then
 #  construct 'typ' and 'elements' at the end, that would mean recursively
@@ -98,7 +101,7 @@ class _CollectionBuilder:
 
   def add(self, constant):
     self.types.add(constant.typ)
-    self.elements.append(constant.typ)
+    self.elements.append(constant)
     self.values.append(constant.value)
 
   def build(self):
@@ -123,7 +126,7 @@ class _MapBuilder:
     self.value_types.add(value.typ)
     self.keys.append(key.value)
     self.values.append(value.value)
-    self.elements[key.value] = value.typ
+    self.elements[key.value] = value
 
   def build(self):
     return _Map(
@@ -399,52 +402,51 @@ def build_folded_type(vm, state, const):
     """Create a constant purely to hold types for a recursive call."""
     return _Constant(t, None, None, const.op)
 
-  def build_pyval(state, typ, pyval):
-    if pyval and typ[0] in ('prim', 'tuple'):
-      return state, vm.convert.constant_to_var(pyval)
+  def build_pyval(state, const):
+    if const.value is not None and const.tag in ('prim', 'tuple'):
+      return state, vm.convert.constant_to_var(const.value)
     else:
-      return build_folded_type(vm, state, typeconst(typ))
+      return build_folded_type(vm, state, const)
 
-  def expand(state, types, pyvals):
+  def expand(state, elements):
     vs = []
-    pyvals = pyvals or [None for _ in types]
-    for t, p in zip(types, pyvals):
-      state, v = build_pyval(state, t, p)
+    for e in elements:
+      state, v = build_pyval(state, e)
       vs.append(v)
     return state, vs
 
-  def join(state, xs):
-    state, vs = expand(state, xs, None)
+  def join_types(state, ts):
+    xs = [typeconst(t) for t in ts]
+    state, vs = expand(state, xs)
     val = vm.convert.build_content(vs)
     return state, val
 
   def collect(state, convert_type, params):
-    state, t = join(state, params)
+    state, t = join_types(state, params)
     ret = vm.convert.build_collection_of_type(state.node, convert_type, t)
     return state, ret
 
-  def collect_tuple(state, params, pyvals):
-    state, vs = expand(state, params, pyvals)
+  def collect_tuple(state, elements):
+    state, vs = expand(state, elements)
     return state, vm.convert.build_tuple(state.node, vs)
 
-  def collect_list(state, params, elements, pyvals):
+  def collect_list(state, params, elements):
     if elements is not None and len(elements) < MAX_VAR_SIZE:
-      state, vs = expand(state, elements, pyvals)
+      state, vs = expand(state, elements)
       return state, vm.convert.build_list(state.node, vs)
     else:
       return collect(state, vm.convert.list_type, params)
 
-  def collect_map(state, params, elements, pyvals):
+  def collect_map(state, params, elements):
     m = vm.convert.build_map(state.node)
     if elements is not None and len(elements) < MAX_VAR_SIZE:
-      pyvals = pyvals or [None for _ in elements]
-      for (k, v), p in zip(elements.items(), pyvals):
+      for (k, v) in elements.items():
         k = vm.convert.constant_to_var(k)
-        state, v = build_pyval(state, v, p)
+        state, v = build_pyval(state, v)
         state = vm.store_subscr(state, m, k, v)
     else:
       k_types, v_types = params
-      state, v = join(state, v_types)
+      state, v = join_types(state, v_types)
       for t in k_types:
         state, k = build_folded_type(vm, state, typeconst(t))
         state = vm.store_subscr(state, m, k, v)
@@ -458,13 +460,18 @@ def build_folded_type(vm, state, const):
       val = vm.convert.primitive_class_instances[params]
       return state, val.to_variable(state.node)
   elif tag == 'list':
-    return collect_list(state, params, const.elements, const.value)
+    return collect_list(state, params, const.elements)
   elif tag == 'set':
     return collect(state, vm.convert.set_type, params)
   elif tag == 'tuple':
-    return collect_tuple(state, params, const.value)
+    # If we get a tuple without const.elements, construct it from the type.
+    # (e.g. this happens with a large dict with tuple keys)
+    if not const.elements:
+      elts = tuple(typeconst(t) for t in params)
+    else:
+      elts = const.elements
+    return collect_tuple(state, elts)
   elif tag == 'map':
-    pyvals = const.value and const.value.values()
-    return collect_map(state, params, const.elements, pyvals)
+    return collect_map(state, params, const.elements)
   else:
     assert False, ('Unexpected type tag:', const.typ)
