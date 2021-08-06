@@ -565,7 +565,7 @@ class ErrorLog(ErrorLogBase):
 
   def _print_noniterable_str_error(self, error):
     return (f"Note: {error.left_type.name} is not iterable by default. "
-            "Learn more: https://github.com/google/pytype/docs/faq.md#why-cant-i-iterate-over-a-string")
+            "Learn more: https://github.com/google/pytype/docs/faq.md#noniterable-strings")
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
