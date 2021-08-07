@@ -308,20 +308,34 @@ class PyvalTest(TypeBuilderTestBase):
   def test_long_list(self):
     elts = ["  [1, 2],", "  ['a'],"] * 42
     src = ["a = ["] + elts + ["]"]
+    src += ["b = a[0]", "c = a[1]", "d = [a[72]]"]
     defs = self._process("\n".join(src))
     a = defs["a"].data[0]
+    b = defs["b"].data[0]
+    c = defs["c"].data[0]
+    d = defs["d"].data[0]
     t1 = "List[int]"
     t2 = "List[str]"
-    self.assertPytd(a, f"List[Union[{t1}, {t2}]]")
+    self.assertPytd(a, "List[Any]")
+    self.assertPytd(b, t1)
+    self.assertPytd(c, t2)
+    self.assertPytd(d, "List[Any]")
 
   def test_long_list_of_tuples(self):
-    elts = ["  (1, 2),", "  ('a', False),"] * 42
+    elts = ["  (1, 2),", "  ('a', False),"] * 82
     src = ["a = ["] + elts + ["]"]
+    src += ["b = a[0]", "c = a[1]", "d = [a[72]]"]
     defs = self._process("\n".join(src))
     a = defs["a"].data[0]
+    b = defs["b"].data[0]
+    c = defs["c"].data[0]
+    d = defs["d"].data[0]
     t1 = "Tuple[int, int]"
     t2 = "Tuple[str, bool]"
     self.assertPytd(a, f"List[Union[{t1}, {t2}]]")
+    self.assertPytd(b, t1)
+    self.assertPytd(c, t2)
+    self.assertPytd(d, f"List[Union[{t1}, {t2}]]")
 
   def test_simple_map(self):
     defs = self._process("""
@@ -384,7 +398,6 @@ class PyvalTest(TypeBuilderTestBase):
     defs = self._process("\n".join(src))
     a = defs["a"].data[0]
     self.assertPytd(a, "Dict[str, List[int]]")
-    self.assertFalse(a.pyval)
 
   def test_long_map_with_tuple_keys(self):
     elts = [f"  ({i}, True): 'a'," for i in range(64)]
@@ -401,7 +414,7 @@ class PyvalTest(TypeBuilderTestBase):
     elts = [f"  'k{i}': [1, True]," for i in range(64)]
     src = ["x = [1, {"] + elts + ["}, {'x': 2}]"]
     src += ["a = x[0]", "b = x[1]", "c = x[2]"]
-    src += ["d = c['x']", "e = [b['k0'][1]]"]
+    src += ["d = c['x']", "e = [b['random'][1]]"]
     defs = self._process("\n".join(src))
     a = defs["a"].data[0]
     b = defs["b"].data[0]
@@ -410,7 +423,6 @@ class PyvalTest(TypeBuilderTestBase):
     e = defs["e"].data[0]
     self.assertPytd(a, "int")
     self.assertPytd(b, "Dict[str, List[Union[bool, int]]]")
-    self.assertFalse(b.pyval)
     self.assertPytd(c, "Dict[str, int]")
     self.assertPytd(d, "int")
     self.assertPytd(e, "List[Union[bool, int]]")
