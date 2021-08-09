@@ -28,7 +28,7 @@ class Test(test_base.TargetPython27FeatureTest):
     # Python 2-specific due to the iteritems call (which is required to trigger
     # use of TypeParameterInstance).
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.callbacks = {"": int}
         def call(self):
@@ -37,7 +37,7 @@ class Test(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Optional, Type
-      class Foo(object):
+      class Foo:
         callbacks = ...  # type: Dict[str, Type[int]]
         def __init__(self) -> None: ...
         def call(self) -> Optional[int]: ...

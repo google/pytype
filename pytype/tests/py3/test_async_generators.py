@@ -148,11 +148,11 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       async def func():
         return "str"
 
-      class AIterable(object):
+      class AIterable:
         def __aiter__(self):
           return self
 
-      class AIterator(object):
+      class AIterator:
         def __aiter__(self):
           return self
 
@@ -161,7 +161,7 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
             return 5
           raise StopAsyncIteration
 
-      class ACtxMgr(object):
+      class ACtxMgr:
         async def __aenter__(self):
           return 5
 
@@ -191,14 +191,14 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       _TAIterable = TypeVar('_TAIterable', bound=AIterable)
       _TAIterator = TypeVar('_TAIterator', bound=AIterator)
 
-      class ACtxMgr(object):
+      class ACtxMgr:
           def __aenter__(self) -> Coroutine[Any, Any, int]: ...
           def __aexit__(self, exc_type, exc_value, traceback) -> Coroutine[Any, Any, None]: ...
 
-      class AIterable(object):
+      class AIterable:
           def __aiter__(self: _TAIterable) -> _TAIterable: ...
 
-      class AIterator(object):
+      class AIterator:
           def __aiter__(self: _TAIterator) -> _TAIterator: ...
           def __anext__(self) -> Coroutine[Any, Any, int]: ...
 

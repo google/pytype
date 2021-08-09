@@ -159,7 +159,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       from typing import Awaitable, Generator
       import types
 
-      class BaseAwaitable(object):
+      class BaseAwaitable:
         def __iter__(self):
           return self
 
@@ -196,7 +196,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
       _TBaseAwaitable = TypeVar('_TBaseAwaitable', bound=BaseAwaitable)
 
-      class BaseAwaitable(object):
+      class BaseAwaitable:
           def __await__(self: _TBaseAwaitable) -> _TBaseAwaitable: ...
           def __iter__(self: _TBaseAwaitable) -> _TBaseAwaitable: ...
 
@@ -213,7 +213,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_invalid_awaitable(self):
     errors = self.CheckWithErrors("""
-      class A(object):
+      class A:
         pass
 
       async def fun():
@@ -223,7 +223,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_async_for_pyi(self):
     ty = self.Infer("""
-      class MyIter(object):
+      class MyIter:
         def __aiter__(self):
           return self
 
@@ -249,7 +249,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
       _TMyIter = TypeVar('_TMyIter', bound=MyIter)
 
-      class MyIter(object):
+      class MyIter:
           def __aiter__(self: _TMyIter) -> _TMyIter: ...
           def __anext__(self) -> Coroutine[Any, Any, Union[int, str]]: ...
 
@@ -259,14 +259,14 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_async_for_error(self):
     errors = self.CheckWithErrors("""
-      class Iter1(object):
+      class Iter1:
         pass
 
-      class Iter2(object):
+      class Iter2:
         def __aiter__(self):
           return self
 
-      class Iter3(object):
+      class Iter3:
         def __aiter__(self):
           return self
 
@@ -279,7 +279,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
           else:
             raise StopAsyncIteration
 
-      class Iter4(object):
+      class Iter4:
         def __aiter__(self):
           return self
 
@@ -313,7 +313,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       async def log(s):
         return s
 
-      class AsyncCtx(object):
+      class AsyncCtx:
         async def __aenter__(self):
           await log("__aenter__")
           return self
@@ -337,7 +337,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
       _T0 = TypeVar('_T0')
 
-      class AsyncCtx(object):
+      class AsyncCtx:
           def __aenter__(self) -> Coroutine[Any, Any, AsyncCtx]: ...
           def __aexit__(self, exc_type, exc, tb) -> Coroutine[Any, Any, None]: ...
           def func() -> None: ...
@@ -351,10 +351,10 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
   def test_async_with_error(self):
     # pylint: disable=anomalous-backslash-in-string
     errors = self.CheckWithErrors("""
-      class AsyncCtx1(object):
+      class AsyncCtx1:
         pass
 
-      class AsyncCtx2(object):
+      class AsyncCtx2:
         def __aenter__(self):
           return self
 
@@ -382,7 +382,7 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
 
         _TBaseAwaitable = TypeVar('_TBaseAwaitable', bound=BaseAwaitable)
 
-        class BaseAwaitable(object):
+        class BaseAwaitable:
           def __await__(self: _TBaseAwaitable) -> _TBaseAwaitable: ...
           def __iter__(self: _TBaseAwaitable) -> _TBaseAwaitable: ...
 
@@ -391,12 +391,12 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
           pass
 
 
-        class MyIter(object):
+        class MyIter:
           def __aiter__(self) -> MyIter: ...
           def __anext__(self) -> Coroutine[Any, Any, str]: ...
 
 
-        class AsyncCtx(object):
+        class AsyncCtx:
           def __aenter__(self) -> Coroutine[Any, Any, AsyncCtx]: ...
           def __aexit__(self, exc_type, exc, tb) -> Coroutine[Any, Any, None]: ...
           def func() -> None: ...

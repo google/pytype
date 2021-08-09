@@ -197,7 +197,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       from typing import NamedTuple
 
-      class baseClass(object):
+      class baseClass:
         x=5
         y=6
 
@@ -232,7 +232,7 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
             def _replace(self: _TSubNamedTuple,
                          **kwds: int) -> _TSubNamedTuple: ...
 
-        class baseClass(object):
+        class baseClass:
             x = ...  # type: int
             y = ...  # type: int
         """)

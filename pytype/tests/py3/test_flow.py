@@ -29,7 +29,7 @@ class FlowTest(test_base.TargetPython3BasicTest):
   def test_cfg_cycle_singlestep(self):
     self.Check("""
       import typing
-      class Foo(object):
+      class Foo:
         x = ...  # type: typing.Optional[int]
         def __init__(self):
           self.x = None

@@ -8,7 +8,7 @@ class TupleTest(test_base.TargetPython27FeatureTest):
 
   def test_iteration(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         mytuple = (1, "foo", 3j)
         def __getitem__(self, pos):
           return Foo.mytuple.__getitem__(pos)
@@ -16,7 +16,7 @@ class TupleTest(test_base.TargetPython27FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple, Union
-      class Foo(object):
+      class Foo:
         mytuple = ...  # type: Tuple[int, str, complex]
         def __getitem__(self, pos: int) -> Union[int, str, complex]: ...
       x = ...  # type: Union[int, str, complex]

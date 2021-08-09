@@ -1,4 +1,4 @@
-class C(object):
+class C:
     def f(self, x: e1) -> r1:
         pass
 

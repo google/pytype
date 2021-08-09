@@ -15,7 +15,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
 
   def test_type_parameter_instance_multiple_bindings(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         values = 42
       args = {A() if __random__ else True: ""}
       for x, y in sorted(args.iteritems()):
@@ -25,24 +25,24 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
 
   def test_type_parameter_instance_set_attr(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
-      class Bar(object):
+      class Bar:
         def bar(self):
           d = {42: Foo()}
           for _, foo in sorted(d.iteritems()):
             foo.x = 42
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         x = ...  # type: int
-      class Bar(object):
+      class Bar:
         def bar(self) -> None: ...
     """)
 
   def test_type_parameter_instance(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         values = 42
       args = {A(): ""}
       for x, y in sorted(args.iteritems()):
@@ -50,7 +50,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      class A(object):
+      class A:
         values = ...  # type: int
       args = ...  # type: Dict[A, str]
       x = ...  # type: A
@@ -73,7 +73,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
       class Meta(type):
         def __iter__(cls):
           return iter([])
-      class Foo(object):
+      class Foo:
         __metaclass__ = Meta
         def __iter__(self):
           return iter([])
@@ -87,7 +87,7 @@ class TestAttributesPython27FeatureTest(test_base.TargetPython27FeatureTest):
       class Meta(type):
         def __getitem__(cls, x):
           return 0
-      class Foo(object):
+      class Foo:
         __metaclass__ = Meta
         def __getitem__(self, x):
           return 0

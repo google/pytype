@@ -10,7 +10,7 @@ class TestSuperPython3Feature(test_base.TargetPython3FeatureTest):
   def test_super_without_args(self):
     ty = self.Infer("""
       from typing import Callable
-      class A(object):
+      class A:
         def m_a(self, x: int, y: int) -> int:
           return x + y
       class B(A):
@@ -40,7 +40,7 @@ class TestSuperPython3Feature(test_base.TargetPython3FeatureTest):
         f = c.m_c(x, y)
         return f(c)
       i = call_my_c(i, i + 2)
-      class Outer(object):
+      class Outer:
         class InnerA(A):
           def m_a(self, x: int, y: int) -> int:
             return 2 * super().m_a(x, y)
@@ -50,7 +50,7 @@ class TestSuperPython3Feature(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
     from typing import Callable
-    class A(object):
+    class A:
       def m_a(self, x: int, y: int) -> int: ...
     class B(A):
       def m_b(self, x: int, y: int) -> int: ...
@@ -59,7 +59,7 @@ class TestSuperPython3Feature(test_base.TargetPython3FeatureTest):
     def call_m_c(c: C, x: int, y: int) -> int: ...
     def make_my_c() -> C: ...
     def call_my_c(x: int, y: int) -> int: ...
-    class Outer(object):
+    class Outer:
       InnerA = ...  # type: type
     def call_inner(a) -> int: ...
     b = ...  # type: B
@@ -68,7 +68,7 @@ class TestSuperPython3Feature(test_base.TargetPython3FeatureTest):
 
   def test_super_without_args_error(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         def m(self):
           pass
       class B(A):

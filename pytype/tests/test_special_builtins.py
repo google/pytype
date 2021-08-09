@@ -27,7 +27,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
 
   def test_next_ambiguous(self):
     self.assertNoCrash(self.Check, """
-      class Foo(object):
+      class Foo:
         def a(self):
           self._foo = None
         def b(self):
@@ -55,7 +55,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
   def test_property_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Foo(object):
+        class Foo:
           def get_foo(self) -> int: ...
       """)
       ty = self.Infer("""
@@ -85,7 +85,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Union
-        class Foo(object):
+        class Foo:
           def get_foo(self) -> Union[str, int]: ...
       """)
       ty = self.Infer("""
@@ -185,7 +185,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
 
   def test_property_change(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.foo = 42
         @property
@@ -200,7 +200,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Annotated, Any, Tuple, Union
-      class Foo(object):
+      class Foo:
         foo = ...  # type: Union[int, str]
         bar = ...  # type: Annotated[int, 'property']
         def __init__(self) -> None: ...
@@ -209,7 +209,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
 
   def test_different_property_instances(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self._foo = 42 if __random__ else "hello world"
         @property
@@ -224,7 +224,7 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
 
   def test_property_on_class(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         x = 0
         @property
         def foo(self):

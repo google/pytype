@@ -26,14 +26,14 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_invalid_attribute(self):
     ty, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         pass
       def f():
         (3).parrot  # attribute-error[e]
         return "foo"
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         pass
 
       def f() -> str: ...
@@ -104,8 +104,8 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_nested_class_method_name_is_msg(self):
     errors = self.CheckWithErrors("""
-      class A(object):
-        class B(object):
+      class A:
+        class B:
           def f(self):
             pass
       A.B().f("oops")  # wrong-arg-count[e]
@@ -133,7 +133,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_invalid_iterator_from_import(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        class Codec(object):
+        class Codec:
             def __init__(self) -> None: ...
       """)
       _, errors = self.InferWithErrors("""
@@ -147,7 +147,7 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_invalid_iterator_from_class(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         pass
       def f():
         for row in A():  # attribute-error[e]
@@ -231,7 +231,7 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_super_error(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         def __init__(self):
           super(A, self, "foo").__init__()  # wrong-arg-count[e]
     """)
@@ -241,7 +241,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("modfoo.pyi", "")
       _, errors = self.InferWithErrors("""
-        class Foo(object):
+        class Foo:
           def __getattr__(self, name):
             return "attr"
         def f():
@@ -265,7 +265,7 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_attribute_error_getattribute(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def __getattribute__(self, name):
           return "attr"
       def f():
@@ -443,7 +443,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
-        class A(object):
+        class A:
           x = ...  # type: T
       """)
       _, errors = self.InferWithErrors("""
@@ -502,7 +502,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_invalid_parameters_on_method(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        class A(object):
+        class A:
           def __init__(self, x: int) -> None: ...
       """)
       _, errors = self.InferWithErrors("""
@@ -546,7 +546,7 @@ class ErrorTest(test_base.TargetIndependentTest):
 
   def test_bad_superclass(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         def f(self):
           return "foo"
 
@@ -559,7 +559,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   @test_base.skip("Need to type-check second argument to super")
   def test_bad_super_instance(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         pass
       class B(A):
         def __init__(self):
@@ -596,9 +596,9 @@ class ErrorTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
-        class A(object): ...
+        class A: ...
         class B(A): ...
-        class C(object): ...
+        class C: ...
         def f(x: Type[A]) -> bool: ...
       """)
       ty, errors = self.InferWithErrors("""
@@ -636,8 +636,8 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_mro_error(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        class A(object): ...
-        class B(object): ...
+        class A: ...
+        class B: ...
         class C(A, B): ...
         class D(B, A): ...
         class E(C, D): ...
@@ -718,7 +718,7 @@ class ErrorTest(test_base.TargetIndependentTest):
       """)
       _, errors = self.InferWithErrors("""
         import a
-        class A(object):
+        class A:
           def __getattribute__(self, name):
             return a.copy(self)
         x = A()()  # not-callable[e]
@@ -896,7 +896,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     _, errors = self.InferWithErrors("""
       list[0]  # not-indexable[e1]
       dict[1, 2]  # invalid-annotation[e2]  # invalid-annotation[e3]
-      class A(object): pass
+      class A: pass
       A[3]  # not-indexable[e4]
     """)
     self.assertErrorRegexes(errors, {
@@ -906,7 +906,7 @@ class ErrorTest(test_base.TargetIndependentTest):
   def test_reveal_type(self):
     _, errors = self.InferWithErrors("""
       reveal_type(42 or "foo")  # reveal-type[e1]
-      class Foo(object):
+      class Foo:
         pass
       reveal_type(Foo)  # reveal-type[e2]
       reveal_type(Foo())  # reveal-type[e3]

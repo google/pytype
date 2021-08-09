@@ -100,7 +100,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """)
       self.Check("""
         import foo
-        class Foo(object):
+        class Foo:
           def __init__(self):
             self.x = 42
         foo.foo(Foo).x
@@ -116,7 +116,7 @@ class MatchTest(test_base.TargetIndependentTest):
       """)
       self.Check("""
         import foo
-        class Foo(object):
+        class Foo:
           def __init__(self):
             self.x = 42
         v = foo.foo(Foo)
@@ -129,7 +129,7 @@ class MatchTest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         from typing import Any
         class Foo(Any): pass
-        class Bar(object): pass
+        class Bar: pass
         def f(x: Bar) -> None: ...
       """)
       self.Check("""

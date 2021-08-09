@@ -8,7 +8,7 @@ class SliceTest(test_base.TargetPython3FeatureTest):
 
   def test_custom_getslice(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __getitem__(self, index):
           return index
       x = Foo()
@@ -21,7 +21,7 @@ class SliceTest(test_base.TargetPython3FeatureTest):
       g = x[1:2:]
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def __getitem__(self, index: slice) -> slice: ...
       x = ...  # type: Foo
       a = ...  # type: slice

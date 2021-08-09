@@ -9,7 +9,7 @@ class SolverTests(test_base.TargetIndependentTest):
 
   def test_ambiguous_attr(self):
     ty = self.Infer("""
-      class Node(object):
+      class Node:
           children = ()
           def __init__(self):
               self.children = []
@@ -18,7 +18,7 @@ class SolverTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
     from typing import List, Tuple, Union
-    class Node(object):
+    class Node:
       children = ...  # type: Union[List[nothing, ...], Tuple[()]]
       def __init__(self) -> None: ...
     """)
@@ -87,14 +87,14 @@ class SolverTests(test_base.TargetIndependentTest):
 
   def test_optional_params_is_subclass(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, *types):
           self.types = types
         def bar(self, val):
           return issubclass(val, self.types)
     """)
     self.assertTypesMatchPytd(ty, """
-    class Foo(object):
+    class Foo:
       def __init__(self, *types) -> NoneType: ...
       types = ...  # type: tuple
       def bar(self, val) -> bool: ...
@@ -102,14 +102,14 @@ class SolverTests(test_base.TargetIndependentTest):
 
   def test_optional_params_isinstance(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, *types):
           self.types = types
         def bar(self, val):
           return isinstance(val, self.types)
     """)
     self.assertTypesMatchPytd(ty, """
-    class Foo(object):
+    class Foo:
       def __init__(self, *types) -> NoneType: ...
       types = ...  # type: tuple
       def bar(self, val) -> bool: ...
@@ -117,15 +117,15 @@ class SolverTests(test_base.TargetIndependentTest):
 
   def test_nested_class(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def f(self):
-          class Foo(object):
+          class Foo:
             pass
           return Foo()
     """)
     self.assertTypesMatchPytd(ty, """
     from typing import Any
-    class Foo(object):
+    class Foo:
       def f(self) -> Any: ...
     """)
 
@@ -235,7 +235,7 @@ class SolverTests(test_base.TargetIndependentTest):
 
   def test_nested_list_in_class(self):
     ty = self.Infer("""
-      class Container(object):
+      class Container:
         def __init__(self):
           self.foo = [[]]
           self.bar = []
@@ -253,7 +253,7 @@ class SolverTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      class Container(object):
+      class Container:
         foo = ...  # type: List[List[int, ...], ...]
         bar = ...  # type: List[int, ...]
         def __init__(self) -> None: ...

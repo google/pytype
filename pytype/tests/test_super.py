@@ -9,41 +9,41 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_set_attr(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def foo(self, name, value):
           super(Foo, self).__setattr__(name, value)
     """)
 
   def test_str(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def foo(self, name, value):
           super(Foo, self).__str__()
     """)
 
   def test_get(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def foo(self, name, value):
           super(Foo, self).__get__(name)
     """)
 
   def test_inherited_get(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __get__(self, obj, objtype):
           return 42
       class Bar(Foo):
         def __get__(self, obj, objtype):
           return super(Bar, self).__get__(obj, objtype)
-      class Baz(object):
+      class Baz:
         x = Bar()
       Baz().x + 1
     """)
 
   def test_inherited_get_grandparent(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __get__(self, obj, objtype):
           return 42
       class Mid(Foo):
@@ -51,29 +51,29 @@ class SuperTest(test_base.TargetIndependentTest):
       class Bar(Mid):
         def __get__(self, obj, objtype):
           return super(Bar, self).__get__(obj, objtype)
-      class Baz(object):
+      class Baz:
         x = Bar()
       Baz().x + 1
     """)
 
   def test_inherited_get_multiple(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __get__(self, obj, objtype):
           return 42
-      class Quux(object):
+      class Quux:
         pass
       class Bar(Quux, Foo):
         def __get__(self, obj, objtype):
           return super(Bar, self).__get__(obj, objtype)
-      class Baz(object):
+      class Baz:
         x = Bar()
       Baz().x + 1
     """)
 
   def test_set(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def foo(self, name, value):
           super(Foo, self).__set__(name, value)  # attribute-error[e]
     """)
@@ -81,7 +81,7 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_inherited_set(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.foo = 1
         def __set__(self, name, value):
@@ -97,24 +97,24 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_init(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def foo(self, name, value):
           super(Foo, self).__init__()
     """)
 
   def test_getattr(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def hello(self, name):
           getattr(super(Foo, self), name)
     """)
 
   def test_getattr_multiple_inheritance(self):
     self.Check("""
-      class X(object):
+      class X:
         pass
 
-      class Y(object):
+      class Y:
         bla = 123
 
       class Foo(X, Y):
@@ -124,7 +124,7 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_getattr_inheritance(self):
     self.Check("""
-      class Y(object):
+      class Y:
         bla = 123
 
       class Foo(Y):
@@ -134,7 +134,7 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_isinstance(self):
     self.Check("""
-      class Y(object):
+      class Y:
         pass
 
       class Foo(Y):
@@ -144,7 +144,7 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_call_super(self):
     _, errorlog = self.InferWithErrors("""
-      class Y(object):
+      class Y:
         pass
 
       class Foo(Y):
@@ -155,12 +155,12 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_super_type(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         pass
       x = super(type, A)
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         pass
       x = ...  # type: super
     """)
@@ -168,7 +168,7 @@ class SuperTest(test_base.TargetIndependentTest):
   def test_super_with_ambiguous_base(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Grandparent(object):
+        class Grandparent:
           def f(self) -> int: ...
       """)
       ty = self.Infer("""
@@ -219,7 +219,7 @@ class SuperTest(test_base.TargetIndependentTest):
     self.Check("""
       def decorate(cls):
         return __any_object__
-      class Parent(object):
+      class Parent:
         def Hello(self):
           pass
       @decorate
@@ -230,7 +230,7 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_super_set_attr(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           super(Foo, self).foo = 42  # not-writable[e]
     """)
@@ -238,7 +238,7 @@ class SuperTest(test_base.TargetIndependentTest):
 
   def test_super_subclass_set_attr(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object): pass
+      class Foo: pass
       class Bar(Foo):
         def __init__(self):
           super(Bar, self).foo = 42  # not-writable[e]
@@ -269,7 +269,7 @@ class SuperTest(test_base.TargetIndependentTest):
   @test_base.skip("pytype thinks the two Foo classes are the same")
   def test_duplicate_class_names(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __new__(self, *args, **kwargs):
           typ = type('Foo', (Foo,), {})
           return super(Foo, typ).__new__(typ)

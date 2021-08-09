@@ -41,13 +41,13 @@ class TestExceptions(test_base.TargetPython27FeatureTest):
   # b/78654300
   def test_type_self(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, _):  # Add an arg so __init__ isn't optimized away.
           if type(self) is Foo:
             raise ValueError()
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def __init__(self, _) -> None: ...
     """)
 

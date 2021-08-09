@@ -76,7 +76,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_class_sanity(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.x = 1
 
@@ -97,7 +97,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       x1 = ...  # type: int
       x2 = ...  # type: float
       y = ...  # type: int
-      class A(object):
+      class A:
         x = ...  # type: float
         def __init__(self) -> None : ...
         def get_x(self) -> Union[float, int]: ...
@@ -181,7 +181,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_inheritance(self):
     ty = self.Infer("""
-      class Base(object):
+      class Base:
         def get_suffix(self):
             return u""
 
@@ -201,7 +201,7 @@ class MethodsTest(test_base.TargetIndependentTest):
   def test_property(self):
     ty = self.Infer(
         """
-      class A(object):
+      class A:
         @property
         def my_property(self):
           return 1
@@ -218,7 +218,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_explicit_property(self):
     ty = self.Infer("""
-      class B(object):
+      class B:
         def _my_getter(self):
           return 1
         def _my_setter(self):
@@ -234,7 +234,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_inherited_property(self):
     self.Check("""
-      class A(object):
+      class A:
         @property
         def bar(self):
           return 42
@@ -521,12 +521,12 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_starargs_pass_through(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, *args, **kwargs):
           super(Foo, self).__init__(*args, **kwargs)
     """)
     self.assertTypesMatchPytd(ty, """
-    class Foo(object):
+    class Foo:
       def __init__(self, *args, **kwargs) -> NoneType: ...
     """)
 
@@ -564,13 +564,13 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_starstar_deep(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, **kwargs):
           self.kwargs = kwargs
     """)
     self.assertTypesMatchPytd(ty, """
     from typing import Any
-    class Foo(object):
+    class Foo:
       def __init__(self, **kwargs) -> NoneType: ...
       kwargs = ...  # type: dict[str, Any]
     """)
@@ -662,7 +662,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_define_classmethod(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         @classmethod
         def myclassmethod(*args):
           return 3
@@ -675,7 +675,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_classmethod_smoke(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         @classmethod
         def mystaticmethod(x, y):
           return x + y
@@ -684,7 +684,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_staticmethod_smoke(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         @staticmethod
         def mystaticmethod(x, y):
           return x + y
@@ -693,7 +693,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_classmethod(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         @classmethod
         def myclassmethod(cls):
           return 3
@@ -703,7 +703,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
-      class A(object):
+      class A:
         @classmethod
         def myclassmethod(cls: Type[A]) -> int: ...
       def f() -> int: ...
@@ -711,7 +711,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_inherited_classmethod(self):
     self.Check("""
-      class A(object):
+      class A:
         @classmethod
         def myclassmethod(cls):
           return 3
@@ -723,7 +723,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_staticmethod(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         @staticmethod
         def mystaticmethod(x, y):
           return x + y
@@ -735,7 +735,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_simple_staticmethod(self):
     ty = self.Infer("""
-      class MyClass(object):
+      class MyClass:
         @staticmethod
         def static_method():
           return None
@@ -754,7 +754,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_lookup(self):
     ty = self.Infer("""
-      class Cloneable(object):
+      class Cloneable:
           def __init__(self):
             pass
 
@@ -770,24 +770,24 @@ class MethodsTest(test_base.TargetIndependentTest):
   @test_base.skip("pytype thinks 'clone' returns a TypeVar(bound=Cloneable)")
   def test_simple_clone(self):
     ty = self.Infer("""
-      class Cloneable(object):
+      class Cloneable:
         def clone(self):
           return Cloneable()
     """)
     self.assertTypesMatchPytd(ty, """
-      class Cloneable(object):
+      class Cloneable:
         def clone(self) -> Cloneable: ...
     """)
 
   def test_decorator(self):
     ty = self.Infer("""
-      class MyStaticMethodDecorator(object):
+      class MyStaticMethodDecorator:
         def __init__(self, func):
           self.__func__ = func
         def __get__(self, obj, cls):
           return self.__func__
 
-      class A(object):
+      class A:
         @MyStaticMethodDecorator
         def mystaticmethod(x, y):
           return x + y
@@ -822,7 +822,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_register(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
       def f():
         lookup = {}
@@ -833,27 +833,27 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_copy_method(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def mymethod(self, x, y):
           return 3
       myfunction = Foo.mymethod
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def mymethod(self, x, y) -> int: ...
       def myfunction(self: Foo, x, y) -> int: ...
     """)
 
   def test_assign_method(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
       def myfunction(self, x, y):
         return 3
       Foo.mymethod = myfunction
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def mymethod(self, x, y) -> int: ...
       def myfunction(self: Foo, x, y) -> int: ...
     """)
@@ -863,7 +863,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       import os
       def f():
         pass
-      class Foo(object):
+      class Foo:
         def method(self):
           pass
       foo = Foo()
@@ -879,7 +879,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
     os = ...  # type: module
     def f() -> NoneType: ...
-    class Foo(object):
+    class Foo:
       def method(self) -> NoneType: ...
     foo = ...  # type: Foo
     a = ...  # type: int
@@ -929,7 +929,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_attribute_in_new(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __new__(cls, name):
           self = super(Foo, cls).__new__(cls)
           self.name = name
@@ -938,14 +938,14 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
-      class Foo(object):
+      class Foo:
         name = ...  # type: Any
         def __new__(cls: Type[_TFoo], name) -> _TFoo: ...
     """)
 
   def test_attributes_in_new_and_init(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __new__(cls):
           self = super(Foo, cls).__new__(cls)
           self.name = "Foo"
@@ -956,7 +956,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
-      class Foo(object):
+      class Foo:
         name = ...  # type: str
         nickname = ...  # type: int
         def __new__(cls: Type[_TFoo]) -> _TFoo: ...
@@ -965,7 +965,7 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_variable_product_complexity_limit(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __new__(cls, w, x, y, z):
           pass
       class B(A):
@@ -989,7 +989,7 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
-      class A(object):
+      class A:
         def __new__(cls, w, x, y, z) -> None: ...
       class B(A): ...
       class C(A): ...
@@ -1003,20 +1003,20 @@ class MethodsTest(test_base.TargetIndependentTest):
 
   def test_return_self(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __enter__(self):
           return self
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
-      class Foo(object):
+      class Foo:
         def __enter__(self: _TFoo) -> _TFoo: ...
     """)
 
   def test_attribute_in_inherited_new(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __new__(cls, name):
           self = super(Foo, cls).__new__(cls)
           self.name = name
@@ -1029,7 +1029,7 @@ class MethodsTest(test_base.TargetIndependentTest):
       from typing import Any, Type, TypeVar
       _TFoo = TypeVar("_TFoo", bound=Foo)
       _TBar = TypeVar("_TBar", bound=Bar)
-      class Foo(object):
+      class Foo:
         name = ...  # type: Any
         def __new__(cls: Type[_TFoo], name) -> _TFoo: ...
       class Bar(Foo):

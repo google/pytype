@@ -157,14 +157,14 @@ class BuiltinTests(test_base.TargetPython27FeatureTest):
 
   def test_map(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
 
       def f():
         return map(lambda x: x, [Foo()])
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         pass
 
       def f() -> list: ...

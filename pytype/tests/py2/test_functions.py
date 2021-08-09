@@ -18,7 +18,7 @@ class TestFunctions(test_base.TargetPython27FeatureTest):
       def f():
         return 3
 
-      class Foo(object):
+      class Foo:
         def match_method(self):
           return map(self.method, [])
         def match_function(self):
@@ -33,7 +33,7 @@ class TestFunctions(test_base.TargetPython27FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f() -> int: ...
-      class Foo(object):
+      class Foo:
         def match_method(self) -> List[nothing, ...]: ...
         def match_function(self) -> List[nothing, ...]: ...
         def match_pytd_function(self) -> List[nothing, ...]: ...

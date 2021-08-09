@@ -12,7 +12,7 @@ class DecoratorsTest(test_base.TargetPython27FeatureTest):
       def decorate(cls):
         return __any_object__
       @decorate
-      class Foo(object):
+      class Foo:
         def Hello(self):
           return self.Goodbye()  # attribute-error[e]
     """)

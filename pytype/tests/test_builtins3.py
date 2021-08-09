@@ -3,7 +3,6 @@
 File 3/3. Split into parts to enable better test parallelism.
 """
 
-
 from pytype import abstract_utils
 from pytype import file_utils
 from pytype.tests import test_base
@@ -413,7 +412,7 @@ class BuiltinTests3(test_base.TargetIndependentTest):
 
   def test_delattr(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __delattr__(self, name):
           super(Foo, self).__delattr__(name)
     """)

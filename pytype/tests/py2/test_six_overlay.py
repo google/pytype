@@ -31,7 +31,7 @@ class SixTests(test_base.TargetPython27FeatureTest):
       b = u''
       if isinstance(b, six.string_types):
         b = [b]
-      c = ''  # type: Text
+      c = ''  # type: str
       if isinstance(c, six.string_types):
         d = len(c)
     """)

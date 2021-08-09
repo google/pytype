@@ -8,7 +8,7 @@ class TracebackTest(test_base.TargetPython3BasicTest):
 
   def test_build_class(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def f(self, x: Bar):  # name-error[e]
           pass
     """)

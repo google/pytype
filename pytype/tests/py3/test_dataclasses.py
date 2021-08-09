@@ -1,4 +1,3 @@
-# Lint as: python3
 """Tests for the dataclasses overlay."""
 
 from pytype import file_utils
@@ -12,7 +11,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         z: str
@@ -21,7 +20,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         z: str
@@ -33,7 +32,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: 'Foo'
         y: str
     """)
@@ -41,7 +40,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: Foo
         y: str
         __dataclass_fields__: Dict[str, dataclasses.Field[Union[Foo, str]]]
@@ -53,7 +52,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: int
         y: int
         x: str = 'hello'
@@ -63,7 +62,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: str
         y: int
         __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
@@ -74,7 +73,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty, errors = self.InferWithErrors("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: str = 'hello'
         y: int = 10
         def x(self):  # annotation-type-mismatch[e]
@@ -84,7 +83,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: str
         y: int
         __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
@@ -97,7 +96,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass(init=False)
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         z: str
@@ -106,7 +105,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         z: str
@@ -117,7 +116,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass(init=True)
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         def __init__(self, a: bool):
@@ -128,7 +127,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         __dataclass_fields__: Dict[str, dataclasses.Field[int]]
@@ -140,7 +139,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import List
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: bool = dataclasses.field(default=True)
         y: List[int] = dataclasses.field(default_factory=list)
     """)
@@ -148,7 +147,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, List, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: List[int]
         __dataclass_fields__: Dict[str, dataclasses.Field[Union[bool, List[int]]]]
@@ -159,7 +158,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: bool = 10  # annotation-type-mismatch
     """)
 
@@ -167,7 +166,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: int = None  # annotation-type-mismatch
     """)
 
@@ -175,7 +174,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: bool = dataclasses.field(default=10)  # annotation-type-mismatch
     """)
 
@@ -183,7 +182,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.CheckWithErrors("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: bool = dataclasses.field(default_factory=set)  # annotation-type-mismatch
     """)
 
@@ -206,7 +205,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: bool = dataclasses.field(default=True)
         y: int = dataclasses.field(init=False)
     """)
@@ -214,7 +213,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         __dataclass_fields__: Dict[str, dataclasses.Field[int]]
@@ -225,7 +224,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         x: bool = dataclasses.field()
         y: int
     """)
@@ -233,7 +232,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         __dataclass_fields__: Dict[str, dataclasses.Field[int]]
@@ -243,8 +242,8 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
   def test_bad_default_param_order(self):
     self.CheckWithErrors("""
       import dataclasses
-      @dataclasses.dataclass()
-      class Foo(object):  # invalid-function-definition
+      @dataclasses.dataclass()  # invalid-function-definition
+      class Foo:
         x: int = 10
         y: str
     """)
@@ -255,7 +254,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Any
 
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         foo: Any = None
     """)
 
@@ -263,7 +262,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     self.Check("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         def foo(self):
           for field in dataclasses.fields(self):
             field.type()
@@ -273,7 +272,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass()
-      class Foo(object):
+      class Foo:
         w: float
         x: bool = dataclasses.field(default=True)
         y: int = dataclasses.field(init=False)
@@ -289,7 +288,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         w: float
         x: bool
         y: int
@@ -305,7 +304,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         w: float
         x: bool = dataclasses.field(default=True)
         y: int = dataclasses.field(init=False)
@@ -318,7 +317,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         w: float
         x: bool
         y: int
@@ -336,10 +335,10 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass
-      class A(object):
+      class A:
         a: int
       @dataclasses.dataclass
-      class B(object):
+      class B:
         b: str
       @dataclasses.dataclass
       class C(B, A):
@@ -349,12 +348,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Dict, Union
       dataclasses: module
       @dataclasses.dataclass
-      class A(object):
+      class A:
         a: int
         __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, a: int) -> None: ...
       @dataclasses.dataclass
-      class B(object):
+      class B:
         b: str
         __dataclass_fields__: Dict[str, dataclasses.Field[str]]
         def __init__(self, b: str) -> None: ...
@@ -579,7 +578,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       import dataclasses
 
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: ClassVar[int] = 10
         y: str = 'hello'
     """)
@@ -587,7 +586,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import ClassVar, Dict
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         y: str
         x: ClassVar[int]
         __dataclass_fields__: Dict[str, dataclasses.Field[str]]
@@ -663,7 +662,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import dataclasses
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         @property
@@ -674,7 +673,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
       from typing import Annotated, Dict
       dataclasses: module
       @dataclasses.dataclass
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         __dataclass_fields__: Dict[str, dataclasses.Field[int]]

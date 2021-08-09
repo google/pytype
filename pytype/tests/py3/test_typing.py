@@ -255,7 +255,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       import typing
       def f() -> typing.Any:
         pass
-      class Any(object):
+      class Any:
         pass
       def g() -> Any:
         pass
@@ -265,7 +265,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
       typing = ...  # type: module
       def f() -> typing.Any: ...
       def g() -> Any: ...
-      class Any(object):
+      class Any:
           pass
     """)
 
@@ -348,7 +348,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
     ty = self.Infer("""
       from typing import NewType
       MyInt = NewType('MyInt', int)
-      class A(object):
+      class A:
         pass
       MyA = NewType('MyA', A)
       MySpecialA = NewType('MySpecialA', MyA)
@@ -383,7 +383,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         pass
       class MyInt(int):
         def __init__(self, val: int): ...
@@ -565,10 +565,10 @@ class TypingTest(test_base.TargetPython3BasicTest):
     ty = self.Infer("""
       from typing import Type, Union
 
-      class Foo(object):
+      class Foo:
         def __getitem__(self, x) -> int:
           return 0
-      class Bar(object):
+      class Bar:
         def __getitem__(self, x) -> str:
           return ''
 
@@ -693,13 +693,13 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
   def test_classvar(self):
     ty = self.Infer("""
       from typing import ClassVar
-      class A(object):
+      class A:
         x: ClassVar[int] = 5
       print(A.x + 3)  # make sure using a ClassVar[int] as an int works
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import ClassVar
-      class A(object):
+      class A:
         x: ClassVar[int]
     """)
 

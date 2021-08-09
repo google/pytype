@@ -76,7 +76,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     _, errors = self.InferWithErrors("""
       from typing import Callable
 
-      class A(object):
+      class A:
         def f(self, x: int) -> bool:
           return __any_object__
       unbound = A.f
@@ -196,7 +196,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
   def test_anystr(self):
     self.Check("""
       from typing import AnyStr, Dict, Tuple
-      class Foo(object):
+      class Foo:
         def bar(self, x: Dict[Tuple[AnyStr], AnyStr]): ...
     """)
 

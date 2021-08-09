@@ -59,7 +59,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       from typing import Sized
       def f(x: Sized):
         pass
-      class Foo(object):
+      class Foo:
         pass
       def g(x):
         foo = Foo()
@@ -71,7 +71,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import Iterator, Iterable
 
-      class Foo(object):
+      class Foo:
         def __iter__(self) -> Iterator[int]:
           return iter([])
 
@@ -87,7 +87,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     _, errors = self.InferWithErrors("""
       from typing import Iterator, Iterable
 
-      class Foo(object):
+      class Foo:
         def __iter__(self) -> Iterator[str]:
           return iter([])
 
@@ -104,7 +104,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import Sequence, Union
 
-      class Foo(object):
+      class Foo:
         def __len__(self):
           return 0
         def __getitem__(self, x: Union[int, slice]) -> Union[int, Sequence[int]]:
@@ -121,7 +121,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     _, errors = self.InferWithErrors("""
       from typing import Sequence, Union
 
-      class Foo(object):
+      class Foo:
         def __len__(self):
           return 0
         def __getitem__(self, x: int) -> int:
@@ -138,7 +138,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_construct_dict_with_protocol(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __iter__(self):
           pass
       def f(x: Foo):
@@ -147,7 +147,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_method_on_superclass(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __iter__(self):
           pass
       class Bar(Foo):
@@ -175,7 +175,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
 
   def test_multiple_options(self):
     self.Check("""
-      class Bar(object):
+      class Bar:
         if __random__:
           def __iter__(self): return 1
         else:
@@ -188,7 +188,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     ty = self.Infer("""
       from typing import Iterable, Iterator, TypeVar
       T = TypeVar("T")
-      class Bar(object):
+      class Bar:
         def __getitem__(self, i: T) -> T:
           if i > 10:
             raise IndexError()
@@ -201,7 +201,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable, Iterator, TypeVar
       T = TypeVar("T")
-      class Bar(object):
+      class Bar:
         def __getitem__(self, i: T) -> T: ...
       T2 = TypeVar("T2")
       def f(s: Iterable[T2]) -> Iterator[T2]: ...
@@ -210,7 +210,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_iterable_iter(self):
     ty = self.Infer("""
       from typing import Iterable, Iterator, TypeVar
-      class Bar(object):
+      class Bar:
         def __iter__(self) -> Iterator:
           return iter([])
       T = TypeVar("T")
@@ -220,7 +220,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable, Iterator, TypeVar
-      class Bar(object):
+      class Bar:
         def __iter__(self) -> Iterator: ...
       T = TypeVar("T")
       def f(s: Iterable[T]) -> Iterator[T]: ...
@@ -230,7 +230,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
-        class Foo(object):
+        class Foo:
           def __getitem__(self, i: T) -> T: ...
       """)
       self.Check("""
@@ -245,7 +245,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
-        class Foo(object):
+        class Foo:
           def __iter__(self) -> Any: ...
       """)
       self.Check("""
@@ -259,7 +259,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_inherited_abstract_method_error(self):
     _, errors = self.InferWithErrors("""
       from typing import Iterator
-      class Foo(object):
+      class Foo:
         def __iter__(self) -> Iterator[str]:
           return __any_object__
         def next(self):
@@ -273,7 +273,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_reversible(self):
     self.Check("""
       from typing import Reversible
-      class Foo(object):
+      class Foo:
         def __reversed__(self):
           pass
       def f(x: Reversible):
@@ -284,7 +284,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_collection(self):
     self.Check("""
       from typing import Collection
-      class Foo(object):
+      class Foo:
         def __contains__(self, x):
           pass
         def __iter__(self):
@@ -306,7 +306,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_hashable(self):
     self.Check("""
       from typing import Hashable
-      class Foo(object):
+      class Foo:
         def __hash__(self):
           pass
       def f(x: Hashable):
@@ -326,7 +326,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
   def test_hash_constant(self):
     errors = self.CheckWithErrors("""
       from typing import Hashable
-      class Foo(object):
+      class Foo:
         __hash__ = None
       def f(x: Hashable):
         pass
@@ -376,7 +376,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       import collections
       from typing import Text
 
-      class _PortInterface(object):
+      class _PortInterface:
 
         def __init__(self):
           self._flattened_ports = collections.OrderedDict()
@@ -397,7 +397,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Appendable(Protocol):
         def append(self):
           pass
-      class MyAppendable(object):
+      class MyAppendable:
         def append(self):
           pass
       def f(x: Appendable):
@@ -412,7 +412,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Appendable(Protocol):
         def append(self):
           pass
-      class NotAppendable(object):
+      class NotAppendable:
         pass
       def f(x: Appendable):
         pass
@@ -434,7 +434,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
         import foo
-        class MyAppendable(object):
+        class MyAppendable:
           def append(self):
             pass
         def f(x: foo.Appendable):
@@ -454,7 +454,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""
         import foo
-        class NotAppendable(object):
+        class NotAppendable:
           pass
         def f(x: foo.Appendable):
           pass
@@ -479,7 +479,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""
         from foo import Mutable
-        class NotMutable(object):
+        class NotMutable:
           def remove(self):
             pass
         def f(x: Mutable):
@@ -495,7 +495,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
       class Appendable(Protocol):
         def append(self):
           pass
-      class Mixin(object):
+      class Mixin:
         def append(self):
           pass
       class Removable(Mixin, Appendable, Protocol):
@@ -508,7 +508,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         from foo import Removable
         def f(x: Removable):
           pass
-        class MyRemovable(object):
+        class MyRemovable:
           def remove(self):
             pass
         f(MyRemovable())
@@ -762,7 +762,7 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
   def test_inherited_abstract_method(self):
     self.Check("""
       from typing import Iterator
-      class Foo(object):
+      class Foo:
         def __iter__(self) -> Iterator[int]:
           return __any_object__
         def __next__(self):

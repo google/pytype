@@ -31,14 +31,14 @@ class SliceTest(test_base.TargetIndependentTest):
 
   def test_slice_getitem(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __getitem__(self, s):
           return s
       Foo()[:]
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      class Foo(object):
+      class Foo:
         def __getitem__(self, s: slice) -> slice: ...
     """)
 

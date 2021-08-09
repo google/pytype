@@ -25,13 +25,13 @@ class ClassesTest(test_base.TargetPython3BasicTest):
   def test_new_annotated_cls(self):
     ty = self.Infer("""
       from typing import Type
-      class Foo(object):
+      class Foo:
         def __new__(cls: Type[str]):
           return super(Foo, cls).__new__(cls)
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
-      class Foo(object):
+      class Foo:
         def __new__(cls: Type[str]) -> str: ...
     """)
 
@@ -39,7 +39,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import List
       MyType = List['Foo']
-      class Foo(object):
+      class Foo:
         def __init__(self, x):
           self.Create(x)
         def Create(self, x: MyType):
@@ -52,7 +52,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import List
       MyType = List['Foo']
-      class Foo(object):
+      class Foo:
         def __init__(self, x):
           self.Create(x)
         def Create(self, x: MyType):
@@ -64,7 +64,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     _, errors = self.InferWithErrors("""
       from typing import List
       MyType = List['Foo']
-      class Foo(object):
+      class Foo:
         def __init__(self, x):
           self.Create(x)
         def Create(self, x: MyType):
@@ -78,7 +78,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import List
       MyType = List['Foo']
-      class Foo(object):
+      class Foo:
         def __init__(self, x):
           self.Create(x)
         def Create(self, x):
@@ -93,8 +93,8 @@ class ClassesTest(test_base.TargetPython3BasicTest):
   def test_name_exists(self):
     self.Check("""
       from typing import Optional
-      class Foo(object): pass
-      class Bar(object):
+      class Foo: pass
+      class Bar:
         @staticmethod
         def Create(x: Optional[Foo] = None):
           return Bar(x)
@@ -165,7 +165,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
   def test_parent_init(self):
     errors = self.CheckWithErrors("""
       from typing import Sequence
-      class X(object):
+      class X:
         def __init__(self, obj: Sequence):
           pass
       class Y(X):
@@ -183,12 +183,12 @@ class ClassesTest(test_base.TargetPython3BasicTest):
 
   def test_instance_attribute(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self) -> None:
           self.bar = 42
     """, analyze_annotated=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         bar: int
         def __init__(self) -> None: ...
     """)
@@ -255,7 +255,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
     # A() hits maximum stack depth in python3.6
     ty = self.Infer("""
       def f():
-        class A(object): pass
+        class A: pass
         return {A: A()}
     """, quick=True, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
@@ -264,13 +264,13 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
 
   def test_type_change(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.__class__ = int
       x = "" % type(A())
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         def __init__(self) -> None: ...
       x = ...  # type: str
     """)
@@ -442,7 +442,7 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
   def test_py2_metaclass(self):
     errors = self.CheckWithErrors("""
       import abc
-      class Foo(object):  # ignored-metaclass[e]
+      class Foo:  # ignored-metaclass[e]
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def f(self) -> int: ...

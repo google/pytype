@@ -106,7 +106,7 @@ class DictTest(test_base.TargetIndependentTest):
     canonical = None
     for _ in range(10):  # increase the chance of finding non-determinism
       ty = self.Infer("""
-        class Foo(object):
+        class Foo:
           def __init__(self, filenames):
             self._dict = {}
             for filename in filenames:

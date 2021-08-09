@@ -1,6 +1,5 @@
 """Tests for handling GenericType."""
 
-
 from pytype import file_utils
 from pytype.tests import test_base
 

@@ -175,7 +175,7 @@ class TestGenerators(test_base.TargetIndependentTest):
 
   def test_generator_from_generator(self):
     self.assertNoCrash(self.Check, """
-      class Thing(object):
+      class Thing:
         RESOURCES = ('abc', 'def')
         def get_abc(self):
           return "ABC"
@@ -295,7 +295,7 @@ class TestFunctions(test_base.TargetIndependentTest):
 
   def test_calling_functions_with_generator_args(self):
     self.Check("""
-      class A(object):
+      class A:
         def next(self):
           raise StopIteration()
         def __iter__(self):
@@ -713,7 +713,7 @@ class TestFunctions(test_base.TargetIndependentTest):
       """)
       self.Check("""
         import foo
-        class A(object):
+        class A:
           bar = foo.bar
           def f(self):
            self.bar()
@@ -721,7 +721,7 @@ class TestFunctions(test_base.TargetIndependentTest):
 
   def test_interpreter_function_in_class(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         bar = lambda x: x
         def f(self):
           self.bar(42)  # wrong-arg-count[e]
@@ -838,7 +838,7 @@ class TestFunctions(test_base.TargetIndependentTest):
 
   def test_interpreter_function_defaults_on_class(self):
     self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self, a, b, c):
           self.a = a
           self.b = b
@@ -964,7 +964,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_functools_partial_class(self):
     self.Check("""
       import functools
-      class X(object):
+      class X:
         def __init__(self, a, b):
           pass
       PartialX = functools.partial(X, 0)
@@ -974,7 +974,7 @@ class TestFunctions(test_base.TargetIndependentTest):
   def test_functools_partial_class_kw(self):
     self.Check("""
       import functools
-      class X(object):
+      class X:
         def __init__(self, a, b=None):
           pass
       PartialX = functools.partial(X, 0)

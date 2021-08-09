@@ -107,7 +107,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
 
   def test_self_is_optional(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def f(self, x):
           # type: (int) -> None
           pass
@@ -117,14 +117,14 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
           pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def f(self, x: int) -> None: ...
         def g(self, x: int) -> None: ...
     """)
 
   def test_cls_is_optional(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         @classmethod
         def f(cls, x):
           # type: (int) -> None
@@ -136,7 +136,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
           pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         @classmethod
         def f(cls, x: int) -> None: ...
         @classmethod
@@ -145,26 +145,26 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
 
   def test_function_stararg(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, *args):
           # type: (int) -> None
           self.value = args[0]
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         value = ...  # type: int
         def __init__(self, *args: int) -> None: ...
     """)
 
   def test_function_starstararg(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, **kwargs):
           # type: (int) -> None
           self.value = kwargs['x']
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         value = ...  # type: int
         def __init__(self, **kwargs: int) -> None: ...
     """)
@@ -276,22 +276,22 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_class_attribute_comment(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         s = None  # type: str
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         s = ...  # type: str
     """)
 
   def test_instance_attribute_comment(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.s = None  # type: str
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         s = ...  # type: str
         def __init__(self) -> None: ...
     """)
@@ -376,14 +376,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_attribute_initialization(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.x = 42
       a = None  # type: A
       x = a.x
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
       a = ...  # type: A
@@ -409,7 +409,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     ty, errors = self.InferWithErrors("""
       a = None  # type: "A"
       b = None  # type: "Nonexistent"  # name-error[e]
-      class A(object):
+      class A:
         def __init__(self):
           self.x = 42
         def f(self):
@@ -417,7 +417,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
         def f(self) -> int: ...
@@ -428,13 +428,13 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_class_variable_forward_reference(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         a = None  # type: 'A'
         def __init__(self):
           self.x = 42
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         a: A
         x: int
         def __init__(self) -> None: ...
@@ -444,13 +444,13 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     ty = self.Infer("""
       a = None  # type: "A"
       x = a.x
-      class A(object):
+      class A:
         def __init__(self):
           self.x = 42
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
       a = ...  # type: A
@@ -460,7 +460,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def test_use_class_variable_forward_reference(self):
     # Attribute accesses for A().a all get resolved to Any (b/134706992)
     ty = self.Infer("""
-      class A(object):
+      class A:
         a = None  # type: 'A'
         def f(self):
           return self.a
@@ -472,7 +472,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
       _TA = TypeVar('_TA', bound=A)
-      class A(object):
+      class A:
         a: A
         def f(self: _TA) -> _TA: ...
       x: A
@@ -482,7 +482,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_class_variable_forward_reference_error(self):
     self.InferWithErrors("""
-      class A(object):
+      class A:
         a = None  # type: 'A'
       g = A().a.foo()  # attribute-error
     """)
@@ -559,28 +559,28 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_nested_comment_alias(self):
     ty = self.Infer("""
-      class A(object): pass
-      class B(object):
+      class A: pass
+      class B:
         C = A
         x = None  # type: C
       """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
-      class A(object): pass
-      class B(object):
+      class A: pass
+      class B:
         C = ...  # type: Type[A]
         x = ...  # type: A
       """)
 
   def test_nested_classes_comments(self):
     ty = self.Infer("""
-      class A(object):
-        class B(object): pass
+      class A:
+        class B: pass
         x = None  # type: B
       """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         B = ...  # type: type
         x = ...  # type: Any
       """)
@@ -626,14 +626,14 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     ty, errors = self.InferWithErrors("""
       from typing import Optional
       x = None  # type: "Optional[A]"
-      class A(object):
+      class A:
         a = 0
       y = x.a  # attribute-error[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional
       x: Optional[A]
-      class A(object):
+      class A:
         a: int
       y: int
     """)
@@ -642,13 +642,13 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
   def test_do_not_resolve_late_type_to_function(self):
     ty = self.Infer("""
       v = None  # type: "A"
-      class A(object):
+      class A:
         def A(self):
           pass
     """)
     self.assertTypesMatchPytd(ty, """
       v: A
-      class A(object):
+      class A:
         def A(self) -> None: ...
     """)
 
@@ -660,7 +660,7 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
 
   def test_bad_type_comment_in_constructor(self):
     self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.x = None  # type: "Bar"  # name-error
     """)

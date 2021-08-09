@@ -18,7 +18,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def test_annotated_self(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(x: int):
           pass  # invalid-annotation[e]
     """)
@@ -26,17 +26,17 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def test_late_annotated_self(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(x: "X"):
           pass  # invalid-annotation[e]
-      class X(object):
+      class X:
         pass
     """)
     self.assertErrorRegexes(errors, {"e": r"X.*x"})
 
   def test_attribute_with_annotated_self(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self: int):
           self.x = 3  # invalid-annotation[e]
         def foo(self):
@@ -46,7 +46,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
 
   def test_attribute_with_annotated_self_and_function_init(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self: int):
           self.x = 3  # invalid-annotation[e]
       def __init__(self: int):

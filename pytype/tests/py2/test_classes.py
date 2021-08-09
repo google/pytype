@@ -9,7 +9,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
 
   def test_type_change(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.__class__ = int
       # Setting __class__ makes the type ambiguous to pytype, so it thinks that
@@ -19,7 +19,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         def __init__(self) -> None: ...
       x = ...  # type: Any
     """)
@@ -68,7 +68,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       class A(type):
         def f(self):
           return 3.14
-      class X(object):
+      class X:
         __metaclass__ = A
       v = X.f()
     """)
@@ -86,15 +86,15 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     ty = self.Infer("""
       class A(type): pass
       X1 = type("X1", (), {"__metaclass__": A})
-      class X2(object):
+      class X2:
         __metaclass__ = type
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       class A(type): ...
-      class X1(object):
+      class X1:
         __metaclass__ = ...  # type: Type[A]
-      class X2(object):
+      class X2:
         __metaclass__ = ...  # type: Type[type]
     """)
 
@@ -108,7 +108,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
       """)
       ty = self.Infer("""
         import foo
-        class X(object):
+        class X:
           __metaclass__ = foo.MyMeta
           @foo.mymethod
           def f(self):
@@ -130,7 +130,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
     ty = self.Infer("""
       def MyMeta(name, bases, members):
         return type(name, bases, members)
-      class X(object):
+      class X:
         __metaclass__ = MyMeta
     """)
     self.assertTypesMatchPytd(ty, """
@@ -142,7 +142,7 @@ class ClassesTest(test_base.TargetPython27FeatureTest):
 
   def test_unknown_metaclass(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         __metaclass__ = __any_object__
         def foo(self):
           self.bar()

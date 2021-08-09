@@ -17,7 +17,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 
   def test_class_constant(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         x = None
         def f(self):
           return self.x.upper()
@@ -26,7 +26,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
   def test_class_constant_error(self):
     errors = self.CheckWithErrors("""
       x = None
-      class Foo(object):
+      class Foo:
         x = x.upper()  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
@@ -43,7 +43,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 
   def test_late_initialization(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.x = None
         def f(self):
@@ -53,7 +53,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Optional
-      class Foo(object):
+      class Foo:
         x = ...  # type: Optional[str]
         def __init__(self) -> None: ...
         def f(self) -> Any: ...
@@ -74,7 +74,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
   def test_pyi_attribute(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Foo(object):
+        class Foo:
           x = ...  # type: None
       """)
       self.Check("""
@@ -94,7 +94,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 
   def test_method_return_value(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def f(self):
           pass
       def g():
@@ -163,7 +163,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 
   def test_function_default(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self, v=None):
           v.upper()  # attribute-error[e]
       def f():
@@ -288,7 +288,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 
   def test_property(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self._dofoo = __random__
         @property
@@ -301,7 +301,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
 
   def test_isinstance(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def f(self):
           instance = None if __random__ else {}
           if instance is not None:
@@ -339,7 +339,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_simple_attribute(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def method1(self):
           self.a = 3
         def method2(self):
@@ -347,7 +347,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      class A(object):
+      class A:
         a = ...  # type: Union[complex, int]
         def method1(self) -> NoneType: ...
         def method2(self) -> NoneType: ...
@@ -355,7 +355,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_outside_attribute_access(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         pass
       def f1():
         A().a = 3
@@ -364,7 +364,7 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      class A(object):
+      class A:
         a = ...  # type: Union[complex, int]
       def f1() -> NoneType: ...
       def f2() -> NoneType: ...
@@ -372,14 +372,14 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_private(self):
     ty = self.Infer("""
-      class C(object):
+      class C:
         def __init__(self):
           self._x = 3
         def foo(self):
           return self._x
     """)
     self.assertTypesMatchPytd(ty, """
-      class C(object):
+      class C:
         _x = ...  # type: int
         def __init__(self) -> None: ...
         def foo(self) -> int: ...
@@ -387,14 +387,14 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_public(self):
     ty = self.Infer("""
-      class C(object):
+      class C:
         def __init__(self):
           self.x = 3
         def foo(self):
           return self.x
     """)
     self.assertTypesMatchPytd(ty, """
-      class C(object):
+      class C:
         x = ...  # type: int
         def __init__(self) -> None: ...
         def foo(self) -> int: ...
@@ -402,13 +402,13 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_crosswise(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           if id(self):
             self.b = B()
         def set_on_b(self):
           self.b.x = 3
-      class B(object):
+      class B:
         def __init__(self):
           if id(self):
             self.a = A()
@@ -416,12 +416,12 @@ class TestAttributes(test_base.TargetIndependentTest):
           self.a.x = 3j
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         b = ...  # type: B
         x = ...  # type: complex
         def __init__(self) -> None: ...
         def set_on_b(self) -> NoneType: ...
-      class B(object):
+      class B:
         a = ...  # type: A
         x = ...  # type: int
         def __init__(self) -> None: ...
@@ -430,16 +430,16 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_attr_with_bad_getattr(self):
     self.Check("""
-      class AttrA(object):
+      class AttrA:
         def __getattr__(self, name2):
           pass
-      class AttrB(object):
+      class AttrB:
         def __getattr__(self):
           pass
-      class AttrC(object):
+      class AttrC:
         def __getattr__(self, x, y):
           pass
-      class Foo(object):
+      class Foo:
         A = AttrA
         B = AttrB
         C = AttrC
@@ -451,25 +451,25 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_inherit_getattribute(self):
     ty = self.Infer("""
-      class MyClass1(object):
+      class MyClass1:
         def __getattribute__(self, name):
           return super(MyClass1, self).__getattribute__(name)
 
-      class MyClass2(object):
+      class MyClass2:
         def __getattribute__(self, name):
           return object.__getattribute__(self, name)
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class MyClass1(object):
+      class MyClass1:
         def __getattribute__(self, name) -> Any: ...
-      class MyClass2(object):
+      class MyClass2:
         def __getattribute__(self, name) -> Any: ...
     """)
 
   def test_getattribute(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __getattribute__(self, name):
           return 42
       a = A()
@@ -477,7 +477,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       x = a.x
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         x = ...  # type: str
         def __getattribute__(self, name) -> int: ...
       a = ...  # type: A
@@ -486,9 +486,9 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_getattribute_branch(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         x = "hello world"
-      class B(object):
+      class B:
         def __getattribute__(self, name):
           return False
       def f(x):
@@ -499,9 +499,9 @@ class TestAttributes(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         x = ...  # type: str
-      class B(object):
+      class B:
         def __getattribute__(self, name) -> bool: ...
       def f(x) -> Any: ...
     """)
@@ -527,13 +527,13 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_call(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __call__(self):
           return 42
       x = A()()
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         def __call__(self) -> int: ...
       x = ...  # type: int
     """)
@@ -541,24 +541,24 @@ class TestAttributes(test_base.TargetIndependentTest):
   @test_base.skip("Magic methods aren't computed")
   def test_call_computed(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __getattribute__(self, name):
           return int
       x = A().__call__()
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         def __getattribute__(self, name) -> int: ...
       x = ...  # type: int
     """)
 
   def test_has_dynamic_attributes(self):
     self.Check("""
-      class Foo1(object):
+      class Foo1:
         has_dynamic_attributes = True
-      class Foo2(object):
+      class Foo2:
         HAS_DYNAMIC_ATTRIBUTES = True
-      class Foo3(object):
+      class Foo3:
         _HAS_DYNAMIC_ATTRIBUTES = True
       Foo1().baz
       Foo2().baz
@@ -567,7 +567,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_has_dynamic_attributes_subclass(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         _HAS_DYNAMIC_ATTRIBUTES = True
       class Bar(Foo):
         pass
@@ -578,7 +578,7 @@ class TestAttributes(test_base.TargetIndependentTest):
   def test_has_dynamic_attributes_class_attr(self):
     # Only instance attributes are dynamic.
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         _HAS_DYNAMIC_ATTRIBUTES = True
       Foo.CONST  # attribute-error[e]
     """)
@@ -594,7 +594,7 @@ class TestAttributes(test_base.TargetIndependentTest):
       class Foo(six.with_metaclass(Metaclass, object)):
         pass
       @six.add_metaclass(Metaclass)
-      class Bar(object):
+      class Bar:
         pass
       Foo.CONST
       Foo().baz
@@ -605,7 +605,7 @@ class TestAttributes(test_base.TargetIndependentTest):
   def test_has_dynamic_attributes_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
-        class Foo(object):
+        class Foo:
           has_dynamic_attributes = True
       """)
       self.Check("""
@@ -671,7 +671,7 @@ class TestAttributes(test_base.TargetIndependentTest):
   def test_callable_return(self):
     self.Check("""
       from typing import Callable
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.x = 42
       v = None  # type: Callable[[], Foo]
@@ -680,10 +680,10 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_property_on_union(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.foo = 1
-      class B(object):
+      class B:
         def __init__(self):
           self.bar = 2
         @property
@@ -727,7 +727,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_bad_getitem(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __getitem__(self, x):
           return 0
       v = Foo() if __random__ else 42
@@ -738,7 +738,7 @@ class TestAttributes(test_base.TargetIndependentTest):
 
   def test_bad_contains(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __iter__(self):
           return iter([])
       v = Foo() if __random__ else 42

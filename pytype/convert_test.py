@@ -47,7 +47,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_convert_no_metaclass(self):
     ast = self._load_ast("a", """
-      class A(object): ...
+      class A: ...
     """)
     cls = self._convert_class("a.A", ast)
     self.assertIsNone(cls.cls)
@@ -255,7 +255,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_class_abstract_method(self):
     ast = self._load_ast("a", """
-      class A(object):
+      class A:
         @abstractmethod
         def f(self) -> int: ...
     """)
@@ -265,7 +265,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_class_inherited_abstract_method(self):
     ast = self._load_ast("a", """
-      class A(object):
+      class A:
         @abstractmethod
         def f(self) -> int: ...
       class B(A): ...
@@ -276,7 +276,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_class_override_abstract_method(self):
     ast = self._load_ast("a", """
-      class A(object):
+      class A:
         @abstractmethod
         def f(self) -> int: ...
       class B(A):
@@ -288,7 +288,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_class_override_abstract_method_still_abstract(self):
     ast = self._load_ast("a", """
-      class A(object):
+      class A:
         @abstractmethod
         def f(self) -> int: ...
       class B(A):
@@ -301,7 +301,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_parameterized_class_abstract_method(self):
     ast = self._load_ast("a", """
-      class A(object):
+      class A:
         @abstractmethod
         def f(self) -> int: ...
     """)

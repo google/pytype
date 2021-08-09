@@ -69,7 +69,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
 
   def test_isinstance2(self):
     ty = self.Infer("""
-      class Bar(object):
+      class Bar:
         def foo(self):
           return isinstance(self, Baz)
 
@@ -77,7 +77,7 @@ class BuiltinTests(test_base.TargetIndependentTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-    class Bar(object):
+    class Bar:
       def foo(self) -> bool: ...
 
     class Baz(Bar):
@@ -353,20 +353,20 @@ class BuiltinTests(test_base.TargetIndependentTest):
 
   def test_setattr(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, x):
           for attr in x.__dict__:
             setattr(self, attr, getattr(x, attr))
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def __init__(self, x) -> NoneType: ...
     """)
 
   def test_array_smoke(self):
     ty = self.Infer("""
       import array
-      class Foo(object):
+      class Foo:
         def __init__(self):
           array.array('i')
     """)
@@ -375,13 +375,13 @@ class BuiltinTests(test_base.TargetIndependentTest):
   def test_array(self):
     ty = self.Infer("""
       import array
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.bar = array.array('i', [1, 2, 3])
     """)
     self.assertTypesMatchPytd(ty, """
       array = ...  # type: module
-      class Foo(object):
+      class Foo:
         bar = ...  # type: array.array[int]
         def __init__(self) -> None: ...
     """)
@@ -399,19 +399,19 @@ class BuiltinTests(test_base.TargetIndependentTest):
   def test_os_path(self):
     ty = self.Infer("""
       import os
-      class Foo(object):
+      class Foo:
         bar = os.path.join('hello', 'world')
     """)
     ty.Lookup("Foo")  # smoke test
 
   def test_hasattr(self):
     ty = self.Infer("""
-      class Bar(object):
+      class Bar:
         pass
       a = hasattr(Bar, 'foo')
     """)
     self.assertTypesMatchPytd(ty, """
-    class Bar(object):
+    class Bar:
       pass
     a : bool
     """)

@@ -1,6 +1,5 @@
 """Tests for builtins.list."""
 
-
 from pytype.tests import test_base
 
 

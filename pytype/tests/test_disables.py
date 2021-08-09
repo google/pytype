@@ -36,7 +36,7 @@ class DisableTest(test_base.TargetIndependentTest):
       '''This is a docstring.
       def f(x):
         pass
-      class A(object):
+      class A:
         pass
       The above definitions should be ignored.
       '''

@@ -37,7 +37,7 @@ class TestUtils(parser_test_base.ParserTest):
 
       def f1() -> int: ...
 
-      class Class1(object):
+      class Class1:
         pass
     """)
     ast2 = self.Parse("""
@@ -45,7 +45,7 @@ class TestUtils(parser_test_base.ParserTest):
 
       def f2() -> int: ...
 
-      class Class2(object):
+      class Class2:
         pass
     """)
     expected = textwrap.dedent("""
@@ -55,10 +55,10 @@ class TestUtils(parser_test_base.ParserTest):
       def f1() -> int: ...
       def f2() -> int: ...
 
-      class Class1(object):
+      class Class1:
           pass
 
-      class Class2(object):
+      class Class2:
           pass
     """)
     combined = pytd_utils.Concat(ast1, ast2)
@@ -166,14 +166,14 @@ class TestUtils(parser_test_base.ParserTest):
       c = ...  # type: int
       def f(x: int) -> int: ...
       def f(x: float) -> float: ...
-      class A(object):
+      class A:
         pass
     """)
     ast2 = self.Parse("""
       c = ...  # type: float
       d = ...  # type: int
       def f(x: complex) -> complex: ...
-      class B(object):
+      class B:
         pass
     """)
     w = pytd_utils.WrapTypeDeclUnit(
@@ -187,9 +187,9 @@ class TestUtils(parser_test_base.ParserTest):
       def f(x: int) -> int: ...
       def f(x: float) -> float: ...
       def f(x: complex) -> complex: ...
-      class A(object):
+      class A:
         pass
-      class B(object):
+      class B:
         pass
     """)
     self.AssertSourceEquals(w, expected)
@@ -278,7 +278,7 @@ class TestUtils(parser_test_base.ParserTest):
 
       x = ...  # type: typing.List[str]
 
-      class MyClass(object):
+      class MyClass:
           List = ...  # type: Any
           x = ...  # type: typing.List[str]
     """), python_version=self.python_version)

@@ -18,7 +18,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def test_recursive_forward_reference(self):
     errorlog = self.CheckWithErrors("""
-      class X(object):
+      class X:
         def __init__(self, val: "X"):
           pass
       def f():
@@ -37,7 +37,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def test_use_varargs_and_kwargs(self):
     self.Check("""
-      class A(object):
+      class A:
         pass
       def f(*args: A, **kwargs: A):
         for arg in args:
@@ -132,7 +132,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
   def test_attribute_in_incomplete_instance(self):
     errorlog = self.CheckWithErrors("""
       from typing import List
-      class Foo(object):
+      class Foo:
         def __init__(self, other: "List[Foo]"):
           self.x = other[0].x  # okay
           # No "y" on List[Foo]
@@ -152,7 +152,7 @@ class CheckerTest(test_base.TargetPython3BasicTest):
 
   def test_bad_annotation_container(self):
     errorlog = self.CheckWithErrors("""
-      class A(object):
+      class A:
         pass
       def f(x: int[str]):  # not-indexable[e1]
         pass

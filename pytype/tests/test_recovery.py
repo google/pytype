@@ -89,7 +89,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
 
   def test_duplicate_identifier(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.foo = 3
         def foo(self):
@@ -97,7 +97,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         foo = ...  # type: Any
         def __init__(self) -> None: ...
     """)
@@ -105,7 +105,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
   def test_method_with_unknown_decorator(self):
     self.InferWithErrors("""
       from nowhere import decorator  # import-error
-      class Foo(object):
+      class Foo:
         @decorator
         def f():
           name_error  # name-error
@@ -113,7 +113,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
 
   def test_assert_in_constructor(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self._bar = "foo"
           assert False
@@ -124,7 +124,7 @@ class RecoveryTests(test_base.TargetIndependentTest):
   @test_base.skip("Line 7, in __str__: No attribute '_bar' on Foo'")
   def test_constructor_infinite_loop(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self._bar = "foo"
           while True: pass

@@ -1,6 +1,5 @@
 """Tests for inline annotations."""
 
-
 from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -220,13 +219,13 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_default_return(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def bar(self, x: float, default="") -> str:
           default.upper
           return default
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def bar(self, x: float, default=...) -> str: ...
     """)
 
@@ -334,7 +333,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_jump_into_class_through_annotation(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __init__(self) -> None:
           self.myset = set()
         def qux(self):
@@ -349,14 +348,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(a: "B"):
         return a
 
-      class B(object):
+      class B:
         pass
     """)
     self.Check("""
       def f(a) -> "B":
         return B()
 
-      class B(object):
+      class B:
         pass
     """)
 
@@ -365,7 +364,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(a) -> Bar:  # name-error[e]
         return Bar()
 
-      class Bar(object):
+      class Bar:
         pass
     """)
     self.assertErrorRegexes(errorlog, {"e": r"Bar"})
@@ -375,14 +374,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def f(a) -> "Foo":
         return Foo()
 
-      class Foo(object):
+      class Foo:
         pass
     """)
     _, errorlog = self.InferWithErrors("""
       def f(a: "Foo"):  # name-error[e]
         return B()
 
-      class B(object):
+      class B:
         pass
     """)
     self.assertErrorRegexes(errorlog, {"e": r"Foo"})
@@ -392,7 +391,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         def f() -> "Foo":
           return 1  # bad-return-type[e]
 
-        class Foo(object):
+        class Foo:
           pass
     """)
     # Error message along the lines: No attribute 'bar' on Foo
@@ -400,14 +399,14 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_confusing_forward_decl(self):
     _, errorlog = self.InferWithErrors("""
-        class Foo(object):
+        class Foo:
           def foo(self):
             return 4
 
         def f() -> "Foo":
           return Foo()
 
-        class Foo(object):
+        class Foo:
           def bar(self):
             return 2
 
@@ -419,7 +418,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_return_type_error(self):
     _, errors = self.InferWithErrors("""
-      class FooBar(object): pass
+      class FooBar: pass
       def f() -> FooBar:
         return 3  # bad-return-type[e]
     """, deep=True)
@@ -534,7 +533,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def test_skip_functions_with_annotations(self):
     ty = self.Infer("""
       _analyzed_baz = None
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self._executed_init = True
         def bar(self, x: int) -> None:
@@ -545,7 +544,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """, analyze_annotated=False)
     self.assertTypesMatchPytd(ty, """
       _analyzed_baz = ... # type: None
-      class Foo(object):
+      class Foo:
         # We expect to *not* see _analyzed_bar here, because it's an attribute
         # initialized by a function we're not analyzing.
         _executed_init = ...  # type: bool
@@ -556,12 +555,12 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_annotated_init(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self, x: str):
           self.x = x
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         x = ...  # type: str
         def __init__(self, x: str) -> None: ...
     """)
@@ -572,11 +571,11 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     self.Infer("""
       from typing import Union
 
-      class Container1(object):
+      class Container1:
         def __init__(self, value):
           self.value1 = value
 
-      class Container2(object):
+      class Container2:
         def __init__(self, value):
           self.value2 = value
 
@@ -702,7 +701,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_use_varargs_and_kwargs(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         pass
       def f(*args: A):
         return args[0]
@@ -712,7 +711,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       v2 = g()
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      class A(object): ...
+      class A: ...
       def f(*args: A) -> A: ...
       def g(**kwargs: A) -> A: ...
       v1 = ...  # type: A
@@ -721,7 +720,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_use_varargs_and_kwargs_in_forward_references(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def f(self, *args: "Foo", **kwargs: "Foo"):
           for a in args:
             pass
@@ -756,7 +755,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_match_late_annotation(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         def f(self, x: "A"):
           pass
       def f():
@@ -766,7 +765,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_recursive_forward_reference(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         def __init__(self, x: "A"):
           self.foo = x.foo
           f(x)  # wrong-arg-types[e1]
@@ -781,7 +780,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_module_level_forward_reference_error(self):
     errors = self.CheckWithErrors("""
-      class A(object):
+      class A:
         def f(self, x: "A"):
           pass
       A().f(42)  # wrong-arg-types[e]
@@ -790,7 +789,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_return_annotation1(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.x = 42
         @staticmethod
@@ -799,7 +798,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       x = A.New().x
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
         @staticmethod
@@ -809,7 +808,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_return_annotation2(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.x = 42
         @staticmethod
@@ -819,7 +818,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
         return A.New().x
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
         @staticmethod
@@ -849,7 +848,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     ty = self.Infer("""
       def new_x() -> 'X':
         return X()
-      class X(object):
+      class X:
         def __init__(self) -> None:
           self.foo = 1
       def get_foo() -> int:
@@ -859,7 +858,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       def new_x() -> X: ...
       def get_foo() -> int: ...
 
-      class X(object):
+      class X:
         foo = ...  # type: int
         def __init__(self) -> None: ...
     """)
@@ -883,7 +882,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       from typing import List
       def f(x: List["A"]) -> int:
         pass
-      class A(object):
+      class A:
         pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -892,7 +891,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
       def f(x: typing.List[A]) -> int: ...
 
-      class A(object): ...
+      class A: ...
     """)
 
   def test_type_alias_annotation(self):
@@ -902,7 +901,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       ListA = "List[A]"
       def f(x: "ListA") -> int:
         pass
-      class A(object):
+      class A:
         pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
@@ -911,7 +910,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
       ListA = ...  # type: str
       TypeA = ...  # type: str
       def f(x: typing.List[A]) -> int: ...
-      class A(object):
+      class A:
           pass
     """)
 
@@ -1060,7 +1059,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
   def test_fully_quoted_annotation(self):
     self.Check("""
       from typing import Optional
-      class A(object):
+      class A:
         OBJ = ()
         def __init__(self, parent: "Optional[A]"):
           self.parent = (self.OBJ, parent)
@@ -1079,7 +1078,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
   def test_late_annotation_non_name_error(self):
     self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         pass
       def f(x: "Foo.Bar"):  # attribute-error
         pass
@@ -1148,7 +1147,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
 
       _FilesMap = Dict[Tuple[int, int], int]
 
-      class ShardinfoGen(object):
+      class ShardinfoGen:
         def _GenerateFiles(self):
           def _GenerateService():
             d2f = {}  # type: _FilesMap

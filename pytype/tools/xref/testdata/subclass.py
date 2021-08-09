@@ -2,7 +2,7 @@
 
 #- @A defines/binding ClassA
 #- ClassA.node/kind class
-class A(object):
+class A:
   #- @foo defines/binding FnFoo
   #- FnFoo.node/kind function
   def foo(self, x):

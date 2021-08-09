@@ -303,7 +303,7 @@ class MatcherTest(MatcherTestBase):
 
   def test_bound_pytd_function_against_callable(self):
     instance = self._convert("""
-      class A(object):
+      class A:
         def f(self, x: int) -> bool: ...
     """, "A", as_instance=True)
     binding = instance.to_binding(self.vm.root_node)
@@ -390,7 +390,7 @@ class MatcherTest(MatcherTestBase):
   def test_protocol(self):
     left1 = self._convert_type("str", as_instance=True)
     left2 = self._convert("""
-      class A(object):
+      class A:
         def lower(self) : ...
     """, "A", as_instance=True)
     left3 = self._convert_type("int", as_instance=True)
@@ -402,7 +402,7 @@ class MatcherTest(MatcherTestBase):
   def test_protocol_iterator(self):
     left1 = self._convert_type("Iterator", as_instance=True)
     left2 = self._convert("""
-      class A(object):
+      class A:
         def __next__(self): ...
         def __iter__(self): ...
     """, "A", as_instance=True)
@@ -415,7 +415,7 @@ class MatcherTest(MatcherTestBase):
   def test_protocol_sequence(self):
     left1 = self._convert_type("list", as_instance=True)
     left2 = self._convert("""
-      class A(object):
+      class A:
         def __getitem__(self, i) : ...
         def __len__(self): ...
     """, "A", as_instance=True)
@@ -429,7 +429,7 @@ class MatcherTest(MatcherTestBase):
   def test_parameterized_protocol(self):
     left1 = self._convert("""
       from typing import Iterator
-      class A(object):
+      class A:
         def __iter__(self) -> Iterator[int] : ...
     """, "A", as_instance=True)
     left2 = self._convert_type("int", as_instance=True)

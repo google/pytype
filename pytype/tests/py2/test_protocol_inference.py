@@ -9,7 +9,7 @@ class ProtocolInferenceTest(test_base.TargetPython27FeatureTest):
   def test_workflow(self):
     self.options.tweak(protocols=True)
     ty = self.Infer("""
-      class ConfigParser(object):
+      class ConfigParser:
         def __init__(self, filename):
           self.filename = filename
         def read(self):
@@ -23,7 +23,7 @@ class ProtocolInferenceTest(test_base.TargetPython27FeatureTest):
       from typing import Union
       cp = ...  # type: ConfigParser
 
-      class ConfigParser(object):
+      class ConfigParser:
         def __init__(self, filename: Union[str, buffer, unicode]) -> NoneType: ...
         def read(self) -> str: ...
         filename = ...  # type: Union[str, buffer, unicode]
