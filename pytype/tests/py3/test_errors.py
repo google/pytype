@@ -362,13 +362,23 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
 class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
 
-  def test_noniterable_string_error(self):
+  def test_nis_wrong_arg_types(self):
     errors = self.CheckWithErrors("""
       from typing import Iterable
       def f(x: Iterable[str]): ...
       f("abc")  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"str is not iterable by default"})
+    self.assertErrorRegexes(errors,
+                            {"e": r"str does not match iterables by default"})
+
+  def test_nis_bad_return(self):
+    errors = self.CheckWithErrors("""
+      from typing import Iterable
+      def f() -> Iterable[str]:
+        return "abc" # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errors,
+                            {"e": r"str does not match iterables by default"})
 
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
