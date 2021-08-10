@@ -30,6 +30,23 @@ py_test(
     .test_data
 )
 
+py_library(
+  NAME
+    annotate_source
+  SRCS
+    annotate_source.py
+)
+
+py_test(
+  NAME
+    annotate_source_test
+  SRCS
+    annotate_source_test.py
+  DEPS
+    .annotate_source
+    .test_data
+)
+
 filegroup(
   NAME
     grammar
