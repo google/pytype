@@ -370,7 +370,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         # they have _HAS_DYNAMIC_ATTRIBUTES. But for enums, those markers should
         # apply to the whole class.
         if ((base.cls and base.cls.full_name != "enum.EnumMeta") or
-            any(a in base for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS)):
+            base.maybe_missing_members or base.has_dynamic_attributes()):
           cls.maybe_missing_members = True
           return
 
