@@ -1028,5 +1028,32 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
           self.x = a + b + c
     """)
 
+  @test_base.skip("Fails due to __getattr__ in enum.pytd")
+  def test_dynamic_base_enum(self):
+    self.Check("""
+      import enum
+      class DynBase(enum.Enum):
+        _HAS_DYNAMIC_ATTRIBUTES = True
+
+      class M(DynBase):
+        A = 1
+      M.B
+    """)
+
+  @test_base.skip("Fails due to __getattr__ in enum.pytd")
+  def test_dynamic_base_enum_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        class DynBase(enum.Enum):
+          _HAS_DYNAMIC_ATTRIBUTES = True
+      """)
+      self.Check("""
+        import foo
+        class M(foo.DynBase):
+          A = 1
+        M.B
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")
