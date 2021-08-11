@@ -17,8 +17,9 @@
       * [How do I get type information for third-party libraries?](#how-do-i-get-type-information-for-third-party-libraries)
       * [Why doesn't str match against string iterables? {#noniterable-strings}](#why-doesnt-str-match-against-string-iterables-noniterable-strings)
       * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
+      * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-08-10T21:16-07:00 -->
 
 <!--te-->
 
@@ -273,6 +274,35 @@ you feel like adding some, don't let a feeling of needing to add all stop you
 from adding whichever few you want. In many cases, you don't need to annotate
 everything and will have the most success annotating public code elements and
 complicated private code elements.
+
+## How do I annotate `*args` and `**kwargs`?
+
+Varargs (`*args`) and keyword arguments (`**kwargs`) should be annotated with
+the type of each individual argument.
+
+Yes:
+
+<!-- good -->
+```python
+def f(*args: int) -> int:
+  return sum(args)
+
+def g(**kwargs: int) -> int:
+  return sum(kwargs.values())
+```
+
+No:
+
+<!-- bad -->
+```python
+from typing import Mapping, Sequence
+
+def f(*args: Sequence[int]) -> int:
+  return sum(args)
+
+def g(**kwargs: Mapping[str, int]) -> int:
+  return sum(kwargs.values())
+```
 
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
