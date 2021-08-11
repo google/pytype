@@ -1,3 +1,13 @@
+Version 2021.08.11
+
+New features and updates:
+* Stop supporting target Python 2.
+* Enable constant folding, a performance optimization that significantly speeds
+  up analysis of large data structure literals.
+
+Bug fixes:
+* Replace ParamSpec.{args,kwargs} with Any.
+
 Version 2021.08.03
 
 New features and updates:
