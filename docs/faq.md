@@ -15,9 +15,10 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
       * [How do I get type information for third-party libraries?](#how-do-i-get-type-information-for-third-party-libraries)
-      * [Why can't I iterate over a string?](#why-cant-i-iterate-over-a-string)
+      * [Why doesn't str match against string iterables? {#noniterable-strings}](#why-doesnt-str-match-against-string-iterables-noniterable-strings)
+      * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
 
-<!-- Added by: rechen, at: 2021-08-05T17:23-07:00 -->
+<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
 
 <!--te-->
 
@@ -224,7 +225,7 @@ is, pip-installed) libraries that do not have stubs in typeshed as having type
 `Any`. Note that pytype does not yet support the [PEP 561][pep-561-issue]
 conventions for distributing and packaging type information.
 
-## Why can't I iterate over a string?
+## Why doesn't `str` match against string iterables? {#noniterable-strings}
 
 As of early August 2021, Pytype introduced a check that forbids matching `str`
 against the following types to prevent a common accidental bug:
@@ -239,11 +240,14 @@ against the following types to prevent a common accidental bug:
 
 *   `Mapping[int, str]`
 
-*   _`str` continues to match against the general `Iterable[Any]`,
-    `Sequence[Any]`, etc._
+NOTE: `str` continues to match against general iterables of type `Any` (e.g.,
+`Iterable[Any]`, `Sequence[Any]`, etc.).
 
-If you wish to iterate over the characters of a string, first pass it into the
-builtin `iter()` function or the `list()` constructor.
+If you wish to pass a string `s` into a function that expects a string iterable:
+
+*   To iterate over the characters of `s`, use `iter(s)` or `list(s)`.
+
+*   To create a list with `s` as the only element, use `[s]`.
 
 If you are annotating a function parameter that expects both iterating over a
 single string **and** multiple strings, you can use `Union` to explicitly allow
@@ -255,6 +259,20 @@ def f(x: Union[str, Iterable[str]]): ...
 # Alternatively, if your function expects any kind of Iterable
 def g(x: Iterable[Any]): ...
 ```
+
+## How can I automatically generate type annotations for an existing codebase?
+
+Rather than using generated type annotations, we suggest you embrace an
+incremental approach of adding type annotations. Don't let the perfect be the
+enemy of the good. While fully annotating your code will better realize the
+full benefits of pytype, pytype's inferencer is pretty powerful even with few
+or no type annotations.
+
+When starting out, you can add some type annotations now and others later, so if
+you feel like adding some, don't let a feeling of needing to add all stop you
+from adding whichever few you want. In many cases, you don't need to annotate
+everything and will have the most success annotating public code elements and
+complicated private code elements.
 
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
