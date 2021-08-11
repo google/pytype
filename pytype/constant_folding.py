@@ -167,6 +167,8 @@ class _Stack:
 
   def _pop_args(self, n):
     """Try to get n args off the stack for a BUILD call."""
+    # TODO(b/175443170): Handle the case of n = 0 - we currently back out of
+    # folding a constant that contains an empty list/map/fstring as an element.
     if len(self.stack) < n:
       # We have started a new block in the middle of constructing a literal
       # (e.g. due to an inline function call). Clear the stack, since the
@@ -216,6 +218,7 @@ class _Stack:
       self.push(_Constant(('prim', str), '', None, op))
     else:
       self.push(None)
+    return ret
 
   def build(self, python_type, op):
     collection = self.fold_args(op.arg, op)
@@ -274,10 +277,14 @@ class _FoldConstants:
         elif isinstance(op, opcodes.BUILD_SET):
           stack.build(set, op)
         elif isinstance(op, opcodes.FORMAT_VALUE):
+          fmt = None
           if op.arg & loadmarshal.FVS_MASK:
-            c = stack.pop()
-            c.op.folded = op
-          stack.build_str(1, op)
+            fmt = stack.pop()
+          if stack.build_str(1, op) and fmt:
+            # If we have {foo:fmt} in an fstring, fold fmt iff foo was folded.
+            fmt.op.folded = op
+          elif fmt:
+            stack.push(fmt)
         elif isinstance(op, opcodes.BUILD_STRING):
           stack.build_str(op.arg, op)
         elif isinstance(op, opcodes.BUILD_MAP):
