@@ -275,7 +275,8 @@ class _FoldConstants:
           stack.build(set, op)
         elif isinstance(op, opcodes.FORMAT_VALUE):
           if op.arg & loadmarshal.FVS_MASK:
-            stack.pop()
+            c = stack.pop()
+            c.op.folded = op
           stack.build_str(1, op)
         elif isinstance(op, opcodes.BUILD_STRING):
           stack.build_str(op.arg, op)
