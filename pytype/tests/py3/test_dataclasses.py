@@ -240,10 +240,12 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
   def test_bad_default_param_order(self):
+    # Note: explicitly inheriting from object keeps the line number of the error
+    # stable between Python versions.
     self.CheckWithErrors("""
       import dataclasses
-      @dataclasses.dataclass()  # invalid-function-definition
-      class Foo:
+      @dataclasses.dataclass()
+      class Foo(object):  # invalid-function-definition
         x: int = 10
         y: str
     """)

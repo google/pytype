@@ -148,10 +148,12 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
   def test_type_clash(self):
+    # Note: explicitly inheriting from object keeps the line number of the error
+    # stable between Python versions.
     self.CheckWithErrors("""
       import attr
-      @attr.s  # invalid-annotation
-      class Foo:
+      @attr.s
+      class Foo(object):  # invalid-annotation
         x = attr.ib(type=str) # type: int
         y = attr.ib(type=str, default="")  # type: int
       Foo(x="")  # should not report an error

@@ -182,10 +182,12 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_type_clash(self):
+    # Note: explicitly inheriting from object keeps the line number of the error
+    # stable between Python versions.
     self.CheckWithErrors("""
       import attr
-      @attr.s  # invalid-annotation
-      class Foo:
+      @attr.s
+      class Foo(object):  # invalid-annotation
         x : int = attr.ib(type=str)
     """)
 
@@ -457,10 +459,12 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
 
   def test_bad_default_param_order(self):
+    # Note: explicitly inheriting from object keeps the line number of the error
+    # stable between Python versions.
     self.CheckWithErrors("""
       import attr
-      @attr.s(auto_attribs=True)  # invalid-function-definition
-      class Foo:
+      @attr.s(auto_attribs=True)
+      class Foo(object):  # invalid-function-definition
         x: int = 10
         y: str
     """)
