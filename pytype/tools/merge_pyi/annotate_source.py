@@ -24,7 +24,7 @@ class TypingCollector(cst.CSTVisitor):
   def visit_ClassDef(self, node: cst.ClassDef) -> Optional[bool]:
     self.stack.append(node.name.value)
 
-  def leave_ClassDef(self, node: cst.ClassDef) -> None:
+  def leave_ClassDef(self, original_node: cst.ClassDef) -> None:
     self.stack.pop()
 
   def visit_FunctionDef(self, node: cst.FunctionDef) -> Optional[bool]:
@@ -33,7 +33,7 @@ class TypingCollector(cst.CSTVisitor):
     # pyi doesn't support inner functions, return False to stop the traversal.
     return False
 
-  def leave_FunctionDef(self, node: cst.FunctionDef) -> None:
+  def leave_FunctionDef(self, original_node: cst.FunctionDef) -> None:
     self.stack.pop()
 
 
