@@ -10,7 +10,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
   @test_base.skip("needs (re-)analyzing methods on subclasses")
   def test_subclass_attributes(self):
     ty = self.Infer("""
-      class Base(object):
+      class Base:
         def get_lineno(self):
           return self.lineno
       class Leaf(Base):
@@ -26,7 +26,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
 
   def test_class_attributes(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         pass
       class B(A):
         pass
@@ -49,7 +49,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
 
   def test_multiple_inheritance(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         x = 1
       class B(A):
         y = 4
@@ -87,7 +87,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
     # Test that even in the presence of multi-level inheritance,
     # we can still see attributes from "object".
     ty = self.Infer("""
-      class A(object):
+      class A:
         pass
       class B(A):
         pass
@@ -105,7 +105,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
 
   def test_mro(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def a(self):
           return 1
       class B(A):
@@ -133,7 +133,7 @@ class InheritanceTest(test_base.TargetIndependentTest):
 
   def test_ambiguous_base_class(self):
     self.Check("""
-      class A(object):
+      class A:
         pass
       class B(A):
         pass

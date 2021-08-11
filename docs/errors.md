@@ -64,7 +64,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-08-05T17:23-07:00 -->
+<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
 
 <!--te-->
 
@@ -766,9 +766,10 @@ If you believe you are seeing this error due to a bug on pytype's end, see
 [this section][pyi-stub-files] for where the type information we use is located.
 
 <!-- General references -->
+
 [pyi-stub-files]: user_guide.md#pytypes-pyi-stub-files
 [silencing-errors]: user_guide.md#silencing-errors
-[pytype-faq]: faq.md#why-cant-i-iterate-over-a-string
+[pytype-faq]: faq.md#noniterable-strings
 
 <!-- References with different internal and external versions -->
 [new-bug]: https://github.com/google/pytype/issues/new

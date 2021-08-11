@@ -4,6 +4,7 @@
 attrs>=21.2.0
 dataclasses; python_version < '3.7'
 importlab>=0.6.1
+libcst
 ninja>=1.10.0.post2
 pybind11>=2.6.0rc3
 pylint

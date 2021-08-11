@@ -19,7 +19,7 @@ class SixTests(test_base.TargetIndependentTest):
     self.Check("""
       import abc
       import six
-      class A(object):
+      class A:
         def __init__(self):
           self.foo = "hello"
       @six.add_metaclass(abc.ABCMeta)
@@ -37,10 +37,10 @@ class SixTests(test_base.TargetIndependentTest):
     self.Check("""
       import abc
       import six
-      class A(object):
+      class A:
         def __init__(self):
           self.foo = "hello"
-      class B(object):
+      class B:
         def bar(self):
           return 42
       class Foo(six.with_metaclass(abc.ABCMeta, A), B):
@@ -70,7 +70,7 @@ class SixTests(test_base.TargetIndependentTest):
         def __init__(self, *args):
           self.x = 42
       @six.add_metaclass(Foo)
-      class Bar(object):
+      class Bar:
         pass
       x1 = Bar.x
       x2 = Bar().x

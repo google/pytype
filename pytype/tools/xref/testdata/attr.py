@@ -2,7 +2,7 @@
 
 #- @A defines/binding ClassA
 #- ClassA.node/kind class
-class A(object):
+class A:
   #- @__init__ defines/binding FnInit
   #- @self defines/binding ArgSelf
   #- FnInit.node/kind function
@@ -21,7 +21,7 @@ class A(object):
 
 #- @B defines/binding ClassB
 #- ClassB.node/kind class
-class B(object):
+class B:
   def f(self, x):
     #- @bar ref AttrBar
     self.bar[x]

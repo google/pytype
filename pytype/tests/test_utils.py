@@ -1,4 +1,3 @@
-# Lint as: python3
 """Utility class and function for tests."""
 
 import collections
@@ -26,7 +25,7 @@ ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
 FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
 
 
-class FakeOpcode(object):
+class FakeOpcode:
   """Util class for generating fake Opcode for testing."""
 
   def __init__(self, filename, line, methodname):
@@ -43,7 +42,7 @@ def fake_stack(length):
           for i in range(length)]
 
 
-class OperatorsTestMixin(object):
+class OperatorsTestMixin:
   """Mixin providing utilities for operators tests."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
@@ -69,10 +68,10 @@ class OperatorsTestMixin(object):
   def check_binary(self, function_name, op):
     """Check the binary operator."""
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def {function_name}(self, unused_x):
           return 3j
-      class Bar(object):
+      class Bar:
         pass
       def f():
         return Foo() {op} Bar()
@@ -85,7 +84,7 @@ class OperatorsTestMixin(object):
   def check_unary(self, function_name, op, ret=None):
     """Check the unary operator."""
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def {function_name}(self):
           return 3j
       def f():
@@ -99,7 +98,7 @@ class OperatorsTestMixin(object):
   def check_reverse(self, function_name, op):
     """Check the reverse operator."""
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __{function_name}__(self, x):
           return 3j
       class Bar(Foo):
@@ -125,7 +124,7 @@ class OperatorsTestMixin(object):
   def check_inplace(self, function_name, op):
     """Check the inplace operator."""
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __{function_name}__(self, x):
           return 3j
       def f():
@@ -139,7 +138,7 @@ class OperatorsTestMixin(object):
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class InplaceTestMixin(object):
+class InplaceTestMixin:
   """Mixin providing a method to check in-place operators."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
@@ -158,7 +157,7 @@ class InplaceTestMixin(object):
     self.assertTypeEquals(ty.Lookup("a").type, expected_return)
 
 
-class TestCollectionsMixin(object):
+class TestCollectionsMixin:
   """Mixin providing utils for tests on the collections module."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
@@ -173,7 +172,7 @@ class TestCollectionsMixin(object):
     self.assertErrorRegexes(result, {"e": error})
 
 
-class MakeCodeMixin(object):
+class MakeCodeMixin:
   """Mixin providing a method to make a code object from bytecode."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
@@ -278,7 +277,7 @@ class TestErrorLog(errors.ErrorLog):
     return expected
 
 
-class Py37Opcodes(object):
+class Py37Opcodes:
   """Define constants for Python 3.7 opcodes.
 
   Note that while our tests typically target the version that pytype is running

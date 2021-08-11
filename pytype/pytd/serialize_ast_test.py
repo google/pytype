@@ -35,7 +35,7 @@ class SerializeAstTest(test_base.UnitTest):
         x = List[int]
         b = List[int]
 
-        class SomeClass(object):
+        class SomeClass:
           def __init__(self, a: module2.ObjectMod2):
             pass
 
@@ -46,7 +46,7 @@ class SerializeAstTest(test_base.UnitTest):
     temp_dir.create_file("module2.pyi", """
         import queue
         def f() -> queue.Queue: ...
-        class ObjectMod2(object):
+        class ObjectMod2:
           def __init__(self):
             pass
     """)
@@ -142,7 +142,7 @@ class SerializeAstTest(test_base.UnitTest):
         import other_module
         x = other_module.UnusedReferenceNeededToKeepTheImport
 
-        class SomeClass(object):
+        class SomeClass:
           def __init__(will_be_replaced_with_visitor) -> None:
             pass
 

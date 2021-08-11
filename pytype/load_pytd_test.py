@@ -326,7 +326,7 @@ class ImportPathsTest(_LoaderTest):
         from . import path as path
         _PathType = path._PathType
         def utime(path: _PathType) -> None: ...
-        class stat_result(object): ...
+        class stat_result: ...
       """)
       d.create_file("os2/path.pyi", """
         import os2
@@ -562,7 +562,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
         x = List[int]
         b = List[int]
 
-        class SomeClass(object):
+        class SomeClass:
           def __init__(self, a: module2.ObjectMod2):
             pass
 
@@ -571,7 +571,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
     """
     tempdir.create_file("module1.pyi", src)
     tempdir.create_file("module2.pyi", """
-        class ObjectMod2(object):
+        class ObjectMod2:
           def __init__(self):
             pass
     """)
@@ -618,7 +618,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
 
   def test_star_import(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", "class A(object): ...")
+      d.create_file("foo.pyi", "class A: ...")
       d.create_file("bar.pyi", "from foo import *")
       foo = _Module(module_name="foo", file_name="foo.pyi")
       bar = _Module(module_name="bar", file_name="bar.pyi")

@@ -20,7 +20,7 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
       ty = self.Infer("""
         import flax
         @flax.struct.dataclass
-        class Foo(object):
+        class Foo:
           x: bool
           y: int
           z: str

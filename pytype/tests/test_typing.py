@@ -43,7 +43,7 @@ class TypingTest(test_base.TargetIndependentTest):
       v1 = typing.cast(None, __any_object__)
       v2 = typing.cast(typing.Union, __any_object__)  # invalid-annotation
       v3 = typing.cast("A", __any_object__)
-      class A(object):
+      class A:
         pass
     """)
     self.assertTypesMatchPytd(ty, """
@@ -51,7 +51,7 @@ class TypingTest(test_base.TargetIndependentTest):
       v1: None
       v2: typing.Any
       v3: A
-      class A(object): ...
+      class A: ...
     """)
 
   def test_no_typevars_for_cast(self):
@@ -156,12 +156,12 @@ class TypingTest(test_base.TargetIndependentTest):
   def test_classvar(self):
     ty = self.Infer("""
       from typing import ClassVar
-      class A(object):
+      class A:
         x = 5  # type: ClassVar[int]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import ClassVar
-      class A(object):
+      class A:
         x: ClassVar[int] = ...
     """)
 

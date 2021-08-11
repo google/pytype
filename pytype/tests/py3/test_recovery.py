@@ -21,7 +21,7 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
     _, errors = self.InferWithErrors("""
       from typing import AnyStr, Optional
-      class X(object):
+      class X:
         def __init__(self,
                      literal: Optional[int] = None,
                      target_index: Optional[int] = None,

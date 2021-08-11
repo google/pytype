@@ -11,7 +11,7 @@ class ReingestTest(test_base.TargetPython27FeatureTest):
   def test_instantiate_pyi_class(self):
     foo = self.Infer("""
       import abc
-      class Foo(object):
+      class Foo:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):

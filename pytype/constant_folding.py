@@ -431,11 +431,24 @@ def build_folded_type(vm, state, const):
     return state, vm.convert.build_tuple(state.node, vs)
 
   def collect_list(state, params, elements):
-    if elements is not None and len(elements) < MAX_VAR_SIZE:
+    if elements is None:
+      return collect(state, vm.convert.list_type, params)
+    elif len(elements) < MAX_VAR_SIZE:
       state, vs = expand(state, elements)
       return state, vm.convert.build_list(state.node, vs)
     else:
-      return collect(state, vm.convert.list_type, params)
+      # Without constant folding we construct a variable wrapping every element
+      # in the list and store it; however, we cannot retrieve them all. So as an
+      # optimisation, we will add the first few elements as pyals, then add one
+      # element for every contained type, and rely on the fact that the tail
+      # elements will contribute to the overall list type, but will not be
+      # retrievable as pyvals.
+      # TODO(b/175443170): We should use a smaller MAX_SUBSCRIPT cutoff; this
+      # behaviour is unrelated to MAX_VAR_SIZE (which limits the number of
+      # distinct bindings for the overall typevar).
+      elts = elements[:MAX_VAR_SIZE] + tuple(typeconst(t) for t in params)
+      state, vs = expand(state, elts)
+      return state, vm.convert.build_list(state.node, vs)
 
   def collect_map(state, params, elements):
     m = vm.convert.build_map(state.node)
@@ -445,6 +458,11 @@ def build_folded_type(vm, state, const):
         state, v = build_pyval(state, v)
         state = vm.store_subscr(state, m, k, v)
     else:
+      # Treat a too-large dictionary as {Union[keys] : Union[vals]}. We could
+      # store a subset of the k/v pairs, as with collect_list, but for
+      # dictionaries it is less obvious which subset we should be storing.
+      # Perhaps we could create one variable per unique value type, and then
+      # store every key in the pyval but reuse the value variables.
       k_types, v_types = params
       state, v = join_types(state, v_types)
       for t in k_types:

@@ -29,7 +29,6 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
 
   def test_print_function(self):
     self.Check("""
-      from __future__ import print_function
       import sys
       print(file=sys.stderr)
     """)
@@ -344,7 +343,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_map(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
 
       def f():
@@ -352,7 +351,7 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
-      class Foo(object):
+      class Foo:
         pass
 
       def f() -> Iterator: ...

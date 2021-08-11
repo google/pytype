@@ -2,7 +2,7 @@
 
 #- @A defines/binding ClassA
 #- ClassA.node/kind class
-class A(object):
+class A:
   #- ClassDoc documents ClassA
   #- ClassDoc.node/kind doc
   #- ClassDoc.text "Class docstring"

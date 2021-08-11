@@ -274,7 +274,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_classes(self):
     self.Check("""
-      class Thing(object):
+      class Thing:
         def __init__(self, x):
           self.x = x
         def meth(self, y):
@@ -287,7 +287,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_class_mros(self):
     self.Check("""
-      class A(object): pass
+      class A: pass
       class B(A): pass
       class C(A): pass
       class D(B, C): pass
@@ -298,7 +298,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_class_mro_method_calls(self):
     self.Check("""
-      class A(object):
+      class A:
         def f(self): return 'A'
       class B(A): pass
       class C(A):
@@ -309,7 +309,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_calling_methods_wrong(self):
     _, errors = self.InferWithErrors("""
-      class Thing(object):
+      class Thing:
         def __init__(self, x):
           self.x = x
         def meth(self, y):
@@ -321,7 +321,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_calling_subclass_methods(self):
     self.Check("""
-      class Thing(object):
+      class Thing:
         def foo(self):
           return 17
 
@@ -334,11 +334,11 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_other_class_methods(self):
     _, errors = self.InferWithErrors("""
-      class Thing(object):
+      class Thing:
         def foo(self):
           return 17
 
-      class SubThing(object):
+      class SubThing:
         def bar(self):
           return 9
 
@@ -349,7 +349,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_attribute_access(self):
     self.Check("""
-      class Thing(object):
+      class Thing:
         z = 17
         def __init__(self):
           self.x = 23
@@ -361,7 +361,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_attribute_access_error(self):
     errors = self.CheckWithErrors("""
-      class Thing(object):
+      class Thing:
         z = 17
         def __init__(self):
           self.x = 23
@@ -372,7 +372,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_staticmethods(self):
     self.Check("""
-      class Thing(object):
+      class Thing:
         @staticmethod
         def smeth(x):
           print(x)
@@ -386,7 +386,7 @@ class TestBasic(test_base.TargetIndependentTest):
 
   def test_unbound_methods(self):
     self.Check("""
-      class Thing(object):
+      class Thing:
         def meth(self, x):
           print(x)
       m = Thing.meth
@@ -461,11 +461,11 @@ class TestBasic(test_base.TargetIndependentTest):
     # over-written with B.__init__, and A(1, 2, 3) would complain about
     # too many arguments.
     self.Check("""
-      class A(object):
+      class A:
         def __init__(self, a, b, c):
           self.sum = a + b + c
 
-      class B(object):
+      class B:
         def __init__(self, x):
           self.x = x
 

@@ -2,7 +2,7 @@
 
 #- @A defines/binding ClassA
 #- ClassA.node/kind class
-class A(object):
+class A:
   #- @foo defines/binding FnFoo
   #- @self defines/binding ArgSelf
   #- @x defines/binding ArgX

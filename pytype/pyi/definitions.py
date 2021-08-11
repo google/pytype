@@ -1,10 +1,10 @@
 """Construct and collect pytd definitions to build a TypeDeclUnit."""
 
 import collections
+import dataclasses
+import re
 
 from typing import Any, Dict, List, Optional, Union
-
-import dataclasses
 
 from pytype.pyi import classdef
 from pytype.pyi import types
@@ -520,6 +520,11 @@ class Definitions:
         base_type - e.g., 2 parameters to Optional or no parameters to Union.
     """
     base_type = self.resolve_type(name)
+    for p in self.param_specs:
+      if re.fullmatch(rf"{p.name}\.(args|kwargs)", base_type.name):
+        # We do not yet support typing.ParamSpec, so replace references to its
+        # args and kwargs attributes with Any.
+        return pytd.AnythingType()
     if not isinstance(base_type, pytd.NamedType):
       # We assume that all type parameters have been defined. Since pytype
       # orders type parameters to appear before classes and functions, this

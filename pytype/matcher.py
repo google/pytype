@@ -167,9 +167,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       self._noniterable_str_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
-          # TODO(rpalaguachi): Append _noniterable_str_error here as well as any
-          # other bad_matches() calls to show the helpful error message.
-          bad.append((view, self._protocol_error))
+          bad.append((view, self._protocol_error, self._noniterable_str_error))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
         skip_future = False

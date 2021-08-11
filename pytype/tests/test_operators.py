@@ -281,7 +281,7 @@ class ReverseTest(test_base.TargetIndependentTest,
 
   def test_custom_reverse_unused(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __sub__(self, other):
           return 42
         def __rsub__(self, other):
@@ -291,7 +291,7 @@ class ReverseTest(test_base.TargetIndependentTest,
 
   def test_inherited_custom_reverse_unused(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __sub__(self, other):
           return 42
         def __rsub__(self, other):
@@ -303,7 +303,7 @@ class ReverseTest(test_base.TargetIndependentTest,
 
   def test_custom_reverse_only(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __sub__(self, other):
           return ""
       class Bar(Foo):
@@ -314,7 +314,7 @@ class ReverseTest(test_base.TargetIndependentTest,
 
   def test_unknown_left(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         def __rsub__(self, other):
           return ""
       (__any_object__ - Foo()).real
@@ -324,7 +324,7 @@ class ReverseTest(test_base.TargetIndependentTest,
     # Reverse operators are rare enough that it makes sense to assume that the
     # regular operator was called when the right side is ambiguous.
     _, errors = self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def __sub__(self, other):
           return ""
       (Foo() - __any_object__).real  # attribute-error[e]
@@ -368,7 +368,7 @@ class InplaceTest(test_base.TargetIndependentTest,
 
   def test_list_add(self):
     _, errors = self.InferWithErrors("""
-      class A(object): pass
+      class A: pass
       v = []
       v += A()  # unsupported-operands[e]
     """)

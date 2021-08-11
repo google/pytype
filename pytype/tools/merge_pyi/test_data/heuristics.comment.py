@@ -2,7 +2,7 @@ from typing import Any
 # If not annotate_pep484, info in pyi files is augmented with heuristics to decide if un-annotated
 # arguments are "Any" or "" (like "self")
 
-class B(object):
+class B:
     def __init__(self):
         pass
 
@@ -10,7 +10,7 @@ class B(object):
         # type: (e1) -> None
         pass
 
-class C(object):
+class C:
     def __init__(self, x):
         # type: (e2) -> None
         pass

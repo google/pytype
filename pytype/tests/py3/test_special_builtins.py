@@ -9,28 +9,28 @@ class SpecialBuiltinsTest(test_base.TargetPython3BasicTest):
   def test_property_with_type_parameter(self):
     ty = self.Infer("""
       from typing import Union
-      class Foo(object):
+      class Foo:
         @property
         def foo(self) -> Union[str, int]:
           return __any_object__
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Annotated, Union
-      class Foo(object):
+      class Foo:
         foo = ...  # type: Annotated[Union[int, str], 'property']
     """)
 
   def test_property_with_contained_type_parameter(self):
     ty = self.Infer("""
       from typing import List, Union
-      class Foo(object):
+      class Foo:
         @property
         def foo(self) -> List[Union[str, int]]:
           return __any_object__
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Annotated, List, Union
-      class Foo(object):
+      class Foo:
         foo = ...  # type: Annotated[List[Union[int, str]], 'property']
     """)
 

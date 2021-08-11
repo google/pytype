@@ -9,7 +9,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_name_error(self):
     self.InferWithErrors("""
       import abc
-      class Example(object):
+      class Example:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
@@ -19,7 +19,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_instantiate_abstract_class(self):
     _, errors = self.InferWithErrors("""
       import abc
-      class Example(object):
+      class Example:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
@@ -31,7 +31,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_multiple_inheritance_implementation(self):
     self.Check("""
       import abc
-      class Interface(object):
+      class Interface:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
@@ -49,9 +49,9 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_multiple_inheritance_error(self):
     _, errors = self.InferWithErrors("""
       import abc
-      class X(object):
+      class X:
         pass
-      class Interface(object):
+      class Interface:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
@@ -65,7 +65,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_multiple_inheritance_builtins(self):
     self.Check("""
       import abc
-      class Foo(object):
+      class Foo:
         __metaclass__ = abc.ABCMeta
       class Bar1(Foo, tuple):
         pass
@@ -102,7 +102,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_unannotated_noreturn(self):
     ty = self.Infer("""
       import abc
-      class Foo(object):
+      class Foo:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):
@@ -123,7 +123,7 @@ class AbstractMethodTests(test_base.TargetPython27FeatureTest):
   def test_none_attribute(self):
     self.Check("""
       import abc
-      class Foo(object):
+      class Foo:
         __metaclass__ = abc.ABCMeta
         @abc.abstractmethod
         def foo(self):

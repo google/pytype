@@ -139,7 +139,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
   def test_method_bad_implementation(self):
     errors = self.CheckWithErrors("""
       from typing import overload
-      class Foo(object):
+      class Foo:
         @overload
         def f(self, x: int) -> int:
           pass
@@ -154,7 +154,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
   def test_method_pyi(self):
     src = """
       from typing import overload
-      class Foo(object):
+      class Foo:
         @overload
         def f(self, x: int) -> int:
           pass
@@ -168,7 +168,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
     self.assertTrue(
         pytd_utils.ASTeq(ty, self.Infer(src, analyze_annotated=True)))
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         @overload
         def f(self, x: int) -> int: ...
         @overload

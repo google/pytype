@@ -8,14 +8,14 @@ class ErrorTest(test_base.TargetPython27FeatureTest):
 
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object): pass
+      class Foo: pass
       next(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"__iter__, next"})
 
   def test_protocol_mismatch_partial(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def __iter__(self):
           return self
       next(Foo())  # wrong-arg-types[e]

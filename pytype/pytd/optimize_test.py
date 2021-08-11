@@ -523,10 +523,10 @@ class TestOptimize(parser_test_base.ParserTest):
 
   def test_user_superclass_hierarchy(self):
     class_data = pytd_src("""
-        class AB(object):
+        class AB:
             pass
 
-        class EFG(object):
+        class EFG:
             pass
 
         class A(AB, EFG):
@@ -716,34 +716,34 @@ class TestOptimize(parser_test_base.ParserTest):
   def test_pull_in_method_classes(self):
     src = pytd_src("""
         from typing import Any
-        class A(object):
+        class A:
             mymethod1 = ...  # type: Method1
             mymethod2 = ...  # type: Method2
             member = ...  # type: Method3
             mymethod4 = ...  # type: Method4
-        class Method1(object):
+        class Method1:
             def __call__(self: A, x: int) -> Any: ...
-        class Method2(object):
+        class Method2:
             def __call__(self: object, x: int) -> Any: ...
-        class Method3(object):
+        class Method3:
             def __call__(x: bool, y: int) -> Any: ...
-        class Method4(object):
+        class Method4:
             def __call__(self: Any) -> Any: ...
         class B(Method4):
             pass
     """)
     expected = pytd_src("""
         from typing import Any
-        class A(object):
+        class A:
             member = ...  # type: Method3
             def mymethod1(self, x: int) -> Any: ...
             def mymethod2(self, x: int) -> Any: ...
             def mymethod4(self) -> Any: ...
 
-        class Method3(object):
+        class Method3:
             def __call__(x: bool, y: int) -> Any: ...
 
-        class Method4(object):
+        class Method4:
             def __call__(self) -> Any: ...
 
         class B(Method4):

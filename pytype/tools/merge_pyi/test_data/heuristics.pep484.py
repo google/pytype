@@ -1,14 +1,14 @@
 # If not annotate_pep484, info in pyi files is augmented with heuristics to decide if un-annotated
 # arguments are "Any" or "" (like "self")
 
-class B(object):
+class B:
     def __init__(self):
         pass
 
     def f(self, x: e1):
         pass
 
-class C(object):
+class C:
     def __init__(self, x: e2):
         pass
 

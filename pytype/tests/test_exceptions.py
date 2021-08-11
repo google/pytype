@@ -332,7 +332,7 @@ class TestExceptions(test_base.TargetIndependentTest):
 
   def test_bad_type_self(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           type(42, self)  # wrong-arg-count[e]
     """)

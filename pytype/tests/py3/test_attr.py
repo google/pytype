@@ -1,4 +1,3 @@
-# Lint as: python3
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype import file_utils
@@ -11,20 +10,20 @@ class TestAttrib(test_base.TargetPython3BasicTest):
   def test_factory_function(self):
     ty = self.Infer("""
       import attr
-      class CustomClass(object):
+      class CustomClass:
         pass
       def annotated_func() -> CustomClass:
         return CustomClass()
       @attr.s
-      class Foo(object):
+      class Foo:
         x = attr.ib(factory=annotated_func)
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
-      class CustomClass(object): ...
+      class CustomClass: ...
       def annotated_func() -> CustomClass: ...
       @attr.s
-      class Foo(object):
+      class Foo:
         x: CustomClass
         def __init__(self, x: CustomClass = ...) -> None: ...
     """)
@@ -133,14 +132,14 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo:
         x : int = attr.ib()
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int
         y: str
         def __init__(self, x: int, y: str) -> None: ...
@@ -150,14 +149,14 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo:
         x : 'Foo' = attr.ib()
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: Foo
         y: str
         def __init__(self, x: Foo, y: str) -> None: ...
@@ -167,7 +166,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo:
         x : int = attr.ib()
         y = attr.ib(type=str)
         z : int = 1 # class var, should not be in __init__
@@ -175,7 +174,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int
         y: str
         z: int
@@ -183,6 +182,8 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
 
   def test_type_clash(self):
+    # Note: explicitly inheriting from object keeps the line number of the error
+    # stable between Python versions.
     self.CheckWithErrors("""
       import attr
       @attr.s
@@ -194,14 +195,14 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     ty, err = self.InferWithErrors("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int = attr.ib(default=42)
         y: str = attr.ib(default=42)  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int
         y: str
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
@@ -235,13 +236,13 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     errors = self.CheckWithErrors("""
       import attr
       @attr.s
-      class Foo(object):
+      class Foo:
         if __random__:
           v: int = attr.ib()
         else:
           v: int = attr.ib()
       @attr.s
-      class Bar(object):
+      class Bar:
         if __random__:
           v: int = attr.ib()
         else:
@@ -253,7 +254,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(kw_only=False)
-      class Foo(object):
+      class Foo:
         x = attr.ib(default=42)
         y = attr.ib(type=int, kw_only=True)
         z = attr.ib(type=str, default="hello")
@@ -262,7 +263,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
       from typing import Any
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int
         y: int
         z: str
@@ -348,7 +349,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(kw_only=True)
-      class Foo(object):
+      class Foo:
         x = attr.ib()
         y = attr.ib(type=int)
         z = attr.ib(type=str)
@@ -357,7 +358,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       from typing import Any
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: Any
         y: int
         z: str
@@ -368,14 +369,14 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(kw_only=True)
-      class Foo(object):
+      class Foo:
         x = attr.ib(default=1)
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int
         def __init__(self, *, x : int = ...) -> None: ...
     """)
@@ -384,7 +385,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(auto_attribs=True)
-      class Foo(object):
+      class Foo:
         x: int
         y: 'Foo'
         z = 10
@@ -393,7 +394,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: int
         y: Foo
         a: str
@@ -405,7 +406,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(auto_attribs=True)
-      class Foo(object):
+      class Foo:
         x = 10
         y: int
         x: str = 'hello'
@@ -413,7 +414,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         y: int
         x: str
         def __init__(self, y: int, x: str = ...) -> None: ...
@@ -423,7 +424,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(auto_attribs=True)
-      class Foo(object):
+      class Foo:
         @classmethod
         def foo(cls):
           pass
@@ -445,7 +446,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       from typing import Any, Annotated
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         y: str
         _x: int
         x: Annotated[int, 'property']
@@ -458,6 +459,8 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
 
   def test_bad_default_param_order(self):
+    # Note: explicitly inheriting from object keeps the line number of the error
+    # stable between Python versions.
     self.CheckWithErrors("""
       import attr
       @attr.s(auto_attribs=True)
@@ -470,7 +473,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     ty = self.Infer("""
       import attr
       @attr.s(auto_attribs=True)
-      class Foo(object):
+      class Foo:
         x: bool
         y: int = 42
       class Bar(Foo):
@@ -482,7 +485,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         x: bool
         y: int
         def __init__(self, x: bool, y: int = ...) -> None: ...
@@ -524,7 +527,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       from typing import ClassVar
       import attr
       @attr.s(auto_attribs=True)
-      class Foo(object):
+      class Foo:
         x: ClassVar[int] = 10
         y: str = 'hello'
     """)
@@ -532,7 +535,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
       from typing import ClassVar
       attr: module
       @attr.s
-      class Foo(object):
+      class Foo:
         y: str
         x: ClassVar[int]
         def __init__(self, y: str = ...) -> None: ...

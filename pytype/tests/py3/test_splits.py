@@ -46,7 +46,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
   def test_union2(self):
     self.Check("""
       from typing import Union
-      class MyString(object):
+      class MyString:
         def __init__(self, arg: str):
           self.arg = arg
       def as_my_string(data: Union[str, MyString]) -> MyString:
@@ -60,7 +60,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
 
   def test_load_attr(self):
     self.Check("""
-      class A(object):
+      class A:
         def __init__(self):
           self.initialized = False
           self.data = None
@@ -165,7 +165,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
     self.Check("""
       from typing import Optional
 
-      class Foo(object):
+      class Foo:
 
         def __init__(
             self, x1: Optional[str] = None, x2: Optional[str] = None,

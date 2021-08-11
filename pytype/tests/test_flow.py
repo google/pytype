@@ -260,7 +260,7 @@ class FlowTest(test_base.TargetIndependentTest):
 
   def test_independent_calls(self):
     ty = self.Infer("""
-      class _Item(object):
+      class _Item:
         def __init__(self, stack):
           self.name = "foo"
           self.name_list = [s.name for s in stack]
@@ -272,7 +272,7 @@ class FlowTest(test_base.TargetIndependentTest):
           stack.append(_Item(stack))
     """)
     self.assertTypesMatchPytd(ty, """
-      class _Item(object):
+      class _Item:
         name = ...  # type: str
         name_list = ...  # type: list
         def __init__(self, stack) -> None: ...
@@ -281,7 +281,7 @@ class FlowTest(test_base.TargetIndependentTest):
 
   def test_duplicate_getproperty(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self._node = __any_object__
         def bar(self):
@@ -292,7 +292,7 @@ class FlowTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class Foo(object):
+      class Foo:
         _node = ...  # type: Any
         def __init__(self) -> None: ...
         def bar(self) -> NoneType: ...

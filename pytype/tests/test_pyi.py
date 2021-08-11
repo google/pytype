@@ -74,7 +74,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_classes(self):
     with file_utils.Tempdir() as d:
       d.create_file("classes.pyi", """
-        class A(object):
+        class A:
           def foo(self) -> A: ...
         class B(A):
           pass
@@ -107,7 +107,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_decorators(self):
     with file_utils.Tempdir() as d:
       d.create_file("decorated.pyi", """
-        class A(object):
+        class A:
           @staticmethod
           def u(a, b) -> int: ...
           @classmethod
@@ -136,7 +136,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_pass_pyi_classmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        class A(object):
+        class A:
           @classmethod
           def v(cls) -> float: ...
           def w(self, x: classmethod) -> int: ...
@@ -256,7 +256,7 @@ class PYITest(test_base.TargetIndependentTest):
           def bar(self, s: S) -> S: ...
         class B(Generic[T], A[T]): ...
         class C(A[int]): ...
-        class D(object):
+        class D:
           def baz(self) -> int: ...
       """)
       ty = self.Infer("""
@@ -578,7 +578,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         x = ...  # type: int
         T = TypeVar("T")
-        class A(object): ...
+        class A: ...
         def f(x: T) -> T: ...
         B = A
       """)
@@ -599,7 +599,7 @@ class PYITest(test_base.TargetIndependentTest):
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         def f(x: T) -> T: ...
-        class Foo(object): pass
+        class Foo: pass
       """)
       d.create_file("bar.pyi", """
         from foo import *
@@ -641,7 +641,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_custom_binary_operator(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Foo(object):
+        class Foo:
           def __sub__(self, other) -> str: ...
         class Bar(Foo):
           def __rsub__(self, other) -> int: ...
@@ -727,7 +727,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_alias_constant(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Foo(object):
+        class Foo:
           const = ...  # type: int
         Const = Foo.const
       """)
@@ -743,7 +743,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_alias_method(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Foo(object):
+        class Foo:
           def f(self) -> int: ...
         Func = Foo.f
       """)
@@ -759,7 +759,7 @@ class PYITest(test_base.TargetIndependentTest):
   def test_alias_aliases(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class Foo(object):
+        class Foo:
           a1 = const
           a2 = f
           const = ...  # type: int

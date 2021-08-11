@@ -200,7 +200,7 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
 
   def test_annotated_super_call_under_bad_decorator(self):
     self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def Run(self) -> None: ...
       class Bar(Foo):
         @bad_decorator  # name-error
@@ -221,7 +221,7 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
 
         return f
 
-      class MyClass(object):
+      class MyClass:
         @dec
         def func(self, x):
           pass
@@ -233,10 +233,10 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
   def test_instance_as_decorator_error_pre_38(self):
     errors = self.CheckWithErrors("""
-      class Decorate(object):
+      class Decorate:
         def __call__(self, func):
           return func
-      class Foo(object):
+      class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]
         def bar(cls):
@@ -248,10 +248,10 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_instance_as_decorator_error(self):
     errors = self.CheckWithErrors("""
-      class Decorate(object):
+      class Decorate:
         def __call__(self, func):
           return func
-      class Foo(object):
+      class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate
         def bar(cls):  # wrong-arg-count[e]
@@ -263,9 +263,9 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
   def test_uncallable_instance_as_decorator_pre_38(self):
     errors = self.CheckWithErrors("""
-      class Decorate(object):
+      class Decorate:
         pass  # forgot to define __call__
-      class Foo(object):
+      class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]
         def bar(cls):
@@ -278,9 +278,9 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
   @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_uncallable_instance_as_decorator(self):
     errors = self.CheckWithErrors("""
-      class Decorate(object):
+      class Decorate:
         pass  # forgot to define __call__
-      class Foo(object):
+      class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate
         def bar(cls):  # wrong-arg-count[e1]

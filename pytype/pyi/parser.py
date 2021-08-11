@@ -1,14 +1,10 @@
-# python3
-
 """Parse a pyi file using typed_ast."""
 
+import dataclasses
 import hashlib
 import sys
-
 import typing
 from typing import Any, List, Optional, Tuple, Union
-
-import dataclasses
 
 from pytype import utils
 from pytype.ast import debug
@@ -25,7 +21,6 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
 from pytype.pytd.codegen import pytdgen
-
 from typed_ast import ast3
 
 

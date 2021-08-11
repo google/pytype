@@ -2,10 +2,10 @@
 
 #- @A defines/binding ClassA
 #- ClassA.node/kind class
-class A(object):
+class A:
   #- @B defines/binding ClassB
   #- ClassB.node/kind class
-  class B(object):
+  class B:
     #- @foo defines/binding FnFoo
     #- @self defines/binding ArgBSelf
     #- FnFoo.node/kind function

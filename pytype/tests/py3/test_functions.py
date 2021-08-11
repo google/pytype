@@ -117,7 +117,7 @@ class PreciseReturnTest(test_base.TargetPython3BasicTest):
   """Tests for --precise-return."""
 
   def setUp(self):
-    super(PreciseReturnTest, self).setUp()
+    super().setUp()
     self.options.tweak(precise_return=True)
 
   def test_interpreter_return(self):
@@ -271,7 +271,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
   def test_fake_arguments(self):
     self.Check("""
 
-      class Foo(object):
+      class Foo:
         def __init__(self, x: int):
           self.y = __any_object__
 
@@ -556,7 +556,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
       def f():
         return 3
 
-      class Foo(object):
+      class Foo:
         def match_method(self):
           return map(self.method, [])
         def match_function(self):
@@ -571,7 +571,7 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
       def f() -> int: ...
-      class Foo(object):
+      class Foo:
         def match_method(self) -> Iterator[nothing, ...]: ...
         def match_function(self) -> Iterator[nothing, ...]: ...
         def match_pytd_function(self) -> Iterator[nothing, ...]: ...

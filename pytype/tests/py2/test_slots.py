@@ -13,13 +13,13 @@ class SlotsTest(test_base.TargetPython27FeatureTest):
 
   def test_slot_with_bytes(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         __slots__ = (b"x",)
     """)
 
   def test_slot_with_unicode(self):
     errors = self.CheckWithErrors("""
-      class Foo(object):  # bad-slots[e]
+      class Foo:  # bad-slots[e]
         __slots__ = (u"fo\\xf6", u"b\\xe4r", "baz")
       Foo().baz = 3
     """)

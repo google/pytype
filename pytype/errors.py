@@ -536,7 +536,7 @@ class ErrorLog(ErrorLogBase):
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
       bad_actual = self._pytd_print(pytd_utils.JoinTypes(
-          view[actual].data.to_type(node, view=view) for view, _ in bad))
+          view[actual].data.to_type(node, view=view) for view, _, _ in bad))
       if len(actual.bindings) > len(bad):
         full_actual = self._pytd_print(pytd_utils.JoinTypes(
             v.to_type(node) for v in actual.data))
@@ -544,9 +544,9 @@ class ErrorLog(ErrorLogBase):
         full_actual = bad_actual
     # typing.NoReturn is a prettier alias for nothing.
     fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
-    protocol_details = sorted(set("\n" + self._print_protocol_error(e)
-                                  for _, e in bad if e))
-    return fmt(expected), fmt(bad_actual), fmt(full_actual), protocol_details
+    protocol_details, nis_details = self._prepare_errorlog_details(bad)
+    return (fmt(expected), fmt(bad_actual), fmt(full_actual), protocol_details,
+            nis_details)
 
   def _print_protocol_error(self, error):
     """Pretty-print the matcher.ProtocolError instance."""
@@ -564,8 +564,19 @@ class ErrorLog(ErrorLogBase):
               f"wrong type in {left}: expected {expected}, got {actual}")
 
   def _print_noniterable_str_error(self, error):
-    return (f"Note: {error.left_type.name} is not iterable by default. "
-            "Learn more: https://github.com/google/pytype/docs/faq.md#why-cant-i-iterate-over-a-string")
+    return (f"Note: {error.left_type.name} does not match iterables by default."
+            "Learn more: https://github.com/google/pytype/docs/faq.md#noniterable-strings")
+
+  def _prepare_errorlog_details(self, bad):
+    protocol_details = set()
+    nis_details = set()
+    for _, protocol_err, nis_err in bad:
+      if protocol_err:
+        protocol_details.add("\n" + self._print_protocol_error(protocol_err))
+      if nis_err:
+        nis_details.add("\n" + self._print_noniterable_str_error(nis_err))
+
+    return sorted(protocol_details), sorted(nis_details)
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
@@ -868,7 +879,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, node, formal, actual, bad):
     """Logs a [bad-return-type] error."""
-    expected, bad_actual, full_actual, protocol_details = (
+    expected, bad_actual, full_actual, protocol_details, nis_details = (
         self._print_as_return_types(node, formal, actual, bad))
     if full_actual == bad_actual:
       message = "bad return type"
@@ -876,16 +887,16 @@ class ErrorLog(ErrorLogBase):
       message = f"bad option {bad_actual!r} in return type"
     details = ["         Expected: ", expected, "\n",
                "Actually returned: ", full_actual]
-    details.extend(protocol_details)
+    details.extend(protocol_details + nis_details)
     self.error(stack, message, "".join(details))
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, formal, actual, bad):
-    expected, actual, _, protocol_details = self._print_as_return_types(
-        node, formal, actual, bad)
+    expected, actual, _, protocol_details, nis_details = (
+        self._print_as_return_types(node, formal, actual, bad))
     details = ["       Expected: ", expected, "\n",
                "Actually passed: ", actual]
-    details.extend(protocol_details)
+    details.extend(protocol_details + nis_details)
     self.error(
         stack, "Invalid instantiation of generic class", "".join(details))
 
@@ -1078,6 +1089,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("annotation-type-mismatch")
   def annotation_type_mismatch(self, stack, annot, binding, name):
+    # TODO(rpalaguachi): Include detailed error message for
+    # NonIterableStringError when a `str` is assigned to a string iterable.
     """Invalid combination of annotation and assignment."""
     if annot is None:
       return

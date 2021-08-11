@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-07-27' }
       * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
       * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
 
-<!-- Added by: rechen, at: 2021-08-05T17:23-07:00 -->
+<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
 
 <!--te-->
 

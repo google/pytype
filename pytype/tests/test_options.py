@@ -98,7 +98,7 @@ class OptionsTest(test_base.TargetIndependentTest):
     # maxdepth, because that would prevent the constructor of Foo from being
     # executed.
     _ = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.bar = 0.0
         def get_bar(self):

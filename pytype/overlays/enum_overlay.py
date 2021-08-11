@@ -364,7 +364,13 @@ class EnumMetaInit(abstract.SimpleFunction):
       return
     for base_var in cls.bases():
       for base in base_var.data:
-        if base.is_enum and base.cls and base.cls.full_name != "enum.EnumMeta":
+        if not base.is_enum:
+          continue
+        # Interpreter classes don't have "maybe_missing_members" set even if
+        # they have _HAS_DYNAMIC_ATTRIBUTES. But for enums, those markers should
+        # apply to the whole class.
+        if ((base.cls and base.cls.full_name != "enum.EnumMeta") or
+            base.maybe_missing_members or base.has_dynamic_attributes()):
           cls.maybe_missing_members = True
           return
 
@@ -372,6 +378,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     member_types = []
     base_type = self._get_base_type(cls.bases())
     for name, local in self._get_class_locals(node, cls.name, cls.members):
+      if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+        continue
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.vm)
@@ -417,6 +425,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     members = dict(cls._member_map)  # pylint: disable=protected-access
     member_types = []
     for name, pytd_val in members.items():
+      if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+        continue
       # Only constants need to be transformed. We assume that enums in type
       # stubs are full realized, i.e. there are no auto() calls and the members
       # already have values of the base type.

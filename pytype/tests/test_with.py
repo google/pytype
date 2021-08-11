@@ -8,7 +8,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_simple_context_manager(self):
     self.Check("""
-      class NullContext(object):
+      class NullContext:
         def __enter__(self):
           l.append('i')
           # __enter__ usually returns self, but doesn't have to.
@@ -32,7 +32,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_raise_in_context_manager(self):
     self.Check("""
-      class NullContext(object):
+      class NullContext:
         def __enter__(self):
           l.append('i')
           return self
@@ -59,7 +59,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_suppressed_raise_in_context_manager(self):
     self.Check("""
-      class SuppressingContext(object):
+      class SuppressingContext:
         def __enter__(self):
           l.append('i')
           return self
@@ -86,7 +86,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_return_in_with(self):
     self.Check("""
-      class NullContext(object):
+      class NullContext:
         def __enter__(self):
           l.append('i')
           return self
@@ -111,7 +111,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_continue_in_with(self):
     self.Check("""
-      class NullContext(object):
+      class NullContext:
         def __enter__(self):
           l.append('i')
           return self
@@ -137,7 +137,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_break_in_with(self):
     self.Check("""
-      class NullContext(object):
+      class NullContext:
         def __enter__(self):
           l.append('i')
           return self
@@ -163,7 +163,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
 
   def test_raise_in_with(self):
     self.Check("""
-      class NullContext(object):
+      class NullContext:
         def __enter__(self):
           l.append('i')
           return self
@@ -191,7 +191,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
   def test_at_context_manager_simplified(self):
     self.Check("""
       import sys
-      class GeneratorContextManager(object):
+      class GeneratorContextManager:
         def __init__(self, gen):
           self.gen = gen
 
@@ -264,7 +264,7 @@ class TestWithStatement(test_base.TargetIndependentTest):
         return partial(update_wrapper, wrapped=wrapped,
               assigned=assigned, updated=updated)
 
-      class GeneratorContextManager(object):
+      class GeneratorContextManager:
         def __init__(self, gen):
           self.gen = gen
 

@@ -9,7 +9,7 @@ class QuickTest(test_base.TargetIndependentTest):
 
   def test_max_depth(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __init__(self, elements):
           assert all(e for e in elements)
           self.elements = elements
@@ -19,7 +19,7 @@ class QuickTest(test_base.TargetIndependentTest):
     """, quick=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class Foo(object):
+      class Foo:
         elements = ...  # type: Any
         def __init__(self, elements: Any) -> None: ...
         def bar(self) -> Any: ...
@@ -43,7 +43,7 @@ class QuickTest(test_base.TargetIndependentTest):
   def test_closure(self):
     ty = self.Infer("""
       def f():
-        class A(object): pass
+        class A: pass
         return {A: A()}
     """, quick=True, maximum_depth=1)
     self.assertTypesMatchPytd(ty, """
@@ -55,7 +55,7 @@ class QuickTest(test_base.TargetIndependentTest):
     # enough maximum depth, even though it can't currently due to
     # QUICK_INFER_MAXIMUM_DEPTH being 1.
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.real_init()
         def real_init(self):
@@ -67,7 +67,7 @@ class QuickTest(test_base.TargetIndependentTest):
     """, quick=True, maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      class A(object):
+      class A:
         x = ...  # type: int
         def __init__(self) -> None: ...
         def real_init(self) -> None: ...

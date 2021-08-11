@@ -114,7 +114,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
 
   def test_new_style_class(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def get_dict(self):
           return self.__dict__
         def get_name(self):
@@ -134,7 +134,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Type
-      class Foo(object):
+      class Foo:
         def get_dict(self) -> Dict[str, Any]: ...
         def get_name(self) -> str: ...
         def get_class(self) -> Type[Foo]: ...
@@ -193,7 +193,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
   def test_classmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class A(object):
+        class A:
           x = ...  # type: classmethod
       """)
       ty = self.Infer("""
@@ -211,7 +211,7 @@ class BuiltinTests2(test_base.TargetIndependentTest):
   def test_staticmethod(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class A(object):
+        class A:
           x = ...  # type: staticmethod
       """)
       ty = self.Infer("""

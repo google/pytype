@@ -197,7 +197,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
       from typing import TypeVar, List
       T = TypeVar('T')
-      class A(object):
+      class A:
           @property
           def foo(self: T) -> List[T]: ...
       class B(A): ...
@@ -293,7 +293,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
       d.create_file("a.pyi", """
       from typing import TypeVar, List, Type
       T = TypeVar('T')
-      class A(object):
+      class A:
           @classmethod
           def foo(self: Type[T]) -> List[T]: ...
       class B(A): ...
@@ -446,7 +446,7 @@ class TypeVarTest(test_base.TargetIndependentTest):
     ty = self.Infer("""
       from typing import TypeVar
       T = TypeVar('T')
-      class Foo(object):
+      class Foo:
         def __init__(self):
           self.f1 = self.f2
         def f2(self, x):

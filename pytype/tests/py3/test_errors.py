@@ -73,7 +73,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
 
   def test_interpreter_class_printing(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object): pass
+      class Foo: pass
       def f(x: str): pass
       f(Foo())  # wrong-arg-types[e]
     """)
@@ -111,7 +111,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
     _, errors = self.InferWithErrors("""
       def f(x: str): pass
       def g():
-        class Foo(object): pass
+        class Foo: pass
         f(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"x: str.*x: Foo"})
@@ -119,7 +119,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
   def test_inner_class_error2(self):
     _, errors = self.InferWithErrors("""
       def f():
-        class Foo(object): pass
+        class Foo: pass
         def g(x: Foo): pass
         g("")  # wrong-arg-types[e]
     """)
@@ -168,7 +168,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
   def test_inner_class(self):
     _, errors = self.InferWithErrors("""
       def f() -> int:
-        class Foo(object):
+        class Foo:
           pass
         return Foo()  # bad-return-type[e]
     """)
@@ -192,7 +192,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
   def test_staticmethod_in_error(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class A(object):
+        class A:
           @staticmethod
           def t(a: str) -> None: ...
         """)
@@ -304,7 +304,7 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
 
   def _testOp(self, op, symbol):
     errors = self.CheckWithErrors("""
-      class A(object):
+      class A:
         def __%s__(self, x: "A"):
           return None
       def f():
@@ -322,7 +322,7 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
 
   def test_idiv(self):
     errors = self.CheckWithErrors("""
-      class A(object):
+      class A:
         def __idiv__(self, x: "A"):
           return None
         def __itruediv__(self, x: "A"):
@@ -362,24 +362,34 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
 class ErrorTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for errors."""
 
-  def test_noniterable_string_error(self):
+  def test_nis_wrong_arg_types(self):
     errors = self.CheckWithErrors("""
       from typing import Iterable
       def f(x: Iterable[str]): ...
       f("abc")  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"str is not iterable by default"})
+    self.assertErrorRegexes(errors,
+                            {"e": r"str does not match iterables by default"})
+
+  def test_nis_bad_return(self):
+    errors = self.CheckWithErrors("""
+      from typing import Iterable
+      def f() -> Iterable[str]:
+        return "abc" # bad-return-type[e]
+    """)
+    self.assertErrorRegexes(errors,
+                            {"e": r"str does not match iterables by default"})
 
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object): pass
+      class Foo: pass
       next(Foo())  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"__iter__, __next__"})
 
   def test_protocol_mismatch_partial(self):
     _, errors = self.InferWithErrors("""
-      class Foo(object):
+      class Foo:
         def __iter__(self):
           return self
       next(Foo())  # wrong-arg-types[e]
@@ -441,7 +451,7 @@ class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
 
   def test_imatmul(self):
     errors = self.CheckWithErrors("""
-      class A(object):
+      class A:
         def __imatmul__(self, x: "A"):
           pass
       def f():

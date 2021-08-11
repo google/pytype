@@ -79,7 +79,7 @@ class PickleTest(test_base.TargetIndependentTest):
   def test_optimize_on_late_types(self):
     with file_utils.Tempdir() as d:
       pickled_foo = self.Infer("""
-        class X(object): pass
+        class X: pass
       """, deep=False, pickle=True, module_name="foo")
       self._verifyDeps(pickled_foo, ["builtins"], [])
       foo = d.create_file("foo.pickled", pickled_foo)
@@ -100,11 +100,11 @@ class PickleTest(test_base.TargetIndependentTest):
   def test_file_change(self):
     with file_utils.Tempdir() as d:
       pickled_xy = self.Infer("""
-        class X(object): pass
-        class Y(object): pass
+        class X: pass
+        class Y: pass
       """, deep=False, pickle=True, module_name="foo")
       pickled_x = self.Infer("""
-        class X(object): pass
+        class X: pass
       """, deep=False, pickle=True, module_name="foo")
       foo = d.create_file("foo.pickled", pickled_xy)
       pickled_bar = self.Infer("""
@@ -154,7 +154,7 @@ class PickleTest(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       pickled_foo = self.PicklePyi("""
         import UserDict
-        class Foo(object): ...
+        class Foo: ...
         @overload
         def f(self, x: Foo, y: UserDict.UserDict): ...
         @overload
@@ -164,7 +164,7 @@ class PickleTest(test_base.TargetIndependentTest):
       foo = d.create_file("foo.pickled", pickled_foo)
       self.assertNoCrash(self.Infer, """
         import foo
-        class Bar(object):
+        class Bar:
           f = foo.f
       """, imports_map={"foo": foo}, module_name="bar")
 

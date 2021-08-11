@@ -142,11 +142,11 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def test_sources_propagated_through_call(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def method(self):
           return 1
 
-      class Bar(object):
+      class Bar:
         def method(self):
           return "x"
 
@@ -162,10 +162,10 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      class Foo(object):
+      class Foo:
         def method(self) -> int: ...
 
-      class Bar(object):
+      class Bar:
         def method(self) -> str: ...
 
       def foo(x) -> Union[None, int]: ...
@@ -311,9 +311,9 @@ class SplitTest(test_base.TargetIndependentTest):
       # Always return a bool
       def sig(x): return issubclass(x, object)
       # Classes for testing
-      class A(object): pass
+      class A: pass
       class B(A): pass
-      class C(object): pass
+      class C: pass
       # Check the if-splitting based on issubclass
       def d1(): return "y" if issubclass(B, A) else 0
       def d2(): return "y" if issubclass(B, object) else 0
@@ -335,13 +335,13 @@ class SplitTest(test_base.TargetIndependentTest):
       def d6() -> str: ...
       def a1(x) -> Union[int, str]: ...
 
-      class A(object):
+      class A:
         pass
 
       class B(A):
         pass
 
-      class C(object):
+      class C:
         pass
       """)
 
@@ -452,13 +452,13 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def test_infinite_loop(self):
     self.Check("""
-      class A(object):
+      class A:
         def __init__(self):
           self.members = []
         def add(self):
           self.members.append(42)
 
-      class B(object):
+      class B:
         def __init__(self):
           self._map = {}
         def _foo(self):
@@ -536,10 +536,10 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def test_contains_coerce_to_bool(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __contains__(self, x):
           return 1
-      class B(object):
+      class B:
         def __contains__(self, x):
           return 0
       x1 = "" if "a" in A() else u""
@@ -548,9 +548,9 @@ class SplitTest(test_base.TargetIndependentTest):
       y2 = True if "b" not in B() else 4.2
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         def __contains__(self, x) -> int: ...
-      class B(object):
+      class B:
         def __contains__(self, x) -> int: ...
       x1 = ...  # type: str
       x2 = ...  # type: complex
@@ -714,8 +714,8 @@ class SplitTest(test_base.TargetIndependentTest):
 
   def test_cmp_is_interpreter_class(self):
     self.Check("""
-      class X(object): pass
-      class Y(object): pass
+      class X: pass
+      class Y: pass
       if X is Y:
         name_error
       if X is not X:
@@ -725,11 +725,11 @@ class SplitTest(test_base.TargetIndependentTest):
   def test_cmp_is_class_name_collision(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        class X(object): ...
+        class X: ...
       """)
       self.Check("""
         import foo
-        class X(object): pass
+        class X: pass
         if foo.X is X:
           name_error
       """, pythonpath=[d.path])

@@ -223,8 +223,8 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
   def test_filter_class(self):
     self.Check("""
       from typing import TypeVar
-      class A(object): pass
-      class B(object): pass
+      class A: pass
+      class B: pass
       T = TypeVar("T", A, B)
       def f(x: T, y: T): ...
       x = A()
@@ -315,7 +315,7 @@ class TypeVarTest(test_base.TargetPython3BasicTest):
     self.assertNoCrash(self.Check, """
       from typing import AnyStr, Dict
 
-      class Foo(object):
+      class Foo:
         def f(self) -> AnyStr: return __any_object__
         def g(self) -> Dict[AnyStr, Dict[AnyStr, AnyStr]]:
           return {'foo': {'bar': self.f()}}

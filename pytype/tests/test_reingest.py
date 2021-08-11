@@ -26,7 +26,7 @@ class ReingestTest(test_base.TargetIndependentTest):
 
   def test_union(self):
     ty = self.Infer("""
-      class Union(object):
+      class Union:
         pass
       x = {"Union": Union}
     """, deep=False)
@@ -94,7 +94,7 @@ class ReingestTest(test_base.TargetIndependentTest):
 
   def test_new_chain(self):
     foo = self.Infer("""
-      class X(object):
+      class X:
         def __new__(cls, x):
           return super(X, cls).__new__(cls)
     """)
@@ -129,7 +129,7 @@ class ReingestTest(test_base.TargetIndependentTest):
 
   def test_alias(self):
     foo = self.Infer("""
-      class _Foo(object):
+      class _Foo:
         def __new__(cls, _):
           return super(_Foo, cls).__new__(cls)
       Foo = _Foo
@@ -301,7 +301,7 @@ class StrictNoneTest(test_base.TargetIndependentTest):
 
   def test_context_manager_subclass(self):
     foo = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __enter__(self):
           return self
         def __exit__(self, type, value, traceback):

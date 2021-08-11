@@ -23,12 +23,12 @@ class SixTests(test_base.TargetPython3FeatureTest):
 
   def test_string_types(self):
     ty = self.Infer("""
-      from typing import List, Text, Union
+      from typing import List, Union
       import six
       a = ''  # type: Union[str, List[str]]
       if isinstance(a, six.string_types):
         a = [a]
-      b = ''  # type: Text
+      b = ''  # type: str
       if isinstance(b, six.string_types):
         c = len(b)
     """)

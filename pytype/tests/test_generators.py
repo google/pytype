@@ -47,7 +47,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
 
   def test_iter_match(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def bar(self):
           for x in __any_object__:
             return x
@@ -56,7 +56,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Generator
-      class Foo(object):
+      class Foo:
         def bar(self) -> Any: ...
         def __iter__(self) -> Generator[nothing, nothing, nothing]: ...
     """)
@@ -73,7 +73,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
 
   def test_iteration_of_getitem(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __getitem__(self, key):
           return "hello"
 
@@ -83,14 +83,14 @@ class GeneratorTest(test_base.TargetIndependentTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      class Foo(object):
+      class Foo:
         def __getitem__(self, key) -> str: ...
       def foo(self) -> Union[None, str]: ...
     """)
 
   def test_unpacking_of_getitem(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __getitem__(self, pos):
           if pos < 3:
             return pos
@@ -101,7 +101,7 @@ class GeneratorTest(test_base.TargetIndependentTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, TypeVar
       _T0 = TypeVar("_T0")
-      class Foo(object):
+      class Foo:
         def __getitem__(self, pos: _T0) -> _T0: ...
       x = ...  # type: int
       y = ...  # type: int

@@ -32,7 +32,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
   def test_class_field_type(self):
     self.CheckWithErrors("""
       import typing
-      class Foo(object):
+      class Foo:
         pass
       Y = typing.NamedTuple("Y", [('a', str), ('b', Foo)])
       ya = Y('a', Foo())
@@ -44,7 +44,7 @@ class NamedTupleTest(test_base.TargetIndependentTest):
   def test_late_annotation(self):
     errors = self.CheckWithErrors("""
       import typing
-      class Foo(object):
+      class Foo:
         pass
       X = typing.NamedTuple("X", [('a', 'Foo')]) # should be fine
       Y = typing.NamedTuple("Y", [('a', 'Bar')]) # should fail  # name-error[e]

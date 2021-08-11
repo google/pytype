@@ -8,7 +8,7 @@ class SliceTest(test_base.TargetPython27FeatureTest):
 
   def test_custom_getslice(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __getslice__(self, i, j):
           return (i, j)
         def __getitem__(self, index):
@@ -24,7 +24,7 @@ class SliceTest(test_base.TargetPython27FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      class Foo(object):
+      class Foo:
         def __getslice__(self, i:int, j:int) -> Tuple[int, int]: ...
         def __getitem__(self, index: slice) -> slice: ...
       x = ...  # type: Foo

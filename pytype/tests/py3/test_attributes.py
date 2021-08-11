@@ -104,7 +104,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_type_parameter_instance_multiple_bindings(self):
     _, errors = self.InferWithErrors("""
-      class A(object):
+      class A:
         values = 42
       args = {A() if __random__ else True: ""}
       for x, y in sorted(args.items()):
@@ -114,24 +114,24 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_type_parameter_instance_set_attr(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
-      class Bar(object):
+      class Bar:
         def bar(self):
           d = {42: Foo()}
           for _, foo in sorted(d.items()):
             foo.x = 42
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         x = ...  # type: int
-      class Bar(object):
+      class Bar:
         def bar(self) -> None: ...
     """)
 
   def test_type_parameter_instance(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         values = 42
       args = {A(): ""}
       for x, y in sorted(args.items()):
@@ -139,7 +139,7 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      class A(object):
+      class A:
         values = ...  # type: int
       args = ...  # type: Dict[A, str]
       x = ...  # type: A
@@ -151,15 +151,15 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     self.Check("""
       from typing import List
 
-      class NamedObject(object):
+      class NamedObject:
         name = ...  # type: str
-      class UnnamedObject(object):
+      class UnnamedObject:
         pass
-      class ObjectHolder(object):
+      class ObjectHolder:
         named = ...  # type: NamedObject
         unnamed = ...  # type: UnnamedObject
 
-      class Base(object):
+      class Base:
         def __init__(self):
           self.objects = []  # type: List
 

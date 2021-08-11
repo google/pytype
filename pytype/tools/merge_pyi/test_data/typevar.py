@@ -1,5 +1,5 @@
 """TypeVar test."""
 
-class UserDict(object):
+class UserDict:
     def __init__(self, initialdata = None):
         pass

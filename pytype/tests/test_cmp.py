@@ -1,6 +1,5 @@
 """Test comparison operators."""
 
-
 from pytype.tests import test_base
 
 
@@ -30,7 +29,7 @@ class InTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __contains__(self, x):
           return 3j
       def f():
@@ -40,7 +39,7 @@ class InTest(test_base.TargetIndependentTest):
         return 3 in Foo()
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def __contains__(self, x) -> complex: ...
       def f() -> bool: ...
       def g() -> bool: ...
@@ -76,7 +75,7 @@ class NotInTest(test_base.TargetIndependentTest):
   # "not in" maps to the inverse of __contains__
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __contains__(self, x):
           return 3j
       def f():
@@ -86,7 +85,7 @@ class NotInTest(test_base.TargetIndependentTest):
         return 3 not in Foo()
     """)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         def __contains__(self, x) -> complex: ...
       def f() -> bool: ...
       def g() -> bool: ...
@@ -143,7 +142,7 @@ class IsNotTest(test_base.TargetIndependentTest):
     # The assert should not block inference of the return type, since cls could
     # be a subclass of Foo
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __new__(cls, *args, **kwargs):
           assert(cls is not Foo)
           return object.__new__(cls)
@@ -159,7 +158,7 @@ class IsNotTest(test_base.TargetIndependentTest):
     # The assert should not block inference of the return type, since cls could
     # be a subclass of Foo
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         @classmethod
         def factory(cls, *args, **kwargs):
           assert(cls is not Foo)
@@ -189,7 +188,7 @@ class LtTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __lt__(self, x):
           return 3j
       def f():
@@ -200,7 +199,7 @@ class LtTest(test_base.TargetIndependentTest):
   @test_base.skip("Needs full emulation of Objects/object.c:try_rich_compare")
   def test_reverse(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __lt__(self, x):
           return 3j
         def __gt__(self, x):
@@ -235,7 +234,7 @@ class LeTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __le__(self, x):
           return 3j
       def f():
@@ -259,7 +258,7 @@ class GtTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __gt__(self, x):
           return 3j
       def f():
@@ -283,7 +282,7 @@ class GeTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __ge__(self, x):
           return 3j
       def f():
@@ -307,7 +306,7 @@ class EqTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __eq__(self, x):
           return 3j
       def f():
@@ -347,7 +346,7 @@ class NeTest(test_base.TargetIndependentTest):
 
   def test_overloaded(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         def __ne__(self, x):
           return 3j
       def f():

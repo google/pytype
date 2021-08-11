@@ -2908,6 +2908,20 @@ class ParamSpecTest(_ParserTestBase):
       def f2(x: X[int, str]) -> None: ...
     """)
 
+  def test_paramspec_args(self):
+    self.check("""
+      from typing import Callable, ParamSpec, TypeVar
+      P = ParamSpec('P')
+      T = TypeVar('T')
+      def f(x: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
+    """, """
+      from typing import Callable, TypeVar
+
+      T = TypeVar('T')
+
+      def f(x: Callable[..., T], *args, **kwargs) -> T: ...
+    """)
+
 
 class ConcatenateTest(_ParserTestBase):
 

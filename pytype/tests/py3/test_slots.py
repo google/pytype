@@ -8,14 +8,14 @@ class SlotsTest(test_base.TargetPython3FeatureTest):
 
   def test_slot_with_unicode(self):
     self.Check("""
-      class Foo(object):
+      class Foo:
         __slots__ = (u"fo\\xf6", u"b\\xe4r", "baz")
       Foo().baz = 3
     """)
 
   def test_slot_with_bytes(self):
     self.CheckWithErrors("""
-      class Foo(object):  # bad-slots
+      class Foo:  # bad-slots
         __slots__ = (b"x",)
     """)
 

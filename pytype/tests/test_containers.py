@@ -278,7 +278,7 @@ class ContainerTest(test_base.TargetIndependentTest):
 
   def test_for_iter(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         def __init__(self):
           self.parent = "foo"
 
@@ -300,7 +300,7 @@ class ContainerTest(test_base.TargetIndependentTest):
 
   def test_overloading(self):
     ty = self.Infer("""
-      class Base(object):
+      class Base:
         parent = None
         children = ()
         def bar(self, new):
@@ -332,7 +332,7 @@ class ContainerTest(test_base.TargetIndependentTest):
 
   def test_class_attr(self):
     ty = self.Infer("""
-      class Node(object):
+      class Node:
         children = ()
 
       def f():
@@ -441,7 +441,7 @@ class ContainerTest(test_base.TargetIndependentTest):
 
   def test_access_empty_dict_in_if(self):
     ty = self.Infer("""
-      class Foo(object):
+      class Foo:
         pass
 
       def f(key):
@@ -454,7 +454,7 @@ class ContainerTest(test_base.TargetIndependentTest):
         return e
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
-      class Foo(object):
+      class Foo:
         next = ...  # type: NoneType
 
       def f(key) -> Foo: ...

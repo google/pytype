@@ -13,7 +13,7 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
         from typing import List
         x: int
         y: List[int]
-        class A(object):
+        class A:
           a: int
           b: str
       """)
@@ -42,7 +42,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       x: int = 1
       y = 2
 
-      class A(object):
+      class A:
         a: int = 1
         b = 2
     """)
@@ -53,7 +53,7 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
       x: int
       y: int
 
-      class A(object):
+      class A:
           a: int
           b: int
     """)
@@ -138,12 +138,12 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
 
   def test_class_variable_forward_reference(self):
     ty = self.Infer("""
-      class A(object):
+      class A:
         a: 'A' = ...
         x = 42
     """)
     self.assertTypesMatchPytd(ty, """
-      class A(object):
+      class A:
         a: A
         x: int
     """)
@@ -153,13 +153,13 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     # which previously caused a crash when iterating over existing instances.
     ty = self.Infer("""
       from typing import Callable
-      class A(object):
+      class A:
         def __init__(self, fn: Callable[['A'], bool]):
           self.fn = fn
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
-      class A(object):
+      class A:
         fn: Callable[[A], bool]
         def __init__(self, fn: Callable[[A], bool]) -> None: ...
     """)

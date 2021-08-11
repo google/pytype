@@ -24,7 +24,7 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
         x = List[int]
         b = List[int]
 
-        class SomeClass(object):
+        class SomeClass:
           def __init__(self, a: module2.ObjectMod2):
             pass
 

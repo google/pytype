@@ -15,10 +15,10 @@ class FutureUtilsTest(test_base.TargetIndependentTest):
       self.Check("""
           import abc
           from future.utils import with_metaclass
-          class A(object):
+          class A:
             def __init__(self):
               self.foo = "hello"
-          class B(object):
+          class B:
             def bar(self):
               return 42
           class Foo(with_metaclass(abc.ABCMeta, A), B):

@@ -24,7 +24,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
   def test_stray_abstractmethod(self):
     _, errors = self.InferWithErrors("""
       import abc
-      class Example(object):  # ignored-abstractmethod[e]
+      class Example:  # ignored-abstractmethod[e]
         @abc.abstractmethod
         def foo(self):
           pass
@@ -52,7 +52,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
-        class X(object): ...
+        class X: ...
         class Interface(metaclass=abc.ABCMeta):
           @abc.abstractmethod
           def foo(self): ...
@@ -75,7 +75,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
         import abc
         import six
         @six.add_metaclass(abc.ABCMeta)
-        class Foo(object):
+        class Foo:
           @abc.abstractmethod
           def foo(self):
             pass
@@ -94,7 +94,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
         class ABCChild(abc.ABCMeta):
           pass
         @six.add_metaclass(ABCChild)
-        class Foo(object):
+        class Foo:
           @abc.abstractmethod
           def foo(self):
             pass
@@ -104,7 +104,7 @@ class AbstractMethodTests(test_base.TargetIndependentTest):
     _, errors = self.InferWithErrors("""
       import abc
       @abc.abstractproperty
-      class Example(object):
+      class Example:
         pass
       Example()  # not-callable[e]
     """)
