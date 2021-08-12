@@ -211,6 +211,8 @@ class TestFolding(test_base.UnitTest):
       c = f'foo{x:<9}'  # Not folded
       d = f'foo{x:}'  # Not folded
       e = f'foo{x:0{8}x}'  # Internal subsection '0{8}x' folded
+      f = f'{x:05}.a'  # Not folded
+      g = f'pre.{x:05}.post'  # Not folded
     """)
     self.assertCountEqual(actual, [(4, str, "", None), (7, str, "", None)])
 

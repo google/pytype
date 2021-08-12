@@ -277,14 +277,10 @@ class _FoldConstants:
         elif isinstance(op, opcodes.BUILD_SET):
           stack.build(set, op)
         elif isinstance(op, opcodes.FORMAT_VALUE):
-          fmt = None
           if op.arg & loadmarshal.FVS_MASK:
-            fmt = stack.pop()
-          if stack.build_str(1, op) and fmt:
-            # If we have {foo:fmt} in an fstring, fold fmt iff foo was folded.
-            fmt.op.folded = op
-          elif fmt:
-            stack.push(fmt)
+            stack.build_str(2, op)
+          else:
+            stack.build_str(1, op)
         elif isinstance(op, opcodes.BUILD_STRING):
           stack.build_str(op.arg, op)
         elif isinstance(op, opcodes.BUILD_MAP):
