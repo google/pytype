@@ -925,6 +925,30 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(
         errors, {"e": r"\(.*List\[int\]\)$"})  # no protocol details
 
+  def test_protocol_signatures(self):
+    _, errors = self.InferWithErrors("""
+      from typing import Sequence
+
+      class Foo:
+        def __len__(self):
+          return 0
+        def __getitem__(self, x: int) -> int:
+          return 0
+
+      def f(x: Sequence[int]):
+        pass
+
+      foo = Foo()
+      f(foo)  # wrong-arg-types[e]
+    """)
+    expected = [
+        r"Method __getitem__.*protocol Sequence\[int\].*signature in Foo",
+        r"def __getitem__\(self: Sequence",
+        r"def __getitem__\(self, x: int\)"
+    ]
+    for pattern in expected:
+      self.assertErrorRegexes(errors, {"e": pattern})
+
   def test_hidden_error(self):
     self.CheckWithErrors("""
       use_option = False

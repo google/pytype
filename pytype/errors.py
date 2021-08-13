@@ -548,6 +548,12 @@ class ErrorLog(ErrorLogBase):
     return (fmt(expected), fmt(bad_actual), fmt(full_actual), protocol_details,
             nis_details)
 
+  def _print_as_function_def(self, fn):
+    assert fn.isinstance_Function()
+    conv = fn.vm.convert.pytd_convert
+    name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
+    return pytd_utils.Print(conv.value_to_pytd_def(fn.vm.root_node, fn, name))
+
   def _print_protocol_error(self, error):
     """Pretty-print the matcher.ProtocolError instance."""
     left = self._pytd_print(error.left_type.get_instance_type())
@@ -558,10 +564,22 @@ class ErrorLog(ErrorLogBase):
               f"{left}: {missing}")
     else:
       assert isinstance(error, matcher.ProtocolTypeError)
-      actual = self._pytd_print(error.actual_type.to_type())
-      expected = self._pytd_print(error.expected_type.to_type())
-      return (f"Attribute {error.attribute_name} of protocol {protocol} has "
-              f"wrong type in {left}: expected {expected}, got {actual}")
+      actual, expected = error.actual_type, error.expected_type
+      if (actual.isinstance_Function() and expected.isinstance_Function()):
+        # TODO(b/196434939): When matching a protocol like Sequence[int] the
+        # protocol name will be Sequence[int] but the method signatures will be
+        # displayed as f(self: Sequence[_T], ...).
+        actual = self._print_as_function_def(actual)
+        expected = self._print_as_function_def(expected)
+        return (f"\nMethod {error.attribute_name} of protocol {protocol} has "
+                f"the wrong signature in {left}:\n\n"
+                f">> {protocol} expects:\n{expected}\n\n"
+                f">> {left} defines:\n{actual}")
+      else:
+        actual = self._pytd_print(error.actual_type.to_type())
+        expected = self._pytd_print(error.expected_type.to_type())
+        return (f"Attribute {error.attribute_name} of protocol {protocol} has "
+                f"wrong type in {left}: expected {expected}, got {actual}")
 
   def _print_noniterable_str_error(self, error):
     return (f"Note: {error.left_type.name} does not match iterables by default."
