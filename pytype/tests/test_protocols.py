@@ -116,5 +116,27 @@ class ProtocolTest(test_base.TargetIndependentTest):
       f(Baz())  # wrong-arg-types
     """)
 
+  def test_pyi_protocol_in_typevar(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        from typing_extensions import Protocol
+
+        T = TypeVar('T', bound=SupportsClose)
+
+        class SupportsClose(Protocol):
+          def close(self) -> object: ...
+
+        class Foo(Generic[T]):
+          def __init__(self, x: T) -> None: ...
+      """)
+      self.Check("""
+        import foo
+        class Bar:
+          def close(self) -> None:
+            pass
+        foo.Foo(Bar())
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

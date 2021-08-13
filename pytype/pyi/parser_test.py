@@ -1576,14 +1576,14 @@ class ClassTest(_ParserTestBase):
 
       class Foo(Protocol[T]): ...
     """, """
+      import typing
       from typing import Generic, TypeVar
-      import typing_extensions
 
       from typing_extensions import Protocol
 
       T = TypeVar('T')
 
-      class Foo(typing_extensions.Protocol, Generic[T]): ...
+      class Foo(typing.Protocol, Generic[T]): ...
     """)
 
   def test_bad_typevar_in_mutation(self):
