@@ -699,7 +699,10 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         except KeyError as e:
           raise SymbolLookupError("Couldn't find %s in %s" % (
               node.name, self.unit.name)) from e
-      resolved_node = self.to_type(item)
+      try:
+        resolved_node = self.to_type(item)
+      except NotImplementedError as e:
+        raise SymbolLookupError("%s is not a type" % item) from e
     elif module_name == self.unit.name:
       # Fully qualified reference to a member of the current module. May contain
       # nested items that need to be recursively resolved.
