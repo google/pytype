@@ -629,5 +629,4 @@ py_test(
     .test_base
 )
 
-add_subdirectory(py2)
 add_subdirectory(py3)

@@ -87,7 +87,6 @@ class CmpOpTest(test_base.TargetPython3FeatureTest):
     # is and is not.
     # pytype infers a boolean value for those comparisons that always succeed,
     # and currently infers Any for ones that don't.
-    # In Python 2, "x" would be bool. (See tests/py2/test_cmp.py)
     # Comparison between types is necessary to trigger the "comparison always
     # succeeds" behavior in vm.py.
     ty = self.Infer("res = (1).__class__ < ''.__class__")
