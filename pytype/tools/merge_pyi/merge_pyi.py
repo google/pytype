@@ -943,7 +943,7 @@ def annotate_string(args, py_src, pyi_src):
 
   # TODO(tsudol): tool.refactor_file knows how to handle encodings, look into
   # using that instead.
-  tree = tool.refactor_string(py_src + '\n', None)
+  tree = tool.refactor_string(py_src + '\n', '<inline>')
   parsed_pyi.add_globals(tree, tuple(fixer.inserted_types))
 
   annotated_src = str(tree)[:-1]
