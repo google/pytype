@@ -13,7 +13,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 from pytype.typegraph import cfg
-import six
 
 import unittest
 
@@ -118,7 +117,7 @@ class IsInstanceTest(AbstractTestBase):
     self.assertEqual(self._node, node)
     self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
-    six.assertRegex(self, str(self._vm.errorlog), "missing-parameter")
+    self.assertRegex(str(self._vm.errorlog), "missing-parameter")
 
   def test_call_wrong_keywords(self):
     self._vm.push_frame(frame_state.SimpleFrame())
@@ -129,8 +128,8 @@ class IsInstanceTest(AbstractTestBase):
     self.assertEqual(self._node, node)
     self.assertIsInstance(abstract_utils.get_atomic_value(result),
                           abstract.Unsolvable)
-    six.assertRegex(self, str(self._vm.errorlog),
-                    r"foo.*isinstance.*\[wrong-keyword-args\]")
+    self.assertRegex(str(self._vm.errorlog),
+                     r"foo.*isinstance.*\[wrong-keyword-args\]")
 
   def test_is_instance(self):
     def check(expected, left, right):
@@ -376,7 +375,7 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(sig.varargs_name, None)
     self.assertFalse(sig.kwonly_params)
     self.assertIs(sig.kwargs_name, None)
-    six.assertCountEqual(self, sig.annotations.keys(), sig.param_names)
+    self.assertCountEqual(sig.annotations.keys(), sig.param_names)
     self.assertFalse(sig.has_return_annotation)
     self.assertTrue(sig.has_param_annotations)
 
@@ -549,7 +548,7 @@ class FunctionTest(AbstractTestBase):
                      "return": self._vm.convert.unsolvable},
     )
     sig.del_annotation("x")
-    six.assertCountEqual(self, sig.annotations.keys(), {"return"})
+    self.assertCountEqual(sig.annotations.keys(), {"return"})
     self.assertFalse(sig.has_param_annotations)
     self.assertTrue(sig.has_return_annotation)
 
@@ -566,7 +565,7 @@ class FunctionTest(AbstractTestBase):
                      "return": self._vm.convert.unsolvable},
     )
     sig.del_annotation("return")
-    six.assertCountEqual(self, sig.annotations.keys(), {"x"})
+    self.assertCountEqual(sig.annotations.keys(), {"x"})
     self.assertTrue(sig.has_param_annotations)
     self.assertFalse(sig.has_return_annotation)
 
@@ -586,8 +585,7 @@ class FunctionTest(AbstractTestBase):
   def test_constructor_args(self):
     f = abstract.PyTDFunction.make("open", self._vm, "builtins")
     self.assertEqual(f.full_name, "builtins.open")
-    six.assertCountEqual(
-        self,
+    self.assertCountEqual(
         {sig.pytd_sig for sig in f.signatures},
         self._vm.lookup_builtin("builtins.open").signatures)
     self.assertIs(f.kind, pytd.MethodTypes.METHOD)
@@ -607,8 +605,7 @@ class FunctionTest(AbstractTestBase):
     f = abstract.PyTDFunction.make(
         "TypeVar", self._vm, "typing", pyval_name="_typevar_new")
     self.assertEqual(f.full_name, "typing.TypeVar")
-    six.assertCountEqual(
-        self,
+    self.assertCountEqual(
         {sig.pytd_sig for sig in f.signatures},
         self._vm.loader.import_name("typing").Lookup(
             "typing._typevar_new").signatures)
@@ -621,8 +618,8 @@ class FunctionTest(AbstractTestBase):
         [abstract.BaseValue(name, self._vm) for name in ("test1", "test2")], [],
         self._vm.root_node)
     bound = abstract.BoundFunction(callself, f)
-    six.assertCountEqual(self, bound.repr_names(), ["test1.f", "test2.f"])
-    six.assertRegex(self, repr(bound), r"test(1|2)\.f")
+    self.assertCountEqual(bound.repr_names(), ["test1.f", "test2.f"])
+    self.assertRegex(repr(bound), r"test(1|2)\.f")
 
   def test_bound_function_callself_repr(self):
     f = self._make_pytd_function(params=())
@@ -630,7 +627,7 @@ class FunctionTest(AbstractTestBase):
         [abstract.BaseValue("test", self._vm)], [], self._vm.root_node)
     bound = abstract.BoundFunction(callself, f)
     callself_repr = lambda v: v.name + "foo"
-    six.assertCountEqual(self, bound.repr_names(callself_repr), ["testfoo.f"])
+    self.assertCountEqual(bound.repr_names(callself_repr), ["testfoo.f"])
 
   def test_bound_function_nested_repr(self):
     f = self._make_pytd_function(params=())
@@ -641,20 +638,20 @@ class FunctionTest(AbstractTestBase):
         [abstract.BaseValue("test2", self._vm)], [], self._vm.root_node)
     bound2 = abstract.BoundFunction(callself2, bound1)
     # `bound2` is BoundFunction(test2, BoundFunction(test1, f))
-    six.assertCountEqual(self, bound2.repr_names(), ["test2.f"])
+    self.assertCountEqual(bound2.repr_names(), ["test2.f"])
 
   def test_bound_function_repr_no_callself(self):
     f = self._make_pytd_function(params=())
     callself = self._vm.program.NewVariable()
     bound = abstract.BoundFunction(callself, f)
-    six.assertCountEqual(self, bound.repr_names(), ["<class>.f"])
+    self.assertCountEqual(bound.repr_names(), ["<class>.f"])
 
   def test_bound_function_repr_replace_parent(self):
     f = self._make_pytd_function(params=(), name="foo.f")
     callself = self._vm.program.NewVariable(
         [abstract.BaseValue("test", self._vm)], [], self._vm.root_node)
     bound = abstract.BoundFunction(callself, f)
-    six.assertCountEqual(self, bound.repr_names(), ["test.f"])
+    self.assertCountEqual(bound.repr_names(), ["test.f"])
 
 
 class AbstractMethodsTest(AbstractTestBase):
@@ -663,7 +660,7 @@ class AbstractMethodsTest(AbstractTestBase):
     func = abstract.Function("f", self._vm).to_variable(self._vm.root_node)
     func.data[0].is_abstract = True
     cls = abstract.InterpreterClass("X", [], {"f": func}, None, self._vm)
-    six.assertCountEqual(self, cls.abstract_methods, {"f"})
+    self.assertCountEqual(cls.abstract_methods, {"f"})
 
   def test_inherited_abstract_method(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
@@ -672,7 +669,7 @@ class AbstractMethodsTest(AbstractTestBase):
     cls = abstract.InterpreterClass("X",
                                     [sized.to_variable(self._vm.root_node)], {},
                                     None, self._vm)
-    six.assertCountEqual(self, cls.abstract_methods, {"__len__"})
+    self.assertCountEqual(cls.abstract_methods, {"__len__"})
 
   def test_overridden_abstract_method(self):
     sized_pytd = self._vm.loader.typing.Lookup("typing.Sized")
@@ -692,7 +689,7 @@ class AbstractMethodsTest(AbstractTestBase):
     func.is_abstract = True
     members = {"__len__": func.to_variable(self._vm.root_node)}
     cls = abstract.InterpreterClass("X", bases, members, None, self._vm)
-    six.assertCountEqual(self, cls.abstract_methods, {"__len__"})
+    self.assertCountEqual(cls.abstract_methods, {"__len__"})
 
 
 class SimpleFunctionTest(AbstractTestBase):
