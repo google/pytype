@@ -910,13 +910,6 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     left_cls = left.get_class()
     if isinstance(left_cls, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    elif (len(left_cls.template) == 1 and
-          other_type.full_name == "typing.Mapping"):
-      # TODO(rechen): This check is a workaround to prevent List from matching
-      # against Mapping. What we should actually do is detect the mismatch
-      # between the type parameters in List's and Mapping's abstract methods,
-      # but that's tricky to do.
-      return None
     elif left_cls.is_dynamic:
       return self._subst_with_type_parameters_from(subst, other_type)
     left_attributes = self._get_attribute_names(left)
@@ -1141,16 +1134,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def _enforce_noniterable_str(self, left, other_type):
     """Enforce a str to NOT be matched against a conflicting iterable type."""
     conflicting_iter_types = ["typing.Iterable", "typing.Sequence",
-                              "typing.Collection", "typing.Container",
-                              "typing.Mapping",]
+                              "typing.Collection", "typing.Container",]
     str_types = ["builtins.str", "builtins.unicode",]
 
     if (other_type.full_name not in conflicting_iter_types
         or left.full_name not in str_types):
       return False  # Reject uninterested type combinations
-    if other_type.full_name == "typing.Mapping":
-      return True  # Enforce against Mapping
-
     if isinstance(other_type, abstract.ParameterizedClass):
       type_param = other_type.get_formal_type_parameter("_T").full_name
       return type_param in str_types

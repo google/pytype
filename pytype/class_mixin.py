@@ -173,10 +173,18 @@ class Class(metaclass=mixin.MixinMeta):
       self.protocol_attributes = set()
       return
     if self.isinstance_PyTDClass() and self.pytd_cls.name.startswith("typing."):
+      protocol_attributes = set()
+      if self.pytd_cls.name == "typing.Mapping":
+        # Append Mapping-specific attributes to forbid matching against classes
+        # that satisfy the Mapping ABC but don't contain mapping_attrs.
+        mapping_attrs = {"__contains__", "keys", "items", "values", "get",
+                         "__eq__", "__ne__"}
+        protocol_attributes |= mapping_attrs
       # In typing.pytd, we've experimentally marked some classes such as
       # Sequence, which contains a mix of abstract and non-abstract methods, as
       # protocols, with only the abstract methods being required.
-      self.protocol_attributes = self.abstract_methods
+      protocol_attributes |= self.abstract_methods
+      self.protocol_attributes = protocol_attributes
       return
     # For the algorithm to run, protocol_attributes needs to be populated with
     # the protocol attributes defined by this class. We'll overwrite the
