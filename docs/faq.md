@@ -19,7 +19,7 @@
       * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
 
-<!-- Added by: rechen, at: 2021-08-10T21:16-07:00 -->
+<!-- Added by: rechen, at: 2021-08-16T11:52-07:00 -->
 
 <!--te-->
 
@@ -238,8 +238,6 @@ against the following types to prevent a common accidental bug:
 *   `Collection[str]`
 
 *   `Container[str]`
-
-*   `Mapping[int, str]`
 
 NOTE: `str` continues to match against general iterables of type `Any` (e.g.,
 `Iterable[Any]`, `Sequence[Any]`, etc.).
