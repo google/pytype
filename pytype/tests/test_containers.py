@@ -624,5 +624,16 @@ class ContainerTest(test_base.TargetIndependentTest):
         pass
     """)
 
+  def test_constructor_empty(self):
+    ty = self.Infer("""
+      empty = []
+      y = [list(x) for x in empty]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      empty = ...  # type: List[nothing]
+      y = ...  # type: List[List[nothing]]
+    """)
+
 
 test_base.main(globals(), __name__ == "__main__")

@@ -203,19 +203,6 @@ class ContainerTest(test_base.TargetPython27FeatureTest):
                                  ((),
                                   self.int_int_dict))
 
-  @test_base.skip("Failing due to py2->3 changes")
-  def test_constructor_empty(self):
-    ty = self.Infer("""
-      empty = []
-      y = [list(x) for x in empty]
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any, List
-      empty = ...  # type: List[nothing]
-      y = ...  # type: List[List[nothing]]
-      x = ...  # type: Any
-    """)
-
   # Uses unicode
   def test_empty_type_param_as_arg(self):
     ty = self.Infer("""
