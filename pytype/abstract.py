@@ -21,7 +21,6 @@ from typing import Mapping
 
 from pytype import abstract_utils
 from pytype import class_mixin
-from pytype import compat
 from pytype import datatypes
 from pytype import function
 from pytype import mixin
@@ -119,9 +118,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
       if data_hash in seen_data:
         continue
       seen_data.add(data_hash)
-      m.update(compat.bytestring(data_hash))
+      m.update(str(data_hash).encode("utf-8"))
       for mapping in data.get_children_maps():
-        m.update(compat.bytestring(mapping.changestamp))
+        m.update(str(mapping.changestamp).encode("utf-8"))
         stack.extend(mapping.data)
     return m.digest()
 
@@ -3053,30 +3052,16 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     else:
       return None  # Happens e.g. for __slots__ = dir(Foo)
     try:
-      strings = [abstract_utils.get_atomic_python_constant(v) for v in entries]
+      names = [abstract_utils.get_atomic_python_constant(v) for v in entries]
     except abstract_utils.ConversionError:
       return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
-    for s in strings:
-      # The identity check filters out compat.py subclasses.
-      if s.__class__ is str:
-        continue
-      elif s.__class__ is compat.UnicodeType:
-        # Unicode values should be ASCII.
-        try:
-          s = s.encode("ascii")
-        except (UnicodeDecodeError, UnicodeEncodeError):
-          pass
-        else:
-          continue
-      if isinstance(s, str):
-        name = s.encode("utf8", "ignore")
-      else:
-        name = str(s)
-      self.vm.errorlog.bad_slots(self.vm.frames,
-                                 "Invalid __slot__ entry: %r" % name)
-      return None
-
-    return tuple(self._mangle(compat.native_str(s)) for s in strings)
+    # Slot names should be strings.
+    for s in names:
+      if not isinstance(s, str):
+        self.vm.errorlog.bad_slots(
+            self.vm.frames, "Invalid __slot__ entry: %r" % str(s))
+        return None
+    return tuple(self._mangle(s) for s in names)
 
   def register_instance(self, instance):
     self.instances.add(instance)
@@ -4307,9 +4292,9 @@ class Module(Instance, mixin.LazyMembers):
   def get_fullhash(self):
     """Hash the set of member names."""
     m = hashlib.md5()
-    m.update(compat.bytestring(self.full_name))
+    m.update(self.full_name.encode("utf-8"))
     for k in self._member_map:
-      m.update(compat.bytestring(k))
+      m.update(k.encode("utf-8"))
     return m.digest()
 
 
@@ -4456,7 +4441,7 @@ class Unknown(BaseValue):
     # same members," so member names are used in the hash instead of id().
     m = hashlib.md5()
     for name in self.members:
-      m.update(compat.bytestring(name))
+      m.update(name.encode("utf-8"))
     return m.digest()
 
   def get_children_maps(self):

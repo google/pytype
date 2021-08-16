@@ -7,8 +7,6 @@ from pytype import load_pytd
 from pytype import vm
 from pytype.tests import test_base
 
-import six
-
 import unittest
 
 
@@ -28,11 +26,10 @@ class GetViewsTest(test_base.UnitTest):
         [self._vm.convert.int_type, self._vm.convert.str_type], [],
         self._vm.root_node)
     views = list(abstract_utils.get_views([v1, v2], self._vm.root_node))
-    six.assertCountEqual(self,
-                         [{v1: views[0][v1], v2: views[0][v2]},
-                          {v1: views[1][v1], v2: views[1][v2]}],
-                         [{v1: v1.bindings[0], v2: v2.bindings[0]},
-                          {v1: v1.bindings[0], v2: v2.bindings[1]}])
+    self.assertCountEqual([{v1: views[0][v1], v2: views[0][v2]},
+                           {v1: views[1][v1], v2: views[1][v2]}],
+                          [{v1: v1.bindings[0], v2: v2.bindings[0]},
+                           {v1: v1.bindings[0], v2: v2.bindings[1]}])
 
   def _test_optimized(self, skip_future_value, expected_num_views):
     v1 = self._vm.program.NewVariable([self._vm.convert.unsolvable], [],

@@ -5,7 +5,6 @@ import hashlib
 import logging
 from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
-from pytype import compat
 from pytype import datatypes
 from pytype import utils
 from pytype.pyc import opcodes
@@ -516,7 +515,7 @@ def _hash_dict(vardict, names):
     vardict = {name: vardict[name] for name in names.intersection(vardict)}
   m = hashlib.md5()
   for name, var in sorted(vardict.items()):
-    m.update(compat.bytestring(name))
+    m.update(str(name).encode("utf-8"))
     for value in var.bindings:
       m.update(value.data.get_fullhash())
   return m.digest()
