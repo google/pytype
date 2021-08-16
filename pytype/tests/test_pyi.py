@@ -887,5 +887,16 @@ class PYITest(test_base.TargetIndependentTest):
         assert_type(foo.Foo().foo, foo.Foo)
       """, pythonpath=[d.path])
 
+  def test_bad_annotation(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("bad.pyi", """
+        def f() -> None: ...
+        class X:
+          x: f
+      """)
+      self.CheckWithErrors("""
+        import bad  # pyi-error
+      """, pythonpath=[d.path])
+
 
 test_base.main(globals(), __name__ == "__main__")

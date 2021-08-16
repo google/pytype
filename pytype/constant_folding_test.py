@@ -206,9 +206,15 @@ class TestFolding(test_base.UnitTest):
     actual = self._process("""
       x = 'hello'
       y = set(1, 2, 3)
-      a = f'foo{x}{y}'
+      a = f'foo{x}{y}'  # Not folded
+      b = f'foo{0:08}'  # Folded
+      c = f'foo{x:<9}'  # Not folded
+      d = f'foo{x:}'  # Not folded
+      e = f'foo{x:0{8}x}'  # Internal subsection '0{8}x' folded
+      f = f'{x:05}.a'  # Not folded
+      g = f'pre.{x:05}.post'  # Not folded
     """)
-    self.assertCountEqual(actual, [])
+    self.assertCountEqual(actual, [(4, str, "", None), (7, str, "", None)])
 
 
 class TypeBuilderTestBase(test_base.UnitTest):

@@ -321,6 +321,68 @@ class MatchTest(test_base.TargetPython3BasicTest):
       def g(x: Optional[str]) -> str: ...
     """)
 
+  def test_mapping_attributes(self):
+    self.CheckWithErrors("""
+      from typing import Mapping
+
+      def f(x: Mapping): ...
+
+      class BadMap:
+        def __getitem__(self, *a) -> str:
+         return ''
+        def __iter__(self): ...
+        def __len__(self) -> int:
+          return 1
+
+      f(BadMap())  # wrong-arg-types
+
+      class GoodMap:
+        def keys(self): ...
+        def values(self): ...
+        def items(self): ...
+        def __getitem__(self, *a) -> str:
+         return ''
+        def get(self, k): ...
+        def __iter__(self): ...
+        def __contains__(self): ...
+        def __eq__(self, o) -> bool:
+          return True
+        def __ne__(self): ...
+        def __len__(self) -> int:
+          return 1
+
+      f(GoodMap())
+
+      class GoodMapChild(GoodMap):
+        pass
+
+      f(GoodMapChild())
+
+      f(range(10))  # wrong-arg-types
+      f("abc")  # wrong-arg-types
+    """)
+
+  def test_inherited_mapping_attributes(self):
+    self.Check("""
+      from typing import Mapping
+      class GoodMap(Mapping):
+        def __getitem__(self, *a) -> str:
+         return ''
+        def __iter__(self): ...
+        def __len__(self) -> int:
+          return 1
+      def f(x: Mapping): ...
+      f(GoodMap())
+    """)
+
+  def test_mutablemapping_attrs(self):
+    self.Check("""
+      from typing import Mapping
+      from collections import MutableMapping
+      def f(x: Mapping): ...
+      f(MutableMapping())
+    """)
+
 
 class MatchTestPy3(test_base.TargetPython3FeatureTest):
   """Tests for matching types."""

@@ -24,12 +24,13 @@ def get_parents(
   parents = []
   namedtuple_index = None
   for i, p in enumerate(bases):
-    if _is_parameterized_protocol(p):
-      # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
-      # `Protocol, Generic[T, S, ...]`."
-      # https://www.python.org/dev/peps/pep-0544/#generic-protocols
-      parents.append(p.base_type)
-      parents.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
+    if p.name and pytd_utils.MatchesFullName(p, _PROTOCOL_ALIASES):
+      parents.append(pytd.NamedType("typing.Protocol"))
+      if isinstance(p, pytd.GenericType):
+        # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
+        # `Protocol, Generic[T, S, ...]`."
+        # https://www.python.org/dev/peps/pep-0544/#generic-protocols
+        parents.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
     elif isinstance(p, pytd.NamedType) and p.name == "typing.NamedTuple":
       if namedtuple_index is not None:
         raise ParseError("cannot inherit from bare NamedTuple more than once")
@@ -94,12 +95,3 @@ def check_for_duplicate_defs(methods, constants, aliases) -> None:
   if duplicates:
     raise ParseError(
         "Duplicate class-level identifier(s): " + ", ".join(duplicates))
-
-
-#------------------------------------------------------
-# pytd utils
-
-
-def _is_parameterized_protocol(t) -> bool:
-  return (isinstance(t, pytd.GenericType) and
-          pytd_utils.MatchesFullName(t.base_type, _PROTOCOL_ALIASES))
