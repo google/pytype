@@ -1,6 +1,8 @@
 # Stack Frames
 
-<!--* freshness: { owner: 'mdemello' reviewed: '2020-08-14' } *-->
+<!--*
+freshness: { owner: 'mdemello' reviewed: '2021-08-16' }
+*-->
 
 <!--ts-->
    * [Stack Frames](#stack-frames)
@@ -12,7 +14,7 @@
          * [LOAD and STORE operations](#load-and-store-operations)
       * [The block stack](#the-block-stack)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: mdemello, at: 2021-08-16T10:46-07:00 -->
 
 <!--te-->
 
@@ -46,12 +48,12 @@ display positional information and tracebacks if desired.
 ## Frame state
 
 The main entry point is the `vm.run_frame()` method, which adds a frame to the
-stack, runs it, retrieves the return value and pops it back off. Pytype also
-threads a **state** through the execution of the individual instructions. The
-state, an object of type `state.FrameState`, is an immutable snapshot of the
-state of the frame when running the opcode, including the data stack, the block
-stack and the current cfg node. (These will be detailed in a separate section on
-opcode execution).
+stack, runs its associated bytecode, retrieves the return value and pops it back
+off. Pytype also threads a **state** through the execution of the individual
+instructions. The state, an object of type `state.FrameState`, is an immutable
+snapshot of the state of the frame when running the opcode, including the data
+stack, the block stack and the current cfg node. (These will be detailed in a
+separate section on opcode execution).
 
 At a high level, a frame's code consists of an ordered series of blocks, each of
 which consists of several opcodes. The overall execution loop is (simplified):
