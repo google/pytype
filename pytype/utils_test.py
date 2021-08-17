@@ -3,7 +3,6 @@
 import sys
 
 from pytype import utils
-import six
 
 import unittest
 
@@ -50,7 +49,7 @@ class UtilsTest(unittest.TestCase):
   def test_invert_dict(self):
     a = {"p": ["q", "r"], "x": ["q", "z"]}
     b = utils.invert_dict(a)
-    six.assertCountEqual(self, b["q"], ["p", "x"])
+    self.assertCountEqual(b["q"], ["p", "x"])
     self.assertEqual(b["r"], ["p"])
     self.assertEqual(b["z"], ["x"])
 

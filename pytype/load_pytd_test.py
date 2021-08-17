@@ -391,20 +391,6 @@ class ImportPathsTest(_LoaderTest):
       x = ast.Lookup("test.x")
       self.assertIsInstance(x.type, pytd.IntersectionType)
 
-  def test_python2_builtins(self):
-    # Test that we read python2 builtins from builtin.pytd if we pass a python2
-    # version to the loader.
-    with file_utils.Tempdir() as d:
-      d.create_file("a.pyi", """
-          from UserDict import UserDict
-          class A(UserDict): ...""")
-      loader = load_pytd.Loader("base",
-                                python_version=(2, 7),
-                                pythonpath=[d.path])
-      a = loader.import_name("a")
-      cls = a.Lookup("a.A")
-      self.assertEqual("UserDict.UserDict", pytd_utils.Print(cls.parents[0]))
-
   def test_open_function(self):
     def mock_open(*unused_args, **unused_kwargs):
       return io.StringIO("x: int")

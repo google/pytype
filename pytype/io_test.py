@@ -11,7 +11,6 @@ import traceback
 from pytype import config
 from pytype import io
 from pytype.pytd import pytd
-import six
 
 import unittest
 
@@ -25,14 +24,9 @@ class IOTest(unittest.TestCase):
 
   @contextlib.contextmanager
   def _tmpfile(self, contents):
-    tempfile_options = {"mode": "w", "suffix": ".txt"}
-    if six.PY3:
-      tempfile_options.update({"encoding": "utf-8"})
+    tempfile_options = {"mode": "w", "suffix": ".txt", "encoding": "utf-8"}
     with tempfile.NamedTemporaryFile(**tempfile_options) as f:
-      if six.PY3:
-        f.write(contents)
-      else:
-        f.write(contents.encode("utf-8"))
+      f.write(contents)
       f.flush()
       yield f
 

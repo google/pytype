@@ -11,8 +11,6 @@ from pytype import load_pytd
 from pytype import vm
 from pytype.tests import test_base
 
-import six
-
 import unittest
 
 
@@ -131,7 +129,7 @@ class MatcherTest(MatcherTestBase):
     var = self.vm.program.NewVariable()
     right = abstract.TypeParameter("T", self.vm)
     result = self.matcher.match_var_against_type(var, right, {}, {})
-    six.assertCountEqual(self, result.keys(), ["T"])
+    self.assertCountEqual(result.keys(), ["T"])
     self.assertFalse(result["T"].bindings)
 
   def test_empty_against_unsolvable(self):
@@ -383,9 +381,9 @@ class MatcherTest(MatcherTestBase):
     dummy_instance = abstract.Instance(self.vm.convert.tuple_type, self.vm)
     left = abstract.TypeParameterInstance(right, dummy_instance, self.vm)
     for result in self._match_var(left, right):
-      six.assertCountEqual(self,
-                           [(name, var.data) for name, var in result.items()],
-                           [("typing.AnyStr", [left])])
+      self.assertCountEqual(
+          [(name, var.data) for name, var in result.items()],
+          [("typing.AnyStr", [left])])
 
   def test_protocol(self):
     left1 = self._convert_type("str", as_instance=True)
