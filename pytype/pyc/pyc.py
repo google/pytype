@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 from typing import List, Tuple
 
-from pytype import compat
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyc import compile_bytecode
@@ -98,7 +97,7 @@ def compile_src_string_to_pyc_string(
     return bytecode[1:]
   elif first_byte == 1:  # compile error
     code = bytecode[1:]  # type: bytes
-    raise CompileError(compat.native_str(code))
+    raise CompileError(utils.native_str(code))
   else:
     raise IOError("_compile.py produced invalid result")
 

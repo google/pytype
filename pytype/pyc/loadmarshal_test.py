@@ -1,8 +1,5 @@
 """Tests for loadmarshal.py."""
 
-import sys
-
-from pytype import compat
 from pytype.pyc import loadmarshal
 import unittest
 
@@ -15,13 +12,8 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(type(s1), type(s2))
 
   def load(self, s, python_version=None):
-    if python_version is None:
-      ret1 = loadmarshal.loads(s, (2, 7))
-      ret2 = loadmarshal.loads(s, (3, 6))
-      self.assertStrictEqual(ret1, ret2)
-      return ret1
-    else:
-      return loadmarshal.loads(s, python_version)
+    python_version = python_version or (3, 6)
+    return loadmarshal.loads(s, python_version)
 
   def test_load_none(self):
     self.assertEqual(self.load(b'N'), None)
@@ -70,9 +62,7 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(self.load(b'l\xfe\xff\xff\xff\1\0\2\0'), -65537)
 
   def test_load_string(self):
-    self.assertStrictEqual(self.load(b's\4\0\0\0test', (2, 7)), 'test')
-    self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 6)),
-                           compat.BytesType(b'test'))
+    self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 6)), bytes(b'test'))
 
   def test_load_interned(self):
     self.assertStrictEqual(self.load(b't\4\0\0\0test'), 'test')
@@ -129,15 +119,10 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(code.co_lnotab, None)
 
   def test_load_unicode(self):
-    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (2, 7)),
-                           compat.UnicodeType(u'test'))
     self.assertStrictEqual(self.load(b'u\4\0\0\0test', (3, 6)), 'test')
     # This character is \u00e4 (umlaut a).
     s = b'u\2\0\0\0\xc3\xa4'
-    if sys.version_info[0] == 2:
-      self.assertStrictEqual(self.load(s, (3, 6)), '\xc3\xa4')
-    else:
-      self.assertStrictEqual(self.load(s, (3, 6)), '\xe4')
+    self.assertStrictEqual(self.load(s, (3, 6)), '\xe4')
 
   def test_load_set(self):
     self.assertEqual(self.load(b'<\3\0\0\0FTN'), {True, False, None})

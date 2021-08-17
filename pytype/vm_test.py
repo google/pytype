@@ -22,7 +22,6 @@ import textwrap
 
 from pytype import analyze
 from pytype import blocks
-from pytype import compat
 from pytype import errors
 from pytype import utils
 from pytype import vm
@@ -121,7 +120,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         if x:
           z += x*a
     """)
-  code_nested_loop = compat.int_array_to_bytes([
+  code_nested_loop = bytes([
       _OPMAP["LOAD_CONST"], 0,
       _OPMAP["LOAD_CONST"], 1,
       _OPMAP["LOAD_CONST"], 2,
@@ -176,7 +175,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     raise RuntimeError
     x = 42
     """)
-  code_deadcode = compat.int_array_to_bytes([
+  code_deadcode = bytes([
       _OPMAP["LOAD_NAME"], 0,
       _OPMAP["RAISE_VARARGS"], 1,
       _OPMAP["LOAD_CONST"], 0,

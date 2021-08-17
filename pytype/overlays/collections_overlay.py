@@ -6,7 +6,6 @@ import textwrap
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import compat
 from pytype import overlay
 from pytype import utils
 from pytype.pyi import parser
@@ -162,12 +161,12 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     # list [Variable('a'), Variable('b'), Variable('c')].
     # We just want a list of strings.
     if isinstance(fields, (bytes, str)):
-      fields = compat.native_str(fields)
+      fields = utils.native_str(fields)
       field_names = fields.replace(",", " ").split()
     else:
       field_names = [abstract_utils.get_atomic_python_constant(f)
                      for f in fields]
-      field_names = [compat.native_str(f) for f in field_names]
+      field_names = [utils.native_str(f) for f in field_names]
 
     # namedtuple also takes a "verbose" argument, but we don't care about that.
 

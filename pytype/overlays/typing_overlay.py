@@ -10,7 +10,6 @@
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import compat
 from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
@@ -290,9 +289,6 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
             sig.signature, args, self.vm, self._fields_param)
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
-      if name_py_constant.__class__ is compat.UnicodeType:
-        # Unicode values should be ASCII.
-        name_py_constant = compat.native_str(name_py_constant.encode("ascii"))
       names.append(name_py_constant)
       if functional:
         allowed_type_params = (
@@ -443,9 +439,6 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # Finally, make the class.
     cls_dict = abstract.Dict(self.vm)
     cls_dict.update(node, members)
-    if name.__class__ is compat.UnicodeType:
-      # Unicode values should be ASCII.
-      name = compat.native_str(name.encode("ascii"))
 
     if bases:
       final_bases = []

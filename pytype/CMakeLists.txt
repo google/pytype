@@ -61,7 +61,6 @@ py_library(
     utils
   DEPS
     ._utils
-    .compat
     .datatypes
     .file_utils
     .metrics
@@ -78,7 +77,6 @@ py_library(
     ._utils
     .abstract_utils
     .class_mixin
-    .compat
     .datatypes
     .function
     .mixin
@@ -96,7 +94,6 @@ py_library(
     abstract_utils.py
   DEPS
     ._utils
-    .compat
     .datatypes
     pytype.pyc.pyc
     pytype.pytd.pytd
@@ -193,13 +190,6 @@ py_library(
 
 py_library(
   NAME
-    compat
-  SRCS
-    compat.py
-)
-
-py_library(
-  NAME
     config
   SRCS
     config.py
@@ -232,7 +222,6 @@ py_library(
     .abstract_utils
     .blocks
     .class_mixin
-    .compat
     .datatypes
     .function
     .overlay_dict
@@ -303,8 +292,6 @@ py_library(
     file_utils
   SRCS
     file_utils.py
-  DEPS
-    .compat
 )
 
 py_library(
@@ -571,16 +558,6 @@ py_test(
 
 py_test(
   NAME
-    compat_test
-  SRCS
-    compat_test.py
-  DEPS
-    .compat
-    .file_utils
-)
-
-py_test(
-  NAME
     datatypes_test
   SRCS
     datatypes_test.py
@@ -784,7 +761,6 @@ py_test(
     ._utils
     .analyze
     .blocks
-    .compat
     .errors
     .vm
     pytype.pyc.pyc
@@ -821,7 +797,6 @@ py_test(
   SRCS
     imports_map_loader_test.py
   DEPS
-    .compat
     .file_utils
     .imports_map_loader
     pytype.stubs.stubs
