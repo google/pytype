@@ -97,9 +97,8 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
           typ=typ,
           default=attr.default)
 
-      # The kw_only arg is ignored in python2; using it is not an error.
       # kw_only=False in a field does not override kw_only=True in the class.
-      if self.vm.PY3 and (all_kwonly or attr.kw_only):
+      if all_kwonly or attr.kw_only:
         kwonly_params.append(param)
       else:
         pos_params.append(param)
@@ -170,7 +169,7 @@ class FieldConstructor(abstract.PyTDFunction):
       return abstract_utils.get_atomic_python_constant(args.namedargs[name])
     except abstract_utils.ConversionError:
       self.vm.errorlog.not_supported_yet(
-          self.vm.frames, "Non-constant argument %r" % name)
+          self.vm.frames, f"Non-constant argument {name!r}")
 
 
 def is_method(var):
@@ -213,8 +212,8 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
   Returns:
     A collections.OrderedDict of the locals.
   """
-  # TODO(rechen): Once we drop Python 2 support, either use a normal dict or
-  # replace key deletion with OrderedDict.move_to_end().
+  # TODO(b/195453869): Once we drop Python 2 support, either use a normal dict
+  # or replace key deletion with OrderedDict.move_to_end().
   out = collections.OrderedDict()
   if cls_name not in vm.local_ops:
     # See TestAttribPy3.test_cannot_decorate in tests/py3/test_attr.py. The

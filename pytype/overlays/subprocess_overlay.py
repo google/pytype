@@ -74,18 +74,15 @@ class PopenNew(abstract.PyTDFunction):
     return None
 
   def _yield_matching_signatures(self, node, args, view, alias_map):
-    if self.vm.PY2:
-      sig = None
-    else:
-      # In Python 3, we need to distinguish between Popen[bytes] and Popen[str].
-      # This requires an overlay because:
-      # (1) the stub uses typing.Literal, which pytype doesn't support yet, and
-      # (2) bytes/text can be distinguished definitely based on only a few of
-      #     the parameters, but pytype will fall back to less precise matching
-      #     if any of the parameters has an unknown type.
-      sig = self._match_text_mode(args, view)
-      if sig is None:
-        sig = self._match_bytes_mode(args, view)
+    # In Python 3, we need to distinguish between Popen[bytes] and Popen[str].
+    # This requires an overlay because:
+    # (1) the stub uses typing.Literal, which pytype doesn't support yet, and
+    # (2) bytes/text can be distinguished definitely based on only a few of
+    #     the parameters, but pytype will fall back to less precise matching
+    #     if any of the parameters has an unknown type.
+    sig = self._match_text_mode(args, view)
+    if sig is None:
+      sig = self._match_bytes_mode(args, view)
     if sig is None:
       for sig_info in super()._yield_matching_signatures(
           node, args, view, alias_map):
