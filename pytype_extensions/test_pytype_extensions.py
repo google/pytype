@@ -15,7 +15,7 @@ def InitContents():
   return ''.join(lines)
 
 
-class CodeTest(test_base.TargetPython3FeatureTest):
+class CodeTest(test_base.BaseTest):
 
   def CheckWithErrors(self, code: Text) -> errors.ErrorLog:
     extensions_pyi = pytd_utils.Print(self.Infer(InitContents()))
@@ -95,4 +95,5 @@ class DecoratorTest(CodeTest):
         'e6': r'Callable\[\[Any, int\], float\]'})
 
 
-test_base.main(globals(), __name__ == '__main__')
+if __name__ == '__main__':
+  test_base.main()
