@@ -61,4 +61,4 @@ class BaseVisitor(ast_visitor.BaseVisitor):
     if isinstance(node.op, ast3.USub):
       if isinstance(node.operand, types.Constant):
         return node.operand.negated()
-    raise ParseError("Unexpected unary operator: %s" % node.op)
+    raise ParseError(f"Unexpected unary operator: {node.op}")

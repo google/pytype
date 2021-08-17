@@ -39,7 +39,7 @@ def get_parents(
     elif isinstance(p, pytd.Type):
       parents.append(p)
     else:
-      msg = "Unexpected class base: " + str(p)
+      msg = f"Unexpected class base: {p}"
       raise ParseError(msg)
 
   return parents, namedtuple_index
@@ -51,7 +51,7 @@ def get_metaclass(keywords: List[ast3.AST], parents: List[pytd_node.Node]):
   for k in keywords:
     keyword, value = k.arg, k.value
     if keyword not in ("metaclass", "total"):
-      raise ParseError("Unexpected classdef kwarg %r" % keyword)
+      raise ParseError(f"Unexpected classdef kwarg {keyword!r}")
     elif keyword == "total" and not any(
         isinstance(parent, pytd.NamedType) and
         pytd_utils.MatchesFullName(parent, _TYPED_DICT_ALIASES)
@@ -75,8 +75,8 @@ def get_decorators(decorators: List[str], type_map: Dict[str, pytd_node.Node]):
   nonclass = {"property", "classmethod", "staticmethod", "overload"}
   unsupported_decorators = set(decorators) & nonclass
   if unsupported_decorators:
-    raise ParseError("Unsupported class decorators: %s" % ", ".join(
-        unsupported_decorators))
+    raise ParseError(
+        f"Unsupported class decorators: {', '.join(unsupported_decorators)}")
 
   # Convert decorators to named types. These are wrapped as aliases because we
   # otherwise do not allow referencing functions as types.
@@ -94,4 +94,4 @@ def check_for_duplicate_defs(methods, constants, aliases) -> None:
                 if count >= 2]
   if duplicates:
     raise ParseError(
-        "Duplicate class-level identifier(s): " + ", ".join(duplicates))
+        f"Duplicate class-level identifier(s): {', '.join(duplicates)}")

@@ -84,7 +84,7 @@ class _TypeVar:
     kws = {x.arg for x in node.keywords}
     extra = kws - {"bound", "covariant", "contravariant"}
     if extra:
-      raise ParseError("Unrecognized keyword(s): %s" % ", ".join(extra))
+      raise ParseError(f"Unrecognized keyword(s): {', '.join(extra)}")
     for kw in node.keywords:
       if kw.arg == "bound":
         bound = kw.value
@@ -120,9 +120,9 @@ def _attribute_to_name(node: ast3.Attribute) -> ast3.Name:
   elif isinstance(val, (pytd.NamedType, pytd.Module)):
     prefix = val.name
   else:
-    msg = "Unexpected attribute access on %r [%s]" % (val, type(val))
+    msg = f"Unexpected attribute access on {val!r} [{type(val)}]"
     raise ParseError(msg)
-  return ast3.Name(prefix + "." + node.attr)
+  return ast3.Name(f"{prefix}.{node.attr}")
 
 
 class AnnotationVisitor(visitor.BaseVisitor):
@@ -389,8 +389,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
       if isinstance(target, ast3.Tuple):
         if not (isinstance(value, ast3.Tuple) and
                 len(target.elts) == len(value.elts)):
-          msg = ("Cannot unpack %d values for multiple assignment" %
-                 len(target.elts))
+          msg = f"Cannot unpack {len(target.elts)} values for multiple assignment"
           raise ParseError(msg)
         for k, v in zip(target.elts, value.elts):
           out.append(self._assign(node, k, v))

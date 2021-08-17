@@ -68,12 +68,12 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
             "sys.platform must be compared using %s or %s" % valid_cmps)
       actual = self._platform
     else:
-      raise ParseError("Unsupported condition: '%s'." % name)
+      raise ParseError(f"Unsupported condition: {name!r}.")
     return cmp_slots.COMPARES[op](actual, value)
 
   def fail(self, name=None):
     if name:
-      msg = f"Unsupported condition: '{name}'. "
+      msg = f"Unsupported condition: {name!r}. "
     else:
       msg = "Unsupported condition. "
     msg += "Supported checks are sys.platform and sys.version_info"
@@ -111,13 +111,13 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     elif isinstance(node.op, ast3.And):
       return all(node.values)
     else:
-      raise ParseError("Unexpected boolean operator: " + node.op)
+      raise ParseError(f"Unexpected boolean operator: {node.op}")
 
   def visit_UnaryOp(self, node):
     if isinstance(node.op, ast3.USub) and isinstance(node.operand, int):
       return -node.operand
     else:
-      raise ParseError("Unexpected unary operator: %s" % node.op)
+      raise ParseError(f"Unexpected unary operator: {node.op}")
 
   def visit_Compare(self, node):
     if isinstance(node.left, tuple):
