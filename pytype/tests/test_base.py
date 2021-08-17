@@ -1,7 +1,6 @@
 """Common methods for tests of analyze.py."""
 
 import logging
-import re
 import sys
 import textwrap
 from typing import Tuple
@@ -35,32 +34,6 @@ skip = unittest.skip
 skip_if = unittest.skipIf
 
 
-def WithAnnotationsImport(code):
-  code_without_newline = code.lstrip("\n")
-  indent = len(code_without_newline) - len(code_without_newline.lstrip(" "))
-  return (indent * " ") + test_utils.ANNOTATIONS_IMPORT + "\n" + code
-
-
-def _AddAnnotationsImportPy2(func):
-  def _Wrapper(self, code, *args, **kwargs):
-    assert test_utils.ANNOTATIONS_IMPORT not in code
-    if self.python_version == (2, 7):
-      code = WithAnnotationsImport(code)
-    return func(self, code, *args, **kwargs)
-  return _Wrapper
-
-
-def _IncrementLineNumbersPy2(func):
-  def _Wrapper(self, errorlog, expected_errors):
-    if self.python_version == (2, 7):
-      for mark in expected_errors:
-        expected_errors[mark] = re.sub(
-            r"line (\d+)",
-            lambda m: "line %d" % (int(m.group(1)) + 1), expected_errors[mark])
-    return func(self, errorlog, expected_errors)
-  return _Wrapper
-
-
 def _MatchLoaderConfig(options, loader):
   """Match the |options| with the configuration of |loader|."""
   if not loader:
@@ -80,10 +53,7 @@ def _Format(code):
   # self.Check("""
   #   code
   # """)
-  if test_utils.ANNOTATIONS_IMPORT + "\n\n" in code:
-    code = code.replace(test_utils.ANNOTATIONS_IMPORT + "\n\n",
-                        test_utils.ANNOTATIONS_IMPORT + "\n")
-  elif code.startswith("\n"):
+  if code.startswith("\n"):
     code = code[1:]
   return textwrap.dedent(code)
 
@@ -450,13 +420,6 @@ class BaseTest(unittest.TestCase):
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
-  if utils.USE_ANNOTATIONS_BACKPORT:
-    Check = _AddAnnotationsImportPy2(Check)
-    CheckWithErrors = _AddAnnotationsImportPy2(CheckWithErrors)
-    Infer = _AddAnnotationsImportPy2(Infer)
-    InferWithErrors = _AddAnnotationsImportPy2(InferWithErrors)
-    assertErrorRegexes = _IncrementLineNumbersPy2(assertErrorRegexes)
-
 
 class TargetIndependentTest(BaseTest):
   """Class for tests which are independent of the target Python version.
@@ -481,9 +444,7 @@ class TargetPython3BasicTest(BaseTest):
   """Class for tests using type annotations as the only Python 3 feature.
 
   Test methods in subclasses will test Pytype on Python code stubs which use
-  type annotations as the only Python 3 feature. If
-  utils.USE_ANNOTATIONS_BACKPORT is set, these tests will also be run with
-  target Python version set to 2.7.
+  type annotations as the only Python 3 feature.
   """
 
   PY_MAJOR_VERSIONS = [3]

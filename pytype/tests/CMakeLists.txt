@@ -28,7 +28,6 @@ py_library(
     test_utils.py
   DEPS
     pytype.libvm
-    pytype.utils
     pytype.pyc.pyc
 )
 

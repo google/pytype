@@ -1,18 +1,11 @@
 """Tests for our test framework."""
 
 from pytype import file_utils
-from pytype import utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
-import six
 
 
 class ErrorLogTest(test_base.TargetIndependentTest):
-
-  def _lineno(self, line):
-    if self.python_version == (2, 7) and utils.USE_ANNOTATIONS_BACKPORT:
-      return line + 1
-    return line
 
   def test_error_comments(self):
     err = self.CheckWithErrors("""
@@ -23,21 +16,21 @@ class ErrorLogTest(test_base.TargetIndependentTest):
     """)
     self.assertEqual(
         {mark: (e.lineno, e.name) for mark, e in err.marks.items()},
-        {".mark": (self._lineno(2), "unsupported-operands"),
-         ".another_mark": (self._lineno(4), "wrong-arg-types")})
+        {".mark": (2, "unsupported-operands"),
+         ".another_mark": (4, "wrong-arg-types")})
     self.assertEqual(err.expected, {
-        self._lineno(2): [("unsupported-operands", ".mark")],
-        self._lineno(3): [("attribute-error", None)],
-        self._lineno(4): [("wrong-arg-types", ".another_mark")]})
+        2: [("unsupported-operands", ".mark")],
+        3: [("attribute-error", None)],
+        4: [("wrong-arg-types", ".another_mark")]})
 
   def test_multiple_errors_one_line(self):
     err = self.CheckWithErrors("""
       x = (10).foo, "hello".foo  # attribute-error[e1]  # attribute-error[e2]
     """)
-    line = self._lineno(1)
+    line = 1
     self.assertEqual(err.expected, {line: [("attribute-error", "e1"),
                                            ("attribute-error", "e2")]})
-    six.assertCountEqual(self, err.marks, ["e1", "e2"])
+    self.assertCountEqual(err.marks, ["e1", "e2"])
     self.assertIn("on int", err.marks["e1"].message)
     self.assertIn("on str", err.marks["e2"].message)
 
