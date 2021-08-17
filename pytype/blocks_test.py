@@ -22,7 +22,6 @@ from pytype import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.tests import test_utils
-import six
 
 import unittest
 
@@ -54,8 +53,8 @@ class OrderingTest(BaseBlocksTest):
     ordered_code = self._order_code(co)
     b0, = ordered_code.order
     self.assertEqual(len(b0.code), 2)
-    six.assertCountEqual(self, [], b0.incoming)
-    six.assertCountEqual(self, [], b0.outgoing)
+    self.assertCountEqual([], b0.incoming)
+    self.assertCountEqual([], b0.outgoing)
 
   def test_has_opcode(self):
     # Disassembled from:
@@ -87,10 +86,10 @@ class OrderingTest(BaseBlocksTest):
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "yield")
     b0, b1 = ordered_code.order
-    six.assertCountEqual(self, b0.outgoing, [b1])
-    six.assertCountEqual(self, b1.incoming, [b0])
-    six.assertCountEqual(self, b0.incoming, [])
-    six.assertCountEqual(self, b1.outgoing, [])
+    self.assertCountEqual(b0.outgoing, [b1])
+    self.assertCountEqual(b1.incoming, [b0])
+    self.assertCountEqual(b0.incoming, [])
+    self.assertCountEqual(b1.outgoing, [])
 
   def test_triangle(self):
     # Disassembled from:
@@ -119,12 +118,12 @@ class OrderingTest(BaseBlocksTest):
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "triangle")
     b0, b1, b2 = ordered_code.order
-    six.assertCountEqual(self, b0.incoming, [])
-    six.assertCountEqual(self, b0.outgoing, [b1, b2])
-    six.assertCountEqual(self, b1.incoming, [b0])
-    six.assertCountEqual(self, b1.outgoing, [b2])
-    six.assertCountEqual(self, b2.incoming, [b0, b1])
-    six.assertCountEqual(self, b2.outgoing, [])
+    self.assertCountEqual(b0.incoming, [])
+    self.assertCountEqual(b0.outgoing, [b1, b2])
+    self.assertCountEqual(b1.incoming, [b0])
+    self.assertCountEqual(b1.outgoing, [b2])
+    self.assertCountEqual(b2.incoming, [b0, b1])
+    self.assertCountEqual(b2.outgoing, [])
 
   def test_diamond(self):
     # Disassembled from:
@@ -161,14 +160,14 @@ class OrderingTest(BaseBlocksTest):
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "diamond")
     b0, b1, b2, b3 = ordered_code.order
-    six.assertCountEqual(self, b0.incoming, [])
-    six.assertCountEqual(self, b0.outgoing, [b1, b2])
-    six.assertCountEqual(self, b1.incoming, [b0])
-    six.assertCountEqual(self, b1.outgoing, [b3])
-    six.assertCountEqual(self, b2.incoming, [b0])
-    six.assertCountEqual(self, b2.outgoing, [b3])
-    six.assertCountEqual(self, b3.incoming, [b1, b2])
-    six.assertCountEqual(self, b3.outgoing, [])
+    self.assertCountEqual(b0.incoming, [])
+    self.assertCountEqual(b0.outgoing, [b1, b2])
+    self.assertCountEqual(b1.incoming, [b0])
+    self.assertCountEqual(b1.outgoing, [b3])
+    self.assertCountEqual(b2.incoming, [b0])
+    self.assertCountEqual(b2.outgoing, [b3])
+    self.assertCountEqual(b3.incoming, [b1, b2])
+    self.assertCountEqual(b3.outgoing, [])
 
   def test_raise(self):
     # Disassembled from:
@@ -187,10 +186,10 @@ class OrderingTest(BaseBlocksTest):
     self.assertEqual(ordered_code.co_name, "raise")
     b0, b1 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
-    six.assertCountEqual(self, b0.incoming, [])
-    six.assertCountEqual(self, b0.outgoing, [b1])
-    six.assertCountEqual(self, b1.incoming, [b0])
-    six.assertCountEqual(self, b1.outgoing, [])
+    self.assertCountEqual(b0.incoming, [])
+    self.assertCountEqual(b0.outgoing, [b1])
+    self.assertCountEqual(b1.incoming, [b0])
+    self.assertCountEqual(b1.outgoing, [])
 
   def test_call(self):
     # Disassembled from:
@@ -209,7 +208,7 @@ class OrderingTest(BaseBlocksTest):
     b0, b1 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     self.assertEqual(len(b1.code), 3)
-    six.assertCountEqual(self, b0.outgoing, [b1])
+    self.assertCountEqual(b0.outgoing, [b1])
 
   def test_finally(self):
     # Disassembled from:
@@ -236,7 +235,7 @@ class OrderingTest(BaseBlocksTest):
     self.assertEqual(len(b1.code), 1)
     self.assertEqual(len(b2.code), 1)
     self.assertEqual(len(b3.code), 2)
-    six.assertCountEqual(self, b0.outgoing, [b1, b2])
+    self.assertCountEqual(b0.outgoing, [b1, b2])
 
   def test_except(self):
     # Disassembled from:
@@ -269,9 +268,9 @@ class OrderingTest(BaseBlocksTest):
     self.assertEqual(len(b1.code), 1)
     self.assertEqual(len(b2.code), 5)
     self.assertEqual(len(b3.code), 2)
-    six.assertCountEqual(self, [b1, b2], b0.outgoing)
-    six.assertCountEqual(self, [b3], b1.outgoing)
-    six.assertCountEqual(self, [b3], b2.outgoing)
+    self.assertCountEqual([b1, b2], b0.outgoing)
+    self.assertCountEqual([b3], b1.outgoing)
+    self.assertCountEqual([b3], b2.outgoing)
 
   def test_return(self):
     # Disassembled from:

@@ -16,7 +16,6 @@ from pytype.overlays import typing_overlay
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
-from six import moves
 
 log = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.CallableClass):
       assert template == (abstract_utils.ARGS, abstract_utils.RET), template
-      template = list(moves.range(v.num_args)) + [template[1]]
+      template = list(range(v.num_args)) + [template[1]]
     if self._is_tuple(v, instance):
       if isinstance(v, abstract.TupleClass):
         new_template = range(v.tuple_length)

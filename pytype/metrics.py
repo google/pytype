@@ -25,7 +25,6 @@ import sys
 import time
 import tracemalloc
 
-import six
 
 # Metric serialization/deserialization code, taking advantage of the fact that
 # all instance vars of metrics are things that json can serialize, so we don't
@@ -137,8 +136,7 @@ def merge_from_file(metrics_file):
       existing._merge(metric)  # pylint: disable=protected-access
 
 
-@six.add_metaclass(_RegistryMeta)
-class Metric:
+class Metric(metaclass=_RegistryMeta):
   """Abstract base class for metrics."""
 
   def __init__(self, name):

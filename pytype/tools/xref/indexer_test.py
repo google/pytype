@@ -4,7 +4,6 @@ import textwrap
 from pytype import abstract
 from pytype import config
 from pytype import file_utils
-from pytype import utils
 
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -252,16 +251,6 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
 
 
 class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
-
-  def index_code(self, code, *args, **kwargs):
-    if utils.USE_ANNOTATIONS_BACKPORT and self.python_version == (2, 7):
-      code = test_base.WithAnnotationsImport(code)
-    return super().index_code(code, *args, **kwargs)
-
-  def assertDefLocs(self, index, fqname, locs):
-    if utils.USE_ANNOTATIONS_BACKPORT and self.python_version == (2, 7):
-      locs = [(line + 1, col) for line, col in locs]
-    return super().assertDefLocs(index, fqname, locs)
 
   def test_type_annotations(self):
     ix = self.index_code("""

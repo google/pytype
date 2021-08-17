@@ -3,6 +3,7 @@
 import collections
 import contextlib
 import csv
+import io
 import logging
 import re
 import sys
@@ -20,7 +21,6 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import slots
 from pytype.pytd import visitors
-import six
 
 # Usually we call the logger "log" but that name is used quite often here.
 _log = logging.getLogger(__name__)
@@ -460,9 +460,9 @@ class ErrorLogBase:
     self.print_to_file(sys.stderr)
 
   def __str__(self):
-    io = six.StringIO()
-    self.print_to_file(io)
-    return io.getvalue()
+    f = io.StringIO()
+    self.print_to_file(f)
+    return f.getvalue()
 
 
 class ErrorLog(ErrorLogBase):

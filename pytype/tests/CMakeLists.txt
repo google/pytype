@@ -28,7 +28,6 @@ py_library(
     test_utils.py
   DEPS
     pytype.libvm
-    pytype.utils
     pytype.pyc.pyc
 )
 
@@ -629,5 +628,4 @@ py_test(
     .test_base
 )
 
-add_subdirectory(py2)
 add_subdirectory(py3)

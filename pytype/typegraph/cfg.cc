@@ -14,17 +14,6 @@
 
 namespace typegraph = devtools_python_typegraph;
 
-#if PY_MAJOR_VERSION >= 3
-#  define PyString_Check(s) (PyBytes_Check(s) || PyUnicode_Check(s))
-#  define PyString_FromString PyUnicode_FromString
-#define PyString_FromFormat PyUnicode_FromFormat
-#  define PyString_AsString(ob) \
-        (PyUnicode_Check(ob)? PyUnicode_AsUTF8(ob): PyBytes_AS_STRING(ob))
-#  define PyInt_FromLong PyLong_FromLong
-#define PyInt_AsLong PyLong_AsLong
-#define PyInt_FromSize_t PyLong_FromSize_t
-#endif
-
 #define SafeParseTupleAndKeywords(args, kwargs, pattern, kwlist, ...) \
     PyArg_ParseTupleAndKeywords(args, kwargs, pattern, \
                                 const_cast<char**>(kwlist), ##__VA_ARGS__)
@@ -291,7 +280,7 @@ static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
       Py_RETURN_NONE;
     }
   } else if (PyObject_RichCompareBool(attr, k_next_variable_id, Py_EQ) > 0) {
-    return PyInt_FromSize_t(program->program->next_variable_id());
+    return PyLong_FromSize_t(program->program->next_variable_id());
   } else if (PyObject_RichCompareBool(attr, k_default_data, Py_EQ) > 0) {
     auto data = reinterpret_cast<PyObject*>(
         program->program->default_data().get());
@@ -352,7 +341,7 @@ static PyObject* NewCFGNode(PyProgramObj* self,
     return nullptr;
   if (name_obj) {
     name_obj = PyObject_Str(name_obj);
-    name = PyString_AsString(name_obj);
+    name = PyUnicode_AsUTF8(name_obj);
     Py_DECREF(name_obj);
   } else {
     name = "None";
@@ -589,12 +578,12 @@ static PyObject* CFGNodeGetAttro(PyObject* self, PyObject* attr) {
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_name, Py_EQ) > 0) {
-    return PyString_FromString(cfg_node->cfg_node->name().c_str());
+    return PyUnicode_FromString(cfg_node->cfg_node->name().c_str());
   } else if (PyObject_RichCompareBool(attr, k_program, Py_EQ) > 0) {
     Py_INCREF(program);
     return reinterpret_cast<PyObject*>(program);
   } else if (PyObject_RichCompareBool(attr, k_id, Py_EQ) > 0) {
-    return PyInt_FromLong(cfg_node->cfg_node->id());
+    return PyLong_FromLong(cfg_node->cfg_node->id());
   } else if (PyObject_RichCompareBool(attr, k_condition, Py_EQ) > 0) {
     typegraph::Binding* cond = cfg_node->cfg_node->condition();
     if (cond) {
@@ -635,31 +624,23 @@ static void CFGNodeDealloc(PyObject* self) {
 static PyObject* CFGNodeRepr(PyObject* self) {
   PyCFGNodeObj* py_node = reinterpret_cast<PyCFGNodeObj*>(self);
   auto node = py_node->cfg_node;
-  PyObject* str = PyString_FromFormat(
+  PyObject* str = PyUnicode_FromFormat(
       "<cfgnode %zu %s", node->id(), node->name().c_str());
   if (node->condition()) {
-    PyObject* cond_str = PyString_FromFormat(
+    PyObject* cond_str = PyUnicode_FromFormat(
         " condition:%zu",
         node->condition()->variable()->id());
-#if PY_MAJOR_VERSION >= 3
     PyObject* str_cond_str = PyUnicode_Concat(str, cond_str);
     // Drop references to the old |str| and |cond_str| as we do not need them
     // anymore.
     Py_DECREF(str);
     Py_DECREF(cond_str);
     str = str_cond_str;
-#else
-    PyString_ConcatAndDel(&str, cond_str);
-#endif
   }
-#if PY_MAJOR_VERSION >= 3
-  PyObject* final_str = PyUnicode_Concat(str, PyString_FromString(">"));
+  PyObject* final_str = PyUnicode_Concat(str, PyUnicode_FromString(">"));
   // Drop reference to |str| as we do not need it anymore.
   Py_DECREF(str);
   str = final_str;
-#else
-  PyString_ConcatAndDel(&str, PyString_FromString(">"));
-#endif
   return str;
 }
 
@@ -678,7 +659,7 @@ static PyObject* ConnectNew(PyCFGNodeObj* self,
     return nullptr;
   if (name_obj) {
     name_obj = PyObject_Str(name_obj);
-    name = PyString_AsString(name_obj);
+    name = PyUnicode_AsUTF8(name_obj);
     Py_DECREF(name_obj);
   } else {
     name = "None";
@@ -861,11 +842,11 @@ static PyObject* BindingRepr(PyObject* self) {
     PyErr_Clear();
     id = reinterpret_cast<std::size_t>(attr->attr->data().get());
   } else {
-    id = PyInt_AsLong(py_id);
+    id = PyLong_AsLong(py_id);
     if (id == -1 && PyErr_Occurred())
       return nullptr;
   }
-  return PyString_FromFormat(
+  return PyUnicode_FromFormat(
       "<binding of variable %zu to data %zu>",
       attr->attr->variable()->id(), id);
 }
@@ -1061,7 +1042,7 @@ static void VariableDealloc(PyObject* self) {
 
 static PyObject* VariableRepr(PyObject* self) {
   PyVariableObj* u = reinterpret_cast<PyVariableObj*>(self);
-  return PyString_FromFormat("<Variable v%zu: %zu choices>", u->u->id(),
+  return PyUnicode_FromFormat("<Variable v%zu: %zu choices>", u->u->id(),
                              u->u->size());
 }
 
@@ -1087,7 +1068,7 @@ static PyObject* VariableGetAttro(PyObject* self, PyObject* attr) {
     }
     return list;
   } else if (PyObject_RichCompareBool(attr, k_id, Py_EQ) > 0) {
-    return PyInt_FromLong(u->u->id());
+    return PyLong_FromLong(u->u->id());
   } else if (PyObject_RichCompareBool(attr, k_program, Py_EQ) > 0) {
     Py_INCREF(program);
     return reinterpret_cast<PyObject*>(program);
@@ -1454,12 +1435,8 @@ PyTypeObject PyVariable = {
 static PyObject* InitModule(PyObject* module) {
   PyObject* module_dict = PyModule_GetDict(module);
   if (PyOrigin.tp_name == 0) {
-#if PY_MAJOR_VERSION >= 3
     if (PyStructSequence_InitType2(&PyOrigin, &origin_desc) == -1)
       return NULL;
-#else
-    PyStructSequence_InitType(&PyOrigin, &origin_desc);
-#endif
   }
   PyDict_SetItemString(module_dict, "Program",
                        reinterpret_cast<PyObject*>(&PyProgram));
@@ -1473,43 +1450,43 @@ static PyObject* InitModule(PyObject* module) {
                        reinterpret_cast<PyObject*>(&PyVariable));
 
   Py_XDECREF(k_entrypoint);
-  k_entrypoint = PyString_FromString("entrypoint");
+  k_entrypoint = PyUnicode_FromString("entrypoint");
   Py_XDECREF(k_incoming);
-  k_incoming = PyString_FromString("incoming");
+  k_incoming = PyUnicode_FromString("incoming");
   Py_XDECREF(k_outgoing);
-  k_outgoing = PyString_FromString("outgoing");
+  k_outgoing = PyUnicode_FromString("outgoing");
   Py_XDECREF(k_data);
-  k_data = PyString_FromString("data");
+  k_data = PyUnicode_FromString("data");
   Py_XDECREF(k_name);
-  k_name = PyString_FromString("name");
+  k_name = PyUnicode_FromString("name");
   Py_XDECREF(k_variable);
-  k_variable = PyString_FromString("variable");
+  k_variable = PyUnicode_FromString("variable");
   Py_XDECREF(k_origins);
-  k_origins = PyString_FromString("origins");
+  k_origins = PyUnicode_FromString("origins");
   Py_XDECREF(k_where);
-  k_where = PyString_FromString("where");
+  k_where = PyUnicode_FromString("where");
   Py_XDECREF(k_binding);
-  k_binding = PyString_FromString("binding");
+  k_binding = PyUnicode_FromString("binding");
   Py_XDECREF(k_choices);
-  k_choices = PyString_FromString("choices");
+  k_choices = PyUnicode_FromString("choices");
   Py_XDECREF(k_bindings);
-  k_bindings = PyString_FromString("bindings");
+  k_bindings = PyUnicode_FromString("bindings");
   Py_XDECREF(k_cfg_nodes);
-  k_cfg_nodes = PyString_FromString("cfg_nodes");
+  k_cfg_nodes = PyUnicode_FromString("cfg_nodes");
   Py_XDECREF(k_methods);
-  k_methods = PyString_FromString("methods");
+  k_methods = PyUnicode_FromString("methods");
   Py_XDECREF(k_variables);
-  k_variables = PyString_FromString("variables");
+  k_variables = PyUnicode_FromString("variables");
   Py_XDECREF(k_program);
-  k_program = PyString_FromString("program");
+  k_program = PyUnicode_FromString("program");
   Py_XDECREF(k_id);
-  k_id = PyString_FromString("id");
+  k_id = PyUnicode_FromString("id");
   Py_XDECREF(k_next_variable_id);
-  k_next_variable_id = PyString_FromString("next_variable_id");
+  k_next_variable_id = PyUnicode_FromString("next_variable_id");
   Py_XDECREF(k_condition);
-  k_condition = PyString_FromString("condition");
+  k_condition = PyUnicode_FromString("condition");
   Py_XDECREF(k_default_data);
-  k_default_data = PyString_FromString("default_data");
+  k_default_data = PyUnicode_FromString("default_data");
   return module;
 }
 

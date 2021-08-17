@@ -3,6 +3,7 @@
 import collections
 import logging
 import os
+import pickle
 
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -16,7 +17,6 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import typeshed
 from pytype.pytd import visitors
-from six.moves import cPickle
 
 log = logging.getLogger(__name__)
 
@@ -97,6 +97,7 @@ class Module:
     has_unresolved_pointers: Whether all ClassType pointers have been filled in
   """
 
+  # pylint: disable=redefined-outer-name
   def __init__(self, module_name, filename, ast,
                pickle=None, has_unresolved_pointers=True):
     self.module_name = module_name
@@ -104,6 +105,7 @@ class Module:
     self.ast = ast
     self.pickle = pickle
     self.has_unresolved_pointers = has_unresolved_pointers
+  # pylint: enable=redefined-outer-name
 
   def needs_unpickling(self):
     return bool(self.pickle)
@@ -211,7 +213,7 @@ class _ModuleMap:
         seen.add(m)
       if not m.pickle:
         continue
-      loaded_ast = cPickle.loads(m.pickle)
+      loaded_ast = pickle.loads(m.pickle)
       deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
       loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
       assert m.module_name in self._modules

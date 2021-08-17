@@ -311,7 +311,7 @@ class Binding:
 
   def __repr__(self):
     data_id = getattr(self.data, "id", id(self.data))
-    return "<binding of variable %d to data %d>" % (self.variable.id, data_id)
+    return f"<binding of variable {self.variable.id} to data {data_id}>"
 
 
 class Variable:
@@ -339,8 +339,7 @@ class Variable:
     self._cfgnode_to_bindings = {}
 
   def __repr__(self):
-    return "<Variable v%d: %d choices>" % (
-        self.id, len(self.bindings))
+    return f"<Variable v{self.id}: {len(self.bindings)} choices>"
 
   __str__ = __repr__
 

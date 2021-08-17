@@ -27,7 +27,7 @@ class PytypeSourceUtilsTest(unittest.TestCase):
         pytype_source_utils.get_full_path("/foo/bar"))
 
   def test_list_pytype_files(self):
-    l = list(pytype_source_utils.list_pytype_files("stubs/stdlib/2"))
+    l = list(pytype_source_utils.list_pytype_files("stubs/stdlib/3"))
     self.assertIn("_ctypes.pytd", l)
     self.assertIn("collections.pytd", l)
 

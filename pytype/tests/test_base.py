@@ -1,7 +1,6 @@
 """Common methods for tests of analyze.py."""
 
 import logging
-import re
 import sys
 import textwrap
 from typing import Tuple
@@ -10,7 +9,6 @@ from pytype import analyze
 from pytype import config
 from pytype import directors
 from pytype import load_pytd
-from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -35,32 +33,6 @@ skip = unittest.skip
 skip_if = unittest.skipIf
 
 
-def WithAnnotationsImport(code):
-  code_without_newline = code.lstrip("\n")
-  indent = len(code_without_newline) - len(code_without_newline.lstrip(" "))
-  return (indent * " ") + test_utils.ANNOTATIONS_IMPORT + "\n" + code
-
-
-def _AddAnnotationsImportPy2(func):
-  def _Wrapper(self, code, *args, **kwargs):
-    assert test_utils.ANNOTATIONS_IMPORT not in code
-    if self.python_version == (2, 7):
-      code = WithAnnotationsImport(code)
-    return func(self, code, *args, **kwargs)
-  return _Wrapper
-
-
-def _IncrementLineNumbersPy2(func):
-  def _Wrapper(self, errorlog, expected_errors):
-    if self.python_version == (2, 7):
-      for mark in expected_errors:
-        expected_errors[mark] = re.sub(
-            r"line (\d+)",
-            lambda m: "line %d" % (int(m.group(1)) + 1), expected_errors[mark])
-    return func(self, errorlog, expected_errors)
-  return _Wrapper
-
-
 def _MatchLoaderConfig(options, loader):
   """Match the |options| with the configuration of |loader|."""
   if not loader:
@@ -80,10 +52,7 @@ def _Format(code):
   # self.Check("""
   #   code
   # """)
-  if test_utils.ANNOTATIONS_IMPORT + "\n\n" in code:
-    code = code.replace(test_utils.ANNOTATIONS_IMPORT + "\n\n",
-                        test_utils.ANNOTATIONS_IMPORT + "\n")
-  elif code.startswith("\n"):
+  if code.startswith("\n"):
     code = code[1:]
   return textwrap.dedent(code)
 
@@ -91,14 +60,14 @@ def _Format(code):
 class UnitTest(unittest.TestCase):
   """Base class for tests that specify a target Python version."""
 
-  python_version = utils.full_version_from_major(3)
+  python_version = sys.version_info[:2]
 
 
 class BaseTest(unittest.TestCase):
   """Base class for implementing tests that check PyTD output."""
 
-  python_version: Tuple[int, int]
   _loader: load_pytd.Loader
+  python_version: Tuple[int, int] = sys.version_info[:2]
 
   @classmethod
   def setUpClass(cls):
@@ -450,22 +419,14 @@ class BaseTest(unittest.TestCase):
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
-  if utils.USE_ANNOTATIONS_BACKPORT:
-    Check = _AddAnnotationsImportPy2(Check)
-    CheckWithErrors = _AddAnnotationsImportPy2(CheckWithErrors)
-    Infer = _AddAnnotationsImportPy2(Infer)
-    InferWithErrors = _AddAnnotationsImportPy2(InferWithErrors)
-    assertErrorRegexes = _IncrementLineNumbersPy2(assertErrorRegexes)
 
-
+# TODO(rechen): Get rid of these subclasses.
 class TargetIndependentTest(BaseTest):
   """Class for tests which are independent of the target Python version.
 
   Test methods in subclasses will operate on Python code which does not use any
   feature specific to a Python version, including type annotations.
   """
-
-  PY_MAJOR_VERSIONS = [3]
 
 
 class TargetPython27FeatureTest(BaseTest):
@@ -474,19 +435,13 @@ class TargetPython27FeatureTest(BaseTest):
   Test methods in subclasses will test Pytype on a Python 2.7 feature.
   """
 
-  PY_MAJOR_VERSIONS = [2]
-
 
 class TargetPython3BasicTest(BaseTest):
   """Class for tests using type annotations as the only Python 3 feature.
 
   Test methods in subclasses will test Pytype on Python code stubs which use
-  type annotations as the only Python 3 feature. If
-  utils.USE_ANNOTATIONS_BACKPORT is set, these tests will also be run with
-  target Python version set to 2.7.
+  type annotations as the only Python 3 feature.
   """
-
-  PY_MAJOR_VERSIONS = [3]
 
 
 class TargetPython3FeatureTest(BaseTest):
@@ -494,8 +449,6 @@ class TargetPython3FeatureTest(BaseTest):
 
   Test methods in subclasses will test Pytype on a Python 3 feature.
   """
-
-  PY_MAJOR_VERSIONS = [3]
 
 
 def _PrintErrorDebug(descr, value):
@@ -509,60 +462,8 @@ def _LogLines(log_cmd, lines):
     log_cmd("%s", l)
 
 
+# TODO(rechen): Get rid of this method.
 def main(toplevels, is_main_module=True):
-  """The main method for tests subclassing one of the above classes.
-
-  This function should be called unconditionally, and typically as follows:
-
-    main(globals(), __name__ == "__main__")
-
-  This enables one to run the tests using the 'python -m unittest ...' command,
-  which does run the main test module as the main interpreter module.
-  Call to unittest.main is made only if |is_main_module| is true.
-
-  Arguments:
-    toplevels: The toplevels defined in the main test module.
-    is_main_module: True if the main test module is the main module in the
-                    interpreter.
-  """
-  # We set a python_version attribute on every test class.
-  python_versions = {}
-  # For tests that we want to run under multiple target Python versions, we
-  # create a subclass for each additional version.
-  new_tests = {}
-  # TODO(b/195453869): Remove all TargetPython27FeatureTest instances rather
-  # than filtering them out here.
-  tests_to_delete = set()
-  for name, tp in toplevels.items():
-    if not isinstance(tp, type) or not issubclass(tp, BaseTest):
-      continue
-    if issubclass(tp, TargetPython27FeatureTest):
-      tests_to_delete.add(name)
-      continue
-    if issubclass(tp, TargetPython3FeatureTest):
-      # Many of our Python 3 feature tests are Python 3.6+, since they use
-      # PEP 526-style variable annotations.
-      toplevels[name] = test_utils.skipBeforePy(
-          (3, 6), reason="Variable annotations are 3.6+.")(tp)
-    if hasattr(tp, "PY_MAJOR_VERSIONS"):
-      versions = sorted(tp.PY_MAJOR_VERSIONS, reverse=True)
-    else:
-      versions = [3]
-    assert versions, "Must specify at least one Python major version"
-    assert not hasattr(tp, "python_version"), (
-        "Do not set python_version directly; use PY_MAJOR_VERSIONS")
-    # We can't set python_version yet, since that would cause the assertion that
-    # python_version is not defined to fail on subclasses of tp.
-    python_versions[tp] = utils.full_version_from_major(versions[0])
-    for version in versions[1:]:
-      name = "%sPy%d" % (name, version)
-      subtest = type(name, (tp,),
-                     {"python_version": utils.full_version_from_major(version)})
-      new_tests[name] = subtest
-  for tp, version in python_versions.items():
-    setattr(tp, "python_version", version)
-  toplevels.update(new_tests)
-  for test in tests_to_delete:
-    del toplevels[test]
+  del toplevels  # unused
   if is_main_module:
     unittest.main()

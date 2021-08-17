@@ -2,8 +2,6 @@
 
 from pytype.typegraph import cfg
 
-import six
-
 import unittest
 
 
@@ -37,11 +35,10 @@ class CFGTest(unittest.TestCase):
     v1 = u.AddBinding(None, source_set=[], where=node)
     v2 = u.AddBinding(u"data", source_set=[], where=node)
     v3 = u.AddBinding({1: 2}, source_set=[], where=node)
-    self.assertEqual(v1.data, None)
+    self.assertIsNone(v1.data)
     self.assertEqual(v2.data, u"data")
     self.assertEqual(v3.data, {1: 2})
-    self.assertEqual("<binding of variable 0 to data %d>" % id(v3.data),
-                     str(v3))
+    self.assertEqual(f"<binding of variable 0 to data {id(v3.data)}>", str(v3))
 
   def test_cfg_node_str(self):
     p = cfg.Program()
@@ -80,7 +77,7 @@ class CFGTest(unittest.TestCase):
       origin, = binding.origins
       self.assertEqual(origin.where, node)
       source_set, = origin.source_sets
-      six.assertCountEqual(self, list(source_set), expected_source_set)
+      self.assertCountEqual(list(source_set), expected_source_set)
 
   def test_variable_set(self):
     p = cfg.Program()
@@ -143,8 +140,8 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(ab.Filter(n2), [])
     self.assertEqual(ab.FilteredData(n3), ["A"])
     self.assertEqual(ab.FilteredData(n4), ["B"])
-    six.assertCountEqual(self, ["A", "B"], ab.FilteredData(n5))
-    six.assertCountEqual(self, ["A", "B"], ab.FilteredData(n6))
+    self.assertCountEqual(["A", "B"], ab.FilteredData(n5))
+    self.assertCountEqual(["A", "B"], ab.FilteredData(n6))
 
   def test_can_have_combination(self):
     p = cfg.Program()
@@ -489,15 +486,15 @@ class CFGTest(unittest.TestCase):
                              source_set=[],
                              where=n1)
     variable.AddBinding(z, source_set=variable.bindings, where=n2)
-    six.assertCountEqual(self, [x, y, z], [v.data for v in variable.bindings])
+    self.assertCountEqual([x, y, z], [v.data for v in variable.bindings])
     self.assertTrue(any(len(e.origins) for e in variable.bindings))
     # Test that non-list iterables can be passed to NewVariable.
     v2 = p.NewVariable((x, y), [], n1)
-    six.assertCountEqual(self, [x, y], [v.data for v in v2.bindings])
+    self.assertCountEqual([x, y], [v.data for v in v2.bindings])
     v3 = p.NewVariable({x, y}, [], n1)
-    six.assertCountEqual(self, [x, y], [v.data for v in v3.bindings])
+    self.assertCountEqual([x, y], [v.data for v in v3.bindings])
     v4 = p.NewVariable({x: y}, [], n1)
-    six.assertCountEqual(self, [x], [v.data for v in v4.bindings])
+    self.assertCountEqual([x], [v.data for v in v4.bindings])
 
   def test_node_bindings(self):
     p = cfg.Program()
@@ -510,7 +507,7 @@ class CFGTest(unittest.TestCase):
     a2 = u.AddBinding(2, source_set=[], where=n1)
     a3 = u.AddBinding(3, source_set=[], where=n1)
     a4 = u.AddBinding(4, source_set=[], where=n1)
-    six.assertCountEqual(self, [a1, a2, a3, a4], n1.bindings)
+    self.assertCountEqual([a1, a2, a3, a4], n1.bindings)
 
   def test_program(self):
     p = cfg.Program()
@@ -522,10 +519,10 @@ class CFGTest(unittest.TestCase):
     a12 = u1.AddBinding(12, source_set=[], where=n2)
     a21 = u2.AddBinding(21, source_set=[], where=n1)
     a22 = u2.AddBinding(22, source_set=[], where=n2)
-    six.assertCountEqual(self, [n1, n2], p.cfg_nodes)
-    six.assertCountEqual(self, [u1, u2], p.variables)
-    six.assertCountEqual(self, [a11, a21], n1.bindings)
-    six.assertCountEqual(self, [a12, a22], n2.bindings)
+    self.assertCountEqual([n1, n2], p.cfg_nodes)
+    self.assertCountEqual([u1, u2], p.variables)
+    self.assertCountEqual([a11, a21], n1.bindings)
+    self.assertCountEqual([a12, a22], n2.bindings)
     self.assertEqual(p.next_variable_id, 2)
 
   def test_entry_point(self):
@@ -677,9 +674,9 @@ class CFGTest(unittest.TestCase):
     self.assertEqual([v.data for v in x.bindings], ["a", "b"])
     self.assertEqual([v.data for v in y.bindings], ["a", "b"])
     o, = ay.origins
-    six.assertCountEqual(self, [set()], o.source_sets)
+    self.assertCountEqual([set()], o.source_sets)
     o, = ay.origins
-    six.assertCountEqual(self, [set()], o.source_sets)
+    self.assertCountEqual([set()], o.source_sets)
 
   def test_paste_with_additional_sources(self):
     p = cfg.Program()
@@ -743,14 +740,14 @@ class CFGTest(unittest.TestCase):
     x.AddBinding(1, [], n1)
     x.AddBinding(2, [], n2)
     x.AddBinding(3, [], n3)
-    six.assertCountEqual(self, [1], [v.data for v in x.Bindings(n1)])
-    six.assertCountEqual(self, [2], [v.data for v in x.Bindings(n2)])
-    six.assertCountEqual(self, [3], [v.data for v in x.Bindings(n3)])
-    six.assertCountEqual(self, [1, 3], [v.data for v in x.Bindings(n4)])
-    six.assertCountEqual(self, [1], x.Data(n1))
-    six.assertCountEqual(self, [2], x.Data(n2))
-    six.assertCountEqual(self, [3], x.Data(n3))
-    six.assertCountEqual(self, [1, 3], x.Data(n4))
+    self.assertCountEqual([1], [v.data for v in x.Bindings(n1)])
+    self.assertCountEqual([2], [v.data for v in x.Bindings(n2)])
+    self.assertCountEqual([3], [v.data for v in x.Bindings(n3)])
+    self.assertCountEqual([1, 3], [v.data for v in x.Bindings(n4)])
+    self.assertCountEqual([1], x.Data(n1))
+    self.assertCountEqual([2], x.Data(n2))
+    self.assertCountEqual([3], x.Data(n3))
+    self.assertCountEqual([1, 3], x.Data(n4))
 
   def test_prune_two_origins(self):
     p = cfg.Program()
@@ -809,8 +806,8 @@ class CFGTest(unittest.TestCase):
     v.AddBinding("a", source_set=[], where=n1)
     v.AddBinding("b", source_set=[], where=n2)
     v.AddBinding("c", source_set=[], where=n3)
-    six.assertCountEqual(self, v.data, ["a", "b", "c"])
-    six.assertCountEqual(self, v.bindings, v.Bindings(None))
+    self.assertCountEqual(v.data, ["a", "b", "c"])
+    self.assertCountEqual(v.bindings, v.Bindings(None))
     self.assertEqual(p, v.program)
 
   def test_add_binding_iterables(self):
@@ -856,7 +853,7 @@ class CFGTest(unittest.TestCase):
   def test_program_default_data(self):
     # Basic sanity check to make sure Program.default_data works.
     p = cfg.Program()
-    self.assertEqual(p.default_data, None)
+    self.assertIsNone(p.default_data)
     p.default_data = 1
     self.assertEqual(p.default_data, 1)
 

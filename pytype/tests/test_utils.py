@@ -1,25 +1,18 @@
 """Utility class and function for tests."""
 
 import collections
+import io
 import itertools
 import re
 import sys
 import tokenize
 
-from pytype import compat
 from pytype import errors
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 
-import six
-
 import unittest
-
-
-# Pytype offers a Python 2.7 interpreter with type annotations backported as a
-# __future__ import (see pytype/patches/python_2_7_type_annotations.diff).
-ANNOTATIONS_IMPORT = "from __future__ import google_type_annotations"
 
 
 FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
@@ -184,7 +177,7 @@ class MakeCodeMixin:
         stacksize=2, flags=0, consts=[None, 1, 2], names=[],
         varnames=["x", "y"], filename="", name=name, firstlineno=1,
         lnotab=[], freevars=[], cellvars=[],
-        code=compat.int_array_to_bytes(int_array),
+        code=bytes(int_array),
         python_version=self.python_version)
 
 
@@ -258,7 +251,7 @@ class TestErrorLog(errors.ErrorLog):
       self._fail("Marks not found in code: %s" % ", ".join(expected_regexes))
 
   def _parse_comments(self, src):
-    src = six.moves.StringIO(src)
+    src = io.StringIO(src)
     expected = collections.defaultdict(list)
     used_marks = set()
     for tok, s, (line, _), _, _ in tokenize.generate_tokens(src.readline):

@@ -21,7 +21,6 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
-import six
 
 
 log = logging.getLogger(__name__)
@@ -33,12 +32,8 @@ ERROR_DOC_URL = "https://google.github.io/pytype/errors.html"
 
 def read_source_file(input_filename, open_function=open):
   try:
-    if six.PY3:
-      with open_function(input_filename, "r", encoding="utf8") as fi:
-        return fi.read()
-    else:
-      with open_function(input_filename, "rb") as fi:
-        return fi.read().decode("utf8")
+    with open_function(input_filename, "r", encoding="utf8") as fi:
+      return fi.read()
   except IOError as e:
     raise utils.UsageError("Could not load input file %s" %
                            input_filename) from e
@@ -327,10 +322,4 @@ def wrap_pytype_exceptions(exception_type, filename=""):
                          "'# skip-file' directive found" % filename) from e
   except Exception as e:  # pylint: disable=broad-except
     msg = "Pytype error: %s: %s" % (e.__class__.__name__, e.args[0])
-    # We need the version check here because six.reraise doesn't work properly
-    # in python3
-    if sys.version_info[0] == 2:
-      _, _, tb = sys.exc_info()
-      six.reraise(exception_type, exception_type(msg), tb)
-    else:
-      raise exception_type(msg).with_traceback(e.__traceback__)
+    raise exception_type(msg).with_traceback(e.__traceback__)

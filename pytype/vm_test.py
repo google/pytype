@@ -63,12 +63,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 
   # We only test Python 3.7 bytecode (see setUpClass()), since the bytecode
   # changes from version to version.
-  PY_MAJOR_VERSIONS = [3]
-
-  @classmethod
-  def setUpClass(cls):
-    super().setUpClass()
-    cls.python_version = (3, 7)
+  python_version = (3, 7)
 
   def setUp(self):
     super().setUp()

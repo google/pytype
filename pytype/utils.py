@@ -61,7 +61,7 @@ def format_version(python_version):
 
 
 def version_from_string(version_string):
-  """Parse a version string like "2" or "2.7" into a tuple."""
+  """Parse a version string like "3" or "3.7" into a tuple."""
   try:
     version_int = int(version_string)
   except ValueError:
@@ -97,7 +97,8 @@ def validate_version(python_version):
     raise UsageError("python_version must be <major>.<minor>: %r" %
                      format_version(python_version))
   elif python_version <= (2, 7):
-    raise UsageError("Python version %r is not supported." %
+    raise UsageError("Python version %r is not supported. "
+                     "Use pytype release 2021.08.03 for Python 2 support." %
                      format_version(python_version))
   elif (2, 8) <= python_version < (3, 0):
     raise UsageError("Python version %r is not a valid Python version." %

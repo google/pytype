@@ -6,7 +6,6 @@ import sys
 from pytype import directors
 from pytype import errors
 from pytype.tests import test_utils
-import six
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -304,7 +303,7 @@ class DirectorTest(DirectorTestCase):
       error = list(self._errorlog)[0]
       self.assertEqual(_TEST_FILENAME, error._filename)
       self.assertEqual(1, error.lineno)
-      six.assertRegex(self, str(error), message_regex)
+      self.assertRegex(str(error), message_regex)
 
     check_warning("Unknown pytype directive.*disalbe.*",
                   "# pytype: disalbe=test-error")
