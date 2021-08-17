@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class LogicTest(test_base.TargetIndependentTest):
+class LogicTest(test_base.BaseTest):
   """Tests for logical constructs.
 
   These are tests for pieces of code that need more sophisticated understanding
@@ -27,4 +27,5 @@ class LogicTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

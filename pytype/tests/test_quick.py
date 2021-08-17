@@ -4,7 +4,7 @@ from pytype.pytd import escape
 from pytype.tests import test_base
 
 
-class QuickTest(test_base.TargetIndependentTest):
+class QuickTest(test_base.BaseTest):
   """Tests for --quick."""
 
   def test_max_depth(self):
@@ -86,4 +86,5 @@ class QuickTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

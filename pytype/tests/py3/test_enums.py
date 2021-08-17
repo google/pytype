@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class EnumOverlayTest(test_base.TargetPython3FeatureTest):
+class EnumOverlayTest(test_base.BaseTest):
   """Tests the overlay."""
 
   def test_can_import_module_members(self):
@@ -1056,4 +1056,5 @@ class EnumOverlayTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

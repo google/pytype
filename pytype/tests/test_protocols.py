@@ -8,7 +8,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class ProtocolTest(test_base.TargetIndependentTest):
+class ProtocolTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
   def test_use_iterable(self):
@@ -139,4 +139,5 @@ class ProtocolTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

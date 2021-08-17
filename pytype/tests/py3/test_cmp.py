@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class InstanceUnequalityTest(test_base.TargetPython3BasicTest):
+class InstanceUnequalityTest(test_base.BaseTest):
 
   def test_is(self):
     """SomeType is not be the same as AnotherType."""
@@ -17,7 +17,7 @@ class InstanceUnequalityTest(test_base.TargetPython3BasicTest):
       """)
 
 
-class ContainsFallbackTest(test_base.TargetPython3BasicTest):
+class ContainsFallbackTest(test_base.BaseTest):
   """Tests the __contains__ -> __iter__ -> __getitem__ fallbacks."""
 
   def test_overload_contains(self):
@@ -50,7 +50,7 @@ class ContainsFallbackTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class NotImplementedTest(test_base.TargetPython3BasicTest):
+class NotImplementedTest(test_base.BaseTest):
   """Tests handling of the NotImplemented builtin."""
 
   def test_return_annotation(self):
@@ -78,7 +78,7 @@ class NotImplementedTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class CmpOpTest(test_base.TargetPython3FeatureTest):
+class CmpOpTest(test_base.BaseTest):
   """Tests comparison operator behavior in Python 3."""
 
   def test_lt(self):
@@ -96,4 +96,5 @@ class CmpOpTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

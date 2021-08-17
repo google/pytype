@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class SplitTest(test_base.TargetIndependentTest):
+class SplitTest(test_base.BaseTest):
   """Tests for if-splitting."""
 
   def test_restrict_none(self):
@@ -830,4 +830,5 @@ class SplitTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class SliceTest(test_base.TargetPython3FeatureTest):
+class SliceTest(test_base.BaseTest):
   """Tests for the SLICE_<n> opcodes, as well as for __getitem__(slice)."""
 
   def test_custom_getslice(self):
@@ -34,4 +34,5 @@ class SliceTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

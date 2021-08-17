@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class PYITest(test_base.TargetIndependentTest):
+class PYITest(test_base.BaseTest):
   """Tests for PYI."""
 
   def test_module_parameter(self):
@@ -899,4 +899,5 @@ class PYITest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

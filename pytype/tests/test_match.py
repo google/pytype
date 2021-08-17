@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class MatchTest(test_base.TargetIndependentTest):
+class MatchTest(test_base.BaseTest):
   """Tests for matching types."""
 
   def test_type_against_callable(self):
@@ -146,4 +146,5 @@ class MatchTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

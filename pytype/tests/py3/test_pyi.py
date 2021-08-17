@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class PYITest(test_base.TargetPython3BasicTest):
+class PYITest(test_base.BaseTest):
   """Tests for PYI."""
 
   def test_unneccessary_any_import(self):
@@ -50,7 +50,7 @@ class PYITest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
 
-class PYITestPython3Feature(test_base.TargetPython3FeatureTest):
+class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""
 
   def test_bytes(self):
@@ -87,4 +87,5 @@ class PYITestPython3Feature(test_base.TargetPython3FeatureTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

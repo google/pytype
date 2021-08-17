@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class InplaceTest(test_base.TargetPython3FeatureTest,
+class InplaceTest(test_base.BaseTest,
                   test_utils.InplaceTestMixin):
   """In-place operator tests."""
 
@@ -18,4 +18,5 @@ class InplaceTest(test_base.TargetPython3FeatureTest,
     self._check_inplace("/", ["x=3+2j", "y=1.0"], self.complex)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

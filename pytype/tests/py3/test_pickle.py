@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class PickleTest(test_base.TargetPython3BasicTest):
+class PickleTest(test_base.BaseTest):
   """Tests for loading and saving pickled files."""
 
   def test_container(self):
@@ -28,4 +28,5 @@ class PickleTest(test_base.TargetPython3BasicTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

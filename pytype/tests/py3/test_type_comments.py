@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
+class FunctionCommentWithAnnotationsTest(test_base.BaseTest):
   """Tests for type comments that require annotations."""
 
   def test_function_type_comment_plus_annotations(self):
@@ -31,7 +31,7 @@ class FunctionCommentWithAnnotationsTest(test_base.TargetPython3BasicTest):
         errors, {"e": r"Annotation: List\[str\].*Assignment: List\[None\]"})
 
 
-class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):
+class Py3TypeCommentTest(test_base.BaseTest):
   """Type comment tests that use Python 3-only features."""
 
   def test_ignored_comment(self):
@@ -59,4 +59,5 @@ class Py3TypeCommentTest(test_base.TargetPython3FeatureTest):
         return cast_type
     """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

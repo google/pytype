@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class QuickTest(test_base.TargetPython3BasicTest):
+class QuickTest(test_base.BaseTest):
   """Tests for --quick."""
 
   def test_multiple_returns(self):
@@ -42,4 +42,5 @@ class QuickTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path], quick=True)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

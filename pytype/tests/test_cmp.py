@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class InTest(test_base.TargetIndependentTest):
+class InTest(test_base.BaseTest):
   """Test for "x in y". Also test overloading of this operator."""
 
   def test_concrete(self):
@@ -55,7 +55,7 @@ class InTest(test_base.TargetIndependentTest):
         errors, {"e1": r"'in'.*None", "e2": r"item deletion.*None"})
 
 
-class NotInTest(test_base.TargetIndependentTest):
+class NotInTest(test_base.BaseTest):
   """Test for "x not in y". Also test overloading of this operator."""
 
   def test_concrete(self):
@@ -101,7 +101,7 @@ class NotInTest(test_base.TargetIndependentTest):
         errors, {"e1": r"'in'.*None", "e2": r"item assignment.*None"})
 
 
-class IsTest(test_base.TargetIndependentTest):
+class IsTest(test_base.BaseTest):
   """Test for "x is y". This operator can't be overloaded."""
 
   def test_concrete(self):
@@ -120,7 +120,7 @@ class IsTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
 
 
-class IsNotTest(test_base.TargetIndependentTest):
+class IsNotTest(test_base.BaseTest):
   """Test for "x is not y". This operator can't be overloaded."""
 
   def test_concrete(self):
@@ -173,7 +173,7 @@ class IsNotTest(test_base.TargetIndependentTest):
     """)
 
 
-class LtTest(test_base.TargetIndependentTest):
+class LtTest(test_base.BaseTest):
   """Test for "x < y". Also test overloading."""
 
   def test_concrete(self):
@@ -219,7 +219,7 @@ class LtTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f3"), self.tuple)
 
 
-class LeTest(test_base.TargetIndependentTest):
+class LeTest(test_base.BaseTest):
   """Test for "x <= y". Also test overloading."""
 
   def test_concrete(self):
@@ -243,7 +243,7 @@ class LeTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class GtTest(test_base.TargetIndependentTest):
+class GtTest(test_base.BaseTest):
   """Test for "x > y". Also test overloading."""
 
   def test_concrete(self):
@@ -267,7 +267,7 @@ class GtTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class GeTest(test_base.TargetIndependentTest):
+class GeTest(test_base.BaseTest):
   """Test for "x >= y". Also test overloading."""
 
   def test_concrete(self):
@@ -291,7 +291,7 @@ class GeTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class EqTest(test_base.TargetIndependentTest):
+class EqTest(test_base.BaseTest):
   """Test for "x == y". Also test overloading."""
 
   def test_concrete(self):
@@ -331,7 +331,7 @@ class EqTest(test_base.TargetIndependentTest):
     """)
 
 
-class NeTest(test_base.TargetIndependentTest):
+class NeTest(test_base.BaseTest):
   """Test for "x != y". Also test overloading."""
 
   def test_concrete(self):
@@ -355,7 +355,7 @@ class NeTest(test_base.TargetIndependentTest):
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
-class InstanceUnequalityTest(test_base.TargetIndependentTest):
+class InstanceUnequalityTest(test_base.BaseTest):
 
   def test_iterator_contains(self):
     self.Check("""
@@ -364,4 +364,5 @@ class InstanceUnequalityTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

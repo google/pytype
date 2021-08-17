@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class StdLibTestsBasic(test_base.TargetPython3BasicTest,
+class StdLibTestsBasic(test_base.BaseTest,
                        test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
@@ -100,7 +100,7 @@ class StdLibTestsBasic(test_base.TargetPython3BasicTest,
   """)
 
 
-class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
+class StdlibTestsFeatures(test_base.BaseTest,
                           test_utils.TestCollectionsMixin):
   """Tests for files in typeshed/stdlib."""
 
@@ -532,4 +532,5 @@ class StdlibTestsFeatures(test_base.TargetPython3FeatureTest,
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

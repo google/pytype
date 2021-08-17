@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class SplitTest(test_base.TargetPython3BasicTest):
+class SplitTest(test_base.BaseTest):
   """Tests for if-splitting."""
 
   def test_hasattr(self):
@@ -297,7 +297,7 @@ class SplitTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class SplitTestPy3(test_base.TargetPython3FeatureTest):
+class SplitTestPy3(test_base.BaseTest):
   """Tests for if-splitting in Python 3."""
 
   def test_isinstance_multiple(self):
@@ -385,4 +385,5 @@ class SplitTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
+class TestExceptionsPy3(test_base.BaseTest):
   """Exception tests."""
 
   def test_reraise(self):
@@ -90,4 +90,5 @@ class TestExceptionsPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

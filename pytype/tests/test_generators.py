@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class GeneratorTest(test_base.TargetIndependentTest):
+class GeneratorTest(test_base.BaseTest):
   """Tests for iterators, generators, coroutines, and yield."""
 
   def test_next(self):
@@ -139,4 +139,5 @@ class GeneratorTest(test_base.TargetIndependentTest):
       y = ...  # type: Generator[int, Any, None]
     """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

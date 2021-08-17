@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TypeVarTest(test_base.TargetIndependentTest):
+class TypeVarTest(test_base.BaseTest):
   """Tests for TypeVar."""
 
   def test_unused_typevar(self):
@@ -516,4 +516,5 @@ class TypeVarTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": "Expected.*int.*Actual.*str"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

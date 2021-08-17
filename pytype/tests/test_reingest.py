@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class ReingestTest(test_base.TargetIndependentTest):
+class ReingestTest(test_base.BaseTest):
   """Tests for reloading the pyi we generate."""
 
   def test_container(self):
@@ -223,7 +223,7 @@ class ReingestTest(test_base.TargetIndependentTest):
       """)
 
 
-class StrictNoneTest(test_base.TargetIndependentTest):
+class StrictNoneTest(test_base.BaseTest):
   """Tests for strict none."""
 
   def test_pyi_return_constant(self):
@@ -318,4 +318,5 @@ class StrictNoneTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

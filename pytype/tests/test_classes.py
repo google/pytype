@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class ClassesTest(test_base.TargetIndependentTest):
+class ClassesTest(test_base.BaseTest):
   """Tests for classes."""
 
   def test_make_class(self):
@@ -1458,4 +1458,5 @@ class ClassesTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

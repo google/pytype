@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class ClassesTest(test_base.TargetPython3BasicTest):
+class ClassesTest(test_base.BaseTest):
   """Tests for classes."""
 
   def test_class_getitem(self):
@@ -207,7 +207,7 @@ class ClassesTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
+class ClassesTestPython3Feature(test_base.BaseTest):
   """Tests for classes."""
 
   def test_class_starargs(self):
@@ -471,4 +471,5 @@ class ClassesTestPython3Feature(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestClosures(test_base.TargetIndependentTest):
+class TestClosures(test_base.BaseTest):
   """Tests for closures."""
 
   def test_closures(self):
@@ -114,7 +114,7 @@ class TestClosures(test_base.TargetIndependentTest):
     """)
 
 
-class TestGenerators(test_base.TargetIndependentTest):
+class TestGenerators(test_base.BaseTest):
   """Tests for generators."""
 
   def test_first(self):
@@ -195,7 +195,7 @@ class TestGenerators(test_base.TargetIndependentTest):
       """)
 
 
-class PreciseReturnTest(test_base.TargetIndependentTest):
+class PreciseReturnTest(test_base.BaseTest):
   """Tests for --precise-return."""
 
   def setUp(self):
@@ -241,7 +241,7 @@ class PreciseReturnTest(test_base.TargetIndependentTest):
     """)
 
 
-class TestFunctions(test_base.TargetIndependentTest):
+class TestFunctions(test_base.BaseTest):
   """Tests for functions."""
 
   def test_functions(self):
@@ -1035,4 +1035,5 @@ class TestFunctions(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

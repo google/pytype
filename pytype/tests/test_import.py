@@ -12,7 +12,7 @@ def __getattr__(name) -> Any: ...
 """
 
 
-class ImportTest(test_base.TargetIndependentTest):
+class ImportTest(test_base.BaseTest):
   """Tests for import."""
 
   def test_basic_import(self):
@@ -1271,4 +1271,5 @@ class ImportTest(test_base.TargetIndependentTest):
       """, imports_map=imports_map)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

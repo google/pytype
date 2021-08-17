@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class NamedTupleTest(test_base.TargetIndependentTest):
+class NamedTupleTest(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay."""
 
   def test_basic_calls(self):
@@ -151,4 +151,5 @@ class NamedTupleTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

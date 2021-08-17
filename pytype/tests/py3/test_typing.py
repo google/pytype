@@ -6,7 +6,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class TypingTest(test_base.TargetPython3BasicTest):
+class TypingTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   _TEMPLATE = """
@@ -606,7 +606,7 @@ class TypingTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class CounterTest(test_base.TargetPython3BasicTest):
+class CounterTest(test_base.BaseTest):
   """Tests for typing.Counter."""
 
   def test_counter_generic(self):
@@ -651,7 +651,7 @@ class CounterTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
+class TypingTestPython3Feature(test_base.BaseTest):
   """Typing tests (Python 3)."""
 
   def test_namedtuple_item(self):
@@ -772,7 +772,7 @@ class TypingTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
 
-class LiteralTest(test_base.TargetPython3FeatureTest):
+class LiteralTest(test_base.BaseTest):
   """Tests for typing.Literal in source code."""
 
   def test_basic(self):
@@ -901,4 +901,5 @@ class LiteralTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

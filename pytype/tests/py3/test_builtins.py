@@ -5,7 +5,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class BuiltinTests(test_base.TargetPython3BasicTest):
+class BuiltinTests(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def test_bool_return_value(self):
@@ -124,7 +124,7 @@ class BuiltinTests(test_base.TargetPython3BasicTest):
     """)
 
 
-class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
+class BuiltinPython3FeatureTest(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def test_builtins(self):
@@ -664,4 +664,5 @@ class BuiltinPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

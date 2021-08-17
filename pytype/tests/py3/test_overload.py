@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class OverloadTest(test_base.TargetPython3BasicTest):
+class OverloadTest(test_base.BaseTest):
   """Tests for typing.overload."""
 
   def test_simple(self):
@@ -233,7 +233,7 @@ class OverloadTest(test_base.TargetPython3BasicTest):
       """)
 
 
-class OverloadTestPy3(test_base.TargetPython3FeatureTest):
+class OverloadTestPy3(test_base.BaseTest):
   """Python 3 tests for typing.overload."""
 
   def test_kwargs(self):
@@ -255,4 +255,5 @@ class OverloadTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class FunctionCommentTest(test_base.TargetIndependentTest):
+class FunctionCommentTest(test_base.BaseTest):
   """Tests for type comments."""
 
   def test_function_unspecified_args(self):
@@ -271,7 +271,7 @@ class FunctionCommentTest(test_base.TargetIndependentTest):
     """)
 
 
-class AssignmentCommentTest(test_base.TargetIndependentTest):
+class AssignmentCommentTest(test_base.BaseTest):
   """Tests for type comments applied to assignments."""
 
   def test_class_attribute_comment(self):
@@ -697,4 +697,5 @@ class AssignmentCommentTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

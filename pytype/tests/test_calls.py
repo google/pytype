@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class CallsTest(test_base.TargetIndependentTest):
+class CallsTest(test_base.BaseTest):
   """Tests for checking function calls."""
 
   def test_optional(self):
@@ -83,4 +83,5 @@ class CallsTest(test_base.TargetIndependentTest):
       self.assertErrorRegexes(errors, {"e": r"\bz\b"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

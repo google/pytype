@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class ListTestBasic(test_base.TargetPython3BasicTest):
+class ListTestBasic(test_base.BaseTest):
   """Basic tests for builtins.list in Python 3."""
 
   def test_repeated_add(self):
@@ -20,7 +20,7 @@ class ListTestBasic(test_base.TargetPython3BasicTest):
     """)
 
 
-class ListTest(test_base.TargetPython3FeatureTest):
+class ListTest(test_base.BaseTest):
   """Tests for builtins.list in Python 3."""
 
   def test_byte_unpack_ex(self):
@@ -117,4 +117,5 @@ class ListTest(test_base.TargetPython3FeatureTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

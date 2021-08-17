@@ -6,7 +6,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TypingMethodsTest(test_base.TargetIndependentTest):
+class TypingMethodsTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   def _check_call(self, t, expr):  # pylint: disable=invalid-name
@@ -360,4 +360,5 @@ class TypingMethodsTest(test_base.TargetIndependentTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

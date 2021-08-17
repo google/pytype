@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class SolverTests(test_base.TargetIndependentTest):
+class SolverTests(test_base.BaseTest):
   """Tests for type inference that also runs convert_structural.py."""
 
   def test_ambiguous_attr(self):
@@ -363,4 +363,5 @@ class SolverTests(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

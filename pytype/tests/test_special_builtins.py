@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class SpecialBuiltinsTest(test_base.TargetIndependentTest):
+class SpecialBuiltinsTest(test_base.BaseTest):
   """Tests for special_builtins.py."""
 
   def test_next(self):
@@ -240,4 +240,5 @@ class SpecialBuiltinsTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

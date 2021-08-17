@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class DisableTest(test_base.TargetIndependentTest):
+class DisableTest(test_base.BaseTest):
   """Test error disabling."""
 
   def test_invalid_directive(self):
@@ -64,4 +64,5 @@ class DisableTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

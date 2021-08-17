@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
+class VariableAnnotationsBasicTest(test_base.BaseTest):
   """Tests for PEP526 variable annotations."""
 
   def test_pyi_annotations(self):
@@ -30,7 +30,7 @@ class VariableAnnotationsBasicTest(test_base.TargetPython3BasicTest):
       self.assertErrorRegexes(errors, {"e1": r"int.*List", "e2": r"int.*str"})
 
 
-class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
+class VariableAnnotationsFeatureTest(test_base.BaseTest):
   """Tests for PEP526 variable annotations."""
 
   def test_infer_types(self):
@@ -354,4 +354,5 @@ class VariableAnnotationsFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

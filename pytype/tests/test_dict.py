@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class DictTest(test_base.TargetIndependentTest):
+class DictTest(test_base.BaseTest):
   """Tests for dictionaries."""
 
   def test_pop(self):
@@ -134,4 +134,5 @@ class DictTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

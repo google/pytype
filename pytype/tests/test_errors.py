@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class ErrorTest(test_base.TargetIndependentTest):
+class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
   def test_deduplicate(self):
@@ -966,7 +966,7 @@ class ErrorTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"Optional\[Any\]"})
 
 
-class OperationsTest(test_base.TargetIndependentTest):
+class OperationsTest(test_base.BaseTest):
   """Test operations."""
 
   def test_xor(self):
@@ -1072,7 +1072,7 @@ class OperationsTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e": r"\+.*None.*'__pos__' on None"})
 
 
-class InPlaceOperationsTest(test_base.TargetIndependentTest):
+class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""
 
   def test_iadd(self):
@@ -1083,7 +1083,7 @@ class InPlaceOperationsTest(test_base.TargetIndependentTest):
         "e": r"\+\=.*List.*int.*__iadd__ on List.*Iterable"})
 
 
-class NoSymbolOperationsTest(test_base.TargetIndependentTest):
+class NoSymbolOperationsTest(test_base.BaseTest):
   """Test operations with no native symbol."""
 
   def test_getitem(self):
@@ -1124,4 +1124,5 @@ class NoSymbolOperationsTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

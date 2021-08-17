@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class RecoveryTests(test_base.TargetIndependentTest):
+class RecoveryTests(test_base.BaseTest):
   """Tests for recovering after errors.
 
   The type inferencer can warn about bad code, but it should never blow up.
@@ -150,4 +150,5 @@ class RecoveryTests(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

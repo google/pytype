@@ -7,7 +7,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class ErrorTest(test_base.TargetPython3BasicTest):
+class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
   def test_union(self):
@@ -299,7 +299,7 @@ class ErrorTest(test_base.TargetPython3BasicTest):
       })
 
 
-class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
+class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""
 
   def _testOp(self, op, symbol):
@@ -359,7 +359,7 @@ class InPlaceOperationsTest(test_base.TargetPython3BasicTest):
     self._testOp("ifloordiv", "//=")
 
 
-class ErrorTestPy3(test_base.TargetPython3FeatureTest):
+class ErrorTestPy3(test_base.BaseTest):
   """Tests for errors."""
 
   def test_nis_wrong_arg_types(self):
@@ -438,7 +438,7 @@ class ErrorTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
+class MatrixOperationsTest(test_base.BaseTest):
   """Test matrix operations."""
 
   def test_matmul(self):
@@ -461,7 +461,7 @@ class MatrixOperationsTest(test_base.TargetPython3FeatureTest):
     self.assertErrorRegexes(errors, {"e": r"\@.*A.*int.*__imatmul__ on A.*A"})
 
 
-class UnboundLocalErrorTest(test_base.TargetPython3FeatureTest):
+class UnboundLocalErrorTest(test_base.BaseTest):
   """Tests for UnboundLocalError.
 
   It is often confusing to users when a name error is logged due to a local
@@ -554,7 +554,7 @@ class UnboundLocalErrorTest(test_base.TargetPython3FeatureTest):
               r"function 'f\.g'")})
 
 
-class ClassAttributeNameErrorTest(test_base.TargetPython3FeatureTest):
+class ClassAttributeNameErrorTest(test_base.BaseTest):
   """Tests for name errors on class attributes.
 
   For code like:
@@ -592,7 +592,7 @@ class ClassAttributeNameErrorTest(test_base.TargetPython3FeatureTest):
         "e": r"Use 'C\.x' to reference 'x' from class 'f\.C'"})
 
 
-class PartiallyDefinedClassNameErrorTest(test_base.TargetPython3FeatureTest):
+class PartiallyDefinedClassNameErrorTest(test_base.BaseTest):
   """Test for name errors on the attributes of partially defined classes.
 
   For code like:
@@ -651,4 +651,5 @@ class PartiallyDefinedClassNameErrorTest(test_base.TargetPython3FeatureTest):
               r"function 'f'")})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

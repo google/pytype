@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class TestStrictNone(test_base.TargetIndependentTest):
+class TestStrictNone(test_base.BaseTest):
   """Tests for strict attribute checking on None."""
 
   def test_module_constant(self):
@@ -334,7 +334,7 @@ class TestStrictNone(test_base.TargetIndependentTest):
     """)
 
 
-class TestAttributes(test_base.TargetIndependentTest):
+class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""
 
   def test_simple_attribute(self):
@@ -903,4 +903,5 @@ class TestAttributes(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

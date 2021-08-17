@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class MethodsTest(test_base.TargetIndependentTest):
+class MethodsTest(test_base.BaseTest):
   """Tests for methods."""
 
   def test_flow_and_replacement_sanity(self):
@@ -1038,4 +1038,5 @@ class MethodsTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

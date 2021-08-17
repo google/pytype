@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class TestStructDataclass(test_base.TargetPython3FeatureTest):
+class TestStructDataclass(test_base.BaseTest):
   """Tests for flax.struct.dataclass."""
 
   def _setup_struct_pyi(self, d):
@@ -70,7 +70,7 @@ class TestStructDataclass(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
-class TestLinenModule(test_base.TargetPython3FeatureTest):
+class TestLinenModule(test_base.BaseTest):
   """Test dataclass construction in flax.linen.Module subclasses."""
 
   def _setup_linen_pyi(self, d):
@@ -241,4 +241,5 @@ class TestLinenModule(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

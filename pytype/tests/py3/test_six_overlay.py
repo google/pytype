@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class SixTests(test_base.TargetPython3FeatureTest):
+class SixTests(test_base.BaseTest):
   """Tests for six and six_overlay."""
 
   def test_version_check(self):
@@ -52,4 +52,5 @@ class SixTests(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -363,4 +363,5 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(self.vm.director.decorators, {5, 8})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

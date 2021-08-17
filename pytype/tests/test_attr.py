@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TestAttrib(test_base.TargetIndependentTest):
+class TestAttrib(test_base.BaseTest):
   """Tests for attr.ib."""
 
   def test_basic(self):
@@ -724,7 +724,7 @@ class TestAttrib(test_base.TargetIndependentTest):
     """)
 
 
-class TestAttrs(test_base.TargetIndependentTest):
+class TestAttrs(test_base.BaseTest):
   """Tests for attr.s."""
 
   def test_basic(self):
@@ -803,4 +803,5 @@ class TestAttrs(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

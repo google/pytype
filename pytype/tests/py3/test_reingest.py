@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class ReingestTest(test_base.TargetPython3BasicTest):
+class ReingestTest(test_base.BaseTest):
   """Tests for reloading the pyi we generate."""
 
   def test_type_parameter_bound(self):
@@ -55,7 +55,7 @@ class ReingestTest(test_base.TargetPython3BasicTest):
       self.Check("import dep2", pythonpath=[d.path])
 
 
-class ReingestTestPy3(test_base.TargetPython3FeatureTest):
+class ReingestTestPy3(test_base.BaseTest):
   """Python 3 tests for reloading the pyi we generate."""
 
   def test_instantiate_pyi_class(self):
@@ -94,4 +94,5 @@ class ReingestTestPy3(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class ProtocolInferenceTest(test_base.TargetIndependentTest):
+class ProtocolInferenceTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
   def test_multiple_signatures_with_type_parameter(self):
@@ -492,4 +492,5 @@ class ProtocolInferenceTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

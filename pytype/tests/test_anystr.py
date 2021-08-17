@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class AnyStrTest(test_base.TargetIndependentTest):
+class AnyStrTest(test_base.BaseTest):
   """Tests for issues related to AnyStr."""
 
   def test_type_parameters(self):
@@ -38,4 +38,5 @@ class AnyStrTest(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

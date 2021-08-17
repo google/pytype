@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class ListTest(test_base.TargetIndependentTest):
+class ListTest(test_base.BaseTest):
   """Tests for builtins.list."""
 
   def test_add(self):
@@ -96,4 +96,5 @@ class ListTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

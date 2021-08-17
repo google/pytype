@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class CheckerTest(test_base.TargetPython3BasicTest):
+class CheckerTest(test_base.BaseTest):
   """Tests for --check."""
 
   def test_set(self):
@@ -180,4 +180,5 @@ class CheckerTest(test_base.TargetPython3BasicTest):
         r"Expected: int.*Actually returned: Union\[int, str\]")})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -5,7 +5,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class GenericBasicTest(test_base.TargetPython3BasicTest):
+class GenericBasicTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""
 
   def test_generic_type_params_error(self):
@@ -807,7 +807,7 @@ class GenericBasicTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class GenericFeatureTest(test_base.TargetPython3FeatureTest):
+class GenericFeatureTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""
 
   def test_type_parameter_duplicated(self):
@@ -935,4 +935,5 @@ class GenericFeatureTest(test_base.TargetPython3FeatureTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TestExec(test_base.TargetPython3FeatureTest):
+class TestExec(test_base.BaseTest):
   """Basic tests."""
 
   def test_exec_function(self):
@@ -40,4 +40,5 @@ class TestExec(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

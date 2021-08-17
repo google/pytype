@@ -7,7 +7,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class TestDataclass(test_base.TargetPython3FeatureTest):
+class TestDataclass(test_base.BaseTest):
   """Tests for chex.dataclass."""
 
   @contextlib.contextmanager
@@ -205,4 +205,5 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
         assert_type(a.x, int)
       """, pythonpath=[d.path])
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

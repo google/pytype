@@ -38,4 +38,5 @@ class MetricsTest(test_base.BaseTest):
     self.assertNotEmpty(metrics.solver_metrics[0].query_metrics)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TestBasic(test_base.TargetIndependentTest):
+class TestBasic(test_base.BaseTest):
   """Basic tests."""
 
   def test_constant(self):
@@ -510,7 +510,7 @@ class TestBasic(test_base.TargetIndependentTest):
     """)
 
 
-class TestLoops(test_base.TargetIndependentTest):
+class TestLoops(test_base.BaseTest):
   """Loop tests."""
 
   def test_for(self):
@@ -564,7 +564,7 @@ class TestLoops(test_base.TargetIndependentTest):
       """)
 
 
-class TestComparisons(test_base.TargetIndependentTest):
+class TestComparisons(test_base.BaseTest):
   """Comparison tests."""
 
   def test_in(self):
@@ -592,7 +592,7 @@ class TestComparisons(test_base.TargetIndependentTest):
       """)
 
 
-class TestSlices(test_base.TargetIndependentTest):
+class TestSlices(test_base.BaseTest):
 
   def test_slice_with_step(self):
     self.Check("""
@@ -605,4 +605,5 @@ class TestSlices(test_base.TargetIndependentTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

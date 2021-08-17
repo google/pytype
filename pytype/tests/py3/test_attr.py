@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestAttrib(test_base.TargetPython3BasicTest):
+class TestAttrib(test_base.BaseTest):
   """Tests for attr.ib."""
 
   def test_factory_function(self):
@@ -40,7 +40,7 @@ class TestAttrib(test_base.TargetPython3BasicTest):
     """)
 
 
-class TestAttribConverters(test_base.TargetPython3BasicTest):
+class TestAttribConverters(test_base.BaseTest):
   """Tests for attr.ib with converters."""
 
   def test_annotated_converter(self):
@@ -125,7 +125,7 @@ class TestAttribConverters(test_base.TargetPython3BasicTest):
     """)
 
 
-class TestAttribPy3(test_base.TargetPython3FeatureTest):
+class TestAttribPy3(test_base.BaseTest):
   """Tests for attr.ib using PEP526 syntax."""
 
   def test_variable_annotations(self):
@@ -342,7 +342,7 @@ class TestAttribPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-class TestAttrs(test_base.TargetPython3FeatureTest):
+class TestAttrs(test_base.BaseTest):
   """Tests for attr.s."""
 
   def test_kw_only(self):
@@ -561,7 +561,7 @@ class TestAttrs(test_base.TargetPython3FeatureTest):
     """)
 
 
-class TestPyiAttrs(test_base.TargetPython3FeatureTest):
+class TestPyiAttrs(test_base.BaseTest):
   """Tests for @attr.s in pyi files."""
 
   def test_basic(self):
@@ -720,4 +720,5 @@ class TestPyiAttrs(test_base.TargetPython3FeatureTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

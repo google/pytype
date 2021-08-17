@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class AbstractMethodTests(test_base.TargetPython3FeatureTest):
+class AbstractMethodTests(test_base.BaseTest):
   """Tests for @abc.abstractmethod."""
 
   def test_no_skip_call(self):
@@ -136,4 +136,5 @@ class AbstractMethodTests(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

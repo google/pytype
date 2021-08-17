@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
+class AsyncGeneratorFeatureTest(test_base.BaseTest):
   """Tests for async iterable, iterator, context manager, generator."""
 
   def test_empty_annotation(self):
@@ -210,4 +210,5 @@ class AsyncGeneratorFeatureTest(test_base.TargetPython3FeatureTest):
       def func() -> Coroutine[Any, Any, str]: ...
     """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

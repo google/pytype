@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class ImportTest(test_base.TargetPython3FeatureTest):
+class ImportTest(test_base.BaseTest):
   """Tests for import."""
 
   def test_module_attributes(self):
@@ -66,4 +66,5 @@ class ImportTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

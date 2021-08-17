@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TracebackTest(test_base.TargetPython3BasicTest):
+class TracebackTest(test_base.BaseTest):
   """Tests for tracebacks in error messages."""
 
   def test_build_class(self):
@@ -15,4 +15,5 @@ class TracebackTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"Bar.*not defined$"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TypingTest(test_base.TargetIndependentTest):
+class TypingTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   def test_all(self):
@@ -220,7 +220,7 @@ class TypingTest(test_base.TargetIndependentTest):
     """)
 
 
-class LiteralTest(test_base.TargetIndependentTest):
+class LiteralTest(test_base.BaseTest):
   """Tests for typing.Literal."""
 
   def test_pyi_parameter(self):
@@ -414,4 +414,5 @@ class LiteralTest(test_base.TargetIndependentTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

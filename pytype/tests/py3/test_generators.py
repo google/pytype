@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class GeneratorBasicTest(test_base.TargetPython3BasicTest):
+class GeneratorBasicTest(test_base.BaseTest):
   """Tests for iterators, generators, coroutines, and yield."""
 
   def test_return_before_yield(self):
@@ -38,7 +38,7 @@ class GeneratorBasicTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
-class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
+class GeneratorFeatureTest(test_base.BaseTest):
   """Tests for iterators, generators, coroutines, and yield."""
 
   def test_yield_ret_type(self):
@@ -131,4 +131,5 @@ class GeneratorFeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

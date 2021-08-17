@@ -11,7 +11,7 @@ import six
 from six.moves import cPickle
 
 
-class PickleTest(test_base.TargetIndependentTest):
+class PickleTest(test_base.BaseTest):
   """Tests for loading and saving pickled files."""
 
   def PicklePyi(self, src, module_name):
@@ -190,4 +190,5 @@ class PickleTest(test_base.TargetIndependentTest):
       """, imports_map={"foo": foo, "bar": bar}, module_name="baz")
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

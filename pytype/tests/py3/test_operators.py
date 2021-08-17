@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class ConcreteTest(test_base.TargetPython3FeatureTest,
+class ConcreteTest(test_base.BaseTest,
                    test_utils.OperatorsTestMixin):
   """Tests for operators on concrete values (no unknowns)."""
 
@@ -12,7 +12,7 @@ class ConcreteTest(test_base.TargetPython3FeatureTest,
     self.check_expr("x / y", ["x=1", "y=2"], self.float)
 
 
-class OverloadTest(test_base.TargetPython3FeatureTest,
+class OverloadTest(test_base.BaseTest,
                    test_utils.OperatorsTestMixin):
   """Tests for overloading operators."""
 
@@ -20,7 +20,7 @@ class OverloadTest(test_base.TargetPython3FeatureTest,
     self.check_binary("__truediv__", "/")
 
 
-class ReverseTest(test_base.TargetPython3FeatureTest,
+class ReverseTest(test_base.BaseTest,
                   test_utils.OperatorsTestMixin):
   """Tests for reverse operators."""
 
@@ -28,7 +28,7 @@ class ReverseTest(test_base.TargetPython3FeatureTest,
     self.check_reverse("truediv", "/")
 
 
-class InplaceTest(test_base.TargetPython3FeatureTest,
+class InplaceTest(test_base.BaseTest,
                   test_utils.OperatorsTestMixin):
   """Tests for in-place operators."""
 
@@ -36,4 +36,5 @@ class InplaceTest(test_base.TargetPython3FeatureTest,
     self.check_inplace("itruediv", "/=")
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

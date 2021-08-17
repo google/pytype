@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class AnyStrTest(test_base.TargetPython3BasicTest):
+class AnyStrTest(test_base.BaseTest):
   """Tests for issues related to AnyStr."""
 
   def test_callable(self):
@@ -49,7 +49,7 @@ class AnyStrTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
+class AnyStrTestPy3(test_base.BaseTest):
   """Tests for issues related to AnyStr in Python 3."""
 
   def test_anystr(self):
@@ -121,4 +121,5 @@ class AnyStrTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

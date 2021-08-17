@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class FlowTest(test_base.TargetPython3BasicTest):
+class FlowTest(test_base.BaseTest):
   """Tests for control flow.
 
   These tests primarily test instruction ordering and CFG traversal of the
@@ -96,4 +96,5 @@ class FlowTest(test_base.TargetPython3BasicTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

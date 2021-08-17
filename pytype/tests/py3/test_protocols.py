@@ -8,7 +8,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class ProtocolTest(test_base.TargetPython3BasicTest):
+class ProtocolTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
   def test_check_protocol(self):
@@ -729,7 +729,7 @@ class ProtocolTest(test_base.TargetPython3BasicTest):
         errors, {"e": r"Actually returned[^\n]*\nAttributes[^\n]*$"})
 
 
-class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
+class ProtocolsTestPython3Feature(test_base.BaseTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
 
   def test_check_iterator(self):
@@ -848,7 +848,7 @@ class ProtocolsTestPython3Feature(test_base.TargetPython3FeatureTest):
       })
 
 
-class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
+class ProtocolAttributesTest(test_base.BaseTest):
   """Tests for non-method protocol attributes."""
 
   def test_basic(self):
@@ -1144,4 +1144,5 @@ class ProtocolAttributesTest(test_base.TargetPython3FeatureTest):
               r"got Dict\[str, dataclasses\.Field\[Union\[int, str\]\]\]")})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

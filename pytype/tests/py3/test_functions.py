@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestClosures(test_base.TargetPython3BasicTest):
+class TestClosures(test_base.BaseTest):
   """Tests for closures."""
 
   def test_error(self):
@@ -16,7 +16,7 @@ class TestClosures(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
 
 
-class TestClosuresPy3(test_base.TargetPython3FeatureTest):
+class TestClosuresPy3(test_base.BaseTest):
   """Tests for closures in Python 3."""
 
   def test_if_split_delete_deref(self):
@@ -113,7 +113,7 @@ class TestClosuresPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-class PreciseReturnTest(test_base.TargetPython3BasicTest):
+class PreciseReturnTest(test_base.BaseTest):
   """Tests for --precise-return."""
 
   def setUp(self):
@@ -163,7 +163,7 @@ class PreciseReturnTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
 
-class TestCheckDefaults(test_base.TargetPython3FeatureTest):
+class TestCheckDefaults(test_base.BaseTest):
   """Tests for checking parameter defaults against annotations."""
 
   def test_basic(self):
@@ -225,7 +225,7 @@ class TestCheckDefaults(test_base.TargetPython3FeatureTest):
     """)
 
 
-class TestFunctions(test_base.TargetPython3BasicTest):
+class TestFunctions(test_base.BaseTest):
   """Tests for functions."""
 
   def test_object_to_callable(self):
@@ -443,7 +443,7 @@ class TestFunctions(test_base.TargetPython3BasicTest):
     """)
 
 
-class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
+class TestFunctionsPython3Feature(test_base.BaseTest):
   """Tests for functions."""
 
   def test_make_function(self):
@@ -751,4 +751,5 @@ class TestFunctionsPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

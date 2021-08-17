@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TestStrictNone(test_base.TargetPython3BasicTest):
+class TestStrictNone(test_base.BaseTest):
   """Tests for strict attribute checking on None."""
 
   def test_explicit_none(self):
@@ -39,7 +39,7 @@ class TestStrictNone(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"get.*None.*traceback.*line 8"})
 
 
-class TestAttributes(test_base.TargetPython3BasicTest):
+class TestAttributes(test_base.BaseTest):
   """Tests for attributes."""
 
   def test_attr_on_optional(self):
@@ -92,7 +92,7 @@ class TestAttributes(test_base.TargetPython3BasicTest):
         errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"})
 
 
-class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
+class TestAttributesPython3FeatureTest(test_base.BaseTest):
   """Tests for attributes over target code using Python 3 features."""
 
   def test_empty_type_parameter_instance(self):
@@ -243,4 +243,5 @@ class TestAttributesPython3FeatureTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

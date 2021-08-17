@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestUnpack(test_base.TargetPython3FeatureTest):
+class TestUnpack(test_base.BaseTest):
   """Test unpacking of sequences via *xs."""
 
   def test_build_with_unpack_indefinite(self):
@@ -276,4 +276,5 @@ class TestUnpack(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

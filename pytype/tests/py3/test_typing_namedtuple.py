@@ -6,7 +6,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class NamedTupleTest(test_base.TargetPython3BasicTest):
+class NamedTupleTest(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay."""
 
   def test_make(self):
@@ -64,7 +64,7 @@ class NamedTupleTest(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"Union.*x"})
 
 
-class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
+class NamedTupleTestPy3(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay in Python 3."""
 
   def test_basic_namedtuple(self):
@@ -364,4 +364,5 @@ class NamedTupleTestPy3(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

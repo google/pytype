@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class OperatorsWithAnyTests(test_base.TargetIndependentTest):
+class OperatorsWithAnyTests(test_base.BaseTest):
   """Operator tests."""
 
   @test_base.skip("Needs __radd__ on all builtins")
@@ -114,4 +114,5 @@ class OperatorsWithAnyTests(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

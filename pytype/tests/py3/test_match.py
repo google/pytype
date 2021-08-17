@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class MatchTest(test_base.TargetPython3BasicTest):
+class MatchTest(test_base.BaseTest):
   """Tests for matching types."""
 
   def test_no_argument_pytd_function_against_callable(self):
@@ -384,7 +384,7 @@ class MatchTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class MatchTestPy3(test_base.TargetPython3FeatureTest):
+class MatchTestPy3(test_base.BaseTest):
   """Tests for matching types."""
 
   # Forked into py2 and py3 versions
@@ -444,7 +444,7 @@ class MatchTestPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
+class NonIterableStringsTest(test_base.BaseTest):
   """Tests for non-iterable string behavior."""
 
   def test_add_string(self):
@@ -657,4 +657,5 @@ class NonIterableStringsTest(test_base.TargetPython3FeatureTest):
       x = frozenset("abcdef")
     """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

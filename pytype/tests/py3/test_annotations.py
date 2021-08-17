@@ -5,7 +5,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class AnnotationTest(test_base.TargetPython3BasicTest):
+class AnnotationTest(test_base.BaseTest):
   """Tests for PEP 484 style inline annotations."""
 
   def test_none_unpacking_is(self):
@@ -1181,7 +1181,7 @@ class AnnotationTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
+class TestAnnotationsPython3Feature(test_base.BaseTest):
   """Tests for PEP 484 style inline annotations."""
 
   def test_variable_annotations(self):
@@ -1306,4 +1306,5 @@ class TestAnnotationsPython3Feature(test_base.TargetPython3FeatureTest):
                 r"New contained types.*List\[Dict\[str, int\]\]")})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class ClosuresTest(test_base.TargetIndependentTest):
+class ClosuresTest(test_base.BaseTest):
   """Tests for closures."""
 
   def test_basic_closure(self):
@@ -199,4 +199,5 @@ class ClosuresTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(err, {"e": r"yet_to_be_defined.*not.defined"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

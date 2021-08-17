@@ -6,7 +6,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class TupleTest(test_base.TargetPython3BasicTest):
+class TupleTest(test_base.BaseTest):
   """Tests for builtins.tuple."""
 
   def test_unpack_inline_tuple(self):
@@ -177,7 +177,7 @@ class TupleTest(test_base.TargetPython3BasicTest):
       """, pythonpath=[d.path])
 
 
-class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
+class TupleTestPython3Feature(test_base.BaseTest):
   """Tests for builtins.tuple."""
 
   def test_iteration(self):
@@ -229,4 +229,5 @@ class TupleTestPython3Feature(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

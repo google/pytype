@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TracebackTest(test_base.TargetIndependentTest):
+class TracebackTest(test_base.BaseTest):
   """Tests for tracebacks in error messages."""
 
   def test_no_traceback(self):
@@ -75,4 +75,5 @@ class TracebackTest(test_base.TargetIndependentTest):
         errors, {"e1": r"line 3", "e2": r"line 4", "e3": r"line 5"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

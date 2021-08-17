@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class NamedtupleTests(test_base.TargetPython3BasicTest):
+class NamedtupleTests(test_base.BaseTest):
   """Tests for collections.namedtuple."""
 
   def test_namedtuple_match(self):
@@ -18,7 +18,7 @@ class NamedtupleTests(test_base.TargetPython3BasicTest):
         """)
 
 
-class NamedtupleTestsPy3(test_base.TargetPython3FeatureTest):
+class NamedtupleTestsPy3(test_base.BaseTest):
   """Tests for collections.namedtuple in Python 3."""
 
   def test_bad_call(self):
@@ -42,4 +42,5 @@ class NamedtupleTestsPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -5,7 +5,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class ConcreteTest(test_base.TargetIndependentTest,
+class ConcreteTest(test_base.BaseTest,
                    test_utils.OperatorsTestMixin):
   """Tests for operators on concrete values (no unknowns)."""
 
@@ -169,7 +169,7 @@ class ConcreteTest(test_base.TargetIndependentTest,
     """)
 
 
-class OverloadTest(test_base.TargetIndependentTest,
+class OverloadTest(test_base.BaseTest,
                    test_utils.OperatorsTestMixin):
   """Tests for overloading operators."""
 
@@ -219,7 +219,7 @@ class OverloadTest(test_base.TargetIndependentTest,
     self.check_unary("__nonzero__", "not", self.bool)
 
 
-class ReverseTest(test_base.TargetIndependentTest,
+class ReverseTest(test_base.BaseTest,
                   test_utils.OperatorsTestMixin):
   """Tests for reverse operators."""
 
@@ -332,7 +332,7 @@ class ReverseTest(test_base.TargetIndependentTest,
     self.assertErrorRegexes(errors, {"e": r"real.*str"})
 
 
-class InplaceTest(test_base.TargetIndependentTest,
+class InplaceTest(test_base.BaseTest,
                   test_utils.OperatorsTestMixin):
   """Tests for in-place operators."""
 
@@ -375,7 +375,7 @@ class InplaceTest(test_base.TargetIndependentTest,
     self.assertErrorRegexes(errors, {"e": r"A.*Iterable"})
 
 
-class BindingsTest(test_base.TargetIndependentTest):
+class BindingsTest(test_base.BaseTest):
   """Tests that we correctly handle results without bindings."""
 
   def test_subscr(self):
@@ -388,4 +388,5 @@ class BindingsTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

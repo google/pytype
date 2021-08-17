@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class StdlibTests(test_base.TargetIndependentTest):
+class StdlibTests(test_base.BaseTest):
   """Tests for files in typeshed/stdlib."""
 
   def test_ast(self):
@@ -277,4 +277,5 @@ class StdlibTests(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

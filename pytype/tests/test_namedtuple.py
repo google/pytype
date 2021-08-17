@@ -9,7 +9,7 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
-class NamedtupleTests(test_base.TargetIndependentTest):
+class NamedtupleTests(test_base.BaseTest):
   """Tests for collections.namedtuple."""
 
   def _namedtuple_ast(self, name, fields):
@@ -267,4 +267,5 @@ class NamedtupleTests(test_base.TargetIndependentTest):
       """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestDataclass(test_base.TargetPython3FeatureTest):
+class TestDataclass(test_base.BaseTest):
   """Tests for @dataclass."""
 
   def test_basic(self):
@@ -713,7 +713,7 @@ class TestDataclass(test_base.TargetPython3FeatureTest):
     """)
 
 
-class TestPyiDataclass(test_base.TargetPython3FeatureTest):
+class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""
 
   def test_basic(self):
@@ -1018,4 +1018,5 @@ class TestPyiDataclass(test_base.TargetPython3FeatureTest):
           def __init__(self, x: foo.B, w: int) -> None: ...
       """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

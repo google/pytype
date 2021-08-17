@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class GenericTest(test_base.TargetIndependentTest):
+class GenericTest(test_base.BaseTest):
   """Tests for GenericType."""
 
   def test_basic(self):
@@ -1084,4 +1084,5 @@ class GenericTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

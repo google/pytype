@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class InplaceTest(test_base.TargetIndependentTest,
+class InplaceTest(test_base.BaseTest,
                   test_utils.InplaceTestMixin):
   """In-place operator tests."""
 
@@ -91,4 +91,5 @@ class InplaceTest(test_base.TargetIndependentTest,
     self._check_inplace("^", ["x={1}", "y={2}"], self.int_set)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

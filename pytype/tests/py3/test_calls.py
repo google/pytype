@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TestCalls(test_base.TargetPython3FeatureTest):
+class TestCalls(test_base.BaseTest):
   """Tests for checking function calls."""
 
   def test_starstarargs_with_kwonly(self):
@@ -19,4 +19,5 @@ class TestCalls(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TypingMethodsTest(test_base.TargetPython3FeatureTest):
+class TypingMethodsTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   def test_mapping(self):
@@ -54,4 +54,5 @@ class TypingMethodsTest(test_base.TargetPython3FeatureTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

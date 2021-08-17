@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class TupleTest(test_base.TargetIndependentTest):
+class TupleTest(test_base.BaseTest):
   """Tests for builtins.tuple."""
 
   def test_getitem_int(self):
@@ -183,4 +183,5 @@ class TupleTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

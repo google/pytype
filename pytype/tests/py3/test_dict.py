@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class DictTest(test_base.TargetPython3BasicTest):
+class DictTest(test_base.BaseTest):
   """Tests for dictionaries."""
 
   def test_filtered_getitem(self):
@@ -84,4 +84,5 @@ class DictTest(test_base.TargetPython3BasicTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

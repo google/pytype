@@ -5,7 +5,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class ErrorLogTest(test_base.TargetIndependentTest):
+class ErrorLogTest(test_base.BaseTest):
 
   def test_error_comments(self):
     err = self.CheckWithErrors("""
@@ -114,7 +114,7 @@ class ErrorLogTest(test_base.TargetIndependentTest):
     self.assertIn("Cannot assert errors", str(ctx.exception))
 
 
-class SkipTest(test_base.TargetPython3FeatureTest):
+class SkipTest(test_base.BaseTest):
 
   @test_utils.skipUnlessPy((3, 7), reason="testing skipUnlessPy")
   def test_skip_unless_py(self):
@@ -153,4 +153,5 @@ class SkipTest(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

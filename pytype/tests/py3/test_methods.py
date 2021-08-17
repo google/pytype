@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class TestMethods(test_base.TargetPython3BasicTest):
+class TestMethods(test_base.BaseTest):
   """Tests for class methods."""
 
   def test_function_init(self):
@@ -102,7 +102,7 @@ class TestMethods(test_base.TargetPython3BasicTest):
     """, maximum_depth=2)
 
 
-class TestMethodsPy3(test_base.TargetPython3FeatureTest):
+class TestMethodsPy3(test_base.BaseTest):
   """Test python3-specific method features."""
 
   def test_init_subclass_classmethod(self):
@@ -122,4 +122,5 @@ class TestMethodsPy3(test_base.TargetPython3FeatureTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

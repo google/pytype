@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class RecoveryTests(test_base.TargetPython3BasicTest):
+class RecoveryTests(test_base.BaseTest):
   """Tests for recovering after errors."""
 
   def test_function_with_unknown_decorator(self):
@@ -38,7 +38,7 @@ class RecoveryTests(test_base.TargetPython3BasicTest):
     self.assertErrorRegexes(errors, {"e": r"other_module"})
 
 
-class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
+class RecoveryTestsPython3(test_base.BaseTest):
   """Tests for recovering after errors(python3 only)."""
 
   def test_bad_call_parameter(self):
@@ -65,4 +65,5 @@ class RecoveryTestsPython3(test_base.TargetPython3FeatureTest):
         def g() -> str: ...
       """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

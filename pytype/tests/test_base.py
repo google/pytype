@@ -27,10 +27,11 @@ log = logging.getLogger(__name__)
 CAPTURE_STDOUT = ("-s" not in sys.argv)
 
 
-# For ease of importing, re-export unittest.skip*. Tweak the name to keep the
-# linter happy.
+# For ease of importing, re-export some googletest methods. Tweak the names to
+# keep the linter happy.
 skip = unittest.skip
 skip_if = unittest.skipIf
+main = unittest.main
 
 
 def _MatchLoaderConfig(options, loader):
@@ -420,37 +421,6 @@ class BaseTest(unittest.TestCase):
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
 
 
-# TODO(rechen): Get rid of these subclasses.
-class TargetIndependentTest(BaseTest):
-  """Class for tests which are independent of the target Python version.
-
-  Test methods in subclasses will operate on Python code which does not use any
-  feature specific to a Python version, including type annotations.
-  """
-
-
-class TargetPython27FeatureTest(BaseTest):
-  """Class for tests which depend on a Python 2.7 feature.
-
-  Test methods in subclasses will test Pytype on a Python 2.7 feature.
-  """
-
-
-class TargetPython3BasicTest(BaseTest):
-  """Class for tests using type annotations as the only Python 3 feature.
-
-  Test methods in subclasses will test Pytype on Python code stubs which use
-  type annotations as the only Python 3 feature.
-  """
-
-
-class TargetPython3FeatureTest(BaseTest):
-  """Class for tests which depend on a Python 3 feature beyond type annotations.
-
-  Test methods in subclasses will test Pytype on a Python 3 feature.
-  """
-
-
 def _PrintErrorDebug(descr, value):
   log.error("=============== %s ===========", descr)
   _LogLines(log.error, value)
@@ -460,10 +430,3 @@ def _PrintErrorDebug(descr, value):
 def _LogLines(log_cmd, lines):
   for l in lines.split("\n"):
     log_cmd("%s", l)
-
-
-# TODO(rechen): Get rid of this method.
-def main(toplevels, is_main_module=True):
-  del toplevels  # unused
-  if is_main_module:
-    unittest.main()

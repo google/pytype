@@ -6,7 +6,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class AnnotatedDecoratorsTest(test_base.TargetPython3BasicTest):
+class AnnotatedDecoratorsTest(test_base.BaseTest):
   """A collection of tested examples of annotated decorators."""
 
   def test_identity_decorator(self):
@@ -195,7 +195,7 @@ class AnnotatedDecoratorsTest(test_base.TargetPython3BasicTest):
     """)
 
 
-class DecoratorsTest(test_base.TargetPython3BasicTest):
+class DecoratorsTest(test_base.BaseTest):
   """Test decorators."""
 
   def test_annotated_super_call_under_bad_decorator(self):
@@ -291,4 +291,5 @@ class DecoratorsTest(test_base.TargetPython3BasicTest):
         errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()
