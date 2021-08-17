@@ -3,7 +3,6 @@
 import os
 
 from pytype import file_utils
-import six
 
 import unittest
 
@@ -103,10 +102,8 @@ class TestExpandSourceFiles(unittest.TestCase):
     with file_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       pyfiles = [f for f in fs if f.endswith(".py")]
-      six.assertCountEqual(
-          self,
-          pyfiles,
-          file_utils.expand_source_files(string, d.path))
+      self.assertCountEqual(
+          pyfiles, file_utils.expand_source_files(string, d.path))
 
   def test_expand_source_files(self):
     self._test_expand("a.py foo/c.txt foo")
@@ -120,8 +117,8 @@ class TestExpandSourceFiles(unittest.TestCase):
       pyfiles = [f for f in fs if f.endswith(".py")]
       # cd to d.path and run with just "." as an argument
       with file_utils.cd(d.path):
-        six.assertCountEqual(
-            self, pyfiles, file_utils.expand_source_files("."))
+        self.assertCountEqual(
+            pyfiles, file_utils.expand_source_files("."))
 
   def test_empty(self):
     self.assertEqual(file_utils.expand_source_files(""), set())

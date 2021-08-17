@@ -2,6 +2,7 @@
 
 import bisect
 import collections
+import io
 import itertools
 import keyword
 import logging
@@ -11,7 +12,6 @@ import tokenize
 
 from pytype import blocks
 from pytype import utils
-from six import moves
 
 log = logging.getLogger(__name__)
 
@@ -292,7 +292,7 @@ class Director:
 
   def _parse_source(self, src, python_version):
     """Parse a source file, extracting directives from comments."""
-    f = moves.StringIO(src)
+    f = io.StringIO(src)
     defs_start = None
     open_type_comment_set = _TypeCommentSet.start(1)
     open_decorator = False

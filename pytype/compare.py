@@ -48,9 +48,9 @@ def _compare_constants(op, left, right):
   try:
     return slots.COMPARES[op](left, right)
   except TypeError:
-    # TODO(rechen): In host Python 3, some types are not comparable; e.g.,
-    # `3 < ""` leads to a type error. We should do a Python 2-style comparison
-    # for target Python 2 and log an error for target Python 3.
+    # TODO(b/195453869): In host Python 3, some types are not comparable; e.g.,
+    # `3 < ""` leads to a type error. We should log an error now that we don't
+    # need to support target PY2 behaviour any more.
     return None
 
 
