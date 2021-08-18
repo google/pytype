@@ -10,10 +10,9 @@ class AnnotaterTest(test_base.BaseTest):
 
   def annotate(self, source):
     source = textwrap.dedent(source.lstrip('\n'))
-    ast_factory = lambda unused_options: ast
     pytype_options = config.Options.create(python_version=self.python_version)
 
-    module = annotate_ast.annotate_source(source, ast_factory, pytype_options)
+    module = annotate_ast.annotate_source(source, ast, pytype_options)
     return module
 
   def get_annotations_dict(self, module):

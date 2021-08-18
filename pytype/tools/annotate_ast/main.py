@@ -6,13 +6,7 @@ import sys
 from pytype.ast import debug
 from pytype.tools import arg_parser
 from pytype.tools.annotate_ast import annotate_ast
-from typed_ast import ast27 as ast27
 from typed_ast import ast3
-
-
-def get_ast(options):
-  major = options.python_version[0]
-  return {2: ast27, 3: ast3}[major]
 
 
 def main():
@@ -22,9 +16,8 @@ def main():
   filename = args.inputs[0]
   with open(filename, 'r') as f:
     src = f.read()
-  module = annotate_ast.annotate_source(src, get_ast, options)
-  ast = get_ast(options)
-  print(debug.dump(module, ast))
+  module = annotate_ast.annotate_source(src, ast3, options)
+  print(debug.dump(module, ast3))
 
 
 if __name__ == '__main__':
