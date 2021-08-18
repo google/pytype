@@ -611,7 +611,7 @@ class PropertyTemplate(BuiltinClass):
 
   def _get_args(self, args):
     ret = dict(zip(self._KEYS, args.posargs))
-    for k, v in args.namedargs.iteritems():
+    for k, v in args.namedargs.items():
       if k not in self._KEYS:
         raise function.WrongKeywordArgs(self.signature(), args, self.vm, [k])
       ret[k] = v

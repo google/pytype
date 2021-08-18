@@ -193,66 +193,6 @@ class TestUtils(parser_test_base.ParserTest):
     """)
     self.AssertSourceEquals(w, expected)
 
-  def test_wraps_dict(self):
-    class A(pytd_utils.WrapsDict("m")):
-      pass
-    a = A()
-    a.m = {}
-    a.m = {"foo": 1, "bar": 2}
-    self.assertEqual(a.get("x", "baz"), "baz")
-    self.assertNotIn("x", a)
-    self.assertEqual(a.get("foo"), 1)
-    self.assertEqual(a["foo"], 1)
-    self.assertIn("foo", a)
-    self.assertIn("bar", a)
-    self.assertEqual(a.copy(), a.m)
-    self.assertCountEqual(iter(a), ["foo", "bar"])
-    self.assertCountEqual(a.keys(), ["foo", "bar"])
-    self.assertCountEqual(a.viewkeys(), ["foo", "bar"])
-    self.assertCountEqual(a.iterkeys(), ["foo", "bar"])
-    self.assertCountEqual(a.values(), [1, 2])
-    self.assertCountEqual(a.viewvalues(), [1, 2])
-    self.assertCountEqual(a.itervalues(), [1, 2])
-    self.assertCountEqual(a.items(), [("foo", 1), ("bar", 2)])
-    self.assertCountEqual(a.viewitems(), [("foo", 1), ("bar", 2)])
-    self.assertCountEqual(a.iteritems(), [("foo", 1), ("bar", 2)])
-    self.assertFalse(hasattr(a, "popitem"))
-
-  def test_wraps_writable_dict(self):
-    class A(pytd_utils.WrapsDict("m", writable=True)):
-      pass
-    a = A()
-    a.m = {}
-    a.m = {"foo": 1, "bar": 2}
-    self.assertIn("foo", a)
-    self.assertIn("bar", a)
-    del a["foo"]
-    a["bar"] = 3
-    self.assertNotIn("foo", a)
-    self.assertIn("bar", a)
-    value = a.pop("bar")
-    self.assertEqual(3, value)
-    self.assertNotIn("bar", a)
-    a["new"] = 7
-    item = a.popitem()
-    self.assertEqual(item, ("new", 7))
-    a["1"] = 1
-    a.setdefault("1", 11)
-    a.setdefault("2", 22)
-    self.assertEqual(a["1"], 1)
-    self.assertEqual(a["2"], 22)
-    a.update({"3": 33})
-    self.assertCountEqual(a.items(), (("1", 1), ("2", 22), ("3", 33)))
-    a.clear()
-    self.assertCountEqual(a.items(), ())
-
-  def test_wraps_dict_with_length(self):
-    class A(pytd_utils.WrapsDict("m", implement_len=True)):
-      pass
-    a = A()
-    a.m = {x: x for x in range(42)}
-    self.assertEqual(42, len(a))
-
   def test_builtin_alias(self):
     src = "Number = int"
     ast = parser.parse_string(src, python_version=self.python_version)

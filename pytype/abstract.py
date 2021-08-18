@@ -1037,8 +1037,7 @@ class Tuple(Instance, mixin.PythonConstant):
     return self._hash
 
 
-class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
-           pytd_utils.WrapsDict("pyval")):
+class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
   """Representation of Python 'dict' objects.
 
   It works like builtins.dict, except that, for string keys, it keeps track
@@ -1058,7 +1057,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
     # Use OrderedDict instead of dict, so that it can be compatible with
     # where needs ordered dict.
     # For example: f_locals["__annotations__"]
-    mixin.PythonConstant.init_mixin(self, collections.OrderedDict())
+    mixin.PythonDict.init_mixin(self, collections.OrderedDict())
 
   def str_of_constant(self, printer):
     return str({name: " or ".join(abstract_utils.var_map(printer, value))

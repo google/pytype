@@ -31,5 +31,25 @@ class MixinMetaTest(unittest.TestCase):
     self.assertEqual(v_a, 1)
 
 
+class PythonDictTest(unittest.TestCase):
+
+  def test_wraps_dict(self):
+    class A(mixin.PythonDict):
+
+      def __init__(self, pyval):
+        mixin.PythonDict.init_mixin(self, pyval)
+    a = A({"foo": 1, "bar": 2})
+    self.assertEqual(a.get("x", "baz"), "baz")
+    self.assertNotIn("x", a)
+    self.assertEqual(a.get("foo"), 1)
+    self.assertEqual(a["foo"], 1)
+    self.assertIn("foo", a)
+    self.assertIn("bar", a)
+    self.assertEqual(a.copy(), a.pyval)
+    self.assertCountEqual(iter(a), ["foo", "bar"])
+    self.assertCountEqual(a.keys(), ["foo", "bar"])
+    self.assertCountEqual(a.values(), [1, 2])
+    self.assertCountEqual(a.items(), [("foo", 1), ("bar", 2)])
+
 if __name__ == "__main__":
   unittest.main()
