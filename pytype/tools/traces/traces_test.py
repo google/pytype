@@ -2,7 +2,6 @@
 
 import ast
 import collections
-import sys
 import textwrap
 from pytype import config
 from pytype import file_utils
@@ -410,7 +409,7 @@ class MatchLambdaTest(MatchAstTestCase):
 
   def test_basic(self):
     matches = self._get_traces("lambda x: x.upper()", ast.Lambda)
-    sym = None if sys.version_info.major == 2 else "<lambda>"
+    sym = "<lambda>"
     self.assertTracesEqual(
         matches, [((1, 0), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",))])
 
@@ -419,7 +418,7 @@ class MatchLambdaTest(MatchAstTestCase):
       def f():
         return lambda x: x.upper()
     """, ast.Lambda)
-    sym = None if sys.version_info.major == 2 else "f.<locals>.<lambda>"
+    sym = "f.<locals>.<lambda>"
     self.assertTracesEqual(
         matches, [((2, 9), "MAKE_FUNCTION", sym, ("Callable[[Any], Any]",))])
 
