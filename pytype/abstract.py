@@ -2011,7 +2011,7 @@ class PyTDFunction(Function):
     # This is a hack to prevent false positives when we call a method on a
     # variable with multiple bindings, since we don't always filter rigorously
     # enough in get_views.
-    # See tests/py3/test_annotations:test_list for an example that would break
+    # See tests/test_annotations:test_list for an example that would break
     # if we removed the len(bindings) check.
     if all_mutations and len(func.variable.Bindings(node)) == 1:
       # Raise an error if:
@@ -3351,7 +3351,7 @@ class SignedFunction(Function):
                     break
                 else:
                   # See GenericFeatureTest.test_reinherit_generic in
-                  # tests/py3/test_generic. This can happen if one generic class
+                  # tests/test_generic2. This can happen if one generic class
                   # inherits from another and separately reuses a TypeVar.
                   value.PasteVariable(v, node)
               else:

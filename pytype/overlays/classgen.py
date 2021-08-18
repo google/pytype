@@ -216,7 +216,7 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
   # or replace key deletion with OrderedDict.move_to_end().
   out = collections.OrderedDict()
   if cls_name not in vm.local_ops:
-    # See TestAttribPy3.test_cannot_decorate in tests/py3/test_attr.py. The
+    # See TestAttribPy3.test_cannot_decorate in tests/test_attr2.py. The
     # class will not be in local_ops if a previous decorator hides it.
     return out
   for op in vm.local_ops[cls_name]:

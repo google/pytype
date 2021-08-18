@@ -16,7 +16,6 @@ py_library(
   DEPS
     .test_utils
     pytype.libvm
-    pytype.utils
     pytype.pyi.parser
     pytype.pytd.pytd
 )
@@ -44,38 +43,27 @@ py_test(
 
 py_test(
   NAME
-    test_basic
+    test_basic1
   SRCS
-    test_basic.py
+    test_basic1.py
   DEPS
     .test_base
 )
 
 py_test(
   NAME
-    test_anystr
+    test_basic2
   SRCS
-    test_anystr.py
+    test_basic2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
   NAME
-    test_match
+    test_anystr1
   SRCS
-    test_match.py
-  DEPS
-    .test_base
-    pytype.utils
-)
-
-py_test(
-  NAME
-    test_decorators
-  SRCS
-    test_decorators.py
+    test_anystr1.py
   DEPS
     .test_base
     pytype.utils
@@ -83,9 +71,49 @@ py_test(
 
 py_test(
   NAME
-    test_dict
+    test_anystr2
   SRCS
-    test_dict.py
+    test_anystr2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_match1
+  SRCS
+    test_match1.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_match2
+  SRCS
+    test_match2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_decorators1
+  SRCS
+    test_decorators1.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_decorators2
+  SRCS
+    test_decorators2.py
   DEPS
     .test_base
     pytype.utils
@@ -94,9 +122,29 @@ py_test(
 
 py_test(
   NAME
-    test_exceptions
+    test_dict1
   SRCS
-    test_exceptions.py
+    test_dict1.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_dict2
+  SRCS
+    test_dict2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_exceptions1
+  SRCS
+    test_exceptions1.py
   DEPS
     .test_base
     pytype.utils
@@ -104,9 +152,18 @@ py_test(
 
 py_test(
   NAME
-    test_functions
+    test_exceptions2
   SRCS
-    test_functions.py
+    test_exceptions2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_functions1
+  SRCS
+    test_functions1.py
   DEPS
     .test_base
     pytype.utils
@@ -114,18 +171,37 @@ py_test(
 
 py_test(
   NAME
-    test_generators
+    test_functions2
   SRCS
-    test_generators.py
+    test_functions2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_generators1
+  SRCS
+    test_generators1.py
   DEPS
     .test_base
 )
 
 py_test(
   NAME
-    test_quick
+    test_generators2
   SRCS
-    test_quick.py
+    test_generators2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_quick1
+  SRCS
+    test_quick1.py
   DEPS
     .test_base
     pytype.pytd.pytd
@@ -133,27 +209,9 @@ py_test(
 
 py_test(
   NAME
-    test_slice
+    test_quick2
   SRCS
-    test_slice.py
-  DEPS
-    .test_base
-)
-
-py_test(
-  NAME
-    test_slots
-  SRCS
-    test_slots.py
-  DEPS
-    .test_base
-)
-
-py_test(
-  NAME
-    test_splits
-  SRCS
-    test_splits.py
+    test_quick2.py
   DEPS
     .test_base
     pytype.utils
@@ -161,9 +219,45 @@ py_test(
 
 py_test(
   NAME
-    test_super
+    test_slice1
   SRCS
-    test_super.py
+    test_slice1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_slice2
+  SRCS
+    test_slice2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_slots1
+  SRCS
+    test_slots1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_slots2
+  SRCS
+    test_slots2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_splits1
+  SRCS
+    test_splits1.py
   DEPS
     .test_base
     pytype.utils
@@ -171,18 +265,67 @@ py_test(
 
 py_test(
   NAME
-    test_tuple
+    test_splits2
   SRCS
-    test_tuple.py
+    test_splits2.py
   DEPS
     .test_base
 )
 
 py_test(
   NAME
-    test_type_comments
+    test_super1
   SRCS
-    test_type_comments.py
+    test_super1.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_super2
+  SRCS
+    test_super2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_tuple1
+  SRCS
+    test_tuple1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_tuple2
+  SRCS
+    test_tuple2.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_type_comments1
+  SRCS
+    test_type_comments1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_type_comments2
+  SRCS
+    test_type_comments2.py
   DEPS
     .test_base
 )
@@ -207,13 +350,22 @@ py_test(
 
 py_test(
   NAME
-    test_attributes
+    test_attributes1
   SRCS
-    test_attributes.py
+    test_attributes1.py
   DEPS
     .test_base
     pytype.utils
     pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_attributes2
+  SRCS
+    test_attributes2.py
+  DEPS
+    .test_base
 )
 
 py_test(
@@ -250,9 +402,9 @@ py_test(
 
 py_test(
   NAME
-    test_special_builtins
+    test_builtins4
   SRCS
-    test_special_builtins.py
+    test_builtins4.py
   DEPS
     .test_base
     pytype.utils
@@ -260,9 +412,9 @@ py_test(
 
 py_test(
   NAME
-    test_stdlib
+    test_special_builtins1
   SRCS
-    test_stdlib.py
+    test_special_builtins1.py
   DEPS
     .test_base
     pytype.utils
@@ -270,9 +422,37 @@ py_test(
 
 py_test(
   NAME
-    test_classes
+    test_special_builtins2
   SRCS
-    test_classes.py
+    test_special_builtins2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_stdlib1
+  SRCS
+    test_stdlib1.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_stdlib2
+  SRCS
+    test_stdlib2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_classes1
+  SRCS
+    test_classes1.py
   DEPS
     .test_base
     pytype.utils
@@ -281,9 +461,28 @@ py_test(
 
 py_test(
   NAME
-    test_cmp
+    test_classes2
   SRCS
-    test_cmp.py
+    test_classes2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_cmp1
+  SRCS
+    test_cmp1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_cmp2
+  SRCS
+    test_cmp2.py
   DEPS
     .test_base
 )
@@ -301,22 +500,41 @@ py_test(
 
 py_test(
   NAME
-    test_flow
+    test_flow1
   SRCS
-    test_flow.py
+    test_flow1.py
   DEPS
     .test_base
 )
 
 py_test(
   NAME
-    test_methods
+    test_flow2
   SRCS
-    test_methods.py
+    test_flow2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_methods1
+  SRCS
+    test_methods1.py
   DEPS
     .test_base
     pytype.utils
     pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_methods2
+  SRCS
+    test_methods2.py
+  DEPS
+    .test_base
+    pytype.utils
 )
 
 py_test(
@@ -339,9 +557,9 @@ py_test(
 
 py_test(
   NAME
-    test_errors
+    test_errors1
   SRCS
-    test_errors.py
+    test_errors1.py
   DEPS
     .test_base
     pytype.utils
@@ -349,18 +567,37 @@ py_test(
 
 py_test(
   NAME
-    test_tracebacks
+    test_errors2
   SRCS
-    test_tracebacks.py
+    test_errors2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_tracebacks1
+  SRCS
+    test_tracebacks1.py
   DEPS
     .test_base
 )
 
 py_test(
   NAME
-    test_pickle
+    test_tracebacks2
   SRCS
-    test_pickle.py
+    test_tracebacks2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_pickle1
+  SRCS
+    test_pickle1.py
   DEPS
     .test_base
     pytype.utils
@@ -370,9 +607,19 @@ py_test(
 
 py_test(
   NAME
-    test_reingest
+    test_pickle2
   SRCS
-    test_reingest.py
+    test_pickle2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_reingest1
+  SRCS
+    test_reingest1.py
   DEPS
     .test_base
     pytype.utils
@@ -381,9 +628,29 @@ py_test(
 
 py_test(
   NAME
-    test_list
+    test_reingest2
   SRCS
-    test_list.py
+    test_reingest2.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_list1
+  SRCS
+    test_list1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_list2
+  SRCS
+    test_list2.py
   DEPS
     .test_base
 )
@@ -399,12 +666,23 @@ py_test(
 
 py_test(
   NAME
-    test_typevar
+    test_typevar1
   SRCS
-    test_typevar.py
+    test_typevar1.py
   DEPS
     .test_base
     pytype.utils
+)
+
+py_test(
+  NAME
+    test_typevar2
+  SRCS
+    test_typevar2.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -418,9 +696,9 @@ py_test(
 
 py_test(
   NAME
-    test_calls
+    test_calls1
   SRCS
-    test_calls.py
+    test_calls1.py
   DEPS
     .test_base
     pytype.utils
@@ -428,9 +706,18 @@ py_test(
 
 py_test(
   NAME
-    test_import
+    test_calls2
   SRCS
-    test_import.py
+    test_calls2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_import1
+  SRCS
+    test_import1.py
   DEPS
     .test_base
     pytype.libvm
@@ -440,9 +727,9 @@ py_test(
 
 py_test(
   NAME
-    test_pyi
+    test_import2
   SRCS
-    test_pyi.py
+    test_import2.py
   DEPS
     .test_base
     pytype.utils
@@ -450,12 +737,43 @@ py_test(
 
 py_test(
   NAME
-    test_generic
+    test_pyi1
   SRCS
-    test_generic.py
+    test_pyi1.py
   DEPS
     .test_base
     pytype.utils
+)
+
+py_test(
+  NAME
+    test_pyi2
+  SRCS
+    test_pyi2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_generic1
+  SRCS
+    test_generic1.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_generic2
+  SRCS
+    test_generic2.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -470,9 +788,9 @@ py_test(
 
 py_test(
   NAME
-    test_operators
+    test_operators1
   SRCS
-    test_operators.py
+    test_operators1.py
   DEPS
     .test_base
     .test_utils
@@ -490,9 +808,18 @@ py_test(
 
 py_test(
   NAME
-    test_inplace
+    test_operators3
   SRCS
-    test_inplace.py
+    test_operators3.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_inplace1
+  SRCS
+    test_inplace1.py
   DEPS
     .test_base
     .test_utils
@@ -500,9 +827,27 @@ py_test(
 
 py_test(
   NAME
-    test_recovery
+    test_inplace2
   SRCS
-    test_recovery.py
+    test_inplace2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_recovery1
+  SRCS
+    test_recovery1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_recovery2
+  SRCS
+    test_recovery2.py
   DEPS
     .test_base
 )
@@ -519,9 +864,9 @@ py_test(
 
 py_test(
   NAME
-    test_typing
+    test_typing1
   SRCS
-    test_typing.py
+    test_typing1.py
   DEPS
     .test_base
     pytype.utils
@@ -529,19 +874,9 @@ py_test(
 
 py_test(
   NAME
-    test_typing_methods
+    test_typing2
   SRCS
-    test_typing_methods.py
-  DEPS
-    .test_base
-    pytype.utils
-)
-
-py_test(
-  NAME
-    test_typing_namedtuple
-  SRCS
-    test_typing_namedtuple.py
+    test_typing2.py
   DEPS
     .test_base
     pytype.utils
@@ -550,9 +885,62 @@ py_test(
 
 py_test(
   NAME
-    test_protocols
+    test_typing_methods1
   SRCS
-    test_protocols.py
+    test_typing_methods1.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_typing_methods2
+  SRCS
+    test_typing_methods2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_typing_namedtuple1
+  SRCS
+    test_typing_namedtuple1.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_typing_namedtuple2
+  SRCS
+    test_typing_namedtuple2.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_protocols1
+  SRCS
+    test_protocols1.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_protocols2
+  SRCS
+    test_protocols2.py
   DEPS
     .test_base
     pytype.utils
@@ -571,9 +959,9 @@ py_test(
 
 py_test(
   NAME
-    test_namedtuple
+    test_namedtuple1
   SRCS
-    test_namedtuple.py
+    test_namedtuple1.py
   DEPS
     .test_base
     pytype.utils
@@ -583,9 +971,18 @@ py_test(
 
 py_test(
   NAME
-    test_abc
+    test_namedtuple2
   SRCS
-    test_abc.py
+    test_namedtuple2.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_abc1
+  SRCS
+    test_abc1.py
   DEPS
     .test_base
     pytype.utils
@@ -593,18 +990,47 @@ py_test(
 
 py_test(
   NAME
-    test_attr
+    test_abc2
   SRCS
-    test_attr.py
+    test_abc2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_attr1
+  SRCS
+    test_attr1.py
   DEPS
     .test_base
 )
 
 py_test(
   NAME
-    test_six_overlay
+    test_attr2
   SRCS
-    test_six_overlay.py
+    test_attr2.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_six_overlay1
+  SRCS
+    test_six_overlay1.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_six_overlay2
+  SRCS
+    test_six_overlay2.py
   DEPS
     .test_base
 )
@@ -628,4 +1054,123 @@ py_test(
     .test_base
 )
 
-add_subdirectory(py3)
+py_test(
+  NAME
+    test_typing_annotated
+  SRCS
+    test_typing_annotated.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_annotations
+  SRCS
+    test_annotations.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_checker
+  SRCS
+    test_checker.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_unpack
+  SRCS
+    test_unpack.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_variable_annotations
+  SRCS
+    test_variable_annotations.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_coroutine
+  SRCS
+    test_coroutine.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_async_generators
+  SRCS
+    test_async_generators.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_overload
+  SRCS
+    test_overload.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_dataclasses
+  SRCS
+    test_dataclasses.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
+    test_chex_overlay
+  SRCS
+    test_chex_overlay.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_flax_overlay
+  SRCS
+    test_flax_overlay.py
+  DEPS
+    .test_base
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    test_enums
+  SRCS
+    test_enums.py
+  DEPS
+    .test_base
+    pytype.utils
+)

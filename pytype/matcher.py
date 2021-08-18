@@ -529,7 +529,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if isinstance(left.instance, abstract.BaseValue):
         param = left.instance.get_instance_type_parameter(left.param.name)
         # If left resolves to itself
-        # (see tests/py3/test_enums:EnumOverlayTest.test_unique_enum_in_dict),
+        # (see tests/test_enums:EnumOverlayTest.test_unique_enum_in_dict),
         # calling _match_all_bindings would lead to an infinite recursion error.
         if param.bindings and not any(v is left for v in param.data):
           return self._match_all_bindings(param, other_type, subst, view)
@@ -814,7 +814,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # same value, but substituting from a concrete tuple into an abstract
         # one typically happens during operations like tuple iteration, when
         # values are indeed preserved. See
-        # tests.py3.test_typing.LiteralTest.test_iterate for a case in which
+        # tests.test_typing2.LiteralTest.test_iterate for a case in which
         # this is important.
         copy_params_directly = (
             class_param.full_name == f"{left.full_name}.{abstract_utils.T}")

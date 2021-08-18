@@ -352,7 +352,7 @@ class Args(collections.namedtuple(
     if not p.bindings:
       # TODO(b/159052609): This shouldn't happen. For some reason,
       # namedtuple instances don't have any bindings in T; see
-      # tests/py3/test_unpack:TestUnpack.test_unpack_namedtuple.
+      # tests/test_unpack:TestUnpack.test_unpack_namedtuple.
       return [vm.new_unsolvable(node) for _ in range(count)]
     return [p.AssignToNewVariable(node) for _ in range(count)]
 
