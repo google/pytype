@@ -582,8 +582,9 @@ class ErrorLog(ErrorLogBase):
                 f"wrong type in {left}: expected {expected}, got {actual}")
 
   def _print_noniterable_str_error(self, error):
-    return (f"Note: {error.left_type.name} does not match iterables by default."
-            "Learn more: https://github.com/google/pytype/docs/faq.md#noniterable-strings")
+    return (
+        f"Note: {error.left_type.name} does not match iterables by default. "
+        "Learn more: https://github.com/google/pytype/docs/faq.md#noniterable-strings")
 
   def _prepare_errorlog_details(self, bad):
     protocol_details = set()
