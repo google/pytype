@@ -5,7 +5,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
-import six
 
 import unittest
 
@@ -151,11 +150,11 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     data = tree.Visit(visitors.ExtractSuperClassesByName())
-    six.assertCountEqual(self, ("object",), data["A"])
-    six.assertCountEqual(self, ("object",), data["B"])
-    six.assertCountEqual(self, ("A",), data["C"])
-    six.assertCountEqual(self, ("A", "B"), data["D"])
-    six.assertCountEqual(self, ("A", "C", "D"), data["E"])
+    self.assertCountEqual(("object",), data["A"])
+    self.assertCountEqual(("object",), data["B"])
+    self.assertCountEqual(("A",), data["C"])
+    self.assertCountEqual(("A", "B"), data["D"])
+    self.assertCountEqual(("A", "C", "D"), data["E"])
 
   def test_strip_self(self):
     src = textwrap.dedent("""
@@ -404,7 +403,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     deps = visitors.CollectDependencies()
     self.Parse(src).Visit(deps)
-    six.assertCountEqual(self, {"baz", "bar", "foo.bar"}, deps.dependencies)
+    self.assertCountEqual({"baz", "bar", "foo.bar"}, deps.dependencies)
 
   def test_expand(self):
     src = textwrap.dedent("""

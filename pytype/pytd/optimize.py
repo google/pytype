@@ -17,7 +17,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import type_match
 from pytype.pytd import visitors
-import six
 
 log = logging.getLogger(__name__)
 
@@ -392,7 +391,7 @@ class Factorize(visitors.Visitor):
     max_argument_count = max(len(s.params) for s in f.signatures)
     signatures = f.signatures
 
-    for i in six.moves.xrange(max_argument_count):
+    for i in range(max_argument_count):
       new_sigs = []
       for sig, types in self._GroupByOmittedArg(signatures, i):
         if types:
@@ -441,7 +440,7 @@ class ApplyOptionalArguments(visitors.Visitor):
     if not sig.has_optional:
       param_count += 1  # also consider f(x, y, ...) for f(x, y)
 
-    for i in six.moves.xrange(param_count):
+    for i in range(param_count):
       if sig.params[0:i] in optional_arg_sigs:
         return True
     return False

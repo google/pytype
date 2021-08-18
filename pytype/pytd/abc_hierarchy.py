@@ -7,6 +7,8 @@ from pytype import utils
 #  because we need support for Python 2 as well as Python 3 without having to
 #  depend on the "host" Python)
 
+# TODO(b/195453869): Remove Python 2 types, or extract this from abc.py instead.
+
 
 # class -> list of superclasses
 SUPERCLASSES = {

@@ -82,12 +82,12 @@ class PrintVisitor(base_visitor.Visitor):
         if not need_typing:
           names.discard(None)
       if None in names:
-        ret.append("import %s" % module)
+        ret.append(f"import {module}")
         names.remove(None)
 
       if names:
         name_str = ", ".join(sorted(names))
-        ret.append("from %s import %s" % (module, name_str))
+        ret.append(f"from {module} import {name_str}")
 
     return ret
 
@@ -97,12 +97,11 @@ class PrintVisitor(base_visitor.Visitor):
   def _FormatTypeParams(self, type_params):
     formatted_type_params = []
     for t in type_params:
-      args = ["'%s'" % t.name]
+      args = [f"'{t.name}'"]
       args += [self.Print(c) for c in t.constraints]
       if t.bound:
-        args.append("bound=" + self.Print(t.bound))
-      formatted_type_params.append(
-          "%s = TypeVar(%s)" % (t.name, ", ".join(args)))
+        args.append(f"bound={self.Print(t.bound)}")
+      formatted_type_params.append(f"{t.name} = TypeVar({', '.join(args)})")
     return sorted(formatted_type_params)
 
   def _NameCollision(self, name):
@@ -116,7 +115,7 @@ class PrintVisitor(base_visitor.Visitor):
     self._typing_import_counts[name] += 1
     if self._NameCollision(name):
       self._RequireImport("typing")
-      return "typing." + name
+      return f"typing.{name}"
     else:
       self._RequireImport("typing", name)
       return name
@@ -168,7 +167,7 @@ class PrintVisitor(base_visitor.Visitor):
       assert name in ("True", "False"), name
       return name
     else:
-      return node.name + ": " + node.type
+      return f"{node.name}: {node.type}"
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()
@@ -184,14 +183,14 @@ class PrintVisitor(base_visitor.Visitor):
         if alias_name.startswith(f"{self._unit_name}."):
           alias_name = alias_name[len(self._unit_name)+1:]
         if name not in ("*", alias_name):
-          suffix += " as " + alias_name
+          suffix += f" as {alias_name}"
         self.imports = self.old_imports  # undo unnecessary imports change
-        return "from " + module + " import " + name + suffix
+        return f"from {module} import {name}{suffix}"
     elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):
       return self.Print(self.old_node.type.Replace(name=node.name))
     elif isinstance(self.old_node.type, pytd.Module):
       return node.type
-    return node.name + " = " + node.type
+    return f"{node.name} = {node.type}"
 
   def EnterClass(self, node):
     """Entering a class - record class name for children's use."""
@@ -219,11 +218,11 @@ class PrintVisitor(base_visitor.Visitor):
       parents = ()
     if node.metaclass is not None:
       parents += ("metaclass=" + node.metaclass,)
-    parents_str = "(" + ", ".join(parents) + ")" if parents else ""
-    header = ["class " + node.name + parents_str + ":"]
+    parents_str = f"({', '.join(parents)})" if parents else ""
+    header = [f"class {node.name}{parents_str}:"]
     if node.slots is not None:
-      slots_str = ", ".join("\"%s\"" % s for s in node.slots)
-      slots = [self.INDENT + "__slots__ = [" + slots_str + "]"]
+      slots_str = ", ".join(f"\"{s}\"" for s in node.slots)
+      slots = [self.INDENT + f"__slots__ = [{slots_str}]"]
     else:
       slots = []
     decorators = ["@" + self.VisitNamedType(d)
@@ -291,7 +290,7 @@ class PrintVisitor(base_visitor.Visitor):
       self._FromTyping(return_type)
     else:
       return_type = node.return_type
-    ret = " -> " + return_type
+    ret = f" -> {return_type}"
 
     # Put parameters in the right order:
     # (arg1, arg2, *args, kwonly1, kwonly2, **kwargs)
@@ -309,10 +308,10 @@ class PrintVisitor(base_visitor.Visitor):
         break
     else:
       if starargs:
-        params += ("*" + starargs,)
+        params += (f"*{starargs}",)
     if self.old_node.starstarargs is not None:
       starstarargs = self._FormatContainerContents(self.old_node.starstarargs)
-      params += ("**" + starstarargs,)
+      params += (f"**{starstarargs}",)
 
     body = []
     # Handle Mutable parameters
@@ -429,9 +428,9 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitModule(self, node):
     if node.is_aliased:
-      return "import %s as %s" % (node.module_name, node.name)
+      return f"import {node.module_name} as {node.name}"
     else:
-      return "import %s" % node.module_name
+      return f"import {node.module_name}"
 
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
@@ -456,8 +455,9 @@ class PrintVisitor(base_visitor.Visitor):
             "[" + ", ".join(parameters) + "]")
 
   def VisitCallableType(self, node):
-    return "%s[[%s], %s]" % (self.MaybeCapitalize(node.base_type),
-                             ", ".join(node.args), node.ret)
+    typ = self.MaybeCapitalize(node.base_type)
+    args = ", ".join(node.args)
+    return f"{typ}[[{args}], {node.ret}]"
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)
@@ -540,9 +540,9 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitLiteral(self, node):
     base = self._ImportTypingExtension("Literal")
-    return "%s[%s]" % (base, node.value)
+    return f"{base}[{node.value}]"
 
   def VisitAnnotated(self, node):
     base = self._ImportTypingExtension("Annotated")
     annotations = ", ".join(node.annotations)
-    return "%s[%s, %s]" % (base, node.base_type, annotations)
+    return f"{base}[{node.base_type}, {annotations}]"
