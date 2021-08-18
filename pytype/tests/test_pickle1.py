@@ -1,14 +1,12 @@
 """Tests for loading and saving pickled files."""
 
+import pickle
 import textwrap
 
 from pytype import file_utils
 from pytype.pyi import parser
 from pytype.pytd import visitors
 from pytype.tests import test_base
-
-import six
-from six.moves import cPickle
 
 
 class PickleTest(test_base.BaseTest):
@@ -23,14 +21,14 @@ class PickleTest(test_base.BaseTest):
 
   def _verifyDeps(self, module, immediate_deps, late_deps):
     if isinstance(module, bytes):
-      data = cPickle.loads(module)
-      six.assertCountEqual(self, dict(data.dependencies), immediate_deps)
-      six.assertCountEqual(self, dict(data.late_dependencies), late_deps)
+      data = pickle.loads(module)
+      self.assertCountEqual(dict(data.dependencies), immediate_deps)
+      self.assertCountEqual(dict(data.late_dependencies), late_deps)
     else:
       c = visitors.CollectDependencies()
       module.Visit(c)
-      six.assertCountEqual(self, c.dependencies, immediate_deps)
-      six.assertCountEqual(self, c.late_dependencies, late_deps)
+      self.assertCountEqual(c.dependencies, immediate_deps)
+      self.assertCountEqual(c.late_dependencies, late_deps)
 
   def test_type(self):
     pickled = self.Infer("""

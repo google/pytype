@@ -16,7 +16,6 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_utils
-import six
 
 import unittest
 
@@ -162,10 +161,7 @@ class BaseTest(unittest.TestCase):
         pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
         quick=quick, imports_map=imports_map)
     try:
-      if six.PY3:
-        src = _Format(code)
-      else:
-        src = _Format(code.decode("utf-8"))
+      src = _Format(code)
       errorlog = test_utils.TestErrorLog(code)
       if errorlog.expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
