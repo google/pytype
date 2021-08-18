@@ -25,7 +25,6 @@ Specifying the -S option silences all printing to stdout. It overrides other
 print flags (-p and -s).
 """
 
-from __future__ import print_function
 import argparse
 import os
 import sys

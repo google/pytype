@@ -1,7 +1,5 @@
 """Module with common utilities used by other build and test scripts."""
 
-from __future__ import print_function
-
 import json
 import os
 import shutil
@@ -123,7 +121,7 @@ def run_cmd(cmd, cwd=None, pipe=True):
     process_options["cwd"] = cwd
   with subprocess.Popen(cmd, **process_options) as process:
     stdout, _ = process.communicate()
-    if pipe and sys.version_info.major >= 3:
+    if pipe:
       # Popen.communicate returns a bytes object always.
       stdout = stdout.decode("utf-8")
     return process.returncode, stdout
@@ -227,9 +225,8 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
         line = process.stdout.readline()
         if not line:
           break
-        if sys.version_info.major >= 3:
-          # process.stdout.readline() always returns a 'bytes' object.
-          line = line.decode("utf-8")
+        # process.stdout.readline() always returns a 'bytes' object.
+        line = line.decode("utf-8")
         ninja_log.write(line)
         msg_type, modname, logfile = parse_ninja_output_line(line)
         if msg_type == _NINJA_FAILURE_MSG:

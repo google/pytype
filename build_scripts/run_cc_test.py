@@ -9,8 +9,6 @@ TARGET is the fully qualified name of the test target. BINARY is the test
 binary. If LOGFILE is specified, then the test output is logged into it.
 """
 
-from __future__ import print_function
-
 import argparse
 import sys
 

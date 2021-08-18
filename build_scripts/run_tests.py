@@ -10,7 +10,6 @@ source tree. If no target is specified, all test targets listed in the
 CMake files will be run.
 """
 
-from __future__ import print_function
 import argparse
 import sys
 
