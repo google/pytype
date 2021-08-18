@@ -801,15 +801,6 @@ class Loader:
   def concat_all(self):
     return self._modules.concat_all()
 
-  def can_see(self, module):
-    """Reports whether the Loader is allowed to use the module."""
-    # If there is no imports_map or we are allowed to look up modules in
-    # typeshed, then any module that can be found can be used.
-    if self.imports_map is None or self.use_typeshed:
-      return True
-    return (module in self.imports_map or
-            f"{module}/__init__" in self.imports_map)
-
   def get_resolved_modules(self):
     """Gets a name -> ResolvedModule map of the loader's resolved modules."""
     return self._modules.get_resolved_modules()
