@@ -387,9 +387,9 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     value = node.value
     for target in node.targets:
       if isinstance(target, ast3.Tuple):
-        if not (isinstance(value, ast3.Tuple) and
-                len(target.elts) == len(value.elts)):
-          msg = f"Cannot unpack {len(target.elts)} values for multiple assignment"
+        count = len(target.elts)
+        if not (isinstance(value, ast3.Tuple) and count == len(value.elts)):
+          msg = f"Cannot unpack {count} values for multiple assignment"
           raise ParseError(msg)
         for k, v in zip(target.elts, value.elts):
           out.append(self._assign(node, k, v))

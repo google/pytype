@@ -87,12 +87,12 @@ class NamedTupleTestPy3(test_base.BaseTest):
         _TX = TypeVar('_TX', bound=X)
         class X(tuple):
           __slots__ = ["a", "b"]
-          __dict__ = ...  # type: collections.OrderedDict[str, Union[int, str]]
-          _field_defaults = ...  # type: collections.OrderedDict[str, Union[int, str]]
-          _field_types = ...  # type: collections.OrderedDict[str, type]
-          _fields = ...  # type: Tuple[str, str]
-          a = ...  # type: int
-          b = ...  # type: str
+          __dict__: collections.OrderedDict[str, Union[int, str]]
+          _field_defaults: collections.OrderedDict[str, Union[int, str]]
+          _field_types: collections.OrderedDict[str, type]
+          _fields: Tuple[str, str]
+          a: int
+          b: str
           def __getnewargs__(self) -> Tuple[int, str]: ...
           def __getstate__(self) -> None: ...
           def __init__(self, *args, **kwargs) -> None: ...

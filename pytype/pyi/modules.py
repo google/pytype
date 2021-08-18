@@ -49,7 +49,8 @@ class Module:
         raise ParseError(f"Cannot resolve import: {orig_name}")
       if not self.parent_name:
         raise ParseError(
-            f"Cannot resolve relative import ..: Package {self.package_name} has no parent"
+            f"Cannot resolve relative import ..: Package {self.package_name} "
+            "has no parent"
         )
       return f"{self.parent_name}.{name}"
     else:
