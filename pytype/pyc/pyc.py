@@ -1,6 +1,7 @@
 """Functions for generating, reading and parsing pyc."""
 
 import copy
+import io
 import os
 import re
 import subprocess
@@ -12,7 +13,6 @@ from pytype import utils
 from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
-import six
 
 
 COMPILE_SCRIPT = "pyc/compile_bytecode.py"
@@ -61,21 +61,15 @@ def compile_src_string_to_pyc_string(
   """
 
   if utils.can_compile_bytecode_natively(python_version):
-    output = six.BytesIO()
+    output = io.BytesIO()
     compile_bytecode.compile_src_to_pyc(src, filename or "<>", output, mode)
     bytecode = output.getvalue()
   else:
     tempfile_options = {"mode": "w", "suffix": ".py", "delete": False}
-    if six.PY3:
-      tempfile_options.update({"encoding": "utf-8"})
-    else:
-      tempfile_options.update({"mode": "wb"})
+    tempfile_options.update({"encoding": "utf-8"})
     fi = tempfile.NamedTemporaryFile(**tempfile_options)  # pylint: disable=consider-using-with
     try:
-      if six.PY3:
-        fi.write(src)
-      else:
-        fi.write(src.encode("utf-8"))
+      fi.write(src)
       fi.close()
       # In order to be able to compile pyc files for a different Python version
       # from the one we're running under, we spawn an external process.
@@ -92,7 +86,7 @@ def compile_src_string_to_pyc_string(
         assert p.poll() == 0, "Child process failed"
     finally:
       os.unlink(fi.name)
-  first_byte = six.indexbytes(bytecode, 0)
+  first_byte = bytecode[0]
   if first_byte == 0:  # compile OK
     return bytecode[1:]
   elif first_byte == 1:  # compile error
@@ -135,7 +129,7 @@ def parse_pyc_string(data):
   Returns:
     An instance of loadmarshal.CodeType.
   """
-  return parse_pyc_stream(six.BytesIO(data))
+  return parse_pyc_stream(io.BytesIO(data))
 
 
 class AdjustFilename:

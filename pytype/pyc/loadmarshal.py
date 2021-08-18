@@ -15,9 +15,6 @@ import sys
 
 from pytype import utils
 
-import six
-import six.moves
-
 
 TYPE_NULL = 0x30  # '0'
 TYPE_NONE = 0x4e  # 'N'
@@ -183,7 +180,7 @@ class _LoadMarshal:
     """Read an unsigned byte."""
     pos = self.bufpos
     self.bufpos += 1
-    return six.indexbytes(self.bufstr, pos)
+    return self.bufstr[pos]
 
   def _read_short(self):
     """Read a signed 16 bit word."""
@@ -198,7 +195,7 @@ class _LoadMarshal:
   def _read_long(self):
     """Read a signed 32 bit word."""
     s = self._read(4)
-    b = lambda i: six.indexbytes(s, i)
+    b = lambda i: s[i]
     x = b(0) | b(1)<<8 | b(2)<<16 | b(3)<<24
     if b(3) & 0x80 and x > 0:
       # sign extension
@@ -210,7 +207,7 @@ class _LoadMarshal:
   def _read_long64(self):
     """Read a signed 64 bit integer."""
     s = self._read(8)
-    b = lambda i: six.indexbytes(s, i)
+    b = lambda i: s[i]
     x = (b(0) | b(1)<<8 | b(2)<<16 | b(3)<<24 |
          b(4)<<32 | b(5)<<40 | b(6)<<48 | b(7)<<56)
     if b(7) & 0x80 and x > 0:
@@ -263,7 +260,7 @@ class _LoadMarshal:
     """Load a variable length integer."""
     size = self._read_long()
     x = 0
-    for i in six.moves.range(abs(size)):
+    for i in range(abs(size)):
       d = self._read_short()
       x |= d<<(i*15)
     return x if size >= 0 else -x
@@ -298,7 +295,7 @@ class _LoadMarshal:
   def load_interned(self):
     n = self._read_long()
     s = self._read(n)
-    ret = six.moves.intern(utils.native_str(s))
+    ret = sys.intern(utils.native_str(s))
     self._stringtable.append(ret)
     return ret
 
@@ -335,14 +332,14 @@ class _LoadMarshal:
   def load_small_tuple(self):
     n = self._read_byte()
     l = []
-    for _ in six.moves.range(n):
+    for _ in range(n):
       l.append(self.load())
     return tuple(l)
 
   def load_list(self):
     n = self._read_long()
     l = []
-    for _ in six.moves.range(n):
+    for _ in range(n):
       l.append(self.load())
     return l
 
@@ -395,12 +392,12 @@ class _LoadMarshal:
 
   def load_set(self):
     n = self._read_long()
-    args = [self.load() for _ in six.moves.range(n)]
+    args = [self.load() for _ in range(n)]
     return set(args)
 
   def load_frozenset(self):
     n = self._read_long()
-    args = [self.load() for _ in six.moves.range(n)]
+    args = [self.load() for _ in range(n)]
     return frozenset(args)
 
   def load_ref(self):

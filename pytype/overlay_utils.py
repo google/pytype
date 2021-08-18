@@ -95,9 +95,6 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
   for param in special_params + params + kwonly_params:
     _process_annotation(param)
 
-  if vm.PY2:
-    assert not kwonly_params, "kwonly_params is unsupported in python2"
-
   names = lambda xs: tuple(x.name for x in xs)
   param_names = names(params)
   kwonly_names = names(kwonly_params)

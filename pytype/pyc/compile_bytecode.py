@@ -2,18 +2,12 @@
 
 # These are C modules built into Python. Don't add any modules that are
 # implemented in a .py:
+import importlib.util
 import marshal
 import re
 import sys
 
-# pylint: disable=g-import-not-at-top
-if sys.version_info[0] == 2:
-  import imp
-  MAGIC = imp.get_magic()
-else:
-  import importlib.util
-  MAGIC = importlib.util.MAGIC_NUMBER
-# pylint: enable=g-import-not-at-top
+MAGIC = importlib.util.MAGIC_NUMBER
 
 # This pattern is as per PEP-263.
 ENCODING_PATTERN = "^[ \t\v]*#.*?coding[:=][ \t]*([-_.a-zA-Z0-9]+)"
@@ -34,19 +28,14 @@ def _write32(f, w):
 def write_pyc(f, codeobject, source_size=0, timestamp=0):
   f.write(MAGIC)
   _write32(f, timestamp)
-  if sys.version_info[:2] >= (3, 3):
-    _write32(f, source_size)
+  _write32(f, source_size)
   f.write(marshal.dumps(codeobject))
 
 
 def compile_to_pyc(data_file, filename, output, mode):
   """Compile the source code to byte code."""
-  if sys.version_info[0] >= 3:
-    with open(data_file, "r", encoding="utf-8") as fi:
-      src = fi.read()
-  else:
-    with open(data_file, "r") as fi:
-      src = fi.read().decode("utf-8")
+  with open(data_file, "r", encoding="utf-8") as fi:
+    src = fi.read()
   compile_src_to_pyc(src, filename, output, mode)
 
 
@@ -71,16 +60,11 @@ def strip_encoding(src):
 
 def compile_src_to_pyc(src, filename, output, mode):
   """Compile a string of source code."""
-  if sys.version_info.major == 2:
-    src = strip_encoding(src)
   try:
     codeobject = compile(src, filename, mode)
   except Exception as err:  # pylint: disable=broad-except
     output.write(b"\1")
-    if sys.version_info[0] == 3:
-      output.write(str(err).encode("utf-8"))
-    else:
-      output.write(str(err))
+    output.write(str(err).encode("utf-8"))
   else:
     output.write(b"\0")
     write_pyc(output, codeobject)

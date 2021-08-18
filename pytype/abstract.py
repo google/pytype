@@ -25,7 +25,6 @@ from pytype import datatypes
 from pytype import function
 from pytype import mixin
 from pytype import utils
-from pytype.pyc import opcodes
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -3457,10 +3456,7 @@ class InterpreterFunction(SignedFunction):
     self._update_signature_scope()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
-    if self.vm.PY3:
-      self.is_class_builder = False  # Will be set by BuildClass.
-    else:
-      self.is_class_builder = self.code.has_opcode(opcodes.LOAD_LOCALS)
+    self.is_class_builder = False  # Will be set by BuildClass.
     if name.endswith(".__init_subclass__"):
       # __init_subclass__ is automatically promoted to a classmethod
       self.is_classmethod = True

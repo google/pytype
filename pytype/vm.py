@@ -216,8 +216,6 @@ class VirtualMachine:
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
-    self.PY2 = self.python_version[0] == 2
-    self.PY3 = self.python_version[0] == 3
     self.generate_unknowns = generate_unknowns
     self.store_all_calls = store_all_calls
     self.loader = loader
@@ -245,7 +243,7 @@ class VirtualMachine:
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
-    self._fold_constants = True and self.PY3  # feature in development
+    self._fold_constants = True
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
@@ -752,7 +750,7 @@ class VirtualMachine:
     else:
       if cls_var is None:
         cls_var = class_dict.members.get("__metaclass__")
-        if cls_var and self.PY3:
+        if cls_var:
           # This way of declaring metaclasses no longer works in Python 3.
           self.errorlog.ignored_metaclass(
               self.frames, name,
@@ -2039,7 +2037,6 @@ class VirtualMachine:
     return state
 
   def byte_DUP_TOP_TWO(self, state, op):
-    # Py3 only
     state, (a, b) = state.popn(2)
     return state.push(a, b, a, b)
 
@@ -2479,8 +2476,7 @@ class VirtualMachine:
 
   def _cmp_is_always_supported(self, op_arg):
     """Checks if the comparison should always succeed."""
-    return op_arg in (slots.CMP_ALWAYS_SUPPORTED_PY2 if self.PY2 else
-                      slots.CMP_ALWAYS_SUPPORTED_PY3)
+    return op_arg in slots.CMP_ALWAYS_SUPPORTED
 
   def _instantiate_exception(self, node, exc_type):
     """Instantiate an exception type.
@@ -3022,10 +3018,10 @@ class VirtualMachine:
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
     return self._jump_if(state, op, jump_if=False, or_pop=True)
 
-  def byte_JUMP_IF_TRUE(self, state, op):  # Not in py2.7
+  def byte_JUMP_IF_TRUE(self, state, op):
     return self._jump_if(state, op, jump_if=True)
 
-  def byte_JUMP_IF_FALSE(self, state, op):  # Not in py2.7
+  def byte_JUMP_IF_FALSE(self, state, op):
     return self._jump_if(state, op, jump_if=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
@@ -3166,21 +3162,8 @@ class VirtualMachine:
     state, _ = state.pop_block()
     return state
 
-  def _raise_varargs_py2(self, state, op):
-    """Raise an exception (Python 2 version)."""
-    # NOTE: the dis docs are completely wrong about the order of the
-    # operands on the stack!
-    argc = op.arg
-    # TODO(rechen): Type-check the arguments to raise.
-    state, _ = state.popn(argc)
-    state = state.set_exception()
-    if argc in (0, 3):
-      return state.set_why("reraise")
-    else:
-      return state.set_why("exception")
-
-  def _raise_varargs_py3(self, state, op):
-    """Raise an exception (Python 3 version)."""
+  def byte_RAISE_VARARGS(self, state, op):
+    """Raise an exception."""
     argc = op.arg
     state, _ = state.popn(argc)
     if argc == 0 and state.exception:
@@ -3188,12 +3171,6 @@ class VirtualMachine:
     else:
       state = state.set_exception()
       return state.set_why("exception")
-
-  def byte_RAISE_VARARGS(self, state, op):
-    if self.PY2:
-      return self._raise_varargs_py2(state, op)
-    else:
-      return self._raise_varargs_py3(state, op)
 
   def byte_POP_EXCEPT(self, state, op):  # Python 3 only
     # We don't push the special except-handler block, so we don't need to
@@ -3209,11 +3186,7 @@ class VirtualMachine:
     state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
     state = state.push(exit_method)
     state, ctxmgr_obj = self._call(state, ctxmgr, "__enter__", ())
-    if self.PY2:
-      state = self.push_block(state, "with", level)
-    else:
-      assert self.PY3
-      state = self.push_block(state, "finally", level)
+    state = self.push_block(state, "finally", level)
     return state.push(ctxmgr_obj)
 
   def byte_WITH_CLEANUP(self, state, op):
@@ -3277,13 +3250,8 @@ class VirtualMachine:
 
   def _get_extra_function_args(self, state, arg):
     """Get function annotations and defaults from the stack. (Python3.5-)."""
-    if self.PY2:
-      num_pos_defaults = arg & 0xffff
-      num_kw_defaults = 0
-    else:
-      assert self.PY3
-      num_pos_defaults = arg & 0xff
-      num_kw_defaults = (arg >> 8) & 0xff
+    num_pos_defaults = arg & 0xff
+    num_kw_defaults = (arg >> 8) & 0xff
     state, raw_annotations = state.popn((arg >> 16) & 0x7fff)
     state, kw_defaults = state.popn(2 * num_kw_defaults)
     state, pos_defaults = state.popn(num_pos_defaults)
@@ -3367,12 +3335,8 @@ class VirtualMachine:
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
-    if self.PY2:
-      name = None
-    else:
-      assert self.PY3
-      state, name_var = state.pop()
-      name = abstract_utils.get_atomic_python_constant(name_var)
+    state, name_var = state.pop()
+    name = abstract_utils.get_atomic_python_constant(name_var)
     state, code = state.pop()
     if self.python_version >= (3, 6):
       get_args = self._get_extra_function_args_3_6
@@ -3391,13 +3355,8 @@ class VirtualMachine:
 
   def byte_MAKE_CLOSURE(self, state, op):
     """Make a function that binds local variables."""
-    if self.PY2:
-      # The py3 docs don't mention this change.
-      name = None
-    else:
-      assert self.PY3
-      state, name_var = state.pop()
-      name = abstract_utils.get_atomic_python_constant(name_var)
+    state, name_var = state.pop()
+    name = abstract_utils.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
     state, defaults, kw_defaults, annot, _ = (
         self._get_extra_function_args(state, op.arg))
@@ -3517,7 +3476,6 @@ class VirtualMachine:
     return state.change_cfg_node(node).push(cls)
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
-    # New in py3
     cls = abstract.BuildClass(self).to_variable(state.node)
     if op.line in self.director.decorators:
       # Will be copied into the abstract.InterpreterClass

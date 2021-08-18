@@ -292,12 +292,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
             frame_name = method.name
           details += f" for {desc} {frame_name!r}"
         if "AnyStr" in illegal_params:
-          if self.vm.PY2:
-            str_type = "typing.Text"
-          else:
-            str_type = "Union[str, bytes]"
-          details += (
-              f"\nNote: For all string types, use {str_type}.")
+          str_type = "Union[str, bytes]"
+          details += (f"\nNote: For all string types, use {str_type}.")
         self.vm.errorlog.invalid_annotation(stack, typ, details, name)
         return self.vm.convert.unsolvable
     return typ

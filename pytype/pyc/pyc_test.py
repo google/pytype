@@ -4,7 +4,6 @@
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.tests import test_base
-import six
 import unittest
 
 
@@ -40,8 +39,6 @@ class TestPyc(test_base.UnitTest):
 
   def test_compile_utf8(self):
     src = "foobar = \"abc□def\""
-    if six.PY2:
-      src = src.decode("utf8")
     code = self._compile(src)
     self.assertIn("foobar", code.co_names)
     self.assertEqual(self.python_version, code.python_version)

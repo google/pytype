@@ -458,7 +458,7 @@ class Super(BuiltinClass):
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
     num_args = len(args.posargs)
-    if num_args == 0 and self.vm.PY3:
+    if num_args == 0:
       # The implicit type argument is available in a freevar named '__class__'.
       cls_var = None
       # If we are in a list comprehension we want the enclosing frame.
