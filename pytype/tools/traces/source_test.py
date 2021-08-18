@@ -1,5 +1,4 @@
 # coding=utf-8
-# Lint as: python2, python3
 """Tests for traces.source."""
 
 from pytype.tools.traces import source
