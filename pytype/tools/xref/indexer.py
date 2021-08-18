@@ -24,7 +24,6 @@ from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import node_utils
 
-from typed_ast import ast27 as ast27
 from typed_ast import ast3
 
 
@@ -673,34 +672,24 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     class_name = node_utils.get_name(node, self._ast)
     last_line = max(node.lineno, node.body[0].lineno - 1)
 
-    # Python2
     ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
-        ("BUILD_CLASS", class_name)
+        ("LOAD_BUILD_CLASS", None),
+        ("STORE_NAME", class_name),
+        # Classes defined within a function generate a STORE_FAST or
+        # STORE_DEREF op.
+        ("STORE_FAST", class_name),
+        ("STORE_DEREF", class_name),
+        # A class being declared global anywhere generates a STORE_GLOBAL op.
+        ("STORE_GLOBAL", class_name),
     ])
-    d = None
-    if ops:
-      _, _, data = ops[0]
+    # pytype sometimes analyses this twice, leading to duplicate opcode
+    # traces. We only want the first two in the list.
+    if (len(ops) >= 2 and
+        ops[0][0] == "LOAD_BUILD_CLASS" and
+        ops[1][0] in (
+            "STORE_NAME", "STORE_FAST", "STORE_DEREF", "STORE_GLOBAL")):
+      _, _, data = ops[1]
       d = _unwrap(data)
-    else:
-      # Python3
-      ops = match_opcodes_multiline(self.traces, node.lineno, last_line, [
-          ("LOAD_BUILD_CLASS", None),
-          ("STORE_NAME", class_name),
-          # Classes defined within a function generate a STORE_FAST or
-          # STORE_DEREF op.
-          ("STORE_FAST", class_name),
-          ("STORE_DEREF", class_name),
-          # A class being declared global anywhere generates a STORE_GLOBAL op.
-          ("STORE_GLOBAL", class_name),
-      ])
-      # pytype sometimes analyses this twice, leading to duplicate opcode
-      # traces. We only want the first two in the list.
-      if (len(ops) >= 2 and
-          ops[0][0] == "LOAD_BUILD_CLASS" and
-          ops[1][0] in (
-              "STORE_NAME", "STORE_FAST", "STORE_DEREF", "STORE_GLOBAL")):
-        _, _, data = ops[1]
-        d = _unwrap(data)
 
     assert d, "Did not get pytype data for class %s at line %d" % (
         class_name, node.lineno)
@@ -1265,19 +1254,13 @@ def process_file(options, source_text=None, generate_callgraphs=False,
           loader=loader,
           tracer_vm=vm)
 
-  major, minor = options.python_version
-  if major == 2:
-    # python2.7 is the only supported py2 version.
-    ast_root_node = ast27.parse(src, options.input)
-    ast = ast27
-  else:
-    ast_root_node = ast3.parse(src, options.input, feature_version=minor)
-    ast = ast3
+  ast_root_node = ast3.parse(src, options.input,
+                             feature_version=options.python_version[1])
 
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(ast=ast,
+  ix = Indexer(ast=ast3,
                src=src_code,
                loader=vm.loader,
                module_name=module_name,
