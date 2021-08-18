@@ -173,6 +173,15 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
+def native_str(s, errors="strict"):
+  """Convert a bytes object to the native str type."""
+  if isinstance(s, str):
+    return s
+  else:
+    assert isinstance(s, bytes)
+    return s.decode("utf-8", errors)
+
+
 def get_python_exe(python_version) -> Tuple[List[str], List[str]]:
   """Find a python executable to use.
 

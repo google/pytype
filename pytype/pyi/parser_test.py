@@ -8,7 +8,6 @@ from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
-import six
 
 import unittest
 
@@ -65,7 +64,7 @@ class _ParserTestBase(test_base.UnitTest):
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src).lstrip(),
                           python_version=self.python_version)
-    six.assertRegex(self, utils.message(e.exception), re.escape(message))
+    self.assertRegex(utils.message(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)
 
 
@@ -1337,7 +1336,7 @@ class FunctionTest(_ParserTestBase):
           x = int""")
     self.check_error("""
       def foo(x) -> int:
-          y = int""", 1, "No parameter named y")
+          y = int""", 1, "No parameter named 'y'")
 
   def test_mutator_from_annotation(self):
     self.check("""

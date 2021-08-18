@@ -61,7 +61,7 @@ class ParseError(Exception):
   def __str__(self):
     lines = []
     if self._filename or self._line is not None:
-      lines.append('  File: "%s", line %s' % (self._filename, self._line))
+      lines.append(f'  File: "{self._filename}", line {self._line}')
     if self._column and self._text:
       indent = 4
       stripped = self._text.lstrip()

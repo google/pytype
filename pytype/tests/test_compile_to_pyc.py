@@ -4,7 +4,7 @@
 from pytype.tests import test_base
 
 
-class CompileToPycTest(test_base.TargetIndependentTest):
+class CompileToPycTest(test_base.BaseTest):
   """Tests for compilation to bytecode."""
 
   def test_compilation_of_unicode_source(self):
@@ -29,4 +29,5 @@ class CompileToPycTest(test_base.TargetIndependentTest):
         return "1".hello  # attribute-error
     """)
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

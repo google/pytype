@@ -7,7 +7,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class BuiltinTests2(test_base.TargetIndependentTest):
+class BuiltinTests2(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def test_div_mod_with_unknown(self):
@@ -674,4 +674,5 @@ class BuiltinTests2(test_base.TargetIndependentTest):
       """, pythonpath=[d.path])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

@@ -13,7 +13,8 @@ import contextlib
 import struct
 import sys
 
-from pytype import compat
+from pytype import utils
+
 import six
 import six.moves
 
@@ -291,23 +292,13 @@ class _LoadMarshal:
 
   def load_string(self):
     n = self._read_long()
-    s = self._read(n)
-    if self.python_version[0] >= 3:
-      # load_string() loads a bytestring, and in Python 3, str and bytes are
-      # different classes.
-      s = compat.BytesType(s)
-    elif not self._keep_bytes:
-      # In Python 2, load_string is used to load both bytestrings and native
-      # strings, so we have to specify which we want. We use the
-      # 'backslashreplace' error mode in order to handle non-utf8
-      # backslash-escaped string literals correctly.
-      s = compat.native_str(s, 'backslashreplace')
+    s = bytes(self._read(n))
     return s
 
   def load_interned(self):
     n = self._read_long()
     s = self._read(n)
-    ret = six.moves.intern(compat.native_str(s))
+    ret = six.moves.intern(utils.native_str(s))
     self._stringtable.append(ret)
     return ret
 
@@ -328,18 +319,15 @@ class _LoadMarshal:
       # We use the 'backslashreplace' error mode in order to handle non-utf8
       # backslash-escaped string literals correctly.
       s = s.decode('utf8', 'backslashreplace')
-    if self.python_version[0] < 3:
-      # In Python 2, unicode and str are different classes.
-      s = compat.UnicodeType(s)
     return s
 
   def load_ascii(self):
     n = self._read_long()
-    return compat.native_str(self._read(n))
+    return utils.native_str(self._read(n))
 
   def load_short_ascii(self):
     n = self._read_byte()
-    return compat.native_str(self._read(n))
+    return utils.native_str(self._read(n))
 
   def load_tuple(self):
     return tuple(self.load_list())

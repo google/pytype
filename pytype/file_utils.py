@@ -2,12 +2,23 @@
 
 import contextlib
 import errno
+import glob
 import os
 import shutil
 import tempfile
 import textwrap
 
-from pytype import compat
+
+def recursive_glob(path):
+  """Call recursive glob iff ** is in the pattern."""
+  if "*" not in path:
+    # Glob isn't needed.
+    return [path]
+  elif "**" not in path:
+    # Recursive glob isn't needed.
+    return glob.glob(path)
+  else:
+    return glob.glob(path, recursive=True)
 
 
 def replace_extension(filename, new_extension):
@@ -125,7 +136,7 @@ def expand_paths(paths, cwd=None):
 def expand_globpaths(globpaths, cwd=None):
   """Expand a list of glob expressions into a list of full paths."""
   with cd(cwd):
-    paths = sum((compat.recursive_glob(p) for p in globpaths), [])
+    paths = sum((recursive_glob(p) for p in globpaths), [])
   return expand_paths(paths, cwd)
 
 
@@ -148,7 +159,7 @@ def expand_source_files(filenames, cwd=None):
   for f in expand_globpaths(filenames.split(), cwd):
     if os.path.isdir(f):
       # If we have a directory, collect all the .py files within it.
-      out += compat.recursive_glob(os.path.join(f, "**", "*.py"))
+      out += recursive_glob(os.path.join(f, "**", "*.py"))
     elif f.endswith(".py"):
       out.append(f)
   return set(out)

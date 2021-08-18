@@ -10,7 +10,6 @@
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import compat
 from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
@@ -20,7 +19,6 @@ from pytype.overlays import collections_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
-from six import moves
 
 
 # type alias
@@ -32,8 +30,6 @@ class TypingOverlay(overlay.Overlay):
 
   def __init__(self, vm):
     # Make sure we have typing available as a dependency
-    if vm.python_version < (3, 5) and not vm.loader.can_see("typing"):
-      vm.errorlog.import_error(vm.frames, "typing")
     member_map = typing_overlay.copy()
     ast = vm.loader.typing
     for cls in ast.classes:
@@ -88,7 +84,7 @@ class Tuple(TypingContainer):
       return super()._get_value_info(
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
-      template = list(moves.range(len(inner))) + [abstract_utils.T]
+      template = list(range(len(inner))) + [abstract_utils.T]
       inner += (self.vm.merge_values(inner),)
       return template, inner, abstract.TupleClass
 
@@ -117,7 +113,7 @@ class Callable(TypingContainer):
 
   def _get_value_info(self, inner, ellipses):
     if isinstance(inner[0], list):
-      template = (list(moves.range(len(inner[0]))) +
+      template = (list(range(len(inner[0]))) +
                   [t.name for t in self.base_cls.template])
       combined_args = self.vm.merge_values(inner[0])
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
@@ -143,9 +139,8 @@ class TypeVar(abstract.PyTDFunction):
     try:
       ret = abstract_utils.get_atomic_python_constant(var, arg_type)
     except abstract_utils.ConversionError as e:
-      raise TypeVarError(
-          "%s must be %s" %
-          (name, arg_type_desc or "a constant " + arg_type.__name__)) from e
+      desc = arg_type_desc or f"a constant {arg_type.__name__}"
+      raise TypeVarError(f"{name} must be {desc}") from e
     return ret
 
   def _get_annotation(self, node, var, name):
@@ -165,7 +160,7 @@ class TypeVar(abstract.PyTDFunction):
       ret = self._get_constant(args.namedargs[name], name, bool)
       # This error is logged only if _get_constant succeeds.
       self.vm.errorlog.not_supported_yet(
-          self.vm.frames, "argument \"%s\" to TypeVar" % name)
+          self.vm.frames, f"argument \"{name}\" to TypeVar")
       return ret
 
   def _get_typeparam(self, node, args):
@@ -290,9 +285,6 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
             sig.signature, args, self.vm, self._fields_param)
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
-      if name_py_constant.__class__ is compat.UnicodeType:
-        # Unicode values should be ASCII.
-        name_py_constant = compat.native_str(name_py_constant.encode("ascii"))
       names.append(name_py_constant)
       if functional:
         allowed_type_params = (
@@ -315,8 +307,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     else:
       field_types_union = self.vm.convert.none_type
 
-    members = {n: t.instantiate(node)
-               for n, t in moves.zip(field_names, field_types)}
+    members = {n: t.instantiate(node) for n, t in zip(field_names, field_types)}
 
     # collections.namedtuple has: __dict__, __slots__ and _fields.
     # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
@@ -362,7 +353,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         self.vm, bound=None)
     cls_type = abstract.ParameterizedClass(
         self.vm.convert.type_type, {abstract_utils.T: cls_type_param}, self.vm)
-    params = [Param(n, t) for n, t in moves.zip(field_names, field_types)]
+    params = [Param(n, t) for n, t in zip(field_names, field_types)]
     members["__new__"] = overlay_utils.make_method(
         self.vm, node,
         name="__new__",
@@ -443,9 +434,6 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # Finally, make the class.
     cls_dict = abstract.Dict(self.vm)
     cls_dict.update(node, members)
-    if name.__class__ is compat.UnicodeType:
-      # Unicode values should be ASCII.
-      name = compat.native_str(name.encode("ascii"))
 
     if bases:
       final_bases = []
@@ -497,7 +485,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       return node, self.vm.new_unsolvable(node)
 
     annots = self.vm.annotations_util.convert_annotations_list(
-        node, moves.zip(field_names, field_types))
+        node, zip(field_names, field_types))
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
     node, cls_var = self._build_namedtuple(
@@ -636,7 +624,7 @@ class NewType(abstract.PyTDFunction):
       _ = abstract_utils.get_atomic_python_constant(name_arg, str)
     except abstract_utils.ConversionError:
       name_arg = self.vm.convert.constant_to_var(
-          "_NewType_Internal_Class_Name_%d_" % self.internal_name_counter)
+          f"_NewType_Internal_Class_Name_{self.internal_name_counter}_")
     type_arg = args.namedargs.get(self._type_arg_name) or args.posargs[1]
     try:
       type_value = abstract_utils.get_atomic_value(type_arg)

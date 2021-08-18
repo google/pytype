@@ -38,7 +38,7 @@ class Mutator(visitors.Visitor):
       self.successful = True
       if p.optional:
         raise NotImplementedError(
-            "Argument %s can not be both mutable and optional" % p.name)
+            f"Argument {p.name!r} cannot be both mutable and optional")
       return p.Replace(mutated_type=self.new_type)
     else:
       return p
@@ -85,7 +85,7 @@ class NameAndSig(pytd_function.NameAndSig):
     decorators -= ignored
     # TODO(mdemello): do we need this limitation?
     if len(decorators) > 1:
-      raise ParseError("Too many decorators for %s" % name)
+      raise ParseError(f"Too many decorators for {name}")
     decorator, = decorators if decorators else (None,)
 
     exceptions = []
@@ -126,7 +126,7 @@ class NameAndSig(pytd_function.NameAndSig):
       except NotImplementedError as e:
         raise ParseError(utils.message(e)) from e
       if not mutator.successful:
-        raise ParseError("No parameter named %s" % mutator.name)
+        raise ParseError(f"No parameter named {mutator.name!r}")
 
     return cls(name, sig, decorator, is_abstract, is_coroutine, is_overload)
 

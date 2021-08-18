@@ -5,7 +5,7 @@ from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
-class ContainerTest(test_base.TargetIndependentTest):
+class ContainerTest(test_base.BaseTest):
   """Tests for containers."""
 
   def test_tuple_pass_through(self):
@@ -636,4 +636,5 @@ class ContainerTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

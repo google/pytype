@@ -4,7 +4,7 @@ from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
-class InheritanceTest(test_base.TargetIndependentTest):
+class InheritanceTest(test_base.BaseTest):
   """Tests for class inheritance."""
 
   @test_base.skip("needs (re-)analyzing methods on subclasses")
@@ -142,4 +142,5 @@ class InheritanceTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

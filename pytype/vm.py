@@ -20,6 +20,7 @@ import itertools
 import logging
 import os
 import re
+import reprlib
 from typing import Optional, Sequence, Tuple, Union
 
 from pytype import abstract
@@ -52,7 +53,6 @@ from pytype.pytd import slots
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
-import six
 
 log = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ _FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
 # Create a repr that won't overflow.
 _TRUNCATE = 120
 _TRUNCATE_STR = 72
-repr_obj = six.moves.reprlib.Repr()
+repr_obj = reprlib.Repr()
 repr_obj.maxother = _TRUNCATE
 repr_obj.maxstring = _TRUNCATE_STR
 repper = repr_obj.repr
@@ -740,10 +740,7 @@ class VirtualMachine:
     if not bases:
       # A parent-less class inherits from classobj in Python 2 and from object
       # in Python 3.
-      if self.PY2:
-        base = self.convert.oldstyleclass_type
-      else:
-        base = self.convert.object_type
+      base = self.convert.object_type
       bases = [base.to_variable(self.root_node)]
     if (isinstance(class_dict, abstract.Unsolvable) or
         not isinstance(class_dict, mixin.PythonConstant)):
@@ -2732,7 +2729,7 @@ class VirtualMachine:
     the_map = self.convert.build_map(state.node)
     if self.python_version >= (3, 5):
       state, args = state.popn(2 * op.arg)
-      for i in six.moves.range(op.arg):
+      for i in range(op.arg):
         key, val = args[2*i], args[2*i+1]
         state = self.store_subscr(state, the_map, key, val)
     else:

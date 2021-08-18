@@ -2,8 +2,6 @@
 
 import collections
 
-from pytype import compat
-
 
 Location = collections.namedtuple("Location", ("line", "column"))
 
@@ -52,7 +50,7 @@ class Code:
     for line in self._lines:
       self._offsets.append(offset)
       # convert line to bytes
-      bytes_ = compat.bytestring(line)
+      bytes_ = line.encode("utf-8")
       offset += len(bytes_) + 1  # account for the \n
 
   def get_offset(self, location):

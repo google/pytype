@@ -106,4 +106,5 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertEqual(src, "x: int\n")
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

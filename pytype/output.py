@@ -716,9 +716,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     bases = []
     missing_bases = []
     for basevar in v.bases():
-      if basevar.data == [self.vm.convert.oldstyleclass_type]:
-        continue
-      elif len(basevar.bindings) == 1:
+      if len(basevar.bindings) == 1:
         b, = basevar.data
         if b.official_name is None and isinstance(b, abstract.InterpreterClass):
           missing_bases.append(b)

@@ -8,7 +8,7 @@ from pytype.tools.xref import indexer
 
 @test_utils.skipUnlessPy(
     (3, 5), (3, 6), reason="The callgraph code only works in Python 3.5-6.")
-class CallgraphTest(test_base.TargetIndependentTest):
+class CallgraphTest(test_base.BaseTest):
   """Tests for the callgraph."""
 
   def index_code(self, code, **kwargs):
@@ -186,4 +186,5 @@ class CallgraphTest(test_base.TargetIndependentTest):
     self.assertHasFunctions(fns, ["f"])
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

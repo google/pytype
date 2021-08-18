@@ -58,7 +58,7 @@ class IndexerTestMixin:
     self.assertCountEqual([x.location for x in deflocs], locs)
 
 
-class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
+class IndexerTest(test_base.BaseTest, IndexerTestMixin):
   """Tests for the indexer."""
 
   def test_param_reuse(self):
@@ -250,7 +250,7 @@ class IndexerTest(test_base.TargetIndependentTest, IndexerTestMixin):
       self.assertIsNone(r.data)
 
 
-class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
+class IndexerTestPy3(test_base.BaseTest, IndexerTestMixin):
 
   def test_type_annotations(self):
     ix = self.index_code("""
@@ -263,11 +263,12 @@ class IndexerTestPy3(test_base.TargetPython3BasicTest, IndexerTestMixin):
     self.assertDefLocs(ix, "module.f.x", [(1, 6)])
 
 
-class VmTraceTest(test_base.TargetIndependentTest):
+class VmTraceTest(test_base.BaseTest):
 
   def test_repr(self):
     trace = indexer.VmTrace("LOAD_NAME", "x", (["t"],))
     print(repr(trace))  # smoke test
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

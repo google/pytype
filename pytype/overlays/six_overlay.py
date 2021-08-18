@@ -39,8 +39,6 @@ def build_string_types(vm):
   # value in Py2 is `basestring`, which we don't have available.
   node = vm.root_node
   classes = [vm.convert.str_type.to_variable(node)]
-  if vm.PY2:
-    classes.append(vm.convert.unicode_type.to_variable(node))
   return vm.convert.tuple_to_value(classes)
 
 

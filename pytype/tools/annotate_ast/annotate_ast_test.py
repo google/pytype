@@ -6,7 +6,7 @@ from pytype.tests import test_base
 from pytype.tools.annotate_ast import annotate_ast
 
 
-class AnnotaterTest(test_base.TargetIndependentTest):
+class AnnotaterTest(test_base.BaseTest):
 
   def annotate(self, source):
     source = textwrap.dedent(source.lstrip('\n'))
@@ -109,4 +109,6 @@ class AnnotaterTest(test_base.TargetIndependentTest):
     }
     self.assertEqual(expected, self.get_annotations_dict(module))
 
-test_base.main(globals(), __name__ == '__main__')
+
+if __name__ == '__main__':
+  test_base.main()

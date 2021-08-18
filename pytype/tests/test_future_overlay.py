@@ -4,7 +4,7 @@ from pytype import file_utils
 from pytype.tests import test_base
 
 
-class FutureUtilsTest(test_base.TargetIndependentTest):
+class FutureUtilsTest(test_base.BaseTest):
   """Tests for future.utils and future_overlay."""
 
   def test_with_metaclass(self):
@@ -39,4 +39,5 @@ class FutureUtilsTest(test_base.TargetIndependentTest):
     """)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

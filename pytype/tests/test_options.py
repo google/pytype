@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class OptionsTest(test_base.TargetIndependentTest):
+class OptionsTest(test_base.BaseTest):
   """Tests for VM options."""
 
   def test_no_max_depth(self):
@@ -120,4 +120,5 @@ class OptionsTest(test_base.TargetIndependentTest):
     """, deep=False, maximum_depth=3, init_maximum_depth=4)
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()

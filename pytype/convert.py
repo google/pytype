@@ -7,7 +7,6 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import blocks
 from pytype import class_mixin
-from pytype import compat
 from pytype import datatypes
 from pytype import function
 from pytype import overlay_dict
@@ -28,6 +27,27 @@ log = logging.getLogger(__name__)
 
 
 MAX_IMPORT_DEPTH = 12
+
+
+# types not exposed as python classes
+NoneType = type(None)
+EllipsisType = type(Ellipsis)
+
+
+class IteratorType:
+  pass
+
+
+class CoroutineType:
+  pass
+
+
+class AwaitableType:
+  pass
+
+
+class AsyncGeneratorType:
+  pass
 
 
 class Converter(utils.VirtualMachineWeakrefMixin):
@@ -60,55 +80,52 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # object_type is needed to initialize the primitive class values.
     self.object_type = self.constant_to_value(object)
 
-    if self.vm.PY2:
-      version_specific = [compat.UnicodeType]
-    else:
-      version_specific = [compat.BytesType]
-
     self.unsolvable = abstract.Unsolvable(self.vm)
     self.empty = abstract.Empty(self.vm)
     self.no_return = typing_overlay.NoReturn(self.vm)
 
     # Now fill primitive_classes with the real values using constant_to_value.
     primitive_classes = [
-        int, float, str, object, compat.NoneType, complex, bool, slice,
-        types.CodeType, compat.EllipsisType, compat.OldStyleClassType, super,
-    ] + version_specific
+        int, float, str, bytes, object, NoneType, complex, bool, slice,
+        types.CodeType, EllipsisType, super,
+    ]
     self.primitive_classes = {
         v: self.constant_to_value(v) for v in primitive_classes
     }
     self.primitive_class_names = [
         self._type_to_name(x) for x in self.primitive_classes]
     self.none = abstract.ConcreteValue(None,
-                                       self.primitive_classes[compat.NoneType],
+                                       self.primitive_classes[NoneType],
                                        self.vm)
     self.true = abstract.ConcreteValue(True, self.primitive_classes[bool],
                                        self.vm)
     self.false = abstract.ConcreteValue(False, self.primitive_classes[bool],
                                         self.vm)
     self.ellipsis = abstract.ConcreteValue(
-        Ellipsis, self.primitive_classes[compat.EllipsisType], self.vm)
+        Ellipsis, self.primitive_classes[EllipsisType], self.vm)
 
     self.primitive_class_instances = {}
     for name, cls in self.primitive_classes.items():
-      if name == compat.NoneType:
+      if name == NoneType:
         # This is possible because all None instances are the same.
         # Without it pytype could not reason that "x is None" is always true, if
         # x is indeed None.
         instance = self.none
-      elif name == compat.EllipsisType:
+      elif name == EllipsisType:
         instance = self.ellipsis
       else:
         instance = abstract.Instance(cls, self.vm)
       self.primitive_class_instances[name] = instance
       self._convert_cache[(abstract.Instance, cls.pytd_cls)] = instance
 
-    self.none_type = self.primitive_classes[compat.NoneType]
-    self.oldstyleclass_type = self.primitive_classes[compat.OldStyleClassType]
+    self.none_type = self.primitive_classes[NoneType]
     self.super_type = self.primitive_classes[super]
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
     self.bool_type = self.primitive_classes[bool]
+    # TODO(b/195453869): get rid of unicode_type
+    self.unicode_type = self.str_type
+    self.bytes_type = self.primitive_classes[bytes]
 
     self.list_type = self.constant_to_value(list)
     self.set_type = self.constant_to_value(set)
@@ -119,26 +136,18 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.function_type = self.constant_to_value(types.FunctionType)
     self.tuple_type = self.constant_to_value(tuple)
     self.generator_type = self.constant_to_value(types.GeneratorType)
-    self.iterator_type = self.constant_to_value(compat.IteratorType)
-    if self.vm.python_version >= (3, 5):
-      self.coroutine_type = self.constant_to_value(compat.CoroutineType)
-      self.awaitable_type = self.constant_to_value(compat.AwaitableType)
+    self.iterator_type = self.constant_to_value(IteratorType)
+    self.coroutine_type = self.constant_to_value(CoroutineType)
+    self.awaitable_type = self.constant_to_value(AwaitableType)
     if self.vm.python_version >= (3, 6):
       self.async_generator_type = self.constant_to_value(
-          compat.AsyncGeneratorType)
+          AsyncGeneratorType)
     self.bool_values = {
         True: self.true,
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    if self.vm.PY2:
-      self.unicode_type = self.primitive_classes[compat.UnicodeType]
-      self.bytes_type = self.str_type
-      self.next_attr = "next"
-    else:
-      self.unicode_type = self.str_type
-      self.bytes_type = self.primitive_classes[compat.BytesType]
-      self.next_attr = "__next__"
+    self.next_attr = "__next__"
 
   def constant_name(self, constant_type):
     if constant_type is None:
@@ -153,22 +162,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     assert t.__class__ is type
     if t is types.FunctionType:
       return "typing.Callable"
-    elif t is compat.BytesType:
-      return "builtins.bytes"
-    elif t is compat.UnicodeType:
-      if self.vm.PY2:
-        return "builtins.unicode"
-      else:
-        return "builtins.str"
-    elif t is compat.OldStyleClassType:
-      return "builtins.classobj"
-    elif t is compat.IteratorType:
+    elif t is IteratorType:
       return "builtins.object"
-    elif t is compat.CoroutineType:
+    elif t is CoroutineType:
       return "builtins.coroutine"
-    elif t is compat.AwaitableType:
+    elif t is AwaitableType:
       return "typing.Awaitable"
-    elif t is compat.AsyncGeneratorType:
+    elif t is AsyncGeneratorType:
       return "builtins.asyncgenerator"
     else:
       return "builtins." + t.__name__
@@ -531,10 +531,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, str):
       prefix, value = parser_constants.STRING_RE.match(pyval).groups()[:2]
       value = value[1:-1]  # remove quotation marks
-      if "b" in prefix and not self.vm.PY2:
-        value = compat.bytestring(value)
-      elif "u" in prefix and self.vm.PY2:
-        value = compat.UnicodeType(value)
+      if "b" in prefix:
+        value = str(value).encode("utf-8")
       return value
     else:
       return pyval
@@ -556,14 +554,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       NotImplementedError: If we don't know how to convert a value.
       TypeParameterError: If we can't find a substitution for a type parameter.
     """
-    if pyval.__class__ is str:
-      # We use a subclass of str, compat.BytesPy3, to mark Python 3
-      # bytestrings, which are converted to abstract bytes instances.
-      # compat.BytesType dispatches to this when appropriate.
+    if isinstance(pyval, str):
       return abstract.ConcreteValue(pyval, self.str_type, self.vm)
-    elif isinstance(pyval, compat.UnicodeType):
-      return abstract.ConcreteValue(pyval, self.unicode_type, self.vm)
-    elif isinstance(pyval, compat.BytesType):
+    elif isinstance(pyval, bytes):
       return abstract.ConcreteValue(pyval, self.bytes_type, self.vm)
     elif isinstance(pyval, bool):
       return self.true if pyval else self.false
@@ -571,9 +564,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
       return abstract.ConcreteValue(pyval, self.int_type, self.vm)
-    elif isinstance(pyval, compat.LongType):
-      # long is aliased to int
-      return self.primitive_class_instances[int]
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_class_instances[pyval.__class__]
     elif pyval.__class__ is frozenset:

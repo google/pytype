@@ -1,4 +1,3 @@
-from pytype import compat
 from pytype.pyc import opcodes
 import unittest
 
@@ -8,7 +7,7 @@ class _TestBase(unittest.TestCase):
 
   def dis(self, code, **kwargs):
     """Return the opcodes from disassembling a code sequence."""
-    return opcodes.dis(compat.int_array_to_bytes(code),
+    return opcodes.dis(bytes(code),
                        self.python_version, **kwargs)
 
   def assertSimple(self, opcode, name):
@@ -31,7 +30,7 @@ class _TestBase(unittest.TestCase):
 
   def assertLineNumbers(self, code, co_lnotab, expected):
     """Assert that the opcodes have the expected line numbers."""
-    ops = self.dis(code, co_lnotab=compat.int_array_to_bytes(co_lnotab),
+    ops = self.dis(code, co_lnotab=bytes(co_lnotab),
                    co_firstlineno=1)
     self.assertEqual(len(ops), len(expected))
     for o, e in zip(ops, expected):

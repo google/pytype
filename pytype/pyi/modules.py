@@ -40,18 +40,19 @@ class Module:
       # Generated from "from . import foo" - see parser.yy
       prefix, _, name = orig_name.partition("__PACKAGE__.")
       if prefix:
-        raise ParseError("Cannot resolve import: %s" % orig_name)
-      return self.package_name + "." + name
+        raise ParseError(f"Cannot resolve import: {orig_name}")
+      return f"{self.package_name}.{name}"
     elif "__PARENT__." in orig_name:
       # Generated from "from .. import foo" - see parser.yy
       prefix, _, name = orig_name.partition("__PARENT__.")
       if prefix:
-        raise ParseError("Cannot resolve import: %s" % orig_name)
+        raise ParseError(f"Cannot resolve import: {orig_name}")
       if not self.parent_name:
         raise ParseError(
-            "Cannot resolve relative import ..: Package %s has no parent" %
-            self.package_name)
-      return self.parent_name + "." + name
+            f"Cannot resolve relative import ..: Package {self.package_name} "
+            "has no parent"
+        )
+      return f"{self.parent_name}.{name}"
     else:
       return None
 
@@ -68,7 +69,7 @@ class Module:
       name = module_utils.get_absolute_name(self.package_name, orig_name)
       if name is None:
         raise ParseError(
-            "Cannot resolve relative import %s" % orig_name.rsplit(".", 1)[0])
+            f"Cannot resolve relative import {orig_name.rsplit('.', 1)[0]}")
       return name
     return orig_name
 
@@ -89,7 +90,7 @@ class Module:
       name, new_name = item
     else:
       name = new_name = item
-    qualified_name = self.qualify_name("%s.%s" % (from_package, name))
+    qualified_name = self.qualify_name(f"{from_package}.{name}")
     # We should ideally not need this check, but we have typing
     # special-cased in some places.
     if not qualified_name.startswith("typing.") and name != "*":

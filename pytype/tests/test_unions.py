@@ -3,7 +3,7 @@
 from pytype.tests import test_base
 
 
-class UnionTest(test_base.TargetIndependentTest):
+class UnionTest(test_base.BaseTest):
   """Tests for union types."""
 
   def test_if_else(self):
@@ -39,4 +39,5 @@ class UnionTest(test_base.TargetIndependentTest):
     self.assertErrorRegexes(errors, {"e1": r"int", "e2": r"int"})
 
 
-test_base.main(globals(), __name__ == "__main__")
+if __name__ == "__main__":
+  test_base.main()
