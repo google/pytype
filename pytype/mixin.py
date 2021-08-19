@@ -203,3 +203,50 @@ class LazyMembers(metaclass=MixinMeta):
       variable = self._convert_member(self._member_map[name], subst)
       assert isinstance(variable, cfg.Variable)
       self.members[name] = variable
+
+
+class PythonDict(PythonConstant):
+  """Specialization of PythonConstant that delegates to an underlying dict.
+
+  Not all dict methods are implemented, such as methods for modifying the dict.
+  """
+  # This was derived from pytd_utils.WrapsDict, which used `exec` to generate
+  # a custom base class. Only the base methods from WrapsDict are implemented
+  # here, because those are the only ones that were being used.
+  # More methods can be implemented by adding the name to `overloads` and
+  # defining the delegating method.
+
+  overloads = PythonConstant.overloads + (
+      "__getitem__",
+      "get",
+      "__contains__",
+      "copy",
+      "__iter__",
+      "items",
+      "keys",
+      "values",
+  )
+
+  def __getitem__(self, key):
+    return self.pyval[key]
+
+  def get(self, key, default=None):
+    return self.pyval.get(key, default)
+
+  def __contains__(self, key):
+    return key in self.pyval
+
+  def copy(self):
+    return self.pyval.copy()
+
+  def __iter__(self):
+    return iter(self.pyval)
+
+  def items(self):
+    return self.pyval.items()
+
+  def keys(self):
+    return self.pyval.keys()
+
+  def values(self):
+    return self.pyval.values()

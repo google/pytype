@@ -30,8 +30,6 @@ from pytype.pyc import pyc
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
-import six
-
 
 # The tests in this file check disassembled bytecode, which varies from version
 # to version, so we fix the test version.
@@ -166,8 +164,8 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     # TODO(b/175443170): find a way to keep this test in sync with constant
     # folding (which removes some opcodes)
     # We expect all instructions in the above to execute.
-    # six.assertCountEqual(self, self.trace_vm.instructions_executed,
-    #                      set(range(31)))
+    # self.assertCountEqual(self.trace_vm.instructions_executed,
+    #                       set(range(31)))
 
   src_deadcode = textwrap.dedent("""
     if False:
@@ -193,7 +191,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
     self.trace_vm.run_program(self.src_deadcode, "", maximum_depth=10)
-    six.assertCountEqual(self, self.trace_vm.instructions_executed, [0, 1])
+    self.assertCountEqual(self.trace_vm.instructions_executed, [0, 1])
 
 
 class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):

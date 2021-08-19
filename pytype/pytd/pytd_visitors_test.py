@@ -5,7 +5,6 @@ import textwrap
 from pytype.pytd import pytd_visitors
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
-import six
 
 import unittest
 
@@ -123,15 +122,12 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
     """)
     ast = visitors.LookupClasses(self.Parse(src))
     data = ast.Visit(pytd_visitors.ExtractSuperClasses())
-    six.assertCountEqual(self,
-                         ["object"], [t.name for t in data[ast.Lookup("A")]])
-    six.assertCountEqual(self,
-                         ["object"], [t.name for t in data[ast.Lookup("B")]])
-    six.assertCountEqual(self, ["A"], [t.name for t in data[ast.Lookup("C")]])
-    six.assertCountEqual(self,
-                         ["A", "B"], [t.name for t in data[ast.Lookup("D")]])
-    six.assertCountEqual(self, ["C", "D", "A"],
-                         [t.name for t in data[ast.Lookup("E")]])
+    self.assertCountEqual(["object"], [t.name for t in data[ast.Lookup("A")]])
+    self.assertCountEqual(["object"], [t.name for t in data[ast.Lookup("B")]])
+    self.assertCountEqual(["A"], [t.name for t in data[ast.Lookup("C")]])
+    self.assertCountEqual(["A", "B"], [t.name for t in data[ast.Lookup("D")]])
+    self.assertCountEqual(["C", "D", "A"],
+                          [t.name for t in data[ast.Lookup("E")]])
 
 
 if __name__ == "__main__":

@@ -8,7 +8,6 @@ from pytype import file_utils
 from pytype import module_utils
 from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
-import six
 import unittest
 
 
@@ -382,13 +381,13 @@ class TestNinjaPreamble(TestBase):
     # Check that the lines cycle through these patterns.
     for i, line in enumerate(preamble):
       if not i % 3:
-        six.assertRegex(self, line, r'rule \w*')
+        self.assertRegex(line, r'rule \w*')
       elif i % 3 == 1:
         expected = r'  command = {} .* \$in'.format(
             ' '.join(pytype_runner.PYTYPE_SINGLE))
-        six.assertRegex(self, line, expected)
+        self.assertRegex(line, expected)
       else:
-        six.assertRegex(self, line, r'  description = \w* \$module')
+        self.assertRegex(line, r'  description = \w* \$module')
 
 
 class TestNinjaBuildStatement(TestBase):

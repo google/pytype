@@ -9,7 +9,6 @@ from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
 
-import six
 import unittest
 
 
@@ -26,9 +25,9 @@ class TestUtils(parser_test_base.ParserTest):
     c1 = ast.Lookup("c1").type
     c2 = ast.Lookup("c2").type
     c3 = ast.Lookup("c3").type
-    six.assertCountEqual(self, pytd_utils.UnpackUnion(c1), c1.type_list)
-    six.assertCountEqual(self, pytd_utils.UnpackUnion(c2), [c2])
-    six.assertCountEqual(self, pytd_utils.UnpackUnion(c3), [c3])
+    self.assertCountEqual(pytd_utils.UnpackUnion(c1), c1.type_list)
+    self.assertCountEqual(pytd_utils.UnpackUnion(c2), [c2])
+    self.assertCountEqual(pytd_utils.UnpackUnion(c3), [c3])
 
   def test_concat(self):
     """Test for concatenating two pytd ASTs."""
@@ -193,66 +192,6 @@ class TestUtils(parser_test_base.ParserTest):
         pass
     """)
     self.AssertSourceEquals(w, expected)
-
-  def test_wraps_dict(self):
-    class A(pytd_utils.WrapsDict("m")):
-      pass
-    a = A()
-    a.m = {}
-    a.m = {"foo": 1, "bar": 2}
-    self.assertEqual(a.get("x", "baz"), "baz")
-    self.assertNotIn("x", a)
-    self.assertEqual(a.get("foo"), 1)
-    self.assertEqual(a["foo"], 1)
-    self.assertIn("foo", a)
-    self.assertIn("bar", a)
-    self.assertEqual(a.copy(), a.m)
-    six.assertCountEqual(self, iter(a), ["foo", "bar"])
-    six.assertCountEqual(self, a.keys(), ["foo", "bar"])
-    six.assertCountEqual(self, a.viewkeys(), ["foo", "bar"])
-    six.assertCountEqual(self, a.iterkeys(), ["foo", "bar"])
-    six.assertCountEqual(self, a.values(), [1, 2])
-    six.assertCountEqual(self, a.viewvalues(), [1, 2])
-    six.assertCountEqual(self, a.itervalues(), [1, 2])
-    six.assertCountEqual(self, a.items(), [("foo", 1), ("bar", 2)])
-    six.assertCountEqual(self, a.viewitems(), [("foo", 1), ("bar", 2)])
-    six.assertCountEqual(self, a.iteritems(), [("foo", 1), ("bar", 2)])
-    self.assertFalse(hasattr(a, "popitem"))
-
-  def test_wraps_writable_dict(self):
-    class A(pytd_utils.WrapsDict("m", writable=True)):
-      pass
-    a = A()
-    a.m = {}
-    a.m = {"foo": 1, "bar": 2}
-    self.assertIn("foo", a)
-    self.assertIn("bar", a)
-    del a["foo"]
-    a["bar"] = 3
-    self.assertNotIn("foo", a)
-    self.assertIn("bar", a)
-    value = a.pop("bar")
-    self.assertEqual(3, value)
-    self.assertNotIn("bar", a)
-    a["new"] = 7
-    item = a.popitem()
-    self.assertEqual(item, ("new", 7))
-    a["1"] = 1
-    a.setdefault("1", 11)
-    a.setdefault("2", 22)
-    self.assertEqual(a["1"], 1)
-    self.assertEqual(a["2"], 22)
-    a.update({"3": 33})
-    six.assertCountEqual(self, a.items(), (("1", 1), ("2", 22), ("3", 33)))
-    a.clear()
-    six.assertCountEqual(self, a.items(), ())
-
-  def test_wraps_dict_with_length(self):
-    class A(pytd_utils.WrapsDict("m", implement_len=True)):
-      pass
-    a = A()
-    a.m = {x: x for x in range(42)}
-    self.assertEqual(42, len(a))
 
   def test_builtin_alias(self):
     src = "Number = int"
@@ -431,10 +370,8 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEqual(normalize(pytd_utils.ASTdiff(tree1, tree1)), src1)
     self.assertEqual(normalize(pytd_utils.ASTdiff(tree2, tree2)), src2)
     diff_pattern = r"(?s)- b.*\+ b"
-    six.assertRegex(self, normalize(pytd_utils.ASTdiff(tree1, tree2)),
-                    diff_pattern)
-    six.assertRegex(self, normalize(pytd_utils.ASTdiff(tree2, tree1)),
-                    diff_pattern)
+    self.assertRegex(normalize(pytd_utils.ASTdiff(tree1, tree2)), diff_pattern)
+    self.assertRegex(normalize(pytd_utils.ASTdiff(tree2, tree1)), diff_pattern)
 
 
 class TestDataFiles(parser_test_base.ParserTest):
@@ -451,8 +388,8 @@ class TestDataFiles(parser_test_base.ParserTest):
 
   def test_get_predefined_file_throws(self):
     # smoke test, only checks that it does throw
-    with six.assertRaisesRegex(
-        self, IOError,
+    with self.assertRaisesRegex(
+        IOError,
         r"File not found|Resource not found|No such file or directory"):
       pytd_utils.GetPredefinedFile(self.BUILTINS, "-this-file-does-not-exist")
 

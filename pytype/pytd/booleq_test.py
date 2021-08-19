@@ -1,7 +1,6 @@
 """Tests for booleq.py."""
 
 from pytype.pytd import booleq
-import six
 import unittest
 
 
@@ -71,25 +70,25 @@ class TestBoolEq(unittest.TestCase):
               "y": {"0", "1"}}
     # x == 0 || x == 1
     equation = Or([Eq("x", "0"), Eq("x", "1")])
-    six.assertCountEqual(self, ["0", "1"], equation.extract_pivots(values)["x"])
+    self.assertCountEqual(["0", "1"], equation.extract_pivots(values)["x"])
 
     # x == 0 && x == 0
     equation = And([Eq("x", "0"), Eq("x", "0")])
-    six.assertCountEqual(self, ["0"], equation.extract_pivots(values)["x"])
+    self.assertCountEqual(["0"], equation.extract_pivots(values)["x"])
 
     # x == 0 && (x == 0 || x == 1)
     equation = And([Eq("x", "0"), Or([Eq("x", "0"), Eq("x", "1")])])
-    six.assertCountEqual(self, ["0"], equation.extract_pivots(values)["x"])
+    self.assertCountEqual(["0"], equation.extract_pivots(values)["x"])
 
     # x == 0 || x == 0
     equation = And([Eq("x", "0"), Eq("x", "0")])
-    six.assertCountEqual(self, ["0"], equation.extract_pivots(values)["x"])
+    self.assertCountEqual(["0"], equation.extract_pivots(values)["x"])
 
     # x == 0 || y == 0
     equation = Or([Eq("x", "0"), Eq("y", "0")])
     pivots = equation.extract_pivots(values)
-    six.assertCountEqual(self, ["0"], pivots["x"])
-    six.assertCountEqual(self, ["0"], pivots["y"])
+    self.assertCountEqual(["0"], pivots["x"])
+    self.assertCountEqual(["0"], pivots["y"])
 
   def test_simplify(self):
     # x == 0 || x == 1  with x in {0}
@@ -234,7 +233,7 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("y", "d"), FALSE)
     solver.implies(Eq("y", "e"), FALSE)
     m = solver.solve()
-    six.assertCountEqual(self, m["z"], {"a", "b"})
+    self.assertCountEqual(m["z"], {"a", "b"})
 
   def test_conjunction(self):
     solver = booleq.Solver()
@@ -251,10 +250,10 @@ class TestBoolEq(unittest.TestCase):
     solver.implies(Eq("w", "1"), TRUE)
     solver.implies(Eq("w", "4"), TRUE)
     m = solver.solve()
-    six.assertCountEqual(self, m["x"], {"1"})
-    six.assertCountEqual(self, m["y"], {"2"})
-    six.assertCountEqual(self, m["z"], {"3"})
-    six.assertCountEqual(self, m["z.T"], {"1"})
+    self.assertCountEqual(m["x"], {"1"})
+    self.assertCountEqual(m["y"], {"2"})
+    self.assertCountEqual(m["z"], {"3"})
+    self.assertCountEqual(m["z.T"], {"1"})
     self.assertIn("1", m["y.T"])
     self.assertNotIn("4", m["y.T"])
 

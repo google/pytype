@@ -1,7 +1,7 @@
 """Utilities for dealing with project configuration."""
 
+import configparser
 import os
-from six.moves import configparser
 
 
 def find_config_file(path, filename='setup.cfg'):

@@ -5,14 +5,13 @@ from pytype.pytd import pytd_utils
 from pytype.tools.traces import traces
 
 
-def annotate_source(source, ast_factory, pytype_options):
+def annotate_source(source, ast_module, pytype_options):
   """Infer types for `source`, and return an AST of it with types added.
 
   Args:
     source: Text, the source code to type-infer and parse to an AST.
-    ast_factory: Callable[[Options], ast-module-like], a callable that takes the
-      Pytype options and returns an ast-module like object used to parse the
-      source to an AST and traverse the created ast.Module object.
+    ast_module: An ast-module like object used to parse the source to an AST
+      and traverse the created ast.Module object.
     pytype_options: pytype.config.Options, the options to pass onto Pytype.
 
   Returns:
@@ -20,7 +19,6 @@ def annotate_source(source, ast_factory, pytype_options):
   """
   source_code = infer_types(source, pytype_options)
 
-  ast_module = ast_factory(pytype_options)
   module = ast_module.parse(source, pytype_options.input)
 
   visitor = AnnotateAstVisitor(source_code, ast_module)

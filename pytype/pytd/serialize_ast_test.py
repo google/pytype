@@ -7,7 +7,6 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_base
-import six
 
 import unittest
 
@@ -88,8 +87,8 @@ class SerializeAstTest(test_base.UnitTest):
           serialized_ast.class_type_nodes)[1:])
       loaded_ast = serialize_ast.ProcessAst(serialized_ast, module_map)
 
-      with six.assertRaisesRegex(
-          self, ValueError, "Unresolved class: 'builtins.NoneType'"):
+      with self.assertRaisesRegex(
+          ValueError, "Unresolved class: 'builtins.NoneType'"):
         loaded_ast.Visit(visitors.VerifyLookup())
 
   def test_pickle(self):
@@ -103,8 +102,8 @@ class SerializeAstTest(test_base.UnitTest):
       with open(pickled_ast_filename, "rb") as fi:
         serialized_ast = pickle.load(fi)
       self.assertTrue(serialized_ast.ast)
-      six.assertCountEqual(
-          self, dict(serialized_ast.dependencies),
+      self.assertCountEqual(
+          dict(serialized_ast.dependencies),
           ["builtins", "foo.bar.module1", "module2", "queue"])
 
   def test_unrestorable_child(self):

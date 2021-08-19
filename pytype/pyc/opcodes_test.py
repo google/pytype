@@ -92,33 +92,6 @@ class CommonTest(_TestBase):
     self.assertDisassembly(code, expected)
 
 
-class Python2Test(_TestBase):
-  """Test bytecodes specific to Python 2."""
-
-  python_version = (2, 7, 6)
-
-  def test_stop_code(self):
-    self.assertSimple(0, 'STOP_CODE')
-
-  def test_store_map(self):
-    self.assertSimple(54, 'STORE_MAP')
-
-  def test_dup_topx(self):
-    self.assertName([99, 0, 0], 'DUP_TOPX')
-
-  def test_extended_arg(self):
-    code = [
-        0x91, 1, 0,  # 0 EXTENDED_ARG, arg=1,
-        0x64, 2, 0,  # 3 LOAD_CONST, arg=2
-        0x53,  # 6 RETURN_VALUE
-    ]
-    expected = [
-        ('LOAD_CONST', 0x10002),
-        ('RETURN_VALUE',)
-    ]
-    self.assertDisassembly(code, expected)
-
-
 class Python35Test(_TestBase):
   """Test bytecodes specific to Python 3.5."""
 

@@ -210,7 +210,7 @@ class DropBuiltinPrefix(Visitor):
     return self.VisitClassType(node)
 
 
-# TODO(rechen): Get rid of this hack once we drop Python 2 support and all
+# TODO(b/195453869): Get rid of this hack once we drop Python 2 support and all
 # typeshed references to __builtin__ are gone.
 def RenameBuiltinsPrefixInName(name):
   module, _, basename = name.partition(".")

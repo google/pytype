@@ -237,10 +237,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return list(self._match_import(node, is_from=True))
 
   def match_Lambda(self, node):
-    if sys.version_info.major == 2:
-      sym = None
-    else:
-      sym = _SymbolMatcher.from_regex(r".*<lambda>$")
+    sym = _SymbolMatcher.from_regex(r".*<lambda>$")
     return [(self._get_match_location(node), tr)
             for tr in self._get_traces(node.lineno, ["MAKE_FUNCTION"], sym, 1)]
 

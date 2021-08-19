@@ -458,7 +458,7 @@ class Super(BuiltinClass):
   def call(self, node, _, args):
     result = self.vm.program.NewVariable()
     num_args = len(args.posargs)
-    if num_args == 0 and self.vm.PY3:
+    if num_args == 0:
       # The implicit type argument is available in a freevar named '__class__'.
       cls_var = None
       # If we are in a list comprehension we want the enclosing frame.
@@ -611,7 +611,7 @@ class PropertyTemplate(BuiltinClass):
 
   def _get_args(self, args):
     ret = dict(zip(self._KEYS, args.posargs))
-    for k, v in args.namedargs.iteritems():
+    for k, v in args.namedargs.items():
       if k not in self._KEYS:
         raise function.WrongKeywordArgs(self.signature(), args, self.vm, [k])
       ret[k] = v

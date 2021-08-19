@@ -25,7 +25,6 @@ from pytype import datatypes
 from pytype import function
 from pytype import mixin
 from pytype import utils
-from pytype.pyc import opcodes
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -1038,8 +1037,7 @@ class Tuple(Instance, mixin.PythonConstant):
     return self._hash
 
 
-class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
-           pytd_utils.WrapsDict("pyval")):
+class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
   """Representation of Python 'dict' objects.
 
   It works like builtins.dict, except that, for string keys, it keeps track
@@ -1059,7 +1057,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonConstant,
     # Use OrderedDict instead of dict, so that it can be compatible with
     # where needs ordered dict.
     # For example: f_locals["__annotations__"]
-    mixin.PythonConstant.init_mixin(self, collections.OrderedDict())
+    mixin.PythonDict.init_mixin(self, collections.OrderedDict())
 
   def str_of_constant(self, printer):
     return str({name: " or ".join(abstract_utils.var_map(printer, value))
@@ -3457,10 +3455,7 @@ class InterpreterFunction(SignedFunction):
     self._update_signature_scope()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
-    if self.vm.PY3:
-      self.is_class_builder = False  # Will be set by BuildClass.
-    else:
-      self.is_class_builder = self.code.has_opcode(opcodes.LOAD_LOCALS)
+    self.is_class_builder = False  # Will be set by BuildClass.
     if name.endswith(".__init_subclass__"):
       # __init_subclass__ is automatically promoted to a classmethod
       self.is_classmethod = True

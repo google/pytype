@@ -10,8 +10,10 @@ locally or within a larger repository.
 import collections
 import difflib
 import gzip
+import io
 import itertools
 import os
+import pickle
 import pickletools
 import re
 import sys
@@ -22,11 +24,9 @@ from pytype.pytd import printer
 from pytype.pytd import pytd
 from pytype.pytd import pytd_visitors
 from pytype.pytd.parse import parser_constants
-import six
-from six.moves import cPickle
 
 
-_PICKLE_PROTOCOL = cPickle.HIGHEST_PROTOCOL
+_PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
 
 ANON_PARAM = re.compile(r"_[0-9]+")
@@ -316,106 +316,6 @@ class OrderedSet(collections.OrderedDict):
     self[item] = None
 
 
-def WrapsDict(member_name, writable=False, implement_len=False):
-  """Returns a mixin class for wrapping a dictionary.
-
-  This can be used like this:
-    class MyClass(WrapsDict("inner_dict")):
-      def __init__(self):
-        self.inner_dict = {}
-  The resulting class will delegate all dictionary operations to inner_dict.
-  Note that we don't wrap has_key, which was removed in Python 3.
-
-  Args:
-    member_name: Name of the attribute that contains the wrapped dictionary.
-    writable: Whether to implement operations that modify the dict, like "del".
-    implement_len: Whether the parent class should have a __len__ method that
-      maps to the inner dictionary.
-  Returns:
-    A type.
-  """
-  src = "if True:\n"  # To allow the code below to be indented
-  src += """
-    class WrapsDict:
-
-      def __getitem__(self, key):
-        return self.{member_name}[key]
-
-      def get(self, key, default=None):
-        return self.{member_name}.get(key, default)
-
-      def __contains__(self, key):
-        return key in self.{member_name}
-
-      def copy(self):
-        return self.{member_name}.copy()
-
-      def __iter__(self):
-        return iter(self.{member_name})
-
-      def items(self):
-        return self.{member_name}.items()
-
-      def iteritems(self):
-        return six.iteritems(self.{member_name})
-
-      def iterkeys(self):
-        return six.iterkeys(self.{member_name})
-
-      def itervalues(self):
-        return six.itervalues(self.{member_name})
-
-      def keys(self):
-        return self.{member_name}.keys()
-
-      def values(self):
-        return self.{member_name}.values()
-
-      def viewitems(self):
-        return six.viewitems(self.{member_name})
-
-      def viewkeys(self):
-        return six.viewkeys(self.{member_name})
-
-      def viewvalues(self):
-        return six.viewvalues(self.{member_name})
-  """.format(member_name=member_name)
-
-  if writable:
-    src += """
-      def pop(self, key):
-        return self.{member_name}.pop(key)
-
-      def popitem(self):
-        return self.{member_name}.popitem()
-
-      def setdefault(self, key, value=None):
-        return self.{member_name}.setdefault(key, value)
-
-      def update(self, other_dict):
-        return self.{member_name}.update(other_dict)
-
-      def clear(self):
-        return self.{member_name}.clear()
-
-      def __setitem__(self, key, value):
-        self.{member_name}[key] = value
-
-      def __delitem__(self, key):
-        del self.{member_name}[key]
-    """.format(member_name=member_name)
-
-  if implement_len:
-    src += """
-      def __len__(self):
-        return len(self.{member_name})
-    """.format(member_name=member_name)
-
-  namespace = {"six": six}
-  exec(src, namespace)  # pylint: disable=exec-used
-  return namespace["WrapsDict"]
-
-
 def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
                       as_package=False):
   """Get the contents of a predefined PyTD, typically with a file name *.pytd.
@@ -443,9 +343,9 @@ def LoadPickle(filename, compress=False, open_function=open):
     if compress:
       with gzip.GzipFile(fileobj=fi) as zfi:
         # TODO(b/173150871): Remove the disable once the typeshed bug is fixed.
-        return cPickle.load(zfi)  # pytype: disable=wrong-arg-types
+        return pickle.load(zfi)  # pytype: disable=wrong-arg-types
     else:
-      return cPickle.load(fi)
+      return pickle.load(fi)
 
 
 def SavePickle(data, filename=None, compress=False, open_function=open):
@@ -461,12 +361,12 @@ def SavePickle(data, filename=None, compress=False, open_function=open):
         with gzip.GzipFile(filename="", mode="wb",
                            fileobj=fi, mtime=1.0) as zfi:
           # TODO(b/173150871): Remove disable once typeshed bug is fixed.
-          cPickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
+          pickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
     elif filename is not None:
       with open_function(filename, "wb") as fi:
-        cPickle.dump(data, fi, _PICKLE_PROTOCOL)
+        pickle.dump(data, fi, _PICKLE_PROTOCOL)
     else:
-      return cPickle.dumps(data, _PICKLE_PROTOCOL)
+      return pickle.dumps(data, _PICKLE_PROTOCOL)
   finally:
     sys.setrecursionlimit(recursion_limit)
 
@@ -493,11 +393,11 @@ def DiffNamedPickles(named_pickles1, named_pickles2):
     if name1 != name2:
       diff.append("different ordering of pyi files: %s, %s" % (name1, name2))
     elif pickle1 != pickle2:
-      ast1, ast2 = cPickle.loads(pickle1), cPickle.loads(pickle2)
+      ast1, ast2 = pickle.loads(pickle1), pickle.loads(pickle2)
       if ASTeq(ast1.ast, ast2.ast):
         diff.append("asts match but pickles differ: %s" % name1)
-        p1 = six.StringIO()
-        p2 = six.StringIO()
+        p1 = io.StringIO()
+        p2 = io.StringIO()
         pickletools.dis(pickle1, out=p1)
         pickletools.dis(pickle2, out=p2)
         diff.extend(difflib.unified_diff(
