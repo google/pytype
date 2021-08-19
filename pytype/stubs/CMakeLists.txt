@@ -45,6 +45,7 @@ filegroup(
     builtins/3/attr/setters.pytd
     builtins/3/attr/validators.pytd
     builtins/3/builtins.pytd
+    builtins/3/dataclasses.pytd
     builtins/3/mypy_extensions.pytd
     builtins/3/protocols.pytd
     builtins/3/typing.pytd
