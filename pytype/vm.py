@@ -549,60 +549,6 @@ class VirtualMachine:
     state, method = self.load_attr(state, obj, method_name)
     return self.call_function_with_state(state, method, args)
 
-  # Operators
-
-  def pop_slice_and_obj(self, state, count):
-    """Pop a slice from the data stack. Used by slice opcodes (SLICE_0 etc.)."""
-    if count == 0:  # x[:]
-      start = None
-      end = None
-    elif count == 1:  # x[i:]
-      state, start = state.pop()
-      end = None
-    elif count == 2:  # x[:j]
-      start = None
-      state, end = state.pop()
-    elif count == 3:  # x[i:j]
-      state, end = state.pop()
-      state, start = state.pop()
-    else:
-      raise AssertionError("invalid slice code")
-    state, obj = state.pop()
-    return state, (start, end), obj
-
-  def store_slice(self, state, count):
-    state, slice_args, obj = self.pop_slice_and_obj(state, count)
-    slice_obj = self.convert.build_slice(state.node, *slice_args)
-    state, new_value = state.pop()
-    state, _ = self._call(state, obj, "__setitem__", (slice_obj, new_value))
-    return state
-
-  def delete_slice(self, state, count):
-    state, slice_args, obj = self.pop_slice_and_obj(state, count)
-    slice_obj = self.convert.build_slice(state.node, *slice_args)
-    return self._delete_item(state, obj, slice_obj)
-
-  def get_slice(self, state, count):
-    """Common implementation of all GETSLICE+<n> opcodes."""
-    state, (start, end), obj = self.pop_slice_and_obj(state, count)
-    method = "__getslice__"
-    state, f = self.load_attr_noerror(state, obj, method)
-    if f and f.bindings:
-      start = start or self.convert.build_int(state.node)
-      end = end or self.convert.build_int(state.node)
-      args = (start, end)
-    else:
-      method = "__getitem__"
-      state, f = self.load_attr(state, obj, method)
-      slice_obj = self.convert.build_slice(state.node, start, end)
-      args = (slice_obj,)
-    with self._suppress_opcode_tracing():  # don't trace the magic method call
-      state, ret = self.call_function_with_state(state, f, args)
-    self.trace_opcode(None, method, ret)
-    return state.push(ret)
-
-  # Importing
-
   def join_variables(self, node, variables):
     return cfg_utils.merge_variables(self.program, node, variables)
 
@@ -1798,15 +1744,6 @@ class VirtualMachine:
     else:
       return None
 
-  def print_item(self, item, to=None):
-    # We don't need do anything here, since Python's print function accepts
-    # any type. (We could exercise the __str__ method on item - but every
-    # object has a __str__, so we wouldn't learn anything from that.)
-    pass
-
-  def print_newline(self, to=None):
-    pass
-
   def unary_operator(self, state, name):
     state, x = state.pop()
     state, result = self._call(state, x, name, ())
@@ -1909,9 +1846,6 @@ class VirtualMachine:
     state = state.push(result)
     return state
 
-  def byte_UNARY_CONVERT(self, state, op):
-    return self.unary_operator(state, "__repr__")
-
   def byte_UNARY_NEGATIVE(self, state, op):
     return self.unary_operator(state, "__neg__")
 
@@ -1929,9 +1863,6 @@ class VirtualMachine:
 
   def byte_BINARY_SUBTRACT(self, state, op):
     return self.binary_operator(state, "__sub__")
-
-  def byte_BINARY_DIVIDE(self, state, op):
-    return self.binary_operator(state, "__div__")
 
   def byte_BINARY_MULTIPLY(self, state, op):
     return self.binary_operator(state, "__mul__")
@@ -1977,9 +1908,6 @@ class VirtualMachine:
 
   def byte_INPLACE_MULTIPLY(self, state, op):
     return self.inplace_operator(state, "__imul__")
-
-  def byte_INPLACE_DIVIDE(self, state, op):
-    return self.inplace_operator(state, "__idiv__")
 
   def byte_INPLACE_MODULO(self, state, op):
     return self.inplace_operator(state, "__imod__")
@@ -2029,12 +1957,6 @@ class VirtualMachine:
 
   def byte_DUP_TOP(self, state, op):
     return state.push(state.top())
-
-  def byte_DUP_TOPX(self, state, op):
-    state, items = state.popn(op.arg)
-    state = state.push(*items)
-    state = state.push(*items)
-    return state
 
   def byte_DUP_TOP_TWO(self, state, op):
     state, (a, b) = state.popn(2)
@@ -2400,11 +2322,6 @@ class VirtualMachine:
     except KeyError:
       return self.load_closure_cell(state, op)
 
-  def byte_LOAD_LOCALS(self, state, op):
-    log.debug("Returning locals: %r", self.frame.f_locals)
-    locals_dict = self.frame.f_locals.to_variable(self.root_node)
-    return state.push(locals_dict)
-
   def _cmp_rel(self, state, op_name, x, y):
     """Implementation of relational operators CMP_(LT|LE|EQ|NE|GE|GT).
 
@@ -2723,19 +2640,10 @@ class VirtualMachine:
   def byte_BUILD_MAP(self, state, op):
     """Build a dictionary."""
     the_map = self.convert.build_map(state.node)
-    if self.python_version >= (3, 5):
-      state, args = state.popn(2 * op.arg)
-      for i in range(op.arg):
-        key, val = args[2*i], args[2*i+1]
-        state = self.store_subscr(state, the_map, key, val)
-    else:
-      # For python < 3.5 we build the map in STORE_MAP
-      pass
-    return state.push(the_map)
-
-  def byte_STORE_MAP(self, state, op):
-    state, (the_map, val, key) = state.popn(3)
-    state = self.store_subscr(state, the_map, key, val)
+    state, args = state.popn(2 * op.arg)
+    for i in range(op.arg):
+      key, val = args[2*i], args[2*i+1]
+      state = self.store_subscr(state, the_map, key, val)
     return state.push(the_map)
 
   def _get_literal_sequence(self, data):
@@ -2947,26 +2855,6 @@ class VirtualMachine:
   def byte_PRINT_EXPR(self, state, op):
     # Only used in the interactive interpreter, not in modules.
     return state.pop_and_discard()
-
-  def byte_PRINT_ITEM(self, state, op):
-    state, item = state.pop()
-    self.print_item(item)
-    return state
-
-  def byte_PRINT_ITEM_TO(self, state, op):
-    state, to = state.pop()
-    state, item = state.pop()
-    self.print_item(item, to)
-    return state
-
-  def byte_PRINT_NEWLINE(self, state, op):
-    self.print_newline()
-    return state
-
-  def byte_PRINT_NEWLINE_TO(self, state, op):
-    state, to = state.pop()
-    self.print_newline(to)
-    return state
 
   def _jump_if(self, state, op, pop=False, jump_if=False, or_pop=False):
     """Implementation of various _JUMP_IF bytecodes.
@@ -3188,16 +3076,6 @@ class VirtualMachine:
     state, ctxmgr_obj = self._call(state, ctxmgr, "__enter__", ())
     state = self.push_block(state, "finally", level)
     return state.push(ctxmgr_obj)
-
-  def byte_WITH_CLEANUP(self, state, op):
-    """Called at the end of a with block. Calls the exit handlers etc."""
-    # In Python 2, cleaning up after a with block is done in a single
-    # WITH_CLEANUP opcode. In Python 3, the same functionality is split into
-    # a cleanup start and end. See WITH_CLEANUP(_{START,FINISH}) here for how
-    # cleanup manipulates the stack:
-    #   https://github.com/python/cpython/blob/master/Doc/library/dis.rst
-    return self.byte_WITH_CLEANUP_FINISH(
-        self.byte_WITH_CLEANUP_START(state, op), op)
 
   def _with_cleanup_start(self, state, op):
     """Implements WITH_CLEANUP_START before Python 3.8."""
@@ -3461,20 +3339,6 @@ class VirtualMachine:
     self.trace_opcode(op, name, attr)
     return state.push(attr)
 
-  def byte_EXEC_STMT(self, state, op):
-    state, (unused_stmt, unused_globs, unused_locs) = state.popn(3)
-    log.warning("Encountered 'exec' statement. 'exec' is unsupported.")
-    return state
-
-  def byte_BUILD_CLASS(self, state, op):
-    state, (name, _bases, members) = state.popn(3)
-    bases = list(abstract_utils.get_atomic_python_constant(_bases))
-    is_decorated = op.line in self.director.decorators
-    node, cls = self.make_class(state.node, name, bases, members, None,
-                                is_decorated=is_decorated)
-    self.trace_classdef(cls)
-    return state.change_cfg_node(node).push(cls)
-
   def byte_LOAD_BUILD_CLASS(self, state, op):
     cls = abstract.BuildClass(self).to_variable(state.node)
     if op.line in self.director.decorators:
@@ -3482,11 +3346,6 @@ class VirtualMachine:
       cls.data[0].is_decorated = True
     self.trace_opcode(op, "", cls)
     return state.push(cls)
-
-  def byte_STORE_LOCALS(self, state, op):
-    state, locals_dict = state.pop()
-    self.frame.f_locals = abstract_utils.get_atomic_value(locals_dict)
-    return state
 
   def byte_END_FINALLY(self, state, op):
     """Implementation of the END_FINALLY opcode."""
@@ -3538,42 +3397,6 @@ class VirtualMachine:
       if name[0] != "_" or name == "__getattr__":
         state = self.store_local(state, name, var)
     return state
-
-  def byte_SLICE_0(self, state, op):
-    return self.get_slice(state, 0)
-
-  def byte_SLICE_1(self, state, op):
-    return self.get_slice(state, 1)
-
-  def byte_SLICE_2(self, state, op):
-    return self.get_slice(state, 2)
-
-  def byte_SLICE_3(self, state, op):
-    return self.get_slice(state, 3)
-
-  def byte_STORE_SLICE_0(self, state, op):
-    return self.store_slice(state, 0)
-
-  def byte_STORE_SLICE_1(self, state, op):
-    return self.store_slice(state, 1)
-
-  def byte_STORE_SLICE_2(self, state, op):
-    return self.store_slice(state, 2)
-
-  def byte_STORE_SLICE_3(self, state, op):
-    return self.store_slice(state, 3)
-
-  def byte_DELETE_SLICE_0(self, state, op):
-    return self.delete_slice(state, 0)
-
-  def byte_DELETE_SLICE_1(self, state, op):
-    return self.delete_slice(state, 1)
-
-  def byte_DELETE_SLICE_2(self, state, op):
-    return self.delete_slice(state, 2)
-
-  def byte_DELETE_SLICE_3(self, state, op):
-    return self.delete_slice(state, 3)
 
   def byte_SETUP_ANNOTATIONS(self, state, op):
     """Sets up variable annotations in locals()."""
@@ -3791,9 +3614,6 @@ class VirtualMachine:
     """Implementation of the GET_AITER opcode."""
     state, obj = state.pop()
     state, itr = self._get_aiter(state, obj)
-    if self.python_version < (3, 5):
-      if not self._check_return(state.node, itr, self.convert.awaitable_type):
-        itr = self.new_unsolvable(state.node)
     # Push the iterator onto the stack and return.
     state = state.push(itr)
     return state

@@ -306,16 +306,10 @@ class _LoadMarshal:
   def load_unicode(self):
     n = self._read_long()
     s = self._read(n)
-    # We need to convert bytes to a unicode string for any of the following:
-    # - We are analysing python2 code
-    # - We are running in a python3 host
-    # If we are analysing python3 code in a python2 host, we leave the string as
-    # a utf-8 encoded bytestring.
-    if (self.python_version[0] < 3 or
-        sys.version_info[0] == 3):
-      # We use the 'backslashreplace' error mode in order to handle non-utf8
-      # backslash-escaped string literals correctly.
-      s = s.decode('utf8', 'backslashreplace')
+    # We need to convert bytes to a unicode string.
+    # We use the 'backslashreplace' error mode in order to handle non-utf8
+    # backslash-escaped string literals correctly.
+    s = s.decode('utf8', 'backslashreplace')
     return s
 
   def load_ascii(self):

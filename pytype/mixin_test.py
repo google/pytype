@@ -34,12 +34,10 @@ class MixinMetaTest(unittest.TestCase):
 class PythonDictTest(unittest.TestCase):
 
   def test_wraps_dict(self):
-    # pylint: disable=undefined-variable
     class A(mixin.PythonDict):
 
       def __init__(self, pyval):
         mixin.PythonDict.init_mixin(self, pyval)
-    # pylint: enable=undefined-variable
     a = A({"foo": 1, "bar": 2})
     self.assertEqual(a.get("x", "baz"), "baz")
     self.assertNotIn("x", a)

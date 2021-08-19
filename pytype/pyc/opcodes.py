@@ -1,7 +1,4 @@
-"""Opcode definitions for both Python 2 and Python 3."""
-
-import six
-import six.moves
+"""Opcode definitions."""
 
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
@@ -154,11 +151,6 @@ class OpcodeWithArg(Opcode):
     return True
 
 
-class STOP_CODE(Opcode):
-  __slots__ = ()
-  FLAGS = NO_NEXT
-
-
 class POP_TOP(Opcode):
   __slots__ = ()
 
@@ -199,10 +191,6 @@ class UNARY_NOT(Opcode):
   __slots__ = ()
 
 
-class UNARY_CONVERT(Opcode):
-  __slots__ = ()
-
-
 class UNARY_INVERT(Opcode):
   __slots__ = ()
 
@@ -220,10 +208,6 @@ class BINARY_POWER(Opcode):
 
 
 class BINARY_MULTIPLY(Opcode):
-  __slots__ = ()
-
-
-class BINARY_DIVIDE(Opcode):
   __slots__ = ()
 
 
@@ -259,54 +243,6 @@ class INPLACE_TRUE_DIVIDE(Opcode):
   __slots__ = ()
 
 
-class SLICE_0(Opcode):
-  __slots__ = ()
-
-
-class SLICE_1(Opcode):
-  __slots__ = ()
-
-
-class SLICE_2(Opcode):
-  __slots__ = ()
-
-
-class SLICE_3(Opcode):
-  __slots__ = ()
-
-
-class STORE_SLICE_0(Opcode):
-  __slots__ = ()
-
-
-class STORE_SLICE_1(Opcode):
-  __slots__ = ()
-
-
-class STORE_SLICE_2(Opcode):
-  __slots__ = ()
-
-
-class STORE_SLICE_3(Opcode):
-  __slots__ = ()
-
-
-class DELETE_SLICE_0(Opcode):
-  __slots__ = ()
-
-
-class DELETE_SLICE_1(Opcode):
-  __slots__ = ()
-
-
-class DELETE_SLICE_2(Opcode):
-  __slots__ = ()
-
-
-class DELETE_SLICE_3(Opcode):
-  __slots__ = ()
-
-
 class GET_AITER(Opcode):
   __slots__ = ()
 
@@ -335,10 +271,6 @@ class END_ASYNC_FOR(Opcode):
   __slots__ = ()
 
 
-class STORE_MAP(Opcode):
-  __slots__ = ()
-
-
 class INPLACE_ADD(Opcode):
   __slots__ = ()
 
@@ -348,10 +280,6 @@ class INPLACE_SUBTRACT(Opcode):
 
 
 class INPLACE_MULTIPLY(Opcode):
-  __slots__ = ()
-
-
-class INPLACE_DIVIDE(Opcode):
   __slots__ = ()
 
 
@@ -399,27 +327,7 @@ class GET_YIELD_FROM_ITER(Opcode):
   __slots__ = ()
 
 
-class STORE_LOCALS(Opcode):
-  __slots__ = ()
-
-
 class PRINT_EXPR(Opcode):
-  __slots__ = ()
-
-
-class PRINT_ITEM(Opcode):
-  __slots__ = ()
-
-
-class PRINT_NEWLINE(Opcode):
-  __slots__ = ()
-
-
-class PRINT_ITEM_TO(Opcode):
-  __slots__ = ()
-
-
-class PRINT_NEWLINE_TO(Opcode):
   __slots__ = ()
 
 
@@ -461,22 +369,12 @@ class BREAK_LOOP(Opcode):
   __slots__ = ()
 
 
-class WITH_CLEANUP(Opcode):
-  # This opcode changes the block stack, but it should never change its depth.
-  FLAGS = HAS_JUNKNOWN  # might call __exit__
-  __slots__ = ()
-
-
 class WITH_CLEANUP_START(Opcode):
   FLAGS = HAS_JUNKNOWN  # might call __exit__
   __slots__ = ()
 
 
 class WITH_CLEANUP_FINISH(Opcode):
-  __slots__ = ()
-
-
-class LOAD_LOCALS(Opcode):
   __slots__ = ()
 
 
@@ -493,11 +391,6 @@ class SETUP_ANNOTATIONS(Opcode):
   __slots__ = ()
 
 
-class EXEC_STMT(Opcode):
-  FLAGS = HAS_JUNKNOWN
-  __slots__ = ()
-
-
 class YIELD_VALUE(Opcode):
   FLAGS = HAS_JUNKNOWN
   __slots__ = ()
@@ -510,10 +403,6 @@ class POP_BLOCK(Opcode):
 
 class END_FINALLY(Opcode):
   FLAGS = HAS_JUNKNOWN  # might re-raise an exception
-  __slots__ = ()
-
-
-class BUILD_CLASS(Opcode):
   __slots__ = ()
 
 
@@ -568,11 +457,6 @@ class STORE_GLOBAL(OpcodeWithArg):  # Indexes into name list
 
 class DELETE_GLOBAL(OpcodeWithArg):  # Indexes into name list
   FLAGS = HAS_NAME|HAS_ARGUMENT
-  __slots__ = ()
-
-
-class DUP_TOPX(OpcodeWithArg):  # Arg: Number of items to duplicate
-  FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -921,6 +805,12 @@ class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
     return self.basic_str() + " " + str(self.arg.value)
 
 
+def _overlay_mapping(mapping, new_entries):
+  ret = mapping.copy()
+  ret.update(new_entries)
+  return dict((k, v) for k, v in ret.items() if v is not None)
+
+
 python_3_5_mapping = {
     1: POP_TOP,
     2: ROT_TWO,
@@ -962,8 +852,8 @@ python_3_5_mapping = {
     68: GET_ITER,
     69: GET_YIELD_FROM_ITER,
     70: PRINT_EXPR,
-    71: LOAD_BUILD_CLASS,  # PRINT_ITEM in Python 2
-    72: YIELD_FROM,  # PRINT_NEWLINE in Python 2
+    71: LOAD_BUILD_CLASS,
+    72: YIELD_FROM,
     73: GET_AWAITABLE,
     75: INPLACE_LSHIFT,
     76: INPLACE_RSHIFT,
@@ -978,12 +868,12 @@ python_3_5_mapping = {
     86: YIELD_VALUE,
     87: POP_BLOCK,
     88: END_FINALLY,
-    89: POP_EXCEPT,  # BUILD_CLASS in Python 2
+    89: POP_EXCEPT,
     90: STORE_NAME,
     91: DELETE_NAME,
     92: UNPACK_SEQUENCE,
     93: FOR_ITER,
-    94: UNPACK_EX,  # LIST_APPEND in Python 2
+    94: UNPACK_EX,
     95: STORE_ATTR,
     96: DELETE_ATTR,
     97: STORE_GLOBAL,
@@ -1025,11 +915,11 @@ python_3_5_mapping = {
     141: CALL_FUNCTION_KW,
     142: CALL_FUNCTION_VAR_KW,
     143: SETUP_WITH,
-    144: EXTENDED_ARG,  # 145 in Python 2
-    145: LIST_APPEND,  # 94 in Python 2
+    144: EXTENDED_ARG,
+    145: LIST_APPEND,
     146: SET_ADD,
     147: MAP_ADD,
-    148: LOAD_CLASSDEREF,  # not in Python 2
+    148: LOAD_CLASSDEREF,
     149: BUILD_LIST_UNPACK,
     150: BUILD_MAP_UNPACK,
     151: BUILD_MAP_UNPACK_WITH_CALL,
@@ -1037,12 +927,6 @@ python_3_5_mapping = {
     153: BUILD_SET_UNPACK,
     154: SETUP_ASYNC_WITH,
 }
-
-
-def _overlay_mapping(mapping, new_entries):
-  ret = mapping.copy()
-  ret.update(new_entries)
-  return dict((k, v) for k, v in ret.items() if v is not None)
 
 python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
     85: SETUP_ANNOTATIONS,
@@ -1104,7 +988,7 @@ class _LineNumberTableParser:
     assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
-    self.next_addr = six.indexbytes(self.lnotab, 0) if self.lnotab else 0
+    self.next_addr = self.lnotab[0] if self.lnotab else 0
     self.pos = 0
     self.python_version = python_version
 
@@ -1121,7 +1005,7 @@ class _LineNumberTableParser:
       The line number corresponding to the position at i.
     """
     while i >= self.next_addr and self.pos < len(self.lnotab):
-      line_diff = six.indexbytes(self.lnotab, self.pos + 1)
+      line_diff = self.lnotab[self.pos + 1]
       # The Python docs have more details on this weird bit twiddling.
       # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt
       # https://github.com/python/cpython/commit/f3914eb16d28ad9eb20fe5133d9aa83658bcc27f
@@ -1131,7 +1015,7 @@ class _LineNumberTableParser:
 
       self.pos += 2
       if self.pos < len(self.lnotab):
-        self.next_addr += six.indexbytes(self.lnotab, self.pos)
+        self.next_addr += self.lnotab[self.pos]
     return self.lineno
 
 
@@ -1169,19 +1053,18 @@ def _bytecode_reader(data, mapping):
   extended_arg = 0
   start = 0
   size = len(data)
-  byte_at = lambda i: six.indexbytes(data, i)
   while pos < size:
-    opcode = byte_at(pos)
+    opcode = data[pos]
     cls = mapping[opcode]
     oparg = None
     if cls is EXTENDED_ARG:
       # EXTENDED_ARG modifies the opcode after it, setting bits 16..31 of
       # its argument.
       assert not extended_arg, "two EXTENDED_ARGs in a row"
-      extended_arg = byte_at(pos+1) << 16 | byte_at(pos+2) << 24
+      extended_arg = data[pos+1] << 16 | data[pos+2] << 24
       bytes_read = 3
     elif cls.FLAGS & HAS_ARGUMENT:
-      oparg = byte_at(pos+1) | byte_at(pos+2) << 8 | extended_arg
+      oparg = data[pos+1] | data[pos+2] << 8 | extended_arg
       extended_arg = 0
       bytes_read = 3
     else:
@@ -1210,15 +1093,14 @@ def _wordcode_reader(data, mapping):
   assert isinstance(data, bytes)
   extended_arg = 0
   start = 0
-  byte_at = lambda i: six.indexbytes(data, i)
-  for pos in six.moves.xrange(0, len(data), 2):
-    opcode = byte_at(pos)
+  for pos in range(0, len(data), 2):
+    opcode = data[pos]
     cls = mapping[opcode]
     if cls is EXTENDED_ARG:
-      oparg = byte_at(pos+1) | extended_arg
+      oparg = data[pos+1] | extended_arg
       extended_arg = oparg << 8
     elif cls.FLAGS & HAS_ARGUMENT:
-      oparg = byte_at(pos+1) | extended_arg
+      oparg = data[pos+1] | extended_arg
       extended_arg = 0
     else:
       oparg = None
