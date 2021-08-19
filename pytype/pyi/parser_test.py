@@ -2818,10 +2818,6 @@ class ParamsTest(test_base.UnitTest):
 
   def test_feature_version(self):
     cases = [
-        [2, 6],
-        [(2,), 6],
-        [(2, 7), 6],
-        [(2, 7, 8), 6],
         [3, sys.version_info.minor],
         [(3,), sys.version_info.minor],
         [(3, 7), 7],

@@ -620,23 +620,13 @@ VersionType = Union[int, Tuple[int, ...]]
 
 def _feature_version(python_version: VersionType) -> int:
   """Get the python feature version for the parser."""
-  def from_major(v):
-    # We only use this to set the feature version, and all pyi files need to
-    # parse as at least python 3.6
-    if v == 2:
-      return 6
-    else:
-      # We don't support host python2, so sys.version = 3.x
-      return sys.version_info.minor
   if isinstance(python_version, int):
-    return from_major(python_version)
+    return sys.version_info.minor
   else:
     python_version = typing.cast(Tuple[int, ...], python_version)
     if len(python_version) == 1:
-      return from_major(python_version[0])
+      return sys.version_info.minor
     else:
-      if python_version[0] == 2:
-        return 6
       return python_version[1]
 
 

@@ -935,8 +935,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
   def _get_index(self, data):
     """Helper function for getslice_slot that extracts int or None from data.
 
-    If data is an Instance of int, None is returned. This may happen when
-    vm.py:get_slice replaces an argument with an Instance of int.
+    If data is an Instance of int, None is returned.
 
     Args:
       data: The object to extract from. Usually a ConcreteValue or an

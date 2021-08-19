@@ -114,9 +114,7 @@ def parse_pyc_stream(fi):
   if crlf != b"\r\n":
     raise IOError("Malformed pyc file")
   fi.read(4)  # timestamp
-  if python_version >= (3, 3):
-    # This field was introduced in Python 3.3
-    fi.read(4)  # raw size
+  fi.read(4)  # raw size
   return loadmarshal.loads(fi.read(), python_version)
 
 
