@@ -13,16 +13,12 @@ If mode is "TEST", then the release will be pushed to testpypi. If the mode is
 "RELEASE", then the release is pushed to pypi.
 """
 
-from __future__ import print_function
-
 import argparse
 import os
 import shutil
 import sys
 
 import build_utils
-
-from six.moves import input
 
 TEST_MODE = "TEST"
 RELEASE_MODE = "RELEASE"

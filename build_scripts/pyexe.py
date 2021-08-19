@@ -17,7 +17,6 @@ executable. VAR is the optional environment variable that should be
 set to VALUE before calling the "main" function.
 """
 
-from __future__ import print_function
 import argparse
 import os
 import stat
