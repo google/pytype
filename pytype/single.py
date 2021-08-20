@@ -50,7 +50,7 @@ def _generate_builtins_pickle(options):
   loader = load_pytd.create_loader(options)
   t = typeshed.Typeshed()
   module_names = t.get_all_module_names(options.python_version)
-  blacklist = set(t.blacklisted_modules(options.python_version))
+  blacklist = set(t.blacklisted_modules())
   for m in sorted(module_names):
     if m not in blacklist:
       loader.import_name(m)

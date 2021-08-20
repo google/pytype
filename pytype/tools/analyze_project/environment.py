@@ -19,8 +19,8 @@ def create_importlab_environment(conf, typeshed):
   path = fs.Path()
   for p in conf.pythonpath:
     path.add_path(p, 'os')
-  for p in typeshed.get_pytd_paths(python_version):
+  for p in typeshed.get_pytd_paths():
     path.add_fs(PytdFileSystem(fs.OSFileSystem(p)))
-  for p in typeshed.get_typeshed_paths(python_version):
+  for p in typeshed.get_typeshed_paths():
     path.add_path(p, 'pyi')
   return environment.Environment(path, python_version)

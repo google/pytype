@@ -584,7 +584,7 @@ class ErrorLog(ErrorLogBase):
   def _print_noniterable_str_error(self, error):
     return (
         f"Note: {error.left_type.name} does not match iterables by default. "
-        "Learn more: https://github.com/google/pytype/docs/faq.md#noniterable-strings")
+        "Learn more: https://github.com/google/pytype/blob/master/docs/faq.md#why-doesnt-str-match-against-string-iterables")
 
   def _prepare_errorlog_details(self, bad):
     protocol_details = set()
