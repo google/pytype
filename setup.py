@@ -84,9 +84,9 @@ def scan_package_data(path, pattern, check):
 
 def get_data_files():
   builtins = scan_package_data(['stubs', 'builtins'], '*.pytd',
-                               check=['3', '*.pytd'])
+                               check=['attr', '*.pytd'])
   stdlib = scan_package_data(['stubs', 'stdlib'], '*.pytd',
-                             check=['3', '*.pytd'])
+                             check=['*.pytd'])
   typeshed = (scan_package_data(['typeshed'], '*.pyi',
                                 check=['stdlib', '*.pyi']) +
               ['typeshed/stdlib/VERSIONS'] +

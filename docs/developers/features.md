@@ -18,7 +18,7 @@
          * [PrintVisitor](#printvisitor)
       * [Partial support](#partial-support)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: mdemello, at: 2021-08-19T16:34-07:00 -->
 
 <!--te-->
 
@@ -34,10 +34,6 @@ To allow the feature to be imported in source files and referenced in type
 stubs, we need to declare it in the stub for `typing`, located in
 `pytype/stubs/builtins`. This declaration should describe
 [how the feature is typed][type_stubs].
-
-Note:
-Make sure to modify the `typing.pytd` file in all of the `2/`, `3/`, and
-`2and3/` subdirectories!
 
 For sufficiently simple features, adding this declaration is the only thing you
 need to do! For example, all pytype does for `typing.runtime_checkable` is pass

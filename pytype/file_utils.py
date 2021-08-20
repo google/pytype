@@ -29,12 +29,6 @@ def replace_extension(filename, new_extension):
     return name + "." + new_extension
 
 
-def get_versioned_path(subdir, python_version):
-  major_version = python_version[0]
-  assert(major_version == 2 or major_version == 3)
-  return os.path.join(subdir, str(major_version))
-
-
 def makedirs(path):
   """Create a nested directory, but don't fail if any of it already exists."""
   try:

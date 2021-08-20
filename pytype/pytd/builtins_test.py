@@ -13,7 +13,7 @@ class UtilsTest(test_base.UnitTest):
   @classmethod
   def setUpClass(cls):
     super(UtilsTest, cls).setUpClass()
-    cls.builtins = builtins.GetBuiltinsPyTD(cls.python_version)
+    cls.builtins = builtins.GetBuiltinsPyTD()
 
   def test_get_builtins_pytd(self):
     self.assertIsNotNone(self.builtins)

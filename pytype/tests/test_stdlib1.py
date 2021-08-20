@@ -199,16 +199,6 @@ class StdlibTests(test_base.BaseTest):
       import __future__
     """)
 
-  def test_load2and3(self):
-    """Test that files in stdlib/2and3/ load in both versions."""
-    self.Check("""
-      import collections
-      import _ctypes
-      import dummy_thread
-      import encodings
-      import __future__
-    """)
-
   def test_sys_version_info(self):
     ty = self.Infer("""
       import sys

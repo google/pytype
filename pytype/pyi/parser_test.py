@@ -14,11 +14,6 @@ import unittest
 IGNORE = object()
 
 
-def get_builtins_source(python_version):
-  return pytd_utils.GetPredefinedFile(
-      "builtins/%d" % python_version[0], "builtins")[1]
-
-
 class _ParserTestBase(test_base.UnitTest):
 
   def check(self, src, expected=None, prologue=None, name=None,
@@ -2247,7 +2242,8 @@ class MergeSignaturesTest(_ParserTestBase):
 class EntireFileTest(_ParserTestBase):
 
   def test_builtins(self):
-    self.check(get_builtins_source(self.python_version), expected=IGNORE)
+    _, builtins = pytd_utils.GetPredefinedFile("builtins", "builtins")
+    self.check(builtins, expected=IGNORE)
 
 
 class AnyTest(_ParserTestBase):

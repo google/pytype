@@ -632,7 +632,7 @@ def _feature_version(python_version: VersionType) -> int:
 
 def parse_string(
     src: str,
-    python_version: VersionType,
+    python_version: VersionType = 3,
     name: Optional[str] = None,
     filename: Optional[str] = None,
     platform: Optional[str] = None
@@ -645,7 +645,7 @@ def parse_pyi(
     src: str,
     filename: Optional[str],
     module_name: str,
-    python_version: VersionType,
+    python_version: VersionType = 3,
     platform: Optional[str] = None
 ) -> pytd.TypeDeclUnit:
   """Parse a pyi string."""
@@ -664,7 +664,7 @@ def parse_pyi_debug(
     src: str,
     filename: str,
     module_name: str,
-    python_version: VersionType,
+    python_version: VersionType = 3,
     platform: Optional[str] = None
 ) -> Tuple[pytd.TypeDeclUnit, GeneratePytdVisitor]:
   """Debug version of parse_pyi."""
@@ -686,7 +686,7 @@ def parse_pyi_debug(
   return root, gen_pytd
 
 
-def canonical_pyi(pyi, python_version, multiline_args=False):
+def canonical_pyi(pyi, python_version=3, multiline_args=False):
   """Rewrite a pyi in canonical form."""
   ast = parse_string(pyi, python_version=python_version)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
