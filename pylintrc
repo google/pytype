@@ -59,6 +59,7 @@ disable=
   too-many-return-statements,
   too-many-statements,
   unbalanced-tuple-unpacking,
+  unspecified-encoding,
   unsubscriptable-object,
   unused-argument,
   useless-import-alias,
