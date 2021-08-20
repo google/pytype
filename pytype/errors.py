@@ -440,7 +440,7 @@ class ErrorLogBase:
           #   f("world")  # same error, different backtrace
           # so we'll report this error multiple times with different backtraces.
           continue
-        elif traceback_cmp < 0:
+        elif traceback_cmp < 0:  # pytype: disable=unsupported-operands
           # If the current traceback is shorter, use the current error instead
           # of the previous one.
           errors.remove(previous_error)
@@ -931,11 +931,17 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("unsupported-operands")
   def _unsupported_operands(self, stack, operator, *operands, details=None):
-    self.error(
-        stack, "unsupported operand type(s) for %s: %s" % (
-            slots.SYMBOL_MAPPING[operator],
-            " and ".join(repr(operand) for operand in operands)),
-        details=details)
+    """Unsupported operands."""
+    args = " and ".join(repr(operand) for operand in operands)
+    if operator in slots.COMPARES:
+      symbol = operator
+      details = f"Primitive types {args} are not comparable."
+      self.error(stack, f"unsupported operand types for {symbol}",
+                 details=details)
+    else:
+      symbol = slots.SYMBOL_MAPPING[operator]
+      self.error(stack, f"unsupported operand type(s) for {symbol}: {args}",
+                 details=details)
 
   def invalid_annotation(self,
                          stack,

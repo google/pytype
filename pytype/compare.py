@@ -16,6 +16,10 @@ _CONTAINER_NAMES = frozenset({
     "builtins.list", "builtins.set", "builtins.frozenset"})
 
 
+class CmpTypeError(Exception):
+  """Comparing incompatible primitive constants."""
+
+
 def _incompatible(left_name, right_name):
   """Incompatible primitive types can never be equal."""
   if left_name == right_name:
@@ -48,10 +52,7 @@ def _compare_constants(op, left, right):
   try:
     return slots.COMPARES[op](left, right)
   except TypeError:
-    # TODO(b/195453869): In host Python 3, some types are not comparable; e.g.,
-    # `3 < ""` leads to a type error. We should log an error now that we don't
-    # need to support target PY2 behaviour any more.
-    return None
+    raise CmpTypeError()
 
 
 def _compare_primitive_constant(vm, op, left, right):

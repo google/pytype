@@ -2342,7 +2342,12 @@ class VirtualMachine:
     leftover_y = self.program.NewVariable()
     for b1 in x.bindings:
       for b2 in y.bindings:
-        val = compare.cmp_rel(self, getattr(slots, op_name), b1.data, b2.data)
+        try:
+          op = getattr(slots, op_name)
+          val = compare.cmp_rel(self, op, b1.data, b2.data)
+        except compare.CmpTypeError:
+          val = None
+          self.errorlog.unsupported_operands(self.frames, op, x, y)
         if val is None:
           leftover_x.AddBinding(b1.data, {b1}, state.node)
           leftover_y.AddBinding(b2.data, {b2}, state.node)
