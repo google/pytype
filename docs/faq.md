@@ -15,11 +15,11 @@
       * [How do I write code that is seen by pytype but ignored at runtime?](#how-do-i-write-code-that-is-seen-by-pytype-but-ignored-at-runtime)
       * [How do I silence overzealous pytype errors when adding multiple types to a dict (or list, set, etc.)?](#how-do-i-silence-overzealous-pytype-errors-when-adding-multiple-types-to-a-dict-or-list-set-etc)
       * [How do I get type information for third-party libraries?](#how-do-i-get-type-information-for-third-party-libraries)
-      * [Why doesn't str match against string iterables? {#noniterable-strings}](#why-doesnt-str-match-against-string-iterables-noniterable-strings)
+      * [Why doesn't str match against string iterables?](#why-doesnt-str-match-against-string-iterables)
       * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
 
-<!-- Added by: rechen, at: 2021-08-16T11:52-07:00 -->
+<!-- Added by: rechen, at: 2021-08-19T18:03-07:00 -->
 
 <!--te-->
 
@@ -226,7 +226,7 @@ is, pip-installed) libraries that do not have stubs in typeshed as having type
 `Any`. Note that pytype does not yet support the [PEP 561][pep-561-issue]
 conventions for distributing and packaging type information.
 
-## Why doesn't `str` match against string iterables? {#noniterable-strings}
+## Why doesn't `str` match against string iterables?
 
 As of early August 2021, Pytype introduced a check that forbids matching `str`
 against the following types to prevent a common accidental bug:
