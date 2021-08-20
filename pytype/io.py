@@ -144,7 +144,7 @@ def check_or_generate_pyi(options, loader=None):
     else:
       errorlog, result, ast = generate_pyi(
           src=src, options=options, loader=loader)
-  except utils.UsageError as e:
+  except utils.UsageError:
     raise
   except pyc.CompileError as e:
     errorlog.python_compiler_error(options.input, e.lineno, e.error)
