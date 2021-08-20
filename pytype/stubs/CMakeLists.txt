@@ -5,12 +5,6 @@ filegroup(
     stubs
   SRCS
     builtins/__builtin__.pytd
-    builtins/builtins.pytd
-    builtins/dataclasses.pytd
-    builtins/mypy_extensions.pytd
-    builtins/protocols.pytd
-    builtins/typing.pytd
-    builtins/__builtin__.pytd
     builtins/attr/__init__.pytd
     builtins/attr/_compat.pytd
     builtins/attr/_config.pytd
@@ -27,11 +21,6 @@ filegroup(
     builtins/numpy/__init__.pytd
     builtins/protocols.pytd
     builtins/typing.pytd
-    stdlib/_ctypes.pytd
-    stdlib/collections.pytd
-    stdlib/dummy_thread.pytd
-    stdlib/encodings.pytd
-    stdlib/enum.pytd
     stdlib/_ctypes.pytd
     stdlib/collections.pytd
     stdlib/dummy_thread.pytd
