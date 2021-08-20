@@ -709,8 +709,7 @@ def infer_types(src, errorlog, options, loader,
   if tracer.has_unknown_wildcard_imports or any(
       a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
     if "__getattr__" not in ast:
-      ast = pytd_utils.Concat(
-          ast, builtins.GetDefaultAst(options.python_version))
+      ast = pytd_utils.Concat(ast, builtins.GetDefaultAst())
   # If merged with other if statement, triggers a ValueError: Unresolved class
   # when attempts to load from the protocols file
   if options.protocols:

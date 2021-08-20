@@ -7,7 +7,6 @@ import pickle
 
 from typing import Dict, Iterable, Optional, Tuple
 
-from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser
@@ -132,8 +131,7 @@ class _ModuleMap:
 
   def __init__(self, python_version, modules=None):
     self.python_version = python_version
-    self._modules: Dict[str, Module] = modules or self._base_modules(
-        self.python_version)
+    self._modules: Dict[str, Module] = modules or self._base_modules()
     if self._modules["builtins"].needs_unpickling():
       self._unpickle_module(self._modules["builtins"])
     if self._modules["typing"].needs_unpickling():
@@ -187,8 +185,8 @@ class _ModuleMap:
             mod.module_name, mod.filename, mod.ast)
     return resolved_modules
 
-  def _base_modules(self, python_version):
-    bltins, typing = builtins.GetBuiltinsAndTyping(python_version)
+  def _base_modules(self):
+    bltins, typing = builtins.GetBuiltinsAndTyping()
     return {
         "builtins":
         Module("builtins", self.PREFIX + "builtins", bltins,
@@ -385,9 +383,8 @@ class _BuiltinLoader:
     assert ast.name == module
     return ast
 
-  def get_builtin(self, subdir, module_name):
+  def get_builtin(self, builtin_dir, module_name):
     """Load a stub that ships with pytype."""
-    builtin_dir = file_utils.get_versioned_path(subdir, self.python_version)
     mod = self._parse_predefined(builtin_dir, module_name)
     # For stubs in pytype's stubs/ directory, we use the module name prefixed
     # with "pytd:" for the filename. Package filenames need an "/__init__.pyi"
@@ -472,7 +469,7 @@ class Loader:
         for name, module in sorted(self._modules.items()))
     # Preparing an ast for pickling clears its class pointers, making it
     # unsuitable for reuse, so we have to discard the builtins cache.
-    builtins.InvalidateCache(self.python_version)
+    builtins.InvalidateCache()
     # Now pickle the pickles. We keep the "inner" modules as pickles as a
     # performance optimization - unpickling is slow.
     pytd_utils.SavePickle(

@@ -136,7 +136,7 @@ def check_or_generate_pyi(options, loader=None):
 
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
-  ast = pytd_builtins.GetDefaultAst(options.python_version)
+  ast = pytd_builtins.GetDefaultAst()
   try:
     src = read_source_file(options.input, options.open_function)
     if options.check:
@@ -235,7 +235,7 @@ def write_pickle(ast, options, loader=None):
     if options.nofail:
       ast = serialize_ast.PrepareForExport(
           options.module_name,
-          pytd_builtins.GetDefaultAst(options.python_version), loader)
+          pytd_builtins.GetDefaultAst(), loader)
       log.warning("***Caught exception: %s", str(e), exc_info=True)
     else:
       raise
