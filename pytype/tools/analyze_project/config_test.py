@@ -41,11 +41,11 @@ class TestBase(unittest.TestCase):
     self.assertFalse(hasattr(conf, 'output'))
     self.assertEqual(conf.pythonpath, [
         path,
-        u'/foo/bar',
-        os.path.join(path, u'baz/quux')
+        '/foo/bar',
+        os.path.join(path, 'baz/quux')
     ])
-    self.assertEqual(conf.python_version, u'2.7')
-    self.assertEqual(conf.disable, u'import-error,module-attr')
+    self.assertEqual(conf.python_version, '2.7')
+    self.assertEqual(conf.disable, 'import-error,module-attr')
 
   def _validate_empty_contents(self, conf):
     for k in config.ITEMS:

@@ -33,10 +33,10 @@ class CFGTest(unittest.TestCase):
     node = p.NewCFGNode()
     u = p.NewVariable()
     v1 = u.AddBinding(None, source_set=[], where=node)
-    v2 = u.AddBinding(u"data", source_set=[], where=node)
+    v2 = u.AddBinding("data", source_set=[], where=node)
     v3 = u.AddBinding({1: 2}, source_set=[], where=node)
     self.assertIsNone(v1.data)
-    self.assertEqual(v2.data, u"data")
+    self.assertEqual(v2.data, "data")
     self.assertEqual(v3.data, {1: 2})
     self.assertEqual(f"<binding of variable 0 to data {id(v3.data)}>", str(v3))
 

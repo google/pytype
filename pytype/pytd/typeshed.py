@@ -1,5 +1,6 @@
 """Utilities for parsing typeshed files."""
 
+import collections
 import os
 import re
 from typing import Sequence
@@ -139,12 +140,13 @@ class Typeshed:
     it will either have separate stubs in a @python2 subdirectory or
     the `python2 = true` flag is set in METADATA.toml. If a package supports
     Python 3, it will have at least one module or package on the top level
-    and the `python3 = false` flag is not set in METADATA.toml.
+    and the `python3 = false` flag is not set in METADATA.toml. Finally, the
+    top-level directory may contain a @tests subdirectory for typeshed testing.
 
     Returns:
-      A mapping from module name to package name
+      A mapping from module name to a set of package names.
     """
-    modules = {}
+    modules = collections.defaultdict(set)
     top_level_stubs = set()  # packages with stub files outside @python2
     no_py3_meta = set()  # packages with `python3 = false` metadata entry
     for third_party_file in self._list_files("stubs"):
@@ -154,14 +156,17 @@ class Typeshed:
         metadata = toml.loads(md_file)
         if not metadata.get("python3", True):
           no_py3_meta.add(parts[0])
-      else:  # {package}/{module}[/{submodule}]
+      elif parts[1] != "@tests":  # {package}/{module}[/{submodule}]
         if parts[-1].endswith(".pyi"):
           top_level_stubs.add(parts[0])
         name, _ = os.path.splitext(parts[1])
-        modules[parts[0]] = name
+        modules[parts[0]].add(name)
     py3_stubs = top_level_stubs - no_py3_meta
-    packages = {name: package for package, name in modules.items()
-                if package in py3_stubs}
+    packages = collections.defaultdict(set)
+    for package, names in modules.items():
+      for name in names:
+        if package in py3_stubs:
+          packages[name].add(package)
     return packages
 
   @property
@@ -212,8 +217,7 @@ class Typeshed:
       # provides a module with the specified name in the right version.
       # TODO(rechen): It would be more correct to check what packages are
       # currently installed and only consider those.
-      package = self._third_party_packages.get(module_parts[0])
-      if package:
+      for package in sorted(self._third_party_packages[module_parts[0]]):
         paths.append(os.path.join("stubs", package, module_path))
     for path_rel in paths:
       # Give precedence to MISSING_FILE
@@ -249,10 +253,10 @@ class Typeshed:
 
   def get_typeshed_paths(self):
     """Gets the paths to typeshed's version-specific pyi files."""
-    typeshed_subdirs = ["stdlib"] + [
-        os.path.join("stubs", package)
-        for package in self._third_party_packages.values()
-    ]
+    typeshed_subdirs = ["stdlib"]
+    for packages in self._third_party_packages.values():
+      for package in packages:
+        typeshed_subdirs.append(os.path.join("stubs", package))
     return [os.path.join(self._root, d) for d in typeshed_subdirs]
 
   def get_pytd_paths(self):

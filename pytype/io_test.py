@@ -19,8 +19,8 @@ class IOTest(unittest.TestCase):
   """Test IO functions."""
 
   def test_read_source_file_utf8(self):
-    with self._tmpfile(u"abc□def\n") as f:
-      self.assertEqual(io.read_source_file(f.name), u"abc□def\n")
+    with self._tmpfile("abc□def\n") as f:
+      self.assertEqual(io.read_source_file(f.name), "abc□def\n")
 
   @contextlib.contextmanager
   def _tmpfile(self, contents):
