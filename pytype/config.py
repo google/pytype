@@ -143,7 +143,7 @@ def add_basic_options(o):
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
       dest="python_version", default=None,
-      help=("Python version to emulate (\"major.minor\", e.g. \"2.7\")"))
+      help=("Python version to emulate (\"major.minor\", e.g. \"3.7\")"))
   o.add_argument(
       "--strict-import", action="store_true",
       dest="strict_import", default=False,

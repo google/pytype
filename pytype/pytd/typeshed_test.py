@@ -48,15 +48,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     modules = self.ts.get_all_module_names(self.python_version)
     self.assertIn("pytypecanary", modules)
 
-  def test_get_all_module_names_2(self):
-    modules = self.ts.get_all_module_names((2, 7))
-    self.assertIn("collections", modules)
-    self.assertIn("csv", modules)
-    self.assertIn("ctypes", modules)
-    self.assertIn("xml.etree.ElementTree", modules)
-    self.assertIn("six.moves", modules)
-
-  def test_get_all_module_names_3(self):
+  def test_get_all_module_names(self):
     modules = self.ts.get_all_module_names((3, 6))
     self.assertIn("asyncio", modules)
     self.assertIn("collections", modules)

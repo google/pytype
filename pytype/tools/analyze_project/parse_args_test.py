@@ -88,9 +88,9 @@ class TestParser(unittest.TestCase):
       self.parser.parse_args(['--generate-config', 'test.cfg', '--tree'])
 
   def test_python_version(self):
-    self.assertEqual(self.parser.parse_args(['-V2.7']).python_version, '2.7')
+    self.assertEqual(self.parser.parse_args(['-V3.7']).python_version, '3.7')
     self.assertEqual(self.parser.parse_args(
-        ['--python-version', '2.7']).python_version, '2.7')
+        ['--python-version', '3.7']).python_version, '3.7')
 
   def test_python_version_default(self):
     self.assertEqual(self.parser.config_from_defaults().python_version,

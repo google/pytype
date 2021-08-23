@@ -54,7 +54,7 @@ def make_parser():
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
       dest="python_version", default="3",
-      help=("Python version to target (\"major.minor\", e.g. \"2.7\")"))
+      help=("Python version to target (\"major.minor\", e.g. \"3.7\")"))
   o.add_argument(
       "--multiline-args", action="store_true",
       dest="multiline_args", default=False,

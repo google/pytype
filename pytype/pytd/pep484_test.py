@@ -8,7 +8,7 @@ import unittest
 class TestPEP484(parser_test_base.ParserTest):
   """Test the visitors in optimize.py."""
 
-  def convert(self, t, python_version=None):
+  def convert(self, t):
     """Run ConvertTypingToNative and return the result as a string."""
     return pytd_utils.Print(t.Visit(pep484.ConvertTypingToNative(None)))
 
@@ -36,11 +36,7 @@ class TestPEP484(parser_test_base.ParserTest):
 
   def test_convert_anystr(self):
     t = pytd.NamedType("typing.AnyStr")
-    self.assertEqual(self.convert(t, python_version=(2, 7)),
-                     "AnyStr")
-    t = pytd.NamedType("typing.AnyStr")
-    self.assertEqual(self.convert(t, python_version=(3, 5)),
-                     "AnyStr")
+    self.assertEqual(self.convert(t), "AnyStr")
 
 
 if __name__ == "__main__":

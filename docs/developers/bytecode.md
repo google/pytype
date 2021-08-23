@@ -10,7 +10,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Host and Target Versions](#host-and-target-versions)
       * [Opcodes](#opcodes)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-08-23T15:10-07:00 -->
 
 <!--te-->
 
@@ -44,8 +44,8 @@ between the **host** and the **target** python version:
 
 If the host and target versions differ, we need to compile python source files
 to bytecode using a *target-version* interpreter, e.g. if we are running under
-python 3.6 and are passed `--version=2.7` we cannot use python 3.6's internal
-libraries to compile the code; we have to launch a python 2.7 interpreter,
+python 3.7 and are passed `--version=3.6` we cannot use python 3.7's internal
+libraries to compile the code; we have to launch a python 3.6 interpreter,
 compile the target code to bytecode, and then retrieve that bytecode to run
 through our VirtualMachine.
 
@@ -110,10 +110,10 @@ associated argument, and that that argument is an index into the list of names.
 
 After defining a class for every python opcode, `opcodes.py` defines a series of
 tables mapping between bytecodes and opcodes for each python version we support
-(currently `2.7` and `3.5`-`3.8`). The `opcodes.py/dis()` function gets the
-right mapping table for the target python version, and then passes it to a
-bytecode reader which iterates over the block of bytes, converting each one into
-an opcode or into the argument for the preceding opcode.
+(currently `3.5`-`3.8`). The `opcodes.py/dis()` function gets the right mapping
+table for the target python version, and then passes it to bytecode reader which
+iterates over the block of bytes, converting each one into an opcode or into the
+argument for the preceding opcode.
 
 NOTE: One subtlety is that from python 3.6 the bytecode format changed;
 therefore we need two separate bytecode scanners, `_bytecode_reader` for python

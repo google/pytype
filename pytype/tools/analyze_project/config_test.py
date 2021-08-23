@@ -17,7 +17,7 @@ PYTYPE_CFG = """
     .:
     /foo/bar:
     baz/quux
-  python_version = 2.7
+  python_version = 3.7
   disable =
     import-error
     module-attr
@@ -44,7 +44,7 @@ class TestBase(unittest.TestCase):
         '/foo/bar',
         os.path.join(path, 'baz/quux')
     ])
-    self.assertEqual(conf.python_version, '2.7')
+    self.assertEqual(conf.python_version, '3.7')
     self.assertEqual(conf.disable, 'import-error,module-attr')
 
   def _validate_empty_contents(self, conf):

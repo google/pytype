@@ -33,12 +33,8 @@ dependencies.
    make use of ninja as the CMake generated build system. NOTE: if you
    have a [ninja Python distribution](https://pypi.org/project/ninja/) installed
    and active, you can skip installing the official ninja distribution.
-6. __Python2.7 and Python3.x Interpreters__: A large subset of Pytype's
-   functional tests analyse the target (the Python source code that is being
-   analyzed by Pytype) twice: once as if it were Python2.7 code, and another
-   time as if it were in the Python 3.x version that pytype is running under.
-   Hence, to run these tests, you will need Python 2.7 and Python 3.x
-   (preferably 3.6+) interpreters installed on your system.
+6. __Python3.x Interpreter__: You will need to install an interpreter for a
+   Python version that pytype can run under (see [Requirements](README.md#requirements)).
 
 Required Python packages are listed in the [requirements.txt](requirements.txt)
 file in this repository. They can be installed with pip with the following
