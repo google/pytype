@@ -262,7 +262,7 @@ class Typeshed:
   def get_pytd_paths(self):
     """Gets the paths to pytype's version-specific pytd files."""
     return [pytype_source_utils.get_full_path(d)
-            for d in ("stubs/builtins/3", "stubs/stdlib/3")]
+            for d in ("stubs/builtins", "stubs/stdlib")]
 
   def _list_modules(self, path, python_version):
     """Lists modules for _get_module_names_in_path."""
