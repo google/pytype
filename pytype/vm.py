@@ -2347,7 +2347,8 @@ class VirtualMachine:
           val = compare.cmp_rel(self, op, b1.data, b2.data)
         except compare.CmpTypeError:
           val = None
-          self.errorlog.unsupported_operands(self.frames, op, x, y)
+          if state.node.HasCombination([b1, b2]):
+            self.errorlog.unsupported_operands(self.frames, op, x, y)
         if val is None:
           leftover_x.AddBinding(b1.data, {b1}, state.node)
           leftover_y.AddBinding(b2.data, {b2}, state.node)

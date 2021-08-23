@@ -51,8 +51,8 @@ def _is_equality_cmp(op):
 def _compare_constants(op, left, right):
   try:
     return slots.COMPARES[op](left, right)
-  except TypeError:
-    raise CmpTypeError()
+  except TypeError as e:
+    raise CmpTypeError() from e
 
 
 def _compare_primitive_constant(vm, op, left, right):

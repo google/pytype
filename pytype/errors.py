@@ -440,7 +440,7 @@ class ErrorLogBase:
           #   f("world")  # same error, different backtrace
           # so we'll report this error multiple times with different backtraces.
           continue
-        elif traceback_cmp < 0:  # pytype: disable=unsupported-operands
+        elif traceback_cmp < 0:
           # If the current traceback is shorter, use the current error instead
           # of the previous one.
           errors.remove(previous_error)
