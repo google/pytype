@@ -1,3 +1,17 @@
+Version 2021.08.24
+
+New features and updates:
+* Update typeshed pin to commit 8da23e0 from July 30.
+* Remove all Python 2 compatibility code.
+* Print method signatures in the error message for a protocol type mismatch.
+* Raise an error when comparing incompatible primitive types.
+
+Bug fixes:
+* Fix bugs in constant folding of f-strings.
+* Fix a bug where typing_extensions.Protocol was treated as Any.
+* Emit a pyi-error for an invalid annotation in a pyi file instead of crashing.
+* Add an extra check to forbid matching Mapping too broadly.
+
 Version 2021.08.11
 
 New features and updates:
