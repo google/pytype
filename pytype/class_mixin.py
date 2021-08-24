@@ -469,9 +469,17 @@ class Class(metaclass=mixin.MixinMeta):
       return self._get_mro_attrs_for_attrs(cls_attrs, metadata_key)
 
     all_attrs = {}
-    sub_attrs = [base_cls.metadata.get(metadata_key, [])
-                 for base_cls in reversed(self.mro[1:])
-                 if isinstance(base_cls, Class)]
+    sub_attrs = []
+    attributes_to_ignore = set()
+    for base_cls in reversed(self.mro[1:]):
+      if not isinstance(base_cls, Class):
+        continue
+      # Some third-party dataclass implementations add implicit fields that
+      # should not be considered inherited attributes.
+      attributes_to_ignore.update(getattr(base_cls, "IMPLICIT_FIELDS", ()))
+      if metadata_key in base_cls.metadata:
+        sub_attrs.append([a for a in base_cls.metadata[metadata_key]
+                          if a.name not in attributes_to_ignore])
     sub_attrs.append(cls_attrs)
     for attrs in sub_attrs:
       for a in attrs:

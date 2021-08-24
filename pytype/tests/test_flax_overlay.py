@@ -240,6 +240,44 @@ class TestLinenModule(test_base.BaseTest):
         def replace(self: _TBar, **kwargs) -> _TBar: ...
     """)
 
+  def test_reingest_and_subclass(self):
+    with file_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      foo_ty = self.Infer("""
+        from flax import linen
+        class Foo(linen.Module):
+          pass
+      """, pythonpath=[d.path])
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      ty = self.Infer("""
+        import foo
+        class Bar(foo.Foo):
+          pass
+        class Baz(Bar):
+          x: int
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        from typing import Any, Dict, TypeVar
+        foo: module
+
+        _TBar = TypeVar('_TBar', bound=Bar)
+        @dataclasses.dataclass
+        class Bar(foo.Foo):
+          __dataclass_fields__: Dict[str, dataclasses.Field]
+          def __init__(self, name: str = ..., parent: Any = ...) -> None: ...
+          def replace(self: _TBar, **kwargs) -> _TBar: ...
+
+        _TBaz = TypeVar('_TBaz', bound=Baz)
+        @dataclasses.dataclass
+        class Baz(Bar):
+          x: int
+          __dataclass_fields__: Dict[str, dataclasses.Field]
+          def __init__(
+              self, x: int, name: str = ..., parent: Any = ...) -> None: ...
+          def replace(self: _TBaz, **kwargs) -> _TBaz: ...
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
