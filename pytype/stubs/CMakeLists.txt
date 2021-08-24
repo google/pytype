@@ -16,7 +16,6 @@ filegroup(
     builtins/attr/setters.pytd
     builtins/attr/validators.pytd
     builtins/builtins.pytd
-    builtins/dataclasses.pytd
     builtins/mypy_extensions.pytd
     builtins/numpy/__init__.pytd
     builtins/protocols.pytd

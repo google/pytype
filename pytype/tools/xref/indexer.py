@@ -186,9 +186,6 @@ class DocString:
       doc_node = node.body[0]
       doc = doc_node.value.s
       length = len(doc)  # we want to preserve the byte length
-      if isinstance(doc, bytes):
-        # In target 2.7 mode we get docstrings as bytes.
-        doc = doc.decode("utf-8")
       return cls(doc, get_location(doc_node), length)
     return None
 

@@ -173,18 +173,33 @@ class IsNotTest(test_base.BaseTest):
     """)
 
 
-class LtTest(test_base.BaseTest):
-  """Test for "x < y". Also test overloading."""
+class CmpTest(test_base.BaseTest):
+  """Test for comparisons. Also test overloading."""
 
-  def test_concrete(self):
-    ty = self.Infer("""
+  OPS = ["<", "<=", ">", ">="]
+
+  def _test_concrete(self, op):
+    ty, errors = self.InferWithErrors(f"""
       def f(x, y):
-        return x < y
+        return x {op} y  # unsupported-operands[e]
       f(1, 2)
-      f(1, "a")
+      f(1, "a")  # <- error raised from here but in line 2
       f(object(), "x")
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    self.assertErrorRegexes(errors, {"e": "Primitive.*int.*str"})
+    self.assertErrorRegexes(errors, {"e": "Called from.*line 4"})
+
+  def test_concrete(self):
+    for op in self.OPS:
+      self._test_concrete(op)
+
+  def test_literal(self):
+    for op in self.OPS:
+      errors = self.CheckWithErrors(f"""
+        '1' {op} 2 # unsupported-operands[e]
+      """, deep=False)
+      self.assertErrorRegexes(errors, {"e": "Primitive.*str.*int"})
 
   def test_overloaded(self):
     ty = self.Infer("""
@@ -217,78 +232,6 @@ class LtTest(test_base.BaseTest):
     self.assertOnlyHasReturnType(ty.Lookup("f1"), self.complex)
     self.assertOnlyHasReturnType(ty.Lookup("f2"), self.complex)
     self.assertOnlyHasReturnType(ty.Lookup("f3"), self.tuple)
-
-
-class LeTest(test_base.BaseTest):
-  """Test for "x <= y". Also test overloading."""
-
-  def test_concrete(self):
-    ty = self.Infer("""
-      def f(x, y):
-        return x <= y
-      f(1, 2)
-      f(1, "a")
-      f(object(), "x")
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-
-  def test_overloaded(self):
-    ty = self.Infer("""
-      class Foo:
-        def __le__(self, x):
-          return 3j
-      def f():
-        return Foo() <= 3
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
-
-
-class GtTest(test_base.BaseTest):
-  """Test for "x > y". Also test overloading."""
-
-  def test_concrete(self):
-    ty = self.Infer("""
-      def f(x, y):
-        return x > y
-      f(1, 2)
-      f(1, "a")
-      f(object(), "x")
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-
-  def test_overloaded(self):
-    ty = self.Infer("""
-      class Foo:
-        def __gt__(self, x):
-          return 3j
-      def f():
-        return Foo() > 3
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
-
-
-class GeTest(test_base.BaseTest):
-  """Test for "x >= y". Also test overloading."""
-
-  def test_concrete(self):
-    ty = self.Infer("""
-      def f(x, y):
-        return x >= y
-      f(1, 2)
-      f(1, "a")
-      f(object(), "x")
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-
-  def test_overloaded(self):
-    ty = self.Infer("""
-      class Foo:
-        def __ge__(self, x):
-          return 3j
-      def f():
-        return Foo() >= 3
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
 
 class EqTest(test_base.BaseTest):

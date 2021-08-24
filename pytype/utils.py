@@ -16,11 +16,6 @@ import weakref
 from pytype import pytype_source_utils
 
 
-# Set this value to True to indicate that pytype is running under a 2.7
-# interpreter with the type annotations patch applied.
-USE_ANNOTATIONS_BACKPORT = False
-
-
 # We disable the check that keeps pytype from running on not-yet-supported
 # versions when we detect that a pytype test is executing, in order to be able
 # to test upcoming versions.
@@ -186,7 +181,7 @@ def get_python_exe(python_version) -> Tuple[List[str], List[str]]:
   """Find a python executable to use.
 
   Arguments:
-    python_version: the version tuple (e.g. (2, 7))
+    python_version: the version tuple (e.g. (3, 7))
   Returns:
     A tuple of the path to the executable and any command-line flags
   """
@@ -198,11 +193,7 @@ def get_python_exe(python_version) -> Tuple[List[str], List[str]]:
     python_exe = ["py", "-%d.%d" % python_version]
   else:
     python_exe = ["python%d.%d" % python_version]
-  if USE_ANNOTATIONS_BACKPORT and python_version == (2, 7):
-    flags = ["-T"]
-  else:
-    flags = []
-  return python_exe, flags
+  return python_exe, []
 
 
 def get_python_exe_version(python_exe: List[str]):
@@ -242,10 +233,8 @@ def parse_exe_version_string(version_str):
 def can_compile_bytecode_natively(python_version):
   # Optimization: calling compile_bytecode directly is faster than spawning a
   # subprocess and lets us avoid extracting a large Python executable into /tmp.
-  # We can do this only when the host and target versions match and we don't
-  # need the patched 2.7 interpreter.
-  return python_version == sys.version_info[:2] and (
-      sys.version_info.major != 2 or not USE_ANNOTATIONS_BACKPORT)
+  # We can do this only when the host and target versions match.
+  return python_version == sys.version_info[:2]
 
 
 def list_startswith(l, prefix):

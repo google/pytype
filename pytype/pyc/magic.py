@@ -131,7 +131,7 @@ def magic_word_to_version(magic_word):
       as a string.
 
   Returns:
-    A tuple (major, minor), e.g. (2, 7).
+    A tuple (major, minor), e.g. (3, 7).
   """
   if not isinstance(magic_word, int):
     magic_word = struct.unpack("<H", magic_word)[0]
