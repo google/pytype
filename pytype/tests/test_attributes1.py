@@ -746,7 +746,7 @@ class TestAttributes(test_base.BaseTest):
         pass
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"'in'.*'Union\[Foo, int\]' and 'int'"})
+        errors, {"e": r"'in'.*'.*Union\[Foo, int\]' and 'int'"})
 
   def test_subclass_shadowing(self):
     with file_utils.Tempdir() as d:

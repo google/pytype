@@ -447,7 +447,7 @@ class MatrixOperationsTest(test_base.BaseTest):
         return 'foo' @ 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int"})
+        "e": r"\@.*str.*int.*'__matmul__' on .*str.*'__rmatmul__' on .*int"})
 
   def test_imatmul(self):
     errors = self.CheckWithErrors("""

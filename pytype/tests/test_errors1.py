@@ -974,14 +974,14 @@ class OperationsTest(test_base.BaseTest):
       def f(): return 'foo' ^ 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\^.*str.*int.*'__xor__' on str.*'__rxor__' on int"})
+        "e": r"\^.*str.*int.*'__xor__' on .*str.*'__rxor__' on .*int"})
 
   def test_add(self):
     errors = self.CheckWithErrors("""
       def f(): return 'foo' + 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\+.*str.*int.*__add__ on str.*str"})
+        "e": r"\+.*str.*int.*__add__ on .*str.*str"})
 
   def test_invert(self):
     errors = self.CheckWithErrors("""
@@ -994,28 +994,28 @@ class OperationsTest(test_base.BaseTest):
       def f(): return 'foo' - 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\-.*str.*int.*'__sub__' on str.*'__rsub__' on int"})
+        "e": r"\-.*str.*int.*'__sub__' on .*str.*'__rsub__' on .*int"})
 
   def test_mul(self):
     errors = self.CheckWithErrors("""
       def f(): return 'foo' * None  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\*.*str.*None.*__mul__ on str.*int"})
+        "e": r"\*.*str.*None.*__mul__ on .*str.*int"})
 
   def test_div(self):
     errors = self.CheckWithErrors("""
       def f(): return 'foo' / 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\/.*str.*int.*'__(true)?div__' on str.*'__r(true)?div__' on int"
+        "e": r"\/.*str.*int.*'__(true)?div__' .*str.*'__r(true)?div__' .*int"
     })
 
   def test_mod(self):
     errors = self.CheckWithErrors("""
       def f(): return None % 3  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\%.*None.*int.*'__mod__' on None"})
+    self.assertErrorRegexes(errors, {"e": r"\%.*None.*int.*'__mod__' on.*None"})
 
   def test_lshift(self):
     errors = self.CheckWithErrors("""
@@ -1036,14 +1036,14 @@ class OperationsTest(test_base.BaseTest):
       def f(): return 'foo' & 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\&.*str.*int.*'__and__' on str.*'__rand__' on int"})
+        "e": r"\&.*str.*int.*'__and__' on .*str.*'__rand__' on .*int"})
 
   def test_or(self):
     errors = self.CheckWithErrors("""
       def f(): return 'foo' | 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\|.*str.*int.*'__or__' on str.*'__ror__' on int"})
+        "e": r"\|.*str.*int.*'__or__' on .*str.*'__ror__' on .*int"})
 
   def test_floor_div(self):
     errors = self.CheckWithErrors("""
@@ -1057,19 +1057,26 @@ class OperationsTest(test_base.BaseTest):
       def f(): return 3 ** 'foo'  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"\*\*.*int.*str.*__pow__ on int"})
+        "e": r"\*\*.*int.*str.*__pow__ on .*int"})
 
   def test_neg(self):
     errors = self.CheckWithErrors("""
       def f(): return -None  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\-.*None.*'__neg__' on None"})
+    self.assertErrorRegexes(errors, {"e": r"\-.*None.*'__neg__' on .*None"})
 
   def test_pos(self):
     errors = self.CheckWithErrors("""
       def f(): return +None  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\+.*None.*'__pos__' on None"})
+    self.assertErrorRegexes(errors, {"e": r"\+.*None.*'__pos__' on .*None"})
+
+  def test_var_name_and_pyval(self):
+    errors = self.CheckWithErrors("""
+      def f(): return 'foo' ^ 3  # unsupported-operands[e]
+    """)
+    self.assertErrorRegexes(errors, {"e": r"''foo': str'"})
+    self.assertErrorRegexes(errors, {"e": r"'3: int'"})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):
@@ -1113,7 +1120,7 @@ class NoSymbolOperationsTest(test_base.BaseTest):
       def f(): return 'foo' in 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"'in'.*int.*str.*'__contains__' on int"})
+        "e": r"'in'.*int.*str.*'__contains__' on.*int"})
 
   def test_recursion(self):
     self.CheckWithErrors("""

@@ -252,6 +252,10 @@ class VirtualMachine:
     self.local_ops = {}
     # Record the annotated and original values of locals.
     self.annotated_locals = {}
+    # Mapping of Variables to python variable names. {id: int -> name: str}
+    # Note that we don't need to scope this to the frame because we don't reuse
+    # variable ids.
+    self._var_names = {}
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -997,6 +1001,25 @@ class VirtualMachine:
           return True
     return False
 
+  def get_var_name(self, var):
+    """Get the python variable name corresponding to a Variable."""
+    # Variables in _var_names correspond to LOAD_* opcodes, which means they
+    # have been retrieved from a symbol table like locals() directly by name.
+    if var.id in self._var_names:
+      return self._var_names[var.id]
+    # Look through the source set of a variable's bindings to find the variable
+    # created by a LOAD operation. If a variable has multiple sources, don't try
+    # to match it to a name.
+    sources = set()
+    for b in var.bindings:
+      for o in b.origins:
+        for s in o.source_sets:
+          sources |= s
+    if len(sources) == 1:
+      s = next(iter(sources))
+      return self._var_names.get(s.variable.id)
+    return None
+
   def _call_binop_on_bindings(self, node, name, xval, yval):
     """Call a binary operator on two cfg.Binding objects."""
     rname = slots.REVERSE_NAME_MAPPING.get(name)
@@ -1312,6 +1335,7 @@ class VirtualMachine:
     self._filter_none_and_paste_bindings(
         state.node, bindings, ret,
         discard_concrete_values=discard_concrete_values)
+    self._var_names[ret.id] = name
     return state, ret
 
   def load_local(self, state, name):
