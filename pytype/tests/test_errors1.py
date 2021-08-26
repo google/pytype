@@ -1075,8 +1075,7 @@ class OperationsTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       def f(): return 'foo' ^ 3  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"''foo': str'"})
-    self.assertErrorRegexes(errors, {"e": r"'3: int'"})
+    self.assertErrorSequences(errors, {"e": ["^", "'foo': str", "3: int"]})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):

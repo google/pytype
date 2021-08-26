@@ -327,6 +327,9 @@ class BaseTest(unittest.TestCase):
   def assertErrorRegexes(self, errorlog, expected_errors):
     errorlog.assert_error_regexes(expected_errors)
 
+  def assertErrorSequences(self, errorlog, expected_errors):
+    errorlog.assert_error_sequences(expected_errors)
+
   def _Pickle(self, ast, module_name):
     assert module_name
     ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
