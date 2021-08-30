@@ -224,6 +224,9 @@ class VirtualMachine:
     # Every LateAnnotation depends on a single undefined name, so once that name
     # is defined, we immediately resolve the annotation.
     self.late_annotations = collections.defaultdict(list)
+    # Treat all annotations as strings (true by default from 3.8, enabled via
+    # `from __future__ import annotations` in 3.7)
+    self.string_annotations = self.python_version >= (3, 8)
     self.functions_type_params_check = []
     self.concrete_classes = []
     self.frame = None  # The current frame.
@@ -3367,6 +3370,9 @@ class VirtualMachine:
       self.errorlog.import_error(self.frames, full_name)
       attr = self.new_unsolvable(state.node)
     self.trace_opcode(op, name, attr)
+    # `from __future__ import annotations` sets global state.
+    if module.data[0].name == "__future__" and name == "annotations":
+      self.string_annotations = True
     return state.push(attr)
 
   def byte_LOAD_BUILD_CLASS(self, state, op):

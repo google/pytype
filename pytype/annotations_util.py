@@ -248,12 +248,15 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
     if not op.annotation:
       return None, value
     annot = op.annotation
-    frame = self.vm.frame
-    var, errorlog = abstract_utils.eval_expr(
-        self.vm, node, frame.f_globals, frame.f_locals, annot)
-    if errorlog:
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, annot, details=errorlog.details)
+    if self.vm.string_annotations:
+      var = self.vm.convert.build_string(node, annot)
+    else:
+      frame = self.vm.frame
+      var, errorlog = abstract_utils.eval_expr(
+          self.vm, node, frame.f_globals, frame.f_locals, annot)
+      if errorlog:
+        self.vm.errorlog.invalid_annotation(
+            self.vm.frames, annot, details=errorlog.details)
     return self.extract_and_init_annotation(node, name, var)
 
   def extract_annotation(
