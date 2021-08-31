@@ -121,7 +121,7 @@ class Class(metaclass=mixin.MixinMeta):
     self._all_formal_type_parameters_loaded = False
     # Call these methods in addition to __init__ when constructing instances.
     self.additional_init_methods = []
-    if self._is_test_class():
+    if self.is_test_class():
       self.additional_init_methods.append("setUp")
 
   def bases(self):
@@ -262,7 +262,7 @@ class Class(metaclass=mixin.MixinMeta):
     return ((self._has_explicit_abcmeta() or self._has_implicit_abcmeta()) and
             bool(self.abstract_methods))
 
-  def _is_test_class(self):
+  def is_test_class(self):
     return any(base.full_name in ("unittest.TestCase", "unittest.case.TestCase")
                for base in self.mro)
 

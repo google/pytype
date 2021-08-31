@@ -3789,10 +3789,54 @@ class VirtualMachine:
     self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
 
+  def _narrow(self, state, var, pred):
+    """Narrow a variable by removing bindings that do not satisfy pred."""
+    varname = self.get_var_name(var)
+    if not varname or varname not in self.frame.f_locals.pyval:
+      # We cannot store the narrowed value back in locals.
+      return state
+    keep = [b for b in var.bindings if pred(b.data)]
+    if len(keep) == len(var.bindings):
+      # Nothing to narrow.
+      return state
+    out = self.program.NewVariable()
+    for b in keep:
+      out.AddBinding(b.data, {b}, state.node)
+    # TODO(mdemello): Do we need to create two new nodes for this? Code copied
+    # from _pop_and_store, but there might be a reason to create two nodes there
+    # that does not apply here.
+    state = state.forward_cfg_node()
+    state = self._store_value(state, varname, out, local=True)
+    state = state.forward_cfg_node()
+    return state
+
+  def _check_test_assert(self, state, func, args):
+    """Narrow the types of variables based on test assertions."""
+    f = func.data[0]
+    if not (f.isinstance_BoundFunction() and len(f.callself.data) == 1):
+      return state
+    cls = f.callself.data[0].cls
+    if not (cls and cls.isinstance_Class() and cls.is_test_class()):
+      return state
+    if f.name == "assertIsNotNone":
+      if len(args) == 1:
+        pred = lambda v: not self._data_is_none(v)
+        state = self._narrow(state, args[0], pred)
+    elif f.name == "assertIsInstance":
+      if len(args) == 2:
+        typ = args[1].data[0]
+        pred = lambda v: (v.cls and  # pylint: disable=g-long-lambda
+                          abstract_utils.check_against_mro(self, v.cls, typ))
+        state = self._narrow(state, args[0], pred)
+    return state
+
   def byte_CALL_METHOD(self, state, op):
     state, args = state.popn(op.arg)
     state, func = state.pop()
     state, result = self.call_function_with_state(state, func, args)
+    if len(func.data) == 1:
+      # Check for test assertions that narrow the type of a variable.
+      state = self._check_test_assert(state, func, args)
     return state.push(result)
 
   def byte_RERAISE(self, state, op):

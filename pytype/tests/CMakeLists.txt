@@ -1174,3 +1174,12 @@ py_test(
     .test_base
     pytype.utils
 )
+
+py_test(
+  NAME
+    test_test_code
+  SRCS
+    test_test_code.py
+  DEPS
+    .test_base
+)

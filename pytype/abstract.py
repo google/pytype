@@ -392,6 +392,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_AMBIGUOUS_OR_EMPTY(self):
     return isinstance(self, AMBIGUOUS_OR_EMPTY)
 
+  def isinstance_AnnotationClass(self):
+    return isinstance(self, AnnotationClass)
+
   def isinstance_AnnotationsDict(self):
     return isinstance(self, AnnotationsDict)
 
@@ -3947,6 +3950,10 @@ class BoundFunction(BaseValue):
   @property
   def signature(self):
     return self.underlying.signature.drop_first_parameter()
+
+  @property
+  def callself(self):
+    return self._callself
 
   def call(self, node, func, args, alias_map=None):
     if abstract_utils.func_name_is_class_init(self.name):

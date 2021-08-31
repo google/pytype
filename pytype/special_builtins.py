@@ -234,68 +234,6 @@ class HasAttr(BinaryPredicate):
     return node, ret is not None
 
 
-def _flatten(value, classes):
-  """Flatten the contents of value into classes.
-
-  If value is a Class, it is appended to classes.
-  If value is a PythonConstant of type tuple, then each element of the tuple
-  that has a single binding is also flattened.
-  Any other type of value, or tuple elements that have multiple bindings are
-  ignored.
-
-  Args:
-    value: An abstract value.
-    classes: A list to be modified.
-
-  Returns:
-    True iff a value was ignored during flattening.
-  """
-  # Used by IsInstance and IsSubclass
-  if isinstance(value, abstract.AnnotationClass):
-    value = value.base_cls
-  if isinstance(value, class_mixin.Class):
-    # A single class, no ambiguity.
-    classes.append(value)
-    return False
-  elif isinstance(value, abstract.Tuple):
-    # A tuple, need to process each element.
-    ambiguous = False
-    for var in value.pyval:
-      if (len(var.bindings) != 1 or
-          _flatten(var.bindings[0].data, classes)):
-        # There were either multiple bindings or ambiguity deeper in the
-        # recursion.
-        ambiguous = True
-    return ambiguous
-  else:
-    return True
-
-
-def _check_against_mro(vm, target, class_spec):
-  """Check if any of the classes are in the target's MRO.
-
-  Args:
-    vm: The virtual machine.
-    target: A BaseValue whose MRO will be checked.
-    class_spec: A Class or PythonConstant tuple of classes (i.e. the second
-      argument to isinstance or issubclass).
-
-  Returns:
-    True if any class in classes is found in the target's MRO,
-    False if no match is found and None if it's ambiguous.
-  """
-  # Determine the flattened list of classes to check.
-  classes = []
-  ambiguous = _flatten(class_spec, classes)
-
-  for c in classes:
-    if vm.matcher(None).match_from_mro(target, c, allow_compat_builtins=False):
-      return True  # A definite match.
-  # No matches, return result depends on whether _flatten() was
-  # ambiguous.
-  return None if ambiguous else False
-
-
 class IsInstance(BinaryPredicate):
   """The isinstance() function."""
 
@@ -321,7 +259,7 @@ class IsInstance(BinaryPredicate):
     if (isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY) or cls is None or
         isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY)):
       return None
-    return _check_against_mro(self.vm, cls, class_spec)
+    return abstract_utils.check_against_mro(self.vm, cls, class_spec)
 
 
 class IsSubclass(BinaryPredicate):
@@ -347,7 +285,7 @@ class IsSubclass(BinaryPredicate):
     if isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY):
       return None
 
-    return _check_against_mro(self.vm, cls, class_spec)
+    return abstract_utils.check_against_mro(self.vm, cls, class_spec)
 
 
 class IsCallable(UnaryPredicate):
