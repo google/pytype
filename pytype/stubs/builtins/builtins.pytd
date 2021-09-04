@@ -926,6 +926,8 @@ class AttributeError(StandardError):
 
 # TODO(rechen): __traceback__ and with_traceback should use types.TracebackType,
 # but builtins can't depend on other modules.
+_TBE = TypeVar("_TBE", bound="BaseException")
+
 class BaseException(object):
     args: Tuple[Any, ...]
     __cause__: Optional[BaseException]
@@ -933,7 +935,7 @@ class BaseException(object):
     __suppress_context__: bool
     __traceback__: Optional[Any]
     def __init__(self, *args, **kwargs) -> NoneType: ...
-    def with_traceback(self, tb: Optional[Any]) -> BaseException: ...
+    def with_traceback(self: _TBE, tb: Optional[Any]) -> _TBE: ...
 
 class BufferError(StandardError):
     pass
