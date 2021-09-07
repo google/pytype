@@ -362,7 +362,7 @@ class AssignmentCommentTest(test_base.BaseTest):
 
   def test_name_error_inside_comment(self):
     _, errors = self.InferWithErrors("""
-      X = None  # type: Foo  # invalid-annotation[e]
+      X = None  # type: Foo  # name-error[e]
     """, deep=True)
     self.assertErrorRegexes(errors, {"e": r"Foo"})
 
