@@ -28,7 +28,7 @@ class Node:
 
   def __iter__(self):
     # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
-    for field in self.__attrs_attrs__:
+    for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
       yield getattr(self, field.name)
 
   def _ToTuple(self):
@@ -62,7 +62,7 @@ class Node:
 
   def IterChildren(self):
     # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
-    for field in self.__attrs_attrs__:
+    for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
       yield field.name, getattr(self, field.name)
 
   def Visit(self, visitor, *args, **kwargs):

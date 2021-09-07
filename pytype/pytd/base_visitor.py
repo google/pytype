@@ -59,7 +59,7 @@ def _GetChildTypes(node_classes, cls: Any):
       types.add(t)
 
   # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
-  for field in cls.__attrs_attrs__:
+  for field in cls.__attrs_attrs__:  # pytype: disable=attribute-error
     AddType(field.type)
 
   # Verify that all late types have been converted.
