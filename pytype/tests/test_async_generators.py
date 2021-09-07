@@ -86,7 +86,7 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       async def gen3() -> AsyncIterable[bool]:
         yield 1  # bad-return-type[e3]
 
-      async def gen4() -> int:  # invalid-annotation[e4]
+      async def gen4() -> int:  # bad-yield-annotation[e4]
         yield 1
 
       async def fun():

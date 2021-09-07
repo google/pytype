@@ -3398,12 +3398,12 @@ class InterpreterFunction(SignedFunction):
       ret_type = annotations["return"]
       if code.has_generator():
         if not abstract_utils.matches_generator(ret_type):
-          error = "Expected Generator, Iterable or Iterator"
-          vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
+          vm.errorlog.bad_yield_annotation(
+              vm.frames, name, ret_type, is_async=False)
       elif code.has_async_generator():
         if not abstract_utils.matches_async_generator(ret_type):
-          error = "Expected AsyncGenerator, AsyncIterable or AsyncIterator"
-          vm.errorlog.invalid_annotation(vm.frames, ret_type, error)
+          vm.errorlog.bad_yield_annotation(
+              vm.frames, name, ret_type, is_async=True)
     overloads = vm.frame.overloads[name]
     key = (name, code,
            abstract_utils.hash_all_dicts(

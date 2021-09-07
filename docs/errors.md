@@ -29,6 +29,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [bad-return-type](#bad-return-type)
       * [bad-slots](#bad-slots)
       * [bad-unpacking](#bad-unpacking)
+      * [bad-yield-annotation](#bad-yield-annotation)
       * [base-class-error](#base-class-error)
       * [container-type-mismatch](#container-type-mismatch)
       * [duplicate-keyword-argument](#duplicate-keyword-argument)
@@ -64,7 +65,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: tsudol, at: 2021-09-01T15:22-07:00 -->
 
 <!--te-->
 
@@ -229,6 +230,24 @@ A tuple was unpacked into the wrong number of variables. Example:
 <!-- bad -->
 ```python
 a, b = (1, 2, 3)  # bad-unpacking
+```
+
+## bad-yield-annotation
+
+A generator function (a function with a `yield`) was not annotated with an
+appropriate return type.
+
+<!-- bad -->
+```python
+def gen() -> int:  # bad-yield-annotation
+  yield 1
+```
+
+<!-- good -->
+```python
+def gen() -> Iterator[int]
+  # Could also use Generator or Iterable.
+  yield 1
 ```
 
 ## base-class-error
