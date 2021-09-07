@@ -27,7 +27,8 @@ class Node:
   _name2item: Dict[str, Any]  # Lookup cache used by module and class nodes
 
   def __iter__(self):
-    for field in attr.fields(self.__class__):
+    # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
+    for field in self.__attrs_attrs__:
       yield getattr(self, field.name)
 
   def _ToTuple(self):
@@ -60,7 +61,8 @@ class Node:
     return self == other or self > other
 
   def IterChildren(self):
-    for field in attr.fields(self.__class__):
+    # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
+    for field in self.__attrs_attrs__:
       yield field.name, getattr(self, field.name)
 
   def Visit(self, visitor, *args, **kwargs):

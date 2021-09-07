@@ -2,8 +2,6 @@
 
 from typing import Any
 
-import attr
-
 from pytype.pytd import pytd
 from pytype.typegraph import cfg_utils
 
@@ -60,7 +58,8 @@ def _GetChildTypes(node_classes, cls: Any):
     else:
       types.add(t)
 
-  for field in attr.fields(cls):
+  # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
+  for field in cls.__attrs_attrs__:
     AddType(field.type)
 
   # Verify that all late types have been converted.

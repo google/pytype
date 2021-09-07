@@ -10,10 +10,24 @@ py_library(
 
 py_library(
   NAME
-    visitor
+    visitor_c
+  SRCS
+    visitor.py
+)
+
+py_library(
+  NAME
+    init
   SRCS
     __init__.py
-    visitor.py
+)
+
+py_library(
+  NAME
+    visitor
+  DEPS
+    .init
+    .visitor_c
 )
 
 py_library(
