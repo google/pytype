@@ -121,8 +121,8 @@ class ErrorTest(test_base.BaseTest):
         import foo
         foo.f(1, 2, 3, "four", 5)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-    self.assertErrorRegexes(errors, {
-        "e": r"a, b, c, d: int, [.][.][.].*a, b, c, d: str, [.][.][.]"})
+    self.assertErrorSequences(errors, {
+        "e": ["a, b, c, d: int, ...", "a, b, c, d: str, ..."]})
 
   def test_invalid_base_class(self):
     self.InferWithErrors("""
@@ -142,8 +142,8 @@ class ErrorTest(test_base.BaseTest):
           for row in mod.Codec():  # attribute-error[e]
             pass
       """, pythonpath=[d.path])
-      error = r"No attribute.*__iter__.*on mod\.Codec"
-      self.assertErrorRegexes(errors, {"e": error})
+      self.assertErrorSequences(
+          errors, {"e": ["No attribute", "__iter__", "on mod.Codec"]})
 
   def test_invalid_iterator_from_class(self):
     _, errors = self.InferWithErrors("""
@@ -257,11 +257,12 @@ class ErrorTest(test_base.BaseTest):
         import modfoo
         modfoo.baz  # module-attr[e4]
       """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e1": r"No attribute 'foo' on Type\[Foo\]",
-          "e2": r"No attribute 'bar' on int\nIn Optional\[int\]",
-          "e3": r"No attribute 'bar' on None\nIn Optional\[int\]",
-          "e4": r"No attribute 'baz' on module 'modfoo'"})
+      self.assertErrorSequences(errors, {
+          "e1": ["No attribute 'foo' on Type[Foo]"],
+          "e2": ["No attribute 'bar' on int\nIn Optional[int]"],
+          "e3": ["No attribute 'bar' on None\nIn Optional[int]"],
+          "e4": ["No attribute 'baz' on module 'modfoo'"]
+      })
 
   def test_attribute_error_getattribute(self):
     _, errors = self.InferWithErrors("""
@@ -290,7 +291,7 @@ class ErrorTest(test_base.BaseTest):
         import foo
         foo.f([""])  # wrong-arg-types[e]
       """, deep=True, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {"e": r"List\[int\].*List\[str\]"})
+      self.assertErrorSequences(errors, {"e": ["List[int]", "List[str]"]})
 
   def test_too_many_args(self):
     _, errors = self.InferWithErrors("""
@@ -461,8 +462,8 @@ class ErrorTest(test_base.BaseTest):
         import a
         x = a.f(4.2)  # wrong-arg-types[e]
       """, deep=True, pythonpath=[d.path])
-      pattern = r"Expected.*Union\[int, str\].*Actually passed"
-      self.assertErrorRegexes(errors, {"e": pattern})
+      pattern = ["Expected", "Union[int, str]", "Actually passed"]
+      self.assertErrorSequences(errors, {"e": pattern})
 
   def test_print_type_arg(self):
     _, errors = self.InferWithErrors("""
@@ -513,9 +514,9 @@ class ErrorTest(test_base.BaseTest):
         x = a.A(42, x=42)  # duplicate-keyword-argument[e4]
         x = a.A()  # missing-parameter[e5]
       """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e1": r"A\.__init__", "e2": r"A\.__init__", "e3": r"A\.__init__",
-          "e4": r"A\.__init__", "e5": r"A\.__init__"})
+      a = r"A\.__init__"
+      self.assertErrorRegexes(
+          errors, {"e1": a, "e2": a, "e3": a, "e4": a, "e5": a})
 
   def test_duplicate_keywords(self):
     with file_utils.Tempdir() as d:
@@ -538,10 +539,12 @@ class ErrorTest(test_base.BaseTest):
       float(1, x="")  # duplicate-keyword-argument[e4]
       hex()  # missing-parameter[e5]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Actually passed:.*self, x: List\[nothing\]",
-        "e2": r"_, foobar", "e3": r"Actually passed:.*self, x, foobar",
-        "e4": r"Actually passed:.*self, x, x", "e5": r"Actually passed: \(\)",
+    self.assertErrorSequences(errors, {
+        "e1": ["Actually passed:", "self, x: List[nothing]"],
+        "e2": ["_, foobar"],
+        "e3": ["Actually passed:", "self, x, foobar"],
+        "e4": ["Actually passed:", "self, x, x"],
+        "e5": ["Actually passed: ()"],
     })
 
   def test_bad_superclass(self):
@@ -565,8 +568,7 @@ class ErrorTest(test_base.BaseTest):
         def __init__(self):
           super(B, A).__init__()  # A cannot be the second argument to super  # wrong-arg-types[e]
     """, deep=True)
-    self.assertErrorRegexes(
-        errors, {"e": r"Type\[B\].*Type\[A\]"})
+    self.assertErrorSequences(errors, {"e": ["Type[B]", "Type[A]"]})
 
   def test_bad_name_import(self):
     with file_utils.Tempdir() as d:
@@ -578,7 +580,7 @@ class ErrorTest(test_base.BaseTest):
         import a  # pyi-error[e]
         x = a.x
       """, pythonpath=[d.path], deep=True)
-      self.assertErrorRegexes(errors, {"e": r"Rumpelstiltskin"})
+      self.assertErrorRegexes(errors, {"e": "Rumpelstiltskin"})
 
   def test_bad_name_import_from(self):
     with file_utils.Tempdir() as d:
@@ -590,7 +592,7 @@ class ErrorTest(test_base.BaseTest):
         import a  # pyi-error[e]
         x = a.x
       """, pythonpath=[d.path], deep=True)
-      self.assertErrorRegexes(errors, {"e": r"Rumpelstiltskin"})
+      self.assertErrorRegexes(errors, {"e": "Rumpelstiltskin"})
 
   def test_match_type(self):
     with file_utils.Tempdir() as d:
@@ -607,8 +609,8 @@ class ErrorTest(test_base.BaseTest):
         y = a.f(a.B)
         z = a.f(a.C)  # wrong-arg-types[e]
       """, pythonpath=[d.path], deep=True)
-      error = r"Expected.*Type\[a\.A\].*Actual.*Type\[a\.C\]"
-      self.assertErrorRegexes(errors, {"e": error})
+      error = ["Expected", "Type[a.A]", "Actual", "Type[a.C]"]
+      self.assertErrorSequences(errors, {"e": error})
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         a = ...  # type: module
@@ -630,8 +632,8 @@ class ErrorTest(test_base.BaseTest):
         import a
         x = a.f(a.B)  # wrong-arg-types[e]
       """, pythonpath=[d.path], deep=True)
-      expected_error = r"Expected.*Type\[a\.A\[int\]\].*Actual.*Type\[a\.B\]"
-      self.assertErrorRegexes(errors, {"e": expected_error})
+      expected_error = ["Expected", "Type[a.A[int]]", "Actual", "Type[a.B]"]
+      self.assertErrorSequences(errors, {"e": expected_error})
 
   def test_mro_error(self):
     with file_utils.Tempdir() as d:
@@ -735,20 +737,20 @@ class ErrorTest(test_base.BaseTest):
     _, errors = self.InferWithErrors("""
       X = type("X", (42,), {"a": 1})  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Actual.*Tuple\[int\]"})
+    self.assertErrorSequences(errors, {"e": ["Actual", "Tuple[int]"]})
 
   def test_half_bad_type_bases(self):
     _, errors = self.InferWithErrors("""
       X = type("X", (42, object), {"a": 1})  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(
-        errors, {"e": r"Actual.*Tuple\[int, Type\[object\]\]"})
+    self.assertErrorSequences(
+        errors, {"e": ["Actual", "Tuple[int, Type[object]]"]})
 
   def test_bad_type_members(self):
     _, errors = self.InferWithErrors("""
       X = type("X", (int, object), {0: 1})  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Actual.*Dict\[int, int\]"})
+    self.assertErrorSequences(errors, {"e": ["Actual", "Dict[int, int]"]})
 
   def test_recursion(self):
     with file_utils.Tempdir() as d:
@@ -789,7 +791,7 @@ class ErrorTest(test_base.BaseTest):
       x = {"a": 1}
       y = x.a  # attribute-error[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"a.*Dict\[str, int\]"})
+    self.assertErrorSequences(errors, {"e": ["a", "Dict[str, int]"]})
 
   def test_bad_pyi_dict(self):
     with file_utils.Tempdir() as d:
@@ -837,7 +839,7 @@ class ErrorTest(test_base.BaseTest):
       v = None  # type: Callable[[int], str]
       hex(v)  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Actual.*Callable\[\[int\], str\]"})
+    self.assertErrorSequences(errors, {"e": ["Actual", "Callable[[int], str]"]})
 
   def test_same_name_and_line(self):
     _, errors = self.InferWithErrors("""
@@ -867,17 +869,16 @@ class ErrorTest(test_base.BaseTest):
       class Foo(None): pass  # base-class-error[e1]
       class Bar(None if __random__ else 42): pass  # base-class-error[e2]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Invalid base class: None",
-                                     "e2": r"Optional\[<instance of int>\]"})
+    self.assertErrorSequences(errors, {"e1": ["Invalid base class: None"],
+                                       "e2": ["Optional[<instance of int>]"]})
 
   def test_callable_in_unsupported_operands(self):
     _, errors = self.InferWithErrors("""
       def f(x, y=None): pass
       f in f  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(
-        errors, {"e": (r"Callable\[\[Any, Any\], Any\].*"
-                       r"Callable\[\[Any, Any\], Any\]")})
+    typ = "Callable[[Any, Any], Any]"
+    self.assertErrorSequences(errors, {"e": [typ, typ]})
 
   def test_clean_pyi_namedtuple_names(self):
     with file_utils.Tempdir() as d:
@@ -912,9 +913,10 @@ class ErrorTest(test_base.BaseTest):
       reveal_type(Foo())  # reveal-type[e3]
       reveal_type([1,2,3])  # reveal-type[e4]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"^Union\[int, str\]$", "e2": r"^Type\[Foo\]$", "e3": r"^Foo$",
-        "e4": r"^List\[int\]$"})
+    self.assertErrorSequences(errors, {
+        "e1": ["Union[int, str]"], "e2": ["Type[Foo]"], "e3": ["Foo"],
+        "e4": ["List[int]"]
+    })
 
   def test_not_protocol(self):
     _, errors = self.InferWithErrors("""
@@ -942,12 +944,12 @@ class ErrorTest(test_base.BaseTest):
       f(foo)  # wrong-arg-types[e]
     """)
     expected = [
-        r"Method __getitem__.*protocol Sequence\[int\].*signature in Foo",
-        r"def __getitem__\(self: Sequence",
-        r"def __getitem__\(self, x: int\)"
+        ["Method __getitem__", "protocol Sequence[int]", "signature in Foo"],
+        ["def __getitem__(self: Sequence"],
+        ["def __getitem__(self, x: int)"]
     ]
     for pattern in expected:
-      self.assertErrorRegexes(errors, {"e": pattern})
+      self.assertErrorSequences(errors, {"e": pattern})
 
   def test_hidden_error(self):
     self.CheckWithErrors("""
@@ -969,107 +971,33 @@ class ErrorTest(test_base.BaseTest):
 class OperationsTest(test_base.BaseTest):
   """Test operations."""
 
-  def test_xor(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' ^ 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\^.*str.*int.*'__xor__' on str.*'__rxor__' on int"})
-
-  def test_add(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' + 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\+.*str.*int.*__add__ on str.*str"})
-
-  def test_invert(self):
-    errors = self.CheckWithErrors("""
-      def f(): return ~None  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {"e": r"\~.*None.*'__invert__' on None"})
-
-  def test_sub(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' - 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\-.*str.*int.*'__sub__' on str.*'__rsub__' on int"})
-
-  def test_mul(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' * None  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\*.*str.*None.*__mul__ on str.*int"})
-
-  def test_div(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' / 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\/.*str.*int.*'__(true)?div__' on str.*'__r(true)?div__' on int"
-    })
-
-  def test_mod(self):
-    errors = self.CheckWithErrors("""
-      def f(): return None % 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {"e": r"\%.*None.*int.*'__mod__' on None"})
-
-  def test_lshift(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 3 << None  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\<\<.*int.*None.*__lshift__ on int.*int"})
-
-  def test_rshift(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 3 >> None  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\>\>.*int.*None.*__rshift__ on int.*int"})
-
-  def test_and(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' & 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\&.*str.*int.*'__and__' on str.*'__rand__' on int"})
-
-  def test_or(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 'foo' | 3  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\|.*str.*int.*'__or__' on str.*'__ror__' on int"})
-
-  def test_floor_div(self):
-    errors = self.CheckWithErrors("""
-      def f(): return 3 // 'foo'  # unsupported-operands[e]
-    """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\/\/.*int.*str.*__floordiv__ on int.*int"})
-
-  def test_pow(self):
+  def test_binary(self):
     errors = self.CheckWithErrors("""
       def f(): return 3 ** 'foo'  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\*\*.*int.*str.*__pow__ on int"})
+    self.assertErrorSequences(errors, {
+        "e": ["**", "int", "str", "__pow__ on", "int"]})
 
-  def test_neg(self):
+  def test_unary(self):
     errors = self.CheckWithErrors("""
-      def f(): return -None  # unsupported-operands[e]
+      def f(): return ~None  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\-.*None.*'__neg__' on None"})
+    self.assertErrorSequences(
+        errors, {"e": ["~", "None", "'__invert__' on None"]})
 
-  def test_pos(self):
+  def test_op_and_right_op(self):
     errors = self.CheckWithErrors("""
-      def f(): return +None  # unsupported-operands[e]
+      def f(): return 'foo' ^ 3  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\+.*None.*'__pos__' on None"})
+    self.assertErrorSequences(errors, {
+        "e": ["^", "str", "int", "'__xor__' on", "str", "'__rxor__' on", "int"]
+    })
+
+  def test_var_name_and_pyval(self):
+    errors = self.CheckWithErrors("""
+      def f(): return 'foo' ^ 3  # unsupported-operands[e]
+    """)
+    self.assertErrorSequences(errors, {"e": ["^", "'foo': str", "3: int"]})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):
@@ -1079,8 +1007,8 @@ class InPlaceOperationsTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       def f(): v = []; v += 3  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\+\=.*List.*int.*__iadd__ on List.*Iterable"})
+    self.assertErrorSequences(errors, {
+        "e": ["+=", "List", "int", "__iadd__ on List", "Iterable"]})
 
 
 class NoSymbolOperationsTest(test_base.BaseTest):
@@ -1097,9 +1025,9 @@ class NoSymbolOperationsTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       def f(): v = {'foo': 3}; del v[3]  # unsupported-operands[e]
     """)
-    d = r"Dict\[str, int\]"
-    self.assertErrorRegexes(errors, {
-        "e": r"item deletion.*{d}.*int.*__delitem__ on {d}.*str".format(d=d)})
+    d = "Dict[str, int]"
+    self.assertErrorSequences(errors, {
+        "e": ["item deletion", d, "int", f"__delitem__ on {d}", "str"]})
 
   def test_setitem(self):
     errors = self.CheckWithErrors("""
@@ -1113,7 +1041,7 @@ class NoSymbolOperationsTest(test_base.BaseTest):
       def f(): return 'foo' in 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"'in'.*int.*str.*'__contains__' on int"})
+        "e": r"'in'.*int.*str.*'__contains__' on.*int"})
 
   def test_recursion(self):
     self.CheckWithErrors("""

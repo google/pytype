@@ -249,8 +249,9 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       return None, value
     annot = op.annotation
     frame = self.vm.frame
-    var, errorlog = abstract_utils.eval_expr(
-        self.vm, node, frame.f_globals, frame.f_locals, annot)
+    with self.vm.generate_late_annotations(self.vm.simple_stack()):
+      var, errorlog = abstract_utils.eval_expr(
+          self.vm, node, frame.f_globals, frame.f_locals, annot)
     if errorlog:
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, annot, details=errorlog.details)
@@ -362,9 +363,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
         # Immediately try to evaluate the reference, generating LateAnnotation
         # objects as needed. We don't store the entire string as a
         # LateAnnotation because:
-        # - Starting in 3.8, or in 3.7 with __future__.annotations, all
-        #   annotations look like forward references - most of them don't need
-        #   to be late evaluated.
+        # - With __future__.annotations, all annotations look like forward
+        #   references - most of them don't need to be late evaluated.
         # - Given an expression like "Union[str, NotYetDefined]", we want to
         #   evaluate the union immediately so we don't end up with a complex
         #   LateAnnotation, which can lead to bugs when instantiated.

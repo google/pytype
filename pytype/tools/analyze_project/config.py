@@ -80,7 +80,7 @@ _PYTYPE_SINGLE_ITEMS = {
     'strict_import': Item(
         None, 'False', ArgInfo('--strict-import', None), None),
     'enforce_noniterable_strings': Item(
-        None, 'False', ArgInfo('--enforce-noniterable-strings', None), None),
+        None, 'True', ArgInfo('--enforce-noniterable-strings', None), None),
 }
 
 

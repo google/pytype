@@ -46,7 +46,7 @@ class ErrorLogTest(test_base.BaseTest):
       self.CheckWithErrors("x = 0  # attribute-error[e]  # attribute-error[e]")
     self.assertEqual(str(ctx.exception), "Mark e already used")
 
-  def test_error_matching(self):
+  def test_error_regex_matching(self):
     err = self.CheckWithErrors("""
       a = 10
       b = "hello"
@@ -54,6 +54,14 @@ class ErrorLogTest(test_base.BaseTest):
       d = a.foo()  # attribute-error[.mark]
     """)
     self.assertErrorRegexes(err, {".mark": ".*foo.*"})
+
+  def test_error_sequence_matching(self):
+    err = self.CheckWithErrors("""
+      a = 10
+      b = a < "hello"  # unsupported-operands[.mark]
+      c = a.foo()  # attribute-error
+    """)
+    self.assertErrorSequences(err, {".mark": ["<", "a: int", "'hello': str"]})
 
   def test_mismatched_error(self):
     with self.assertRaises(AssertionError) as ctx:
@@ -88,13 +96,20 @@ class ErrorLogTest(test_base.BaseTest):
     err = self.CheckWithErrors("(10).foo  # attribute-error[e]")
     with self.assertRaises(AssertionError) as ctx:
       self.assertErrorRegexes(err, {})
-    self.assertEqual(str(ctx.exception), "No regex for mark e")
+    self.assertEqual(str(ctx.exception), "No matcher for mark e")
 
   def test_leftover_regex(self):
     err = self.CheckWithErrors("x = 0")
     with self.assertRaises(AssertionError) as ctx:
       self.assertErrorRegexes(err, {"e": ""})
     self.assertEqual(str(ctx.exception), "Marks not found in code: e")
+
+  def test_mismatched_sequence(self):
+    # err = "No attribute 'foo' on int", check order of substrings is enforced.
+    err = self.CheckWithErrors("(10).foo  # attribute-error[e]")
+    with self.assertRaises(AssertionError) as ctx:
+      self.assertErrorSequences(err, {"e": ["int", "foo", "attribute"]})
+    self.assertIn("Bad error message", str(ctx.exception))
 
   def test_bad_check(self):
     with self.assertRaises(AssertionError) as ctx:

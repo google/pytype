@@ -12,7 +12,7 @@
          * [Conversion to abstract types](#conversion-to-abstract-types)
       * [Tracking local operations](#tracking-local-operations)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-09-03T20:22-07:00 -->
 
 <!--te-->
 
@@ -108,6 +108,13 @@ where `Foo` is simply stored as a string. The latter case is useful because it
 lets us annotate variables with types that have not been defined yet;
 annotations of this type are variously referred to as "string annotations",
 "forward references" or "late annotations".
+
+From version 3.7 onward, Python includes a switch to implicitly treat all
+annotations as strings. You can set it by including
+
+```
+from __future__ import annotations
+```
 
 ### Complex annotations
 

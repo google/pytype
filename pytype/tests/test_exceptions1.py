@@ -473,6 +473,15 @@ class TestExceptions(test_base.BaseTest):
       def f() -> int: ...
     """)
 
+  def test_traceback(self):
+    # Check that with_traceback() preserves the exception type.
+    self.Check("""
+      class Foo(Exception):
+        pass
+      x = Foo().with_traceback(None)
+      assert_type(x, Foo)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

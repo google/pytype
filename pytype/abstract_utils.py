@@ -845,3 +845,65 @@ def combine_substs(
     return substs2
   else:
     return ()
+
+
+def _flatten(value, classes):
+  """Flatten the contents of value into classes.
+
+  If value is a Class, it is appended to classes.
+  If value is a PythonConstant of type tuple, then each element of the tuple
+  that has a single binding is also flattened.
+  Any other type of value, or tuple elements that have multiple bindings are
+  ignored.
+
+  Args:
+    value: An abstract value.
+    classes: A list to be modified.
+
+  Returns:
+    True iff a value was ignored during flattening.
+  """
+  # Used by special_builtins.IsInstance and IsSubclass
+  if value.isinstance_AnnotationClass():
+    value = value.base_cls
+  if value.isinstance_Class():
+    # A single class, no ambiguity.
+    classes.append(value)
+    return False
+  elif value.isinstance_Tuple():
+    # A tuple, need to process each element.
+    ambiguous = False
+    for var in value.pyval:
+      if (len(var.bindings) != 1 or
+          _flatten(var.bindings[0].data, classes)):
+        # There were either multiple bindings or ambiguity deeper in the
+        # recursion.
+        ambiguous = True
+    return ambiguous
+  else:
+    return True
+
+
+def check_against_mro(vm, target, class_spec):
+  """Check if any of the classes are in the target's MRO.
+
+  Args:
+    vm: The virtual machine.
+    target: A BaseValue whose MRO will be checked.
+    class_spec: A Class or PythonConstant tuple of classes (i.e. the second
+      argument to isinstance or issubclass).
+
+  Returns:
+    True if any class in classes is found in the target's MRO,
+    False if no match is found and None if it's ambiguous.
+  """
+  # Determine the flattened list of classes to check.
+  classes = []
+  ambiguous = _flatten(class_spec, classes)
+
+  for c in classes:
+    if vm.matcher(None).match_from_mro(target, c, allow_compat_builtins=False):
+      return True  # A definite match.
+  # No matches, return result depends on whether flatten() was
+  # ambiguous.
+  return None if ambiguous else False

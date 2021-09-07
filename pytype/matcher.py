@@ -699,8 +699,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
     elif isinstance(other_type, class_mixin.Class):
-      if (self.vm.options.enforce_noniterable_strings and
-          self._enforce_noniterable_str(left.get_class(), other_type)):
+      if self._enforce_noniterable_str(left.get_class(), other_type):
         self._noniterable_str_error = NonIterableStrError(left.get_class(),
                                                           other_type)
         return None

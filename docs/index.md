@@ -68,7 +68,7 @@ To set up pytype on an entire package, add the following to a `setup.cfg` file
 in the directory immediately above the package, replacing `package_name` with
 the package name:
 
-```
+```ini
 [pytype]
 inputs = package_name
 ```
@@ -209,7 +209,7 @@ Here is the filled-in config file, which instructs pytype to type-check
 and ignore attribute errors. Notice that the path to a package does not include
 the package itself.
 
-```
+```ini
 $ cat ~/repo1/pytype.cfg
 
 # NOTE: All relative paths are relative to the location of this file.

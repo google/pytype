@@ -134,8 +134,7 @@ class BaseTest(unittest.TestCase):
                                          bind_properties=True,
                                          chex_overlay=True,
                                          preserve_union_macros=True,
-                                         use_enum_overlay=True,
-                                         enforce_noniterable_strings=True)
+                                         use_enum_overlay=True)
 
   @property
   def loader(self):
@@ -326,6 +325,9 @@ class BaseTest(unittest.TestCase):
 
   def assertErrorRegexes(self, errorlog, expected_errors):
     errorlog.assert_error_regexes(expected_errors)
+
+  def assertErrorSequences(self, errorlog, expected_errors):
+    errorlog.assert_error_sequences(expected_errors)
 
   def _Pickle(self, ast, module_name):
     assert module_name

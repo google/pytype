@@ -181,6 +181,38 @@ class MakeCodeMixin:
         python_version=self.python_version)
 
 
+class RegexMatcher:
+  """Match a regex."""
+
+  def __init__(self, regex):
+    self.regex = regex
+
+  def match(self, message):
+    return re.search(self.regex, message, flags=re.DOTALL)
+
+  def __repr__(self):
+    return repr(self.regex)
+
+
+class SequenceMatcher:
+  """Match a sequence of substrings in order."""
+
+  def __init__(self, seq):
+    self.seq = seq
+
+  def match(self, message):
+    start = 0
+    for s in self.seq:
+      i = message.find(s, start)
+      if i == -1:
+        return False
+      start = i + len(s)
+    return True
+
+  def __repr__(self):
+    return repr(self.seq)
+
+
 class TestErrorLog(errors.ErrorLog):
   """A subclass of ErrorLog that holds extra information for tests.
 
@@ -236,19 +268,27 @@ class TestErrorLog(errors.ErrorLog):
     if leftover_errors:
       self._fail("Errors not found:\n" + "\n".join(leftover_errors))
 
-  def assert_error_regexes(self, expected_regexes):
+  def _assert_error_messages(self, matchers):
     if self.marks is None:
       self.assert_errors_match_expected()  # populates self.marks
     for mark, error in self.marks.items():
       try:
-        regex = expected_regexes.pop(mark)
+        matcher = matchers.pop(mark)
       except KeyError:
-        self._fail("No regex for mark %s" % mark)
-      if not re.search(regex, error.message, flags=re.DOTALL):
+        self._fail("No matcher for mark %s" % mark)
+      if not matcher.match(error.message):
         self._fail("Bad error message for mark %s: expected %r, got %r" %
-                   (mark, regex, error.message))
-    if expected_regexes:
-      self._fail("Marks not found in code: %s" % ", ".join(expected_regexes))
+                   (mark, matcher, error.message))
+    if matchers:
+      self._fail("Marks not found in code: %s" % ", ".join(matchers))
+
+  def assert_error_regexes(self, expected_regexes):
+    matchers = {k: RegexMatcher(v) for k, v in expected_regexes.items()}
+    self._assert_error_messages(matchers)
+
+  def assert_error_sequences(self, expected_sequences):
+    matchers = {k: SequenceMatcher(v) for k, v in expected_sequences.items()}
+    self._assert_error_messages(matchers)
 
   def _parse_comments(self, src):
     src = io.StringIO(src)

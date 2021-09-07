@@ -1,7 +1,5 @@
 """Tests for displaying errors."""
 
-import re
-
 from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -36,9 +34,11 @@ class ErrorTest(test_base.BaseTest):
       def f4(x: Union):  # invalid-annotation[e3]
         pass
     """)
-    self.assertErrorRegexes(errors, {"e1": r"typing.Dict\[_K, _V].*2.*1",
-                                     "e2": r"typing.List\[_T].*1.*2",
-                                     "e3": r"Union.*x"})
+    self.assertErrorSequences(errors, {
+        "e1": ["typing.Dict[_K, _V]", "2", "1"],
+        "e2": ["typing.List[_T]", "1", "2"],
+        "e3": ["Union", "x"]
+    })
 
   def test_print_unsolvable(self):
     _, errors = self.InferWithErrors("""
@@ -60,8 +60,8 @@ class ErrorTest(test_base.BaseTest):
         x = [float]
       f(x)  # wrong-arg-types[e]
     """)
-    error = r"Actual.*Union\[List\[Type\[float\]\], Type\[dict\]\]"
-    self.assertErrorRegexes(errors, {"e": error})
+    error = ["Actual", "Union[List[Type[float]], Type[dict]]"]
+    self.assertErrorSequences(errors, {"e": error})
 
   def test_wrong_brackets(self):
     _, errors = self.InferWithErrors("""
@@ -69,7 +69,7 @@ class ErrorTest(test_base.BaseTest):
       def f(x: List(str)):  # not-callable[e]
         pass
     """)
-    self.assertErrorRegexes(errors, {"e": r"List"})
+    self.assertErrorSequences(errors, {"e": ["List"]})
 
   def test_interpreter_class_printing(self):
     _, errors = self.InferWithErrors("""
@@ -77,7 +77,7 @@ class ErrorTest(test_base.BaseTest):
       def f(x: str): pass
       f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"str.*Foo"})
+    self.assertErrorSequences(errors, {"e": ["str", "Foo"]})
 
   def test_print_dict_and_tuple(self):
     _, errors = self.InferWithErrors("""
@@ -93,11 +93,11 @@ class ErrorTest(test_base.BaseTest):
       def g2(x: dct):  # invalid-annotation[e4]
         pass
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"(int, str).*Not a type",
-        "e2": r"instance of Tuple\[int, \.\.\.\].*Not a type",
-        "e3": r"{'a': '1'}.*Not a type",
-        "e4": r"instance of Dict\[str, int\].*Not a type"})
+    self.assertErrorSequences(errors, {
+        "e1": ["(int, str)", "Not a type"],
+        "e2": ["instance of Tuple[int, ...]", "Not a type"],
+        "e3": ["{'a': '1'}", "Not a type"],
+        "e4": ["instance of Dict[str, int]", "Not a type"]})
 
   def test_move_union_inward(self):
     _, errors = self.InferWithErrors("""
@@ -105,7 +105,8 @@ class ErrorTest(test_base.BaseTest):
         y = "hello" if __random__ else 42
         yield y
     """)
-    self.assertErrorRegexes(errors, {"e": r"Generator, Iterable or Iterator"})
+    self.assertErrorSequences(
+        errors, {"e": ["Generator, Iterable or Iterator"]})
 
   def test_inner_class_error(self):
     _, errors = self.InferWithErrors("""
@@ -114,7 +115,7 @@ class ErrorTest(test_base.BaseTest):
         class Foo: pass
         f(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"x: str.*x: Foo"})
+    self.assertErrorSequences(errors, {"e": ["x: str", "x: Foo"]})
 
   def test_inner_class_error2(self):
     _, errors = self.InferWithErrors("""
@@ -123,7 +124,7 @@ class ErrorTest(test_base.BaseTest):
         def g(x: Foo): pass
         g("")  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"x: Foo.*x: str"})
+    self.assertErrorSequences(errors, {"e": ["x: Foo", "x: str"]})
 
   def test_clean_namedtuple_names(self):
     # Make sure the namedtuple renaming in _pytd_print correctly extracts type
@@ -145,9 +146,10 @@ class ErrorTest(test_base.BaseTest):
         a = 1
       bar(a)  # wrong-arg-types[e5]
       """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"x: X", "e2": r"x: Z", "e3": r"x: W",
-        "e4": r"Iterator", "e5": r"Union\[int, X\]"})
+    self.assertErrorSequences(errors, {
+        "e1": ["x: X"], "e2": ["x: Z"], "e3": ["x: W"],
+        "e4": ["Iterator"], "e5": ["Union[int, X]"]
+    })
 
   def test_argument_order(self):
     _, errors = self.InferWithErrors("""
@@ -155,8 +157,9 @@ class ErrorTest(test_base.BaseTest):
         pass
       g(a=1, b=2, c=3, d=4, e=5, f=6)  # wrong-arg-types[e]
       """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Expected.*f: str, \.\.\..*Actual.*f: int, \.\.\."})
+    self.assertErrorSequences(errors, {
+        "e": ["Expected", "f: str, ...", "Actual", "f: int, ..."]
+    })
 
   def test_conversion_of_generic(self):
     self.InferWithErrors("""
@@ -172,7 +175,7 @@ class ErrorTest(test_base.BaseTest):
           pass
         return Foo()  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"int.*Foo"})
+    self.assertErrorSequences(errors, {"e": ["int", "Foo"]})
 
   def test_nested_proto_class(self):
     with file_utils.Tempdir() as d:
@@ -187,7 +190,7 @@ class ErrorTest(test_base.BaseTest):
         def f(x: foo_bar.Foo.Bar): ...
         f(42)  # wrong-arg-types[e]
       """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {"e": r"foo_bar\.Foo\.Bar"})
+      self.assertErrorSequences(errors, {"e": ["foo_bar.Foo.Bar"]})
 
   def test_staticmethod_in_error(self):
     with file_utils.Tempdir() as d:
@@ -203,8 +206,8 @@ class ErrorTest(test_base.BaseTest):
           return x(y)
         f(foo.A.t, 1)  # wrong-arg-types[e]
         """, pythonpath=[d.path])
-      self.assertErrorRegexes(
-          errors, {"e": r"Actually passed: \(x: Callable\[\[str\], None\]"})
+      self.assertErrorSequences(
+          errors, {"e": ["Actually passed: (x: Callable[[str], None]"]})
 
   def test_generator_send(self):
     errors = self.CheckWithErrors("""
@@ -218,7 +221,7 @@ class ErrorTest(test_base.BaseTest):
       x = f(2)
       x.send("123")  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\(self, value: int\)"})
+    self.assertErrorSequences(errors, {"e": ["(self, value: int)"]})
 
   def test_generator_iterator_ret_type(self):
     errors = self.CheckWithErrors("""
@@ -226,7 +229,7 @@ class ErrorTest(test_base.BaseTest):
       def f() -> Iterator[str]:
         yield 1  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"str.*int"})
+    self.assertErrorSequences(errors, {"e": ["str", "int"]})
 
   def test_generator_iterable_ret_type(self):
     errors = self.CheckWithErrors("""
@@ -234,7 +237,7 @@ class ErrorTest(test_base.BaseTest):
       def f() -> Iterable[str]:
         yield 1  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"str.*int"})
+    self.assertErrorSequences(errors, {"e": ["str", "int"]})
 
   def test_silence_variable_mismatch(self):
     self.Check("""
@@ -255,9 +258,9 @@ class ErrorTest(test_base.BaseTest):
           x = A()
         assert_type(x, Union[A, int])
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Expected.*int.*Actual.*str",
-        "e2": r"type was Any"
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected", "int", "Actual", "str"],
+        "e2": ["type was Any"]
     })
 
   def test_assert_type_str(self):
@@ -271,9 +274,9 @@ class ErrorTest(test_base.BaseTest):
           x = A()
         assert_type(x, 'Union[A, int]')
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Expected.*int.*Actual.*str",
-        "e2": r"type was Any"
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected", "int", "Actual", "str"],
+        "e2": ["type was Any"]
     })
 
   def test_assert_type_import(self):
@@ -293,9 +296,9 @@ class ErrorTest(test_base.BaseTest):
             x = A()
           assert_type(x, Union[A, int])
       """, pythonpath=[d.path])
-      self.assertErrorRegexes(errors, {
-          "e1": r"Expected.*int.*Actual.*str",
-          "e2": r"type was Any"
+      self.assertErrorSequences(errors, {
+          "e1": ["Expected", "int", "Actual", "str"],
+          "e2": ["type was Any"]
       })
 
 
@@ -311,8 +314,9 @@ class InPlaceOperationsTest(test_base.BaseTest):
         v = A()
         v %s 3  # unsupported-operands[e]
     """ % (op, symbol))
-    self.assertErrorRegexes(errors, {
-        "e": r"%s.*A.*int.*__%s__ on A.*A" % (re.escape(symbol), op)})
+    self.assertErrorSequences(errors, {
+        "e": [symbol, "A", "int", f"__{op}__ on A", "A"]
+    })
 
   def test_isub(self):
     self._testOp("isub", "-=")
@@ -368,8 +372,8 @@ class ErrorTestPy3(test_base.BaseTest):
       def f(x: Iterable[str]): ...
       f("abc")  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors,
-                            {"e": r"str does not match iterables by default"})
+    self.assertErrorSequences(
+        errors, {"e": ["str does not match iterables by default"]})
 
   def test_nis_bad_return(self):
     errors = self.CheckWithErrors("""
@@ -377,15 +381,15 @@ class ErrorTestPy3(test_base.BaseTest):
       def f() -> Iterable[str]:
         return "abc" # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors,
-                            {"e": r"str does not match iterables by default"})
+    self.assertErrorSequences(
+        errors, {"e": ["str does not match iterables by default"]})
 
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
       class Foo: pass
       next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"__iter__, __next__"})
+    self.assertErrorSequences(errors, {"e": ["__iter__, __next__"]})
 
   def test_protocol_mismatch_partial(self):
     _, errors = self.InferWithErrors("""
@@ -394,7 +398,8 @@ class ErrorTestPy3(test_base.BaseTest):
           return self
       next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"not implemented on Foo: __next__"})
+    self.assertErrorSequences(
+        errors, {"e": ["not implemented on Foo: __next__"]})
 
   def test_generator_send_ret_type(self):
     _, errors = self.InferWithErrors("""
@@ -403,7 +408,7 @@ class ErrorTestPy3(test_base.BaseTest):
         x = yield 1
         return x  # bad-return-type[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"int.*str"})
+    self.assertErrorSequences(errors, {"e": ["int", "str"]})
 
   def test_silence_parameter_mismatch(self):
     self.Check("""
@@ -446,8 +451,9 @@ class MatrixOperationsTest(test_base.BaseTest):
       def f():
         return 'foo' @ 3  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"\@.*str.*int.*'__matmul__' on str.*'__rmatmul__' on int"})
+    self.assertErrorSequences(errors, {
+        "e": ["@", "str", "int", "'__matmul__' on ", "str",
+              "'__rmatmul__' on ", "int"]})
 
   def test_imatmul(self):
     errors = self.CheckWithErrors("""
@@ -458,7 +464,8 @@ class MatrixOperationsTest(test_base.BaseTest):
         v = A()
         v @= 3  # unsupported-operands[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"\@.*A.*int.*__imatmul__ on A.*A"})
+    self.assertErrorSequences(
+        errors, {"e": ["@", "A", "int", "__imatmul__ on A", "A"]})
 
 
 class UnboundLocalErrorTest(test_base.BaseTest):
@@ -484,9 +491,10 @@ class UnboundLocalErrorTest(test_base.BaseTest):
           print(x)  # name-error[e]
           x = 0
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Add `nonlocal x` in function 'f\.g' to reference 'x' from "
-              r"function 'f'")})
+    self.assertErrorSequences(errors, {
+        "e": ["Add `nonlocal x` in function 'f.g' to",
+              "reference 'x' from function 'f'"]
+    })
 
   def test_global(self):
     errors = self.CheckWithErrors("""
@@ -495,9 +503,10 @@ class UnboundLocalErrorTest(test_base.BaseTest):
         print(x)  # name-error[e]
         x = 1
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Add `global x` in function 'f' to reference 'x' from global "
-              r"scope")})
+    self.assertErrorSequences(errors, {
+        "e": ["Add `global x` in function 'f' to",
+              "reference 'x' from global scope"]
+    })
 
   def test_class_in_function(self):
     errors = self.CheckWithErrors("""
@@ -507,9 +516,10 @@ class UnboundLocalErrorTest(test_base.BaseTest):
           print(x)  # name-error[e]
           x = 1
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Add `nonlocal x` in class 'f\.C' to reference 'x' from "
-              r"function 'f'")})
+    self.assertErrorSequences(errors, {
+        "e": ["Add `nonlocal x` in class 'f.C' to",
+              "reference 'x' from function 'f'"]
+    })
 
   def test_deep_nesting(self):
     errors = self.CheckWithErrors("""
@@ -521,9 +531,10 @@ class UnboundLocalErrorTest(test_base.BaseTest):
               print(x)  # name-error[e]
               x = 1
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Add `nonlocal x` in class 'f\.g\.C\.D' to reference 'x' from "
-              r"function 'f\.g'")})
+    self.assertErrorSequences(errors, {
+        "e": ["Add `nonlocal x` in class 'f.g.C.D' to",
+              "reference 'x' from function 'f.g'"]
+    })
 
   def test_duplicate_names(self):
     # This is a plain old name error; make sure the UnboundLocalError details
@@ -537,7 +548,7 @@ class UnboundLocalErrorTest(test_base.BaseTest):
           def f4():
             print(x)  # name-error[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Name 'x' is not defined$"})
+    self.assertErrorSequences(errors, {"e": ["Name 'x' is not defined"]})
 
   def test_precedence(self):
     errors = self.CheckWithErrors("""
@@ -549,9 +560,10 @@ class UnboundLocalErrorTest(test_base.BaseTest):
             print(x)  # name-error[e]
             x = 2
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Add `nonlocal x` in function 'f\.g\.h' to reference 'x' from "
-              r"function 'f\.g'")})
+    self.assertErrorSequences(errors, {
+        "e": ["Add `nonlocal x` in function 'f.g.h' to",
+              "reference 'x' from function 'f.g'"]
+    })
 
 
 class ClassAttributeNameErrorTest(test_base.BaseTest):
@@ -576,9 +588,9 @@ class ClassAttributeNameErrorTest(test_base.BaseTest):
             print(x)  # name-error[e1]
             print(y)  # name-error[e2]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"Use 'C\.x' to reference 'x' from class 'C'",
-        "e2": r"Use 'C\.D\.y' to reference 'y' from class 'C\.D'"})
+    self.assertErrorSequences(errors, {
+        "e1": ["Use 'C.x' to reference 'x' from class 'C'"],
+        "e2": ["Use 'C.D.y' to reference 'y' from class 'C.D'"]})
 
   def test_outer_function(self):
     errors = self.CheckWithErrors("""
@@ -588,8 +600,8 @@ class ClassAttributeNameErrorTest(test_base.BaseTest):
           def f(self):
             print(x)  # name-error[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": r"Use 'C\.x' to reference 'x' from class 'f\.C'"})
+    self.assertErrorSequences(errors, {
+        "e": ["Use 'C.x' to reference 'x' from class 'f.C'"]})
 
 
 class PartiallyDefinedClassNameErrorTest(test_base.BaseTest):
@@ -605,6 +617,8 @@ class PartiallyDefinedClassNameErrorTest(test_base.BaseTest):
   to the error message.
   """
 
+  POST = "before the class is fully defined"
+
   def test_nested_classes(self):
     errors = self.CheckWithErrors("""
       class C:
@@ -615,11 +629,10 @@ class PartiallyDefinedClassNameErrorTest(test_base.BaseTest):
             print(x)  # name-error[e1]
             print(y)  # name-error[e2]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": (r"Cannot reference 'x' from class 'C' before the class is fully "
-               r"defined"),
-        "e2": (r"Cannot reference 'y' from class 'C\.D' before the class is "
-               r"fully defined")})
+    self.assertErrorSequences(errors, {
+        "e1": ["Cannot reference 'x' from class 'C'", self.POST],
+        "e2": ["Cannot reference 'y' from class 'C.D'", self.POST]
+    })
 
   def test_nested_classes_in_function(self):
     errors = self.CheckWithErrors("""
@@ -629,9 +642,9 @@ class PartiallyDefinedClassNameErrorTest(test_base.BaseTest):
           class D:
             print(x)  # name-error[e]
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Cannot reference 'x' from class 'f\.C' before the class is "
-              r"fully defined")})
+    self.assertErrorSequences(errors, {
+        "e": ["Cannot reference 'x' from class 'f.C'", self.POST]
+    })
 
   def test_unbound_local_precedence(self):
     # We should report the UnboundLocalError in preference to one about C not
@@ -646,9 +659,10 @@ class PartiallyDefinedClassNameErrorTest(test_base.BaseTest):
             print(x)  # name-error[e]
             x = 2
     """)
-    self.assertErrorRegexes(errors, {
-        "e": (r"Add `nonlocal x` in class 'f\.C\.D' to reference 'x' from "
-              r"function 'f'")})
+    self.assertErrorSequences(errors, {
+        "e": ["Add `nonlocal x` in class 'f.C.D' to",
+              "reference 'x' from function 'f'"]
+    })
 
 
 if __name__ == "__main__":

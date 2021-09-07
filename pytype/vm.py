@@ -252,6 +252,10 @@ class VirtualMachine:
     self.local_ops = {}
     # Record the annotated and original values of locals.
     self.annotated_locals = {}
+    # Mapping of Variables to python variable names. {id: int -> name: str}
+    # Note that we don't need to scope this to the frame because we don't reuse
+    # variable ids.
+    self._var_names = {}
 
     # Map from builtin names to canonical objects.
     self.special_builtins = {
@@ -997,6 +1001,25 @@ class VirtualMachine:
           return True
     return False
 
+  def get_var_name(self, var):
+    """Get the python variable name corresponding to a Variable."""
+    # Variables in _var_names correspond to LOAD_* opcodes, which means they
+    # have been retrieved from a symbol table like locals() directly by name.
+    if var.id in self._var_names:
+      return self._var_names[var.id]
+    # Look through the source set of a variable's bindings to find the variable
+    # created by a LOAD operation. If a variable has multiple sources, don't try
+    # to match it to a name.
+    sources = set()
+    for b in var.bindings:
+      for o in b.origins:
+        for s in o.source_sets:
+          sources |= s
+    if len(sources) == 1:
+      s = next(iter(sources))
+      return self._var_names.get(s.variable.id)
+    return None
+
   def _call_binop_on_bindings(self, node, name, xval, yval):
     """Call a binary operator on two cfg.Binding objects."""
     rname = slots.REVERSE_NAME_MAPPING.get(name)
@@ -1148,7 +1171,11 @@ class VirtualMachine:
         starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn=True)
     if ret.data == [self.convert.no_return]:
       state = state.set_why("NoReturn")
-    return state.change_cfg_node(node), ret
+    state = state.change_cfg_node(node)
+    if len(funcu.data) == 1:
+      # Check for test assertions that narrow the type of a variable.
+      state = self._check_test_assert(state, funcu, posargs)
+    return state, ret
 
   def _call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
@@ -1312,6 +1339,7 @@ class VirtualMachine:
     self._filter_none_and_paste_bindings(
         state.node, bindings, ret,
         discard_concrete_values=discard_concrete_values)
+    self._var_names[ret.id] = name
     return state, ret
 
   def load_local(self, state, name):
@@ -3758,6 +3786,47 @@ class VirtualMachine:
     # we've tested.
     self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
+
+  def _narrow(self, state, var, pred):
+    """Narrow a variable by removing bindings that do not satisfy pred."""
+    varname = self.get_var_name(var)
+    if not varname or varname not in self.frame.f_locals.pyval:
+      # We cannot store the narrowed value back in locals.
+      return state
+    keep = [b for b in var.bindings if pred(b.data)]
+    if len(keep) == len(var.bindings):
+      # Nothing to narrow.
+      return state
+    out = self.program.NewVariable()
+    for b in keep:
+      out.AddBinding(b.data, {b}, state.node)
+    # TODO(mdemello): Do we need to create two new nodes for this? Code copied
+    # from _pop_and_store, but there might be a reason to create two nodes there
+    # that does not apply here.
+    state = state.forward_cfg_node()
+    state = self._store_value(state, varname, out, local=True)
+    state = state.forward_cfg_node()
+    return state
+
+  def _check_test_assert(self, state, func, args):
+    """Narrow the types of variables based on test assertions."""
+    f = func.data[0]
+    if not (f.isinstance_BoundFunction() and len(f.callself.data) == 1):
+      return state
+    cls = f.callself.data[0].cls
+    if not (cls and cls.isinstance_Class() and cls.is_test_class()):
+      return state
+    if f.name == "assertIsNotNone":
+      if len(args) == 1:
+        pred = lambda v: not self._data_is_none(v)
+        state = self._narrow(state, args[0], pred)
+    elif f.name == "assertIsInstance":
+      if len(args) == 2:
+        typ = args[1].data[0]
+        pred = lambda v: (v.cls and  # pylint: disable=g-long-lambda
+                          abstract_utils.check_against_mro(self, v.cls, typ))
+        state = self._narrow(state, args[0], pred)
+    return state
 
   def byte_CALL_METHOD(self, state, op):
     state, args = state.popn(op.arg)

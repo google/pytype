@@ -919,11 +919,22 @@ class ErrorLog(ErrorLogBase):
     self.error(
         stack, "Invalid instantiation of generic class", "".join(details))
 
+  def _show_variable(self, var):
+    """Show variable as 'name: typ' or 'pyval: typ' if available."""
+    val = var.data[0]
+    name = val.vm.get_var_name(var)
+    typ = self._join_printed_types(
+        self._print_as_actual_type(t) for t in var.data)
+    if name:
+      return f"'{name}: {typ}'"
+    elif len(var.data) == 1 and hasattr(val, "pyval"):
+      return f"'{val.pyval!r}: {typ}'"
+    else:
+      return f"'{typ}'"
+
   def unsupported_operands(self, stack, operator, var1, var2):
-    left = self._join_printed_types(
-        self._print_as_actual_type(t) for t in var1.data)
-    right = self._join_printed_types(
-        self._print_as_actual_type(t) for t in var2.data)
+    left = self._show_variable(var1)
+    right = self._show_variable(var2)
     details = "No attribute %r on %s" % (operator, left)
     if operator in slots.REVERSE_NAME_MAPPING:
       details += " or %r on %s" % (slots.REVERSE_NAME_MAPPING[operator], right)
@@ -932,7 +943,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("unsupported-operands")
   def _unsupported_operands(self, stack, operator, *operands, details=None):
     """Unsupported operands."""
-    args = " and ".join(repr(operand) for operand in operands)
+    args = " and ".join(str(operand) for operand in operands)
     if operator in slots.COMPARES:
       symbol = operator
       details = f"Primitive types {args} are not comparable."
