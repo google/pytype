@@ -176,7 +176,7 @@ def add_basic_options(o):
       "--enforce-noniterable-strings",
       action="store_true",
       dest="enforce_noniterable_strings",
-      default=False,
+      default=True,
       help=("Enforces type errors when attempting to pass a `str` into an "
             "`Iterable` type."))
 
