@@ -169,6 +169,13 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   def validator_slot(self, node, validator):
     return node, validator
 
+  @classmethod
+  def from_pytd(cls, vm, typ, annotation):
+    _, init, kw_only = annotation
+    init = init == "True"
+    kw_only = kw_only == "True"
+    return cls(vm, typ, True, init, None, kw_only, None)
+
 
 class Attrib(classgen.FieldConstructor):
   """Implements attr.ib."""

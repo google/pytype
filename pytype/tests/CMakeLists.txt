@@ -1005,6 +1005,8 @@ py_test(
     test_attr1.py
   DEPS
     .test_base
+    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(

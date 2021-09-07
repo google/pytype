@@ -11,6 +11,7 @@ from pytype import abstract_utils
 from pytype import class_mixin
 from pytype import special_builtins
 from pytype import utils
+from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd
@@ -240,6 +241,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return pytd_utils.JoinTypes(
           self.value_to_pytd_type(node, d, seen, view)
           for d in v.default.data)
+    elif isinstance(v, attr_overlay.AttribInstance):
+      ret = self.value_to_pytd_type(node, v.typ, seen, view)
+      return pytd.Annotated(ret, ("'attr.ib'", str(v.init), str(v.kw_only)))
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = abstract_utils.get_signatures(v)
