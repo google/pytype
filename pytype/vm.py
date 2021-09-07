@@ -1171,7 +1171,11 @@ class VirtualMachine:
         starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn=True)
     if ret.data == [self.convert.no_return]:
       state = state.set_why("NoReturn")
-    return state.change_cfg_node(node), ret
+    state = state.change_cfg_node(node)
+    if len(funcu.data) == 1:
+      # Check for test assertions that narrow the type of a variable.
+      state = self._check_test_assert(state, funcu, posargs)
+    return state, ret
 
   def _call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
@@ -3828,9 +3832,6 @@ class VirtualMachine:
     state, args = state.popn(op.arg)
     state, func = state.pop()
     state, result = self.call_function_with_state(state, func, args)
-    if len(func.data) == 1:
-      # Check for test assertions that narrow the type of a variable.
-      state = self._check_test_assert(state, func, args)
     return state.push(result)
 
   def byte_RERAISE(self, state, op):
