@@ -101,7 +101,7 @@ class ErrorTest(test_base.BaseTest):
 
   def test_move_union_inward(self):
     _, errors = self.InferWithErrors("""
-      def f() -> str:  # invalid-annotation[e]
+      def f() -> str:  # bad-yield-annotation[e]
         y = "hello" if __random__ else 42
         yield y
     """)

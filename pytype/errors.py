@@ -909,6 +909,17 @@ class ErrorLog(ErrorLogBase):
     details.extend(protocol_details + nis_details)
     self.error(stack, message, "".join(details))
 
+  @_error_name("bad-yield-annotation")
+  def bad_yield_annotation(self, stack, name, annot, is_async):
+    func = ("async " if is_async else "") + f"generator function {name}"
+    actual = self._print_as_expected_type(annot)
+    message = f"Bad return type {actual!r} for {func}"
+    if is_async:
+      details = "Expected AsyncGenerator, AsyncIterable or AsyncIterator"
+    else:
+      details = "Expected Generator, Iterable or Iterator"
+    self.error(stack, message, details)
+
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, formal, actual, bad):
     expected, actual, _, protocol_details, nis_details = (

@@ -121,7 +121,7 @@ class Typeshed:
       line2 = line.split("#")[0].strip()
       if not line2:
         continue
-      match = re.fullmatch(r"(.+): (\d)\.(\d+)(?:-(?:(\d)\.(\d))?)?", line2)
+      match = re.fullmatch(r"(.+): (\d)\.(\d+)(?:-(?:(\d)\.(\d+))?)?", line2)
       assert match
       module, min_major, min_minor, max_major, max_minor = match.groups()
       minimum = (int(min_major), int(min_minor))
