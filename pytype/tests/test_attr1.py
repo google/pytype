@@ -821,10 +821,12 @@ class TestInheritedAttrib(test_base.BaseTest):
         import foo
         @attr.s()
         class Foo:
-          x = foo.attrib_wrapper(int)
-        a = Foo(10)
-        b = Foo('10')  # The wrapper returns attr.ib(Any)
-        c = Foo(10, 20)  # wrong-arg-count
+          x: int = foo.attrib_wrapper()
+          y = foo.attrib_wrapper(type=int)
+        a = Foo(10, 10)
+        b = Foo(10, '10')  # The wrapper returns attr.ib(Any) so y.type is lost
+        c = Foo(10, 20, 30)  # wrong-arg-count
+        d = Foo('10', 20)  # wrong-arg-types
       """, pythonpath=[d.path])
 
   def test_attrib_wrapper_kwargs(self):
@@ -835,7 +837,6 @@ class TestInheritedAttrib(test_base.BaseTest):
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
-      print(pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import attr
         import foo
@@ -846,6 +847,21 @@ class TestInheritedAttrib(test_base.BaseTest):
         b = Foo(x=10)
       """, pythonpath=[d.path])
 
+  def test_wrapper_setting_type(self):
+    foo_ty = self.Infer("""
+      import attr
+      def int_attrib():
+        return attr.ib(type=int)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import attr
+        import foo
+        @attr.s()  # invalid-annotation
+        class Foo:
+          x: int = foo.int_attrib()
+      """, pythonpath=[d.path])
 
 if __name__ == "__main__":
   test_base.main()

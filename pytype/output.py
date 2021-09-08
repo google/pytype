@@ -243,7 +243,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           for d in v.default.data)
     elif isinstance(v, attr_overlay.AttribInstance):
       ret = self.value_to_pytd_type(node, v.typ, seen, view)
-      return pytd.Annotated(ret, ("'attr.ib'", str(v.init), str(v.kw_only)))
+      metadata = v.json_metadata()
+      return pytd.Annotated(ret, ("'pytype_metadata'", f"'{metadata}'"))
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = abstract_utils.get_signatures(v)

@@ -1,5 +1,6 @@
 """Code for translating between type systems."""
 
+import json
 import logging
 import types
 
@@ -816,9 +817,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return abstract.LiteralClass(value, self.vm)
     elif isinstance(pyval, pytd.Annotated):
       typ = self.constant_to_value(pyval.base_type, subst, self.vm.root_node)
-      if pyval.annotations[0] == "'attr.ib'":
-        return attr_overlay.AttribInstance.from_pytd(
-            self.vm, typ, pyval.annotations)
+      if pyval.annotations[0] == "'pytype_metadata'":
+        # Strip off the quotes.
+        ann = pyval.annotations[1][1:-1]
+        metadata = json.loads(ann)
+        if metadata["type"] == "attr.ib":
+          return attr_overlay.AttribInstance.from_pytd(self.vm, typ, metadata)
       else:
         return typ
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
