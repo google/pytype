@@ -378,10 +378,10 @@ class Class(metaclass=mixin.MixinMeta):
       self._instance_cache[key] = self._to_instance(container)
     return self._instance_cache[key]
 
-  def call(self, node, value, args):
+  def call(self, node, func, args):
     if self.is_abstract and not self.from_annotation:
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
-    node, variable = self._call_new_and_init(node, value, args)
+    node, variable = self._call_new_and_init(node, func, args)
     if variable is None:
       value = self._new_instance(None)
       variable = self.vm.program.NewVariable()

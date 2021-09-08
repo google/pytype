@@ -2814,26 +2814,30 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     else:
       raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
+  def _new_instance(self, args):
+    if self.full_name == "builtins.tuple" and args.is_empty():
+      value = Tuple((), self.vm)
+    elif self.full_name == "builtins.dict" and args.is_empty():
+      value = Dict(self.vm)
+    else:
+      value = Instance(
+          self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
+    for type_param in self.template:
+      name = type_param.full_name
+      if name not in value.instance_type_parameters:
+        value.instance_type_parameters[name] = self.vm.program.NewVariable()
+    return value
+
   def call(self, node, func, args, alias_map=None):
     if self.is_abstract and not self.from_annotation:
       self.vm.errorlog.not_instantiable(self.vm.frames, self)
-    node, results = self._call_new_and_init(node, func, args)
-    if results is None:
-      if self.full_name == "builtins.tuple" and args.is_empty():
-        value = Tuple((), self.vm)
-      elif self.full_name == "builtins.dict" and args.is_empty():
-        value = Dict(self.vm)
-      else:
-        value = Instance(
-            self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
-      for type_param in self.template:
-        name = type_param.full_name
-        if name not in value.instance_type_parameters:
-          value.instance_type_parameters[name] = self.vm.program.NewVariable()
-      results = self.vm.program.NewVariable()
-      retval = results.AddBinding(value, [func], node)
-      node = self._call_init(node, retval, args)
-    return node, results
+    node, variable = self._call_new_and_init(node, func, args)
+    if variable is None:
+      value = self._new_instance(args)
+      variable = self.vm.program.NewVariable()
+      val = variable.AddBinding(value, [func], node)
+      node = self._call_init(node, val, args)
+    return node, variable
 
   def instantiate(self, node, container=None):
     return self.vm.convert.constant_to_var(
