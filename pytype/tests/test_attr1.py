@@ -1,5 +1,7 @@
 """Tests for attrs library in attr_overlay.py."""
 
+from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -802,6 +804,64 @@ class TestAttrs(test_base.BaseTest):
             on_setattr=attr.setters.convert)
     """)
 
+
+class TestInheritedAttrib(test_base.BaseTest):
+  """Tests for attrs in a different module."""
+
+  def test_attrib_wrapper(self):
+    foo_ty = self.Infer("""
+      import attr
+      def attrib_wrapper(*args, **kwargs):
+        return attr.ib(*args, **kwargs)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import attr
+        import foo
+        @attr.s()
+        class Foo:
+          x: int = foo.attrib_wrapper()
+          y = foo.attrib_wrapper(type=int)
+        a = Foo(10, 10)
+        b = Foo(10, '10')  # The wrapper returns attr.ib(Any) so y.type is lost
+        c = Foo(10, 20, 30)  # wrong-arg-count
+        d = Foo('10', 20)  # wrong-arg-types
+      """, pythonpath=[d.path])
+
+  def test_attrib_wrapper_kwargs(self):
+    foo_ty = self.Infer("""
+      import attr
+      def kw_attrib(typ):
+        return attr.ib(typ, kw_only=True)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import attr
+        import foo
+        @attr.s()
+        class Foo:
+          x = foo.kw_attrib(int)
+        a = Foo(10)  # missing-parameter
+        b = Foo(x=10)
+      """, pythonpath=[d.path])
+
+  def test_wrapper_setting_type(self):
+    foo_ty = self.Infer("""
+      import attr
+      def int_attrib():
+        return attr.ib(type=int)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import attr
+        import foo
+        @attr.s()
+        class Foo(object):  # invalid-annotation
+          x: int = foo.int_attrib()
+      """, pythonpath=[d.path])
 
 if __name__ == "__main__":
   test_base.main()

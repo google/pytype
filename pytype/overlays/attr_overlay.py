@@ -1,5 +1,6 @@
 """Support for the 'attrs' library."""
 
+import json
 import logging
 
 from pytype import abstract
@@ -60,7 +61,8 @@ class Attrs(classgen.Decorator):
         attrib = orig.data[0]
         if typ and attrib.has_type:
           # We cannot have both a type annotation and a type argument.
-          self.vm.errorlog.invalid_annotation(self.vm.frames, typ)
+          msg = "attr.ib cannot have both a 'type' arg and a type annotation."
+          self.vm.errorlog.invalid_annotation(self.vm.frames, typ, details=msg)
           attr = Attribute(
               name=name,
               typ=self.vm.convert.unsolvable,
@@ -168,6 +170,21 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
 
   def validator_slot(self, node, validator):
     return node, validator
+
+  def json_metadata(self):
+    return json.dumps({
+        "type": "attr.ib",
+        "init": self.init,
+        "kw_only": self.kw_only,
+        "has_type": self.has_type
+    })
+
+  @classmethod
+  def from_pytd(cls, vm, typ, metadata):
+    init = metadata["init"]
+    kw_only = metadata["kw_only"]
+    has_type = metadata["has_type"]
+    return cls(vm, typ, has_type, init, None, kw_only, None)
 
 
 class Attrib(classgen.FieldConstructor):

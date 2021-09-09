@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: mdemello, at: 2021-09-08T13:07-07:00 -->
 
 <!--te-->
 
@@ -56,25 +56,25 @@ Enums                                    | 🟡        | [#788][enum]
 
 ### Typing
 
-Feature                                                         | Supports | Issues
---------------------------------------------------------------- | :------: | :----:
-[PEP 484 -- Type Hints][484]                                    | ✅        |
-[PEP 526 -- Syntax for Variable Annotations][526]               | ✅        |
-[PEP 544 -- Protocols][544]                                     | ✅        |
-[PEP 561 -- Distributing and Packaging Type Information][561]   | ❌        | [#151][packaging]
-[PEP 563 -- Postponed Evaluation of Annotations][563]           | ✅        |
-[PEP 585 -- Type Hinting Generics in Standard Collections][585] | ✅        |
-[PEP 586 -- Literal Types][586]                                 | 🟡        | [#790][literal-enums]
-[PEP 589 -- TypedDict][589]                                     | ❌        | [#680][typeddict]
-[PEP 591 -- Adding a Final Qualifier to Typing][591]            | ❌        | [#680][final]
-[PEP 593 -- Flexible Function and Variable Annotations][593]    | ✅        |
-[PEP 604 -- Allow Writing Union Types as X \| Y][604]           | ❌        | [#785][union-pipe]
-[PEP 612 -- Parameter Specification Variables][612]             | ❌        | [#786][param-spec]
-[PEP 613 -- Explicit Type Aliases][613]                         | ❌        | [#787][typealias]
-[PEP 647 -- User-Defined Type Guards][647]                      | ❌        | [#916][type-guards]
-Custom Recursive Types                                          | ❌        | [#407][recursive-types]
-Generic Type Aliases                                            | ✅        | Requires `--preserve-union-macros` flag
-Type Annotation Inheritance                                     | ❌        | [#81][annotation-inheritance]
+Feature                                                         | Version | Supports | Issues
+--------------------------------------------------------------- | :-----: | :------: | :----:
+[PEP 484 -- Type Hints][484]                                    | 3.5     | ✅       |
+[PEP 526 -- Syntax for Variable Annotations][526]               | 3.6     | ✅       |
+[PEP 544 -- Protocols][544]                                     | 3.8     | ✅       |
+[PEP 561 -- Distributing and Packaging Type Information][561]   | 3.7     | ❌       | [#151][packaging]
+[PEP 563 -- Postponed Evaluation of Annotations][563]           | 3.7     | ✅       |
+[PEP 585 -- Type Hinting Generics in Standard Collections][585] | 3.9     | ✅       |
+[PEP 586 -- Literal Types][586]                                 | 3.8     | 🟡       | [#790][literal-enums]
+[PEP 589 -- TypedDict][589]                                     | 3.8     | ❌       | [#680][typeddict]
+[PEP 591 -- Adding a Final Qualifier to Typing][591]            | 3.8     | ❌       | [#680][final]
+[PEP 593 -- Flexible Function and Variable Annotations][593]    | 3.9     | ✅       |
+[PEP 604 -- Allow Writing Union Types as X \| Y][604]           | 3.10    | ❌       | [#785][union-pipe]
+[PEP 612 -- Parameter Specification Variables][612]             | 3.10    | ❌       | [#786][param-spec]
+[PEP 613 -- Explicit Type Aliases][613]                         | 3.11+   | ❌       | [#787][typealias]
+[PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
+Custom Recursive Types                                          | 3.6     | ❌       | [#407][recursive-types]
+Generic Type Aliases                                            | 3.6     | ✅       | Requires `--preserve-union-macros` flag
+Type Annotation Inheritance                                     | 3.6     | ❌       | [#81][annotation-inheritance]
 
 ### Third-Party Libraries
 
