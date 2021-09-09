@@ -2814,7 +2814,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     else:
       raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
-  def _new_instance(self, args):  # pylint: disable=arguments-renamed
+  def _new_instance(self, args):
     if self.full_name == "builtins.tuple" and args.is_empty():
       value = Tuple((), self.vm)
     elif self.full_name == "builtins.dict" and args.is_empty():
