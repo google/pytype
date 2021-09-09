@@ -10,7 +10,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Host and Target Versions](#host-and-target-versions)
       * [Opcodes](#opcodes)
 
-<!-- Added by: rechen, at: 2021-08-23T15:10-07:00 -->
+<!-- Added by: rechen, at: 2021-09-09T13:11-07:00 -->
 
 <!--te-->
 
@@ -109,12 +109,8 @@ associated argument, and that that argument is an index into the list of names.
 > the Opcode class document these semantic meanings.
 
 After defining a class for every python opcode, `opcodes.py` defines a series of
-tables mapping between bytecodes and opcodes for each python version we support
-(currently `3.5`-`3.8`). The `opcodes.py/dis()` function gets the right mapping
-table for the target python version, and then passes it to bytecode reader which
-iterates over the block of bytes, converting each one into an opcode or into the
-argument for the preceding opcode.
-
-NOTE: One subtlety is that from python 3.6 the bytecode format changed;
-therefore we need two separate bytecode scanners, `_bytecode_reader` for python
-<= 3.5 and `_wordcode_reader` for 3.6 onwards.
+tables mapping between bytecodes and opcodes for each python version we support.
+The `opcodes.py/dis()` function gets the right mapping table for the target
+python version, and then passes it to bytecode reader which iterates over the
+block of bytes, converting each one into an opcode or into the argument for the
+preceding opcode.
