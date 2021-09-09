@@ -1,3 +1,20 @@
+Version 2021.09.09
+
+New features and updates:
+* Enable --enforce-noniterable-strings by default and make the flag a no-op. It
+  will be removed in the next release.
+* Narrow the types of local variables based on test assertions.
+* For bad return type annotations on generators, change invalid-type-annotation
+  to bad-yield-annotation error.
+* Slightly improve pytype's performance on a trivial file.
+
+Bug fixes:
+* Fix our type definition for BaseException.with_traceback().
+* Add some missing 3.8 methods to typing stubs.
+* Add `breakpoint` to the supported builtin methods.
+* Fix a bug in pytype's handling of late annotations.
+* Typeshed: fix version parsing regex.
+
 Version 2021.08.24
 
 New features and updates:
