@@ -858,8 +858,8 @@ class TestInheritedAttrib(test_base.BaseTest):
       self.CheckWithErrors("""
         import attr
         import foo
-        @attr.s()  # invalid-annotation
-        class Foo:
+        @attr.s()
+        class Foo(object):  # invalid-annotation
           x: int = foo.int_attrib()
       """, pythonpath=[d.path])
 
