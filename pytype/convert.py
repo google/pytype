@@ -822,7 +822,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         ann = pyval.annotations[1][1:-1]
         metadata = json.loads(ann)
         if metadata["type"] == "attr.ib":
-          return attr_overlay.AttribInstance.from_pytd(self.vm, typ, metadata)
+          return attr_overlay.AttribInstance.from_pytd(
+              self.vm, self.vm.root_node, typ, metadata)
       else:
         return typ
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node

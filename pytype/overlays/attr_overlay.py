@@ -176,15 +176,17 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
         "type": "attr.ib",
         "init": self.init,
         "kw_only": self.kw_only,
-        "has_type": self.has_type
+        "has_type": self.has_type,
+        "default": self.default is not None
     })
 
   @classmethod
-  def from_pytd(cls, vm, typ, metadata):
+  def from_pytd(cls, vm, node, typ, metadata):
     init = metadata["init"]
     kw_only = metadata["kw_only"]
     has_type = metadata["has_type"]
-    return cls(vm, typ, has_type, init, None, kw_only, None)
+    default = vm.new_unsolvable(node) if metadata["default"] else None
+    return cls(vm, typ, has_type, init, None, kw_only, default)
 
 
 class Attrib(classgen.FieldConstructor):
