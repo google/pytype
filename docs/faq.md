@@ -19,20 +19,14 @@
       * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
 
-<!-- Added by: rechen, at: 2021-08-19T18:03-07:00 -->
+<!-- Added by: rechen, at: 2021-09-13T11:20-07:00 -->
 
 <!--te-->
 
 ## How is pytype different from other type checkers?
 
 pytype has the ability to infer types for unannotated code. For more
-information, check out:
-
-* A [PyCon lightning talk][lightning-talk] comparing pytype and mypy,
-another popular type checker. The slides are [here][lightning-talk-slides].
-* A more detailed written discussion in a [Lobste.rs post][lobsters-comment].
-* A [paper][type-system-paper] detailing pytype and mypy's differing views of
-  python's type system.
+information, check out our [typing FAQ][typing-faq].
 
 ## Can I find out what pytype thinks the type of my expression is?
 
@@ -129,7 +123,7 @@ class LoggerMixin(LoggerMixinInterface):
   def log(self, msg: str):
     self._log.print(f'{self.name()}: {msg}')
 
-class Person(LoggerMixin):
+class Person(LoggerMixinInterface):
   ...  # Other initialization
   def name(self):
     return self._name
@@ -305,13 +299,10 @@ def g(**kwargs: Mapping[str, int]) -> int:
 <!-- General references -->
 [compatibility]: user_guide.md#compatibility
 [how-do-i-disable-all-pytype-checks-for-a-particular-file]: #how-do-i-disable-all-pytype-checks-for-a-particular-file
-[lightning-talk]: https://youtu.be/yFcCuinRVnU?t=2300
-[lightning-talk-slides]: https://docs.google.com/presentation/d/1GYqLeLkknjYaYX2JrMzxX8LGw_rlO-6kTk-VNPVG9gY/edit?usp=sharing
-[lobsters-comment]: https://lobste.rs/s/0uv5hy/how_quickly_find_type_issues_your_python#c_6ojqaj
 [oss-pytype]: https://github.com/google/pytype
 [pep-561-issue]: https://github.com/google/pytype/issues/151
-[type-system-paper]: https://www.cs.rpi.edu/~milanova/docs/dls2020.pdf
 [typeshed]: https://github.com/python/typeshed
+[typing-faq]: typing_faq.md
 [why-is-pytype-taking-so-long]: #why-is-pytype-taking-so-long
 
 <!-- References with different internal and external versions -->

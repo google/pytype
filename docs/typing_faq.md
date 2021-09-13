@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-07-27' }
       * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
       * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-09-13T11:19-07:00 -->
 
 <!--te-->
 
@@ -20,9 +20,14 @@ freshness: { owner: 'mdemello' reviewed: '2021-07-27' }
 This FAQ refers to "pytype" rather than "python" because typing semantics in the
 python world are a property of the type checker rather than of the language.
 There are several python type checkers, and while they do aim for consistency
-with the relevant PEPs, they do not behave identically. See, for instance, [this
-paper][type-system-paper] detailing pytype and mypy's differing views of
-python's type system.
+with the relevant PEPs, they do not behave identically. For more information,
+check out:
+
+* A [PyCon lightning talk][lightning-talk] comparing pytype and mypy,
+another popular type checker. The slides are [here][lightning-talk-slides].
+* A more detailed written discussion in a [Lobste.rs post][lobsters-comment].
+* A [paper][type-system-paper] detailing pytype and mypy's differing views of
+  python's type system.
 
 As the primary open source type checker, [mypy] tends to de facto define the
 semantics of what people think of as "python typing" in areas not formally
@@ -159,6 +164,9 @@ Some other interesting writing on the topic:
 
 [hard]: https://3fx.ch/typing-is-hard.html
 [gradual]: https://blog.sigplan.org/2019/07/12/gradual-typing-theory-practice/
+[lightning-talk]: https://youtu.be/yFcCuinRVnU?t=2300
+[lightning-talk-slides]: https://docs.google.com/presentation/d/1GYqLeLkknjYaYX2JrMzxX8LGw_rlO-6kTk-VNPVG9gY/edit?usp=sharing
+[lobsters-comment]: https://lobste.rs/s/0uv5hy/how_quickly_find_type_issues_your_python#c_6ojqaj
 [mypy]: http://mypy-lang.org/
 [overview]: http://logan.tw/posts/2014/11/12/soundness-and-completeness-of-the-type-system/
 [performance]: http://prl.ccs.neu.edu/blog/2018/10/06/a-spectrum-of-type-soundness-and-performance/
