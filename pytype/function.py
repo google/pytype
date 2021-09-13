@@ -453,12 +453,15 @@ class Args(collections.namedtuple(
       else:
         namedargs.update(node, starstarargs_as_dict)
 
-      # If the original call contained **kwargs, starstarargs will have
-      # could_contain_anything set to True. If not, we just had named args
-      # packed into starstarargs, so set starstarargs to None after extracting
-      # all the named args.
+      # We have pulled out all the named args from the function call, so we need
+      # to delete them from starstarargs. If the original call contained
+      # **kwargs, starstarargs will have could_contain_anything set to True, so
+      # preserve it as a dict with no named keys. If not, we just had named args
+      # packed into starstarargs, so set starstarargs to None.
       kwdict = starstarargs.data[0]
-      if not (kwdict.isinstance_Dict() and kwdict.could_contain_anything):
+      if kwdict.isinstance_Dict() and kwdict.could_contain_anything:
+        kwdict.pyval = {}
+      else:
         starstarargs = None
     starargs_as_tuple = self.starargs_as_tuple(node, vm)
     if starargs_as_tuple is not None:

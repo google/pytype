@@ -425,6 +425,21 @@ class TestFunctions(test_base.BaseTest):
         return f(*args, a='a', **kwargs)  # wrong-arg-types
     """)
 
+  def test_pass_through_partial_named_args_and_kwargs(self):
+    self.Check("""
+      class Foo:
+        def __init__(self, name, labels):
+          pass
+
+      def g(name, bar, **kwargs):
+        Foo(name=name, **kwargs)
+
+      def f(name, x, **args):
+        g(name=name, bar=x, **args)
+
+      f('a', 10, labels=None)
+    """)
+
   def test_list_comprehension(self):
     ty = self.Infer("""
       def f(elements):
