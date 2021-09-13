@@ -25,4 +25,5 @@ filegroup(
     stdlib/dummy_thread.pytd
     stdlib/encodings.pytd
     stdlib/enum.pytd
+    stdlib/old_enum.pytd
 )

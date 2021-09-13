@@ -46,9 +46,13 @@ class EnumOverlay(overlay.Overlay):
           "EnumMeta": EnumMeta,
           "IntEnum": IntEnumBuilder,
       }
+      ast = vm.loader.import_name("enum")
     else:
       member_map = {}
-    ast = vm.loader.import_name("enum")
+      # To support the enum overlay, the enum type stub needs modification that
+      # break some users. Load an older version of that type stub if the overlay
+      # isn't being used so those users don't break.
+      ast = vm.loader.import_name("old_enum")
     super().__init__(vm, "enum", member_map, ast)
 
 
@@ -326,7 +330,9 @@ class EnumMetaInit(abstract.SimpleFunction):
   def _call_generate_next_value(self, node, cls, name):
     node, method = self.vm.attribute_handler.get_attribute(
         node, cls, "_generate_next_value_", cls.to_binding(node))
-    if method:
+    # It's possible we'll get a unsolvable (due to __getattr__, say) for method.
+    # We treat that as if the method is undefined instead.
+    if method and all(abstract_utils.is_callable(m) for m in method.data):
       args = function.Args(posargs=(
           self.vm.convert.build_string(node, name),
           self.vm.convert.build_int(node),

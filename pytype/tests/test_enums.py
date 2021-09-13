@@ -46,7 +46,6 @@ class EnumOverlayTest(test_base.BaseTest):
         RED: int
       """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_access_members_and_values(self):
     self.CheckWithErrors("""
       import enum
@@ -63,7 +62,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(Colors.GREEN.value, "Colors")  # assert-type
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_sunderscore_name_value(self):
     self.Check("""
       from typing import Any
@@ -77,7 +75,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(m._value_, Any)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_sunderscore_name_value_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -95,7 +92,6 @@ class EnumOverlayTest(test_base.BaseTest):
           assert_type(m._value_, Any)
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_basic_enum_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", """
@@ -118,7 +114,6 @@ class EnumOverlayTest(test_base.BaseTest):
         v: int
       """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_enum_from_pyi_recur(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -131,7 +126,6 @@ class EnumOverlayTest(test_base.BaseTest):
         Recur = foo.Recur
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_canonical_enum_members(self):
     # Checks that enum members created by instantiate() behave similarly to
     # real enum members.
@@ -156,7 +150,6 @@ class EnumOverlayTest(test_base.BaseTest):
           return x.value
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_pytd_returns_enum(self):
     # Ensure that canonical enums created by PytdSignature.instantiate_return
     # have name and value fields.
@@ -174,7 +167,6 @@ class EnumOverlayTest(test_base.BaseTest):
           print(foo.get_m(name).value)
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_value_overlap(self):
     # Make sure enum members named "name" and "value" work correctly.
     self.Check("""
@@ -190,7 +182,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.value.value, "str")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_value_overlap_pyi(self):
     # Make sure enum members named "name" and "value" work correctly.
     with file_utils.Tempdir() as d:
@@ -210,7 +201,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(foo.M.value.value, "str")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_lookup(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", "a_string: str")
@@ -226,7 +216,6 @@ class EnumOverlayTest(test_base.BaseTest):
         _ = M["C"]  # attribute-error
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_name_lookup_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", """
@@ -252,7 +241,6 @@ class EnumOverlayTest(test_base.BaseTest):
       M[1]  # unsupported-operands
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_enum_named_name(self):
     self.Check("""
       import enum
@@ -267,7 +255,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.value.value, "str")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_enum_pytd_named_name(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
@@ -286,7 +273,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M.value.value, "str")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_value_lookup(self):
     self.CheckWithErrors("""
       import enum
@@ -307,7 +293,6 @@ class EnumOverlayTest(test_base.BaseTest):
       N(M.A)  # wrong-arg-types
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_value_lookup_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
@@ -332,7 +317,6 @@ class EnumOverlayTest(test_base.BaseTest):
         N(M.A)  # wrong-arg-types
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_value_lookup_no_members(self):
     self.Check("""
       import enum
@@ -341,7 +325,6 @@ class EnumOverlayTest(test_base.BaseTest):
       x = M(1)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_value_looku_no_members_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -355,7 +338,6 @@ class EnumOverlayTest(test_base.BaseTest):
         y = foo.M(1)
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_enum_eq(self):
     # Note that this test only checks __eq__'s behavior. Though enums support
     # comparisons using `is`, pytype doesn't check `is` the same way as __eq__.
@@ -386,7 +368,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(c, "bool")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_enum_pytd_eq(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
@@ -470,7 +451,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(bool(M), "bool")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_functional_api(self):
     self.Check("""
       import enum
@@ -493,7 +473,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(P.B.value, "str")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_functional_api_errors(self):
     self.CheckWithErrors("""
       import enum
@@ -516,7 +495,6 @@ class EnumOverlayTest(test_base.BaseTest):
           print(x)
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_functional_api_intenum(self):
     # Technically, any subclass of Enum without any members can be used for the
     # functional API. This is annoying and hard to detect, but we should support
@@ -528,7 +506,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(FI.A.value, int)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_basic(self):
     self.Check("""
       import enum
@@ -538,7 +515,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A.value, "int")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_mixed(self):
     self.Check("""
       import enum
@@ -549,7 +525,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.B.value, "int")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_generate_basic(self):
     self.Check("""
       import enum
@@ -561,7 +536,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A.value, "str")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_generate_staticmethod(self):
     self.Check("""
       import enum
@@ -574,7 +548,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A.value, "str")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_generate_error(self):
     self.CheckWithErrors("""
       import enum
@@ -584,7 +557,6 @@ class EnumOverlayTest(test_base.BaseTest):
         A = enum.auto()
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_generate_wrong_annots(self):
     self.CheckWithErrors("""
       import enum
@@ -594,7 +566,6 @@ class EnumOverlayTest(test_base.BaseTest):
         A = enum.auto()
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_generate_from_pyi_base(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -610,7 +581,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M.A.value, "str")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_generate_from_pyi_base_staticmethod(self):
     # It's possible that _generate_next_value_ will appear in a type stub as a
     # staticmethod. This should not change how pytype handles it.
@@ -629,7 +599,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M.A.value, "str")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -648,7 +617,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M._generate_next_value_, Callable[[str, int, int, list], str])
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_auto_flag(self):
     # Flag enums can be defined using bitwise ops, even when using auto.
     self.Check("""
@@ -668,7 +636,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(Color.WHITE.value, int)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_subclassing_simple(self):
     self.Check("""
       import enum
@@ -682,7 +649,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M(1), "M")
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_subclassing_pytd_simple(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -700,7 +666,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M(1), "foo.M")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_subclassing_pytd_cross_file(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -718,7 +683,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M(1), "M")
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_subclassing_base_types(self):
     self.Check("""
       import enum
@@ -751,7 +715,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(X.A.value, str)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_subclassing_base_types_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -797,7 +760,6 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(Y.A.value, str)
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_base_types(self):
     self.CheckWithErrors("""
       import enum
@@ -810,7 +772,6 @@ class EnumOverlayTest(test_base.BaseTest):
         A = (1, 2)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_submeta(self):
     self.Check("""
       import enum
@@ -826,7 +787,6 @@ class EnumOverlayTest(test_base.BaseTest):
         print(m.value)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_submeta_withmetaclass(self):
     # Ensure six.with_metaclass works with enums, even with a custom metaclass.
     self.Check("""
@@ -862,7 +822,6 @@ class EnumOverlayTest(test_base.BaseTest):
       Yes.B
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_dynamic_attributes_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -880,7 +839,6 @@ class EnumOverlayTest(test_base.BaseTest):
         foo.Yes.B
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_typical_subclassed_meta(self):
     # The typical pattern when subclassing EnumMeta is to create a base enum
     # using that metaclass, then subclass that enum in other files.
@@ -900,7 +858,6 @@ class EnumOverlayTest(test_base.BaseTest):
         base_enum.Base.A
       """, pythonpath=[d.path])
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_intenum_basic(self):
     self.Check("""
       import enum
@@ -908,7 +865,6 @@ class EnumOverlayTest(test_base.BaseTest):
         A = 1
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_flag_basic(self):
     self.Check("""
       import enum
@@ -916,7 +872,6 @@ class EnumOverlayTest(test_base.BaseTest):
         A = 1
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_intflag_basic(self):
     self.Check("""
       import enum
@@ -944,7 +899,6 @@ class EnumOverlayTest(test_base.BaseTest):
           return result
     """)
 
-  @test_base.skip("Fails due to __getattr__ in pytd.")
   def test_if_statement_name_error(self):
     # See b/195136939
     self.Check("""
@@ -971,7 +925,6 @@ class EnumOverlayTest(test_base.BaseTest):
           return self._x + 1
     """)
 
-  @test_base.skip("Fails due to __getattr__ in enum.pytd")
   def test_own_init_simple(self):
     self.Check("""
       from enum import Enum
@@ -985,7 +938,6 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A.value, Any)
     """)
 
-  @test_base.skip("Fails due to __getattr__ in enum.pytd")
   def test_own_init_tuple_value(self):
     # https://docs.python.org/3/library/enum.html#planet
     self.Check("""
@@ -1028,7 +980,6 @@ class EnumOverlayTest(test_base.BaseTest):
           self.x = a + b + c
     """)
 
-  @test_base.skip("Fails due to __getattr__ in enum.pytd")
   def test_dynamic_base_enum(self):
     self.Check("""
       import enum
@@ -1040,7 +991,6 @@ class EnumOverlayTest(test_base.BaseTest):
       M.B
     """)
 
-  @test_base.skip("Fails due to __getattr__ in enum.pytd")
   def test_dynamic_base_enum_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
