@@ -3787,12 +3787,22 @@ class VirtualMachine:
     self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
 
-  def _narrow(self, state, var, pred):
-    """Narrow a variable by removing bindings that do not satisfy pred."""
+  def _store_new_var_in_local(self, state, var, new_var):
+    """Assign a new var to a variable in locals."""
     varname = self.get_var_name(var)
     if not varname or varname not in self.frame.f_locals.pyval:
-      # We cannot store the narrowed value back in locals.
+      # We cannot store the new value back in locals.
       return state
+    # TODO(mdemello): Do we need to create two new nodes for this? Code copied
+    # from _pop_and_store, but there might be a reason to create two nodes there
+    # that does not apply here.
+    state = state.forward_cfg_node()
+    state = self._store_value(state, varname, new_var, local=True)
+    state = state.forward_cfg_node()
+    return state
+
+  def _narrow(self, state, var, pred):
+    """Narrow a variable by removing bindings that do not satisfy pred."""
     keep = [b for b in var.bindings if pred(b.data)]
     if len(keep) == len(var.bindings):
       # Nothing to narrow.
@@ -3800,13 +3810,7 @@ class VirtualMachine:
     out = self.program.NewVariable()
     for b in keep:
       out.AddBinding(b.data, {b}, state.node)
-    # TODO(mdemello): Do we need to create two new nodes for this? Code copied
-    # from _pop_and_store, but there might be a reason to create two nodes there
-    # that does not apply here.
-    state = state.forward_cfg_node()
-    state = self._store_value(state, varname, out, local=True)
-    state = state.forward_cfg_node()
-    return state
+    return self._store_new_var_in_local(state, var, out)
 
   def _check_test_assert(self, state, func, args):
     """Narrow the types of variables based on test assertions."""
@@ -3823,9 +3827,10 @@ class VirtualMachine:
     elif f.name == "assertIsInstance":
       if len(args) == 2:
         typ = args[1].data[0]
-        pred = lambda v: (v.cls and  # pylint: disable=g-long-lambda
-                          abstract_utils.check_against_mro(self, v.cls, typ))
-        state = self._narrow(state, args[0], pred)
+        # TODO(mdemello): If we want to cast var to typ via an assertion, should
+        # we check that at least one binding of var is compatible with typ?
+        out = typ.instantiate(state.node)
+        state = self._store_new_var_in_local(state, args[0], out)
     return state
 
   def byte_CALL_METHOD(self, state, op):
