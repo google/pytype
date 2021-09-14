@@ -821,7 +821,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # accidentally trigger _enforce_common_superclass.
         new_substs = []
         for instance_param in instance.pyval:
-          if copy_params_directly:
+          if copy_params_directly and instance_param.bindings:
             new_subst = {class_param.full_name: view[
                 instance_param].AssignToNewVariable(self._node)}
           else:
