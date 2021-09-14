@@ -1,12 +1,10 @@
 """Common datatypes and pytd utilities."""
 
-from typing import Any, List, Tuple
-
 import dataclasses
+from typing import Any, Tuple
 
 from pytype import utils
 from pytype.pytd import pytd
-from pytype.pytd import pytd_utils
 from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
 
@@ -180,45 +178,6 @@ def is_any(val) -> bool:
   if isinstance(val, Ellipsis):
     return True
   return pytdgen.is_any(val)
-
-
-def pytd_literal(parameters: List[Any]) -> pytd_node.Node:
-  """Create a pytd.Literal."""
-  literal_parameters = []
-  for p in parameters:
-    if pytdgen.is_none(p):
-      literal_parameters.append(p)
-    elif isinstance(p, pytd.NamedType):
-      # TODO(b/173742489): support enums.
-      literal_parameters.append(pytd.AnythingType())
-    elif isinstance(p, Constant):
-      literal_parameters.append(p.to_pytd_literal())
-    elif isinstance(p, pytd.Literal):
-      literal_parameters.append(p)
-    elif isinstance(p, pytd.UnionType):
-      for t in p.type_list:
-        if isinstance(t, pytd.Literal):
-          literal_parameters.append(t)
-        else:
-          raise ParseError(f"Literal[{t}] not supported")
-    else:
-      raise ParseError(f"Literal[{p}] not supported")
-  return pytd_utils.JoinTypes(literal_parameters)
-
-
-def pytd_annotated(parameters: List[Any]) -> pytd_node.Node:
-  """Create a pytd.Annotated."""
-  if len(parameters) < 2:
-    raise ParseError(
-        "typing.Annotated takes at least two parameters: "
-        "Annotated[type, 'annotation', ...].")
-  typ, *annotations = parameters
-  if not all(isinstance(x, Constant) for x in annotations):
-    raise ParseError(
-        "Annotations needs to be string literals: "
-        "Annotated[type, 'annotation', ...].")
-  annotations = tuple(x.repr_str() for x in annotations)
-  return pytd.Annotated(typ, annotations)
 
 
 def builtin_keyword_constants():

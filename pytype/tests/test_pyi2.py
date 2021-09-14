@@ -87,5 +87,32 @@ class PYITestPython3Feature(test_base.BaseTest):
       """)
 
 
+class PYITestAnnotated(test_base.BaseTest):
+  """Tests for typing.Annotated."""
+
+  @test_base.skip("We do not round-trip Annotated yet")
+  def test_dict(self):
+    ty = self.Infer("""
+      from typing import Annotated
+      x: Annotated[int, 'str', {'x': 1, 'y': 'z'}]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Annotated
+      x: Annotated[int, 'str', {'x': 1, 'y': 'z'}]
+    """)
+
+  def test_invalid_pytype_metadata(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Annotated
+        x: Annotated[int, "pytype_metadata", 2]
+      """)
+      err = self.CheckWithErrors("""
+        import foo
+        a = foo.x  # invalid-annotation[e]
+      """, pythonpath=[d.path])
+      self.assertErrorSequences(err, {"e": ["pytype_metadata"]})
+
+
 if __name__ == "__main__":
   test_base.main()

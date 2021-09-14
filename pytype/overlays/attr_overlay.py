@@ -1,6 +1,5 @@
 """Support for the 'attrs' library."""
 
-import json
 import logging
 
 from pytype import abstract
@@ -171,17 +170,17 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   def validator_slot(self, node, validator):
     return node, validator
 
-  def json_metadata(self):
-    return json.dumps({
-        "type": "attr.ib",
+  def to_metadata(self):
+    return {
+        "tag": "attr.ib",
         "init": self.init,
         "kw_only": self.kw_only,
         "has_type": self.has_type,
         "default": self.default is not None
-    })
+    }
 
   @classmethod
-  def from_pytd(cls, vm, node, typ, metadata):
+  def from_metadata(cls, vm, node, typ, metadata):
     init = metadata["init"]
     kw_only = metadata["kw_only"]
     has_type = metadata["has_type"]

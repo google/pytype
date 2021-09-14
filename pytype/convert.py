@@ -1,6 +1,5 @@
 """Code for translating between type systems."""
 
-import json
 import logging
 import types
 
@@ -18,6 +17,7 @@ from pytype import utils
 from pytype.overlays import attr_overlay
 from pytype.overlays import typing_overlay
 from pytype.pyc import loadmarshal
+from pytype.pyi import metadata
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -818,12 +818,17 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, pytd.Annotated):
       typ = self.constant_to_value(pyval.base_type, subst, self.vm.root_node)
       if pyval.annotations[0] == "'pytype_metadata'":
-        # Strip off the quotes.
-        ann = pyval.annotations[1][1:-1]
-        metadata = json.loads(ann)
-        if metadata["type"] == "attr.ib":
-          return attr_overlay.AttribInstance.from_pytd(
-              self.vm, self.vm.root_node, typ, metadata)
+        try:
+          md = metadata.from_string(pyval.annotations[1])
+          if md["tag"] == "attr.ib":
+            ret = attr_overlay.AttribInstance.from_metadata(
+                self.vm, self.vm.root_node, typ, md)
+            return ret
+        except (IndexError, ValueError, TypeError, KeyError):
+          details = "Wrong format for pytype_metadata."
+          self.vm.errorlog.invalid_annotation(
+              self.vm.frames, pyval.annotations[1], details)
+          return typ
       else:
         return typ
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node

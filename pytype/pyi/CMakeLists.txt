@@ -9,6 +9,7 @@ py_library(
     .conditions
     .definitions
     .function
+    .metadata
     .modules
     .types
     .visitor
@@ -23,6 +24,7 @@ py_library(
     .classdef
     .conditions
     .definitions
+    .evaluator
     .function
     .modules
     .types
@@ -62,9 +64,19 @@ py_library(
     definitions.py
   DEPS
     .classdef
+    .metadata
     .types
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    evaluator
+  SRCS
+    evaluator.py
+  DEPS
+    .types
 )
 
 py_library(
@@ -77,6 +89,15 @@ py_library(
     pytype.utils
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
+)
+
+py_library(
+  NAME
+    metadata
+  SRCS
+    metadata.py
+  DEPS
+    .evaluator
 )
 
 py_library(

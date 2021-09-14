@@ -14,6 +14,7 @@ from pytype import utils
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
+from pytype.pyi import metadata
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -243,8 +244,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           for d in v.default.data)
     elif isinstance(v, attr_overlay.AttribInstance):
       ret = self.value_to_pytd_type(node, v.typ, seen, view)
-      metadata = v.json_metadata()
-      return pytd.Annotated(ret, ("'pytype_metadata'", f"'{metadata}'"))
+      md = metadata.to_pytd(v.to_metadata())
+      return pytd.Annotated(ret, ("'pytype_metadata'", md))
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = abstract_utils.get_signatures(v)
@@ -392,9 +393,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     else:
       raise NotImplementedError(v.__class__.__name__)
 
-  def _ordered_attrs_to_instance_types(self, node, metadata, annots):
+  def _ordered_attrs_to_instance_types(self, node, attr_metadata, annots):
     """Get instance types for ordered attrs in the metadata."""
-    attrs = metadata.get("attr_order", [])
+    attrs = attr_metadata.get("attr_order", [])
     if not annots or not attrs:
       return
 
