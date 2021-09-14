@@ -32,6 +32,7 @@ from pytype import overlay_utils
 from pytype.overlays import classgen
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
@@ -40,19 +41,17 @@ class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
   def __init__(self, vm):
+    ast = vm.loader.import_name("enum")
     if vm.options.use_enum_overlay:
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
           "IntEnum": IntEnumBuilder,
       }
-      ast = vm.loader.import_name("enum")
+      ast = ast.Visit(visitors.RemoveMethods())
     else:
       member_map = {}
-      # To support the enum overlay, the enum type stub needs modification that
-      # break some users. Load an older version of that type stub if the overlay
-      # isn't being used so those users don't break.
-      ast = vm.loader.import_name("old_enum")
+
     super().__init__(vm, "enum", member_map, ast)
 
 
@@ -60,7 +59,7 @@ class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
   def __init__(self, vm, name="Enum"):
-    enum_ast = vm.loader.import_name("enum")
+    enum_ast = vm.loaded_overlays["enum"].ast
     pyval = enum_ast.Lookup(f"enum.{name}")
     super().__init__(name, pyval, vm)
 
@@ -236,7 +235,7 @@ class EnumMeta(abstract.PyTDClass):
   """
 
   def __init__(self, vm):
-    enum_ast = vm.loader.import_name("enum")
+    enum_ast = vm.loaded_overlays["enum"].ast
     pytd_cls = enum_ast.Lookup("enum.EnumMeta")
     super().__init__("EnumMeta", pytd_cls, vm)
     init = EnumMetaInit(vm)

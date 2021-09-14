@@ -1113,6 +1113,21 @@ class RemoveFunctionsAndClasses(Visitor):
                                       if c.name not in self.names))
 
 
+class RemoveMethods(Visitor):
+  """Visitor for removing unwanted methods from classes.
+
+  Intended to be used to remove unwanted __getattribute__/__getattr__ methods.
+  """
+
+  def __init__(self, names=("__getattribute__", "__getattr__")):
+    super().__init__()
+    self.names = names
+
+  def VisitClass(self, node):
+    return node.Replace(methods=tuple(f for f in node.methods
+                                      if f.name not in self.names))
+
+
 class StripExternalNamePrefix(Visitor):
   """Strips off the prefix the parser uses to mark external types.
 
