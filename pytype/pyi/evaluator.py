@@ -40,6 +40,9 @@ def _convert(node):
     return node.id
   elif isinstance(node, types.Constant):
     return node.value
+  elif node.__class__.__name__ == "NamedType" and node.name == "None":
+    # We convert None to pytd.NamedType('None') in types.Constant
+    return None
   elif (isinstance(node, ast3.UnaryOp) and
         isinstance(node.op, (ast3.UAdd, ast3.USub))):
     operand = _convert(node.operand)

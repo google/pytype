@@ -1,5 +1,6 @@
 """Support for the 'attrs' library."""
 
+import enum
 import logging
 
 from pytype import abstract
@@ -15,6 +16,13 @@ log = logging.getLogger(__name__)
 # type aliases for convenience
 Param = overlay_utils.Param
 Attribute = classgen.Attribute
+
+
+class TypeSource(enum.Enum):
+  """Source of an attrib's `typ` property."""
+  TYPE = 1
+  DEFAULT = 2
+  CONVERTER = 3
 
 
 class AttrOverlay(overlay.Overlay):
@@ -58,41 +66,30 @@ class Attrs(classgen.Decorator):
       typ, orig = local.get_type(node, name), local.orig
       if is_attrib(orig):
         attrib = orig.data[0]
-        if typ and attrib.has_type:
-          # We cannot have both a type annotation and a type argument.
-          msg = "attr.ib cannot have both a 'type' arg and a type annotation."
-          self.vm.errorlog.invalid_annotation(self.vm.frames, typ, details=msg)
-          attr = Attribute(
-              name=name,
-              typ=self.vm.convert.unsolvable,
-              init=attrib.init,
-              kw_only=attrib.kw_only,
-              default=attrib.default)
-        elif not typ:
+        attr = Attribute(
+            name=name, typ=None, init=attrib.init, init_type=attrib.init_type,
+            kw_only=attrib.kw_only, default=attrib.default)
+        if typ:
+          if attrib.type_source == TypeSource.TYPE:
+            # We cannot have both a type annotation and a type argument.
+            msg = "attr.ib cannot have both a 'type' arg and a type annotation."
+            self.vm.errorlog.invalid_annotation(
+                self.vm.frames, typ, details=msg)
+            attr.typ = self.vm.convert.unsolvable
+          else:
+            # cls.members[name] has already been set via a typecomment
+            attr.typ = typ
+        else:
           # Replace the attrib in the class dict with its type.
-          attr = Attribute(
-              name=name,
-              typ=attrib.typ,
-              init=attrib.init,
-              init_type=attrib.init_type,
-              kw_only=attrib.kw_only,
-              default=attrib.default)
+          attr.typ = attrib.typ
           classgen.add_member(node, cls, name, attr.typ)
-          if attrib.has_type and isinstance(cls, abstract.InterpreterClass):
+          if (attrib.type_source == TypeSource.TYPE and
+              isinstance(cls, abstract.InterpreterClass)):
             # Add the attrib to the class's __annotations__ dict.
             annotations_dict = classgen.get_or_create_annotations_dict(
                 cls.members, self.vm)
             annotations_dict.annotated_locals[name] = abstract_utils.Local(
                 node, None, attrib.typ, orig, self.vm)
-        else:
-          # cls.members[name] has already been set via a typecomment
-          attr = Attribute(
-              name=name,
-              typ=typ,
-              init=attrib.init,
-              init_type=attrib.init_type,
-              kw_only=attrib.kw_only,
-              default=attrib.default)
         self.vm.check_annotation_type_mismatch(
             node, attr.name, attr.typ, attr.default, local.stack,
             allow_none=True)
@@ -124,11 +121,11 @@ class Attrs(classgen.Decorator):
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, has_type, init, init_type, kw_only, default):
+  def __init__(self, vm, typ, type_source, init, init_type, kw_only, default):
     super().__init__("attrib", vm)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
-    self.has_type = has_type
+    self.type_source = type_source
     self.init = init
     self.init_type = init_type
     self.kw_only = kw_only
@@ -162,8 +159,9 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     node, default_var = fn.call(node, default.bindings[0], fn_args)
     self.default = default_var
     # If we don't have a type, set the type from the default type
-    if not self.has_type:
+    if not self.type_source:
       self.typ = get_type_from_default(default_var, self.vm)
+      self.type_source = TypeSource.DEFAULT
     # Return the original decorated method so we don't lose it.
     return node, default
 
@@ -171,11 +169,12 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     return node, validator
 
   def to_metadata(self):
+    type_source = self.type_source and self.type_source.name
     return {
         "tag": "attr.ib",
         "init": self.init,
         "kw_only": self.kw_only,
-        "has_type": self.has_type,
+        "type_source": type_source,
         "default": self.default is not None
     }
 
@@ -183,9 +182,12 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   def from_metadata(cls, vm, node, typ, metadata):
     init = metadata["init"]
     kw_only = metadata["kw_only"]
-    has_type = metadata["has_type"]
+    type_source = metadata["type_source"]
+    if type_source:
+      # Convert string back to enum
+      type_source = TypeSource[type_source]
     default = vm.new_unsolvable(node) if metadata["default"] else None
-    return cls(vm, typ, has_type, init, None, kw_only, default)
+    return cls(vm, typ, type_source, init, None, kw_only, default)
 
 
 class Attrib(classgen.FieldConstructor):
@@ -203,9 +205,9 @@ class Attrib(classgen.FieldConstructor):
     type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)
     kw_only = self.get_kwarg(args, "kw_only", False)
-    has_type = type_var is not None
     converter, conv_in, conv_out = self._get_converter_types(args)
     if type_var:
+      type_source = TypeSource.TYPE
       allowed_type_params = (
           self.vm.frame.type_params |
           self.vm.annotations_util.get_callable_type_parameter_names(type_var))
@@ -213,19 +215,22 @@ class Attrib(classgen.FieldConstructor):
           node, type_var, "attr.ib", self.vm.simple_stack(),
           allowed_type_params=allowed_type_params)
     elif default_var:
+      type_source = TypeSource.DEFAULT
       typ = get_type_from_default(default_var, self.vm)
     elif conv_out:
       # TODO(b/135553563): If we have a converter and a type/default/factory, we
       # should check them for consistency and potentially raise a type error.
+      type_source = TypeSource.CONVERTER
       typ = conv_out
     else:
+      type_source = None
       typ = self.vm.convert.unsolvable
     if converter:
       init_type = conv_in or self.vm.convert.unsolvable
     else:
       init_type = None
     typ = AttribInstance(
-        self.vm, typ, has_type, init, init_type, kw_only, default_var
+        self.vm, typ, type_source, init, init_type, kw_only, default_var
     ).to_variable(node)
     return node, typ
 
