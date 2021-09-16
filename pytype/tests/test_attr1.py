@@ -863,5 +863,24 @@ class TestInheritedAttrib(test_base.BaseTest):
           x: int = foo.int_attrib()
       """, pythonpath=[d.path])
 
+  def test_wrapper_setting_default(self):
+    foo_ty = self.Infer("""
+      import attr
+      def default_attrib(typ):
+        return attr.ib(type=typ, default=None)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.Check("""
+        import attr
+        import foo
+        @attr.s()
+        class Foo:
+          y = attr.ib(default = 10)
+          x = foo.default_attrib(int)
+        a = Foo()
+      """, pythonpath=[d.path])
+
+
 if __name__ == "__main__":
   test_base.main()

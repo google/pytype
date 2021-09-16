@@ -32,6 +32,7 @@ from pytype import overlay_utils
 from pytype.overlays import classgen
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
@@ -40,15 +41,17 @@ class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
   def __init__(self, vm):
+    ast = vm.loader.import_name("enum")
     if vm.options.use_enum_overlay:
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
           "IntEnum": IntEnumBuilder,
       }
+      ast = ast.Visit(visitors.RemoveMethods())
     else:
       member_map = {}
-    ast = vm.loader.import_name("enum")
+
     super().__init__(vm, "enum", member_map, ast)
 
 
@@ -56,7 +59,7 @@ class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
   def __init__(self, vm, name="Enum"):
-    enum_ast = vm.loader.import_name("enum")
+    enum_ast = vm.loaded_overlays["enum"].ast
     pyval = enum_ast.Lookup(f"enum.{name}")
     super().__init__(name, pyval, vm)
 
@@ -232,7 +235,7 @@ class EnumMeta(abstract.PyTDClass):
   """
 
   def __init__(self, vm):
-    enum_ast = vm.loader.import_name("enum")
+    enum_ast = vm.loaded_overlays["enum"].ast
     pytd_cls = enum_ast.Lookup("enum.EnumMeta")
     super().__init__("EnumMeta", pytd_cls, vm)
     init = EnumMetaInit(vm)
@@ -326,7 +329,9 @@ class EnumMetaInit(abstract.SimpleFunction):
   def _call_generate_next_value(self, node, cls, name):
     node, method = self.vm.attribute_handler.get_attribute(
         node, cls, "_generate_next_value_", cls.to_binding(node))
-    if method:
+    # It's possible we'll get a unsolvable (due to __getattr__, say) for method.
+    # We treat that as if the method is undefined instead.
+    if method and all(abstract_utils.is_callable(m) for m in method.data):
       args = function.Args(posargs=(
           self.vm.convert.build_string(node, name),
           self.vm.convert.build_int(node),

@@ -417,6 +417,29 @@ class TestFunctions(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("g"), self.int)
 
+  def test_pass_through_named_args_and_kwargs(self):
+    self.CheckWithErrors("""
+      def f(a: int, b: str):
+        pass
+      def g(*args, **kwargs):
+        return f(*args, a='a', **kwargs)  # wrong-arg-types
+    """)
+
+  def test_pass_through_partial_named_args_and_kwargs(self):
+    self.Check("""
+      class Foo:
+        def __init__(self, name, labels):
+          pass
+
+      def g(name, bar, **kwargs):
+        Foo(name=name, **kwargs)
+
+      def f(name, x, **args):
+        g(name=name, bar=x, **args)
+
+      f('a', 10, labels=None)
+    """)
+
   def test_list_comprehension(self):
     ty = self.Infer("""
       def f(elements):

@@ -7,6 +7,7 @@ import re
 from typing import Any, Dict, List, Optional, Union
 
 from pytype.pyi import classdef
+from pytype.pyi import metadata
 from pytype.pyi import types
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import escape
@@ -135,6 +136,54 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
         from_constant=isinstance(prev_value, pytd.Constant))
   else:
     return value.Replace(name=alias.name)
+
+
+def pytd_literal(parameters: List[Any]) -> pytd_node.Node:
+  """Create a pytd.Literal."""
+  literal_parameters = []
+  for p in parameters:
+    if pytdgen.is_none(p):
+      literal_parameters.append(p)
+    elif isinstance(p, pytd.NamedType):
+      # TODO(b/173742489): support enums.
+      literal_parameters.append(pytd.AnythingType())
+    elif isinstance(p, types.Constant):
+      literal_parameters.append(p.to_pytd_literal())
+    elif isinstance(p, pytd.Literal):
+      literal_parameters.append(p)
+    elif isinstance(p, pytd.UnionType):
+      for t in p.type_list:
+        if isinstance(t, pytd.Literal):
+          literal_parameters.append(t)
+        else:
+          raise ParseError(f"Literal[{t}] not supported")
+    else:
+      raise ParseError(f"Literal[{p}] not supported")
+  return pytd_utils.JoinTypes(literal_parameters)
+
+
+def _convert_annotated(x):
+  """Convert everything to a string to store it in pytd.Annotated."""
+  if isinstance(x, types.Constant):
+    return x.repr_str()
+  elif isinstance(x, dict):
+    return metadata.to_string(x)
+  elif isinstance(x, tuple):
+    fn, posargs, kwargs = x
+    return metadata.call_to_annotation(fn, posargs=posargs, kwargs=kwargs)
+  else:
+    raise ParseError(f"Cannot convert metadata {x}")
+
+
+def pytd_annotated(parameters: List[Any]) -> pytd_node.Node:
+  """Create a pytd.Annotated."""
+  if len(parameters) < 2:
+    raise ParseError(
+        "typing.Annotated takes at least two parameters: "
+        "Annotated[type, annotation, ...].")
+  typ, *annotations = parameters
+  annotations = tuple(map(_convert_annotated, annotations))
+  return pytd.Annotated(typ, annotations)
 
 
 class _InsertTypeParameters(visitors.Visitor):
@@ -436,9 +485,9 @@ class Definitions:
   def _parameterized_type(self, base_type, parameters):
     """Return a parameterized type."""
     if self._matches_named_type(base_type, _LITERAL_TYPES):
-      return types.pytd_literal(parameters)
+      return pytd_literal(parameters)
     elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
-      return types.pytd_annotated(parameters)
+      return pytd_annotated(parameters)
     elif self._matches_named_type(base_type, _TYPEGUARD_TYPES):
       # We do not yet support PEP 647, User-Defined Type Guards. To avoid
       # blocking typeshed, convert type guards to plain bools.

@@ -811,7 +811,7 @@ def _overlay_mapping(mapping, new_entries):
   return dict((k, v) for k, v in ret.items() if v is not None)
 
 
-python_3_5_mapping = {
+python_3_6_mapping = {
     1: POP_TOP,
     2: ROT_TWO,
     3: ROT_THREE,
@@ -865,6 +865,7 @@ python_3_5_mapping = {
     82: WITH_CLEANUP_FINISH,
     83: RETURN_VALUE,
     84: IMPORT_STAR,
+    85: SETUP_ANNOTATIONS,
     86: YIELD_VALUE,
     87: POP_BLOCK,
     88: END_FINALLY,
@@ -902,6 +903,7 @@ python_3_5_mapping = {
     124: LOAD_FAST,
     125: STORE_FAST,
     126: DELETE_FAST,
+    127: STORE_ANNOTATION,  # removed in Python 3.7
     130: RAISE_VARARGS,
     131: CALL_FUNCTION,
     132: MAKE_FUNCTION,
@@ -911,9 +913,8 @@ python_3_5_mapping = {
     136: LOAD_DEREF,
     137: STORE_DEREF,
     138: DELETE_DEREF,
-    140: CALL_FUNCTION_VAR,  # removed in Python 3.6
     141: CALL_FUNCTION_KW,
-    142: CALL_FUNCTION_VAR_KW,
+    142: CALL_FUNCTION_EX,
     143: SETUP_WITH,
     144: EXTENDED_ARG,
     145: LIST_APPEND,
@@ -926,18 +927,11 @@ python_3_5_mapping = {
     152: BUILD_TUPLE_UNPACK,
     153: BUILD_SET_UNPACK,
     154: SETUP_ASYNC_WITH,
-}
-
-python_3_6_mapping = _overlay_mapping(python_3_5_mapping, {
-    85: SETUP_ANNOTATIONS,
-    127: STORE_ANNOTATION,  # removed in Python 3.7
-    140: None,
-    142: CALL_FUNCTION_EX,  # CALL_FUNCTION_VAR_KW in Python 3.5
     155: FORMAT_VALUE,
     156: BUILD_CONST_KEY_MAP,
     157: BUILD_STRING,
     158: BUILD_TUPLE_UNPACK_WITH_CALL,
-})
+}
 
 python_3_7_mapping = _overlay_mapping(python_3_6_mapping, {
     127: None,
@@ -984,13 +978,12 @@ python_3_9_mapping = _overlay_mapping(python_3_8_mapping, {
 class _LineNumberTableParser:
   """State machine for decoding a Python line number array."""
 
-  def __init__(self, python_version, lnotab, firstlineno):
+  def __init__(self, lnotab, firstlineno):
     assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
     self.next_addr = self.lnotab[0] if self.lnotab else 0
     self.pos = 0
-    self.python_version = python_version
 
   def get(self, i):
     """Get the line number for the instruction at the given position.
@@ -1009,7 +1002,7 @@ class _LineNumberTableParser:
       # The Python docs have more details on this weird bit twiddling.
       # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt
       # https://github.com/python/cpython/commit/f3914eb16d28ad9eb20fe5133d9aa83658bcc27f
-      if self.python_version >= (3, 6) and line_diff >= 0x80:
+      if line_diff >= 0x80:
         line_diff -= 0x100
       self.lineno += line_diff
 
@@ -1034,48 +1027,6 @@ def _prettyprint_arg(cls, oparg, co_consts, co_names,
     return cellvars_freevars[oparg]
   else:
     return oparg
-
-
-def _bytecode_reader(data, mapping):
-  """Reads binary data from pyc files as bytecode.
-
-  Works with Python3.5 and below.
-
-  Arguments:
-    data: The block of binary pyc code
-    mapping: {opcode : class}
-
-  Yields:
-    (start position, end position, opcode class, oparg)
-  """
-  assert isinstance(data, bytes)
-  pos = 0
-  extended_arg = 0
-  start = 0
-  size = len(data)
-  while pos < size:
-    opcode = data[pos]
-    cls = mapping[opcode]
-    oparg = None
-    if cls is EXTENDED_ARG:
-      # EXTENDED_ARG modifies the opcode after it, setting bits 16..31 of
-      # its argument.
-      assert not extended_arg, "two EXTENDED_ARGs in a row"
-      extended_arg = data[pos+1] << 16 | data[pos+2] << 24
-      bytes_read = 3
-    elif cls.FLAGS & HAS_ARGUMENT:
-      oparg = data[pos+1] | data[pos+2] << 8 | extended_arg
-      extended_arg = 0
-      bytes_read = 3
-    else:
-      assert not extended_arg, "EXTENDED_ARG in front of opcode without arg"
-      extended_arg = 0
-      bytes_read = 1
-    # Don't yield EXTENDED_ARG; it is part of the next opcode.
-    if cls is not EXTENDED_ARG:
-      yield (start, pos + bytes_read, cls, oparg)
-      start = pos + bytes_read
-    pos += bytes_read
 
 
 def _wordcode_reader(data, mapping):
@@ -1111,13 +1062,13 @@ def _wordcode_reader(data, mapping):
       start = pos + 2
 
 
-def _dis(python_version, data, mapping, reader,
+def _dis(data, mapping,
          co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
          co_freevars=None, co_lnotab=None, co_firstlineno=None):
   """Disassemble a string into a list of Opcode instances."""
   code = []
   if co_lnotab:
-    lp = _LineNumberTableParser(python_version, co_lnotab, co_firstlineno)
+    lp = _LineNumberTableParser(co_lnotab, co_firstlineno)
   else:
     lp = None
   offset_to_index = {}
@@ -1125,7 +1076,7 @@ def _dis(python_version, data, mapping, reader,
     cellvars_freevars = co_cellvars + co_freevars
   else:
     cellvars_freevars = None
-  for pos, end_pos, cls, oparg in reader(data, mapping):
+  for pos, end_pos, cls, oparg in _wordcode_reader(data, mapping):
     index = len(code)
     offset_to_index[pos] = index
     if lp:
@@ -1158,14 +1109,12 @@ def dis(data, python_version, *args, **kwargs):
   major, minor = python_version[0], python_version[1]
   assert major == 3
   mapping = {
-      (3, 5): python_3_5_mapping,
       (3, 6): python_3_6_mapping,
       (3, 7): python_3_7_mapping,
       (3, 8): python_3_8_mapping,
       (3, 9): python_3_9_mapping,
   }[(major, minor)]
-  reader = _wordcode_reader if (major, minor) > (3, 5) else _bytecode_reader
-  return _dis(python_version, data, mapping, reader, *args, **kwargs)
+  return _dis(data, mapping, *args, **kwargs)
 
 
 def dis_code(code):

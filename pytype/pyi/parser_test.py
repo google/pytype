@@ -2788,6 +2788,34 @@ class AnnotatedTest(_ParserTestBase):
           x: Annotated[int, 'a', 'b', 'c']
     """)
 
+  def test_dict(self):
+    self.check("""
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, {'a': 'A', 'b': True, 'c': Foo}]
+    """, """
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, {'a': 'A', 'b': True, 'c': 'Foo'}]
+    """)
+
+  def test_call(self):
+    self.check("""
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, Deprecated("use new api")]
+          y: Annotated[int, unit('s', exp=9)]
+    """, """
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, {'tag': 'Deprecated', 'reason': 'use new api'}]
+          y: Annotated[int, {'tag': 'call', 'fn': 'unit', 'posargs': ('s',), 'kwargs': {'exp': 9}}]
+    """)
+
 
 class ErrorTest(test_base.UnitTest):
   """Test parser errors."""

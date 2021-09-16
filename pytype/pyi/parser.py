@@ -11,6 +11,7 @@ from pytype.ast import debug
 from pytype.pyi import classdef
 from pytype.pyi import conditions
 from pytype.pyi import definitions
+from pytype.pyi import evaluator
 from pytype.pyi import function
 from pytype.pyi import modules
 from pytype.pyi import types
@@ -39,6 +40,8 @@ _COLL_NAMEDTUPLE_IDS = ("namedtuple", "collections.namedtuple")
 _TYPEDDICT_IDS = (
     "TypedDict", "typing.TypedDict", "typing_extensions.TypedDict")
 _NEWTYPE_IDS = ("NewType", "typing.NewType")
+_ANNOTATED_IDS = (
+    "Annotated", "typing.Annotated", "typing_extensions.Annotated")
 
 
 #------------------------------------------------------
@@ -145,6 +148,10 @@ class AnnotationVisitor(visitor.BaseVisitor):
       e.clear_position()
       raise e
 
+  def convert_metadata(self, node):
+    ret = MetadataVisitor().visit(node)
+    return ret if ret is not None else node
+
   def visit_Tuple(self, node):
     return tuple(node.elts)
 
@@ -167,9 +174,17 @@ class AnnotationVisitor(visitor.BaseVisitor):
     else:
       return self.defs.new_type(node.id)
 
+  def _convert_typing_annotated(self, node):
+    typ, *args = node.slice.value.elts
+    typ = self.visit(typ)
+    params = (self.convert_metadata(x) for x in args)
+    node.slice.value = (typ,) + tuple(params)
+
   def enter_Subscript(self, node):
     if isinstance(node.value, ast3.Attribute):
       node.value = _attribute_to_name(node.value).id
+    if getattr(node.value, "id", None) in _ANNOTATED_IDS:
+      self._convert_typing_annotated(node)
     self.subscripted.append(node.value)
 
   def visit_Subscript(self, node):
@@ -196,6 +211,18 @@ class AnnotationVisitor(visitor.BaseVisitor):
       raise ParseError("Deprecated syntax `x or y`; use `Union[x, y]` instead")
     else:
       raise ParseError(f"Unexpected operator {node.op}")
+
+
+class MetadataVisitor(visitor.BaseVisitor):
+  """Converts typing.Annotated metadata."""
+
+  def visit_Call(self, node):
+    posargs = tuple(evaluator.literal_eval(x) for x in node.args)
+    kwargs = {x.arg: evaluator.literal_eval(x.value) for x in node.keywords}
+    return (node.func.id, posargs, kwargs)
+
+  def visit_Dict(self, node):
+    return evaluator.literal_eval(node)
 
 
 def _flatten_splices(body: List[Any]) -> List[Any]:

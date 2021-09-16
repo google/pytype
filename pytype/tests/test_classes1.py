@@ -603,7 +603,7 @@ class ClassesTest(test_base.BaseTest):
 
   def test_metaclass_getattribute(self):
     with file_utils.Tempdir() as d:
-      d.create_file("enum.pyi", """
+      d.create_file("menum.pyi", """
         from typing import Any
         class EnumMeta(type):
           def __getattribute__(self, name) -> Any: ...
@@ -611,10 +611,10 @@ class ClassesTest(test_base.BaseTest):
         class IntEnum(int, Enum): ...
       """)
       ty = self.Infer("""
-        import enum
-        class A(enum.Enum):
+        import menum
+        class A(menum.Enum):
           x = 1
-        class B(enum.IntEnum):
+        class B(menum.IntEnum):
           x = 1
         enum1 = A.x
         name1 = A.x.name
@@ -623,10 +623,10 @@ class ClassesTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        enum = ...  # type: module
-        class A(enum.Enum):
+        menum = ...  # type: module
+        class A(menum.Enum):
           x = ...  # type: int
-        class B(enum.IntEnum):
+        class B(menum.IntEnum):
           x = ...  # type: int
         enum1 = ...  # type: Any
         name1 = ...  # type: Any

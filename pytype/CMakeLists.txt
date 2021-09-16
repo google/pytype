@@ -230,6 +230,7 @@ py_library(
     .special_builtins
     pytype.overlays.overlays
     pytype.pyc.pyc
+    pytype.pyi.parser
     pytype.pytd.pytd
     pytype.pytd.parse.parse
     pytype.typegraph.cfg
@@ -410,6 +411,7 @@ py_library(
     .class_mixin
     .special_builtins
     pytype.overlays.overlays
+    pytype.pyi.parser
     pytype.pytd.pytd
 )
 

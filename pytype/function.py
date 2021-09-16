@@ -337,12 +337,15 @@ class Args(collections.namedtuple(
                  for var in args)
 
   def starstarargs_as_dict(self):
-    try:
-      args = self.starstarargs and abstract_utils.get_atomic_python_constant(
-          self.starstarargs, dict)
-    except abstract_utils.ConversionError:
-      args = None
-    return args
+    """Return **args as a python dict."""
+    # NOTE: We can't use get_atomic_python_constant here because starstarargs
+    # could have could_contain_anything set.
+    if not self.starstarargs or len(self.starstarargs.data) != 1:
+      return None
+    kwdict, = self.starstarargs.data
+    if not kwdict.isinstance_Dict():
+      return None
+    return kwdict.pyval
 
   def _expand_typed_star(self, vm, node, star, count):
     """Convert *xs: Sequence[T] -> [T, T, ...]."""
@@ -449,7 +452,17 @@ class Args(collections.namedtuple(
         namedargs = starstarargs_as_dict
       else:
         namedargs.update(node, starstarargs_as_dict)
-      starstarargs = None
+
+      # We have pulled out all the named args from the function call, so we need
+      # to delete them from starstarargs. If the original call contained
+      # **kwargs, starstarargs will have could_contain_anything set to True, so
+      # preserve it as a dict with no named keys. If not, we just had named args
+      # packed into starstarargs, so set starstarargs to None.
+      kwdict = starstarargs.data[0]
+      if kwdict.isinstance_Dict() and kwdict.could_contain_anything:
+        kwdict.pyval = {}
+      else:
+        starstarargs = None
     starargs_as_tuple = self.starargs_as_tuple(node, vm)
     if starargs_as_tuple is not None:
       if match_signature:

@@ -176,6 +176,20 @@ class TupleTest(test_base.BaseTest):
         foo.f((Any, Any))  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_match_nothing(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Tuple
+        def integrate() -> Tuple[nothing, nothing]: ...
+      """)
+      self.CheckWithErrors("""
+        import foo
+        def f(x):
+          return x[::0, 0]  # unsupported-operands
+        def g():
+          return f(foo.integrate())
+      """, pythonpath=[d.path])
+
 
 class TupleTestPython3Feature(test_base.BaseTest):
   """Tests for builtins.tuple."""
