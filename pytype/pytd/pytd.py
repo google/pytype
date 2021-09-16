@@ -462,7 +462,7 @@ class NothingType(Node, Type):
     return True
 
 
-def _FlattenTypes(type_list):
+def _FlattenTypes(type_list) -> Tuple[Type, ...]:
   """Helper function for _SetOfTypes initialization."""
   assert type_list  # Disallow empty sets. Use NothingType for these.
   flattened = itertools.chain.from_iterable(

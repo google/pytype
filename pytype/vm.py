@@ -1499,7 +1499,7 @@ class VirtualMachine:
     return value
 
   def check_annotation_type_mismatch(
-      self, node, name, typ, value, stack, allow_none):
+      self, node, name, typ, value, stack, allow_none, details=None):
     """Checks for a mismatch between a variable's annotation and value.
 
     Args:
@@ -1509,6 +1509,7 @@ class VirtualMachine:
       value: variable value
       stack: a frame stack for error reporting
       allow_none: whether a value of None is allowed for any type
+      details: any additional details to add to the error message
     """
     if not typ or not value:
       return
@@ -1522,7 +1523,7 @@ class VirtualMachine:
     bad = self.matcher(node).bad_matches(value, typ)
     for view, *_ in bad:
       binding = view[value]
-      self.errorlog.annotation_type_mismatch(stack, typ, binding, name)
+      self.errorlog.annotation_type_mismatch(stack, typ, binding, name, details)
 
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""

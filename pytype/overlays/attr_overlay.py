@@ -76,8 +76,18 @@ class Attrs(classgen.Decorator):
             self.vm.errorlog.invalid_annotation(
                 self.vm.frames, typ, details=msg)
             attr.typ = self.vm.convert.unsolvable
+          elif attrib.type_source == TypeSource.CONVERTER:
+            msg = "attr.ib type has been assigned by the converter."
+            self.vm.check_annotation_type_mismatch(
+                node, name, typ, attrib.typ.instantiate(node), local.stack,
+                allow_none=True, details=msg)
+            attr.typ = typ
           else:
-            # cls.members[name] has already been set via a typecomment
+            # cls.members[name] has already been set via a type annotation
+            # Use the annotation type as the field type in all circumstances; if
+            # it conflicts with the `type` or `converter` args we will raise an
+            # error above, and if it is compatible but not identical we treat it
+            # as the type most expressive of the code's intent.
             attr.typ = typ
         else:
           # Replace the attrib in the class dict with its type.
@@ -90,9 +100,17 @@ class Attrs(classgen.Decorator):
                 cls.members, self.vm)
             annotations_dict.annotated_locals[name] = abstract_utils.Local(
                 node, None, attrib.typ, orig, self.vm)
+        # TODO(mdemello): This will raise a confusing 'annotation-type-mismatch'
+        # error even if the type has been set via the type or converter arg
+        # rather than a type annotation. We need a more general 'type-mismatch'
+        # error to cover overlays that do runtime type checking. We will work
+        # around it with a footnote for now.
+        msg = ("Note: The 'assignment' here is the 'default' or 'factory' arg,"
+               " which conflicts with the field type (set via annotation or a"
+               " 'type' or 'converter' arg).")
         self.vm.check_annotation_type_mismatch(
             node, attr.name, attr.typ, attr.default, local.stack,
-            allow_none=True)
+            allow_none=True, details=msg)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
         if not match_classvar(typ):
@@ -205,7 +223,8 @@ class Attrib(classgen.FieldConstructor):
     type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)
     kw_only = self.get_kwarg(args, "kw_only", False)
-    converter, conv_in, conv_out = self._get_converter_types(args)
+    conv_in, conv_out = self._get_converter_types(node, args)
+
     if type_var:
       type_source = TypeSource.TYPE
       allowed_type_params = (
@@ -217,42 +236,45 @@ class Attrib(classgen.FieldConstructor):
     elif default_var:
       type_source = TypeSource.DEFAULT
       typ = get_type_from_default(default_var, self.vm)
-    elif conv_out:
-      # TODO(b/135553563): If we have a converter and a type/default/factory, we
-      # should check them for consistency and potentially raise a type error.
-      type_source = TypeSource.CONVERTER
-      typ = conv_out
     else:
       type_source = None
       typ = self.vm.convert.unsolvable
-    if converter:
+
+    if conv_out:
+      # If a converter’s first argument has a type annotation, that type will
+      # appear in the signature for __init__. When setting the field type, treat
+      # args as type > converter > default
       init_type = conv_in or self.vm.convert.unsolvable
+      if type_source == TypeSource.TYPE:
+        msg = ("The type annotation and assignment are set by the "
+               "'type' and 'converter' args respectively.")
+        self.vm.check_annotation_type_mismatch(
+            node, "attr.ib", typ, conv_out.instantiate(node),
+            self.vm.simple_stack(), allow_none=True, details=msg)
+      else:
+        type_source = TypeSource.CONVERTER
+        typ = conv_out
     else:
       init_type = None
-    typ = AttribInstance(
+
+    ret = AttribInstance(
         self.vm, typ, type_source, init, init_type, kw_only, default_var
     ).to_variable(node)
-    return node, typ
+    return node, ret
 
   @property
   def sig(self):
     return self.signatures[0].signature
 
-  def _get_converter_types(self, args):
-    """Returns (has_converter_arg, input_type, output_type)."""
-    converter = args.namedargs.get("converter")
-    converter = converter and converter.data[0]
-    # TODO(b/135553563): We should treat the converter as a generic callable of
-    # one argument, and actually call it to get the output type.
-    if not (converter and converter.isinstance_SignedFunction()):
-      return False, None, None
-
-    sig = converter.signature
-    # We should be able to call converter with one argument.
-    valid_arity = (sig.mandatory_param_count() <= 1 and
-                   (sig.maximum_param_count() is None or
-                    sig.maximum_param_count() >= 1))
-    if not valid_arity:
+  def _get_converter_sig(self, converter, args):
+    """Return the first signature with a single argument."""
+    def valid_arity(sig):
+      return (sig.mandatory_param_count() <= 1 and
+              (sig.maximum_param_count() is None or
+               sig.maximum_param_count() >= 1))
+    sigs = abstract_utils.get_signatures(converter)
+    valid_sigs = list(filter(valid_arity, sigs))
+    if not valid_sigs:
       anyt = self.vm.convert.unsolvable
       wanted_type = abstract.CallableClass(
           self.vm.convert.name_to_value("typing.Callable"),
@@ -261,12 +283,40 @@ class Attrib(classgen.FieldConstructor):
       )
       bad_param = function.BadParam("converter", wanted_type, None)
       raise function.WrongArgTypes(self.sig, args, self.vm, bad_param)
+    return valid_sigs[0]
 
-    annotations = sig.annotations
-    params = [v for k, v in annotations.items() if k != "return"]
-    inp = params[0] if params else None
-    ret = annotations.get("return")
-    return True, inp, ret
+  def _call_converter_function(self, node, converter_var, args):
+    """Run converter and return the input and return types."""
+    binding = converter_var.bindings[0]
+    fn = binding.data
+    sig = self._get_converter_sig(fn, args)
+    if sig.param_names and sig.param_names[0] in sig.annotations:
+      input_type = sig.annotations[sig.param_names[0]]
+    else:
+      input_type = self.vm.convert.unsolvable
+    if sig.has_return_annotation:
+      return_type = sig.annotations["return"]
+    else:
+      fn_args = function.Args(posargs=(input_type.instantiate(node),))
+      node, ret_var = fn.call(node, binding, fn_args)
+      return_type = self.vm.convert.merge_classes(ret_var.data)
+    return input_type, return_type
+
+  def _get_converter_types(self, node, args):
+    converter_var = args.namedargs.get("converter")
+    if not converter_var:
+      return None, None
+    converter = converter_var.data[0]
+    if converter.isinstance_Class():
+      # If the converter is a class, set the field type to the class and the
+      # init type to Any.
+      # TODO(b/135553563): Check that converter.__init__ takes one argument and
+      # get its type.
+      return self.vm.convert.unsolvable, converter
+    elif abstract_utils.is_callable(converter):
+      return self._call_converter_function(node, converter_var, args)
+    else:
+      return None, None
 
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "factory" in args.namedargs:

@@ -1135,7 +1135,7 @@ class ErrorLog(ErrorLogBase):
       self.error(stack, actual, details=details)
 
   @_error_name("annotation-type-mismatch")
-  def annotation_type_mismatch(self, stack, annot, binding, name):
+  def annotation_type_mismatch(self, stack, annot, binding, name, details=None):
     # TODO(rpalaguachi): Include detailed error message for
     # NonIterableStringError when a `str` is assigned to a string iterable.
     """Invalid combination of annotation and assignment."""
@@ -1146,8 +1146,10 @@ class ErrorLog(ErrorLogBase):
     actual_string = self._print_as_actual_type(binding.data, literal=literal)
     if actual_string == "None":
       annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
+    additional_details = f"\n\n{details}" if details else ""
     details = ("Annotation: %s\n" % annot_string +
-               "Assignment: %s" % actual_string)
+               "Assignment: %s" % actual_string +
+               additional_details)
     if len(binding.variable.bindings) > 1:
       # Joining the printed types rather than merging them before printing
       # ensures that we print all of the options when 'Any' is among them.
