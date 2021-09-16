@@ -126,7 +126,7 @@ def list_pytype_files(suffix):
 
 # When our open-source tests run on GitHub Actions, we install a Python 3.7
 # interpreter for vm_test.
-CUSTOM_PY37_EXE = "/opt/hostedtoolcache/Python/3.7.12/x64/bin/python3.7"
+CUSTOM_PY37_EXE = "/opt/hostedtoolcache/Python/3.7.11/x64/bin/python3.7"
 
 
 def get_custom_python_exe(python_version):

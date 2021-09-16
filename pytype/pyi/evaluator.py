@@ -19,7 +19,7 @@ _NUM_TYPES = (int, float, complex)
 # pylint: disable=invalid-unary-operand-type
 def _convert(node):
   """Helper function for literal_eval."""
-  if isinstance(node, ast3.Constant):  # pytype: disable=module-attr
+  if isinstance(node, ast3.Constant):
     return node.value
   elif isinstance(node, (ast3.Str, ast3.Bytes)):
     return node.s
