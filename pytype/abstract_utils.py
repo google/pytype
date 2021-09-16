@@ -847,7 +847,7 @@ def combine_substs(
     return ()
 
 
-def _flatten(value, classes):
+def flatten(value, classes):
   """Flatten the contents of value into classes.
 
   If value is a Class, it is appended to classes.
@@ -875,7 +875,7 @@ def _flatten(value, classes):
     ambiguous = False
     for var in value.pyval:
       if (len(var.bindings) != 1 or
-          _flatten(var.bindings[0].data, classes)):
+          flatten(var.bindings[0].data, classes)):
         # There were either multiple bindings or ambiguity deeper in the
         # recursion.
         ambiguous = True
@@ -899,7 +899,7 @@ def check_against_mro(vm, target, class_spec):
   """
   # Determine the flattened list of classes to check.
   classes = []
-  ambiguous = _flatten(class_spec, classes)
+  ambiguous = flatten(class_spec, classes)
 
   for c in classes:
     if vm.matcher(None).match_from_mro(target, c, allow_compat_builtins=False):

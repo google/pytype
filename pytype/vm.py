@@ -3813,8 +3813,20 @@ class VirtualMachine:
       out.AddBinding(b.data, {b}, state.node)
     return self._store_new_var_in_local(state, var, out)
 
+  def _set_type_from_assert_isinstance(self, state, var, class_spec):
+    # TODO(mdemello): If we want to cast var to typ via an assertion, should
+    # we check that at least one binding of var is compatible with typ?
+    classes = []
+    abstract_utils.flatten(class_spec, classes)
+    new_type = self.merge_values(classes).instantiate(state.node)
+    return self._store_new_var_in_local(state, var, new_type)
+
   def _check_test_assert(self, state, func, args):
     """Narrow the types of variables based on test assertions."""
+    # We need a variable to narrow
+    if not args:
+      return state
+    var = args[0]
     f = func.data[0]
     if not (f.isinstance_BoundFunction() and len(f.callself.data) == 1):
       return state
@@ -3824,14 +3836,11 @@ class VirtualMachine:
     if f.name == "assertIsNotNone":
       if len(args) == 1:
         pred = lambda v: not self._data_is_none(v)
-        state = self._narrow(state, args[0], pred)
+        state = self._narrow(state, var, pred)
     elif f.name == "assertIsInstance":
       if len(args) == 2:
-        typ = args[1].data[0]
-        # TODO(mdemello): If we want to cast var to typ via an assertion, should
-        # we check that at least one binding of var is compatible with typ?
-        out = typ.instantiate(state.node)
-        state = self._store_new_var_in_local(state, args[0], out)
+        class_spec = args[1].data[0]
+        state = self._set_type_from_assert_isinstance(state, var, class_spec)
     return state
 
   def byte_CALL_METHOD(self, state, op):
