@@ -551,6 +551,19 @@ class TypeVarTest(test_base.BaseTest):
       assert_type(Child().resolve(), Child)
     """)
 
+  def test_union_against_typevar(self):
+    self.Check("""
+      from typing import Callable, Iterable, TypeVar, Union
+      T = TypeVar('T')
+      def f(x: Callable[[T], int], y: Iterable[T]):
+        pass
+
+      def g(x: Union[int, str]):
+        return 0
+
+      f(g, [0, ''])
+    """)
+
 
 class GenericTypeAliasTest(test_base.BaseTest):
   """Tests for generic type aliases ("type macros")."""

@@ -53,6 +53,18 @@ class AssertionTest(test_base.BaseTest):
           assert_type(x, B)
     """)
 
+  def test_assert_isinstance_tuple(self):
+    self.Check("""
+      import unittest
+      from typing import Union
+      class FooTest(unittest.TestCase):
+        def test_foo(self):
+          x = None
+          self.assertIsInstance(x, (int, str))
+          assert_type(x, Union[int, str])
+          self.assertIsInstance(x, (int,))
+          assert_type(x, int)
+    """)
 
 if __name__ == "__main__":
   test_base.main()

@@ -67,7 +67,8 @@ class TestAttribConverters(test_base.BaseTest):
 
   def test_unannotated_converter_with_type(self):
     # TODO(b/135553563): This test should fail once we get better type checking
-    # of converter functions.
+    # of converter functions. This would need us to run the converter every time
+    # we construct a new instance of Foo.
     self.Check("""
       import attr
       def convert(input):
@@ -80,17 +81,42 @@ class TestAttribConverters(test_base.BaseTest):
     """)
 
   def test_annotated_converter_with_mismatched_type(self):
-    # TODO(b/135553563): This test should fail once we start checking the
-    # consistency of the converter and the explicit type.
-    self.Check("""
+    self.CheckWithErrors("""
       import attr
-      def convert(input) -> int:
+      def convert(input: str) -> int:
         return int(input)
       @attr.s
       class Foo:
-        x = attr.ib(type=str, converter=convert)
-      foo = Foo(x=123)
-      assert_type(foo.x, str)  # the explicit type overrides the converter
+        x = attr.ib(type=str, converter=convert)  # annotation-type-mismatch
+      foo = Foo(x=123)  # wrong-arg-types
+      assert_type(foo.x, str)
+    """)
+
+  def test_converter_without_return_annotation(self):
+    self.CheckWithErrors("""
+      import attr
+      def convert(input: str):
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=convert)
+      foo = Foo(x=123) # wrong-arg-types
+      assert_type(foo.x, int)
+    """)
+
+  def test_converter_with_union_type(self):
+    self.Check("""
+      import attr
+      from typing import Union
+      def convert(input: str):
+        if __random__:
+          return input
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=convert)
+      foo = Foo(x='123')
+      assert_type(foo.x, Union[int, str])
     """)
 
   def test_wrong_converter_arity(self):
@@ -111,17 +137,67 @@ class TestAttribConverters(test_base.BaseTest):
         return 42
       @attr.s
       class Foo:
-        x = attr.ib(type=str, converter=convert)
+        x = attr.ib(converter=convert)
     """)
 
   def test_converter_with_varargs(self):
-    self.Check("""
+    self.CheckWithErrors("""
       import attr
       def convert(*args, **kwargs) -> int:
         return 42
       @attr.s
       class Foo:
-        x = attr.ib(type=str, converter=convert)
+        x = attr.ib(converter=convert)
+    """)
+
+  def test_converter_conflicts_with_type(self):
+    self.CheckWithErrors("""
+      import attr
+      def convert(input: str) -> int:
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(type=list, converter=convert)  # annotation-type-mismatch
+      foo = Foo(x='123')
+      assert_type(foo.x, list)
+    """)
+
+  def test_converter_conflicts_with_annotation(self):
+    self.CheckWithErrors("""
+      import attr
+      def convert(input: str) -> int:
+        return int(input)
+      @attr.s
+      class Foo:
+        x: list = attr.ib(converter=convert)  # annotation-type-mismatch
+      foo = Foo(x='123')
+      assert_type(foo.x, list)
+    """)
+
+  def test_converter_conflicts_with_default(self):
+    self.CheckWithErrors("""
+      import attr
+      def convert(input: str) -> int:
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=convert, default='a')  # annotation-type-mismatch
+      foo = Foo(x='123')
+      assert_type(foo.x, int)
+    """)
+
+  def test_type_compatible_with_converter(self):
+    # type is not identical to converter type but includes it.
+    self.Check("""
+      import attr
+      from typing import Optional
+      def convert(input: str) -> int:
+        return int(input)
+      @attr.s
+      class Foo:
+        x = attr.ib(type=Optional[int], converter=convert)
+      foo = Foo(x='123')
+      assert_type(foo.x, Optional[int])
     """)
 
 
