@@ -160,6 +160,10 @@ class TupleTest(test_base.BaseTest):
       from typing import Optional
       def f(x: Optional[str] = None, y: Optional[str] = None):
         return (x, y).count(None)
+      def g():
+        return (0, None).count(None)
+      def h(x):
+        return (x, 0).count(None)
     """)
 
   def test_empty_pyi_tuple(self):

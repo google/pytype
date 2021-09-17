@@ -357,10 +357,31 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             other_value.data.get_type_key() == type_key):
           new_var.AddBinding(other_value.data, {other_value}, self._node)
       if other_type.constraints:
-        new_var = self._enforce_single_type(new_var)
+        new_values = self._discard_ambiguous_values(new_var.data)
+        has_error = not self._satisfies_single_type(new_values)
+        if not has_error and new_values and len(new_values) < len(new_var.data):
+          # We can filter out ambiguous values because we've already found the
+          # single concrete type allowed for this variable.
+          new_var = self.vm.program.NewVariable(new_values, [], self._node)
       else:
-        new_var = self._enforce_common_superclass(new_var)
-      if new_var is None:
+        if other_type.full_name in subst:
+          has_error = False
+          old_values = subst[other_type.full_name].data
+          # If _discard_ambiguous_values does not discard 'left', then it is a
+          # concrete value that we need to match.
+          if old_values and self._discard_ambiguous_values([left]):
+            old_concrete_values = self._discard_ambiguous_values(old_values)
+            # If any of the previous TypeVar values were ambiguous, then we
+            # treat the match as a success. Otherwise, 'left' needs to match at
+            # least one of them.
+            if len(old_values) == len(old_concrete_values):
+              has_error = not any(
+                  self._satisfies_common_superclass([left, old_value])
+                  for old_value in old_concrete_values)
+        else:
+          has_error = not self._satisfies_common_superclass(
+              self._discard_ambiguous_values(new_var.data))
+      if has_error:
         self._error_subst = subst
         return None
       subst = subst.copy()
@@ -699,7 +720,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
     elif isinstance(other_type, class_mixin.Class):
-      if self._enforce_noniterable_str(left.get_class(), other_type):
+      if not self._satisfies_noniterable_str(left.get_class(), other_type):
         self._noniterable_str_error = NonIterableStrError(left.get_class(),
                                                           other_type)
         return None
@@ -818,7 +839,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         copy_params_directly = (
             class_param.full_name == f"{left.full_name}.{abstract_utils.T}")
         # If we merge in the new substitution results prematurely, then we'll
-        # accidentally trigger _enforce_common_superclass.
+        # accidentally violate _satisfies_common_superclass.
         new_substs = []
         for instance_param in instance.pyval:
           if copy_params_directly and instance_param.bindings:
@@ -1072,43 +1093,34 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         return None
     return self._merge_substs(subst, new_substs)
 
-  def _get_concrete_values_and_classes(self, var):
+  def _discard_ambiguous_values(self, values):
     # TODO(rechen): For type parameter instances, we should extract the concrete
     # value from v.instance so that we can check it, rather than ignoring the
     # value altogether.
-    values = []
-    classes = []
-    for v in var.data:
+    concrete_values = []
+    for v in values:
       if not isinstance(v, (abstract.AMBIGUOUS_OR_EMPTY,
                             abstract.TypeParameterInstance)):
         cls = v.get_class()
         if not isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY):
-          values.append(v)
-          classes.append(cls)
-    return values, classes
+          concrete_values.append(v)
+    return concrete_values
 
-  def _enforce_single_type(self, var):
+  def _satisfies_single_type(self, values):
     """Enforce that the variable contains only one concrete type."""
-    concrete_values, classes = self._get_concrete_values_and_classes(var)
-    class_names = {c.full_name for c in classes}
+    class_names = {v.get_class().full_name for v in values}
     for compat_name, name in _COMPATIBLE_BUILTINS:
       if {compat_name, name} <= class_names:
         class_names.remove(compat_name)
-    if len(class_names) > 1:
-      # We require all occurrences to be of the same type, no subtyping allowed.
-      return None
-    if concrete_values and len(concrete_values) < len(var.data):
-      # We can filter out ambiguous values because we've already found the
-      # single concrete type allowed for this variable.
-      return self.vm.program.NewVariable(concrete_values, [], self._node)
-    return var
+    # We require all occurrences to be of the same type, no subtyping allowed.
+    return len(class_names) <= 1
 
-  def _enforce_common_superclass(self, var):
+  def _satisfies_common_superclass(self, values):
     """Enforce that the variable's values share a superclass below object."""
-    concrete_values, classes = self._get_concrete_values_and_classes(var)
     common_classes = None
     object_in_values = False
-    for cls in classes:
+    for v in values:
+      cls = v.get_class()
       object_in_values |= cls == self.vm.convert.object_type
       superclasses = {c.full_name for c in cls.mro}
       for compat_name, name in _COMPATIBLE_BUILTINS:
@@ -1124,13 +1136,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       ignored_superclasses = {"builtins.object",
                               "typing.Generic",
                               "typing.Protocol"}
-    if concrete_values:
+    if values:
       assert common_classes is not None
       if common_classes.issubset(ignored_superclasses):
-        return None
-    return var
+        return False
+    return True
 
-  def _enforce_noniterable_str(self, left, other_type):
+  def _satisfies_noniterable_str(self, left, other_type):
     """Enforce a str to NOT be matched against a conflicting iterable type."""
     conflicting_iter_types = ["typing.Iterable", "typing.Sequence",
                               "typing.Collection", "typing.Container",]
@@ -1138,12 +1150,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
     if (other_type.full_name not in conflicting_iter_types
         or left.full_name not in str_types):
-      return False  # Reject uninterested type combinations
+      return True  # Reject uninterested type combinations
     if isinstance(other_type, abstract.ParameterizedClass):
       type_param = other_type.get_formal_type_parameter("_T").full_name
-      return type_param in str_types
+      return type_param not in str_types
 
-    return False  # Don't enforce against Iterable[Any]
+    return True  # Don't enforce against Iterable[Any]
 
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
