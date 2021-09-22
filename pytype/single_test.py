@@ -546,6 +546,15 @@ class PytypeTest(test_base.UnitTest):
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=True)
 
+  def test_iso(self):
+    # Performance regression test. Quick inference for iso.py should take <10s.
+    self.pytype_args["--timeout"] = 60
+    self.pytype_args["--output"] = "-"
+    self.pytype_args["--quick"] = self.INCLUDE
+    self.pytype_args[self._data_path("perf/iso.py")] = self.INCLUDE
+    self._run_pytype(self.pytype_args)
+    self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
+
 
 def main():
   unittest.main()

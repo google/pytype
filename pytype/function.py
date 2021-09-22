@@ -456,11 +456,15 @@ class Args(collections.namedtuple(
       # We have pulled out all the named args from the function call, so we need
       # to delete them from starstarargs. If the original call contained
       # **kwargs, starstarargs will have could_contain_anything set to True, so
-      # preserve it as a dict with no named keys. If not, we just had named args
-      # packed into starstarargs, so set starstarargs to None.
+      # preserve it as an abstract dict. If not, we just had named args packed
+      # into starstarargs, so set starstarargs to None.
       kwdict = starstarargs.data[0]
       if kwdict.isinstance_Dict() and kwdict.could_contain_anything:
-        kwdict.pyval = {}
+        starstarargs = kwdict.cls.instantiate(node)
+        for new_kwdict in starstarargs.data:
+          for param in (abstract_utils.K, abstract_utils.V):
+            new_kwdict.merge_instance_type_parameter(
+                node, param, kwdict.get_instance_type_parameter(param, node))
       else:
         starstarargs = None
     starargs_as_tuple = self.starargs_as_tuple(node, vm)
