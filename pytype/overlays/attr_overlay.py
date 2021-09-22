@@ -272,7 +272,7 @@ class Attrib(classgen.FieldConstructor):
       return (sig.mandatory_param_count() <= 1 and
               (sig.maximum_param_count() is None or
                sig.maximum_param_count() >= 1))
-    sigs = abstract_utils.get_signatures(converter)
+    sigs = function.get_signatures(converter)
     valid_sigs = list(filter(valid_arity, sigs))
     if not valid_sigs:
       anyt = self.vm.convert.unsolvable

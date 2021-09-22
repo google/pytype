@@ -197,23 +197,6 @@ def get_views(variables, node):
       seen.append(view.accessed_subset.items())
 
 
-def get_signatures(func):
-  """Gets the given function's signatures."""
-  if func.isinstance_PyTDFunction():
-    return [sig.signature for sig in func.signatures]
-  elif func.isinstance_InterpreterFunction():
-    return [f.signature for f in func.signature_functions()]
-  elif func.isinstance_BoundFunction():
-    sigs = get_signatures(func.underlying)
-    return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
-  elif func.isinstance_ClassMethod() or func.isinstance_StaticMethod():
-    return get_signatures(func.method)
-  elif func.isinstance_SimpleFunction():
-    return [func.signature]
-  else:
-    raise NotImplementedError(func.__class__.__name__)
-
-
 def func_name_is_class_init(name):
   """Return True if |name| is that of a class' __init__ method."""
   # Python 3's MAKE_FUNCTION byte code takes an explicit fully qualified

@@ -401,6 +401,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_BoundFunction(self):
     return isinstance(self, BoundFunction)
 
+  def isinstance_CallableClass(self):
+    return isinstance(self, CallableClass)
+
   def isinstance_Class(self):
     return isinstance(self, class_mixin.Class)
 
