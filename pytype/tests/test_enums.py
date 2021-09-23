@@ -1005,6 +1005,29 @@ class EnumOverlayTest(test_base.BaseTest):
         M.B
       """, pythonpath=[d.path])
 
+  def test_instance_attrs_property_pyi(self):
+    # Instance attributes are marked using @property.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        from typing import Annotated
+        class Fn(enum.Enum):
+          A: int
+          @property
+          def x(self) -> str: ...
+        class NoFn(enum.Enum):
+          A: int
+          x: Annotated[str, 'property']
+      """)
+      self.CheckWithErrors("""
+        import foo
+        assert_type(foo.Fn.A.value, int)
+        assert_type(foo.Fn.A.x, str)
+        assert_type(foo.NoFn.A.value, int)
+        assert_type(foo.NoFn.A.x, str)
+        foo.Fn.x  # attribute-error
+        foo.NoFn.x  # attribute-error
+      """, pythonpath=[d.path])
 
 if __name__ == "__main__":
   test_base.main()

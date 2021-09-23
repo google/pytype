@@ -426,18 +426,37 @@ class EnumMetaInit(abstract.SimpleFunction):
     return node
 
   def _setup_pytdclass(self, node, cls):
-    # We need to rewrite the member map of the PytdClass.
-    members = dict(cls._member_map)  # pylint: disable=protected-access
+    # Only constants need to be transformed. We assume that enums in type
+    # stubs are fully realized, i.e. there are no auto() calls and the members
+    # already have values of the base type.
+    # Instance attributes are stored as properties, which pytype marks using
+    # typing.Annotated(<base_type>, 'property').
+    # TODO(tsudol): Ensure only valid enum members are transformed.
+    instance_attrs = {}
+    possible_members = {}
+    for pytd_val in cls.pytd_cls.constants:
+      if pytd_val.name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+        continue
+      assert isinstance(pytd_val, pytd.Constant)
+      if isinstance(pytd_val.type, pytd.Annotated):
+        if "'property'" in pytd_val.type.annotations:
+          instance_attrs[pytd_val.name] = pytd_val.Replace(
+              type=pytd_val.type.base_type)
+          # Properties must be deleted from the class's member map, otherwise
+          # pytype will not complain when you try to access them on the class.
+          del cls._member_map[pytd_val.name]  # pylint: disable=protected-access
+          # Note that we can't remove the entry from cls.members, because
+          # datatypes.MonitorDict does not support __delitem__. This shouldn't
+          # be an issue, because cls shouldn't have had any reason to load
+          # members by this point.
+        else:
+          possible_members[pytd_val.name] = pytd_val.Replace(
+              type=pytd_val.type.base_type)
+      else:
+        possible_members[pytd_val.name] = pytd_val
+
     member_types = []
-    for name, pytd_val in members.items():
-      if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
-        continue
-      # Only constants need to be transformed. We assume that enums in type
-      # stubs are full realized, i.e. there are no auto() calls and the members
-      # already have values of the base type.
-      # TODO(tsudol): Ensure only valid enum members are transformed.
-      if not isinstance(pytd_val, pytd.Constant):
-        continue
+    for name, pytd_val in possible_members.items():
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.vm)
@@ -454,6 +473,9 @@ class EnumMetaInit(abstract.SimpleFunction):
           pyval=pytd.Constant(name="value", type=value_type),
           node=node)
       member.members["_value_"] = member.members["value"]
+      for attr_name, attr_val in instance_attrs.items():
+        member.members[attr_name] = self.vm.convert.constant_to_var(
+            pyval=attr_val, node=node)
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
       member_types.append(value_type)
