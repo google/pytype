@@ -873,6 +873,14 @@ class VirtualMachine:
     else:
       return ()
 
+  def stack(self, func):
+    """Get a frame stack for the given function for error reporting."""
+    if isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and (
+        not self.frame or not self.frame.current_opcode):
+      return self.simple_stack(func.get_first_opcode())
+    else:
+      return self.frames
+
   def push_abstract_exception(self, state):
     tb = self.convert.build_list(state.node, [])
     value = self.convert.create_new_unknown(state.node)
@@ -1260,7 +1268,7 @@ class VirtualMachine:
       return node, result
     elif fallback_to_unsolvable:
       if not isinstance(error, function.DictKeyMissing):
-        self.errorlog.invalid_function_call(self.frames, error)
+        self.errorlog.invalid_function_call(self.stack(funcu.data[0]), error)
       return node, result
     else:
       # We were called by something that does its own error handling.

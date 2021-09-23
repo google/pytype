@@ -301,6 +301,13 @@ class ErrorTest(test_base.BaseTest):
           "e2": ["type was Any"]
       })
 
+  def test_bad_self_annot(self):
+    self.CheckWithErrors("""
+      class Foo:
+        def f(self: int):
+          pass  # wrong-arg-types
+    """)
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""
