@@ -347,10 +347,10 @@ class Class(metaclass=mixin.MixinMeta):
     new_args = args.replace(posargs=(cls,) + args.posargs)
     node, variable = self.vm.call_function(node, new, new_args)
     for val in variable.bindings:
-      # If val.data is a class, _call_init mistakenly calls val.data's __init__
+      # If val.data is a class, call_init mistakenly calls val.data's __init__
       # method rather than that of val.data.cls.
       if not isinstance(val.data, Class) and self == val.data.cls:
-        node = self._call_init(node, val, args)
+        node = self.call_init(node, val, args)
     return node, variable
 
   def _call_method(self, node, value, method_name, args):
@@ -363,7 +363,7 @@ class Class(metaclass=mixin.MixinMeta):
       log.debug("%s returned %r", call_repr, ret)
     return node
 
-  def _call_init(self, node, value, args):
+  def call_init(self, node, value, args):
     node = self._call_method(node, value, "__init__", args)
     # Call any additional initalizers the class has registered.
     for method in self.additional_init_methods:
@@ -386,7 +386,7 @@ class Class(metaclass=mixin.MixinMeta):
       value = self._new_instance(None)
       variable = self.vm.program.NewVariable()
       val = variable.AddBinding(value, [], node)
-      node = self._call_init(node, val, args)
+      node = self.call_init(node, val, args)
     return node, variable
 
   def get_special_attribute(self, node, name, valself):

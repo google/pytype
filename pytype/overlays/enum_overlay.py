@@ -427,7 +427,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       if "__init__" in cls:
         init_args = function.Args(
             posargs=(member_var,) + abstract_utils.maybe_extract_tuple(value))
-        node = cls._call_init(node, cls.to_binding(node), init_args)  # pylint: disable=protected-access
+        node = cls.call_init(node, cls.to_binding(node), init_args)
       member.members["value"] = member.members["_value_"]
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
