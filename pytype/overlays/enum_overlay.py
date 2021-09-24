@@ -72,6 +72,18 @@ class EnumBuilder(abstract.PyTDClass):
     # errors. EnumMeta turns the class into a full enum, but that's too late for
     # proper error checking.
     # TODO(tsudol): Check enum validity.
+
+    # Enums have a specific ordering for base classes:
+    # https://docs.python.org/3/library/enum.html#restricted-enum-subclassing
+    # Mostly, we just care that the last base is some kind of Enum.
+    if not bases:
+      # This should be impossible.
+      bases = [self.to_variable(node)]
+    elif not any(b.is_enum for b in bases[-1].data):
+      msg = ("The last base class for an enum must be enum.Enum or a subclass "
+             "of enum.Enum")
+      self.vm.errorlog.base_class_error(self.vm.frames, bases[-1], details=msg)
+      return node, self.vm.new_unsolvable(node)
     cls_var = cls_var or self.vm.loaded_overlays["enum"].members["EnumMeta"]
     return self.vm.make_class(node, name_var, bases, class_dict_var, cls_var,
                               new_class_var, class_type=EnumInstance)

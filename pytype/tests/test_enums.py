@@ -1048,5 +1048,12 @@ class EnumOverlayTest(test_base.BaseTest):
         foo.NoFn.x  # attribute-error
       """, pythonpath=[d.path])
 
+  def test_enum_bases(self):
+    self.CheckWithErrors("""
+      import enum
+      class BadBaseOrder(enum.Enum, int):  # base-class-error
+        A = 1
+    """)
+
 if __name__ == "__main__":
   test_base.main()

@@ -890,10 +890,11 @@ class ErrorLog(ErrorLogBase):
       raise AssertionError(error)
 
   @_error_name("base-class-error")
-  def base_class_error(self, stack, base_var):
+  def base_class_error(self, stack, base_var, details=None):
     base_cls = self._join_printed_types(
         self._print_as_expected_type(t) for t in base_var.data)
-    self.error(stack, "Invalid base class: %s" % base_cls, keyword=base_cls)
+    self.error(stack, "Invalid base class: %s" % base_cls,
+               details=details, keyword=base_cls)
 
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, node, formal, actual, bad):
