@@ -57,8 +57,8 @@ class Call:
             "kwargs": self.kwargs}
 
   def to_pytd(self):
-    posargs = ", ".join(self.posargs)
-    kwargs = ", ".join(f"{k}={v}" for k, v in self.kwargs.items())
+    posargs = ", ".join(map(repr, self.posargs))
+    kwargs = ", ".join(f"{k}={v!r}" for k, v in self.kwargs.items())
     if posargs and kwargs:
       return f"{self.fn}({posargs}, {kwargs})"
     else:
@@ -93,7 +93,7 @@ def call_to_annotation(fn, *, posargs=None, kwargs=None):
 
 def to_pytd(metadata: Dict[str, Any]):
   """Convert a metadata dict to a pytd string."""
-  tag = getattr(metadata, "tag", None)
+  tag = metadata.get("tag")
   if tag in _CALLABLES:
     posarg_names, kwarg_names = _CALLABLES[tag]
     return Call.from_metadata(metadata, posarg_names, kwarg_names).to_pytd()
