@@ -18,6 +18,31 @@ def argname(i):
   return "_" + str(i)
 
 
+def get_signatures(func):
+  """Gets the given function's signatures."""
+  if func.isinstance_PyTDFunction():
+    return [sig.signature for sig in func.signatures]
+  elif func.isinstance_InterpreterFunction():
+    return [f.signature for f in func.signature_functions()]
+  elif func.isinstance_BoundFunction():
+    sigs = get_signatures(func.underlying)
+    return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
+  elif func.isinstance_ClassMethod() or func.isinstance_StaticMethod():
+    return get_signatures(func.method)
+  elif func.isinstance_SimpleFunction():
+    return [func.signature]
+  elif func.cls and func.cls.isinstance_CallableClass():
+    return [Signature.from_callable(func.cls)]
+  else:
+    if func.isinstance_Instance():
+      _, call_var = func.vm.attribute_handler.get_attribute(
+          func.vm.root_node, func, "__call__",
+          func.to_binding(func.vm.root_node))
+      if call_var and len(call_var.data) == 1:
+        return get_signatures(call_var.data[0])
+    raise NotImplementedError(func.__class__.__name__)
+
+
 def _print(t):
   return pytd_utils.Print(t.get_instance_type())
 
@@ -456,11 +481,20 @@ class Args(collections.namedtuple(
       # We have pulled out all the named args from the function call, so we need
       # to delete them from starstarargs. If the original call contained
       # **kwargs, starstarargs will have could_contain_anything set to True, so
-      # preserve it as a dict with no named keys. If not, we just had named args
-      # packed into starstarargs, so set starstarargs to None.
+      # preserve it as an abstract dict. If not, we just had named args packed
+      # into starstarargs, so set starstarargs to None.
       kwdict = starstarargs.data[0]
       if kwdict.isinstance_Dict() and kwdict.could_contain_anything:
-        kwdict.pyval = {}
+        cls = kwdict.cls
+        if cls.isinstance_PyTDClass():
+          # If cls is not already parameterized with the key and value types, we
+          # parameterize it now to preserve them.
+          params = {
+              name: vm.convert.merge_classes(kwdict.get_instance_type_parameter(
+                  name, node).data)
+              for name in (abstract_utils.K, abstract_utils.V)}
+          cls = vm.convert.build_map_class(node, params)
+        starstarargs = cls.instantiate(node)
       else:
         starstarargs = None
     starargs_as_tuple = self.starargs_as_tuple(node, vm)

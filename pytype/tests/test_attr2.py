@@ -200,6 +200,33 @@ class TestAttribConverters(test_base.BaseTest):
       assert_type(foo.x, Optional[int])
     """)
 
+  def test_callable_as_converter(self):
+    self.Check("""
+      import attr
+      from typing import Callable
+      def f() -> Callable[[int], str]:
+        return __any_object__
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=f())
+      foo = Foo(x=0)
+      assert_type(foo.x, str)
+    """)
+
+  def test_partial_as_converter(self):
+    self.Check("""
+      import attr
+      import functools
+      def f(x: int) -> str:
+        return ''
+      @attr.s
+      class Foo:
+        x = attr.ib(converter=functools.partial(f))
+      # We don't yet infer the right type for Foo.x in this case, but we at
+      # least want to check that constructing a Foo doesn't generate errors.
+      Foo(x=0)
+    """)
+
 
 class TestAttribPy3(test_base.BaseTest):
   """Tests for attr.ib using PEP526 syntax."""

@@ -160,3 +160,22 @@ py_test(
     pytype.stubs.stubs
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    evaluator_test
+  SRCS
+    evaluator_test.py
+  DEPS
+    .evaluator
+    .types
+)
+
+py_test(
+  NAME
+    metadata_test
+  SRCS
+    metadata_test.py
+  DEPS
+    .metadata
+)

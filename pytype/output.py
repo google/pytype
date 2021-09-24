@@ -9,6 +9,7 @@ from typing import cast
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import class_mixin
+from pytype import function
 from pytype import special_builtins
 from pytype import utils
 from pytype.overlays import attr_overlay
@@ -248,7 +249,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return pytd.Annotated(ret, ("'pytype_metadata'", md))
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
-        signatures = abstract_utils.get_signatures(v)
+        signatures = function.get_signatures(v)
       except NotImplementedError:
         return pytd.NamedType("typing.Callable")
       if len(signatures) == 1:
@@ -694,6 +695,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             # type parameter; we do not want to merge in substituted values of
             # the type parameter.
             canonical_attributes.add(name)
+          if v.is_enum:
+            # If the containing class (v) is an enum, then output the instance
+            # attributes as properties.
+            # https://typing.readthedocs.io/en/latest/stubs.html#enums
+            typ = pytd.Annotated(typ, ("'property'",))
           constants[name].add_type(typ)
 
     for instance in v.canonical_instances:

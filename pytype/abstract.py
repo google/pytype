@@ -401,6 +401,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
   def isinstance_BoundFunction(self):
     return isinstance(self, BoundFunction)
 
+  def isinstance_CallableClass(self):
+    return isinstance(self, CallableClass)
+
   def isinstance_Class(self):
     return isinstance(self, class_mixin.Class)
 
@@ -2836,7 +2839,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
       value = self._new_instance(args)
       variable = self.vm.program.NewVariable()
       val = variable.AddBinding(value, [func], node)
-      node = self._call_init(node, val, args)
+      node = self.call_init(node, val, args)
     return node, variable
 
   def instantiate(self, node, container=None):

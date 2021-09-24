@@ -80,7 +80,6 @@ py_library(
     .datatypes
     .function
     .mixin
-    pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.pytd.codegen.codegen
     pytype.typegraph.cfg
@@ -409,6 +408,7 @@ py_library(
     .abstract
     .abstract_utils
     .class_mixin
+    .function
     .special_builtins
     pytype.overlays.overlays
     pytype.pyi.parser

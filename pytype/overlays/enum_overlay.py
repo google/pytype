@@ -318,6 +318,24 @@ class EnumMetaInit(abstract.SimpleFunction):
         return self._get_base_type(base_type_cls.bases())
     return None
 
+  def _get_member_new(self, node, cls, base_type):
+    # Get the __new__ that's used to create enum members.
+    # If the enum defines its own __new__, use that.
+    if "__new__" in cls:
+      return cls.get_own_new(node, cls.to_binding(node))
+    # The first fallback is the base type, e.g. str in `class M(str, Enum)`.
+    if base_type and "__new__" in base_type:
+      return base_type.get_own_new(node, base_type.to_binding(node))
+    # The last fallback is the base enum type, as long as it isn't Enum.
+    enum_base = abstract_utils.get_atomic_value(cls.bases()[-1])
+    # enum_base.__new__ is saved as __new_member__, if it has a custom __new__.
+    if enum_base.full_name != "enum.Enum" and "__new_member__" in enum_base:
+      node, new = self.vm.attribute_handler.get_attribute(
+          node, enum_base, "__new_member__")
+      new = abstract_utils.get_atomic_value(new)
+      return node, new.underlying.to_variable(node)
+    return node, None
+
   def _is_orig_auto(self, orig):
     try:
       data = abstract_utils.get_atomic_value(orig)
@@ -356,11 +374,6 @@ class EnumMetaInit(abstract.SimpleFunction):
     # Of course, if it's already marked dynamic, don't accidentally unmark it.
     if cls.maybe_missing_members:
       return
-    # Custom __init__ or __new__ methods are used to add new members to enum
-    # members. Until we can support that better, just mark them as dynamic.
-    if "__init__" in cls or "__new__" in cls:
-      cls.maybe_missing_members = True
-      return
     # The most typical use of custom subclasses of EnumMeta is to add more
     # members to the enum, or to (for example) make attribute access
     # case-insensitive. Treat such enums as having dynamic attributes.
@@ -385,19 +398,37 @@ class EnumMetaInit(abstract.SimpleFunction):
     for name, local in self._get_class_locals(node, cls.name, cls.members):
       if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
         continue
-      # Build instances directly, because you can't call instantiate() when
-      # creating the class -- pytype complains about recursive types.
-      member = abstract.Instance(cls, self.vm)
       assert local.orig, ("A local with no assigned value was passed to the "
                           "enum overlay.")
       value = local.orig
       if self._is_orig_auto(value):
         node, value = self._call_generate_next_value(node, cls, name)
-      if base_type:
-        args = function.Args(posargs=self._wrap_value(node, value, base_type))
-        node, value = base_type.call(node, base_type.to_binding(node), args)
-      member.members["value"] = value
-      member.members["_value_"] = value
+      # Enum members are created by calling __new__ (of either the base type or
+      # the first enum in MRO that defines its own __new__, or else object if
+      # neither of those applies) and then calling __init__ on the member.
+      node, enum_new = self._get_member_new(node, cls, base_type)
+      if enum_new:
+        new_args = function.Args(
+            posargs=((cls.to_variable(node),) +
+                     abstract_utils.maybe_extract_tuple(value)))
+        node, member_var = self.vm.call_function(
+            node, enum_new, new_args, fallback_to_unsolvable=False)
+        member = abstract_utils.get_atomic_value(member_var)
+      else:
+        # Build instances directly, because you can't call instantiate() when
+        # creating the class -- pytype complains about recursive types.
+        member = abstract.Instance(cls, self.vm)
+        member_var = member.to_variable(node)
+      if "_value_" not in member.members:
+        if base_type:
+          args = function.Args(posargs=self._wrap_value(node, value, base_type))
+          node, value = base_type.call(node, base_type.to_binding(node), args)
+        member.members["_value_"] = value
+      if "__init__" in cls:
+        init_args = function.Args(
+            posargs=(member_var,) + abstract_utils.maybe_extract_tuple(value))
+        node = cls.call_init(node, cls.to_binding(node), init_args)
+      member.members["value"] = member.members["_value_"]
       member.members["name"] = self.vm.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
@@ -408,8 +439,16 @@ class EnumMetaInit(abstract.SimpleFunction):
     else:
       member_type = self.vm.convert.unsolvable
     cls.member_type = member_type
-    # Because we overwrite __new__, we need to mark dynamic enums here.
-    # Of course, this can be moved later once custom __init__ is supported.
+    # If cls has a __new__, save it for later. (See _get_member_new above.)
+    # It needs to be marked as a classmethod, or else pytype will try to
+    # pass an instance of cls instead of cls when analyzing it.
+    if "__new__" in cls:
+      saved_new = cls.members["__new__"]
+      if not any(x.isinstance_ClassMethodInstance() for x in saved_new.data):
+        args = function.Args(posargs=(saved_new,))
+        node, saved_new = self.vm.load_special_builtin("classmethod").call(
+            node, None, args)
+      cls.members["__new_member__"] = saved_new
     self._mark_dynamic_enum(cls)
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
@@ -426,18 +465,37 @@ class EnumMetaInit(abstract.SimpleFunction):
     return node
 
   def _setup_pytdclass(self, node, cls):
-    # We need to rewrite the member map of the PytdClass.
-    members = dict(cls._member_map)  # pylint: disable=protected-access
+    # Only constants need to be transformed. We assume that enums in type
+    # stubs are fully realized, i.e. there are no auto() calls and the members
+    # already have values of the base type.
+    # Instance attributes are stored as properties, which pytype marks using
+    # typing.Annotated(<base_type>, 'property').
+    # TODO(tsudol): Ensure only valid enum members are transformed.
+    instance_attrs = {}
+    possible_members = {}
+    for pytd_val in cls.pytd_cls.constants:
+      if pytd_val.name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+        continue
+      assert isinstance(pytd_val, pytd.Constant)
+      if isinstance(pytd_val.type, pytd.Annotated):
+        if "'property'" in pytd_val.type.annotations:
+          instance_attrs[pytd_val.name] = pytd_val.Replace(
+              type=pytd_val.type.base_type)
+          # Properties must be deleted from the class's member map, otherwise
+          # pytype will not complain when you try to access them on the class.
+          del cls._member_map[pytd_val.name]  # pylint: disable=protected-access
+          # Note that we can't remove the entry from cls.members, because
+          # datatypes.MonitorDict does not support __delitem__. This shouldn't
+          # be an issue, because cls shouldn't have had any reason to load
+          # members by this point.
+        else:
+          possible_members[pytd_val.name] = pytd_val.Replace(
+              type=pytd_val.type.base_type)
+      else:
+        possible_members[pytd_val.name] = pytd_val
+
     member_types = []
-    for name, pytd_val in members.items():
-      if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
-        continue
-      # Only constants need to be transformed. We assume that enums in type
-      # stubs are full realized, i.e. there are no auto() calls and the members
-      # already have values of the base type.
-      # TODO(tsudol): Ensure only valid enum members are transformed.
-      if not isinstance(pytd_val, pytd.Constant):
-        continue
+    for name, pytd_val in possible_members.items():
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.vm)
@@ -454,6 +512,9 @@ class EnumMetaInit(abstract.SimpleFunction):
           pyval=pytd.Constant(name="value", type=value_type),
           node=node)
       member.members["_value_"] = member.members["value"]
+      for attr_name, attr_val in instance_attrs.items():
+        member.members[attr_name] = self.vm.convert.constant_to_var(
+            pyval=attr_val, node=node)
       cls._member_map[name] = member  # pylint: disable=protected-access
       cls.members[name] = member.to_variable(node)
       member_types.append(value_type)

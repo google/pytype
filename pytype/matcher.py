@@ -507,7 +507,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           # are magic methods like __getitem__ which aren't likely to be passed
           # as function arguments.
           return subst
-        signatures = abstract_utils.get_signatures(left)
+        signatures = function.get_signatures(left)
         for sig in signatures:
           new_subst = self._match_signature_against_callable(
               sig, other_type, subst, view)
@@ -569,7 +569,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return None
     new_substs = []
     for expected_method in method_var.data:
-      signatures = abstract_utils.get_signatures(expected_method)
+      signatures = function.get_signatures(expected_method)
       for sig in signatures:
         sig = sig.drop_first_parameter()  # drop `self`
         expected_callable = (
@@ -1007,7 +1007,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         yield typ
       return
     converter = self.vm.convert.pytd_convert
-    for signature in abstract_utils.get_signatures(attribute):
+    for signature in function.get_signatures(attribute):
       callable_signature = converter.signature_to_callable(signature)
       if isinstance(callable_signature, abstract.CallableClass):
         # Prevent the matcher from trying to enforce contravariance on 'self'.
