@@ -66,11 +66,16 @@ if sys.version_info[0] >= 3:
 if sys.version_info >= (3, 6):
   AsyncGenerator = typing.AsyncGenerator
 
-if sys.version_info >= (3, 6):
+if sys.version_info >= (3, 7):
   def namedtuple(typename: Text,
     field_names: Union[Text, Iterable[Text], Iterable[nothing]],
     *,
-    verbose: bool = ..., rename: bool = ...) -> type: ...
+    rename: bool = ..., defaults: List[Any] = ..., module = ...) -> type: ...
+elif sys.version_info >= (3, 6):
+  def namedtuple(typename: Text,
+    field_names: Union[Text, Iterable[Text], Iterable[nothing]],
+    *,
+    verbose: bool = ..., rename: bool = ..., module = ...) -> type: ...
 else:
   def namedtuple(typename: Text,
     field_names: Union[Text, Iterable[Text], Iterable[nothing]],
