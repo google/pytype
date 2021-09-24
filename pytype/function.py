@@ -485,11 +485,16 @@ class Args(collections.namedtuple(
       # into starstarargs, so set starstarargs to None.
       kwdict = starstarargs.data[0]
       if kwdict.isinstance_Dict() and kwdict.could_contain_anything:
-        starstarargs = kwdict.cls.instantiate(node)
-        for new_kwdict in starstarargs.data:
-          for param in (abstract_utils.K, abstract_utils.V):
-            new_kwdict.merge_instance_type_parameter(
-                node, param, kwdict.get_instance_type_parameter(param, node))
+        cls = kwdict.cls
+        if cls.isinstance_PyTDClass():
+          # If cls is not already parameterized with the key and value types, we
+          # parameterize it now to preserve them.
+          params = {
+              name: vm.convert.merge_classes(kwdict.get_instance_type_parameter(
+                  name, node).data)
+              for name in (abstract_utils.K, abstract_utils.V)}
+          cls = vm.convert.build_map_class(node, params)
+        starstarargs = cls.instantiate(node)
       else:
         starstarargs = None
     starargs_as_tuple = self.starargs_as_tuple(node, vm)

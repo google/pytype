@@ -269,6 +269,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     """Create an empty VM dict."""
     return abstract.Dict(self.vm).to_variable(node)
 
+  def build_map_class(self, node, type_params):
+    assert set(type_params) == {abstract_utils.K, abstract_utils.V}
+    return abstract.ParameterizedClass(self.dict_type, type_params, self.vm)
+
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
     return self.tuple_to_value(content).to_variable(node)
