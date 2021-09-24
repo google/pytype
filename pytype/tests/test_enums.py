@@ -928,21 +928,20 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_own_init_simple(self):
     self.Check("""
       from enum import Enum
-      from typing import Any
       class M(Enum):
         A = 1
         def __init__(self, a):
           self._value_ = str(a + self._value_)
 
-      assert_type(M.A, Any)
-      assert_type(M.A.value, Any)
+      assert_type(M.A, M)
+      assert_type(M.A.value, str)
     """)
 
   def test_own_init_tuple_value(self):
     # https://docs.python.org/3/library/enum.html#planet
     self.Check("""
       from enum import Enum
-      from typing import Any, Tuple
+      from typing import Tuple
 
       class Planet(Enum):
         MERCURY = (3.303e+23, 2.4397e6)
@@ -962,19 +961,18 @@ class EnumOverlayTest(test_base.BaseTest):
           G = 6.67300E-11
           return G * self.mass / (self.radius * self.radius)
 
-      assert_type(Planet.EARTH, Any)
-      assert_type(Planet.EARTH.name, Any)
-      assert_type(Planet.EARTH.value, Any)
-      assert_type(Planet.EARTH.mass, Any)
-      assert_type(Planet.EARTH.radius, Any)
-      assert_type(Planet.EARTH.surface_gravity, Any)
+      assert_type(Planet.EARTH, Planet)
+      assert_type(Planet.EARTH.name, str)
+      assert_type(Planet.EARTH.value, Tuple[float, float])
+      assert_type(Planet.EARTH.mass, float)
+      assert_type(Planet.EARTH.radius, float)
+      assert_type(Planet.EARTH.surface_gravity, float)
     """)
 
   def test_own_init_errors(self):
-    # This should raise a missing-parameter error on line 2.
-    self.Check("""
+    self.CheckWithErrors("""
       import enum
-      class X(enum.Enum):
+      class X(enum.Enum):  # missing-parameter
         A = 1
         def __init__(self, a, b, c):
           self.x = a + b + c
@@ -1005,7 +1003,28 @@ class EnumOverlayTest(test_base.BaseTest):
         M.B
       """, pythonpath=[d.path])
 
-  def test_instance_attrs_property_pyi(self):
+  def test_instance_attrs_property_output(self):
+    ty = self.Infer("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+        def __init__(self, val):
+          self.str_v = str(val)
+        @property
+        def combo(self) -> str:
+          return f"{self.str_v}+{self.value}"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Annotated
+      enum: module
+      class M(enum.Enum):
+        A: int
+        combo: Annotated[str, 'property']
+        str_v: Annotated[str, 'property']
+        def __init__(self, val) -> None: ...
+    """)
+
+  def test_instance_attrs_property_input(self):
     # Instance attributes are marked using @property.
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

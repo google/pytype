@@ -695,6 +695,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             # type parameter; we do not want to merge in substituted values of
             # the type parameter.
             canonical_attributes.add(name)
+          if v.is_enum:
+            # If the containing class (v) is an enum, then output the instance
+            # attributes as properties.
+            # https://typing.readthedocs.io/en/latest/stubs.html#enums
+            typ = pytd.Annotated(typ, ("'property'",))
           constants[name].add_type(typ)
 
     for instance in v.canonical_instances:
