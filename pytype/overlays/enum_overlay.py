@@ -94,22 +94,31 @@ class EnumBuilder(abstract.PyTDClass):
     # See class_mixin.Class._call_new_and_init.
     args = args.simplify(node, self.vm)
     args = args.replace(posargs=(self.vm.new_unsolvable(node),) + args.posargs)
-    # To actually type check this call, we build a new SimpleFunction and check
-    # against that. This guarantees we only check against the functional API
-    # signature for __new__, rather than the value lookup signature.
+    # It's possible that this class has been called in order to look up an enum
+    # member, e.g. on something annotated as Type[Enum].
+    # First, check the lookup API. If that succeeds, return the result.
+    # If not, check against the functional API.
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
     node, pytd_new_var = self.vm.attribute_handler.get_attribute(
         node, self, "__new__", self.to_binding(node))
     pytd_new = abstract_utils.get_atomic_value(pytd_new_var)
-    # There are two signatures for __new__. We want the longer one.
-    sig = max(
-        pytd_new.signatures, key=lambda s: s.signature.maximum_param_count())
-    sig = sig.signature
-    new = abstract.SimpleFunction.from_signature(sig, self.vm)
-    new.call(node, None, args, alias_map)
-    argmap = {name: var for name, var, _ in sig.iter_args(args)}
+    # There are 2 signatures for Enum.__new__. The one with fewer arguments is
+    # for looking up values, and the other is for the functional API.
+    # I don't think we have a guarantee of ordering for signatures, so choose
+    # them based on parameter count.
+    lookup_sig, api_sig = sorted([s.signature for s in pytd_new.signatures],
+                                 key=lambda s: s.maximum_param_count())
+    lookup_new = abstract.SimpleFunction.from_signature(lookup_sig, self.vm)
+    try:
+      return lookup_new.call(node, None, args, alias_map)
+    except function.FailedFunctionCall as e:
+      log.info("Called Enum.__new__ as lookup, but failed:\n%s", e)
+    api_new = abstract.SimpleFunction.from_signature(api_sig, self.vm)
+    api_new.call(node, None, args, alias_map)
 
+    # At this point, we know this is a functional API call.
+    argmap = {name: var for name, var, _ in api_sig.iter_args(args)}
     cls_name_var = argmap["value"]
     try:
       names = abstract_utils.get_atomic_python_constant(argmap["names"])
