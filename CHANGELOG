@@ -1,3 +1,18 @@
+Version 2021.09.27
+
+New features and updates:
+* Drop target Python 3.5 support.
+* Remove the no-op --enforce-noniterable-strings flag.
+* Support arbitrary python values for typing.Annotated in pyi files.
+* Add more extensive type support for attr converters.
+
+Bug fixes:
+* Preserve named args in a function call when we have **kwargs in the arglist.
+* Allow assertIsInstance to take a tuple of classes.
+* Fix a bug in matching a Union against a TypeVar.
+* Attach a line number to function call errors caused by annotating self.
+* Add some missing namedtuple args.
+
 Version 2021.09.09
 
 New features and updates:
