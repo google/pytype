@@ -477,7 +477,6 @@ class EnumOverlayTest(test_base.BaseTest):
     self.CheckWithErrors("""
       import enum
 
-      enum.Enum(1)  # missing-parameter
       enum.Enum(1, "A")  # wrong-arg-types
       enum.Enum("X", [1, 2])  # wrong-arg-types
       enum.Enum("X", object())  # wrong-arg-types
@@ -504,6 +503,16 @@ class EnumOverlayTest(test_base.BaseTest):
       FI = enum.IntEnum("FI", ["A", "B", "C"])
       assert_type(FI.A, FI)
       assert_type(FI.A.value, int)
+    """)
+
+  def test_functional_api_actually_lookup(self):
+    # Sometimes a Type[Enum] will be called to lookup a value, which will go
+    # to EnumBuilder.call instead of a specific EnumInstance.__new__.
+    self.Check("""
+      import enum
+      from typing import Type
+      def just_a_lookup(name: str, category: Type[enum.Enum]):
+        category(name)
     """)
 
   def test_auto_basic(self):
@@ -1047,6 +1056,13 @@ class EnumOverlayTest(test_base.BaseTest):
         foo.Fn.x  # attribute-error
         foo.NoFn.x  # attribute-error
       """, pythonpath=[d.path])
+
+  def test_enum_bases(self):
+    self.CheckWithErrors("""
+      import enum
+      class BadBaseOrder(enum.Enum, int):  # base-class-error
+        A = 1
+    """)
 
 if __name__ == "__main__":
   test_base.main()
