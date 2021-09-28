@@ -1053,8 +1053,34 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(foo.Fn.A.x, str)
         assert_type(foo.NoFn.A.value, int)
         assert_type(foo.NoFn.A.x, str)
-        foo.Fn.x  # attribute-error
-        foo.NoFn.x  # attribute-error
+        # These should be attribute errors but pytype does not differentiate
+        # between class and instance attributes for PyTDClass.
+        foo.Fn.x
+        foo.NoFn.x
+      """, pythonpath=[d.path])
+
+  def test_instance_attrs_canonical(self):
+    # Test that canonical instances have instance attributes.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        from typing import Annotated
+        class F(enum.Enum):
+          A: str
+          x = Annotated[int, 'property']
+      """)
+      self.Check("""
+        import enum
+        import foo
+        class M(enum.Enum):
+          A = 'a'
+          @property
+          def x(self) -> int:
+            return 1
+        def take_f(f: foo.F):
+          return f.x
+        def take_m(m: M):
+          return m.x
       """, pythonpath=[d.path])
 
   def test_enum_bases(self):
