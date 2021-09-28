@@ -311,13 +311,21 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
   def visit_arg(self, node):
     self.convert_node_annotations(node)
 
+  def _get_name(self, node):
+    if isinstance(node, ast3.Name):
+      return node.id
+    elif isinstance(node, ast3.Attribute):
+      return f"{node.value.id}.{node.attr}"
+    else:
+      raise ParseError(f"Unexpected node type in get_name: {node}")
+
   def _preprocess_decorator_list(self, node):
     decorators = []
     for d in node.decorator_list:
-      if isinstance(d, ast3.Name):
-        decorators.append(d.id)
-      elif isinstance(d, ast3.Attribute):
-        decorators.append(f"{d.value.id}.{d.attr}")
+      if isinstance(d, (ast3.Name, ast3.Attribute)):
+        decorators.append(self._get_name(d))
+      elif isinstance(d, ast3.Call):
+        decorators.append(self._get_name(d.func))
       else:
         raise ParseError(f"Unexpected decorator: {d}")
     node.decorator_list = decorators

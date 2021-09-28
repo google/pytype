@@ -2085,18 +2085,6 @@ class PropertyDecoratorTest(_ParserTestBase):
 
     self.check_error("""
       class A:
-          @name.foo
-          def name(self): ...
-      """, 1, "Unhandled decorator: name.foo")
-
-    self.check_error("""
-      class A:
-          @notname.deleter
-          def name(self): ...
-      """, 1, "Unhandled decorator: notname.deleter")
-
-    self.check_error("""
-      class A:
           @property
           @staticmethod
           def name(self): ...
