@@ -241,7 +241,7 @@ def get_template(val):
         base = get_atomic_value(base, default=val.vm.convert.unsolvable)
         res.update(get_template(base))
     return res
-  elif val.cls:
+  elif val.cls != val:
     return get_template(val.cls)
   else:
     return set()
@@ -329,7 +329,7 @@ def parse_formal_type_parameters(
       formal_type_parameters.merge_from(
           base.base_cls.all_formal_type_parameters, merge)
     params = base.get_formal_type_parameters()
-    if getattr(container, "cls", None):
+    if hasattr(container, "cls"):
       container_template = container.cls.template
     else:
       container_template = ()
@@ -589,8 +589,16 @@ def check_classes(var, check):
   Returns:
     Whether the check passes.
   """
-  return var and all(
-      v.cls.isinstance_Class() and check(v.cls) for v in var.data if v.cls)
+  if not var:
+    return False
+  for v in var.data:
+    if v.isinstance_Class():
+      if not check(v):
+        return False
+    elif v.cls.isinstance_Class() and v.cls != v:
+      if not check(v.cls):
+        return False
+  return True
 
 
 def match_type_container(typ, container_type_name: Union[str, Tuple[str, ...]]):
@@ -704,7 +712,7 @@ def is_indefinite_iterable(val: _BaseValue):
   """True if val is a non-concrete instance of typing.Iterable."""
   instance = val.isinstance_Instance()
   concrete = is_concrete(val)
-  cls_instance = val.cls and val.cls.isinstance_Class()
+  cls_instance = val.cls.isinstance_Class()
   if not (instance and cls_instance and not concrete):
     return False
   for cls in val.cls.mro:
@@ -755,7 +763,7 @@ def is_callable(value: _BaseValue):
       value.isinstance_StaticMethod() or
       value.isinstance_StaticMethodInstance()):
     return True
-  if not value.cls or not value.cls.isinstance_Class():
+  if not value.cls.isinstance_Class():
     return False
   _, attr = value.vm.attribute_handler.get_attribute(
       value.vm.root_node, value.cls, "__call__")

@@ -277,19 +277,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       # inner value rather than properly converting it.
       return pytd.Literal(repr(v.pyval))
     elif isinstance(v, abstract.SimpleValue):
-      if v.cls:
-        ret = self.value_instance_to_pytd_type(
-            node, v.cls, v, seen=seen, view=view)
-        ret.Visit(visitors.FillInLocalPointers(
-            {"builtins": self.vm.loader.builtins}))
-        return ret
-      else:
-        # We don't know this type's __class__, so return AnythingType to
-        # indicate that we don't know anything about what this is.
-        # This happens e.g. for locals / globals, which are returned from the
-        # code in class declarations.
-        log.info("Using Any for %s", v.name)
-        return pytd.AnythingType()
+      ret = self.value_instance_to_pytd_type(
+          node, v.cls, v, seen=seen, view=view)
+      ret.Visit(visitors.FillInLocalPointers(
+          {"builtins": self.vm.loader.builtins}))
+      return ret
     elif isinstance(v, abstract.Union):
       return pytd_utils.JoinTypes(self.value_to_pytd_type(node, o, seen, view)
                                   for o in v.options)

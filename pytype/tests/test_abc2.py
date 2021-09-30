@@ -135,6 +135,24 @@ class AbstractMethodTests(test_base.BaseTest):
         return x()
     """)
 
+  def test_abstract_classmethod(self):
+    self.Check("""
+      import abc
+      class Foo(abc.ABC):
+        @classmethod
+        @abc.abstractmethod
+        def f(cls) -> str: ...
+    """)
+
+  def test_bad_abstract_classmethod(self):
+    self.CheckWithErrors("""
+      import abc
+      class Foo:
+        @classmethod
+        @abc.abstractmethod
+        def f(cls) -> str: ...  # bad-return-type
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -101,7 +101,7 @@ class Callable(TypingContainer):
       self.vm.errorlog.invalid_ellipses(
           self.vm.frames, inner_ellipses, args.name)
     else:
-      if args.cls and args.cls.full_name == "builtins.list":
+      if args.cls.full_name == "builtins.list":
         self.vm.errorlog.ambiguous_annotation(self.vm.frames, [args])
       elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.vm.errorlog.invalid_annotation(

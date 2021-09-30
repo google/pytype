@@ -106,8 +106,8 @@ class Class(metaclass=mixin.MixinMeta):
   def init_mixin(self, metaclass):
     """Mix-in equivalent of __init__."""
     if metaclass is None:
-      self.cls = self._get_inherited_metaclass()
-    else:
+      metaclass = self._get_inherited_metaclass()
+    if metaclass:
       # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
       # metaclasses of the base classes.
       self.cls = metaclass
@@ -239,8 +239,7 @@ class Class(metaclass=mixin.MixinMeta):
     self.abstract_methods = abstract_methods
 
   def _has_explicit_abcmeta(self):
-    return self.cls and any(
-        parent.full_name == "abc.ABCMeta" for parent in self.cls.mro)
+    return any(parent.full_name == "abc.ABCMeta" for parent in self.cls.mro)
 
   def _has_implicit_abcmeta(self):
     """Whether the class should be considered implicitly abstract."""
@@ -268,11 +267,7 @@ class Class(metaclass=mixin.MixinMeta):
 
   @property
   def is_enum(self):
-    if self.cls:
-      return any(cls.full_name == "enum.EnumMeta" for cls in self.cls.mro)
-    else:
-      return any(base.cls and base.cls.full_name == "enum.Enum"
-                 for base in self.mro)
+    return any(cls.full_name == "enum.EnumMeta" for cls in self.cls.mro)
 
   @property
   def is_protocol(self):
@@ -280,13 +275,14 @@ class Class(metaclass=mixin.MixinMeta):
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
-      if isinstance(base, Class) and base.cls is not None:
+      if (isinstance(base, Class) and base.cls != self.vm.convert.unsolvable and
+          base.cls.full_name != "builtins.type"):
         return base.cls
     return None
 
   def call_metaclass_init(self, node):
     """Call the metaclass's __init__ method if it does anything interesting."""
-    if not self.cls:
+    if self.cls.full_name == "builtins.type":
       return node
     node, init = self.vm.attribute_handler.get_attribute(
         node, self.cls, "__init__")
@@ -394,7 +390,7 @@ class Class(metaclass=mixin.MixinMeta):
     if name == "__getitem__" and valself is None:
       # See vm._call_binop_on_bindings: valself == None is a special value that
       # indicates an annotation.
-      if self.cls:
+      if self.cls.full_name != "builtins.type":
         # This class has a custom metaclass; check if it defines __getitem__.
         _, att = self.vm.attribute_handler.get_attribute(
             node, self, name, self.to_binding(node))

@@ -44,12 +44,12 @@ class ConvertTest(test_base.UnitTest):
     self.assertEqual(meta, cls_meta)
     self.assertEqual(meta, subcls_meta)
 
-  def test_convert_no_metaclass(self):
+  def test_convert_default_metaclass(self):
     ast = self._load_ast("a", """
       class A: ...
     """)
     cls = self._convert_class("a.A", ast)
-    self.assertIsNone(cls.cls)
+    self.assertEqual(cls.cls, self._vm.convert.type_type)
 
   def test_convert_metaclass_with_generic(self):
     ast = self._load_ast("a", """

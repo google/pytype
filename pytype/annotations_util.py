@@ -220,9 +220,8 @@ class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
       if self_var:
         type_params = []
         for v in self_var.data:
-          if v.cls:
-            # Normalize type parameter names by dropping the scope.
-            type_params.extend(p.with_module(None) for p in v.cls.template)
+          # Normalize type parameter names by dropping the scope.
+          type_params.extend(p.with_module(None) for p in v.cls.template)
         self_substs = tuple(
             abstract_utils.get_type_parameter_substitutions(v, type_params)
             for v in self_var.data)

@@ -255,8 +255,8 @@ class IsInstance(BinaryPredicate):
       True if the object is derived from a class in the class_spec, False if
       it is not, and None if it is ambiguous whether obj matches class_spec.
     """
-    cls = obj.get_class()
-    if (isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY) or cls is None or
+    cls = obj.cls
+    if (isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY) or
         isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY)):
       return None
     return abstract_utils.check_against_mro(self.vm, cls, class_spec)
@@ -375,9 +375,6 @@ class SuperInstance(abstract.BaseValue):
       return self.get.to_variable(node)
     else:
       return super().get_special_attribute(node, name, valself)
-
-  def get_class(self):
-    return self.cls
 
   def call(self, node, _, args):
     self.vm.errorlog.not_callable(self.vm.frames, self)
@@ -559,6 +556,12 @@ class PropertyTemplate(BuiltinClass):
     raise NotImplementedError()
 
 
+def _is_fn_abstract(func_var):
+  if func_var is None:
+    return False
+  return any(getattr(d, "is_abstract", None) for d in func_var.data)
+
+
 class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
@@ -577,15 +580,7 @@ class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
     self.set_slot("getter", self.getter_slot)
     self.set_slot("setter", self.setter_slot)
     self.set_slot("deleter", self.deleter_slot)
-    self.is_abstract = any(self._is_fn_abstract(x) for x in [fget, fset, fdel])
-
-  def _is_fn_abstract(self, func_var):
-    if func_var is None:
-      return False
-    return any(getattr(d, "is_abstract", None) for d in func_var.data)
-
-  def get_class(self):
-    return self.cls
+    self.is_abstract = any(_is_fn_abstract(x) for x in [fget, fset, fdel])
 
   def fget_slot(self, node, obj, objtype):
     return self.vm.call_function(node, self.fget, function.Args((obj,)))
@@ -641,9 +636,7 @@ class StaticMethodInstance(abstract.SimpleValue, mixin.HasSlots):
     self.func = func
     self.cls = cls
     self.set_slot("__get__", self.func_slot)
-
-  def get_class(self):
-    return self.cls
+    self.is_abstract = _is_fn_abstract(func)
 
   def func_slot(self, node, obj, objtype):
     return node, self.func
@@ -681,9 +674,7 @@ class ClassMethodInstance(abstract.SimpleValue, mixin.HasSlots):
     self.cls = cls
     self.func = func
     self.set_slot("__get__", self.func_slot)
-
-  def get_class(self):
-    return self.cls
+    self.is_abstract = _is_fn_abstract(func)
 
   def func_slot(self, node, obj, objtype):
     results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]

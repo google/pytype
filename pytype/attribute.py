@@ -165,7 +165,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _check_writable(self, obj, name):
     """Verify that a given attribute is writable. Log an error if not."""
-    if obj.cls is None:
+    if not obj.cls.mro:
       # "Any" etc.
       return True
     for baseclass in obj.cls.mro:
@@ -228,13 +228,14 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # instance, if we're analyzing int.mro(), we want to retrieve the mro
       # method on the type class, but for (3).mro(), we want to report that the
       # method does not exist.)
-      meta = cls.get_class()
+      meta = cls.cls
     return self._get_attribute(node, cls, meta, name, valself)
 
   def _get_instance_attribute(self, node, obj, name, valself=None):
     """Get an attribute from an instance."""
     assert isinstance(obj, abstract.SimpleValue)
-    return self._get_attribute(node, obj, obj.cls, name, valself)
+    cls = None if obj.cls.full_name == "builtins.type" else obj.cls
+    return self._get_attribute(node, obj, cls, name, valself)
 
   def _get_attribute(self, node, obj, cls, name, valself):
     """Get an attribute from an object or its class.
@@ -326,8 +327,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       #      super().__init__()  # line 6
       # if we're looking up super.__init__ in line 6 as part of analyzing the
       # super call in line 3, then starting_cls=Foo, current_cls=Bar.
-      if (isinstance(obj.super_obj.cls,
-                     (type(None), abstract.AMBIGUOUS_OR_EMPTY)) or
+      if (obj.super_obj.cls.full_name == "builtins.type" or
+          isinstance(obj.super_obj.cls, abstract.AMBIGUOUS_OR_EMPTY) or
           isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)):
         # Setting starting_cls to the current class when either of them is
         # ambiguous is technically incorrect but behaves correctly in the common

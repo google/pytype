@@ -398,7 +398,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # The most typical use of custom subclasses of EnumMeta is to add more
     # members to the enum, or to (for example) make attribute access
     # case-insensitive. Treat such enums as having dynamic attributes.
-    if cls.cls and cls.cls.full_name != "enum.EnumMeta":
+    if cls.cls.full_name != "enum.EnumMeta":
       cls.maybe_missing_members = True
       return
     for base_var in cls.bases():
@@ -408,7 +408,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         # Interpreter classes don't have "maybe_missing_members" set even if
         # they have _HAS_DYNAMIC_ATTRIBUTES. But for enums, those markers should
         # apply to the whole class.
-        if ((base.cls and base.cls.full_name != "enum.EnumMeta") or
+        if ((base.cls.full_name != "enum.EnumMeta") or
             base.maybe_missing_members or base.has_dynamic_attributes()):
           cls.maybe_missing_members = True
           return

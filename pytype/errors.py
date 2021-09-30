@@ -503,7 +503,7 @@ class ErrorLog(ErrorLogBase):
     elif abstract_utils.is_concrete(t):
       return re.sub(r"(\\n|\s)+", " ",
                     t.str_of_constant(self._print_as_expected_type))
-    elif isinstance(t, abstract.AnnotationClass) or not t.cls:
+    elif isinstance(t, abstract.AnnotationClass) or t.cls == t:
       return t.name
     else:
       return "<instance of %s>" % self._print_as_expected_type(t.cls, t)

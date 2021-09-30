@@ -479,7 +479,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, view)
-      elif left.cls:
+      else:
         return self._match_instance_against_type(left, other_type, subst, view)
     elif isinstance(left, abstract.Module):
       if other_type.full_name in [
@@ -517,11 +517,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, view)
-      elif left.cls:
+      else:
         return self._match_type_against_type(
             abstract.Instance(left.cls, self.vm), other_type, subst, view)
-      else:
-        return None
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
       return self._match_all_bindings(left.default, other_type, subst, view)
     elif isinstance(left, abstract.SimpleValue):
@@ -720,11 +718,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
     elif isinstance(other_type, class_mixin.Class):
-      if not self._satisfies_noniterable_str(left.get_class(), other_type):
-        self._noniterable_str_error = NonIterableStrError(left.get_class(),
-                                                          other_type)
+      if not self._satisfies_noniterable_str(left.cls, other_type):
+        self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
         return None
-      base = self.match_from_mro(left.get_class(), other_type)
+      base = self.match_from_mro(left.cls, other_type)
       if base is None:
         if other_type.is_protocol:
           with self._track_partially_matched_protocols():
@@ -905,10 +902,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       _ = left.items()  # loads all attributes into members
     if isinstance(left, abstract.SimpleValue):
       left_attributes.update(left.members)
-    left_cls = left.get_class()
-    if left_cls:
-      left_attributes.update(*(cls.get_own_attributes() for cls in left_cls.mro
-                               if isinstance(cls, class_mixin.Class)))
+    left_attributes.update(*(cls.get_own_attributes() for cls in left.cls.mro
+                             if isinstance(cls, class_mixin.Class)))
     if "__getitem__" in left_attributes and "__iter__" not in left_attributes:
       # If a class has a __getitem__ method, it also (implicitly) has a
       # __iter__: Python will emulate __iter__ by calling __getitem__ with
@@ -927,18 +922,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    left_cls = left.get_class()
-    if isinstance(left_cls, abstract.AMBIGUOUS_OR_EMPTY):
+    if isinstance(left.cls, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    elif left_cls.is_dynamic:
+    elif left.cls.is_dynamic:
       return self._subst_with_type_parameters_from(subst, other_type)
     left_attributes = self._get_attribute_names(left)
     missing = other_type.protocol_attributes - left_attributes
     if missing:  # not all protocol attributes are implemented by 'left'
       self._protocol_error = ProtocolMissingAttributesError(
-          left_cls, other_type, missing)
+          left.cls, other_type, missing)
       return None
-    key = (left_cls, other_type)
+    key = (left.cls, other_type)
     if key in self._protocol_cache:
       return subst
     self._protocol_cache.add(key)
@@ -980,9 +974,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     return resolved_attribute
 
   def _get_type(self, value):
-    cls = value.get_class()
-    if not cls:
-      return None
+    cls = value.cls
     if (not isinstance(cls, (abstract.PyTDClass, abstract.InterpreterClass)) or
         not cls.template):
       return cls
@@ -1037,9 +1029,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    left_cls = left.get_class()
     left_attribute = self._get_attribute_for_protocol_matching(
-        left_cls, attribute, left)
+        left.cls, attribute, left)
     if left_attribute is None:
       if attribute == "__iter__":
         # See _get_attribute_names: left has an implicit __iter__ method
@@ -1088,7 +1079,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # protocol_attribute_var.
         bad_left, bad_right = zip(*bad_matches)
         self._protocol_error = ProtocolTypeError(
-            left_cls, other_type, attribute, self.vm.merge_values(bad_left),
+            left.cls, other_type, attribute, self.vm.merge_values(bad_left),
             self.vm.merge_values(bad_right))
         return None
     return self._merge_substs(subst, new_substs)
@@ -1099,16 +1090,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     # value altogether.
     concrete_values = []
     for v in values:
-      if not isinstance(v, (abstract.AMBIGUOUS_OR_EMPTY,
+      # TODO(b/200220895): This is probably wrong; we should expand unions
+      # instead of ignoring them.
+      if not isinstance(v, (abstract.AMBIGUOUS_OR_EMPTY, abstract.Union,
                             abstract.TypeParameterInstance)):
-        cls = v.get_class()
-        if not isinstance(cls, abstract.AMBIGUOUS_OR_EMPTY):
+        if not isinstance(v.cls, abstract.AMBIGUOUS_OR_EMPTY):
           concrete_values.append(v)
     return concrete_values
 
   def _satisfies_single_type(self, values):
     """Enforce that the variable contains only one concrete type."""
-    class_names = {v.get_class().full_name for v in values}
+    class_names = {v.cls.full_name for v in values}
     for compat_name, name in _COMPATIBLE_BUILTINS:
       if {compat_name, name} <= class_names:
         class_names.remove(compat_name)
@@ -1120,9 +1112,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     common_classes = None
     object_in_values = False
     for v in values:
-      cls = v.get_class()
-      object_in_values |= cls == self.vm.convert.object_type
-      superclasses = {c.full_name for c in cls.mro}
+      object_in_values |= v.cls == self.vm.convert.object_type
+      superclasses = {c.full_name for c in v.cls.mro}
       for compat_name, name in _COMPATIBLE_BUILTINS:
         if compat_name in superclasses:
           superclasses.add(name)

@@ -1075,7 +1075,7 @@ class AbstractTest(AbstractTestBase):
 
   def test_super_type(self):
     supercls = special_builtins.Super(self._vm)
-    self.assertEqual(supercls.get_class(), self._vm.convert.type_type)
+    self.assertEqual(supercls.cls, self._vm.convert.type_type)
 
   def test_instantiate_interpreter_class(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)

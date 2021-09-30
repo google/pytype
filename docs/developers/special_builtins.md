@@ -15,7 +15,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-09-18' }
          * [Instances](#instances)
       * [Variables and data](#variables-and-data)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-09-22T20:26-07:00 -->
 
 <!--te-->
 
@@ -181,7 +181,7 @@ Pytype replicates this behaviour by providing a `StaticMethod` class, whose
 `call` method takes in a function (specifically a variable whose binding is an
 `abstract.InterpreterFunction` object), and returns a `StaticMethodInstance`
 that wraps the original variable. `StaticMethodInstance` in turn wraps the
-underlying function and provides an object whose `get_class()` method returns
+underlying function and provides an object whose `cls` attribute is
 `special_builtins.StaticMethod` and whose `__get__` slot returns the original
 function. (The details of `StaticMethodInstance` don't matter too much for now,
 but note the two-stage process by which we have achieved the desired method

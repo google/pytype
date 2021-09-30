@@ -618,7 +618,7 @@ class VirtualMachine:
           with_metaclass = True
           if not meta:
             # Only the first metaclass gets applied.
-            meta = b.get_class().to_variable(self.root_node)
+            meta = b.cls.to_variable(self.root_node)
           non_meta.extend(b.bases)
       if not with_metaclass:
         non_meta.append(base)
@@ -2604,7 +2604,8 @@ class VirtualMachine:
             maybe_cls.members)
         if annotations_dict:
           annotations_dict = annotations_dict.annotated_locals
-      elif isinstance(maybe_cls, abstract.PyTDClass):
+      elif (isinstance(maybe_cls, abstract.PyTDClass) and
+            maybe_cls != self.convert.type_type):
         node, attr = self.attribute_handler.get_attribute(
             state.node, obj_val, name)
         if attr:
@@ -2698,15 +2699,13 @@ class VirtualMachine:
       try:
         return tuple(self.convert.value_to_constant(data, list))
       except abstract_utils.ConversionError:
-        if data.cls:
-          for base in data.cls.mro:
-            if isinstance(base, abstract.TupleClass) and not base.formal:
-              # We've found a TupleClass with concrete parameters, which means
-              # we're a subclass of a heterogenous tuple (usually a
-              # typing.NamedTuple instance).
-              new_data = self.merge_values(
-                  base.instantiate(self.root_node).data)
-              return self._get_literal_sequence(new_data)
+        for base in data.cls.mro:
+          if isinstance(base, abstract.TupleClass) and not base.formal:
+            # We've found a TupleClass with concrete parameters, which means
+            # we're a subclass of a heterogeneous tuple (usually a
+            # typing.NamedTuple instance).
+            new_data = self.merge_values(base.instantiate(self.root_node).data)
+            return self._get_literal_sequence(new_data)
         return None
 
   def _restructure_tuple(self, state, tup, pre, post):
@@ -3840,7 +3839,7 @@ class VirtualMachine:
     if not (f.isinstance_BoundFunction() and len(f.callself.data) == 1):
       return state
     cls = f.callself.data[0].cls
-    if not (cls and cls.isinstance_Class() and cls.is_test_class()):
+    if not (cls.isinstance_Class() and cls.is_test_class()):
       return state
     if f.name == "assertIsNotNone":
       if len(args) == 1:

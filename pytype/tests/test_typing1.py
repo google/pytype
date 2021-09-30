@@ -208,7 +208,7 @@ class TypingTest(test_base.BaseTest):
       import typing
       from typing import Any
       Sequence = typing.Sequence[int]
-      Sequence_: Any
+      Sequence_: type
     """)
 
   def test_type_checking_local(self):
