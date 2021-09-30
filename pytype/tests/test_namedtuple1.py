@@ -13,7 +13,8 @@ class NamedtupleTests(test_base.BaseTest):
   """Tests for collections.namedtuple."""
 
   def _namedtuple_ast(self, name, fields):
-    return collections_overlay.namedtuple_ast(name, fields, self.python_version)
+    return collections_overlay.namedtuple_ast(
+        name, fields, [False] * len(fields), self.python_version)
 
   def _namedtuple_def(self, suffix="", **kws):
     """Generate the expected pyi for a simple namedtuple definition.

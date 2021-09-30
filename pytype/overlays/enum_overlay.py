@@ -489,34 +489,19 @@ class EnumMetaInit(abstract.SimpleFunction):
     # Only constants need to be transformed. We assume that enums in type
     # stubs are fully realized, i.e. there are no auto() calls and the members
     # already have values of the base type.
-    # Instance attributes are stored as properties, which pytype marks using
-    # typing.Annotated(<base_type>, 'property').
     # TODO(tsudol): Ensure only valid enum members are transformed.
-    instance_attrs = {}
-    possible_members = {}
+    member_types = []
     for pytd_val in cls.pytd_cls.constants:
       if pytd_val.name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
         continue
-      assert isinstance(pytd_val, pytd.Constant)
-      if isinstance(pytd_val.type, pytd.Annotated):
-        if "'property'" in pytd_val.type.annotations:
-          instance_attrs[pytd_val.name] = pytd_val.Replace(
-              type=pytd_val.type.base_type)
-          # Properties must be deleted from the class's member map, otherwise
-          # pytype will not complain when you try to access them on the class.
-          del cls._member_map[pytd_val.name]  # pylint: disable=protected-access
-          # Note that we can't remove the entry from cls.members, because
-          # datatypes.MonitorDict does not support __delitem__. This shouldn't
-          # be an issue, because cls shouldn't have had any reason to load
-          # members by this point.
-        else:
-          possible_members[pytd_val.name] = pytd_val.Replace(
-              type=pytd_val.type.base_type)
-      else:
-        possible_members[pytd_val.name] = pytd_val
-
-    member_types = []
-    for name, pytd_val in possible_members.items():
+      # @property values are instance attributes and must not be converted into
+      # enum members. Ideally, these would only be present on the enum members,
+      # but pytype doesn't differentiate between class and instance attributes
+      # for PyTDClass and there's no mechanism to ensure canonical instances
+      # have these attributes.
+      if (isinstance(pytd_val.type, pytd.Annotated) and
+          "'property'" in pytd_val.type.annotations):
+        continue
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.vm)
@@ -533,11 +518,8 @@ class EnumMetaInit(abstract.SimpleFunction):
           pyval=pytd.Constant(name="value", type=value_type),
           node=node)
       member.members["_value_"] = member.members["value"]
-      for attr_name, attr_val in instance_attrs.items():
-        member.members[attr_name] = self.vm.convert.constant_to_var(
-            pyval=attr_val, node=node)
-      cls._member_map[name] = member  # pylint: disable=protected-access
-      cls.members[name] = member.to_variable(node)
+      cls._member_map[pytd_val.name] = member  # pylint: disable=protected-access
+      cls.members[pytd_val.name] = member.to_variable(node)
       member_types.append(value_type)
     # Because we overwrite __new__, we need to mark dynamic enums here.
     # Of course, this can be moved later once custom __init__ is supported.

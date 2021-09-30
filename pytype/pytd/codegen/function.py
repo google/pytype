@@ -242,7 +242,7 @@ class _DecoratedFunction:
 
 def merge_method_signatures(
     name_and_sigs: List[NameAndSig],
-    check_unhandled_decorator: bool = True
+    check_unhandled_decorator: bool = False
 ) -> List[pytd.Function]:
   """Group the signatures by name, turning each group into a function."""
   functions = collections.OrderedDict()

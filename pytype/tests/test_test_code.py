@@ -66,5 +66,19 @@ class AssertionTest(test_base.BaseTest):
           assert_type(x, int)
     """)
 
+  def test_instance_attribute(self):
+    self.Check("""
+      import unittest
+      class Foo:
+        def __init__(self, x):
+          self.x = x
+      class FooTest(unittest.TestCase):
+        def test_foo(self):
+          foo = __any_object__
+          self.assertIsInstance(foo, Foo)
+          print(foo.x)
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

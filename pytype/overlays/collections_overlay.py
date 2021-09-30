@@ -18,12 +18,13 @@ def _repeat_type(type_str, n):
   return ", ".join((type_str,) * n) if n else "()"
 
 
-def namedtuple_ast(name, fields, python_version=None):
+def namedtuple_ast(name, fields, defaults, python_version=None):
   """Make an AST with a namedtuple definition for the given name and fields.
 
   Args:
     name: The namedtuple name.
     fields: The namedtuple fields.
+    defaults: Sequence of booleans, whether each field has a default.
     python_version: Optionally, the python version of the code under analysis.
 
   Returns:
@@ -33,7 +34,9 @@ def namedtuple_ast(name, fields, python_version=None):
   num_fields = len(fields)
   field_defs = "\n  ".join(
       "%s = ...  # type: typing.Any" % field for field in fields)
-  field_names = "".join(", " + field for field in fields)
+  fields_as_parameters = "".join(
+      ", " + field + (" = ..." if default else "")
+      for field, default in zip(fields, defaults))
   field_names_as_strings = ", ".join(repr(field) for field in fields)
 
   nt = textwrap.dedent("""
@@ -46,7 +49,8 @@ def namedtuple_ast(name, fields, python_version=None):
       def __getnewargs__(self) -> typing.Tuple[{repeat_any}]: ...
       def __getstate__(self) -> None: ...
       def __init__(self, *args, **kwargs) -> None: ...
-      def __new__(cls: typing.Type[{typevar}]{field_names}) -> {typevar}: ...
+      def __new__(
+          cls: typing.Type[{typevar}]{fields_as_parameters}) -> {typevar}: ...
       def _asdict(self) -> collections.OrderedDict[str, typing.Any]: ...
       @classmethod
       def _make(cls: typing.Type[{typevar}],
@@ -60,7 +64,7 @@ def namedtuple_ast(name, fields, python_version=None):
               repeat_str=_repeat_type("str", num_fields),
               field_defs=field_defs,
               repeat_any=_repeat_type("typing.Any", num_fields),
-              field_names=field_names,
+              fields_as_parameters=fields_as_parameters,
               field_names_as_strings=field_names_as_strings)
   return parser.parse_string(nt, python_version=python_version)
 
@@ -131,8 +135,13 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       args: A function.Args object
 
     Returns:
-      A tuple containing the typename, field_names and rename arguments passed
-      to this call to collections.namedtuple.
+      A tuple containing the typename, field_names, defaults, and rename
+      arguments passed to this call to collections.namedtuple. defaults is
+      postprocessed from a sequence of defaults to a sequence of bools
+      describing whether each field has a default (e.g., for
+        collections.namedtuple('X', field_names=['a', 'b'], defaults=[0])
+      this method will return [False, True] for defaults to indicate that 'a'
+      does not have a default while 'b' does).
 
     Raises:
       function.FailedFunctionCall: The arguments do not match those needed by
@@ -168,16 +177,24 @@ class NamedTupleBuilder(abstract.PyTDFunction):
                      for f in fields]
       field_names = [utils.native_str(f) for f in field_names]
 
+    if "defaults" in callargs:
+      default_vars = abstract_utils.get_atomic_python_constant(
+          callargs["defaults"])
+      num_defaults = len(default_vars)
+      defaults = [False] * (len(fields) - num_defaults) + [True] * num_defaults
+    else:
+      defaults = [False] * len(fields)
+
     # namedtuple also takes a "verbose" argument, but we don't care about that.
 
     # rename will take any problematic field names and give them a new name.
     # Like the other args, it's stored as a Variable, but we want just a bool.
-    if callargs.get("rename", None):
+    if "rename" in callargs:
       rename = abstract_utils.get_atomic_python_constant(callargs["rename"])
     else:
       rename = False
 
-    return name_var, field_names, rename
+    return name_var, field_names, defaults, rename
 
   def _validate_and_rename_args(self, typename, field_names, rename):
     # namedtuple field names have some requirements:
@@ -247,7 +264,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     """
     # If we can't extract the arguments, we take the easy way out and return Any
     try:
-      name_var, field_names, rename = self._getargs(node, args)
+      name_var, field_names, defaults, rename = self._getargs(node, args)
     except abstract_utils.ConversionError:
       return node, self.vm.new_unsolvable(node)
 
@@ -267,7 +284,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       return node, self.vm.new_unsolvable(node)
 
     name = escape.pack_namedtuple(name, field_names)
-    ast = namedtuple_ast(name, field_names,
+    ast = namedtuple_ast(name, field_names, defaults,
                          python_version=self.vm.python_version)
     mapping = self._get_known_types_mapping()
 

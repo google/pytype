@@ -3826,7 +3826,8 @@ class VirtualMachine:
     # we check that at least one binding of var is compatible with typ?
     classes = []
     abstract_utils.flatten(class_spec, classes)
-    new_type = self.merge_values(classes).instantiate(state.node)
+    node, new_type = self.init_class(state.node, self.merge_values(classes))
+    state = state.change_cfg_node(node)
     return self._store_new_var_in_local(state, var, new_type)
 
   def _check_test_assert(self, state, func, args):
