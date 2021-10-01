@@ -900,6 +900,15 @@ class LiteralTest(test_base.BaseTest):
         f(x)
     """)
 
+  def test_enum(self):
+    # Requires the enum overlay
+    self.Check("""
+      import enum
+      from typing import Literal
+      class M(enum.Enum):
+        A = 1
+      x: Literal[M.A]
+    """)
 
 if __name__ == "__main__":
   test_base.main()

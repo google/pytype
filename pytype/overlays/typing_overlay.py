@@ -687,7 +687,7 @@ class Literal(TypingContainer):
     values = []
     errors = []
     for i, param in enumerate(inner):
-      # TODO(b/173742489): Once pytype has proper support for enums, we should
+      # TODO(b/173742489): Once the enum overlay is enabled, we should
       # stop allowing unsolvable and handle enums here.
       if (param == self.vm.convert.none or
           isinstance(param, abstract.LiteralClass) or
@@ -695,6 +695,8 @@ class Literal(TypingContainer):
         value = param
       elif (isinstance(param, abstract.ConcreteValue) and
             isinstance(param.pyval, (int, str, bytes))):
+        value = abstract.LiteralClass(param, self.vm)
+      elif isinstance(param, abstract.Instance) and param.cls.is_enum:
         value = abstract.LiteralClass(param, self.vm)
       else:
         if i in ellipses:
