@@ -196,7 +196,7 @@ class EnumInstance(abstract.InterpreterClass):
     # TODO(tsudol): Use the types of other members to set `value`.
     del container
     instance = abstract.Instance(self, self.vm)
-    instance.members["name"] = self.vm.convert.build_string(node, "")
+    instance.members["name"] = self.vm.convert.build_nonatomic_string(node)
     if self.member_type:
       value = self.member_type.instantiate(node)
     else:
@@ -472,7 +472,6 @@ class EnumMetaInit(abstract.SimpleFunction):
       cls.members["__new_member__"] = saved_new
     self._mark_dynamic_enum(cls)
     cls.members["__new__"] = self._make_new(node, member_type, cls)
-    cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     # _generate_next_value_ is used as a static method of the enum, not a class
     # method. We need to rebind it here to make pytype analyze it correctly.
     # However, we skip this if it's already a staticmethod.
@@ -529,7 +528,6 @@ class EnumMetaInit(abstract.SimpleFunction):
     member_type = self.vm.convert.constant_to_value(
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
-    cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     return node
 
   def call(self, node, func, args, alias_map=None):

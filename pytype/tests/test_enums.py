@@ -233,6 +233,16 @@ class EnumOverlayTest(test_base.BaseTest):
         _ = e.M["C"]  # attribute-error
       """, pythonpath=[d.path])
 
+  def test_name_lookup_from_canonical(self):
+    # Canonical enum members should have non-atomic names.
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+      def get(m: M):
+        m = M[m.name]
+    """)
+
   def test_bad_name_lookup(self):
     self.CheckWithErrors("""
       import enum
@@ -338,6 +348,7 @@ class EnumOverlayTest(test_base.BaseTest):
         y = foo.M(1)
       """, pythonpath=[d.path])
 
+  @test_base.skip("Stricter equality disabled due to b/195136939")
   def test_enum_eq(self):
     # Note that this test only checks __eq__'s behavior. Though enums support
     # comparisons using `is`, pytype doesn't check `is` the same way as __eq__.
@@ -368,6 +379,7 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(c, "bool")
     """)
 
+  @test_base.skip("Stricter equality disabled due to b/195136939")
   def test_enum_pytd_eq(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """

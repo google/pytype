@@ -221,6 +221,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     del node
     return self.constant_to_var(s)
 
+  def build_nonatomic_string(self, node):
+    s = self.primitive_class_instances[str]
+    return s.to_variable(node)
+
   def build_content(self, elements):
     if len(elements) == 1:
       return next(iter(elements))
