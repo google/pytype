@@ -145,7 +145,7 @@ class TypeVar(abstract.PyTDFunction):
 
   def _get_annotation(self, node, var, name):
     with self.vm.errorlog.checkpoint() as record:
-      annot = self.vm.annotations_util.extract_annotation(
+      annot = self.vm.annotation_utils.extract_annotation(
           node, var, name, self.vm.simple_stack())
     if record.errors:
       raise TypeVarError("\n".join(error.message for error in record.errors))
@@ -211,7 +211,7 @@ class Cast(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     if args.posargs:
-      _, value = self.vm.annotations_util.extract_and_init_annotation(
+      _, value = self.vm.annotation_utils.extract_and_init_annotation(
           node, "typing.cast", args.posargs[0])
       return node, value
     return super().call(node, func, args)
@@ -288,8 +288,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       names.append(name_py_constant)
       if functional:
         allowed_type_params = (
-            self.vm.annotations_util.get_callable_type_parameter_names(typ))
-        annot = self.vm.annotations_util.extract_annotation(
+            self.vm.annotation_utils.get_callable_type_parameter_names(typ))
+        annot = self.vm.annotation_utils.extract_annotation(
             node, typ, name_py_constant, self.vm.simple_stack(),
             allowed_type_params=allowed_type_params)
       else:
@@ -484,7 +484,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.new_unsolvable(node)
 
-    annots = self.vm.annotations_util.convert_annotations_list(
+    annots = self.vm.annotation_utils.convert_annotations_list(
         node, zip(field_names, field_types))
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]

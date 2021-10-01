@@ -84,7 +84,7 @@ class Signature:
     self.type_params = set()
     for annot in self.annotations.values():
       self.type_params.update(
-          p.name for p in annot.vm.annotations_util.get_type_parameters(annot))
+          p.name for p in annot.vm.annotation_utils.get_type_parameters(annot))
 
   @property
   def has_return_annotation(self):
@@ -98,7 +98,7 @@ class Signature:
     """Add scope for type parameters in annotations."""
     annotations = {}
     for key, val in self.annotations.items():
-      annotations[key] = val.vm.annotations_util.add_scope(
+      annotations[key] = val.vm.annotation_utils.add_scope(
           val, self.excluded_types, module)
     self.annotations = annotations
 
@@ -120,7 +120,7 @@ class Signature:
     """Check the count of type parameters in function."""
     c = collections.Counter()
     for annot in self.annotations.values():
-      c.update(annot.vm.annotations_util.get_type_parameters(annot))
+      c.update(annot.vm.annotation_utils.get_type_parameters(annot))
     for param, count in c.items():
       if param.name in self.excluded_types:
         # skip all the type parameters in `excluded_types`

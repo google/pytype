@@ -150,7 +150,7 @@ the `param`s are types (possibly parametrised themselves) or lists of types.
 ### Conversion to abstract types
 
 The main annotation processing code lives in the
-`annotations_util.AnnotationsUtil` class (instantiated as a member of the VM).
+`annotation_utils.AnnotationUtils` class (instantiated as a member of the VM).
 This code has several entry points, for various annotation contexts, but the
 bulk of the conversion work is done in the internal method
 `_process_one_annotation()`.
@@ -170,9 +170,9 @@ various kinds of annotations, and calling itself recursively to deal with nested
 annotations. The return value of `_process_one_annotation` is an
 `abstract.*` object that can be applied as the python type of a variable.
 
-The various public methods in `AnnotationsUtil` cover different contexts in
+The various public methods in `AnnotationUtils` cover different contexts in
 which we can encounter variable annotations while processing bytecode; search
-for `self.annotations_util` in `vm.py` to see where each one is used.
+for `self.annotation_utils` in `vm.py` to see where each one is used.
 
 ## Tracking local operations
 

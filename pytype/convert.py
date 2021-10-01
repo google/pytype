@@ -724,7 +724,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               raise self.TypeParameterError(c.full_name)
             # deformalize gets rid of any unexpected TypeVars, which can appear
             # if something is annotated as Type[T].
-            return self.vm.annotations_util.deformalize(
+            return self.vm.annotation_utils.deformalize(
                 self.merge_classes(subst[c.full_name].data))
           else:
             return self.constant_to_value(c, subst, self.vm.root_node)

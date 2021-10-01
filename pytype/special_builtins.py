@@ -53,7 +53,7 @@ class TypeNew(abstract.PyTDFunction):
     # Removes TypeVars from the return value.
     ret = self.vm.program.NewVariable()
     for b in raw_ret.bindings:
-      value = self.vm.annotations_util.deformalize(b.data)
+      value = self.vm.annotation_utils.deformalize(b.data)
       ret.AddBinding(value, {b}, node)
     return node, ret
 

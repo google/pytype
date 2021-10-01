@@ -12,7 +12,7 @@ from pytype import utils
 from pytype.overlays import typing_overlay
 
 
-class AnnotationsUtil(utils.VirtualMachineWeakrefMixin):
+class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
   """Utility class for inline type annotations."""
 
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):

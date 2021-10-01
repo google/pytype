@@ -123,7 +123,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, view)
       if subst is None:
-        formal = self.vm.annotations_util.sub_one_annotation(
+        formal = self.vm.annotation_utils.sub_one_annotation(
             self._node, formal, [self._error_subst or {}])
 
         return None, function.BadParam(
@@ -283,10 +283,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # some sort of runtime processing of type annotations. We replace all type
       # parameters with 'object' so that they don't match concrete types like
       # 'int' but still match things like 'Any'.
-      type_params = self.vm.annotations_util.get_type_parameters(left)
+      type_params = self.vm.annotation_utils.get_type_parameters(left)
       obj_var = self.vm.convert.primitive_class_instances[object].to_variable(
           self._node)
-      left = self.vm.annotations_util.sub_one_annotation(
+      left = self.vm.annotation_utils.sub_one_annotation(
           self._node, left, [{p.full_name: obj_var for p in type_params}])
     assert not left.formal, left
 
@@ -424,7 +424,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # Since options without type parameters do not modify subst, we can
         # break after the first match rather than finding all matches. We still
         # need to fill in subst with *something* so that
-        # annotations_util.sub_one_annotation can tell that all annotations have
+        # annotation_utils.sub_one_annotation can tell that all annotations have
         # been fully matched.
         subst = self._subst_with_type_parameters_from(subst, other_type)
         break
@@ -456,7 +456,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         isinstance(other_type, abstract.Empty)):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-      params = self.vm.annotations_util.get_type_parameters(other_type)
+      params = self.vm.annotation_utils.get_type_parameters(other_type)
       if isinstance(left, abstract.Empty):
         value = self.vm.convert.empty
       else:
@@ -599,12 +599,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     # the callable must accept any argument, but here, it means that the
     # argument must be the same type as `x`.
     callable_param_count = collections.Counter(
-        self.vm.annotations_util.get_type_parameters(callable_type))
+        self.vm.annotation_utils.get_type_parameters(callable_type))
     if isinstance(callable_type, abstract.CallableClass):
       # In CallableClass, type parameters in arguments are double-counted
       # because ARGS contains the union of the individual arguments.
       callable_param_count.subtract(
-          self.vm.annotations_util.get_type_parameters(
+          self.vm.annotation_utils.get_type_parameters(
               callable_type.get_formal_type_parameter(abstract_utils.ARGS)))
     def match(left, right, subst):
       if (not isinstance(left, abstract.TypeParameter) or
@@ -1013,7 +1013,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         for (param, value) in other_type.get_formal_type_parameters().items():
           annotation_subst[param] = value.instantiate(
               self._node, abstract_utils.DUMMY_CONTAINER)
-        callable_signature = self.vm.annotations_util.sub_one_annotation(
+        callable_signature = self.vm.annotation_utils.sub_one_annotation(
             self._node, callable_signature, [annotation_subst])
       yield callable_signature
 
@@ -1150,7 +1150,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
-    for param in self.vm.annotations_util.get_type_parameters(typ):
+    for param in self.vm.annotation_utils.get_type_parameters(typ):
       if param.name not in subst:
         subst[param.name] = self.vm.convert.empty.to_variable(self._node)
     return subst

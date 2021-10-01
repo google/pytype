@@ -289,15 +289,15 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           # reinitialize it with the current instance's parameter values.
           subst = abstract_utils.get_type_parameter_substitutions(
               valself.data,
-              self.vm.annotations_util.get_type_parameters(typ))
-          typ = self.vm.annotations_util.sub_one_annotation(
+              self.vm.annotation_utils.get_type_parameters(typ))
+          typ = self.vm.annotation_utils.sub_one_annotation(
               node, typ, [subst], instantiate_unbound=False)
-          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+          _, attr = self.vm.annotation_utils.init_annotation(node, name, typ)
         elif attr is None:
           # An attribute has been declared but not defined, e.g.,
           #   class Foo:
           #     bar: int
-          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+          _, attr = self.vm.annotation_utils.init_annotation(node, name, typ)
         break
     if attr is not None:
       attr = self._filter_var(node, attr)

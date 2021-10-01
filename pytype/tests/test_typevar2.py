@@ -500,7 +500,7 @@ class TypeVarTest(test_base.BaseTest):
         return cls
     """)
 
-  @test_base.skip("Requires completing TODO in annotations_util.deformalize")
+  @test_base.skip("Requires completing TODO in annotation_utils.deformalize")
   def test_type_of_typevar(self):
     self.Check("""
       from typing import Type, TypeVar

@@ -1123,7 +1123,7 @@ class ErrorLog(ErrorLogBase):
       # NOTE: Converting types to strings is provided as a fallback, but is not
       # really supported, since there are issues around name resolution.
       vm = typ.data[0].vm
-      typ = vm.annotations_util.extract_annotation(
+      typ = vm.annotation_utils.extract_annotation(
           node, typ, "assert_type", vm.simple_stack())
       node, typ = vm.init_class(node, typ)
       wanted = [

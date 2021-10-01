@@ -1284,7 +1284,7 @@ class LateAnnotation:
         self.vm, node, f_globals, f_locals, self.expr)
     if errorlog:
       self.vm.errorlog.copy_from(errorlog.errors, self.stack)
-    self._type = self.vm.annotations_util.extract_annotation(
+    self._type = self.vm.annotation_utils.extract_annotation(
         node, var, None, self.stack)
     if self._type != self.vm.convert.unsolvable:
       # We may have tried to call __init__ on instances of this annotation.
@@ -1383,7 +1383,7 @@ class AnnotationContainer(AnnotationClass):
   def _sub_annotation(
       self, annot: BaseValue, subst: Mapping[str, BaseValue]) -> BaseValue:
     """Apply type parameter substitutions to an annotation."""
-    # This is very similar to annotations_util.sub_one_annotation, but a couple
+    # This is very similar to annotation_utils.sub_one_annotation, but a couple
     # differences make it more convenient to maintain two separate methods:
     # - subst here is a str->BaseValue mapping rather than str->Variable, and it
     #   would be wasteful to create variables just to match sub_one_annotation's
@@ -1446,7 +1446,7 @@ class AnnotationContainer(AnnotationClass):
       for k in template:
         v = self.base_cls.formal_type_parameters[k]
         if v.formal:
-          params = self.vm.annotations_util.get_type_parameters(v)
+          params = self.vm.annotation_utils.get_type_parameters(v)
           for param in params:
             # If there are too few parameters, we ignore the problem for now;
             # it'll be reported when _build_value checks that the lengths of
@@ -1477,7 +1477,7 @@ class AnnotationContainer(AnnotationClass):
       # For a generic type alias, we check that the number of typevars in the
       # alias matches the number of raw parameters provided.
       template_length = raw_template_length = len(set(
-          self.vm.annotations_util.get_type_parameters(self.base_cls)))
+          self.vm.annotation_utils.get_type_parameters(self.base_cls)))
       inner_length = raw_inner_length = len(raw_inner)
       base_cls = self.base_cls.base_cls
     else:
@@ -1566,7 +1566,7 @@ class AnnotationContainer(AnnotationClass):
           actual = params[formal.name].instantiate(root_node)
           bad = self.vm.matcher(root_node).bad_matches(actual, formal)
           if bad:
-            formal = self.vm.annotations_util.sub_one_annotation(
+            formal = self.vm.annotation_utils.sub_one_annotation(
                 root_node, formal, [{}])
             self.vm.errorlog.bad_concrete_type(
                 self.vm.frames, root_node, formal, actual, bad)
@@ -1640,7 +1640,7 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     return [o.to_variable(self.vm.root_node) for o in self.options]
 
   def _get_type_params(self):
-    params = self.vm.annotations_util.get_type_parameters(self)
+    params = self.vm.annotation_utils.get_type_parameters(self)
     params = [x.full_name for x in params]
     return utils.unique_list(params)
 
@@ -1670,7 +1670,7 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
       else:
         concrete.append(value.instantiate(node))
     substs = [dict(zip(params, concrete))]
-    new = self.vm.annotations_util.sub_one_annotation(node, self, substs)
+    new = self.vm.annotation_utils.sub_one_annotation(node, self, substs)
     return node, new.to_variable(node)
 
   def instantiate(self, node, container=None):
@@ -2408,7 +2408,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     # that imports, etc., are visible. The last created node is usually the
     # active one.
     self._formal_type_parameters = (
-        self.vm.annotations_util.convert_class_annotations(
+        self.vm.annotation_utils.convert_class_annotations(
             self.vm.program.cfg_nodes[-1], self._formal_type_parameters))
     self._formal_type_parameters_loaded = True
 
@@ -2418,7 +2418,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   def instantiate(self, node, container=None):
     if self.full_name == "builtins.type":
       # deformalize removes TypeVars.
-      instance = self.vm.annotations_util.deformalize(
+      instance = self.vm.annotation_utils.deformalize(
           self.formal_type_parameters[abstract_utils.T])
       return instance.to_variable(node)
     elif self.full_name == "typing.ClassVar":
@@ -2650,7 +2650,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
         raise function.WrongArgTypes(
             function.Signature.from_callable(self), function.Args(posargs=args),
             self.vm, bad_param=bad_param)
-    ret = self.vm.annotations_util.sub_one_annotation(
+    ret = self.vm.annotation_utils.sub_one_annotation(
         node, self.formal_type_parameters[abstract_utils.RET], substs)
     node, retvar = self.vm.init_class(node, ret)
     return node, retvar
@@ -3532,7 +3532,7 @@ class InterpreterFunction(SignedFunction):
     # get all type parameters from function annotations
     all_type_parameters = []
     for annot in self.signature.annotations.values():
-      params = self.vm.annotations_util.get_type_parameters(annot)
+      params = self.vm.annotation_utils.get_type_parameters(annot)
       all_type_parameters.extend(itm.with_module(None) for itm in params)
 
     if all_type_parameters:
@@ -3616,7 +3616,7 @@ class InterpreterFunction(SignedFunction):
           frame.substs, annotation_substs)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
-    annotations = self.vm.annotations_util.sub_annotations(
+    annotations = self.vm.annotation_utils.sub_annotations(
         node, sig.annotations, annotation_substs, instantiate_unbound=False)
     if sig.has_param_annotations:
       if first_arg and sig.param_names[0] == "self":
@@ -3639,7 +3639,7 @@ class InterpreterFunction(SignedFunction):
                                      self.argcount(node) == 0 or
                                      name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
-          node, callargs[name] = self.vm.annotations_util.init_annotation(
+          node, callargs[name] = self.vm.annotation_utils.init_annotation(
               node, name, annotations[name], container=container,
               extra_key=extra_key)
     mutations = self._mutations_generator(node, first_arg, substs)
@@ -3890,7 +3890,7 @@ class SimpleFunction(SignedFunction):
     callargs = self._map_args(node, args.simplify(node, self.vm))
     substs = self.match_args(node, args, alias_map)
     # Substitute type parameters in the signature's annotations.
-    annotations = self.vm.annotations_util.sub_annotations(
+    annotations = self.vm.annotation_utils.sub_annotations(
         node, self.signature.annotations, substs, instantiate_unbound=False)
     if self.signature.has_return_annotation:
       ret_type = annotations["return"]

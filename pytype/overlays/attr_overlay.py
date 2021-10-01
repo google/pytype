@@ -229,8 +229,8 @@ class Attrib(classgen.FieldConstructor):
       type_source = TypeSource.TYPE
       allowed_type_params = (
           self.vm.frame.type_params |
-          self.vm.annotations_util.get_callable_type_parameter_names(type_var))
-      typ = self.vm.annotations_util.extract_annotation(
+          self.vm.annotation_utils.get_callable_type_parameter_names(type_var))
+      typ = self.vm.annotation_utils.extract_annotation(
           node, type_var, "attr.ib", self.vm.simple_stack(),
           allowed_type_params=allowed_type_params)
     elif default_var:

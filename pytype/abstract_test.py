@@ -1154,7 +1154,7 @@ class AbstractTest(AbstractTestBase):
     subst_value = cls.instantiate(self._vm.root_node,
                                   abstract_utils.DUMMY_CONTAINER)
     # Recover the class from the instance.
-    subbed_cls = self._vm.annotations_util.sub_one_annotation(
+    subbed_cls = self._vm.annotation_utils.sub_one_annotation(
         self._vm.root_node, type_param, [{
             abstract_utils.K: subst_value
         }])
