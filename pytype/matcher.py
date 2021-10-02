@@ -588,7 +588,21 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     return self._merge_substs(subst, [new_subst])
 
   def _get_param_matcher(self, callable_type):
-    """Helper for _match_signature_against_callable."""
+    """Helper for matching the parameters of a callable.
+
+    Args:
+      callable_type: The callable being matched against.
+
+    Returns:
+      A special param matcher: (left, right, subst) -> Optional[subst].
+        left: An argument to be matched against a parameter of callable_type.
+        right: A parameter of callable_type.
+        subst: The current substitution dictionary.
+      If the matcher returns a non-None subst dict, then the match has succeeded
+      via special matching rules for single TypeVars. Otherwise, the caller
+      should next attempt normal matching on the inputs. (See
+      _match_signature_against_callable for a usage example.)
+    """
     # Any type parameter should match an unconstrained, unbounded type parameter
     # that appears exactly once in a callable, in order for matching to succeed
     # in cases like:
@@ -886,11 +900,17 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return subst
     if left.num_args != other_type.num_args:
       return None
+    param_match = self._get_param_matcher(other_type)
     for i in range(left.num_args):
-      # Flip actual and expected to enforce contravariance of argument types.
-      subst = self._instantiate_and_match(
-          other_type.formal_type_parameters[i], left.formal_type_parameters[i],
-          subst, view, container=other_type)
+      left_arg = left.formal_type_parameters[i]
+      right_arg = other_type.formal_type_parameters[i]
+      new_subst = param_match(left_arg, right_arg, subst)
+      if new_subst is None:
+        # Flip actual and expected to enforce contravariance of argument types.
+        subst = self._instantiate_and_match(
+            right_arg, left_arg, subst, view, container=other_type)
+      else:
+        subst = new_subst
       if subst is None:
         return None
     return subst
