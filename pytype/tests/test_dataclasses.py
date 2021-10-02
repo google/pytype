@@ -712,6 +712,31 @@ class TestDataclass(test_base.BaseTest):
       x2: str
     """)
 
+  def test_dataclass_attribute_with_getattr(self):
+    # Tests that the type of the 'x' attribute is correct in Child.__init__
+    # (i.e., the __getattr__ return type shouldn't be used).
+    self.Check("""
+      import dataclasses
+      from typing import Dict, Sequence
+
+      class Base:
+        def __init__(self, x: str):
+          self.x = x
+        def __getattr__(self, name: str) -> 'Base':
+          return self
+
+      class Child(Base):
+        def __init__(self, x: str, children: Sequence['Child']):
+          super().__init__(x)
+          self._children: Dict[str, Child] = {}
+          for child in children:
+            self._children[child.x] = child
+
+      @dataclasses.dataclass
+      class Container:
+        child: Child
+    """)
+
 
 class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""

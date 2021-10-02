@@ -269,6 +269,12 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
             node, obj, name, valself, skip=())
       else:
         node, attr = self._get_member(node, obj, name, valself)
+    if attr is None and obj.maybe_missing_members:
+      # The VM hit maximum depth while initializing this instance, so it may
+      # have attributes that we don't know about. These attributes take
+      # precedence over class attributes and __getattr__, so we set `attr` to
+      # Any immediately.
+      attr = self.vm.new_unsolvable(node)
     if attr is None and cls:
       # Check for the attribute on the class.
       node, attr = self.get_attribute(node, cls, name, valself)
@@ -301,10 +307,6 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         break
     if attr is not None:
       attr = self._filter_var(node, attr)
-    if attr is None and obj.maybe_missing_members:
-      # The VM hit maximum depth while initializing this instance, so it may
-      # have attributes that we don't know about.
-      attr = self.vm.new_unsolvable(node)
     return node, attr
 
   def _get_attribute_from_super_instance(
