@@ -196,7 +196,7 @@ class EnumInstance(abstract.InterpreterClass):
     # TODO(tsudol): Use the types of other members to set `value`.
     del container
     instance = abstract.Instance(self, self.vm)
-    instance.members["name"] = self.vm.convert.build_string(node, "")
+    instance.members["name"] = self.vm.convert.build_nonatomic_string(node)
     if self.member_type:
       value = self.member_type.instantiate(node)
     else:
@@ -398,7 +398,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # The most typical use of custom subclasses of EnumMeta is to add more
     # members to the enum, or to (for example) make attribute access
     # case-insensitive. Treat such enums as having dynamic attributes.
-    if cls.cls and cls.cls.full_name != "enum.EnumMeta":
+    if cls.cls.full_name != "enum.EnumMeta":
       cls.maybe_missing_members = True
       return
     for base_var in cls.bases():
@@ -408,7 +408,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         # Interpreter classes don't have "maybe_missing_members" set even if
         # they have _HAS_DYNAMIC_ATTRIBUTES. But for enums, those markers should
         # apply to the whole class.
-        if ((base.cls and base.cls.full_name != "enum.EnumMeta") or
+        if ((base.cls.full_name != "enum.EnumMeta") or
             base.maybe_missing_members or base.has_dynamic_attributes()):
           cls.maybe_missing_members = True
           return
@@ -472,7 +472,6 @@ class EnumMetaInit(abstract.SimpleFunction):
       cls.members["__new_member__"] = saved_new
     self._mark_dynamic_enum(cls)
     cls.members["__new__"] = self._make_new(node, member_type, cls)
-    cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     # _generate_next_value_ is used as a static method of the enum, not a class
     # method. We need to rebind it here to make pytype analyze it correctly.
     # However, we skip this if it's already a staticmethod.
@@ -529,7 +528,6 @@ class EnumMetaInit(abstract.SimpleFunction):
     member_type = self.vm.convert.constant_to_value(
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
-    cls.members["__eq__"] = EnumCmpEQ(self.vm).to_variable(node)
     return node
 
   def call(self, node, func, args, alias_map=None):

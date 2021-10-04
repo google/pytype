@@ -66,9 +66,6 @@ class WithMetaclassInstance(abstract.BaseValue, class_mixin.Class):
     class_mixin.Class.init_mixin(self, cls)
     self.bases = bases
 
-  def get_class(self):
-    return self.cls
-
   def get_own_attributes(self):
     if isinstance(self.cls, class_mixin.Class):
       return self.cls.get_own_attributes()

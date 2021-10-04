@@ -25,7 +25,7 @@ from typing import Optional, Sequence, Tuple, Union
 
 from pytype import abstract
 from pytype import abstract_utils
-from pytype import annotations_util
+from pytype import annotation_utils
 from pytype import attribute
 from pytype import blocks
 from pytype import class_mixin
@@ -230,7 +230,7 @@ class VirtualMachine:
     self.program = cfg.Program()
     self.root_node = self.program.NewCFGNode("root")
     self.program.entrypoint = self.root_node
-    self.annotations_util = annotations_util.AnnotationsUtil(self)
+    self.annotation_utils = annotation_utils.AnnotationUtils(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.loaded_overlays = {}  # memoize which overlays are loaded
     self.convert = convert.Converter(self)
@@ -491,7 +491,7 @@ class VirtualMachine:
       typ = local.get_type(node, name)
       if typ:
         func.signature.excluded_types.update(
-            p.name for p in self.annotations_util.get_type_parameters(typ))
+            p.name for p in self.annotation_utils.get_type_parameters(typ))
       if local.orig:
         for v in local.orig.data:
           if isinstance(v, abstract.BoundFunction):
@@ -582,7 +582,7 @@ class VirtualMachine:
       # other late annotations in order to support things like:
       #   class Foo(List["Bar"]): ...
       #   class Bar: ...
-      base_val = self.annotations_util.remove_late_annotations(base_val)
+      base_val = self.annotation_utils.remove_late_annotations(base_val)
       if isinstance(base_val, abstract.Union):
         # Union[A,B,...] is a valid base class, but we need to flatten it into a
         # single base variable.
@@ -618,7 +618,7 @@ class VirtualMachine:
           with_metaclass = True
           if not meta:
             # Only the first metaclass gets applied.
-            meta = b.get_class().to_variable(self.root_node)
+            meta = b.cls.to_variable(self.root_node)
           non_meta.extend(b.bases)
       if not with_metaclass:
         non_meta.append(base)
@@ -1405,7 +1405,7 @@ class VirtualMachine:
     if annots:
       typ = annots.get_type(node, name)
       if typ:
-        _, ret = self.annotations_util.init_annotation(node, name, typ)
+        _, ret = self.annotation_utils.init_annotation(node, name, typ)
         return ret
     raise KeyError(name)
 
@@ -1467,24 +1467,24 @@ class VirtualMachine:
                              for v in value.data):
       return value
     stack = self.simple_stack()
-    typ = self.annotations_util.extract_annotation(node, value, name, stack)
+    typ = self.annotation_utils.extract_annotation(node, value, name, stack)
     if self.late_annotations:
       recursive_annots = set(self.late_annotations[name])
     else:
       recursive_annots = set()
-    for late_annot in self.annotations_util.get_late_annotations(typ):
+    for late_annot in self.annotation_utils.get_late_annotations(typ):
       if late_annot in recursive_annots:
         self.errorlog.not_supported_yet(
             stack, "Recursive type annotations",
             details="In annotation %r on %s" % (late_annot.expr, name))
-        typ = self.annotations_util.remove_late_annotations(typ)
+        typ = self.annotation_utils.remove_late_annotations(typ)
         break
     return typ.to_variable(node)
 
   def _apply_annotation(
       self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
-    typ, value = self.annotations_util.apply_annotation(
+    typ, value = self.annotation_utils.apply_annotation(
         state.node, op, name, orig_val)
     if annotations_dict is not None:
       if annotations_dict is self.current_annotated_locals:
@@ -2604,7 +2604,8 @@ class VirtualMachine:
             maybe_cls.members)
         if annotations_dict:
           annotations_dict = annotations_dict.annotated_locals
-      elif isinstance(maybe_cls, abstract.PyTDClass):
+      elif (isinstance(maybe_cls, abstract.PyTDClass) and
+            maybe_cls != self.convert.type_type):
         node, attr = self.attribute_handler.get_attribute(
             state.node, obj_val, name)
         if attr:
@@ -2652,8 +2653,8 @@ class VirtualMachine:
       else:
         allowed_type_params = (
             self.frame.type_params |
-            self.annotations_util.get_callable_type_parameter_names(val))
-        typ = self.annotations_util.extract_annotation(
+            self.annotation_utils.get_callable_type_parameter_names(val))
+        typ = self.annotation_utils.extract_annotation(
             state.node, val, name, self.simple_stack(),
             allowed_type_params=allowed_type_params)
         self._record_annotation(state.node, op, name, typ)
@@ -2698,15 +2699,13 @@ class VirtualMachine:
       try:
         return tuple(self.convert.value_to_constant(data, list))
       except abstract_utils.ConversionError:
-        if data.cls:
-          for base in data.cls.mro:
-            if isinstance(base, abstract.TupleClass) and not base.formal:
-              # We've found a TupleClass with concrete parameters, which means
-              # we're a subclass of a heterogenous tuple (usually a
-              # typing.NamedTuple instance).
-              new_data = self.merge_values(
-                  base.instantiate(self.root_node).data)
-              return self._get_literal_sequence(new_data)
+        for base in data.cls.mro:
+          if isinstance(base, abstract.TupleClass) and not base.formal:
+            # We've found a TupleClass with concrete parameters, which means
+            # we're a subclass of a heterogeneous tuple (usually a
+            # typing.NamedTuple instance).
+            new_data = self.merge_values(base.instantiate(self.root_node).data)
+            return self._get_literal_sequence(new_data)
         return None
 
   def _restructure_tuple(self, state, tup, pre, post):
@@ -3178,7 +3177,7 @@ class VirtualMachine:
     state, pos_defaults = state.popn(num_pos_defaults)
     free_vars = None  # Python < 3.6 does not handle closure vars here.
     kw_defaults = self._convert_kw_defaults(kw_defaults)
-    annot = self.annotations_util.convert_function_annotations(
+    annot = self.annotation_utils.convert_function_annotations(
         state.node, raw_annotations)
     return state, pos_defaults, kw_defaults, annot, free_vars
 
@@ -3194,7 +3193,7 @@ class VirtualMachine:
       state, packed_annot = state.pop()
       annot = abstract_utils.get_atomic_python_constant(packed_annot, dict)
       for k in annot.keys():
-        annot[k] = self.annotations_util.convert_function_type_annotation(
+        annot[k] = self.annotation_utils.convert_function_type_annotation(
             k, annot[k])
     if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       state, packed_kw_def = state.pop()
@@ -3204,7 +3203,7 @@ class VirtualMachine:
       state, packed_pos_def = state.pop()
       pos_defaults = abstract_utils.get_atomic_python_constant(
           packed_pos_def, tuple)
-    annot = self.annotations_util.convert_annotations_list(
+    annot = self.annotation_utils.convert_annotations_list(
         state.node, annot.items())
     return state, pos_defaults, kw_defaults, annot, free_vars
 
@@ -3243,7 +3242,7 @@ class VirtualMachine:
     if args != "...":
       annot = args.strip()
       try:
-        self.annotations_util.eval_multi_arg_annotation(
+        self.annotation_utils.eval_multi_arg_annotation(
             node, func, annot, fake_stack)
       except abstract_utils.ConversionError:
         self.errorlog.invalid_function_type_comment(
@@ -3251,7 +3250,7 @@ class VirtualMachine:
 
     ret = self.convert.build_string(None, return_type)
     func.signature.set_annotation(
-        "return", self.annotations_util.extract_annotation(
+        "return", self.annotation_utils.extract_annotation(
             node, ret, "return", fake_stack))
 
   def byte_MAKE_FUNCTION(self, state, op):
@@ -3459,8 +3458,8 @@ class VirtualMachine:
     state, value = state.pop()
     allowed_type_params = (
         self.frame.type_params |
-        self.annotations_util.get_callable_type_parameter_names(value))
-    typ = self.annotations_util.extract_annotation(
+        self.annotation_utils.get_callable_type_parameter_names(value))
+    typ = self.annotation_utils.extract_annotation(
         state.node, value, name, self.simple_stack(),
         allowed_type_params=allowed_type_params)
     self._record_annotation(state.node, op, name, typ)
@@ -3840,7 +3839,7 @@ class VirtualMachine:
     if not (f.isinstance_BoundFunction() and len(f.callself.data) == 1):
       return state
     cls = f.callself.data[0].cls
-    if not (cls and cls.isinstance_Class() and cls.is_test_class()):
+    if not (cls.isinstance_Class() and cls.is_test_class()):
       return state
     if f.name == "assertIsNotNone":
       if len(args) == 1:

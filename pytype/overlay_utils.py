@@ -66,13 +66,12 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
     if not param.typ:
       return
     elif isinstance(param.typ, cfg.Variable):
-      if all(t.cls for t in param.typ.data):
-        types = param.typ.data
-        if len(types) == 1:
-          annotations[param.name] = types[0].cls
-        else:
-          t = abstract.Union([t.cls for t in types], vm)
-          annotations[param.name] = t
+      types = param.typ.data
+      if len(types) == 1:
+        annotations[param.name] = types[0].cls
+      else:
+        t = abstract.Union([t.cls for t in types], vm)
+        annotations[param.name] = t
     else:
       annotations[param.name] = param.typ
 

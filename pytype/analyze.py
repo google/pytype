@@ -332,7 +332,7 @@ class CallTracer(vm.VirtualMachine):
 
   def _call_method(self, node, binding, method_name):
     node, method = self.attribute_handler.get_attribute(
-        node, binding.data.get_class(), method_name, binding)
+        node, binding.data.cls, method_name, binding)
     if method:
       bound_method = self.bind_method(
           node, method, binding.AssignToNewVariable())
@@ -344,7 +344,7 @@ class CallTracer(vm.VirtualMachine):
       for param in b.data.instance_type_parameters.values():
         node = self.call_init(node, param)
     node = self._call_method(node, b, "__init__")
-    cls = b.data.get_class()
+    cls = b.data.cls
     if isinstance(cls, abstract.InterpreterClass):
       # Call any additional initalizers the class has registered.
       for method in cls.additional_init_methods:
@@ -587,7 +587,7 @@ class CallTracer(vm.VirtualMachine):
         # We don't need to record call signatures that don't involve
         # unknowns - there's nothing to solve for.
         continue
-      cls = args[0].data.get_class()
+      cls = args[0].data.cls
       if isinstance(cls, abstract.PyTDClass):
         class_to_records[cls].append(call_record)
     classes = []

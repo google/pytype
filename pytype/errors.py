@@ -503,7 +503,7 @@ class ErrorLog(ErrorLogBase):
     elif abstract_utils.is_concrete(t):
       return re.sub(r"(\\n|\s)+", " ",
                     t.str_of_constant(self._print_as_expected_type))
-    elif isinstance(t, abstract.AnnotationClass) or not t.cls:
+    elif isinstance(t, abstract.AnnotationClass) or t.cls == t:
       return t.name
     else:
       return "<instance of %s>" % self._print_as_expected_type(t.cls, t)
@@ -1123,7 +1123,7 @@ class ErrorLog(ErrorLogBase):
       # NOTE: Converting types to strings is provided as a fallback, but is not
       # really supported, since there are issues around name resolution.
       vm = typ.data[0].vm
-      typ = vm.annotations_util.extract_annotation(
+      typ = vm.annotation_utils.extract_annotation(
           node, typ, "assert_type", vm.simple_stack())
       node, typ = vm.init_class(node, typ)
       wanted = [

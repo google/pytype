@@ -500,7 +500,7 @@ class TypeVarTest(test_base.BaseTest):
         return cls
     """)
 
-  @test_base.skip("Requires completing TODO in annotations_util.deformalize")
+  @test_base.skip("Requires completing TODO in annotation_utils.deformalize")
   def test_type_of_typevar(self):
     self.Check("""
       from typing import Type, TypeVar
@@ -562,6 +562,28 @@ class TypeVarTest(test_base.BaseTest):
         return 0
 
       f(g, [0, ''])
+    """)
+
+  def test_callable_instance_against_callable(self):
+    self.CheckWithErrors("""
+      from typing import Any, Callable, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2', bound=int)
+
+      def f() -> Callable[[T2], T2]:
+        return __any_object__
+
+      # Passing f() to g is an error because g expects a callable with an
+      # unconstrained parameter type.
+      def g(x: Callable[[T1], T1]):
+        pass
+      g(f())  # wrong-arg-types
+
+      # Passing f() to h is okay because T1 in this Callable is just being used
+      # to save the parameter type for h's return type.
+      def h(x: Callable[[T1], Any]) -> T1:
+        return __any_object__
+      h(f())
     """)
 
 

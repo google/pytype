@@ -1075,7 +1075,7 @@ class AbstractTest(AbstractTestBase):
 
   def test_super_type(self):
     supercls = special_builtins.Super(self._vm)
-    self.assertEqual(supercls.get_class(), self._vm.convert.type_type)
+    self.assertEqual(supercls.cls, self._vm.convert.type_type)
 
   def test_instantiate_interpreter_class(self):
     cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
@@ -1154,7 +1154,7 @@ class AbstractTest(AbstractTestBase):
     subst_value = cls.instantiate(self._vm.root_node,
                                   abstract_utils.DUMMY_CONTAINER)
     # Recover the class from the instance.
-    subbed_cls = self._vm.annotations_util.sub_one_annotation(
+    subbed_cls = self._vm.annotation_utils.sub_one_annotation(
         self._vm.root_node, type_param, [{
             abstract_utils.K: subst_value
         }])

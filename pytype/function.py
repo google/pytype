@@ -31,7 +31,7 @@ def get_signatures(func):
     return get_signatures(func.method)
   elif func.isinstance_SimpleFunction():
     return [func.signature]
-  elif func.cls and func.cls.isinstance_CallableClass():
+  elif func.cls.isinstance_CallableClass():
     return [Signature.from_callable(func.cls)]
   else:
     if func.isinstance_Instance():
@@ -84,7 +84,7 @@ class Signature:
     self.type_params = set()
     for annot in self.annotations.values():
       self.type_params.update(
-          p.name for p in annot.vm.annotations_util.get_type_parameters(annot))
+          p.name for p in annot.vm.annotation_utils.get_type_parameters(annot))
 
   @property
   def has_return_annotation(self):
@@ -98,7 +98,7 @@ class Signature:
     """Add scope for type parameters in annotations."""
     annotations = {}
     for key, val in self.annotations.items():
-      annotations[key] = val.vm.annotations_util.add_scope(
+      annotations[key] = val.vm.annotation_utils.add_scope(
           val, self.excluded_types, module)
     self.annotations = annotations
 
@@ -120,7 +120,7 @@ class Signature:
     """Check the count of type parameters in function."""
     c = collections.Counter()
     for annot in self.annotations.values():
-      c.update(annot.vm.annotations_util.get_type_parameters(annot))
+      c.update(annot.vm.annotation_utils.get_type_parameters(annot))
     for param, count in c.items():
       if param.name in self.excluded_types:
         # skip all the type parameters in `excluded_types`
@@ -828,8 +828,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     if (not isinstance(typ, pytd.GenericType) or
         not isinstance(mutated_type, pytd.GenericType) or
         typ.base_type != mutated_type.base_type or
-        not isinstance(typ.base_type, pytd.ClassType) or
-        not typ.base_type.cls):
+        not isinstance(typ.base_type, pytd.ClassType)):
       raise ValueError("Unsupported mutation:\n%r ->\n%r" %
                        (typ, mutated_type))
     return [zip(mutated_type.base_type.cls.template, mutated_type.parameters)]
@@ -890,7 +889,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       # This is a constructor, so check whether the constructed instance needs
       # to be mutated.
       for ret in retvar.data:
-        if ret.cls:
+        if ret.cls.full_name != "builtins.type":
           for t in ret.cls.template:
             if t.full_name in subst:
               mutations.append(Mutation(ret, t.full_name, subst[t.full_name]))

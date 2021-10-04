@@ -165,7 +165,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
 
   def _check_writable(self, obj, name):
     """Verify that a given attribute is writable. Log an error if not."""
-    if obj.cls is None:
+    if not obj.cls.mro:
       # "Any" etc.
       return True
     for baseclass in obj.cls.mro:
@@ -228,13 +228,14 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # instance, if we're analyzing int.mro(), we want to retrieve the mro
       # method on the type class, but for (3).mro(), we want to report that the
       # method does not exist.)
-      meta = cls.get_class()
+      meta = cls.cls
     return self._get_attribute(node, cls, meta, name, valself)
 
   def _get_instance_attribute(self, node, obj, name, valself=None):
     """Get an attribute from an instance."""
     assert isinstance(obj, abstract.SimpleValue)
-    return self._get_attribute(node, obj, obj.cls, name, valself)
+    cls = None if obj.cls.full_name == "builtins.type" else obj.cls
+    return self._get_attribute(node, obj, cls, name, valself)
 
   def _get_attribute(self, node, obj, cls, name, valself):
     """Get an attribute from an object or its class.
@@ -268,6 +269,12 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
             node, obj, name, valself, skip=())
       else:
         node, attr = self._get_member(node, obj, name, valself)
+    if attr is None and obj.maybe_missing_members:
+      # The VM hit maximum depth while initializing this instance, so it may
+      # have attributes that we don't know about. These attributes take
+      # precedence over class attributes and __getattr__, so we set `attr` to
+      # Any immediately.
+      attr = self.vm.new_unsolvable(node)
     if attr is None and cls:
       # Check for the attribute on the class.
       node, attr = self.get_attribute(node, cls, name, valself)
@@ -288,22 +295,18 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           # reinitialize it with the current instance's parameter values.
           subst = abstract_utils.get_type_parameter_substitutions(
               valself.data,
-              self.vm.annotations_util.get_type_parameters(typ))
-          typ = self.vm.annotations_util.sub_one_annotation(
+              self.vm.annotation_utils.get_type_parameters(typ))
+          typ = self.vm.annotation_utils.sub_one_annotation(
               node, typ, [subst], instantiate_unbound=False)
-          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+          _, attr = self.vm.annotation_utils.init_annotation(node, name, typ)
         elif attr is None:
           # An attribute has been declared but not defined, e.g.,
           #   class Foo:
           #     bar: int
-          _, attr = self.vm.annotations_util.init_annotation(node, name, typ)
+          _, attr = self.vm.annotation_utils.init_annotation(node, name, typ)
         break
     if attr is not None:
       attr = self._filter_var(node, attr)
-    if attr is None and obj.maybe_missing_members:
-      # The VM hit maximum depth while initializing this instance, so it may
-      # have attributes that we don't know about.
-      attr = self.vm.new_unsolvable(node)
     return node, attr
 
   def _get_attribute_from_super_instance(
@@ -326,8 +329,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       #      super().__init__()  # line 6
       # if we're looking up super.__init__ in line 6 as part of analyzing the
       # super call in line 3, then starting_cls=Foo, current_cls=Bar.
-      if (isinstance(obj.super_obj.cls,
-                     (type(None), abstract.AMBIGUOUS_OR_EMPTY)) or
+      if (obj.super_obj.cls.full_name == "builtins.type" or
+          isinstance(obj.super_obj.cls, abstract.AMBIGUOUS_OR_EMPTY) or
           isinstance(obj.super_cls, abstract.AMBIGUOUS_OR_EMPTY)):
         # Setting starting_cls to the current class when either of them is
         # ambiguous is technically incorrect but behaves correctly in the common

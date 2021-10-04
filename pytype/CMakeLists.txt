@@ -28,7 +28,7 @@ py_library(
     .abstract
     .abstract_utils
     .analyze
-    .annotations_util
+    .annotation_utils
     .attribute
     .blocks
     .class_mixin
@@ -122,9 +122,9 @@ py_library(
 
 py_library(
   NAME
-    annotations_util
+    annotation_utils
   SRCS
-    annotations_util.py
+    annotation_utils.py
   DEPS
     ._utils
     .abstract
@@ -510,7 +510,7 @@ py_library(
     ._utils
     .abstract
     .abstract_utils
-    .annotations_util
+    .annotation_utils
     .attribute
     .blocks
     .class_mixin

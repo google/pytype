@@ -101,7 +101,7 @@ class Callable(TypingContainer):
       self.vm.errorlog.invalid_ellipses(
           self.vm.frames, inner_ellipses, args.name)
     else:
-      if args.cls and args.cls.full_name == "builtins.list":
+      if args.cls.full_name == "builtins.list":
         self.vm.errorlog.ambiguous_annotation(self.vm.frames, [args])
       elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
         self.vm.errorlog.invalid_annotation(
@@ -145,7 +145,7 @@ class TypeVar(abstract.PyTDFunction):
 
   def _get_annotation(self, node, var, name):
     with self.vm.errorlog.checkpoint() as record:
-      annot = self.vm.annotations_util.extract_annotation(
+      annot = self.vm.annotation_utils.extract_annotation(
           node, var, name, self.vm.simple_stack())
     if record.errors:
       raise TypeVarError("\n".join(error.message for error in record.errors))
@@ -211,7 +211,7 @@ class Cast(abstract.PyTDFunction):
 
   def call(self, node, func, args):
     if args.posargs:
-      _, value = self.vm.annotations_util.extract_and_init_annotation(
+      _, value = self.vm.annotation_utils.extract_and_init_annotation(
           node, "typing.cast", args.posargs[0])
       return node, value
     return super().call(node, func, args)
@@ -288,8 +288,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       names.append(name_py_constant)
       if functional:
         allowed_type_params = (
-            self.vm.annotations_util.get_callable_type_parameter_names(typ))
-        annot = self.vm.annotations_util.extract_annotation(
+            self.vm.annotation_utils.get_callable_type_parameter_names(typ))
+        annot = self.vm.annotation_utils.extract_annotation(
             node, typ, name_py_constant, self.vm.simple_stack(),
             allowed_type_params=allowed_type_params)
       else:
@@ -484,7 +484,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
       self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
       return node, self.vm.new_unsolvable(node)
 
-    annots = self.vm.annotations_util.convert_annotations_list(
+    annots = self.vm.annotation_utils.convert_annotations_list(
         node, zip(field_names, field_types))
     field_types = [annots.get(field_name, self.vm.convert.unsolvable)
                    for field_name in field_names]
@@ -687,7 +687,7 @@ class Literal(TypingContainer):
     values = []
     errors = []
     for i, param in enumerate(inner):
-      # TODO(b/173742489): Once pytype has proper support for enums, we should
+      # TODO(b/173742489): Once the enum overlay is enabled, we should
       # stop allowing unsolvable and handle enums here.
       if (param == self.vm.convert.none or
           isinstance(param, abstract.LiteralClass) or
@@ -695,6 +695,8 @@ class Literal(TypingContainer):
         value = param
       elif (isinstance(param, abstract.ConcreteValue) and
             isinstance(param.pyval, (int, str, bytes))):
+        value = abstract.LiteralClass(param, self.vm)
+      elif isinstance(param, abstract.Instance) and param.cls.is_enum:
         value = abstract.LiteralClass(param, self.vm)
       else:
         if i in ellipses:

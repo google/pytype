@@ -66,6 +66,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def __init__(self, vm):
     super().__init__(vm)
+    self.minimally_initialized = False
     self.vm.convert = self  # to make constant_to_value calls below work
     self.pytd_convert = output.Converter(vm)
 
@@ -83,6 +84,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.object_type = self.constant_to_value(object)
 
     self.unsolvable = abstract.Unsolvable(self.vm)
+    self.type_type = self.constant_to_value(type)
+    self.minimally_initialized = True
+
     self.empty = abstract.Empty(self.vm)
     self.no_return = typing_overlay.NoReturn(self.vm)
 
@@ -133,7 +137,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.set_type = self.constant_to_value(set)
     self.frozenset_type = self.constant_to_value(frozenset)
     self.dict_type = self.constant_to_value(dict)
-    self.type_type = self.constant_to_value(type)
     self.module_type = self.constant_to_value(types.ModuleType)
     self.function_type = self.constant_to_value(types.FunctionType)
     self.tuple_type = self.constant_to_value(tuple)
@@ -217,6 +220,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def build_string(self, node, s):
     del node
     return self.constant_to_var(s)
+
+  def build_nonatomic_string(self, node):
+    s = self.primitive_class_instances[str]
+    return s.to_variable(node)
 
   def build_content(self, elements):
     if len(elements) == 1:
@@ -367,11 +374,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     Returns:
       An abstract.BaseValue created by merging the instances' classes.
     """
-    classes = set()
-    for v in instances:
-      cls = v.get_class()
-      if cls and cls != self.empty:
-        classes.add(cls)
+    classes = {v.cls for v in instances if v.cls != self.empty}
     return self.vm.merge_values(classes)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
@@ -725,7 +728,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               raise self.TypeParameterError(c.full_name)
             # deformalize gets rid of any unexpected TypeVars, which can appear
             # if something is annotated as Type[T].
-            return self.vm.annotations_util.deformalize(
+            return self.vm.annotation_utils.deformalize(
                 self.merge_classes(subst[c.full_name].data))
           else:
             return self.constant_to_value(c, subst, self.vm.root_node)

@@ -1,7 +1,10 @@
 """Debugging helper functions."""
 
 import collections
+import contextlib
+import inspect
 import io
+import logging
 import re
 import traceback
 
@@ -321,9 +324,9 @@ def stack_trace(indent_level=0, limit=100):
   indent = " " * indent_level
   stack = [frame for frame in traceback.extract_stack()
            if "/errors.py" not in frame[0] and "/debug.py" not in frame[0]]
-  trace = traceback.format_list(stack[-limit:])
-  trace = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in trace]
-  return "\n  ".join(trace)
+  tb = traceback.format_list(stack[-limit:])
+  tb = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in tb]
+  return "\n  ".join(tb)
 
 
 def _setup_tabulate():
@@ -384,3 +387,75 @@ def show_ordered_code(code, extra_col=None):
     tab.append([blk])
     tab.append(["\n".join(block_table[start:end])])
   print(tabulate.tabulate(tab, tablefmt="fancy_grid"))
+
+
+# Tracing logger
+def tracer(name=None):
+  name = f"trace.{name}" if name else "trace"
+  return logging.getLogger(name)
+
+
+def set_trace_level(level):
+  logging.getLogger("trace").setLevel(level)
+
+
+@contextlib.contextmanager
+def tracing(level=logging.DEBUG):
+  log = logging.getLogger("trace")
+  current_level = log.getEffectiveLevel()
+  log.setLevel(level)
+  try:
+    yield
+  finally:
+    log.setLevel(current_level)
+
+
+def trace(name, *trace_args):
+  """Record args and return value for a function call.
+
+  The trace is of the form
+    function name: {
+    function name: arg = value
+    function name: arg = value
+    ...
+    function name: -> return
+    function name: }
+
+  This will let us write tools to pretty print the traces with indentation etc.
+
+  Args:
+    name: module name, usually `__name__`
+    *trace_args: function arguments to log
+  Returns:
+    a decorator
+  """
+  def decorator(f):
+    def wrapper(*args, **kwargs):
+      t = tracer(name)
+      if t.getEffectiveLevel() < logging.DEBUG:
+        return f(*args, **kwargs)
+      argspec = inspect.getfullargspec(f)
+      t.debug("%s: {", f.__name__)
+      for arg in trace_args:
+        if isinstance(arg, int):
+          argname = argspec.args[arg]
+          val = args[arg]
+        else:
+          argname = arg
+          val = kwargs[arg]
+        t.debug("%s: %s = %s", f.__name__, argname, show(val))
+      ret = f(*args, **kwargs)
+      t.debug("%s: -> %s", f.__name__, show(ret))
+      t.debug("%s: }", f.__name__)
+      return ret
+    return wrapper
+  return decorator
+
+
+def show(x):
+  """Pretty print values for debugging."""
+  typename = x.__class__.__name__
+  if typename == "Variable":
+    return f"{x!r} {x.data}"
+  else:
+    return f"{x!r} <{typename}>"
