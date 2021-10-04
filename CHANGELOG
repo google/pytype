@@ -1,3 +1,13 @@
+Version 2021.10.04
+
+Bug fixes:
+* Call init_class instead of instantiate when adding assertIsInstance bindings.
+* Use the namedtuple 'defaults' argument when generating __new__ signature.
+* Do not raise a parser error for unrecognised decorators.
+* Merge BaseValue.cls and BaseValue.get_class().
+* Check Instance.maybe_missing_members earlier during attribute access.
+* Fix a bug in matching callables with TypeVar parameters.
+
 Version 2021.09.27
 
 New features and updates:
