@@ -314,7 +314,7 @@ class Class(metaclass=mixin.MixinMeta):
             self.vm.new_unsolvable(node)))
     log.debug("Calling __init__ on metaclass %s of class %s",
               self.cls.name, self.name)
-    node, _ = self.vm.call_function(node, init, args)
+    node, _ = function.call_function(self.vm, node, init, args)
     return node
 
   def call_init_subclass(self, node):
@@ -354,7 +354,7 @@ class Class(metaclass=mixin.MixinMeta):
       return node, None
     cls = value.AssignToNewVariable(node)
     new_args = args.replace(posargs=(cls,) + args.posargs)
-    node, variable = self.vm.call_function(node, new, new_args)
+    node, variable = function.call_function(self.vm, node, new, new_args)
     for val in variable.bindings:
       # If val.data is a class, call_init mistakenly calls val.data's __init__
       # method rather than that of val.data.cls.
@@ -368,7 +368,7 @@ class Class(metaclass=mixin.MixinMeta):
     if method:
       call_repr = "%s.%s(..._)" % (self.name, method_name)
       log.debug("calling %s", call_repr)
-      node, ret = self.vm.call_function(node, method, args)
+      node, ret = function.call_function(self.vm, node, method, args)
       log.debug("%s returned %r", call_repr, ret)
     return node
 

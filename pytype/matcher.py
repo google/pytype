@@ -987,7 +987,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if isinstance(b.data, special_builtins.PropertyInstance):
         fget = self.vm.bind_method(
             self._node, b.data.fget, instance.to_variable(self._node))
-        _, ret = self.vm.call_function(self._node, fget, function.Args(()))
+        _, ret = function.call_function(
+            self.vm, self._node, fget, function.Args(()))
         resolved_attribute.PasteVariable(ret)
       else:
         resolved_attribute.PasteBinding(b)

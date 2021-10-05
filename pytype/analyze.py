@@ -183,7 +183,7 @@ class CallTracer(vm.VirtualMachine):
           node, _ = self.call_function_with_args(node, val, args)
     return node
 
-  def _call_with_fake_args(self, node0, funcv):
+  def call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
     # TODO(tsudol): If expand this beyond __init__, need to handle
     # DictKeyMissing
@@ -204,10 +204,9 @@ class CallTracer(vm.VirtualMachine):
         # fallback_to_unsolvable to False just in case.
         # This means any additional errors that may be raised will be passed to
         # the call_function that called this method in the first place.
-        node2, ret = self.call_function(node1,
-                                        funcb.AssignToNewVariable(),
-                                        args,
-                                        fallback_to_unsolvable=False)
+        node2, ret = function.call_function(
+            self, node1, funcb.AssignToNewVariable(), args,
+            fallback_to_unsolvable=False)
         nodes.append(node2)
         rets.append(ret)
 

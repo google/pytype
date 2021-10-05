@@ -376,7 +376,7 @@ class EnumMetaInit(abstract.SimpleFunction):
           self.vm.convert.build_int(node),
           self.vm.convert.build_int(node),
           self.vm.convert.build_list(node, [])))
-      return self.vm.call_function(node, method, args)
+      return function.call_function(self.vm, node, method, args)
     else:
       return node, self.vm.convert.build_int(node)
 
@@ -432,8 +432,8 @@ class EnumMetaInit(abstract.SimpleFunction):
         new_args = function.Args(
             posargs=((cls.to_variable(node),) +
                      abstract_utils.maybe_extract_tuple(value)))
-        node, member_var = self.vm.call_function(
-            node, enum_new, new_args, fallback_to_unsolvable=False)
+        node, member_var = function.call_function(
+            self.vm, node, enum_new, new_args, fallback_to_unsolvable=False)
         member = abstract_utils.get_atomic_value(member_var)
       else:
         # Build instances directly, because you can't call instantiate() when

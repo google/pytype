@@ -108,7 +108,7 @@ class Abs(BuiltinFunction):
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
     if fn is not None:
-      return self.vm.call_function(node, fn, function.Args(()))
+      return function.call_function(self.vm, node, fn, function.Args(()))
     else:
       return node, self.vm.new_unsolvable(node)
 
@@ -133,7 +133,7 @@ class Next(BuiltinFunction):
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, self.vm.convert.next_attr)
     if fn is not None:
-      node, ret = self.vm.call_function(node, fn, function.Args(()))
+      node, ret = function.call_function(self.vm, node, fn, function.Args(()))
       ret.PasteVariable(default)
       return node, ret
     else:
@@ -583,15 +583,16 @@ class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
     self.is_abstract = any(_is_fn_abstract(x) for x in [fget, fset, fdel])
 
   def fget_slot(self, node, obj, objtype):
-    return self.vm.call_function(node, self.fget, function.Args((obj,)))
+    return function.call_function(
+        self.vm, node, self.fget, function.Args((obj,)))
 
   def fset_slot(self, node, obj, value):
-    return self.vm.call_function(
-        node, self.fset, function.Args((obj, value)))
+    return function.call_function(
+        self.vm, node, self.fset, function.Args((obj, value)))
 
   def fdelete_slot(self, node, obj):
-    return self.vm.call_function(
-        node, self.fdel, function.Args((obj,)))
+    return function.call_function(
+        self.vm, node, self.fdel, function.Args((obj,)))
 
   def getter_slot(self, node, fget):
     prop = PropertyInstance(

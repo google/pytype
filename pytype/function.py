@@ -954,3 +954,91 @@ def _splats_to_any(seq, vm):
   return tuple(
       vm.new_unsolvable(vm.root_node) if abstract_utils.is_var_splat(v) else v
       for v in seq)
+
+
+def call_function(vm, node, func_var, args, fallback_to_unsolvable=True,
+                  allow_noreturn=False):
+  """Call a function.
+
+  Args:
+    vm: The vm
+    node: The current CFG node.
+    func_var: A variable of the possible functions to call.
+    args: The arguments to pass. See function.Args.
+    fallback_to_unsolvable: If the function call fails, create an unknown.
+    allow_noreturn: Whether typing.NoReturn is allowed in the return type.
+  Returns:
+    A tuple (CFGNode, Variable). The Variable is the return value.
+  Raises:
+    DictKeyMissing: if we retrieved a nonexistent key from a dict and
+      fallback_to_unsolvable is False.
+    FailedFunctionCall: if the call fails and fallback_to_unsolvable is False.
+  """
+  assert func_var.bindings
+  result = vm.program.NewVariable()
+  nodes = []
+  error = None
+  has_noreturn = False
+  for funcb in func_var.bindings:
+    func = funcb.data
+    one_result = None
+    try:
+      new_node, one_result = func.call(node, funcb, args)
+    except (DictKeyMissing, FailedFunctionCall) as e:
+      if e > error:
+        error = e
+    else:
+      if vm.convert.no_return in one_result.data:
+        if allow_noreturn:
+          # Make sure NoReturn was the only thing returned.
+          assert len(one_result.data) == 1
+          has_noreturn = True
+        else:
+          for b in one_result.bindings:
+            if b.data != vm.convert.no_return:
+              result.PasteBinding(b)
+      else:
+        result.PasteVariable(one_result, new_node, {funcb})
+      nodes.append(new_node)
+  if nodes:
+    node = vm.join_cfg_nodes(nodes)
+    if not result.bindings:
+      v = vm.convert.no_return if has_noreturn else vm.convert.unsolvable
+      result.AddBinding(v, [], node)
+  elif (isinstance(error, FailedFunctionCall) and
+        all(abstract_utils.func_name_is_class_init(func.name)
+            for func in func_var.data)):
+    # If the function failed with a FailedFunctionCall exception, try calling
+    # it again with fake arguments. This allows for calls to __init__ to
+    # always succeed, ensuring pytype has a full view of the class and its
+    # attributes. If the call still fails, call_with_fake_args will return
+    # abstract.Unsolvable.
+    node, result = vm.call_with_fake_args(node, func_var)
+  elif vm.options.precise_return and len(func_var.bindings) == 1:
+    funcb, = func_var.bindings
+    func = funcb.data
+    if func.isinstance_BoundFunction():
+      func = func.underlying
+    if func.isinstance_PyTDFunction():
+      node, result = func.signatures[0].instantiate_return(node, {}, [funcb])
+    elif func.isinstance_InterpreterFunction():
+      sig = func.signature_functions()[0].signature
+      ret = sig.annotations.get("return", vm.convert.unsolvable)
+      node, result = vm.init_class(node, ret)
+    else:
+      result = vm.new_unsolvable(node)
+  else:
+    result = vm.new_unsolvable(node)
+  vm.trace_opcode(
+      None, func_var.data[0].name.rpartition(".")[-1], (func_var, result))
+  if nodes:
+    return node, result
+  elif fallback_to_unsolvable:
+    if not isinstance(error, DictKeyMissing):
+      vm.errorlog.invalid_function_call(vm.stack(func_var.data[0]), error)
+    return node, result
+  else:
+    # We were called by something that does its own error handling.
+    assert error
+    error.set_return(node, result)
+    raise error  # pylint: disable=raising-bad-type

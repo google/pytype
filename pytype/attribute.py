@@ -379,8 +379,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           else:
             posargs.append(self.vm.convert.none.to_variable(node))
           posargs.append(cls.to_variable(node))
-          node2, get_result = self.vm.call_function(
-              node2, getter, function.Args(tuple(posargs)))
+          node2, get_result = function.call_function(
+              self.vm, node2, getter, function.Args(tuple(posargs)))
           for getter in get_result.bindings:
             result.AddBinding(getter.data, [getter], node2)
         else:
@@ -403,7 +403,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
                                        skip={self.vm.convert.object_type})
       if attr_var and attr_var.bindings:
         name_var = self.vm.convert.constant_to_var(name, node=node)
-        return self.vm.call_function(node, attr_var, function.Args((name_var,)))
+        return function.call_function(
+            self.vm, node, attr_var, function.Args((name_var,)))
     return node, None
 
   def _lookup_from_mro(self, node, cls, name, valself, skip):

@@ -133,8 +133,9 @@ class HasSlots(metaclass=MixinMeta):
 
   def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""
-    return self.vm.call_function(node, self._super[name], function.Args(args),
-                                 fallback_to_unsolvable=False)
+    return function.call_function(
+        self.vm, node, self._super[name], function.Args(args),
+        fallback_to_unsolvable=False)
 
   def get_special_attribute(self, node, name, valself):
     if name in self._slots:

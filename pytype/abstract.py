@@ -645,7 +645,7 @@ class TypeParameterInstance(BaseValue):
   def call(self, node, func, args, alias_map=None):
     var = self.instance.get_instance_type_parameter(self.name)
     if var.bindings:
-      return self.vm.call_function(node, var, args)
+      return function.call_function(self.vm, node, var, args)
     else:
       return node, self.vm.convert.empty.to_variable(self.vm.root_node)
 
@@ -753,7 +753,7 @@ class SimpleValue(BaseValue):
     node, var = self.vm.attribute_handler.get_attribute(
         node, self, "__call__", self.to_binding(node))
     if var is not None and var.bindings:
-      return self.vm.call_function(node, var, args)
+      return function.call_function(self.vm, node, var, args)
     else:
       raise function.NotCallable(self)
 
@@ -1681,7 +1681,7 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
 
   def call(self, node, func, args, alias_map=None):
     var = self.vm.program.NewVariable(self.options, [], node)
-    return self.vm.call_function(node, var, args)
+    return function.call_function(self.vm, node, var, args)
 
   def get_formal_type_parameter(self, t):
     new_options = [option.get_formal_type_parameter(t)

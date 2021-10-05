@@ -1060,8 +1060,8 @@ class VirtualMachine:
       if attr_var and attr_var.bindings:
         args = function.Args(posargs=(right_val.AssignToNewVariable(),))
         try:
-          return self.call_function(
-              node, attr_var, args, fallback_to_unsolvable=False)
+          return function.call_function(
+              self, node, attr_var, args, fallback_to_unsolvable=False)
         except (function.DictKeyMissing, function.FailedFunctionCall) as e:
           # It's possible that this call failed because the function returned
           # NotImplemented.  See, e.g.,
@@ -1168,112 +1168,29 @@ class VirtualMachine:
     del cls, extra_key
     return node, None
 
-  def call_function_with_state(self, state, funcu, posargs, namedargs=None,
+  def call_function_with_state(self, state, funcv, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
                                fallback_to_unsolvable=True):
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
-    node, ret = self.call_function(state.node, funcu, function.Args(
+    args = function.Args(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
-        starstarargs=starstarargs), fallback_to_unsolvable, allow_noreturn=True)
+        starstarargs=starstarargs)
+    node, ret = function.call_function(
+        self, state.node, funcv, args, fallback_to_unsolvable,
+        allow_noreturn=True)
     if ret.data == [self.convert.no_return]:
       state = state.set_why("NoReturn")
     state = state.change_cfg_node(node)
-    if len(funcu.data) == 1:
+    if len(funcv.data) == 1:
       # Check for test assertions that narrow the type of a variable.
-      state = self._check_test_assert(state, funcu, posargs)
+      state = self._check_test_assert(state, funcv, posargs)
     return state, ret
 
-  def _call_with_fake_args(self, node0, funcv):
+  def call_with_fake_args(self, node0, unused_funcv):
     """Attempt to call the given function with made-up arguments."""
     return node0, self.new_unsolvable(node0)
-
-  def call_function(self, node, funcu, args, fallback_to_unsolvable=True,
-                    allow_noreturn=False):
-    """Call a function.
-
-    Args:
-      node: The current CFG node.
-      funcu: A variable of the possible functions to call.
-      args: The arguments to pass. See function.Args.
-      fallback_to_unsolvable: If the function call fails, create an unknown.
-      allow_noreturn: Whether typing.NoReturn is allowed in the return type.
-    Returns:
-      A tuple (CFGNode, Variable). The Variable is the return value.
-    Raises:
-      DictKeyMissing: if we retrieved a nonexistent key from a dict and
-        fallback_to_unsolvable is False.
-      FailedFunctionCall: if the call fails and fallback_to_unsolvable is False.
-    """
-    assert funcu.bindings
-    result = self.program.NewVariable()
-    nodes = []
-    error = None
-    has_noreturn = False
-    for funcv in funcu.bindings:
-      func = funcv.data
-      assert isinstance(func, abstract.BaseValue), type(func)
-      one_result = None
-      try:
-        new_node, one_result = func.call(node, funcv, args)
-      except (function.DictKeyMissing, function.FailedFunctionCall) as e:
-        if e > error:
-          error = e
-      else:
-        if self.convert.no_return in one_result.data:
-          if allow_noreturn:
-            # Make sure NoReturn was the only thing returned.
-            assert len(one_result.data) == 1
-            has_noreturn = True
-          else:
-            for b in one_result.bindings:
-              if b.data != self.convert.no_return:
-                result.PasteBinding(b)
-        else:
-          result.PasteVariable(one_result, new_node, {funcv})
-        nodes.append(new_node)
-    if nodes:
-      node = self.join_cfg_nodes(nodes)
-      if not result.bindings:
-        v = self.convert.no_return if has_noreturn else self.convert.unsolvable
-        result.AddBinding(v, [], node)
-    elif (isinstance(error, function.FailedFunctionCall) and
-          all(abstract_utils.func_name_is_class_init(func.name)
-              for func in funcu.data)):
-      # If the function failed with a FailedFunctionCall exception, try calling
-      # it again with fake arguments. This allows for calls to __init__ to
-      # always succeed, ensuring pytype has a full view of the class and its
-      # attributes. If the call still fails, _call_with_fake_args will return
-      # abstract.Unsolvable.
-      node, result = self._call_with_fake_args(node, funcu)
-    elif self.options.precise_return and len(funcu.bindings) == 1:
-      funcv, = funcu.bindings
-      func = funcv.data
-      if isinstance(func, abstract.BoundFunction):
-        func = func.underlying
-      if isinstance(func, abstract.PyTDFunction):
-        node, result = func.signatures[0].instantiate_return(node, {}, [funcv])
-      elif isinstance(func, abstract.InterpreterFunction):
-        sig = func.signature_functions()[0].signature
-        ret = sig.annotations.get("return", self.convert.unsolvable)
-        node, result = self.init_class(node, ret)
-      else:
-        result = self.new_unsolvable(node)
-    else:
-      result = self.new_unsolvable(node)
-    self.trace_opcode(
-        None, funcu.data[0].name.rpartition(".")[-1], (funcu, result))
-    if nodes:
-      return node, result
-    elif fallback_to_unsolvable:
-      if not isinstance(error, function.DictKeyMissing):
-        self.errorlog.invalid_function_call(self.stack(funcu.data[0]), error)
-      return node, result
-    else:
-      # We were called by something that does its own error handling.
-      error.set_return(node, result)
-      raise error  # pylint: disable=raising-bad-type
 
   def _process_decorator(self, func, posargs):
     """Specific processing for decorated functions."""
