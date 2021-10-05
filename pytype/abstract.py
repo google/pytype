@@ -1460,11 +1460,11 @@ class AnnotationContainer(AnnotationClass):
       inner = tuple(new_inner)
       if isinstance(self.base_cls, TupleClass):
         template += (abstract_utils.T,)
-        inner += (self.vm.merge_values(inner),)
+        inner += (self.vm.convert.merge_values(inner),)
       elif isinstance(self.base_cls, CallableClass):
         template = template[:-1] + (abstract_utils.ARGS,) + template[-1:]
         args = inner[:-1]
-        inner = args + (self.vm.merge_values(args),) + inner[-1:]
+        inner = args + (self.vm.convert.merge_values(args),) + inner[-1:]
       abstract_class = type(self.base_cls)
     else:
       abstract_class = ParameterizedClass
@@ -4163,7 +4163,7 @@ class Generator(BaseGenerator):
     if name == "__iter__":
       f = NativeFunction(name, self.__iter__, self.vm)
       return f.to_variable(node)
-    elif name == self.vm.convert.next_attr:
+    elif name == "__next__":
       return self.to_variable(node)
     elif name == "throw":
       # We don't model exceptions in a way that would allow us to induce one
@@ -4191,7 +4191,7 @@ class Iterator(Instance, mixin.HasSlots):
   def __init__(self, vm, return_var):
     super().__init__(vm.convert.iterator_type, vm)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot(self.vm.convert.next_attr, self.next_slot)
+    self.set_slot("__next__", self.next_slot)
     # TODO(dbaum): Should we set instance_type_parameters[self.TYPE_PARAM] to
     # something based on return_var?
     self._return_var = return_var

@@ -438,13 +438,13 @@ class CallTracer(vm.VirtualMachine):
       for value in f.bindings:
         if self._should_analyze_as_interpreter_function(value.data):
           node = self.analyze_function(node, value)
-    for func, opcode in self.functions_type_params_check:
+    for func, opcode in self._functions_type_params_check:
       func.signature.check_type_parameter_count(self.simple_stack(opcode))
     return node
 
   def analyze(self, node, defs, maximum_depth):
     assert not self.frame
-    self.maximum_depth = maximum_depth
+    self._maximum_depth = maximum_depth
     self._analyzing = True
     node = node.ConnectNew(name="Analyze")
     return self.analyze_toplevel(node, defs)

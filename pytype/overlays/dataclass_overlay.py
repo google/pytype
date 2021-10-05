@@ -113,7 +113,7 @@ class Dataclass(classgen.Decorator):
     # Add the __dataclass_fields__ attribute, the presence of which
     # dataclasses.is_dataclass uses to determine if an object is a dataclass (or
     # an instance of one).
-    attr_types = self.vm.merge_values({attr.typ for attr in attrs})
+    attr_types = self.vm.convert.merge_values({attr.typ for attr in attrs})
     dataclass_ast = self.vm.loader.import_name("dataclasses")
     generic_field = abstract.ParameterizedClass(
         self.vm.convert.name_to_value("dataclasses.Field", ast=dataclass_ast),

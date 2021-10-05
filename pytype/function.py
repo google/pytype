@@ -598,7 +598,7 @@ class InvalidParameters(FailedFunctionCall):
   def __init__(self, sig, passed_args, vm, bad_param=None):
     super().__init__()
     self.name = sig.name
-    passed_args = [(name, vm.merge_values(arg.data))
+    passed_args = [(name, vm.convert.merge_values(arg.data))
                    for name, arg, _ in sig.iter_args(passed_args)]
     self.bad_call = BadCall(sig=sig, passed_args=passed_args,
                             bad_param=bad_param)

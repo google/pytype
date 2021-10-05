@@ -347,10 +347,8 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
       self.vm.errorlog.invalid_annotation(
           stack, annotation, "NoReturn is not allowed", name)
       return None
-    elif isinstance(annotation, abstract.Instance) and (
-        annotation.cls == self.vm.convert.str_type or
-        annotation.cls == self.vm.convert.unicode_type
-    ):
+    elif (isinstance(annotation, abstract.Instance) and
+          annotation.cls == self.vm.convert.str_type):
       # String annotations : Late evaluation
       if isinstance(annotation, mixin.PythonConstant):
         expr = annotation.pyval

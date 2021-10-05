@@ -1005,7 +1005,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       types = list(filter(None, (self._get_type(v) for v in param_value.data)))
       if not types:
         break
-      parameters[param.name] = self.vm.merge_values(types)
+      parameters[param.name] = self.vm.convert.merge_values(types)
     else:
       # If 'value' provides non-empty values for all of its class's parameters,
       # then we construct a ParameterizedClass so that the parameter values are
@@ -1100,8 +1100,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # protocol_attribute_var.
         bad_left, bad_right = zip(*bad_matches)
         self._protocol_error = ProtocolTypeError(
-            left.cls, other_type, attribute, self.vm.merge_values(bad_left),
-            self.vm.merge_values(bad_right))
+            left.cls, other_type, attribute,
+            self.vm.convert.merge_values(bad_left),
+            self.vm.convert.merge_values(bad_right))
         return None
     return self._merge_substs(subst, new_substs)
 

@@ -131,7 +131,7 @@ class Next(BuiltinFunction):
   def call(self, node, _, args):
     self.match_args(node, args)
     arg, default = self._get_args(args)
-    node, fn = self.get_underlying_method(node, arg, self.vm.convert.next_attr)
+    node, fn = self.get_underlying_method(node, arg, "__next__")
     if fn is not None:
       node, ret = function.call_function(self.vm, node, fn, function.Args(()))
       ret.PasteVariable(default)

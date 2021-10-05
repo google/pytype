@@ -277,7 +277,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       lineno = 3
     else:
       lineno = 4
-    self.assertEqual({lineno: "dict"}, self.vm.director.type_comments)
+    self.assertEqual({lineno: "dict"}, self.vm._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
     self.run_program("""
@@ -303,7 +303,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       v_lineno = 4
       w_lineno = 9
     self.assertEqual({v_lineno: "dict", w_lineno: "dict"},
-                     self.vm.director.type_comments)
+                     self.vm._director.type_comments)
 
   def test_decorators(self):
     self.run_program("""
@@ -329,7 +329,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       real_decorator_lineno = 6
       decorator_lineno = 11
     self.assertEqual(
-        self.vm.director.decorators, {real_decorator_lineno, decorator_lineno})
+        self.vm._director.decorators, {real_decorator_lineno, decorator_lineno})
 
   def test_stacked_decorators(self):
     self.run_program("""
@@ -343,7 +343,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
           pass
     """)
     lineno = 8 if self.python_version >= (3, 8) else 6
-    self.assertEqual(self.vm.director.decorators, {lineno})
+    self.assertEqual(self.vm._director.decorators, {lineno})
 
   def test_overload(self):
     self.run_program("""
@@ -358,7 +358,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       def f(x=None):
         return 0 if x is None else x
     """)
-    self.assertEqual(self.vm.director.decorators, {5, 8})
+    self.assertEqual(self.vm._director.decorators, {5, 8})
 
 
 if __name__ == "__main__":

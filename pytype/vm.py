@@ -212,7 +212,7 @@ class VirtualMachine:
                generate_unknowns=False,
                store_all_calls=False):
     """Construct a TypegraphVirtualMachine."""
-    self.maximum_depth = None  # set by run_program() and analyze()
+    self._maximum_depth = None  # set by run_program() and analyze()
     self.errorlog = errorlog
     self.options = options
     self.python_version = options.python_version
@@ -224,8 +224,8 @@ class VirtualMachine:
     # Every LateAnnotation depends on a single undefined name, so once that name
     # is defined, we immediately resolve the annotation.
     self.late_annotations = collections.defaultdict(list)
-    self.functions_type_params_check = []
-    self.concrete_classes = []
+    self._functions_type_params_check = []
+    self._concrete_classes = []
     self.frame = None  # The current frame.
     self.program = cfg.Program()
     self.root_node = self.program.NewCFGNode("root")
@@ -238,7 +238,7 @@ class VirtualMachine:
     self.has_unknown_wildcard_imports = False
     self.callself_stack = []
     self.filename = None
-    self.director = None
+    self._director = None
     self._analyzing = False  # Are we in self.analyze()?
     self.opcode_traces = []
     self._importing = False  # Are we importing another file?
@@ -357,10 +357,10 @@ class VirtualMachine:
       return self.loader.typing.Lookup(name)
 
   def remaining_depth(self):
-    return self.maximum_depth - len(self.frames)
+    return self._maximum_depth - len(self.frames)
 
   def is_at_maximum_depth(self):
-    return len(self.frames) > self.maximum_depth
+    return len(self.frames) > self._maximum_depth
 
   def run_instruction(self, op, state):
     """Run a single bytecode instruction.
@@ -559,15 +559,6 @@ class VirtualMachine:
   def join_bindings(self, node, bindings):
     return cfg_utils.merge_bindings(self.program, node, bindings)
 
-  def merge_values(self, values):
-    """Merge a collection of values into a single one."""
-    if not values:
-      return self.convert.empty
-    elif len(values) == 1:
-      return next(iter(values))
-    else:
-      return abstract.Union(values, self)
-
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
     new_base = self.program.NewVariable()
@@ -752,7 +743,7 @@ class VirtualMachine:
           # Since a class decorator could have made the class inherit from
           # ABCMeta, we have to mark concrete classes now and check for
           # abstract methods at postprocessing time.
-          self.concrete_classes.append((val, self.simple_stack()))
+          self._concrete_classes.append((val, self.simple_stack()))
     self.trace_opcode(None, name, var)
     return node, var
 
@@ -826,7 +817,7 @@ class VirtualMachine:
     var.AddBinding(val, code.bindings, node)
     self._check_defaults(node, val)
     if val.signature.annotations:
-      self.functions_type_params_check.append((val, self.frame.current_opcode))
+      self._functions_type_params_check.append((val, self.frame.current_opcode))
     return var
 
   def make_native_function(self, name, method):
@@ -901,9 +892,9 @@ class VirtualMachine:
         filename=filename, mode=mode)
     code = blocks.process_code(code, self.python_version)
     if mode == "exec":
-      self.director.adjust_line_numbers(code)
+      self._director.adjust_line_numbers(code)
     return blocks.merge_annotations(
-        code, self.director.annotations, self.director.docstrings)
+        code, self._director.annotations, self._director.docstrings)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""
@@ -945,17 +936,17 @@ class VirtualMachine:
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.errorlog.set_error_filter(director.should_report_error)
-    self.director = director
+    self._director = director
     self.filename = filename
 
-    self.maximum_depth = maximum_depth
+    self._maximum_depth = maximum_depth
 
     code = self.compile_src(src, filename=filename)
-    visitor = _FindIgnoredTypeComments(self.director.type_comments)
+    visitor = _FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
       self.errorlog.ignored_type_comment(
-          self.filename, line, self.director.type_comments[line])
+          self.filename, line, self._director.type_comments[line])
 
     if self._fold_constants:
       # Disabled while the feature is in development.
@@ -965,7 +956,7 @@ class VirtualMachine:
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
     # Check for abstract methods on non-abstract classes.
-    for val, frames in self.concrete_classes:
+    for val, frames in self._concrete_classes:
       if not val.is_abstract:
         for member in sum((var.data for var in val.members.values()), []):
           if isinstance(member, abstract.Function) and member.is_abstract:
@@ -2511,7 +2502,7 @@ class VirtualMachine:
         maybe_cls = obj_val.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
         if ("__annotations__" not in maybe_cls.members and
-            op.line in self.director.annotations):
+            op.line in self._director.annotations):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
           annotations_dict = abstract.AnnotationsDict({}, self)
@@ -2621,7 +2612,8 @@ class VirtualMachine:
             # We've found a TupleClass with concrete parameters, which means
             # we're a subclass of a heterogeneous tuple (usually a
             # typing.NamedTuple instance).
-            new_data = self.merge_values(base.instantiate(self.root_node).data)
+            new_data = self.convert.merge_values(
+                base.instantiate(self.root_node).data)
             return self._get_literal_sequence(new_data)
         return None
 
@@ -2672,7 +2664,7 @@ class VirtualMachine:
       nontuple_seq.AddBinding(b.data, {b}, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
-      state, result = self._call(state, itr, self.convert.next_attr, ())
+      state, result = self._call(state, itr, "__next__", ())
       # For a non-literal iterable, next() should always return the same type T,
       # so we can iterate `count` times in both UNPACK_SEQUENCE and UNPACK_EX,
       # and assign the slurp variable type List[T].
@@ -2913,7 +2905,7 @@ class VirtualMachine:
 
   def byte_FOR_ITER(self, state, op):
     self.store_jump(op.target, state.pop_and_discard())
-    state, f = self.load_attr(state, state.top(), self.convert.next_attr)
+    state, f = self.load_attr(state, state.top(), "__next__")
     state = state.push(f)
     return self.call_function_from_stack(state, 0, None, None)
 
@@ -3183,7 +3175,7 @@ class VirtualMachine:
     globs = self.get_globals_dict()
     fn = self._make_function(name, state.node, code, globs, defaults,
                              kw_defaults, annotations=annot, closure=free_vars)
-    if op.line in self.director.decorators:
+    if op.line in self._director.decorators:
       fn.data[0].is_decorated = True
     self._process_function_type_comment(state.node, op, fn.data[0])
     self.trace_opcode(op, name, fn)
@@ -3259,7 +3251,7 @@ class VirtualMachine:
     full_name = self.frame.f_code.co_names[op.arg]
     # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
     state, (level_var, fromlist) = state.popn(2)
-    if op.line in self.director.ignore:
+    if op.line in self._director.ignore:
       # "import name  # type: ignore"
       self.trace_opcode(op, full_name, None)
       return state.push(self.new_unsolvable(state.node))
@@ -3283,7 +3275,7 @@ class VirtualMachine:
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     name = self.frame.f_code.co_names[op.arg]
-    if op.line in self.director.ignore:
+    if op.line in self._director.ignore:
       # "from x import y  # type: ignore"
       # TODO(mdemello): Should we add some sort of signal data to indicate that
       # this should be treated as resolvable even though there is no module?
@@ -3300,7 +3292,7 @@ class VirtualMachine:
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     cls = abstract.BuildClass(self).to_variable(state.node)
-    if op.line in self.director.decorators:
+    if op.line in self._director.decorators:
       # Will be copied into the abstract.InterpreterClass
       cls.data[0].is_decorated = True
     self.trace_opcode(op, "", cls)
@@ -3364,8 +3356,8 @@ class VirtualMachine:
     return self.store_local(state, "__annotations__", annotations)
 
   def _record_annotation(self, node, op, name, typ):
-    # Annotations in self.director are handled by _apply_annotation.
-    if self.frame.current_opcode.line not in self.director.annotations:
+    # Annotations in self._director are handled by _apply_annotation.
+    if self.frame.current_opcode.line not in self._director.annotations:
       self._record_local(node, op, name, typ)
 
   def byte_STORE_ANNOTATION(self, state, op):
@@ -3742,7 +3734,8 @@ class VirtualMachine:
     # we check that at least one binding of var is compatible with typ?
     classes = []
     abstract_utils.flatten(class_spec, classes)
-    node, new_type = self.init_class(state.node, self.merge_values(classes))
+    node, new_type = self.init_class(
+        state.node, self.convert.merge_values(classes))
     state = state.change_cfg_node(node)
     return self._store_new_var_in_local(state, var, new_type)
 

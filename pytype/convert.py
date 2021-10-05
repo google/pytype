@@ -24,12 +24,9 @@ from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_constants
 from pytype.typegraph import cfg
 
-
 log = logging.getLogger(__name__)
 
-
-MAX_IMPORT_DEPTH = 12
-
+_MAX_IMPORT_DEPTH = 12
 
 # types not exposed as python classes
 NoneType = type(None)
@@ -129,8 +126,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
     self.bool_type = self.primitive_classes[bool]
-    # TODO(b/195453869): get rid of unicode_type
-    self.unicode_type = self.str_type
     self.bytes_type = self.primitive_classes[bytes]
 
     self.list_type = self.constant_to_value(list)
@@ -152,7 +147,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    self.next_attr = "__next__"
 
   def constant_name(self, constant_type):
     if constant_type is None:
@@ -366,6 +360,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       assert container.full_name == "builtins.dict", container.full_name
       return self._copy_type_parameters(container, "typing.Mapping")
 
+  def merge_values(self, values):
+    """Merge a collection of values into a single one."""
+    if not values:
+      return self.empty
+    elif len(values) == 1:
+      return next(iter(values))
+    else:
+      return abstract.Union(values, self.vm)
+
   def merge_classes(self, instances):
     """Merge the classes of the given instances.
 
@@ -375,7 +378,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       An abstract.BaseValue created by merging the instances' classes.
     """
     classes = {v.cls for v in instances if v.cls != self.empty}
-    return self.vm.merge_values(classes)
+    return self.merge_values(classes)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):
@@ -569,7 +572,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return abstract.ConcreteValue(pyval, self.bytes_type, self.vm)
     elif isinstance(pyval, bool):
       return self.true if pyval else self.false
-    elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
+    elif isinstance(pyval, int) and -1 <= pyval <= _MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
       return abstract.ConcreteValue(pyval, self.int_type, self.vm)

@@ -324,7 +324,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       # generation but undesirable for, say, error message printing.
       args = [sig.annotations.get(name, self.vm.convert.unsolvable)
               for name in sig.param_names]
-      params = {abstract_utils.ARGS: self.vm.merge_values(args),
+      params = {abstract_utils.ARGS: self.vm.convert.merge_values(args),
                 abstract_utils.RET: ret}
       params.update(enumerate(args))
       return abstract.CallableClass(base_cls, params, self.vm)

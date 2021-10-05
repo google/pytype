@@ -85,7 +85,7 @@ class Tuple(TypingContainer):
           inner, ellipses, allowed_ellipses={len(inner) - 1} - {0})
     else:
       template = list(range(len(inner))) + [abstract_utils.T]
-      inner += (self.vm.merge_values(inner),)
+      inner += (self.vm.convert.merge_values(inner),)
       return template, inner, abstract.TupleClass
 
 
@@ -115,7 +115,7 @@ class Callable(TypingContainer):
     if isinstance(inner[0], list):
       template = (list(range(len(inner[0]))) +
                   [t.name for t in self.base_cls.template])
-      combined_args = self.vm.merge_values(inner[0])
+      combined_args = self.vm.convert.merge_values(inner[0])
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.vm.errorlog.invalid_ellipses(self.vm.frames, ellipses, self.name)
       return template, inner, abstract.CallableClass
@@ -320,16 +320,11 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     ordered_dict_cls = self.vm.convert.name_to_value("collections.OrderedDict",
                                                      ast=self.collections_ast)
 
-    # In Python 2, keys can be `str` or `unicode`; support both.
-    # In Python 3, `str_type` and `unicode_type` are the same.
-    field_keys_union = abstract.Union([self.vm.convert.str_type,
-                                       self.vm.convert.unicode_type], self.vm)
-
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
     # collections.pyi doesn't conform to that standard.
     field_dict_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
-        {"K": field_keys_union, "V": field_types_union},
+        {"K": self.vm.convert.str_type, "V": field_types_union},
         self.vm)
     members["__dict__"] = field_dict_cls.instantiate(node)
     members["_field_defaults"] = field_dict_cls.instantiate(node)
@@ -338,7 +333,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # vm.make_class will take care of adding the __annotations__ member.
     field_types_cls = abstract.ParameterizedClass(
         ordered_dict_cls,
-        {"K": field_keys_union, "V": self.vm.convert.type_type},
+        {"K": self.vm.convert.str_type, "V": self.vm.convert.type_type},
         self.vm)
     members["_field_types"] = field_types_cls.instantiate(node)
 
@@ -710,7 +705,7 @@ class Literal(TypingContainer):
       self.vm.errorlog.invalid_annotation(
           self.vm.frames, self,
           "\n".join("Bad parameter %r at index %d" % e for e in errors))
-    return self.vm.merge_values(values)
+    return self.vm.convert.merge_values(values)
 
 
 def not_supported_yet(name, vm):
