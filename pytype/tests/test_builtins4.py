@@ -377,6 +377,31 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       lst3 = ...  # type: Iterator[nothing]
     """)
 
+  def test_map3(self):
+    self.CheckWithErrors("""
+    def func(a: int) -> float:
+      return float(a)
+
+    map(func, ['str'])  # wrong-arg-types
+    """)
+
+    self.Check("""
+    from typing import Union
+    def func(a: Union[int, str, float, bool]) -> str:
+      return str(a)
+    
+    map(func, [1, 'pi', 3.14, True])
+    """)
+
+    self.Check("""
+    from typing import Iterable, Union
+    def func(first: Iterable[str], second: str, third: Union[int, bool, float]) -> str:
+      return ' '.join(first) + second + str(third)
+    
+    map(func, [('one', 'two'), {'three', 'four'}, ['five', 'six']], 'abc', [1, False, 3.14])
+    """)
+
+
   def test_dict(self):
     ty = self.Infer("""
       def t_testDict():

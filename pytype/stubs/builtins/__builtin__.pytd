@@ -18,6 +18,8 @@ _T = TypeVar('_T')
 _T2 = TypeVar('_T2')
 _T3 = TypeVar('_T3')
 _T4 = TypeVar('_T4')
+_T5 = TypeVar('_T5')
+_S = TypeVar('_S')
 _K = TypeVar('_K')
 _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
@@ -91,8 +93,44 @@ def iter(collection: Iterable[_T]) -> Iterator[_T]: ...
 def iter(func: typing.Callable[[], Union[_T, _T2]], sentinel: _T) -> Iterator[_T2]: ...
 def len(obj: Sized) -> int: ...
 def locals() -> dict[str, object]: ...
-def map(function, *sequences: Iterable[nothing]) -> Iterator[nothing]: ...
-def map(function: Callable[..., _T], *sequences: Iterable) -> Iterator[_T]: ...
+@overload
+def map(_func: Callable[[_T], _S], *sequences: Iterable[nothing]) -> Iterator[nothing]: ...
+@overload
+def map(__func: Callable[[_T], _S], __iter1: Iterable[_T]) -> Iterator[_S]: ...
+@overload
+def map(__func: Callable[[_T, _T2], _S], __iter1: Iterable[_T], __iter2: Iterable[_T2]) -> Iterator[_S]: ...
+@overload
+def map(
+    __func: Callable[[_T, _T2, _T3], _S], __iter1: Iterable[_T], __iter2: Iterable[_T2], __iter3: Iterable[_T3]
+) -> Iterator[_S]: ...
+@overload
+def map(
+    __func: Callable[[_T, _T2, _T3, _T4], _S],
+    __iter1: Iterable[_T],
+    __iter2: Iterable[_T2],
+    __iter3: Iterable[_T3],
+    __iter4: Iterable[_T4],
+) -> Iterator[_S]: ...
+@overload
+def map(
+    __func: Callable[[_T, _T2, _T3, _T4, _T5], _S],
+    __iter1: Iterable[_T],
+    __iter2: Iterable[_T2],
+    __iter3: Iterable[_T3],
+    __iter4: Iterable[_T4],
+    __iter5: Iterable[_T5],
+) -> Iterator[_S]: ...
+@overload
+def map(
+    __func: Callable[..., _S],
+    __iter1: Iterable[Any],
+    __iter2: Iterable[Any],
+    __iter3: Iterable[Any],
+    __iter4: Iterable[Any],
+    __iter5: Iterable[Any],
+    __iter6: Iterable[Any],
+    *iterables: Iterable[Any],
+) -> Iterator[_S]: ...
 def max(iterable: Iterable[_T], key: Callable = ..., default: Any = ...) -> _T: ...
 def max(arg1: _T, arg2: _T2, *, key: Callable = ...) -> Union[_T, _T2]: ...
 def max(arg1: _T, arg2: _T2, arg3: _T3, *, key: Callable = ...) -> Union[_T, _T2, _T3]: ...
