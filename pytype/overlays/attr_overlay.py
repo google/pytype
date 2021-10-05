@@ -2,6 +2,7 @@
 
 import enum
 import logging
+from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -35,9 +36,32 @@ class AttrOverlay(overlay.Overlay):
         "s": Attrs.make,
         "ib": Attrib.make,
         "Factory": Factory.make,
+
+        # Attr's next-gen APIs
+        # See https://www.attrs.org/en/stable/api.html#next-gen
+
+        # They accept (almost) all the same arguments as the previous APIs.
+        # Strictly speaking these only exist in Python 3.6 and up, but
+        # Python 3.6 is the minimum version pytype are supports now, so not
+        # bothering to guard these definitions.
+        "define": AttrsNextGenDefine.make,
+        # These (may) have different default arguments than 'define' for the
+        # "frozen" arguments, but the overlay doesn't look at that yet.
+        "mutable": AttrsNextGenDefine.make,
+        "frozen": AttrsNextGenDefine.make,
+        "field": Attrib.make,
     }
+
     ast = vm.loader.import_name("attr")
     super().__init__(vm, "attr", member_map, ast)
+
+
+class _NoChange():
+  pass
+
+# A unique sentinal value to signal not to write anything, not even the
+# original value.
+_NO_CHANGE = _NoChange()
 
 
 class Attrs(classgen.Decorator):
@@ -52,13 +76,23 @@ class Attrs(classgen.Decorator):
     # for __init__.
     return attr.name.lstrip("_")
 
+  def _handle_auto_attribs(
+      self, auto_attribs: Optional[bool], unused_local_ops,
+      unused_cls_name: str) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+    # Why _NO_CHANGE instead of passing auto_attribs?
+    # Because result is going into potentially an OrderedDict, where
+    # writing even the same value might have a side effect (changing ordering).
+    return _NO_CHANGE, _ordering_for_auto_attrib(auto_attribs)
+
   def decorate(self, node, cls):
     """Processes the attrib members of a class."""
     # Collect classvars to convert them to attrs.
-    if self.args[cls]["auto_attribs"]:
-      ordering = classgen.Ordering.FIRST_ANNOTATE
-    else:
-      ordering = classgen.Ordering.LAST_ASSIGN
+    new_auto_attribs, ordering = self._handle_auto_attribs(
+        self.args[cls]["auto_attribs"],
+        self.vm.local_ops.get(cls.name, ()),
+        cls.name)
+    if new_auto_attribs is not _NO_CHANGE:
+      self.args[cls]["auto_attribs"] = new_auto_attribs
     ordered_locals = classgen.get_class_locals(
         cls.name, allow_methods=False, ordering=ordering, vm=self.vm)
     own_attrs = []
@@ -125,15 +159,62 @@ class Attrs(classgen.Decorator):
     cls.record_attr_ordering(own_attrs)
     attrs = cls.compute_attr_metadata(own_attrs, "attr.s")
 
-    # Add an __init__ method
-    if self.args[cls]["init"]:
-      init_method = self.make_init(node, cls, attrs)
-      cls.members["__init__"] = init_method
+    # Add an __init__.
+    # If the "init" parameter of decorator is False, instead an
+    # __attrs_init__ function is generated, which is what would have been
+    # generated for __init__ if the init parameter was True.
+    # This logic was added in attrs version 21.1.0
+    init_method_name = (
+        "__init__" if self.args[cls]["init"] else "__attrs_init__")
+    init_method = self.make_init(node, cls, attrs, init_method_name)
+    cls.members[init_method_name] = init_method
 
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("attr.s")
       # Fix up type parameters in methods added by the decorator.
       cls.update_method_type_params()
+
+
+class AttrsNextGenDefine(Attrs):
+  """Implements the @attr.define decorator.
+
+  See https://www.attrs.org/en/stable/api.html#next-generation-apis
+  """
+
+  # Override the default arguments.
+  _DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
+      # Entries from Decorator._DEFAULT_ARGS
+      "init": True,
+      "kw_only": False,
+      # Deviations from @attr.s
+      "auto_attribs": None,
+      # The overlay doesn't pay attention to these yet, so declaring these
+      # deviations doesn't do much. Here in case in the future the overlay does.
+      "slots": True,
+      "weakref_slots": True,
+      "auto_exc": True,
+      "auto_detect": True
+  }
+
+  @classmethod
+  def make(cls, vm):
+    # Bypass Attrs's make; go straight to its superclass.
+    return super(Attrs, cls).make("define", vm, "attr")  # pylint: disable=bad-super-call
+
+  def _handle_auto_attribs(self, auto_attribs, local_ops, cls_name):
+    if auto_attribs is not None:
+      return super()._handle_auto_attribs(auto_attribs, local_ops, cls_name)
+    is_annotated = {}
+    for op in local_ops:
+      local = self.vm.annotated_locals[cls_name][op.name]
+      if not classgen.is_relevant_class_local(local, op.name, False):
+        continue
+      if op.name not in is_annotated:
+        is_annotated[op.name] = op.is_annotate()
+      elif op.is_annotate():
+        is_annotated[op.name] = True
+    all_annotated = all(is_annotated.values())
+    return all_annotated, _ordering_for_auto_attrib(all_annotated)
 
 
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
@@ -334,6 +415,11 @@ class Attrib(classgen.FieldConstructor):
     else:
       default_var = None
     return node, default_var
+
+
+def _ordering_for_auto_attrib(auto_attrib):
+  return (classgen.Ordering.FIRST_ANNOTATE if auto_attrib
+          else classgen.Ordering.LAST_ASSIGN)
 
 
 def is_attrib(var):

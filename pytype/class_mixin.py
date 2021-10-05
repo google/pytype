@@ -28,7 +28,20 @@ _METADATA_KEYS = {
     # the attr overlay as attr.s when processing bytecode.
     "attr.s": "__attrs_attrs__",
     "attr.attrs": "__attrs_attrs__",
-    "attr._make.attrs": "__attrs_attrs__"
+    "attr._make.attrs": "__attrs_attrs__",
+
+    # Attr's next-gen APIs
+    # See https://www.attrs.org/en/stable/api.html#next-gen
+
+    # They accept (almost) all the same arguments as the previous APIs.
+    # Technically these only exist when running in Python 3.6 and up. But
+    # we mandate Python 3.6 or up anyways.
+    "attr.define": "__attrs_attrs__",
+    "attr.mutable": "__attrs_attrs__",
+    "attr.frozen": "__attrs_attrs__",
+    "attr._next_gen.define": "__attrs_attrs__",
+    "attr._next_gen.mutable": "__attrs_attrs__",
+    "attr._next_gen.frozen": "__attrs_attrs__",
 }
 
 

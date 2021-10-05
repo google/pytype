@@ -6,6 +6,7 @@ Contains common functionality used by dataclasses, attrs and namedtuples.
 import abc
 import collections
 import logging
+from typing import Any, ClassVar, Dict
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -23,6 +24,7 @@ Attribute = class_mixin.Attribute
 AttributeKinds = class_mixin.AttributeKinds
 
 
+# Probably should make this an enum.Enum at some point.
 class Ordering:
   """Possible orderings for get_class_locals."""
   # Order by each variable's first annotation. For example, for
@@ -49,7 +51,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
   # Defaults for the args that we support (dataclasses only support 'init',
   # but the others default to false so they should not affect anything).
-  _DEFAULT_ARGS = {
+  _DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
       "init": True,
       "kw_only": False,
       "auto_attribs": False,
@@ -81,7 +83,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     """Attribute name as an __init__ keyword, could differ from attr.name."""
     return attr.name
 
-  def make_init(self, node, cls, attrs):
+  def make_init(self, node, cls, attrs, init_method_name="__init__"):
     pos_params = []
     kwonly_params = []
     all_kwonly = self.args[cls]["kw_only"]
@@ -104,7 +106,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
         pos_params.append(param)
 
     return overlay_utils.make_method(
-        self.vm, node, "__init__", pos_params, kwonly_params)
+        self.vm, node, init_method_name, pos_params, kwonly_params)
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
@@ -199,7 +201,33 @@ def add_member(node, cls, name, typ):
   cls.members[name] = instance
 
 
-def get_class_locals(cls_name, allow_methods, ordering, vm):
+def is_relevant_class_local(class_local: abstract_utils.Local,
+                            class_local_name: str, allow_methods: bool):
+  """Tests whether the current class local could be relevant for type checking.
+
+  For example, this doesn't match __dunder__ class locals.
+
+  To get an abstract_utils.Local from a vm.LocalOps, you can use,
+  'vm_instance.annotated_locals[cls_name][op.name]'.
+
+  Args:
+    class_local: the local to query
+    class_local_name: the name of the class local (because abstract_utils.Local
+      does not hold this information).
+    allow_methods: whether to allow methods class locals to match
+
+  Returns:
+    Whether this class local could possibly be relevant for type checking.
+      Callers will usually want to filter even further.
+  """
+  if is_dunder(class_local_name):
+    return False
+  if not allow_methods and is_method(class_local.orig):
+    return False
+  return True
+
+
+def get_class_locals(cls_name: str, allow_methods: bool, ordering, vm):
   """Gets a dictionary of the class's local variables.
 
   Args:
@@ -220,10 +248,8 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
     # class will not be in local_ops if a previous decorator hides it.
     return out
   for op in vm.local_ops[cls_name]:
-    if is_dunder(op.name):
-      continue
     local = vm.annotated_locals[cls_name][op.name]
-    if not allow_methods and is_method(local.orig):
+    if not is_relevant_class_local(local, op.name, allow_methods):
       continue
     if ordering is Ordering.FIRST_ANNOTATE:
       if not op.is_annotate() or op.name in out:
