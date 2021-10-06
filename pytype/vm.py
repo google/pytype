@@ -338,19 +338,6 @@ class VirtualMachine:
     self.frame.current_opcode = None
     return state
 
-  def join_cfg_nodes(self, nodes):
-    """Get a new node to which the given nodes have been joined."""
-    assert nodes
-    if len(nodes) == 1:
-      return nodes[0]
-    else:
-      ret = self.ctx.program.NewCFGNode(self.frame and
-                                        self.frame.current_opcode and
-                                        self.frame.current_opcode.line)
-      for node in nodes:
-        node.ConnectTo(ret)
-      return ret
-
   def run_frame(self, frame, node, annotated_locals=None):
     """Run a frame (typically belonging to a method)."""
     self.push_frame(frame)
@@ -406,7 +393,7 @@ class VirtualMachine:
       assert not frame.return_variable.bindings
       frame.return_variable.AddBinding(self.ctx.convert.unsolvable, [], node)
     else:
-      node = self.join_cfg_nodes(return_nodes)
+      node = self.ctx.join_cfg_nodes(return_nodes)
       if not can_return:
         assert not frame.return_variable.bindings
         # We purposely don't check NoReturn against this function's
@@ -498,12 +485,6 @@ class VirtualMachine:
   ) -> Tuple[frame_state.FrameState, cfg.Variable]:
     state, method = self.load_attr(state, obj, method_name)
     return self.call_function_with_state(state, method, args)
-
-  def join_variables(self, node, variables):
-    return cfg_utils.merge_variables(self.ctx.program, node, variables)
-
-  def join_bindings(self, node, bindings):
-    return cfg_utils.merge_bindings(self.ctx.program, node, bindings)
 
   def _process_base_class(self, node, base):
     """Process a base class for InterpreterClass creation."""
@@ -1040,8 +1021,8 @@ class VirtualMachine:
             nodes.append(node)
             results.append(ret)
     if nodes:
-      state = state.change_cfg_node(self.join_cfg_nodes(nodes))
-    result = self.join_variables(state.node, results)
+      state = state.change_cfg_node(self.ctx.join_cfg_nodes(nodes))
+    result = self.ctx.join_variables(state.node, results)
     log.debug("Result: %r %r", result, result.data)
     if not result.bindings and report_errors:
       if error is None:
@@ -1448,7 +1429,7 @@ class VirtualMachine:
       self._filter_none_and_paste_bindings(node2, attr_var.bindings, result)
       nodes.append(node2)
     if nodes:
-      return self.join_cfg_nodes(nodes), result, values_without_attribute
+      return self.ctx.join_cfg_nodes(nodes), result, values_without_attribute
     else:
       return node, None, values_without_attribute
 
@@ -1554,7 +1535,10 @@ class VirtualMachine:
       nodes.append(
           self.ctx.attribute_handler.set_attribute(state.node, val.data, attr,
                                                    value))
-    return state.change_cfg_node(self.join_cfg_nodes(nodes)) if nodes else state
+    if nodes:
+      return state.change_cfg_node(self.ctx.join_cfg_nodes(nodes))
+    else:
+      return state
 
   def del_attr(self, state, obj, attr):
     """Delete an attribute."""

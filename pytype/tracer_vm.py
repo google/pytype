@@ -198,8 +198,8 @@ class CallTracer(vm.VirtualMachine):
         rets.append(ret)
 
     if nodes:
-      ret = self.join_variables(node0, rets)
-      node = self.join_cfg_nodes(nodes)
+      ret = self.ctx.join_variables(node0, rets)
+      node = self.ctx.join_cfg_nodes(nodes)
       if ret.bindings:
         return node, ret
     else:
@@ -244,7 +244,7 @@ class CallTracer(vm.VirtualMachine):
       node4, ret = self.call_function_with_args(node3, b, args)
       instance.PasteVariable(ret)
       nodes.append(node4)
-    return self.join_cfg_nodes(nodes), instance
+    return self.ctx.join_cfg_nodes(nodes), instance
 
   def _instantiate_var(self, node, clsv, container):
     """Build an (dummy) instance from a class, for analyzing it."""
@@ -360,7 +360,7 @@ class CallTracer(vm.VirtualMachine):
       node = self.call_init(node, instance)
     elif len(good_instances) != len(instance.bindings):
       # __new__ returned some extra possibilities we don't need.
-      instance = self.join_bindings(node, good_instances)
+      instance = self.ctx.join_bindings(node, good_instances)
     for instance_value in instance.data:
       val.data.register_canonical_instance(instance_value)
     methods = sorted(val.data.members.items())

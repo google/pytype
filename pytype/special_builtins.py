@@ -85,7 +85,7 @@ class BuiltinFunction(abstract.PyTDFunction):
       if result is not None:
         results.append(result)
     if results:
-      return node, self.ctx.vm.join_variables(node, results)
+      return node, self.ctx.join_variables(node, results)
     else:
       return node, None
 
@@ -361,7 +361,7 @@ class SuperInstance(abstract.BaseValue):
       if attr:
         ret.append(attr)
     if ret:
-      return self.ctx.vm.join_variables(node, ret)
+      return self.ctx.join_variables(node, ret)
     return None
 
   def get_special_attribute(self, node, name, valself):

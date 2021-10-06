@@ -1014,7 +1014,7 @@ def call_function(ctx,
         result.PasteVariable(one_result, new_node, {funcb})
       nodes.append(new_node)
   if nodes:
-    node = ctx.vm.join_cfg_nodes(nodes)
+    node = ctx.join_cfg_nodes(nodes)
     if not result.bindings:
       v = ctx.convert.no_return if has_noreturn else ctx.convert.unsolvable
       result.AddBinding(v, [], node)

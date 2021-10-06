@@ -939,7 +939,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
             unresolved = True
     if unresolved or self.could_contain_anything:
       results.append(ret)
-    return node, self.ctx.vm.join_variables(node, results)
+    return node, self.ctx.join_variables(node, results)
 
   def _get_index(self, data):
     """Helper function for getslice_slot that extracts int or None from data.
@@ -995,7 +995,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
               List(self.pyval[start:end], self.ctx).to_variable(node))
     if unresolved or self.could_contain_anything:
       results.append(ret)
-    return node, self.ctx.vm.join_variables(node, results)
+    return node, self.ctx.join_variables(node, results)
 
 
 class Tuple(Instance, mixin.PythonConstant):
@@ -1103,7 +1103,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
       # parameter, even if we don't know the exact type of self[name]. So let's
       # just use the (less accurate) value from pytd.
       results.append(ret)
-    return node, self.ctx.vm.join_variables(node, results)
+    return node, self.ctx.join_variables(node, results)
 
   def set_str_item(self, node, name, value_var):
     self.merge_instance_type_parameter(

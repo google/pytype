@@ -15,6 +15,7 @@ from pytype import output
 from pytype import special_builtins
 from pytype import tracer_vm
 from pytype.typegraph import cfg
+from pytype.typegraph import cfg_utils
 
 
 class Context:
@@ -102,3 +103,22 @@ class Context:
   def new_unsolvable(self, node):
     """Create a new unsolvable variable at node."""
     return self.convert.unsolvable.to_variable(node)
+
+  def join_cfg_nodes(self, nodes):
+    """Get a new node to which the given nodes have been joined."""
+    assert nodes
+    if len(nodes) == 1:
+      return nodes[0]
+    else:
+      ret = self.program.NewCFGNode(self.vm.frame and
+                                    self.vm.frame.current_opcode and
+                                    self.vm.frame.current_opcode.line)
+      for node in nodes:
+        node.ConnectTo(ret)
+      return ret
+
+  def join_variables(self, node, variables):
+    return cfg_utils.merge_variables(self.program, node, variables)
+
+  def join_bindings(self, node, bindings):
+    return cfg_utils.merge_bindings(self.program, node, bindings)
