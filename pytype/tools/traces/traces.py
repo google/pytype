@@ -8,6 +8,7 @@ from pytype import analyze
 from pytype import config
 from pytype import errors
 from pytype import load_pytd
+from pytype import tracer_vm
 from pytype.ast import visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -73,7 +74,7 @@ def trace(src, options=None):
   options = options or config.Options.create()
   with config.verbosity_from(options):
     loader = load_pytd.create_loader(options)
-    vm = analyze.CallTracer(
+    vm = tracer_vm.CallTracer(
         errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
@@ -84,7 +85,7 @@ def trace(src, options=None):
         errorlog=errorlog,
         options=options,
         loader=loader,
-        tracer_vm=vm)
+        vm=vm)
     raw_traces = []
     for op, symbol, data in vm.opcode_traces:
       raw_traces.append(

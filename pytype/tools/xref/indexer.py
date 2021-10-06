@@ -13,6 +13,7 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype import tracer_vm
 from pytype.ast import visitor as ast_visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -1236,7 +1237,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
     errorlog = errors.ErrorLog()
     loader = load_pytd.create_loader(options)
     src = source_text or io.read_source_file(options.input)
-    vm = analyze.CallTracer(
+    vm = tracer_vm.CallTracer(
         errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
@@ -1249,7 +1250,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
           errorlog=errorlog,
           options=options,
           loader=loader,
-          tracer_vm=vm)
+          vm=vm)
 
   ast_root_node = ast3.parse(src, options.input,
                              feature_version=options.python_version[1])

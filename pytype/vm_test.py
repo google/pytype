@@ -20,9 +20,9 @@ prints:
 
 import textwrap
 
-from pytype import analyze
 from pytype import blocks
 from pytype import errors
+from pytype import tracer_vm
 from pytype import utils
 from pytype import vm
 from pytype.pyc import opcodes
@@ -44,7 +44,7 @@ class TraceVM(vm.VirtualMachine):
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
-    # Extra stuff that's defined in analyze.CallTracer:
+    # Extra stuff that's defined in tracer_vm.CallTracer:
     self._call_trace = set()
     self._functions = set()
     self._classes = set()
@@ -242,7 +242,7 @@ class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+    self.vm = tracer_vm.CallTracer(self.errorlog, self.options, self.loader)
 
   def test_record_local_ops(self):
     self.vm.run_program("v: int = None", "", maximum_depth=10)
@@ -256,7 +256,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+    self.vm = tracer_vm.CallTracer(self.errorlog, self.options, self.loader)
 
   def run_program(self, src):
     return self.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)

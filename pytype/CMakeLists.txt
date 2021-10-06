@@ -53,6 +53,7 @@ py_library(
     .overlay_utils
     .special_builtins
     .state
+    .tracer_vm
     .vm
 )
 
@@ -106,18 +107,12 @@ py_library(
   SRCS
     analyze.py
   DEPS
-    .abstract
     .abstract_utils
     .convert_structural
     .debug
-    .function
     .metrics
-    .special_builtins
-    .state
-    .vm
-    pytype.overlays.overlays
+    .tracer_vm
     pytype.pytd.pytd
-    pytype.typegraph.cfg
 )
 
 py_library(
@@ -486,6 +481,23 @@ py_library(
 
 py_library(
   NAME
+    tracer_vm
+  SRCS
+    tracer_vm.py
+  DEPS
+    .abstract
+    .abstract_utils
+    .function
+    .special_builtins
+    .state
+    .vm
+    pytype.overlays.overlays
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
     _utils
   SRCS
     utils.py
@@ -541,8 +553,8 @@ py_test(
   SRCS
     typegraph_metrics_test.py
   DEPS
-    .analyze
     .errors
+    .tracer_vm
     .vm
     pytype.tests.test_base
     pytype.typegraph.cfg
@@ -761,9 +773,9 @@ py_test(
     vm_test.py
   DEPS
     ._utils
-    .analyze
     .blocks
     .errors
+    .tracer_vm
     .vm
     pytype.pyc.pyc
     pytype.tests.test_base

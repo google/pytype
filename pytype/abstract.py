@@ -542,7 +542,7 @@ class Empty(Singleton):
     def f():
       return x[0]  # Oops! The return type should be Any rather than nothing.
   The nothing -> anything conversion happens in
-  convert.Converter._function_to_def and analyze.CallTracer.pytd_for_types.
+  convert.Converter._function_to_def and tracer_vm.CallTracer.pytd_for_types.
   """
 
   def __init__(self, vm):

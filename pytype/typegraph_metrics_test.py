@@ -1,8 +1,8 @@
 """Basic tests for accessing typegraph metrics from Python."""
 import textwrap
 
-from pytype import analyze
 from pytype import errors
+from pytype import tracer_vm
 from pytype import typegraph
 from pytype.tests import test_base
 
@@ -12,7 +12,7 @@ class MetricsTest(test_base.BaseTest):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+    self.vm = tracer_vm.CallTracer(self.errorlog, self.options, self.loader)
 
   def run_program(self, src):
     return self.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
