@@ -30,17 +30,17 @@ def _incompatible(left_name, right_name):
   return True
 
 
-def _is_primitive_constant(vm, value):
+def _is_primitive_constant(ctx, value):
   if isinstance(value, mixin.PythonConstant):
-    return value.pyval.__class__ in vm.convert.primitive_classes
+    return value.pyval.__class__ in ctx.convert.primitive_classes
   return False
 
 
-def _is_primitive(vm, value):
-  if _is_primitive_constant(vm, value):
+def _is_primitive(ctx, value):
+  if _is_primitive_constant(ctx, value):
     return True
   elif isinstance(value, abstract.Instance):
-    return value.full_name in vm.convert.primitive_class_names
+    return value.full_name in ctx.convert.primitive_class_names
   return False
 
 
@@ -55,8 +55,8 @@ def _compare_constants(op, left, right):
     raise CmpTypeError() from e
 
 
-def _compare_primitive_constant(vm, op, left, right):
-  if _is_primitive_constant(vm, right):
+def _compare_primitive_constant(ctx, op, left, right):
+  if _is_primitive_constant(ctx, right):
     ret = _compare_constants(op, left.pyval, right.pyval)
     if ret is not None:
       return ret
@@ -79,7 +79,7 @@ def _get_constant_tuple_prefix(value: abstract.Tuple):
   for element_var in value.pyval:
     try:
       element = abstract_utils.get_atomic_python_constant(
-          element_var, tuple(value.vm.convert.primitive_classes))
+          element_var, tuple(value.ctx.convert.primitive_classes))
     except abstract_utils.ConversionError:
       return tuple(elements)
     elements.append(element)
@@ -175,11 +175,11 @@ def _compare_dict(op, left, right):
   return None
 
 
-def cmp_rel(vm, op, left, right):
+def cmp_rel(ctx, op, left, right):
   """Compare two variables."""
-  if _is_primitive_constant(vm, left):
-    return _compare_primitive_constant(vm, op, left, right)
-  elif _is_primitive(vm, left) and _is_primitive(vm, right):
+  if _is_primitive_constant(ctx, left):
+    return _compare_primitive_constant(ctx, op, left, right)
+  elif _is_primitive(ctx, left) and _is_primitive(ctx, right):
     return _compare_primitive(op, left, right)
   elif isinstance(left, abstract.Tuple):
     return _compare_tuple(op, left, right)

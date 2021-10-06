@@ -6,6 +6,7 @@ import sys
 
 from pytype import analyze
 from pytype import config
+from pytype import context
 from pytype import errors
 from pytype import load_pytd
 from pytype.ast import visitor
@@ -73,7 +74,7 @@ def trace(src, options=None):
   options = options or config.Options.create()
   with config.verbosity_from(options):
     loader = load_pytd.create_loader(options)
-    vm = analyze.CallTracer(
+    ctx = context.Context(
         errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
@@ -84,9 +85,9 @@ def trace(src, options=None):
         errorlog=errorlog,
         options=options,
         loader=loader,
-        tracer_vm=vm)
+        ctx=ctx)
     raw_traces = []
-    for op, symbol, data in vm.opcode_traces:
+    for op, symbol, data in ctx.vm.opcode_traces:
       raw_traces.append(
           (op, symbol, tuple(_to_pytd(d, loader, pytd_module) for d in data)))
   return source.Code(src, raw_traces, TypeTrace, options.input)

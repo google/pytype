@@ -484,6 +484,7 @@ class TestAttrs(test_base.BaseTest):
         def __init__(self, *, x : int = ...) -> None: ...
     """)
 
+  # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_auto_attrs(self):
     ty = self.Infer("""
       import attr
@@ -505,6 +506,7 @@ class TestAttrs(test_base.BaseTest):
         def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
     """)
 
+  # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_redefined_auto_attrs(self):
     ty = self.Infer("""
       import attr
@@ -523,6 +525,7 @@ class TestAttrs(test_base.BaseTest):
         def __init__(self, y: int, x: str = ...) -> None: ...
     """)
 
+  # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_non_attrs(self):
     ty = self.Infer("""
       import attr
@@ -561,6 +564,29 @@ class TestAttrs(test_base.BaseTest):
         def foo(cls) -> None: ...
     """)
 
+  def test_init_false_generates_attrs_init(self):
+    ty = self.Infer("""
+      import attr
+      @attr.s(init=False)
+      class Foo:
+        x = attr.ib()
+        y: int = attr.ib()
+        z = attr.ib(type=str, default="bar")
+        t = attr.ib(init=False, default=5)
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import Any
+      attr: module
+      @attr.s
+      class Foo:
+        x: Any
+        y: int
+        z: str
+        t: int
+        def __attrs_init__(self, x, y: int, z: str = "bar") -> None: ...
+    """)
+
   def test_bad_default_param_order(self):
     # Note: explicitly inheriting from object keeps the line number of the error
     # stable between Python versions.
@@ -572,6 +598,7 @@ class TestAttrs(test_base.BaseTest):
         y: str
     """)
 
+  # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_subclass_auto_attribs(self):
     ty = self.Infer("""
       import attr
@@ -597,6 +624,7 @@ class TestAttrs(test_base.BaseTest):
         def get_y(self) -> int: ...
     """)
 
+  # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_partial_auto_attribs(self):
     # Tests that we can have multiple attrs classes with different kwargs.
     # If Bar accidentally uses auto_attribs=True, then its __init__ signature
@@ -625,6 +653,7 @@ class TestAttrs(test_base.BaseTest):
         def __init__(self, bar: str, baz) -> None: ...
     """)
 
+  # Mirrored in TestAttrsNextGenApi, except with @attr.define
   def test_classvar_auto_attribs(self):
     ty = self.Infer("""
       from typing import ClassVar
@@ -661,6 +690,229 @@ class TestAttrs(test_base.BaseTest):
       class Foo:
         x: int
         def __init__(self, x: int) -> None: ...
+    """)
+
+
+class TestAttrsNextGenApi(test_base.BaseTest):
+  """Tests for attrs next generation API, added in attrs version 21.1.0.
+
+  See: https://www.attrs.org/en/stable/api.html#next-gen
+  """
+
+  def test_define_auto_detects_auto_attrs_true(self):
+    """Test whether @attr.define can detect auto_attrs will default to True.
+
+    This is determined by all variable declarations having a type annotation.
+    """
+    ty = self.Infer("""
+      from typing import Any
+      import attr
+      @attr.define
+      class Foo:
+        x: Any
+        y: int = attr.field()
+        z: str = attr.field(default="bar")
+        r: int = 43
+        t: int = attr.field(default=5, init=False)
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import Any
+      attr: module
+      @attr.s(auto_attribs=True)
+      class Foo:
+        x: Any
+        y: int
+        z: str
+        r: int
+        t: int
+        def __init__(self, x, y: int, z: str = "bar", r: int = 43) -> None: ...
+    """)
+
+  def test_define_auto_detects_auto_attrs_false(self):
+    """Test whether @attr.define can detect auto_attrs should default to False.
+
+    This is determined by at least one variable declaration not having a type
+    annotation.
+    """
+    ty = self.Infer("""
+      from typing import Any
+      import attr
+      @attr.define
+      class Foo:
+        x = None
+        y = attr.field(type=int)
+        z = attr.field()
+        r = attr.field(default="bar")
+        t: int = attr.field(default=5, init=False)
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import Any
+      attr: module
+      @attr.s
+      class Foo:
+        y: int
+        z: Any
+        r: str = ...
+        t: int = ...
+        x: None = ...
+        def __init__(self, y: int, z, r: str = "bar") -> None: ...
+    """)
+
+  # Mirrored from TestAttrs, except with @attr.define
+  def test_auto_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.define(auto_attribs=True)
+      class Foo:
+        x: int
+        y: 'Foo'
+        z = 10
+        a: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      @attr.s
+      class Foo:
+        x: int
+        y: Foo
+        a: str
+        z: int
+        def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
+    """)
+
+  # Mirrored from TestAttrs, except with @attr.define
+  def test_redefined_auto_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.define(auto_attribs=True)
+      class Foo:
+        x = 10
+        y: int
+        x: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      @attr.s
+      class Foo:
+        y: int
+        x: str
+        def __init__(self, y: int, x: str = ...) -> None: ...
+    """)
+
+  # Mirrored from TestAttrs, except with @attr.define
+  def test_non_attrs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.define(auto_attribs=True)
+      class Foo:
+        @classmethod
+        def foo(cls):
+          pass
+        @staticmethod
+        def bar(x):
+          pass
+        _x = 10
+        y: str = 'hello'
+        @property
+        def x(self):
+          return self._x
+        @x.setter
+        def x(self, x: int):
+          self._x = x
+        def f(self):
+          pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Annotated
+      attr: module
+      @attr.s
+      class Foo:
+        y: str
+        _x: int
+        x: Annotated[int, 'property']
+        def __init__(self, y: str = ...) -> None: ...
+        def f(self) -> None: ...
+        @staticmethod
+        def bar(x) -> None: ...
+        @classmethod
+        def foo(cls) -> None: ...
+    """)
+
+  # Mirrored from TestAttrs, except with @attr.define
+  def test_subclass_auto_attribs(self):
+    ty = self.Infer("""
+      import attr
+      @attr.define(auto_attribs=True)
+      class Foo:
+        x: bool
+        y: int = 42
+      class Bar(Foo):
+        def get_x(self):
+          return self.x
+        def get_y(self):
+          return self.y
+    """)
+    self.assertTypesMatchPytd(ty, """
+      attr: module
+      @attr.s
+      class Foo:
+        x: bool
+        y: int
+        def __init__(self, x: bool, y: int = ...) -> None: ...
+      class Bar(Foo):
+        def get_x(self) -> bool : ...
+        def get_y(self) -> int: ...
+    """)
+
+  # Mirrored from TestAttrs, except with @attr.define
+  def test_partial_auto_attribs(self):
+    # Tests that we can have multiple attrs classes with different kwargs.
+    # If Bar accidentally uses auto_attribs=True, then its __init__ signature
+    # will be incorrect, since `baz` won't be recognized as an attr.
+    ty = self.Infer("""
+      import attr
+      @attr.define(auto_attribs=True)
+      class Foo:
+        foo: str
+      @attr.s  # Deliberately keeping this one @attr.s, test they work together.
+      class Bar:
+        bar: str = attr.ib()
+        baz = attr.ib()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      attr: module
+      @attr.s
+      class Foo:
+        foo: str
+        def __init__(self, foo: str) -> None: ...
+      @attr.s
+      class Bar:
+        bar: str
+        baz: Any
+        def __init__(self, bar: str, baz) -> None: ...
+    """)
+
+  # Mirrored from TestAttrs, except with @attr.define
+  def test_classvar_auto_attribs(self):
+    ty = self.Infer("""
+      from typing import ClassVar
+      import attr
+      @attr.define(auto_attribs=True)
+      class Foo:
+        x: ClassVar[int] = 10
+        y: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import ClassVar
+      attr: module
+      @attr.s
+      class Foo:
+        y: str
+        x: ClassVar[int]
+        def __init__(self, y: str = ...) -> None: ...
     """)
 
 

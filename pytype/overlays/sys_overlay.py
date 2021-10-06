@@ -7,12 +7,12 @@ from pytype import overlay
 class SysOverlay(overlay.Overlay):
   """A custom overlay for the 'sys' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "version_info": build_version_info
     }
-    ast = vm.loader.import_name("sys")
-    super().__init__(vm, "sys", member_map, ast)
+    ast = ctx.loader.import_name("sys")
+    super().__init__(ctx, "sys", member_map, ast)
 
 
 class VersionInfo(abstract.Tuple):
@@ -27,14 +27,14 @@ class VersionInfo(abstract.Tuple):
     return self.pyval[index]
 
 
-def build_version_info(vm):
+def build_version_info(ctx):
   """Build sys.version_info."""
   version = []
   # major, minor
-  for i in vm.python_version:
-    version.append(vm.convert.constant_to_var(i))
+  for i in ctx.python_version:
+    version.append(ctx.convert.constant_to_var(i))
   # micro, releaselevel, serial
   for t in (int, str, int):
-    version.append(vm.convert.primitive_class_instances[t].to_variable(
-        vm.root_node))
-  return VersionInfo(tuple(version), vm)
+    version.append(ctx.convert.primitive_class_instances[t].to_variable(
+        ctx.root_node))
+  return VersionInfo(tuple(version), ctx)

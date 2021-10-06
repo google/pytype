@@ -63,11 +63,11 @@ class ProtocolTypeError(ProtocolError):
     self.expected_type = expected
 
 
-class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
+class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
-  def __init__(self, node, vm):
-    super().__init__(vm)
+  def __init__(self, node, ctx):
+    super().__init__(ctx)
     self._node = node
     self._protocol_cache = set()
     self._protocol_error = None
@@ -123,7 +123,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, view)
       if subst is None:
-        formal = self.vm.annotation_utils.sub_one_annotation(
+        formal = self.ctx.annotation_utils.sub_one_annotation(
             self._node, formal, [self._error_subst or {}])
 
         return None, function.BadParam(
@@ -151,8 +151,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       A list of all the views of var that didn't match.
     """
     bad = []
-    if (var.data == [self.vm.convert.unsolvable] or
-        other_type == self.vm.convert.unsolvable):
+    if (var.data == [self.ctx.convert.unsolvable] or
+        other_type == self.ctx.convert.unsolvable):
       # An unsolvable matches everything. Since bad_matches doesn't need to
       # compute substitutions, we can return immediately.
       return bad
@@ -283,10 +283,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       # some sort of runtime processing of type annotations. We replace all type
       # parameters with 'object' so that they don't match concrete types like
       # 'int' but still match things like 'Any'.
-      type_params = self.vm.annotation_utils.get_type_parameters(left)
-      obj_var = self.vm.convert.primitive_class_instances[object].to_variable(
+      type_params = self.ctx.annotation_utils.get_type_parameters(left)
+      obj_var = self.ctx.convert.primitive_class_instances[object].to_variable(
           self._node)
-      left = self.vm.annotation_utils.sub_one_annotation(
+      left = self.ctx.annotation_utils.sub_one_annotation(
           self._node, left, [{p.full_name: obj_var for p in type_params}])
     assert not left.formal, left
 
@@ -300,13 +300,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           subst = new_subst.copy()
           # NOTE: This is pretty imprecise, there might be something better to
           # do here.
-          subst[other_type.full_name] = self.vm.program.NewVariable(
-              [], [], self._node)
+          subst[other_type.full_name] = self.ctx.program.NewVariable([], [],
+                                                                     self._node)
           return subst
         else:
-          left_dummy = left.param.instantiate(self.vm.root_node,
+          left_dummy = left.param.instantiate(self.ctx.root_node,
                                               abstract_utils.DUMMY_CONTAINER)
-          right_dummy = left.param.instantiate(self.vm.root_node,
+          right_dummy = left.param.instantiate(self.ctx.root_node,
                                                abstract_utils.DUMMY_CONTAINER)
           self._error_subst = self._merge_substs(subst, [{
               left.param.name: left_dummy, other_type.name: right_dummy}])
@@ -344,8 +344,8 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         new_var = subst[other_type.full_name].AssignToNewVariable(self._node)
         new_var.AddBinding(left, [], self._node)
       else:
-        new_left = self.vm.convert.get_maybe_abstract_instance(left)
-        new_var = self.vm.program.NewVariable()
+        new_left = self.ctx.convert.get_maybe_abstract_instance(left)
+        new_var = self.ctx.program.NewVariable()
         new_var.AddBinding(new_left, {value}, self._node)
 
       type_key = left.get_type_key()
@@ -362,7 +362,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         if not has_error and new_values and len(new_values) < len(new_var.data):
           # We can filter out ambiguous values because we've already found the
           # single concrete type allowed for this variable.
-          new_var = self.vm.program.NewVariable(new_values, [], self._node)
+          new_var = self.ctx.program.NewVariable(new_values, [], self._node)
       else:
         if other_type.full_name in subst:
           has_error = False
@@ -456,11 +456,11 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         isinstance(other_type, abstract.Empty)):
       return subst
     elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-      params = self.vm.annotation_utils.get_type_parameters(other_type)
+      params = self.ctx.annotation_utils.get_type_parameters(other_type)
       if isinstance(left, abstract.Empty):
-        value = self.vm.convert.empty
+        value = self.ctx.convert.empty
       else:
-        value = self.vm.convert.unsolvable
+        value = self.ctx.convert.unsolvable
       return self._mutate_type_parameters(params, value, subst)
     elif isinstance(left, class_mixin.Class):
       if (other_type.full_name == "builtins.type" and
@@ -519,13 +519,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
             left, other_type, subst, view)
       else:
         return self._match_type_against_type(
-            abstract.Instance(left.cls, self.vm), other_type, subst, view)
+            abstract.Instance(left.cls, self.ctx), other_type, subst, view)
     elif isinstance(left, dataclass_overlay.FieldInstance) and left.default:
       return self._match_all_bindings(left.default, other_type, subst, view)
     elif isinstance(left, abstract.SimpleValue):
       return self._match_instance_against_type(left, other_type, subst, view)
     elif isinstance(left, special_builtins.SuperInstance):
-      instance = left.super_obj or abstract.Instance(left.super_cls, self.vm)
+      instance = left.super_obj or abstract.Instance(left.super_cls, self.ctx)
       return self._match_instance_against_type(
           instance, other_type, subst, view)
     elif isinstance(left, abstract.ClassMethod):
@@ -560,7 +560,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
   def _match_type_against_callback_protocol(
       self, left, other_type, subst, view):
     """See https://www.python.org/dev/peps/pep-0544/#callback-protocols."""
-    _, method_var = self.vm.attribute_handler.get_attribute(
+    _, method_var = self.ctx.attribute_handler.get_attribute(
         self._node, other_type, "__call__")
     if not method_var or not method_var.data or any(
         not isinstance(v, abstract.Function) for v in method_var.data):
@@ -570,8 +570,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       signatures = function.get_signatures(expected_method)
       for sig in signatures:
         sig = sig.drop_first_parameter()  # drop `self`
-        expected_callable = (
-            self.vm.convert.pytd_convert.signature_to_callable(sig))
+        expected_callable = (self.ctx.pytd_convert.signature_to_callable(sig))
         new_subst = self._match_type_against_type(
             left, expected_callable, subst, view)
         if new_subst is not None:
@@ -613,12 +612,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     # the callable must accept any argument, but here, it means that the
     # argument must be the same type as `x`.
     callable_param_count = collections.Counter(
-        self.vm.annotation_utils.get_type_parameters(callable_type))
+        self.ctx.annotation_utils.get_type_parameters(callable_type))
     if isinstance(callable_type, abstract.CallableClass):
       # In CallableClass, type parameters in arguments are double-counted
       # because ARGS contains the union of the individual arguments.
       callable_param_count.subtract(
-          self.vm.annotation_utils.get_type_parameters(
+          self.ctx.annotation_utils.get_type_parameters(
               callable_type.get_formal_type_parameter(abstract_utils.ARGS)))
     def match(left, right, subst):
       if (not isinstance(left, abstract.TypeParameter) or
@@ -626,7 +625,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
           right.constraints or right.bound or callable_param_count[right] != 1):
         return None
       subst = subst.copy()
-      subst[right.full_name] = self.vm.program.NewVariable([], [], self._node)
+      subst[right.full_name] = self.ctx.program.NewVariable([], [], self._node)
       return subst
     return match
 
@@ -635,7 +634,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     # a special type param against type param matcher that takes priority over
     # normal matching
     param_match = self._get_param_matcher(other_type)
-    ret_type = sig.annotations.get("return", self.vm.convert.unsolvable)
+    ret_type = sig.annotations.get("return", self.ctx.convert.unsolvable)
     other_ret_type = other_type.get_formal_type_parameter(abstract_utils.RET)
     new_subst = param_match(ret_type, other_ret_type, subst)
     if new_subst is None:
@@ -656,7 +655,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     for name, expected_arg in zip(sig.param_names,
                                   (other_type.formal_type_parameters[i]
                                    for i in range(other_type.num_args))):
-      actual_arg = sig.annotations.get(name, self.vm.convert.unsolvable)
+      actual_arg = sig.annotations.get(name, self.ctx.convert.unsolvable)
       new_subst = param_match(actual_arg, expected_arg, subst)
       if new_subst is None:
         # Flip actual and expected, since argument types are contravariant.
@@ -970,7 +969,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     # For protocol matching, we want to look up attributes on classes (not
     # instances) so that we get unbound methods. This means that we have to
     # manually call __get__ on property instances
-    _, attribute = self.vm.attribute_handler.get_attribute(
+    _, attribute = self.ctx.attribute_handler.get_attribute(
         self._node, cls, name, cls.to_binding(self._node))
     if not attribute:
       return attribute
@@ -981,13 +980,14 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       return attribute
 
   def _resolve_property_attribute(self, cls, attribute, instance):
-    instance = instance or abstract.Instance(cls, self.vm)
-    resolved_attribute = self.vm.program.NewVariable()
+    instance = instance or abstract.Instance(cls, self.ctx)
+    resolved_attribute = self.ctx.program.NewVariable()
     for b in attribute.bindings:
       if isinstance(b.data, special_builtins.PropertyInstance):
-        fget = self.vm.bind_method(
-            self._node, b.data.fget, instance.to_variable(self._node))
-        _, ret = self.vm.call_function(self._node, fget, function.Args(()))
+        fget = self.ctx.vm.bind_method(self._node, b.data.fget,
+                                       instance.to_variable(self._node))
+        _, ret = function.call_function(self.ctx, self._node, fget,
+                                        function.Args(()))
         resolved_attribute.PasteVariable(ret)
       else:
         resolved_attribute.PasteBinding(b)
@@ -1004,12 +1004,12 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       types = list(filter(None, (self._get_type(v) for v in param_value.data)))
       if not types:
         break
-      parameters[param.name] = self.vm.merge_values(types)
+      parameters[param.name] = self.ctx.convert.merge_values(types)
     else:
       # If 'value' provides non-empty values for all of its class's parameters,
       # then we construct a ParameterizedClass so that the parameter values are
       # considered in matching.
-      return abstract.ParameterizedClass(cls, parameters, self.vm)
+      return abstract.ParameterizedClass(cls, parameters, self.ctx)
     return cls
 
   def _get_attribute_types(self, other_type, attribute):
@@ -1018,13 +1018,13 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if typ:
         yield typ
       return
-    converter = self.vm.convert.pytd_convert
+    converter = self.ctx.pytd_convert
     for signature in function.get_signatures(attribute):
       callable_signature = converter.signature_to_callable(signature)
       if isinstance(callable_signature, abstract.CallableClass):
         # Prevent the matcher from trying to enforce contravariance on 'self'.
         callable_signature.formal_type_parameters[0] = (
-            self.vm.convert.unsolvable)
+            self.ctx.convert.unsolvable)
       if isinstance(other_type, abstract.ParameterizedClass):
         annotation_subst = datatypes.AliasingDict()
         if isinstance(other_type.base_cls, class_mixin.Class):
@@ -1033,7 +1033,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         for (param, value) in other_type.get_formal_type_parameters().items():
           annotation_subst[param] = value.instantiate(
               self._node, abstract_utils.DUMMY_CONTAINER)
-        callable_signature = self.vm.annotation_utils.sub_one_annotation(
+        callable_signature = self.ctx.annotation_utils.sub_one_annotation(
             self._node, callable_signature, [annotation_subst])
       yield callable_signature
 
@@ -1055,10 +1055,10 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
       if attribute == "__iter__":
         # See _get_attribute_names: left has an implicit __iter__ method
         # implemented using __getitem__ under the hood.
-        left_attribute = self.vm.convert.constant_to_var(
+        left_attribute = self.ctx.convert.constant_to_var(
             pytd_utils.DummyMethod("__iter__", "self"))
       else:
-        _, left_attribute = self.vm.attribute_handler.get_attribute(
+        _, left_attribute = self.ctx.attribute_handler.get_attribute(
             self._node, left, attribute)
     assert left_attribute
     protocol_attribute_var = self._get_attribute_for_protocol_matching(
@@ -1099,8 +1099,9 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
         # protocol_attribute_var.
         bad_left, bad_right = zip(*bad_matches)
         self._protocol_error = ProtocolTypeError(
-            left.cls, other_type, attribute, self.vm.merge_values(bad_left),
-            self.vm.merge_values(bad_right))
+            left.cls, other_type, attribute,
+            self.ctx.convert.merge_values(bad_left),
+            self.ctx.convert.merge_values(bad_right))
         return None
     return self._merge_substs(subst, new_substs)
 
@@ -1132,7 +1133,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
     common_classes = None
     object_in_values = False
     for v in values:
-      object_in_values |= v.cls == self.vm.convert.object_type
+      object_in_values |= v.cls == self.ctx.convert.object_type
       superclasses = {c.full_name for c in v.cls.mro}
       for compat_name, name in _COMPATIBLE_BUILTINS:
         if compat_name in superclasses:
@@ -1170,7 +1171,7 @@ class AbstractMatcher(utils.VirtualMachineWeakrefMixin):
 
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
-    for param in self.vm.annotation_utils.get_type_parameters(typ):
+    for param in self.ctx.annotation_utils.get_type_parameters(typ):
       if param.name not in subst:
-        subst[param.name] = self.vm.convert.empty.to_variable(self._node)
+        subst[param.name] = self.ctx.convert.empty.to_variable(self._node)
     return subst

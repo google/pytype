@@ -20,8 +20,8 @@ prints:
 
 import textwrap
 
-from pytype import analyze
 from pytype import blocks
+from pytype import context
 from pytype import errors
 from pytype import utils
 from pytype import vm
@@ -39,12 +39,12 @@ _OPMAP = {v.__name__: k for k, v in opcodes.python_3_7_mapping.items()}
 class TraceVM(vm.VirtualMachine):
   """Special VM that remembers which instructions it executed."""
 
-  def __init__(self, options, loader):
-    super().__init__(errors.ErrorLog(), options, loader=loader)
+  def __init__(self, ctx):
+    super().__init__(ctx)
     # There are multiple possible orderings of the basic blocks of the code, so
     # we collect the instructions in an order-independent way:
     self.instructions_executed = set()
-    # Extra stuff that's defined in analyze.CallTracer:
+    # Extra stuff that's defined in tracer_vm.CallTracer:
     self._call_trace = set()
     self._functions = set()
     self._classes = set()
@@ -65,7 +65,8 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.trace_vm = TraceVM(self.options, self.loader)
+    self.ctx = context.Context(self.errorlog, self.options, self.loader)
+    self.ctx.vm = TraceVM(self.ctx)
 
   def test_simple(self):
     # Disassembled from:
@@ -75,8 +76,9 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         0x53, 0,  # 3 RETURN_VALUE (0)
     ], name="simple")
     code = blocks.process_code(code, self.python_version)
-    v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
-    v.run_bytecode(v.program.NewCFGNode(), code)
+    ctx = context.Context(self.errorlog, self.options, loader=self.loader)
+    ctx.vm = vm.VirtualMachine(ctx)
+    ctx.vm.run_bytecode(ctx.program.NewCFGNode(), code)
 
   def test_diamond(self):
     # Disassembled from:
@@ -107,8 +109,9 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         o.RETURN_VALUE, 0,
     ])
     code = blocks.process_code(code, self.python_version)
-    v = vm.VirtualMachine(self.errorlog, self.options, loader=self.loader)
-    v.run_bytecode(v.program.NewCFGNode(), code)
+    ctx = context.Context(self.errorlog, self.options, loader=self.loader)
+    ctx.vm = vm.VirtualMachine(ctx)
+    ctx.vm.run_bytecode(ctx.program.NewCFGNode(), code)
 
   src_nested_loop = textwrap.dedent("""
     y = [1,2,3]
@@ -160,11 +163,11 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
-    self.trace_vm.run_program(self.src_nested_loop, "", maximum_depth=10)
+    self.ctx.vm.run_program(self.src_nested_loop, "", maximum_depth=10)
     # TODO(b/175443170): find a way to keep this test in sync with constant
     # folding (which removes some opcodes)
     # We expect all instructions in the above to execute.
-    # self.assertCountEqual(self.trace_vm.instructions_executed,
+    # self.assertCountEqual(self.ctx.vm.instructions_executed,
     #                       set(range(31)))
 
   src_deadcode = textwrap.dedent("""
@@ -190,8 +193,8 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)
-    self.trace_vm.run_program(self.src_deadcode, "", maximum_depth=10)
-    self.assertCountEqual(self.trace_vm.instructions_executed, [0, 1])
+    self.ctx.vm.run_program(self.src_deadcode, "", maximum_depth=10)
+    self.assertCountEqual(self.ctx.vm.instructions_executed, [0, 1])
 
 
 class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
@@ -200,13 +203,14 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.trace_vm = TraceVM(self.options, self.loader)
+    self.ctx = context.Context(self.errorlog, self.options, self.loader)
+    self.ctx.vm = TraceVM(self.ctx)
 
   def test_empty_data(self):
     """Test that we can trace values without data."""
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
-    self.trace_vm.trace_opcode(op, "x", 42)
-    self.assertEqual(self.trace_vm.opcode_traces, [(op, "x", (None,))])
+    self.ctx.vm.trace_opcode(op, "x", 42)
+    self.assertEqual(self.ctx.vm.opcode_traces, [(op, "x", (None,))])
 
   def test_const(self):
     src = textwrap.dedent("""
@@ -221,7 +225,7 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     #     9 STORE_NAME     1 (y)
     #    12 LOAD_CONST     1 (None)
     #    15 RETURN_VALUE
-    self.trace_vm.run_program(src, "", maximum_depth=10)
+    self.ctx.vm.run_program(src, "", maximum_depth=10)
     expected = [
         # (opcode, line number, symbol)
         ("LOAD_CONST", 1, 1),
@@ -231,7 +235,7 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         ("LOAD_CONST", 2, None)
     ]
     actual = [(op.name, op.line, symbol)
-              for op, symbol, _ in self.trace_vm.opcode_traces]
+              for op, symbol, _ in self.ctx.vm.opcode_traces]
     self.assertEqual(actual, expected)
 
 
@@ -242,13 +246,17 @@ class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+    self.ctx = context.Context(self.errorlog, self.options, self.loader)
 
   def test_record_local_ops(self):
-    self.vm.run_program("v: int = None", "", maximum_depth=10)
-    self.assertEqual(self.vm.local_ops, {
-        "<module>": [vm.LocalOp(name="v", op=vm.LocalOp.ASSIGN),
-                     vm.LocalOp(name="v", op=vm.LocalOp.ANNOTATE)]})
+    self.ctx.vm.run_program("v: int = None", "", maximum_depth=10)
+    self.assertEqual(
+        self.ctx.vm.local_ops, {
+            "<module>": [
+                vm.LocalOp(name="v", op=vm.LocalOp.ASSIGN),
+                vm.LocalOp(name="v", op=vm.LocalOp.ANNOTATE)
+            ]
+        })
 
 
 class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
@@ -256,10 +264,10 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.vm = analyze.CallTracer(self.errorlog, self.options, self.loader)
+    self.ctx = context.Context(self.errorlog, self.options, self.loader)
 
   def run_program(self, src):
-    return self.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
+    return self.ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
 
   def test_type_comment_on_multiline_value(self):
     self.run_program("""
@@ -277,7 +285,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       lineno = 3
     else:
       lineno = 4
-    self.assertEqual({lineno: "dict"}, self.vm.director.type_comments)
+    self.assertEqual({lineno: "dict"}, self.ctx.vm._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
     self.run_program("""
@@ -302,8 +310,10 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     else:
       v_lineno = 4
       w_lineno = 9
-    self.assertEqual({v_lineno: "dict", w_lineno: "dict"},
-                     self.vm.director.type_comments)
+    self.assertEqual({
+        v_lineno: "dict",
+        w_lineno: "dict"
+    }, self.ctx.vm._director.type_comments)
 
   def test_decorators(self):
     self.run_program("""
@@ -328,8 +338,8 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     else:
       real_decorator_lineno = 6
       decorator_lineno = 11
-    self.assertEqual(
-        self.vm.director.decorators, {real_decorator_lineno, decorator_lineno})
+    self.assertEqual(self.ctx.vm._director.decorators,
+                     {real_decorator_lineno, decorator_lineno})
 
   def test_stacked_decorators(self):
     self.run_program("""
@@ -343,7 +353,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
           pass
     """)
     lineno = 8 if self.python_version >= (3, 8) else 6
-    self.assertEqual(self.vm.director.decorators, {lineno})
+    self.assertEqual(self.ctx.vm._director.decorators, {lineno})
 
   def test_overload(self):
     self.run_program("""
@@ -358,7 +368,7 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       def f(x=None):
         return 0 if x is None else x
     """)
-    self.assertEqual(self.vm.director.decorators, {5, 8})
+    self.assertEqual(self.ctx.vm._director.decorators, {5, 8})
 
 
 if __name__ == "__main__":

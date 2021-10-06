@@ -5,10 +5,10 @@ import textwrap
 from pytype import blocks
 from pytype import config
 from pytype import constant_folding
+from pytype import context
 from pytype import errors
 from pytype import load_pytd
 from pytype import state as frame_state
-from pytype import vm
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd_utils
@@ -223,9 +223,9 @@ class TypeBuilderTestBase(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
-    self.vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
-    self.vm._fold_constants = True
+    self.ctx = context.Context(errors.ErrorLog(), options,
+                               load_pytd.Loader(None, self.python_version))
+    self.ctx.vm._fold_constants = True
 
   def assertPytd(self, val, expected):
     pytd_tree = val.to_type()
@@ -239,12 +239,12 @@ class TypeBuilderTest(TypeBuilderTestBase):
 
   def setUp(self):
     super().setUp()
-    self.state = frame_state.FrameState.init(self.vm.root_node, self.vm)
+    self.state = frame_state.FrameState.init(self.ctx.root_node, self.ctx)
 
   def _convert(self, typ):
     typ = constant_folding.from_literal(typ)
     const = constant_folding._Constant(typ, None, None, None)
-    _, var = constant_folding.build_folded_type(self.vm, self.state, const)
+    _, var = constant_folding.build_folded_type(self.ctx, self.state, const)
     val, = var.data
     return val
 
@@ -283,7 +283,7 @@ class PyvalTest(TypeBuilderTestBase):
 
   def _process(self, src):
     src = fmt(src)
-    _, defs = self.vm.run_program(src, "", maximum_depth=4)
+    _, defs = self.ctx.vm.run_program(src, "", maximum_depth=4)
     return defs
 
   def test_simple_list(self):

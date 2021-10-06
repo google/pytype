@@ -8,9 +8,13 @@
 #   remaining stubs, the two versions were identical.)
 # * The definition of Factory was changed from Any to a function signature.
 # * The `init` argument to attrs and attrib was annotated.
+# * The new generation APIs were added in: '@define', '@field', and others.
+#     Introduced in attrs version 20.1.0
+#     See: https://www.attrs.org/en/stable/api.html#next-gen
 
 import __future__
 import attr._make
+import sys
 from typing import Any, Callable, List, Type, TypeVar
 
 Attribute: Type[attr._make.Attribute]
@@ -91,5 +95,16 @@ def partial(__func: Callable[..., _S], *args, **kwargs) -> Callable[..., _S]: ..
 s = attr._make.attrs
 def set_run_validators(run) -> None: ...
 def validate(inst) -> None: ...
+
+if sys.version_info[:2] >= (3, 6):
+  # See https://www.attrs.org/en/stable/api.html#next-gen
+  # To be truly accurate, these need a bit more finesse, but this at least
+  # opens the decorators for use.
+  # They do accept (almost) all the same arguments as the old API at least.
+  define = attr._make.attrs
+  frozen = attr._make.attrs
+  mutable = attr._make.attrs
+  field = attr._make.attrib
+
 # Keep this at the end so it doesn't shadow the module
 attr = attr._make.attrib

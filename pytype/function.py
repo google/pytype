@@ -35,9 +35,9 @@ def get_signatures(func):
     return [Signature.from_callable(func.cls)]
   else:
     if func.isinstance_Instance():
-      _, call_var = func.vm.attribute_handler.get_attribute(
-          func.vm.root_node, func, "__call__",
-          func.to_binding(func.vm.root_node))
+      _, call_var = func.ctx.attribute_handler.get_attribute(
+          func.ctx.root_node, func, "__call__",
+          func.to_binding(func.ctx.root_node))
       if call_var and len(call_var.data) == 1:
         return get_signatures(call_var.data[0])
     raise NotImplementedError(func.__class__.__name__)
@@ -84,7 +84,7 @@ class Signature:
     self.type_params = set()
     for annot in self.annotations.values():
       self.type_params.update(
-          p.name for p in annot.vm.annotation_utils.get_type_parameters(annot))
+          p.name for p in annot.ctx.annotation_utils.get_type_parameters(annot))
 
   @property
   def has_return_annotation(self):
@@ -98,15 +98,15 @@ class Signature:
     """Add scope for type parameters in annotations."""
     annotations = {}
     for key, val in self.annotations.items():
-      annotations[key] = val.vm.annotation_utils.add_scope(
+      annotations[key] = val.ctx.annotation_utils.add_scope(
           val, self.excluded_types, module)
     self.annotations = annotations
 
   def _postprocess_annotation(self, name, annotation):
     if name == self.varargs_name:
-      return annotation.vm.convert.create_new_varargs_value(annotation)
+      return annotation.ctx.convert.create_new_varargs_value(annotation)
     elif name == self.kwargs_name:
-      return annotation.vm.convert.create_new_kwargs_value(annotation)
+      return annotation.ctx.convert.create_new_kwargs_value(annotation)
     else:
       return annotation
 
@@ -120,14 +120,14 @@ class Signature:
     """Check the count of type parameters in function."""
     c = collections.Counter()
     for annot in self.annotations.values():
-      c.update(annot.vm.annotation_utils.get_type_parameters(annot))
+      c.update(annot.ctx.annotation_utils.get_type_parameters(annot))
     for param, count in c.items():
       if param.name in self.excluded_types:
         # skip all the type parameters in `excluded_types`
         continue
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):
-        param.vm.errorlog.invalid_annotation(
+        param.ctx.errorlog.invalid_annotation(
             stack, param, "Appears only once in the signature")
 
   def drop_first_parameter(self):
@@ -146,15 +146,15 @@ class Signature:
     return len(self.param_names) + len(self.kwonly_params)
 
   @classmethod
-  def from_pytd(cls, vm, name, sig):
+  def from_pytd(cls, ctx, name, sig):
     """Construct an abstract signature from a pytd signature."""
     pytd_annotations = [(p.name, p.type)
                         for p in sig.params + (sig.starargs, sig.starstarargs)
                         if p is not None]
     pytd_annotations.append(("return", sig.return_type))
     def param_to_var(p):
-      return vm.convert.constant_to_var(
-          p.type, subst=datatypes.AliasingDict(), node=vm.root_node)
+      return ctx.convert.constant_to_var(
+          p.type, subst=datatypes.AliasingDict(), node=ctx.root_node)
 
     return cls(
         name=name,
@@ -164,8 +164,8 @@ class Signature:
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
         defaults={p.name: param_to_var(p) for p in sig.params if p.optional},
         annotations={
-            name: vm.convert.constant_to_value(
-                typ, subst=datatypes.AliasingDict(), node=vm.root_node)
+            name: ctx.convert.constant_to_value(
+                typ, subst=datatypes.AliasingDict(), node=ctx.root_node)
             for name, typ in pytd_annotations
         },
         postprocess_annotations=False,
@@ -245,7 +245,7 @@ class Signature:
         yield (name, posarg, self.annotations.get(name))
       elif self.varargs_name and self.varargs_name in self.annotations:
         varargs_type = self.annotations[self.varargs_name]
-        formal = varargs_type.vm.convert.get_element_type(varargs_type)
+        formal = varargs_type.ctx.convert.get_element_type(varargs_type)
         yield (argname(i), posarg, formal)
       else:
         yield (argname(i), posarg, None)
@@ -254,7 +254,7 @@ class Signature:
       if formal is None and self.kwargs_name:
         kwargs_type = self.annotations.get(self.kwargs_name)
         if kwargs_type:
-          formal = kwargs_type.vm.convert.get_element_type(kwargs_type)
+          formal = kwargs_type.ctx.convert.get_element_type(kwargs_type)
       yield (name, namedarg, formal)
     if self.varargs_name is not None and args.starargs is not None:
       yield (self.varargs_name, args.starargs,
@@ -350,7 +350,7 @@ class Args(collections.namedtuple(
     else:
       return not self.namedargs.pyval
 
-  def starargs_as_tuple(self, node, vm):
+  def starargs_as_tuple(self, node, ctx):
     try:
       args = self.starargs and abstract_utils.get_atomic_python_constant(
           self.starargs, tuple)
@@ -358,8 +358,9 @@ class Args(collections.namedtuple(
       args = None
     if not args:
       return args
-    return tuple(var if var.bindings else vm.convert.empty.to_variable(node)
-                 for var in args)
+    return tuple(
+        var if var.bindings else ctx.convert.empty.to_variable(node)
+        for var in args)
 
   def starstarargs_as_dict(self):
     """Return **args as a python dict."""
@@ -372,7 +373,7 @@ class Args(collections.namedtuple(
       return None
     return kwdict.pyval
 
-  def _expand_typed_star(self, vm, node, star, count):
+  def _expand_typed_star(self, ctx, node, star, count):
     """Convert *xs: Sequence[T] -> [T, T, ...]."""
     if not count:
       return []
@@ -381,10 +382,10 @@ class Args(collections.namedtuple(
       # TODO(b/159052609): This shouldn't happen. For some reason,
       # namedtuple instances don't have any bindings in T; see
       # tests/test_unpack:TestUnpack.test_unpack_namedtuple.
-      return [vm.new_unsolvable(node) for _ in range(count)]
+      return [ctx.new_unsolvable(node) for _ in range(count)]
     return [p.AssignToNewVariable(node) for _ in range(count)]
 
-  def _unpack_and_match_args(self, node, vm, match_signature, starargs_tuple):
+  def _unpack_and_match_args(self, node, ctx, match_signature, starargs_tuple):
     """Match args against a signature with unpacking."""
     posargs = self.posargs
     namedargs = self.namedargs
@@ -417,7 +418,7 @@ class Args(collections.namedtuple(
       else:
         # If we do not have a `*args` in match_signature, just expand the
         # terminal splat to as many args as needed and then drop it.
-        mid = self._expand_typed_star(vm, node, star, posarg_delta)
+        mid = self._expand_typed_star(ctx, node, star, posarg_delta)
         return posargs + tuple(pre + mid), None
     elif posarg_delta <= len(stars):
       # We have too many args; don't do *xs expansion. Go back to matching from
@@ -426,12 +427,12 @@ class Args(collections.namedtuple(
       all_args = posargs + starargs_tuple
       if not match_signature.varargs_name:
         # If the function sig has no *args, return everything in posargs
-        pos = _splats_to_any(all_args, vm)
+        pos = _splats_to_any(all_args, ctx)
         return pos, None
       # Don't unwrap splats here because f(*xs, y) is not the same as f(xs, y).
       # TODO(mdemello): Ideally, since we are matching call f(*xs, y) against
       # sig f(x, y) we should raise an error here.
-      pos = _splats_to_any(all_args[:n_params], vm)
+      pos = _splats_to_any(all_args[:n_params], ctx)
       star = []
       for var in all_args[n_params:]:
         if abstract_utils.is_var_splat(var):
@@ -440,25 +441,25 @@ class Args(collections.namedtuple(
         else:
           star.append(var)
       if star:
-        return pos, vm.convert.tuple_to_value(star).to_variable(node)
+        return pos, ctx.convert.tuple_to_value(star).to_variable(node)
       else:
         return pos, None
     elif stars:
       if len(stars) == 1:
         # Special case (<pre>, *xs) and (*xs, <post>) to fill in the type of xs
         # in every remaining arg.
-        mid = self._expand_typed_star(vm, node, stars[0], posarg_delta)
+        mid = self._expand_typed_star(ctx, node, stars[0], posarg_delta)
       else:
         # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to
         # match, don't try to match the intermediate params to any range, just
         # match all k+2 to Any
-        mid = [vm.new_unsolvable(node) for _ in range(posarg_delta)]
+        mid = [ctx.new_unsolvable(node) for _ in range(posarg_delta)]
       return posargs + tuple(pre + mid + post), None
     else:
       # We have **kwargs but no *args in the invocation
       return posargs + tuple(pre), None
 
-  def simplify(self, node, vm, match_signature=None):
+  def simplify(self, node, ctx, match_signature=None):
     """Try to insert part of *args, **kwargs into posargs / namedargs."""
     # TODO(rechen): When we have type information about *args/**kwargs,
     # we need to check it before doing this simplification.
@@ -490,18 +491,20 @@ class Args(collections.namedtuple(
           # If cls is not already parameterized with the key and value types, we
           # parameterize it now to preserve them.
           params = {
-              name: vm.convert.merge_classes(kwdict.get_instance_type_parameter(
-                  name, node).data)
-              for name in (abstract_utils.K, abstract_utils.V)}
-          cls = vm.convert.build_map_class(node, params)
+              name: ctx.convert.merge_classes(
+                  kwdict.get_instance_type_parameter(name, node).data)
+              for name in (abstract_utils.K, abstract_utils.V)
+          }
+          cls = ctx.convert.build_map_class(node, params)
         starstarargs = cls.instantiate(node)
       else:
         starstarargs = None
-    starargs_as_tuple = self.starargs_as_tuple(node, vm)
+    starargs_as_tuple = self.starargs_as_tuple(node, ctx)
     if starargs_as_tuple is not None:
       if match_signature:
-        posargs, starargs = self._unpack_and_match_args(
-            node, vm, match_signature, starargs_as_tuple)
+        posargs, starargs = self._unpack_and_match_args(node, ctx,
+                                                        match_signature,
+                                                        starargs_as_tuple)
       elif (starargs_as_tuple and
             abstract_utils.is_var_splat(starargs_as_tuple[-1])):
         # If the last arg is an indefinite iterable keep it in starargs. Convert
@@ -509,12 +512,12 @@ class Args(collections.namedtuple(
         # TODO(mdemello): If there are multiple splats should we just fall
         # through to the next case (setting them all to Any), and only hit this
         # case for a *single* splat in terminal position?
-        posargs = self.posargs + _splats_to_any(starargs_as_tuple[:-1], vm)
+        posargs = self.posargs + _splats_to_any(starargs_as_tuple[:-1], ctx)
         starargs = abstract_utils.unwrap_splat(starargs_as_tuple[-1])
       else:
         # Don't try to unpack iterables in any other position since we don't
         # have a signature to match. Just set all splats to Any.
-        posargs = self.posargs + _splats_to_any(starargs_as_tuple, vm)
+        posargs = self.posargs + _splats_to_any(starargs_as_tuple, ctx)
         starargs = None
     return Args(posargs, namedargs, starargs, starstarargs)
 
@@ -595,10 +598,10 @@ class BadParam(
 class InvalidParameters(FailedFunctionCall):
   """Exception for functions called with an incorrect parameter combination."""
 
-  def __init__(self, sig, passed_args, vm, bad_param=None):
+  def __init__(self, sig, passed_args, ctx, bad_param=None):
     super().__init__()
     self.name = sig.name
-    passed_args = [(name, vm.merge_values(arg.data))
+    passed_args = [(name, ctx.convert.merge_values(arg.data))
                    for name, arg, _ in sig.iter_args(passed_args)]
     self.bad_call = BadCall(sig=sig, passed_args=passed_args,
                             bad_param=bad_param)
@@ -619,24 +622,24 @@ class WrongArgCount(InvalidParameters):
 class WrongKeywordArgs(InvalidParameters):
   """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
 
-  def __init__(self, sig, passed_args, vm, extra_keywords):
-    super().__init__(sig, passed_args, vm)
+  def __init__(self, sig, passed_args, ctx, extra_keywords):
+    super().__init__(sig, passed_args, ctx)
     self.extra_keywords = tuple(extra_keywords)
 
 
 class DuplicateKeyword(InvalidParameters):
   """E.g. an arg "x" is passed to a function as both a posarg and a kwarg."""
 
-  def __init__(self, sig, passed_args, vm, duplicate):
-    super().__init__(sig, passed_args, vm)
+  def __init__(self, sig, passed_args, ctx, duplicate):
+    super().__init__(sig, passed_args, ctx)
     self.duplicate = duplicate
 
 
 class MissingParameter(InvalidParameters):
   """E.g. a function requires parameter 'x' but 'x' isn't passed."""
 
-  def __init__(self, sig, passed_args, vm, missing_parameter):
-    super().__init__(sig, passed_args, vm)
+  def __init__(self, sig, passed_args, ctx, missing_parameter):
+    super().__init__(sig, passed_args, ctx)
     self.missing_parameter = missing_parameter
 # pylint: enable=g-bad-exception-name
 
@@ -652,23 +655,23 @@ class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
     return hash((self.instance, self.name, frozenset(self.value.data)))
 
 
-class PyTDSignature(utils.VirtualMachineWeakrefMixin):
+class PyTDSignature(utils.ContextWeakrefMixin):
   """A PyTD function type (signature).
 
   This represents instances of functions with specific arguments and return
   type.
   """
 
-  def __init__(self, name, pytd_sig, vm):
-    super().__init__(vm)
+  def __init__(self, name, pytd_sig, ctx):
+    super().__init__(ctx)
     self.name = name
     self.pytd_sig = pytd_sig
     self.param_types = [
-        self.vm.convert.constant_to_value(
-            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_node)
+        self.ctx.convert.constant_to_value(
+            p.type, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
         for p in self.pytd_sig.params
     ]
-    self.signature = Signature.from_pytd(vm, name, pytd_sig)
+    self.signature = Signature.from_pytd(ctx, name, pytd_sig)
 
   def _map_args(self, args, view):
     """Map the passed arguments to a name->binding dictionary.
@@ -694,7 +697,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       arg_dict[name] = view[arg]
     num_expected_posargs = len(self.signature.param_names)
     if len(args.posargs) > num_expected_posargs and not self.pytd_sig.starargs:
-      raise WrongArgCount(self.signature, args, self.vm)
+      raise WrongArgCount(self.signature, args, self.ctx)
     # Extra positional args are passed via the *args argument.
     varargs_type = self.signature.annotations.get(self.signature.varargs_name)
     if varargs_type and varargs_type.isinstance_ParameterizedClass():
@@ -707,11 +710,11 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     # named args
     for name, arg in args.namedargs.items():
       if name in arg_dict:
-        raise DuplicateKeyword(self.signature, args, self.vm, name)
+        raise DuplicateKeyword(self.signature, args, self.ctx, name)
       arg_dict[name] = view[arg]
     extra_kwargs = set(args.namedargs) - {p.name for p in self.pytd_sig.params}
     if extra_kwargs and not self.pytd_sig.starstarargs:
-      raise WrongKeywordArgs(self.signature, args, self.vm, extra_kwargs)
+      raise WrongKeywordArgs(self.signature, args, self.ctx, extra_kwargs)
     # Extra keyword args are passed via the **kwargs argument.
     kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
     if kwargs_type and kwargs_type.isinstance_ParameterizedClass():
@@ -730,7 +733,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
         arg_dict[name] = view[actual]
         # The annotation is Tuple or Dict, but the passed arg only has to be
         # Iterable or Mapping.
-        typ = self.vm.convert.widen_type(self.signature.annotations[name])
+        typ = self.ctx.convert.widen_type(self.signature.annotations[name])
         formal_args.append((name, typ))
 
     return formal_args, arg_dict
@@ -740,24 +743,24 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       if p.name not in arg_dict:
         if (not p.optional and args.starargs is None and
             args.starstarargs is None):
-          raise MissingParameter(self.signature, args, self.vm, p.name)
+          raise MissingParameter(self.signature, args, self.ctx, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
         # Unfortunately, we can't easily use *args or **kwargs to fill in
         # something more precise, since we need a Value, not a Variable.
-        arg_dict[p.name] = self.vm.convert.unsolvable.to_binding(node)
+        arg_dict[p.name] = self.ctx.convert.unsolvable.to_binding(node)
 
   def substitute_formal_args(self, node, args, view, alias_map):
     """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(args, view)
     self._fill_in_missing_parameters(node, args, arg_dict)
-    subst, bad_arg = self.vm.matcher(node).compute_subst(
+    subst, bad_arg = self.ctx.matcher(node).compute_subst(
         formal_args, arg_dict, view, alias_map)
     if subst is None:
       if self.signature.has_param(bad_arg.name):
         signature = self.signature
       else:
         signature = self.signature.insert_varargs_and_kwargs(arg_dict)
-      raise WrongArgTypes(signature, args, self.vm, bad_param=bad_arg)
+      raise WrongArgTypes(signature, args, self.ctx, bad_param=bad_arg)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s",
                 pytd_utils.Print(self.pytd_sig))
@@ -777,22 +780,26 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     if return_type.name != "builtins.type":
       for param in pytd_utils.GetTypeParameters(return_type):
         if param.full_name in subst:
-          node = self.vm.call_init(node, subst[param.full_name])
+          node = self.ctx.vm.call_init(node, subst[param.full_name])
     try:
-      ret = self.vm.convert.constant_to_var(
-          abstract_utils.AsReturnValue(return_type), subst, node,
+      ret = self.ctx.convert.constant_to_var(
+          abstract_utils.AsReturnValue(return_type),
+          subst,
+          node,
           source_sets=[sources])
-    except self.vm.convert.TypeParameterError:
+    except self.ctx.convert.TypeParameterError:
       # The return type contains a type parameter without a substitution.
       subst = subst.copy()
       for t in pytd_utils.GetTypeParameters(return_type):
         if t.full_name not in subst:
-          subst[t.full_name] = self.vm.convert.empty.to_variable(node)
-      return node, self.vm.convert.constant_to_var(
-          abstract_utils.AsReturnValue(return_type), subst, node,
+          subst[t.full_name] = self.ctx.convert.empty.to_variable(node)
+      return node, self.ctx.convert.constant_to_var(
+          abstract_utils.AsReturnValue(return_type),
+          subst,
+          node,
           source_sets=[sources])
     if not ret.bindings and isinstance(return_type, pytd.TypeParameter):
-      ret.AddBinding(self.vm.convert.empty, [], node)
+      ret.AddBinding(self.ctx.convert.empty, [], node)
     return node, ret
 
   def call_with_args(self, node, func, arg_dict,
@@ -807,9 +814,9 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       for data in ret_map[t].data:
         ret_map[t].AddBinding(data, sources, node)
     mutations = self._get_mutation(node, arg_dict, subst, ret_map[t])
-    self.vm.trace_call(node, func, (self,),
-                       tuple(arg_dict[p.name] for p in self.pytd_sig.params),
-                       {}, ret_map[t])
+    self.ctx.vm.trace_call(
+        node, func, (self,),
+        tuple(arg_dict[p.name] for p in self.pytd_sig.params), {}, ret_map[t])
     return node, ret_map[t], mutations
 
   @classmethod
@@ -862,7 +869,7 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
       subst = subst.copy()
       for t in pytd_utils.GetTypeParameters(self.pytd_sig):
         if t.full_name not in subst:
-          subst[t.full_name] = self.vm.convert.empty.to_variable(node)
+          subst[t.full_name] = self.ctx.convert.empty.to_variable(node)
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
       arg = actual.data
@@ -881,8 +888,10 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
             log.info("Mutating %s to %s",
                      tparam.name,
                      pytd_utils.Print(type_actual))
-            type_actual_val = self.vm.convert.constant_to_var(
-                abstract_utils.AsInstance(type_actual), subst, node,
+            type_actual_val = self.ctx.convert.constant_to_var(
+                abstract_utils.AsInstance(type_actual),
+                subst,
+                node,
                 discard_concrete_values=True)
             mutations.append(Mutation(arg, tparam.full_name, type_actual_val))
     if self.name == "__new__":
@@ -939,18 +948,110 @@ class PyTDSignature(utils.VirtualMachineWeakrefMixin):
     # Now update self
     self.pytd_sig = new_sig
     self.param_types = [
-        self.vm.convert.constant_to_value(
-            p.type, subst=datatypes.AliasingDict(), node=self.vm.root_node)
+        self.ctx.convert.constant_to_value(
+            p.type, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
         for p in self.pytd_sig.params
     ]
-    self.signature = Signature.from_pytd(self.vm, self.name, self.pytd_sig)
+    self.signature = Signature.from_pytd(self.ctx, self.name, self.pytd_sig)
     return self
 
   def __repr__(self):
     return pytd_utils.Print(self.pytd_sig)
 
 
-def _splats_to_any(seq, vm):
+def _splats_to_any(seq, ctx):
   return tuple(
-      vm.new_unsolvable(vm.root_node) if abstract_utils.is_var_splat(v) else v
+      ctx.new_unsolvable(ctx.root_node) if abstract_utils.is_var_splat(v) else v
       for v in seq)
+
+
+def call_function(ctx,
+                  node,
+                  func_var,
+                  args,
+                  fallback_to_unsolvable=True,
+                  allow_noreturn=False):
+  """Call a function.
+
+  Args:
+    ctx: The abstract context.
+    node: The current CFG node.
+    func_var: A variable of the possible functions to call.
+    args: The arguments to pass. See function.Args.
+    fallback_to_unsolvable: If the function call fails, create an unknown.
+    allow_noreturn: Whether typing.NoReturn is allowed in the return type.
+  Returns:
+    A tuple (CFGNode, Variable). The Variable is the return value.
+  Raises:
+    DictKeyMissing: if we retrieved a nonexistent key from a dict and
+      fallback_to_unsolvable is False.
+    FailedFunctionCall: if the call fails and fallback_to_unsolvable is False.
+  """
+  assert func_var.bindings
+  result = ctx.program.NewVariable()
+  nodes = []
+  error = None
+  has_noreturn = False
+  for funcb in func_var.bindings:
+    func = funcb.data
+    one_result = None
+    try:
+      new_node, one_result = func.call(node, funcb, args)
+    except (DictKeyMissing, FailedFunctionCall) as e:
+      if e > error:
+        error = e
+    else:
+      if ctx.convert.no_return in one_result.data:
+        if allow_noreturn:
+          # Make sure NoReturn was the only thing returned.
+          assert len(one_result.data) == 1
+          has_noreturn = True
+        else:
+          for b in one_result.bindings:
+            if b.data != ctx.convert.no_return:
+              result.PasteBinding(b)
+      else:
+        result.PasteVariable(one_result, new_node, {funcb})
+      nodes.append(new_node)
+  if nodes:
+    node = ctx.vm.join_cfg_nodes(nodes)
+    if not result.bindings:
+      v = ctx.convert.no_return if has_noreturn else ctx.convert.unsolvable
+      result.AddBinding(v, [], node)
+  elif (isinstance(error, FailedFunctionCall) and
+        all(abstract_utils.func_name_is_class_init(func.name)
+            for func in func_var.data)):
+    # If the function failed with a FailedFunctionCall exception, try calling
+    # it again with fake arguments. This allows for calls to __init__ to
+    # always succeed, ensuring pytype has a full view of the class and its
+    # attributes. If the call still fails, call_with_fake_args will return
+    # abstract.Unsolvable.
+    node, result = ctx.vm.call_with_fake_args(node, func_var)
+  elif ctx.options.precise_return and len(func_var.bindings) == 1:
+    funcb, = func_var.bindings
+    func = funcb.data
+    if func.isinstance_BoundFunction():
+      func = func.underlying
+    if func.isinstance_PyTDFunction():
+      node, result = func.signatures[0].instantiate_return(node, {}, [funcb])
+    elif func.isinstance_InterpreterFunction():
+      sig = func.signature_functions()[0].signature
+      ret = sig.annotations.get("return", ctx.convert.unsolvable)
+      node, result = ctx.vm.init_class(node, ret)
+    else:
+      result = ctx.new_unsolvable(node)
+  else:
+    result = ctx.new_unsolvable(node)
+  ctx.vm.trace_opcode(None, func_var.data[0].name.rpartition(".")[-1],
+                      (func_var, result))
+  if nodes:
+    return node, result
+  elif fallback_to_unsolvable:
+    if not isinstance(error, DictKeyMissing):
+      ctx.errorlog.invalid_function_call(ctx.vm.stack(func_var.data[0]), error)
+    return node, result
+  else:
+    # We were called by something that does its own error handling.
+    assert error
+    error.set_return(node, result)
+    raise error  # pylint: disable=raising-bad-type

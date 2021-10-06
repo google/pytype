@@ -30,23 +30,30 @@ class Param:
     self.typ = typ
     self.default = default
 
-  def unsolvable(self, vm, node):
+  def unsolvable(self, ctx, node):
     """Replace None values for typ and default with unsolvable."""
-    self.typ = self.typ or vm.convert.unsolvable
-    self.default = self.default or vm.new_unsolvable(node)
+    self.typ = self.typ or ctx.convert.unsolvable
+    self.default = self.default or ctx.new_unsolvable(node)
     return self
 
   def __repr__(self):
     return "Param(%s, %r, %r)" % (self.name, self.typ, self.default)
 
 
-def make_method(vm, node, name, params=None, kwonly_params=None,
-                return_type=None, self_param=None, varargs=None, kwargs=None,
+def make_method(ctx,
+                node,
+                name,
+                params=None,
+                kwonly_params=None,
+                return_type=None,
+                self_param=None,
+                varargs=None,
+                kwargs=None,
                 kind=pytd.MethodTypes.METHOD):
   """Make a method from params.
 
   Args:
-    vm: vm
+    ctx: The context
     node: Node to create the method variable at
     name: The method name
     params: Positional params [type: [Param]]
@@ -70,7 +77,7 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
       if len(types) == 1:
         annotations[param.name] = types[0].cls
       else:
-        t = abstract.Union([t.cls for t in types], vm)
+        t = abstract.Union([t.cls for t in types], ctx)
         annotations[param.name] = t
     else:
       annotations[param.name] = param.typ
@@ -109,22 +116,22 @@ def make_method(vm, node, name, params=None, kwonly_params=None,
       kwargs_name=kwargs_name,
       defaults=defaults,
       annotations=annotations,
-      vm=vm)
+      ctx=ctx)
 
   # Check that the constructed function has a valid signature
   bad_param = ret.signature.check_defaults()
   if bad_param:
     msg = "In method %s, non-default argument %s follows default argument" % (
         name, bad_param)
-    vm.errorlog.invalid_function_definition(vm.frames, msg)
+    ctx.errorlog.invalid_function_definition(ctx.vm.frames, msg)
 
   retvar = ret.to_variable(node)
   if kind in (pytd.MethodTypes.METHOD, pytd.MethodTypes.PROPERTY):
     return retvar
   if kind == pytd.MethodTypes.CLASSMETHOD:
-    decorator = vm.load_special_builtin("classmethod")
+    decorator = ctx.vm.load_special_builtin("classmethod")
   else:
     assert kind == pytd.MethodTypes.STATICMETHOD
-    decorator = vm.load_special_builtin("staticmethod")
+    decorator = ctx.vm.load_special_builtin("staticmethod")
   args = function.Args(posargs=(retvar,))
   return decorator.call(node, funcv=None, args=args)[1]

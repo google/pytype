@@ -6,6 +6,7 @@ Contains common functionality used by dataclasses, attrs and namedtuples.
 import abc
 import collections
 import logging
+from typing import Any, ClassVar, Dict
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -23,6 +24,7 @@ Attribute = class_mixin.Attribute
 AttributeKinds = class_mixin.AttributeKinds
 
 
+# Probably should make this an enum.Enum at some point.
 class Ordering:
   """Possible orderings for get_class_locals."""
   # Order by each variable's first annotation. For example, for
@@ -49,7 +51,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
   # Defaults for the args that we support (dataclasses only support 'init',
   # but the others default to false so they should not affect anything).
-  _DEFAULT_ARGS = {
+  _DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
       "init": True,
       "kw_only": False,
       "auto_attribs": False,
@@ -74,14 +76,14 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
         try:
           self._current_args[k] = abstract_utils.get_atomic_python_constant(v)
         except abstract_utils.ConversionError:
-          self.vm.errorlog.not_supported_yet(
-              self.vm.frames, "Non-constant argument to decorator: %r" % k)
+          self.ctx.errorlog.not_supported_yet(
+              self.ctx.vm.frames, "Non-constant argument to decorator: %r" % k)
 
   def init_name(self, attr):
     """Attribute name as an __init__ keyword, could differ from attr.name."""
     return attr.name
 
-  def make_init(self, node, cls, attrs):
+  def make_init(self, node, cls, attrs, init_method_name="__init__"):
     pos_params = []
     kwonly_params = []
     all_kwonly = self.args[cls]["kw_only"]
@@ -103,12 +105,12 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
       else:
         pos_params.append(param)
 
-    return overlay_utils.make_method(
-        self.vm, node, "__init__", pos_params, kwonly_params)
+    return overlay_utils.make_method(self.ctx, node, init_method_name,
+                                     pos_params, kwonly_params)
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
-    args = args.simplify(node, self.vm)
+    args = args.simplify(node, self.ctx)
     self.match_args(node, args)
 
     # There are two ways to use a decorator:
@@ -168,8 +170,8 @@ class FieldConstructor(abstract.PyTDFunction):
     try:
       return abstract_utils.get_atomic_python_constant(args.namedargs[name])
     except abstract_utils.ConversionError:
-      self.vm.errorlog.not_supported_yet(
-          self.vm.frames, f"Non-constant argument {name!r}")
+      self.ctx.errorlog.not_supported_yet(self.ctx.vm.frames,
+                                          f"Non-constant argument {name!r}")
 
 
 def is_method(var):
@@ -191,15 +193,41 @@ def add_member(node, cls, name, typ):
   if typ.formal:
     # If typ contains a type parameter, we mark it as empty so that instances
     # will use __annotations__ to fill in concrete type parameter values.
-    instance = typ.vm.convert.empty.to_variable(node)
+    instance = typ.ctx.convert.empty.to_variable(node)
   else:
     # See test_attr.TestAttrib.test_repeated_default - keying on the name
     # prevents attributes from sharing the same default object.
-    _, instance = typ.vm.init_class(node, typ, extra_key=name)
+    _, instance = typ.ctx.vm.init_class(node, typ, extra_key=name)
   cls.members[name] = instance
 
 
-def get_class_locals(cls_name, allow_methods, ordering, vm):
+def is_relevant_class_local(class_local: abstract_utils.Local,
+                            class_local_name: str, allow_methods: bool):
+  """Tests whether the current class local could be relevant for type checking.
+
+  For example, this doesn't match __dunder__ class locals.
+
+  To get an abstract_utils.Local from a vm.LocalOps, you can use,
+  'vm_instance.annotated_locals[cls_name][op.name]'.
+
+  Args:
+    class_local: the local to query
+    class_local_name: the name of the class local (because abstract_utils.Local
+      does not hold this information).
+    allow_methods: whether to allow methods class locals to match
+
+  Returns:
+    Whether this class local could possibly be relevant for type checking.
+      Callers will usually want to filter even further.
+  """
+  if is_dunder(class_local_name):
+    return False
+  if not allow_methods and is_method(class_local.orig):
+    return False
+  return True
+
+
+def get_class_locals(cls_name: str, allow_methods: bool, ordering, ctx):
   """Gets a dictionary of the class's local variables.
 
   Args:
@@ -207,7 +235,7 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
     allow_methods: A bool, whether to allow methods as variables.
     ordering: A classgen.Ordering describing the order in which the variables
       should appear.
-    vm: The VirtualMachine.
+    ctx: The abstract context.
 
   Returns:
     A collections.OrderedDict of the locals.
@@ -215,15 +243,13 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
   # TODO(b/195453869): Once we drop Python 2 support, either use a normal dict
   # or replace key deletion with OrderedDict.move_to_end().
   out = collections.OrderedDict()
-  if cls_name not in vm.local_ops:
+  if cls_name not in ctx.vm.local_ops:
     # See TestAttribPy3.test_cannot_decorate in tests/test_attr2.py. The
     # class will not be in local_ops if a previous decorator hides it.
     return out
-  for op in vm.local_ops[cls_name]:
-    if is_dunder(op.name):
-      continue
-    local = vm.annotated_locals[cls_name][op.name]
-    if not allow_methods and is_method(local.orig):
+  for op in ctx.vm.local_ops[cls_name]:
+    local = ctx.vm.annotated_locals[cls_name][op.name]
+    if not is_relevant_class_local(local, op.name, allow_methods):
       continue
     if ordering is Ordering.FIRST_ANNOTATE:
       if not op.is_annotate() or op.name in out:
@@ -238,14 +264,14 @@ def get_class_locals(cls_name, allow_methods, ordering, vm):
   return out
 
 
-def make_replace_method(vm, node, cls, *, kwargs_name="kwargs"):
+def make_replace_method(ctx, node, cls, *, kwargs_name="kwargs"):
   """Create a replace() method for a dataclass."""
   # This is used by several packages that extend dataclass.
   # The signature is
   #   def replace(self: T, **kwargs) -> T
-  typevar = abstract.TypeParameter(abstract_utils.T + cls.name, vm, bound=cls)
+  typevar = abstract.TypeParameter(abstract_utils.T + cls.name, ctx, bound=cls)
   return overlay_utils.make_method(
-      vm=vm,
+      ctx=ctx,
       node=node,
       name="replace",
       return_type=typevar,
@@ -254,20 +280,20 @@ def make_replace_method(vm, node, cls, *, kwargs_name="kwargs"):
   )
 
 
-def get_or_create_annotations_dict(members, vm):
+def get_or_create_annotations_dict(members, ctx):
   """Get __annotations__ from members map, create and attach it if not present.
 
   The returned dict is also referenced by members, so it is safe to mutate.
 
   Args:
     members: A dict of member name to variable.
-    vm: TypegraphVirtualMachine instance.
+    ctx: context.Context instance.
 
   Returns:
     members['__annotations__'] unpacked as a python dict
   """
   annotations_dict = abstract_utils.get_annotations_dict(members)
   if annotations_dict is None:
-    annotations_dict = abstract.AnnotationsDict({}, vm)
-    members["__annotations__"] = annotations_dict.to_variable(vm.root_node)
+    annotations_dict = abstract.AnnotationsDict({}, ctx)
+    members["__annotations__"] = annotations_dict.to_variable(ctx.root_node)
   return annotations_dict

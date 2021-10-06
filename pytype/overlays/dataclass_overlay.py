@@ -18,21 +18,21 @@ log = logging.getLogger(__name__)
 class DataclassOverlay(overlay.Overlay):
   """A custom overlay for the 'dataclasses' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "dataclass": Dataclass.make,
         "field": FieldFunction.make,
     }
-    ast = vm.loader.import_name("dataclasses")
-    super().__init__(vm, "dataclasses", member_map, ast)
+    ast = ctx.loader.import_name("dataclasses")
+    super().__init__(ctx, "dataclasses", member_map, ast)
 
 
 class Dataclass(classgen.Decorator):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, vm, mod="dataclasses"):
-    return super().make("dataclass", vm, mod)
+  def make(cls, ctx, mod="dataclasses"):
+    return super().make("dataclass", ctx, mod)
 
   def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
@@ -45,7 +45,7 @@ class Dataclass(classgen.Decorator):
       # If an initvar does not have a default, it will not be a class member
       # variable, so delete it from the annotated locals. Otherwise, leave the
       # annotation as InitVar[...].
-      del self.vm.annotated_locals[cls.name][name]
+      del self.ctx.vm.annotated_locals[cls.name][name]
     else:
       classgen.add_member(node, cls, name, initvar)
     return initvar
@@ -53,8 +53,10 @@ class Dataclass(classgen.Decorator):
   def get_class_locals(self, node, cls):
     del node
     return classgen.get_class_locals(
-        cls.name, allow_methods=True, ordering=classgen.Ordering.FIRST_ANNOTATE,
-        vm=self.vm)
+        cls.name,
+        allow_methods=True,
+        ordering=classgen.Ordering.FIRST_ANNOTATE,
+        ctx=self.ctx)
 
   def decorate(self, node, cls):
     """Processes class members."""
@@ -89,11 +91,11 @@ class Dataclass(classgen.Decorator):
         else:
           init = True
 
-      if orig and orig.data == [self.vm.convert.none]:
+      if orig and orig.data == [self.ctx.convert.none]:
         # vm._apply_annotation mostly takes care of checking that the default
         # matches the declared type. However, it allows None defaults, and
         # dataclasses do not.
-        self.vm.check_annotation_type_mismatch(
+        self.ctx.vm.check_annotation_type_mismatch(
             node, name, typ, orig, local.stack, allow_none=False)
 
       attr = classgen.Attribute(
@@ -113,21 +115,23 @@ class Dataclass(classgen.Decorator):
     # Add the __dataclass_fields__ attribute, the presence of which
     # dataclasses.is_dataclass uses to determine if an object is a dataclass (or
     # an instance of one).
-    attr_types = self.vm.merge_values({attr.typ for attr in attrs})
-    dataclass_ast = self.vm.loader.import_name("dataclasses")
+    attr_types = self.ctx.convert.merge_values({attr.typ for attr in attrs})
+    dataclass_ast = self.ctx.loader.import_name("dataclasses")
     generic_field = abstract.ParameterizedClass(
-        self.vm.convert.name_to_value("dataclasses.Field", ast=dataclass_ast),
-        {abstract_utils.T: attr_types}, self.vm)
-    dataclass_fields_params = {abstract_utils.K: self.vm.convert.str_type,
-                               abstract_utils.V: generic_field}
+        self.ctx.convert.name_to_value("dataclasses.Field", ast=dataclass_ast),
+        {abstract_utils.T: attr_types}, self.ctx)
+    dataclass_fields_params = {
+        abstract_utils.K: self.ctx.convert.str_type,
+        abstract_utils.V: generic_field
+    }
     dataclass_fields_typ = abstract.ParameterizedClass(
-        self.vm.convert.dict_type, dataclass_fields_params, self.vm)
+        self.ctx.convert.dict_type, dataclass_fields_params, self.ctx)
     classgen.add_member(node, cls, "__dataclass_fields__", dataclass_fields_typ)
 
     annotations_dict = classgen.get_or_create_annotations_dict(
-        cls.members, self.vm)
+        cls.members, self.ctx)
     annotations_dict.annotated_locals["__dataclass_fields__"] = (
-        abstract_utils.Local(node, None, dataclass_fields_typ, None, self.vm))
+        abstract_utils.Local(node, None, dataclass_fields_typ, None, self.ctx))
 
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("dataclasses.dataclass")
@@ -138,34 +142,34 @@ class Dataclass(classgen.Decorator):
 class FieldInstance(abstract.SimpleValue):
   """Return value of a field() call."""
 
-  def __init__(self, vm, init, default):
-    super().__init__("field", vm)
+  def __init__(self, ctx, init, default):
+    super().__init__("field", ctx)
     self.init = init
     self.default = default
-    self.cls = vm.convert.unsolvable
+    self.cls = ctx.convert.unsolvable
 
 
 class FieldFunction(classgen.FieldConstructor):
   """Implements dataclasses.field."""
 
   @classmethod
-  def make(cls, vm):
-    return super().make("field", vm, "dataclasses")
+  def make(cls, ctx):
+    return super().make("field", ctx, "dataclasses")
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to a field."""
-    args = args.simplify(node, self.vm)
+    args = args.simplify(node, self.ctx)
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     init = self.get_kwarg(args, "init", True)
-    typ = FieldInstance(self.vm, init, default_var).to_variable(node)
+    typ = FieldInstance(self.ctx, init, default_var).to_variable(node)
     return node, typ
 
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "default_factory" in args.namedargs:
       # The pyi signatures should prevent this; check left in for safety.
       raise function.DuplicateKeyword(self.signatures[0].signature, args,
-                                      self.vm, "default")
+                                      self.ctx, "default")
     elif "default" in args.namedargs:
       default_var = args.namedargs["default"]
     elif "default_factory" in args.namedargs:

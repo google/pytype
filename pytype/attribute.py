@@ -15,7 +15,7 @@ from pytype.typegraph import cfg
 log = logging.getLogger(__name__)
 
 
-class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
+class AbstractAttributeHandler(utils.ContextWeakrefMixin):
   """Handler for abstract attributes."""
 
   def get_attribute(self, node, obj, name, valself=None):
@@ -62,28 +62,29 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     elif isinstance(obj, abstract.Union):
       if name == "__getitem__":
         # __getitem__ is implemented in abstract.Union.getitem_slot.
-        return node, self.vm.new_unsolvable(node)
+        return node, self.ctx.new_unsolvable(node)
       nodes = []
-      ret = self.vm.program.NewVariable()
+      ret = self.ctx.program.NewVariable()
       for o in obj.options:
         node2, attr = self.get_attribute(node, o, name, valself)
         if attr is not None:
           ret.PasteVariable(attr, node2)
           nodes.append(node2)
       if ret.bindings:
-        return self.vm.join_cfg_nodes(nodes), ret
+        return self.ctx.vm.join_cfg_nodes(nodes), ret
       else:
         return node, None
     elif isinstance(obj, special_builtins.SuperInstance):
       return self._get_attribute_from_super_instance(node, obj, name, valself)
     elif isinstance(obj, special_builtins.Super):
-      return self.get_attribute(node, self.vm.convert.super_type, name, valself)
+      return self.get_attribute(node, self.ctx.convert.super_type, name,
+                                valself)
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(node, obj.underlying, name, valself)
     elif isinstance(obj, abstract.TypeParameterInstance):
       param_var = obj.instance.get_instance_type_parameter(obj.name)
       if not param_var.bindings:
-        param_var = obj.param.instantiate(self.vm.root_node)
+        param_var = obj.param.instantiate(self.ctx.root_node)
       results = []
       nodes = []
       for b in param_var.bindings:
@@ -95,10 +96,10 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           results.append(ret)
           nodes.append(node2)
       if nodes:
-        node = self.vm.join_cfg_nodes(nodes)
-        return node, self.vm.join_variables(node, results)
+        node = self.ctx.vm.join_cfg_nodes(nodes)
+        return node, self.ctx.vm.join_variables(node, results)
       else:
-        return node, self.vm.new_unsolvable(node)
+        return node, self.ctx.new_unsolvable(node)
     elif isinstance(obj, abstract.Empty):
       return node, None
     else:
@@ -127,7 +128,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # wouldn't happen in the Python interpreter, either.
       return node
     assert isinstance(value, cfg.Variable)
-    if self.vm.frame is not None and obj is self.vm.frame.f_globals:
+    if self.ctx.vm.frame is not None and obj is self.ctx.vm.frame.f_globals:
       for v in value.data:
         v.update_official_name(name)
     if isinstance(obj, abstract.Empty):
@@ -155,7 +156,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       nodes = []
       for v in obj.instance.get_instance_type_parameter(obj.name).data:
         nodes.append(self.set_attribute(node, v, name, value))
-      return self.vm.join_cfg_nodes(nodes) if nodes else node
+      return self.ctx.vm.join_cfg_nodes(nodes) if nodes else node
     elif isinstance(obj, abstract.Union):
       for option in obj.options:
         node = self.set_attribute(node, option, name, value)
@@ -178,7 +179,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         return True  # This is a programmatic attribute.
       if baseclass.slots is None or name in baseclass.slots:
         return True  # Found a slot declaration; this is an instance attribute
-    self.vm.errorlog.not_writable(self.vm.frames, obj, name)
+    self.ctx.errorlog.not_writable(self.ctx.vm.frames, obj, name)
     return False
 
   def _should_look_for_submodule(
@@ -188,14 +189,14 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     # take precedence over the attribute.
     if attr_var is None:
       return True
-    attr_cls = self.vm.convert.merge_classes(attr_var.data)
-    if attr_cls == self.vm.convert.module_type and not any(
+    attr_cls = self.ctx.convert.merge_classes(attr_var.data)
+    if attr_cls == self.ctx.convert.module_type and not any(
         isinstance(attr, abstract.Module) for attr in attr_var.data):
       # The attribute is an abstract.Instance(module), which returns Any for all
       # attribute accesses, so we should try to find the actual submodule.
       return True
-    if (f"{module.name}.__init__" == self.vm.options.module_name and
-        attr_var.data == [self.vm.convert.unsolvable]):
+    if (f"{module.name}.__init__" == self.ctx.options.module_name and
+        attr_var.data == [self.ctx.convert.unsolvable]):
       # There's no reason for a module's __init__ file to look up attributes in
       # itself, so attr_var is a submodule whose type was inferred as Any during
       # a first-pass analysis with incomplete type information.
@@ -219,7 +220,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     """Get an attribute from a class."""
     assert isinstance(cls, class_mixin.Class)
     if (not valself or not abstract_utils.equivalent_to(valself, cls) or
-        cls == self.vm.convert.type_type):
+        cls == self.ctx.convert.type_type):
       # Since type(type) == type, the type_type check prevents an infinite loop.
       meta = None
     else:
@@ -274,7 +275,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # have attributes that we don't know about. These attributes take
       # precedence over class attributes and __getattr__, so we set `attr` to
       # Any immediately.
-      attr = self.vm.new_unsolvable(node)
+      attr = self.ctx.new_unsolvable(node)
     if attr is None and cls:
       # Check for the attribute on the class.
       node, attr = self.get_attribute(node, cls, name, valself)
@@ -294,16 +295,15 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           # The attribute contains a class-scoped type parameter, so we need to
           # reinitialize it with the current instance's parameter values.
           subst = abstract_utils.get_type_parameter_substitutions(
-              valself.data,
-              self.vm.annotation_utils.get_type_parameters(typ))
-          typ = self.vm.annotation_utils.sub_one_annotation(
+              valself.data, self.ctx.annotation_utils.get_type_parameters(typ))
+          typ = self.ctx.annotation_utils.sub_one_annotation(
               node, typ, [subst], instantiate_unbound=False)
-          _, attr = self.vm.annotation_utils.init_annotation(node, name, typ)
+          _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
         elif attr is None:
           # An attribute has been declared but not defined, e.g.,
           #   class Foo:
           #     bar: int
-          _, attr = self.vm.annotation_utils.init_annotation(node, name, typ)
+          _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
         break
     if attr is not None:
       attr = self._filter_var(node, attr)
@@ -351,7 +351,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         if parent.full_name == current_cls.full_name:
           break
     else:
-      starting_cls = self.vm.convert.super_type
+      starting_cls = self.ctx.convert.super_type
       skip = ()
     return self._lookup_from_mro_and_handle_descriptors(
         node, starting_cls, name, valself, skip)
@@ -362,7 +362,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if not attr.bindings:
       return node, None
     if isinstance(cls, abstract.InterpreterClass):
-      result = self.vm.program.NewVariable()
+      result = self.ctx.program.NewVariable()
       nodes = []
       # Deal with descriptors as a potential additional level of indirection.
       for v in attr.bindings:
@@ -377,17 +377,17 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
           if valself and valself.data != cls:
             posargs.append(valself.AssignToNewVariable())
           else:
-            posargs.append(self.vm.convert.none.to_variable(node))
+            posargs.append(self.ctx.convert.none.to_variable(node))
           posargs.append(cls.to_variable(node))
-          node2, get_result = self.vm.call_function(
-              node2, getter, function.Args(tuple(posargs)))
+          node2, get_result = function.call_function(
+              self.ctx, node2, getter, function.Args(tuple(posargs)))
           for getter in get_result.bindings:
             result.AddBinding(getter.data, [getter], node2)
         else:
           result.AddBinding(value, [v], node2)
         nodes.append(node2)
       if nodes:
-        return self.vm.join_cfg_nodes(nodes), result
+        return self.ctx.vm.join_cfg_nodes(nodes), result
     return node, attr
 
   def _computable(self, name):
@@ -399,11 +399,16 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         cls, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
     if (valself and not isinstance(valself.data, abstract.Module) and
         self._computable(name)):
-      attr_var = self._lookup_from_mro(node, cls, compute_function, valself,
-                                       skip={self.vm.convert.object_type})
+      attr_var = self._lookup_from_mro(
+          node,
+          cls,
+          compute_function,
+          valself,
+          skip={self.ctx.convert.object_type})
       if attr_var and attr_var.bindings:
-        name_var = self.vm.convert.constant_to_var(name, node=node)
-        return self.vm.call_function(node, attr_var, function.Args((name_var,)))
+        name_var = self.ctx.convert.constant_to_var(name, node=node)
+        return function.call_function(self.ctx, node, attr_var,
+                                      function.Args((name_var,)))
     return node, None
 
   def _lookup_from_mro(self, node, cls, name, valself, skip):
@@ -411,8 +416,8 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if isinstance(cls, (abstract.Unknown, abstract.Unsolvable)):
       # We don't know the object's MRO, so it's possible that one of its
       # bases has the attribute.
-      return self.vm.new_unsolvable(node)
-    ret = self.vm.program.NewVariable()
+      return self.ctx.new_unsolvable(node)
+    ret = self.ctx.program.NewVariable()
     add_origins = [valself] if valself else []
     for base in cls.mro:
       # Potentially skip part of MRO, for super()
@@ -511,7 +516,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
     if len(bindings) == len(var.bindings) and not any(
         isinstance(b.data, abstract.TypeParameterInstance) for b in bindings):
       return var
-    ret = self.vm.program.NewVariable()
+    ret = self.ctx.program.NewVariable()
     for binding in bindings:
       val = binding.data
       if isinstance(val, abstract.TypeParameterInstance):
@@ -527,7 +532,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
         elif val.param.constraints or val.param.bound:
           ret.PasteVariable(val.param.instantiate(node))
         else:
-          ret.AddBinding(self.vm.convert.empty, [], node)
+          ret.AddBinding(self.ctx.convert.empty, [], node)
       else:
         ret.AddBinding(val, {binding}, node)
     if ret.bindings:
@@ -571,7 +576,7 @@ class AbstractAttributeHandler(utils.VirtualMachineWeakrefMixin):
       # The previous value needs to be loaded at the root node so that
       # (1) it is overwritten by the current value and (2) it is still
       # visible on branches where the current value is not
-      self._maybe_load_as_instance_attribute(self.vm.root_node, obj, name)
+      self._maybe_load_as_instance_attribute(self.ctx.root_node, obj, name)
 
     variable = obj.members.get(name)
     if variable:

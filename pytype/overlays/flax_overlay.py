@@ -23,26 +23,26 @@ from pytype.pytd import pytd
 class DataclassOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.struct' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "dataclass": Dataclass.make,
     }
-    ast = vm.loader.import_name("flax.struct")
-    super().__init__(vm, "flax.struct", member_map, ast)
+    ast = ctx.loader.import_name("flax.struct")
+    super().__init__(ctx, "flax.struct", member_map, ast)
 
 
 class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, vm):
-    return super().make(vm, "flax.struct")
+  def make(cls, ctx):
+    return super().make(ctx, "flax.struct")
 
   def decorate(self, node, cls):
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
       return
-    cls.members["replace"] = classgen.make_replace_method(self.vm, node, cls)
+    cls.members["replace"] = classgen.make_replace_method(self.ctx, node, cls)
 
 
 # NOTE: flax.linen.module.Module is reexported as flax.linen.Module in
@@ -55,23 +55,23 @@ class Dataclass(dataclass_overlay.Dataclass):
 class LinenOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.linen' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "Module": Module,
     }
-    ast = vm.loader.import_name("flax.linen")
-    super().__init__(vm, "flax.linen", member_map, ast)
+    ast = ctx.loader.import_name("flax.linen")
+    super().__init__(ctx, "flax.linen", member_map, ast)
 
 
 class LinenModuleOverlay(overlay.Overlay):
   """A custom overlay for the 'flax.linen.module' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "Module": Module,
     }
-    ast = vm.loader.import_name("flax.linen.module")
-    super().__init__(vm, "flax.linen.module", member_map, ast)
+    ast = ctx.loader.import_name("flax.linen.module")
+    super().__init__(ctx, "flax.linen.module", member_map, ast)
 
 
 class ModuleDataclass(dataclass_overlay.Dataclass):
@@ -79,23 +79,26 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
 
   def _add_implicit_field(self, node, cls_locals, key, typ):
     if key in cls_locals:
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, None, name=key,
+      self.ctx.errorlog.invalid_annotation(
+          self.ctx.vm.frames,
+          None,
+          name=key,
           details=f"flax.linen.Module defines field '{key}' implicitly")
     default = typ.to_variable(node)
-    cls_locals[key] = abstract_utils.Local(node, None, typ, default, self.vm)
+    cls_locals[key] = abstract_utils.Local(node, None, typ, default, self.ctx)
 
   def get_class_locals(self, node, cls):
     cls_locals = super().get_class_locals(node, cls)
-    dataclass_ast = self.vm.loader.import_name("dataclasses")
-    initvar = self.vm.convert.name_to_value(
+    dataclass_ast = self.ctx.loader.import_name("dataclasses")
+    initvar = self.ctx.convert.name_to_value(
         "dataclasses.InitVar", ast=dataclass_ast)
     def make_initvar(t):
-      return abstract.ParameterizedClass(
-          initvar, {abstract_utils.T: t}, self.vm)
-    name_type = make_initvar(self.vm.convert.str_type)
+      return abstract.ParameterizedClass(initvar, {abstract_utils.T: t},
+                                         self.ctx)
+
+    name_type = make_initvar(self.ctx.convert.str_type)
     # TODO(mdemello): Fill in the parent type properly
-    parent_type = make_initvar(self.vm.convert.unsolvable)
+    parent_type = make_initvar(self.ctx.convert.unsolvable)
     self._add_implicit_field(node, cls_locals, "name", name_type)
     self._add_implicit_field(node, cls_locals, "parent", parent_type)
     return cls_locals
@@ -104,7 +107,7 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
       return
-    cls.members["replace"] = classgen.make_replace_method(self.vm, node, cls)
+    cls.members["replace"] = classgen.make_replace_method(self.ctx, node, cls)
 
 
 class Module(abstract.PyTDClass):
@@ -112,21 +115,21 @@ class Module(abstract.PyTDClass):
 
   IMPLICIT_FIELDS = ("name", "parent")
 
-  def __init__(self, vm, name="Module", module="flax.linen.module"):
-    ast = vm.loader.import_name(module)
+  def __init__(self, ctx, name="Module", module="flax.linen.module"):
+    ast = ctx.loader.import_name(module)
     pytd_cls = ast.Lookup(f"{module}.{name}")
     # flax.linen.Module loads as a LateType, we need to convert it and then get
     # the pytd.Class back out to use in our own constructor.
     if isinstance(pytd_cls, pytd.Constant):
-      pytd_cls = vm.convert.constant_to_value(pytd_cls).pytd_cls
-    super().__init__(name, pytd_cls, vm)
+      pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
+    super().__init__(name, pytd_cls, ctx)
 
   def init_subclass(self, node, cls):
     # Subclasses of Module call self.setup() when creating instances.
     cls.additional_init_methods.append("setup")
-    dc = ModuleDataclass.make(self.vm)
+    dc = ModuleDataclass.make(self.ctx)
     cls_var = cls.to_variable(node)
-    args = function.Args(posargs=(cls_var,), namedargs=abstract.Dict(self.vm))
+    args = function.Args(posargs=(cls_var,), namedargs=abstract.Dict(self.ctx))
     node, _ = dc.call(node, None, args)
     return node
 

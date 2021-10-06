@@ -2,6 +2,7 @@
 
 import enum
 import logging
+from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
 from pytype import abstract
 from pytype import abstract_utils
@@ -28,39 +29,71 @@ class TypeSource(enum.Enum):
 class AttrOverlay(overlay.Overlay):
   """A custom overlay for the 'attr' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "attrs": Attrs.make,
         "attrib": Attrib.make,
         "s": Attrs.make,
         "ib": Attrib.make,
         "Factory": Factory.make,
+
+        # Attr's next-gen APIs
+        # See https://www.attrs.org/en/stable/api.html#next-gen
+
+        # They accept (almost) all the same arguments as the previous APIs.
+        # Strictly speaking these only exist in Python 3.6 and up, but
+        # Python 3.6 is the minimum version pytype are supports now, so not
+        # bothering to guard these definitions.
+        "define": AttrsNextGenDefine.make,
+        # These (may) have different default arguments than 'define' for the
+        # "frozen" arguments, but the overlay doesn't look at that yet.
+        "mutable": AttrsNextGenDefine.make,
+        "frozen": AttrsNextGenDefine.make,
+        "field": Attrib.make,
     }
-    ast = vm.loader.import_name("attr")
-    super().__init__(vm, "attr", member_map, ast)
+
+    ast = ctx.loader.import_name("attr")
+    super().__init__(ctx, "attr", member_map, ast)
+
+
+class _NoChange():
+  pass
+
+# A unique sentinal value to signal not to write anything, not even the
+# original value.
+_NO_CHANGE = _NoChange()
 
 
 class Attrs(classgen.Decorator):
   """Implements the @attr.s decorator."""
 
   @classmethod
-  def make(cls, vm):
-    return super().make("s", vm, "attr")
+  def make(cls, ctx):
+    return super().make("s", ctx, "attr")
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs
     # for __init__.
     return attr.name.lstrip("_")
 
+  def _handle_auto_attribs(
+      self, auto_attribs: Optional[bool], unused_local_ops,
+      unused_cls_name: str) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+    # Why _NO_CHANGE instead of passing auto_attribs?
+    # Because result is going into potentially an OrderedDict, where
+    # writing even the same value might have a side effect (changing ordering).
+    return _NO_CHANGE, _ordering_for_auto_attrib(auto_attribs)
+
   def decorate(self, node, cls):
     """Processes the attrib members of a class."""
     # Collect classvars to convert them to attrs.
-    if self.args[cls]["auto_attribs"]:
-      ordering = classgen.Ordering.FIRST_ANNOTATE
-    else:
-      ordering = classgen.Ordering.LAST_ASSIGN
+    new_auto_attribs, ordering = self._handle_auto_attribs(
+        self.args[cls]["auto_attribs"], self.ctx.vm.local_ops.get(cls.name, ()),
+        cls.name)
+    if new_auto_attribs is not _NO_CHANGE:
+      self.args[cls]["auto_attribs"] = new_auto_attribs
     ordered_locals = classgen.get_class_locals(
-        cls.name, allow_methods=False, ordering=ordering, vm=self.vm)
+        cls.name, allow_methods=False, ordering=ordering, ctx=self.ctx)
     own_attrs = []
     for name, local in ordered_locals.items():
       typ, orig = local.get_type(node, name), local.orig
@@ -73,14 +106,19 @@ class Attrs(classgen.Decorator):
           if attrib.type_source == TypeSource.TYPE:
             # We cannot have both a type annotation and a type argument.
             msg = "attr.ib cannot have both a 'type' arg and a type annotation."
-            self.vm.errorlog.invalid_annotation(
-                self.vm.frames, typ, details=msg)
-            attr.typ = self.vm.convert.unsolvable
+            self.ctx.errorlog.invalid_annotation(
+                self.ctx.vm.frames, typ, details=msg)
+            attr.typ = self.ctx.convert.unsolvable
           elif attrib.type_source == TypeSource.CONVERTER:
             msg = "attr.ib type has been assigned by the converter."
-            self.vm.check_annotation_type_mismatch(
-                node, name, typ, attrib.typ.instantiate(node), local.stack,
-                allow_none=True, details=msg)
+            self.ctx.vm.check_annotation_type_mismatch(
+                node,
+                name,
+                typ,
+                attrib.typ.instantiate(node),
+                local.stack,
+                allow_none=True,
+                details=msg)
             attr.typ = typ
           else:
             # cls.members[name] has already been set via a type annotation
@@ -97,9 +135,9 @@ class Attrs(classgen.Decorator):
               isinstance(cls, abstract.InterpreterClass)):
             # Add the attrib to the class's __annotations__ dict.
             annotations_dict = classgen.get_or_create_annotations_dict(
-                cls.members, self.vm)
+                cls.members, self.ctx)
             annotations_dict.annotated_locals[name] = abstract_utils.Local(
-                node, None, attrib.typ, orig, self.vm)
+                node, None, attrib.typ, orig, self.ctx)
         # TODO(mdemello): This will raise a confusing 'annotation-type-mismatch'
         # error even if the type has been set via the type or converter arg
         # rather than a type annotation. We need a more general 'type-mismatch'
@@ -108,13 +146,18 @@ class Attrs(classgen.Decorator):
         msg = ("Note: The 'assignment' here is the 'default' or 'factory' arg,"
                " which conflicts with the field type (set via annotation or a"
                " 'type' or 'converter' arg).")
-        self.vm.check_annotation_type_mismatch(
-            node, attr.name, attr.typ, attr.default, local.stack,
-            allow_none=True, details=msg)
+        self.ctx.vm.check_annotation_type_mismatch(
+            node,
+            attr.name,
+            attr.typ,
+            attr.default,
+            local.stack,
+            allow_none=True,
+            details=msg)
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
         if not match_classvar(typ):
-          self.vm.check_annotation_type_mismatch(
+          self.ctx.vm.check_annotation_type_mismatch(
               node, name, typ, orig, local.stack, allow_none=True)
           attr = Attribute(
               name=name, typ=typ, init=True, kw_only=False, default=orig)
@@ -125,10 +168,15 @@ class Attrs(classgen.Decorator):
     cls.record_attr_ordering(own_attrs)
     attrs = cls.compute_attr_metadata(own_attrs, "attr.s")
 
-    # Add an __init__ method
-    if self.args[cls]["init"]:
-      init_method = self.make_init(node, cls, attrs)
-      cls.members["__init__"] = init_method
+    # Add an __init__.
+    # If the "init" parameter of decorator is False, instead an
+    # __attrs_init__ function is generated, which is what would have been
+    # generated for __init__ if the init parameter was True.
+    # This logic was added in attrs version 21.1.0
+    init_method_name = (
+        "__init__" if self.args[cls]["init"] else "__attrs_init__")
+    init_method = self.make_init(node, cls, attrs, init_method_name)
+    cls.members[init_method_name] = init_method
 
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("attr.s")
@@ -136,11 +184,53 @@ class Attrs(classgen.Decorator):
       cls.update_method_type_params()
 
 
+class AttrsNextGenDefine(Attrs):
+  """Implements the @attr.define decorator.
+
+  See https://www.attrs.org/en/stable/api.html#next-generation-apis
+  """
+
+  # Override the default arguments.
+  _DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
+      # Entries from Decorator._DEFAULT_ARGS
+      "init": True,
+      "kw_only": False,
+      # Deviations from @attr.s
+      "auto_attribs": None,
+      # The overlay doesn't pay attention to these yet, so declaring these
+      # deviations doesn't do much. Here in case in the future the overlay does.
+      "slots": True,
+      "weakref_slots": True,
+      "auto_exc": True,
+      "auto_detect": True
+  }
+
+  @classmethod
+  def make(cls, ctx):
+    # Bypass Attrs's make; go straight to its superclass.
+    return super(Attrs, cls).make("define", ctx, "attr")  # pylint: disable=bad-super-call
+
+  def _handle_auto_attribs(self, auto_attribs, local_ops, cls_name):
+    if auto_attribs is not None:
+      return super()._handle_auto_attribs(auto_attribs, local_ops, cls_name)
+    is_annotated = {}
+    for op in local_ops:
+      local = self.ctx.vm.annotated_locals[cls_name][op.name]
+      if not classgen.is_relevant_class_local(local, op.name, False):
+        continue
+      if op.name not in is_annotated:
+        is_annotated[op.name] = op.is_annotate()
+      elif op.is_annotate():
+        is_annotated[op.name] = True
+    all_annotated = all(is_annotated.values())
+    return all_annotated, _ordering_for_auto_attrib(all_annotated)
+
+
 class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
   """Return value of an attr.ib() call."""
 
-  def __init__(self, vm, typ, type_source, init, init_type, kw_only, default):
-    super().__init__("attrib", vm)
+  def __init__(self, ctx, typ, type_source, init, init_type, kw_only, default):
+    super().__init__("attrib", ctx)
     mixin.HasSlots.init_mixin(self)
     self.typ = typ
     self.type_source = type_source
@@ -149,7 +239,7 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     self.kw_only = kw_only
     self.default = default
     # TODO(rechen): attr.ib() returns an instance of attr._make._CountingAttr.
-    self.cls = vm.convert.unsolvable
+    self.cls = ctx.convert.unsolvable
     self.set_slot("default", self.default_slot)
     self.set_slot("validator", self.validator_slot)
 
@@ -172,13 +262,13 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     # default method, then infer all the method-based defaults after the class
     # is fully constructed. The workaround is simply to use type annotations,
     # which users should ideally be doing anyway.
-    self_var = self.vm.new_unsolvable(node)
+    self_var = self.ctx.new_unsolvable(node)
     fn_args = function.Args(posargs=(self_var,))
     node, default_var = fn.call(node, default.bindings[0], fn_args)
     self.default = default_var
     # If we don't have a type, set the type from the default type
     if not self.type_source:
-      self.typ = get_type_from_default(default_var, self.vm)
+      self.typ = get_type_from_default(default_var, self.ctx)
       self.type_source = TypeSource.DEFAULT
     # Return the original decorated method so we don't lose it.
     return node, default
@@ -197,27 +287,27 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     }
 
   @classmethod
-  def from_metadata(cls, vm, node, typ, metadata):
+  def from_metadata(cls, ctx, node, typ, metadata):
     init = metadata["init"]
     kw_only = metadata["kw_only"]
     type_source = metadata["type_source"]
     if type_source:
       # Convert string back to enum
       type_source = TypeSource[type_source]
-    default = vm.new_unsolvable(node) if metadata["default"] else None
-    return cls(vm, typ, type_source, init, None, kw_only, default)
+    default = ctx.new_unsolvable(node) if metadata["default"] else None
+    return cls(ctx, typ, type_source, init, None, kw_only, default)
 
 
 class Attrib(classgen.FieldConstructor):
   """Implements attr.ib."""
 
   @classmethod
-  def make(cls, vm):
-    return super().make("ib", vm, "attr")
+  def make(cls, ctx):
+    return super().make("ib", ctx, "attr")
 
   def call(self, node, unused_func, args):
     """Returns a type corresponding to an attr."""
-    args = args.simplify(node, self.vm)
+    args = args.simplify(node, self.ctx)
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
@@ -228,38 +318,46 @@ class Attrib(classgen.FieldConstructor):
     if type_var:
       type_source = TypeSource.TYPE
       allowed_type_params = (
-          self.vm.frame.type_params |
-          self.vm.annotation_utils.get_callable_type_parameter_names(type_var))
-      typ = self.vm.annotation_utils.extract_annotation(
-          node, type_var, "attr.ib", self.vm.simple_stack(),
+          self.ctx.vm.frame.type_params
+          |
+          self.ctx.annotation_utils.get_callable_type_parameter_names(type_var))
+      typ = self.ctx.annotation_utils.extract_annotation(
+          node,
+          type_var,
+          "attr.ib",
+          self.ctx.vm.simple_stack(),
           allowed_type_params=allowed_type_params)
     elif default_var:
       type_source = TypeSource.DEFAULT
-      typ = get_type_from_default(default_var, self.vm)
+      typ = get_type_from_default(default_var, self.ctx)
     else:
       type_source = None
-      typ = self.vm.convert.unsolvable
+      typ = self.ctx.convert.unsolvable
 
     if conv_out:
       # If a converter’s first argument has a type annotation, that type will
       # appear in the signature for __init__. When setting the field type, treat
       # args as type > converter > default
-      init_type = conv_in or self.vm.convert.unsolvable
+      init_type = conv_in or self.ctx.convert.unsolvable
       if type_source == TypeSource.TYPE:
         msg = ("The type annotation and assignment are set by the "
                "'type' and 'converter' args respectively.")
-        self.vm.check_annotation_type_mismatch(
-            node, "attr.ib", typ, conv_out.instantiate(node),
-            self.vm.simple_stack(), allow_none=True, details=msg)
+        self.ctx.vm.check_annotation_type_mismatch(
+            node,
+            "attr.ib",
+            typ,
+            conv_out.instantiate(node),
+            self.ctx.vm.simple_stack(),
+            allow_none=True,
+            details=msg)
       else:
         type_source = TypeSource.CONVERTER
         typ = conv_out
     else:
       init_type = None
 
-    ret = AttribInstance(
-        self.vm, typ, type_source, init, init_type, kw_only, default_var
-    ).to_variable(node)
+    ret = AttribInstance(self.ctx, typ, type_source, init, init_type, kw_only,
+                         default_var).to_variable(node)
     return node, ret
 
   @property
@@ -275,14 +373,15 @@ class Attrib(classgen.FieldConstructor):
     sigs = function.get_signatures(converter)
     valid_sigs = list(filter(valid_arity, sigs))
     if not valid_sigs:
-      anyt = self.vm.convert.unsolvable
+      anyt = self.ctx.convert.unsolvable
       wanted_type = abstract.CallableClass(
-          self.vm.convert.name_to_value("typing.Callable"),
-          {0: anyt, abstract_utils.ARGS: anyt, abstract_utils.RET: anyt},
-          self.vm
-      )
+          self.ctx.convert.name_to_value("typing.Callable"), {
+              0: anyt,
+              abstract_utils.ARGS: anyt,
+              abstract_utils.RET: anyt
+          }, self.ctx)
       bad_param = function.BadParam("converter", wanted_type, None)
-      raise function.WrongArgTypes(self.sig, args, self.vm, bad_param)
+      raise function.WrongArgTypes(self.sig, args, self.ctx, bad_param)
     return valid_sigs[0]
 
   def _call_converter_function(self, node, converter_var, args):
@@ -293,13 +392,13 @@ class Attrib(classgen.FieldConstructor):
     if sig.param_names and sig.param_names[0] in sig.annotations:
       input_type = sig.annotations[sig.param_names[0]]
     else:
-      input_type = self.vm.convert.unsolvable
+      input_type = self.ctx.convert.unsolvable
     if sig.has_return_annotation:
       return_type = sig.annotations["return"]
     else:
       fn_args = function.Args(posargs=(input_type.instantiate(node),))
       node, ret_var = fn.call(node, binding, fn_args)
-      return_type = self.vm.convert.merge_classes(ret_var.data)
+      return_type = self.ctx.convert.merge_classes(ret_var.data)
     return input_type, return_type
 
   def _get_converter_types(self, node, args):
@@ -312,7 +411,7 @@ class Attrib(classgen.FieldConstructor):
       # init type to Any.
       # TODO(b/135553563): Check that converter.__init__ takes one argument and
       # get its type.
-      return self.vm.convert.unsolvable, converter
+      return self.ctx.convert.unsolvable, converter
     elif abstract_utils.is_callable(converter):
       return self._call_converter_function(node, converter_var, args)
     else:
@@ -321,12 +420,13 @@ class Attrib(classgen.FieldConstructor):
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "factory" in args.namedargs:
       # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
-      raise function.DuplicateKeyword(self.sig, args, self.vm, "default")
+      raise function.DuplicateKeyword(self.sig, args, self.ctx, "default")
     elif "default" in args.namedargs:
       default_var = args.namedargs["default"]
     elif "factory" in args.namedargs:
-      mod = self.vm.import_module("attr", "attr", 0)
-      node, attr = self.vm.attribute_handler.get_attribute(node, mod, "Factory")
+      mod = self.ctx.vm.import_module("attr", "attr", 0)
+      node, attr = self.ctx.attribute_handler.get_attribute(
+          node, mod, "Factory")
       # We know there is only one value because Factory is in the overlay.
       factory, = attr.data
       factory_args = function.Args(posargs=(args.namedargs["factory"],))
@@ -334,6 +434,11 @@ class Attrib(classgen.FieldConstructor):
     else:
       default_var = None
     return node, default_var
+
+
+def _ordering_for_auto_attrib(auto_attrib):
+  return (classgen.Ordering.FIRST_ANNOTATE if auto_attrib
+          else classgen.Ordering.LAST_ASSIGN)
 
 
 def is_attrib(var):
@@ -345,18 +450,18 @@ def match_classvar(typ):
   return abstract_utils.match_type_container(typ, "typing.ClassVar")
 
 
-def get_type_from_default(default_var, vm):
+def get_type_from_default(default_var, ctx):
   """Get the type of an attribute from its default value."""
-  if default_var.data == [vm.convert.none]:
+  if default_var.data == [ctx.convert.none]:
     # A default of None doesn't give us any information about the actual type.
-    return vm.convert.unsolvable
-  typ = vm.convert.merge_classes(default_var.data)
-  if typ == vm.convert.empty:
-    return vm.convert.unsolvable
+    return ctx.convert.unsolvable
+  typ = ctx.convert.merge_classes(default_var.data)
+  if typ == ctx.convert.empty:
+    return ctx.convert.unsolvable
   elif isinstance(typ, abstract.TupleClass) and not typ.tuple_length:
     # The type of an attribute whose default is an empty tuple should be
     # Tuple[Any, ...], not Tuple[()].
-    return vm.convert.tuple_type
+    return ctx.convert.tuple_type
   return typ
 
 
@@ -364,5 +469,5 @@ class Factory(abstract.PyTDFunction):
   """Implementation of attr.Factory."""
 
   @classmethod
-  def make(cls, vm):
-    return super().make("Factory", vm, "attr")
+  def make(cls, ctx):
+    return super().make("Factory", ctx, "attr")

@@ -766,6 +766,7 @@ class TestAttrs(test_base.BaseTest):
         x: Any
         y: int
         z: str
+        def __attrs_init__(self, x, y: int, z: str) -> None: ...
     """)
 
   def test_init_bad_constant(self):

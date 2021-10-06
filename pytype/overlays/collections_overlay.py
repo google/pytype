@@ -72,7 +72,7 @@ def namedtuple_ast(name, fields, defaults, python_version=None):
 class CollectionsOverlay(overlay.Overlay):
   """A custom overlay for the 'collections' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     """Initializes the CollectionsOverlay.
 
     This function loads the AST for the collections module, which is used to
@@ -80,35 +80,35 @@ class CollectionsOverlay(overlay.Overlay):
     the overlay. See get_attribute in attribute.py for how it's used.
 
     Args:
-      vm: An instance of vm.VirtualMachine.
+      ctx: An instance of context.Context.
     """
     # collections_overlay contains all the members that have special definitions
     member_map = collections_overlay.copy()
-    ast = vm.loader.import_name("collections")
-    super().__init__(vm, "collections", member_map, ast)
+    ast = ctx.loader.import_name("collections")
+    super().__init__(ctx, "collections", member_map, ast)
 
 
 class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
   @classmethod
-  def make(cls, name, vm, pyval=None):
+  def make(cls, name, ctx, pyval=None):
     # Loading the ast should be memoized after the import in CollectionsOverlay
-    collections_ast = vm.loader.import_name("collections")
+    collections_ast = ctx.loader.import_name("collections")
     # Subclasses of NamedTupleBuilder need a different pyval.
     if not pyval:
       pyval = collections_ast.Lookup("collections.namedtuple")
-    self = super().make(name, vm, "collections", pyval=pyval)
+    self = super().make(name, ctx, "collections", pyval=pyval)
     self.collections_ast = collections_ast
     return self
 
   def _get_builtin_classtype(self, name):
     fullname = "builtins.%s" % name
-    return pytd.ClassType(fullname, self.vm.loader.builtins.Lookup(fullname))
+    return pytd.ClassType(fullname, self.ctx.loader.builtins.Lookup(fullname))
 
   def _get_typing_classtype(self, name):
     fullname = "typing.%s" % name
-    return pytd.ClassType(fullname, self.vm.loader.typing.Lookup(fullname))
+    return pytd.ClassType(fullname, self.ctx.loader.typing.Lookup(fullname))
 
   def _get_known_types_mapping(self):
     # The mapping includes only the types needed to define a namedtuple.
@@ -266,26 +266,27 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     try:
       name_var, field_names, defaults, rename = self._getargs(node, args)
     except abstract_utils.ConversionError:
-      return node, self.vm.new_unsolvable(node)
+      return node, self.ctx.new_unsolvable(node)
 
     # We need the bare name for a few things, so pull that out now.
     # The same unicode issue can strike here, so again return Any.
     try:
       name = abstract_utils.get_atomic_python_constant(name_var)
     except abstract_utils.ConversionError:
-      return node, self.vm.new_unsolvable(node)
+      return node, self.ctx.new_unsolvable(node)
 
     # namedtuple does some checking and optionally renaming of field names,
     # so we do too.
     try:
       field_names = self._validate_and_rename_args(name, field_names, rename)
     except ValueError as e:
-      self.vm.errorlog.invalid_namedtuple_arg(self.vm.frames, utils.message(e))
-      return node, self.vm.new_unsolvable(node)
+      self.ctx.errorlog.invalid_namedtuple_arg(self.ctx.vm.frames,
+                                               utils.message(e))
+      return node, self.ctx.new_unsolvable(node)
 
     name = escape.pack_namedtuple(name, field_names)
-    ast = namedtuple_ast(name, field_names, defaults,
-                         python_version=self.vm.python_version)
+    ast = namedtuple_ast(
+        name, field_names, defaults, python_version=self.ctx.python_version)
     mapping = self._get_known_types_mapping()
 
     # A truly well-formed pyi for the namedtuple will have references to the new
@@ -304,8 +305,8 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
     # We can't build the PyTDClass directly, and instead must run it through
     # convert.constant_to_value first, for caching.
-    instance = self.vm.convert.constant_to_value(cls, {}, self.vm.root_node)
-    self.vm.trace_namedtuple(instance)
+    instance = self.ctx.convert.constant_to_value(cls, {}, self.ctx.root_node)
+    self.ctx.vm.trace_namedtuple(instance)
     return node, instance.to_variable(node)
 
 

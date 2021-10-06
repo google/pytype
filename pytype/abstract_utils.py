@@ -120,7 +120,7 @@ def get_atomic_value(variable, constant_type=None, default=_None()):
   if not variable.bindings:
     raise ConversionError("Cannot get atomic value from empty variable.")
   bindings = variable.bindings
-  name = bindings[0].data.vm.convert.constant_name(constant_type)
+  name = bindings[0].data.ctx.convert.constant_name(constant_type)
   raise ConversionError(
       "Cannot get atomic value %s from variable. %s %s"
       % (name, variable, [b.data for b in bindings]))
@@ -142,7 +142,7 @@ def get_atomic_python_constant(variable, constant_type=None):
       doesn't store a Python value, or if it has more than one possible value.
   """
   atomic = get_atomic_value(variable)
-  return atomic.vm.convert.value_to_constant(atomic, constant_type)
+  return atomic.ctx.convert.value_to_constant(atomic, constant_type)
 
 
 def get_views(variables, node):
@@ -238,7 +238,7 @@ def get_template(val):
       res.update(get_template(val.base_cls))
     elif val.isinstance_PyTDClass() or val.isinstance_InterpreterClass():
       for base in val.bases():
-        base = get_atomic_value(base, default=val.vm.convert.unsolvable)
+        base = get_atomic_value(base, default=val.ctx.convert.unsolvable)
         res.update(get_template(base))
     return res
   elif val.cls != val:
@@ -247,7 +247,7 @@ def get_template(val):
     return set()
 
 
-def get_mro_bases(bases, vm):
+def get_mro_bases(bases, ctx):
   """Get bases for MRO computation."""
   mro_bases = []
   has_user_generic = False
@@ -257,7 +257,7 @@ def get_mro_bases(bases, vm):
     # A base class is a Variable. If it has multiple options, we would
     # technically get different MROs. But since ambiguous base classes are rare
     # enough, we instead just pick one arbitrary option per base class.
-    base = get_atomic_value(base_var, default=vm.convert.unsolvable)
+    base = get_atomic_value(base_var, default=ctx.convert.unsolvable)
     mro_bases.append(base)
     # check if it contains user-defined generic types
     if (base.isinstance_ParameterizedClass() and
@@ -428,12 +428,16 @@ def compute_template(val):
     GenericTypeError: if the type annotation for generic type is incorrect
   """
   if val.isinstance_PyTDClass():
-    return [val.vm.convert.constant_to_value(itm.type_param)
-            for itm in val.pytd_cls.template]
+    return [
+        val.ctx.convert.constant_to_value(itm.type_param)
+        for itm in val.pytd_cls.template
+    ]
   elif not val.isinstance_InterpreterClass():
     return ()
-  bases = [get_atomic_value(base, default=val.vm.convert.unsolvable)
-           for base in val.bases()]
+  bases = [
+      get_atomic_value(base, default=val.ctx.convert.unsolvable)
+      for base in val.bases()
+  ]
   template = []
 
   # Compute the number of `typing.Generic` and collect the type parameters
@@ -537,7 +541,7 @@ def var_map(func, var):
   return (func(v) for v in var.data)
 
 
-def eval_expr(vm, node, f_globals, f_locals, expr):
+def eval_expr(ctx, node, f_globals, f_locals, expr):
   """Evaluate an expression with the given node and globals."""
   # This is used to resolve type comments and late annotations.
   #
@@ -560,16 +564,16 @@ def eval_expr(vm, node, f_globals, f_locals, expr):
   # when what we really want is to allow the caller to handle/log the error
   # themselves.  Thus we checkpoint the errorlog and then restore and raise
   # an exception if anything was logged.
-  with vm.errorlog.checkpoint() as record:
+  with ctx.errorlog.checkpoint() as record:
     try:
-      code = vm.compile_src(expr, mode="eval")
+      code = ctx.vm.compile_src(expr, mode="eval")
     except pyc.CompileError as e:
       # We keep only the error message, since the filename and line number are
       # for a temporary file.
-      vm.errorlog.python_compiler_error(None, 0, e.error)
-      ret = vm.new_unsolvable(node)
+      ctx.errorlog.python_compiler_error(None, 0, e.error)
+      ret = ctx.new_unsolvable(node)
     else:
-      _, _, _, ret = vm.run_bytecode(node, code, f_globals, f_locals)
+      _, _, _, ret = ctx.vm.run_bytecode(node, code, f_globals, f_locals)
   log.info("Finished evaluating expr: %r", expr)
   if record.errors:
     # Annotations are constants, so tracebacks aren't needed.
@@ -639,26 +643,21 @@ def get_annotations_dict(members):
 class Local:
   """A possibly annotated local variable."""
 
-  def __init__(
-      self,
-      node,
-      op: Optional[opcodes.Opcode],
-      typ: Optional[_BaseValue],
-      orig: Optional[cfg.Variable],
-      vm):
+  def __init__(self, node, op: Optional[opcodes.Opcode],
+               typ: Optional[_BaseValue], orig: Optional[cfg.Variable], ctx):
     self._ops = [op]
     if typ:
-      self.typ = vm.program.NewVariable([typ], [], node)
+      self.typ = ctx.program.NewVariable([typ], [], node)
     else:
       # Creating too many variables bloats the typegraph, hurting performance,
       # so we use None instead of an empty variable.
       self.typ = None
     self.orig = orig
-    self.vm = vm
+    self.ctx = ctx
 
   @property
   def stack(self):
-    return self.vm.simple_stack(self._ops[-1])
+    return self.ctx.vm.simple_stack(self._ops[-1])
 
   def update(self, node, op, typ, orig):
     """Update this variable's annotation and/or value."""
@@ -669,7 +668,7 @@ class Local:
       if self.typ:
         self.typ.AddBinding(typ, [], node)
       else:
-        self.typ = self.vm.program.NewVariable([typ], [], node)
+        self.typ = self.ctx.program.NewVariable([typ], [], node)
     if orig:
       self.orig = orig
 
@@ -679,8 +678,8 @@ class Local:
       return None
     values = self.typ.Data(node)
     if len(values) > 1:
-      self.vm.errorlog.ambiguous_annotation(self.stack, values, name)
-      return self.vm.convert.unsolvable
+      self.ctx.errorlog.ambiguous_annotation(self.stack, values, name)
+      return self.ctx.convert.unsolvable
     elif values:
       return values[0]
     else:
@@ -738,7 +737,7 @@ def merged_type_parameter(node, var, param):
   if is_var_splat(var):
     var = unwrap_splat(var)
   params = [v.get_instance_type_parameter(param) for v in var.data]
-  return var.data[0].vm.join_variables(node, params)
+  return var.data[0].ctx.vm.join_variables(node, params)
 
 
 def is_var_splat(var):
@@ -765,8 +764,8 @@ def is_callable(value: _BaseValue):
     return True
   if not value.cls.isinstance_Class():
     return False
-  _, attr = value.vm.attribute_handler.get_attribute(
-      value.vm.root_node, value.cls, "__call__")
+  _, attr = value.ctx.attribute_handler.get_attribute(value.ctx.root_node,
+                                                      value.cls, "__call__")
   return attr is not None
 
 
@@ -790,7 +789,7 @@ def get_type_parameter_substitutions(
   for p in type_params:
     if val.isinstance_Class():
       param_value = val.get_formal_type_parameter(p.name).instantiate(
-          val.vm.root_node)
+          val.ctx.root_node)
     else:
       param_value = val.get_instance_type_parameter(p.name)
     subst[p.full_name] = param_value
@@ -802,8 +801,8 @@ def build_generic_template(
 ) -> Tuple[Sequence[str], Sequence[_TypeParameter]]:
   """Build a typing.Generic template from a sequence of type parameters."""
   if not all(item.isinstance_TypeParameter() for item in type_params):
-    base_type.vm.errorlog.invalid_annotation(
-        base_type.vm.frames, base_type,
+    base_type.ctx.errorlog.invalid_annotation(
+        base_type.ctx.vm.frames, base_type,
         "Parameters to Generic[...] must all be type variables")
     type_params = [item for item in type_params
                    if item.isinstance_TypeParameter()]
@@ -811,8 +810,8 @@ def build_generic_template(
   template = [item.name for item in type_params]
 
   if len(set(template)) != len(template):
-    base_type.vm.errorlog.invalid_annotation(
-        base_type.vm.frames, base_type,
+    base_type.ctx.errorlog.invalid_annotation(
+        base_type.ctx.vm.frames, base_type,
         "Parameters to Generic[...] must all be unique")
 
   return template, type_params
@@ -875,11 +874,11 @@ def flatten(value, classes):
     return True
 
 
-def check_against_mro(vm, target, class_spec):
+def check_against_mro(ctx, target, class_spec):
   """Check if any of the classes are in the target's MRO.
 
   Args:
-    vm: The virtual machine.
+    ctx: The abstract context.
     target: A BaseValue whose MRO will be checked.
     class_spec: A Class or PythonConstant tuple of classes (i.e. the second
       argument to isinstance or issubclass).
@@ -893,7 +892,7 @@ def check_against_mro(vm, target, class_spec):
   ambiguous = flatten(class_spec, classes)
 
   for c in classes:
-    if vm.matcher(None).match_from_mro(target, c, allow_compat_builtins=False):
+    if ctx.matcher(None).match_from_mro(target, c, allow_compat_builtins=False):
       return True  # A definite match.
   # No matches, return result depends on whether flatten() was
   # ambiguous.

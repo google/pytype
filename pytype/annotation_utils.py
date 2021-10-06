@@ -12,7 +12,7 @@ from pytype import utils
 from pytype.overlays import typing_overlay
 
 
-class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
+class AnnotationUtils(utils.ContextWeakrefMixin):
   """Utility class for inline type annotations."""
 
   def sub_annotations(self, node, annotations, substs, instantiate_unbound):
@@ -42,7 +42,7 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
           vals = annot.instantiate(node).data
         else:
           vals = [annot]
-      return self.vm.convert.merge_classes(vals)
+      return self.ctx.convert.merge_classes(vals)
     elif isinstance(annot, mixin.NestedAnnotation):
       inner_types = [(key, self.sub_one_annotation(node, val, substs,
                                                    instantiate_unbound))
@@ -60,7 +60,7 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
   def remove_late_annotations(self, annot):
     """Replace unresolved late annotations with unsolvables."""
     if annot.is_late_annotation() and not annot.resolved:
-      return self.vm.convert.unsolvable
+      return self.ctx.convert.unsolvable
     elif isinstance(annot, mixin.NestedAnnotation):
       inner_types = [(key, self.remove_late_annotations(val))
                      for key, val in annot.get_inner_types()]
@@ -91,8 +91,8 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
       params = {}
       for name, param in annot.formal_type_parameters.items():
         params[name] = self.add_scope(param, types, module)
-      return abstract.TupleClass(
-          annot.base_cls, params, self.vm, annot.template)
+      return abstract.TupleClass(annot.base_cls, params, self.ctx,
+                                 annot.template)
     elif isinstance(annot, mixin.NestedAnnotation):
       inner_types = [(key, self.add_scope(typ, types, module))
                      for key, typ in annot.get_inner_types()]
@@ -157,7 +157,7 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
   def convert_function_type_annotation(self, name, typ):
     visible = typ.data
     if len(visible) > 1:
-      self.vm.errorlog.ambiguous_annotation(self.vm.frames, visible, name)
+      self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, visible, name)
       return None
     else:
       return visible[0]
@@ -183,8 +183,8 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
     for name, t in annotations_list:
       if t is None:
         continue
-      annot = self._process_one_annotation(
-          node, t, name, self.vm.simple_stack())
+      annot = self._process_one_annotation(node, t, name,
+                                           self.ctx.vm.simple_stack())
       if annot is not None:
         annotations[name] = annot
     return annotations
@@ -199,13 +199,13 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
     for name, t in raw_items:
       # Don't use the parameter name, since it's often something unhelpful
       # like `0`.
-      annot = self._process_one_annotation(
-          node, t, None, self.vm.simple_stack())
-      annotations[name] = annot or self.vm.convert.unsolvable
+      annot = self._process_one_annotation(node, t, None,
+                                           self.ctx.vm.simple_stack())
+      annotations[name] = annot or self.ctx.convert.unsolvable
     return annotations
 
   def init_annotation(self, node, name, annot, container=None, extra_key=None):
-    node, value = self.vm.init_class(
+    node, value = self.ctx.vm.init_class(
         node, annot, container=container, extra_key=extra_key)
     for d in value.data:
       d.from_annotation = name
@@ -213,7 +213,7 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
 
   def extract_and_init_annotation(self, node, name, var):
     """Extracts an annotation from var and instantiates it."""
-    frame = self.vm.frame
+    frame = self.ctx.vm.frame
     substs = frame.substs
     if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
       self_var = frame.f_locals.pyval.get("self")
@@ -229,7 +229,10 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
     allowed_type_params = set(
         itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
-        node, var, name, self.vm.simple_stack(),
+        node,
+        var,
+        name,
+        self.ctx.vm.simple_stack(),
         allowed_type_params=allowed_type_params)
     if typ.formal:
       resolved_type = self.sub_one_annotation(node, typ, substs,
@@ -241,19 +244,19 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
 
   def apply_annotation(self, node, op, name, value):
     """If there is an annotation for the op, return its value."""
-    assert op is self.vm.frame.current_opcode
-    if op.code.co_filename != self.vm.filename:
+    assert op is self.ctx.vm.frame.current_opcode
+    if op.code.co_filename != self.ctx.vm.filename:
       return None, value
     if not op.annotation:
       return None, value
     annot = op.annotation
-    frame = self.vm.frame
-    with self.vm.generate_late_annotations(self.vm.simple_stack()):
-      var, errorlog = abstract_utils.eval_expr(
-          self.vm, node, frame.f_globals, frame.f_locals, annot)
+    frame = self.ctx.vm.frame
+    with self.ctx.vm.generate_late_annotations(self.ctx.vm.simple_stack()):
+      var, errorlog = abstract_utils.eval_expr(self.ctx, node, frame.f_globals,
+                                               frame.f_locals, annot)
     if errorlog:
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, annot, details=errorlog.details)
+      self.ctx.errorlog.invalid_annotation(
+          self.ctx.vm.frames, annot, details=errorlog.details)
     return self.extract_and_init_annotation(node, name, var)
 
   def extract_annotation(
@@ -271,19 +274,19 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
     try:
       typ = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      self.vm.errorlog.ambiguous_annotation(self.vm.frames, None, name)
-      return self.vm.convert.unsolvable
+      self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, None, name)
+      return self.ctx.convert.unsolvable
     typ = self._process_one_annotation(node, typ, name, stack)
     if not typ:
-      return self.vm.convert.unsolvable
+      return self.ctx.convert.unsolvable
     if typ.formal and allowed_type_params is not None:
       illegal_params = [x.name for x in self.get_type_parameters(typ)
                         if x.name not in allowed_type_params]
       if illegal_params:
         details = "TypeVar(s) %s not in scope" % ", ".join(
             repr(p) for p in utils.unique_list(illegal_params))
-        if self.vm.frame.func:
-          method = self.vm.frame.func.data
+        if self.ctx.vm.frame.func:
+          method = self.ctx.vm.frame.func.data
           if isinstance(method, abstract.BoundFunction):
             desc = "class"
             frame_name = method.name.rsplit(".", 1)[0]
@@ -294,15 +297,15 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
         if "AnyStr" in illegal_params:
           str_type = "Union[str, bytes]"
           details += (f"\nNote: For all string types, use {str_type}.")
-        self.vm.errorlog.invalid_annotation(stack, typ, details, name)
-        return self.vm.convert.unsolvable
+        self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
+        return self.ctx.convert.unsolvable
     return typ
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""
     args, errorlog = self._eval_expr_as_tuple(node, annot, stack)
     if errorlog:
-      self.vm.errorlog.invalid_function_type_comment(
+      self.ctx.errorlog.invalid_function_type_comment(
           stack, annot, details=errorlog.details)
     code = func.code
     expected = code.get_arg_count()
@@ -319,8 +322,9 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
         names = names[1:]
 
     if len(args) != expected:
-      self.vm.errorlog.invalid_function_type_comment(
-          stack, annot,
+      self.ctx.errorlog.invalid_function_type_comment(
+          stack,
+          annot,
           details="Expected %d args, %d given" % (expected, len(args)))
       return
     for name, arg in zip(names, args):
@@ -339,26 +343,25 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
       annotation = annotation.base_cls
 
     if isinstance(annotation, typing_overlay.Union):
-      self.vm.errorlog.invalid_annotation(
-          stack, annotation, "Needs options", name)
+      self.ctx.errorlog.invalid_annotation(stack, annotation, "Needs options",
+                                           name)
       return None
     elif (name is not None and name != "return"
           and isinstance(annotation, typing_overlay.NoReturn)):
-      self.vm.errorlog.invalid_annotation(
-          stack, annotation, "NoReturn is not allowed", name)
+      self.ctx.errorlog.invalid_annotation(stack, annotation,
+                                           "NoReturn is not allowed", name)
       return None
-    elif isinstance(annotation, abstract.Instance) and (
-        annotation.cls == self.vm.convert.str_type or
-        annotation.cls == self.vm.convert.unicode_type
-    ):
+    elif (isinstance(annotation, abstract.Instance) and
+          annotation.cls == self.ctx.convert.str_type):
       # String annotations : Late evaluation
       if isinstance(annotation, mixin.PythonConstant):
         expr = annotation.pyval
         if not expr:
-          self.vm.errorlog.invalid_annotation(
-              stack, annotation, "Cannot be an empty string", name)
+          self.ctx.errorlog.invalid_annotation(stack, annotation,
+                                               "Cannot be an empty string",
+                                               name)
           return None
-        frame = self.vm.frame
+        frame = self.ctx.vm.frame
         # Immediately try to evaluate the reference, generating LateAnnotation
         # objects as needed. We don't store the entire string as a
         # LateAnnotation because:
@@ -367,18 +370,19 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
         # - Given an expression like "Union[str, NotYetDefined]", we want to
         #   evaluate the union immediately so we don't end up with a complex
         #   LateAnnotation, which can lead to bugs when instantiated.
-        with self.vm.generate_late_annotations(stack):
-          v, errorlog = abstract_utils.eval_expr(
-              self.vm, node, frame.f_globals, frame.f_locals, expr)
+        with self.ctx.vm.generate_late_annotations(stack):
+          v, errorlog = abstract_utils.eval_expr(self.ctx, node,
+                                                 frame.f_globals,
+                                                 frame.f_locals, expr)
         if errorlog:
-          self.vm.errorlog.copy_from(errorlog.errors, stack)
+          self.ctx.errorlog.copy_from(errorlog.errors, stack)
         if len(v.data) == 1:
           return self._process_one_annotation(node, v.data[0], name, stack)
-      self.vm.errorlog.ambiguous_annotation(stack, [annotation], name)
+      self.ctx.errorlog.ambiguous_annotation(stack, [annotation], name)
       return None
-    elif annotation.cls == self.vm.convert.none_type:
+    elif annotation.cls == self.ctx.convert.none_type:
       # PEP 484 allows to write "NoneType" as "None"
-      return self.vm.convert.none_type
+      return self.ctx.convert.none_type
     elif isinstance(annotation, mixin.NestedAnnotation):
       if annotation.processed:
         return annotation
@@ -388,7 +392,7 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
         if processed is None:
           return None
         elif isinstance(processed, typing_overlay.NoReturn):
-          self.vm.errorlog.invalid_annotation(
+          self.ctx.errorlog.invalid_annotation(
               stack, typ, "NoReturn is not allowed as inner type", name)
           return None
         annotation.update_inner_type(key, processed)
@@ -399,7 +403,8 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
                                  typing_overlay.NoReturn)):
       return annotation
     else:
-      self.vm.errorlog.invalid_annotation(stack, annotation, "Not a type", name)
+      self.ctx.errorlog.invalid_annotation(stack, annotation, "Not a type",
+                                           name)
       return None
 
   def _eval_expr_as_tuple(self, node, expr, stack):
@@ -407,10 +412,11 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
     if not expr:
       return (), None
 
-    f_globals, f_locals = self.vm.frame.f_globals, self.vm.frame.f_locals
-    with self.vm.generate_late_annotations(stack):
-      result_var, errorlog = abstract_utils.eval_expr(
-          self.vm, node, f_globals, f_locals, expr)
+    f_globals = self.ctx.vm.frame.f_globals
+    f_locals = self.ctx.vm.frame.f_locals
+    with self.ctx.vm.generate_late_annotations(stack):
+      result_var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
+                                                      f_locals, expr)
     result = abstract_utils.get_atomic_value(result_var)
     # If the result is a tuple, expand it.
     if (isinstance(result, mixin.PythonConstant) and
@@ -427,5 +433,5 @@ class AnnotationUtils(utils.VirtualMachineWeakrefMixin):
       if isinstance(value, abstract.ParameterizedClass):
         value = value.base_cls
       else:
-        value = self.vm.convert.unsolvable
+        value = self.ctx.convert.unsolvable
     return value

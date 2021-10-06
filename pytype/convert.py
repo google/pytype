@@ -11,7 +11,6 @@ from pytype import datatypes
 from pytype import function
 from pytype import overlay_dict
 from pytype import mixin
-from pytype import output
 from pytype import special_builtins
 from pytype import utils
 from pytype.overlays import attr_overlay
@@ -24,12 +23,9 @@ from pytype.pytd import pytd_utils
 from pytype.pytd.parse import parser_constants
 from pytype.typegraph import cfg
 
-
 log = logging.getLogger(__name__)
 
-
-MAX_IMPORT_DEPTH = 12
-
+_MAX_IMPORT_DEPTH = 12
 
 # types not exposed as python classes
 NoneType = type(None)
@@ -52,7 +48,7 @@ class AsyncGeneratorType:
   pass
 
 
-class Converter(utils.VirtualMachineWeakrefMixin):
+class Converter(utils.ContextWeakrefMixin):
   """Functions for creating the classes in abstract.py."""
 
   unsolvable: abstract.Unsolvable
@@ -64,15 +60,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       super().__init__(type_param_name)
       self.type_param_name = type_param_name
 
-  def __init__(self, vm):
-    super().__init__(vm)
-    self.minimally_initialized = False
-    self.vm.convert = self  # to make constant_to_value calls below work
-    self.pytd_convert = output.Converter(vm)
-
-    # If set, allow construction of recursive values, setting the
-    # self-referential field to Any
-    self.recursion_allowed = False
+  def __init__(self, ctx):
+    super().__init__(ctx)
+    ctx.convert = self  # to make constant_to_value calls below work
 
     self._convert_cache = {}
     self._resolved_late_types = {}  # performance cache
@@ -83,12 +73,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     # object_type is needed to initialize the primitive class values.
     self.object_type = self.constant_to_value(object)
 
-    self.unsolvable = abstract.Unsolvable(self.vm)
+    self.unsolvable = abstract.Unsolvable(self.ctx)
     self.type_type = self.constant_to_value(type)
-    self.minimally_initialized = True
+    self.ctx.converter_minimally_initialized = True
 
-    self.empty = abstract.Empty(self.vm)
-    self.no_return = typing_overlay.NoReturn(self.vm)
+    self.empty = abstract.Empty(self.ctx)
+    self.no_return = typing_overlay.NoReturn(self.ctx)
 
     # Now fill primitive_classes with the real values using constant_to_value.
     primitive_classes = [
@@ -100,15 +90,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     }
     self.primitive_class_names = [
         self._type_to_name(x) for x in self.primitive_classes]
-    self.none = abstract.ConcreteValue(None,
-                                       self.primitive_classes[NoneType],
-                                       self.vm)
+    self.none = abstract.ConcreteValue(None, self.primitive_classes[NoneType],
+                                       self.ctx)
     self.true = abstract.ConcreteValue(True, self.primitive_classes[bool],
-                                       self.vm)
+                                       self.ctx)
     self.false = abstract.ConcreteValue(False, self.primitive_classes[bool],
-                                        self.vm)
-    self.ellipsis = abstract.ConcreteValue(
-        Ellipsis, self.primitive_classes[EllipsisType], self.vm)
+                                        self.ctx)
+    self.ellipsis = abstract.ConcreteValue(Ellipsis,
+                                           self.primitive_classes[EllipsisType],
+                                           self.ctx)
 
     self.primitive_class_instances = {}
     for name, cls in self.primitive_classes.items():
@@ -120,7 +110,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       elif name == EllipsisType:
         instance = self.ellipsis
       else:
-        instance = abstract.Instance(cls, self.vm)
+        instance = abstract.Instance(cls, self.ctx)
       self.primitive_class_instances[name] = instance
       self._convert_cache[(abstract.Instance, cls.pytd_cls)] = instance
 
@@ -129,8 +119,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.str_type = self.primitive_classes[str]
     self.int_type = self.primitive_classes[int]
     self.bool_type = self.primitive_classes[bool]
-    # TODO(b/195453869): get rid of unicode_type
-    self.unicode_type = self.str_type
     self.bytes_type = self.primitive_classes[bytes]
 
     self.list_type = self.constant_to_value(list)
@@ -144,7 +132,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     self.iterator_type = self.constant_to_value(IteratorType)
     self.coroutine_type = self.constant_to_value(CoroutineType)
     self.awaitable_type = self.constant_to_value(AwaitableType)
-    if self.vm.python_version >= (3, 6):
+    if self.ctx.python_version >= (3, 6):
       self.async_generator_type = self.constant_to_value(
           AsyncGeneratorType)
     self.bool_values = {
@@ -152,7 +140,6 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-    self.next_attr = "__next__"
 
   def constant_name(self, constant_type):
     if constant_type is None:
@@ -187,16 +174,16 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def name_to_value(self, name, subst=None, ast=None):
     if ast is None:
-      pytd_cls = self.vm.lookup_builtin(name)
+      pytd_cls = self.ctx.vm.lookup_builtin(name)
     else:
       pytd_cls = ast.Lookup(name)
     subst = subst or datatypes.AliasingDict()
-    return self.constant_to_value(pytd_cls, subst, self.vm.root_node)
+    return self.constant_to_value(pytd_cls, subst, self.ctx.root_node)
 
   def tuple_to_value(self, content):
     """Create a VM tuple from the given sequence."""
     content = tuple(content)  # content might be a generator
-    value = abstract.Tuple(content, self.vm)
+    value = abstract.Tuple(content, self.ctx)
     return value
 
   def build_none(self, node):
@@ -228,7 +215,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def build_content(self, elements):
     if len(elements) == 1:
       return next(iter(elements))
-    var = self.vm.program.NewVariable()
+    var = self.ctx.program.NewVariable()
     for v in elements:
       var.PasteVariable(v)
     return var
@@ -246,17 +233,17 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       return self.primitive_class_instances[slice].to_variable(node)
     return abstract.ConcreteValue(
         slice(start, stop, step), self.primitive_classes[slice],
-        self.vm).to_variable(node)
+        self.ctx).to_variable(node)
 
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
     # TODO(rechen): set T to empty if there is nothing in content
     content = [var.AssignToNewVariable(node) for var in content]
-    return abstract.List(content, self.vm).to_variable(node)
+    return abstract.List(content, self.ctx).to_variable(node)
 
   def build_collection_of_type(self, node, typ, var):
     """Create a collection Typ[T] with T derived from the given variable."""
-    ret = abstract.Instance(typ, self.vm)
+    ret = abstract.Instance(typ, self.ctx)
     ret.merge_instance_type_parameter(node, abstract_utils.T, var)
     return ret.to_variable(node)
 
@@ -267,18 +254,18 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def build_set(self, node, content):
     """Create a VM set from the given sequence."""
     content = list(content)  # content might be a generator
-    value = abstract.Instance(self.set_type, self.vm)
+    value = abstract.Instance(self.set_type, self.ctx)
     value.merge_instance_type_parameter(
         node, abstract_utils.T, self.build_content(content))
     return value.to_variable(node)
 
   def build_map(self, node):
     """Create an empty VM dict."""
-    return abstract.Dict(self.vm).to_variable(node)
+    return abstract.Dict(self.ctx).to_variable(node)
 
   def build_map_class(self, node, type_params):
     assert set(type_params) == {abstract_utils.K, abstract_utils.V}
-    return abstract.ParameterizedClass(self.dict_type, type_params, self.vm)
+    return abstract.ParameterizedClass(self.dict_type, type_params, self.ctx)
 
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
@@ -305,37 +292,37 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     return data
 
   def _create_new_unknown_value(self, action):
-    if not action or not self.vm.frame:
-      return abstract.Unknown(self.vm)
+    if not action or not self.ctx.vm.frame:
+      return abstract.Unknown(self.ctx)
     # We allow only one Unknown at each point in the program, regardless of
     # what the call stack is.
-    key = ("unknown", self.vm.frame.current_opcode, action)
+    key = ("unknown", self.ctx.vm.frame.current_opcode, action)
     if key not in self._convert_cache:
-      self._convert_cache[key] = abstract.Unknown(self.vm)
+      self._convert_cache[key] = abstract.Unknown(self.ctx)
     return self._convert_cache[key]
 
   def create_new_unknown(self, node, source=None, action=None, force=False):
     """Create a new variable containing unknown."""
-    if not force and not self.vm.generate_unknowns:
+    if not force and not self.ctx.generate_unknowns:
       # unsolvable instances are cheaper than unknown, so use those for --quick.
       return self.unsolvable.to_variable(node)
     unknown = self._create_new_unknown_value(action)
-    v = self.vm.program.NewVariable()
+    v = self.ctx.program.NewVariable()
     val = v.AddBinding(
         unknown, source_set=[source] if source else [], where=node)
     unknown.owner = val
-    self.vm.trace_unknown(unknown.class_name, val)
+    self.ctx.vm.trace_unknown(unknown.class_name, val)
     return v
 
   def create_new_varargs_value(self, arg_type):
     """Create a varargs argument given its element type."""
     params = {abstract_utils.T: arg_type}
-    return abstract.ParameterizedClass(self.tuple_type, params, self.vm)
+    return abstract.ParameterizedClass(self.tuple_type, params, self.ctx)
 
   def create_new_kwargs_value(self, arg_type):
     """Create a kwargs argument given its element type."""
     params = {abstract_utils.K: self.str_type, abstract_utils.V: arg_type}
-    return abstract.ParameterizedClass(self.dict_type, params, self.vm)
+    return abstract.ParameterizedClass(self.dict_type, params, self.ctx)
 
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""
@@ -352,8 +339,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
   def _copy_type_parameters(self, old_container, new_container_name):
     new_container = self.name_to_value(new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):
-      return abstract.ParameterizedClass(
-          new_container, old_container.formal_type_parameters, self.vm)
+      return abstract.ParameterizedClass(new_container,
+                                         old_container.formal_type_parameters,
+                                         self.ctx)
     else:
       assert isinstance(old_container, class_mixin.Class)
       return new_container
@@ -366,6 +354,15 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       assert container.full_name == "builtins.dict", container.full_name
       return self._copy_type_parameters(container, "typing.Mapping")
 
+  def merge_values(self, values):
+    """Merge a collection of values into a single one."""
+    if not values:
+      return self.empty
+    elif len(values) == 1:
+      return next(iter(values))
+    else:
+      return abstract.Union(values, self.ctx)
+
   def merge_classes(self, instances):
     """Merge the classes of the given instances.
 
@@ -375,7 +372,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       An abstract.BaseValue created by merging the instances' classes.
     """
     classes = {v.cls for v in instances if v.cls != self.empty}
-    return self.vm.merge_values(classes)
+    return self.merge_values(classes)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):
@@ -401,9 +398,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       ValueError: if pytype is not of a known type.
     """
     source_sets = source_sets or [[]]
-    node = node or self.vm.root_node
+    node = node or self.ctx.root_node
     if isinstance(pyval, pytd.NothingType):
-      return self.vm.program.NewVariable([], [], self.vm.root_node)
+      return self.ctx.program.NewVariable([], [], self.ctx.root_node)
     elif isinstance(pyval, pytd.Alias):
       return self.constant_to_var(pyval.type, subst, node, source_sets,
                                   discard_concrete_values)
@@ -414,7 +411,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       elif (isinstance(pyval, abstract_utils.AsReturnValue) and
             isinstance(cls, pytd.NothingType)):
         return self.no_return.to_variable(node)
-      var = self.vm.program.NewVariable()
+      var = self.ctx.program.NewVariable()
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):
           if not subst or t.full_name not in subst:
@@ -445,9 +442,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if pyval.__class__ == tuple:
       # This case needs to go at the end because many things are actually also
       # tuples.
-      return self.build_tuple(self.vm.root_node, (self.constant_to_var(
-          v, subst, node, source_sets, discard_concrete_values)
-                                                  for i, v in enumerate(pyval)))
+      return self.build_tuple(self.ctx.root_node,
+                              (self.constant_to_var(v, subst, node, source_sets,
+                                                    discard_concrete_values)
+                               for i, v in enumerate(pyval)))
     raise ValueError(
         "Cannot convert {} to an abstract value".format(pyval.__class__))
 
@@ -470,7 +468,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     Returns:
       The converted constant. (Instance of BaseValue)
     """
-    node = node or self.vm.root_node
+    node = node or self.ctx.root_node
     if pyval.__class__ is tuple:
       type_key = tuple(type(v) for v in pyval)
     else:
@@ -480,9 +478,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       if self._convert_cache[key] is None:
         self._convert_cache[key] = self.unsolvable
         # This error is triggered by, e.g., classes inheriting from each other.
-        if not self.recursion_allowed:
+        if not self.ctx.recursion_allowed:
           name = getattr(pyval, "name", None) or pyval.__class__.__name__
-          self.vm.errorlog.recursion_error(self.vm.frames, name)
+          self.ctx.errorlog.recursion_error(self.ctx.vm.frames, name)
       return self._convert_cache[key]
     else:
       self._convert_cache[key] = None  # for recursion detection
@@ -491,7 +489,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         need_node[0] = True
         return node
       value = self._constant_to_value(pyval, subst, get_node)
-      if not need_node[0] or node is self.vm.root_node:
+      if not need_node[0] or node is self.ctx.root_node:
         # Values that contain a non-root node cannot be cached. Otherwise,
         # we'd introduce bugs such as the following:
         #   if <condition>:
@@ -509,7 +507,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     if late_type.name not in self._resolved_late_types:
       module, dot, _ = late_type.name.rpartition(".")
       assert dot
-      ast = self.vm.loader.import_name(module)
+      ast = self.ctx.loader.import_name(module)
       if ast is not None:
         try:
           cls = ast.Lookup(late_type.name)
@@ -530,12 +528,12 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     data = (ast.constants + ast.type_params + ast.classes +
             ast.functions + ast.aliases)
     members = {val.name.rsplit(".")[-1]: val for val in data}
-    return abstract.Module(self.vm, ast.name, members, ast)
+    return abstract.Module(self.ctx, ast.name, members, ast)
 
   def _get_literal_value(self, pyval):
-    if pyval == self.vm.lookup_builtin("builtins.True"):
+    if pyval == self.ctx.vm.lookup_builtin("builtins.True"):
       return True
-    elif pyval == self.vm.lookup_builtin("builtins.False"):
+    elif pyval == self.ctx.vm.lookup_builtin("builtins.False"):
       return False
     elif isinstance(pyval, str):
       prefix, value = parser_constants.STRING_RE.match(pyval).groups()[:2]
@@ -564,32 +562,32 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       TypeParameterError: If we can't find a substitution for a type parameter.
     """
     if isinstance(pyval, str):
-      return abstract.ConcreteValue(pyval, self.str_type, self.vm)
+      return abstract.ConcreteValue(pyval, self.str_type, self.ctx)
     elif isinstance(pyval, bytes):
-      return abstract.ConcreteValue(pyval, self.bytes_type, self.vm)
+      return abstract.ConcreteValue(pyval, self.bytes_type, self.ctx)
     elif isinstance(pyval, bool):
       return self.true if pyval else self.false
-    elif isinstance(pyval, int) and -1 <= pyval <= MAX_IMPORT_DEPTH:
+    elif isinstance(pyval, int) and -1 <= pyval <= _MAX_IMPORT_DEPTH:
       # For small integers, preserve the actual value (for things like the
       # level in IMPORT_NAME).
-      return abstract.ConcreteValue(pyval, self.int_type, self.vm)
+      return abstract.ConcreteValue(pyval, self.int_type, self.ctx)
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_class_instances[pyval.__class__]
     elif pyval.__class__ is frozenset:
-      instance = abstract.Instance(self.frozenset_type, self.vm)
+      instance = abstract.Instance(self.frozenset_type, self.ctx)
       for element in pyval:
         instance.merge_instance_type_parameter(
-            self.vm.root_node, abstract_utils.T, self.constant_to_var(
-                element, subst, self.vm.root_node))
+            self.ctx.root_node, abstract_utils.T,
+            self.constant_to_var(element, subst, self.ctx.root_node))
       return instance
     elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
       return abstract.ConcreteValue(pyval,
                                     self.primitive_classes[types.CodeType],
-                                    self.vm)
+                                    self.ctx)
     elif pyval is super:
-      return special_builtins.Super(self.vm)
+      return special_builtins.Super(self.ctx)
     elif pyval is object:
-      return special_builtins.Object(self.vm)
+      return special_builtins.Object(self.ctx)
     elif pyval.__class__ is type:
       try:
         return self.name_to_value(self._type_to_name(pyval), subst)
@@ -602,11 +600,11 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(pyval, pytd.TypeDeclUnit):
       return self._create_module(pyval)
     elif isinstance(pyval, pytd.Module):
-      mod = self.vm.loader.import_name(pyval.module_name)
+      mod = self.ctx.loader.import_name(pyval.module_name)
       return self._create_module(mod)
     elif isinstance(pyval, pytd.Class):
       if pyval.name == "builtins.super":
-        return self.vm.special_builtins["super"]
+        return self.ctx.special_builtins["super"]
       elif pyval.name == "builtins.object":
         return self.object_type
       elif pyval.name == "types.ModuleType":
@@ -622,14 +620,14 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # typing.TypingContainer intentionally loads the underlying pytd types.
         if (module not in ("typing", "typing_extensions") and
             module in overlay_dict.overlays):
-          overlay = self.vm.import_module(module, module, 0)
+          overlay = self.ctx.vm.import_module(module, module, 0)
           if overlay.get_module(base_name) is overlay:
             overlay.load_lazy_attribute(base_name)
             return abstract_utils.get_atomic_value(overlay.members[base_name])
         try:
-          cls = abstract.PyTDClass(base_name, pyval, self.vm)
+          cls = abstract.PyTDClass(base_name, pyval, self.ctx)
         except mro.MROError as e:
-          self.vm.errorlog.mro_error(self.vm.frames, base_name, e.mro_seqs)
+          self.ctx.errorlog.mro_error(self.ctx.vm.frames, base_name, e.mro_seqs)
           cls = self.unsolvable
         else:
           if dot:
@@ -637,14 +635,16 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           cls.call_metaclass_init(get_node())
         return cls
     elif isinstance(pyval, pytd.Function):
-      signatures = [function.PyTDSignature(pyval.name, sig, self.vm)
-                    for sig in pyval.signatures]
-      type_new = self.vm.lookup_builtin("builtins.type").Lookup("__new__")
+      signatures = [
+          function.PyTDSignature(pyval.name, sig, self.ctx)
+          for sig in pyval.signatures
+      ]
+      type_new = self.ctx.vm.lookup_builtin("builtins.type").Lookup("__new__")
       if pyval is type_new:
         f_cls = special_builtins.TypeNew
       else:
         f_cls = abstract.PyTDFunction
-      f = f_cls(pyval.name, signatures, pyval.kind, self.vm)
+      f = f_cls(pyval.name, signatures, pyval.kind, self.ctx)
       f.is_abstract = pyval.is_abstract
       return f
     elif isinstance(pyval, pytd.ClassType):
@@ -654,9 +654,9 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         # If pyval is a reference to a class in builtins or typing, we can fill
         # in the class ourselves. lookup_builtin raises a KeyError if the name
         # is not found.
-        cls = self.vm.lookup_builtin(pyval.name)
+        cls = self.ctx.vm.lookup_builtin(pyval.name)
         assert isinstance(cls, pytd.Class)
-      return self.constant_to_value(cls, subst, self.vm.root_node)
+      return self.constant_to_value(cls, subst, self.ctx.root_node)
     elif isinstance(pyval, pytd.NothingType):
       return self.empty
     elif isinstance(pyval, pytd.AnythingType):
@@ -670,26 +670,29 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           pyval.type.name == "builtins.type"):
       # `X: Type[other_mod.X]` is equivalent to `X = other_mod.X`.
       param, = pyval.type.parameters
-      return self.constant_to_value(param, subst, self.vm.root_node)
+      return self.constant_to_value(param, subst, self.ctx.root_node)
     elif isinstance(pyval, pytd.UnionType):
       options = [
-          self.constant_to_value(t, subst, self.vm.root_node)
+          self.constant_to_value(t, subst, self.ctx.root_node)
           for t in pyval.type_list
       ]
       if len(options) > 1:
-        return abstract.Union(options, self.vm)
+        return abstract.Union(options, self.ctx)
       else:
         return options[0]
     elif isinstance(pyval, pytd.TypeParameter):
       constraints = tuple(
-          self.constant_to_value(c, {}, self.vm.root_node)
+          self.constant_to_value(c, {}, self.ctx.root_node)
           for c in pyval.constraints)
       bound = (
           pyval.bound and
-          self.constant_to_value(pyval.bound, {}, self.vm.root_node))
+          self.constant_to_value(pyval.bound, {}, self.ctx.root_node))
       return abstract.TypeParameter(
-          pyval.name, self.vm, constraints=constraints,
-          bound=bound, module=pyval.scope)
+          pyval.name,
+          self.ctx,
+          constraints=constraints,
+          bound=bound,
+          module=pyval.scope)
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.LateType):
@@ -702,7 +705,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       if isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
         param, = cls.parameters
         return self.constant_to_value(
-            abstract_utils.AsInstance(param), subst, self.vm.root_node)
+            abstract_utils.AsInstance(param), subst, self.ctx.root_node)
       elif isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
                                                  cls.template):
         # If we're converting a generic Class, need to create a new instance of
@@ -728,21 +731,21 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               raise self.TypeParameterError(c.full_name)
             # deformalize gets rid of any unexpected TypeVars, which can appear
             # if something is annotated as Type[T].
-            return self.vm.annotation_utils.deformalize(
+            return self.ctx.annotation_utils.deformalize(
                 self.merge_classes(subst[c.full_name].data))
           else:
-            return self.constant_to_value(c, subst, self.vm.root_node)
+            return self.constant_to_value(c, subst, self.ctx.root_node)
         elif isinstance(cls, pytd.TupleType):
           content = tuple(self.constant_to_var(abstract_utils.AsInstance(p),
                                                subst, get_node())
                           for p in cls.parameters)
-          return abstract.Tuple(content, self.vm)
+          return abstract.Tuple(content, self.ctx)
         elif isinstance(cls, pytd.CallableType):
-          clsval = self.constant_to_value(cls, subst, self.vm.root_node)
-          return abstract.Instance(clsval, self.vm)
+          clsval = self.constant_to_value(cls, subst, self.ctx.root_node)
+          return abstract.Instance(clsval, self.ctx)
         else:
-          clsval = self.constant_to_value(base_cls, subst, self.vm.root_node)
-          instance = abstract.Instance(clsval, self.vm)
+          clsval = self.constant_to_value(base_cls, subst, self.ctx.root_node)
+          instance = abstract.Instance(clsval, self.ctx)
           num_params = len(cls.parameters)
           assert num_params <= len(base_cls.template)
           for i, formal in enumerate(base_cls.template):
@@ -752,7 +755,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
                   abstract_utils.AsInstance(cls.parameters[i]), subst, node)
             else:
               # An omitted type parameter implies `Any`.
-              node = self.vm.root_node
+              node = self.ctx.root_node
               p = self.unsolvable.to_variable(node)
             instance.merge_instance_type_parameter(node, formal.name, p)
           return instance
@@ -765,20 +768,20 @@ class Converter(utils.VirtualMachineWeakrefMixin):
             # An instance of "type" or of an anonymous property can be anything.
             instance = self._create_new_unknown_value("type")
           else:
-            mycls = self.constant_to_value(cls, subst, self.vm.root_node)
-            instance = abstract.Instance(mycls, self.vm)
+            mycls = self.constant_to_value(cls, subst, self.ctx.root_node)
+            instance = abstract.Instance(mycls, self.ctx)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]
       elif isinstance(cls, pytd.Literal):
         return self.constant_to_value(
-            self._get_literal_value(cls.value), subst, self.vm.root_node)
+            self._get_literal_value(cls.value), subst, self.ctx.root_node)
       else:
-        return self.constant_to_value(cls, subst, self.vm.root_node)
+        return self.constant_to_value(cls, subst, self.ctx.root_node)
     elif (isinstance(pyval, pytd.GenericType) and
           pyval.name == "typing.ClassVar"):
       param, = pyval.parameters
-      return self.constant_to_value(param, subst, self.vm.root_node)
+      return self.constant_to_value(param, subst, self.ctx.root_node)
     elif isinstance(pyval, pytd.GenericType):
       if isinstance(pyval.base_type, pytd.LateType):
         actual = self._load_late_type(pyval.base_type)
@@ -789,7 +792,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         assert isinstance(pyval.base_type, pytd.ClassType), pyval
         base = pyval.base_type.cls
       assert isinstance(base, pytd.Class), base
-      base_cls = self.constant_to_value(base, subst, self.vm.root_node)
+      base_cls = self.constant_to_value(base, subst, self.ctx.root_node)
       if not isinstance(base_cls, class_mixin.Class):
         # base_cls can be, e.g., an unsolvable due to an mro error.
         return self.unsolvable
@@ -817,30 +820,30 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       # See the ParameterizedClass.formal_type_parameters() property.
       type_parameters = abstract_utils.LazyFormalTypeParameters(
           template, parameters, subst)
-      return abstract_class(base_cls, type_parameters, self.vm)
+      return abstract_class(base_cls, type_parameters, self.ctx)
     elif isinstance(pyval, pytd.Literal):
       value = self.constant_to_value(
-          self._get_literal_value(pyval.value), subst, self.vm.root_node)
-      return abstract.LiteralClass(value, self.vm)
+          self._get_literal_value(pyval.value), subst, self.ctx.root_node)
+      return abstract.LiteralClass(value, self.ctx)
     elif isinstance(pyval, pytd.Annotated):
-      typ = self.constant_to_value(pyval.base_type, subst, self.vm.root_node)
+      typ = self.constant_to_value(pyval.base_type, subst, self.ctx.root_node)
       if pyval.annotations[0] == "'pytype_metadata'":
         try:
           md = metadata.from_string(pyval.annotations[1])
           if md["tag"] == "attr.ib":
             ret = attr_overlay.AttribInstance.from_metadata(
-                self.vm, self.vm.root_node, typ, md)
+                self.ctx, self.ctx.root_node, typ, md)
             return ret
         except (IndexError, ValueError, TypeError, KeyError):
           details = "Wrong format for pytype_metadata."
-          self.vm.errorlog.invalid_annotation(
-              self.vm.frames, pyval.annotations[1], details)
+          self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames,
+                                               pyval.annotations[1], details)
           return typ
       else:
         return typ
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([
-          self.constant_to_var(item, subst, self.vm.root_node)
+          self.constant_to_var(item, subst, self.ctx.root_node)
           for i, item in enumerate(pyval)
       ])
     else:
