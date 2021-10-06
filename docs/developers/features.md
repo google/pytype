@@ -18,7 +18,7 @@
          * [PrintVisitor](#printvisitor)
       * [Partial support](#partial-support)
 
-<!-- Added by: mdemello, at: 2021-08-19T16:34-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -162,12 +162,15 @@ the new feature.
 It is often desirable to check in partial support for a complicated feature and
 finish it later. Some tips for doing this gracefully:
 
-* To prevent premature use, map a feature to `typing_overlay.not_supported_yet`
-  to generate an error when it is imported in source files.
-* If you've implemented only the PyTD logic for a feature, convert the pytd
-  nodes to `vm.convert.unsolvable` to treat them as `Any` in abstract analysis.
-* If you've implemented only the abstract logic for a feature, convert the
-  abstract values to `pytd.AnythingType` to produce `Any` in the inferred stub.
+*   To prevent premature use, map a feature to
+    `typing_overlay.not_supported_yet` to generate an error when it is imported
+    in source files.
+*   If you've implemented only the PyTD logic for a feature, convert the pytd
+    nodes to `ctx.convert.unsolvable` to treat them as `Any` in abstract
+    analysis.
+*   If you've implemented only the abstract logic for a feature, convert the
+    abstract values to `pytd.AnythingType` to produce `Any` in the inferred
+    stub.
 
 [_get_value_info-docstring]: https://github.com/google/pytype/blob/793623e2f8db70967b8e35a4411c6c6835a67c03/pytype/abstract.py#L1296-L1306
 

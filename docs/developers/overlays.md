@@ -9,7 +9,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -32,7 +32,7 @@ the version tuple:
 class SysOverlay(overlay.Overlay):
   """A custom overlay for the 'sys' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "version_info": build_version_info
     }
@@ -42,12 +42,12 @@ class SysOverlay(overlay.Overlay):
 And the build method has access to the VM's `python_version` attribute:
 
 ```python
-def build_version_info(vm):
+def build_version_info(ctx):
   [...]
   version = []
   # major, minor
-  for i in vm.python_version:
-    version.append(vm.convert.constant_to_var(i))
+  for i in ctx.python_version:
+    version.append(ctx.convert.constant_to_var(i))
   [...]
 ```
 
@@ -64,27 +64,29 @@ abstract.BaseValue instance.
 
 ## Adding an overlay
 
-1. If a file named `overlays/{module}_overlay.py` does not yet exist for the
-   module in question, create one and add the following boilerplate (replace
-   `foo` with the module name):
+1.  If a file named `overlays/{module}_overlay.py` does not yet exist for the
+    module in question, create one and add the following boilerplate (replace
+    `foo` with the module name):
 
-   ```python
-   from pytype import overlay
+    ```python
+    from pytype import overlay
 
-   class FooOverlay(overlay.Overlay):
+    class FooOverlay(overlay.Overlay):
 
-     def __init__(self, vm):
-       member_map = {}
-       ast = vm.loader.import_name("foo")
-       super().__init__(vm, "foo", member_map, ast)
-   ```
+      def __init__(self, ctx):
+        member_map = {}
+        ast = ctx.loader.import_name("foo")
+        super().__init__(ctx, "foo", member_map, ast)
+    ```
 
-   Then add the new overlay to [overlay_dict][overlay_dict], and create a new
-   target for the file in [`overlays/CMakeLists.txt`][overlays-cmake].
-1. In the `{Module}Overlay` initializer, add an entry to `member_map` for each
-   new member. The key should be the member name and the value the constructor.
-1. Implement the new module members! The existing overlays contain plenty of
-   examples of how to do this.
+    Then add the new overlay to [overlay_dict][overlay_dict], and create a new
+    target for the file in [`overlays/CMakeLists.txt`][overlays-cmake].
+
+1.  In the `{Module}Overlay` initializer, add an entry to `member_map` for each
+    new member. The key should be the member name and the value the constructor.
+
+1.  Implement the new module members! The existing overlays contain plenty of
+    examples of how to do this.
 
 [overlays-cmake]: https://github.com/google/pytype/blob/master/pytype/overlays/CMakeLists.txt
 

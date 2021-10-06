@@ -16,7 +16,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-12-04' }
       * [Adding a new option](#adding-a-new-option)
       * [Config files](#config-files)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -52,8 +52,8 @@ in `config.py`). This object can be constructed in one of two ways:
 
 In either case, options are validated, defaults filled in for any option not
 supplied, and an `Options` object returned. The rest of the code uses this
-single object, either via the vm (it's stored as `vm.options`) or by passing it
-directly as a function argument. Options can be accessed as attributes, e.g.
+single object, either via the ctx (it's stored as `ctx.options`) or by passing
+it directly as a function argument. Options can be accessed as attributes, e.g.
 
 ```
 if options.analyze_annotated:

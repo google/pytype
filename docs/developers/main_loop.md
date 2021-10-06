@@ -8,7 +8,7 @@
       * [Processing a single opcode](#processing-a-single-opcode)
       * [Two-pass Analysis](#two-pass-analysis)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -80,7 +80,7 @@ will be analyzed.
 
 [^process-one-file]: io.py : `process_one_file()`
 [^run-program]: vm.py: `run_program()`
-[^calltracer]: analyze.py : `class CallTracer`
+[^calltracer]: tracer_vm.py : `class CallTracer`
 [^compile-src]: vm.py: `compile_src()`
 [^run-bytecode]: vm.py: `run_bytecode()`
 [^analyze]: analyze.py: `analyze()`

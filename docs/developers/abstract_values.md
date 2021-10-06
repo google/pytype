@@ -12,7 +12,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Matching](#matching)
       * [Construction](#construction)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -126,9 +126,9 @@ members, and the `Instance` object stores a reference to the `InterpreterClass`
 object it was instantiated from).
 
 TIP: The [abstract_utils][abstract_utils] module contains many useful functions
-for working with abstract values. Additionally, all abstract values have a `vm`
-attribute that references the current virtual machine, through which various
-[handlers][vm-attributes] for abstract values can be accessed.
+for working with abstract values. Additionally, all abstract values have a `ctx`
+attribute that references the current abstract context, through which various
+[handlers][ctx-attributes] for abstract values can be accessed.
 
 ## Type Information
 
@@ -253,4 +253,4 @@ into PyTD nodes.
 [stub-generation]: type_stubs.md#stub_generation
 [type_stubs]: type_stubs.md
 
-[vm-attributes]: https://github.com/google/pytype/blob/62b9bd1d636965e695bd2e735244be47168dc5b0/pytype/vm.py#L147-L151
+[ctx-attributes]: https://github.com/google/pytype/blob/4d859741245faf15d8319a01c12b250a13df1b44/pytype/context.py#L46

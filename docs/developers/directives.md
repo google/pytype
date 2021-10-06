@@ -9,7 +9,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Overview](#overview)
       * [Director](#director)
 
-<!-- Added by: rechen, at: 2021-08-10T21:18-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -52,12 +52,11 @@ class and method decorators, and docstrings. See `Director.__init__` for a full
 list of all the data collected.
 
 The Director is instantiated at the start of the main loop, in
-`vm.py/VirtualMachine::run_program()`, and can typically be accessed via
-`vm.director` anywhere the `vm` object is available. The rest of the code uses
-the director in two ways:
+`vm.py/VirtualMachine::run_program()`. The rest of the code uses the director in
+two ways:
 
 1. Directly accessing the stored tables, e.g `director.decorators` and `director.annotations`, all of which are indexed by line number
 2. Calling `director.should_report_error()` to check if an error has been disabled
 
 The latter method is needed because error disabling is range based, so checking
-is not as simple as `if line_number in director.disables`
+is not as simple as `if line_number in director.disables`.
