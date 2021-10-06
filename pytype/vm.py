@@ -3766,3 +3766,37 @@ class VirtualMachine:
     del op  # unused
     assertion_error = self.ctx.convert.name_to_value("builtins.AssertionError")
     return state.push(assertion_error.to_variable(state.node))
+
+  # Stub implementations for opcodes new in Python 3.10.
+
+  def byte_GET_LEN(self, state, op):
+    del op
+    return state
+
+  def byte_MATCH_MAPPING(self, state, op):
+    del op
+    return state
+
+  def byte_MATCH_SEQUENCE(self, state, op):
+    del op
+    return state
+
+  def byte_MATCH_KEYS(self, state, op):
+    del op
+    return state
+
+  def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
+    del op
+    return state
+
+  def byte_ROT_N(self, state, op):
+    del op
+    return state
+
+  def byte_GEN_START(self, state, op):
+    del op
+    return state
+
+  def byte_MATCH_CLASS(self, state, op):
+    del op
+    return state

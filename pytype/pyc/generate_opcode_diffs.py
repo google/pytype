@@ -17,7 +17,8 @@ The output has three sections:
 * "OPCODE MAPPING DIFF" is the content of a dictionary of opcode changes. Just
   copy the python_{major}_{minor}_mapping definition in pyc/opcodes.py for the
   previous version, change the version numbers, and replace the diff - it'll be
-  obvious where it goes.
+  obvious where it goes. Then add the new mapping to the mapping dict in the
+  top-level dis function in the same module.
 * "OPCODE STUB IMPLEMENTATIONS" are new methods that should be added to vm.py.
 """
 
