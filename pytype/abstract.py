@@ -37,7 +37,7 @@ from pytype.typegraph import cfg_utils
 log = logging.getLogger(__name__)
 
 
-class BaseValue(utils.VirtualMachineWeakrefMixin):
+class BaseValue(utils.ContextWeakrefMixin):
   """A single abstract value such as a type or function signature.
 
   This is the base class of the things that appear in Variables. It represents
@@ -51,10 +51,9 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
 
   formal = False  # is this type non-instantiable?
 
-  def __init__(self, name, vm):
+  def __init__(self, name, ctx):
     """Basic initializer for all BaseValues."""
-    super().__init__(vm)
-    assert hasattr(vm, "program"), type(self)
+    super().__init__(ctx)
     # This default cls value is used by things like Unsolvable that inherit
     # directly from BaseValue. Classes and instances overwrite the default with
     # a more sensible value.
@@ -107,7 +106,7 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
 
   def default_mro(self):
     # default for objects with unknown MRO
-    return [self, self.vm.convert.object_type]
+    return [self, self.ctx.convert.object_type]
 
   def get_fullhash(self):
     """Hash this value and all of its children."""
@@ -149,8 +148,8 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     """
     del name
     if node is None:
-      node = self.vm.root_node
-    return self.vm.new_unsolvable(node)
+      node = self.ctx.root_node
+    return self.ctx.new_unsolvable(node)
 
   def get_formal_type_parameter(self, t):
     """Get the class's type for the type parameter.
@@ -165,7 +164,7 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
       A formal type.
     """
     del t
-    return self.vm.convert.unsolvable
+    return self.ctx.convert.unsolvable
 
   def property_get(self, callself, is_class=False):
     """Bind this value to the given self or cls.
@@ -198,11 +197,11 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
         # instead return the metaclass when type() or __class__ is accessed on
         # Protocol. For simplicity, we pretend the metaclass is ABCMeta rather
         # than a subclass.
-        abc = self.vm.import_module("abc", "abc", 0).get_module("ABCMeta")
+        abc = self.ctx.vm.import_module("abc", "abc", 0).get_module("ABCMeta")
         abc.load_lazy_attribute("ABCMeta")
         return abc.members["ABCMeta"]
       else:
-        return self.cls.to_variable(self.vm.root_node)
+        return self.cls.to_variable(self.ctx.root_node)
     return None
 
   def get_own_new(self, node, value):
@@ -249,17 +248,16 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
 
   def get_instance_type(self, node=None, instance=None, seen=None, view=None):
     """Get the type an instance of us would have."""
-    return self.vm.convert.pytd_convert.value_instance_to_pytd_type(
+    return self.ctx.pytd_convert.value_instance_to_pytd_type(
         node, self, instance, seen, view)
 
   def to_type(self, node=None, seen=None, view=None):
     """Get a PyTD type representing this object, as seen at a node."""
-    return self.vm.convert.pytd_convert.value_to_pytd_type(
-        node, self, seen, view)
+    return self.ctx.pytd_convert.value_to_pytd_type(node, self, seen, view)
 
   def to_pytd_def(self, node, name):
     """Get a PyTD definition for this object."""
-    return self.vm.convert.pytd_convert.value_to_pytd_def(node, self, name)
+    return self.ctx.pytd_convert.value_to_pytd_def(node, self, name)
 
   def get_default_type_key(self):
     """Gets a default type key. See get_type_key."""
@@ -285,7 +283,8 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     """Create an instance of self.
 
     Note that this method does not call __init__, so the instance may be
-    incomplete. If you need a complete instance, use self.vm.init_class instead.
+    incomplete. If you need a complete instance, use self.ctx.vm.init_class
+    instead.
 
     Args:
       node: The current node.
@@ -297,7 +296,7 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     return self._to_instance(container).to_variable(node)
 
   def _to_instance(self, container):
-    return Instance(self, self.vm, container=container)
+    return Instance(self, self.ctx, container=container)
 
   def to_annotation_container(self):
     if isinstance(self, PyTDClass) and self.full_name == "builtins.tuple":
@@ -305,10 +304,11 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
       # that heterogeneous tuple annotations work. We need the isinstance()
       # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
       # the latter appears here when a generic type alias is being substituted.
-      typing = self.vm.import_module("typing", "typing", 0).get_module("Tuple")
+      typing = self.ctx.vm.import_module("typing", "typing",
+                                         0).get_module("Tuple")
       typing.load_lazy_attribute("Tuple")
       return abstract_utils.get_atomic_value(typing.members["Tuple"])
-    return AnnotationContainer(self.name, self.vm, self)
+    return AnnotationContainer(self.name, self.ctx, self)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.
@@ -318,7 +318,7 @@ class BaseValue(utils.VirtualMachineWeakrefMixin):
     Returns:
       A cfg.Variable.
     """
-    return self.vm.program.NewVariable([self], source_set=[], where=node)
+    return self.ctx.program.NewVariable([self], source_set=[], where=node)
 
   def to_binding(self, node):
     binding, = self.to_variable(node).bindings
@@ -545,20 +545,20 @@ class Empty(Singleton):
   convert.Converter._function_to_def and tracer_vm.CallTracer.pytd_for_types.
   """
 
-  def __init__(self, vm):
-    super().__init__("empty", vm)
+  def __init__(self, ctx):
+    super().__init__("empty", ctx)
 
 
 class Deleted(Empty):
   """Assigned to variables that have del called on them."""
 
-  def __init__(self, vm):
-    super().__init__(vm)
+  def __init__(self, ctx):
+    super().__init__(ctx)
     self.name = "deleted"
 
   def get_special_attribute(self, node, name, valself):
     del name, valself  # unused
-    return self.vm.new_unsolvable(node)
+    return self.ctx.new_unsolvable(node)
 
 
 class TypeParameter(BaseValue):
@@ -566,9 +566,15 @@ class TypeParameter(BaseValue):
 
   formal = True
 
-  def __init__(self, name, vm, constraints=(), bound=None,
-               covariant=False, contravariant=False, module=None):
-    super().__init__(name, vm)
+  def __init__(self,
+               name,
+               ctx,
+               constraints=(),
+               bound=None,
+               covariant=False,
+               contravariant=False,
+               module=None):
+    super().__init__(name, ctx)
     self.constraints = constraints
     self.bound = bound
     self.covariant = covariant
@@ -579,7 +585,7 @@ class TypeParameter(BaseValue):
     return not self.constraints and not self.bound
 
   def copy(self):
-    return TypeParameter(self.name, self.vm, self.constraints, self.bound,
+    return TypeParameter(self.name, self.ctx, self.constraints, self.bound,
                          self.covariant, self.contravariant, self.module)
 
   def with_module(self, module):
@@ -609,10 +615,10 @@ class TypeParameter(BaseValue):
         self.name, self.constraints, self.bound, self.module)
 
   def instantiate(self, node, container=None):
-    var = self.vm.program.NewVariable()
+    var = self.ctx.program.NewVariable()
     if container and (not isinstance(container, SimpleValue) or
                       self.full_name in container.all_template_names):
-      instance = TypeParameterInstance(self, container, self.vm)
+      instance = TypeParameterInstance(self, container, self.ctx)
       return instance.to_variable(node)
     else:
       for c in self.constraints:
@@ -620,14 +626,14 @@ class TypeParameter(BaseValue):
       if self.bound:
         var.PasteVariable(self.bound.instantiate(node, container))
     if not var.bindings:
-      var.AddBinding(self.vm.convert.unsolvable, [], node)
+      var.AddBinding(self.ctx.convert.unsolvable, [], node)
     return var
 
   def update_official_name(self, name):
     if self.name != name:
       message = "TypeVar(%r) must be stored as %r, not %r" % (
           self.name, self.name, name)
-      self.vm.errorlog.invalid_typevar(self.vm.frames, message)
+      self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, message)
 
   def call(self, node, func, args, alias_map=None):
     return node, self.instantiate(node)
@@ -636,8 +642,8 @@ class TypeParameter(BaseValue):
 class TypeParameterInstance(BaseValue):
   """An instance of a type parameter."""
 
-  def __init__(self, param, instance, vm):
-    super().__init__(param.name, vm)
+  def __init__(self, param, instance, ctx):
+    super().__init__(param.name, ctx)
     self.cls = self.param = param
     self.instance = instance
     self.module = param.module
@@ -645,9 +651,9 @@ class TypeParameterInstance(BaseValue):
   def call(self, node, func, args, alias_map=None):
     var = self.instance.get_instance_type_parameter(self.name)
     if var.bindings:
-      return function.call_function(self.vm, node, var, args)
+      return function.call_function(self.ctx, node, var, args)
     else:
-      return node, self.vm.convert.empty.to_variable(self.vm.root_node)
+      return node, self.ctx.convert.empty.to_variable(self.ctx.root_node)
 
   def __repr__(self):
     return "TypeParameterInstance(%r)" % self.name
@@ -674,14 +680,14 @@ class SimpleValue(BaseValue):
     members: A name->value dictionary of the instance's attributes.
   """
 
-  def __init__(self, name, vm):
+  def __init__(self, name, ctx):
     """Initialize a SimpleValue.
 
     Args:
       name: Name of this value. For debugging and error reporting.
-      vm: The TypegraphVirtualMachine to use.
+      ctx: The abstract context.
     """
-    super().__init__(name, vm)
+    super().__init__(name, ctx)
     self._cls = None  # lazily loaded 'cls' attribute
     self.members = datatypes.MonitorDict()
     # Lazily loaded to handle recursive types.
@@ -724,8 +730,8 @@ class SimpleValue(BaseValue):
     if not param:
       log.info("Creating new empty type param %s", name)
       if node is None:
-        node = self.vm.root_node
-      param = self.vm.program.NewVariable([], [], node)
+        node = self.ctx.root_node
+      param = self.ctx.program.NewVariable([], [], node)
       self.instance_type_parameters[name] = param
     return param
 
@@ -750,15 +756,15 @@ class SimpleValue(BaseValue):
       self.instance_type_parameters[name] = value
 
   def call(self, node, _, args, alias_map=None):
-    node, var = self.vm.attribute_handler.get_attribute(
+    node, var = self.ctx.attribute_handler.get_attribute(
         node, self, "__call__", self.to_binding(node))
     if var is not None and var.bindings:
-      return function.call_function(self.vm, node, var, args)
+      return function.call_function(self.ctx, node, var, args)
     else:
       raise function.NotCallable(self)
 
   def argcount(self, node):
-    node, var = self.vm.attribute_handler.get_attribute(
+    node, var = self.ctx.attribute_handler.get_attribute(
         node, self, "__call__", self.to_binding(node))
     if var and var.bindings:
       return min(v.argcount(node) for v in var.data)
@@ -772,19 +778,19 @@ class SimpleValue(BaseValue):
 
   def _get_class(self):
     if isinstance(self, InterpreterClass):
-      return ParameterizedClass(
-          self.vm.convert.type_type, {abstract_utils.T: self}, self.vm)
+      return ParameterizedClass(self.ctx.convert.type_type,
+                                {abstract_utils.T: self}, self.ctx)
     elif isinstance(self, (AnnotationClass, class_mixin.Class)):
-      return self.vm.convert.type_type
+      return self.ctx.convert.type_type
     else:
-      return self.vm.convert.unsolvable
+      return self.ctx.convert.unsolvable
 
   @property
   def cls(self):
-    if not self.vm.convert.minimally_initialized:
-      return self.vm.convert.unsolvable
+    if not self.ctx.converter_minimally_initialized:
+      return self.ctx.convert.unsolvable
     if not self._cls:
-      self._cls = self.vm.convert.unsolvable  # prevent infinite recursion
+      self._cls = self.ctx.convert.unsolvable  # prevent infinite recursion
       self._cls = self._get_class()
     return self._cls
 
@@ -800,10 +806,10 @@ class SimpleValue(BaseValue):
     try:
       new_cls = abstract_utils.get_atomic_value(var)
     except abstract_utils.ConversionError:
-      self.cls = self.vm.convert.unsolvable
+      self.cls = self.ctx.convert.unsolvable
     else:
       if self.cls != new_cls:
-        self.cls = self.vm.convert.unsolvable
+        self.cls = self.ctx.convert.unsolvable
     return node
 
   def get_type_key(self, seen=None):
@@ -840,8 +846,8 @@ class SimpleValue(BaseValue):
 class Instance(SimpleValue):
   """An instance of some object."""
 
-  def __init__(self, cls, vm, container=None):
-    super().__init__(cls.name, vm)
+  def __init__(self, cls, ctx, container=None):
+    super().__init__(cls.name, ctx)
     self.cls = cls
     self._instance_type_parameters_loaded = False
     self._container = container
@@ -856,12 +862,12 @@ class Instance(SimpleValue):
     self._instance_type_parameters.uf = all_formal_type_parameters.uf
     for name, param in all_formal_type_parameters.items():
       if param is None:
-        value = self.vm.program.NewVariable()
+        value = self.ctx.program.NewVariable()
         log.info("Initializing type param %s: %r", name, value)
         self._instance_type_parameters[name] = value
       else:
         self._instance_type_parameters[name] = param.instantiate(
-            self.vm.root_node, self._container or self)
+            self.ctx.root_node, self._container or self)
     # We purposely set this flag at the very end so that accidentally accessing
     # instance_type_parameters during loading will trigger an obvious crash due
     # to infinite recursion, rather than silently returning an incomplete dict.
@@ -880,12 +886,12 @@ class Instance(SimpleValue):
 class List(Instance, mixin.HasSlots, mixin.PythonConstant):
   """Representation of Python 'list' objects."""
 
-  def __init__(self, content, vm):
-    super().__init__(vm.convert.list_type, vm)
+  def __init__(self, content, ctx):
+    super().__init__(ctx.convert.list_type, ctx)
     self._instance_cache = {}
     mixin.PythonConstant.init_mixin(self, content)
     mixin.HasSlots.init_mixin(self)
-    combined_content = vm.convert.build_content(content)
+    combined_content = ctx.convert.build_content(content)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     self.could_contain_anything = False
     self.set_slot("__getitem__", self.getitem_slot)
@@ -922,7 +928,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
     if not self.could_contain_anything:
       for val in index_var.bindings:
         try:
-          index = self.vm.convert.value_to_constant(val.data, int)
+          index = self.ctx.convert.value_to_constant(val.data, int)
         except abstract_utils.ConversionError:
           unresolved = True
         else:
@@ -933,7 +939,7 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
             unresolved = True
     if unresolved or self.could_contain_anything:
       results.append(ret)
-    return node, self.vm.join_variables(node, results)
+    return node, self.ctx.vm.join_variables(node, results)
 
   def _get_index(self, data):
     """Helper function for getslice_slot that extracts int or None from data.
@@ -951,9 +957,9 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
       abstract_utils.ConversionError: If the data could not be converted.
     """
     if isinstance(data, ConcreteValue):
-      return self.vm.convert.value_to_constant(data, (int, type(None)))
+      return self.ctx.convert.value_to_constant(data, (int, type(None)))
     elif isinstance(data, Instance):
-      if data.cls != self.vm.convert.int_type:
+      if data.cls != self.ctx.convert.int_type:
         raise abstract_utils.ConversionError()
       else:
         return None
@@ -985,23 +991,25 @@ class List(Instance, mixin.HasSlots, mixin.PythonConstant):
         except abstract_utils.ConversionError:
           unresolved = True
         else:
-          results.append(List(self.pyval[start:end], self.vm).to_variable(node))
+          results.append(
+              List(self.pyval[start:end], self.ctx).to_variable(node))
     if unresolved or self.could_contain_anything:
       results.append(ret)
-    return node, self.vm.join_variables(node, results)
+    return node, self.ctx.vm.join_variables(node, results)
 
 
 class Tuple(Instance, mixin.PythonConstant):
   """Representation of Python 'tuple' objects."""
 
-  def __init__(self, content, vm):
-    combined_content = vm.convert.build_content(content)
+  def __init__(self, content, ctx):
+    combined_content = ctx.convert.build_content(content)
     class_params = {
-        name: vm.convert.merge_classes(instance_param.data)
-        for name, instance_param in
-        tuple(enumerate(content)) + ((abstract_utils.T, combined_content),)}
-    cls = TupleClass(vm.convert.tuple_type, class_params, vm)
-    super().__init__(cls, vm)
+        name: ctx.convert.merge_classes(instance_param.data)
+        for name, instance_param in tuple(enumerate(content)) +
+        ((abstract_utils.T, combined_content),)
+    }
+    cls = TupleClass(ctx.convert.tuple_type, class_params, ctx)
+    super().__init__(cls, ctx)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     mixin.PythonConstant.init_mixin(self, content)
     self.tuple_length = len(self.pyval)
@@ -1046,8 +1054,8 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
   of what got stored.
   """
 
-  def __init__(self, vm):
-    super().__init__(vm.convert.dict_type, vm)
+  def __init__(self, ctx):
+    super().__init__(ctx.convert.dict_type, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__contains__", self.contains_slot)
     self.set_slot("__getitem__", self.getitem_slot)
@@ -1080,7 +1088,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
     if not self.could_contain_anything:
       for val in name_var.bindings:
         try:
-          name = self.vm.convert.value_to_constant(val.data, str)
+          name = self.ctx.convert.value_to_constant(val.data, str)
         except abstract_utils.ConversionError:
           unresolved = True
         else:
@@ -1095,11 +1103,11 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
       # parameter, even if we don't know the exact type of self[name]. So let's
       # just use the (less accurate) value from pytd.
       results.append(ret)
-    return node, self.vm.join_variables(node, results)
+    return node, self.ctx.vm.join_variables(node, results)
 
   def set_str_item(self, node, name, value_var):
     self.merge_instance_type_parameter(
-        node, abstract_utils.K, self.vm.convert.build_string(node, name))
+        node, abstract_utils.K, self.ctx.convert.build_string(node, name))
     self.merge_instance_type_parameter(node, abstract_utils.V, value_var)
     if name in self.pyval:
       self.pyval[name].PasteVariable(value_var, node)
@@ -1112,7 +1120,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
     assert isinstance(value_var, cfg.Variable)
     for val in name_var.bindings:
       try:
-        name = self.vm.convert.value_to_constant(val.data, str)
+        name = self.ctx.convert.value_to_constant(val.data, str)
       except abstract_utils.ConversionError:
         # Now the dictionary is abstract: We don't know what it contains
         # anymore. Note that the below is not a variable, so it'll affect
@@ -1131,7 +1139,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
 
   def setdefault_slot(self, node, name_var, value_var=None):
     if value_var is None:
-      value_var = self.vm.convert.build_none(node)
+      value_var = self.ctx.convert.build_none(node)
     # We don't have a good way of modelling the exact setdefault behavior -
     # whether the key already exists might depend on a code path, so setting it
     # again should depend on an if-splitting condition, but we don't support
@@ -1149,7 +1157,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
         value = None
       else:
         value = str_key in self.pyval
-    return node, self.vm.convert.build_bool(node, value)
+    return node, self.ctx.convert.build_bool(node, value)
 
   def pop_slot(self, node, key_var, default_var=None):
     try:
@@ -1183,7 +1191,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
       self.could_contain_anything = True
       return self.call_pytd(node, "update", *args)
     else:
-      return node, self.vm.convert.none.to_variable(node)
+      return node, self.ctx.convert.none.to_variable(node)
 
   def update(self, node, other_dict, omit=()):
     if isinstance(other_dict, (Dict, dict)):
@@ -1203,7 +1211,7 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
         k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
         v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
       else:
-        k = v = self.vm.new_unsolvable(node)
+        k = v = self.ctx.new_unsolvable(node)
       self.merge_instance_type_parameter(node, abstract_utils.K, k)
       self.merge_instance_type_parameter(node, abstract_utils.V, v)
       self.could_contain_anything = True
@@ -1212,8 +1220,8 @@ class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
 class AnnotationsDict(Dict):
   """__annotations__ dict."""
 
-  def __init__(self, annotated_locals, vm):
-    super().__init__(vm)
+  def __init__(self, annotated_locals, ctx):
+    super().__init__(ctx)
     self.annotated_locals = annotated_locals
 
   def get_type(self, node, name):
@@ -1245,12 +1253,12 @@ class LateAnnotation:
   Use `x.is_late_annotation()` to check whether x is a late annotation.
   """
 
-  def __init__(self, expr, stack, vm):
+  def __init__(self, expr, stack, ctx):
     self.expr = expr
     self.stack = stack
-    self.vm = vm
+    self.ctx = ctx
     self.resolved = False
-    self._type = vm.convert.unsolvable  # the resolved type of `expr`
+    self._type = ctx.convert.unsolvable  # the resolved type of `expr`
     self._unresolved_instances = set()
     # _attribute_names needs to be defined last!
     self._attribute_names = (
@@ -1280,13 +1288,13 @@ class LateAnnotation:
     if self.resolved:
       return
     self.resolved = True
-    var, errorlog = abstract_utils.eval_expr(
-        self.vm, node, f_globals, f_locals, self.expr)
+    var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
+                                             f_locals, self.expr)
     if errorlog:
-      self.vm.errorlog.copy_from(errorlog.errors, self.stack)
-    self._type = self.vm.annotation_utils.extract_annotation(
+      self.ctx.errorlog.copy_from(errorlog.errors, self.stack)
+    self._type = self.ctx.annotation_utils.extract_annotation(
         node, var, None, self.stack)
-    if self._type != self.vm.convert.unsolvable:
+    if self._type != self.ctx.convert.unsolvable:
       # We may have tried to call __init__ on instances of this annotation.
       # Since the annotation was unresolved at the time, we need to call
       # __init__ again to define any instance attributes.
@@ -1294,9 +1302,9 @@ class LateAnnotation:
         if isinstance(instance.cls, Union):
           # Having instance.cls be a Union type will crash in attribute.py.
           # Setting it to Any picks up the annotation in another code path.
-          instance.cls = self.vm.convert.unsolvable
+          instance.cls = self.ctx.convert.unsolvable
         else:
-          self.vm.reinitialize_if_initialized(node, instance)
+          self.ctx.vm.reinitialize_if_initialized(node, instance)
     log.info("Resolved late annotation %r to %r", self.expr, self._type)
 
   def to_variable(self, node):
@@ -1310,7 +1318,7 @@ class LateAnnotation:
     if self.resolved:
       return self._type.instantiate(node, container)
     else:
-      instance = Instance(self, self.vm)
+      instance = Instance(self, self.ctx)
       self._unresolved_instances.add(instance)
       return instance.to_variable(node)
 
@@ -1327,8 +1335,8 @@ class LateAnnotation:
 class AnnotationClass(SimpleValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
-  def __init__(self, name, vm):
-    super().__init__(name, vm)
+  def __init__(self, name, ctx):
+    super().__init__(name, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
 
@@ -1353,15 +1361,15 @@ class AnnotationClass(SimpleValue, mixin.HasSlots):
     ellipses = set()
     for var in slice_content:
       if len(var.bindings) > 1:
-        self.vm.errorlog.ambiguous_annotation(self.vm.frames, var.data)
-        inner.append(self.vm.convert.unsolvable)
+        self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, var.data)
+        inner.append(self.ctx.convert.unsolvable)
       else:
         val = var.bindings[0].data
-        if val is self.vm.convert.ellipsis:
+        if val is self.ctx.convert.ellipsis:
           # Ellipses are allowed only in special cases, so turn them into Any
           # but record the indices so we can check if they're legal.
           ellipses.add(len(inner))
-          inner.append(self.vm.convert.unsolvable)
+          inner.append(self.ctx.convert.unsolvable)
         else:
           inner.append(val)
     return inner, ellipses
@@ -1376,8 +1384,8 @@ class AnnotationClass(SimpleValue, mixin.HasSlots):
 class AnnotationContainer(AnnotationClass):
   """Implementation of X[...] for annotations."""
 
-  def __init__(self, name, vm, base_cls):
-    super().__init__(name, vm)
+  def __init__(self, name, ctx, base_cls):
+    super().__init__(name, ctx)
     self.base_cls = base_cls
 
   def _sub_annotation(
@@ -1395,7 +1403,7 @@ class AnnotationContainer(AnnotationClass):
       if annot.full_name in subst:
         return subst[annot.full_name]
       else:
-        return self.vm.convert.unsolvable
+        return self.ctx.convert.unsolvable
     elif isinstance(annot, mixin.NestedAnnotation):
       inner_types = [(key, self._sub_annotation(val, subst))
                      for key, val in annot.get_inner_types()]
@@ -1423,8 +1431,8 @@ class AnnotationContainer(AnnotationClass):
       template = tuple(range(self.base_cls.num_args)) + (abstract_utils.RET,)
     else:
       template = tuple(t.name for t in self.base_cls.template)
-    self.vm.errorlog.invalid_ellipses(
-        self.vm.frames, ellipses - allowed_ellipses, self.name)
+    self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames,
+                                       ellipses - allowed_ellipses, self.name)
     last_index = len(inner) - 1
     if last_index and last_index in ellipses and len(inner) > len(template):
       # Even if an ellipsis is not allowed at this position, strip it off so
@@ -1446,7 +1454,7 @@ class AnnotationContainer(AnnotationClass):
       for k in template:
         v = self.base_cls.formal_type_parameters[k]
         if v.formal:
-          params = self.vm.annotation_utils.get_type_parameters(v)
+          params = self.ctx.annotation_utils.get_type_parameters(v)
           for param in params:
             # If there are too few parameters, we ignore the problem for now;
             # it'll be reported when _build_value checks that the lengths of
@@ -1460,11 +1468,11 @@ class AnnotationContainer(AnnotationClass):
       inner = tuple(new_inner)
       if isinstance(self.base_cls, TupleClass):
         template += (abstract_utils.T,)
-        inner += (self.vm.convert.merge_values(inner),)
+        inner += (self.ctx.convert.merge_values(inner),)
       elif isinstance(self.base_cls, CallableClass):
         template = template[:-1] + (abstract_utils.ARGS,) + template[-1:]
         args = inner[:-1]
-        inner = args + (self.vm.convert.merge_values(args),) + inner[-1:]
+        inner = args + (self.ctx.convert.merge_values(args),) + inner[-1:]
       abstract_class = type(self.base_cls)
     else:
       abstract_class = ParameterizedClass
@@ -1476,8 +1484,8 @@ class AnnotationContainer(AnnotationClass):
         not abstract_utils.is_generic_protocol(self.base_cls)):
       # For a generic type alias, we check that the number of typevars in the
       # alias matches the number of raw parameters provided.
-      template_length = raw_template_length = len(set(
-          self.vm.annotation_utils.get_type_parameters(self.base_cls)))
+      template_length = raw_template_length = len(
+          set(self.ctx.annotation_utils.get_type_parameters(self.base_cls)))
       inner_length = raw_inner_length = len(raw_inner)
       base_cls = self.base_cls.base_cls
     else:
@@ -1491,8 +1499,8 @@ class AnnotationContainer(AnnotationClass):
       base_cls = self.base_cls
     if inner_length != template_length:
       if not template:
-        self.vm.errorlog.not_indexable(self.vm.frames, base_cls.name,
-                                       generic_warning=True)
+        self.ctx.errorlog.not_indexable(
+            self.ctx.vm.frames, base_cls.name, generic_warning=True)
       else:
         # Use the unprocessed values of `template` and `inner` so that the error
         # message matches what the user sees.
@@ -1500,7 +1508,8 @@ class AnnotationContainer(AnnotationClass):
             self.full_name, ", ".join(t.name for t in base_cls.template))
         error = "Expected %d parameter(s), got %d" % (
             raw_template_length, raw_inner_length)
-        self.vm.errorlog.invalid_annotation(self.vm.frames, None, error, name)
+        self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, None, error,
+                                             name)
     else:
       if len(inner) == 1:
         val, = inner
@@ -1508,10 +1517,10 @@ class AnnotationContainer(AnnotationClass):
         # instance (e.g., list[0]).
         # We only check the "int" case, since string literals are allowed for
         # late annotations.
-        if isinstance(val, Instance) and val.cls == self.vm.convert.int_type:
+        if (isinstance(val, Instance) and val.cls == self.ctx.convert.int_type):
           # Don't report this error again.
-          inner = (self.vm.convert.unsolvable,)
-          self.vm.errorlog.not_indexable(self.vm.frames, self.name)
+          inner = (self.ctx.convert.unsolvable,)
+          self.ctx.errorlog.not_indexable(self.ctx.vm.frames, self.name)
     return inner
 
   def _build_value(self, node, inner, ellipses):
@@ -1529,8 +1538,8 @@ class AnnotationContainer(AnnotationClass):
         else:
           printed_params.append(pytd_utils.Print(param.get_instance_type(node)))
       expr = "%s[%s]" % (self.base_cls.expr, ", ".join(printed_params))
-      annot = LateAnnotation(expr, self.base_cls.stack, self.vm)
-      self.vm.late_annotations[self.base_cls.expr].append(annot)
+      annot = LateAnnotation(expr, self.base_cls.stack, self.ctx)
+      self.ctx.vm.late_annotations[self.base_cls.expr].append(annot)
       return annot
     template, processed_inner, abstract_class = self._get_value_info(
         inner, ellipses)
@@ -1547,9 +1556,11 @@ class AnnotationContainer(AnnotationClass):
     else:
       template_params = None
     processed_inner = self._validate_inner(template, processed_inner, inner)
-    params = {name: processed_inner[i]
-                    if i < len(processed_inner) else self.vm.convert.unsolvable
-              for i, name in enumerate(template)}
+    params = {
+        name: (processed_inner[i]
+               if i < len(processed_inner) else self.ctx.convert.unsolvable)
+        for i, name in enumerate(template)
+    }
 
     # For user-defined generic types, check if its type parameter matches
     # its corresponding concrete type
@@ -1558,45 +1569,45 @@ class AnnotationContainer(AnnotationClass):
         if (isinstance(formal, TypeParameter) and not formal.is_generic() and
             isinstance(params[formal.name], TypeParameter)):
           if formal.name != params[formal.name].name:
-            self.vm.errorlog.not_supported_yet(
-                self.vm.frames,
+            self.ctx.errorlog.not_supported_yet(
+                self.ctx.vm.frames,
                 "Renaming TypeVar `%s` with constraints or bound" % formal.name)
         else:
-          root_node = self.vm.root_node
+          root_node = self.ctx.root_node
           actual = params[formal.name].instantiate(root_node)
-          bad = self.vm.matcher(root_node).bad_matches(actual, formal)
+          bad = self.ctx.matcher(root_node).bad_matches(actual, formal)
           if bad:
-            formal = self.vm.annotation_utils.sub_one_annotation(
+            formal = self.ctx.annotation_utils.sub_one_annotation(
                 root_node, formal, [{}])
-            self.vm.errorlog.bad_concrete_type(
-                self.vm.frames, root_node, formal, actual, bad)
-            return self.vm.convert.unsolvable
+            self.ctx.errorlog.bad_concrete_type(self.ctx.vm.frames, root_node,
+                                                formal, actual, bad)
+            return self.ctx.convert.unsolvable
 
     try:
-      return abstract_class(base_cls, params, self.vm, template_params)
+      return abstract_class(base_cls, params, self.ctx, template_params)
     except abstract_utils.GenericTypeError as e:
-      self.vm.errorlog.invalid_annotation(self.vm.frames, e.annot, e.error)
-      return self.vm.convert.unsolvable
+      self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, e.annot, e.error)
+      return self.ctx.convert.unsolvable
 
 
 class ConcreteValue(Instance, mixin.PythonConstant):
   """Abstract value with a concrete fallback."""
 
-  def __init__(self, pyval, cls, vm):
-    super().__init__(cls, vm)
+  def __init__(self, pyval, cls, ctx):
+    super().__init__(cls, ctx)
     mixin.PythonConstant.init_mixin(self, pyval)
 
 
 class LazyConcreteDict(SimpleValue, mixin.PythonConstant, mixin.LazyMembers):
   """Dictionary with lazy values."""
 
-  def __init__(self, name, member_map, vm):
-    super().__init__(name, vm)
+  def __init__(self, name, member_map, ctx):
+    super().__init__(name, ctx)
     mixin.PythonConstant.init_mixin(self, self.members)
     mixin.LazyMembers.init_mixin(self, member_map)
 
   def _convert_member(self, member, subst=None):
-    return self.vm.convert.constant_to_var(member)
+    return self.ctx.convert.constant_to_var(member)
 
   def is_empty(self):
     return not bool(self._member_map)
@@ -1611,8 +1622,8 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     options: Iterable of instances of BaseValue.
   """
 
-  def __init__(self, options, vm):
-    super().__init__("Union", vm)
+  def __init__(self, options, ctx):
+    super().__init__("Union", ctx)
     assert options
     self.options = list(options)
     self.cls = self._get_class()
@@ -1637,17 +1648,17 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     return hash(tuple(self.options))
 
   def _unique_parameters(self):
-    return [o.to_variable(self.vm.root_node) for o in self.options]
+    return [o.to_variable(self.ctx.root_node) for o in self.options]
 
   def _get_type_params(self):
-    params = self.vm.annotation_utils.get_type_parameters(self)
+    params = self.ctx.annotation_utils.get_type_parameters(self)
     params = [x.full_name for x in params]
     return utils.unique_list(params)
 
   def _get_class(self):
     classes = {o.cls for o in self.options}
     if len(classes) > 1:
-      return self.vm.convert.unsolvable
+      return self.ctx.convert.unsolvable
     else:
       return classes.pop()
 
@@ -1659,9 +1670,9 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     if len(params) != len(slice_content):
       details = ("Union has %d type parameters but was instantiated with %d" %
                  (len(params), len(slice_content)))
-      self.vm.errorlog.invalid_annotation(
-          self.vm.frames, self, details=details)
-      return node, self.vm.new_unsolvable(node)
+      self.ctx.errorlog.invalid_annotation(
+          self.ctx.vm.frames, self, details=details)
+      return node, self.ctx.new_unsolvable(node)
     concrete = []
     for var in slice_content:
       value = var.data[0]
@@ -1670,23 +1681,23 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
       else:
         concrete.append(value.instantiate(node))
     substs = [dict(zip(params, concrete))]
-    new = self.vm.annotation_utils.sub_one_annotation(node, self, substs)
+    new = self.ctx.annotation_utils.sub_one_annotation(node, self, substs)
     return node, new.to_variable(node)
 
   def instantiate(self, node, container=None):
-    var = self.vm.program.NewVariable()
+    var = self.ctx.program.NewVariable()
     for option in self.options:
       var.PasteVariable(option.instantiate(node, container), node)
     return var
 
   def call(self, node, func, args, alias_map=None):
-    var = self.vm.program.NewVariable(self.options, [], node)
-    return function.call_function(self.vm, node, var, args)
+    var = self.ctx.program.NewVariable(self.options, [], node)
+    return function.call_function(self.ctx, node, var, args)
 
   def get_formal_type_parameter(self, t):
     new_options = [option.get_formal_type_parameter(t)
                    for option in self.options]
-    return Union(new_options, self.vm)
+    return Union(new_options, self.ctx)
 
   def get_inner_types(self):
     return enumerate(self.options)
@@ -1695,7 +1706,7 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     self.options[key] = typ
 
   def replace(self, inner_types):
-    return self.__class__((v for _, v in sorted(inner_types)), self.vm)
+    return self.__class__((v for _, v in sorted(inner_types)), self.ctx)
 
 
 class Function(SimpleValue):
@@ -1703,17 +1714,17 @@ class Function(SimpleValue):
 
   Attributes:
     name: Function name. Might just be something like "<lambda>".
-    vm: TypegraphVirtualMachine instance.
+    ctx: context.Context instance.
   """
 
-  def __init__(self, name, vm):
-    super().__init__(name, vm)
-    self.cls = FunctionPyTDClass(self, vm)
+  def __init__(self, name, ctx):
+    super().__init__(name, ctx)
+    self.cls = FunctionPyTDClass(self, ctx)
     self.is_attribute_of_class = False
     self.is_classmethod = False
     self.is_abstract = False
-    self.members["func_name"] = self.vm.convert.build_string(
-        self.vm.root_node, name)
+    self.members["func_name"] = self.ctx.convert.build_string(
+        self.ctx.root_node, name)
 
   def property_get(self, callself, is_class=False):
     if self.name == "__new__" or not callself or is_class:
@@ -1727,7 +1738,7 @@ class Function(SimpleValue):
 
   def _get_cell_variable_name(self, var):
     """Get the python variable name of a pytype Variable."""
-    f = self.vm.frame
+    f = self.ctx.vm.frame
     if not f:
       # Should not happen but does in some contrived test cases.
       return None
@@ -1805,7 +1816,7 @@ class Function(SimpleValue):
                   for d in defaults_var.data) and
               all(d.full_name == "builtins.tuple"
                   for d in defaults_var.data if isinstance(d, Instance))):
-        self.vm.errorlog.bad_function_defaults(self.vm.frames, self.name)
+        self.ctx.errorlog.bad_function_defaults(self.ctx.vm.frames, self.name)
       # The ambiguous case is handled by the subclass.
       return None
 
@@ -1816,9 +1827,9 @@ class Function(SimpleValue):
 class ClassMethod(BaseValue):
   """Implements @classmethod methods in pyi."""
 
-  def __init__(self, name, method, callself, vm):
-    super().__init__(name, vm)
-    self.cls = self.vm.convert.function_type
+  def __init__(self, name, method, callself, ctx):
+    super().__init__(name, ctx)
+    self.cls = self.ctx.convert.function_type
     self.method = method
     self.method.is_attribute_of_class = True
     # Rename to callcls to make clear that callself is the cls parameter.
@@ -1836,9 +1847,9 @@ class ClassMethod(BaseValue):
 class StaticMethod(BaseValue):
   """Implements @staticmethod methods in pyi."""
 
-  def __init__(self, name, method, _, vm):
-    super().__init__(name, vm)
-    self.cls = self.vm.convert.function_type
+  def __init__(self, name, method, _, ctx):
+    super().__init__(name, ctx)
+    self.cls = self.ctx.convert.function_type
     self.method = method
     self.signatures = self.method.signatures
 
@@ -1853,9 +1864,9 @@ class Property(BaseValue):
   resolved as a function, not as a constant.
   """
 
-  def __init__(self, name, method, callself, vm):
-    super().__init__(name, vm)
-    self.cls = self.vm.convert.function_type
+  def __init__(self, name, method, callself, ctx):
+    super().__init__(name, ctx)
+    self.cls = self.ctx.convert.function_type
     self.method = method
     self._callself = callself
     self.signatures = self.method.signatures
@@ -1873,12 +1884,12 @@ class PyTDFunction(Function):
   """
 
   @classmethod
-  def make(cls, name, vm, module, pyval=None, pyval_name=None):
+  def make(cls, name, ctx, module, pyval=None, pyval_name=None):
     """Create a PyTDFunction.
 
     Args:
       name: The function name.
-      vm: The VM.
+      ctx: The abstract context.
       module: The module that the function is in.
       pyval: Optionally, the pytd.Function object to use. Otherwise, it is
         fetched from the loader.
@@ -1892,18 +1903,18 @@ class PyTDFunction(Function):
     if not pyval:
       pyval_name = module + "." + (pyval_name or name)
       if module not in ("builtins", "typing"):
-        pyval = vm.loader.import_name(module).Lookup(pyval_name)
+        pyval = ctx.loader.import_name(module).Lookup(pyval_name)
       else:
-        pyval = vm.lookup_builtin(pyval_name)
+        pyval = ctx.vm.lookup_builtin(pyval_name)
     if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
       pyval = pyval.type
-    f = vm.convert.constant_to_value(pyval, {}, vm.root_node)
-    self = cls(name, f.signatures, pyval.kind, vm)
+    f = ctx.convert.constant_to_value(pyval, {}, ctx.root_node)
+    self = cls(name, f.signatures, pyval.kind, ctx)
     self.module = module
     return self
 
-  def __init__(self, name, signatures, kind, vm):
-    super().__init__(name, vm)
+  def __init__(self, name, signatures, kind, ctx):
+    super().__init__(name, ctx)
     assert signatures
     self.kind = kind
     self.bound_class = BoundPyTDFunction
@@ -1929,20 +1940,20 @@ class PyTDFunction(Function):
         # signature, including the @staticmethod decorator, which is
         # undesirable for module-level aliases.
         callself = None
-      return StaticMethod(self.name, self, callself, self.vm)
+      return StaticMethod(self.name, self, callself, self.ctx)
     elif self.kind == pytd.MethodTypes.CLASSMETHOD:
       if not is_class:
         callself = abstract_utils.get_atomic_value(
-            callself, default=self.vm.convert.unsolvable)
+            callself, default=self.ctx.convert.unsolvable)
         if isinstance(callself, TypeParameterInstance):
           callself = abstract_utils.get_atomic_value(
               callself.instance.get_instance_type_parameter(callself.name),
-              default=self.vm.convert.unsolvable)
+              default=self.ctx.convert.unsolvable)
         # callself is the instance, and we want to bind to its class.
-        callself = callself.cls.to_variable(self.vm.root_node)
-      return ClassMethod(self.name, self, callself, self.vm)
+        callself = callself.cls.to_variable(self.ctx.root_node)
+      return ClassMethod(self.name, self, callself, self.ctx)
     elif self.kind == pytd.MethodTypes.PROPERTY and not is_class:
-      return Property(self.name, self, callself, self.vm)
+      return Property(self.name, self, callself, self.ctx)
     else:
       return super().property_get(callself, is_class)
 
@@ -1971,12 +1982,12 @@ class PyTDFunction(Function):
   def call(self, node, func, args, alias_map=None):
     # TODO(b/159052609): We should be passing function signatures to simplify.
     if len(self.signatures) == 1:
-      args = args.simplify(node, self.vm, self.signatures[0].signature)
+      args = args.simplify(node, self.ctx, self.signatures[0].signature)
     else:
-      args = args.simplify(node, self.vm)
+      args = args.simplify(node, self.ctx)
     self._log_args(arg.bindings for arg in args.posargs)
     ret_map = {}
-    retvar = self.vm.program.NewVariable()
+    retvar = self.ctx.program.NewVariable()
     all_mutations = {}
     # The following line may raise function.FailedFunctionCall
     possible_calls = self.match_args(node, args, alias_map)
@@ -2025,7 +2036,7 @@ class PyTDFunction(Function):
             # unfortunately, it is also needed for correctness because
             # cfg_utils.deep_variable_product() ignores bindings to values with
             # duplicate type keys when generating views.
-            compatible_with_cache[k] = self.vm.matcher(
+            compatible_with_cache[k] = self.ctx.matcher(
                 node).match_var_against_type(new, data.cls, {}, view)
           if compatible_with_cache[k] is not None:
             return True
@@ -2040,7 +2051,7 @@ class PyTDFunction(Function):
           params = obj.get_instance_type_parameter(name)
           ps = {v for v in params.data if should_check(v)}
           if ps:
-            filtered_values = self.vm.program.NewVariable()
+            filtered_values = self.ctx.program.NewVariable()
             # check if the container type is being broadened.
             new = []
             for b in values.bindings:
@@ -2071,8 +2082,8 @@ class PyTDFunction(Function):
       for obj, errs in errors.items():
         names = {name for _, _, name in errs.values()}
         name = list(names)[0] if len(names) == 1 else None
-        self.vm.errorlog.container_type_mismatch(
-            self.vm.frames, obj, errs, name)
+        self.ctx.errorlog.container_type_mismatch(self.ctx.vm.frames, obj, errs,
+                                                  name)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
@@ -2095,8 +2106,10 @@ class PyTDFunction(Function):
       if isinstance(v, SimpleValue):
         for name in v.instance_type_parameters:
           mutations.append(
-              function.Mutation(v, name, self.vm.convert.create_new_unknown(
-                  node, action="type_param_" + name)))
+              function.Mutation(
+                  v, name,
+                  self.ctx.convert.create_new_unknown(
+                      node, action="type_param_" + name)))
     return mutations
 
   def _can_match_multiple(self, args, view):
@@ -2135,14 +2148,13 @@ class PyTDFunction(Function):
   def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
     ret_type = self._combine_multiple_returns(signatures)
-    if self.vm.options.protocols and isinstance(ret_type, pytd.AnythingType):
+    if (self.ctx.options.protocols and isinstance(ret_type, pytd.AnythingType)):
       # We can infer a more specific type.
       log.debug("Creating unknown return")
-      result = self.vm.convert.create_new_unknown(
-          node, action="pytd_call")
+      result = self.ctx.convert.create_new_unknown(node, action="pytd_call")
     else:
       log.debug("Unknown args. But return is %s", pytd_utils.Print(ret_type))
-      result = self.vm.convert.constant_to_var(
+      result = self.ctx.convert.constant_to_var(
           abstract_utils.AsReturnValue(ret_type), {}, node)
     for i, arg in enumerate(args.posargs):
       if isinstance(view[arg].data, Unknown):
@@ -2155,7 +2167,7 @@ class PyTDFunction(Function):
             #  def f(x: T) -> T
             #  def f(x: int) -> T
             # the type of x should be Any, not int.
-            view[arg] = arg.AddBinding(self.vm.convert.unsolvable, [], node)
+            view[arg] = arg.AddBinding(self.ctx.convert.unsolvable, [], node)
             break
     if self._has_mutable:
       # TODO(b/159055015): We only need to whack the type params that appear in
@@ -2165,11 +2177,10 @@ class PyTDFunction(Function):
               args.posargs, args.namedargs.values())))
     else:
       mutations = []
-    self.vm.trace_call(node, func, tuple(sig[0] for sig in signatures),
-                       [view[arg] for arg in args.posargs],
-                       {name: view[arg]
-                        for name, arg in args.namedargs.items()},
-                       result)
+    self.ctx.vm.trace_call(
+        node, func, tuple(sig[0] for sig in signatures),
+        [view[arg] for arg in args.posargs],
+        {name: view[arg] for name, arg in args.namedargs.items()}, result)
     return node, result, mutations
 
   def _combine_multiple_returns(self, signatures):
@@ -2290,14 +2301,14 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     formal_type_parameters = {}
     for item in base_cls.template:
       formal_type_parameters[item.name] = item
-    return cls(base_cls, formal_type_parameters, base_cls.vm)
+    return cls(base_cls, formal_type_parameters, base_cls.ctx)
 
-  def __init__(self, base_cls, formal_type_parameters, vm, template=None):
+  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
     assert isinstance(base_cls, (PyTDClass, InterpreterClass))
     self.base_cls = base_cls
-    super().__init__(base_cls.name, vm)
+    super().__init__(base_cls.name, ctx)
     self._cls = None  # lazily loaded 'cls' attribute
     self.module = base_cls.module
     # Lazily loaded to handle recursive types.
@@ -2399,17 +2410,17 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       formal_type_parameters = {}
       for name, param in self._raw_formal_type_parameters():
         if param is None:
-          formal_type_parameters[name] = self.vm.convert.unsolvable
+          formal_type_parameters[name] = self.ctx.convert.unsolvable
         else:
-          formal_type_parameters[name] = self.vm.convert.constant_to_value(
-              param, self._formal_type_parameters.subst, self.vm.root_node)
+          formal_type_parameters[name] = self.ctx.convert.constant_to_value(
+              param, self._formal_type_parameters.subst, self.ctx.root_node)
       self._formal_type_parameters = formal_type_parameters
     # Hack: we'd like to evaluate annotations at the currently active node so
     # that imports, etc., are visible. The last created node is usually the
     # active one.
     self._formal_type_parameters = (
-        self.vm.annotation_utils.convert_class_annotations(
-            self.vm.program.cfg_nodes[-1], self._formal_type_parameters))
+        self.ctx.annotation_utils.convert_class_annotations(
+            self.ctx.program.cfg_nodes[-1], self._formal_type_parameters))
     self._formal_type_parameters_loaded = True
 
   def compute_mro(self):
@@ -2418,21 +2429,21 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   def instantiate(self, node, container=None):
     if self.full_name == "builtins.type":
       # deformalize removes TypeVars.
-      instance = self.vm.annotation_utils.deformalize(
+      instance = self.ctx.annotation_utils.deformalize(
           self.formal_type_parameters[abstract_utils.T])
       return instance.to_variable(node)
     elif self.full_name == "typing.ClassVar":
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)
-    elif self.vm.frame and self.vm.frame.current_opcode:
+    elif self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
       return self._new_instance(container).to_variable(node)
     else:
       return super().instantiate(node, container)
 
   @property
   def cls(self):
-    if not self.vm.convert.minimally_initialized:
-      return self.vm.convert.unsolvable
+    if not self.ctx.converter_minimally_initialized:
+      return self.ctx.convert.unsolvable
     if not self._cls:
       self._cls = self.base_cls.cls
     return self._cls
@@ -2467,7 +2478,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       return class_mixin.Class.call(self, node, func, args)
 
   def get_formal_type_parameter(self, t):
-    return self.formal_type_parameters.get(t, self.vm.convert.unsolvable)
+    return self.formal_type_parameters.get(t, self.ctx.convert.unsolvable)
 
   def get_inner_types(self):
     return self.formal_type_parameters.items()
@@ -2480,13 +2491,13 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     if isinstance(self, LiteralClass):
       if inner_types == self.formal_type_parameters:
         # If the type hasn't changed, we can return a copy of this class.
-        return LiteralClass(self._instance, self.vm, self.template)
+        return LiteralClass(self._instance, self.ctx, self.template)
       # Otherwise, we can't create a LiteralClass because we don't have a
       # concrete value.
       typ = ParameterizedClass
     else:
       typ = self.__class__
-    return typ(self.base_cls, inner_types, self.vm, self.template)
+    return typ(self.base_cls, inner_types, self.ctx, self.template)
 
 
 class TupleClass(ParameterizedClass, mixin.HasSlots):
@@ -2501,8 +2512,8 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
   do for Tuple, since we can't evaluate type parameters during initialization.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, vm, template=None):
-    super().__init__(base_cls, formal_type_parameters, vm, template)
+  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
+    super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
     if isinstance(self._formal_type_parameters,
@@ -2537,10 +2548,10 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
           isinstance(container, SimpleValue) and
           isinstance(p, TypeParameter) and
           p.full_name in container.all_template_names):
-        content.append(p.instantiate(self.vm.root_node, container))
+        content.append(p.instantiate(self.ctx.root_node, container))
       else:
-        content.append(p.instantiate(self.vm.root_node))
-    return Tuple(tuple(content), self.vm).to_variable(node)
+        content.append(p.instantiate(self.ctx.root_node))
+    return Tuple(tuple(content), self.ctx).to_variable(node)
 
   def _instantiate_index(self, node, index):
     if self._instance:
@@ -2560,7 +2571,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
   def getitem_slot(self, node, index_var):
     """Implementation of tuple.__getitem__."""
     try:
-      index = self.vm.convert.value_to_constant(
+      index = self.ctx.convert.value_to_constant(
           abstract_utils.get_atomic_value(index_var), (int, slice))
     except abstract_utils.ConversionError:
       pass
@@ -2568,11 +2579,11 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
       if isinstance(index, slice):
         if self._instance:
           slice_content = self._instance.pyval[index]
-          return node, self.vm.convert.build_tuple(node, slice_content)
+          return node, self.ctx.convert.build_tuple(node, slice_content)
         else:
           # Constructing the tuple directly is faster than calling call_pytd.
-          instance = Instance(self.vm.convert.tuple_type, self.vm)
-          node, contained_type = self.vm.init_class(
+          instance = Instance(self.ctx.convert.tuple_type, self.ctx)
+          node, contained_type = self.ctx.vm.init_class(
               node, self.formal_type_parameters[abstract_utils.T])
           instance.merge_instance_type_parameter(
               node, abstract_utils.T, contained_type)
@@ -2607,8 +2618,8 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
   When there are no args (CallableClass[[], ...]), ARGS contains abstract.Empty.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, vm, template=None):
-    super().__init__(base_cls, formal_type_parameters, vm, template)
+  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
+    super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
@@ -2629,10 +2640,12 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     if kwargs:
       raise function.WrongKeywordArgs(
           function.Signature.from_callable(self),
-          function.Args(posargs=args, namedargs=kwargs), self.vm, kwargs.keys())
+          function.Args(posargs=args, namedargs=kwargs), self.ctx,
+          kwargs.keys())
     if len(args) != self.num_args:
-      raise function.WrongArgCount(function.Signature.from_callable(self),
-                                   function.Args(posargs=args), self.vm)
+      raise function.WrongArgCount(
+          function.Signature.from_callable(self), function.Args(posargs=args),
+          self.ctx)
     formal_args = [(function.argname(i), self.formal_type_parameters[i])
                    for i in range(self.num_args)]
     substs = [datatypes.AliasingDict()]
@@ -2640,7 +2653,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     for view in abstract_utils.get_views(args, node):
       arg_dict = {function.argname(i): view[args[i]]
                   for i in range(self.num_args)}
-      subst, bad_param = self.vm.matcher(node).compute_subst(
+      subst, bad_param = self.ctx.matcher(node).compute_subst(
           formal_args, arg_dict, view, None)
       if subst is not None:
         substs = [subst]
@@ -2648,11 +2661,13 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     else:
       if bad_param:
         raise function.WrongArgTypes(
-            function.Signature.from_callable(self), function.Args(posargs=args),
-            self.vm, bad_param=bad_param)
-    ret = self.vm.annotation_utils.sub_one_annotation(
+            function.Signature.from_callable(self),
+            function.Args(posargs=args),
+            self.ctx,
+            bad_param=bad_param)
+    ret = self.ctx.annotation_utils.sub_one_annotation(
         node, self.formal_type_parameters[abstract_utils.RET], substs)
-    node, retvar = self.vm.init_class(node, ret)
+    node, retvar = self.ctx.vm.init_class(node, ret)
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
@@ -2665,10 +2680,10 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
 class LiteralClass(ParameterizedClass):
   """The class of a typing.Literal."""
 
-  def __init__(self, instance, vm, template=None):
-    base_cls = vm.convert.name_to_value("typing.Literal")
+  def __init__(self, instance, ctx, template=None):
+    base_cls = ctx.convert.name_to_value("typing.Literal")
     formal_type_parameters = {abstract_utils.T: instance.cls}
-    super().__init__(base_cls, formal_type_parameters, vm, template)
+    super().__init__(base_cls, formal_type_parameters, ctx, template)
     self._instance = instance
 
   def __repr__(self):
@@ -2704,13 +2719,13 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     mro: Method resolution order. An iterable of BaseValue.
   """
 
-  def __init__(self, name, pytd_cls, vm):
+  def __init__(self, name, pytd_cls, ctx):
     # Apply decorators first, in case they set any properties that later
     # initialization code needs to read.
     self.has_explicit_init = any(x.name == "__init__" for x in pytd_cls.methods)
     pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
-    super().__init__(name, vm)
+    super().__init__(name, ctx)
     mm = {}
     for val in pytd_cls.constants:
       if isinstance(val.type, pytd.Annotated):
@@ -2724,10 +2739,10 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     if pytd_cls.metaclass is None:
       metaclass = None
     else:
-      metaclass = self.vm.convert.constant_to_value(
+      metaclass = self.ctx.convert.constant_to_value(
           pytd_cls.metaclass,
           subst=datatypes.AliasingDict(),
-          node=self.vm.root_node)
+          node=self.ctx.root_node)
     self.official_name = self.name
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
@@ -2746,7 +2761,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
       if decorator_key:
         if key:
           error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
-          self.vm.errorlog.invalid_annotation(self.vm.frames, self, error)
+          self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
         else:
           key, keyed_decorator = decorator_key, decorator
           self._init_attr_metadata_from_pytd(decorator_name)
@@ -2761,8 +2776,10 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     # class attributes.
     init = next(x for x in self.pytd_cls.methods if x.name == "__init__")
     params = init.signatures[0].params[1:]
-    with self.vm.allow_recursive_convert():
-      own_attrs = [class_mixin.Attribute.from_param(p, self.vm) for p in params]
+    with self.ctx.allow_recursive_convert():
+      own_attrs = [
+          class_mixin.Attribute.from_param(p, self.ctx) for p in params
+      ]
     self.compute_attr_metadata(own_attrs, decorator)
 
   def _recompute_init_from_metadata(self, key):
@@ -2788,64 +2805,64 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
             if isinstance(member, pytd.Function) and member.is_abstract}
 
   def bases(self):
-    convert = self.vm.convert
+    convert = self.ctx.convert
     return [
         convert.constant_to_var(
-            parent, subst=datatypes.AliasingDict(), node=self.vm.root_node)
+            parent, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
         for parent in self.pytd_cls.parents
     ]
 
   def load_lazy_attribute(self, name, subst=None):
     try:
       super().load_lazy_attribute(name, subst)
-    except self.vm.convert.TypeParameterError as e:
-      self.vm.errorlog.unbound_type_param(
-          self.vm.frames, self, name, e.type_param_name)
-      self.members[name] = self.vm.new_unsolvable(self.vm.root_node)
+    except self.ctx.convert.TypeParameterError as e:
+      self.ctx.errorlog.unbound_type_param(self.ctx.vm.frames, self, name,
+                                           e.type_param_name)
+      self.members[name] = self.ctx.new_unsolvable(self.ctx.root_node)
 
   def _convert_member(self, member, subst=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or datatypes.AliasingDict()
-    node = self.vm.root_node
+    node = self.ctx.root_node
     if isinstance(member, pytd.Constant):
-      return self.vm.convert.constant_to_var(
+      return self.ctx.convert.constant_to_var(
           abstract_utils.AsInstance(member.type), subst, node)
     elif isinstance(member, pytd.Function):
-      c = self.vm.convert.constant_to_value(member, subst=subst, node=node)
+      c = self.ctx.convert.constant_to_value(member, subst=subst, node=node)
       c.parent = self
       return c.to_variable(node)
     elif isinstance(member, pytd.Class):
-      return self.vm.convert.constant_to_var(member, subst=subst, node=node)
+      return self.ctx.convert.constant_to_var(member, subst=subst, node=node)
     else:
       raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
   def _new_instance(self, args):  # pylint: disable=arguments-renamed
     if self.full_name == "builtins.tuple" and args.is_empty():
-      value = Tuple((), self.vm)
+      value = Tuple((), self.ctx)
     elif self.full_name == "builtins.dict" and args.is_empty():
-      value = Dict(self.vm)
+      value = Dict(self.ctx)
     else:
       value = Instance(
-          self.vm.convert.constant_to_value(self.pytd_cls), self.vm)
+          self.ctx.convert.constant_to_value(self.pytd_cls), self.ctx)
     for type_param in self.template:
       name = type_param.full_name
       if name not in value.instance_type_parameters:
-        value.instance_type_parameters[name] = self.vm.program.NewVariable()
+        value.instance_type_parameters[name] = self.ctx.program.NewVariable()
     return value
 
   def call(self, node, func, args, alias_map=None):
     if self.is_abstract and not self.from_annotation:
-      self.vm.errorlog.not_instantiable(self.vm.frames, self)
+      self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
     node, variable = self._call_new_and_init(node, func, args)
     if variable is None:
       value = self._new_instance(args)
-      variable = self.vm.program.NewVariable()
+      variable = self.ctx.program.NewVariable()
       val = variable.AddBinding(value, [func], node)
       node = self.call_init(node, val, args)
     return node, variable
 
   def instantiate(self, node, container=None):
-    return self.vm.convert.constant_to_var(
+    return self.ctx.convert.constant_to_var(
         abstract_utils.AsInstance(self.pytd_cls), {}, node)
 
   def __repr__(self):
@@ -2875,14 +2892,14 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     if isinstance(c, pytd.Constant):
       try:
         self._convert_member(c)
-      except self.vm.convert.TypeParameterError:
+      except self.ctx.convert.TypeParameterError:
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
         subst = datatypes.AliasingDict()
         for itm in self.pytd_cls.template:
-          subst[itm.full_name] = self.vm.convert.constant_to_value(
+          subst[itm.full_name] = self.ctx.convert.constant_to_value(
               itm.type_param, {}).instantiate(
-                  self.vm.root_node, container=instance)
+                  self.ctx.root_node, container=instance)
         return self._convert_member(c, subst)
 
   def generate_ast(self):
@@ -2908,8 +2925,8 @@ class FunctionPyTDClass(PyTDClass):
   save the value of `func`, not just its type of Callable.
   """
 
-  def __init__(self, func, vm):
-    super().__init__("typing.Callable", vm.convert.function_type.pytd_cls, vm)
+  def __init__(self, func, ctx):
+    super().__init__("typing.Callable", ctx.convert.function_type.pytd_cls, ctx)
     self.func = func
 
   def instantiate(self, node, container=None):
@@ -2924,12 +2941,12 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
   program.
   """
 
-  def __init__(self, name, bases, members, cls, vm):
+  def __init__(self, name, bases, members, cls, ctx):
     assert isinstance(name, str)
     assert isinstance(bases, list)
     assert isinstance(members, dict)
     self._bases = bases
-    super().__init__(name, vm)
+    super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
     class_mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
@@ -2952,7 +2969,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
       # For function type parameters check
       for mbr in self.members.values():
         m = abstract_utils.get_atomic_value(
-            mbr, default=self.vm.convert.unsolvable)
+            mbr, default=self.ctx.convert.unsolvable)
         if isinstance(m, SignedFunction):
           self.update_signature_scope(m)
         elif mbr.data and all(
@@ -2993,7 +3010,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     if max_depth > 0:
       for mbr in self.members.values():
         mbr = abstract_utils.get_atomic_value(
-            mbr, default=self.vm.convert.unsolvable)
+            mbr, default=self.ctx.convert.unsolvable)
         if isinstance(mbr, InterpreterClass) and mbr.template:
           templates.update([(mbr, item.with_module(None))
                             for item in mbr.template])
@@ -3003,8 +3020,10 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
   def get_inner_classes(self):
     """Return the list of top-level nested classes."""
     values = [
-        abstract_utils.get_atomic_value(mbr, default=self.vm.convert.unsolvable)
-        for mbr in self.members.values()]
+        abstract_utils.get_atomic_value(
+            mbr, default=self.ctx.convert.unsolvable)
+        for mbr in self.members.values()
+    ]
     return [x for x in values if isinstance(x, InterpreterClass)]
 
   def get_own_attributes(self):
@@ -3063,8 +3082,8 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     # Slot names should be strings.
     for s in names:
       if not isinstance(s, str):
-        self.vm.errorlog.bad_slots(
-            self.vm.frames, "Invalid __slot__ entry: %r" % str(s))
+        self.ctx.errorlog.bad_slots(self.ctx.vm.frames,
+                                    "Invalid __slot__ entry: %r" % str(s))
         return None
     return tuple(self._mangle(s) for s in names)
 
@@ -3080,12 +3099,12 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
   def metaclass(self, node):
     if (self.cls.full_name != "builtins.type" and
         self.cls is not self._get_inherited_metaclass()):
-      return self.vm.convert.merge_classes([self])
+      return self.ctx.convert.merge_classes([self])
     else:
       return None
 
   def instantiate(self, node, container=None):
-    if self.vm.frame and self.vm.frame.current_opcode:
+    if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
       return self._new_instance(container).to_variable(node)
     else:
       # When the analyze_x methods in CallTracer instantiate classes in
@@ -3118,11 +3137,11 @@ class NativeFunction(Function):
   Attributes:
     name: Function name. Might just be something like "<lambda>".
     func: An object with a __call__ method.
-    vm: TypegraphVirtualMachine instance.
+    ctx: context.Context instance.
   """
 
-  def __init__(self, name, func, vm):
-    super().__init__(name, vm)
+  def __init__(self, name, func, ctx):
+    super().__init__(name, ctx)
     self.func = func
     self.bound_class = lambda callself, underlying: self
 
@@ -3133,7 +3152,7 @@ class NativeFunction(Function):
     sig = None
     if isinstance(self.func.__self__, CallableClass):
       sig = function.Signature.from_callable(self.func.__self__)
-    args = args.simplify(node, self.vm, match_signature=sig)
+    args = args.simplify(node, self.ctx, match_signature=sig)
     posargs = [u.AssignToNewVariable(node) for u in args.posargs]
     namedargs = {k: u.AssignToNewVariable(node)
                  for k, u in args.namedargs.items()}
@@ -3169,14 +3188,15 @@ class NativeFunction(Function):
         argnames = tuple("_" + str(i) for i in range(expected_argcount))
         sig = function.Signature(
             self.name, argnames, None, set(), None, {}, {}, {})
-        raise function.WrongArgCount(sig, args, self.vm)
+        raise function.WrongArgCount(sig, args, self.ctx)
       assert actual_argcount < expected_argcount
       # Assume that starargs or starstarargs fills in the missing arguments.
       # Instead of guessing where these arguments should go, overwrite all of
       # the arguments with a list of unsolvables of the correct length, which
       # is guaranteed to give us a correct (but imprecise) analysis.
-      posargs = [self.vm.new_unsolvable(node)
-                 for _ in range(expected_argcount)]
+      posargs = [
+          self.ctx.new_unsolvable(node) for _ in range(expected_argcount)
+      ]
       namedargs = {}
     return self.func(node, *posargs, **namedargs)
 
@@ -3191,8 +3211,8 @@ class SignedFunction(Function):
   Subclasses should define call(self, node, f, args) and set self.bound_class.
   """
 
-  def __init__(self, signature, vm):
-    super().__init__(signature.name, vm)
+  def __init__(self, signature, ctx):
+    super().__init__(signature.name, ctx)
     self.signature = signature
     # Track whether we've annotated `self` with `set_self_annot`, since
     # annotating `self` in `__init__` is otherwise illegal.
@@ -3249,15 +3269,17 @@ class SignedFunction(Function):
     kws = {k: u.AssignToNewVariable(node)
            for k, u in args.namedargs.items()}
     sig = self.signature
-    callargs = {name: self.vm.program.NewVariable(default.data, [], node)
-                for name, default in sig.defaults.items()}
+    callargs = {
+        name: self.ctx.program.NewVariable(default.data, [], node)
+        for name, default in sig.defaults.items()
+    }
     positional = dict(zip(sig.param_names, posargs))
     for key in positional:
       if key in kws:
-        raise function.DuplicateKeyword(sig, args, self.vm, key)
+        raise function.DuplicateKeyword(sig, args, self.ctx, key)
     extra_kws = set(kws).difference(sig.param_names + sig.kwonly_params)
     if extra_kws and not sig.kwargs_name:
-      raise function.WrongKeywordArgs(sig, args, self.vm, extra_kws)
+      raise function.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
     callargs.update(positional)
     callargs.update(kws)
     for key, kwonly in self.get_nondefault_params():
@@ -3265,12 +3287,12 @@ class SignedFunction(Function):
         if args.starstarargs or (args.starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
           # to fill in any parameters we might be missing.
-          callargs[key] = self.vm.new_unsolvable(node)
+          callargs[key] = self.ctx.new_unsolvable(node)
         else:
-          raise function.MissingParameter(sig, args, self.vm, key)
+          raise function.MissingParameter(sig, args, self.ctx, key)
     for key in sig.kwonly_params:
       if key not in callargs:
-        raise function.MissingParameter(sig, args, self.vm, key)
+        raise function.MissingParameter(sig, args, self.ctx, key)
     if sig.varargs_name:
       varargs_name = sig.varargs_name
       extraneous = posargs[self.argcount(node):]
@@ -3279,9 +3301,9 @@ class SignedFunction(Function):
           log.warning("Not adding extra params to *%s", varargs_name)
         callargs[varargs_name] = args.starargs.AssignToNewVariable(node)
       else:
-        callargs[varargs_name] = self.vm.convert.build_tuple(node, extraneous)
+        callargs[varargs_name] = self.ctx.convert.build_tuple(node, extraneous)
     elif len(posargs) > self.argcount(node):
-      raise function.WrongArgCount(sig, args, self.vm)
+      raise function.WrongArgCount(sig, args, self.ctx)
     if sig.kwargs_name:
       kwargs_name = sig.kwargs_name
       # Build a **kwargs dictionary out of the extraneous parameters
@@ -3289,7 +3311,7 @@ class SignedFunction(Function):
         callargs[kwargs_name] = args.starstarargs.AssignToNewVariable(node)
       else:
         omit = sig.param_names + sig.kwonly_params
-        k = Dict(self.vm)
+        k = Dict(self.ctx)
         k.update(node, args.namedargs, omit=omit)
         callargs[kwargs_name] = k.to_variable(node)
     return callargs
@@ -3303,13 +3325,13 @@ class SignedFunction(Function):
         if name in (self.signature.varargs_name, self.signature.kwargs_name):
           # The annotation is Tuple or Dict, but the passed arg only has to be
           # Iterable or Mapping.
-          formal = self.vm.convert.widen_type(formal)
+          formal = self.ctx.convert.widen_type(formal)
         formal_args.append((name, formal))
-    subst, bad_arg = self.vm.matcher(node).compute_subst(
+    subst, bad_arg = self.ctx.matcher(node).compute_subst(
         formal_args, arg_dict, view, alias_map)
     if subst is None:
       raise function.WrongArgTypes(
-          self.signature, args, self.vm, bad_param=bad_arg)
+          self.signature, args, self.ctx, bad_param=bad_arg)
     return subst
 
   def get_first_opcode(self):
@@ -3330,8 +3352,9 @@ class SignedFunction(Function):
     """
     defaults = self._extract_defaults(defaults_var)
     if defaults is None:
-      defaults = [self.vm.new_unsolvable(node)
-                  for _ in self.signature.param_names]
+      defaults = [
+          self.ctx.new_unsolvable(node) for _ in self.signature.param_names
+      ]
     defaults = dict(zip(self.signature.param_names[-len(defaults):], defaults))
     self.signature.defaults = defaults
 
@@ -3376,14 +3399,14 @@ class InterpreterFunction(SignedFunction):
     code: A code object.
     closure: Tuple of cells (cfg.Variable) containing the free variables
       this closure binds to.
-    vm: TypegraphVirtualMachine instance.
+    ctx: context.Context instance.
   """
 
   _function_cache = {}
 
   @classmethod
   def make(cls, name, code, f_locals, f_globals, defaults, kw_defaults, closure,
-           annotations, vm):
+           annotations, ctx):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -3400,7 +3423,7 @@ class InterpreterFunction(SignedFunction):
       kw_defaults: Default arguments for kwonly parameters.
       closure: The free variables this closure binds to.
       annotations: Function annotations. Dict of name -> BaseValue.
-      vm: VirtualMachine instance.
+      ctx: context.Context instance.
 
     Returns:
       An InterpreterFunction.
@@ -3411,34 +3434,34 @@ class InterpreterFunction(SignedFunction):
       ret_type = annotations["return"]
       if code.has_generator():
         if not abstract_utils.matches_generator(ret_type):
-          vm.errorlog.bad_yield_annotation(
-              vm.frames, name, ret_type, is_async=False)
+          ctx.errorlog.bad_yield_annotation(
+              ctx.vm.frames, name, ret_type, is_async=False)
       elif code.has_async_generator():
         if not abstract_utils.matches_async_generator(ret_type):
-          vm.errorlog.bad_yield_annotation(
-              vm.frames, name, ret_type, is_async=True)
-    overloads = vm.frame.overloads[name]
+          ctx.errorlog.bad_yield_annotation(
+              ctx.vm.frames, name, ret_type, is_async=True)
+    overloads = ctx.vm.frame.overloads[name]
     key = (name, code,
            abstract_utils.hash_all_dicts(
                (f_globals.members, set(code.co_names)),
                (f_locals.members,
                 set(f_locals.members) - set(code.co_varnames)), ({
-                    key: vm.program.NewVariable([value], [], vm.root_node)
+                    key: ctx.program.NewVariable([value], [], ctx.root_node)
                     for key, value in annotations.items()
                 }, None), (dict(
                     enumerate(
-                        vm.program.NewVariable([f], [], vm.root_node)
+                        ctx.program.NewVariable([f], [], ctx.root_node)
                         for f in overloads)), None),
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
     if key not in cls._function_cache:
-      cls._function_cache[key] = cls(
-          name, code, f_locals, f_globals, defaults, kw_defaults, closure,
-          annotations, overloads, vm)
+      cls._function_cache[key] = cls(name, code, f_locals, f_globals, defaults,
+                                     kw_defaults, closure, annotations,
+                                     overloads, ctx)
     return cls._function_cache[key]
 
   def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
-               closure, annotations, overloads, vm):
+               closure, annotations, overloads, ctx):
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
@@ -3459,7 +3482,7 @@ class InterpreterFunction(SignedFunction):
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
     signature = self._build_signature(name, annotations)
-    super().__init__(signature, vm)
+    super().__init__(signature, ctx)
     self._update_signature_scope()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
@@ -3532,13 +3555,13 @@ class InterpreterFunction(SignedFunction):
     # get all type parameters from function annotations
     all_type_parameters = []
     for annot in self.signature.annotations.values():
-      params = self.vm.annotation_utils.get_type_parameters(annot)
+      params = self.ctx.annotation_utils.get_type_parameters(annot)
       all_type_parameters.extend(itm.with_module(None) for itm in params)
 
     if all_type_parameters:
       for key, value in last_frame.f_locals.pyval.items():
         value = abstract_utils.get_atomic_value(
-            value, default=self.vm.convert.unsolvable)
+            value, default=self.ctx.convert.unsolvable)
         if (isinstance(value, InterpreterClass) and value.template and
             key == value.name):
           # `value` is a nested class definition.
@@ -3548,11 +3571,11 @@ class InterpreterFunction(SignedFunction):
           # Report errors in a deterministic order.
           for cls, item in sorted(inner_cls_types, key=lambda typ: typ[1].name):
             if item in all_type_parameters:
-              self.vm.errorlog.invalid_annotation(
-                  self.vm.simple_stack(self.get_first_opcode()), item,
+              self.ctx.errorlog.invalid_annotation(
+                  self.ctx.vm.simple_stack(self.get_first_opcode()), item,
                   ("Function [%s] and its nested generic class [%s] cannot use "
-                   "the same type variable %s")
-                  % (self.full_name, cls.full_name, item.name))
+                   "the same type variable %s") %
+                  (self.full_name, cls.full_name, item.name))
 
   def signature_functions(self):
     """Get the functions that describe this function's signature."""
@@ -3587,20 +3610,20 @@ class InterpreterFunction(SignedFunction):
     raise error  # pylint: disable=raising-bad-type
 
   def _set_callself_maybe_missing_members(self):
-    if self.vm.callself_stack:
-      for b in self.vm.callself_stack[-1].bindings:
+    if self.ctx.callself_stack:
+      for b in self.ctx.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
   def call(self, node, func, args, new_locals=False, alias_map=None,
            frame_substs=()):
     if self.is_overload:
       raise function.NotCallable(self)
-    if (self.vm.is_at_maximum_depth() and
+    if (self.ctx.vm.is_at_maximum_depth() and
         not abstract_utils.func_name_is_class_init(self.name)):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
-      return node, self.vm.new_unsolvable(node)
-    args = args.simplify(node, self.vm, self.signature)
+      return node, self.ctx.new_unsolvable(node)
+    args = args.simplify(node, self.ctx, self.signature)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
     if sig is not self.signature:
       # We've matched an overload; remap the callargs using the implementation
@@ -3609,14 +3632,14 @@ class InterpreterFunction(SignedFunction):
     first_arg = sig.get_first_arg(callargs)
     annotation_substs = substs
     # Adds type parameter substitutions from all containing classes. Note that
-    # lower frames (ones closer to the end of self.vm.frames) take precedence
-    # over higher ones.
-    for frame in reversed(self.vm.frames):
+    # lower frames (ones closer to the end of self.ctx.vm.frames) take
+    # precedence over higher ones.
+    for frame in reversed(self.ctx.vm.frames):
       annotation_substs = abstract_utils.combine_substs(
           frame.substs, annotation_substs)
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
-    annotations = self.vm.annotation_utils.sub_annotations(
+    annotations = self.ctx.annotation_utils.sub_annotations(
         node, sig.annotations, annotation_substs, instantiate_unbound=False)
     if sig.has_param_annotations:
       if first_arg and sig.param_names[0] == "self":
@@ -3639,19 +3662,29 @@ class InterpreterFunction(SignedFunction):
                                      self.argcount(node) == 0 or
                                      name != sig.param_names[0])):
           extra_key = (self.get_first_opcode(), name)
-          node, callargs[name] = self.vm.annotation_utils.init_annotation(
-              node, name, annotations[name], container=container,
+          node, callargs[name] = self.ctx.annotation_utils.init_annotation(
+              node,
+              name,
+              annotations[name],
+              container=container,
               extra_key=extra_key)
     mutations = self._mutations_generator(node, first_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     if substs:
       frame_substs = tuple(itertools.chain(frame_substs, substs))
     try:
-      frame = self.vm.make_frame(
-          node, self.code, self.f_globals, self.f_locals, callargs,
-          self.closure, new_locals=new_locals, func=func,
-          first_arg=first_arg, substs=frame_substs)
-    except self.vm.VirtualMachineRecursionError:
+      frame = self.ctx.vm.make_frame(
+          node,
+          self.code,
+          self.f_globals,
+          self.f_locals,
+          callargs,
+          self.closure,
+          new_locals=new_locals,
+          func=func,
+          first_arg=first_arg,
+          substs=frame_substs)
+    except self.ctx.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
       # incompletely initialized instance of the same class (or a subclass) at
       # the same node. (See, e.g., testRecursiveConstructor and
@@ -3660,7 +3693,7 @@ class InterpreterFunction(SignedFunction):
       # that first instance will be aborted. Instead, mark this second instance
       # as incomplete.
       self._set_callself_maybe_missing_members()
-      return node, self.vm.new_unsolvable(node)
+      return node, self.ctx.new_unsolvable(node)
     caller_is_abstract = abstract_utils.check_classes(
         first_arg, lambda cls: cls.is_abstract)
     caller_is_protocol = abstract_utils.check_classes(
@@ -3671,10 +3704,10 @@ class InterpreterFunction(SignedFunction):
     check_return = (not (self.is_attribute_of_class and caller_is_protocol) and
                     not (caller_is_abstract and self.is_abstract))
     if sig.has_return_annotation or not check_return:
-      frame.allowed_returns = annotations.get(
-          "return", self.vm.convert.unsolvable)
+      frame.allowed_returns = annotations.get("return",
+                                              self.ctx.convert.unsolvable)
       frame.check_return = check_return
-    if self.vm.options.skip_repeat_calls:
+    if self.ctx.options.skip_repeat_calls:
       callkey = abstract_utils.hash_all_dicts(
           (callargs, None),
           (frame.f_globals.members, set(self.code.co_names)),
@@ -3690,14 +3723,15 @@ class InterpreterFunction(SignedFunction):
       # environment and arguments, so recycle the old return value.
       # We would want to skip this optimization and reanalyze the call if we can
       # traverse the function deeper.
-      if self.vm.remaining_depth() > old_remaining_depth:
+      if self.ctx.vm.remaining_depth() > old_remaining_depth:
         # TODO(rechen): Reanalysis is necessary only if the VM was unable to
         # completely analyze the call with old_remaining_depth. For now, we can
         # get away with not checking for completion because of how severely
         # --quick constrains the maximum depth.
-        log.info("Reanalyzing %r because we can traverse deeper; "
-                 "remaining_depth = %d, old_remaining_depth = %d",
-                 self.name, self.vm.remaining_depth(), old_remaining_depth)
+        log.info(
+            "Reanalyzing %r because we can traverse deeper; "
+            "remaining_depth = %d, old_remaining_depth = %d", self.name,
+            self.ctx.vm.remaining_depth(), old_remaining_depth)
       else:
         ret = old_ret.AssignToNewVariable(node)
         if self._store_call_records:
@@ -3705,7 +3739,7 @@ class InterpreterFunction(SignedFunction):
           self._call_records.append((callargs, ret, node))
         return node, ret
     if self.code.has_generator():
-      generator = Generator(frame, self.vm)
+      generator = Generator(frame, self.ctx)
       # Run the generator right now, even though the program didn't call it,
       # because we need to know the contained type for futher matching.
       node2, _ = generator.run_generator(node)
@@ -3715,12 +3749,12 @@ class InterpreterFunction(SignedFunction):
         # that matching against a typing.Awaitable annotation succeeds.
         # TODO(rechen): PyTDFunction probably also needs to do this.
         var = generator.get_instance_type_parameter(abstract_utils.V)
-        ret = Coroutine(self.vm, var, node2).to_variable(node2)
+        ret = Coroutine(self.ctx, var, node2).to_variable(node2)
       else:
         ret = generator.to_variable(node2)
       node_after_call = node2
     elif self.code.has_async_generator():
-      async_generator = AsyncGenerator(frame, self.vm)
+      async_generator = AsyncGenerator(frame, self.ctx)
       node2, _ = async_generator.run_generator(node)
       node_after_call, ret = node2, async_generator.to_variable(node2)
     else:
@@ -3730,16 +3764,19 @@ class InterpreterFunction(SignedFunction):
       # disable inference.
       annotated_locals = {}
       for name, annot in annotations.items():
-        if name != "return" and annot == self.vm.convert.unsolvable:
-          annotated_locals[name] = abstract_utils.Local(
-              node, self.get_first_opcode(), annot, callargs.get(name), self.vm)
-      node2, ret = self.vm.run_frame(frame, node, annotated_locals)
+        if name != "return" and annot == self.ctx.convert.unsolvable:
+          annotated_locals[name] = abstract_utils.Local(node,
+                                                        self.get_first_opcode(),
+                                                        annot,
+                                                        callargs.get(name),
+                                                        self.ctx)
+      node2, ret = self.ctx.vm.run_frame(frame, node, annotated_locals)
       if self.is_coroutine():
-        ret = Coroutine(self.vm, ret, node2).to_variable(node2)
+        ret = Coroutine(self.ctx, ret, node2).to_variable(node2)
       node_after_call = node2
     self._inner_cls_check(frame)
-    self._call_cache[callkey] = ret, self.vm.remaining_depth()
-    if self._store_call_records or self.vm.store_all_calls:
+    self._call_cache[callkey] = ret, self.ctx.vm.remaining_depth()
+    if self._store_call_records or self.ctx.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
     return node_after_call, ret
@@ -3753,10 +3790,11 @@ class InterpreterFunction(SignedFunction):
         combinations = cfg_utils.variable_product_dict(callargs)
       except cfg_utils.TooComplexError:
         combination = {
-            name: self.vm.convert.unsolvable.to_binding(node_after_call)
-            for name in callargs}
+            name: self.ctx.convert.unsolvable.to_binding(node_after_call)
+            for name in callargs
+        }
         combinations = [combination]
-        ret = self.vm.new_unsolvable(node_after_call)
+        ret = self.ctx.new_unsolvable(node_after_call)
       for combination in combinations:
         for return_value in ret.bindings:
           values = list(combination.values()) + [return_value]
@@ -3773,9 +3811,9 @@ class InterpreterFunction(SignedFunction):
     if not all_combinations:
       # Fallback: Generate signatures only from the definition of the
       # method, not the way it's being used.
-      param_binding = self.vm.convert.unsolvable.to_binding(node)
+      param_binding = self.ctx.convert.unsolvable.to_binding(node)
       params = collections.defaultdict(lambda: param_binding)
-      ret = self.vm.convert.unsolvable.to_binding(node)
+      ret = self.ctx.convert.unsolvable.to_binding(node)
       all_combinations.append((node, params, ret))
     return all_combinations
 
@@ -3813,10 +3851,11 @@ class InterpreterFunction(SignedFunction):
       # If `_has_self_annot` is True, then we've intentionally temporarily
       # annotated `self`; otherwise, a `self` annotation is illegal.
       if not self._has_self_annot and self_name in self.signature.annotations:
-        self.vm.errorlog.invalid_annotation(
-            self.vm.simple_stack(self.get_first_opcode()),
+        self.ctx.errorlog.invalid_annotation(
+            self.ctx.vm.simple_stack(self.get_first_opcode()),
             self.signature.annotations[self_name],
-            details="Cannot annotate self argument of __init__", name=self_name)
+            details="Cannot annotate self argument of __init__",
+            name=self_name)
         self.signature.del_annotation(self_name)
     return super().property_get(callself, is_class)
 
@@ -3843,7 +3882,7 @@ class SimpleFunction(SignedFunction):
   """
 
   def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations, vm):
+               kwargs_name, defaults, annotations, ctx):
     """Create a SimpleFunction.
 
     Args:
@@ -3855,24 +3894,24 @@ class SimpleFunction(SignedFunction):
       kwargs_name: The "kwargs" in "**kwargs". String or None.
       defaults: Dictionary of string names to values of default arguments.
       annotations: Dictionary of string names to annotations (strings or types).
-      vm: The virtual machine for this function.
+      ctx: The abstract context for this function.
     """
     annotations = dict(annotations)
     # Every parameter must have an annotation. Defaults to unsolvable.
     for n in itertools.chain(param_names, [varargs_name, kwargs_name],
                              kwonly_params):
       if n and n not in annotations:
-        annotations[n] = vm.convert.unsolvable
+        annotations[n] = ctx.convert.unsolvable
     if not isinstance(defaults, dict):
       defaults = dict(zip(param_names[-len(defaults):], defaults))
     signature = function.Signature(name, param_names, varargs_name,
                                    kwonly_params, kwargs_name, defaults,
                                    annotations)
-    super().__init__(signature, vm)
+    super().__init__(signature, ctx)
     self.bound_class = BoundFunction
 
   @classmethod
-  def from_signature(cls, signature, vm):
+  def from_signature(cls, signature, ctx):
     """Create a SimpleFunction from a function.Signature."""
     return cls(
         name=signature.name,
@@ -3882,21 +3921,21 @@ class SimpleFunction(SignedFunction):
         kwargs_name=signature.kwargs_name,
         defaults=signature.defaults,
         annotations=signature.annotations,
-        vm=vm)
+        ctx=ctx)
 
   def call(self, node, _, args, alias_map=None):
     # We only simplify args for _map_args, because that simplifies checking.
     # This allows match_args to typecheck varargs and kwargs.
-    callargs = self._map_args(node, args.simplify(node, self.vm))
+    callargs = self._map_args(node, args.simplify(node, self.ctx))
     substs = self.match_args(node, args, alias_map)
     # Substitute type parameters in the signature's annotations.
-    annotations = self.vm.annotation_utils.sub_annotations(
+    annotations = self.ctx.annotation_utils.sub_annotations(
         node, self.signature.annotations, substs, instantiate_unbound=False)
     if self.signature.has_return_annotation:
       ret_type = annotations["return"]
       ret = ret_type.instantiate(node)
     else:
-      ret = self.vm.convert.none.to_variable(node)
+      ret = self.ctx.convert.none.to_variable(node)
     if self.name == "__new__":
       self_arg = ret
     else:
@@ -3910,7 +3949,7 @@ class BoundFunction(BaseValue):
   """An function type which has had an argument bound into it."""
 
   def __init__(self, callself, underlying):
-    super().__init__(underlying.name, underlying.vm)
+    super().__init__(underlying.name, underlying.ctx)
     self.cls = underlying.cls
     self._callself = callself
     self.underlying = underlying
@@ -3921,7 +3960,7 @@ class BoundFunction(BaseValue):
     # `self` when do argument matching
     self.replace_self_annot = None
     inst = abstract_utils.get_atomic_value(
-        self._callself, default=self.vm.convert.unsolvable)
+        self._callself, default=self.ctx.convert.unsolvable)
     if self._should_replace_self_annot():
       if (isinstance(inst.cls, class_mixin.Class) and
           inst.cls.full_name != "builtins.type"):
@@ -3972,7 +4011,7 @@ class BoundFunction(BaseValue):
 
   def call(self, node, func, args, alias_map=None):
     if abstract_utils.func_name_is_class_init(self.name):
-      self.vm.callself_stack.append(self._callself)
+      self.ctx.callself_stack.append(self._callself)
     # The "self" parameter is automatically added to the list of arguments, but
     # only if the function actually takes any arguments.
     if self.argcount(node) >= 0:
@@ -3995,7 +4034,7 @@ class BoundFunction(BaseValue):
       raise
     finally:
       if abstract_utils.func_name_is_class_init(self.name):
-        self.vm.callself_stack.pop()
+        self.ctx.callself_stack.pop()
     return node, ret
 
   def get_positional_names(self):
@@ -4086,17 +4125,17 @@ class BoundPyTDFunction(BoundFunction):
 class Coroutine(Instance):
   """A representation of instances of coroutine."""
 
-  def __init__(self, vm, ret_var, node):
-    super().__init__(vm.convert.coroutine_type, vm)
-    self.merge_instance_type_parameter(
-        node, abstract_utils.T, self.vm.new_unsolvable(node))
-    self.merge_instance_type_parameter(
-        node, abstract_utils.T2, self.vm.new_unsolvable(node))
+  def __init__(self, ctx, ret_var, node):
+    super().__init__(ctx.convert.coroutine_type, ctx)
+    self.merge_instance_type_parameter(node, abstract_utils.T,
+                                       self.ctx.new_unsolvable(node))
+    self.merge_instance_type_parameter(node, abstract_utils.T2,
+                                       self.ctx.new_unsolvable(node))
     self.merge_instance_type_parameter(
         node, abstract_utils.V, ret_var.AssignToNewVariable(node))
 
   @classmethod
-  def make(cls, vm, func, node):
+  def make(cls, ctx, func, node):
     """Get return type of coroutine function."""
     assert func.signature.has_return_annotation
     ret_val = func.signature.annotations["return"]
@@ -4105,14 +4144,14 @@ class Coroutine(Instance):
     elif func.code.has_iterable_coroutine():
       ret_var = ret_val.get_formal_type_parameter(
           abstract_utils.V).instantiate(node)
-    return cls(vm, ret_var, node)
+    return cls(ctx, ret_var, node)
 
 
 class BaseGenerator(Instance):
   """A base class of instances of generators and async generators."""
 
-  def __init__(self, generator_type, frame, vm, is_return_allowed):
-    super().__init__(generator_type, vm)
+  def __init__(self, generator_type, frame, ctx, is_return_allowed):
+    super().__init__(generator_type, ctx)
     self.frame = frame
     self.runs = 0
     self.is_return_allowed = is_return_allowed  # if return statement is allowed
@@ -4120,7 +4159,7 @@ class BaseGenerator(Instance):
   def run_generator(self, node):
     """Run the generator."""
     if self.runs == 0:  # Optimization: We only run it once.
-      node, _ = self.vm.resume_frame(node, self.frame)
+      node, _ = self.ctx.vm.resume_frame(node, self.frame)
       ret_type = self.frame.allowed_returns
       if ret_type:
         # set type parameters according to annotated Generator return type
@@ -4128,7 +4167,7 @@ class BaseGenerator(Instance):
         if self.is_return_allowed:
           type_params.append(abstract_utils.V)
         for param_name in type_params:
-          _, param_var = self.vm.init_class(
+          _, param_var = self.ctx.vm.init_class(
               node, ret_type.get_formal_type_parameter(param_name))
           self.merge_instance_type_parameter(node, param_name, param_var)
       else:
@@ -4138,9 +4177,8 @@ class BaseGenerator(Instance):
         # For T2 type, it can not be decided until the send/asend function is
         # called later on. So set T2 type as ANY so that the type check will
         # not fail when the function is called afterwards.
-        self.merge_instance_type_parameter(
-            node, abstract_utils.T2,
-            self.vm.new_unsolvable(node))
+        self.merge_instance_type_parameter(node, abstract_utils.T2,
+                                           self.ctx.new_unsolvable(node))
         if self.is_return_allowed:
           self.merge_instance_type_parameter(
               node, abstract_utils.V, self.frame.return_variable)
@@ -4156,12 +4194,12 @@ class BaseGenerator(Instance):
 class Generator(BaseGenerator):
   """A representation of instances of generators."""
 
-  def __init__(self, generator_frame, vm):
-    super().__init__(vm.convert.generator_type, generator_frame, vm, True)
+  def __init__(self, generator_frame, ctx):
+    super().__init__(ctx.convert.generator_type, generator_frame, ctx, True)
 
   def get_special_attribute(self, node, name, valself):
     if name == "__iter__":
-      f = NativeFunction(name, self.__iter__, self.vm)
+      f = NativeFunction(name, self.__iter__, self.ctx)
       return f.to_variable(node)
     elif name == "__next__":
       return self.to_variable(node)
@@ -4180,16 +4218,16 @@ class Generator(BaseGenerator):
 class AsyncGenerator(BaseGenerator):
   """A representation of instances of async generators."""
 
-  def __init__(self, async_generator_frame, vm):
-    super().__init__(vm.convert.async_generator_type, async_generator_frame, vm,
-                     False)
+  def __init__(self, async_generator_frame, ctx):
+    super().__init__(ctx.convert.async_generator_type, async_generator_frame,
+                     ctx, False)
 
 
 class Iterator(Instance, mixin.HasSlots):
   """A representation of instances of iterators."""
 
-  def __init__(self, vm, return_var):
-    super().__init__(vm.convert.iterator_type, vm)
+  def __init__(self, ctx, return_var):
+    super().__init__(ctx.convert.iterator_type, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__next__", self.next_slot)
     # TODO(dbaum): Should we set instance_type_parameters[self.TYPE_PARAM] to
@@ -4203,8 +4241,8 @@ class Iterator(Instance, mixin.HasSlots):
 class Splat(BaseValue):
   """Representation of unpacked iterables."""
 
-  def __init__(self, vm, iterable):
-    super().__init__("splat", vm)
+  def __init__(self, ctx, iterable):
+    super().__init__("splat", ctx)
     # When building a tuple for a function call, we preserve splats as elements
     # in a concrete tuple (e.g. f(x, *ys, z) gets called with the concrete tuple
     # (x, *ys, z) in starargs) and let the arg matcher in function.py unpack
@@ -4212,7 +4250,7 @@ class Splat(BaseValue):
     # we would specialise abstract.Tuple for function calls and not bother
     # constructing an associated TupleClass for a function call tuple, but for
     # now we just set the class to Any here.
-    self.cls = vm.convert.unsolvable
+    self.cls = ctx.convert.unsolvable
     self.iterable = iterable
 
   def __repr__(self):
@@ -4222,15 +4260,15 @@ class Splat(BaseValue):
 class Module(Instance, mixin.LazyMembers):
   """Represents an (imported) module."""
 
-  def __init__(self, vm, name, member_map, ast):
-    super().__init__(vm.convert.module_type, vm)
+  def __init__(self, ctx, name, member_map, ast):
+    super().__init__(ctx.convert.module_type, ctx)
     self.name = name
     self.ast = ast
     mixin.LazyMembers.init_mixin(self, member_map)
 
   def _convert_member(self, member, subst=None):
     """Called to convert the items in _member_map to cfg.Variable."""
-    var = self.vm.convert.constant_to_var(member)
+    var = self.ctx.convert.constant_to_var(member)
     for value in var.data:
       # Only do this if this is a class which isn't already part of a module, or
       # is a module itself.
@@ -4279,11 +4317,12 @@ class Module(Instance, mixin.LazyMembers):
 
   def get_submodule(self, node, name):
     full_name = self.name + "." + name
-    mod = self.vm.import_module(full_name, full_name, 0)  # 0: absolute import
+    mod = self.ctx.vm.import_module(full_name, full_name,
+                                    0)  # 0: absolute import
     if mod is not None:
       return mod.to_variable(node)
     elif self.has_getattr():
-      return self.vm.new_unsolvable(node)
+      return self.ctx.new_unsolvable(node)
     else:
       log.warning("Couldn't find attribute / module %r", full_name)
       return None
@@ -4307,16 +4346,16 @@ class BuildClass(BaseValue):
 
   CLOSURE_NAME = "__class__"
 
-  def __init__(self, vm):
-    super().__init__("__build_class__", vm)
+  def __init__(self, ctx):
+    super().__init__("__build_class__", ctx)
 
   def call(self, node, _, args, alias_map=None):
-    args = args.simplify(node, self.vm)
+    args = args.simplify(node, self.ctx)
     funcvar, name = args.posargs[0:2]
     if isinstance(args.namedargs, dict):
       kwargs = args.namedargs
     else:
-      kwargs = self.vm.convert.value_to_constant(args.namedargs, dict)
+      kwargs = self.ctx.convert.value_to_constant(args.namedargs, dict)
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
     # TODO(b/123450483): Any remaining kwargs need to be passed to the
@@ -4335,7 +4374,7 @@ class BuildClass(BaseValue):
     # We need placeholder values to stick in 'subst'. These will be replaced by
     # the actual type parameter values when attribute.py looks up generic
     # attributes on instances of this class.
-    any_var = self.vm.new_unsolvable(node)
+    any_var = self.ctx.new_unsolvable(node)
     for basevar in bases:
       for base in basevar.data:
         if isinstance(base, ParameterizedClass):
@@ -4351,20 +4390,20 @@ class BuildClass(BaseValue):
       class_closure_var = func.last_frame.class_closure_var
     else:
       # We have hit 'maximum depth' before setting func.last_frame
-      func.f_locals = self.vm.convert.unsolvable
+      func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
     for base in bases:
       # If base class is NamedTuple, we will call its own make_class method to
       # make a class.
       base = abstract_utils.get_atomic_value(
-          base, default=self.vm.convert.unsolvable)
+          base, default=self.ctx.convert.unsolvable)
       cls_dict = func.f_locals.to_variable(node)
       # Every subclass of an enum is itself an enum. To properly process them,
       # the class must be built by the enum overlay.
       if (base.isinstance_Class() and base.is_enum and
-          self.vm.options.use_enum_overlay):
+          self.ctx.options.use_enum_overlay):
         enum_base = abstract_utils.get_atomic_value(
-            self.vm.loaded_overlays["enum"].members["Enum"])
+            self.ctx.vm.loaded_overlays["enum"].members["Enum"])
         return enum_base.make_class(
             node, name, list(bases), cls_dict, metaclass,
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
@@ -4372,9 +4411,14 @@ class BuildClass(BaseValue):
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.
         return base.make_class(node, list(bases), cls_dict)
-    return self.vm.make_class(
-        node, name, list(bases), func.f_locals.to_variable(node), metaclass,
-        new_class_var=class_closure_var, is_decorated=self.is_decorated)
+    return self.ctx.vm.make_class(
+        node,
+        name,
+        list(bases),
+        func.f_locals.to_variable(node),
+        metaclass,
+        new_class_var=class_closure_var,
+        is_decorated=self.is_decorated)
 
 
 class Unsolvable(Singleton):
@@ -4394,8 +4438,8 @@ class Unsolvable(Singleton):
   # can have multiple circular Unsolvables in a class' MRO. Treat those special.
   SINGLETON = True
 
-  def __init__(self, vm):
-    super().__init__("unsolveable", vm)
+  def __init__(self, ctx):
+    super().__init__("unsolveable", ctx)
 
   def get_special_attribute(self, node, name, _):
     # Overrides Singleton.get_special_attributes.
@@ -4426,9 +4470,9 @@ class Unknown(BaseValue):
   # For simplicity, Unknown doesn't emulate descriptors:
   IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     name = escape.unknown(Unknown._current_id)
-    super().__init__(name, vm)
+    super().__init__(name, ctx)
     self.members = datatypes.MonitorDict()
     self.owner = None
     Unknown._current_id += 1
@@ -4476,19 +4520,20 @@ class Unknown(BaseValue):
       return None
     if name in self.members:
       return self.members[name]
-    new = self.vm.convert.create_new_unknown(
-        self.vm.root_node, action="getattr_" + self.name + ":" + name)
+    new = self.ctx.convert.create_new_unknown(
+        self.ctx.root_node, action="getattr_" + self.name + ":" + name)
     # We store this at the root node, even though we only just created this.
     # From the analyzing point of view, we don't know when the "real" version
     # of this attribute (the one that's not an unknown) gets created, hence
     # we assume it's there since the program start.  If something overwrites it
     # in some later CFG node, that's fine, we'll then work only with the new
     # value, which is more accurate than the "fictional" value we create here.
-    self.vm.attribute_handler.set_attribute(self.vm.root_node, self, name, new)
+    self.ctx.attribute_handler.set_attribute(self.ctx.root_node, self, name,
+                                             new)
     return new
 
   def call(self, node, _, args, alias_map=None):
-    ret = self.vm.convert.create_new_unknown(
+    ret = self.ctx.convert.create_new_unknown(
         node, source=self.owner, action="call:" + self.name)
     self._calls.append((args.posargs, args.namedargs, ret))
     return node, ret
@@ -4497,10 +4542,10 @@ class Unknown(BaseValue):
     return 0
 
   def to_variable(self, node):
-    v = self.vm.program.NewVariable()
+    v = self.ctx.program.NewVariable()
     val = v.AddBinding(self, source_set=[], where=node)
     self.owner = val
-    self.vm.trace_unknown(self.class_name, val)
+    self.ctx.vm.trace_unknown(self.class_name, val)
     return v
 
   def to_structural_def(self, node, class_name):

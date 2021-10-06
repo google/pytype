@@ -79,21 +79,21 @@ class Attribute:
   pytd_const: Any = None
 
   @classmethod
-  def from_pytd_constant(cls, const, vm, *, kw_only=False):
+  def from_pytd_constant(cls, const, ctx, *, kw_only=False):
     """Generate an Attribute from a pytd.Constant."""
-    typ = vm.convert.constant_to_value(const.type)
+    typ = ctx.convert.constant_to_value(const.type)
     # We want to generate the default from the type, not from the value
     # (typically value will be Ellipsis or a similar placeholder).
-    val = const.value and typ.instantiate(vm.root_node)
+    val = const.value and typ.instantiate(ctx.root_node)
     # Dataclasses and similar decorators in pytd files cannot set init and
     # kw_only properties.
     return cls(name=const.name, typ=typ, init=True, kw_only=kw_only,
                default=val, pytd_const=const)
 
   @classmethod
-  def from_param(cls, param, vm):
+  def from_param(cls, param, ctx):
     const = pytd.Constant(param.name, param.type, param.optional)
-    return cls.from_pytd_constant(const, vm, kw_only=param.kwonly)
+    return cls.from_pytd_constant(const, ctx, kw_only=param.kwonly)
 
   def to_pytd_constant(self):
     # TODO(mdemello): This is a bit fragile, but we only call this when
@@ -152,7 +152,8 @@ class Class(metaclass=mixin.MixinMeta):
 
     bases = [
         abstract_utils.get_atomic_value(
-            base, default=self.vm.convert.unsolvable) for base in self.bases()]
+            base, default=self.ctx.convert.unsolvable) for base in self.bases()
+    ]
     for base in bases:
       abstract_utils.parse_formal_type_parameters(
           base, self.full_name, self._all_formal_type_parameters)
@@ -288,7 +289,8 @@ class Class(metaclass=mixin.MixinMeta):
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
-      if (isinstance(base, Class) and base.cls != self.vm.convert.unsolvable and
+      if (isinstance(base, Class) and
+          base.cls != self.ctx.convert.unsolvable and
           base.cls.full_name != "builtins.type"):
         return base.cls
     return None
@@ -297,7 +299,7 @@ class Class(metaclass=mixin.MixinMeta):
     """Call the metaclass's __init__ method if it does anything interesting."""
     if self.cls.full_name == "builtins.type":
       return node
-    node, init = self.vm.attribute_handler.get_attribute(
+    node, init = self.ctx.attribute_handler.get_attribute(
         node, self.cls, "__init__")
     if not init or not any(
         f.isinstance_SignedFunction() for f in init.data):
@@ -307,14 +309,13 @@ class Class(metaclass=mixin.MixinMeta):
     # TODO(rechen): The signature is (cls, name, bases, dict); should we fill in
     # the last arg more precisely?
     args = function.Args(
-        posargs=(
-            self.to_variable(node),
-            self.vm.convert.build_string(node, self.name),
-            self.vm.convert.build_tuple(node, self.bases()),
-            self.vm.new_unsolvable(node)))
+        posargs=(self.to_variable(node),
+                 self.ctx.convert.build_string(node, self.name),
+                 self.ctx.convert.build_tuple(node, self.bases()),
+                 self.ctx.new_unsolvable(node)))
     log.debug("Calling __init__ on metaclass %s of class %s",
               self.cls.name, self.name)
-    node, _ = function.call_function(self.vm, node, init, args)
+    node, _ = function.call_function(self.ctx, node, init, args)
     return node
 
   def call_init_subclass(self, node):
@@ -334,14 +335,14 @@ class Class(metaclass=mixin.MixinMeta):
       A tuple of (1) a node and (2) either a cfg.Variable of the special
       __new__ method, or None.
     """
-    node, new = self.vm.attribute_handler.get_attribute(
+    node, new = self.ctx.attribute_handler.get_attribute(
         node, value.data, "__new__")
     if new is None:
       return node, None
     if len(new.bindings) == 1:
       f = new.bindings[0].data
       if (f.isinstance_AMBIGUOUS_OR_EMPTY() or
-          self.vm.convert.object_type.is_object_new(f)):
+          self.ctx.convert.object_type.is_object_new(f)):
         # Instead of calling object.__new__, our abstract classes directly
         # create instances of themselves.
         return node, None
@@ -354,7 +355,7 @@ class Class(metaclass=mixin.MixinMeta):
       return node, None
     cls = value.AssignToNewVariable(node)
     new_args = args.replace(posargs=(cls,) + args.posargs)
-    node, variable = function.call_function(self.vm, node, new, new_args)
+    node, variable = function.call_function(self.ctx, node, new, new_args)
     for val in variable.bindings:
       # If val.data is a class, call_init mistakenly calls val.data's __init__
       # method rather than that of val.data.cls.
@@ -363,12 +364,12 @@ class Class(metaclass=mixin.MixinMeta):
     return node, variable
 
   def _call_method(self, node, value, method_name, args):
-    node, method = self.vm.attribute_handler.get_attribute(
+    node, method = self.ctx.attribute_handler.get_attribute(
         node, value.data, method_name, value)
     if method:
       call_repr = "%s.%s(..._)" % (self.name, method_name)
       log.debug("calling %s", call_repr)
-      node, ret = function.call_function(self.vm, node, method, args)
+      node, ret = function.call_function(self.ctx, node, method, args)
       log.debug("%s returned %r", call_repr, ret)
     return node
 
@@ -381,7 +382,7 @@ class Class(metaclass=mixin.MixinMeta):
 
   def _new_instance(self, container):
     # We allow only one "instance" per code location, regardless of call stack.
-    key = self.vm.frame.current_opcode
+    key = self.ctx.vm.frame.current_opcode
     assert key
     if key not in self._instance_cache:
       self._instance_cache[key] = self._to_instance(container)
@@ -389,11 +390,11 @@ class Class(metaclass=mixin.MixinMeta):
 
   def call(self, node, func, args):
     if self.is_abstract and not self.from_annotation:
-      self.vm.errorlog.not_instantiable(self.vm.frames, self)
+      self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
     node, variable = self._call_new_and_init(node, func, args)
     if variable is None:
       value = self._new_instance(None)
-      variable = self.vm.program.NewVariable()
+      variable = self.ctx.program.NewVariable()
       val = variable.AddBinding(value, [], node)
       node = self.call_init(node, val, args)
     return node, variable
@@ -405,7 +406,7 @@ class Class(metaclass=mixin.MixinMeta):
       # indicates an annotation.
       if self.cls.full_name != "builtins.type":
         # This class has a custom metaclass; check if it defines __getitem__.
-        _, att = self.vm.attribute_handler.get_attribute(
+        _, att = self.ctx.attribute_handler.get_attribute(
             node, self, name, self.to_binding(node))
         if att:
           return att
@@ -427,7 +428,7 @@ class Class(metaclass=mixin.MixinMeta):
 
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
-    bases = abstract_utils.get_mro_bases(self.bases(), self.vm)
+    bases = abstract_utils.get_mro_bases(self.bases(), self.ctx)
     bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
     base2cls = {}
     newbases = []

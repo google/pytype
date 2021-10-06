@@ -8,21 +8,21 @@ from pytype import special_builtins
 class ABCOverlay(overlay.Overlay):
   """A custom overlay for the 'abc' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "abstractmethod": AbstractMethod.make,
         "abstractproperty": AbstractProperty
     }
-    ast = vm.loader.import_name("abc")
-    super().__init__(vm, "abc", member_map, ast)
+    ast = ctx.loader.import_name("abc")
+    super().__init__(ctx, "abc", member_map, ast)
 
 
 class AbstractMethod(abstract.PyTDFunction):
   """Implements the @abc.abstractmethod decorator."""
 
   @classmethod
-  def make(cls, vm):
-    return super().make("abstractmethod", vm, "abc")
+  def make(cls, ctx):
+    return super().make("abstractmethod", ctx, "abc")
 
   def call(self, node, unused_func, args):
     """Marks that the given function is abstract."""
@@ -44,8 +44,8 @@ class AbstractMethod(abstract.PyTDFunction):
 class AbstractProperty(special_builtins.PropertyTemplate):
   """Implements the @abc.abstractproperty decorator."""
 
-  def __init__(self, vm):
-    super().__init__(vm, "abstractproperty", "abc")
+  def __init__(self, ctx):
+    super().__init__(ctx, "abstractproperty", "abc")
 
   def call(self, node, funcv, args):
     property_args = self._get_args(args)
@@ -59,4 +59,4 @@ class AbstractProperty(special_builtins.PropertyTemplate):
         if isinstance(f, abstract.Function):
           f.is_abstract = True
     return node, special_builtins.PropertyInstance(
-        self.vm, self.name, self, **property_args).to_variable(node)
+        self.ctx, self.name, self, **property_args).to_variable(node)

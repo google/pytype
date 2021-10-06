@@ -20,13 +20,13 @@ log = logging.getLogger(__name__)
 UNSATISFIABLE = object()
 
 
-class FrameState(utils.VirtualMachineWeakrefMixin):
+class FrameState(utils.ContextWeakrefMixin):
   """Immutable state object, for attaching to opcodes."""
 
   __slots__ = ["block_stack", "data_stack", "node", "exception", "why"]
 
-  def __init__(self, data_stack, block_stack, node, vm, exception, why):
-    super().__init__(vm)
+  def __init__(self, data_stack, block_stack, node, ctx, exception, why):
+    super().__init__(ctx)
     self.data_stack = data_stack
     self.block_stack = block_stack
     self.node = node
@@ -34,28 +34,20 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
     self.why = why
 
   @classmethod
-  def init(cls, node, vm):
-    return FrameState((), (), node, vm, False, None)
+  def init(cls, node, ctx):
+    return FrameState((), (), node, ctx, False, None)
 
   def __setattribute__(self):
     raise AttributeError("States are immutable.")
 
   def set_why(self, why):
-    return FrameState(self.data_stack,
-                      self.block_stack,
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      why)
+    return FrameState(self.data_stack, self.block_stack, self.node, self.ctx,
+                      self.exception, why)
 
   def push(self, *values):
     """Push value(s) onto the value stack."""
-    return FrameState(self.data_stack + tuple(values),
-                      self.block_stack,
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      self.why)
+    return FrameState(self.data_stack + tuple(values), self.block_stack,
+                      self.node, self.ctx, self.exception, self.why)
 
   def peek(self, n):
     """Get a value `n` entries down in the stack, without changing the stack."""
@@ -73,21 +65,13 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
   def pop(self):
     """Pop a value from the value stack."""
     value = self.data_stack[-1]
-    return FrameState(self.data_stack[:-1],
-                      self.block_stack,
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      self.why), value
+    return FrameState(self.data_stack[:-1], self.block_stack, self.node,
+                      self.ctx, self.exception, self.why), value
 
   def pop_and_discard(self):
     """Pop a value from the value stack and discard it."""
-    return FrameState(self.data_stack[:-1],
-                      self.block_stack,
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      self.why)
+    return FrameState(self.data_stack[:-1], self.block_stack, self.node,
+                      self.ctx, self.exception, self.why)
 
   def popn(self, n):
     """Return n values, ordered oldest-to-newest."""
@@ -98,42 +82,26 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
       raise IndexError("Trying to pop %d values from stack of size %d" %
                        (n, len(self.data_stack)))
     values = self.data_stack[-n:]
-    return FrameState(self.data_stack[:-n],
-                      self.block_stack,
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      self.why), values
+    return FrameState(self.data_stack[:-n], self.block_stack, self.node,
+                      self.ctx, self.exception, self.why), values
 
   def push_block(self, block):
     """Push a block on to the block stack."""
-    return FrameState(self.data_stack,
-                      self.block_stack + (block,),
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      self.why)
+    return FrameState(self.data_stack, self.block_stack + (block,), self.node,
+                      self.ctx, self.exception, self.why)
 
   def pop_block(self):
     """Pop a block from the block stack."""
     block = self.block_stack[-1]
-    return FrameState(self.data_stack,
-                      self.block_stack[:-1],
-                      self.node,
-                      self.vm,
-                      self.exception,
-                      self.why), block
+    return FrameState(self.data_stack, self.block_stack[:-1], self.node,
+                      self.ctx, self.exception, self.why), block
 
   def change_cfg_node(self, node):
     assert isinstance(node, cfg.CFGNode)
     if self.node is node:
       return self
-    return FrameState(self.data_stack,
-                      self.block_stack,
-                      node,
-                      self.vm,
-                      self.exception,
-                      self.why)
+    return FrameState(self.data_stack, self.block_stack, node, self.ctx,
+                      self.exception, self.why)
 
   def connect_to_cfg_node(self, node):
     self.node.ConnectTo(node)
@@ -150,10 +118,9 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
       A new state which is the same as this state except for the node, which is
       the new one.
     """
-    new_node = self.node.ConnectNew(self.vm.frame and
-                                    self.vm.frame.current_opcode and
-                                    self.vm.frame.current_opcode.line,
-                                    condition)
+    new_node = self.node.ConnectNew(
+        self.ctx.vm.frame and self.ctx.vm.frame.current_opcode and
+        self.ctx.vm.frame.current_opcode.line, condition)
     return self.change_cfg_node(new_node)
 
   def merge_into(self, other):
@@ -171,21 +138,15 @@ class FrameState(utils.VirtualMachineWeakrefMixin):
         o.PasteVariable(v, None)
     if self.node is not other.node:
       self.node.ConnectTo(other.node)
-      return FrameState(other.data_stack,
-                        self.block_stack,
-                        other.node,
-                        self.vm,
-                        self.exception,
-                        self.why)
+      return FrameState(other.data_stack, self.block_stack, other.node,
+                        self.ctx, self.exception, self.why)
     return self
 
   def set_exception(self):
-    return FrameState(self.data_stack,
-                      self.block_stack,
-                      self.node.ConnectNew(self.vm.frame.current_opcode.line),
-                      self.vm,
-                      True,
-                      self.why)
+    return FrameState(
+        self.data_stack, self.block_stack,
+        self.node.ConnectNew(self.ctx.vm.frame.current_opcode.line), self.ctx,
+        True, self.why)
 
 
 class SimpleFrame:
@@ -206,7 +167,7 @@ class SimpleFrame:
     self.func = None
 
 
-class Frame(utils.VirtualMachineWeakrefMixin):
+class Frame(utils.ContextWeakrefMixin):
   """An interpreter frame.
 
   This contains the local value and block stacks and the associated code and
@@ -222,7 +183,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     f_builtins: Similar for builtins.
     f_back: The frame above self on the stack.
     f_lineno: The first line number of the code object.
-    vm: The VirtualMachine instance we belong to.
+    ctx: The abstract context we belong to.
     node: The node at which the frame is created.
     states: A mapping from opcodes to FrameState objects.
     cells: local variables bound in a closure, or used in a closure.
@@ -236,14 +197,14 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     yield_variable: The yield value of this function, as a Variable.
   """
 
-  def __init__(self, node, vm, f_code, f_globals, f_locals, f_back, callargs,
+  def __init__(self, node, ctx, f_code, f_globals, f_locals, f_back, callargs,
                closure, func, first_arg: Optional[cfg.Variable],
                substs: Collection[Dict[str, cfg.Variable]]):
     """Initialize a special frame as needed by TypegraphVirtualMachine.
 
     Args:
       node: The current CFG graph node.
-      vm: The owning virtual machine.
+      ctx: The owning abstract context.
       f_code: The code object to execute in this frame.
       f_globals: The global context to execute in as a SimpleValue as
         used by TypegraphVirtualMachine.
@@ -258,7 +219,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     Raises:
       NameError: If we can't resolve any references into the outer frame.
     """
-    super().__init__(vm)
+    super().__init__(ctx)
     assert isinstance(f_globals, abstract.LazyConcreteDict)
     assert isinstance(f_locals, abstract.LazyConcreteDict)
     self.node = node
@@ -271,8 +232,8 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     if f_back and f_back.f_builtins:
       self.f_builtins = f_back.f_builtins
     else:
-      _, bltin = self.vm.attribute_handler.get_attribute(
-          self.vm.root_node, f_globals, "__builtins__")
+      _, bltin = self.ctx.attribute_handler.get_attribute(
+          self.ctx.root_node, f_globals, "__builtins__")
       builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
     self.f_lineno = f_code.co_firstlineno
@@ -283,8 +244,8 @@ class Frame(utils.VirtualMachineWeakrefMixin):
 
     self.allowed_returns = None
     self.check_return = False
-    self.return_variable = self.vm.program.NewVariable()
-    self.yield_variable = self.vm.program.NewVariable()
+    self.return_variable = self.ctx.program.NewVariable()
+    self.yield_variable = self.ctx.program.NewVariable()
 
     # Keep track of the current opcode block and and block targets we add while
     # executing it; they can potentially be removed if the block returns early.
@@ -305,8 +266,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
     # always the parameters), but won't otherwise.
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
     assert len(f_code.co_freevars) == len(closure or [])
-    self.cells = [self.vm.program.NewVariable()
-                  for _ in f_code.co_cellvars]
+    self.cells = [self.ctx.program.NewVariable() for _ in f_code.co_cellvars]
     self.cells.extend(closure or [])
 
     if callargs:
@@ -315,7 +275,7 @@ class Frame(utils.VirtualMachineWeakrefMixin):
           i = f_code.co_cellvars.index(name)
           self.cells[i].PasteVariable(value, node)
         else:
-          self.vm.attribute_handler.set_attribute(node, f_locals, name, value)
+          self.ctx.attribute_handler.set_attribute(node, f_locals, name, value)
     # Python 3 supports calling 'super' without any arguments. In such a case
     # the implicit type argument is inserted into __build_class__'s cellvars
     # and propagated as a closure variable to all method/functions calling

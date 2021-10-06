@@ -403,13 +403,13 @@ class AnnotatingDecorator:
     return decorate
 
 
-class VirtualMachineWeakrefMixin:
+class ContextWeakrefMixin:
 
-  __slots__ = ["vm_weakref"]
+  __slots__ = ["ctx_weakref"]
 
-  def __init__(self, vm):
-    self.vm_weakref = weakref.ref(vm)
+  def __init__(self, ctx):
+    self.ctx_weakref = weakref.ref(ctx)
 
   @property
-  def vm(self):
-    return self.vm_weakref()
+  def ctx(self):
+    return self.ctx_weakref()

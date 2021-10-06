@@ -40,9 +40,9 @@ log = logging.getLogger(__name__)
 class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
-  def __init__(self, vm):
-    ast = vm.loader.import_name("enum")
-    if vm.options.use_enum_overlay:
+  def __init__(self, ctx):
+    ast = ctx.loader.import_name("enum")
+    if ctx.options.use_enum_overlay:
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
@@ -52,16 +52,16 @@ class EnumOverlay(overlay.Overlay):
     else:
       member_map = {}
 
-    super().__init__(vm, "enum", member_map, ast)
+    super().__init__(ctx, "enum", member_map, ast)
 
 
 class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
-  def __init__(self, vm, name="Enum"):
-    enum_ast = vm.loaded_overlays["enum"].ast
+  def __init__(self, ctx, name="Enum"):
+    enum_ast = ctx.vm.loaded_overlays["enum"].ast
     pyval = enum_ast.Lookup(f"enum.{name}")
-    super().__init__(name, pyval, vm)
+    super().__init__(name, pyval, ctx)
 
   def make_class(self, node, name_var, bases, class_dict_var, cls_var,
                  new_class_var=None, is_decorated=False):
@@ -82,25 +82,32 @@ class EnumBuilder(abstract.PyTDClass):
     elif not any(b.is_enum for b in bases[-1].data):
       msg = ("The last base class for an enum must be enum.Enum or a subclass "
              "of enum.Enum")
-      self.vm.errorlog.base_class_error(self.vm.frames, bases[-1], details=msg)
-      return node, self.vm.new_unsolvable(node)
-    cls_var = cls_var or self.vm.loaded_overlays["enum"].members["EnumMeta"]
-    return self.vm.make_class(node, name_var, bases, class_dict_var, cls_var,
-                              new_class_var, class_type=EnumInstance)
+      self.ctx.errorlog.base_class_error(
+          self.ctx.vm.frames, bases[-1], details=msg)
+      return node, self.ctx.new_unsolvable(node)
+    cls_var = cls_var or self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
+    return self.ctx.vm.make_class(
+        node,
+        name_var,
+        bases,
+        class_dict_var,
+        cls_var,
+        new_class_var,
+        class_type=EnumInstance)
 
   def call(self, node, func, args, alias_map=None):
     """Implements the behavior of the enum functional API."""
     # Because of how this is called, we supply our own "self" argument.
     # See class_mixin.Class._call_new_and_init.
-    args = args.simplify(node, self.vm)
-    args = args.replace(posargs=(self.vm.new_unsolvable(node),) + args.posargs)
+    args = args.simplify(node, self.ctx)
+    args = args.replace(posargs=(self.ctx.new_unsolvable(node),) + args.posargs)
     # It's possible that this class has been called in order to look up an enum
     # member, e.g. on something annotated as Type[Enum].
     # First, check the lookup API. If that succeeds, return the result.
     # If not, check against the functional API.
     # Note that super().call or _call_new_and_init won't work here, because
     # they don't raise FailedFunctionCall.
-    node, pytd_new_var = self.vm.attribute_handler.get_attribute(
+    node, pytd_new_var = self.ctx.attribute_handler.get_attribute(
         node, self, "__new__", self.to_binding(node))
     pytd_new = abstract_utils.get_atomic_value(pytd_new_var)
     # There are 2 signatures for Enum.__new__. The one with fewer arguments is
@@ -109,12 +116,12 @@ class EnumBuilder(abstract.PyTDClass):
     # them based on parameter count.
     lookup_sig, api_sig = sorted([s.signature for s in pytd_new.signatures],
                                  key=lambda s: s.maximum_param_count())
-    lookup_new = abstract.SimpleFunction.from_signature(lookup_sig, self.vm)
+    lookup_new = abstract.SimpleFunction.from_signature(lookup_sig, self.ctx)
     try:
       return lookup_new.call(node, None, args, alias_map)
     except function.FailedFunctionCall as e:
       log.info("Called Enum.__new__ as lookup, but failed:\n%s", e)
-    api_new = abstract.SimpleFunction.from_signature(api_sig, self.vm)
+    api_new = abstract.SimpleFunction.from_signature(api_sig, self.ctx)
     api_new.call(node, None, args, alias_map)
 
     # At this point, we know this is a functional API call.
@@ -124,11 +131,11 @@ class EnumBuilder(abstract.PyTDClass):
       names = abstract_utils.get_atomic_python_constant(argmap["names"])
     except abstract_utils.ConversionError as e:
       log.info("Failed to unwrap values in enum functional interface:\n%s", e)
-      return node, self.vm.new_unsolvable(node)
+      return node, self.ctx.new_unsolvable(node)
 
     if isinstance(names, str):
       names = names.replace(",", " ").split()
-      fields = {name: self.vm.convert.build_int(node) for name in names}
+      fields = {name: self.ctx.convert.build_int(node) for name in names}
     elif isinstance(names, dict):
       # Dict keys are strings, not strings in variables. The values are
       # variables, they don't need to be changed.
@@ -140,12 +147,13 @@ class EnumBuilder(abstract.PyTDClass):
                           for p in names]
       except abstract_utils.ConversionError as e:
         log.debug("Failed to unwrap possible enum field pairs:\n  %s", e)
-        return node, self.vm.new_unsolvable(node)
+        return node, self.ctx.new_unsolvable(node)
       if not possible_pairs:
         fields = {}
       elif isinstance(possible_pairs[0], str):
-        fields = {name: self.vm.convert.build_int(node)
-                  for name in possible_pairs}
+        fields = {
+            name: self.ctx.convert.build_int(node) for name in possible_pairs
+        }
       else:
         # List of (name_var, value_var) pairs.
         # The earlier get_atomic_python_constant call only unwrapped the tuple,
@@ -158,14 +166,14 @@ class EnumBuilder(abstract.PyTDClass):
           }
         except abstract_utils.ConversionError as e:
           log.debug("Failed to unwrap field names for enum:\n  %s", e)
-          return node, self.vm.new_unsolvable(node)
+          return node, self.ctx.new_unsolvable(node)
 
-    cls_dict = abstract.Dict(self.vm)
+    cls_dict = abstract.Dict(self.ctx)
     cls_dict.update(node, fields)
 
-    metaclass = self.vm.loaded_overlays["enum"].members["EnumMeta"]
+    metaclass = self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
 
-    return self.vm.make_class(
+    return self.ctx.vm.make_class(
         node=node,
         name_var=cls_name_var,
         bases=[self.to_variable(node)],
@@ -177,15 +185,15 @@ class EnumBuilder(abstract.PyTDClass):
 class IntEnumBuilder(EnumBuilder):
   """Overlays enum.IntEnum using EnumBuilder."""
 
-  def __init__(self, vm):
-    super().__init__(vm, name="IntEnum")
+  def __init__(self, ctx):
+    super().__init__(ctx, name="IntEnum")
 
 
 class EnumInstance(abstract.InterpreterClass):
   """A wrapper for classes that subclass enum.Enum."""
 
-  def __init__(self, name, bases, members, cls, vm):
-    super().__init__(name, bases, members, cls, vm)
+  def __init__(self, name, bases, members, cls, ctx):
+    super().__init__(name, bases, members, cls, ctx)
     # This is set by EnumMetaInit.setup_interpreterclass.
     self.member_type = None
 
@@ -195,15 +203,15 @@ class EnumInstance(abstract.InterpreterClass):
     # these fields set during class creation.
     # TODO(tsudol): Use the types of other members to set `value`.
     del container
-    instance = abstract.Instance(self, self.vm)
-    instance.members["name"] = self.vm.convert.build_nonatomic_string(node)
+    instance = abstract.Instance(self, self.ctx)
+    instance.members["name"] = self.ctx.convert.build_nonatomic_string(node)
     if self.member_type:
       value = self.member_type.instantiate(node)
     else:
       # instantiate() should never be called before setup_interpreterclass sets
       # self.member_type, because pytype will complain about recursive types.
       # But there's no reason not to make sure this function is safe.
-      value = self.vm.new_unsolvable(node)
+      value = self.ctx.new_unsolvable(node)
     instance.members["value"] = value
     return instance.to_variable(node)
 
@@ -221,7 +229,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
   # comparing the members' names. However, this causes issues when enums are
   # used in an if statement; see the bug for examples.
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     super().__init__(
         name="__eq__",
         param_names=("self", "other"),
@@ -230,9 +238,9 @@ class EnumCmpEQ(abstract.SimpleFunction):
         kwargs_name=None,
         defaults={},
         annotations={
-            "return": vm.convert.bool_type,
+            "return": ctx.convert.bool_type,
         },
-        vm=vm)
+        ctx=ctx)
 
   def call(self, node, unused_f, args, alias_map=None):
     _, argmap = self.match_and_map_args(node, args, alias_map)
@@ -244,8 +252,8 @@ class EnumCmpEQ(abstract.SimpleFunction):
       this = abstract_utils.get_atomic_value(this_var)
       other = abstract_utils.get_atomic_value(other_var)
     except abstract_utils.ConversionError:
-      return node, self.vm.convert.build_bool(node)
-    return node, self.vm.convert.build_bool(node, this.cls == other.cls)
+      return node, self.ctx.convert.build_bool(node)
+    return node, self.ctx.convert.build_bool(node, this.cls == other.cls)
 
 
 class EnumMeta(abstract.PyTDClass):
@@ -255,16 +263,16 @@ class EnumMeta(abstract.PyTDClass):
   enum behavior: EnumMetaInit for modifying enum classes, for example.
   """
 
-  def __init__(self, vm):
-    enum_ast = vm.loaded_overlays["enum"].ast
+  def __init__(self, ctx):
+    enum_ast = ctx.vm.loaded_overlays["enum"].ast
     pytd_cls = enum_ast.Lookup("enum.EnumMeta")
-    super().__init__("EnumMeta", pytd_cls, vm)
-    init = EnumMetaInit(vm)
+    super().__init__("EnumMeta", pytd_cls, ctx)
+    init = EnumMetaInit(ctx)
     self._member_map["__init__"] = init
-    self.members["__init__"] = init.to_variable(vm.root_node)
-    getitem = EnumMetaGetItem(vm)
+    self.members["__init__"] = init.to_variable(ctx.root_node)
+    getitem = EnumMetaGetItem(ctx)
     self._member_map["__getitem__"] = getitem
-    self.members["__getitem__"] = getitem.to_variable(vm.root_node)
+    self.members["__getitem__"] = getitem.to_variable(ctx.root_node)
 
 
 class EnumMetaInit(abstract.SimpleFunction):
@@ -274,7 +282,7 @@ class EnumMetaInit(abstract.SimpleFunction):
   handling and set up the Enum classes correctly.
   """
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     super().__init__(
         name="__init__",
         param_names=("cls", "name", "bases", "namespace"),
@@ -283,20 +291,23 @@ class EnumMetaInit(abstract.SimpleFunction):
         kwargs_name=None,
         defaults={},
         annotations={},
-        vm=vm)
-    self._str_pytd = vm.lookup_builtin("builtins.str")
+        ctx=ctx)
+    self._str_pytd = ctx.vm.lookup_builtin("builtins.str")
 
   def _get_class_locals(self, node, cls_name, cls_dict):
     # First, check if get_class_locals works for this class.
-    if cls_name in self.vm.local_ops:
-      ret = classgen.get_class_locals(
-          cls_name, False, classgen.Ordering.LAST_ASSIGN, self.vm).items()
+    if cls_name in self.ctx.vm.local_ops:
+      ret = classgen.get_class_locals(cls_name, False,
+                                      classgen.Ordering.LAST_ASSIGN,
+                                      self.ctx).items()
       return ret
 
     # If it doesn't work, then it's likely this class was created using the
     # functional API. Grab members from the cls_dict instead.
-    ret = {name: abstract_utils.Local(node, None, None, value, self.vm)
-           for name, value in cls_dict.items()}
+    ret = {
+        name: abstract_utils.Local(node, None, None, value, self.ctx)
+        for name, value in cls_dict.items()
+    }
     return ret.items()
 
   def _make_new(self, node, member_type, cls):
@@ -305,12 +316,12 @@ class EnumMetaInit(abstract.SimpleFunction):
     # not accept any arguments, because it will always fail if the enum has no
     # members. But `unsolvable` is much simpler to implement and use.
     return overlay_utils.make_method(
-        vm=self.vm,
+        ctx=self.ctx,
         node=node,
         name="__new__",
         params=[
             overlay_utils.Param("value",
-                                abstract.Union([member_type, cls], self.vm))
+                                abstract.Union([member_type, cls], self.ctx))
         ],
         return_type=cls)
 
@@ -330,7 +341,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         # their member type. Their subclasses use the default base type, int.
         # Some enums may have members with actually unsolvable member types, so
         # check if the enum is empty.
-        if (base_type_cls.member_type == self.vm.convert.unsolvable and
+        if (base_type_cls.member_type == self.ctx.convert.unsolvable and
             base_type_cls.is_empty_enum()):
           return None
         else:
@@ -351,7 +362,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     enum_base = abstract_utils.get_atomic_value(cls.bases()[-1])
     # enum_base.__new__ is saved as __new_member__, if it has a custom __new__.
     if enum_base.full_name != "enum.Enum" and "__new_member__" in enum_base:
-      node, new = self.vm.attribute_handler.get_attribute(
+      node, new = self.ctx.attribute_handler.get_attribute(
           node, enum_base, "__new_member__")
       new = abstract_utils.get_atomic_value(new)
       return node, new.underlying.to_variable(node)
@@ -366,19 +377,19 @@ class EnumMetaInit(abstract.SimpleFunction):
     return data.isinstance_Instance() and data.cls.full_name == "enum.auto"
 
   def _call_generate_next_value(self, node, cls, name):
-    node, method = self.vm.attribute_handler.get_attribute(
+    node, method = self.ctx.attribute_handler.get_attribute(
         node, cls, "_generate_next_value_", cls.to_binding(node))
     # It's possible we'll get a unsolvable (due to __getattr__, say) for method.
     # We treat that as if the method is undefined instead.
     if method and all(abstract_utils.is_callable(m) for m in method.data):
-      args = function.Args(posargs=(
-          self.vm.convert.build_string(node, name),
-          self.vm.convert.build_int(node),
-          self.vm.convert.build_int(node),
-          self.vm.convert.build_list(node, [])))
-      return function.call_function(self.vm, node, method, args)
+      args = function.Args(
+          posargs=(self.ctx.convert.build_string(node, name),
+                   self.ctx.convert.build_int(node),
+                   self.ctx.convert.build_int(node),
+                   self.ctx.convert.build_list(node, [])))
+      return function.call_function(self.ctx, node, method, args)
     else:
-      return node, self.vm.convert.build_int(node)
+      return node, self.ctx.convert.build_int(node)
 
   def _wrap_value(self, node, value, base_type):
     # Process an enum member's value for use as an argument. Returns a tuple
@@ -387,7 +398,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # Then, if the base type is tuple, wrap it again.
     arg = abstract_utils.maybe_extract_tuple(value)
     if base_type.full_name == "builtins.tuple":
-      arg = (self.vm.convert.build_tuple(node, arg),)
+      arg = (self.ctx.convert.build_tuple(node, arg),)
     return arg
 
   def _mark_dynamic_enum(self, cls):
@@ -433,7 +444,7 @@ class EnumMetaInit(abstract.SimpleFunction):
             posargs=((cls.to_variable(node),) +
                      abstract_utils.maybe_extract_tuple(value)))
         node, member_var = function.call_function(
-            self.vm, node, enum_new, new_args, fallback_to_unsolvable=False)
+            self.ctx, node, enum_new, new_args, fallback_to_unsolvable=False)
         # It's possible (but not likely) for member_var to have multiple
         # bindings of the same type. (See test_multiple_value_bindings in
         # test_enums.py.) This isn't an error, but members need to be Instances.
@@ -449,7 +460,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       else:
         # Build instances directly, because you can't call instantiate() when
         # creating the class -- pytype complains about recursive types.
-        member = abstract.Instance(cls, self.vm)
+        member = abstract.Instance(cls, self.ctx)
         member_var = member.to_variable(node)
       if "_value_" not in member.members:
         if base_type:
@@ -461,15 +472,15 @@ class EnumMetaInit(abstract.SimpleFunction):
             posargs=(member_var,) + abstract_utils.maybe_extract_tuple(value))
         node = cls.call_init(node, cls.to_binding(node), init_args)
       member.members["value"] = member.members["_value_"]
-      member.members["name"] = self.vm.convert.build_string(node, name)
+      member.members["name"] = self.ctx.convert.build_string(node, name)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
     if base_type:
       member_type = base_type
     elif member_types:
-      member_type = self.vm.convert.merge_classes(member_types)
+      member_type = self.ctx.convert.merge_classes(member_types)
     else:
-      member_type = self.vm.convert.unsolvable
+      member_type = self.ctx.convert.unsolvable
     cls.member_type = member_type
     # If cls has a __new__, save it for later. (See _get_member_new above.)
     # It needs to be marked as a classmethod, or else pytype will try to
@@ -478,7 +489,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       saved_new = cls.members["__new__"]
       if not any(x.isinstance_ClassMethodInstance() for x in saved_new.data):
         args = function.Args(posargs=(saved_new,))
-        node, saved_new = self.vm.load_special_builtin("classmethod").call(
+        node, saved_new = self.ctx.vm.load_special_builtin("classmethod").call(
             node, None, args)
       cls.members["__new_member__"] = saved_new
     self._mark_dynamic_enum(cls)
@@ -490,7 +501,7 @@ class EnumMetaInit(abstract.SimpleFunction):
       gnv = cls.members["_generate_next_value_"]
       if not any(x.isinstance_StaticMethodInstance() for x in gnv.data):
         args = function.Args(posargs=(gnv,))
-        node, new_gnv = self.vm.load_special_builtin("staticmethod").call(
+        node, new_gnv = self.ctx.vm.load_special_builtin("staticmethod").call(
             node, None, args)
         cls.members["_generate_next_value_"] = new_gnv
     return node
@@ -514,19 +525,17 @@ class EnumMetaInit(abstract.SimpleFunction):
         continue
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
-      member = abstract.Instance(cls, self.vm)
-      member.members["name"] = self.vm.convert.constant_to_var(
-          pyval=pytd.Constant(name="name", type=self._str_pytd),
-          node=node)
+      member = abstract.Instance(cls, self.ctx)
+      member.members["name"] = self.ctx.convert.constant_to_var(
+          pyval=pytd.Constant(name="name", type=self._str_pytd), node=node)
       # Some type stubs may use the class type for enum member values, instead
       # of the actual value type. Detect that and use Any.
       if pytd_val.type.name == cls.pytd_cls.name:
         value_type = pytd.AnythingType()
       else:
         value_type = pytd_val.type
-      member.members["value"] = self.vm.convert.constant_to_var(
-          pyval=pytd.Constant(name="value", type=value_type),
-          node=node)
+      member.members["value"] = self.ctx.convert.constant_to_var(
+          pyval=pytd.Constant(name="value", type=value_type), node=node)
       member.members["_value_"] = member.members["value"]
       cls._member_map[pytd_val.name] = member  # pylint: disable=protected-access
       cls.members[pytd_val.name] = member.to_variable(node)
@@ -536,7 +545,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     self._mark_dynamic_enum(cls)
     if not member_types:
       member_types.append(pytd.AnythingType())
-    member_type = self.vm.convert.constant_to_value(
+    member_type = self.ctx.convert.constant_to_value(
         pytd_utils.JoinTypes(member_types))
     cls.members["__new__"] = self._make_new(node, member_type, cls)
     return node
@@ -572,7 +581,7 @@ class EnumMetaInit(abstract.SimpleFunction):
 class EnumMetaGetItem(abstract.SimpleFunction):
   """Implements the functionality of __getitem__ for enums."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     super().__init__(
         name="__getitem__",
         param_names=("cls", "name"),
@@ -580,8 +589,8 @@ class EnumMetaGetItem(abstract.SimpleFunction):
         kwonly_params=(),
         kwargs_name=None,
         defaults={},
-        annotations={"name": vm.convert.str_type},
-        vm=vm)
+        annotations={"name": ctx.convert.str_type},
+        ctx=ctx)
 
   def _get_member_by_name(self, enum, name):
     if isinstance(enum, EnumInstance):
@@ -599,7 +608,7 @@ class EnumMetaGetItem(abstract.SimpleFunction):
     try:
       cls = abstract_utils.get_atomic_value(cls_var)
     except abstract_utils.ConversionError:
-      return node, self.vm.new_unsolvable(node)
+      return node, self.ctx.new_unsolvable(node)
     # We may have been given an instance of the class, such as if pytype is
     # analyzing this method due to a super() call in a subclass.
     if cls.isinstance_Instance():
@@ -614,6 +623,6 @@ class EnumMetaGetItem(abstract.SimpleFunction):
     if inst:
       return node, inst
     else:
-      self.vm.errorlog.attribute_error(
-          self.vm.frames, cls_var.bindings[0], name)
-      return node, self.vm.new_unsolvable(node)
+      self.ctx.errorlog.attribute_error(self.ctx.vm.frames, cls_var.bindings[0],
+                                        name)
+      return node, self.ctx.new_unsolvable(node)

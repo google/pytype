@@ -8,12 +8,12 @@ from pytype import overlay
 class SubprocessOverlay(overlay.Overlay):
   """A custom overlay for the 'subprocess' module."""
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "Popen": Popen,
     }
-    ast = vm.loader.import_name("subprocess")
-    super().__init__(vm, "subprocess", member_map, ast)
+    ast = ctx.loader.import_name("subprocess")
+    super().__init__(ctx, "subprocess", member_map, ast)
 
 
 class Popen(abstract.PyTDClass):
@@ -22,9 +22,9 @@ class Popen(abstract.PyTDClass):
   class _Unloaded:
     pass
 
-  def __init__(self, vm):
-    pyval = vm.loader.import_name("subprocess").Lookup("subprocess.Popen")
-    super().__init__("Popen", pyval, vm)
+  def __init__(self, ctx):
+    pyval = ctx.loader.import_name("subprocess").Lookup("subprocess.Popen")
+    super().__init__("Popen", pyval, ctx)
     # lazily loaded because the signatures refer back to Popen itself
     self._new = Popen._Unloaded()
 
@@ -36,9 +36,11 @@ class Popen(abstract.PyTDClass):
       except KeyError:
         self._new = None
       else:
-        sigs = [function.PyTDSignature(f.name, sig, self.vm)
-                for sig in f.signatures]
-        self._new = PopenNew(f.name, sigs, f.kind, self.vm)
+        sigs = [
+            function.PyTDSignature(f.name, sig, self.ctx)
+            for sig in f.signatures
+        ]
+        self._new = PopenNew(f.name, sigs, f.kind, self.ctx)
     return self._new
 
   def get_own_new(self, node, value):
@@ -53,22 +55,23 @@ class PopenNew(abstract.PyTDFunction):
 
   def _match_bytes_mode(self, args, view):
     """Returns the matching signature if bytes mode was definitely requested."""
-    for kw, val in [("encoding", self.vm.convert.none),
-                    ("errors", self.vm.convert.none),
-                    ("universal_newlines", self.vm.convert.false),
-                    ("text", self.vm.convert.false)]:
+    for kw, val in [("encoding", self.ctx.convert.none),
+                    ("errors", self.ctx.convert.none),
+                    ("universal_newlines", self.ctx.convert.false),
+                    ("text", self.ctx.convert.false)]:
       if kw in args.namedargs and view[args.namedargs[kw]].data != val:
         return None
     return self.signatures[-2]
 
   def _match_text_mode(self, args, view):
     """Returns the matching signature if text mode was definitely requested."""
-    for i, (kw, typ) in enumerate([("encoding", self.vm.convert.str_type),
-                                   ("errors", self.vm.convert.str_type)]):
+    for i, (kw, typ) in enumerate([("encoding", self.ctx.convert.str_type),
+                                   ("errors", self.ctx.convert.str_type)]):
       if kw in args.namedargs and view[args.namedargs[kw]].data.cls == typ:
         return self.signatures[i]
-    for i, (kw, val) in enumerate([("universal_newlines", self.vm.convert.true),
-                                   ("text", self.vm.convert.true)], 2):
+    for i, (kw,
+            val) in enumerate([("universal_newlines", self.ctx.convert.true),
+                               ("text", self.ctx.convert.true)], 2):
       if kw in args.namedargs and view[args.namedargs[kw]].data == val:
         return self.signatures[i]
     return None

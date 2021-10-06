@@ -23,7 +23,7 @@ from pytype.pytd import visitors
 log = logging.getLogger(__name__)
 
 
-class Converter(utils.VirtualMachineWeakrefMixin):
+class Converter(utils.ContextWeakrefMixin):
   """Functions for converting abstract classes into PyTD."""
 
   class OutputMode(enum.IntEnum):
@@ -32,8 +32,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     DETAILED = 1
     LITERAL = 2
 
-  def __init__(self, vm):
-    super().__init__(vm)
+  def __init__(self, ctx):
+    super().__init__(ctx)
     self._output_mode = Converter.OutputMode.NORMAL
     self._scopes = []
 
@@ -108,10 +108,10 @@ class Converter(utils.VirtualMachineWeakrefMixin):
               node, instance.get_instance_type_parameter(t), view)
         elif isinstance(v, abstract.CallableClass):
           param_values = v.get_formal_type_parameter(t).instantiate(
-              node or self.vm.root_node).data
+              node or self.ctx.root_node).data
         else:
-          param_values = [self.vm.convert.unsolvable]
-        if (param_values == [self.vm.convert.unsolvable] and
+          param_values = [self.ctx.convert.unsolvable]
+        if (param_values == [self.ctx.convert.unsolvable] and
             isinstance(v, abstract.ParameterizedClass) and
             not v.get_formal_type_parameter(t).formal):
           # When the instance's parameter value is unsolvable, we can get a
@@ -158,7 +158,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
         value = repr(v.value.pyval)
       elif isinstance(v.value.pyval, bool):
         # True and False are stored as pytd constants.
-        value = self.vm.lookup_builtin(f"builtins.{v.value.pyval}")
+        value = self.ctx.vm.lookup_builtin(f"builtins.{v.value.pyval}")
       else:
         # Ints are stored as their literal values. Note that Literal[None] or a
         # nested literal will never appear here, since we simplified it to None
@@ -279,8 +279,8 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, abstract.SimpleValue):
       ret = self.value_instance_to_pytd_type(
           node, v.cls, v, seen=seen, view=view)
-      ret.Visit(visitors.FillInLocalPointers(
-          {"builtins": self.vm.loader.builtins}))
+      ret.Visit(
+          visitors.FillInLocalPointers({"builtins": self.ctx.loader.builtins}))
       return ret
     elif isinstance(v, abstract.Union):
       return pytd_utils.JoinTypes(self.value_to_pytd_type(node, o, seen, view)
@@ -315,25 +315,31 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       abstract.ParameterizedClass if the signature has a variable number of
       arguments.
     """
-    base_cls = self.vm.convert.function_type
-    ret = sig.annotations.get("return", self.vm.convert.unsolvable)
+    base_cls = self.ctx.convert.function_type
+    ret = sig.annotations.get("return", self.ctx.convert.unsolvable)
     if not sig.kwonly_params and (self._detailed or (
         sig.mandatory_param_count() == sig.maximum_param_count())):
       # If self._detailed is false, we throw away the argument types if the
       # function takes a variable number of arguments, which is correct for pyi
       # generation but undesirable for, say, error message printing.
-      args = [sig.annotations.get(name, self.vm.convert.unsolvable)
-              for name in sig.param_names]
-      params = {abstract_utils.ARGS: self.vm.convert.merge_values(args),
-                abstract_utils.RET: ret}
+      args = [
+          sig.annotations.get(name, self.ctx.convert.unsolvable)
+          for name in sig.param_names
+      ]
+      params = {
+          abstract_utils.ARGS: self.ctx.convert.merge_values(args),
+          abstract_utils.RET: ret
+      }
       params.update(enumerate(args))
-      return abstract.CallableClass(base_cls, params, self.vm)
+      return abstract.CallableClass(base_cls, params, self.ctx)
     else:
       # The only way to indicate kwonly arguments or a variable number of
       # arguments in a Callable is to not specify argument types at all.
-      params = {abstract_utils.ARGS: self.vm.convert.unsolvable,
-                abstract_utils.RET: ret}
-      return abstract.ParameterizedClass(base_cls, params, self.vm)
+      params = {
+          abstract_utils.ARGS: self.ctx.convert.unsolvable,
+          abstract_utils.RET: ret
+      }
+      return abstract.ParameterizedClass(base_cls, params, self.ctx)
 
   def value_to_pytd_def(self, node, v, name):
     """Get a PyTD definition for this object.
@@ -363,7 +369,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     elif isinstance(v, abstract.SimpleFunction):
       return self._simple_func_to_def(node, v, name)
     elif (isinstance(v, abstract.ParameterizedClass) or
-          (self.vm.options.preserve_union_macros and
+          (self.ctx.options.preserve_union_macros and
            isinstance(v, abstract.Union))):
       return pytd.Alias(name, v.get_instance_type(node))
     elif isinstance(v, abstract.PyTDClass) and v.module:
@@ -418,7 +424,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
     """Get a function call's pytd return type."""
     if v.signature.has_return_annotation:
       if v.is_coroutine():
-        ret = abstract.Coroutine.make(self.vm, v, node).to_type(node)
+        ret = abstract.Coroutine.make(self.ctx, v, node).to_type(node)
       else:
         ret = v.signature.annotations["return"].get_instance_type(node)
     else:
@@ -525,7 +531,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
 
   def _function_to_return_types(self, node, fvar):
     """Convert a function variable to a list of PyTD return types."""
-    options = fvar.FilteredData(self.vm.exitpoint, strict=False)
+    options = fvar.FilteredData(self.ctx.exitpoint, strict=False)
     if not all(isinstance(o, abstract.Function) for o in options):
       return [pytd.AnythingType()]
     types = []
@@ -604,7 +610,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       if (name in abstract_utils.CLASS_LEVEL_IGNORE or name in annotated_names
           or (v.is_enum and name in ("__new__", "__eq__"))):
         continue
-      for value in member.FilteredData(self.vm.exitpoint, strict=False):
+      for value in member.FilteredData(self.ctx.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
@@ -650,13 +656,13 @@ class Converter(utils.VirtualMachineWeakrefMixin):
           # class M(enum.Enum):
           #   A: int
           enum_member = abstract_utils.get_atomic_value(member)
-          node, attr_var = self.vm.attribute_handler.get_attribute(
+          node, attr_var = self.ctx.attribute_handler.get_attribute(
               node, enum_member, "value")
           attr = abstract_utils.get_atomic_value(attr_var)
           constants[name].add_type(attr.to_type(node))
         else:
-          cls = self.vm.convert.merge_classes([value])
-          node, attr = self.vm.attribute_handler.get_attribute(
+          cls = self.ctx.convert.merge_classes([value])
+          node, attr = self.ctx.attribute_handler.get_attribute(
               node, cls, "__get__")
           if attr:
             # This attribute is a descriptor. Its type is the return value of
@@ -680,7 +686,7 @@ class Converter(utils.VirtualMachineWeakrefMixin):
       for name, member in instance.members.items():
         if name in abstract_utils.CLASS_LEVEL_IGNORE or name in ignore:
           continue
-        for value in member.FilteredData(self.vm.exitpoint, strict=False):
+        for value in member.FilteredData(self.ctx.exitpoint, strict=False):
           typ = value.to_type(node)
           if pytd_utils.GetTypeParameters(typ):
             # This attribute's type comes from an annotation that contains a

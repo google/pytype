@@ -4,10 +4,10 @@ from pytype import abstract
 from pytype import abstract_utils
 from pytype import compare
 from pytype import config
+from pytype import context
 from pytype import errors
 from pytype import function
 from pytype import load_pytd
-from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.tests import test_base
@@ -20,11 +20,11 @@ class CompareTestBase(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
-    self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
-    self._program = self._vm.program
-    self._node = self._vm.root_node.ConnectNew("test_node")
-    self._convert = self._vm.convert
+    self._ctx = context.Context(errors.ErrorLog(), options,
+                                load_pytd.Loader(None, self.python_version))
+    self._program = self._ctx.program
+    self._node = self._ctx.root_node.ConnectNew("test_node")
+    self._convert = self._ctx.convert
 
   def assertTruthy(self, value):
     self.assertIs(True, compare.compatible_with(value, True))
@@ -43,46 +43,46 @@ class InstanceTest(CompareTestBase):
 
   def test_compatible_with_object(self):
     # object() is not compatible with False
-    i = abstract.Instance(self._convert.object_type, self._vm)
+    i = abstract.Instance(self._convert.object_type, self._ctx)
     self.assertTruthy(i)
 
   def test_compatible_with_numeric(self):
     # Numbers can evaluate to True or False
-    i = abstract.Instance(self._convert.int_type, self._vm)
+    i = abstract.Instance(self._convert.int_type, self._ctx)
     self.assertAmbiguous(i)
 
   def test_compatible_with_list(self):
-    i = abstract.List([], self._vm)
+    i = abstract.List([], self._ctx)
     # Empty list is not compatible with True.
     self.assertFalsy(i)
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
         self._node, abstract_utils.T,
-        self._convert.object_type.to_variable(self._vm.root_node))
+        self._convert.object_type.to_variable(self._ctx.root_node))
     self.assertAmbiguous(i)
 
   def test_compatible_with_set(self):
-    i = abstract.Instance(self._convert.set_type, self._vm)
+    i = abstract.Instance(self._convert.set_type, self._ctx)
     # Empty set is not compatible with True.
     self.assertFalsy(i)
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
         self._node, abstract_utils.T,
-        self._convert.object_type.to_variable(self._vm.root_node))
+        self._convert.object_type.to_variable(self._ctx.root_node))
     self.assertAmbiguous(i)
 
   def test_compatible_with_none(self):
     # This test is specifically for abstract.Instance, so we don't use
     # self._convert.none, which is a ConcreteValue.
-    i = abstract.Instance(self._convert.none_type, self._vm)
+    i = abstract.Instance(self._convert.none_type, self._ctx)
     self.assertFalsy(i)
 
   def test_compare_frozensets(self):
     """Test that two frozensets can be compared for equality."""
     fset = self._convert.frozenset_type
-    i = abstract.Instance(fset, self._vm)
-    j = abstract.Instance(fset, self._vm)
-    self.assertIs(None, compare.cmp_rel(self._vm, slots.EQ, i, j))
+    i = abstract.Instance(fset, self._ctx)
+    j = abstract.Instance(fset, self._ctx)
+    self.assertIs(None, compare.cmp_rel(self._ctx, slots.EQ, i, j))
 
 
 class TupleTest(CompareTestBase):
@@ -90,18 +90,18 @@ class TupleTest(CompareTestBase):
   def setUp(self):
     super().setUp()
     self._var = self._program.NewVariable()
-    self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
+    self._var.AddBinding(abstract.Unknown(self._ctx), [], self._node)
 
   def test_compatible_with__not_empty(self):
-    t = abstract.Tuple((self._var,), self._vm)
+    t = abstract.Tuple((self._var,), self._ctx)
     self.assertTruthy(t)
 
   def test_compatible_with__empty(self):
-    t = abstract.Tuple((), self._vm)
+    t = abstract.Tuple((), self._ctx)
     self.assertFalsy(t)
 
   def test_getitem__concrete_index(self):
-    t = abstract.Tuple((self._var,), self._vm)
+    t = abstract.Tuple((self._var,), self._ctx)
     index = self._convert.constant_to_var(0)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
@@ -109,7 +109,7 @@ class TupleTest(CompareTestBase):
                   abstract_utils.get_atomic_value(self._var))
 
   def test_getitem__abstract_index(self):
-    t = abstract.Tuple((self._var,), self._vm)
+    t = abstract.Tuple((self._var,), self._ctx)
     index = self._convert.build_int(self._node)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
@@ -118,94 +118,94 @@ class TupleTest(CompareTestBase):
 
   def test_cmp_rel__equal(self):
     tup = self._convert.constant_to_value((3, 1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup, tup))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup, tup))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.EQ, tup, tup))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.NE, tup, tup))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup, tup))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup, tup))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup, tup))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LE, tup, tup))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.EQ, tup, tup))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.NE, tup, tup))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GE, tup, tup))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GT, tup, tup))
 
   def test_cmp_rel__not_equal(self):
     tup1 = self._convert.constant_to_value((3, 1))
     tup2 = self._convert.constant_to_value((3, 5))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LT, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GE, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GT, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LE, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.EQ, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.EQ, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.NE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.NE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GT, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__unknown(self):
     tup1 = self._convert.constant_to_value((3, 1))
-    tup2 = abstract.Instance(self._convert.tuple_type, self._vm)
+    tup2 = abstract.Instance(self._convert.tuple_type, self._ctx)
     for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
-      self.assertIsNone(compare.cmp_rel(self._vm, op, tup1, tup2))
-      self.assertIsNone(compare.cmp_rel(self._vm, op, tup2, tup1))
+      self.assertIsNone(compare.cmp_rel(self._ctx, op, tup1, tup2))
+      self.assertIsNone(compare.cmp_rel(self._ctx, op, tup2, tup1))
 
   def test_cmp_rel__prefix_equal(self):
     tup1 = abstract.Tuple(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.constant_to_value(1).to_variable(self._node),
          self._convert.primitive_class_instances[int].to_variable(self._node)),
-        self._vm)
+        self._ctx)
     tup2 = self._convert.constant_to_value((3, 1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LT, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LE, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GE, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GT, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.EQ, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.EQ, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.NE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.NE, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GE, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GE, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GT, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__prefix_not_equal(self):
     tup1 = abstract.Tuple(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.constant_to_value(1).to_variable(self._node),
          self._convert.primitive_class_instances[int].to_variable(self._node)),
-        self._vm)
+        self._ctx)
     tup2 = self._convert.constant_to_value((4, 2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LT, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LT, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.LE, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.LE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup1, tup2))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.EQ, tup2, tup1))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.NE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GE, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GE, tup2, tup1))
-    self.assertIs(False, compare.cmp_rel(self._vm, slots.GT, tup1, tup2))
-    self.assertIs(True, compare.cmp_rel(self._vm, slots.GT, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.LE, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.LE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.EQ, tup1, tup2))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.EQ, tup2, tup1))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.NE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.NE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GE, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GE, tup2, tup1))
+    self.assertIs(False, compare.cmp_rel(self._ctx, slots.GT, tup1, tup2))
+    self.assertIs(True, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__prefix_unknown(self):
     tup1 = abstract.Tuple(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.primitive_class_instances[int].to_variable(self._node)),
-        self._vm)
+        self._ctx)
     tup2 = self._convert.constant_to_value((3, 1))
     for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
-      self.assertIsNone(compare.cmp_rel(self._vm, op, tup1, tup2))
-      self.assertIsNone(compare.cmp_rel(self._vm, op, tup2, tup1))
+      self.assertIsNone(compare.cmp_rel(self._ctx, op, tup1, tup2))
+      self.assertIsNone(compare.cmp_rel(self._ctx, op, tup2, tup1))
 
 
 class DictTest(CompareTestBase):
 
   def setUp(self):
     super().setUp()
-    self._d = abstract.Dict(self._vm)
+    self._d = abstract.Dict(self._ctx)
     self._var = self._program.NewVariable()
-    self._var.AddBinding(abstract.Unknown(self._vm), [], self._node)
+    self._var.AddBinding(abstract.Unknown(self._ctx), [], self._node)
 
   def test_compatible_with__when_empty(self):
     self.assertFalsy(self._d)
@@ -221,25 +221,25 @@ class DictTest(CompareTestBase):
 
   def test_compatible_with__after_unknown_update(self):
     # Updating an empty dict with an unknown value makes the former ambiguous.
-    self._d.update(self._node, abstract.Unknown(self._vm))
+    self._d.update(self._node, abstract.Unknown(self._ctx))
     self.assertAmbiguous(self._d)
 
   def test_compatible_with__after_empty_update(self):
-    empty_dict = abstract.Dict(self._vm)
+    empty_dict = abstract.Dict(self._ctx)
     self._d.update(self._node, empty_dict)
     self.assertFalsy(self._d)
 
   def test_compatible_with__after_unambiguous_update(self):
-    unambiguous_dict = abstract.Dict(self._vm)
-    unambiguous_dict.set_str_item(
-        self._node, "a", self._vm.new_unsolvable(self._node))
+    unambiguous_dict = abstract.Dict(self._ctx)
+    unambiguous_dict.set_str_item(self._node, "a",
+                                  self._ctx.new_unsolvable(self._node))
     self._d.update(self._node, unambiguous_dict)
     self.assertTruthy(self._d)
 
   def test_compatible_with__after_ambiguous_update(self):
-    ambiguous_dict = abstract.Dict(self._vm)
+    ambiguous_dict = abstract.Dict(self._ctx)
     ambiguous_dict.merge_instance_type_parameter(
-        self._node, abstract_utils.K, self._vm.new_unsolvable(self._node))
+        self._node, abstract_utils.K, self._ctx.new_unsolvable(self._node))
     ambiguous_dict.could_contain_anything = True
     self._d.update(self._node, ambiguous_dict)
     self.assertAmbiguous(self._d)
@@ -247,7 +247,7 @@ class DictTest(CompareTestBase):
   def test_compatible_with__after_concrete_update(self):
     self._d.update(self._node, {})
     self.assertFalsy(self._d)
-    self._d.update(self._node, {"a": self._vm.new_unsolvable(self._node)})
+    self._d.update(self._node, {"a": self._ctx.new_unsolvable(self._node)})
     self.assertTruthy(self._d)
 
   def test_pop(self):
@@ -331,15 +331,15 @@ class FunctionTest(CompareTestBase):
 
   def test_compatible_with(self):
     pytd_sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
-    sig = function.PyTDSignature("f", pytd_sig, self._vm)
-    f = abstract.PyTDFunction("f", (sig,), pytd.MethodTypes.METHOD, self._vm)
+    sig = function.PyTDSignature("f", pytd_sig, self._ctx)
+    f = abstract.PyTDFunction("f", (sig,), pytd.MethodTypes.METHOD, self._ctx)
     self.assertTruthy(f)
 
 
 class ClassTest(CompareTestBase):
 
   def test_compatible_with(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, self._vm)
+    cls = abstract.InterpreterClass("X", [], {}, None, self._ctx)
     self.assertTruthy(cls)
 
 

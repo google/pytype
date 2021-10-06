@@ -4,10 +4,10 @@ import logging
 import subprocess
 
 from pytype import abstract_utils
+from pytype import context
 from pytype import convert_structural
 from pytype import debug
 from pytype import metrics
-from pytype import tracer_vm
 from pytype.pytd import builtins
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -25,24 +25,34 @@ def check_types(src, filename, errorlog, options, loader,
                 deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 maximum_depth=None, **kwargs):
   """Verify the Python code."""
-  tracer = tracer_vm.CallTracer(
-      errorlog=errorlog, options=options, generate_unknowns=False,
-      loader=loader, **kwargs)
-  loc, defs = tracer.run_program(src, filename, init_maximum_depth)
+  ctx = context.Context(
+      errorlog=errorlog,
+      options=options,
+      generate_unknowns=False,
+      loader=loader,
+      **kwargs)
+  loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
   if deep:
     if maximum_depth is None:
       maximum_depth = (
           QUICK_CHECK_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
-    tracer.analyze(loc, defs, maximum_depth=maximum_depth)
+    ctx.vm.analyze(loc, defs, maximum_depth=maximum_depth)
   snapshotter.take_snapshot("analyze:check_types:post")
-  _maybe_output_debug(options, tracer.program)
+  _maybe_output_debug(options, ctx.program)
 
 
-def infer_types(src, errorlog, options, loader,
-                filename=None, deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                show_library_calls=False, maximum_depth=None, vm=None,
+def infer_types(src,
+                errorlog,
+                options,
+                loader,
+                filename=None,
+                deep=True,
+                init_maximum_depth=INIT_MAXIMUM_DEPTH,
+                show_library_calls=False,
+                maximum_depth=None,
+                ctx=None,
                 **kwargs):
   """Given Python source return its types.
 
@@ -57,23 +67,23 @@ def infer_types(src, errorlog, options, loader,
     init_maximum_depth: Depth of analysis during module loading.
     show_library_calls: If True, call traces are kept in the output.
     maximum_depth: Depth of the analysis. Default: unlimited.
-    vm: An instance of CallTracer, in case the caller wants to
-      instantiate and retain the vm used for type inference.
-    **kwargs: Additional parameters to pass to vm.VirtualMachine
+    ctx: An instance of context.Context, in case the caller wants to
+      instantiate and retain the abstract context used for type inference.
+    **kwargs: Additional parameters to pass to context.Context
   Returns:
     A tuple of (ast: TypeDeclUnit, builtins: TypeDeclUnit)
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
-  # If the caller has passed in a vm, use that.
-  if vm:
-    assert isinstance(vm, tracer_vm.CallTracer)
-    tracer = vm
-  else:
-    tracer = tracer_vm.CallTracer(
-        errorlog=errorlog, options=options, generate_unknowns=options.protocols,
-        store_all_calls=not deep, loader=loader, **kwargs)
-  loc, defs = tracer.run_program(src, filename, init_maximum_depth)
+  if not ctx:
+    ctx = context.Context(
+        errorlog=errorlog,
+        options=options,
+        generate_unknowns=options.protocols,
+        store_all_calls=not deep,
+        loader=loader,
+        **kwargs)
+  loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:infer_types:tracer")
@@ -87,23 +97,23 @@ def infer_types(src, errorlog, options, loader,
         maximum_depth = QUICK_CHECK_MAXIMUM_DEPTH
       else:
         maximum_depth = QUICK_INFER_MAXIMUM_DEPTH
-    tracer.exitpoint = tracer.analyze(loc, defs, maximum_depth)
+    ctx.exitpoint = ctx.vm.analyze(loc, defs, maximum_depth)
   else:
-    tracer.exitpoint = loc
+    ctx.exitpoint = loc
   snapshotter.take_snapshot("analyze:infer_types:post")
-  ast = tracer.compute_types(defs)
-  ast = tracer.loader.resolve_ast(ast)
-  if tracer.has_unknown_wildcard_imports or any(
+  ast = ctx.vm.compute_types(defs)
+  ast = ctx.loader.resolve_ast(ast)
+  if ctx.vm.has_unknown_wildcard_imports or any(
       a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
     if "__getattr__" not in ast:
       ast = pytd_utils.Concat(ast, builtins.GetDefaultAst())
   # If merged with other if statement, triggers a ValueError: Unresolved class
   # when attempts to load from the protocols file
   if options.protocols:
-    protocols_pytd = tracer.loader.import_name("protocols")
+    protocols_pytd = ctx.loader.import_name("protocols")
   else:
     protocols_pytd = None
-  builtins_pytd = tracer.loader.concat_all()
+  builtins_pytd = ctx.loader.concat_all()
   # Insert type parameters, where appropriate
   ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
   if options.protocols:
@@ -116,7 +126,7 @@ def infer_types(src, errorlog, options, loader,
     ast = ast.Visit(visitors.RemoveUnknownClasses())
     # Remove "~list" etc.:
     ast = convert_structural.extract_local(ast)
-  _maybe_output_debug(options, tracer.program)
+  _maybe_output_debug(options, ctx.program)
   return ast, builtins_pytd
 
 

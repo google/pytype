@@ -3,10 +3,10 @@
 from pytype import abstract
 from pytype import abstract_utils
 from pytype import config
+from pytype import context
 from pytype import errors
 from pytype import file_utils
 from pytype import load_pytd
-from pytype import vm
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
@@ -19,18 +19,18 @@ class ConvertTest(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
-    self._vm = vm.VirtualMachine(
-        errors.ErrorLog(), options, load_pytd.Loader(None, self.python_version))
+    self._ctx = context.Context(errors.ErrorLog(), options,
+                                load_pytd.Loader(None, self.python_version))
 
   def _load_ast(self, name, src):
     with file_utils.Tempdir() as d:
       d.create_file(name + ".pyi", src)
-      self._vm.loader.pythonpath = [d.path]  # monkeypatch
-      return self._vm.loader.import_name(name)
+      self._ctx.loader.pythonpath = [d.path]  # monkeypatch
+      return self._ctx.loader.import_name(name)
 
   def _convert_class(self, name, ast):
-    return self._vm.convert.constant_to_value(
-        ast.Lookup(name), {}, self._vm.root_node)
+    return self._ctx.convert.constant_to_value(
+        ast.Lookup(name), {}, self._ctx.root_node)
 
   def test_convert_metaclass(self):
     ast = self._load_ast("a", """
@@ -49,7 +49,7 @@ class ConvertTest(test_base.UnitTest):
       class A: ...
     """)
     cls = self._convert_class("a.A", ast)
-    self.assertEqual(cls.cls, self._vm.convert.type_type)
+    self.assertEqual(cls.cls, self._ctx.convert.type_type)
 
   def test_convert_metaclass_with_generic(self):
     ast = self._load_ast("a", """
@@ -70,16 +70,16 @@ class ConvertTest(test_base.UnitTest):
       from typing import Dict
       x = ...  # type: Dict[str]
     """)
-    val = self._vm.convert.constant_to_value(
-        ast.Lookup("a.x").type, {}, self._vm.root_node)
+    val = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.x").type, {}, self._ctx.root_node)
     self.assertIs(val.formal_type_parameters[abstract_utils.K],
-                  self._vm.convert.str_type)
+                  self._ctx.convert.str_type)
     self.assertIs(val.formal_type_parameters[abstract_utils.V],
-                  self._vm.convert.unsolvable)
+                  self._ctx.convert.unsolvable)
 
   def test_convert_long(self):
-    val = self._vm.convert.constant_to_value(2**64, {}, self._vm.root_node)
-    self.assertIs(val, self._vm.convert.primitive_class_instances[int])
+    val = self._ctx.convert.constant_to_value(2**64, {}, self._ctx.root_node)
+    self.assertIs(val, self._ctx.convert.primitive_class_instances[int])
 
   def test_heterogeneous_tuple(self):
     ast = self._load_ast("a", """
@@ -87,41 +87,43 @@ class ConvertTest(test_base.UnitTest):
       x = ...  # type: Tuple[str, int]
     """)
     x = ast.Lookup("a.x").type
-    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_node)
-    instance = self._vm.convert.constant_to_value(
-        abstract_utils.AsInstance(x), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
+    instance = self._ctx.convert.constant_to_value(
+        abstract_utils.AsInstance(x), {}, self._ctx.root_node)
     self.assertIsInstance(cls, abstract.TupleClass)
     self.assertCountEqual(cls.formal_type_parameters.items(),
-                          [(0, self._vm.convert.str_type),
-                           (1, self._vm.convert.int_type),
-                           (abstract_utils.T, abstract.Union([
-                               cls.formal_type_parameters[0],
-                               cls.formal_type_parameters[1],
-                           ], self._vm))])
+                          [(0, self._ctx.convert.str_type),
+                           (1, self._ctx.convert.int_type),
+                           (abstract_utils.T,
+                            abstract.Union([
+                                cls.formal_type_parameters[0],
+                                cls.formal_type_parameters[1],
+                            ], self._ctx))])
     self.assertIsInstance(instance, abstract.Tuple)
     self.assertListEqual([v.data for v in instance.pyval],
-                         [[self._vm.convert.primitive_class_instances[str]],
-                          [self._vm.convert.primitive_class_instances[int]]])
+                         [[self._ctx.convert.primitive_class_instances[str]],
+                          [self._ctx.convert.primitive_class_instances[int]]])
     # The order of option elements in Union is random
     self.assertCountEqual(
-        instance.get_instance_type_parameter(abstract_utils.T).data,
-        [self._vm.convert.primitive_class_instances[str],
-         self._vm.convert.primitive_class_instances[int]])
+        instance.get_instance_type_parameter(abstract_utils.T).data, [
+            self._ctx.convert.primitive_class_instances[str],
+            self._ctx.convert.primitive_class_instances[int]
+        ])
 
   def test_build_bool(self):
-    any_bool = self._vm.convert.build_bool(self._vm.root_node, None)
-    t_bool = self._vm.convert.build_bool(self._vm.root_node, True)
-    f_bool = self._vm.convert.build_bool(self._vm.root_node, False)
+    any_bool = self._ctx.convert.build_bool(self._ctx.root_node, None)
+    t_bool = self._ctx.convert.build_bool(self._ctx.root_node, True)
+    f_bool = self._ctx.convert.build_bool(self._ctx.root_node, False)
     self.assertEqual(any_bool.data,
-                     [self._vm.convert.primitive_class_instances[bool]])
-    self.assertEqual(t_bool.data, [self._vm.convert.true])
-    self.assertEqual(f_bool.data, [self._vm.convert.false])
+                     [self._ctx.convert.primitive_class_instances[bool]])
+    self.assertEqual(t_bool.data, [self._ctx.convert.true])
+    self.assertEqual(f_bool.data, [self._ctx.convert.false])
 
   def test_boolean_constants(self):
-    true = self._vm.convert.constant_to_value(True, {}, self._vm.root_node)
-    self.assertEqual(true, self._vm.convert.true)
-    false = self._vm.convert.constant_to_value(False, {}, self._vm.root_node)
-    self.assertEqual(false, self._vm.convert.false)
+    true = self._ctx.convert.constant_to_value(True, {}, self._ctx.root_node)
+    self.assertEqual(true, self._ctx.convert.true)
+    false = self._ctx.convert.constant_to_value(False, {}, self._ctx.root_node)
+    self.assertEqual(false, self._ctx.convert.false)
 
   def test_callable_with_args(self):
     ast = self._load_ast("a", """
@@ -129,28 +131,29 @@ class ConvertTest(test_base.UnitTest):
       x = ...  # type: Callable[[int, bool], str]
     """)
     x = ast.Lookup("a.x").type
-    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_node)
-    instance = self._vm.convert.constant_to_value(
-        abstract_utils.AsInstance(x), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
+    instance = self._ctx.convert.constant_to_value(
+        abstract_utils.AsInstance(x), {}, self._ctx.root_node)
     self.assertIsInstance(cls, abstract.CallableClass)
     self.assertCountEqual(
         cls.formal_type_parameters.items(),
-        [(0, self._vm.convert.int_type),
-         (1, self._vm.convert.primitive_classes[bool]),
-         (abstract_utils.ARGS, abstract.Union(
-             [cls.formal_type_parameters[0], cls.formal_type_parameters[1]],
-             self._vm)),
-         (abstract_utils.RET, self._vm.convert.str_type)])
+        [(0, self._ctx.convert.int_type),
+         (1, self._ctx.convert.primitive_classes[bool]),
+         (abstract_utils.ARGS,
+          abstract.Union(
+              [cls.formal_type_parameters[0], cls.formal_type_parameters[1]],
+              self._ctx)), (abstract_utils.RET, self._ctx.convert.str_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEqual(instance.cls, cls)
     self.assertCountEqual(
         [(name, set(var.data))
          for name, var in instance.instance_type_parameters.items()],
-        [(abstract_utils.full_type_name(instance, abstract_utils.ARGS),
-          {self._vm.convert.primitive_class_instances[int],
-           self._vm.convert.primitive_class_instances[bool]}),
+        [(abstract_utils.full_type_name(instance, abstract_utils.ARGS), {
+            self._ctx.convert.primitive_class_instances[int],
+            self._ctx.convert.primitive_class_instances[bool]
+        }),
          (abstract_utils.full_type_name(instance, abstract_utils.RET),
-          {self._vm.convert.primitive_class_instances[str]})])
+          {self._ctx.convert.primitive_class_instances[str]})])
 
   def test_callable_no_args(self):
     ast = self._load_ast("a", """
@@ -158,14 +161,15 @@ class ConvertTest(test_base.UnitTest):
       x = ... # type: Callable[[], ...]
     """)
     x = ast.Lookup("a.x").type
-    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_node)
-    instance = self._vm.convert.constant_to_value(
-        abstract_utils.AsInstance(x), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
+    instance = self._ctx.convert.constant_to_value(
+        abstract_utils.AsInstance(x), {}, self._ctx.root_node)
     self.assertIsInstance(
         cls.get_formal_type_parameter(abstract_utils.ARGS), abstract.Empty)
-    self.assertEqual(abstract_utils.get_atomic_value(
-        instance.get_instance_type_parameter(abstract_utils.ARGS)),
-                     self._vm.convert.empty)
+    self.assertEqual(
+        abstract_utils.get_atomic_value(
+            instance.get_instance_type_parameter(abstract_utils.ARGS)),
+        self._ctx.convert.empty)
 
   def test_plain_callable(self):
     ast = self._load_ast("a", """
@@ -173,29 +177,29 @@ class ConvertTest(test_base.UnitTest):
       x = ...  # type: Callable[..., int]
     """)
     x = ast.Lookup("a.x").type
-    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_node)
-    instance = self._vm.convert.constant_to_value(
-        abstract_utils.AsInstance(x), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
+    instance = self._ctx.convert.constant_to_value(
+        abstract_utils.AsInstance(x), {}, self._ctx.root_node)
     self.assertIsInstance(cls, abstract.ParameterizedClass)
     self.assertCountEqual(cls.formal_type_parameters.items(),
-                          [(abstract_utils.ARGS, self._vm.convert.unsolvable),
-                           (abstract_utils.RET, self._vm.convert.int_type)])
+                          [(abstract_utils.ARGS, self._ctx.convert.unsolvable),
+                           (abstract_utils.RET, self._ctx.convert.int_type)])
     self.assertIsInstance(instance, abstract.Instance)
     self.assertEqual(instance.cls, cls.base_cls)
     self.assertCountEqual(
         [(name, var.data)
          for name, var in instance.instance_type_parameters.items()],
-        [(abstract_utils.full_type_name(instance, abstract_utils.ARGS),
-          [self._vm.convert.unsolvable]),
+        [(abstract_utils.full_type_name(
+            instance, abstract_utils.ARGS), [self._ctx.convert.unsolvable]),
          (abstract_utils.full_type_name(instance, abstract_utils.RET),
-          [self._vm.convert.primitive_class_instances[int]])])
+          [self._ctx.convert.primitive_class_instances[int]])])
 
   def test_function_with_starargs(self):
     ast = self._load_ast("a", """
       def f(*args: int): ...
     """)
-    f = self._vm.convert.constant_to_value(
-        ast.Lookup("a.f"), {}, self._vm.root_node)
+    f = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.f"), {}, self._ctx.root_node)
     sig, = f.signatures
     annot = sig.signature.annotations["args"]
     self.assertEqual(pytd_utils.Print(annot.get_instance_type()),
@@ -205,8 +209,8 @@ class ConvertTest(test_base.UnitTest):
     ast = self._load_ast("a", """
       def f(**kwargs: int): ...
     """)
-    f = self._vm.convert.constant_to_value(
-        ast.Lookup("a.f"), {}, self._vm.root_node)
+    f = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.f"), {}, self._ctx.root_node)
     sig, = f.signatures
     annot = sig.signature.annotations["kwargs"]
     self.assertEqual(pytd_utils.Print(annot.get_instance_type()),
@@ -217,7 +221,7 @@ class ConvertTest(test_base.UnitTest):
       x = ...  # type: dict
     """)
     x = ast.Lookup("a.x").type
-    cls = self._vm.convert.constant_to_value(x, {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
     self.assertListEqual([v.name for v in cls.mro],
                          ["dict", "Dict", "MutableMapping", "Mapping", "Sized",
                           "Iterable", "Container", "Generic", "Protocol",
@@ -229,13 +233,13 @@ class ConvertTest(test_base.UnitTest):
       y = ...  # type: dict[str, int]
     """)
     x = ast.Lookup("a.x").type
-    tup = self._vm.convert.constant_to_value(x, {}, self._vm.root_node)
-    widened_tup = self._vm.convert.widen_type(tup)
+    tup = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
+    widened_tup = self._ctx.convert.widen_type(tup)
     self.assertEqual(pytd_utils.Print(widened_tup.get_instance_type()),
                      "Iterable[int]")
     y = ast.Lookup("a.y").type
-    dct = self._vm.convert.constant_to_value(y, {}, self._vm.root_node)
-    widened_dct = self._vm.convert.widen_type(dct)
+    dct = self._ctx.convert.constant_to_value(y, {}, self._ctx.root_node)
+    widened_dct = self._ctx.convert.widen_type(dct)
     self.assertEqual(pytd_utils.Print(widened_dct.get_instance_type()),
                      "Mapping[str, int]")
 
@@ -244,9 +248,9 @@ class ConvertTest(test_base.UnitTest):
     f_pytd = pytd.Function(
         name="f", signatures=(sig,), kind=pytd.MethodTypes.METHOD,
         flags=pytd.MethodFlags.ABSTRACT)
-    f = self._vm.convert.constant_to_value(f_pytd, {}, self._vm.root_node)
+    f = self._ctx.convert.constant_to_value(f_pytd, {}, self._ctx.root_node)
     self.assertTrue(f.is_abstract)
-    f_out = f.to_pytd_def(self._vm.root_node, f.name)
+    f_out = f.to_pytd_def(self._ctx.root_node, f.name)
     self.assertTrue(f_out.is_abstract)
 
   def test_class_abstract_method(self):
@@ -255,8 +259,8 @@ class ConvertTest(test_base.UnitTest):
         @abstractmethod
         def f(self) -> int: ...
     """)
-    cls = self._vm.convert.constant_to_value(
-        ast.Lookup("a.A"), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.A"), {}, self._ctx.root_node)
     self.assertCountEqual(cls.abstract_methods, {"f"})
 
   def test_class_inherited_abstract_method(self):
@@ -266,8 +270,8 @@ class ConvertTest(test_base.UnitTest):
         def f(self) -> int: ...
       class B(A): ...
     """)
-    cls = self._vm.convert.constant_to_value(
-        ast.Lookup("a.B"), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.B"), {}, self._ctx.root_node)
     self.assertCountEqual(cls.abstract_methods, {"f"})
 
   def test_class_override_abstract_method(self):
@@ -278,8 +282,8 @@ class ConvertTest(test_base.UnitTest):
       class B(A):
         def f(self) -> bool: ...
     """)
-    cls = self._vm.convert.constant_to_value(
-        ast.Lookup("a.B"), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.B"), {}, self._ctx.root_node)
     self.assertFalse(cls.abstract_methods)
 
   def test_class_override_abstract_method_still_abstract(self):
@@ -291,8 +295,8 @@ class ConvertTest(test_base.UnitTest):
         @abstractmethod
         def f(self) -> bool: ...
     """)
-    cls = self._vm.convert.constant_to_value(
-        ast.Lookup("a.B"), {}, self._vm.root_node)
+    cls = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.B"), {}, self._ctx.root_node)
     self.assertCountEqual(cls.abstract_methods, {"f"})
 
   def test_parameterized_class_abstract_method(self):
@@ -301,9 +305,9 @@ class ConvertTest(test_base.UnitTest):
         @abstractmethod
         def f(self) -> int: ...
     """)
-    cls = self._vm.convert.constant_to_value(
-        ast.Lookup("a.A"), {}, self._vm.root_node)
-    parameterized_cls = abstract.ParameterizedClass(cls, {}, self._vm)
+    cls = self._ctx.convert.constant_to_value(
+        ast.Lookup("a.A"), {}, self._ctx.root_node)
+    parameterized_cls = abstract.ParameterizedClass(cls, {}, self._ctx)
     self.assertCountEqual(parameterized_cls.abstract_methods, {"f"})
 
   def test_classvar(self):
@@ -313,8 +317,8 @@ class ConvertTest(test_base.UnitTest):
         v: ClassVar[int]
     """)
     pyval = ast.Lookup("a.X").Lookup("v").type
-    v = self._vm.convert.constant_to_value(pyval, {}, self._vm.root_node)
-    self.assertEqual(v, self._vm.convert.int_type)
+    v = self._ctx.convert.constant_to_value(pyval, {}, self._ctx.root_node)
+    self.assertEqual(v, self._ctx.convert.int_type)
 
   def test_classvar_instance(self):
     ast = self._load_ast("a", """
@@ -323,16 +327,16 @@ class ConvertTest(test_base.UnitTest):
         v: ClassVar[int]
     """)
     pyval = ast.Lookup("a.X").Lookup("v").type
-    v = self._vm.convert.constant_to_value(
-        abstract_utils.AsInstance(pyval), {}, self._vm.root_node)
-    self.assertEqual(v, self._vm.convert.primitive_class_instances[int])
+    v = self._ctx.convert.constant_to_value(
+        abstract_utils.AsInstance(pyval), {}, self._ctx.root_node)
+    self.assertEqual(v, self._ctx.convert.primitive_class_instances[int])
 
   def test_constant_name(self):
     # Test that we create a string name without crashing.
-    self.assertIsInstance(self._vm.convert.constant_name(int), str)
-    self.assertIsInstance(self._vm.convert.constant_name(None), str)
+    self.assertIsInstance(self._ctx.convert.constant_name(int), str)
+    self.assertIsInstance(self._ctx.convert.constant_name(None), str)
     self.assertIsInstance(
-        self._vm.convert.constant_name((int, (str, super))), str)
+        self._ctx.convert.constant_name((int, (str, super))), str)
 
 
 if __name__ == "__main__":

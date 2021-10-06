@@ -115,7 +115,7 @@ class HasSlots(metaclass=MixinMeta):
   def make_native_function(self, name, method):
     key = (name, method)
     if key not in self._function_cache:
-      self._function_cache[key] = self.vm.make_native_function(name, method)
+      self._function_cache[key] = self.ctx.vm.make_native_function(name, method)
     return self._function_cache[key]
 
   def set_slot(self, name, method):
@@ -125,21 +125,24 @@ class HasSlots(metaclass=MixinMeta):
     # parameters, and evaluating them in the middle of constructing the class
     # can trigger a recursion error, so use only the base class.
     base = self.base_cls if self.isinstance_ParameterizedClass() else self
-    _, attr = self.vm.attribute_handler.get_attribute(
-        self.vm.root_node, base, name, base.to_binding(self.vm.root_node))
+    _, attr = self.ctx.attribute_handler.get_attribute(
+        self.ctx.root_node, base, name, base.to_binding(self.ctx.root_node))
     self._super[name] = attr
     f = self.make_native_function(name, method)
-    self._slots[name] = f.to_variable(self.vm.root_node)
+    self._slots[name] = f.to_variable(self.ctx.root_node)
 
   def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""
     return function.call_function(
-        self.vm, node, self._super[name], function.Args(args),
+        self.ctx,
+        node,
+        self._super[name],
+        function.Args(args),
         fallback_to_unsolvable=False)
 
   def get_special_attribute(self, node, name, valself):
     if name in self._slots:
-      attr = self.vm.program.NewVariable()
+      attr = self.ctx.program.NewVariable()
       additional_sources = {valself} if valself else None
       attr.PasteVariable(self._slots[name], node, additional_sources)
       return attr

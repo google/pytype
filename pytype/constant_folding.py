@@ -399,7 +399,7 @@ def optimize(code):
   return pyc.visit(code, _FoldConstants())
 
 
-def build_folded_type(vm, state, const):
+def build_folded_type(ctx, state, const):
   """Convert a typestruct to a vm type."""
 
   def typeconst(t):
@@ -408,9 +408,9 @@ def build_folded_type(vm, state, const):
 
   def build_pyval(state, const):
     if const.value is not None and const.tag in ('prim', 'tuple'):
-      return state, vm.convert.constant_to_var(const.value)
+      return state, ctx.convert.constant_to_var(const.value)
     else:
-      return build_folded_type(vm, state, const)
+      return build_folded_type(ctx, state, const)
 
   def expand(state, elements):
     vs = []
@@ -422,24 +422,24 @@ def build_folded_type(vm, state, const):
   def join_types(state, ts):
     xs = [typeconst(t) for t in ts]
     state, vs = expand(state, xs)
-    val = vm.convert.build_content(vs)
+    val = ctx.convert.build_content(vs)
     return state, val
 
   def collect(state, convert_type, params):
     state, t = join_types(state, params)
-    ret = vm.convert.build_collection_of_type(state.node, convert_type, t)
+    ret = ctx.convert.build_collection_of_type(state.node, convert_type, t)
     return state, ret
 
   def collect_tuple(state, elements):
     state, vs = expand(state, elements)
-    return state, vm.convert.build_tuple(state.node, vs)
+    return state, ctx.convert.build_tuple(state.node, vs)
 
   def collect_list(state, params, elements):
     if elements is None:
-      return collect(state, vm.convert.list_type, params)
+      return collect(state, ctx.convert.list_type, params)
     elif len(elements) < MAX_VAR_SIZE:
       state, vs = expand(state, elements)
-      return state, vm.convert.build_list(state.node, vs)
+      return state, ctx.convert.build_list(state.node, vs)
     else:
       # Without constant folding we construct a variable wrapping every element
       # in the list and store it; however, we cannot retrieve them all. So as an
@@ -452,15 +452,15 @@ def build_folded_type(vm, state, const):
       # distinct bindings for the overall typevar).
       elts = elements[:MAX_VAR_SIZE] + tuple(typeconst(t) for t in params)
       state, vs = expand(state, elts)
-      return state, vm.convert.build_list(state.node, vs)
+      return state, ctx.convert.build_list(state.node, vs)
 
   def collect_map(state, params, elements):
-    m = vm.convert.build_map(state.node)
+    m = ctx.convert.build_map(state.node)
     if elements is not None and len(elements) < MAX_VAR_SIZE:
       for (k, v) in elements.items():
-        k = vm.convert.constant_to_var(k)
+        k = ctx.convert.constant_to_var(k)
         state, v = build_pyval(state, v)
-        state = vm.store_subscr(state, m, k, v)
+        state = ctx.vm.store_subscr(state, m, k, v)
     else:
       # Treat a too-large dictionary as {Union[keys] : Union[vals]}. We could
       # store a subset of the k/v pairs, as with collect_list, but for
@@ -470,21 +470,21 @@ def build_folded_type(vm, state, const):
       k_types, v_types = params
       state, v = join_types(state, v_types)
       for t in k_types:
-        state, k = build_folded_type(vm, state, typeconst(t))
-        state = vm.store_subscr(state, m, k, v)
+        state, k = build_folded_type(ctx, state, typeconst(t))
+        state = ctx.vm.store_subscr(state, m, k, v)
     return state, m
 
   tag, params = const.typ
   if tag == 'prim':
     if const.value:
-      return state, vm.convert.constant_to_var(const.value)
+      return state, ctx.convert.constant_to_var(const.value)
     else:
-      val = vm.convert.primitive_class_instances[params]
+      val = ctx.convert.primitive_class_instances[params]
       return state, val.to_variable(state.node)
   elif tag == 'list':
     return collect_list(state, params, const.elements)
   elif tag == 'set':
-    return collect(state, vm.convert.set_type, params)
+    return collect(state, ctx.convert.set_type, params)
   elif tag == 'tuple':
     # If we get a tuple without const.elements, construct it from the type.
     # (e.g. this happens with a large dict with tuple keys)

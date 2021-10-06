@@ -9,11 +9,11 @@ import attr
 from pytype import abstract
 from pytype import analyze
 from pytype import config
+from pytype import context
 from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
-from pytype import tracer_vm
 from pytype.ast import visitor as ast_visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -1156,8 +1156,8 @@ class Indexer:
 
   def get_pytd_def(self, data, name):
     assert self.vm, "Indexer vm has not been preserved."
-    node = self.vm.root_node
-    return self.vm.convert.pytd_convert.value_to_pytd_def(node, data, name)
+    node = self.vm.ctx.root_node
+    return self.vm.ctx.pytd_convert.value_to_pytd_def(node, data, name)
 
   def get_pytd(self, datum):
     if not datum:
@@ -1237,7 +1237,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
     errorlog = errors.ErrorLog()
     loader = load_pytd.create_loader(options)
     src = source_text or io.read_source_file(options.input)
-    vm = tracer_vm.CallTracer(
+    ctx = context.Context(
         errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
@@ -1250,24 +1250,26 @@ def process_file(options, source_text=None, generate_callgraphs=False,
           errorlog=errorlog,
           options=options,
           loader=loader,
-          vm=vm)
+          ctx=ctx)
 
   ast_root_node = ast3.parse(src, options.input,
                              feature_version=options.python_version[1])
 
   # TODO(mdemello): Get from args
   module_name = "module"
-  src_code = source.Code(src, vm.opcode_traces, VmTrace, filename=options.input)
-  ix = Indexer(ast=ast3,
-               src=src_code,
-               loader=vm.loader,
-               module_name=module_name,
-               pytd_module=pytd_module)
+  src_code = source.Code(
+      src, ctx.vm.opcode_traces, VmTrace, filename=options.input)
+  ix = Indexer(
+      ast=ast3,
+      src=src_code,
+      loader=ctx.loader,
+      module_name=module_name,
+      pytd_module=pytd_module)
   ix.index(ast_root_node)
   ix.finalize()
 
   # Make the vm available via indexer.vm for post-finalize() functions.
-  ix.vm = vm
+  ix.vm = ctx.vm
 
   # Use the indexer as a single object to hold data for calling processes.
   if generate_callgraphs:

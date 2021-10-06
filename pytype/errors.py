@@ -497,8 +497,8 @@ class ErrorLog(ErrorLogBase):
       return t.expr
     elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
                         class_mixin.Class, abstract.Union)):
-      with t.vm.convert.pytd_convert.set_output_mode(
-          t.vm.convert.pytd_convert.OutputMode.DETAILED):
+      with t.ctx.pytd_convert.set_output_mode(
+          t.ctx.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
     elif abstract_utils.is_concrete(t):
       return re.sub(r"(\\n|\s)+", " ",
@@ -510,10 +510,10 @@ class ErrorLog(ErrorLogBase):
 
   def _print_as_actual_type(self, t, literal=False):
     if literal:
-      output_mode = t.vm.convert.pytd_convert.OutputMode.LITERAL
+      output_mode = t.ctx.pytd_convert.OutputMode.LITERAL
     else:
-      output_mode = t.vm.convert.pytd_convert.OutputMode.DETAILED
-    with t.vm.convert.pytd_convert.set_output_mode(output_mode):
+      output_mode = t.ctx.pytd_convert.OutputMode.DETAILED
+    with t.ctx.pytd_convert.set_output_mode(output_mode):
       return self._pytd_print(t.to_type())
 
   def _print_as_generic_type(self, t):
@@ -521,13 +521,13 @@ class ErrorLog(ErrorLogBase):
         t.get_instance_type().base_type,
         t.formal_type_parameters.keys(),
         False)
-    with t.vm.convert.pytd_convert.set_output_mode(
-        t.vm.convert.pytd_convert.OutputMode.DETAILED):
+    with t.ctx.pytd_convert.set_output_mode(
+        t.ctx.pytd_convert.OutputMode.DETAILED):
       return self._pytd_print(generic)
 
   def _print_as_return_types(self, node, formal, actual, bad):
     """Print the actual and expected values for a return type."""
-    convert = formal.vm.convert.pytd_convert
+    convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       expected = self._pytd_print(formal.get_instance_type(node))
     if "Literal[" in expected:
@@ -550,9 +550,9 @@ class ErrorLog(ErrorLogBase):
 
   def _print_as_function_def(self, fn):
     assert fn.isinstance_Function()
-    conv = fn.vm.convert.pytd_convert
+    conv = fn.ctx.pytd_convert
     name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
-    return pytd_utils.Print(conv.value_to_pytd_def(fn.vm.root_node, fn, name))
+    return pytd_utils.Print(conv.value_to_pytd_def(fn.ctx.root_node, fn, name))
 
   def _print_protocol_error(self, error):
     """Pretty-print the matcher.ProtocolError instance."""
@@ -694,7 +694,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
-    obj_values = obj.vm.convert.merge_values([obj])
+    obj_values = obj.ctx.convert.merge_values([obj])
     obj_repr = self._print_as_actual_type(obj_values)
     self.error(stack, "Can't assign attribute %r on %s" % (attr_name, obj_repr),
                keyword=attr_name, keyword_context=obj_repr)
@@ -934,7 +934,7 @@ class ErrorLog(ErrorLogBase):
   def _show_variable(self, var):
     """Show variable as 'name: typ' or 'pyval: typ' if available."""
     val = var.data[0]
-    name = val.vm.get_var_name(var)
+    name = val.ctx.vm.get_var_name(var)
     typ = self._join_printed_types(
         self._print_as_actual_type(t) for t in var.data)
     if name:
@@ -1122,10 +1122,10 @@ class ErrorLog(ErrorLogBase):
     except abstract_utils.ConversionError:
       # NOTE: Converting types to strings is provided as a fallback, but is not
       # really supported, since there are issues around name resolution.
-      vm = typ.data[0].vm
-      typ = vm.annotation_utils.extract_annotation(
-          node, typ, "assert_type", vm.simple_stack())
-      node, typ = vm.init_class(node, typ)
+      ctx = typ.data[0].ctx
+      typ = ctx.annotation_utils.extract_annotation(node, typ, "assert_type",
+                                                    ctx.vm.simple_stack())
+      node, typ = ctx.vm.init_class(node, typ)
       wanted = [
           self._print_as_actual_type(b.data)
           for b in abstract_utils.expand_type_parameter_instances(typ.bindings)

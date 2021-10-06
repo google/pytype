@@ -12,20 +12,20 @@ class Overlay(abstract.Module):
   at runtime. An overlay is needed for Pytype to generate these classes.
 
   An Overlay will typically import its underlying module in its __init__, e.g.
-  by calling vm.loader.import_name(). Due to this, Overlays should only be used
+  by calling ctx.loader.import_name(). Due to this, Overlays should only be used
   when their underlying module is imported by the Python script being analyzed!
   A subclass of Overlay should have an __init__ with the signature:
-    def __init__(self, vm)
+    def __init__(self, ctx)
 
   Attributes:
     real_module: An abstract.Module wrapping the AST for the underlying module.
   """
 
-  def __init__(self, vm, name, member_map, ast):
+  def __init__(self, ctx, name, member_map, ast):
     """Initialize the overlay.
 
     Args:
-      vm: Instance of vm.VirtualMachine.
+      ctx: Instance of context.Context.
       name: A string containing the name of the underlying module.
       member_map: Dict of str to abstract.BaseValues that provide type
         information not available in the underlying module.
@@ -33,14 +33,14 @@ class Overlay(abstract.Module):
         Used to access type information for members of the module that are not
         explicitly provided by the overlay.
     """
-    super().__init__(vm, name, member_map, ast)
-    self.real_module = vm.convert.constant_to_value(
-        ast, subst=datatypes.AliasingDict(), node=vm.root_node)
+    super().__init__(ctx, name, member_map, ast)
+    self.real_module = ctx.convert.constant_to_value(
+        ast, subst=datatypes.AliasingDict(), node=ctx.root_node)
 
   def _convert_member(self, member, subst=None):
-    val = member(self.vm)
+    val = member(self.ctx)
     val.module = self.name
-    return val.to_variable(self.vm.root_node)
+    return val.to_variable(self.ctx.root_node)
 
   def get_module(self, name):
     """Returns the abstract.Module for the given name."""
@@ -57,5 +57,5 @@ class Overlay(abstract.Module):
 
 
 def build(name, builder):
-  """Wrapper to turn (name, vm) -> val method signatures into (vm) -> val."""
-  return lambda vm: builder(name, vm)
+  """Wrapper to turn (name, ctx) -> val method signatures into (ctx) -> val."""
+  return lambda ctx: builder(name, ctx)

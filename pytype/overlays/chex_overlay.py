@@ -17,12 +17,12 @@ from pytype.pytd import pytd
 
 class ChexOverlay(overlay.Overlay):
 
-  def __init__(self, vm):
+  def __init__(self, ctx):
     member_map = {
         "dataclass": Dataclass.make,
     }
-    ast = vm.loader.import_name("chex")
-    super().__init__(vm, "chex", member_map, ast)
+    ast = ctx.loader.import_name("chex")
+    super().__init__(ctx, "chex", member_map, ast)
 
 
 class Dataclass(dataclass_overlay.Dataclass):
@@ -32,17 +32,17 @@ class Dataclass(dataclass_overlay.Dataclass):
                    "mappable_dataclass": True}
 
   @classmethod
-  def make(cls, vm):
-    return super().make(vm, "chex")
+  def make(cls, ctx):
+    return super().make(ctx, "chex")
 
   def _add_replace_method(self, node, cls):
     cls.members["replace"] = classgen.make_replace_method(
-        self.vm, node, cls, kwargs_name="changes")
+        self.ctx, node, cls, kwargs_name="changes")
 
   def _add_from_tuple_method(self, node, cls):
     # from_tuple is discouraged anyway, so we provide only bare-bones types.
     cls.members["from_tuple"] = overlay_utils.make_method(
-        vm=self.vm,
+        ctx=self.ctx,
         node=node,
         name="from_tuple",
         params=[overlay_utils.Param("args")],
@@ -53,14 +53,14 @@ class Dataclass(dataclass_overlay.Dataclass):
   def _add_to_tuple_method(self, node, cls):
     # to_tuple is discouraged anyway, so we provide only bare-bones types.
     cls.members["to_tuple"] = overlay_utils.make_method(
-        vm=self.vm,
+        ctx=self.ctx,
         node=node,
         name="to_tuple",
-        return_type=self.vm.convert.tuple_type,
+        return_type=self.ctx.convert.tuple_type,
     )
 
   def _add_mapping_base(self, node, cls):
-    mapping = self.vm.convert.name_to_value("typing.Mapping")
+    mapping = self.ctx.convert.name_to_value("typing.Mapping")
     # The class's MRO is constructed from its bases at the moment the class is
     # created, so both need to be updated.
     bases = cls.bases()

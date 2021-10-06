@@ -27,9 +27,10 @@ log = logging.getLogger(__name__)
 _SKIP_FUNCTION_RE = re.compile("<(?!lambda).+>$")
 
 
-_CallRecord = collections.namedtuple(
-    "_CallRecord", ["node", "function", "signatures", "positional_arguments",
-                    "keyword_arguments", "return_value"])
+_CallRecord = collections.namedtuple("_CallRecord", [
+    "node", "function", "signatures", "positional_arguments",
+    "keyword_arguments", "return_value"
+])
 
 
 class _Initializing:
@@ -37,12 +38,7 @@ class _Initializing:
 
 
 class CallTracer(vm.VirtualMachine):
-  """Virtual machine that records all function calls.
-
-  Attributes:
-    exitpoint: A CFG node representing the program exit. Needs to be set before
-      analyze_types.
-  """
+  """Virtual machine that records all function calls."""
 
   _CONSTRUCTORS = ("__new__", "__init__")
 
@@ -61,18 +57,17 @@ class CallTracer(vm.VirtualMachine):
     self._analyzed_functions = set()
     self._analyzed_classes = set()
     self._generated_classes = {}
-    self.exitpoint = None
 
   def create_varargs(self, node):
-    value = abstract.Instance(self.convert.tuple_type, self)
+    value = abstract.Instance(self.ctx.convert.tuple_type, self.ctx)
     value.merge_instance_type_parameter(
-        node, abstract_utils.T, self.convert.create_new_unknown(node))
+        node, abstract_utils.T, self.ctx.convert.create_new_unknown(node))
     return value.to_variable(node)
 
   def create_kwargs(self, node):
-    key_type = self.convert.primitive_class_instances[str].to_variable(node)
-    value_type = self.convert.create_new_unknown(node)
-    kwargs = abstract.Instance(self.convert.dict_type, self)
+    key_type = self.ctx.convert.primitive_class_instances[str].to_variable(node)
+    value_type = self.ctx.convert.create_new_unknown(node)
+    kwargs = abstract.Instance(self.ctx.convert.dict_type, self.ctx)
     kwargs.merge_instance_type_parameter(node, abstract_utils.K, key_type)
     kwargs.merge_instance_type_parameter(node, abstract_utils.V, value_type)
     return kwargs.to_variable(node)
@@ -102,14 +97,15 @@ class CallTracer(vm.VirtualMachine):
       if use_defaults and default_idx >= 0:
         arg = method.defaults[default_idx]
       else:
-        arg = self.convert.create_new_unknown(node, force=not use_defaults)
+        arg = self.ctx.convert.create_new_unknown(node, force=not use_defaults)
       args.append(arg)
     kws = {}
     for key in method.signature.kwonly_params:
       if use_defaults and key in method.kw_defaults:
         kws[key] = method.kw_defaults[key]
       else:
-        kws[key] = self.convert.create_new_unknown(node, force=not use_defaults)
+        kws[key] = self.ctx.convert.create_new_unknown(
+            node, force=not use_defaults)
     starargs = self.create_varargs(node) if method.has_varargs() else None
     starstarargs = self.create_kwargs(node) if method.has_kwargs() else None
     return node, function.Args(posargs=tuple(args),
@@ -138,7 +134,7 @@ class CallTracer(vm.VirtualMachine):
     frame = frame_state.SimpleFrame(node=node)
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
-    state = frame_state.FrameState.init(node, self)
+    state = frame_state.FrameState.init(node, self.ctx)
     state, ret = self.call_function_with_state(
         state, var, args, kwargs, starargs, starstarargs)
     self.pop_frame(frame)
@@ -159,7 +155,7 @@ class CallTracer(vm.VirtualMachine):
     fname = val.data.name
     if isinstance(method, abstract.INTERPRETER_FUNCTION_TYPES):
       self._analyzed_functions.add(method.get_first_opcode())
-      if (not self.options.analyze_annotated and
+      if (not self.ctx.options.analyze_annotated and
           (method.signature.has_return_annotation or method.has_overloads) and
           fname.rsplit(".", 1)[-1] not in self._CONSTRUCTORS):
         log.info("%r has annotations, not analyzing further.", fname)
@@ -193,7 +189,10 @@ class CallTracer(vm.VirtualMachine):
         # This means any additional errors that may be raised will be passed to
         # the call_function that called this method in the first place.
         node2, ret = function.call_function(
-            self, node1, funcb.AssignToNewVariable(), args,
+            self.ctx,
+            node1,
+            funcb.AssignToNewVariable(),
+            args,
             fallback_to_unsolvable=False)
         nodes.append(node2)
         rets.append(ret)
@@ -206,7 +205,7 @@ class CallTracer(vm.VirtualMachine):
     else:
       node = node0
     log.info("Unable to generate fake arguments for %s", funcv)
-    return node, self.new_unsolvable(node)
+    return node, self.ctx.new_unsolvable(node)
 
   def analyze_method_var(self, node0, name, var, cls=None):
     log.info("Analyzing %s", name)
@@ -217,7 +216,7 @@ class CallTracer(vm.VirtualMachine):
     return node0
 
   def bind_method(self, node, methodvar, instance_var):
-    bound = self.program.NewVariable()
+    bound = self.ctx.program.NewVariable()
     for m in methodvar.Data(node):
       if isinstance(m, special_builtins.ClassMethodInstance):
         m = m.func.data[0]
@@ -235,7 +234,7 @@ class CallTracer(vm.VirtualMachine):
       # This assumes that any inherited __new__ method defined in a pyi file
       # returns an instance of the current class.
       return node0, cls.data.instantiate(node0, container=container)
-    instance = self.program.NewVariable()
+    instance = self.ctx.program.NewVariable()
     nodes = []
     for b in new.bindings:
       self._analyzed_functions.add(b.data.get_first_opcode())
@@ -249,7 +248,7 @@ class CallTracer(vm.VirtualMachine):
 
   def _instantiate_var(self, node, clsv, container):
     """Build an (dummy) instance from a class, for analyzing it."""
-    n = self.program.NewVariable()
+    n = self.ctx.program.NewVariable()
     for cls in clsv.Bindings(node, strict=False):
       node, var = self._instantiate_binding(node, cls, container)
       n.PasteVariable(var)
@@ -318,7 +317,7 @@ class CallTracer(vm.VirtualMachine):
     return node, instance
 
   def _call_method(self, node, binding, method_name):
-    node, method = self.attribute_handler.get_attribute(
+    node, method = self.ctx.attribute_handler.get_attribute(
         node, binding.data.cls, method_name, binding)
     if method:
       bound_method = self.bind_method(
@@ -370,7 +369,7 @@ class CallTracer(vm.VirtualMachine):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.
       for v in methodvar.data:
-        if (self.options.bind_properties and
+        if (self.ctx.options.bind_properties and
             isinstance(v, special_builtins.PropertyInstance)):
           for m in (v.fget, v.fset, v.fdel):
             if m:
@@ -475,45 +474,45 @@ class CallTracer(vm.VirtualMachine):
   def pytd_classes_for_unknowns(self):
     classes = []
     for name, val in self._unknowns.items():
-      if val in val.variable.Filter(self.exitpoint, strict=False):
-        classes.append(val.data.to_structural_def(self.exitpoint, name))
+      if val in val.variable.Filter(self.ctx.exitpoint, strict=False):
+        classes.append(val.data.to_structural_def(self.ctx.exitpoint, name))
     return classes
 
   def pytd_for_types(self, defs):
     # If a variable is annotated, we'll always output that type.
     annotated_names = set()
     data = []
-    pytd_convert = self.convert.pytd_convert
     annots = abstract_utils.get_annotations_dict(defs)
-    for name, t in pytd_convert.annotations_to_instance_types(
-        self.exitpoint, annots):
+    for name, t in self.ctx.pytd_convert.annotations_to_instance_types(
+        self.ctx.exitpoint, annots):
       annotated_names.add(name)
       data.append(pytd.Constant(name, t))
     for name, var in defs.items():
       if (name in abstract_utils.TOP_LEVEL_IGNORE or name in annotated_names or
           self._is_typing_member(name, var)):
         continue
-      options = var.FilteredData(self.exitpoint, strict=False)
+      options = var.FilteredData(self.ctx.exitpoint, strict=False)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
-        if all(isinstance(o, (abstract.ParameterizedClass,
-                              abstract.TypeParameter,
-                              abstract.Union)) for o in options
-               ) and self.options.preserve_union_macros:  # type alias
-          data.append(pytd_utils.JoinTypes(t.to_pytd_def(self.exitpoint, name)
-                                           for t in options))
+        if all(
+            isinstance(o, (abstract.ParameterizedClass, abstract.TypeParameter,
+                           abstract.Union)) for o in
+            options) and self.ctx.options.preserve_union_macros:  # type alias
+          data.append(
+              pytd_utils.JoinTypes(
+                  t.to_pytd_def(self.ctx.exitpoint, name) for t in options))
         else:
           # It's ambiguous whether this is a type, a function or something
           # else, so encode it as a constant.
-          combined_types = pytd_utils.JoinTypes(t.to_type(self.exitpoint)
-                                                for t in options)
+          combined_types = pytd_utils.JoinTypes(
+              t.to_type(self.ctx.exitpoint) for t in options)
           data.append(pytd.Constant(name, combined_types))
       elif options:
         for option in options:
           try:
-            d = option.to_pytd_def(self.exitpoint, name)  # Deep definition
+            d = option.to_pytd_def(self.ctx.exitpoint, name)  # Deep definition
           except NotImplementedError:
-            d = option.to_type(self.exitpoint)  # Type only
+            d = option.to_type(self.ctx.exitpoint)  # Type only
             if isinstance(d, pytd.NothingType):
               if isinstance(option, abstract.Empty):
                 d = pytd.AnythingType()
@@ -608,15 +607,15 @@ class CallTracer(vm.VirtualMachine):
                                 functions=functions, aliases=aliases))
     ty = ty.Visit(optimize.CombineReturnsAndExceptions())
     ty = ty.Visit(optimize.PullInMethodClasses())
-    ty = ty.Visit(visitors.DefaceUnresolved(
-        [ty, self.loader.concat_all()], escape.UNKNOWN))
+    ty = ty.Visit(
+        visitors.DefaceUnresolved([ty, self.ctx.loader.concat_all()],
+                                  escape.UNKNOWN))
     return ty.Visit(visitors.AdjustTypeParameters())
 
   def _check_return(self, node, actual, formal):
-    if not self.options.report_errors:
+    if not self.ctx.options.report_errors:
       return True
-    bad = self.matcher(node).bad_matches(actual, formal)
+    bad = self.ctx.matcher(node).bad_matches(actual, formal)
     if bad:
-      self.errorlog.bad_return_type(
-          self.frames, node, formal, actual, bad)
+      self.ctx.errorlog.bad_return_type(self.frames, node, formal, actual, bad)
     return not bad

@@ -34,6 +34,7 @@ py_library(
     .class_mixin
     .compare
     .config
+    .context
     .convert
     .convert_structural
     .debug
@@ -108,10 +109,10 @@ py_library(
     analyze.py
   DEPS
     .abstract_utils
+    .context
     .convert_structural
     .debug
     .metrics
-    .tracer_vm
     pytype.pytd.pytd
 )
 
@@ -220,13 +221,32 @@ py_library(
     .function
     .overlay_dict
     .mixin
-    .output
     .special_builtins
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
     pytype.pytd.parse.parse
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    context
+  SRCS
+    context.py
+  DEPS
+    .abstract
+    .annotation_utils
+    .attribute
+    .config
+    .convert
+    .errors
+    .load_pytd
+    .matcher
+    .output
+    .special_builtins
+    .tracer_vm
     pytype.typegraph.cfg
 )
 
@@ -522,23 +542,19 @@ py_library(
     ._utils
     .abstract
     .abstract_utils
-    .annotation_utils
-    .attribute
     .blocks
     .class_mixin
     .compare
     .constant_folding
-    .convert
     .datatypes
     .directors
     .function
     .overlay_dict
     .load_pytd
-    .matcher
     .metaclass
     .metrics
     .mixin
-    .special_builtins
+    .overlay
     .state
     pytype.pyc.pyc
     pytype.pyi.parser
@@ -553,8 +569,8 @@ py_test(
   SRCS
     typegraph_metrics_test.py
   DEPS
+    .context
     .errors
-    .tracer_vm
     .vm
     pytype.tests.test_base
     pytype.typegraph.cfg
@@ -637,12 +653,12 @@ py_test(
     .abstract
     .abstract_utils
     .config
+    .context
     .errors
     .function
     .load_pytd
     .special_builtins
     .state
-    .vm
     pytype.pytd.pytd
     pytype.tests.test_base
     pytype.typegraph.cfg
@@ -656,9 +672,9 @@ py_test(
   DEPS
     .abstract_utils
     .config
+    .context
     .errors
     .load_pytd
-    .vm
     pytype.tests.test_base
 )
 
@@ -672,10 +688,10 @@ py_test(
     .abstract_utils
     .compare
     .config
+    .context
     .errors
     .function
     .load_pytd
-    .vm
     pytype.pytd.pytd
     pytype.tests.test_base
 )
@@ -698,10 +714,10 @@ py_test(
     .abstract
     .abstract_utils
     .config
+    .context
     .errors
     .file_utils
     .load_pytd
-    .vm
     pytype.tests.test_base
 )
 
@@ -714,10 +730,10 @@ py_test(
     .abstract
     .abstract_utils
     .config
+    .context
     .errors
     .file_utils
     .load_pytd
-    .vm
     pytype.pytd.pytd
     pytype.tests.test_base
 )
@@ -731,9 +747,9 @@ py_test(
     .abstract
     .abstract_utils
     .config
+    .context
     .errors
     .load_pytd
-    .vm
     pytype.tests.test_base
 )
 
@@ -757,10 +773,10 @@ py_test(
     .blocks
     .config
     .constant_folding
+    .context
     .errors
     .load_pytd
     .state
-    .vm
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.tests.test_base
@@ -774,8 +790,8 @@ py_test(
   DEPS
     ._utils
     .blocks
+    .context
     .errors
-    .tracer_vm
     .vm
     pytype.pyc.pyc
     pytype.tests.test_base
