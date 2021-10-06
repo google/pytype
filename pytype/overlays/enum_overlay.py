@@ -434,7 +434,18 @@ class EnumMetaInit(abstract.SimpleFunction):
                      abstract_utils.maybe_extract_tuple(value)))
         node, member_var = function.call_function(
             self.vm, node, enum_new, new_args, fallback_to_unsolvable=False)
-        member = abstract_utils.get_atomic_value(member_var)
+        # It's possible (but not likely) for member_var to have multiple
+        # bindings of the same type. (See test_multiple_value_bindings in
+        # test_enums.py.) This isn't an error, but members need to be Instances.
+        try:
+          member = abstract_utils.get_atomic_value(member_var)
+        except abstract_utils.ConversionError:
+          if member_var.data and all(
+              m.cls == member_var.data[0].cls for m in member_var.data):
+            member = member_var.data[0]
+          else:
+            member_var = self.vm.convert.create_new_unknown(node)
+            member = abstract_utils.get_atomic_value(member_var)
       else:
         # Build instances directly, because you can't call instantiate() when
         # creating the class -- pytype complains about recursive types.

@@ -1102,5 +1102,12 @@ class EnumOverlayTest(test_base.BaseTest):
         A = 1
     """)
 
+  def test_multiple_value_bindings(self):
+    self.Check("""
+      import enum
+      class M(str, enum.Enum):
+        A = (__any_object__ or '') + "1"
+    """)
+
 if __name__ == "__main__":
   test_base.main()
