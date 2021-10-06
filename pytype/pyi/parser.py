@@ -152,6 +152,17 @@ class AnnotationVisitor(visitor.BaseVisitor):
     ret = MetadataVisitor().visit(node)
     return ret if ret is not None else node
 
+  def visit_Constant(self, node):
+    # Handle a types.Constant node (converted from a literal constant).
+    # We do not handle the mixed case
+    #   x: List['int']
+    # since we need to not convert subscripts for typing.Literal, i.e.
+    #   x: Literal['int']
+    # pyi files do not require quoting forward references anyway, so we keep the
+    # code simple here and just handle the basic case of a fully quoted type.
+    if node.type == "str" and not self.subscripted:
+      return self.convert_late_annotation(node.value)
+
   def visit_Tuple(self, node):
     return tuple(node.elts)
 
@@ -381,6 +392,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     self.convert_node_annotations(node)
 
   def visit_AnnAssign(self, node):
+    self.convert_node_annotations(node)
     name = node.target.id
     typ = node.annotation
     val = self.convert_node(node.value)
