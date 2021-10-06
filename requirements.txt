@@ -8,8 +8,6 @@ libcst
 ninja>=1.10.0.post2
 pybind11>=2.6.0rc3
 pylint
-pyyaml>=3.11
-six
 tabulate
 toml
 typed_ast>=1.4.3
