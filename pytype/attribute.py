@@ -71,7 +71,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           ret.PasteVariable(attr, node2)
           nodes.append(node2)
       if ret.bindings:
-        return self.ctx.vm.join_cfg_nodes(nodes), ret
+        return self.ctx.join_cfg_nodes(nodes), ret
       else:
         return node, None
     elif isinstance(obj, special_builtins.SuperInstance):
@@ -96,8 +96,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           results.append(ret)
           nodes.append(node2)
       if nodes:
-        node = self.ctx.vm.join_cfg_nodes(nodes)
-        return node, self.ctx.vm.join_variables(node, results)
+        node = self.ctx.join_cfg_nodes(nodes)
+        return node, self.ctx.join_variables(node, results)
       else:
         return node, self.ctx.new_unsolvable(node)
     elif isinstance(obj, abstract.Empty):
@@ -156,7 +156,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       nodes = []
       for v in obj.instance.get_instance_type_parameter(obj.name).data:
         nodes.append(self.set_attribute(node, v, name, value))
-      return self.ctx.vm.join_cfg_nodes(nodes) if nodes else node
+      return self.ctx.join_cfg_nodes(nodes) if nodes else node
     elif isinstance(obj, abstract.Union):
       for option in obj.options:
         node = self.set_attribute(node, option, name, value)
@@ -387,7 +387,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           result.AddBinding(value, [v], node2)
         nodes.append(node2)
       if nodes:
-        return self.ctx.vm.join_cfg_nodes(nodes), result
+        return self.ctx.join_cfg_nodes(nodes), result
     return node, attr
 
   def _computable(self, name):

@@ -90,8 +90,9 @@ class SlotDecl:
 
 
 @dataclasses.dataclass
-class Constant:
+class Constant(ast3.AST):
   """Literal constants in pyi files."""
+  # Inherits from ast3.AST so it can be visited by ast visitors.
 
   type: str
   value: Any

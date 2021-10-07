@@ -575,6 +575,31 @@ class ParserTest(_ParserTestBase):
     """)
 
 
+class QuotedTypeTest(_ParserTestBase):
+
+  def test_annotation(self):
+    self.check("""
+      class A: ...
+      x: "A"
+      y: "List[A]" = ...
+    """, """
+      x: A
+      y: List[A]
+
+      class A: ...
+    """)
+
+  def test_def(self):
+    self.check("""
+      def f(x: "int") -> "str": ...
+    """, """
+      def f(x: int) -> str: ...
+    """)
+
+  def test_subscript(self):
+    self.check_error("x: List['int']", 1, "List['int'] not supported")
+
+
 class HomogeneousTypeTest(_ParserTestBase):
 
   def test_callable_parameters(self):

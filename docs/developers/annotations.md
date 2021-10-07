@@ -12,7 +12,7 @@
          * [Conversion to abstract types](#conversion-to-abstract-types)
       * [Tracking local operations](#tracking-local-operations)
 
-<!-- Added by: rechen, at: 2021-09-03T20:22-07:00 -->
+<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
 
 <!--te-->
 
@@ -172,7 +172,7 @@ annotations. The return value of `_process_one_annotation` is an
 
 The various public methods in `AnnotationUtils` cover different contexts in
 which we can encounter variable annotations while processing bytecode; search
-for `self.annotation_utils` in `vm.py` to see where each one is used.
+for `annotation_utils` in `vm.py` to see where each one is used.
 
 ## Tracking local operations
 

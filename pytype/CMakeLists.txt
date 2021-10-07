@@ -248,6 +248,7 @@ py_library(
     .special_builtins
     .tracer_vm
     pytype.typegraph.cfg
+    pytype.typegraph.cfg_utils
 )
 
 py_library(

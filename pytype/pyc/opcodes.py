@@ -151,6 +151,14 @@ class OpcodeWithArg(Opcode):
     return True
 
 
+class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+  def __str__(self):
+    return self.basic_str() + " " + str(self.arg.value)
+
+
 class POP_TOP(Opcode):
   __slots__ = ()
 
@@ -797,12 +805,39 @@ class DICT_UPDATE(OpcodeWithArg):
   __slots__ = ()
 
 
-class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
+class GET_LEN(Opcode):
+  __slots__ = ()
+
+
+class MATCH_MAPPING(Opcode):
+  __slots__ = ()
+
+
+class MATCH_SEQUENCE(Opcode):
+  __slots__ = ()
+
+
+class MATCH_KEYS(Opcode):
+  __slots__ = ()
+
+
+class COPY_DICT_WITHOUT_KEYS(Opcode):
+  __slots__ = ()
+
+
+class ROT_N(OpcodeWithArg):
   FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
-  def __str__(self):
-    return self.basic_str() + " " + str(self.arg.value)
+
+class GEN_START(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class MATCH_CLASS(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
 
 
 def _overlay_mapping(mapping, new_entries):
@@ -974,6 +1009,17 @@ python_3_9_mapping = _overlay_mapping(python_3_8_mapping, {
     165: DICT_UPDATE,
 })
 
+python_3_10_mapping = _overlay_mapping(python_3_9_mapping, {
+    30: GET_LEN,
+    31: MATCH_MAPPING,
+    32: MATCH_SEQUENCE,
+    33: MATCH_KEYS,
+    34: COPY_DICT_WITHOUT_KEYS,
+    99: ROT_N,
+    129: GEN_START,
+    152: MATCH_CLASS,
+})
+
 
 class _LineNumberTableParser:
   """State machine for decoding a Python line number array."""
@@ -1113,6 +1159,7 @@ def dis(data, python_version, *args, **kwargs):
       (3, 7): python_3_7_mapping,
       (3, 8): python_3_8_mapping,
       (3, 9): python_3_9_mapping,
+      (3, 10): python_3_10_mapping,
   }[(major, minor)]
   return _dis(data, mapping, *args, **kwargs)
 

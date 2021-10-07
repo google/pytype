@@ -737,7 +737,7 @@ def merged_type_parameter(node, var, param):
   if is_var_splat(var):
     var = unwrap_splat(var)
   params = [v.get_instance_type_parameter(param) for v in var.data]
-  return var.data[0].ctx.vm.join_variables(node, params)
+  return var.data[0].ctx.join_variables(node, params)
 
 
 def is_var_splat(var):
