@@ -3015,7 +3015,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
             mbr, default=self.ctx.convert.unsolvable)
         for mbr in self.members.values()
     ]
-    return [x for x in values if isinstance(x, InterpreterClass)]
+    return [x for x in values if isinstance(x, InterpreterClass) and x != self]
 
   def get_own_attributes(self):
     attributes = set(self.members)

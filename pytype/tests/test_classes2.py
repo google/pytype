@@ -206,6 +206,21 @@ class ClassesTest(test_base.BaseTest):
           return self._func(value)
     """)
 
+  def test_class_containing_itself(self):
+    ty = self.Infer("""
+      from typing import Type
+      class MyMetaclass(type):
+        pass
+      class MyClass(metaclass=MyMetaclass):
+        my_object = None  # type: Type['MyClass']
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      class MyMetaclass(type): ...
+      class MyClass(metaclass=MyMetaclass):
+        my_object: Type[MyClass]
+    """)
+
 
 class ClassesTestPython3Feature(test_base.BaseTest):
   """Tests for classes."""
