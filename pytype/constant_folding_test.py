@@ -2,6 +2,7 @@
 
 import textwrap
 
+from pytype import abstract
 from pytype import blocks
 from pytype import config
 from pytype import constant_folding
@@ -249,8 +250,8 @@ class TypeBuilderTest(TypeBuilderTestBase):
     return val
 
   def _is_primitive(self, val, cls):
-    return (val.isinstance_Instance() and
-            val.cls.isinstance_PyTDClass() and
+    return (isinstance(val, abstract.Instance) and
+            isinstance(val.cls, abstract.PyTDClass) and
             val.cls.pytd_cls.name == "builtins." + cls)
 
   def test_prim(self):

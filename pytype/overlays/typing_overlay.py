@@ -555,7 +555,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     # Since we don't support defining NamedTuple subclasses in a nested scope
     # anyway, we can just return unsolvable here to prevent a crash, and let the
     # invalid namedtuple error get raised later.
-    if f_locals.data[0].isinstance_Unsolvable():
+    if isinstance(f_locals.data[0], abstract.Unsolvable):
       return node, self.ctx.new_unsolvable(node)
 
     f_locals = abstract_utils.get_atomic_python_constant(f_locals)

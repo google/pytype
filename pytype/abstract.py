@@ -409,9 +409,6 @@ class BaseValue(utils.ContextWeakrefMixin):
   def isinstance_ClassMethod(self):
     return isinstance(self, ClassMethod)
 
-  def isinstance_ClassMethodInstance(self):
-    return False  # overridden in special_builtins.ClassMethodInstance
-
   def isinstance_Dict(self):
     return isinstance(self, Dict)
 
@@ -436,9 +433,6 @@ class BaseValue(utils.ContextWeakrefMixin):
   def isinstance_ParameterizedClass(self):
     return isinstance(self, ParameterizedClass)
 
-  def isinstance_PropertyInstance(self):
-    return False  # overridden in special_builtins.PropertyInstance
-
   def isinstance_PyTDClass(self):
     return isinstance(self, PyTDClass)
 
@@ -462,9 +456,6 @@ class BaseValue(utils.ContextWeakrefMixin):
 
   def isinstance_StaticMethod(self):
     return isinstance(self, StaticMethod)
-
-  def isinstance_StaticMethodInstance(self):
-    return False  # overridden in special_builtins.StaticMethodInstance
 
   def isinstance_Tuple(self):
     return isinstance(self, Tuple)
@@ -2024,7 +2015,7 @@ class PyTDFunction(Function):
       # - An annotation has a type param that is not ambigious or empty
       # - The mutation adds a type that is not ambiguous or empty
       def should_check(value):
-        return not value.isinstance_AMBIGUOUS_OR_EMPTY()
+        return not isinstance(value, AMBIGUOUS_OR_EMPTY)
 
       def compatible_with(new, existing, view):
         """Check whether a new type can be added to a container."""
@@ -3035,11 +3026,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
 
   def get_own_abstract_methods(self):
     def _can_be_abstract(var):
-      return any((isinstance(v, Function) or  # pylint: disable=g-complex-comprehension
-                  v.isinstance_PropertyInstance() or
-                  v.isinstance_ClassMethodInstance() or
-                  v.isinstance_StaticMethodInstance())
-                 and v.is_abstract for v in var.data)
+      return any(isinstance(v, Function) and v.is_abstract for v in var.data)
     return {name for name, var in self.members.items() if _can_be_abstract(var)}
 
   def _mangle(self, name):
@@ -4400,7 +4387,7 @@ class BuildClass(BaseValue):
       cls_dict = func.f_locals.to_variable(node)
       # Every subclass of an enum is itself an enum. To properly process them,
       # the class must be built by the enum overlay.
-      if (base.isinstance_Class() and base.is_enum and
+      if (isinstance(base, class_mixin.Class) and base.is_enum and
           self.ctx.options.use_enum_overlay):
         enum_base = abstract_utils.get_atomic_value(
             self.ctx.vm.loaded_overlays["enum"].members["Enum"])

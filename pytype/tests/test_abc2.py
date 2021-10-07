@@ -147,7 +147,7 @@ class AbstractMethodTests(test_base.BaseTest):
   def test_bad_abstract_classmethod(self):
     self.CheckWithErrors("""
       import abc
-      class Foo:
+      class Foo:  # ignored-abstractmethod
         @classmethod
         @abc.abstractmethod
         def f(cls) -> str: ...  # bad-return-type

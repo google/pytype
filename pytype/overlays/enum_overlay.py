@@ -29,6 +29,7 @@ from pytype import abstract_utils
 from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
+from pytype import special_builtins
 from pytype.overlays import classgen
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -374,7 +375,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     except abstract_utils.ConversionError as e:
       log.info("Failed to extract atomic enum value for auto() check: %s", e)
       return False
-    return data.isinstance_Instance() and data.cls.full_name == "enum.auto"
+    return (isinstance(data, abstract.Instance) and
+            data.cls.full_name == "enum.auto")
 
   def _call_generate_next_value(self, node, cls, name):
     node, method = self.ctx.attribute_handler.get_attribute(
@@ -487,7 +489,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     # pass an instance of cls instead of cls when analyzing it.
     if "__new__" in cls:
       saved_new = cls.members["__new__"]
-      if not any(x.isinstance_ClassMethodInstance() for x in saved_new.data):
+      if not any(isinstance(x, special_builtins.ClassMethodInstance)
+                 for x in saved_new.data):
         args = function.Args(posargs=(saved_new,))
         node, saved_new = self.ctx.vm.load_special_builtin("classmethod").call(
             node, None, args)
@@ -499,7 +502,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     # However, we skip this if it's already a staticmethod.
     if "_generate_next_value_" in cls.members:
       gnv = cls.members["_generate_next_value_"]
-      if not any(x.isinstance_StaticMethodInstance() for x in gnv.data):
+      if not any(isinstance(x, special_builtins.StaticMethodInstance)
+                 for x in gnv.data):
         args = function.Args(posargs=(gnv,))
         node, new_gnv = self.ctx.vm.load_special_builtin("staticmethod").call(
             node, None, args)
@@ -564,12 +568,13 @@ class EnumMetaInit(abstract.SimpleFunction):
     # This function will get called for every class that has enum.EnumMeta as
     # its metaclass, including enum.Enum and other enum module members.
     # We don't have anything to do for those, so return early.
-    if cls.isinstance_PyTDClass() and cls.full_name.startswith("enum."):
+    if (isinstance(cls, abstract.PyTDClass) and
+        cls.full_name.startswith("enum.")):
       return node, ret
 
-    if cls.isinstance_InterpreterClass():
+    if isinstance(cls, abstract.InterpreterClass):
       node = self._setup_interpreterclass(node, cls)
-    elif cls.isinstance_PyTDClass():
+    elif isinstance(cls, abstract.PyTDClass):
       node = self._setup_pytdclass(node, cls)
     else:
       raise ValueError(
@@ -611,7 +616,7 @@ class EnumMetaGetItem(abstract.SimpleFunction):
       return node, self.ctx.new_unsolvable(node)
     # We may have been given an instance of the class, such as if pytype is
     # analyzing this method due to a super() call in a subclass.
-    if cls.isinstance_Instance():
+    if isinstance(cls, abstract.Instance):
       cls = cls.cls
     # If we can't get a concrete name, treat it like it matches and return a
     # canonical enum member.

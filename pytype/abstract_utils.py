@@ -758,9 +758,7 @@ def is_callable(value: _BaseValue):
   if (value.isinstance_Function() or
       value.isinstance_BoundFunction() or
       value.isinstance_ClassMethod() or
-      value.isinstance_ClassMethodInstance() or
-      value.isinstance_StaticMethod() or
-      value.isinstance_StaticMethodInstance()):
+      value.isinstance_StaticMethod()):
     return True
   if not value.cls.isinstance_Class():
     return False

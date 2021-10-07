@@ -64,6 +64,7 @@ py_library(
     .classgen
     pytype.abstract
     pytype.abstract_utils
+    pytype.class_mixin
     pytype.function
     pytype.mixin
     pytype.overlay
@@ -123,6 +124,7 @@ py_library(
     pytype.function
     pytype.overlay
     pytype.overlay_utils
+    pytype.special_builtins
     pytype.pytd.pytd
 )
 

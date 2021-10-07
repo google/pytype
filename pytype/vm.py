@@ -3371,14 +3371,14 @@ class VirtualMachine:
     except abstract_utils.ConversionError:
       if abstract_utils.is_var_indefinite_iterable(var):
         elements.append(abstract.Splat(self.ctx, var).to_variable(node))
-      elif (all(d.isinstance_Tuple() for d in var.data) and
+      elif (all(isinstance(d, abstract.Tuple) for d in var.data) and
             all(d.tuple_length == var.data[0].tuple_length for d in var.data)):
         # If we have a set of bindings to tuples all of the same length, treat
         # them as a definite tuple with union-typed fields.
         vs = self._merge_tuple_bindings(node, var)
         elements.extend(vs)
-      elif (any(x.isinstance_Unsolvable() for x in var.data) or
-            all(x.isinstance_Unknown() for x in var.data)):
+      elif (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
+            all(isinstance(x, abstract.Unknown) for x in var.data)):
         # If we have an unsolvable or unknown we are unpacking as an iterable,
         # make sure it is treated as a tuple and not a single value.
         v = self.ctx.convert.tuple_type.instantiate(node)
@@ -3436,7 +3436,7 @@ class VirtualMachine:
     """Unpack starargs if it has not been done already."""
     # TODO(mdemello): If we *have* unpacked the arg in a previous opcode will it
     # always have a single binding?
-    if not any(x.isinstance_Tuple() and x.is_unpacked_function_args
+    if not any(isinstance(x, abstract.Tuple) and x.is_unpacked_function_args
                for x in starargs.data):
       seq = self._unpack_iterable(node, starargs)
       starargs = self._build_function_args_tuple(node, seq)
@@ -3713,10 +3713,10 @@ class VirtualMachine:
       return state
     var = args[0]
     f = func.data[0]
-    if not (f.isinstance_BoundFunction() and len(f.callself.data) == 1):
+    if not isinstance(f, abstract.BoundFunction) or len(f.callself.data) != 1:
       return state
     cls = f.callself.data[0].cls
-    if not (cls.isinstance_Class() and cls.is_test_class()):
+    if not (isinstance(cls, class_mixin.Class) and cls.is_test_class()):
       return state
     if f.name == "assertIsNotNone":
       if len(args) == 1:
