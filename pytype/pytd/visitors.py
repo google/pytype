@@ -286,10 +286,11 @@ class _ToTypeVisitor(Visitor):
   appropriate allow_constants and allow_functions values.
   """
 
-  def __init__(self):
+  def __init__(self, allow_singletons=False):
     super().__init__()
     self._in_alias = False
     self._in_literal = 0
+    self.allow_singletons = allow_singletons
 
   def EnterAlias(self, _):
     assert not self._in_alias
@@ -309,20 +310,22 @@ class _ToTypeVisitor(Visitor):
     allow_constants = self._in_alias or self._in_literal
     allow_functions = self._in_alias
     return pytd.ToType(
-        t, allow_constants=allow_constants, allow_functions=allow_functions)
+        t, allow_constants=allow_constants, allow_functions=allow_functions,
+        allow_singletons=self.allow_singletons)
 
 
 class LookupBuiltins(_ToTypeVisitor):
   """Look up built-in NamedTypes and give them fully-qualified names."""
 
-  def __init__(self, builtins, full_names=True):
+  def __init__(self, builtins, full_names=True, allow_singletons=False):
     """Create this visitor.
 
     Args:
       builtins: The builtins module.
       full_names: Whether to use fully qualified names for lookup.
+      allow_singletons: Whether to allow singleton types like Ellipsis.
     """
-    super().__init__()
+    super().__init__(allow_singletons)
     self._builtins = builtins
     self._full_names = full_names
 
@@ -697,6 +700,9 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         try:
           item = self.unit.Lookup(node.name)
         except KeyError as e:
+          if (self.allow_singletons and node.name in pytd.SINGLETON_TYPES):
+            # Let the builtins resolver handle it
+            return node
           raise SymbolLookupError("Couldn't find %s in %s" % (
               node.name, self.unit.name)) from e
       try:
