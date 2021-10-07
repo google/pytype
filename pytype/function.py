@@ -611,8 +611,14 @@ class WrongArgTypes(InvalidParameters):
   """For functions that were called with the wrong types."""
 
   def __gt__(self, other):
-    return other is None or (isinstance(other, FailedFunctionCall) and
-                             not isinstance(other, WrongArgTypes))
+    if other is None or (isinstance(other, FailedFunctionCall) and
+                         not isinstance(other, WrongArgTypes)):
+      return True
+    # The signature that has fewer *args/**kwargs tends to be more precise.
+    def starcount(err):
+      return (bool(err.bad_call.sig.varargs_name) +
+              bool(err.bad_call.sig.kwargs_name))
+    return starcount(self) < starcount(other)
 
 
 class WrongArgCount(InvalidParameters):

@@ -378,13 +378,6 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
 
   def test_map3(self):
-    self.CheckWithErrors("""
-    def func(a: int) -> float:
-      return float(a)
-
-    map(func, ['str'])  # wrong-arg-types
-    """)
-
     self.Check("""
     from typing import Union
     def func(a: Union[int, str, float, bool]) -> str:
@@ -400,6 +393,15 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
 
     map(func, [('one', 'two'), {'three', 'four'}, ['five', 'six']], 'abc', [1, False, 3.14])
     """)
+
+  def test_map_error_message(self):
+    errors = self.CheckWithErrors("""
+      def func(a: int) -> float:
+        return float(a)
+      map(func, ['str'])  # wrong-arg-types[e]
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]})
 
   def test_dict(self):
     ty = self.Infer("""
