@@ -156,7 +156,7 @@ def add_basic_options(o):
                "is enabled by default.")
   o.add_argument(
       "--attribute-variable-annotations", action="store_true",
-      dest="attribute_variable_annotations", default=False,
+      dest="attribute_variable_annotations", default=True,
       help=("Apply PEP 526-style variable annotations on attributes. " +
             temporary))
   o.add_argument(
