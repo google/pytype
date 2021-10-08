@@ -100,6 +100,10 @@ def JoinTypes(types):
   if len(new_types) == 1:
     return new_types.pop()
   elif any(isinstance(t, pytd.AnythingType) for t in new_types):
+    nonetype = pytd.NamedType("builtins.NoneType")
+    unresolved_nonetype = pytd.NamedType("NoneType")
+    if any(t in (nonetype, unresolved_nonetype) for t in new_types):
+      return pytd.UnionType((pytd.AnythingType(), nonetype))
     return pytd.AnythingType()
   elif new_types:
     return pytd.UnionType(tuple(new_types))  # tuple() to make unions hashable
