@@ -5,6 +5,98 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
+class MapTest(test_base.BaseTest):
+  """Tests for builtin.map."""
+
+  def test_basic(self):
+    ty = self.Infer("""
+      v = map(int, ("0",))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterator
+      v = ...  # type: Iterator[int]
+    """)
+
+  def test_lambda(self):
+    ty = self.Infer("""
+      class Foo:
+        pass
+
+      def f():
+        return map(lambda x: x, [Foo()])
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Iterator
+      class Foo:
+        pass
+
+      def f() -> Iterator: ...
+    """)
+
+  def test_join(self):
+    ty = self.Infer("""
+      def f(input_string, sub):
+        return ''.join(map(lambda ch: ch, input_string))
+    """)
+    self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
+
+  def test_empty(self):
+    ty = self.Infer("""
+      lst1 = []
+      lst2 = [x for x in lst1]
+      lst3 = map(str, lst2)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List, Iterator
+      lst1 = ...  # type: List[nothing]
+      lst2 = ...  # type: List[nothing]
+      lst3 = ...  # type: Iterator[nothing]
+    """)
+
+  def test_heterogeneous(self):
+    self.Check("""
+      from typing import Union
+      def func(a: Union[int, str, float, bool]) -> str:
+        return str(a)
+      map(func, [1, 'pi', 3.14, True])
+    """)
+
+    self.Check("""
+      from typing import Iterable, Union
+      def func(
+          first: Iterable[str], second: str, third: Union[int, bool, float]
+      ) -> str:
+        return ' '.join(first) + second + str(third)
+      map(func,
+          [('one', 'two'), {'three', 'four'}, ['five', 'six']],
+          'abc',
+          [1, False, 3.14])
+    """)
+
+  def test_error_message(self):
+    errors = self.CheckWithErrors("""
+      def func(a: int) -> float:
+        return float(a)
+      map(func, ['str'])  # wrong-arg-types[e]
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]})
+
+  def test_abspath(self):
+    self.Check("""
+      import os.path
+      map(os.path.abspath, [''])
+    """)
+
+  def test_protocol(self):
+    self.Check("""
+      class Foo:
+        def __len__(self) -> int:
+          return 0
+      map(len, [Foo()])
+    """)
+
+
 class BuiltinTests(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
@@ -331,77 +423,6 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       d = ...  # type: Iterator[nothing]
       e = ...  # type: Iterator[Tuple[complex, int]]
       """)
-
-  def test_map_basic(self):
-    ty = self.Infer("""
-      v = map(int, ("0",))
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Iterator
-      v = ...  # type: Iterator[int]
-    """)
-
-  def test_map(self):
-    ty = self.Infer("""
-      class Foo:
-        pass
-
-      def f():
-        return map(lambda x: x, [Foo()])
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Iterator
-      class Foo:
-        pass
-
-      def f() -> Iterator: ...
-    """)
-
-  def test_map1(self):
-    ty = self.Infer("""
-      def f(input_string, sub):
-        return ''.join(map(lambda ch: ch, input_string))
-    """)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
-
-  def test_map2(self):
-    ty = self.Infer("""
-      lst1 = []
-      lst2 = [x for x in lst1]
-      lst3 = map(str, lst2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any, List, Iterator
-      lst1 = ...  # type: List[nothing]
-      lst2 = ...  # type: List[nothing]
-      lst3 = ...  # type: Iterator[nothing]
-    """)
-
-  def test_map3(self):
-    self.Check("""
-    from typing import Union
-    def func(a: Union[int, str, float, bool]) -> str:
-      return str(a)
-
-    map(func, [1, 'pi', 3.14, True])
-    """)
-
-    self.Check("""
-    from typing import Iterable, Union
-    def func(first: Iterable[str], second: str, third: Union[int, bool, float]) -> str:
-      return ' '.join(first) + second + str(third)
-
-    map(func, [('one', 'two'), {'three', 'four'}, ['five', 'six']], 'abc', [1, False, 3.14])
-    """)
-
-  def test_map_error_message(self):
-    errors = self.CheckWithErrors("""
-      def func(a: int) -> float:
-        return float(a)
-      map(func, ['str'])  # wrong-arg-types[e]
-    """)
-    self.assertErrorSequences(
-        errors, {"e": ["Expected", "Iterable[int]", "Actual", "List[str]"]})
 
   def test_dict(self):
     ty = self.Infer("""
