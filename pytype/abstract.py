@@ -19,6 +19,8 @@ import itertools
 import logging
 from typing import Mapping
 
+import attr
+
 from pytype import abstract_utils
 from pytype import class_mixin
 from pytype import datatypes
@@ -2765,8 +2767,17 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     # InitVar attributes to generate __init__, so the fields we want to add to
     # the subclass __init__ are the init params rather than the full list of
     # class attributes.
+    # We also need to use the list of class constants to restore names of the
+    # form `_foo`, which get replaced by `foo` in __init__.
     init = next(x for x in self.pytd_cls.methods if x.name == "__init__")
-    params = init.signatures[0].params[1:]
+    protected = {x.name[1:]: x.name for x in self.pytd_cls.constants
+                 if x.name.startswith("_")}
+    params = []
+    for p in init.signatures[0].params[1:]:
+      if p.name in protected:
+        params.append(attr.evolve(p, name=protected[p.name]))
+      else:
+        params.append(p)
     with self.ctx.allow_recursive_convert():
       own_attrs = [
           class_mixin.Attribute.from_param(p, self.ctx) for p in params
