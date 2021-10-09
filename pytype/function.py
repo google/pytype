@@ -34,14 +34,10 @@ def get_signatures(func):
   elif func.cls.isinstance_CallableClass():
     return [Signature.from_callable(func.cls)]
   else:
-    try:
-      # Check if func has a "func" attribute that is a Variable.
-      func_options = func.func.data
-    except AttributeError:
-      pass
-    else:
+    unwrapped = abstract_utils.maybe_unwrap_decorated_function(func)
+    if unwrapped:
       return list(itertools.chain.from_iterable(
-          get_signatures(f) for f in func_options))
+          get_signatures(f) for f in unwrapped.data))
     if func.isinstance_Instance():
       _, call_var = func.ctx.attribute_handler.get_attribute(
           func.ctx.root_node, func, "__call__",

@@ -895,3 +895,14 @@ def check_against_mro(ctx, target, class_spec):
   # No matches, return result depends on whether flatten() was
   # ambiguous.
   return None if ambiguous else False
+
+
+def maybe_unwrap_decorated_function(func):
+  # Some decorators, like special_builtins.PropertyInstance, have a
+  # 'func' pointer to the decorated function. Note that we check for .data to
+  # make sure 'func' is a Variable.
+  try:
+    func.func.data
+  except AttributeError:
+    return None
+  return func.func

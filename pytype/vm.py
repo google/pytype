@@ -896,8 +896,9 @@ class VirtualMachine:
       if not val.is_abstract:
         for member in sum((var.data for var in val.members.values()), []):
           if isinstance(member, abstract.Function) and member.is_abstract:
-            self.ctx.errorlog.ignored_abstractmethod(frames, val.name,
-                                                     member.name)
+            unwrapped = abstract_utils.maybe_unwrap_decorated_function(member)
+            name = unwrapped.data[0].name if unwrapped else member.name
+            self.ctx.errorlog.ignored_abstractmethod(frames, val.name, name)
     for annot in itertools.chain.from_iterable(self.late_annotations.values()):
       # If `annot` has already been resolved, this is a no-op. Otherwise, it
       # contains a real name error that will be logged when we resolve it now.
