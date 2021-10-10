@@ -502,25 +502,32 @@ class Converter(utils.ContextWeakrefMixin):
         self._convert_cache[key] = value
       return value
 
+  def _load_late_type_module(self, late_type):
+    parts = late_type.name.split(".")
+    for i in range(len(parts)-1):
+      module = ".".join(parts[:-(i+1)])
+      ast = self.ctx.loader.import_name(module)
+      if ast:
+        return ast, ".".join(parts[-(i+1):])
+    return None, late_type.name
+
   def _load_late_type(self, late_type):
     """Resolve a late type, possibly by loading a module."""
     if late_type.name not in self._resolved_late_types:
-      module, dot, _ = late_type.name.rpartition(".")
-      assert dot
-      ast = self.ctx.loader.import_name(module)
-      if ast is not None:
+      ast, attr_name = self._load_late_type_module(late_type)
+      if ast is None:
+        log.error("During dependency resolution, couldn't resolve late type %r",
+                  late_type.name)
+        t = pytd.AnythingType()
+      else:
         try:
-          cls = ast.Lookup(late_type.name)
+          cls = pytd_utils.LookupItemRecursive(ast, attr_name)
         except KeyError:
           if "__getattr__" not in ast:
             log.warning("Couldn't resolve %s", late_type.name)
           t = pytd.AnythingType()
         else:
           t = pytd.ToType(cls, allow_functions=True)
-      else:
-        # A pickle file refers to a module that went away in the mean time.
-        log.error("During dependency resolution, couldn't import %r", module)
-        t = pytd.AnythingType()
       self._resolved_late_types[late_type.name] = t
     return self._resolved_late_types[late_type.name]
 
