@@ -25,13 +25,10 @@ py_library(
     libvm
   DEPS
     .__version__
-    .abstract
-    .abstract_utils
     .analyze
     .annotation_utils
     .attribute
     .blocks
-    .class_mixin
     .compare
     .config
     .context
@@ -40,14 +37,12 @@ py_library(
     .debug
     .directors
     .errors
-    .function
     .overlay_dict
     .imports_map_loader
     .io
     .load_pytd
     .matcher
     .metaclass
-    .mixin
     .output
     .overlay
     .overlay_dict
@@ -72,47 +67,15 @@ py_library(
 
 py_library(
   NAME
-    abstract
-  SRCS
-    abstract.py
-  DEPS
-    ._utils
-    .abstract_utils
-    .class_mixin
-    .datatypes
-    .function
-    .mixin
-    pytype.pytd.pytd
-    pytype.pytd.codegen.codegen
-    pytype.typegraph.cfg
-    pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    abstract_utils
-  SRCS
-    abstract_utils.py
-  DEPS
-    ._utils
-    .datatypes
-    pytype.pyc.pyc
-    pytype.pytd.pytd
-    pytype.typegraph.cfg
-    pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
     analyze
   SRCS
     analyze.py
   DEPS
-    .abstract_utils
     .context
     .convert_structural
     .debug
     .metrics
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 
@@ -123,10 +86,7 @@ py_library(
     annotation_utils.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
-    .class_mixin
-    .mixin
+    pytype.abstract.abstract
     pytype.overlays.overlays
 )
 
@@ -137,13 +97,9 @@ py_library(
     attribute.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
-    .class_mixin
-    .function
-    .mixin
     .overlay
     .special_builtins
+    pytype.abstract.abstract
     pytype.typegraph.cfg
 )
 
@@ -159,27 +115,11 @@ py_library(
 
 py_library(
   NAME
-    class_mixin
-  SRCS
-    class_mixin.py
-  DEPS
-    .abstract_utils
-    .datatypes
-    .function
-    .mixin
-    pytype.pytd.pytd
-)
-
-py_library(
-  NAME
     compare
   SRCS
     compare.py
   DEPS
-    .abstract
-    .abstract_utils
-    .class_mixin
-    .mixin
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 
@@ -213,15 +153,11 @@ py_library(
     convert.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
     .blocks
-    .class_mixin
     .datatypes
-    .function
     .overlay_dict
-    .mixin
     .special_builtins
+    pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser
@@ -236,7 +172,6 @@ py_library(
   SRCS
     context.py
   DEPS
-    .abstract
     .annotation_utils
     .attribute
     .config
@@ -247,6 +182,7 @@ py_library(
     .output
     .special_builtins
     .tracer_vm
+    pytype.abstract.abstract
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
@@ -294,12 +230,9 @@ py_library(
     errors.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
-    .class_mixin
     .debug
-    .function
     .matcher
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 
@@ -308,18 +241,6 @@ py_library(
     file_utils
   SRCS
     file_utils.py
-)
-
-py_library(
-  NAME
-    function
-  SRCS
-    function.py
-  DEPS
-    ._utils
-    .abstract_utils
-    .datatypes
-    pytype.pytd.pytd
 )
 
 py_library(
@@ -354,11 +275,9 @@ py_library(
     load_pytd.py
   DEPS
     ._utils
-    .file_utils
     .module_utils
     pytype.pyi.parser
     pytype.pytd.pytd
-    pytype.pytd.codegen.codegen
 )
 
 py_library(
@@ -368,12 +287,9 @@ py_library(
     matcher.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
-    .class_mixin
     .datatypes
-    .function
     .special_builtins
+    pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
 )
@@ -384,10 +300,7 @@ py_library(
   SRCS
     metaclass.py
   DEPS
-    .abstract
-    .abstract_utils
-    .class_mixin
-    .function
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -395,16 +308,6 @@ py_library(
     metrics
   SRCS
     metrics.py
-)
-
-py_library(
-  NAME
-    mixin
-  SRCS
-    mixin.py
-  DEPS
-    .function
-    pytype.typegraph.cfg
 )
 
 py_library(
@@ -421,11 +324,8 @@ py_library(
     output.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
-    .class_mixin
-    .function
     .special_builtins
+    pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -437,8 +337,8 @@ py_library(
   SRCS
     overlay.py
   DEPS
-    .abstract
     .datatypes
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -456,9 +356,7 @@ py_library(
   SRCS
     overlay_utils.py
   DEPS
-    .abstract
-    .class_mixin
-    .function
+    pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg
 )
@@ -478,11 +376,7 @@ py_library(
   SRCS
     special_builtins.py
   DEPS
-    .abstract
-    .abstract_utils
-    .class_mixin
-    .function
-    .mixin
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -492,11 +386,9 @@ py_library(
     state.py
   DEPS
     ._utils
-    .abstract
-    .class_mixin
     .compare
     .metrics
-    .mixin
+    pytype.abstract.abstract
     pytype.typegraph.cfg
 )
 
@@ -506,12 +398,10 @@ py_library(
   SRCS
     tracer_vm.py
   DEPS
-    .abstract
-    .abstract_utils
-    .function
     .special_builtins
     .state
     .vm
+    pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
@@ -541,22 +431,18 @@ py_library(
     vm.py
   DEPS
     ._utils
-    .abstract
-    .abstract_utils
     .blocks
-    .class_mixin
     .compare
     .constant_folding
     .datatypes
     .directors
-    .function
     .overlay_dict
     .load_pytd
     .metaclass
     .metrics
-    .mixin
     .overlay
     .state
+    pytype.abstract.abstract
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -647,63 +533,18 @@ py_test(
 
 py_test(
   NAME
-    abstract_test
-  SRCS
-    abstract_test.py
-  DEPS
-    .abstract
-    .abstract_utils
-    .config
-    .context
-    .errors
-    .function
-    .load_pytd
-    .special_builtins
-    .state
-    pytype.pytd.pytd
-    pytype.tests.test_base
-    pytype.typegraph.cfg
-)
-
-py_test(
-  NAME
-    abstract_utils_test
-  SRCS
-    abstract_utils_test.py
-  DEPS
-    .abstract_utils
-    .config
-    .context
-    .errors
-    .load_pytd
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     compare_test
   SRCS
     compare_test.py
   DEPS
-    .abstract
-    .abstract_utils
     .compare
     .config
     .context
     .errors
-    .function
     .load_pytd
+    pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.tests.test_base
-)
-
-py_test(
-  NAME
-    mixin_test
-  SRCS
-    mixin_test.py
-  DEPS
-    .mixin
 )
 
 py_test(
@@ -712,13 +553,12 @@ py_test(
   SRCS
     matcher_test.py
   DEPS
-    .abstract
-    .abstract_utils
     .config
     .context
     .errors
     .file_utils
     .load_pytd
+    pytype.abstract.abstract
     pytype.tests.test_base
 )
 
@@ -728,13 +568,12 @@ py_test(
   SRCS
     convert_test.py
   DEPS
-    .abstract
-    .abstract_utils
     .config
     .context
     .errors
     .file_utils
     .load_pytd
+    pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.tests.test_base
 )
@@ -745,12 +584,11 @@ py_test(
   SRCS
     attribute_test.py
   DEPS
-    .abstract
-    .abstract_utils
     .config
     .context
     .errors
     .load_pytd
+    pytype.abstract.abstract
     pytype.tests.test_base
 )
 
@@ -771,7 +609,6 @@ py_test(
   SRCS
     constant_folding_test.py
   DEPS
-    .abstract
     .blocks
     .config
     .constant_folding
@@ -779,6 +616,7 @@ py_test(
     .errors
     .load_pytd
     .state
+    pytype.abstract.abstract
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.tests.test_base
@@ -877,6 +715,7 @@ py_library(
     pytype.pytd.parse.parse
 )
 
+add_subdirectory(abstract)
 add_subdirectory(ast)
 add_subdirectory(overlays)
 add_subdirectory(pyc)

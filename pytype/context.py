@@ -3,7 +3,6 @@
 import contextlib
 from typing import Dict, List, Tuple
 
-from pytype import abstract
 from pytype import annotation_utils
 from pytype import attribute
 from pytype import config
@@ -14,6 +13,7 @@ from pytype import matcher
 from pytype import output
 from pytype import special_builtins
 from pytype import tracer_vm
+from pytype.abstract import abstract
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 

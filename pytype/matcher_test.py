@@ -2,13 +2,13 @@
 
 import textwrap
 
-from pytype import abstract
-from pytype import abstract_utils
 from pytype import config
 from pytype import context
 from pytype import errors
 from pytype import file_utils
 from pytype import load_pytd
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
 from pytype.tests import test_base
 
 import unittest

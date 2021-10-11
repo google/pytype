@@ -4,9 +4,9 @@ import collections
 import itertools
 import logging
 
-from pytype import abstract_utils
 from pytype import datatypes
 from pytype import utils
+from pytype.abstract import abstract_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 

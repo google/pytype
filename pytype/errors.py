@@ -9,13 +9,13 @@ import re
 import sys
 from typing import Iterable, Optional, Union
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import class_mixin
 from pytype import debug
-from pytype import function
 from pytype import matcher
 from pytype import utils
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
+from pytype.abstract import function
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils

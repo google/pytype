@@ -11,10 +11,10 @@
 # frozen anyway we needn't bother about that for now.
 
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import function
 from pytype import overlay
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.overlays import dataclass_overlay
 from pytype.pytd import pytd

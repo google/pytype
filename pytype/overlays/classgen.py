@@ -8,11 +8,11 @@ import collections
 import logging
 from typing import Any, ClassVar, Dict
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import class_mixin
 from pytype import overlay_utils
 from pytype import special_builtins
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 
 
 log = logging.getLogger(__name__)

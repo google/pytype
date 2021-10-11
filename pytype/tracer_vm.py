@@ -5,12 +5,12 @@ import logging
 import re
 from typing import Any, Dict, Union
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import function
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.overlays import typing_overlay
 from pytype.pytd import escape
 from pytype.pytd import optimize

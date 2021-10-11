@@ -67,6 +67,7 @@ py_library(
     .node_utils
     pytype.libvm
     pytype.utils
+    pytype.abstract.abstract
     pytype.ast.ast
     pytype.pytd.pytd
     pytype.tools.traces.traces
@@ -131,6 +132,7 @@ py_test(
     .output
     pytype.libvm
     pytype.utils
+    pytype.abstract.abstract
     pytype.tests.test_base
 )
 

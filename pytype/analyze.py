@@ -3,11 +3,11 @@
 import logging
 import subprocess
 
-from pytype import abstract_utils
 from pytype import context
 from pytype import convert_structural
 from pytype import debug
 from pytype import metrics
+from pytype.abstract import abstract_utils
 from pytype.pytd import builtins
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors

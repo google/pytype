@@ -5,12 +5,12 @@ import itertools
 import logging
 from typing import Collection, Dict, Optional
 
-from pytype import abstract
-from pytype import class_mixin
 from pytype import compare
 from pytype import metrics
-from pytype import mixin
 from pytype import utils
+from pytype.abstract import abstract
+from pytype.abstract import class_mixin
+from pytype.abstract import mixin
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)

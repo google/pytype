@@ -24,12 +24,12 @@ into a proper enum.
 
 import logging
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import special_builtins
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils

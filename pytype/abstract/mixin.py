@@ -3,7 +3,7 @@
 import logging
 from typing import Any, Dict, Type
 
-from pytype import function
+from pytype.abstract import function
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)

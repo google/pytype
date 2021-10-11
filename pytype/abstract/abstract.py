@@ -20,13 +20,12 @@ import logging
 from typing import Mapping
 
 import attr
-
-from pytype import abstract_utils
-from pytype import class_mixin
 from pytype import datatypes
-from pytype import function
-from pytype import mixin
 from pytype import utils
+from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
+from pytype.abstract import function
+from pytype.abstract import mixin
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd

@@ -2,7 +2,6 @@
 
 import textwrap
 
-from pytype import abstract
 from pytype import blocks
 from pytype import config
 from pytype import constant_folding
@@ -10,6 +9,7 @@ from pytype import context
 from pytype import errors
 from pytype import load_pytd
 from pytype import state as frame_state
+from pytype.abstract import abstract
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd_utils

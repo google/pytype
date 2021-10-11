@@ -396,8 +396,8 @@ py_test(
     test_builtins3.py
   DEPS
     .test_base
-    pytype.libvm
     pytype.utils
+    pytype.abstract.abstract
 )
 
 py_test(
