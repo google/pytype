@@ -375,9 +375,19 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             # treat the match as a success. Otherwise, 'left' needs to match at
             # least one of them.
             if len(old_values) == len(old_concrete_values):
-              has_error = not any(
-                  self._satisfies_common_superclass([left, old_value])
-                  for old_value in old_concrete_values)
+              has_error = True
+              for old_value in old_concrete_values:
+                if self._satisfies_common_superclass([left, old_value]):
+                  has_error = False
+                elif old_value.cls.is_protocol:
+                  with self._track_partially_matched_protocols():
+                    new_subst = self._match_against_protocol(
+                        left, old_value.cls, subst, view)
+                    if new_subst is not None:
+                      has_error = False
+                      subst = new_subst
+                if not has_error:
+                  break
         else:
           has_error = not self._satisfies_common_superclass(
               self._discard_ambiguous_values(new_var.data))
@@ -508,12 +518,16 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           # as function arguments.
           return subst
         signatures = function.get_signatures(left)
+        new_substs = []
         for sig in signatures:
           new_subst = self._match_signature_against_callable(
               sig, other_type, subst, view)
           if new_subst is not None:
-            return new_subst
-        return None
+            new_substs.append(new_subst)
+        if new_substs:
+          return self._merge_substs(subst, new_substs)
+        else:
+          return None
       elif _is_callback_protocol(other_type):
         return self._match_type_against_callback_protocol(
             left, other_type, subst, view)
@@ -625,7 +639,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           right.constraints or right.bound or callable_param_count[right] != 1):
         return None
       subst = subst.copy()
-      subst[right.full_name] = self.ctx.program.NewVariable([], [], self._node)
+      # We don't know what to fill in here, since we have a TypeVar matching a
+      # TypeVar, but we have to add *something* to indicate the match succeeded.
+      subst[right.full_name] = self.ctx.program.NewVariable(
+          [self.ctx.convert.empty], [], self._node)
       return subst
     return match
 

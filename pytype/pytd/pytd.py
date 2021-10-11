@@ -605,7 +605,13 @@ def IsContainer(t):
   return False
 
 
-def ToType(item, allow_constants=False, allow_functions=False):
+# Singleton objects that will be automatically converted to their types.
+# The unqualified form is there so local name resolution can special-case it.
+SINGLETON_TYPES = frozenset({'Ellipsis', 'builtins.Ellipsis'})
+
+
+def ToType(item, allow_constants=False, allow_functions=False,
+           allow_singletons=False):
   """Convert a pytd AST item into a type.
 
   Takes an AST item representing the definition of a type and returns an item
@@ -619,6 +625,8 @@ def ToType(item, allow_constants=False, allow_functions=False):
       be passed through unchanged.
     allow_functions: When True, functions that cannot be converted to types will
       be passed through unchanged.
+    allow_singletons: When True, singletons that act as their types in
+      annotations will return that type.
 
   Returns:
     A pytd.Type object representing the type of an instance of `item`.
@@ -631,26 +639,27 @@ def ToType(item, allow_constants=False, allow_functions=False):
     return ClassType(item.name, item)
   elif isinstance(item, Function) and allow_functions:
     return item
-  elif (isinstance(item, Constant) and item.type.name == 'builtins.type'):
-    # A constant whose type is Type[C] is equivalent to class C, so the type of
-    # an instance of the constant is C.
-    if isinstance(item.type, GenericType):
-      return item.type.parameters[0]
-    else:
+  elif isinstance(item, Constant):
+    if allow_singletons and item.name in SINGLETON_TYPES:
+      return item.type
+    elif item.type.name == 'builtins.type':
+      # A constant whose type is Type[C] is equivalent to class C, so the type
+      # of an instance of the constant is C.
+      if isinstance(item.type, GenericType):
+        return item.type.parameters[0]
+      else:
+        return AnythingType()
+    elif (isinstance(item.type, AnythingType) or
+          item.type.name == 'typing_extensions._SpecialForm' or
+          item.name == 'typing_extensions.TypedDict'):
+      # The following constants are treated as (unknown) types:
+      # * one whose type is Any or typing_extensions._SpecialForm
+      # * one whose name is typing_extensions.TypedDict, as TypedDict is a class
+      #   that looks like a constant:
+      #   https://github.com/python/typeshed/blob/8cad322a8ccf4b104cafbac2c798413edaa4f327/third_party/2and3/typing_extensions.pyi#L68
       return AnythingType()
-  elif isinstance(item, Constant) and (
-      isinstance(item.type, AnythingType) or
-      item.type.name == 'typing_extensions._SpecialForm' or
-      item.name == 'typing_extensions.TypedDict'):
-    # The following constants are treated as (unknown) types:
-    # * one whose type is Any or typing_extensions._SpecialForm
-    # * one whose name is typing_extensions.TypedDict, as TypedDict is a class
-    #   that looks like a constant:
-    #   https://github.com/python/typeshed/blob/8cad322a8ccf4b104cafbac2c798413edaa4f327/third_party/2and3/typing_extensions.pyi#L68
-    return AnythingType()
-  elif isinstance(item, Constant) and allow_constants:
-    return item
+    elif allow_constants:
+      return item
   elif isinstance(item, Alias):
     return item.type
-  else:
-    raise NotImplementedError("Can't convert %s: %s" % (type(item), item))
+  raise NotImplementedError("Can't convert %s: %s" % (type(item), item))

@@ -307,6 +307,7 @@ class _Resolver:
 
   def __init__(self, builtins_ast):
     self.builtins_ast = builtins_ast
+    self.allow_singletons = False
 
   def _lookup(self, visitor, mod_ast, lookup_ast):
     if lookup_ast:
@@ -315,11 +316,13 @@ class _Resolver:
     return mod_ast
 
   def resolve_local_types(self, mod_ast, *, lookup_ast=None):
-    local_lookup = visitors.LookupLocalTypes()
+    local_lookup = visitors.LookupLocalTypes(self.allow_singletons)
     return self._lookup(local_lookup, mod_ast, lookup_ast)
 
   def resolve_builtin_types(self, mod_ast, *, lookup_ast=None):
-    bltn_lookup = visitors.LookupBuiltins(self.builtins_ast, full_names=False)
+    bltn_lookup = visitors.LookupBuiltins(
+        self.builtins_ast, full_names=False,
+        allow_singletons=self.allow_singletons)
     mod_ast = self._lookup(bltn_lookup, mod_ast, lookup_ast)
     mod_ast = mod_ast.Visit(
         visitors.ExpandCompatibleBuiltins(self.builtins_ast))
@@ -521,10 +524,16 @@ class Loader:
     # Builtins need to be resolved before the module is cached so that they are
     # not mistaken for local types. External types can be left unresolved
     # because they are unambiguous.
+    self._resolver.allow_singletons = False
     module.ast = self._resolver.resolve_builtin_types(module.ast)
     self._modules[module_name] = module
     try:
+      self._resolver.allow_singletons = True
       module.ast = self._resolve_external_and_local_types(module.ast)
+      # We need to resolve builtin singletons after we have made sure they are
+      # not shadowed by a local or a star import.
+      module.ast = self._resolver.resolve_builtin_types(module.ast)
+      self._resolver.allow_singletons = False
       # Now that any imported TypeVar instances have been resolved, adjust type
       # parameters in classes and functions.
       module.ast = module.ast.Visit(visitors.AdjustTypeParameters())

@@ -6,6 +6,7 @@ from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
 from pytype import abstract
 from pytype import abstract_utils
+from pytype import class_mixin
 from pytype import function
 from pytype import mixin
 from pytype import overlay
@@ -406,7 +407,7 @@ class Attrib(classgen.FieldConstructor):
     if not converter_var:
       return None, None
     converter = converter_var.data[0]
-    if converter.isinstance_Class():
+    if isinstance(converter, class_mixin.Class):
       # If the converter is a class, set the field type to the class and the
       # init type to Any.
       # TODO(b/135553563): Check that converter.__init__ takes one argument and

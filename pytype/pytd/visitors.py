@@ -286,10 +286,11 @@ class _ToTypeVisitor(Visitor):
   appropriate allow_constants and allow_functions values.
   """
 
-  def __init__(self):
+  def __init__(self, allow_singletons=False):
     super().__init__()
     self._in_alias = False
     self._in_literal = 0
+    self.allow_singletons = allow_singletons
 
   def EnterAlias(self, _):
     assert not self._in_alias
@@ -309,20 +310,22 @@ class _ToTypeVisitor(Visitor):
     allow_constants = self._in_alias or self._in_literal
     allow_functions = self._in_alias
     return pytd.ToType(
-        t, allow_constants=allow_constants, allow_functions=allow_functions)
+        t, allow_constants=allow_constants, allow_functions=allow_functions,
+        allow_singletons=self.allow_singletons)
 
 
 class LookupBuiltins(_ToTypeVisitor):
   """Look up built-in NamedTypes and give them fully-qualified names."""
 
-  def __init__(self, builtins, full_names=True):
+  def __init__(self, builtins, full_names=True, allow_singletons=False):
     """Create this visitor.
 
     Args:
       builtins: The builtins module.
       full_names: Whether to use fully qualified names for lookup.
+      allow_singletons: Whether to allow singleton types like Ellipsis.
     """
-    super().__init__()
+    super().__init__(allow_singletons)
     self._builtins = builtins
     self._full_names = full_names
 
@@ -368,67 +371,6 @@ def MaybeSubstituteParameters(base_type, parameters=None):
   else:
     mapping = dict(zip(template, parameters))
   return base_type.Visit(ReplaceTypeParameters(mapping))
-
-
-def _LookupItemRecursive(module, module_name, name):
-  """Recursively look up name in module."""
-  parts = name.split(".")
-  partial_name = module_name
-  prev_item = None
-  item = module
-
-  def ExtractClass(t):
-    if isinstance(t, pytd.ClassType):
-      return t.cls
-    t = module.Lookup(t.name)  # may raise KeyError
-    if isinstance(t, pytd.Class):
-      return t
-    raise KeyError(t.name)
-
-  for part in parts:
-    prev_item = item
-    # Check the type of item and give up if we encounter a type we don't know
-    # how to handle.
-    if isinstance(item, pytd.Constant):
-      item = ExtractClass(item.type)  # may raise KeyError
-    elif not isinstance(item, (pytd.TypeDeclUnit, pytd.Class)):
-      raise KeyError(name)
-    lookup_name = partial_name + "." + part
-
-    def Lookup(item, *names):
-      for name in names:
-        try:
-          return item.Lookup(name)
-        except KeyError:
-          continue
-      raise KeyError(names[-1])
-
-    # Nested class names are fully qualified while function names are not, so
-    # we try lookup for both naming conventions.
-    try:
-      item = Lookup(item, lookup_name, part)
-    except KeyError:
-      if not isinstance(item, pytd.Class):
-        raise
-      for parent in item.parents:
-        parent_cls = ExtractClass(parent)  # may raise KeyError
-        try:
-          item = Lookup(parent_cls, lookup_name, part)
-        except KeyError:
-          continue  # continue up the MRO
-        else:
-          break  # name found!
-      else:
-        raise  # unresolved
-    if isinstance(item, pytd.Constant):
-      partial_name += "." + item.name.rsplit(".", 1)[-1]
-    else:
-      partial_name = lookup_name
-  if isinstance(item, pytd.Function):
-    return pytd_utils.AliasMethod(
-        item, from_constant=isinstance(prev_item, pytd.Constant))
-  else:
-    return item
 
 
 class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
@@ -486,7 +428,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       module_name, class_name = module_name.rsplit(".", 1)
       cls_prefix = class_name + "." + cls_prefix
     if module_name in self._module_map:
-      return self._module_map[module_name], module_name, cls_prefix
+      return self._module_map[module_name], cls_prefix
     else:
       raise KeyError("Unknown module %s" % name)
 
@@ -516,19 +458,20 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     if module_name in self._module_alias_map:
       module_name = self._module_alias_map[module_name]
     try:
-      module, module_name, cls_prefix = self._LookupModuleRecursive(module_name)
+      module, cls_prefix = self._LookupModuleRecursive(module_name)
     except KeyError:
       if self._unit and f"{self.name}.{module_name}" in self._unit:
         # Nothing to do here.This is a dotted local reference.
         return t
       raise
+    module_name = module.name
     name = cls_prefix + name
     try:
       if name == "*":
         self._star_imports.add(module_name)
         item = t  # VisitTypeDeclUnit will remove this unneeded item.
       else:
-        item = _LookupItemRecursive(module, module_name, name)
+        item = pytd_utils.LookupItemRecursive(module, name)
     except KeyError as e:
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
@@ -684,7 +627,7 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     del self.unit
 
   def _LookupItemRecursive(self, name):
-    return _LookupItemRecursive(self.unit, self.unit.name, name)
+    return pytd_utils.LookupItemRecursive(self.unit, name)
 
   def VisitNamedType(self, node):
     """Do lookup on a pytd.NamedType."""
@@ -697,6 +640,9 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         try:
           item = self.unit.Lookup(node.name)
         except KeyError as e:
+          if (self.allow_singletons and node.name in pytd.SINGLETON_TYPES):
+            # Let the builtins resolver handle it
+            return node
           raise SymbolLookupError("Couldn't find %s in %s" % (
               node.name, self.unit.name)) from e
       try:

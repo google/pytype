@@ -34,6 +34,10 @@ def get_signatures(func):
   elif func.cls.isinstance_CallableClass():
     return [Signature.from_callable(func.cls)]
   else:
+    unwrapped = abstract_utils.maybe_unwrap_decorated_function(func)
+    if unwrapped:
+      return list(itertools.chain.from_iterable(
+          get_signatures(f) for f in unwrapped.data))
     if func.isinstance_Instance():
       _, call_var = func.ctx.attribute_handler.get_attribute(
           func.ctx.root_node, func, "__call__",
@@ -611,8 +615,17 @@ class WrongArgTypes(InvalidParameters):
   """For functions that were called with the wrong types."""
 
   def __gt__(self, other):
-    return other is None or (isinstance(other, FailedFunctionCall) and
-                             not isinstance(other, WrongArgTypes))
+    if other is None:
+      return True
+    if not isinstance(other, WrongArgTypes):
+      # WrongArgTypes should take precedence over other FailedFunctionCall
+      # subclasses but not over unrelated errors like DictKeyMissing.
+      return isinstance(other, FailedFunctionCall)
+    # The signature that has fewer *args/**kwargs tends to be more precise.
+    def starcount(err):
+      return (bool(err.bad_call.sig.varargs_name) +
+              bool(err.bad_call.sig.kwargs_name))
+    return starcount(self) < starcount(other)
 
 
 class WrongArgCount(InvalidParameters):

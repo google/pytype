@@ -247,6 +247,8 @@ class Converter(utils.ContextWeakrefMixin):
       ret = self.value_to_pytd_type(node, v.typ, seen, view)
       md = metadata.to_pytd(v.to_metadata())
       return pytd.Annotated(ret, ("'pytype_metadata'", md))
+    elif isinstance(v, special_builtins.PropertyInstance):
+      return pytd.NamedType("builtins.property")
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = function.get_signatures(v)

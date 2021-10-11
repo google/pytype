@@ -32,6 +32,13 @@ set_target_properties(
     OUTPUT_NAME cfg
 )
 
+py_library(
+  NAME
+    cfg_utils
+  SRCS
+    cfg_utils.py
+)
+
 # This library is disabled because cfg.py can conflict with the typegraph.cfg
 # extension module.
 # py_library(
@@ -42,13 +49,6 @@ set_target_properties(
 #   DEPS
 #     pytype.utils
 # )
-
-py_library(
-  NAME
-    cfg_utils
-  SRCS
-    cfg_utils.py
-)
 
 cc_library(
   NAME

@@ -222,7 +222,8 @@ class CallTracer(vm.VirtualMachine):
         m = m.func.data[0]
         is_cls = True
       else:
-        is_cls = (m.isinstance_InterpreterFunction() and m.is_classmethod)
+        is_cls = (isinstance(m, abstract.InterpreterFunction) and
+                  m.is_classmethod)
       bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 

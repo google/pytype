@@ -771,6 +771,7 @@ py_test(
   SRCS
     constant_folding_test.py
   DEPS
+    .abstract
     .blocks
     .config
     .constant_folding

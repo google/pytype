@@ -392,7 +392,11 @@ class PrintVisitor(base_visitor.Visitor):
         class_prefix = self.class_names[-1]
       else:
         class_prefix = ".".join(self.class_names)
-      if prefix != class_prefix:
+      if self._unit_name:
+        class_prefixes = {class_prefix, f"{self._unit_name}.{class_prefix}"}
+      else:
+        class_prefixes = {class_prefix}
+      if prefix not in class_prefixes:
         # If the prefix doesn't match the class scope, then it's an import.
         self._RequireImport(prefix)
       node_name = node.name

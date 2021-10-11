@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-09-09T13:11-07:00 -->
+<!-- Added by: rechen, at: 2021-10-11T13:17-07:00 -->
 
 <!--te-->
 
@@ -34,7 +34,7 @@ Version | Analyzes   | Runs In    | Issue
 3.7     | ✅          | ✅          |
 3.8     | ✅          | ✅          |
 3.9     | ✅          | ✅          |
-3.10    | ❌          | ❌          |
+3.10    | ❌          | ❌          | [#1022][py310]
 
 ## Features
 
@@ -52,7 +52,7 @@ Feature                                  | Supports | Issues
 Control Flow Analysis ("Type Narrowing") | ✅        |
 collections.namedtuple                   | ✅        |
 Dataclasses                              | ✅        |
-Enums                                    | 🟡        | [#788][enum]
+Enums                                    | ✅        | Requires `--use-enum-overlay` flag
 
 ### Typing
 
@@ -105,7 +105,6 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [647]: https://www.python.org/dev/peps/pep-0647
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
-[enum]: https://github.com/google/pytype/issues/788
 [final]: https://github.com/google/pytype/issues/680
 [generic-aliases]: https://github.com/google/pytype/issues/793
 [literal-enums]: https://github.com/google/pytype/issues/790
@@ -114,6 +113,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [py27]: https://github.com/google/pytype/issues/545
 [py35]: https://github.com/google/pytype/issues/677
 [py39]: https://github.com/google/pytype/issues/749
+[py310]: https://github.com/google/pytype/issues/1022
 [recursive-types]: https://github.com/google/pytype/issues/407
 [type-guards]: https://github.com/google/pytype/issues/916
 [typealias]: https://github.com/google/pytype/issues/787

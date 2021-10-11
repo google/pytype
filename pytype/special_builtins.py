@@ -563,7 +563,7 @@ def _is_fn_abstract(func_var):
   return any(getattr(d, "is_abstract", None) for d in func_var.data)
 
 
-class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
+class PropertyInstance(abstract.Function, mixin.HasSlots):
   """Property instance (constructed by Property.call())."""
 
   def __init__(self, ctx, name, cls, fget=None, fset=None, fdel=None, doc=None):
@@ -582,6 +582,7 @@ class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
     self.set_slot("setter", self.setter_slot)
     self.set_slot("deleter", self.deleter_slot)
     self.is_abstract = any(_is_fn_abstract(x) for x in [fget, fset, fdel])
+    self.bound_class = abstract.BoundFunction
 
   def fget_slot(self, node, obj, objtype):
     return function.call_function(self.ctx, node, self.fget,
@@ -613,9 +614,6 @@ class PropertyInstance(abstract.SimpleValue, mixin.HasSlots):
     result = self.ctx.program.NewVariable([prop], fdel.bindings, node)
     return node, result
 
-  def isinstance_PropertyInstance(self):
-    return True
-
 
 class Property(PropertyTemplate):
   """Property method decorator."""
@@ -629,7 +627,7 @@ class Property(PropertyTemplate):
                                   **property_args).to_variable(node)
 
 
-class StaticMethodInstance(abstract.SimpleValue, mixin.HasSlots):
+class StaticMethodInstance(abstract.Function, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
   def __init__(self, ctx, cls, func):
@@ -639,12 +637,10 @@ class StaticMethodInstance(abstract.SimpleValue, mixin.HasSlots):
     self.cls = cls
     self.set_slot("__get__", self.func_slot)
     self.is_abstract = _is_fn_abstract(func)
+    self.bound_class = abstract.BoundFunction
 
   def func_slot(self, node, obj, objtype):
     return node, self.func
-
-  def isinstance_StaticMethodInstance(self):
-    return True
 
 
 class StaticMethod(BuiltinClass):
@@ -667,7 +663,7 @@ class ClassMethodCallable(abstract.BoundFunction):
   """Tag a ClassMethod bound function so we can dispatch on it."""
 
 
-class ClassMethodInstance(abstract.SimpleValue, mixin.HasSlots):
+class ClassMethodInstance(abstract.Function, mixin.HasSlots):
   """ClassMethod instance (constructed by ClassMethod.call())."""
 
   def __init__(self, ctx, cls, func):
@@ -677,13 +673,11 @@ class ClassMethodInstance(abstract.SimpleValue, mixin.HasSlots):
     self.func = func
     self.set_slot("__get__", self.func_slot)
     self.is_abstract = _is_fn_abstract(func)
+    self.bound_class = ClassMethodCallable
 
   def func_slot(self, node, obj, objtype):
     results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]
     return node, self.ctx.program.NewVariable(results, [], node)
-
-  def isinstance_ClassMethodInstance(self):
-    return True
 
 
 class ClassMethod(BuiltinClass):

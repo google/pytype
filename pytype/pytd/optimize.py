@@ -635,7 +635,7 @@ class CollapseLongUnions(visitors.Visitor):
     if len(union.type_list) > self.max_length:
       return self.generic_type
     elif self.generic_type in union.type_list:
-      return self.generic_type
+      return pytd_utils.JoinTypes(union.type_list)
     else:
       return union
 

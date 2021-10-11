@@ -119,6 +119,14 @@ class TestUtils(parser_test_base.ParserTest):
     types = [pytd.AnythingType(), pytd.NamedType("a")]
     self.assertIsInstance(pytd_utils.JoinTypes(types), pytd.AnythingType)
 
+  def test_join_optional_anything_types(self):
+    """Test that JoinTypes() simplifies unions containing 'Any' and 'None'."""
+    any_type = pytd.AnythingType()
+    none_type = pytd.NamedType("builtins.NoneType")
+    types = [pytd.NamedType("a"), any_type, none_type]
+    self.assertEqual(pytd_utils.JoinTypes(types),
+                     pytd.UnionType((any_type, none_type)))
+
   def test_type_matcher(self):
     """Test for the TypeMatcher class."""
 

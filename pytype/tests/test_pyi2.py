@@ -49,6 +49,17 @@ class PYITest(test_base.BaseTest):
         func(foo.A.callback, 'hello, world')
       """, pythonpath=[d.path])
 
+  def test_ellipsis(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x: Ellipsis) -> None: ...
+      """)
+      self.CheckWithErrors("""
+        import foo
+        x = foo.f(...)
+        y = foo.f(1)  # wrong-arg-types
+      """, pythonpath=[d.path])
+
 
 class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""

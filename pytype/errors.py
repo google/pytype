@@ -549,7 +549,7 @@ class ErrorLog(ErrorLogBase):
             nis_details)
 
   def _print_as_function_def(self, fn):
-    assert fn.isinstance_Function()
+    assert isinstance(fn, abstract.Function)
     conv = fn.ctx.pytd_convert
     name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
     return pytd_utils.Print(conv.value_to_pytd_def(fn.ctx.root_node, fn, name))
@@ -565,7 +565,8 @@ class ErrorLog(ErrorLogBase):
     else:
       assert isinstance(error, matcher.ProtocolTypeError)
       actual, expected = error.actual_type, error.expected_type
-      if (actual.isinstance_Function() and expected.isinstance_Function()):
+      if (isinstance(actual, abstract.Function) and
+          isinstance(expected, abstract.Function)):
         # TODO(b/196434939): When matching a protocol like Sequence[int] the
         # protocol name will be Sequence[int] but the method signatures will be
         # displayed as f(self: Sequence[_T], ...).

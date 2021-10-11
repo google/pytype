@@ -100,6 +100,10 @@ def JoinTypes(types):
   if len(new_types) == 1:
     return new_types.pop()
   elif any(isinstance(t, pytd.AnythingType) for t in new_types):
+    nonetype = pytd.NamedType("builtins.NoneType")
+    unresolved_nonetype = pytd.NamedType("NoneType")
+    if any(t in (nonetype, unresolved_nonetype) for t in new_types):
+      return pytd.UnionType((pytd.AnythingType(), nonetype))
     return pytd.AnythingType()
   elif new_types:
     return pytd.UnionType(tuple(new_types))  # tuple() to make unions hashable
@@ -533,3 +537,63 @@ def AliasMethod(func, from_constant):
     return new_func
   return new_func.Replace(signatures=tuple(
       s.Replace(params=s.params[1:]) for s in new_func.signatures))
+
+
+def LookupItemRecursive(module, name):
+  """Recursively look up name in module."""
+  parts = name.split(".")
+  partial_name = module.name
+  prev_item = None
+  item = module
+
+  def ExtractClass(t):
+    if isinstance(t, pytd.ClassType):
+      return t.cls
+    t = module.Lookup(t.name)  # may raise KeyError
+    if isinstance(t, pytd.Class):
+      return t
+    raise KeyError(t.name)
+
+  for part in parts:
+    prev_item = item
+    # Check the type of item and give up if we encounter a type we don't know
+    # how to handle.
+    if isinstance(item, pytd.Constant):
+      item = ExtractClass(item.type)  # may raise KeyError
+    elif not isinstance(item, (pytd.TypeDeclUnit, pytd.Class)):
+      raise KeyError(name)
+    lookup_name = partial_name + "." + part
+
+    def Lookup(item, *names):
+      for name in names:
+        try:
+          return item.Lookup(name)
+        except KeyError:
+          continue
+      raise KeyError(names[-1])
+
+    # Nested class names are fully qualified while function names are not, so
+    # we try lookup for both naming conventions.
+    try:
+      item = Lookup(item, lookup_name, part)
+    except KeyError:
+      if not isinstance(item, pytd.Class):
+        raise
+      for parent in item.parents:
+        parent_cls = ExtractClass(parent)  # may raise KeyError
+        try:
+          item = Lookup(parent_cls, lookup_name, part)
+        except KeyError:
+          continue  # continue up the MRO
+        else:
+          break  # name found!
+      else:
+        raise  # unresolved
+    if isinstance(item, pytd.Constant):
+      partial_name += "." + item.name.rsplit(".", 1)[-1]
+    else:
+      partial_name = lookup_name
+  if isinstance(item, pytd.Function):
+    return AliasMethod(item, from_constant=isinstance(prev_item, pytd.Constant))
+  else:
+    return item

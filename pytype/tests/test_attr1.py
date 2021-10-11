@@ -882,6 +882,29 @@ class TestInheritedAttrib(test_base.BaseTest):
         a = Foo()
       """, pythonpath=[d.path])
 
+  def test_override_protected_member(self):
+    foo_ty = self.Infer("""
+      import attr
+      @attr.s
+      class A:
+        _x = attr.ib(type=str)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      self.CheckWithErrors("""
+        import attr
+        import foo
+        @attr.s()
+        class B(foo.A):
+          _x = attr.ib(init=False, default='')
+          y = attr.ib(type=int)
+        a = foo.A('10')
+        b = foo.A(x='10')
+        c = B(10)
+        d = B(y=10)
+        e = B('10', 10)  # wrong-arg-count
+      """, pythonpath=[d.path])
+
 
 if __name__ == "__main__":
   test_base.main()
