@@ -1,3 +1,21 @@
+Version 2021.10.11
+
+New features and updates:
+* Update pytype and typing annotation stubs for features added in attrs 21.1.0.
+* Enable --attribute-variable-annotations by default and make the flag a no-op.
+  It will be removed in the next release.
+* The --use-enum-overlay flag is ready for general use. Enable this flag for
+  precise typing of the stdlib enum library.
+
+Bug fixes:
+* Support quoted types as annotations in pyi files.
+* Add precise overloads for the map function.
+* Support Ellipsis annotations in pyi files.
+* Preserve None in unions containing Any.
+* Fix a pyi import printing bug.
+* Improve ignored-abstractmethod error message.
+* Teach convert._load_late_type to handle nested classes.
+
 Version 2021.10.04
 
 Bug fixes:
