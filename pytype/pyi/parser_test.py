@@ -1619,6 +1619,16 @@ class ClassTest(_ParserTestBase):
           self = Generic[S, T, U, V]
      """, None, "Type parameter(s) {U, V}")
 
+  def test_nested_class_typing_class_conflict(self):
+    ast = parser.parse_string(textwrap.dedent("""
+      from typing import Mapping
+      class Foo:
+        class Mapping: ...
+      x: Mapping
+    """).lstrip())
+    x = ast.Lookup("x")
+    self.assertEqual(x.type.name, "typing.Mapping")
+
 
 class IfTest(_ParserTestBase):
 

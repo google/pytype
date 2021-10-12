@@ -277,6 +277,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     self.level = 0
     self.in_function = False  # pyi will not have nested defs
     self.annotation_visitor = AnnotationVisitor(defs=defs, filename=filename)
+    self.class_stack = []
 
   def show(self, node):
     print(debug.dump(node, ast3, include_attributes=False))
@@ -445,8 +446,8 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     return Splice(out)
 
   def visit_ClassDef(self, node):
-    class_name = node.name
-    self.defs.type_map[class_name] = pytd.NamedType(class_name)
+    full_class_name = ".".join(self.class_stack)
+    self.defs.type_map[full_class_name] = pytd.NamedType(full_class_name)
 
     # Convert decorators to named types
     self._preprocess_decorator_list(node)
@@ -457,7 +458,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     self.annotation_visitor.visit(node.keywords)
     defs = _flatten_splices(node.body)
     return self.defs.build_class(
-        class_name, node.bases, node.keywords, decorators, defs)
+        node.name, node.bases, node.keywords, decorators, defs)
 
   def enter_If(self, node):
     # Evaluate the test and preemptively remove the invalid branch so we don't
@@ -617,9 +618,11 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
 
   def enter_ClassDef(self, node):
     self.level += 1
+    self.class_stack.append(node.name)
 
   def leave_ClassDef(self, node):
     self.level -= 1
+    self.class_stack.pop()
 
 
 def post_process_ast(ast, src, name=None):
