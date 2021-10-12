@@ -366,7 +366,9 @@ class EnumMetaInit(abstract.SimpleFunction):
       node, new = self.ctx.attribute_handler.get_attribute(
           node, enum_base, "__new_member__")
       new = abstract_utils.get_atomic_value(new)
-      return node, new.underlying.to_variable(node)
+      if isinstance(new, abstract.BoundFunction):
+        new = new.underlying
+      return node, new.to_variable(node)
     return node, None
 
   def _is_orig_auto(self, orig):
