@@ -529,6 +529,11 @@ class EnumMetaInit(abstract.SimpleFunction):
       if (isinstance(pytd_val.type, pytd.Annotated) and
           "'property'" in pytd_val.type.annotations):
         continue
+      # Class-level attributes are marked as ClassVars, and should not be
+      # converted to enum instances either.
+      if (isinstance(pytd_val.type, pytd.GenericType) and
+          pytd_val.type.base_type.name == "typing.ClassVar"):
+        continue
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.ctx)

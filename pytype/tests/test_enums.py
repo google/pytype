@@ -1133,6 +1133,36 @@ class EnumOverlayTest(test_base.BaseTest):
         A = (__any_object__ or '') + "1"
     """)
 
+  def test_classvar_attributes_out(self):
+    ty = self.Infer("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+      M.class_attr = 2
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import ClassVar
+      enum: module
+      class M(enum.Enum):
+        A: int
+        class_attr: ClassVar[int]
+    """)
+
+  def test_classvar_attributes_in(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import ClassVar
+        import enum
+        class M(enum.Enum):
+          A: int
+          class_attr: ClassVar[int]
+      """)
+      self.Check("""
+        from foo import M
+        assert_type(M.A, M)
+        assert_type(M.class_attr, int)
+        assert_type(M.A.class_attr, int)
+      """, pythonpath=[d.path])
 
 if __name__ == "__main__":
   test_base.main()
