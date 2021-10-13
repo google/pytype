@@ -130,7 +130,6 @@ class BaseTest(unittest.TestCase):
   def setUp(self):
     super().setUp()
     self.options = config.Options.create(python_version=self.python_version,
-                                         attribute_variable_annotations=True,
                                          bind_properties=True,
                                          chex_overlay=True,
                                          preserve_union_macros=True,

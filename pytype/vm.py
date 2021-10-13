@@ -866,8 +866,7 @@ class VirtualMachine:
     """
     director = directors.Director(
         src, self.ctx.errorlog, filename, self.ctx.options.disable,
-        self.ctx.python_version,
-        self.ctx.options.attribute_variable_annotations)
+        self.ctx.python_version)
 
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
