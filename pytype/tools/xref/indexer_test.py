@@ -1,10 +1,9 @@
 import json
 import textwrap
 
-from pytype import abstract
 from pytype import config
 from pytype import file_utils
-
+from pytype.abstract import abstract
 from pytype.tests import test_base
 from pytype.tests import test_utils
 

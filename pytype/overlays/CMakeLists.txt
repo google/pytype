@@ -27,11 +27,9 @@ py_library(
   SRCS
     classgen.py
   DEPS
-    pytype.abstract
-    pytype.abstract_utils
-    pytype.class_mixin
     pytype.overlay_utils
     pytype.special_builtins
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -40,9 +38,9 @@ py_library(
   SRCS
     abc_overlay.py
   DEPS
-    pytype.abstract
     pytype.overlay
     pytype.special_builtins
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -51,8 +49,8 @@ py_library(
   SRCS
     asyncio_types_overlay.py
   DEPS
-    pytype.abstract
     pytype.overlay
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -62,13 +60,9 @@ py_library(
     attr_overlay.py
   DEPS
     .classgen
-    pytype.abstract
-    pytype.abstract_utils
-    pytype.class_mixin
-    pytype.function
-    pytype.mixin
     pytype.overlay
     pytype.overlay_utils
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -79,9 +73,9 @@ py_library(
   DEPS
     .classgen
     .dataclass_overlay
-    pytype.abstract
     pytype.overlay
     pytype.overlay_utils
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 
@@ -91,10 +85,9 @@ py_library(
   SRCS
     collections_overlay.py
   DEPS
-    pytype.abstract
-    pytype.abstract_utils
     pytype.overlay
     pytype.utils
+    pytype.abstract.abstract
     pytype.pyi.parser
     pytype.pytd.pytd
 )
@@ -106,10 +99,8 @@ py_library(
     dataclass_overlay.py
   DEPS
     .classgen
-    pytype.abstract
-    pytype.abstract_utils
-    pytype.function
     pytype.overlay
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -119,12 +110,10 @@ py_library(
     enum_overlay.py
   DEPS
     .classgen
-    pytype.abstract
-    pytype.abstract_utils
-    pytype.function
     pytype.overlay
     pytype.overlay_utils
     pytype.special_builtins
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 
@@ -136,10 +125,8 @@ py_library(
   DEPS
     .classgen
     .dataclass_overlay
-    pytype.abstract
-    pytype.abstract_utils
-    pytype.function
     pytype.overlay
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 
@@ -179,9 +166,8 @@ py_library(
   SRCS
     subprocess_overlay.py
   DEPS
-    pytype.abstract
-    pytype.function
     pytype.overlay
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -190,8 +176,8 @@ py_library(
   SRCS
     sys_overlay.py
   DEPS
-    pytype.abstract
     pytype.overlay
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -212,12 +198,10 @@ py_library(
   DEPS
     .classgen
     .collections_overlay
-    pytype.abstract
-    pytype.abstract_utils
-    pytype.function
     pytype.overlay
     pytype.overlay_utils
     pytype.utils
+    pytype.abstract.abstract
     pytype.pytd.pytd
 )
 

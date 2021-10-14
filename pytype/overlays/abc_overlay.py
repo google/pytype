@@ -1,8 +1,8 @@
 """Implementation of special members of Python 2's abc library."""
 
-from pytype import abstract
 from pytype import overlay
 from pytype import special_builtins
+from pytype.abstract import abstract
 
 
 class ABCOverlay(overlay.Overlay):

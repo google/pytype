@@ -4,11 +4,10 @@ import logging
 from typing import Any
 
 import attr
-
-from pytype import abstract_utils
 from pytype import datatypes
-from pytype import function
-from pytype import mixin
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
+from pytype.abstract import mixin  # pylint: disable=unused-import
 from pytype.pytd import mro
 from pytype.pytd import pytd
 
@@ -106,7 +105,7 @@ class Attribute:
                 "default": self.default})
 
 
-class Class(metaclass=mixin.MixinMeta):
+class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   """Mix-in to mark all class-like values."""
 
   overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")

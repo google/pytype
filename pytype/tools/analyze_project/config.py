@@ -61,8 +61,6 @@ ITEMS = {
 
 # The missing fields will be filled in by generate_sample_config_or_die.
 _PYTYPE_SINGLE_ITEMS = {
-    'attribute_variable_annotations': Item(
-        None, 'True', ArgInfo('--attribute-variable-annotations', None), None),
     'bind_properties': Item(
         None, 'False', ArgInfo('--bind-properties', None), None),
     'preserve_union_macros': Item(

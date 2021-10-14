@@ -5,8 +5,6 @@ import re
 from typing import Optional
 
 import attr
-
-from pytype import abstract
 from pytype import analyze
 from pytype import config
 from pytype import context
@@ -14,6 +12,7 @@ from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.abstract import abstract
 from pytype.ast import visitor as ast_visitor
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils

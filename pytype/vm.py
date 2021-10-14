@@ -23,23 +23,23 @@ import re
 import reprlib
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
-from pytype import abstract
-from pytype import abstract_utils
 from pytype import blocks
-from pytype import class_mixin
 from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
 from pytype import directors
-from pytype import function
 from pytype import overlay_dict
 from pytype import load_pytd
 from pytype import metaclass
 from pytype import metrics
-from pytype import mixin
 from pytype import overlay as overlay_lib
 from pytype import state as frame_state
 from pytype import utils
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
+from pytype.abstract import function
+from pytype.abstract import mixin
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
@@ -866,8 +866,7 @@ class VirtualMachine:
     """
     director = directors.Director(
         src, self.ctx.errorlog, filename, self.ctx.options.disable,
-        self.ctx.python_version,
-        self.ctx.options.attribute_variable_annotations)
+        self.ctx.python_version)
 
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.

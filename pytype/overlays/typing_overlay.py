@@ -8,12 +8,12 @@
 # pylint's detection of this is error-prone:
 # pylint: disable=unpacking-non-sequence
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import utils
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.overlays import collections_overlay
 from pytype.pytd import pep484

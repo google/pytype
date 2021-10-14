@@ -6,12 +6,12 @@ import enum
 import logging
 from typing import cast
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import class_mixin
-from pytype import function
 from pytype import special_builtins
 from pytype import utils
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
+from pytype.abstract import function
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
@@ -645,23 +645,32 @@ class Converter(utils.ContextWeakrefMixin):
           # replace any parameter not in the class or function template with
           # its upper value.
           methods[name] = method.Visit(visitors.DropMutableParameters())
-        elif v.is_enum and any(isinstance(enum_member, abstract.Instance)
-                               and enum_member.cls == v
-                               for enum_member in member.data):
-          # i.e. if this is an enum that has any enum members, and the current
-          # member is an enum member.
-          # In this case, we would normally output:
-          # class M(enum.Enum):
-          #   A: M
-          # However, this loses the type of A.value. Instead, annotate members
-          # with the type of their value. (This is what typeshed does.)
-          # class M(enum.Enum):
-          #   A: int
-          enum_member = abstract_utils.get_atomic_value(member)
-          node, attr_var = self.ctx.attribute_handler.get_attribute(
-              node, enum_member, "value")
-          attr = abstract_utils.get_atomic_value(attr_var)
-          constants[name].add_type(attr.to_type(node))
+        elif v.is_enum:
+          if (any(
+              isinstance(enum_member, abstract.Instance) and
+              enum_member.cls == v for enum_member in member.data)):
+            # i.e. if this is an enum that has any enum members, and the current
+            # member is an enum member.
+            # In this case, we would normally output:
+            # class M(enum.Enum):
+            #   A: M
+            # However, this loses the type of A.value. Instead, annotate members
+            # with the type of their value. (This is what typeshed does.)
+            # class M(enum.Enum):
+            #   A: int
+            enum_member = abstract_utils.get_atomic_value(member)
+            node, attr_var = self.ctx.attribute_handler.get_attribute(
+                node, enum_member, "value")
+            attr = abstract_utils.get_atomic_value(attr_var)
+            constants[name].add_type(attr.to_type(node))
+          else:
+            # i.e. this is an enum, and the current member is NOT an enum
+            # member. Which means it's a ClassVar.
+            cls_member = abstract_utils.get_atomic_value(member)
+            constants[name].add_type(
+                pytd.GenericType(
+                    base_type=pytd.NamedType("typing.ClassVar"),
+                    parameters=((cls_member.to_type(node),))))
         else:
           cls = self.ctx.convert.merge_classes([value])
           node, attr = self.ctx.attribute_handler.get_attribute(

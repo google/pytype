@@ -24,12 +24,12 @@ into a proper enum.
 
 import logging
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import function
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import special_builtins
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -366,7 +366,9 @@ class EnumMetaInit(abstract.SimpleFunction):
       node, new = self.ctx.attribute_handler.get_attribute(
           node, enum_base, "__new_member__")
       new = abstract_utils.get_atomic_value(new)
-      return node, new.underlying.to_variable(node)
+      if isinstance(new, abstract.BoundFunction):
+        new = new.underlying
+      return node, new.to_variable(node)
     return node, None
 
   def _is_orig_auto(self, orig):
@@ -526,6 +528,11 @@ class EnumMetaInit(abstract.SimpleFunction):
       # have these attributes.
       if (isinstance(pytd_val.type, pytd.Annotated) and
           "'property'" in pytd_val.type.annotations):
+        continue
+      # Class-level attributes are marked as ClassVars, and should not be
+      # converted to enum instances either.
+      if (isinstance(pytd_val.type, pytd.GenericType) and
+          pytd_val.type.base_type.name == "typing.ClassVar"):
         continue
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.

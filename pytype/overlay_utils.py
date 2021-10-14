@@ -1,8 +1,8 @@
 """Utilities for writing overlays."""
 
-from pytype import abstract
-from pytype import class_mixin
-from pytype import function
+from pytype.abstract import abstract
+from pytype.abstract import class_mixin
+from pytype.abstract import function
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 

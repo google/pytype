@@ -4,10 +4,10 @@
 from keyword import iskeyword  # pylint: disable=g-importing-member
 import textwrap
 
-from pytype import abstract
-from pytype import abstract_utils
 from pytype import overlay
 from pytype import utils
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
 from pytype.pyi import parser
 from pytype.pytd import escape
 from pytype.pytd import pytd

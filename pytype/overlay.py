@@ -1,6 +1,6 @@
 """Base class for module overlays."""
-from pytype import abstract
 from pytype import datatypes
+from pytype.abstract import abstract
 
 
 class Overlay(abstract.Module):

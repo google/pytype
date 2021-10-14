@@ -36,7 +36,12 @@ py_library(
   NAME
     pytd_for_parser
   DEPS
-    .pytd_for_codegen
+    ._pytd
+    .escape
+    .pep484
+    .pytd_utils
+    .slots
+    .visitors
     pytype.pytd.codegen.codegen
 )
 
@@ -47,10 +52,6 @@ py_library(
     ._pytd
     .base_visitor
     .escape
-    .pep484
-    .pytd_utils
-    .slots
-    .visitors
 )
 
 toplevel_py_binary(

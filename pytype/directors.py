@@ -152,12 +152,12 @@ class _VariableAnnotation:
   """Processes a single logical line, looking for a variable annotation."""
 
   @classmethod
-  def start(cls, lineno, token, attribute_variable_annotations):
-    self = cls(attribute_variable_annotations)
+  def start(cls, lineno, token):
+    self = cls()
     self.add_token(lineno, token)
     return self
 
-  def __init__(self, attribute_variable_annotations):
+  def __init__(self):
     self._tokens = []
     self.annotation = ""
     # Set to True when the full annotation has been found, or if we determine
@@ -169,10 +169,9 @@ class _VariableAnnotation:
     # Used to consume a 'self.' or 'cls.' prefix so we can detect variable
     # annotations on attributes.
     self._attr_prefix = []
-    self._attribute_variable_annotations = attribute_variable_annotations
 
   def _add_to_attr_prefix(self, token):
-    if not self._attribute_variable_annotations or self._tokens:
+    if self._tokens:
       return False
     if (not self._attr_prefix and token.string in ("self", "cls") or
         len(self._attr_prefix) == 1 and token.exact_type == tokenize.DOT):
@@ -230,8 +229,7 @@ def _collect_bytecode(ordered_code):
 class Director:
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src, errorlog, filename, disable, python_version,
-               attribute_variable_annotations=True):
+  def __init__(self, src, errorlog, filename, disable, python_version):
     """Create a Director for a source file.
 
     Args:
@@ -241,9 +239,6 @@ class Director:
       filename: The name of the source file.
       disable: List of error messages to always ignore.
       python_version: The target python version.
-      attribute_variable_annotations: Whether PEP 526-style variable annotations
-        on attributes should be applied. This is a temporary attribute that will
-        be removed once its behavior is the default.
     """
     self._filename = filename
     self._errorlog = errorlog
@@ -264,7 +259,6 @@ class Director:
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
-    self._attribute_variable_annotations = attribute_variable_annotations
     # Parse the source code for directives.
     self._parse_source(src, python_version)
 
@@ -335,8 +329,7 @@ class Director:
       if last_function_definition and last_function_definition.contains(lineno):
         pass  # ignore function annotations
       elif not open_variable_annotation:
-        open_variable_annotation = _VariableAnnotation.start(
-            lineno, token, self._attribute_variable_annotations)
+        open_variable_annotation = _VariableAnnotation.start(lineno, token)
       elif tok in (tokenize.NEWLINE, tokenize.SEMI):
         # NEWLINE indicates the end of a *logical* line of Python code, allowing
         # us to handle annotations split over multiple lines.

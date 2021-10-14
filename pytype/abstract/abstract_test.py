@@ -1,14 +1,14 @@
 """Tests for abstract.py."""
 
-from pytype import abstract
-from pytype import abstract_utils
 from pytype import config
 from pytype import context
 from pytype import errors
-from pytype import function
 from pytype import load_pytd
 from pytype import special_builtins
 from pytype import state as frame_state
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base

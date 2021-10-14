@@ -1,9 +1,9 @@
 """Do comparisons involving abstract values."""
 
-from pytype import abstract
-from pytype import abstract_utils
-from pytype import class_mixin
-from pytype import mixin
+from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
+from pytype.abstract import mixin
 from pytype.pytd import slots
 
 # Equality classes.

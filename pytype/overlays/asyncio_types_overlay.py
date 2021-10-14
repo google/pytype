@@ -1,7 +1,7 @@
 """Implementation of special members of types and asyncio module."""
 
-from pytype import abstract
 from pytype import overlay
+from pytype.abstract import abstract
 
 
 class TypesOverlay(overlay.Overlay):

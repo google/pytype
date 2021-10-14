@@ -999,6 +999,30 @@ class EnumOverlayTest(test_base.BaseTest):
           self.x = a + b + c
     """)
 
+  def test_own_member_new(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Annotated, Any, Type, TypeVar
+
+        enum: module
+
+        _TOrderedEnum = TypeVar('_TOrderedEnum', bound=OrderedEnum)
+
+        class OrderedEnum(enum.Enum):
+            _pos: Annotated[int, 'property']
+            @classmethod
+            def __new_member__(cls: Type[_TOrderedEnum], value: Any) -> _TOrderedEnum: ...
+      """)
+      self.Check("""
+        import foo
+        class Stage(foo.OrderedEnum):
+          DEMAND = 1
+          QUOTA = 2
+          AGGREGATION = 3
+          HEADROOM = 4
+          ORDER = 5
+      """, pythonpath=[d.path])
+
   def test_dynamic_base_enum(self):
     self.Check("""
       import enum
@@ -1108,6 +1132,37 @@ class EnumOverlayTest(test_base.BaseTest):
       class M(str, enum.Enum):
         A = (__any_object__ or '') + "1"
     """)
+
+  def test_classvar_attributes_out(self):
+    ty = self.Infer("""
+      import enum
+      class M(enum.Enum):
+        A = 1
+      M.class_attr = 2
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import ClassVar
+      enum: module
+      class M(enum.Enum):
+        A: int
+        class_attr: ClassVar[int]
+    """)
+
+  def test_classvar_attributes_in(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import ClassVar
+        import enum
+        class M(enum.Enum):
+          A: int
+          class_attr: ClassVar[int]
+      """)
+      self.Check("""
+        from foo import M
+        assert_type(M.A, M)
+        assert_type(M.class_attr, int)
+        assert_type(M.A.class_attr, int)
+      """, pythonpath=[d.path])
 
 if __name__ == "__main__":
   test_base.main()

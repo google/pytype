@@ -1,6 +1,6 @@
 """Tests for mixin.py."""
 
-from pytype import mixin  # pylint: disable=unused-import
+from pytype.abstract import mixin  # pylint: disable=unused-import
 import unittest
 
 
