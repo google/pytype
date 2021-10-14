@@ -10,7 +10,6 @@ from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function
-from pytype.pytd.parse import node as pytd_node
 
 from typed_ast import ast3
 
@@ -134,7 +133,7 @@ class NameAndSig(pytd_function.NameAndSig):
 def _pytd_signature(
     function: ast3.AST,
     is_async: bool,
-    exceptions: Optional[List[pytd_node.Node]] = None
+    exceptions: Optional[List[pytd.Type]] = None
 ) -> pytd.Signature:
   """Construct a pytd signature from an ast.FunctionDef node."""
   name = function.name

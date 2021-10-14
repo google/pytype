@@ -17,7 +17,8 @@ rather than
 import collections
 import itertools
 
-from typing import Any, Optional, Tuple, Union
+import typing
+from typing import Any, Optional, Tuple, TypeVar, Union
 
 import attr
 
@@ -26,10 +27,22 @@ from pytype.pytd.parse import node
 # Alias node.Node for convenience.
 Node = node.Node
 
+_TypeT = TypeVar('_TypeT', bound='Type')
 
-# Each type class below should inherit from this mixin.
+
 class Type:
+  """Each type class below should inherit from this mixin."""
   name: Optional[str]
+
+  # We type-annotate many things as pytd.Type when we'd really want them to be
+  # Intersection[pytd.Type, pytd.parse.node.Node], so we need to copy the type
+  # signature of Node.Visit here.
+  if typing.TYPE_CHECKING:
+
+    def Visit(self: _TypeT, visitor, *args, **kwargs) -> _TypeT:
+      del visitor, args, kwargs  # unused
+      return self
+
   __slots__ = ()
 
 
