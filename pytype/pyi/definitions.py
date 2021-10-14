@@ -138,7 +138,7 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     return value.Replace(name=alias.name)
 
 
-def pytd_literal(parameters: List[Any]) -> pytd_node.Node:
+def pytd_literal(parameters: List[Any]) -> pytd.Type:
   """Create a pytd.Literal."""
   literal_parameters = []
   for p in parameters:
@@ -175,7 +175,7 @@ def _convert_annotated(x):
     raise ParseError(f"Cannot convert metadata {x}")
 
 
-def pytd_annotated(parameters: List[Any]) -> pytd_node.Node:
+def pytd_annotated(parameters: List[Any]) -> pytd.Type:
   """Create a pytd.Annotated."""
   if len(parameters) < 2:
     raise ParseError(
@@ -482,7 +482,7 @@ class Definitions:
   def _is_heterogeneous_tuple(self, t):
     return isinstance(t, pytd.TupleType)
 
-  def _parameterized_type(self, base_type, parameters):
+  def _parameterized_type(self, base_type: Any, parameters):
     """Return a parameterized type."""
     if self._matches_named_type(base_type, _LITERAL_TYPES):
       return pytd_literal(parameters)
@@ -528,7 +528,7 @@ class Definitions:
         assert parameters
         return pytd.GenericType(base_type=base_type, parameters=parameters)
 
-  def resolve_type(self, name: Union[str, pytd_node.Node]) -> pytd_node.Node:
+  def resolve_type(self, name: Union[str, pytd_node.Node]) -> pytd.Type:
     """Return the fully resolved name for an alias.
 
     Args:
@@ -540,7 +540,8 @@ class Definitions:
     if isinstance(name, (pytd.GenericType, pytd.AnythingType)):
       return name
     if isinstance(name, pytd.NamedType):
-      name = name.name  # pytype: disable=attribute-error
+      name = name.name
+    assert isinstance(name, str)
     if name == "nothing":
       return pytd.NothingType()
     base_type = self.type_map.get(name)
@@ -554,7 +555,7 @@ class Definitions:
       self,
       name: Union[str, pytd_node.Node],
       parameters: Optional[List[pytd_node.Node]] = None
-  ) -> pytd_node.Node:
+  ) -> pytd.Type:
     """Return the AST for a type.
 
     Args:

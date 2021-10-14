@@ -37,7 +37,6 @@ py_library(
     pytdgen.py
   DEPS
     pytype.pytd.pytd_for_codegen
-    pytype.pytd.parse.parse
 )
 
 py_library(

@@ -3,7 +3,6 @@
 from typing import Tuple
 
 from pytype.pytd import pytd
-from pytype.pytd.parse import node as pytd_node
 
 
 _STRING_TYPES = ("str", "bytes", "unicode")
@@ -13,7 +12,7 @@ _STRING_TYPES = ("str", "bytes", "unicode")
 Parameters = Tuple[pytd.Type, ...]
 
 
-def pytd_list(typ: str) -> pytd_node.Node:
+def pytd_list(typ: str) -> pytd.Type:
   if typ:
     return pytd.GenericType(
         pytd.NamedType("typing.List"), (pytd.NamedType(typ),))
@@ -41,14 +40,14 @@ def heterogeneous_tuple(
   return pytd.TupleType(base_type=base_type, parameters=parameters)
 
 
-def pytd_type(value: pytd.Type) -> pytd_node.Node:
+def pytd_type(value: pytd.Type) -> pytd.Type:
   return pytd.GenericType(pytd.NamedType("type"), (value,))
 
 
 def pytd_callable(
     base_type: pytd.NamedType,
     parameters: Parameters
-) -> pytd_node.Node:
+) -> pytd.Type:
   """Create a pytd.CallableType."""
   if isinstance(parameters[0], list):
     if len(parameters) > 2:
