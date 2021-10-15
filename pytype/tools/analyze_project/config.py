@@ -64,7 +64,7 @@ _PYTYPE_SINGLE_ITEMS = {
     'bind_properties': Item(
         None, 'False', ArgInfo('--bind-properties', None), None),
     'preserve_union_macros': Item(
-        None, 'False', ArgInfo('--preserve-union-macros', None), None),
+        None, 'True', ArgInfo('--preserve-union-macros', None), None),
     'use_enum_overlay': Item(
         None, 'False', ArgInfo('--use-enum-overlay', None), None),
     'allow_recursive_types': Item(

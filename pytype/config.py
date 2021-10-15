@@ -161,7 +161,7 @@ def add_basic_options(o):
             "precise type-checking. " + temporary))
   o.add_argument(
       "--preserve-union-macros", action="store_true",
-      dest="preserve_union_macros", default=False,
+      dest="preserve_union_macros", default=True,
       help="Preserve Union generic type aliases in pyi files. " + temporary)
   o.add_argument(
       "--use-enum-overlay", action="store_true",
