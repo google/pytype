@@ -167,6 +167,10 @@ def add_basic_options(o):
       "--use-enum-overlay", action="store_true",
       dest="use_enum_overlay", default=False,
       help="Use the enum overlay for more precise enum checking. " + temporary)
+  o.add_argument(
+      "--allow-recursive-types", action="store_true",
+      dest="allow_recursive_types", default=False,
+      help="Allow recursive type definitions. " + temporary)
 
 
 def add_subtools(o):

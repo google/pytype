@@ -1392,7 +1392,8 @@ class VirtualMachine:
     annotations_dict = self.current_annotated_locals if local else None
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types=True)
-    value = self._remove_recursion(state.node, name, value)
+    if not self.ctx.options.allow_recursive_types:
+      value = self._remove_recursion(state.node, name, value)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)

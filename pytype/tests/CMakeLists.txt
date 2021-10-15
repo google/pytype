@@ -617,6 +617,15 @@ py_test(
 
 py_test(
   NAME
+    test_recursive_types
+  SRCS
+    test_recursive_types.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_reingest1
   SRCS
     test_reingest1.py

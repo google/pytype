@@ -442,15 +442,6 @@ class TypeVarTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(err, {"e": "Union.*2.*instantiated.*1"})
 
-  def test_use_unsupported_typevar(self):
-    # Test that we don't crash when using this pattern (b/162274390)
-    self.CheckWithErrors("""
-      from typing import List, TypeVar, Union
-      T = TypeVar("T")
-      Tree = Union[T, List['Tree']]  # not-supported-yet
-      def f(x: Tree[int]): ... # no error since Tree is set to Any
-    """)
-
   def test_cast_generic_tuple(self):
     self.Check("""
       from typing import Tuple, TypeVar, cast

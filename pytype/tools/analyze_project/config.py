@@ -67,6 +67,8 @@ _PYTYPE_SINGLE_ITEMS = {
         None, 'False', ArgInfo('--preserve-union-macros', None), None),
     'use_enum_overlay': Item(
         None, 'False', ArgInfo('--use-enum-overlay', None), None),
+    'allow_recursive_types': Item(
+        None, 'False', ArgInfo('--use-recursive-types', None), None),
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
         'Comma or space separated list of error names to ignore.'),
