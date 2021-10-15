@@ -208,7 +208,11 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     """Get an attribute from a module."""
     assert isinstance(module, abstract.Module)
 
-    node, var = self._get_instance_attribute(node, module, name, valself)
+    try:
+      node, var = self._get_instance_attribute(node, module, name, valself)
+    except abstract_utils.ModuleLoadError:
+      var = None
+
     if not self._should_look_for_submodule(module, var):
       return node, var
 

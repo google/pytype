@@ -86,6 +86,10 @@ class GenericTypeError(Exception):
     self.error = error
 
 
+class ModuleLoadError(Exception):
+  """Signal an error when trying to lazily load a submodule."""
+
+
 class AsInstance:
   """Wrapper, used for marking things that we want to convert to an instance."""
 

@@ -1270,6 +1270,19 @@ class ImportTest(test_base.BaseTest):
         x = foo.x  # module-attr
       """, imports_map=imports_map)
 
+  def test_missing_submodule(self):
+    with file_utils.Tempdir() as d:
+      foo = d.create_file("foo/__init__.pyi", "import bar.baz as baz")
+      foo_bar = d.create_file("foo/bar.pyi", "y: str")
+      imports_info = d.create_file("imports_info", f"""
+        foo {foo}
+        foo/bar {foo_bar}
+      """)
+      imports_map = imports_map_loader.build_imports_map(imports_info)
+      self.CheckWithErrors("""
+        from foo import baz  # import-error
+      """, imports_map=imports_map)
+
 
 if __name__ == "__main__":
   test_base.main()
