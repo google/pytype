@@ -1,3 +1,17 @@
+Version 2021.10.18
+
+New features and updates:
+* Completely remove the --attribute-variable-annotations flag. This was a no-op
+  as of version 2021.10.11.
+* Enable --preserve-union-macros by default and make the flag a no-op. It will
+  be removed in the next release.
+
+Bug fixes:
+* Enum overlay: fix crash due to loading `__new__` from a PyTDClass.
+* Enum overlay: use ClassVar to differentiate enum class attributes.
+* Fix a parser bug involving nested class name conflicts.
+* Fix a crash when lazily loading a missing submodule.
+
 Version 2021.10.11
 
 New features and updates:

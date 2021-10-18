@@ -532,6 +532,8 @@ class Converter(utils.ContextWeakrefMixin):
     return self._resolved_late_types[late_type.name]
 
   def _create_module(self, ast):
+    if not ast:
+      raise abstract_utils.ModuleLoadError()
     data = (ast.constants + ast.type_params + ast.classes +
             ast.functions + ast.aliases)
     members = {val.name.rsplit(".")[-1]: val for val in data}

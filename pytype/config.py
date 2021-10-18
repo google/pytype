@@ -161,12 +161,16 @@ def add_basic_options(o):
             "precise type-checking. " + temporary))
   o.add_argument(
       "--preserve-union-macros", action="store_true",
-      dest="preserve_union_macros", default=False,
+      dest="preserve_union_macros", default=True,
       help="Preserve Union generic type aliases in pyi files. " + temporary)
   o.add_argument(
       "--use-enum-overlay", action="store_true",
       dest="use_enum_overlay", default=False,
       help="Use the enum overlay for more precise enum checking. " + temporary)
+  o.add_argument(
+      "--allow-recursive-types", action="store_true",
+      dest="allow_recursive_types", default=False,
+      help="Allow recursive type definitions. " + temporary)
 
 
 def add_subtools(o):

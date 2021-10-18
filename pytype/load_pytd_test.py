@@ -435,7 +435,6 @@ class ImportPathsTest(_LoaderTest):
                        "from builtins import list as List")
       self.assertEqual(pytd_utils.Print(bar), textwrap.dedent("""
         import typing
-
         from builtins import list as List
 
         def bar.f() -> typing.List[int]: ...

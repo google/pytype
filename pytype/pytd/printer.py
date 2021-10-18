@@ -148,9 +148,27 @@ class PrintVisitor(base_visitor.Visitor):
     """Convert the AST for an entire module back to a string."""
     if node.type_params:
       self._FromTyping("TypeVar")
-    sections = [self._GenerateImportStrings(), node.aliases, node.constants,
-                self._FormatTypeParams(self.old_node.type_params), node.classes,
-                node.functions]
+
+    aliases = []
+    imports = set(self._GenerateImportStrings())
+    for alias in node.aliases:
+      if alias.startswith(("from ", "import ")):
+        imports.add(alias)
+      else:
+        aliases.append(alias)
+
+    # Sort import lines lexicographically and ensure import statements come
+    # before from-import statements.
+    imports = sorted(imports, key=lambda s: (s.startswith("from "), s))
+
+    sections = [
+        imports,
+        aliases,
+        node.constants,
+        self._FormatTypeParams(self.old_node.type_params),
+        node.classes,
+        node.functions,
+    ]
 
     # We put one blank line after every class,so we need to strip the blank line
     # after the last class.
