@@ -408,7 +408,6 @@ class ParserTest(_ParserTestBase):
       x = ...  # type: Foo
       """, """
       import somewhere
-
       from somewhere import Foo
 
       x: somewhere.Foo""")
@@ -420,9 +419,8 @@ class ParserTest(_ParserTestBase):
       class Bar:
           Baz = Foo
     """, """
-      from typing import Any
-
       from somewhere import Foo
+      from typing import Any
 
       class Bar:
           Baz: Any
@@ -888,9 +886,9 @@ class NamedTupleTest(_ParserTestBase):
         ],
       )
     """, """
+      from collections import namedtuple
       from typing import Any, Tuple, Type, TypeVar
 
-      from collections import namedtuple
       Foo = namedtuple_Foo_0
 
       _Tnamedtuple_Foo_0 = TypeVar('_Tnamedtuple_Foo_0', bound=namedtuple_Foo_0)
@@ -912,9 +910,9 @@ class NamedTupleTest(_ParserTestBase):
 
   def test_collections_namedtuple(self):
     expected = """
+      from collections import namedtuple
       from typing import Any, Tuple, Type, TypeVar
 
-      from collections import namedtuple
       X = namedtuple_X_0
 
       _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
@@ -1588,7 +1586,6 @@ class ClassTest(_ParserTestBase):
   def test_typing_extensions_parameterized_protocol(self):
     self.check("""
       from typing import TypeVar
-
       from typing_extensions import Protocol
 
       T = TypeVar('T')
@@ -1597,7 +1594,6 @@ class ClassTest(_ParserTestBase):
     """, """
       import typing
       from typing import Generic, TypeVar
-
       from typing_extensions import Protocol
 
       T = TypeVar('T')
@@ -2615,8 +2611,8 @@ class TypedDictTest(_ParserTestBase):
       X = TypedDict('X', {})
     """, """
       from typing import Any, Dict
-
       from typing_extensions import TypedDict
+
       X = Dict[str, Any]
     """)
 
@@ -2626,8 +2622,8 @@ class TypedDictTest(_ParserTestBase):
       X = TypedDict('X', {'a': int, 'b': str})
     """, """
       from typing import Any, Dict
-
       from typing_extensions import TypedDict
+
       X = Dict[str, Any]
     """)
 
@@ -2637,8 +2633,8 @@ class TypedDictTest(_ParserTestBase):
       X = TypedDict('X', {}, total=False)
     """, """
       from typing import Any, Dict
-
       from typing_extensions import TypedDict
+
       X = Dict[str, Any]
     """)
 
@@ -2651,8 +2647,8 @@ class TypedDictTest(_ParserTestBase):
       },)
     """, """
       from typing import Any, Dict
-
       from typing_extensions import TypedDict
+
       X = Dict[str, Any]
     """)
 
@@ -2677,7 +2673,6 @@ class TypedDictTest(_ParserTestBase):
       class Foo(TypedDict, total=False): ...
     """, """
       import typing_extensions
-
       from typing_extensions import TypedDict
 
       class Foo(typing_extensions.TypedDict): ...
@@ -2896,7 +2891,6 @@ class ParamSpecTest(_ParserTestBase):
   def test_from_typing_extensions(self):
     self.check("""
       from typing import Awaitable, Callable, TypeVar
-
       from typing_extensions import ParamSpec
 
       P = ParamSpec('P')
@@ -2905,7 +2899,6 @@ class ParamSpecTest(_ParserTestBase):
       def f(x: Callable[P, R]) -> Callable[P, Awaitable[R]]: ...
     """, """
       from typing import Awaitable, Callable, TypeVar
-
       from typing_extensions import ParamSpec
 
       R = TypeVar('R')
@@ -2990,7 +2983,6 @@ class ConcatenateTest(_ParserTestBase):
   def test_from_typing_extensions(self):
     self.check("""
       from typing import Callable, TypeVar
-
       from typing_extensions import Concatenate, ParamSpec
 
       P = ParamSpec('P')
@@ -3001,7 +2993,6 @@ class ConcatenateTest(_ParserTestBase):
       def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
     """, """
       from typing import Callable, TypeVar
-
       from typing_extensions import Concatenate
       from typing_extensions import ParamSpec
 
@@ -3034,13 +3025,11 @@ class TypeGuardTest(_ParserTestBase):
   def test_typing_extensions(self):
     self.check("""
       from typing import List
-
       from typing_extensions import TypeGuard
 
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """, """
       from typing import List
-
       from typing_extensions import TypeGuard
 
       def f(x: List[object]) -> bool: ...
