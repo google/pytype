@@ -1164,5 +1164,23 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(M.A.class_attr, int)
       """, pythonpath=[d.path])
 
+  def test_namedtuple_base_type(self):
+    # This is a fun case for the base type. The value for A is an Item, but
+    # the enum has a base type, which is also Item.
+    # When there's a base type, the enum std lib calls the base's `__new__` to
+    # create the values for the enums. So this looks like it should fail, except
+    # __new__ is called like: Item.__new__(Item, *value).
+    # Since value is a NamedTuple, it unpacks cleanly and a new Item is made.
+    # So this test basically checks that the enum overlay correctly prepares
+    # value as an argument to __new__.
+    self.Check("""
+      import enum
+      from typing import NamedTuple
+      class Item(NamedTuple):
+        x: int
+      class M(Item, enum.Enum):
+        A = Item(1)
+    """)
+
 if __name__ == "__main__":
   test_base.main()
