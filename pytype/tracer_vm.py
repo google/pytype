@@ -259,9 +259,9 @@ class CallTracer(vm.VirtualMachine):
     """Set maybe_missing_members to True on these values and their type params.
 
     Args:
-      values: A list of BaseValue objects. On every instance among
-        the values, recursively set maybe_missing_members to True on the
-        instance and its type parameters.
+      values: A list of BaseValue objects. On every instance among the values,
+        recursively set maybe_missing_members to True on the instance and its
+        type parameters.
     """
     values = list(values)
     seen = set()
@@ -288,8 +288,8 @@ class CallTracer(vm.VirtualMachine):
         instantiated to TypeParameterInstance.
       extra_key: Optionally, extra information about the location at which the
         instantion occurs. By default, this method keys on the current opcode
-        and the class, which sometimes isn't enough to disambiguate callers
-        that shouldn't get back the same cached instance.
+        and the class, which sometimes isn't enough to disambiguate callers that
+        shouldn't get back the same cached instance.
 
     Returns:
       A tuple of node and instance variable.
@@ -497,8 +497,7 @@ class CallTracer(vm.VirtualMachine):
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
         if all(
             isinstance(o, (abstract.ParameterizedClass, abstract.TypeParameter,
-                           abstract.Union)) for o in
-            options) and self.ctx.options.preserve_union_macros:  # type alias
+                           abstract.Union)) for o in options):  # type alias
           data.append(
               pytd_utils.JoinTypes(
                   t.to_pytd_def(self.ctx.exitpoint, name) for t in options))

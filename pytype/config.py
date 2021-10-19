@@ -160,10 +160,6 @@ def add_basic_options(o):
       help=("Bind @property methods to the classes they're defined on for more "
             "precise type-checking. " + temporary))
   o.add_argument(
-      "--preserve-union-macros", action="store_true",
-      dest="preserve_union_macros", default=True,
-      help="Preserve Union generic type aliases in pyi files. " + temporary)
-  o.add_argument(
       "--use-enum-overlay", action="store_true",
       dest="use_enum_overlay", default=False,
       help="Use the enum overlay for more precise enum checking. " + temporary)

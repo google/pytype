@@ -371,8 +371,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.SimpleFunction):
       return self._simple_func_to_def(node, v, name)
     elif (isinstance(v, abstract.ParameterizedClass) or
-          (self.ctx.options.preserve_union_macros and
-           isinstance(v, abstract.Union))):
+          isinstance(v, abstract.Union)):
       return pytd.Alias(name, v.get_instance_type(node))
     elif isinstance(v, abstract.PyTDClass) and v.module:
       # This happens if a module does e.g. "from x import y as z", i.e., copies

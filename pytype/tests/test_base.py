@@ -133,7 +133,6 @@ class BaseTest(unittest.TestCase):
                                          allow_recursive_types=True,
                                          bind_properties=True,
                                          chex_overlay=True,
-                                         preserve_union_macros=True,
                                          use_enum_overlay=True)
 
   @property
