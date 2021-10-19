@@ -19,7 +19,7 @@
       * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
 
-<!-- Added by: rechen, at: 2021-09-13T11:20-07:00 -->
+<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
 
 <!--te-->
 

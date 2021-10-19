@@ -15,7 +15,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-09-18' }
          * [Instances](#instances)
       * [Variables and data](#variables-and-data)
 
-<!-- Added by: rechen, at: 2021-09-22T20:26-07:00 -->
+<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
 
 <!--te-->
 
@@ -78,15 +78,16 @@ and method accesses.
 
 ## Invoking
 
-`VirtualMachine.__init__` defines a mapping `self.special_builtins` from the
-names of python builtins to instances of the corresponding special builtins.
-Each special builtin then provides its own implementation of `call`, and when
-the VM encounters a call to e.g. `next(arg)` it delegates to
+`Context.__init__` defines a mapping `self.special_builtins` from the names of
+python builtins to instances of the corresponding special builtins. Each special
+builtin then provides its own implementation of `call`, and when the VM
+encounters a call to e.g. `next(arg)` it delegates to
 `special_builtins.Next().call(arg)`.
 
 The VM loads python builtins by calling `load_builtin()` in `byte_LOAD_NAME`.
 `load_builtin()` in turn calls `load_special_builtin()` to check if the name we
-are loading is defined in the `self.special_builtins` mapping mentioned above.
+are loading is defined in the `self.ctx.special_builtins` mapping mentioned
+above.
 
 ## Implementation details
 
@@ -105,7 +106,7 @@ calls
 self.get_underlying_method(node, arg, "__abs__")
 ```
 
-and then just reinvokes the regular `vm.call_function()` but now calling the
+and then just reinvokes the regular `ctx.vm.call_function()` but now calling the
 bound method `x.__abs__` rather than the built in function `abs` (this is a good
 example of something that is fairly straightforward but nevertheless impossible
 to do via type signatures).
@@ -136,7 +137,7 @@ class PropertyInstance(mixin.HasSlots, ...):
     self.set_slot("__get__", self.fget_slot)
 
   def fget_slot(self, ...):
-    return self.vm.call_function(self.fget, ...)
+    return self.ctx.vm.call_function(self.fget, ...)
 ```
 
 NOTE: Slots are implemented via the `get_special_attribute` method in the
@@ -201,7 +202,7 @@ Look for the pattern
 
 ```
 def call(*args):
-  result = self.vm.program.NewVariable()
+  result = self.ctx.program.NewVariable()
 
   # unpack data from args
   ...
