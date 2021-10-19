@@ -730,7 +730,7 @@ class TestAttrib(test_base.BaseTest):
       import attr
       @attr.s
       class Foo:
-        x = attr.ib(default=10, init=0)  # wrong-arg-types[e]
+        x = attr.ib(default=10, init=0)  # wrong-arg-types
       a = Foo().x
       assert_type(a, int)
     """)
@@ -751,6 +751,27 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x = attr.ib(init=0, validator=10, type=int)  # wrong-arg-types
       a = Foo(10).x
+      assert_type(a, int)
+    """)
+
+  def test_extra_constructor_args(self):
+    self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo:
+        x = attr.ib(bar=10, type=int)  # wrong-keyword-args
+      a = Foo(10).x
+      assert_type(a, int)
+    """)
+
+  @test_base.skip("b/203591182")
+  def test_duplicate_constructor_args(self):
+    self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo:
+        x = attr.ib(10, default='a')  # duplicate-keyword-argument
+      a = Foo().x
       assert_type(a, int)
     """)
 

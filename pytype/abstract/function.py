@@ -1106,24 +1106,37 @@ def match_all_args(ctx, node, func, args):
     try:
       func.match_args(node, args)
     except FailedFunctionCall as e:
-      if not isinstance(e, InvalidParameters):
-        raise
-      arg_name = e.bad_call.bad_param.name
-      for name, value in e.bad_call.passed_args:
-        if name != arg_name:
-          continue
-        errors.append((e, name, value))
-        try:
-          pos = positional_names.index(name)
-        except ValueError:
-          args = args.replace_namedarg(name, ctx.new_unsolvable(node))
+      if isinstance(e, WrongKeywordArgs):
+        errors.append((e, e.extra_keywords[0], None))
+        for i in e.extra_keywords:
+          args = args.delete_namedarg(i)
+      elif isinstance(e, DuplicateKeyword):
+        errors.append((e, e.duplicate, None))
+        args = args.delete_namedarg(e.duplicate)
+      elif isinstance(e, MissingParameter):
+        errors.append((e, e.missing_parameter, None))
+        args = args.replace_namedarg(
+            e.missing_parameter, ctx.new_unsolvable(node))
+      elif isinstance(e, WrongArgTypes):
+        arg_name = e.bad_call.bad_param.name
+        for name, value in e.bad_call.passed_args:
+          if name != arg_name:
+            continue
+          errors.append((e, name, value))
+          try:
+            pos = positional_names.index(name)
+          except ValueError:
+            args = args.replace_namedarg(name, ctx.new_unsolvable(node))
+          else:
+            args = args.replace_posarg(pos, ctx.new_unsolvable(node))
+          break
         else:
-          args = args.replace_posarg(pos, ctx.new_unsolvable(node))
-        break
+          raise AssertionError(
+              "Mismatched parameter %s not found in passed_args" %
+              arg_name) from e
       else:
-        raise AssertionError(
-            "Mismatched parameter %s not found in passed_args" %
-            arg_name) from e
+        # This is not an InvalidParameters error.
+        raise
     else:
       needs_checking = False
 
