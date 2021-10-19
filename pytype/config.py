@@ -267,7 +267,7 @@ def add_infrastructure_options(o):
       help=("Only do an approximation."))
   o.add_argument(
       "--chex-overlay", action="store_true",
-      dest="chex_overlay", default=False,
+      dest="chex_overlay", default=True,
       help="Temporary flag to aid the release of an overlay for chex.dataclass")
 
 
