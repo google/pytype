@@ -725,6 +725,35 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(type=T)  # invalid-annotation
     """)
 
+  def test_bad_constructor(self):
+    self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo:
+        x = attr.ib(default=10, init=0)  # wrong-arg-types[e]
+      a = Foo().x
+      assert_type(a, int)
+    """)
+
+  def test_bad_factory_constructor(self):
+    self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo:
+        x = attr.ib(default=10)
+        y = attr.ib(factory=10, type=int)  # wrong-arg-types
+    """)
+
+  def test_multiple_bad_constructor_args(self):
+    self.CheckWithErrors("""
+      import attr
+      @attr.s
+      class Foo:
+        x = attr.ib(init=0, validator=10, type=int)  # wrong-arg-types
+      a = Foo(10).x
+      assert_type(a, int)
+    """)
+
 
 class TestAttrs(test_base.BaseTest):
   """Tests for attr.s."""

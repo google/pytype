@@ -173,6 +173,12 @@ class FieldConstructor(abstract.PyTDFunction):
       self.ctx.errorlog.not_supported_yet(self.ctx.vm.frames,
                                           f"Non-constant argument {name!r}")
 
+  def get_positional_names(self):
+    # TODO(mdemello): We currently assume all field constructors are called with
+    # namedargs, which has worked in practice but is not required by the attrs
+    # or dataclasses apis.
+    return []
+
 
 def is_method(var):
   if var is None:

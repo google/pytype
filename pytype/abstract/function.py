@@ -538,8 +538,13 @@ class Args(collections.namedtuple(
     return self._replace(posargs=new_posargs)
 
   def replace_namedarg(self, name, val):
-    self.namedargs[name] = val
-    return self
+    new_namedargs = dict(self.namedargs)
+    new_namedargs[name] = val
+    return self._replace(namedargs=new_namedargs)
+
+  def delete_namedarg(self, name):
+    new_namedargs = {k: v for k, v in self.namedargs.items() if k != name}
+    return self._replace(namedargs=new_namedargs)
 
 
 class ReturnValueMixin:

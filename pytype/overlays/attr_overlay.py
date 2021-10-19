@@ -306,10 +306,31 @@ class Attrib(classgen.FieldConstructor):
   def make(cls, ctx):
     return super().make("ib", ctx, "attr")
 
-  def call(self, node, unused_func, args):
+  def _match_and_discard_args(self, node, funcb, args):
+    """Discard invalid args so that we can still construct an attrib."""
+    func = funcb.data
+    args, errors = function.match_all_args(self.ctx, node, func, args)
+    # Raise the error, but continue constructing the attrib, so that if we
+    # have something like
+    #   x = attr.ib(<bad args>)
+    # we still proceed with the rest of the analysis with x in the list of
+    # attribs, and with our best guess for typing information.
+    for e, name, _ in errors:
+      self.ctx.errorlog.invalid_function_call(self.ctx.vm.stack(func), e)
+      # The presence of 'factory' or 'default' means we need to preserve the
+      # fact that the attrib was intended to have a default, otherwise we might
+      # get an invalid sig for __init__ with a non-default param following a
+      # default param.
+      if name != "default":
+        args = args.delete_namedarg(name)
+      if name == "factory":
+        args = args.replace_namedarg("default", self.ctx.new_unsolvable(node))
+    return args
+
+  def call(self, node, funcb, args):
     """Returns a type corresponding to an attr."""
     args = args.simplify(node, self.ctx)
-    self.match_args(node, args)
+    args = self._match_and_discard_args(node, funcb, args)
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)
