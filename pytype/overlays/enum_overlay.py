@@ -331,10 +331,19 @@ class EnumMetaInit(abstract.SimpleFunction):
     # make all of F's members strings, even if they're assigned a value of
     # a different type.
     # The enum library searches through cls's bases' MRO to find all possible
-    # base types. For simplicity, we just grab the second-to-last base.
+    # base types. For simplicity, we just grab the second-to-last base, but only
+    # if that base type looks valid. (i.e. has its own __new__.)
     if len(bases) > 1:
       base_type_var = bases[-2]
-      return abstract_utils.get_atomic_value(base_type_var, default=None)
+      base_type = abstract_utils.get_atomic_value(base_type_var, default=None)
+      # Pytype's type stubs don't include `__new__` for built-in types like
+      # int, str, complex, etc.
+      if not base_type:
+        return None
+      elif "__new__" in base_type or base_type.full_name.startswith("builtins"):
+        return base_type
+      else:
+        return None
     elif bases and len(bases[0].data) == 1:
       base_type_cls = abstract_utils.get_atomic_value(bases[0])
       if isinstance(base_type_cls, EnumInstance):

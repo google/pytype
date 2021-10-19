@@ -1182,5 +1182,27 @@ class EnumOverlayTest(test_base.BaseTest):
         A = Item(1)
     """)
 
+  def test_mixin_base_type(self):
+    # Don't try to use a base class as a base_type if it's actually a mixin.
+    self.Check("""
+      import enum
+
+      class Token:
+        name: str
+        value: str
+        def __str__(self) -> str:
+          return self.value
+
+      # Each member of M is a Token, but Token.__init__ is never called.
+      class M(Token, enum.Enum):
+        A = "hello"
+
+      def take_token(t: Token) -> str:
+        return str(t)
+
+      take_token(M.A)
+      assert_type(M.A.value, str)
+    """)
+
 if __name__ == "__main__":
   test_base.main()
