@@ -139,6 +139,106 @@ class NamedtupleTests(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, self._namedtuple_def(
         X=("X", ["a", "b", "c"]), suffix="a = ...  # type: X"))
 
+  def test_fields(self):
+    self.Check(
+        """
+        import collections
+        X = collections.namedtuple("X", "a b c")
+
+        a = X(1, "2", 42.0)
+
+        a_f = a.a
+        b_f = a.b
+        c_f = a.c
+        """)
+
+  def test_unpacking(self):
+    self.Check(
+        """
+        import collections
+        X = collections.namedtuple("X", "a b c")
+
+        a = X(1, "2", 42.0)
+
+        a_f, b_f, c_f = a
+        """)
+
+  def test_is_tuple_and_superclasses(self):
+    """Test that a collections.namedtuple behaves like a tuple typewise."""
+    self.Check(
+        """
+        import collections
+        from typing import Any, MutableSequence, Sequence, Tuple
+        X = collections.namedtuple("X", "a b c")
+
+        a = X(1, "2", 42.0)
+
+        a_tuple = a  # type: tuple
+        a_typing_tuple = a  # type: Tuple[Any, Any, Any]
+        a_typing_tuple_ellipses = a  # type: Tuple[Any, ...]  # Collapses to just plain "tuple"
+        a_sequence = a  # type: Sequence[Any]
+        a_iter = iter(a)  # type: tupleiterator
+        a_first = next(iter(a))
+        a_second = a[1]
+        """)
+
+  def test_is_not_incorrect_types(self):
+    self.CheckWithErrors(
+        """
+        import collections
+        from typing import Any, MutableSequence, Sequence, Tuple
+        X = collections.namedtuple("X", "a b c")
+
+        x = X(1, "2", 42.0)
+
+        x_not_a_list = x  # type: list  # annotation-type-mismatch
+        x_not_a_mutable_seq = x  # type: MutableSequence[Any]  # annotation-type-mismatch
+        """)
+
+  def test_meets_protocol(self):
+    self.Check("""
+        import collections
+        from typing import Any, Protocol
+        X = collections.namedtuple("X", ["a", "b"])
+
+        class DualVarHolder(Protocol):
+          a: Any
+          b: Any
+
+        class DualPropertyHolder(Protocol):
+          @property
+          def a(self):
+            ...
+
+          @property
+          def b(self):
+            ...
+
+        a = X(1, "2")
+        a_vars_protocol: DualVarHolder = a
+        a_property_protocol: DualPropertyHolder = a
+    """)
+
+  def test_does_not_meet_mismatching_protocol(self):
+    self.CheckWithErrors("""
+        import collections
+        from typing import Any, Protocol
+        X = collections.namedtuple("X", ["a", "b"])
+
+        class TripleVarHolder(Protocol):
+          a: Any
+          b: Any
+          c: Any
+
+        class DualHolder_Alt(Protocol):
+          x: Any
+          y: Any
+
+        a = X(1, "2")
+        a_wrong_names: DualHolder_Alt = a  # annotation-type-mismatch
+        a_too_many: TripleVarHolder = a  # annotation-type-mismatch
+    """)
+
   def test_instantiate_pyi_namedtuple(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -248,25 +348,6 @@ class NamedtupleTests(test_base.BaseTest):
       z = Y._make([1])
     """)
     self.assertEqual(pytd_utils.Print(ty.Lookup("z")), "z: Y")
-
-  def test_unpacking(self):
-    with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from typing import NamedTuple
-        X = NamedTuple("X", [('a', str), ('b', int)])
-      """)
-      ty = self.Infer("""
-        import foo
-        v = None  # type: foo.X
-        a, b = v
-      """, deep=False, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
-        v = ...  # type: foo.namedtuple_X_0
-        a = ...  # type: str
-        b = ...  # type: int
-      """)
-
 
 if __name__ == "__main__":
   test_base.main()

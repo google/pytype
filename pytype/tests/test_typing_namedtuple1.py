@@ -150,6 +150,165 @@ class NamedTupleTest(test_base.BaseTest):
         assert_type(foo.X(a=__any_object__).a(4.2), float)
       """, pythonpath=[d.path])
 
+  def test_fields(self):
+    self.Check("""
+      from typing import NamedTuple
+      X = NamedTuple("X", [('a', str), ('b', int)])
+
+      v = X("answer", 42)
+      a = v.a  # type: str
+      b = v.b  # type: int
+      """)
+
+  def test_field_wrong_type(self):
+    self.CheckWithErrors("""
+        from typing import NamedTuple
+        X = NamedTuple("X", [('a', str), ('b', int)])
+
+        v = X("answer", 42)
+        a_int = v.a  # type: int  # annotation-type-mismatch
+      """)
+
+  def test_unpacking(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        X = NamedTuple("X", [('a', str), ('b', int)])
+      """)
+      ty = self.Infer("""
+        import foo
+        v = None  # type: foo.X
+        a, b = v
+      """, deep=False, pythonpath=[d.path])
+
+      self.assertTypesMatchPytd(ty, """
+        from typing import Union
+        foo = ...  # type: module
+        v = ...  # type: foo.namedtuple_X_0
+        a = ...  # type: str
+        b = ...  # type: int
+      """)
+
+  def test_bad_unpacking(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        X = NamedTuple("X", [('a', str), ('b', int)])
+      """)
+      self.CheckWithErrors("""
+        import foo
+        v = None  # type: foo.X
+        _, _, too_many = v  # bad-unpacking
+        too_few, = v  # bad-unpacking
+        a: float
+        b: str
+        a, b = v  # annotation-type-mismatch # annotation-type-mismatch
+      """, deep=False, pythonpath=[d.path])
+
+  def test_is_tuple_type_and_superclasses(self):
+    """Test that a typing.NamedTuple (function syntax) behaves like a tuple typewise."""
+    self.Check("""
+      from typing import MutableSequence, NamedTuple, Sequence, Tuple, Union
+      X = NamedTuple("X", [("a", int), ("b", str)])
+
+      a = X(1, "2")
+      a_tuple = a  # type: tuple
+      a_typing_tuple = a  # type: Tuple[int, str]
+      a_typing_tuple_elipses = a  # type: Tuple[Union[int, str], ...]
+      a_sequence = a  # type: Sequence[Union[int, str]]
+      a_iter = iter(a)  # type: tupleiterator[Union[int, str]]
+
+      a_first = a[0]  # type: int
+      a_second = a[1]  # type: str
+      a_first_next = next(iter(a))  # We don't know the type through the iter() function
+    """)
+
+  def test_is_not_incorrect_types(self):
+    self.CheckWithErrors("""
+      from typing import MutableSequence, NamedTuple, Sequence, Tuple, Union
+      X = NamedTuple("X", [("a", int), ("b", str)])
+
+      x = X(1, "2")
+
+      x_not_a_list = x  # type: list  # annotation-type-mismatch
+      x_not_a_mutable_seq = x  # type: MutableSequence[Union[int, str]]  # annotation-type-mismatch
+    """)
+
+  def test_meets_protocol(self):
+    self.Check("""
+      from typing import NamedTuple, Protocol
+      X = NamedTuple("X", [("a", int), ("b", str)])
+
+      class IntAndStrHolderVars(Protocol):
+        a: int
+        b: str
+
+      class IntAndStrHolderProperty(Protocol):
+        @property
+        def a(self) -> int:
+          ...
+
+        @property
+        def b(self) -> str:
+          ...
+
+      a = X(1, "2")
+      a_vars_protocol: IntAndStrHolderVars = a
+      a_property_protocol: IntAndStrHolderProperty = a
+    """)
+
+  def test_does_not_meet_mismatching_protocol(self):
+    self.CheckWithErrors("""
+      from typing import NamedTuple, Protocol
+      X = NamedTuple("X", [("a", int), ("b", str)])
+
+      class DualStrHolder(Protocol):
+        a: str
+        b: str
+
+      class IntAndStrHolderVars_Alt(Protocol):
+        the_number: int
+        the_string: str
+
+      class IntStrIntHolder(Protocol):
+        a: int
+        b: str
+        c: int
+
+      a = X(1, "2")
+      a_wrong_types: DualStrHolder = a  # annotation-type-mismatch
+      a_wrong_names: IntAndStrHolderVars_Alt = a  # annotation-type-mismatch
+      a_too_many: IntStrIntHolder = a  # annotation-type-mismatch
+    """)
+
+  def test_generated_members(self):
+    ty = self.Infer("""
+      from typing import NamedTuple
+      X = NamedTuple("X", [('a', int), ('b', str)])""")
+    self.assertTypesMatchPytd(ty, (
+        """
+        import collections
+        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
+
+        _TX = TypeVar('_TX', bound=X)
+
+        class X(tuple):
+            __slots__ = ["a", "b"]
+            __dict__: collections.OrderedDict[str, Union[int, str]]
+            _field_defaults: collections.OrderedDict[str, Union[int, str]]
+            _field_types: collections.OrderedDict[str, type]
+            _fields: Tuple[str, str]
+            a: int
+            b: str
+            def __getnewargs__(self) -> Tuple[int, str]: ...
+            def __getstate__(self) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TX], a: int, b: str) -> _TX: ...
+            def _asdict(self) -> collections.OrderedDict[str, Union[int, str]]: ...
+            @classmethod
+            def _make(cls: Type[_TX], iterable: Iterable[Union[int, str]], new = ..., len: Callable[[Sized], int] = ...) -> _TX: ...
+            def _replace(self: _TX, **kwds: Union[int, str]) -> _TX: ...
+        """))
 
 if __name__ == "__main__":
   test_base.main()
