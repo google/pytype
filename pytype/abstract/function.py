@@ -533,6 +533,14 @@ class Args(collections.namedtuple(
       variables.append(self.starstarargs)
     return variables
 
+  def replace_posarg(self, pos, val):
+    new_posargs = self.posargs[:pos] + (val,) + self.posargs[pos + 1:]
+    return self._replace(posargs=new_posargs)
+
+  def replace_namedarg(self, name, val):
+    self.namedargs[name] = val
+    return self
+
 
 class ReturnValueMixin:
   """Mixin for exceptions that hold a return node and variable."""
@@ -1068,3 +1076,50 @@ def call_function(ctx,
     assert error
     error.set_return(node, result)
     raise error  # pylint: disable=raising-bad-type
+
+
+def match_all_args(ctx, node, func, args):
+  """Call match_args multiple times to find all type errors.
+
+  Args:
+    ctx: The abstract context.
+    node: The current CFG node.
+    func: An abstract function
+    args: An Args object to match against func
+
+  Returns:
+    A tuple of (new_args, errors)
+      where new_args = args with all incorrectly typed values set to Any
+            errors = a list of [(type mismatch error, arg name, value)]
+
+  Reraises any error that is not function.InvalidParameters
+  """
+  positional_names = func.get_positional_names()
+  needs_checking = True
+  errors = []
+  while needs_checking:
+    try:
+      func.match_args(node, args)
+    except FailedFunctionCall as e:
+      if not isinstance(e, InvalidParameters):
+        raise
+      arg_name = e.bad_call.bad_param.name
+      for name, value in e.bad_call.passed_args:
+        if name != arg_name:
+          continue
+        errors.append((e, name, value))
+        try:
+          pos = positional_names.index(name)
+        except ValueError:
+          args = args.replace_namedarg(name, ctx.new_unsolvable(node))
+        else:
+          args = args.replace_posarg(pos, ctx.new_unsolvable(node))
+        break
+      else:
+        raise AssertionError(
+            "Mismatched parameter %s not found in passed_args" %
+            arg_name) from e
+    else:
+      needs_checking = False
+
+  return args, errors
