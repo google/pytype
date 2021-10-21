@@ -675,52 +675,25 @@ class VirtualMachine:
     if not method.signature.has_param_annotations:
       return
     _, args = self.create_method_arguments(node, method, use_defaults=True)
-    positional_names = method.get_positional_names()
-    # We may need to call match_args multiple times to find all type errors.
-    needs_checking = True
-    while needs_checking:
-      try:
-        method.match_args(node, args)
-      except function.FailedFunctionCall as e:
-        if not isinstance(e, function.InvalidParameters):
-          raise AssertionError("Unexpected argument matching error: %s" %
-                               e.__class__.__name__) from e
-        arg_name = e.bad_call.bad_param.name
-        expected_type = e.bad_call.bad_param.expected
-        for name, value in e.bad_call.passed_args:
-          if name != arg_name:
-            continue
-          if value == self.ctx.convert.ellipsis:
-            # `...` should be a valid default parameter value for overloads.
-            # Unfortunately, the is_overload attribute is not yet set when
-            # _check_defaults runs, so we instead check that the method body is
-            # empty. As a side effect, `...` is allowed as a default value for
-            # any method that does nothing except return None.
-            should_report = not method.has_empty_body()
-          else:
-            should_report = True
-          if should_report:
-            self.ctx.errorlog.annotation_type_mismatch(self.frames,
-                                                       expected_type,
-                                                       value.to_binding(node),
-                                                       arg_name)
-          # Replace the bad default with Any so we can call match_args again to
-          # find other type errors.
-          try:
-            pos = positional_names.index(name)
-          except ValueError:
-            args.namedargs[name] = self.ctx.new_unsolvable(node)
-          else:
-            args = args._replace(posargs=args.posargs[:pos] +
-                                 (self.ctx.new_unsolvable(node),) +
-                                 args.posargs[pos + 1:])
-          break
-        else:
-          raise AssertionError(
-              "Mismatched parameter %s not found in passed_args" %
-              arg_name) from e
+    try:
+      _, errors = function.match_all_args(self.ctx, node, method, args)
+    except function.FailedFunctionCall as e:
+      raise AssertionError("Unexpected argument matching error: %s" %
+                           e.__class__.__name__) from e
+    for e, arg_name, value in errors:
+      expected_type = e.bad_call.bad_param.expected
+      if value == self.ctx.convert.ellipsis:
+        # `...` should be a valid default parameter value for overloads.
+        # Unfortunately, the is_overload attribute is not yet set when
+        # _check_defaults runs, so we instead check that the method body is
+        # empty. As a side effect, `...` is allowed as a default value for
+        # any method that does nothing except return None.
+        should_report = not method.has_empty_body()
       else:
-        needs_checking = False
+        should_report = True
+      if should_report:
+        self.ctx.errorlog.annotation_type_mismatch(
+            self.frames, expected_type, value.to_binding(node), arg_name)
 
   def _make_function(self, name, node, code, globs, defaults, kw_defaults,
                      closure=None, annotations=None):
@@ -1579,9 +1552,6 @@ class VirtualMachine:
   def _maybe_load_overlay(self, name):
     """Check if a module path is in the overlay dictionary."""
     if name not in overlay_dict.overlays:
-      return None
-    if name == "chex" and not self.ctx.options.chex_overlay:
-      # TODO(b/185807105): Enable --chex-overlay by default.
       return None
     if name in self.loaded_overlays:
       overlay = self.loaded_overlays[name]

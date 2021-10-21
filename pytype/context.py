@@ -72,6 +72,7 @@ class Context:
         "property": special_builtins.Property(self),
         "staticmethod": special_builtins.StaticMethod(self),
         "classmethod": special_builtins.ClassMethod(self),
+        "dict": special_builtins.Dict(self),
     }
     # builtin functions
     for cls in (

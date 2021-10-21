@@ -331,10 +331,19 @@ class EnumMetaInit(abstract.SimpleFunction):
     # make all of F's members strings, even if they're assigned a value of
     # a different type.
     # The enum library searches through cls's bases' MRO to find all possible
-    # base types. For simplicity, we just grab the second-to-last base.
+    # base types. For simplicity, we just grab the second-to-last base, but only
+    # if that base type looks valid. (i.e. has its own __new__.)
     if len(bases) > 1:
       base_type_var = bases[-2]
-      return abstract_utils.get_atomic_value(base_type_var, default=None)
+      base_type = abstract_utils.get_atomic_value(base_type_var, default=None)
+      # Pytype's type stubs don't include `__new__` for built-in types like
+      # int, str, complex, etc.
+      if not base_type:
+        return None
+      elif "__new__" in base_type or base_type.full_name.startswith("builtins"):
+        return base_type
+      else:
+        return None
     elif bases and len(bases[0].data) == 1:
       base_type_cls = abstract_utils.get_atomic_value(bases[0])
       if isinstance(base_type_cls, EnumInstance):
@@ -395,15 +404,27 @@ class EnumMetaInit(abstract.SimpleFunction):
     else:
       return node, self.ctx.convert.build_int(node)
 
-  def _wrap_value(self, node, value, base_type):
-    # Process an enum member's value for use as an argument. Returns a tuple
-    # that can be used for Args.posargs.
-    # If value is not a tuple already, make it one.
-    # Then, if the base type is tuple, wrap it again.
-    arg = abstract_utils.maybe_extract_tuple(value)
-    if base_type.full_name == "builtins.tuple":
-      arg = (self.ctx.convert.build_tuple(node, arg),)
-    return arg
+  def _value_to_starargs(self, node, value_var, base_type):
+    # Process an enum member's value for use as an argument. Returns an
+    # abstract.Tuple that can be used for Args.starargs.
+
+    # If there is more than one option, then we don't know what it is, so just
+    # wrap it in a tuple.
+    if len(value_var.data) > 1:
+      return self.ctx.convert.build_tuple(node, [value_var])
+    # If the value is already a tuple (or a NamedTuple, for example), then use
+    # that value. Otherwise, wrap it in a tuple.
+    value = abstract_utils.get_atomic_value(value_var)
+    if self.ctx.matcher(node).match_from_mro(
+        value.cls, self.ctx.convert.tuple_type):
+      args = value_var
+    else:
+      args = self.ctx.convert.build_tuple(node, [value_var])
+    # However, if the base type of the enum is tuple (and JUST tuple, not a
+    # subclass of tuple) then wrap the args in a tuple again.
+    if base_type and base_type.full_name == "builtins.tuple":
+      args = self.ctx.convert.build_tuple(node, [args])
+    return args
 
   def _mark_dynamic_enum(self, cls):
     # Checks if the enum should be marked as having dynamic attributes.
@@ -431,6 +452,10 @@ class EnumMetaInit(abstract.SimpleFunction):
   def _setup_interpreterclass(self, node, cls):
     member_types = []
     base_type = self._get_base_type(cls.bases())
+    # Enum members are created by calling __new__ (of either the base type or
+    # the first enum in MRO that defines its own __new__, or else object if
+    # neither of those applies) and then calling __init__ on the member.
+    node, enum_new = self._get_member_new(node, cls, base_type)
     for name, local in self._get_class_locals(node, cls.name, cls.members):
       if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
         continue
@@ -439,14 +464,10 @@ class EnumMetaInit(abstract.SimpleFunction):
       value = local.orig
       if self._is_orig_auto(value):
         node, value = self._call_generate_next_value(node, cls, name)
-      # Enum members are created by calling __new__ (of either the base type or
-      # the first enum in MRO that defines its own __new__, or else object if
-      # neither of those applies) and then calling __init__ on the member.
-      node, enum_new = self._get_member_new(node, cls, base_type)
       if enum_new:
         new_args = function.Args(
-            posargs=((cls.to_variable(node),) +
-                     abstract_utils.maybe_extract_tuple(value)))
+            posargs=(cls.to_variable(node),),
+            starargs=self._value_to_starargs(node, value, base_type))
         node, member_var = function.call_function(
             self.ctx, node, enum_new, new_args, fallback_to_unsolvable=False)
         # It's possible (but not likely) for member_var to have multiple
@@ -459,7 +480,7 @@ class EnumMetaInit(abstract.SimpleFunction):
               m.cls == member_var.data[0].cls for m in member_var.data):
             member = member_var.data[0]
           else:
-            member_var = self.vm.convert.create_new_unknown(node)
+            member_var = self.ctx.vm.convert.create_new_unknown(node)
             member = abstract_utils.get_atomic_value(member_var)
       else:
         # Build instances directly, because you can't call instantiate() when
@@ -468,12 +489,15 @@ class EnumMetaInit(abstract.SimpleFunction):
         member_var = member.to_variable(node)
       if "_value_" not in member.members:
         if base_type:
-          args = function.Args(posargs=self._wrap_value(node, value, base_type))
+          args = function.Args(
+              posargs=(),
+              starargs=self._value_to_starargs(node, value, base_type))
           node, value = base_type.call(node, base_type.to_binding(node), args)
         member.members["_value_"] = value
       if "__init__" in cls:
         init_args = function.Args(
-            posargs=(member_var,) + abstract_utils.maybe_extract_tuple(value))
+            posargs=(member_var,),
+            starargs=self._value_to_starargs(node, value, base_type))
         node = cls.call_init(node, cls.to_binding(node), init_args)
       member.members["value"] = member.members["_value_"]
       member.members["name"] = self.ctx.convert.build_string(node, name)

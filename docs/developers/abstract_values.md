@@ -12,7 +12,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Matching](#matching)
       * [Construction](#construction)
 
-<!-- Added by: rechen, at: 2021-10-05T20:10-07:00 -->
+<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
 
 <!--te-->
 
@@ -244,7 +244,7 @@ are then converted to abstract values as needed.
 NOTE: Conversely, [`pytype.output`][stub-generation] converts abstract values
 into PyTD nodes.
 
-[abstract_utils]: https://github.com/google/pytype/blob/master/pytype/abstract_utils.py
+[abstract_utils]: https://github.com/google/pytype/blob/master/pytype/abstract/abstract_utils.py
 
 [matcher]: https://github.com/google/pytype/blob/master/pytype/matcher.py
 

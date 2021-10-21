@@ -237,7 +237,189 @@ class NamedTupleTestPy3(test_base.BaseTest):
             y = ...  # type: int
         """)
 
-  def test_namedtuple_class_pyi(self):
+  def test_fields(self):
+    self.Check("""
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: str
+        b: int
+
+      v = X("answer", 42)
+      a = v.a  # type: str
+      b = v.b  # type: int
+      """)
+
+  def test_field_wrong_type(self):
+    self.CheckWithErrors("""
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: str
+        b: int
+
+      v = X("answer", 42)
+      a_int = v.a  # type: int  # annotation-type-mismatch
+      """)
+
+  def test_unpacking(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        class X(NamedTuple):
+          a: str
+          b: int
+      """)
+      ty, unused_errorlog = self.InferWithErrors("""
+        import foo
+        v = None  # type: foo.X
+        a, b = v
+      """, deep=False, pythonpath=[d.path])
+
+      self.assertTypesMatchPytd(ty, """
+        from typing import Union
+        foo = ...  # type: module
+        v = ...  # type: foo.X
+        a = ...  # type: str
+        b = ...  # type: int
+      """)
+
+  def test_bad_unpacking(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import NamedTuple
+        class X(NamedTuple):
+          a: str
+          b: int
+      """)
+      self.CheckWithErrors("""
+        import foo
+        v = None  # type: foo.X
+        _, _, too_many = v  # bad-unpacking
+        too_few, = v  # bad-unpacking
+        a: float
+        b: str
+        a, b = v  # annotation-type-mismatch # annotation-type-mismatch
+      """, deep=False, pythonpath=[d.path])
+
+  def test_is_tuple_type_and_superclasses(self):
+    """Test that a NamedTuple (function syntax) behaves like a tuple."""
+    self.Check("""
+      from typing import MutableSequence, NamedTuple, Sequence, Tuple, Union
+      class X(NamedTuple):
+        a: int
+        b: str
+
+      a = X(1, "2")
+      a_tuple = a  # type: tuple
+      a_typing_tuple = a  # type: Tuple[int, str]
+      a_typing_tuple_elipses = a  # type: Tuple[Union[int, str], ...]
+      a_sequence = a  # type: Sequence[Union[int, str]]
+      a_iter = iter(a)  # type: tupleiterator[Union[int, str]]
+
+      a_first = a[0]  # type: int
+      a_second = a[1]  # type: str
+      a_first_next = next(iter(a))  # We don't know the type through the iter() function
+    """)
+
+  def test_is_not_incorrect_types(self):
+    self.CheckWithErrors("""
+      from typing import MutableSequence, NamedTuple, Sequence, Tuple, Union
+      class X(NamedTuple):
+        a: int
+        b: str
+
+      x = X(1, "2")
+
+      x_not_a_list = x  # type: list  # annotation-type-mismatch
+      x_not_a_mutable_seq = x  # type: MutableSequence[Union[int, str]]  # annotation-type-mismatch
+    """)
+
+  def test_meets_protocol(self):
+    self.Check("""
+      from typing import NamedTuple, Protocol
+      class X(NamedTuple):
+        a: int
+        b: str
+
+      class IntAndStrHolderVars(Protocol):
+        a: int
+        b: str
+
+      class IntAndStrHolderProperty(Protocol):
+        @property
+        def a(self) -> int:
+          ...
+
+        @property
+        def b(self) -> str:
+          ...
+
+      a = X(1, "2")
+      a_vars_protocol: IntAndStrHolderVars = a
+      a_property_protocol: IntAndStrHolderProperty = a
+    """)
+
+  def test_does_not_meet_mismatching_protocol(self):
+    self.CheckWithErrors("""
+      from typing import NamedTuple, Protocol
+      class X(NamedTuple):
+        a: int
+        b: str
+
+      class DualStrHolder(Protocol):
+        a: str
+        b: str
+
+      class IntAndStrHolderVars_Alt(Protocol):
+        the_number: int
+        the_string: str
+
+      class IntStrIntHolder(Protocol):
+        a: int
+        b: str
+        c: int
+
+      a = X(1, "2")
+      a_wrong_types: DualStrHolder = a  # annotation-type-mismatch
+      a_wrong_names: IntAndStrHolderVars_Alt = a  # annotation-type-mismatch
+      a_too_many: IntStrIntHolder = a  # annotation-type-mismatch
+    """)
+
+  def test_generated_members(self):
+    ty = self.Infer("""
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: int
+        b: str
+      """)
+    self.assertTypesMatchPytd(ty, (
+        """
+        import collections
+        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
+
+        _TX = TypeVar('_TX', bound=X)
+
+        class X(tuple):
+            __slots__ = ["a", "b"]
+            __dict__: collections.OrderedDict[str, Union[int, str]]
+            _field_defaults: collections.OrderedDict[str, Union[int, str]]
+            _field_types: collections.OrderedDict[str, type]
+            _fields: Tuple[str, str]
+            a: int
+            b: str
+            def __getnewargs__(self) -> Tuple[int, str]: ...
+            def __getstate__(self) -> None: ...
+            def __init__(self, *args, **kwargs) -> None: ...
+            def __new__(cls: Type[_TX], a: int, b: str) -> _TX: ...
+            def _asdict(
+                self) -> collections.OrderedDict[str, Union[int, str]]: ...
+            @classmethod
+            def _make(
+                cls: Type[_TX], iterable: Iterable[Union[int, str]], new = ...,
+                len: Callable[[Sized], int] = ...) -> _TX: ...
+            def _replace(self: _TX, **kwds: Union[int, str]) -> _TX: ...
+        """))
+
+  def test_namedtuple_with_defaults(self):
     ty = self.Infer("""
       from typing import NamedTuple
 
@@ -257,6 +439,11 @@ class NamedTupleTestPy3(test_base.BaseTest):
       b = X.b
       c = X.c
       f = X.func
+
+      Y = SubNamedTuple(1)
+      a2 = Y.a
+      b2 = Y.b
+      c2 = Y.c
       """)
     self.assertTypesMatchPytd(
         ty,
@@ -268,6 +455,11 @@ class NamedTupleTestPy3(test_base.BaseTest):
         a: int
         b: str
         c: int
+
+        Y: SubNamedTuple
+        a2: int
+        b2: str
+        c2: int
 
         _TSubNamedTuple = TypeVar('_TSubNamedTuple', bound=SubNamedTuple)
 
@@ -321,13 +513,68 @@ class NamedTupleTestPy3(test_base.BaseTest):
     """)
 
   def test_generic_namedtuple(self):
-    self.Check("""
-      from typing import Generic, NamedTuple, TypeVar
+    ty = self.Infer("""
+      from typing import Callable, Generic, NamedTuple, TypeVar
+
+      def _int_identity(x: int) -> int:
+        return x
+
       T = TypeVar('T')
+
       class Foo(NamedTuple, Generic[T]):
         x: T
-      assert_type(Foo(x=0).x, int)
+        y: Callable[[T], T]
+      foo_int = Foo(x=0, y=_int_identity)
+      x_out = foo_int.x
+      y_out = foo_int.y
+      y_call_out = foo_int.y(2)
+      foo_str: Foo[str] = Foo(x="hi", y=__any_object__)
     """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+        from typing import Any, Callable, Generic, Iterable, Sized, Tuple, Type, TypeVar, Union
+
+
+        def _int_identity(x: int) -> int: ...
+
+        T = TypeVar("T")
+
+        foo_int = ...  # type: Foo[int]
+        x_out = ...  # type: int
+        y_out = ...  # type: Callable[[int], int]
+        y_call_out = ...  # type: int
+        foo_str = ...  # type: Foo[str]
+
+        _TFoo = TypeVar('_TFoo', bound=Foo)
+
+        class Foo(tuple, Generic[T]):
+          __slots__ = ["x", "y"]
+          # TODO(csyoung): Figure out why these two fields' value types are
+          # being collapsed to Any.
+          # The Union of field types is preserved elsewhere.
+          # This only seems to happen when Generic gets involved;
+          # without Generic, these get typed correctly.
+          __dict__: collections.OrderedDict[str, Any]
+          _field_defaults: collections.OrderedDict[str, Any]
+          _field_types: collections.OrderedDict[str, type]
+          _fields: Tuple[str, str]
+          x: T
+          y: Callable[[T], T]
+          def __getnewargs__(self) -> Tuple[T, Callable[[T], T]]: ...
+          def __getstate__(self) -> None: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+          def __new__(cls: Type[_TFoo], x: T, y: Callable[[T], T]) -> _TFoo: ...
+          def _asdict(
+              self
+          ) -> collections.OrderedDict[str, Union[Callable[[T], T], T]]: ...
+          @classmethod
+          def _make(
+              cls: Type[_TFoo], iterable: Iterable[Union[Callable[[T], T], T]],
+              new = ..., len: Callable[[Sized], int] = ...) -> _TFoo: ...
+          def _replace(
+              self: _TFoo, **kwds: Union[Callable[[T], T], T]) -> _TFoo: ...
+      """)
 
   def test_bad_typevar(self):
     self.CheckWithErrors("""

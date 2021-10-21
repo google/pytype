@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2021-10-11T13:17-07:00 -->
+<!-- Added by: rechen, at: 2021-10-19T16:14-07:00 -->
 
 <!--te-->
 
@@ -73,7 +73,7 @@ Feature                                                         | Version | Supp
 [PEP 613 -- Explicit Type Aliases][613]                         | 3.11+   | ❌       | [#787][typealias]
 [PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
 Custom Recursive Types                                          | 3.6     | ❌       | [#407][recursive-types]
-Generic Type Aliases                                            | 3.6     | ✅       | Requires `--preserve-union-macros` flag
+Generic Type Aliases                                            | 3.6     | ✅       |
 Type Annotation Inheritance                                     | 3.6     | ❌       | [#81][annotation-inheritance]
 
 ### Third-Party Libraries

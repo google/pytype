@@ -160,10 +160,6 @@ def add_basic_options(o):
       help=("Bind @property methods to the classes they're defined on for more "
             "precise type-checking. " + temporary))
   o.add_argument(
-      "--preserve-union-macros", action="store_true",
-      dest="preserve_union_macros", default=True,
-      help="Preserve Union generic type aliases in pyi files. " + temporary)
-  o.add_argument(
       "--use-enum-overlay", action="store_true",
       dest="use_enum_overlay", default=False,
       help="Use the enum overlay for more precise enum checking. " + temporary)
@@ -269,10 +265,6 @@ def add_infrastructure_options(o):
       "-Z", "--quick", action="store_true",
       dest="quick", default=None,
       help=("Only do an approximation."))
-  o.add_argument(
-      "--chex-overlay", action="store_true",
-      dest="chex_overlay", default=False,
-      help="Temporary flag to aid the release of an overlay for chex.dataclass")
 
 
 def add_debug_options(o):

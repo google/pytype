@@ -815,7 +815,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         # Parameterized classes can rename type parameters, which is why we need
         # the instance type for lookup. But if the instance type is not
         # parameterized, then it is safe to use the param names in other_type.
-        assert left is other_type.base_cls
+        # We need the somewhat complex assertion below to allow internal
+        # subclasses of abstract classes to act as their parent classes.
+        assert (isinstance(left, type(other_type.base_cls)) or
+                isinstance(other_type.base_cls, type(left)))
         left = other_type
       for type_param in left.template:
         class_param = other_type.get_formal_type_parameter(type_param.name)

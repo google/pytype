@@ -346,13 +346,17 @@ class Args(collections.namedtuple(
         starargs=starargs,
         starstarargs=starstarargs)
 
-  def is_empty(self):
-    if self.posargs or self.starargs or self.starstarargs:
-      return False
+  def has_namedargs(self):
     if isinstance(self.namedargs, dict):
-      return not self.namedargs
+      return bool(self.namedargs)
     else:
-      return not self.namedargs.pyval
+      return bool(self.namedargs.pyval)
+
+  def has_non_namedargs(self):
+    return bool(self.posargs or self.starargs or self.starstarargs)
+
+  def is_empty(self):
+    return not (self.has_namedargs() or self.has_non_namedargs())
 
   def starargs_as_tuple(self, node, ctx):
     try:
@@ -532,6 +536,19 @@ class Args(collections.namedtuple(
     if self.starstarargs is not None:
       variables.append(self.starstarargs)
     return variables
+
+  def replace_posarg(self, pos, val):
+    new_posargs = self.posargs[:pos] + (val,) + self.posargs[pos + 1:]
+    return self._replace(posargs=new_posargs)
+
+  def replace_namedarg(self, name, val):
+    new_namedargs = dict(self.namedargs)
+    new_namedargs[name] = val
+    return self._replace(namedargs=new_namedargs)
+
+  def delete_namedarg(self, name):
+    new_namedargs = {k: v for k, v in self.namedargs.items() if k != name}
+    return self._replace(namedargs=new_namedargs)
 
 
 class ReturnValueMixin:
@@ -1068,3 +1085,63 @@ def call_function(ctx,
     assert error
     error.set_return(node, result)
     raise error  # pylint: disable=raising-bad-type
+
+
+def match_all_args(ctx, node, func, args):
+  """Call match_args multiple times to find all type errors.
+
+  Args:
+    ctx: The abstract context.
+    node: The current CFG node.
+    func: An abstract function
+    args: An Args object to match against func
+
+  Returns:
+    A tuple of (new_args, errors)
+      where new_args = args with all incorrectly typed values set to Any
+            errors = a list of [(type mismatch error, arg name, value)]
+
+  Reraises any error that is not function.InvalidParameters
+  """
+  positional_names = func.get_positional_names()
+  needs_checking = True
+  errors = []
+  while needs_checking:
+    try:
+      func.match_args(node, args)
+    except FailedFunctionCall as e:
+      if isinstance(e, WrongKeywordArgs):
+        errors.append((e, e.extra_keywords[0], None))
+        for i in e.extra_keywords:
+          args = args.delete_namedarg(i)
+      elif isinstance(e, DuplicateKeyword):
+        errors.append((e, e.duplicate, None))
+        args = args.delete_namedarg(e.duplicate)
+      elif isinstance(e, MissingParameter):
+        errors.append((e, e.missing_parameter, None))
+        args = args.replace_namedarg(
+            e.missing_parameter, ctx.new_unsolvable(node))
+      elif isinstance(e, WrongArgTypes):
+        arg_name = e.bad_call.bad_param.name
+        for name, value in e.bad_call.passed_args:
+          if name != arg_name:
+            continue
+          errors.append((e, name, value))
+          try:
+            pos = positional_names.index(name)
+          except ValueError:
+            args = args.replace_namedarg(name, ctx.new_unsolvable(node))
+          else:
+            args = args.replace_posarg(pos, ctx.new_unsolvable(node))
+          break
+        else:
+          raise AssertionError(
+              "Mismatched parameter %s not found in passed_args" %
+              arg_name) from e
+      else:
+        # This is not an InvalidParameters error.
+        raise
+    else:
+      needs_checking = False
+
+  return args, errors
