@@ -230,8 +230,10 @@ class NamedTupleTest(test_base.BaseTest):
 
       x = X(1, "2")
 
+      x_wrong_tuple_types = x  # type: Tuple[str, str]  # annotation-type-mismatch
       x_not_a_list = x  # type: list  # annotation-type-mismatch
       x_not_a_mutable_seq = x  # type: MutableSequence[Union[int, str]]  # annotation-type-mismatch
+      x_first_wrong_element_type = x[0]  # type: str  # annotation-type-mismatch
     """)
 
   def test_meets_protocol(self):
@@ -292,7 +294,7 @@ class NamedTupleTest(test_base.BaseTest):
 
         _TX = TypeVar('_TX', bound=X)
 
-        class X(tuple):
+        class X(Tuple[int, str]):
             __slots__ = ["a", "b"]
             __dict__: collections.OrderedDict[str, Union[int, str]]
             _field_defaults: collections.OrderedDict[str, Union[int, str]]

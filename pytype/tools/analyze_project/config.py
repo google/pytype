@@ -80,6 +80,8 @@ _PYTYPE_SINGLE_ITEMS = {
     'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
     'strict_import': Item(
         None, 'False', ArgInfo('--strict-import', None), None),
+    'strict_namedtuple_checks': Item(
+        None, 'False', ArgInfo('--strict_namedtuple_checks', None), None),
 }
 
 

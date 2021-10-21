@@ -377,6 +377,12 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         varargs=Param("args"),
         kwargs=Param("kwargs"))
 
+    heterogeneous_tuple_type_params = dict(enumerate(field_types))
+    heterogeneous_tuple_type_params[abstract_utils.T] = field_types_union
+    # Representation of the to-be-created NamedTuple as a typing.Tuple.
+    heterogeneous_tuple_type = abstract.TupleClass(
+        self.ctx.convert.tuple_type, heterogeneous_tuple_type_params, self.ctx)
+
     # _make
     # _make is a classmethod, so it needs to be wrapped by
     # specialibuiltins.ClassMethodInstance.
@@ -422,13 +428,11 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
         kwargs=Param("kwds", field_types_union))
 
     # __getnewargs__
-    getnewargs_tuple_params = dict(
-        tuple(enumerate(field_types)) +
-        ((abstract_utils.T, field_types_union),))
-    getnewargs_tuple = abstract.TupleClass(self.ctx.convert.tuple_type,
-                                           getnewargs_tuple_params, self.ctx)
     members["__getnewargs__"] = overlay_utils.make_method(
-        self.ctx, node, name="__getnewargs__", return_type=getnewargs_tuple)
+        self.ctx,
+        node,
+        name="__getnewargs__",
+        return_type=heterogeneous_tuple_type)
 
     # __getstate__
     members["__getstate__"] = overlay_utils.make_method(
@@ -442,15 +446,20 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     cls_dict = abstract.Dict(self.ctx)
     cls_dict.update(node, members)
 
+    if self.ctx.options.strict_namedtuple_checks:
+      # Enforces type checking like Tuple[...]
+      superclass_of_new_type = heterogeneous_tuple_type.to_variable(node)
+    else:
+      superclass_of_new_type = self.ctx.convert.tuple_type.to_variable(node)
     if bases:
       final_bases = []
       for base in bases:
         if any(b.full_name == "typing.NamedTuple" for b in base.data):
-          final_bases.append(self.ctx.convert.tuple_type.to_variable(node))
+          final_bases.append(superclass_of_new_type)
         else:
           final_bases.append(base)
     else:
-      final_bases = [self.ctx.convert.tuple_type.to_variable(node)]
+      final_bases = [superclass_of_new_type]
       # This NamedTuple is being created via a function call. We manually
       # construct an annotated_locals entry for it so that __annotations__ is
       # initialized properly for the generated class.

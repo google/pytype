@@ -171,6 +171,12 @@ def add_basic_options(o):
       "--build-dict-literals-from-kwargs", action="store_true",
       dest="build_dict_literals_from_kwargs", default=False,
       help="Build dict literals from dict(k=v, ...) calls. " + temporary)
+  o.add_argument(
+      "--strict_namedtuple_checks", action="store_true",
+      dest="strict_namedtuple_checks", default=False,
+      help=(
+          "Enable stricter namedtuple checks, such as unpacking and "
+          "'typing.Tuple' compatibility. ") + temporary)
 
 
 def add_subtools(o):
