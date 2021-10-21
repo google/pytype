@@ -286,6 +286,19 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       h = ...  # type: str
     """)
 
+  @test_utils.skipBeforePy((3, 9), "removeprefix and removesuffix new in 3.9")
+  def test_str_remove_prefix_suffix(self):
+    ty = self.Infer("""
+      a = "prefix_suffix"
+      b = a.removeprefix("prefix_")
+      c = a.removesuffix("_suffix")
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      a = ...  # type: str
+      b = ...  # type: str
+      c = ...  # type: str
+    """)
+
   def test_str_is_hashable(self):
     self.Check("""
       from typing import Any, Dict, Hashable
