@@ -1553,9 +1553,6 @@ class VirtualMachine:
     """Check if a module path is in the overlay dictionary."""
     if name not in overlay_dict.overlays:
       return None
-    if name == "chex" and not self.ctx.options.chex_overlay:
-      # TODO(b/185807105): Enable --chex-overlay by default.
-      return None
     if name in self.loaded_overlays:
       overlay = self.loaded_overlays[name]
     else:
