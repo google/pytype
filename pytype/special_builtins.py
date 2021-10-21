@@ -695,3 +695,20 @@ class ClassMethod(BuiltinClass):
     for d in arg.data:
       d.is_classmethod = True
     return node, ClassMethodInstance(self.ctx, self, arg).to_variable(node)
+
+
+class Dict(BuiltinClass):
+  """Implementation of builtins.dict."""
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "dict")
+
+  def call(self, node, funcb, args):
+    if not args.has_non_namedargs():
+      # special-case a dict constructor with explicit k=v args
+      d = abstract.Dict(self.ctx)
+      for (k, v) in args.namedargs.items():
+        d.set_str_item(node, k, v)
+      return node, d.to_variable(node)
+    else:
+      return super().call(node, funcb, args)

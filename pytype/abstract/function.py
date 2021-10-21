@@ -346,13 +346,17 @@ class Args(collections.namedtuple(
         starargs=starargs,
         starstarargs=starstarargs)
 
-  def is_empty(self):
-    if self.posargs or self.starargs or self.starstarargs:
-      return False
+  def has_namedargs(self):
     if isinstance(self.namedargs, dict):
-      return not self.namedargs
+      return bool(self.namedargs)
     else:
-      return not self.namedargs.pyval
+      return bool(self.namedargs.pyval)
+
+  def has_non_namedargs(self):
+    return bool(self.posargs or self.starargs or self.starstarargs)
+
+  def is_empty(self):
+    return not (self.has_namedargs() or self.has_non_namedargs())
 
   def starargs_as_tuple(self, node, ctx):
     try:

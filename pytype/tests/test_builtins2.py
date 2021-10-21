@@ -156,7 +156,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
-      x1 = ...  # type: dict
+      x1 = ...  # type: Dict[str, int]
       x2 = ...  # type: Dict[int, str]
       x3 = ...  # type: Dict[int, str]
       x4 = ...  # type: Dict[int, str]
@@ -164,12 +164,13 @@ class BuiltinTests2(test_base.BaseTest):
       x6 = ...  # type: Dict[int, str]
     """)
 
-  def test_max(self):
+  def test_dict(self):
     ty = self.Infer("""
       x = dict(u=3, v=4, w=5)
     """)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: dict
+      from typing import Dict
+      x: Dict[str, int]
     """)
 
   def test_module(self):
