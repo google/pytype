@@ -704,7 +704,11 @@ class Dict(BuiltinClass):
     super().__init__(ctx, "dict")
 
   def call(self, node, funcb, args):
-    if not args.has_non_namedargs():
+    if self.ctx.options.build_dict_literals_from_kwargs:
+      build_literal = not args.has_non_namedargs()
+    else:
+      build_literal = args.is_empty()
+    if build_literal:
       # special-case a dict constructor with explicit k=v args
       d = abstract.Dict(self.ctx)
       for (k, v) in args.namedargs.items():

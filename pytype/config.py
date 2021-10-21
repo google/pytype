@@ -167,6 +167,10 @@ def add_basic_options(o):
       "--allow-recursive-types", action="store_true",
       dest="allow_recursive_types", default=False,
       help="Allow recursive type definitions. " + temporary)
+  o.add_argument(
+      "--build-dict-literals-from-kwargs", action="store_true",
+      dest="build_dict_literals_from_kwargs", default=False,
+      help="Build dict literals from dict(k=v, ...) calls. " + temporary)
 
 
 def add_subtools(o):

@@ -806,19 +806,21 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _match_maybe_parameterized_instance(self, left, instance, other_type,
                                           subst, view):
     """Used by _match_instance."""
+    def assert_classes_match(cls1, cls2):
+      # We need the somewhat complex assertion below to allow internal
+      # subclasses of abstract classes to act as their parent classes.
+      assert isinstance(cls1, type(cls2)) or isinstance(cls2, type(cls1))
+
     if isinstance(other_type, abstract.ParameterizedClass):
       if isinstance(left, abstract.ParameterizedClass):
-        assert left.base_cls is other_type.base_cls
+        assert_classes_match(left.base_cls, other_type.base_cls)
       elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
         return self._subst_with_type_parameters_from(subst, other_type)
       else:
         # Parameterized classes can rename type parameters, which is why we need
         # the instance type for lookup. But if the instance type is not
         # parameterized, then it is safe to use the param names in other_type.
-        # We need the somewhat complex assertion below to allow internal
-        # subclasses of abstract classes to act as their parent classes.
-        assert (isinstance(left, type(other_type.base_cls)) or
-                isinstance(other_type.base_cls, type(left)))
+        assert_classes_match(left, other_type.base_cls)
         left = other_type
       for type_param in left.template:
         class_param = other_type.get_formal_type_parameter(type_param.name)
