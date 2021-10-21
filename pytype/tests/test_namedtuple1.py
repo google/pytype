@@ -175,7 +175,8 @@ class NamedtupleTests(test_base.BaseTest):
 
         a_tuple = a  # type: tuple
         a_typing_tuple = a  # type: Tuple[Any, Any, Any]
-        a_typing_tuple_ellipses = a  # type: Tuple[Any, ...]  # Collapses to just plain "tuple"
+        # Collapses to just plain "tuple"
+        a_typing_tuple_ellipses = a  # type: Tuple[Any, ...]
         a_sequence = a  # type: Sequence[Any]
         a_iter = iter(a)  # type: tupleiterator
         a_first = next(iter(a))
@@ -192,7 +193,7 @@ class NamedtupleTests(test_base.BaseTest):
         x = X(1, "2", 42.0)
 
         x_not_a_list = x  # type: list  # annotation-type-mismatch
-        x_not_a_mutable_seq = x  # type: MutableSequence[Any]  # annotation-type-mismatch
+        x_not_a_mutable_seq = x  # type: MutableSequence[Any]  # annotation-type-mismatch  # pylint: disable=line-too-long
         """)
 
   def test_meets_protocol(self):
