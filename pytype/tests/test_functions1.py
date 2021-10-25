@@ -35,7 +35,7 @@ class TestClosures(test_base.BaseTest):
       import collections
       Foo = collections.namedtuple('Foo', 'x')
       def f():
-        x, _ = Foo(10)  # x gets set to abstract.Empty here.
+        (x,) = Foo(10)  # x gets set to abstract.Empty here.
         def g():
           return x  # Should not raise a name-error
     """)

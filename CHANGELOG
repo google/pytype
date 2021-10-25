@@ -1,3 +1,21 @@
+Version 2021.10.25:
+
+New features and updates:
+* Completely remove the --preserve-union-macros flag. This was a no-op as of
+  version 2021.10.17.
+* Add a new flag, --build-dict-literals-from-kwargs, to construct dict literals
+  for `dict(k=v, ...)`. This behavior will ultimately by enabled by default and
+  the flag removed.
+* Add a new flag, --strict_namedtuple_checks, for typing.NamedTuple and
+  collections.namedtuple to inherit from fixed-length tuples. This behavior will
+  ultimately be enabled by default and the flag removed.
+
+Bug fixes:
+* Fix how the enum overlay calls `base_type.__new__`.
+* Improve how the enum overlay chooses base types.
+* When an `attr.ib()` call has type errors, construct the attrib anyway.
+* Support builtin str removeprefix/removesuffix.
+
 Version 2021.10.18
 
 New features and updates:
@@ -11,6 +29,8 @@ Bug fixes:
 * Enum overlay: use ClassVar to differentiate enum class attributes.
 * Fix a parser bug involving nested class name conflicts.
 * Fix a crash when lazily loading a missing submodule.
+* Change PrintVisitor to group explicit imports with the ones collected from
+  type annotations.
 
 Version 2021.10.11
 

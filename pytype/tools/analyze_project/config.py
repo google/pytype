@@ -67,6 +67,9 @@ _PYTYPE_SINGLE_ITEMS = {
         None, 'False', ArgInfo('--use-enum-overlay', None), None),
     'allow_recursive_types': Item(
         None, 'False', ArgInfo('--use-recursive-types', None), None),
+    'build_dict_literals_from_kwargs': Item(
+        None, 'False', ArgInfo('--build-dict-literals-from-kwargs', None),
+        None),
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
         'Comma or space separated list of error names to ignore.'),
@@ -77,6 +80,8 @@ _PYTYPE_SINGLE_ITEMS = {
     'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
     'strict_import': Item(
         None, 'False', ArgInfo('--strict-import', None), None),
+    'strict_namedtuple_checks': Item(
+        None, 'False', ArgInfo('--strict_namedtuple_checks', None), None),
 }
 
 

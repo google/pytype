@@ -14,7 +14,10 @@ class NamedtupleTests(test_base.BaseTest):
 
   def _namedtuple_ast(self, name, fields):
     return collections_overlay.namedtuple_ast(
-        name, fields, [False] * len(fields), self.python_version)
+        name,
+        fields, [False] * len(fields),
+        python_version=self.python_version,
+        strict_namedtuple_checks=self.options.strict_namedtuple_checks)
 
   def _namedtuple_def(self, suffix="", **kws):
     """Generate the expected pyi for a simple namedtuple definition.
@@ -161,6 +164,18 @@ class NamedtupleTests(test_base.BaseTest):
         a = X(1, "2", 42.0)
 
         a_f, b_f, c_f = a
+        """)
+
+  def test_bad_unpacking(self):
+    self.CheckWithErrors(
+        """
+        import collections
+        X = collections.namedtuple("X", "a b c")
+
+        a = X(1, "2", 42.0)
+
+        _, _, _, too_many = a  # bad-unpacking
+        _, too_few = a  # bad-unpacking
         """)
 
   def test_is_tuple_and_superclasses(self):

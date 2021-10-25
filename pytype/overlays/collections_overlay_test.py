@@ -14,7 +14,10 @@ class NamedTupleAstTest(test_base.UnitTest):
 
   def _namedtuple_ast(self, name, fields):
     return collections_overlay.namedtuple_ast(
-        name, fields, [False] * len(fields), self.python_version)
+        name,
+        fields, [False] * len(fields),
+        self.python_version,
+        strict_namedtuple_checks=True)
 
   def test_basic(self):
     ast = self._namedtuple_ast("X", [])
