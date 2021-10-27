@@ -131,7 +131,7 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     return pytd.Constant(
         alias.name, pytdgen.pytd_type(pytd.NamedType(alias.type.name)))
   elif isinstance(value, pytd.Function):
-    return pytd_utils.AliasMethod(
+    return pytd.AliasMethod(
         value.Replace(name=alias.name),
         from_constant=isinstance(prev_value, pytd.Constant))
   else:

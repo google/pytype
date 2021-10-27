@@ -521,7 +521,7 @@ class Converter(utils.ContextWeakrefMixin):
         t = pytd.AnythingType()
       else:
         try:
-          cls = pytd_utils.LookupItemRecursive(ast, attr_name)
+          cls = pytd.LookupItemRecursive(ast, attr_name)
         except KeyError:
           if "__getattr__" not in ast:
             log.warning("Couldn't resolve %s", late_type.name)

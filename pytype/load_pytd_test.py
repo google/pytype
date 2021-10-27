@@ -417,7 +417,7 @@ class ImportPathsTest(_LoaderTest):
       """)
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       foo = loader.import_name("foo")
-      self.assertEqual(pytd_utils.Print(foo), "import foo.bar as foo.baz")
+      self.assertEqual(pytd_utils.Print(foo), "from foo import bar as foo.baz")
 
   def test_typing_reexport(self):
     with file_utils.Tempdir() as d:
