@@ -155,11 +155,6 @@ def add_basic_options(o):
   temporary = ("This flag is temporary and will be removed once this behavior "
                "is enabled by default.")
   o.add_argument(
-      "--bind-properties", action="store_true",
-      dest="bind_properties", default=True,
-      help=("Bind @property methods to the classes they're defined on for more "
-            "precise type-checking. " + temporary))
-  o.add_argument(
       "--use-enum-overlay", action="store_true",
       dest="use_enum_overlay", default=False,
       help="Use the enum overlay for more precise enum checking. " + temporary)
