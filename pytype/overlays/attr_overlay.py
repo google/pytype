@@ -184,6 +184,21 @@ class Attrs(classgen.Decorator):
       # Fix up type parameters in methods added by the decorator.
       cls.update_method_type_params()
 
+  def to_metadata(self):
+    return {
+        "tag": "attr.s",
+        "init": self._current_args["init"],
+        "kw_only": self._current_args["kw_only"],
+        "auto_attribs": self._current_args["auto_attribs"]
+    }
+
+  @classmethod
+  def from_metadata(cls, ctx, metadata):
+    kwargs = {k: metadata[k] for k in ("init", "kw_only", "auto_attribs")}
+    ret = cls.make(ctx)
+    ret.set_current_args(kwargs)
+    return ret
+
 
 class AttrsNextGenDefine(Attrs):
   """Implements the @attr.define decorator.

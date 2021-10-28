@@ -370,8 +370,7 @@ class CallTracer(vm.VirtualMachine):
       if name in self._CONSTRUCTORS:
         continue  # We already called this method during initialization.
       for v in methodvar.data:
-        if (self.ctx.options.bind_properties and
-            isinstance(v, special_builtins.PropertyInstance)):
+        if isinstance(v, special_builtins.PropertyInstance):
           for m in (v.fget, v.fset, v.fdel):
             if m:
               methods.insert(0, (name, m))

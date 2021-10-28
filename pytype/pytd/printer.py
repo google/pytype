@@ -5,6 +5,7 @@ import copy
 import logging
 import re
 
+from pytype import utils
 from pytype.pytd import base_visitor
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -27,11 +28,13 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_alias = False
     self.in_parameter = False
     self.in_literal = False
-    self._unit_name = None
+    self.multiline_args = multiline_args
+
+    self._unit = None
     self._local_names = {}
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
-    self.multiline_args = multiline_args
+    self._module_aliases = {}
 
   def Print(self, node):
     return node.Visit(copy.deepcopy(self))
@@ -107,7 +110,8 @@ class PrintVisitor(base_visitor.Visitor):
   def _NameCollision(self, name):
 
     def name_in(members):
-      return name in members or f"{self._unit_name}.{name}" in members
+      return name in members or (
+          self._unit and f"{self._unit.name}.{name}" in members)
 
     return name_in(self._class_members) or name_in(self._local_names)
 
@@ -130,8 +134,14 @@ class PrintVisitor(base_visitor.Visitor):
     else:
       return self._FromTyping(name)
 
+  def _StripUnitPrefix(self, name):
+    if self._unit:
+      return utils.strip_prefix(name, f"{self._unit.name}.")
+    else:
+      return name
+
   def EnterTypeDeclUnit(self, unit):
-    self._unit_name = unit.name
+    self._unit = unit
     for definitions, label in [(unit.classes, "class"),
                                (unit.functions, "function"),
                                (unit.constants, "constant"),
@@ -139,9 +149,15 @@ class PrintVisitor(base_visitor.Visitor):
                                (unit.aliases, "alias")]:
       for defn in definitions:
         self._local_names[defn.name] = label
+    for alias in unit.aliases:
+      if isinstance(alias.type, pytd.Module):
+        name = alias.name
+        if unit.name and name.startswith(unit.name + "."):
+          name = name[len(unit.name) + 1:]
+        self._module_aliases[alias.type.module_name] = name
 
   def LeaveTypeDeclUnit(self, _):
-    self._unit_name = None
+    self._unit = None
     self._local_names = {}
 
   def VisitTypeDeclUnit(self, node):
@@ -197,9 +213,7 @@ class PrintVisitor(base_visitor.Visitor):
       suffix = ""
       module, _, name = full_name.rpartition(".")
       if module:
-        alias_name = self.old_node.name
-        if alias_name.startswith(f"{self._unit_name}."):
-          alias_name = alias_name[len(self._unit_name)+1:]
+        alias_name = self._StripUnitPrefix(self.old_node.name)
         if name not in ("*", alias_name):
           suffix += f" as {alias_name}"
         self.imports = self.old_imports  # undo unnecessary imports change
@@ -395,6 +409,15 @@ class PrintVisitor(base_visitor.Visitor):
     """Convert a template to a string."""
     return node.type_param
 
+  def _UseExistingModuleAlias(self, name):
+    prefix, suffix = name.rsplit(".", 1)
+    while prefix:
+      if prefix in self._module_aliases:
+        return f"{self._module_aliases[prefix]}.{suffix}"
+      prefix, _, remainder = prefix.rpartition(".")
+      suffix = f"{remainder}.{suffix}"
+    return None
+
   def VisitNamedType(self, node):
     """Convert a type to a string."""
     prefix, _, suffix = node.name.rpartition(".")
@@ -402,24 +425,23 @@ class PrintVisitor(base_visitor.Visitor):
       node_name = suffix
     elif prefix == "typing":
       node_name = self._FromTyping(suffix)
-    elif (prefix and
-          prefix != self._unit_name and
-          prefix not in self._local_names):
-      if self.class_names and "." in self.class_names[-1]:
-        # We've already fully qualified the class names.
-        class_prefix = self.class_names[-1]
-      else:
-        class_prefix = ".".join(self.class_names)
-      if self._unit_name:
-        class_prefixes = {class_prefix, f"{self._unit_name}.{class_prefix}"}
-      else:
-        class_prefixes = {class_prefix}
-      if prefix not in class_prefixes:
-        # If the prefix doesn't match the class scope, then it's an import.
-        self._RequireImport(prefix)
+    elif "." not in node.name:
       node_name = node.name
     else:
-      node_name = node.name
+      if self._unit:
+        try:
+          pytd.LookupItemRecursive(self._unit, self._StripUnitPrefix(node.name))
+        except KeyError:
+          aliased_name = self._UseExistingModuleAlias(node.name)
+          if aliased_name:
+            node_name = aliased_name
+          else:
+            self._RequireImport(prefix)
+            node_name = node.name
+        else:
+          node_name = node.name
+      else:
+        node_name = node.name
     if node_name == "NoneType":
       # PEP 484 allows this special abbreviation.
       return "None"
@@ -449,10 +471,15 @@ class PrintVisitor(base_visitor.Visitor):
     return node.name
 
   def VisitModule(self, node):
-    if node.is_aliased:
-      return f"import {node.module_name} as {node.name}"
-    else:
+    if not node.is_aliased:
       return f"import {node.module_name}"
+    elif "." in node.module_name:
+      # `import x.y as z` and `from x import y as z` are equivalent, but the
+      # latter is a bit prettier.
+      prefix, suffix = node.module_name.rsplit(".", 1)
+      return f"from {prefix} import {suffix} as {node.name}"
+    else:
+      return f"import {node.module_name} as {node.name}"
 
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""

@@ -193,6 +193,7 @@ py_library(
     ._pytd
     .base_visitor
     .pep484
+    pytype.utils
     pytype.pytd.parse.parse
 )
 

@@ -61,8 +61,6 @@ ITEMS = {
 
 # The missing fields will be filled in by generate_sample_config_or_die.
 _PYTYPE_SINGLE_ITEMS = {
-    'bind_properties': Item(
-        None, 'False', ArgInfo('--bind-properties', None), None),
     'use_enum_overlay': Item(
         None, 'False', ArgInfo('--use-enum-overlay', None), None),
     'allow_recursive_types': Item(

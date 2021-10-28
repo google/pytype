@@ -471,7 +471,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         self._star_imports.add(module_name)
         item = t  # VisitTypeDeclUnit will remove this unneeded item.
       else:
-        item = pytd_utils.LookupItemRecursive(module, name)
+        item = pytd.LookupItemRecursive(module, name)
     except KeyError as e:
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
@@ -627,7 +627,7 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     del self.unit
 
   def _LookupItemRecursive(self, name):
-    return pytd_utils.LookupItemRecursive(self.unit, name)
+    return pytd.LookupItemRecursive(self.unit, name)
 
   def VisitNamedType(self, node):
     """Do lookup on a pytd.NamedType."""

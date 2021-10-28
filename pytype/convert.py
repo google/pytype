@@ -521,7 +521,7 @@ class Converter(utils.ContextWeakrefMixin):
         t = pytd.AnythingType()
       else:
         try:
-          cls = pytd_utils.LookupItemRecursive(ast, attr_name)
+          cls = pytd.LookupItemRecursive(ast, attr_name)
         except KeyError:
           if "__getattr__" not in ast:
             log.warning("Couldn't resolve %s", late_type.name)
@@ -842,6 +842,9 @@ class Converter(utils.ContextWeakrefMixin):
           if md["tag"] == "attr.ib":
             ret = attr_overlay.AttribInstance.from_metadata(
                 self.ctx, self.ctx.root_node, typ, md)
+            return ret
+          elif md["tag"] == "attr.s":
+            ret = attr_overlay.Attrs.from_metadata(self.ctx, md)
             return ret
         except (IndexError, ValueError, TypeError, KeyError):
           details = "Wrong format for pytype_metadata."
