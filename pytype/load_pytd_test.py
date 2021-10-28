@@ -478,6 +478,18 @@ class ImportPathsTest(_LoaderTest):
       loader = load_pytd.Loader(None, self.python_version, pythonpath=[d.path])
       loader.import_name("foo.bar")
 
+  def test_module_alias(self):
+    ast = self._import(foo="""
+      import subprocess as _subprocess
+      x: _subprocess.Popen
+    """)
+    expected = textwrap.dedent("""
+      import subprocess as foo._subprocess
+
+      foo.x: _subprocess.Popen
+    """).strip()
+    self.assertMultiLineEqual(pytd_utils.Print(ast), expected)
+
 
 class ImportTypeMacroTest(_LoaderTest):
 

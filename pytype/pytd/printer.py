@@ -34,6 +34,7 @@ class PrintVisitor(base_visitor.Visitor):
     self._local_names = {}
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
+    self._module_aliases = {}
 
   def Print(self, node):
     return node.Visit(copy.deepcopy(self))
@@ -148,6 +149,12 @@ class PrintVisitor(base_visitor.Visitor):
                                (unit.aliases, "alias")]:
       for defn in definitions:
         self._local_names[defn.name] = label
+    for alias in unit.aliases:
+      if isinstance(alias.type, pytd.Module):
+        name = alias.name
+        if unit.name and name.startswith(unit.name + "."):
+          name = name[len(unit.name) + 1:]
+        self._module_aliases[alias.type.module_name] = name
 
   def LeaveTypeDeclUnit(self, _):
     self._unit = None
@@ -402,6 +409,15 @@ class PrintVisitor(base_visitor.Visitor):
     """Convert a template to a string."""
     return node.type_param
 
+  def _UseExistingModuleAlias(self, name):
+    prefix, suffix = name.rsplit(".", 1)
+    while prefix:
+      if prefix in self._module_aliases:
+        return f"{self._module_aliases[prefix]}.{suffix}"
+      prefix, _, remainder = prefix.rpartition(".")
+      suffix = f"{remainder}.{suffix}"
+    return None
+
   def VisitNamedType(self, node):
     """Convert a type to a string."""
     prefix, _, suffix = node.name.rpartition(".")
@@ -416,10 +432,14 @@ class PrintVisitor(base_visitor.Visitor):
         try:
           pytd.LookupItemRecursive(self._unit, self._StripUnitPrefix(node.name))
         except KeyError:
-          # If the name is not defined in the current module, then we need to
-          # import it.
-          self._RequireImport(prefix)
-        node_name = node.name
+          aliased_name = self._UseExistingModuleAlias(node.name)
+          if aliased_name:
+            node_name = aliased_name
+          else:
+            self._RequireImport(prefix)
+            node_name = node.name
+        else:
+          node_name = node.name
       else:
         node_name = node.name
     if node_name == "NoneType":
