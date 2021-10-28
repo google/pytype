@@ -70,6 +70,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     """Apply the decorator to cls."""
 
   def update_kwargs(self, args):
+    """Update current_args with the Args passed to the decorator."""
     self._current_args = self._DEFAULT_ARGS.copy()
     for k, v in args.namedargs.items():
       if k in self._current_args:
@@ -78,6 +79,11 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
         except abstract_utils.ConversionError:
           self.ctx.errorlog.not_supported_yet(
               self.ctx.vm.frames, "Non-constant argument to decorator: %r" % k)
+
+  def set_current_args(self, kwargs):
+    """Set current_args when constructing a class directly."""
+    self._current_args = self._DEFAULT_ARGS.copy()
+    self._current_args.update(kwargs)
 
   def init_name(self, attr):
     """Attribute name as an __init__ keyword, could differ from attr.name."""

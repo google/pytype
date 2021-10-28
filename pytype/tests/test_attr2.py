@@ -1,6 +1,7 @@
 """Tests for attrs library in attr_overlay.py."""
 
 from pytype import file_utils
+from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
@@ -1072,6 +1073,33 @@ class TestPyiAttrs(test_base.BaseTest):
         class Foo(foo.A):
           z: str
           def __init__(self, x: bool, z: str, *, y: int = ...) -> None: ...
+      """)
+
+
+class TestPyiAttrsWrapper(test_base.BaseTest):
+  """Tests for @attr.s wrappers in pyi files."""
+
+  def test_basic(self):
+    foo_ty = self.Infer("""
+      import attr
+      wrapper = attr.s(kw_only=True, auto_attribs=True)
+    """)
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
+      ty = self.Infer("""
+        import foo
+        @foo.wrapper
+        class Foo:
+          x: int
+      """, pythonpath=[d.path])
+      self.assertTypesMatchPytd(ty, """
+        from typing import Annotated, Callable
+        foo: module
+
+        @attr.s
+        class Foo:
+          x: int
+          def __init__(self, *, x: int) -> None: ...
       """)
 
 

@@ -843,6 +843,9 @@ class Converter(utils.ContextWeakrefMixin):
             ret = attr_overlay.AttribInstance.from_metadata(
                 self.ctx, self.ctx.root_node, typ, md)
             return ret
+          elif md["tag"] == "attr.s":
+            ret = attr_overlay.Attrs.from_metadata(self.ctx, md)
+            return ret
         except (IndexError, ValueError, TypeError, KeyError):
           details = "Wrong format for pytype_metadata."
           self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames,
