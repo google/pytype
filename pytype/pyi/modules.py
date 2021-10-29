@@ -7,7 +7,6 @@ from pytype import file_utils
 from pytype import module_utils
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
-from pytype.pytd import visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
 
 
@@ -58,8 +57,6 @@ class Module:
 
   def qualify_name(self, orig_name):
     """Qualify an import name."""
-    # Doing the "builtins" rename here ensures that we catch alias names.
-    orig_name = visitors.RenameBuiltinsPrefixInName(orig_name)
     if not self.package_name:
       return orig_name
     rel_name = self._qualify_name_with_special_dir(orig_name)
@@ -79,6 +76,10 @@ class Module:
       # We don't care about imports that are not aliased.
       return None
     name, new_name = item
+    if name == new_name == "__builtin__":
+      # 'import __builtin__' should be completely ignored; this is the PY2 name
+      # of the builtins module.
+      return None
     module_name = self.qualify_name(name)
     as_name = self.qualify_name(new_name)
     t = pytd.Module(name=as_name, module_name=module_name)

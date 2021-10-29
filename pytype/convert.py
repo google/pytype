@@ -514,20 +514,25 @@ class Converter(utils.ContextWeakrefMixin):
   def _load_late_type(self, late_type):
     """Resolve a late type, possibly by loading a module."""
     if late_type.name not in self._resolved_late_types:
-      ast, attr_name = self._load_late_type_module(late_type)
-      if ast is None:
-        log.error("During dependency resolution, couldn't resolve late type %r",
-                  late_type.name)
-        t = pytd.AnythingType()
+      ast = self.ctx.loader.import_name(late_type.name)
+      if ast:
+        t = pytd.Module(name=late_type.name, module_name=late_type.name)
       else:
-        try:
-          cls = pytd.LookupItemRecursive(ast, attr_name)
-        except KeyError:
-          if "__getattr__" not in ast:
-            log.warning("Couldn't resolve %s", late_type.name)
+        ast, attr_name = self._load_late_type_module(late_type)
+        if ast is None:
+          log.error(
+              "During dependency resolution, couldn't resolve late type %r",
+              late_type.name)
           t = pytd.AnythingType()
         else:
-          t = pytd.ToType(cls, allow_functions=True)
+          try:
+            cls = pytd.LookupItemRecursive(ast, attr_name)
+          except KeyError:
+            if "__getattr__" not in ast:
+              log.warning("Couldn't resolve %s", late_type.name)
+            t = pytd.AnythingType()
+          else:
+            t = pytd.ToType(cls, allow_functions=True)
       self._resolved_late_types[late_type.name] = t
     return self._resolved_late_types[late_type.name]
 
@@ -536,7 +541,10 @@ class Converter(utils.ContextWeakrefMixin):
       raise abstract_utils.ModuleLoadError()
     data = (ast.constants + ast.type_params + ast.classes +
             ast.functions + ast.aliases)
-    members = {val.name.rsplit(".")[-1]: val for val in data}
+    members = {}
+    for val in data:
+      name = utils.strip_prefix(val.name, f"{ast.name}.")
+      members[name] = val
     return abstract.Module(self.ctx, ast.name, members, ast)
 
   def _get_literal_value(self, pyval):

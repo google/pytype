@@ -450,7 +450,11 @@ class Definitions:
             from_package != "typing" or
             self.module_info.module_name == "protocols"):
           self.aliases[t.new_name] = t.pytd_alias()
-          self.module_path_map[t.new_name] = t.qualified_name
+          if t.new_name != "typing":
+            # We don't allow the typing module to be mapped to another module,
+            # since that would lead to 'from typing import ...' statements to be
+            # resolved incorrectly.
+            self.module_path_map[t.new_name] = t.qualified_name
     else:
       # import a, b as c, ...
       for item in import_list:

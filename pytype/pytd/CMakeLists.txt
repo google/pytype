@@ -203,6 +203,7 @@ py_library(
   SRCS
     serialize_ast.py
   DEPS
+    ._pytd
     .pytd_utils
     .visitors
     pytype.utils

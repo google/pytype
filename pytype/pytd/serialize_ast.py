@@ -9,6 +9,7 @@ import collections
 
 from pytype import utils
 from pytype.pyi import parser
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
@@ -26,6 +27,35 @@ class FindClassTypesVisitor(visitors.Visitor):
 
   def EnterClassType(self, n):
     self.class_type_nodes.append(n)
+
+
+class UndoModuleAliasesVisitor(visitors.Visitor):
+  """Visitor to undo module aliases in late types.
+
+  Since late types are loaded out of context, they need to contain the original
+  names of modules, not whatever they've been aliased to in the current module.
+  """
+
+  def __init__(self):
+    super().__init__()
+    self._module_aliases = {}
+
+  def EnterTypeDeclUnit(self, node):
+    for alias in node.aliases:
+      if isinstance(alias.type, pytd.Module):
+        name = utils.strip_prefix(alias.name, f"{node.name}.")
+        self._module_aliases[name] = alias.type.module_name
+
+  def VisitLateType(self, node):
+    if "." not in node.name:
+      return node
+    prefix, suffix = node.name.rsplit(".", 1)
+    while prefix:
+      if prefix in self._module_aliases:
+        return node.Replace(name=self._module_aliases[prefix] + "." + suffix)
+      prefix, _, remainder = prefix.rpartition(".")
+      suffix = f"{remainder}.{suffix}"
+    return node
 
 
 SerializableTupleClass = collections.namedtuple(
@@ -67,6 +97,7 @@ def StoreAst(ast, filename=None, open_function=open):
   if ast.name.endswith(".__init__"):
     ast = ast.Visit(visitors.RenameModuleVisitor(
         ast.name, ast.name.rsplit(".__init__", 1)[0]))
+  ast = ast.Visit(UndoModuleAliasesVisitor())
   # Collect dependencies
   deps = visitors.CollectDependencies()
   ast.Visit(deps)
