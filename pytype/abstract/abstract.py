@@ -1557,23 +1557,36 @@ class AnnotationContainer(AnnotationClass):
     # For user-defined generic types, check if its type parameter matches
     # its corresponding concrete type
     if isinstance(base_cls, InterpreterClass) and base_cls.template:
-      for formal in base_cls.template:
-        if (isinstance(formal, TypeParameter) and not formal.is_generic() and
-            isinstance(params[formal.name], TypeParameter)):
-          if formal.name != params[formal.name].name:
-            self.ctx.errorlog.not_supported_yet(
-                self.ctx.vm.frames,
-                "Renaming TypeVar `%s` with constraints or bound" % formal.name)
+      for formal_param in base_cls.template:
+        root_node = self.ctx.root_node
+        param_value = params[formal_param.name]
+        if (isinstance(formal_param, TypeParameter) and
+            not formal_param.is_generic() and
+            isinstance(param_value, TypeParameter)):
+          if formal_param.name == param_value.name:
+            # We don't need to check if a TypeParameter matches itself.
+            continue
+          else:
+            actual = param_value.instantiate(
+                root_node, container=abstract_utils.DUMMY_CONTAINER)
         else:
-          root_node = self.ctx.root_node
-          actual = params[formal.name].instantiate(root_node)
-          bad = self.ctx.matcher(root_node).bad_matches(actual, formal)
-          if bad:
-            formal = self.ctx.annotation_utils.sub_one_annotation(
-                root_node, formal, [{}])
-            self.ctx.errorlog.bad_concrete_type(self.ctx.vm.frames, root_node,
-                                                formal, actual, bad)
-            return self.ctx.convert.unsolvable
+          actual = param_value.instantiate(root_node)
+        bad = self.ctx.matcher(root_node).bad_matches(actual, formal_param)
+        if bad:
+          if not isinstance(param_value, TypeParameter):
+            # If param_value is not a TypeVar, we substitute in TypeVar bounds
+            # and constraints in formal_param for a more helpful error message.
+            formal_param = self.ctx.annotation_utils.sub_one_annotation(
+                root_node, formal_param, [{}])
+            details = None
+          elif isinstance(formal_param, TypeParameter):
+            details = (f"TypeVars {formal_param.name} and {param_value.name} "
+                       "have incompatible bounds or constraints.")
+          else:
+            details = None
+          self.ctx.errorlog.bad_concrete_type(
+              self.ctx.vm.frames, root_node, formal_param, actual, bad, details)
+          return self.ctx.convert.unsolvable
 
     try:
       return abstract_class(base_cls, params, self.ctx, template_params)

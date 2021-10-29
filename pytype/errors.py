@@ -923,14 +923,16 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, message, details)
 
   @_error_name("bad-concrete-type")
-  def bad_concrete_type(self, stack, node, formal, actual, bad):
+  def bad_concrete_type(self, stack, node, formal, actual, bad, details=None):
     expected, actual, _, protocol_details, nis_details = (
         self._print_as_return_types(node, formal, actual, bad))
-    details = ["       Expected: ", expected, "\n",
-               "Actually passed: ", actual]
-    details.extend(protocol_details + nis_details)
+    full_details = ["       Expected: ", expected, "\n",
+                    "Actually passed: ", actual]
+    if details:
+      full_details.append("\n" + details)
+    full_details.extend(protocol_details + nis_details)
     self.error(
-        stack, "Invalid instantiation of generic class", "".join(details))
+        stack, "Invalid instantiation of generic class", "".join(full_details))
 
   def _show_variable(self, var):
     """Show variable as 'name: typ' or 'pyval: typ' if available."""

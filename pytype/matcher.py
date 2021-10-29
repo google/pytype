@@ -292,7 +292,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
     if isinstance(left, abstract.TypeParameterInstance) and (
         isinstance(left.instance, (abstract.CallableClass,
-                                   function.Signature))):
+                                   function.Signature)) or
+        left.instance is abstract_utils.DUMMY_CONTAINER):
       if isinstance(other_type, abstract.TypeParameter):
         new_subst = self._match_type_param_against_type_param(
             left.param, other_type, subst, view)

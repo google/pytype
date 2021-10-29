@@ -218,7 +218,8 @@ class Converter(utils.ContextWeakrefMixin):
     if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
-      if v.module in self._scopes:
+      if (v.module in self._scopes or
+          v.instance is abstract_utils.DUMMY_CONTAINER):
         return self._typeparam_to_def(node, v.param, v.param.name)
       elif v.instance.get_instance_type_parameter(v.full_name).bindings:
         # The type parameter was initialized. Set the view to None, since we
