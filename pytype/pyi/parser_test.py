@@ -1,66 +1,13 @@
 import hashlib
-import re
 import sys
 import textwrap
 
-from pytype import utils
 from pytype.pyi import parser
+from pytype.pyi import parser_test_base
 from pytype.pytd import pytd
-from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 import unittest
-
-IGNORE = object()
-
-
-class _ParserTestBase(test_base.UnitTest):
-
-  def check(self, src, expected=None, prologue=None, name=None,
-            version=None, platform=None):
-    """Check the parsing of src.
-
-    This checks that parsing the source and then printing the resulting
-    AST results in the expected text.
-
-    Args:
-      src: A source string.
-      expected: Optional expected result string.  If not provided, src is
-        used instead.  The special value IGNORE can be used to skip
-        checking the parsed results against expected text.
-      prologue: An optional prologue to be prepended to the expected text
-        before comparisson.  Useful for imports that are introduced during
-        printing the AST.
-      name: The name of the module.
-      version: A python version tuple (None for default value).
-      platform: A platform string (None for default value).
-
-    Returns:
-      The parsed pytd.TypeDeclUnit.
-    """
-    version = version or self.python_version
-    src = textwrap.dedent(src).lstrip()
-    ast = parser.parse_string(src, name=name, python_version=version,
-                              platform=platform)
-    actual = pytd_utils.Print(ast)
-    if expected != IGNORE:
-      if expected is None:
-        expected = src
-      else:
-        expected = textwrap.dedent(expected).lstrip()
-      if prologue:
-        expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
-      # Allow blank lines at the end of `expected` for prettier tests.
-      self.assertMultiLineEqual(expected.rstrip(), actual)
-    return ast
-
-  def check_error(self, src, expected_line, message):
-    """Check that parsing the src raises the expected error."""
-    with self.assertRaises(parser.ParseError) as e:
-      parser.parse_string(textwrap.dedent(src).lstrip(),
-                          python_version=self.python_version)
-    self.assertRegex(utils.message(e.exception), re.escape(message))
-    self.assertEqual(expected_line, e.exception.line)
 
 
 class ParseErrorTest(unittest.TestCase):
@@ -107,7 +54,7 @@ class ParseErrorTest(unittest.TestCase):
     self.check("        ParseError: my message", "my message", column=5)
 
 
-class ParserTest(_ParserTestBase):
+class ParserTest(parser_test_base.ParserTestBase):
 
   def test_syntax_error(self):
     self.check_error("123", 1, "Unexpected expression")
@@ -327,7 +274,8 @@ class ParserTest(_ParserTestBase):
                "from foo import a\nfrom foo import b")
 
   def test_from_import(self):
-    ast = self.check("from foo import c\nclass Bar(c.X): ...", IGNORE)
+    ast = self.check("from foo import c\nclass Bar(c.X): ...",
+                     parser_test_base.IGNORE)
     parent, = ast.Lookup("Bar").parents
     self.assertEqual(parent, pytd.NamedType("foo.c.X"))
 
@@ -573,7 +521,7 @@ class ParserTest(_ParserTestBase):
     """)
 
 
-class QuotedTypeTest(_ParserTestBase):
+class QuotedTypeTest(parser_test_base.ParserTestBase):
 
   def test_annotation(self):
     self.check("""
@@ -598,7 +546,7 @@ class QuotedTypeTest(_ParserTestBase):
     self.check_error("x: List['int']", 1, "List['int'] not supported")
 
 
-class HomogeneousTypeTest(_ParserTestBase):
+class HomogeneousTypeTest(parser_test_base.ParserTestBase):
 
   def test_callable_parameters(self):
     self.check("""
@@ -704,7 +652,7 @@ class HomogeneousTypeTest(_ParserTestBase):
                "x: tuple")
 
 
-class NamedTupleTest(_ParserTestBase):
+class NamedTupleTest(parser_test_base.ParserTestBase):
 
   @unittest.skip("Constructors in type annotations not supported")
   def test_no_fields(self):
@@ -1037,7 +985,7 @@ class NamedTupleTest(_ParserTestBase):
     """)
 
 
-class FunctionTest(_ParserTestBase):
+class FunctionTest(parser_test_base.ParserTestBase):
 
   def test_params(self):
     self.check("def foo() -> int: ...")
@@ -1407,7 +1355,7 @@ class FunctionTest(_ParserTestBase):
                prologue="from typing import Any, Coroutine")
 
 
-class ClassTest(_ParserTestBase):
+class ClassTest(parser_test_base.ParserTestBase):
 
   def test_no_parents(self):
     canonical = """
@@ -1626,7 +1574,7 @@ class ClassTest(_ParserTestBase):
     self.assertEqual(x.type.name, "typing.Mapping")
 
 
-class IfTest(_ParserTestBase):
+class IfTest(parser_test_base.ParserTestBase):
 
   def test_if_true(self):
     self.check("""
@@ -1802,7 +1750,7 @@ class IfTest(_ParserTestBase):
         T = TypeVar('T')""")
 
 
-class ClassIfTest(_ParserTestBase):
+class ClassIfTest(parser_test_base.ParserTestBase):
 
   # These tests assume that IfTest has already covered the inner workings of
   # peer's functions.  Instead, they focus on verifying that if statements
@@ -1873,7 +1821,7 @@ class ClassIfTest(_ParserTestBase):
     """, 3, r"TypeVars need to be defined at module level")
 
 
-class ConditionTest(_ParserTestBase):
+class ConditionTest(parser_test_base.ParserTestBase):
 
   def check_cond(self, condition, expected, **kwargs):
     out = "x: int" if expected else ""
@@ -2010,7 +1958,7 @@ class ConditionTest(_ParserTestBase):
                           "Unsupported condition: 'foo.bar'")
 
 
-class PropertyDecoratorTest(_ParserTestBase):
+class PropertyDecoratorTest(parser_test_base.ParserTestBase):
   """Tests that cover _parse_signature_as_property()."""
 
   def test_property_with_type(self):
@@ -2137,7 +2085,7 @@ class PropertyDecoratorTest(_ParserTestBase):
       """, 1, "Invalid property decorators for method `name`")
 
 
-class MergeSignaturesTest(_ParserTestBase):
+class MergeSignaturesTest(parser_test_base.ParserTestBase):
 
   def test_property(self):
     self.check("""
@@ -2258,14 +2206,7 @@ class MergeSignaturesTest(_ParserTestBase):
                      "abstractmethod decorators")
 
 
-class EntireFileTest(_ParserTestBase):
-
-  def test_builtins(self):
-    _, builtins = pytd_utils.GetPredefinedFile("builtins", "builtins")
-    self.check(builtins, expected=IGNORE)
-
-
-class AnyTest(_ParserTestBase):
+class AnyTest(parser_test_base.ParserTestBase):
 
   def test_generic_any(self):
     self.check("""
@@ -2291,7 +2232,7 @@ class AnyTest(_ParserTestBase):
       x: Any""")
 
 
-class CanonicalPyiTest(_ParserTestBase):
+class CanonicalPyiTest(parser_test_base.ParserTestBase):
 
   def test_canonical_version(self):
     src = textwrap.dedent("""
@@ -2311,7 +2252,7 @@ class CanonicalPyiTest(_ParserTestBase):
         parser.canonical_pyi(src, self.python_version), expected)
 
 
-class TypeMacroTest(_ParserTestBase):
+class TypeMacroTest(parser_test_base.ParserTestBase):
 
   def test_simple(self):
     self.check("""
@@ -2427,7 +2368,7 @@ class TypeMacroTest(_ParserTestBase):
     """)
 
 
-class ImportTypeIgnoreTest(_ParserTestBase):
+class ImportTypeIgnoreTest(parser_test_base.ParserTestBase):
 
   def test_import(self):
     self.check("""
@@ -2466,7 +2407,7 @@ class ImportTypeIgnoreTest(_ParserTestBase):
     self.assertTrue(ast.Lookup("f"))
 
 
-class LiteralTest(_ParserTestBase):
+class LiteralTest(parser_test_base.ParserTestBase):
 
   def test_bool(self):
     self.check("""
@@ -2603,7 +2544,7 @@ class LiteralTest(_ParserTestBase):
     """, 2, "Invalid type `float` in Literal[0.0].")
 
 
-class TypedDictTest(_ParserTestBase):
+class TypedDictTest(parser_test_base.ParserTestBase):
 
   def test_assign(self):
     self.check("""
@@ -2690,7 +2631,7 @@ class TypedDictTest(_ParserTestBase):
     """)
 
 
-class NewTypeTest(_ParserTestBase):
+class NewTypeTest(parser_test_base.ParserTestBase):
 
   def test_basic(self):
     self.check("""
@@ -2715,7 +2656,7 @@ class NewTypeTest(_ParserTestBase):
     """)
 
 
-class MethodAliasTest(_ParserTestBase):
+class MethodAliasTest(parser_test_base.ParserTestBase):
 
   def test_normal_method(self):
     self.check("""
@@ -2787,7 +2728,7 @@ class MethodAliasTest(_ParserTestBase):
     """)
 
 
-class AnnotatedTest(_ParserTestBase):
+class AnnotatedTest(parser_test_base.ParserTestBase):
   """Test typing.Annotated."""
 
   def test_annotated(self):
@@ -2870,7 +2811,7 @@ class ParamsTest(test_base.UnitTest):
       self.assertEqual(actual, expected)
 
 
-class ParamSpecTest(_ParserTestBase):
+class ParamSpecTest(parser_test_base.ParserTestBase):
 
   def test_from_typing(self):
     self.check("""
@@ -2958,7 +2899,7 @@ class ParamSpecTest(_ParserTestBase):
     """)
 
 
-class ConcatenateTest(_ParserTestBase):
+class ConcatenateTest(parser_test_base.ParserTestBase):
 
   def test_from_typing(self):
     self.check("""
@@ -3004,7 +2945,7 @@ class ConcatenateTest(_ParserTestBase):
     """)
 
 
-class UnionOrTest(_ParserTestBase):
+class UnionOrTest(parser_test_base.ParserTestBase):
 
   def test_basic(self):
     self.check("""
@@ -3020,7 +2961,7 @@ class UnionOrTest(_ParserTestBase):
     """)
 
 
-class TypeGuardTest(_ParserTestBase):
+class TypeGuardTest(parser_test_base.ParserTestBase):
 
   def test_typing_extensions(self):
     self.check("""
