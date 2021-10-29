@@ -1,5 +1,6 @@
 """Common methods for tests of analyze.py."""
 
+import contextlib
 import logging
 import sys
 import textwrap
@@ -8,6 +9,7 @@ from typing import Tuple
 from pytype import analyze
 from pytype import config
 from pytype import directors
+from pytype import file_utils
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import optimize
@@ -148,6 +150,16 @@ class BaseTest(unittest.TestCase):
         "Individual tests cannot set the python_version of the config options.")
     self.options.tweak(**kwargs)
 
+  def _GetPythonpath(self, pythonpath, imports_map):
+    if pythonpath:
+      return pythonpath
+    elif imports_map:
+      return [""]
+    elif self.options.pythonpath:
+      return self.options.pythonpath
+    else:
+      return pythonpath
+
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
@@ -156,7 +168,7 @@ class BaseTest(unittest.TestCase):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(
         skip_repeat_calls=skip_repeat_calls,
-        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        pythonpath=self._GetPythonpath(pythonpath, imports_map),
         quick=quick, imports_map=imports_map)
     try:
       src = _Format(code)
@@ -180,7 +192,7 @@ class BaseTest(unittest.TestCase):
     code = _Format(code)
     errorlog = test_utils.TestErrorLog(code)
     self.ConfigureOptions(
-        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        pythonpath=self._GetPythonpath(pythonpath, imports_map),
         analyze_annotated=analyze_annotated, quick=quick,
         imports_map=imports_map)
     return {"src": code, "errorlog": errorlog, "options": self.options,
@@ -373,7 +385,7 @@ class BaseTest(unittest.TestCase):
     """
     self.ConfigureOptions(
         module_name=module_name, quick=quick, use_pickled_files=True,
-        pythonpath=[""] if (not pythonpath and imports_map) else pythonpath,
+        pythonpath=self._GetPythonpath(pythonpath, imports_map),
         imports_map=imports_map, analyze_annotated=analyze_annotated)
     errorlog = test_utils.TestErrorLog(src)
     if errorlog.expected:
@@ -416,6 +428,30 @@ class BaseTest(unittest.TestCase):
     # In the diff output, mark expected with "-" and actual with "+".
     # (In other words, display a change from "working" to "broken")
     self.assertMultiLineEqual(pytd_tree_src, ty_src)
+
+  @contextlib.contextmanager
+  def DepTree(self, deps):
+    old_pythonpath = self.options.pythonpath
+    try:
+      with file_utils.Tempdir() as d:
+        self.ConfigureOptions(pythonpath=[d.path])
+        for dep in deps:
+          if len(dep) == 3:
+            path, contents, opts = dep
+          else:
+            path, contents = dep
+            opts = {}
+          if path.endswith(".pyi"):
+            d.create_file(path, contents)
+          elif path.endswith(".py"):
+            path = path + "i"
+            pyi = pytd_utils.Print(self.Infer(contents, **opts))
+            d.create_file(path, pyi)
+          else:
+            raise ValueError(f"Unrecognised dependency type: {path}")
+        yield d
+    finally:
+      self.ConfigureOptions(pythonpath=old_pythonpath)
 
 
 def _PrintErrorDebug(descr, value):

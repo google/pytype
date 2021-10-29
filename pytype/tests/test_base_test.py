@@ -1,5 +1,7 @@
 """Tests for our test framework."""
 
+import os
+
 from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -166,6 +168,26 @@ class SkipTest(test_base.BaseTest):
       if sys.version_info.minor >= 7:
         name_error
     """)
+
+
+class DepTreeTest(test_base.BaseTest):
+
+  def test_dep_tree(self):
+    foo_pyi = """
+      class A: pass
+    """
+    bar_py = """
+      import foo
+      x = foo.A()
+    """
+    deps = [("foo.pyi", foo_pyi), ("bar.py", bar_py)]
+    with self.DepTree(deps) as d:
+      self.Check("""
+        import foo
+        import bar
+        assert_type(bar.x, foo.A)
+      """)
+      self.assertCountEqual(os.listdir(d.path), ["foo.pyi", "bar.pyi"])
 
 
 if __name__ == "__main__":
