@@ -5,10 +5,7 @@ of PyTypeObject structures, and also other constants, like compare operator
 mappings.
 """
 
-# TODO(b/175443170): pytype takes too long on this file. Once the linked bug is
-# fixed, check if we can remove the skip-file.
-# pytype: skip-file
-
+from typing import List
 
 TYPEOBJECT_PREFIX = "tp_"
 NUMBER_PREFIX = "nb_"
@@ -49,7 +46,7 @@ class Slot:
     self.symbol = symbol
 
 
-SLOTS = [
+SLOTS: List[Slot] = [
     # typeobject
     Slot("__new__", "tp_new", "new"),
     Slot("__init__", "tp_init", "init"),
