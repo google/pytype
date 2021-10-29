@@ -347,7 +347,7 @@ class ErrorLogBase:
   def copy_from(self, errors, stack):
     for e in errors:
       with _CURRENT_ERROR_NAME.bind(e.name):
-        self.error(stack, e.message, e.details, e.keyword, e.bad_call,
+        self.error(stack, e._message, e.details, e.keyword, e.bad_call,  # pylint: disable=protected-access
                    e.keyword_context)
 
   def is_valid_error_name(self, name):
