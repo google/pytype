@@ -181,8 +181,8 @@ class SuperTest(test_base.BaseTest):
             return super(Parent, self).f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ...  # type: module
         class Parent(foo.Grandparent): ...
         OtherParent = ...  # type: Any
         class Child(Any, Parent):

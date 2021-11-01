@@ -23,8 +23,7 @@ class TestExec(test_base.BaseTest):
         "signal"
     ]:
       ty = self.Infer("import %s" % module)
-      expected = "  %s = ...  # type: module" % module
-      self.assertTypesMatchPytd(ty, expected)
+      self.assertTypesMatchPytd(ty, f"import {module}")
 
   def test_cleanup(self):
     ty = self.Infer("""

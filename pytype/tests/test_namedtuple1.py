@@ -34,9 +34,7 @@ class NamedtupleTests(test_base.BaseTest):
     """
     (alias, (name, fields)), = kws.items()  # pylint: disable=unbalanced-tuple-unpacking
     name = escape.pack_namedtuple(name, fields)
-    suffix += textwrap.dedent("""
-      collections = ...  # type: module
-      {alias} = {name}""").format(alias=alias, name=name)
+    suffix += f"\n{alias} = {name}"
     return pytd_utils.Print(self._namedtuple_ast(name, fields)) + "\n" + suffix
 
   def test_basic_namedtuple(self):
@@ -325,7 +323,6 @@ class NamedtupleTests(test_base.BaseTest):
     ast_z = self._namedtuple_ast(name_z, ["a"])
     ast = pytd_utils.Concat(ast_x, ast_z)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
-      collections = ...  # type: module
       X = {name_x}
       Y = {name_x}
       Z = {name_z}""").format(name_x=name_x, name_z=name_z)
@@ -341,7 +338,6 @@ class NamedtupleTests(test_base.BaseTest):
     name = escape.pack_namedtuple("X", [])
     ast = self._namedtuple_ast(name, [])
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
-      collections = ...  # type: module
       _TX = TypeVar("_TX", bound=X)
       class X({name}):
         def __new__(cls: Type[_TX], _) -> _TX: ...""").format(name=name)

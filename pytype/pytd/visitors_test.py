@@ -438,7 +438,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip()
     tree = self.Parse(src)
     res = pytd_utils.Print(tree)
-    self.AssertSourceEquals(res, src)
+    self.AssertSourceEquals(res, expected)
     self.assertMultiLineEqual(res, expected)
 
   def test_print_imports_named_type(self):

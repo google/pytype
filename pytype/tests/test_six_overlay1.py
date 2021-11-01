@@ -76,7 +76,7 @@ class SixTests(test_base.BaseTest):
       x2 = Bar().x
     """)
     self.assertTypesMatchPytd(ty, """
-      six: module
+      import six
       class Foo(type):
         x: int
         def __init__(self, *args) -> None: ...

@@ -259,7 +259,7 @@ class ParserTest(parser_test_base.ParserTestBase):
     """, "")
 
   def test_import(self):
-    self.check("import foo.bar.baz", "")
+    self.check("import foo.bar.baz")
     self.check("import a as b")
     self.check("from foo.bar import baz")
     self.check("from foo.bar import baz as abc")
@@ -380,6 +380,7 @@ class ParserTest(parser_test_base.ParserTestBase):
       class Bar:
           Foo = somewhere.Foo
     """, """
+      import somewhere
       from typing import Any
 
       class Bar:
@@ -438,6 +439,7 @@ class ParserTest(parser_test_base.ParserTestBase):
       import typing
       T = typing.TypeVar('T')
     """, """
+      import typing
       from typing import TypeVar
 
       T = TypeVar('T')
@@ -2649,6 +2651,8 @@ class NewTypeTest(parser_test_base.ParserTestBase):
       import typing
       X = typing.NewType('X', int)
     """, """
+      import typing
+
       X = newtype_X_0
 
       class newtype_X_0(int):

@@ -124,7 +124,7 @@ class MatchTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, List
-        foo = ...  # type: module
+        import foo
         def g1() -> Any: ...
         def g2() -> int: ...
         def g3(x) -> Any: ...
@@ -189,7 +189,7 @@ class MatchTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Optional
-        foo = ...  # type: module
+        import foo
         f = ...  # type: List[Optional[str]]
       """)
 
@@ -398,7 +398,7 @@ class MatchTestPy3(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Generator
-      tokenize = ...  # type: module
+      import tokenize
       def f() -> NoneType: ...
       x = ...  # type: Generator[tokenize.TokenInfo, None, None]
     """)
@@ -438,8 +438,8 @@ class MatchTestPy3(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Generator
-      io = ...  # type: module
-      tokenize = ...  # type: module
+      import io
+      import tokenize
       x = ...  # type: Generator[tokenize.TokenInfo, None, None]
     """)
 

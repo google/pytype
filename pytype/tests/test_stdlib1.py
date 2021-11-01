@@ -14,7 +14,7 @@ class StdlibTests(test_base.BaseTest):
         return ast.parse("True")
     """)
     self.assertTypesMatchPytd(ty, """
-      ast = ...  # type: module
+      import ast
       def f() -> _ast.Module: ...
     """)
 
@@ -23,7 +23,7 @@ class StdlibTests(test_base.BaseTest):
       import urllib
     """)
     self.assertTypesMatchPytd(ty, """
-      urllib = ...  # type: module
+      import urllib
     """)
 
   def test_traceback(self):
@@ -33,8 +33,8 @@ class StdlibTests(test_base.BaseTest):
         return traceback.format_exception(*exc)
     """)
     self.assertTypesMatchPytd(ty, """
+      import traceback
       from typing import List
-      traceback = ...  # type: module
       def f(exc) -> List[str]: ...
     """)
 
@@ -44,8 +44,8 @@ class StdlibTests(test_base.BaseTest):
       x = list(os.walk("/tmp"))
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
+      import os
       from typing import List, Tuple
-      os = ...  # type: module
       x = ...  # type: List[Tuple[str, List[str], List[str]]]
     """)
 
@@ -55,7 +55,7 @@ class StdlibTests(test_base.BaseTest):
       x = struct.Struct("b")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      struct = ...  # type: module
+      import struct
       x = ...  # type: struct.Struct
     """)
 
@@ -64,7 +64,7 @@ class StdlibTests(test_base.BaseTest):
       import warnings
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      warnings = ...  # type: module
+      import warnings
     """)
 
   def test_path_conf(self):
@@ -113,7 +113,7 @@ class StdlibTests(test_base.BaseTest):
       f = collections.defaultdict(default_factory = int)
       """)
     self.assertTypesMatchPytd(ty, """
-      collections = ...  # type: module
+      import collections
       a = ...  # type: collections.defaultdict[str, int]
       b = ...  # type: collections.defaultdict[str, int]
       c = ...  # type: collections.defaultdict[str, int]
@@ -135,8 +135,8 @@ class StdlibTests(test_base.BaseTest):
       h = collections.defaultdict(default_factory = None)
       """)
     self.assertTypesMatchPytd(ty, """
+      import collections
       from typing import Any
-      collections = ...  # type: module
       a = ...  # type: collections.defaultdict[nothing, nothing]
       b = ...  # type: collections.defaultdict[nothing, nothing]
       c = ...  # type: collections.defaultdict[nothing, Any]
@@ -156,8 +156,8 @@ class StdlibTests(test_base.BaseTest):
       d = collections.defaultdict(int, {1: 'one'})
       """)
     self.assertTypesMatchPytd(ty, """
+      import collections
       from typing import Union
-      collections = ...  # type: module
       a = ...  # type: collections.defaultdict[str, Union[int, str]]
       b = ...  # type: collections.defaultdict[str, Union[int, str]]
       c = ...  # type: collections.defaultdict[str, int]
@@ -205,7 +205,7 @@ class StdlibTests(test_base.BaseTest):
       major, minor, micro, releaselevel, serial = sys.version_info
     """)
     self.assertTypesMatchPytd(ty, """
-      sys: module
+      import sys
       major: int
       minor: int
       micro: int

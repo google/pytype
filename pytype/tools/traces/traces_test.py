@@ -83,6 +83,10 @@ class MatchAstTestCase(unittest.TestCase):
 
   def _parse(self, text, options=None):
     text = textwrap.dedent(text).lstrip()
+    if options:
+      options.tweak(gen_stub_imports=True)
+    else:
+      options = config.Options.create(gen_stub_imports=True)
     return ast.parse(text), traces.trace(text, options)
 
   def _get_traces(self, text, node_type, options=None):
@@ -117,14 +121,14 @@ class MatchAstVisitorTest(MatchAstTestCase):
   def test_import(self):
     matches = self._get_traces("import os, sys as tzt", ast.Import)
     self.assertTracesEqual(matches, [
-        ((1, 7), "IMPORT_NAME", "os", ("module",)),
-        ((1, 18), "STORE_NAME", "tzt", ("module",))])
+        ((1, 7), "IMPORT_NAME", "os", ("import os",)),
+        ((1, 18), "STORE_NAME", "tzt", ("import sys",))])
 
   def test_import_from(self):
     matches = self._get_traces(
         "from os import path as p, environ", ast.ImportFrom)
     self.assertTracesEqual(matches, [
-        ((1, 23), "STORE_NAME", "p", ("module",)),
+        ((1, 23), "STORE_NAME", "p", ("import os.path",)),
         ((1, 26), "STORE_NAME", "environ", ("os._Environ[str]",))])
 
 

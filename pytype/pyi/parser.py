@@ -267,8 +267,10 @@ class Splice:
 class GeneratePytdVisitor(visitor.BaseVisitor):
   """Converts a typed_ast tree to a pytd tree."""
 
-  def __init__(self, src, filename, module_name, version, platform):
-    defs = definitions.Definitions(modules.Module(filename, module_name))
+  def __init__(self, src, filename, module_name, version, platform,
+               gen_stub_imports):
+    defs = definitions.Definitions(
+        modules.Module(filename, module_name, gen_stub_imports))
     super().__init__(defs=defs, filename=filename)
     self.src_code = src
     self.module_name = module_name
@@ -685,10 +687,12 @@ def parse_string(
     python_version: VersionType = 3,
     name: Optional[str] = None,
     filename: Optional[str] = None,
-    platform: Optional[str] = None
+    platform: Optional[str] = None,
+    gen_stub_imports: bool = True,
 ):
   return parse_pyi(src, filename=filename, module_name=name,
-                   platform=platform, python_version=python_version)
+                   platform=platform, python_version=python_version,
+                   gen_stub_imports=gen_stub_imports)
 
 
 def parse_pyi(
@@ -696,7 +700,8 @@ def parse_pyi(
     filename: Optional[str],
     module_name: str,
     python_version: VersionType = 3,
-    platform: Optional[str] = None
+    platform: Optional[str] = None,
+    gen_stub_imports: bool = True,
 ) -> pytd.TypeDeclUnit:
   """Parse a pyi string."""
   filename = filename or ""
@@ -704,7 +709,7 @@ def parse_pyi(
   python_version = utils.normalize_version(python_version)
   root = _parse(src, feature_version, filename)
   gen_pytd = GeneratePytdVisitor(
-      src, filename, module_name, python_version, platform)
+      src, filename, module_name, python_version, platform, gen_stub_imports)
   root = gen_pytd.visit(root)
   root = post_process_ast(root, src, module_name)
   return root
@@ -715,7 +720,7 @@ def parse_pyi_debug(
     filename: str,
     module_name: str,
     python_version: VersionType = 3,
-    platform: Optional[str] = None
+    platform: Optional[str] = None,
 ) -> Tuple[pytd.TypeDeclUnit, GeneratePytdVisitor]:
   """Debug version of parse_pyi."""
   feature_version = _feature_version(python_version)
@@ -723,7 +728,7 @@ def parse_pyi_debug(
   root = _parse(src, feature_version, filename)
   print(debug.dump(root, ast3, include_attributes=False))
   gen_pytd = GeneratePytdVisitor(
-      src, filename, module_name, python_version, platform)
+      src, filename, module_name, python_version, platform, True)
   root = gen_pytd.visit(root)
   print("---transformed parse tree--------------------")
   print(root)
@@ -736,9 +741,11 @@ def parse_pyi_debug(
   return root, gen_pytd
 
 
-def canonical_pyi(pyi, python_version=3, multiline_args=False):
+def canonical_pyi(pyi, python_version=3, multiline_args=False,
+                  gen_stub_imports=True):
   """Rewrite a pyi in canonical form."""
-  ast = parse_string(pyi, python_version=python_version)
+  ast = parse_string(pyi, python_version=python_version,
+                     gen_stub_imports=gen_stub_imports)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
   ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
   ast.Visit(visitors.VerifyVisitor())

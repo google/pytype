@@ -559,17 +559,25 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     Raises:
       KeyError: If there is a name clash.
     """
+    def SameModuleName(a, b):
+      return (
+          isinstance(a.type, pytd.Module) and
+          isinstance(b.type, pytd.Module) and
+          a.type.module_name == b.type.module_name
+      )
+
     name_to_alias = {}
     out = []
     for a in new_aliases:
-      if a.name in name_to_alias:
-        existing = name_to_alias[a.name]
-        if existing != a:
-          raise KeyError("Duplicate top level items: %r, %r" % (
-              existing.type.name, a.type.name))
-      else:
+      if a.name not in name_to_alias:
         name_to_alias[a.name] = a
         out.append(a)
+        continue
+      existing = name_to_alias[a.name]
+      if existing == a or SameModuleName(existing, a):
+        continue
+      raise KeyError("Duplicate top level items: %r, %r" % (
+          existing.type.name, a.type.name))
     return out
 
   def EnterTypeDeclUnit(self, node):

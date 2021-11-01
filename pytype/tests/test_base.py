@@ -134,6 +134,7 @@ class BaseTest(unittest.TestCase):
     self.options = config.Options.create(python_version=self.python_version,
                                          allow_recursive_types=True,
                                          build_dict_literals_from_kwargs=True,
+                                         gen_stub_imports=True,
                                          strict_namedtuple_checks=True,
                                          use_enum_overlay=True)
 

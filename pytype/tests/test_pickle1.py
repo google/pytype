@@ -41,9 +41,8 @@ class PickleTest(test_base.BaseTest):
         r = u.x
       """, deep=False, pythonpath=[""], imports_map={"u": u})
       self.assertTypesMatchPytd(ty, """
+        import u
         from typing import Type
-        import collections
-        u = ...  # type: module
         r = ...  # type: Type[type]
       """)
 
@@ -67,10 +66,10 @@ class PickleTest(test_base.BaseTest):
         import bar
         r = bar.file_dispatcher(0)
       """, deep=False, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
-      self._verifyDeps(ty, ["asyncore", "builtins"], [])
+      self._verifyDeps(ty, ["asyncore"], [])
       self.assertTypesMatchPytd(ty, """
         import asyncore
-        bar = ...  # type: module
+        import bar
         r = ...  # type: asyncore.file_dispatcher
       """)
 
@@ -89,7 +88,7 @@ class PickleTest(test_base.BaseTest):
                                imports_map={"foo": foo}, module_name="bar",
                                deep=True)
       bar = d.create_file("bar.pickled", pickled_bar)
-      self._verifyDeps(pickled_bar, ["builtins"], ["foo"])
+      self._verifyDeps(pickled_bar, [], ["foo"])
       self.Infer("""
         import bar
         f = bar.f
@@ -110,7 +109,7 @@ class PickleTest(test_base.BaseTest):
         class A(foo.X): pass
         class B(foo.Y): pass
       """, deep=False, pickle=True, imports_map={"foo": foo}, module_name="bar")
-      self._verifyDeps(pickled_bar, ["builtins"], ["foo"])
+      self._verifyDeps(pickled_bar, [], ["foo"])
       bar = d.create_file("bar.pickled", pickled_bar)
       # Now, replace the old foo.pickled with a version that doesn't have Y
       # anymore.

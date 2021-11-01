@@ -141,8 +141,8 @@ class ClassesTest(test_base.BaseTest):
         x = Bar(duration=0)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import Any
-        a = ...  # type: module
         class Foo:
           pass
         class Bar(Foo, Any):
@@ -550,7 +550,7 @@ class ClassesTest(test_base.BaseTest):
           return foo.Foo().foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         def f() -> str: ...
       """)
 
@@ -578,7 +578,7 @@ class ClassesTest(test_base.BaseTest):
         x = a.A().x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: int
       """)
 
@@ -595,7 +595,7 @@ class ClassesTest(test_base.BaseTest):
         name = C.__name__
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ... # type: module
+        import a
         class C(a.A):
           pass
         name = ... # type: str
@@ -622,8 +622,8 @@ class ClassesTest(test_base.BaseTest):
         name2 = B.x.name
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import menum
         from typing import Any
-        menum = ...  # type: module
         class A(menum.Enum):
           x = ...  # type: int
         class B(menum.IntEnum):
@@ -653,8 +653,8 @@ class ClassesTest(test_base.BaseTest):
         x3 = a.h().x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import Union
-        a = ...  # type: module
         x1 = ...  # type: int
         x2 = ...  # type: Union[int, str]
         x3 = ...  # type: str
@@ -673,7 +673,7 @@ class ClassesTest(test_base.BaseTest):
         x = a.B.MyA()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: a.A
       """)
 
@@ -708,7 +708,7 @@ class ClassesTest(test_base.BaseTest):
         x3 = object.__new__(bool)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         class C:
           def __new__(cls) -> str: ...
         x1 = ...  # type: a.B
@@ -776,7 +776,7 @@ class ClassesTest(test_base.BaseTest):
         x2 = a.B()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x1 = ...  # type: a.A[int]
         x2 = ...  # type: a.A[str]
       """)
@@ -863,7 +863,7 @@ class ClassesTest(test_base.BaseTest):
         v = a.X.f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         v = ...  # type: float
       """)
 
@@ -882,8 +882,8 @@ class ClassesTest(test_base.BaseTest):
         x = b.B.x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import b
         from typing import Any
-        b = ...  # type: module
         x = ...  # type: Any
       """)
 
@@ -940,7 +940,7 @@ class ClassesTest(test_base.BaseTest):
       x2 = C.x
     """)
     self.assertTypesMatchPytd(ty, """
-      six: module
+      import six
       class A(type):
         x: int
         def __init__(self, name, bases, members) -> None: ...
@@ -1275,7 +1275,7 @@ class ClassesTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      typing = ...  # type: module
+      import typing
       class DL(List[str]):
           def get_len(self) -> int: ...
       def get_base() -> type: ...
@@ -1361,9 +1361,8 @@ class ClassesTest(test_base.BaseTest):
         Y = foo.X.Y
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Type
         import foo
-        foo: module
+        from typing import Type
         Y: Type[foo.X.Y]
       """)
       d.create_file("bar.pyi", pytd_utils.Print(ty))
@@ -1372,9 +1371,8 @@ class ClassesTest(test_base.BaseTest):
         Y = bar.Y
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import bar
         from typing import Type
-        import foo
-        bar: module
         Y: Type[foo.X.Y]
       """)
 
@@ -1392,7 +1390,6 @@ class ClassesTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         import foo
-        foo: module
         Z: Type[foo.X.Y]
       """)
 
@@ -1410,7 +1407,6 @@ class ClassesTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         import foo
-        foo: module
         Z: Type[foo.X.Y.Z]
       """)
 

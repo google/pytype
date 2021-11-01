@@ -22,11 +22,14 @@ def InvalidateCache():
     del _cached_builtins_pytd[0]
 
 
-def GetBuiltinsAndTyping():  # Deprecated. Use load_pytd instead.
+# Deprecated. Use load_pytd instead.
+def GetBuiltinsAndTyping(gen_stub_imports):
   """Get builtins.pytd and typing.pytd."""
   if not _cached_builtins_pytd:
-    t = parser.parse_string(_FindBuiltinFile("typing"), name="typing")
-    b = parser.parse_string(_FindBuiltinFile("builtins"), name="builtins")
+    t = parser.parse_string(_FindBuiltinFile("typing"), name="typing",
+                            gen_stub_imports=gen_stub_imports)
+    b = parser.parse_string(_FindBuiltinFile("builtins"), name="builtins",
+                            gen_stub_imports=gen_stub_imports)
     b = b.Visit(visitors.LookupExternalTypes({"typing": t},
                                              self_name="builtins"))
     t = t.Visit(visitors.LookupBuiltins(b))
@@ -58,7 +61,7 @@ def GetBuiltinsPyTD():  # Deprecated. Use Loader.concat_all.
     A pytd.TypeDeclUnit instance. It'll directly contain the builtin classes
     and functions, and submodules for each of the standard library modules.
   """
-  return pytd_utils.Concat(*GetBuiltinsAndTyping())
+  return pytd_utils.Concat(*GetBuiltinsAndTyping(True))
 
 
 # pyi for a catch-all module
@@ -68,5 +71,5 @@ def __getattr__(name: Any) -> Any: ...
 """
 
 
-def GetDefaultAst():
-  return parser.parse_string(src=DEFAULT_SRC)
+def GetDefaultAst(gen_stub_imports):
+  return parser.parse_string(src=DEFAULT_SRC, gen_stub_imports=gen_stub_imports)

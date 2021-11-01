@@ -79,8 +79,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
         ty,
         """
         import collections
+        import typing
         from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
-        typing = ...  # type: module
         x = ...  # type: X
         a = ...  # type: int
         b = ...  # type: str
@@ -275,8 +275,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
 
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         v = ...  # type: foo.X
         a = ...  # type: str
         b = ...  # type: int

@@ -18,8 +18,8 @@ class TestAttrib(test_base.BaseTest):
         z = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: Any
@@ -37,7 +37,7 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(type=A)
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       class A: ...
       @attr.s
       class Foo:
@@ -54,8 +54,8 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(type=List[int])
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import List
-      attr: module
       @attr.s
       class Foo:
         x: List[int]
@@ -71,8 +71,8 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(type=Union[str, int])
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Union
-      attr: module
       @attr.s
       class Foo:
         x: Union[str, int]
@@ -89,8 +89,8 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Union
-      attr: module
       @attr.s
       class Foo:
         x: Union[str, int]
@@ -107,7 +107,7 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib() # type: str
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: Foo
@@ -123,7 +123,7 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(type='Foo')
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: Foo
@@ -140,7 +140,7 @@ class TestAttrib(test_base.BaseTest):
         z = 1 # class var, should not be in __init__
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -180,7 +180,7 @@ class TestAttrib(test_base.BaseTest):
         ___z = attr.ib(type=int)
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         _x: int
@@ -200,7 +200,7 @@ class TestAttrib(test_base.BaseTest):
         a = attr.ib(type=str, default=None)
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -222,7 +222,7 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib(default=42) # type: str  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -242,8 +242,8 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib(factory=CustomClass)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import List
-      attr: module
       class CustomClass: ...
       @attr.s
       class Foo:
@@ -265,8 +265,8 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib(factory=unannotated_func)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any, Dict
-      attr: module
       class CustomClass: ...
       def unannotated_func() -> CustomClass: ...
       @attr.s
@@ -284,8 +284,8 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(default=attr.Factory(list))
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import List
-      attr: module
       @attr.s
       class Foo:
         x: list
@@ -320,7 +320,7 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(default=attr.Factory(len, takes_self=True))
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -335,8 +335,8 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(default=None)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: Any
@@ -353,7 +353,7 @@ class TestAttrib(test_base.BaseTest):
       x = Foo([]).x
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: list
@@ -399,7 +399,7 @@ class TestAttrib(test_base.BaseTest):
         y = attr.ib()  # type: int
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: str
@@ -463,7 +463,7 @@ class TestAttrib(test_base.BaseTest):
         c = attr.ib()  # type: int
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class A:
         a: int
@@ -493,7 +493,7 @@ class TestAttrib(test_base.BaseTest):
         c = attr.ib()  # type: int
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class A:
         a: int
@@ -523,7 +523,7 @@ class TestAttrib(test_base.BaseTest):
         c = attr.ib()  # type: int
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class A:
         a: int
@@ -546,8 +546,8 @@ class TestAttrib(test_base.BaseTest):
         a = attr.ib()  # type: int
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo(Any):
         a: int
@@ -582,8 +582,8 @@ class TestAttrib(test_base.BaseTest):
           return 10
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         a: int
@@ -621,8 +621,8 @@ class TestAttrib(test_base.BaseTest):
           return self.b
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         a: int
@@ -670,8 +670,8 @@ class TestAttrib(test_base.BaseTest):
       Foo(x=0)  # should not be an error
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any, List
-      attr: module
       FACTORIES: List[nothing]
       @attr.s
       class Foo:
@@ -687,7 +687,7 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(default=())
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: tuple
@@ -789,8 +789,8 @@ class TestAttrs(test_base.BaseTest):
         z = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: Any
@@ -809,8 +809,8 @@ class TestAttrs(test_base.BaseTest):
         z = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: Any

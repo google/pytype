@@ -27,7 +27,7 @@ class StdLibTestsBasic(test_base.BaseTest,
       x = collections.deque([1, 2, 3], maxlen=10)
     """)
     self.assertTypesMatchPytd(ty, """
-      collections = ...  # type: module
+      import collections
       x = ...  # type: collections.deque[int]
     """)
 
@@ -94,7 +94,7 @@ class StdLibTestsBasic(test_base.BaseTest,
         return MyClass(1, 2)
     """)
     self.assertTypesMatchPytd(ty, """
-      fractions: module
+      import fractions
       class MyClass(fractions.Fraction): ...
       def foo() -> MyClass: ...
   """)
@@ -162,11 +162,10 @@ class StdlibTestsFeatures(test_base.BaseTest,
       f(tempfile.SpooledTemporaryFile(1048576, "wb", suffix=".foo"))
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Union
+      import os
+      import tempfile
       import typing
-      os = ...  # type: module
-      tempfile = ...  # type: module
-      typing = ...  # type: module
+      from typing import Any, Union
       def f(fi: typing.IO) -> Union[bytes, str]: ...
     """)
 
@@ -210,7 +209,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       v = ...  # type: str
     """)
 
@@ -223,7 +222,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       v = ...  # type: int
     """)
 
@@ -238,7 +237,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = None
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       v = ...  # type: str
     """)
 
@@ -251,7 +250,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       v = ...  # type: int
     """)
 
@@ -264,7 +263,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       v = ...  # type: int
     """)
 
@@ -277,7 +276,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys: module
+      import sys
       v: str
     """)
 
@@ -290,7 +289,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys: module
+      import sys
       v: int
     """)
 
@@ -303,7 +302,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         v = "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
-      sys: module
+      import sys
       v: int
     """)
 
@@ -333,10 +332,9 @@ class StdlibTestsFeatures(test_base.BaseTest,
         event_loop.close()
     """)
     self.assertTypesMatchPytd(ty, """
-      import asyncio.events
+      import asyncio
       from typing import Any, Coroutine
 
-      asyncio: module
       event_loop: asyncio.events.AbstractEventLoop
 
       class AsyncContextManager:
@@ -369,8 +367,8 @@ class StdlibTestsFeatures(test_base.BaseTest,
       iterate(AsyncIterable())
     """)
     self.assertTypesMatchPytd(ty, """
+      import asyncio
       from typing import Any, Coroutine, TypeVar
-      asyncio: module
       _TAsyncIterable = TypeVar('_TAsyncIterable', bound=AsyncIterable)
       class AsyncIterable:
           def __aiter__(self: _TAsyncIterable) -> _TAsyncIterable: ...
@@ -395,7 +393,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return stdout
     """)
     self.assertTypesMatchPytd(ty, """
-      subprocess: module
+      import subprocess
       def run(cmd) -> bytes: ...
     """)
 
@@ -408,7 +406,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return stdout
     """)
     self.assertTypesMatchPytd(ty, """
-      subprocess: module
+      import subprocess
       def run(cmd) -> bytes: ...
     """)
 
@@ -422,7 +420,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return stdout
     """)
     self.assertTypesMatchPytd(ty, """
-      subprocess: module
+      import subprocess
       def run(cmd) -> bytes: ...
     """)
 
@@ -435,7 +433,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return stdout
     """)
     self.assertTypesMatchPytd(ty, """
-      subprocess: module
+      import subprocess
       def run(cmd) -> str: ...
     """)
 
@@ -449,7 +447,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return stdout
     """)
     self.assertTypesMatchPytd(ty, """
-      subprocess: module
+      import subprocess
       def run(cmd) -> str: ...
     """)
 
@@ -476,8 +474,8 @@ class StdlibTestsFeatures(test_base.BaseTest,
       v4 = v1.new_child()
     """)
     self.assertTypesMatchPytd(ty, """
+      import collections
       from typing import ChainMap, List, Mapping, Union
-      collections: module
       v1: ChainMap[Union[bytes, str], Union[int, str]]
       v2: List[Mapping[Union[bytes, str], Union[int, str]]]
       v3: ChainMap[Union[bytes, str], Union[int, str]]
@@ -493,8 +491,8 @@ class StdlibTestsFeatures(test_base.BaseTest,
         group = match[0]
     """)
     self.assertTypesMatchPytd(ty, """
+      import re
       from typing import Match, Optional, Pattern
-      re: module
       pattern: Pattern[str]
       match: Optional[Match[str]]
       group: str
@@ -513,7 +511,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return io.open(name, "rb").read()
     """)
     self.assertTypesMatchPytd(ty, """
-      io: module
+      import io
       def f(name) -> bytes: ...
     """)
 

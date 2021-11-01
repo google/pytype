@@ -22,8 +22,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f(x, y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         def f(x, y: Union[int, str]) -> list: ...
       """)
 
@@ -43,8 +43,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f("", y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import List
-        foo = ...  # type: module
         def f(y: int) -> List[str]: ...
       """)
 
@@ -61,8 +61,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         def f(x: Union[int, str]) -> Union[float, bool]: ...
       """)
 
@@ -79,8 +79,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         def f(x: str) -> Union[int, float]: ...
       """)
 
@@ -97,8 +97,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f(y=x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         def f(x: Union[int, str]) -> Union[bool, float]: ...
       """)
 
@@ -324,8 +324,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f(y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Sized, SupportsAbs
-        foo = ...  # type: module
         def g(y: SupportsAbs[Sized]) -> None: ...
       """)
 
@@ -342,8 +342,8 @@ class ProtocolInferenceTest(test_base.BaseTest):
           return foo.f(y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import SupportsAbs
-        foo = ...  # type: module
         def g(y: SupportsAbs[int]) -> None: ...
       """)
 

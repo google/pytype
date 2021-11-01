@@ -182,7 +182,7 @@ class SolverTests(test_base.BaseTest):
         return all(itertools.chain(f, array))
     """)
     self.assertTypesMatchPytd(ty, """
-      itertools = ...  # type: module
+      import itertools
 
       def every(f, array) -> bool: ...
     """)
@@ -276,8 +276,8 @@ class SolverTests(test_base.BaseTest):
           return date.bad_method()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import bad_mod
         from typing import Any
-        bad_mod = ...  # type: module
         def f(date) -> Any: ...
       """)
 
@@ -288,8 +288,7 @@ class SolverTests(test_base.BaseTest):
           l.append(collections.defaultdict(int, [(0, 0)]))
     """)
     self.assertTypesMatchPytd(ty, """
-      import typing
-      collections = ...  # type: module
+      import collections
       def bar(l) -> NoneType: ...
     """)
 
@@ -319,8 +318,8 @@ class SolverTests(test_base.BaseTest):
           return x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import List, Union
-        foo = ...  # type: module
         def f() -> List[Union[int, str]]: ...
       """)
 
@@ -336,7 +335,7 @@ class SolverTests(test_base.BaseTest):
         x = foo.f(1, y=2j)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         x = ...  # type: complex
       """)
 

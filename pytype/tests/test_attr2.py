@@ -20,7 +20,7 @@ class TestAttrib(test_base.BaseTest):
         x = attr.ib(factory=annotated_func)
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       class CustomClass: ...
       def annotated_func() -> CustomClass: ...
       @attr.s
@@ -241,7 +241,7 @@ class TestAttribPy3(test_base.BaseTest):
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -258,7 +258,7 @@ class TestAttribPy3(test_base.BaseTest):
         y = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: Foo
@@ -276,7 +276,7 @@ class TestAttribPy3(test_base.BaseTest):
         z : int = 1 # class var, should not be in __init__
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -304,7 +304,7 @@ class TestAttribPy3(test_base.BaseTest):
         y: str = attr.ib(default=42)  # annotation-type-mismatch[e]
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -329,9 +329,9 @@ class TestAttribPy3(test_base.BaseTest):
         class Bar(foo.Foo): ...
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
+      import attr
+      import foo
       from typing import Type
-      attr: module
-      foo: module
       Bar: Type[foo.Foo]
     """)
 
@@ -364,8 +364,8 @@ class TestAttribPy3(test_base.BaseTest):
         z = attr.ib(type=str, default="hello")
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: int
@@ -389,8 +389,8 @@ class TestAttribPy3(test_base.BaseTest):
       x2, y2 = foo2.x, foo2.y
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Generic, TypeVar
-      attr: module
       T = TypeVar('T')
       @attr.s
       class Foo(Generic[T]):
@@ -420,8 +420,8 @@ class TestAttribPy3(test_base.BaseTest):
       x2 = foo2.x
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Generic, TypeVar
-      attr: module
       T = TypeVar('T')
       @attr.s
       class Foo(Generic[T]):
@@ -459,8 +459,8 @@ class TestAttrs(test_base.BaseTest):
         z = attr.ib(type=str)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: Any
@@ -477,8 +477,8 @@ class TestAttrs(test_base.BaseTest):
         x = attr.ib(default=1)
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: int
@@ -497,7 +497,7 @@ class TestAttrs(test_base.BaseTest):
         a: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -518,7 +518,7 @@ class TestAttrs(test_base.BaseTest):
         x: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         y: int
@@ -550,8 +550,8 @@ class TestAttrs(test_base.BaseTest):
           pass
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any, Annotated
-      attr: module
       @attr.s
       class Foo:
         y: str
@@ -577,8 +577,8 @@ class TestAttrs(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(
         ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         x: Any
@@ -614,7 +614,7 @@ class TestAttrs(test_base.BaseTest):
           return self.y
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: bool
@@ -641,8 +641,8 @@ class TestAttrs(test_base.BaseTest):
         baz = attr.ib()
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         foo: str
@@ -665,8 +665,8 @@ class TestAttrs(test_base.BaseTest):
         y: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import ClassVar
-      attr: module
       @attr.s
       class Foo:
         y: str
@@ -684,8 +684,8 @@ class TestAttrs(test_base.BaseTest):
         x: int
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Callable
-      attr: module
       def s(*args, **kwargs) -> Callable: ...
       @attr.s
       class Foo:
@@ -718,8 +718,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(
         ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s(auto_attribs=True)
       class Foo:
         x: Any
@@ -749,8 +749,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(
         ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         y: int
@@ -773,7 +773,7 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         a: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: int
@@ -794,7 +794,7 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         x: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         y: int
@@ -826,8 +826,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
           pass
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any, Annotated
-      attr: module
       @attr.s
       class Foo:
         y: str
@@ -856,7 +856,7 @@ class TestAttrsNextGenApi(test_base.BaseTest):
           return self.y
     """)
     self.assertTypesMatchPytd(ty, """
-      attr: module
+      import attr
       @attr.s
       class Foo:
         x: bool
@@ -883,8 +883,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         baz = attr.ib()
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import Any
-      attr: module
       @attr.s
       class Foo:
         foo: str
@@ -907,8 +907,8 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         y: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
+      import attr
       from typing import ClassVar
-      attr: module
       @attr.s
       class Foo:
         y: str
@@ -980,8 +980,8 @@ class TestPyiAttrs(test_base.BaseTest):
           z: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        attr: module
-        foo: module
+        import attr
+        import foo
         @attr.s
         class Foo(foo.A):
           z: str
@@ -1009,8 +1009,8 @@ class TestPyiAttrs(test_base.BaseTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        attr: module
-        foo: module
+        import attr
+        import foo
         @attr.s
         class Foo(foo.B):
           a: str
@@ -1041,8 +1041,8 @@ class TestPyiAttrs(test_base.BaseTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        attr: module
-        foo: module
+        import attr
+        import foo
         @attr.s
         class Foo(foo.B):
           a: str
@@ -1067,8 +1067,8 @@ class TestPyiAttrs(test_base.BaseTest):
           z: str
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        attr: module
-        foo: module
+        import attr
+        import foo
         @attr.s
         class Foo(foo.A):
           z: str
@@ -1093,8 +1093,8 @@ class TestPyiAttrsWrapper(test_base.BaseTest):
           x: int
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Annotated, Callable
-        foo: module
 
         @attr.s
         class Foo:

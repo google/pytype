@@ -271,8 +271,8 @@ class ReverseTest(test_base.BaseTest,
           return (1, 2) | t
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import test
         from typing import Any
-        test = ...  # type: module
         x = ...  # type: bool
         y = ...  # type: bool
         def f(t) -> Any: ...

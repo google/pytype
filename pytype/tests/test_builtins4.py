@@ -157,8 +157,8 @@ class BuiltinTests(test_base.BaseTest):
         v = super
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Type
-        foo = ...  # type: module
         def f(x) -> None: ...
         def g(x: object) -> None: ...
         def h(x: Any) -> None: ...
@@ -207,8 +207,8 @@ class BuiltinTests(test_base.BaseTest):
         return x.copy()
     """)
     self.assertTypesMatchPytd(ty, """
+      import collections
       from typing import Dict
-      collections: module
       def f1(x: Dict[int, str]) -> Dict[int, str]: ...
       def f2(
           x: collections.OrderedDict[int, str]
@@ -399,8 +399,8 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       x6 = filter(re.compile("").search, ("",))
     """)
     self.assertTypesMatchPytd(ty, """
+      import re
       from typing import Iterator
-      re: module
       def f(x: int) -> None: ...
       x1 = ...  # type: Iterator[int]
       x2 = ...  # type: Iterator[bool, ...]
@@ -579,7 +579,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
         return array.array('B').tobytes()
     """)
     self.assertTypesMatchPytd(ty, """
-      array = ...  # type: module
+      import array
       def t_testTobytes() -> bytes: ...
     """)
 

@@ -52,7 +52,7 @@ class ReingestTest(test_base.BaseTest):
           return f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         def f() -> int: ...
         def g() -> int: ...
       """)
@@ -74,7 +74,7 @@ class ReingestTest(test_base.BaseTest):
           return f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         def f() -> int: ...
         def g() -> int: ...
       """)
@@ -179,7 +179,7 @@ class ReingestTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       # MyList is not parameterized because it inherits from List[Any].
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         lst = ...  # type: foo.MyList
       """)
 
@@ -199,7 +199,7 @@ class ReingestTest(test_base.BaseTest):
         lst.write(42)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         lst = ...  # type: foo.MyList[int]
       """)
 
@@ -218,7 +218,7 @@ class ReingestTest(test_base.BaseTest):
         x = foo.Foo[int]()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         x: foo.Foo[int]
       """)
 

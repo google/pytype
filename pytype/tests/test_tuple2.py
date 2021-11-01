@@ -227,8 +227,8 @@ class TupleTestPython3Feature(test_base.BaseTest):
           time.strptime('', '%m %d %Y')[0:5])
     """)
     self.assertTypesMatchPytd(ty, """
+      import time
       from typing import Union
-      time: module
       year: int
       month: int
       day: int

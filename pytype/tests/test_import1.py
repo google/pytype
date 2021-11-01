@@ -20,7 +20,7 @@ class ImportTest(test_base.BaseTest):
       import sys
       """)
     self.assertTypesMatchPytd(ty, """
-       sys = ...  # type: module
+       import sys
     """)
 
   def test_basic_import2(self):
@@ -48,7 +48,7 @@ class ImportTest(test_base.BaseTest):
         return my_module.foo()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        my_module = ...  # type: module
+        from path.to import my_module
         def foo() -> str: ...
       """)
 
@@ -135,7 +135,7 @@ class ImportTest(test_base.BaseTest):
         return path.to.my_module.qqsv()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        path = ...  # type: module
+        import path
         def foo() -> str: ...
       """)
 
@@ -177,7 +177,7 @@ class ImportTest(test_base.BaseTest):
           return sys
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       def f() -> module: ...
     """)
 
@@ -191,7 +191,7 @@ class ImportTest(test_base.BaseTest):
           return sys
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       def f() -> module: ...
     """)
 
@@ -203,7 +203,7 @@ class ImportTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      sys = ...  # type: module
+      import sys
       def f() -> List[str, ...]: ...
     """)
 
@@ -226,7 +226,7 @@ class ImportTest(test_base.BaseTest):
         return datetime.timedelta().total_seconds()
     """)
     self.assertTypesMatchPytd(ty, """
-      datetime = ...  # type: module
+      import datetime
       def f() -> float: ...
     """)
 
@@ -278,8 +278,8 @@ class ImportTest(test_base.BaseTest):
       """)
       ty = self.InferFromFile(filename=d["main.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        other_file = ...  # type: module
-        sub = ...  # type: module  # from 'import sub.bar.baz'
+        import sub  # from 'import sub.bar.baz'
+        from sub import other_file
         def g() -> float: ...
         def h() -> int: ...
         def i() -> float: ...
@@ -349,7 +349,7 @@ class ImportTest(test_base.BaseTest):
       d.create_file("foo/__init__.pyi", "")
       ty = self.InferFromFile(filename=d["foo/bar.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        baz = ...  # type: module
+        from foo import baz
         def f() -> int: ...
     """)
 
@@ -418,7 +418,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.InferFromFile(filename=d["foo/deep/bar.py"],
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        baz = ...  # type: module
+        from foo import baz
         def f() -> int: ...
     """)
 
@@ -452,7 +452,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.InferFromFile(filename=d["foo/deep/bar.py"],
                               pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        baz = ...  # type: module
+        from foo import baz
         a: int
       """)
 
@@ -479,8 +479,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.InferFromFile(filename=d["top.py"], pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Type
-        import foo.a
-        foo = ...  # type: module
+        import foo
         x = ...  # type: foo.a.X
       """)
 
@@ -505,7 +504,7 @@ class ImportTest(test_base.BaseTest):
           return path.to.some.module.foo(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        path = ...  # type: module
+        import path
         def my_foo(x) -> str: ...
       """)
 
@@ -522,7 +521,7 @@ class ImportTest(test_base.BaseTest):
           return module.foo(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: builtins.module
+        from path.to.some import module
         def my_foo(x) -> str: ...
       """)
 
@@ -548,7 +547,7 @@ class ImportTest(test_base.BaseTest):
         return __builtin__.int()
     """)
     self.assertTypesMatchPytd(ty, """
-      __builtin__: module
+      import builtins as __builtin__
 
       def f() -> int: ...
     """)
@@ -560,7 +559,7 @@ class ImportTest(test_base.BaseTest):
         killpg = os.killpg
     """)
     self.assertTypesMatchPytd(ty, """
-      os = ...  # type: module
+      import os
       class Foo:
         def killpg(__pgid: int, __signal: int) -> None: ...
     """)
@@ -588,7 +587,7 @@ class ImportTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        foo = ...  # type: module
+        import foo
         def f(x, y) -> Any: ...
         def g(x) -> Any: ...
         def h(x) -> Any: ...
@@ -614,7 +613,7 @@ class ImportTest(test_base.BaseTest):
           return module.Foo.x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        module = ...  # type: builtins.module
+        import module
         def f() -> int: ...
         def g() -> float: ...
         def h() -> float: ...
@@ -645,7 +644,7 @@ class ImportTest(test_base.BaseTest):
         zz = x.z
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        x = ...  # type: module
+        import x
         xx = ...  # type: x.X
         yy = ...  # type: y.Y
         zz = ...  # type: z.Z
@@ -661,7 +660,7 @@ class ImportTest(test_base.BaseTest):
         d = foo.MyOrderedDict()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         d = ...  # type: collections.OrderedDict[nothing, nothing]
       """)
 
@@ -677,7 +676,7 @@ class ImportTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Union
         from typing import SupportsFloat
-        foo = ...  # type: module
+        import foo
         def d(__x: SupportsFloat, __y: SupportsFloat) -> float: ...
       """)
 
@@ -692,7 +691,7 @@ class ImportTest(test_base.BaseTest):
         y = mymath.half_tau
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        mymath = ...  # type: module
+        import mymath
         x = ...  # type: float
         y = ...  # type: float
       """)
@@ -728,8 +727,8 @@ class ImportTest(test_base.BaseTest):
         bar = b.f(foo)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import b
         from typing import Any
-        b = ...  # type: module
         foo = ...  # type: Any
         bar = ...  # type: Any
       """)
@@ -765,9 +764,9 @@ class ImportTest(test_base.BaseTest):
         b = pkg.Y()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import pkg
         a = ...  # type: pkg.pkg.pkg.X
         b = ...  # type: pkg.bar.Y
-        pkg = ...  # type: module
       """)
 
   def test_redefined_builtin(self):
@@ -783,7 +782,7 @@ class ImportTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        foo = ...  # type: module
+        import foo
         x = ...  # type: Any
       """)
 
@@ -801,7 +800,7 @@ class ImportTest(test_base.BaseTest):
         foo.f(object())  # wrong-arg-types
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         x = ...  # type: foo.object
         y = ...  # type: foo.object
       """)
@@ -826,7 +825,7 @@ class ImportTest(test_base.BaseTest):
         A = a.factory()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         A = ...  # type: type
       """)
 
@@ -918,8 +917,8 @@ class ImportTest(test_base.BaseTest):
       init_pyi = self.Infer(
           init_py % "", imports_map=imports_map, module_name="mod.__init__")
     self.assertTypesMatchPytd(init_pyi, """
+      from mod import submod
       from typing import Type
-      submod: module
       X: Type[mod.submod.X]
     """)
 
@@ -965,8 +964,9 @@ class ImportTest(test_base.BaseTest):
       init_pyi = self.Infer(init_py % "", imports_map=imports_map,
                             module_name="mod.__init__")
     self.assertTypesMatchPytd(init_pyi, """
+      import mod.submod
+      import typing
       from typing import Type
-      typing: module
       X: Type[mod.submod.X]
       class Y:
         def __init__(self, x: X) -> None: ...
@@ -1025,14 +1025,11 @@ class ImportTest(test_base.BaseTest):
         v = u.Y()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        import pkg.b
-        import pkg.d
-        import pkg.g
-        pkg = ...  # type: module
+        import pkg
+        from pkg import d as u
         s = ...  # type: pkg.b.X
         t = ...  # type: pkg.b.e
-        u = ...  # type: module
-        v = ...  # type: pkg.d.Y
+        v = ...  # type: u.Y
       """)
 
   def test_import_package_as_alias(self):
@@ -1063,7 +1060,7 @@ class ImportTest(test_base.BaseTest):
         y = b.y
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        b: module
+        import b
         x: str
         y: int
       """)
@@ -1084,7 +1081,7 @@ class ImportTest(test_base.BaseTest):
         y = c.y
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        c: module
+        import c
         x: str
         y: int
       """)
@@ -1105,7 +1102,7 @@ class ImportTest(test_base.BaseTest):
         y = c.y
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        c: module
+        import c
         x: str
         y: int
       """)
@@ -1120,8 +1117,8 @@ class ImportTest(test_base.BaseTest):
             return object.__new__(cls)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        from foo import bar
         from typing import Type, TypeVar
-        bar = ...  # type: module
         _Tfoo = TypeVar("_Tfoo", bound=foo)
         class foo:
           def __new__(cls: Type[_Tfoo]) -> _Tfoo: ...
@@ -1137,7 +1134,7 @@ class ImportTest(test_base.BaseTest):
         baz = foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        bar = ...  # type: module
+        from foo import bar
         class foo: ...
         baz = foo
       """)
@@ -1216,7 +1213,7 @@ class ImportTest(test_base.BaseTest):
         v = foo.baz.v
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         v: str
       """)
 
@@ -1236,7 +1233,7 @@ class ImportTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Type
         import foo
-        other: module
+        import other
         X: Type[foo.X]
         v: str
       """)

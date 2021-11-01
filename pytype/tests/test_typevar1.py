@@ -185,7 +185,7 @@ class TypeVarTest(test_base.BaseTest):
           y = 3
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: int
         y = ...  # type: int
       """)
@@ -208,9 +208,8 @@ class TypeVarTest(test_base.BaseTest):
         y = a.B().foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import List
         import a
-        a = ...  # type: module
+        from typing import List
         x = ...  # type: List[a.A]
         y = ...  # type: List[a.B]
       """)
@@ -235,9 +234,8 @@ class TypeVarTest(test_base.BaseTest):
         y = a.make_B().foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import List
         import a
-        a = ...  # type: module
+        from typing import List
         x = ...  # type: List[a.A[int]]
         y = ...  # type: List[a.B[int]]
       """)
@@ -261,7 +259,7 @@ class TypeVarTest(test_base.BaseTest):
         x = a.make_A().foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: List[int]
       """)
 
@@ -283,8 +281,8 @@ class TypeVarTest(test_base.BaseTest):
         x = a.make_A().foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import List
-        a = ...  # type: module
         x = ...  # type: List[int]
       """)
 
@@ -306,9 +304,8 @@ class TypeVarTest(test_base.BaseTest):
         y = a.B().foo()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import List
         import a
-        a = ...  # type: module
+        from typing import List
         v = ...  # type: List[a.A]
         w = ...  # type: List[a.B]
         x = ...  # type: List[a.A]
@@ -332,9 +329,8 @@ class TypeVarTest(test_base.BaseTest):
         x = a.A.foo
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import List
         import a
-        a = ...  # type: module
+        from typing import List
         x = ...  # type: List[a.A]
       """)
 

@@ -1,11 +1,14 @@
 import __future__
+import collections
+import platform
 import sys
+import types
+import warnings
 if sys.version_info < (3,):
     import UserDict
     from typing import Mapping, NoReturn
 else:
     import types
-import collections
 from typing import Any, Type
 
 OrderedDict: Type[collections.OrderedDict]
@@ -15,12 +18,8 @@ TYPE: str
 absolute_import: __future__._Feature
 division: __future__._Feature
 ordered_dict: Type[dict]
-platform: module
 print_function: __future__._Feature
 set_closure_cell: Any
-sys: module
-types: module
-warnings: module
 
 if sys.version_info < (3,):
     IterableUserDict: Type[UserDict.IterableUserDict]

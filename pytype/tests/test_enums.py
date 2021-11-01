@@ -39,7 +39,7 @@ class EnumOverlayTest(test_base.BaseTest):
         BLUE = 3
       """)
     self.assertTypesMatchPytd(ty, """
-      enum: module
+      import enum
       class Colors(enum.Enum):
         BLUE: int
         GREEN: int
@@ -94,7 +94,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_basic_enum_from_pyi(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", """
-        enum: module
+        import enum
         class Colors(enum.Enum):
           RED: int
           BLUE: int
@@ -107,7 +107,7 @@ class EnumOverlayTest(test_base.BaseTest):
         v = e.Colors.GREEN.value
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        e: module
+        import e
         c: e.Colors
         n: str
         v: int
@@ -218,7 +218,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_name_lookup_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("e.pyi", """
-        enum: module
+        import enum
         a_string: str
         class M(enum.Enum):
           A: int
@@ -267,7 +267,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_enum_pytd_named_name(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
-        enum: module
+        import enum
         class M(enum.Enum):
           name: int
           value: str
@@ -305,7 +305,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_value_lookup_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
-        enum: module
+        import enum
         class M(enum.Enum):
           A: int
         class N(enum.Enum):
@@ -382,7 +382,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_enum_pytd_eq(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
-        enum: module
+        import enum
         class M(enum.Enum):
           A: int
         class N(enum.Enum):
@@ -437,7 +437,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_pytd_metaclass_methods(self):
     with file_utils.Tempdir() as d:
       d.create_file("m.pyi", """
-        enum: module
+        import enum
         class M(enum.Enum):
           A: int
       """)
@@ -1014,9 +1014,8 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_own_member_new(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        import enum
         from typing import Annotated, Any, Type, TypeVar
-
-        enum: module
 
         _TOrderedEnum = TypeVar('_TOrderedEnum', bound=OrderedEnum)
 
@@ -1072,8 +1071,8 @@ class EnumOverlayTest(test_base.BaseTest):
           return f"{self.str_v}+{self.value}"
     """)
     self.assertTypesMatchPytd(ty, """
+      import enum
       from typing import Annotated
-      enum: module
       class M(enum.Enum):
         A: int
         combo: Annotated[str, 'property']
@@ -1153,8 +1152,8 @@ class EnumOverlayTest(test_base.BaseTest):
       M.class_attr = 2
     """)
     self.assertTypesMatchPytd(ty, """
+      import enum
       from typing import ClassVar
-      enum: module
       class M(enum.Enum):
         A: int
         class_attr: ClassVar[int]

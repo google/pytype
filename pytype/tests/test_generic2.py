@@ -325,7 +325,6 @@ class GenericBasicTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         import a
 
-        a = ...  # type: module
         b = ...  # type: a.A[int]
       """)
 
@@ -852,7 +851,6 @@ class GenericFeatureTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         import a
 
-        a = ...  # type: module
         d = ...  # type: a.A[int]
         ks = ...  # type: dict_keys[int]
         vs = ...  # type: dict_values[int]
@@ -951,7 +949,7 @@ class GenericFeatureTest(test_base.BaseTest):
         x2 = foo.Foo[str](__any_object__).x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         x1: int
         x2: str
       """)

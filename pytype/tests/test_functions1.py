@@ -221,8 +221,8 @@ class PreciseReturnTest(test_base.BaseTest):
         x = foo.f()  # missing-parameter
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo: module
         x: Any
       """)
 
@@ -472,8 +472,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f(x, y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ...  # type: module
         def f(x, y) -> list: ...
       """)
 
@@ -491,8 +491,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ... # type: module
         def f(x) -> Any: ...
       """)
 
@@ -511,8 +511,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f("", y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import List
-        foo = ...  # type: module
         def f(y) -> List[str]: ...
     """)
 
@@ -530,8 +530,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f(x, "")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Union
-        foo = ...  # type: module
         # TODO(rechen): def f(x: str or List[str]) -> List[str]: ...
         def f(x) -> list: ...
       """)
@@ -556,8 +556,8 @@ class TestFunctions(test_base.BaseTest):
           return ret
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, List, MutableSequence
-        foo = ...  # type: module
         # TODO(rechen): def f(x: unicode or List[unicode]) -> bool: ...
         def f(x) -> Any: ...
         def g(x) -> list: ...
@@ -581,9 +581,7 @@ class TestFunctions(test_base.BaseTest):
         x = foo.compile().match("")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        import typing
-
-        foo = ...  # type: module
+        import foo
         x = ...  # type: foo.MyMatch[str]
       """)
 
@@ -598,7 +596,7 @@ class TestFunctions(test_base.BaseTest):
         x = foo.f(0, True)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         x = ...  # type: int
       """)
 
@@ -614,8 +612,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ...  # type: module
         def f(x) -> Any: ...
       """)
 
@@ -631,8 +629,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ...  # type: module
         def f(x) -> Any: ...
       """)
 
@@ -648,8 +646,8 @@ class TestFunctions(test_base.BaseTest):
           return foo.f(y=x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ...  # type: module
         def f(x) -> Any: ...
       """)
 
@@ -702,8 +700,8 @@ class TestFunctions(test_base.BaseTest):
         w2 = type(f)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Callable, Tuple
-        foo = ...  # type: module
         def f() -> None: ...
         v1 = ...  # type: Tuple[Callable[[], None]]
         v2 = Callable
@@ -723,8 +721,8 @@ class TestFunctions(test_base.BaseTest):
         v1, v2 = foo.f(42j)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         v1 = ...  # type: Union[str, complex]
         v2 = ...  # type: int
       """)
@@ -792,7 +790,7 @@ class TestFunctions(test_base.BaseTest):
         c = a.b
         """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def c(x: int, y: int, z: int = ...): ...
         """)
 
@@ -933,7 +931,7 @@ class TestFunctions(test_base.BaseTest):
         int2byte = chr
     """)
     self.assertTypesMatchPytd(ty, """
-      struct = ...  # type: module
+      import struct
       def int2byte(*v) -> bytes: ...
     """)
 
@@ -949,8 +947,8 @@ class TestFunctions(test_base.BaseTest):
         v = foo.f(__any_object__)
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
+      import foo
       from typing import Union
-      foo = ...  # type: module
       v = ...  # type: Union[int, str]
     """)
 
@@ -970,7 +968,7 @@ class TestFunctions(test_base.BaseTest):
       partial_f = functools.partial(f, 0)
     """)
     self.assertTypesMatchPytd(ty, """
-      functools: module
+      import functools
       def f(a, b) -> None: ...
       partial_f: functools.partial
     """)
@@ -1029,8 +1027,8 @@ class TestFunctions(test_base.BaseTest):
         return types.FunctionType(code, globals)
     """)
     self.assertTypesMatchPytd(ty, """
+      import types
       from typing import Callable
-      types: module
       def new_function(code, globals) -> Callable: ...
     """)
 

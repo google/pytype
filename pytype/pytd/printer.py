@@ -205,8 +205,12 @@ class PrintVisitor(base_visitor.Visitor):
       assert module == "builtins", module
       assert name in ("True", "False"), name
       return name
-    else:
-      return f"{node.name}: {node.type}"
+
+    node_type = node.type
+    if node_type.startswith(("import ", "from ")):
+      # TODO(slebedev): Use types.ModuleType instead.
+      node_type = "module"
+    return f"{node.name}: {node_type}"
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()
@@ -326,6 +330,9 @@ class PrintVisitor(base_visitor.Visitor):
     if node.return_type == "nothing":
       return_type = "NoReturn"  # a prettier alias for nothing
       self._FromTyping(return_type)
+    elif node.return_type.startswith(("import ", "from ")):
+      # TODO(slebedev): Use types.ModuleType instead.
+      return_type = "module"
     else:
       return_type = node.return_type
     ret = f" -> {return_type}"

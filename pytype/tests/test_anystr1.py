@@ -21,7 +21,7 @@ class AnyStrTest(test_base.BaseTest):
           y = 3
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: int
         y = ...  # type: int
       """)
