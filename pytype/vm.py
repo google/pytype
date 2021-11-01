@@ -1061,11 +1061,11 @@ class VirtualMachine:
     return NotImplemented
 
   def call_init(self, node, unused_instance):
-    # This dummy implementation is overwritten in analyze.py.
+    # This dummy implementation is overwritten in tracer_vm.py.
     return node
 
   def init_class(self, node, cls, extra_key=None):
-    # This dummy implementation is overwritten in analyze.py.
+    # This dummy implementation is overwritten in tracer_vm.py.
     del cls, extra_key
     return node, None
 
@@ -3247,7 +3247,7 @@ class VirtualMachine:
       return state.set_why("reraise")
 
   def _check_return(self, node, actual, formal):
-    return False  # overridden in analyze.py
+    return False  # overwritten in tracer_vm.py
 
   def _set_frame_return(self, node, frame, var):
     if frame.allowed_returns is not None:
