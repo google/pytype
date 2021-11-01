@@ -430,7 +430,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def g(x: foo.C.C2) -> None: ...
     """)
     expected = textwrap.dedent("""
-      import foo.C
+      import foo
       from typing import Any, List, Union
 
       def f(x: Union[int, slice]) -> List[Any]: ...

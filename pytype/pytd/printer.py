@@ -150,10 +150,11 @@ class PrintVisitor(base_visitor.Visitor):
       for defn in definitions:
         self._local_names[defn.name] = label
     for alias in unit.aliases:
-      # Modules are represented as NamedTypes in partially resolved asts.
+      # Modules are represented as NamedTypes in partially resolved asts and
+      # sometimes as LateTypes in asts modified for pickling.
       if isinstance(alias.type, pytd.Module):
         module_name = alias.type.module_name
-      elif isinstance(alias.type, pytd.NamedType):
+      elif isinstance(alias.type, (pytd.NamedType, pytd.LateType)):
         module_name = alias.type.name
       else:
         continue
@@ -212,7 +213,8 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitAlias(self, node):
     """Convert an import or alias to a string."""
-    if isinstance(self.old_node.type, (pytd.NamedType, pytd.ClassType)):
+    if isinstance(self.old_node.type,
+                  (pytd.NamedType, pytd.ClassType, pytd.LateType)):
       full_name = self.old_node.type.name
       suffix = ""
       module, _, name = full_name.rpartition(".")
@@ -422,6 +424,17 @@ class PrintVisitor(base_visitor.Visitor):
       suffix = f"{remainder}.{suffix}"
     return None
 
+  def _GuessModule(self, maybe_module):
+    """Guess which part of the given name is the module prefix."""
+    if "." not in maybe_module:
+      return maybe_module
+    prefix, suffix = maybe_module.rsplit(".", 1)
+    # Heuristic: modules are typically lowercase, classes uppercase.
+    if suffix[0].islower():
+      return maybe_module
+    else:
+      return self._GuessModule(prefix)
+
   def VisitNamedType(self, node):
     """Convert a type to a string."""
     prefix, _, suffix = node.name.rpartition(".")
@@ -440,7 +453,7 @@ class PrintVisitor(base_visitor.Visitor):
           if aliased_name:
             node_name = aliased_name
           else:
-            self._RequireImport(prefix)
+            self._RequireImport(self._GuessModule(prefix))
             node_name = node.name
         else:
           node_name = node.name

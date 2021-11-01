@@ -3624,7 +3624,10 @@ class VirtualMachine:
           ret_var = val.get_instance_type_parameter(abstract_utils.T)
         else:
           ret_var = val.get_instance_type_parameter(abstract_utils.V)
-        result.PasteVariable(ret_var, state.node, {b})
+        if ret_var.bindings:
+          result.PasteVariable(ret_var, state.node, {b})
+        else:
+          result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
       else:
         result.AddBinding(val, {b}, state.node)
     return state.push(result)
