@@ -64,7 +64,6 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_sunderscore_name_value(self):
     self.Check("""
-      from typing import Any
       import enum
       class M(enum.Enum):
         A = 1
@@ -72,7 +71,7 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A._value_, int)
       def f(m: M):
         assert_type(m._name_, str)
-        assert_type(m._value_, Any)
+        assert_type(m._value_, int)
     """)
 
   def test_sunderscore_name_value_pytd(self):
@@ -988,6 +987,19 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(Planet.EARTH.mass, float)
       assert_type(Planet.EARTH.radius, float)
       assert_type(Planet.EARTH.surface_gravity, float)
+    """)
+
+  def test_own_init_canonical(self):
+    self.Check("""
+      import enum
+
+      class Protocol(enum.Enum):
+        ssh = 22
+        def __init__(self, port_number):
+          self.port_number = port_number
+
+      def get_port(protocol: str) -> int:
+        return Protocol[protocol].port_number
     """)
 
   def test_own_init_errors(self):
