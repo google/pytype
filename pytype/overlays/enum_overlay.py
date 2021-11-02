@@ -23,6 +23,7 @@ into a proper enum.
 """
 
 import collections
+import contextlib
 import logging
 
 from pytype import overlay
@@ -199,6 +200,16 @@ class EnumInstance(abstract.InterpreterClass):
     # These are set by EnumMetaInit.setup_interpreterclass.
     self.member_type = None
     self.member_attrs = {}
+    self._instantiating = False
+
+  @contextlib.contextmanager
+  def _is_instantiating(self):
+    old_instantiating = self._instantiating
+    self._instantiating = True
+    try:
+      yield
+    finally:
+      self._instantiating = old_instantiating
 
   def instantiate(self, node, container=None):
     # Instantiate creates a canonical enum member. This intended for when no
@@ -216,7 +227,13 @@ class EnumInstance(abstract.InterpreterClass):
       value = self.ctx.new_unsolvable(node)
     instance.members["value"] = value
     for attr_name, attr_type in self.member_attrs.items():
-      instance.members[attr_name] = attr_type.instantiate(node)
+      # attr_type might refer back to self, so track whether we are
+      # instantiating to avoid infinite recursion.
+      if self._instantiating:
+        instance.members[attr_name] = self.ctx.new_unsolvable(node)
+      else:
+        with self._is_instantiating():
+          instance.members[attr_name] = attr_type.instantiate(node)
     return instance.to_variable(node)
 
   def is_empty_enum(self):
