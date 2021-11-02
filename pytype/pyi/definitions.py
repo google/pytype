@@ -511,23 +511,31 @@ class Definitions:
         raise ParseError("[..., ...] not supported")
       return pytd.GenericType(base_type=base_type, parameters=(element_type,))
     else:
-      parameters = tuple(pytd.AnythingType() if p is self.ELLIPSIS else p
-                         for p in parameters)
+      processed_parameters = []
+      # We do not yet support PEP 612, Parameter Specification Variables.
+      # To avoid blocking typeshed from adopting this PEP, we convert new
+      # features to approximations that only use supported features.
+      for p in parameters:
+        if p is self.ELLIPSIS:
+          processed = pytd.AnythingType()
+        elif (p in self.param_specs and
+              self._matches_full_name(base_type, "typing.Generic")):
+          # Replacing a ParamSpec with a TypeVar isn't correct, but it'll work
+          # for simple cases in which the filled value is also a ParamSpec.
+          self.type_params.append(pytd.TypeParameter(p.name))
+          processed = p
+        elif (p in self.param_specs or
+              (isinstance(p, pytd.GenericType) and
+               self._matches_full_name(p, _CONCATENATE_TYPES))):
+          processed = pytd.AnythingType()
+        else:
+          processed = p
+        processed_parameters.append(processed)
+      parameters = tuple(processed_parameters)
       if self._matches_named_type(base_type, _TUPLE_TYPES):
         return pytdgen.heterogeneous_tuple(base_type, parameters)
       elif self._matches_named_type(base_type, _CALLABLE_TYPES):
-        callable_parameters = []
-        for p in parameters:
-          # We do not yet support PEP 612, Parameter Specification Variables.
-          # To avoid blocking typeshed from adopting this PEP, we convert new
-          # features to Any.
-          if p in self.param_specs or (
-              isinstance(p, pytd.GenericType) and
-              self._matches_full_name(p, _CONCATENATE_TYPES)):
-            callable_parameters.append(pytd.AnythingType())
-          else:
-            callable_parameters.append(p)
-        return pytdgen.pytd_callable(base_type, tuple(callable_parameters))
+        return pytdgen.pytd_callable(base_type, parameters)
       else:
         assert parameters
         return pytd.GenericType(base_type=base_type, parameters=parameters)
@@ -558,7 +566,7 @@ class Definitions:
   def new_type(
       self,
       name: Union[str, pytd_node.Node],
-      parameters: Optional[List[pytd_node.Node]] = None
+      parameters: Optional[List[pytd.Type]] = None
   ) -> pytd.Type:
     """Return the AST for a type.
 

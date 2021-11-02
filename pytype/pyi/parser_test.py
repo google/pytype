@@ -2851,7 +2851,6 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       def f(x: Callable[..., R]) -> Callable[..., Awaitable[R]]: ...
     """)
 
-  @test_base.skip("ParamSpec in custom generic classes not supported yet")
   def test_custom_generic(self):
     self.check("""
       from typing import Callable, Generic, ParamSpec, TypeVar
@@ -2862,6 +2861,38 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       class X(Generic[T, P]):
           f: Callable[P, int]
           x: T
+    """, """
+      from typing import Callable, Generic, TypeVar
+
+      P = TypeVar('P')
+      T = TypeVar('T')
+
+      class X(Generic[T, P]):
+          f: Callable[..., int]
+          x: T
+    """)
+
+  def test_use_custom_generic(self):
+    self.check("""
+      from typing import Callable, Generic, TypeVar
+      from typing_extensions import ParamSpec
+
+      _T = TypeVar('_T')
+      _P = ParamSpec('_P')
+
+      class Foo(Generic[_P, _T]): ...
+
+      def f(x: Callable[_P, _T]) -> Foo[_P, _T]: ...
+    """, """
+      from typing import Any, Callable, Generic, TypeVar
+      from typing_extensions import ParamSpec
+
+      _P = TypeVar('_P')
+      _T = TypeVar('_T')
+
+      class Foo(Generic[_P, _T]): ...
+
+      def f(x: Callable[..., _T]) -> Foo[Any, _T]: ...
     """)
 
   @test_base.skip("ParamSpec in custom generic classes not supported yet")
