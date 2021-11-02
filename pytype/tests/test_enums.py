@@ -1130,6 +1130,23 @@ class EnumOverlayTest(test_base.BaseTest):
           return m.x
       """, pythonpath=[d.path])
 
+  def test_instance_attrs_self_referential(self):
+    self.Check("""
+      from dataclasses import dataclass
+      from enum import Enum
+      from typing import Optional
+
+      @dataclass
+      class O:
+        thing: Optional["Thing"] = None
+
+      class Thing(Enum):
+        A = O()
+
+        def __init__(self, o: O):
+          self.b = o.thing
+    """)
+
   def test_enum_bases(self):
     self.CheckWithErrors("""
       import enum
