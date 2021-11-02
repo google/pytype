@@ -28,7 +28,7 @@ class BuiltinTests2(test_base.BaseTest):
       r[3] = 3
     """)
     self.assertTypesMatchPytd(ty, """
-      collections = ...  # type: module
+      import collections
       r = ...  # type: collections.defaultdict[int, int]
     """)
 
@@ -47,7 +47,7 @@ class BuiltinTests2(test_base.BaseTest):
       import importlib
     """)
     self.assertTypesMatchPytd(ty, """
-      importlib = ...  # type: module
+      import importlib
     """)
 
   def test_set_union(self):
@@ -185,8 +185,8 @@ class BuiltinTests2(test_base.BaseTest):
         y = foo.x.baz
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo = ...  # type: module
         x = ...  # type: str
         y = ...  # type: Any
       """)

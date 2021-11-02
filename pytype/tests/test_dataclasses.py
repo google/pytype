@@ -17,8 +17,8 @@ class TestDataclass(test_base.BaseTest):
         z: str
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -37,8 +37,8 @@ class TestDataclass(test_base.BaseTest):
         y: str
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: Foo
@@ -59,8 +59,8 @@ class TestDataclass(test_base.BaseTest):
         y = 10
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: str
@@ -80,8 +80,8 @@ class TestDataclass(test_base.BaseTest):
           return 10
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: str
@@ -102,8 +102,8 @@ class TestDataclass(test_base.BaseTest):
         z: str
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -124,8 +124,8 @@ class TestDataclass(test_base.BaseTest):
           self.y = 0
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -144,8 +144,8 @@ class TestDataclass(test_base.BaseTest):
         y: List[int] = dataclasses.field(default_factory=list)
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, List, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -210,8 +210,8 @@ class TestDataclass(test_base.BaseTest):
         y: int = dataclasses.field(init=False)
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -229,8 +229,8 @@ class TestDataclass(test_base.BaseTest):
         y: int
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -287,8 +287,8 @@ class TestDataclass(test_base.BaseTest):
           return self.y
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         w: float
@@ -316,8 +316,8 @@ class TestDataclass(test_base.BaseTest):
         z: bool = dataclasses.field(default=True)
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         w: float
@@ -347,8 +347,8 @@ class TestDataclass(test_base.BaseTest):
         c: int
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class A:
         a: int
@@ -435,8 +435,8 @@ class TestDataclass(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Optional, Union
 
+      import dataclasses
       Node = Union[IntLeaf, StrLeaf, Tree]
-      dataclasses: module
 
       @dataclasses.dataclass
       class IntLeaf:
@@ -490,8 +490,8 @@ class TestDataclass(test_base.BaseTest):
         y: int = 10
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class A:
         y: int
@@ -509,8 +509,8 @@ class TestDataclass(test_base.BaseTest):
         y: int = 10
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class A:
         x: dataclasses.InitVar[str]
@@ -533,8 +533,8 @@ class TestDataclass(test_base.BaseTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class A:
         x: dataclasses.InitVar[str]
@@ -559,8 +559,8 @@ class TestDataclass(test_base.BaseTest):
         z: dataclasses.InitVar[int] = 42
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Union
-      dataclasses: module
       @dataclasses.dataclass
       class A:
         y: int
@@ -585,8 +585,8 @@ class TestDataclass(test_base.BaseTest):
         y: str = 'hello'
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import ClassVar, Dict
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         y: str
@@ -610,8 +610,8 @@ class TestDataclass(test_base.BaseTest):
       Inner2 = Bar.Inner
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Type
-      dataclasses: module
       class Foo:
         Inner: Type[Inner1]
       class Bar:
@@ -649,8 +649,8 @@ class TestDataclass(test_base.BaseTest):
         y: int = field_wrapper(default=1)
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Any, Dict
-      dataclasses: module
       def field_wrapper(**kwargs) -> Any: ...
       @dataclasses.dataclass
       class Foo:
@@ -672,8 +672,8 @@ class TestDataclass(test_base.BaseTest):
           return "hello world"
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Annotated, Dict
-      dataclasses: module
       @dataclasses.dataclass
       class Foo:
         x: bool
@@ -697,8 +697,8 @@ class TestDataclass(test_base.BaseTest):
       x2 = foo2.x
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Dict, Generic, TypeVar
-      dataclasses: module
       T = TypeVar('T')
       @dataclasses.dataclass
       class Foo(Generic[T]):
@@ -786,9 +786,9 @@ class TestPyiDataclass(test_base.BaseTest):
           z: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Dict, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class Foo(foo.A):
           z: str
@@ -817,9 +817,9 @@ class TestPyiDataclass(test_base.BaseTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Dict, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str
@@ -851,9 +851,9 @@ class TestPyiDataclass(test_base.BaseTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Dict, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str
@@ -885,9 +885,9 @@ class TestPyiDataclass(test_base.BaseTest):
           a: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Dict, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class Foo(foo.B):
           a: str
@@ -913,9 +913,9 @@ class TestPyiDataclass(test_base.BaseTest):
           z: str = "hello"
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Dict, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class Foo(foo.A):
           z: str
@@ -945,9 +945,9 @@ class TestPyiDataclass(test_base.BaseTest):
             return 42
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Annotated, Dict, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class Foo(foo.A):
           a: str
@@ -976,8 +976,8 @@ class TestPyiDataclass(test_base.BaseTest):
         c = y.z
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Optional, List
-        foo: module
         x: foo.A
         y: foo.A
         a: Optional[foo.A]
@@ -1004,9 +1004,9 @@ class TestPyiDataclass(test_base.BaseTest):
           w: int
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Any, Dict, List, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class B(foo.A):
           w: int
@@ -1033,9 +1033,9 @@ class TestPyiDataclass(test_base.BaseTest):
           w: int
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import dataclasses
+        import foo
         from typing import Any, Dict, List, Union
-        dataclasses: module
-        foo: module
         @dataclasses.dataclass
         class C(foo.A):
           w: int

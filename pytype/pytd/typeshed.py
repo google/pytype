@@ -344,13 +344,14 @@ def _get_typeshed():
   return _typeshed
 
 
-def parse_type_definition(pyi_subdir, module, python_version):
+def parse_type_definition(pyi_subdir, module, python_version, gen_stub_imports):
   """Load and parse a *.pyi from typeshed.
 
   Args:
     pyi_subdir: the directory where the module should be found.
     module: the module name (without any file extension)
     python_version: sys.version_info[:2]
+    gen_stub_imports: Temporary flag for releasing --gen-stub-imports.
 
   Returns:
     None if the module doesn't have a definition.
@@ -365,5 +366,6 @@ def parse_type_definition(pyi_subdir, module, python_version):
     return None
 
   ast = parser.parse_string(src, filename=filename, name=module,
-                            python_version=python_version)
+                            python_version=python_version,
+                            gen_stub_imports=gen_stub_imports)
   return filename, ast

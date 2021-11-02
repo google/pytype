@@ -22,6 +22,8 @@ call_metaclass_init is called, allowing EnumMetaInit to transform the PyTDClass
 into a proper enum.
 """
 
+import collections
+import contextlib
 import logging
 
 from pytype import overlay
@@ -195,14 +197,24 @@ class EnumInstance(abstract.InterpreterClass):
 
   def __init__(self, name, bases, members, cls, ctx):
     super().__init__(name, bases, members, cls, ctx)
-    # This is set by EnumMetaInit.setup_interpreterclass.
+    # These are set by EnumMetaInit.setup_interpreterclass.
     self.member_type = None
+    self.member_attrs = {}
+    self._instantiating = False
+
+  @contextlib.contextmanager
+  def _is_instantiating(self):
+    old_instantiating = self._instantiating
+    self._instantiating = True
+    try:
+      yield
+    finally:
+      self._instantiating = old_instantiating
 
   def instantiate(self, node, container=None):
     # Instantiate creates a canonical enum member. This intended for when no
     # particular enum member is needed, e.g. during analysis. Real members have
     # these fields set during class creation.
-    # TODO(tsudol): Use the types of other members to set `value`.
     del container
     instance = abstract.Instance(self, self.ctx)
     instance.members["name"] = self.ctx.convert.build_nonatomic_string(node)
@@ -214,6 +226,14 @@ class EnumInstance(abstract.InterpreterClass):
       # But there's no reason not to make sure this function is safe.
       value = self.ctx.new_unsolvable(node)
     instance.members["value"] = value
+    for attr_name, attr_type in self.member_attrs.items():
+      # attr_type might refer back to self, so track whether we are
+      # instantiating to avoid infinite recursion.
+      if self._instantiating:
+        instance.members[attr_name] = self.ctx.new_unsolvable(node)
+      else:
+        with self._is_instantiating():
+          instance.members[attr_name] = attr_type.instantiate(node)
     return instance.to_variable(node)
 
   def is_empty_enum(self):
@@ -451,6 +471,7 @@ class EnumMetaInit(abstract.SimpleFunction):
 
   def _setup_interpreterclass(self, node, cls):
     member_types = []
+    member_attrs = collections.defaultdict(list)
     base_type = self._get_base_type(cls.bases())
     # Enum members are created by calling __new__ (of either the base type or
     # the first enum in MRO that defines its own __new__, or else object if
@@ -501,6 +522,10 @@ class EnumMetaInit(abstract.SimpleFunction):
         node = cls.call_init(node, cls.to_binding(node), init_args)
       member.members["value"] = member.members["_value_"]
       member.members["name"] = self.ctx.convert.build_string(node, name)
+      for attr_name in member.members:
+        if attr_name in ("name", "value"):
+          continue
+        member_attrs[attr_name].extend(member.members[attr_name].data)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
     if base_type:
@@ -509,7 +534,11 @@ class EnumMetaInit(abstract.SimpleFunction):
       member_type = self.ctx.convert.merge_classes(member_types)
     else:
       member_type = self.ctx.convert.unsolvable
+    member_attrs = {
+        n: self.ctx.convert.merge_classes(ts) for n, ts in member_attrs.items()
+    }
     cls.member_type = member_type
+    cls.member_attrs = member_attrs
     # If cls has a __new__, save it for later. (See _get_member_new above.)
     # It needs to be marked as a classmethod, or else pytype will try to
     # pass an instance of cls instead of cls when analyzing it.

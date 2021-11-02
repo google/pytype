@@ -325,7 +325,6 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import unittest
-      unittest = ...  # type: module
       class A(unittest.case.TestCase):
           x = ...  # type: int
           def fooTest(self) -> int: ...
@@ -344,7 +343,6 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import unittest
-      unittest = ...  # type: module
       class A(unittest.case.TestCase):
           x = ...  # type: int
           def setUp(self) -> None : ...
@@ -366,7 +364,6 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import unittest
-      unittest = ...  # type: module
       class A(unittest.case.TestCase):
           x = ...  # type: int
           foo = ...  # type: str
@@ -422,8 +419,8 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         v = X().f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Type
-        foo = ...  # type: module
         class X(metaclass=foo.MyMeta):
           def f(self) -> int: ...
         v = ...  # type: int

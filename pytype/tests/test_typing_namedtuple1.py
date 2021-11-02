@@ -182,8 +182,8 @@ class NamedTupleTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
 
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         v = ...  # type: foo.namedtuple_X_0
         a = ...  # type: str
         b = ...  # type: int

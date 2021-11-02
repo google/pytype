@@ -40,8 +40,6 @@ linecache: module
 ordered_dict: Type[dict]
 print_function: __future__._Feature
 set_closure_cell: Any
-sys: module
-threading: module
 warnings: module
 
 _T0 = TypeVar('_T0')

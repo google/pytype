@@ -74,7 +74,7 @@ class ProtocolTest(test_base.BaseTest):
           pass
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
-      foo: module
+      import foo
       from typing import Generic, Protocol, TypeVar
       T = TypeVar('T')
       class Baz(Protocol, Generic[T]): ...

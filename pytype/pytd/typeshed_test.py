@@ -30,7 +30,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
   def test_parse_type_definition(self):
     filename, ast = typeshed.parse_type_definition(
-        "stdlib", "_random", self.python_version)
+        "stdlib", "_random", self.python_version, True)
     self.assertEqual(os.path.basename(filename), "_random.pyi")
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 

@@ -223,7 +223,7 @@ class TestExceptions(test_base.BaseTest):
             DeprecationWarning, stacklevel=2)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        warnings = ...  # type: module
+        import warnings
         def warn() -> None: ...
       """)
 

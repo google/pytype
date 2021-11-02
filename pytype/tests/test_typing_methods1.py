@@ -89,9 +89,9 @@ class TypingMethodsTest(test_base.BaseTest):
         x.close()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import IO, List
         fi = ...  # type: IO[str]
-        foo = ...  # type: module
         a = ...  # type: int
         b = ...  # type: bool
         c = ...  # type: str
@@ -132,8 +132,8 @@ class TypingMethodsTest(test_base.BaseTest):
           f = reversed(seq)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Iterator, List, Sequence, Tuple, Union
-        foo = ...  # type: module
         seq = ...  # type: Union[Sequence[str], Tuple[str]]
         a = ...  # type: str
         b = ...  # type: int
@@ -165,8 +165,8 @@ class TypingMethodsTest(test_base.BaseTest):
           b = seq.extend([1,2,3])
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Iterator, List, Sequence, Union
-        foo = ...  # type: module
         # TODO(b/159065400): Should be List[Union[int, str]]
         seq = ...  # type: Union[list, typing.MutableSequence[Union[int, str]]]
         a = ...  # type: None
@@ -198,7 +198,7 @@ class TypingMethodsTest(test_base.BaseTest):
         d = q.rotate(3)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         from typing import Deque
         q = ...  # type: Deque[int]
         a = ...  # type: None
@@ -234,7 +234,6 @@ class TypingMethodsTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         from typing import Tuple, Union
         import foo
-        foo = ...  # type: module
         m = ...  # type: foo.MyDict[Union[complex, int, str], Union[complex, float, int]]
         a = ...  # type: Union[complex, float, int]
         b = ...  # type: Tuple[Union[complex, str], Union[float, int]]
@@ -263,8 +262,8 @@ class TypingMethodsTest(test_base.BaseTest):
         f = x.isdisjoint([1,2,3])
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import AbstractSet
-        foo = ...  # type: module
         x = ...  # type: AbstractSet[str]
         a = ...  # type: bool
         b = ...  # type: AbstractSet[str]
@@ -299,8 +298,8 @@ class TypingMethodsTest(test_base.BaseTest):
         e = 3 in x
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import MutableSet, Union
-        foo = ...  # type: module
         a = ...  # type: Union[int, str]
         # TODO(b/159067449): We do a clear() after adding "int".
         # Why does "int" still appear for b?
@@ -347,8 +346,8 @@ class TypingMethodsTest(test_base.BaseTest):
         e = m1.end()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import List, Match, Pattern
-        foo = ...  # type: module
         a = ...  # type: int
         b = ...  # type: int
         c = ...  # type: str

@@ -18,8 +18,8 @@ class TypeVarTest(test_base.BaseTest):
       w = f("")
     """)
     self.assertTypesMatchPytd(ty, """
+      import typing
       from typing import Any
-      typing = ...  # type: module
       T = TypeVar("T")
       def f(x: T) -> T: ...
       v = ...  # type: int
@@ -247,7 +247,6 @@ class TypeVarTest(test_base.BaseTest):
       v = id(x) if x else 42
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      import types
       from typing import Optional, TypeVar
       v = ...  # type: int
       x = ...  # type: Optional[int]
@@ -341,8 +340,8 @@ class TypeVarTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import __future__
+      import typing
       from typing import Any
-      typing = ...  # type: module
       unicode_literals = ...  # type: __future__._Feature
       T = TypeVar("T")
       def f(x: T) -> T: ...
@@ -642,8 +641,8 @@ class GenericTypeAliasTest(test_base.BaseTest):
           return [x]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import List, TypeVar
-        foo: module
         T = TypeVar('T')
         def f(x: T) -> List[T]: ...
       """)
@@ -670,8 +669,8 @@ class GenericTypeAliasTest(test_base.BaseTest):
           return [x]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import List
-        foo: module
         def f(x: int) -> List[int]: ...
       """)
 
@@ -727,9 +726,9 @@ class GenericTypeAliasTest(test_base.BaseTest):
           pass
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import bar
+        import foo
         from typing import Callable, TypeVar
-        foo: module
-        bar: module
         T = TypeVar('T')
         def f(x: T, y: Callable[[T], T]) -> None: ...
       """)
@@ -859,7 +858,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
           return x
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
-      foo: module
+      import foo
       from typing import Optional, TypeVar
       T = TypeVar('T')
       def f1(x: Optional[int]) -> None: ...
@@ -923,8 +922,8 @@ class TypeVarTestPy3(test_base.BaseTest):
         return result.stdout
     """)
     self.assertTypesMatchPytd(ty, """
+      import subprocess
       from typing import List
-      subprocess: module
       def run(args: List[str]) -> str: ...
     """)
 

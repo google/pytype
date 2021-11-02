@@ -19,7 +19,7 @@ class MatchTest(test_base.BaseTest):
           return foo.f(int)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         def f() -> str: ...
       """)
 
@@ -48,7 +48,7 @@ class MatchTest(test_base.BaseTest):
         x = a.f(["a", "b", "c"])
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: str
       """)
 
@@ -70,7 +70,7 @@ class MatchTest(test_base.BaseTest):
         x = a.f(a.B())
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: str
       """)
 
@@ -87,7 +87,7 @@ class MatchTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        foo = ...  # type: module
+        import foo
         v = ...  # type: Any
       """)
 

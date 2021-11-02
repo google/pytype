@@ -17,7 +17,7 @@ class SixTests(test_base.BaseTest):
         v = None
     """)
     self.assertTypesMatchPytd(ty, """
-      six = ...  # type: module
+      import six
       v = ...  # type: str
     """)
 
@@ -34,7 +34,7 @@ class SixTests(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      six: module
+      import six
       a: List[str]
       b: str
       c: int

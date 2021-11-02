@@ -261,8 +261,7 @@ class TypingTest(test_base.BaseTest):
         pass
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      import __future__
-      typing = ...  # type: module
+      import typing
       def f() -> typing.Any: ...
       def g() -> Any: ...
       class Any:
@@ -632,9 +631,9 @@ class CounterTest(test_base.BaseTest):
       f = x | z
     """)
     self.assertTypesMatchPytd(ty, """
+      import collections
+      import typing
       from typing import Counter, Iterable, List, Tuple, Union
-      collections: module
-      typing: module
 
       a: List[Tuple[str, int]]
       b: List[Tuple[str, int]]
@@ -668,8 +667,8 @@ class TypingTestPython3Feature(test_base.BaseTest):
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo: module
         w: str
         x: int
         y: str

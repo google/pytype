@@ -64,8 +64,8 @@ class SpecialBuiltinsTest(test_base.BaseTest):
           foo = property(fget=foo.Foo.get_foo)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Annotated
-        foo = ...  # type: module
         class Bar(foo.Foo):
           foo = ...  # type: Annotated[int, 'property']
       """)
@@ -94,8 +94,8 @@ class SpecialBuiltinsTest(test_base.BaseTest):
           foo = property(fget=foo.Foo.get_foo)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Annotated, Union
-        foo = ...  # type: module
         class Bar(foo.Foo):
           foo = ...  # type: Annotated[Union[int, str], 'property']
       """)

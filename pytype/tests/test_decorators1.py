@@ -268,8 +268,8 @@ class DecoratorsTest(test_base.BaseTest):
         A().f(42)
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Callable
-        foo = ...  # type: module
         class A:
           f = ...  # type: Callable
       """)

@@ -325,7 +325,6 @@ class GenericBasicTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         import a
 
-        a = ...  # type: module
         b = ...  # type: a.A[int]
       """)
 
@@ -404,18 +403,23 @@ class GenericBasicTest(test_base.BaseTest):
       W = TypeVar('W')
 
       class A(Generic[T]): pass
-      class B(A[V]): pass  # not-supported-yet[e1]
+      class B(A[V]): pass  # bad-concrete-type[e1]
 
       class C(Generic[V]): pass
       class D(C[T]): pass
-      class E(D[S]): pass  # not-supported-yet[e2]
+      class E(D[S]): pass  # bad-concrete-type[e2]
 
       class F(Generic[U]): pass
-      class G(F[W]): pass  # not-supported-yet[e3]
+      class G(F[W]): pass  # bad-concrete-type[e3]
     """)
-    self.assertErrorRegexes(errors, {"e1": r"Renaming TypeVar `T`.*",
-                                     "e2": r"Renaming TypeVar `T`.*",
-                                     "e3": r"Renaming TypeVar `U`.*"})
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected: T", "Actually passed: V",
+               "T and V have incompatible"],
+        "e2": ["Expected: T", "Actually passed: S",
+               "T and S have incompatible"],
+        "e3": ["Expected: U", "Actually passed: W",
+               "U and W have incompatible"],
+    })
 
   def test_type_parameter_conflict_error(self):
     ty, errors = self.InferWithErrors("""
@@ -806,6 +810,23 @@ class GenericBasicTest(test_base.BaseTest):
         x: int
     """)
 
+  def test_rename_bounded_typevar(self):
+    self.CheckWithErrors("""
+      from typing import Callable, Generic, TypeVar
+
+      T = TypeVar('T', bound=int)
+      No = TypeVar('No', bound=float)
+      Ok = TypeVar('Ok', bound=bool)
+
+      class Box(Generic[T]):
+        def __init__(self, x: T):
+          self.x = x
+        def error(self, f: Callable[[T], No]) -> 'Box[No]':  # bad-concrete-type
+          return Box(f(self.x))  # wrong-arg-types
+        def good(self, f: Callable[[T], Ok]) -> 'Box[Ok]':
+          return Box(f(self.x))
+    """)
+
 
 class GenericFeatureTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""
@@ -830,7 +851,6 @@ class GenericFeatureTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         import a
 
-        a = ...  # type: module
         d = ...  # type: a.A[int]
         ks = ...  # type: dict_keys[int]
         vs = ...  # type: dict_values[int]
@@ -929,7 +949,7 @@ class GenericFeatureTest(test_base.BaseTest):
         x2 = foo.Foo[str](__any_object__).x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         x1: int
         x2: str
       """)

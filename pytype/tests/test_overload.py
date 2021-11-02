@@ -224,8 +224,8 @@ class OverloadTest(test_base.BaseTest):
           return foo.f(**{"x": "y"})
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo: module
         def f1(*args) -> Any: ...
         def f2(**kwargs) -> Any: ...
         def f3() -> int: ...

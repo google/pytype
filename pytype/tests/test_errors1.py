@@ -612,8 +612,8 @@ class ErrorTest(test_base.BaseTest):
       error = ["Expected", "Type[a.A]", "Actual", "Type[a.C]"]
       self.assertErrorSequences(errors, {"e": error})
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import Any
-        a = ...  # type: module
         x = ...  # type: bool
         y = ...  # type: bool
         z = ...  # type: Any
@@ -764,8 +764,8 @@ class ErrorTest(test_base.BaseTest):
         x = v.x  # No error because there is an Unsolvable in the MRO of a.A
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import Any
-        a = ...  # type: module
         v = ...  # type: a.A
         x = ...  # type: Any
       """)

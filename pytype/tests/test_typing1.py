@@ -13,8 +13,8 @@ class TypingTest(test_base.BaseTest):
       x = typing.__all__
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
+      import typing
       from typing import List
-      typing = ...  # type: module
       x = ...  # type: List[str]
     """)
 
@@ -26,8 +26,8 @@ class TypingTest(test_base.BaseTest):
         return typing.cast(typing.List[int], [])
     """)
     self.assertTypesMatchPytd(ty, """
+      import typing
       from typing import Any, List
-      typing = ...  # type: module
       def f() -> List[int]: ...
     """)
 
@@ -47,7 +47,7 @@ class TypingTest(test_base.BaseTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-      typing: module
+      import typing
       v1: None
       v2: typing.Any
       v3: A
@@ -106,7 +106,6 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
-        foo: module
         x: foo.Foo
       """)
 
@@ -239,7 +238,7 @@ class LiteralTest(test_base.BaseTest):
         v3 = foo.f(x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         x: bool
         v1: int
         v2: float
@@ -257,7 +256,7 @@ class LiteralTest(test_base.BaseTest):
         if not foo.okay():
           x = "oh no"
       """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, "foo: module")
+      self.assertTypesMatchPytd(ty, "import foo")
 
   def test_pyi_variable(self):
     with file_utils.Tempdir() as d:
@@ -270,7 +269,7 @@ class LiteralTest(test_base.BaseTest):
         if not foo.OKAY:
           x = "oh no"
       """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, "foo: module")
+      self.assertTypesMatchPytd(ty, "import foo")
 
   def test_pyi_typing_extensions(self):
     with file_utils.Tempdir() as d:
@@ -283,7 +282,7 @@ class LiteralTest(test_base.BaseTest):
         if not foo.OKAY:
           x = "oh no"
       """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, "foo: module")
+      self.assertTypesMatchPytd(ty, "import foo")
 
   # TODO(b/173742489): Include enums once we support looking up local enums.
   def test_pyi_value(self):
@@ -322,7 +321,7 @@ class LiteralTest(test_base.BaseTest):
         v3 = foo.f(True)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         v1: int
         v2: int
         v3: str
@@ -342,7 +341,7 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       # TODO(b/123775699): The type of x should be Literal[True].
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         x: bool
         y: None
       """)
@@ -364,7 +363,7 @@ class LiteralTest(test_base.BaseTest):
           return foo.open(f, mode="rb")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         def f1(f) -> str: ...
         def f2(f) -> str: ...
         def f3(f) -> int: ...
@@ -384,8 +383,8 @@ class LiteralTest(test_base.BaseTest):
       # Inference completing without type errors shows that `__any_object__`
       # matched both Literal[True] and Literal[False].
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any
-        foo: module
         v: Any
       """)
 
@@ -408,7 +407,7 @@ class LiteralTest(test_base.BaseTest):
           return foo.f(foo.y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo: module
+        import foo
         def f1() -> int: ...
         def f2() -> str: ...
       """)

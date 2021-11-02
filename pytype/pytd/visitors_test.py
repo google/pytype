@@ -430,7 +430,7 @@ class TestVisitors(parser_test_base.ParserTest):
       def g(x: foo.C.C2) -> None: ...
     """)
     expected = textwrap.dedent("""
-      import foo.C
+      import foo
       from typing import Any, List, Union
 
       def f(x: Union[int, slice]) -> List[Any]: ...
@@ -438,7 +438,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """).strip()
     tree = self.Parse(src)
     res = pytd_utils.Print(tree)
-    self.AssertSourceEquals(res, src)
+    self.AssertSourceEquals(res, expected)
     self.assertMultiLineEqual(res, expected)
 
   def test_print_imports_named_type(self):

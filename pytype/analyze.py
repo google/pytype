@@ -106,7 +106,8 @@ def infer_types(src,
   if ctx.vm.has_unknown_wildcard_imports or any(
       a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
     if "__getattr__" not in ast:
-      ast = pytd_utils.Concat(ast, builtins.GetDefaultAst())
+      ast = pytd_utils.Concat(
+          ast, builtins.GetDefaultAst(options.gen_stub_imports))
   # If merged with other if statement, triggers a ValueError: Unresolved class
   # when attempts to load from the protocols file
   if options.protocols:

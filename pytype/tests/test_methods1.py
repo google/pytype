@@ -603,8 +603,8 @@ class MethodsTest(test_base.BaseTest):
           return myjson.loads(*args)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import myjson
         from typing import Any
-        myjson = ...  # type: module
         def f(*args) -> Any: ...
       """)
 
@@ -620,8 +620,8 @@ class MethodsTest(test_base.BaseTest):
           return myjson.loads(**args)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import myjson
         from typing import Any
-        myjson = ...  # type: module
         def f(**args) -> Any: ...
       """)
 
@@ -637,8 +637,8 @@ class MethodsTest(test_base.BaseTest):
           return myjson.loads(s="{}")
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import myjson
         from typing import Any
-        myjson = ...  # type: module
 
         def f() -> Any: ...
       """)
@@ -877,7 +877,7 @@ class MethodsTest(test_base.BaseTest):
       d = os.chmod.x
     """)
     self.assertTypesMatchPytd(ty, """
-    os = ...  # type: module
+    import os
     def f() -> NoneType: ...
     class Foo:
       def method(self) -> NoneType: ...
@@ -893,7 +893,7 @@ class MethodsTest(test_base.BaseTest):
       import json
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-    json = ...  # type: module
+    import json
     """)
 
   def test_new(self):

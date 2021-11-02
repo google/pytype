@@ -334,7 +334,7 @@ class BuiltinTests(test_base.BaseTest):
         signal.signal(signal.SIGALRM, 0)
     """)
     self.assertTypesMatchPytd(ty, """
-      signal = ...  # type: module
+      import signal
 
       def f() -> NoneType: ...
     """)
@@ -347,7 +347,7 @@ class BuiltinTests(test_base.BaseTest):
       args()
     """, deep=False, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       def args() -> str: ...
     """)
 
@@ -380,7 +380,7 @@ class BuiltinTests(test_base.BaseTest):
           self.bar = array.array('i', [1, 2, 3])
     """)
     self.assertTypesMatchPytd(ty, """
-      array = ...  # type: module
+      import array
       class Foo:
         bar = ...  # type: array.array[int]
         def __init__(self) -> None: ...
@@ -426,8 +426,8 @@ class BuiltinTests(test_base.BaseTest):
           return 3j
     """)
     self.assertTypesMatchPytd(ty, """
+      import time
       from typing import Union
-      time = ...  # type: module
       def f(x) -> Union[complex, float]: ...
     """)
 
@@ -469,7 +469,7 @@ class BuiltinTests(test_base.BaseTest):
         return 'py%d' % sys.version_info[0]
     """)
     self.assertTypesMatchPytd(ty, """
-      sys = ...  # type: module
+      import sys
       def f() -> str: ...
     """)
 
@@ -487,7 +487,7 @@ class BuiltinTests(test_base.BaseTest):
         self.python_version,
         strict_namedtuple_checks=self.options.strict_namedtuple_checks)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
-      collections = ...  # type: module
+      import collections
       class Foo({name}): ...""").format(name=name)
     self.assertTypesMatchPytd(ty, expected)
 
@@ -508,7 +508,7 @@ class BuiltinTests(test_base.BaseTest):
         self.python_version,
         strict_namedtuple_checks=self.options.strict_namedtuple_checks)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
-      collections = ...  # type: module
+      import collections
       t = {name}
       x = ...  # type: int
       y = ...  # type: str
@@ -532,8 +532,8 @@ class BuiltinTests(test_base.BaseTest):
         return type(mod) == types.ModuleType
     """)
     self.assertTypesMatchPytd(ty, """
+      import types
       from typing import Any
-      types = ...  # type: module
       def f(mod) -> Any: ...
     """)
 
@@ -545,8 +545,8 @@ class BuiltinTests(test_base.BaseTest):
         return date.ctime()
     """)
     self.assertTypesMatchPytd(ty, """
+      import datetime
       from typing import Any
-      datetime = ...  # type: module
       def f(date) -> Any: ...
   """)
 
@@ -558,7 +558,7 @@ class BuiltinTests(test_base.BaseTest):
         tz.fromutc(datetime.datetime(1929, 10, 29))
     """)
     self.assertTypesMatchPytd(ty, """
-      datetime = ...  # type: module
+      import datetime
       def f(tz) -> NoneType: ...
   """)
 

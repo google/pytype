@@ -70,7 +70,6 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       import abc
       from typing import Annotated, Any
-      abc = ...  # type: module
       v1 = ...  # type: Any
       v2 = ...  # type: int
       class Bar(Foo):

@@ -118,10 +118,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
         return x
     """)
     self.assertTypesMatchPytd(ty, """
+      import asyncio
+      import types
       from typing import Any, Coroutine, Union
-
-      asyncio: module
-      types: module
 
       def caller() -> Coroutine[Any, Any, Union[int, str]]: ...
       def f1() -> Coroutine[Any, Any, None]: ...
@@ -190,9 +189,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         await f2(c2())
     """)
     self.assertTypesMatchPytd(ty, """
+      import types
       from typing import Any, Awaitable, Coroutine, TypeVar
-
-      types: module
 
       _TBaseAwaitable = TypeVar('_TBaseAwaitable', bound=BaseAwaitable)
 
@@ -436,9 +434,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         func2(foo.f1())
       """, deep=True, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Awaitable, Coroutine, List
-
-        foo: module
 
         def func1(x: Awaitable[str]) -> Coroutine[Any, Any, List[str]]: ...
         def func2(x: Coroutine[Any, Any, str]) -> Coroutine[Any, Any, List[str]]: ...
@@ -475,8 +472,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         return await asyncio.open_connection( '127.0.0.1', 8888)
     """)
     self.assertTypesMatchPytd(ty, """
+      import asyncio
       from typing import Any, Coroutine, Tuple
-      asyncio: module
       def tcp_echo_client(message) -> Coroutine[
         Any, Any,
         Tuple[asyncio.streams.StreamReader, asyncio.streams.StreamWriter]]: ...
@@ -494,8 +491,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         worker(queue)
     """)
     self.assertTypesMatchPytd(ty, """
+      import asyncio
       from typing import Any, Coroutine
-      asyncio: module
       def worker(queue) -> coroutine: ...
       def main() -> Coroutine[Any, Any, None]: ...
     """)
@@ -512,9 +509,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
           return await future
     """)
     self.assertTypesMatchPytd(ty, """
-      import asyncio.futures
+      import asyncio
       from typing import Any, Coroutine, Optional
-      asyncio: module
       def foo() -> Coroutine[Any, Any, int]: ...
       def call_foo() -> Coroutine[Any, Any, Optional[int]]: ...
     """)
@@ -529,8 +525,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         c = foo.f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Any, Coroutine
-        foo: module
         c: Coroutine[Any, Any, int]
       """)
 

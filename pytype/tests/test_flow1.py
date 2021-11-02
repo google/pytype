@@ -330,8 +330,8 @@ class FlowTest(test_base.BaseTest):
         seq.append("foo")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
+      import os
       from typing import List, Union
-      os = ...  # type: module
       seq = ...  # type: List[Union[int, str]]
     """)
 

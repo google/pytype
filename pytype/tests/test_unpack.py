@@ -40,8 +40,8 @@ class TestUnpack(test_base.BaseTest):
         c = (*foo.a, *foo.b)
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
+      import foo
       from typing import Tuple, Union
-      foo: module
       c: Tuple[Union[int, str], ...]
     """)
 

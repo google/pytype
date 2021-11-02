@@ -68,6 +68,8 @@ _PYTYPE_SINGLE_ITEMS = {
     'build_dict_literals_from_kwargs': Item(
         None, 'False', ArgInfo('--build-dict-literals-from-kwargs', None),
         None),
+    'gen_stub_imports': Item(
+        None, 'False', ArgInfo('--gen-stub-imports', None), None),
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
         'Comma or space separated list of error names to ignore.'),

@@ -23,7 +23,7 @@ class PickleTest(test_base.BaseTest):
       """, deep=False, pythonpath=[""], imports_map={"u": u})
       self.assertTypesMatchPytd(ty, """
         import collections
-        u = ...  # type: module
+        import u
         r = ...  # type: collections.OrderedDict[int, int]
       """)
 

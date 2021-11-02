@@ -16,8 +16,8 @@ class ImportTest(test_base.BaseTest):
       p = os.__package__
       """)
     self.assertTypesMatchPytd(ty, """
+       import os
        from typing import Optional
-       os = ...  # type: module
        f = ...  # type: str
        n = ...  # type: str
        d = ...  # type: str
@@ -36,9 +36,9 @@ class ImportTest(test_base.BaseTest):
         return sys.getrecursionlimit()
     """, report_errors=False)
     self.assertTypesMatchPytd(ty, """
+      import sys
       from typing import Any, TextIO
       bad_import = ...  # type: Any
-      sys = ...  # type: module
       def f() -> TextIO: ...
       def g() -> int: ...
       def h() -> int: ...
@@ -53,7 +53,7 @@ class ImportTest(test_base.BaseTest):
         x = a.x
       """, deep=False, pythonpath=[d.path], module_name="b.main")
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: int
       """)
 

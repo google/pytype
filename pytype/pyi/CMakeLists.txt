@@ -147,6 +147,18 @@ toplevel_py_binary(
     pytype.pytd.pytd_for_parser
 )
 
+py_library(
+  NAME
+    parser_test_base
+  SRCS
+    parser_test_base.py
+  DEPS
+    ._ast_parser
+    pytype.utils
+    pytype.pytd.pytd
+    pytype.tests.test_base
+)
+
 py_test(
   NAME
     parser_test
@@ -154,10 +166,20 @@ py_test(
     parser_test.py
   DEPS
     .parser
-    pytype.utils
+    .parser_test_base
     pytype.pytd.pytd_for_parser
     pytype.stubs.stubs
     pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    entire_file_parser_test
+  SRCS
+    entire_file_parser_test.py
+  DEPS
+    .parser_test_base
+    pytype.pytd.pytd
 )
 
 py_test(

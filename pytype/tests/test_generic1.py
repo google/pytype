@@ -21,7 +21,7 @@ class GenericTest(test_base.BaseTest):
           return a.f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> a.A[int]: ...
       """)
 
@@ -61,7 +61,7 @@ class GenericTest(test_base.BaseTest):
           return {list(x.keys())[0]: list(x.values())[0]}
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def foo() -> a.B: ...
         def bar() -> dict[str, int]: ...
       """)
@@ -88,8 +88,8 @@ class GenericTest(test_base.BaseTest):
             return foo()[0]
         """, pythonpath=[d1.path, d2.path])
         self.assertTypesMatchPytd(ty, """
+          import b
           from typing import Union
-          b = ...  # type: module
           def foo() -> b.B: ...
           def bar() -> Union[int, str]: ...
         """)
@@ -115,7 +115,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Tuple
-        a = ...  # type: module
+        import a
         def foo() -> a.A[nothing]: ...
         def bar() -> List[str]: ...
         def baz() -> a.B: ...
@@ -137,7 +137,7 @@ class GenericTest(test_base.BaseTest):
           return foo.B().bar()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         def f() -> int: ...
       """)
 
@@ -162,7 +162,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Union
-        a = ...  # type: module
+        import a
         def foo() -> a.A[nothing]: ...
         def bar() -> int: ...
         def baz() -> Union[int, str]: ...
@@ -191,7 +191,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Union
-        a = ...  # type: module
+        import a
         def f() -> Union[int, float, complex, str]: ...
       """)
 
@@ -219,7 +219,7 @@ class GenericTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Tuple
-        a = ...  # type: module
+        import a
         v1 = ...  # type: int
         v2 = ...  # type: str
         v3 = ...  # type: Tuple[int, str]
@@ -246,7 +246,7 @@ class GenericTest(test_base.BaseTest):
         w = a.C().g()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         v = ...  # type: str
         w = ...  # type: str
       """)
@@ -274,7 +274,7 @@ class GenericTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Union
-        a = ...  # type: module
+        import a
         # T1, T2, and T3 are all set to Any due to T1 being an alias for both
         # T2 and T3.
         v = ...  # type: a.C[int, Union[float, int]]
@@ -297,7 +297,7 @@ class GenericTest(test_base.BaseTest):
           return foo.baz().bar()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         def f() -> int: ...
       """)
 
@@ -323,8 +323,8 @@ class GenericTest(test_base.BaseTest):
             return b.A(3.14).a()
         """, pythonpath=[d1.path, d2.path])
         self.assertTypesMatchPytd(ty, """
+          import b
           from typing import Union
-          b = ...  # type: module
           def f() -> b.A[Union[int, str]]: ...
           def g() -> Union[int, float]: ...
         """)
@@ -346,7 +346,7 @@ class GenericTest(test_base.BaseTest):
         x = a.Custom()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: a.Custom[nothing, nothing]
       """)
 
@@ -366,7 +366,7 @@ class GenericTest(test_base.BaseTest):
           return x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> a.C[nothing]: ...
       """)
 
@@ -387,7 +387,7 @@ class GenericTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         import a
 
-        a = ...  # type: module
+        import a
         def f() -> a.A[int]: ...
       """)
 
@@ -406,7 +406,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Union
-        a = ...  # type: module
+        import a
         def f() -> a.A: ...
         def g() -> Union[int, str]: ...
       """)
@@ -428,7 +428,7 @@ class GenericTest(test_base.BaseTest):
           return x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> a.A[nothing, int]: ...
       """)
 
@@ -455,7 +455,7 @@ class GenericTest(test_base.BaseTest):
           return f()[0]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> a.A[str, int]: ...
         def g() -> str: ...
         def h() -> int: ...
@@ -476,7 +476,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
-        a = ...  # type: module
+        import a
         def f() -> List[nothing]: ...
       """)
 
@@ -495,7 +495,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Union
-        a = ...  # type: module
+        import a
         def f() -> Union[str, unicode]: ...
       """)
 
@@ -540,7 +540,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        a = ...  # type: module
+        import a
         # T was made unsolvable by an AliasingDictConflictError.
         def f() -> a.A[int, str]: ...
         def g() -> int: ...
@@ -561,7 +561,7 @@ class GenericTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        a = ...  # type: module
+        import a
         v = ...  # type: a.A[nothing, nothing]
       """)
 
@@ -579,7 +579,7 @@ class GenericTest(test_base.BaseTest):
           return a.A()[0][0]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> a.A: ...
         def g() -> a.A: ...
       """)
@@ -603,7 +603,7 @@ class GenericTest(test_base.BaseTest):
           return a.B()[0]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def foo() -> str: ...
         def bar() -> str: ...
       """)
@@ -627,7 +627,7 @@ class GenericTest(test_base.BaseTest):
           return B()[0]
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         class B(a.A): pass
         def foo() -> str: ...
         def bar() -> str: ...
@@ -653,8 +653,8 @@ class GenericTest(test_base.BaseTest):
           return (v.x, v.y)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import Tuple, Union
-        a: module
         def f() -> Tuple[Union[int, float], complex]: ...
         def g() -> Tuple[int, float]: ...
       """)
@@ -679,7 +679,7 @@ class GenericTest(test_base.BaseTest):
           return RE.pattern
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         RE = ...  # type: a.MyPattern[str]
         def f(x) -> None: ...
         def g() -> str: ...
@@ -718,7 +718,7 @@ class GenericTest(test_base.BaseTest):
           return x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> str: ...
         def g() -> bool: ...
         def h() -> int: ...
@@ -744,7 +744,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, TypeVar, Union
-        a = ...  # type: module
+        import a
         T = TypeVar("T")
         class B(a.A[T]):
           x = ...  # type: Union[int, float]
@@ -769,7 +769,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        a = ...  # type: module
+        import a
         def f() -> Any: ...
       """)
 
@@ -797,7 +797,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Optional, Union
-        a = ...  # type: module
+        import a
         def f(x) -> Union[int, float]: ...
         def g(x) -> Optional[float]: ...
       """)
@@ -816,7 +816,7 @@ class GenericTest(test_base.BaseTest):
           return abs(a.A([42]).x)
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         def f() -> int: ...
       """)
 
@@ -836,7 +836,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        a = ...  # type: module
+        import a
         def f(x) -> Any: ...
       """)
 
@@ -854,7 +854,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        a = ...  # type: module
+        import a
         def f() -> Any: ...
       """)
 
@@ -870,7 +870,7 @@ class GenericTest(test_base.BaseTest):
         n = len(a.A()[0])
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         n = ...  # type: int
       """)
 
@@ -886,7 +886,7 @@ class GenericTest(test_base.BaseTest):
         x = a.f({True: "false"})
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         x = ...  # type: bool
       """)
 
@@ -905,8 +905,8 @@ class GenericTest(test_base.BaseTest):
         v = list(foo.Foo())
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         v = ...  # type: list[Union[int, str]]
       """)
 
@@ -926,7 +926,7 @@ class GenericTest(test_base.BaseTest):
             return self.data
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a = ...  # type: module
+        import a
         class B(a.A):
           data = ...  # type: list
           def foo(self) -> list: ...
@@ -949,7 +949,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Union
-        a = ...  # type: module
+        import a
         class B(a.A):
           data = ...  # type: List[Union[int, str]]
           def foo(self) -> List[Union[int, str]]: ...
@@ -972,7 +972,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List
-        a = ...  # type: module
+        import a
         class B(a.A):
           data = ...  # type: List[complex]
           def foo(self) -> List[complex]: ...
@@ -992,8 +992,8 @@ class GenericTest(test_base.BaseTest):
         v = foo.make_A().v
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Union
-        foo = ...  # type: module
         v = ...  # type: Union[int, float]
       """)
 
@@ -1011,7 +1011,7 @@ class GenericTest(test_base.BaseTest):
         v = foo.make_A().v
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         v = ...  # type: float
       """)
 
@@ -1033,7 +1033,7 @@ class GenericTest(test_base.BaseTest):
         a.to_int()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         a = ...  # type: foo.A[int]
       """)
 
@@ -1053,7 +1053,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        a = ...  # type: module
+        import a
         class Derived(a.Base):
           def __init__(self) -> None: ...
       """)

@@ -27,6 +27,7 @@ LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
     "python_version": "python_version",
     "pythonpath": "pythonpath",
     "use_typeshed": "typeshed",
+    "gen_stub_imports": "gen_stub_imports",
 }
 
 
@@ -129,8 +130,9 @@ class _ModuleMap:
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
-  def __init__(self, python_version, modules=None):
+  def __init__(self, python_version, modules, gen_stub_imports):
     self.python_version = python_version
+    self.gen_stub_imports = gen_stub_imports
     self._modules: Dict[str, Module] = modules or self._base_modules()
     if self._modules["builtins"].needs_unpickling():
       self._unpickle_module(self._modules["builtins"])
@@ -186,7 +188,7 @@ class _ModuleMap:
     return resolved_modules
 
   def _base_modules(self):
-    bltins, typing = builtins.GetBuiltinsAndTyping()
+    bltins, typing = builtins.GetBuiltinsAndTyping(self.gen_stub_imports)
     return {
         "builtins":
         Module("builtins", self.PREFIX + "builtins", bltins,
@@ -371,8 +373,9 @@ class _Resolver:
 class _BuiltinLoader:
   """Load builtins from the pytype source tree."""
 
-  def __init__(self, python_version):
+  def __init__(self, python_version, gen_stub_imports):
     self.python_version = python_version
+    self.gen_stub_imports = gen_stub_imports
 
   def _parse_predefined(self, pytd_subdir, module, as_package=False):
     """Parse a pyi/pytd file in the pytype source tree."""
@@ -382,7 +385,8 @@ class _BuiltinLoader:
     except IOError:
       return None
     ast = parser.parse_string(src, filename=filename, name=module,
-                              python_version=self.python_version)
+                              python_version=self.python_version,
+                              gen_stub_imports=self.gen_stub_imports)
     assert ast.name == module
     return ast
 
@@ -415,6 +419,7 @@ class Loader:
     imports_map: A short_path -> full_name mapping for imports.
     use_typeshed: Whether to use https://github.com/python/typeshed.
     open_function: A custom file opening function.
+    gen_stub_imports: Temporary flag for releasing --gen-stub-imports.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
@@ -426,20 +431,22 @@ class Loader:
                imports_map=None,
                use_typeshed=True,
                modules=None,
-               open_function=open):
+               open_function=open,
+               gen_stub_imports=True):
     self.python_version = utils.normalize_version(python_version)
-    self._modules = _ModuleMap(self.python_version, modules)
+    self._modules = _ModuleMap(self.python_version, modules, gen_stub_imports)
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
     self.base_module = base_module
     self._path_finder = _PathFinder(imports_map, pythonpath)
-    self._builtin_loader = _BuiltinLoader(self.python_version)
+    self._builtin_loader = _BuiltinLoader(self.python_version, gen_stub_imports)
     self._resolver = _Resolver(self.builtins)
     self.use_typeshed = use_typeshed
     self.open_function = open_function
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
     self._prefixes = set()
+    self.gen_stub_imports = gen_stub_imports
     # Paranoid verification that pytype.main properly checked the flags:
     if imports_map is not None:
       assert pythonpath == [""], pythonpath
@@ -505,7 +512,8 @@ class Loader:
       with self.open_function(filename, "r") as f:
         mod_ast = parser.parse_string(
             f.read(), filename=filename, name=module_name,
-            python_version=self.python_version)
+            python_version=self.python_version,
+            gen_stub_imports=self.gen_stub_imports)
     return self._process_module(module_name, filename, mod_ast)
 
   def _process_module(self, module_name, filename, mod_ast):
@@ -721,7 +729,7 @@ class Loader:
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
     loaded = typeshed.parse_type_definition(
-        subdir, module_name, self.python_version)
+        subdir, module_name, self.python_version, self.gen_stub_imports)
     if loaded:
       filename, mod_ast = loaded
       return self.load_file(filename=self.PREFIX + filename,

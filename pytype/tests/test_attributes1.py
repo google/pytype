@@ -780,8 +780,8 @@ class TestAttributes(test_base.BaseTest):
           return foo.f().x
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
+      import foo
       from typing import Optional
-      foo: module
       def f() -> Optional[str]: ...
     """)
 

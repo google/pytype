@@ -30,7 +30,6 @@ class TypingMethodsTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         from typing import List, Tuple, Union
         import foo
-        foo = ...  # type: module
         m = ...  # type: foo.MyDict[str, int]
         a = ...  # type: typing.Mapping[str, int]
         b = ...  # type: bool

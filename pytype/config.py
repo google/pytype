@@ -172,6 +172,11 @@ def add_basic_options(o):
       help=(
           "Enable stricter namedtuple checks, such as unpacking and "
           "'typing.Tuple' compatibility. ") + temporary)
+  o.add_argument(
+      "--gen-stub-imports", action="store_true",
+      dest="gen_stub_imports", default=False,
+      help=("Generate import statements (`import x`) rather than constants "
+            "(`x: module`) for module names in stub files. ") + temporary)
 
 
 def add_subtools(o):

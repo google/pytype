@@ -218,7 +218,8 @@ class Converter(utils.ContextWeakrefMixin):
     if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TypeParameterInstance):
-      if v.module in self._scopes:
+      if (v.module in self._scopes or
+          v.instance is abstract_utils.DUMMY_CONTAINER):
         return self._typeparam_to_def(node, v.param, v.param.name)
       elif v.instance.get_instance_type_parameter(v.full_name).bindings:
         # The type parameter was initialized. Set the view to None, since we
@@ -271,7 +272,10 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.GenericType(base_type=pytd.NamedType("builtins.type"),
                               parameters=(param,))
     elif isinstance(v, abstract.Module):
-      return pytd.NamedType("builtins.module")
+      if self.ctx.options.gen_stub_imports:
+        return pytd.Alias(v.name, pytd.Module(v.name, module_name=v.full_name))
+      else:
+        return pytd.NamedType("builtins.module")
     elif (self._output_mode >= Converter.OutputMode.LITERAL and
           isinstance(v, abstract.ConcreteValue) and
           isinstance(v.pyval, (int, str, bytes))):
@@ -354,7 +358,9 @@ class Converter(utils.ContextWeakrefMixin):
     Returns:
       A PyTD definition.
     """
-    if isinstance(v, abstract.BoundFunction):
+    if self.ctx.options.gen_stub_imports and isinstance(v, abstract.Module):
+      return pytd.Alias(name, pytd.Module(name, module_name=v.full_name))
+    elif isinstance(v, abstract.BoundFunction):
       d = self.value_to_pytd_def(node, v.underlying, name)
       assert isinstance(d, pytd.Function)
       sigs = tuple(sig.Replace(params=sig.params[1:]) for sig in d.signatures)

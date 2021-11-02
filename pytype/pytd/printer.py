@@ -150,11 +150,16 @@ class PrintVisitor(base_visitor.Visitor):
       for defn in definitions:
         self._local_names[defn.name] = label
     for alias in unit.aliases:
+      # Modules are represented as NamedTypes in partially resolved asts and
+      # sometimes as LateTypes in asts modified for pickling.
       if isinstance(alias.type, pytd.Module):
-        name = alias.name
-        if unit.name and name.startswith(unit.name + "."):
-          name = name[len(unit.name) + 1:]
-        self._module_aliases[alias.type.module_name] = name
+        module_name = alias.type.module_name
+      elif isinstance(alias.type, (pytd.NamedType, pytd.LateType)):
+        module_name = alias.type.name
+      else:
+        continue
+      name = self._StripUnitPrefix(alias.name)
+      self._module_aliases[module_name] = name
 
   def LeaveTypeDeclUnit(self, _):
     self._unit = None
@@ -200,15 +205,20 @@ class PrintVisitor(base_visitor.Visitor):
       assert module == "builtins", module
       assert name in ("True", "False"), name
       return name
-    else:
-      return f"{node.name}: {node.type}"
+
+    node_type = node.type
+    if node_type.startswith(("import ", "from ")):
+      # TODO(slebedev): Use types.ModuleType instead.
+      node_type = "module"
+    return f"{node.name}: {node_type}"
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()
 
   def VisitAlias(self, node):
     """Convert an import or alias to a string."""
-    if isinstance(self.old_node.type, (pytd.NamedType, pytd.ClassType)):
+    if isinstance(self.old_node.type,
+                  (pytd.NamedType, pytd.ClassType, pytd.LateType)):
       full_name = self.old_node.type.name
       suffix = ""
       module, _, name = full_name.rpartition(".")
@@ -320,6 +330,9 @@ class PrintVisitor(base_visitor.Visitor):
     if node.return_type == "nothing":
       return_type = "NoReturn"  # a prettier alias for nothing
       self._FromTyping(return_type)
+    elif node.return_type.startswith(("import ", "from ")):
+      # TODO(slebedev): Use types.ModuleType instead.
+      return_type = "module"
     else:
       return_type = node.return_type
     ret = f" -> {return_type}"
@@ -418,6 +431,17 @@ class PrintVisitor(base_visitor.Visitor):
       suffix = f"{remainder}.{suffix}"
     return None
 
+  def _GuessModule(self, maybe_module):
+    """Guess which part of the given name is the module prefix."""
+    if "." not in maybe_module:
+      return maybe_module
+    prefix, suffix = maybe_module.rsplit(".", 1)
+    # Heuristic: modules are typically lowercase, classes uppercase.
+    if suffix[0].islower():
+      return maybe_module
+    else:
+      return self._GuessModule(prefix)
+
   def VisitNamedType(self, node):
     """Convert a type to a string."""
     prefix, _, suffix = node.name.rpartition(".")
@@ -436,7 +460,7 @@ class PrintVisitor(base_visitor.Visitor):
           if aliased_name:
             node_name = aliased_name
           else:
-            self._RequireImport(prefix)
+            self._RequireImport(self._GuessModule(prefix))
             node_name = node.name
         else:
           node_name = node.name
@@ -477,7 +501,10 @@ class PrintVisitor(base_visitor.Visitor):
       # `import x.y as z` and `from x import y as z` are equivalent, but the
       # latter is a bit prettier.
       prefix, suffix = node.module_name.rsplit(".", 1)
-      return f"from {prefix} import {suffix} as {node.name}"
+      imp = f"from {prefix} import {suffix}"
+      if node.name != suffix:
+        imp += f" as {node.name}"
+      return imp
     else:
       return f"import {node.module_name} as {node.name}"
 

@@ -1,3 +1,19 @@
+Version 2021.11.02:
+
+New features and updates:
+* Remove the --bind-properties flag. Its behavior has been made the default.
+* Take advantage of module aliases to print prettier stub files.
+* Add support for cross-module attr.s wrappers.
+* Add a feature flag, --gen-stub-imports, to improve pyi import handling.
+* Add a bit more support for PEP 612 in stubs.
+
+Bug fixes:
+* Add remove{prefix,suffix} methods for bytes, bytearray.
+* Fix a bug where Errorlog.copy_from() duplicated error details.
+* Fix some issues with handling module aliases in stub files.
+* Support a [not-supported-yet] case in a generic class TypeVar renaming check.
+* Add `__init__` attributes to canonical enum members.
+
 Version 2021.10.25:
 
 New features and updates:

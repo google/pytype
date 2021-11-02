@@ -53,8 +53,8 @@ class AnnotationTest(test_base.BaseTest):
         return x + y
     """)
     self.assertTypesMatchPytd(ty, """
+      import typing
       from typing import Union
-      typing = ...  # type: module
       def foo(x: Union[int, float], y:int) -> Union[int, float]: ...
     """)
 
@@ -163,8 +163,8 @@ class AnnotationTest(test_base.BaseTest):
         return c.getfirstweekday()
     """)
     self.assertTypesMatchPytd(ty, """
-      typing = ...  # type: module
-      calendar = ...  # type: module
+      import calendar
+      import typing
       def f(c: calendar.Calendar) -> int: ...
     """)
 
@@ -436,8 +436,8 @@ class AnnotationTest(test_base.BaseTest):
           return x.name
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import a
         from typing import Any
-        a = ...  # type: module
         A = ...  # type: Any
         def f(x) -> Any: ...
       """)
@@ -887,9 +887,8 @@ class AnnotationTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      import typing
 
-      def f(x: typing.List[A]) -> int: ...
+      def f(x: List[A]) -> int: ...
 
       class A: ...
     """)
@@ -906,7 +905,6 @@ class AnnotationTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      import typing
       ListA = ...  # type: str
       TypeA = ...  # type: str
       def f(x: typing.List[A]) -> int: ...

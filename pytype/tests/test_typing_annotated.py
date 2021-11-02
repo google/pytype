@@ -74,7 +74,7 @@ class AnnotatedTest(test_base.BaseTest):
         x = a.A().x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a: module
+        import a
         x: int
       """)
 
@@ -92,7 +92,7 @@ class AnnotatedTest(test_base.BaseTest):
         x = a.A().x.w
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a: module
+        import a
         x: int
       """)
 
@@ -110,7 +110,7 @@ class AnnotatedTest(test_base.BaseTest):
         x = B().x
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        a: module
+        import a
         class B(a.A): ...
         x: int
       """)

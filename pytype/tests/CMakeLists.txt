@@ -16,6 +16,7 @@ py_library(
   DEPS
     .test_utils
     pytype.libvm
+    pytype.utils
     pytype.pyi.parser
     pytype.pytd.pytd
 )
@@ -642,8 +643,6 @@ py_test(
     test_reingest2.py
   DEPS
     .test_base
-    pytype.utils
-    pytype.pytd.pytd
 )
 
 py_test(

@@ -44,9 +44,9 @@ class TestDataclass(test_base.BaseTest):
         x: int
     """)
     self.assertTypesMatchPytd(ty, """
+      import chex
       import dataclasses
       from typing import Dict, Mapping, TypeVar
-      chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
@@ -67,9 +67,9 @@ class TestDataclass(test_base.BaseTest):
         x: int
     """)
     self.assertTypesMatchPytd(ty, """
+      import chex
       import dataclasses
       from typing import Dict, TypeVar
-      chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo:
@@ -105,9 +105,9 @@ class TestDataclass(test_base.BaseTest):
       foo = Foo(0).replace(x=5)
     """)
     self.assertTypesMatchPytd(ty, """
+      import chex
       import dataclasses
       from typing import Dict, Mapping, TypeVar
-      chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
@@ -130,9 +130,9 @@ class TestDataclass(test_base.BaseTest):
       foo = Foo.from_tuple((0,))
     """)
     self.assertTypesMatchPytd(ty, """
+      import chex
       import dataclasses
       from typing import Dict, Mapping, TypeVar
-      chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):
@@ -155,9 +155,9 @@ class TestDataclass(test_base.BaseTest):
       tup = Foo(0).to_tuple()
     """)
     self.assertTypesMatchPytd(ty, """
+      import chex
       import dataclasses
       from typing import Dict, Mapping, TypeVar
-      chex: module
       _TFoo = TypeVar('_TFoo', bound=Foo)
       @dataclasses.dataclass
       class Foo(Mapping, object):

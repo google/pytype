@@ -26,8 +26,8 @@ class TestStructDataclass(test_base.BaseTest):
           z: str
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
+        import flax
         from typing import Dict, TypeVar, Union
-        flax: module
 
         _TFoo = TypeVar('_TFoo', bound=Foo)
 
@@ -50,8 +50,8 @@ class TestStructDataclass(test_base.BaseTest):
         return dataclasses.field(**kwargs)
     """)
     self.assertTypesMatchPytd(ty, """
+      import dataclasses
       from typing import Any
-      dataclasses: module
       def field(**kwargs) -> Any: ...
     """)
 
@@ -92,12 +92,11 @@ class TestLinenModule(test_base.BaseTest):
           y: int = 10
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
-        import flax.linen.module
+        from flax import linen as nn
         from typing import Dict, TypeVar
-        nn: module
         _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
-        class Foo(flax.linen.module.Module):
+        class Foo(nn.module.Module):
           x: bool
           y: int
           __dataclass_fields__: Dict[str, dataclasses.Field]
@@ -115,13 +114,11 @@ class TestLinenModule(test_base.BaseTest):
           y: int = 10
         """, pythonpath=[d.path], module_name="foo")
       self.assertTypesMatchPytd(ty, """
-        import builtins
-        import flax.linen.module
+        from flax.linen import module
         from typing import Dict, TypeVar
-        module: builtins.module
         _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
-        class Foo(flax.linen.module.Module):
+        class Foo(module.Module):
           x: bool
           y: int
           __dataclass_fields__: Dict[str, dataclasses.Field]
@@ -162,12 +159,11 @@ class TestLinenModule(test_base.BaseTest):
           y: int = 10
         """, pythonpath=[d.path], module_name="flax.linen.foo")
       self.assertTypesMatchPytd(ty, """
-        import flax.linen.module
-        linen: module
+        from flax import linen
         from typing import Dict, TypeVar
         _TFoo = TypeVar('_TFoo', bound=Foo)
         @dataclasses.dataclass
-        class Foo(flax.linen.module.Module):
+        class Foo(linen.module.Module):
           x: bool
           y: int
           __dataclass_fields__: Dict[str, dataclasses.Field]
@@ -227,8 +223,8 @@ class TestLinenModule(test_base.BaseTest):
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
       import dataclasses
+      import foo
       from typing import Any, Dict, TypeVar
-      foo: module
 
       _TBar = TypeVar('_TBar', bound=Bar)
       @dataclasses.dataclass
@@ -258,8 +254,8 @@ class TestLinenModule(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import dataclasses
+        import foo
         from typing import Any, Dict, TypeVar
-        foo: module
 
         _TBar = TypeVar('_TBar', bound=Bar)
         @dataclasses.dataclass

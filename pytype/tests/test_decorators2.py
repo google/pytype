@@ -48,7 +48,7 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
           pass
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
-      foo: module
+      import foo
       def f(x: str) -> int: ...
       class Bar: ...
     """)
@@ -110,7 +110,7 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
           pass
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
-      foo: module
+      import foo
       def f() -> None: ...
       def g(x: int, y: int) -> int: ...
       class Foo: ...
@@ -187,7 +187,7 @@ class AnnotatedDecoratorsTest(test_base.BaseTest):
           pass
       """, pythonpath=[d.path])
     self.assertTypesMatchPytd(ty, """
-      foo: module
+      import foo
       def f(x: float) -> str: ...
       def g(x: int, y: float) -> float: ...
       class Foo: ...

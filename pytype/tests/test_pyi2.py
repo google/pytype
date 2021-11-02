@@ -14,7 +14,7 @@ class PYITest(test_base.BaseTest):
         def bar(*args: typing.Any) -> int: return 2
         """)
     self.assertTypesMatchPytd(ty, """
-        typing = ...  # type: module
+        import typing
         def foo(**kwargs) -> int: ...
         def bar(*args) -> int: ...
         """)
@@ -74,7 +74,7 @@ class PYITestPython3Feature(test_base.BaseTest):
         x = foo.f()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        foo = ...  # type: module
+        import foo
         x = ...  # type: bytes
       """)
 
@@ -91,8 +91,8 @@ class PYITestPython3Feature(test_base.BaseTest):
         x = func()
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
+        import foo
         from typing import Callable
-        foo: module
         func: Callable[[], float]
         x: float
       """)

@@ -22,7 +22,8 @@ def namedtuple_ast(name,
                    fields,
                    defaults,
                    python_version=None,
-                   strict_namedtuple_checks=True):
+                   strict_namedtuple_checks=True,
+                   gen_stub_imports=True):
   """Make an AST with a namedtuple definition for the given name and fields.
 
   Args:
@@ -33,7 +34,8 @@ def namedtuple_ast(name,
     strict_namedtuple_checks: Whether to enable a stricter type annotation
       hierarchy for generated NamedType. e.g. Tuple[n*[Any]] instead of tuple.
       This should usually be set to the value of
-        ctx.options.strict_namedtuple_checks
+        ctx.options.strict_namedtuple_checks.
+    gen_stub_imports: Set this to the value of ctx.options.gen_stub_imports.
 
   Returns:
     A pytd.TypeDeclUnit with the namedtuple definition in its classes.
@@ -79,7 +81,8 @@ def namedtuple_ast(name,
       repeat_any=_repeat_type("typing.Any", num_fields),
       fields_as_parameters=fields_as_parameters,
       field_names_as_strings=field_names_as_strings)
-  return parser.parse_string(nt, python_version=python_version)
+  return parser.parse_string(nt, python_version=python_version,
+                             gen_stub_imports=gen_stub_imports)
 
 
 class CollectionsOverlay(overlay.Overlay):
@@ -303,7 +306,8 @@ class NamedTupleBuilder(abstract.PyTDFunction):
         field_names,
         defaults,
         python_version=self.ctx.python_version,
-        strict_namedtuple_checks=self.ctx.options.strict_namedtuple_checks)
+        strict_namedtuple_checks=self.ctx.options.strict_namedtuple_checks,
+        gen_stub_imports=self.ctx.options.gen_stub_imports)
     mapping = self._get_known_types_mapping()
 
     # A truly well-formed pyi for the namedtuple will have references to the new
