@@ -1637,9 +1637,16 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
+    self._printing = False
 
   def __repr__(self):
-    return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
+    if self._printing:  # recursion detected
+      printed_contents = "..."
+    else:
+      self._printing = True
+      printed_contents = ", ".join(repr(o) for o in self.options)
+      self._printing = False
+    return "%s[%s]" % (self.name, printed_contents)
 
   def __eq__(self, other):
     if isinstance(other, type(self)):

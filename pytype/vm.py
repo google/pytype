@@ -1285,13 +1285,15 @@ class VirtualMachine:
     """Same as store_local except for globals."""
     return self._store_value(state, name, value, local=False)
 
-  def _remove_recursion(self, node, name, value):
-    """Remove any recursion in the named value."""
+  def _process_annotations(self, node, name, value):
+    """Process any type annotations in the named value."""
     if not value.data or any(not isinstance(v, mixin.NestedAnnotation)
                              for v in value.data):
       return value
     stack = self.simple_stack()
     typ = self.ctx.annotation_utils.extract_annotation(node, value, name, stack)
+    if self.ctx.options.allow_recursive_types:
+      return typ.to_variable(node)
     if self.late_annotations:
       recursive_annots = set(self.late_annotations[name])
     else:
@@ -1365,8 +1367,7 @@ class VirtualMachine:
     annotations_dict = self.current_annotated_locals if local else None
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types=True)
-    if not self.ctx.options.allow_recursive_types:
-      value = self._remove_recursion(state.node, name, value)
+    value = self._process_annotations(state.node, name, value)
     state = state.forward_cfg_node()
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
