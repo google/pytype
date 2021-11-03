@@ -2447,10 +2447,8 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     elif self.full_name == "typing.ClassVar":
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)
-    elif self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
-      return self._new_instance(container).to_variable(node)
     else:
-      return super().instantiate(node, container)
+      return self._new_instance(container, node, None).to_variable(node)
 
   @property
   def cls(self):
@@ -2857,7 +2855,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     else:
       raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
-  def _new_instance(self, args):  # pylint: disable=arguments-renamed
+  def _new_instance(self, container, node, args):
     if self.full_name == "builtins.tuple" and args.is_empty():
       value = Tuple((), self.ctx)
     else:
@@ -2868,17 +2866,6 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
       if name not in value.instance_type_parameters:
         value.instance_type_parameters[name] = self.ctx.program.NewVariable()
     return value
-
-  def call(self, node, func, args, alias_map=None):
-    if self.is_abstract and not self.from_annotation:
-      self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
-    node, variable = self._call_new_and_init(node, func, args)
-    if variable is None:
-      value = self._new_instance(args)
-      variable = self.ctx.program.NewVariable()
-      val = variable.AddBinding(value, [func], node)
-      node = self.call_init(node, val, args)
-    return node, variable
 
   def instantiate(self, node, container=None):
     return self.ctx.convert.constant_to_var(
@@ -3120,7 +3107,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
 
   def instantiate(self, node, container=None):
     if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
-      return self._new_instance(container).to_variable(node)
+      return self._new_instance(container, node, None).to_variable(node)
     else:
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or

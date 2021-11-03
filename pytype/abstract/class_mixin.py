@@ -379,9 +379,14 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
-  def _new_instance(self, container):
+  def _new_instance(self, container, node, args):
+    """Returns a (possibly cached) instance of 'self'."""
+    del args  # unused
     # We allow only one "instance" per code location, regardless of call stack.
-    key = self.ctx.vm.frame.current_opcode
+    if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
+      key = self.ctx.vm.frame.current_opcode
+    else:
+      key = node
     assert key
     if key not in self._instance_cache:
       self._instance_cache[key] = self._to_instance(container)
@@ -392,9 +397,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
     node, variable = self._call_new_and_init(node, func, args)
     if variable is None:
-      value = self._new_instance(None)
+      value = self._new_instance(None, node, args)
       variable = self.ctx.program.NewVariable()
-      val = variable.AddBinding(value, [], node)
+      val = variable.AddBinding(value, [func], node)
       node = self.call_init(node, val, args)
     return node, variable
 
