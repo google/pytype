@@ -32,9 +32,9 @@ class Node:
       yield getattr(self, field.name)
 
   def _ToTuple(self):
-    """Returns a tuple of the fields of self."""
+    """Returns a tuple of the fields of self as a sort key."""
     # attr.astuple does a recursive conversion, which is not what we want
-    return tuple(x for x in self)
+    return tuple((x.__class__.__name__, str(x)) for x in self)
 
   def __lt__(self, other):
     """Smaller than other node? Define so we can have deterministic ordering."""
