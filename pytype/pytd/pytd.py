@@ -717,7 +717,7 @@ def LookupItemRecursive(module, name):
   item = module
 
   def ExtractClass(t):
-    if isinstance(t, ClassType):
+    if isinstance(t, ClassType) and t.cls:
       return t.cls
     t = module.Lookup(t.name)  # may raise KeyError
     if isinstance(t, Class):
