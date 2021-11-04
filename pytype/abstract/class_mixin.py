@@ -406,8 +406,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   def get_special_attribute(self, node, name, valself):
     """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
-      # See vm._call_binop_on_bindings: valself == None is a special value that
-      # indicates an annotation.
+      # See vm_utils._call_binop_on_bindings: valself == None is a special value
+      # that indicates an annotation.
       if self.cls.full_name != "builtins.type":
         # This class has a custom metaclass; check if it defines __getitem__.
         _, att = self.ctx.attribute_handler.get_attribute(

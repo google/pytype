@@ -819,6 +819,12 @@ class Loader:
     """Gets a name -> ResolvedModule map of the loader's resolved modules."""
     return self._modules.get_resolved_modules()
 
+  def lookup_builtin(self, name):
+    try:
+      return self.builtins.Lookup(name)
+    except KeyError:
+      return self.typing.Lookup(name)
+
 
 class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""

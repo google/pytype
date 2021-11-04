@@ -95,7 +95,7 @@ class Dataclass(classgen.Decorator):
         # vm._apply_annotation mostly takes care of checking that the default
         # matches the declared type. However, it allows None defaults, and
         # dataclasses do not.
-        self.ctx.vm.check_annotation_type_mismatch(
+        self.ctx.check_annotation_type_mismatch(
             node, name, typ, orig, local.stack, allow_none=False)
 
       attr = classgen.Attribute(

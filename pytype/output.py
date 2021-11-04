@@ -158,7 +158,7 @@ class Converter(utils.ContextWeakrefMixin):
         value = repr(v.value.pyval)
       elif isinstance(v.value.pyval, bool):
         # True and False are stored as pytd constants.
-        value = self.ctx.vm.lookup_builtin(f"builtins.{v.value.pyval}")
+        value = self.ctx.loader.lookup_builtin(f"builtins.{v.value.pyval}")
       else:
         # Ints are stored as their literal values. Note that Literal[None] or a
         # nested literal will never appear here, since we simplified it to None

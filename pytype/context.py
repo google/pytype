@@ -1,6 +1,7 @@
 """Container of things that should be accessible to all abstract values."""
 
 import contextlib
+import logging
 from typing import Dict, List, Tuple
 
 from pytype import annotation_utils
@@ -13,9 +14,13 @@ from pytype import matcher
 from pytype import output
 from pytype import special_builtins
 from pytype import tracer_vm
+from pytype import vm_utils
 from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
+
+log = logging.getLogger(__name__)
 
 
 class Context:
@@ -123,3 +128,40 @@ class Context:
 
   def join_bindings(self, node, bindings):
     return cfg_utils.merge_bindings(self.program, node, bindings)
+
+  # TODO(b/202335303): The only reason this method exists is so that
+  # abstract/mixin.py can construct an abstract.NativeFunction.
+  def make_native_function(self, name, method):
+    return abstract.NativeFunction(name, method, self)
+
+  def make_class(self, node, name_var, bases, class_dict_var, cls_var,
+                 new_class_var=None, is_decorated=False, class_type=None):
+    return vm_utils.make_class(node, name_var, bases, class_dict_var, cls_var,
+                               new_class_var, is_decorated, class_type, self)
+
+  def check_annotation_type_mismatch(
+      self, node, name, typ, value, stack, allow_none, details=None):
+    """Checks for a mismatch between a variable's annotation and value.
+
+    Args:
+      node: node
+      name: variable name
+      typ: variable annotation
+      value: variable value
+      stack: a frame stack for error reporting
+      allow_none: whether a value of None is allowed for any type
+      details: any additional details to add to the error message
+    """
+    if not typ or not value:
+      return
+    if (value.data == [self.convert.ellipsis] or
+        allow_none and value.data == [self.convert.none]):
+      return
+    contained_type = abstract_utils.match_type_container(
+        typ, ("typing.ClassVar", "dataclasses.InitVar"))
+    if contained_type:
+      typ = contained_type
+    bad = self.matcher(node).bad_matches(value, typ)
+    for view, *_ in bad:
+      binding = view[value]
+      self.errorlog.annotation_type_mismatch(stack, typ, binding, name, details)

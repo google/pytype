@@ -425,7 +425,7 @@ class CallTracer(vm.VirtualMachine):
       for value in f.bindings:
         if self._should_analyze_as_interpreter_function(value.data):
           node = self.analyze_function(node, value)
-    for func, opcode in self._functions_type_params_check:
+    for func, opcode in self.functions_type_params_check:
       func.signature.check_type_parameter_count(self.simple_stack(opcode))
     return node
 
@@ -556,9 +556,11 @@ class CallTracer(vm.VirtualMachine):
     for module_name in ("typing", "typing_extensions"):
       if module_name not in self.loaded_overlays:
         continue
-      module = self.loaded_overlays[module_name].get_module(name)
-      if name in module.members and module.members[name].data == var.data:
-        return True
+      overlay = self.loaded_overlays[module_name]
+      if overlay:
+        module = overlay.get_module(name)
+        if name in module.members and module.members[name].data == var.data:
+          return True
     return False
 
   def pytd_functions_for_call_traces(self):

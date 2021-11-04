@@ -4,24 +4,17 @@ A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
 program execution.
 """
 
-# Because pytype takes too long:
-# pytype: skip-file
-
 # We have names like "byte_NOP":
 # pylint: disable=invalid-name
 
 # Bytecodes don't always use all their arguments:
 # pylint: disable=unused-argument
 
-import abc
 import collections
 import contextlib
 import itertools
 import logging
-import os
-import re
-import reprlib
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from pytype import blocks
 from pytype import compare
@@ -30,11 +23,11 @@ from pytype import datatypes
 from pytype import directors
 from pytype import overlay_dict
 from pytype import load_pytd
-from pytype import metaclass
 from pytype import metrics
 from pytype import overlay as overlay_lib
 from pytype import state as frame_state
 from pytype import utils
+from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
@@ -44,26 +37,12 @@ from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
-from pytype.pytd import mro
 from pytype.pytd import slots
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
-
-_FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
-
-# Create a repr that won't overflow.
-_TRUNCATE = 120
-_TRUNCATE_STR = 72
-repr_obj = reprlib.Repr()
-repr_obj.maxother = _TRUNCATE
-repr_obj.maxstring = _TRUNCATE_STR
-repper = repr_obj.repr
-
-
-Block = collections.namedtuple("Block", ["type", "level"])
 
 
 class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
@@ -84,116 +63,6 @@ class VirtualMachineError(Exception):
   """For raising errors in the operation of the VM."""
 
 
-class _FindIgnoredTypeComments:
-  """A visitor that finds type comments that will be ignored."""
-
-  def __init__(self, type_comments):
-    self._type_comments = type_comments
-    # Lines will be removed from this set during visiting. Any lines that remain
-    # at the end are type comments that will be ignored.
-    self._ignored_type_lines = set(type_comments)
-
-  def visit_code(self, code):
-    """Interface for pyc.visit."""
-    for op in code.code_iter:
-      # Make sure we have attached the type comment to an opcode.
-      if isinstance(op, blocks.STORE_OPCODES):
-        if op.annotation:
-          annot = op.annotation
-          if self._type_comments.get(op.line) == annot:
-            self._ignored_type_lines.discard(op.line)
-      elif isinstance(op, opcodes.MAKE_FUNCTION):
-        if op.annotation:
-          _, line = op.annotation
-          self._ignored_type_lines.discard(line)
-    return code
-
-  def ignored_lines(self):
-    """Returns a set of lines that contain ignored type comments."""
-    return self._ignored_type_lines
-
-
-class _FinallyStateTracker:
-  """Track return state for try/except/finally blocks."""
-  # Used in vm.run_frame()
-
-  RETURN_STATES = ("return", "exception")
-
-  def __init__(self):
-    self.stack = []
-
-  def process(self, op, state, ctx) -> Optional[str]:
-    """Store state.why, or return it from a stored state."""
-    if ctx.vm.is_setup_except(op):
-      self.stack.append([op, None])
-    if isinstance(op, opcodes.END_FINALLY):
-      if self.stack:
-        _, why = self.stack.pop()
-        if why:
-          return why
-    elif self.stack and state.why in self.RETURN_STATES:
-      self.stack[-1][-1] = state.why
-
-  def check_early_exit(self, state) -> bool:
-    """Check if we are exiting the frame from within an except block."""
-    return (state.block_stack and
-            any(x.type == "finally" for x in state.block_stack) and
-            state.why in self.RETURN_STATES)
-
-  def __repr__(self):
-    return repr(self.stack)
-
-
-class _NameErrorDetails(abc.ABC):
-  """Base class for detailed name error messages."""
-
-  @abc.abstractmethod
-  def to_error_message(self) -> str:
-    ...
-
-
-class _NameInInnerClassErrorDetails(_NameErrorDetails):
-
-  def __init__(self, attr, class_name):
-    self._attr = attr
-    self._class_name = class_name
-
-  def to_error_message(self):
-    return (f"Cannot reference {self._attr!r} from class {self._class_name!r} "
-            "before the class is fully defined")
-
-
-class _NameInOuterClassErrorDetails(_NameErrorDetails):
-  """Name error details for a name defined in an outer class."""
-
-  def __init__(self, attr, prefix, class_name):
-    self._attr = attr
-    self._prefix = prefix
-    self._class_name = class_name
-
-  def to_error_message(self):
-    full_attr_name = f"{self._class_name}.{self._attr}"
-    if self._prefix:
-      full_class_name = f"{self._prefix}.{self._class_name}"
-    else:
-      full_class_name = self._class_name
-    return (f"Use {full_attr_name!r} to reference {self._attr!r} from class "
-            f"{full_class_name!r}")
-
-
-class _NameInOuterFunctionErrorDetails(_NameErrorDetails):
-
-  def __init__(self, attr, outer_scope, inner_scope):
-    self._attr = attr
-    self._outer_scope = outer_scope
-    self._inner_scope = inner_scope
-
-  def to_error_message(self):
-    keyword = "global" if "global" in self._outer_scope else "nonlocal"
-    return (f"Add `{keyword} {self._attr}` in {self._inner_scope} to reference "
-            f"{self._attr!r} from {self._outer_scope}")
-
-
 class VirtualMachine:
   """A bytecode VM that generates a cfg as it executes."""
 
@@ -205,16 +74,16 @@ class VirtualMachine:
     """Construct a TypegraphVirtualMachine."""
     self.ctx = ctx  # context.Context
     # The call stack of frames.
-    self.frames: List[Union[frame_state.Frame, frame_state.SimpleFrame]] = []
+    self.frames: List[frame_state.Frame] = []
     # The current frame.
-    self.frame: Union[frame_state.Frame, frame_state.SimpleFrame] = None
+    self.frame: frame_state.Frame = None
     # A map from names to the late annotations that depend on them. Every
     # LateAnnotation depends on a single undefined name, so once that name is
     # defined, we immediately resolve the annotation.
     self.late_annotations: Dict[str, List[abstract.LateAnnotation]] = (
         collections.defaultdict(list))
     # Memoize which overlays are loaded.
-    self.loaded_overlays: Dict[str, overlay_lib.Overlay] = {}
+    self.loaded_overlays: Dict[str, Optional[overlay_lib.Overlay]] = {}
     self.has_unknown_wildcard_imports: bool = False
     # pyformat: disable
     self.opcode_traces: List[Tuple[
@@ -228,10 +97,12 @@ class VirtualMachine:
     # Record the annotated and original values of locals.
     self.annotated_locals: Dict[str, Dict[str, abstract_utils.Local]] = {}
     self.filename: str = None
+    self.concrete_classes: List[
+        Tuple[class_mixin.Class, Sequence[frame_state.SimpleFrame]]] = []
+    self.functions_type_params_check: List[
+        Tuple[abstract.InterpreterFunction, opcodes.Opcode]] = []
 
     self._maximum_depth = None  # set by run_program() and analyze()
-    self._functions_type_params_check = []
-    self._concrete_classes = []
     self._director = None
     self._analyzing = False  # Are we in self.analyze()?
     self._importing = False  # Are we importing another file?
@@ -290,17 +161,12 @@ class VirtualMachine:
     # isinstance(val, tuple) generates false positives for internal classes that
     # are namedtuples.
     if val.__class__ == tuple:
+      assert val
       data = tuple(get_data(v) for v in val)
     else:
       data = (get_data(val),)
     rec = (op, symbol, data)
     self.opcode_traces.append(rec)
-
-  def lookup_builtin(self, name):
-    try:
-      return self.ctx.loader.builtins.Lookup(name)
-    except KeyError:
-      return self.ctx.loader.typing.Lookup(name)
 
   def remaining_depth(self):
     return self._maximum_depth - len(self.frames)
@@ -327,7 +193,7 @@ class VirtualMachine:
     self.frame.current_opcode = op
     self._importing = "IMPORT" in op.__class__.__name__
     if log.isEnabledFor(logging.INFO):
-      self.log_opcode(op, state)
+      vm_utils.log_opcode(op, state, self.frame, len(self.frames))
     # dispatch
     bytecode_fn = getattr(self, "byte_%s" % op.name, None)
     if bytecode_fn is None:
@@ -354,7 +220,7 @@ class VirtualMachine:
       assert annotated_locals is None
     can_return = False
     return_nodes = []
-    finally_tracker = _FinallyStateTracker()
+    finally_tracker = vm_utils.FinallyStateTracker()
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
@@ -372,6 +238,7 @@ class VirtualMachine:
         if state.why:
           # we can't process this block any further
           break
+      assert op
       if state.why:
         # If we raise an exception or return in an except block do not
         # execute any target blocks it has added.
@@ -386,7 +253,7 @@ class VirtualMachine:
         # nodes to overlap the boundary of blocks.
         state = state.forward_cfg_node()
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
-    self._update_excluded_types(node)
+    vm_utils.update_excluded_types(node, self.ctx)
     self.pop_frame(frame)
     if not return_nodes:
       # Happens if the function never returns. (E.g. an infinite loop)
@@ -404,40 +271,6 @@ class VirtualMachine:
                                self.ctx.convert.no_return.to_variable(node))
     return node, frame.return_variable
 
-  def _update_excluded_types(self, node):
-    """Update the excluded_types attribute of functions in the current frame."""
-    if not self.frame.func:
-      return
-    func = self.frame.func.data
-    if isinstance(func, abstract.BoundFunction):
-      func = func.underlying
-    if not isinstance(func, abstract.SignedFunction):
-      return
-    # If we have code like:
-    #   def f(x: T):
-    #     def g(x: T): ...
-    # then TypeVar T needs to be added to both f and g's excluded_types
-    # attribute to avoid 'appears only once in signature' errors for T.
-    # Similarly, any TypeVars that appear in variable annotations in a
-    # function body also need to be added to excluded_types.
-    for name, local in self.current_annotated_locals.items():
-      typ = local.get_type(node, name)
-      if typ:
-        func.signature.excluded_types.update(
-            p.name for p in self.ctx.annotation_utils.get_type_parameters(typ))
-      if local.orig:
-        for v in local.orig.data:
-          if isinstance(v, abstract.BoundFunction):
-            v = v.underlying
-          if isinstance(v, abstract.SignedFunction):
-            v.signature.excluded_types |= func.signature.type_params
-            func.signature.excluded_types |= v.signature.type_params
-
-  def push_block(self, state, t, level=None):
-    if level is None:
-      level = len(state.data_stack)
-    return state.push_block(Block(t, level))
-
   def push_frame(self, frame):
     self.frames.append(frame)
     self.frame = frame
@@ -450,281 +283,11 @@ class VirtualMachine:
     else:
       self.frame = None
 
-  def module_name(self):
-    if self.frame.f_code.co_filename:
-      return ".".join(re.sub(
-          r"\.py$", "", self.frame.f_code.co_filename).split(os.sep)[-2:])
-    else:
-      return ""
-
-  def log_opcode(self, op, state):
-    """Write a multi-line log message, including backtrace and stack."""
-    if not log.isEnabledFor(logging.INFO):
-      return
-    indent = " > " * (len(self.frames) - 1)
-    stack_rep = repper(state.data_stack)
-    block_stack_rep = repper(state.block_stack)
-    module_name = self.module_name()
-    if module_name:
-      name = self.frame.f_code.co_name
-      log.info("%s | index: %d, %r, module: %s line: %d",
-               indent, op.index, name, module_name, op.line)
-    else:
-      log.info("%s | index: %d, line: %d",
-               indent, op.index, op.line)
-    log.info("%s | data_stack: %s", indent, stack_rep)
-    log.info("%s | block_stack: %s", indent, block_stack_rep)
-    log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
-    log.info("%s ## %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))
-
-  def repper(self, s):
-    return repr_obj.repr(s)
-
   def _call(
       self, state, obj, method_name, args
   ) -> Tuple[frame_state.FrameState, cfg.Variable]:
     state, method = self.load_attr(state, obj, method_name)
     return self.call_function_with_state(state, method, args)
-
-  def _process_base_class(self, node, base):
-    """Process a base class for InterpreterClass creation."""
-    new_base = self.ctx.program.NewVariable()
-    for b in base.bindings:
-      base_val = b.data
-      if isinstance(b.data, abstract.AnnotationContainer):
-        base_val = base_val.base_cls
-      # A class like `class Foo(List["Foo"])` would lead to infinite recursion
-      # when instantiated because we attempt to recursively instantiate its
-      # parameters, so we replace any late annotations with Any.
-      # TODO(rechen): only replace the current class's name. We should keep
-      # other late annotations in order to support things like:
-      #   class Foo(List["Bar"]): ...
-      #   class Bar: ...
-      base_val = self.ctx.annotation_utils.remove_late_annotations(base_val)
-      if isinstance(base_val, abstract.Union):
-        # Union[A,B,...] is a valid base class, but we need to flatten it into a
-        # single base variable.
-        for o in base_val.options:
-          new_base.AddBinding(o, {b}, node)
-      else:
-        new_base.AddBinding(base_val, {b}, node)
-    base = new_base
-    if not any(isinstance(t, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
-               for t in base.data):
-      self.ctx.errorlog.base_class_error(self.frames, base)
-    return base
-
-  def _filter_out_metaclasses(self, bases):
-    """Process the temporary classes created by six.with_metaclass.
-
-    six.with_metaclass constructs an anonymous class holding a metaclass and a
-    list of base classes; if we find instances in `bases`, store the first
-    metaclass we find and remove all metaclasses from `bases`.
-
-    Args:
-      bases: The list of base classes for the class being constructed.
-
-    Returns:
-      A tuple of (metaclass, base classes)
-    """
-    non_meta = []
-    meta = None
-    for base in bases:
-      with_metaclass = False
-      for b in base.data:
-        if isinstance(b, metaclass.WithMetaclassInstance):
-          with_metaclass = True
-          if not meta:
-            # Only the first metaclass gets applied.
-            meta = b.cls.to_variable(self.ctx.root_node)
-          non_meta.extend(b.bases)
-      if not with_metaclass:
-        non_meta.append(base)
-    return meta, non_meta
-
-  def _expand_generic_protocols(self, node, bases):
-    """Expand Protocol[T, ...] to Protocol, Generic[T, ...]."""
-    expanded_bases = []
-    for base in bases:
-      if any(abstract_utils.is_generic_protocol(b) for b in base.data):
-        protocol_base = self.ctx.program.NewVariable()
-        generic_base = self.ctx.program.NewVariable()
-        generic_cls = self.ctx.convert.name_to_value("typing.Generic")
-        for b in base.bindings:
-          if abstract_utils.is_generic_protocol(b.data):
-            protocol_base.AddBinding(b.data.base_cls, {b}, node)
-            generic_base.AddBinding(
-                abstract.ParameterizedClass(generic_cls,
-                                            b.data.formal_type_parameters,
-                                            self.ctx, b.data.template), {b},
-                node)
-          else:
-            protocol_base.PasteBinding(b)
-        expanded_bases.append(protocol_base)
-        expanded_bases.append(generic_base)
-      else:
-        expanded_bases.append(base)
-    return expanded_bases
-
-  def make_class(self, node, name_var, bases, class_dict_var, cls_var,
-                 new_class_var=None, is_decorated=False, class_type=None):
-    """Create a class with the name, bases and methods given.
-
-    Args:
-      node: The current CFG node.
-      name_var: Class name.
-      bases: Base classes.
-      class_dict_var: Members of the class, as a Variable containing an
-          abstract.Dict value.
-      cls_var: The class's metaclass, if any.
-      new_class_var: If not None, make_class() will return new_class_var with
-          the newly constructed class added as a binding. Otherwise, a new
-          variable if returned.
-      is_decorated: True if the class definition has a decorator.
-      class_type: The internal type to build an instance of. Defaults to
-          abstract.InterpreterClass. If set, must be a subclass of
-          abstract.InterpreterClass.
-
-
-    Returns:
-      A node and an instance of class_type.
-    """
-    name = abstract_utils.get_atomic_python_constant(name_var)
-    log.info("Declaring class %s", name)
-    try:
-      class_dict = abstract_utils.get_atomic_value(class_dict_var)
-    except abstract_utils.ConversionError:
-      log.error("Error initializing class %r", name)
-      return self.ctx.convert.create_new_unknown(node)
-    # Handle six.with_metaclass.
-    metacls, bases = self._filter_out_metaclasses(bases)
-    if metacls:
-      cls_var = metacls
-    # Flatten Unions in the bases
-    bases = [self._process_base_class(node, base) for base in bases]
-    # Expand Protocol[T, ...] to Protocol, Generic[T, ...]
-    bases = self._expand_generic_protocols(node, bases)
-    if not bases:
-      # A parent-less class inherits from classobj in Python 2 and from object
-      # in Python 3.
-      base = self.ctx.convert.object_type
-      bases = [base.to_variable(self.ctx.root_node)]
-    if (isinstance(class_dict, abstract.Unsolvable) or
-        not isinstance(class_dict, mixin.PythonConstant)):
-      # An unsolvable appears here if the vm hit maximum depth and gave up on
-      # analyzing the class we're now building. Otherwise, if class_dict isn't
-      # a constant, then it's an abstract dictionary, and we don't have enough
-      # information to continue building the class.
-      var = self.ctx.new_unsolvable(node)
-    else:
-      if cls_var is None:
-        cls_var = class_dict.members.get("__metaclass__")
-        if cls_var:
-          # This way of declaring metaclasses no longer works in Python 3.
-          self.ctx.errorlog.ignored_metaclass(
-              self.frames, name,
-              cls_var.data[0].full_name if cls_var.bindings else "Any")
-      if cls_var and all(v.data.full_name == "builtins.type"
-                         for v in cls_var.bindings):
-        cls_var = None
-      # pylint: disable=g-long-ternary
-      cls = abstract_utils.get_atomic_value(
-          cls_var, default=self.ctx.convert.unsolvable) if cls_var else None
-      if ("__annotations__" not in class_dict.members and
-          name in self.annotated_locals):
-        # Stores type comments in an __annotations__ member as if they were
-        # PEP 526-style variable annotations, so that we can type-check
-        # attribute assignments.
-        annotations_dict = self.annotated_locals[name]
-        if any(local.typ for local in annotations_dict.values()):
-          annotations_member = abstract.AnnotationsDict(
-              annotations_dict, self.ctx).to_variable(node)
-          class_dict.members["__annotations__"] = annotations_member
-          class_dict.pyval["__annotations__"] = annotations_member
-      try:
-        if not class_type:
-          class_type = abstract.InterpreterClass
-        elif class_type is not abstract.InterpreterClass:
-          assert issubclass(class_type, abstract.InterpreterClass)
-        val = class_type(name, bases, class_dict.pyval, cls, self.ctx)
-        val.is_decorated = is_decorated
-      except mro.MROError as e:
-        self.ctx.errorlog.mro_error(self.frames, name, e.mro_seqs)
-        var = self.ctx.new_unsolvable(node)
-      except abstract_utils.GenericTypeError as e:
-        self.ctx.errorlog.invalid_annotation(self.frames, e.annot, e.error)
-        var = self.ctx.new_unsolvable(node)
-      else:
-        if new_class_var:
-          var = new_class_var
-        else:
-          var = self.ctx.program.NewVariable()
-        var.AddBinding(val, class_dict_var.bindings, node)
-        node = val.call_metaclass_init(node)
-        node = val.call_init_subclass(node)
-        if not val.is_abstract:
-          # Since a class decorator could have made the class inherit from
-          # ABCMeta, we have to mark concrete classes now and check for
-          # abstract methods at postprocessing time.
-          self._concrete_classes.append((val, self.simple_stack()))
-    self.trace_opcode(None, name, var)
-    return node, var
-
-  def _check_defaults(self, node, method):
-    """Check parameter defaults against annotations."""
-    if not method.signature.has_param_annotations:
-      return
-    _, args = self.create_method_arguments(node, method, use_defaults=True)
-    try:
-      _, errors = function.match_all_args(self.ctx, node, method, args)
-    except function.FailedFunctionCall as e:
-      raise AssertionError("Unexpected argument matching error: %s" %
-                           e.__class__.__name__) from e
-    for e, arg_name, value in errors:
-      expected_type = e.bad_call.bad_param.expected
-      if value == self.ctx.convert.ellipsis:
-        # `...` should be a valid default parameter value for overloads.
-        # Unfortunately, the is_overload attribute is not yet set when
-        # _check_defaults runs, so we instead check that the method body is
-        # empty. As a side effect, `...` is allowed as a default value for
-        # any method that does nothing except return None.
-        should_report = not method.has_empty_body()
-      else:
-        should_report = True
-      if should_report:
-        self.ctx.errorlog.annotation_type_mismatch(
-            self.frames, expected_type, value.to_binding(node), arg_name)
-
-  def _make_function(self, name, node, code, globs, defaults, kw_defaults,
-                     closure=None, annotations=None):
-    """Create a function or closure given the arguments."""
-    if closure:
-      closure = tuple(
-          c for c in abstract_utils.get_atomic_python_constant(closure))
-      log.info("closure: %r", closure)
-    if not name:
-      name = abstract_utils.get_atomic_python_constant(code).co_name
-    if not name:
-      name = "<lambda>"
-    val = abstract.InterpreterFunction.make(
-        name,
-        code=abstract_utils.get_atomic_python_constant(code),
-        f_locals=self.frame.f_locals,
-        f_globals=globs,
-        defaults=defaults,
-        kw_defaults=kw_defaults,
-        closure=closure,
-        annotations=annotations,
-        ctx=self.ctx)
-    var = self.ctx.program.NewVariable()
-    var.AddBinding(val, code.bindings, node)
-    self._check_defaults(node, val)
-    if val.signature.annotations:
-      self._functions_type_params_check.append((val, self.frame.current_opcode))
-    return var
-
-  def make_native_function(self, name, method):
-    return abstract.NativeFunction(name, method, self.ctx)
 
   def make_frame(
       self, node, code, f_globals, f_locals, callargs=None, closure=None,
@@ -735,7 +298,7 @@ class VirtualMachine:
       raise self.VirtualMachineRecursionError()
 
     log.info("make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
-             self.repper(callargs),
+             vm_utils.repper(callargs),
              type(f_globals).__name__, id(f_globals),
              type(f_locals).__name__, id(f_locals))
 
@@ -850,7 +413,7 @@ class VirtualMachine:
     self._maximum_depth = maximum_depth
 
     code = self.compile_src(src, filename=filename)
-    visitor = _FindIgnoredTypeComments(self._director.type_comments)
+    visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
       self.ctx.errorlog.ignored_type_comment(self.filename, line,
@@ -864,7 +427,7 @@ class VirtualMachine:
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
     # Check for abstract methods on non-abstract classes.
-    for val, frames in self._concrete_classes:
+    for val, frames in self.concrete_classes:
       if not val.is_abstract:
         for member in sum((var.data for var in val.members.values()), []):
           if isinstance(member, abstract.Function) and member.is_abstract:
@@ -879,36 +442,6 @@ class VirtualMachine:
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
-
-  def _base(self, cls):
-    if isinstance(cls, abstract.ParameterizedClass):
-      return cls.base_cls
-    return cls
-
-  def _overrides(self, node, subcls, supercls, attr):
-    """Check whether subcls_var overrides or newly defines the given attribute.
-
-    Args:
-      node: The current node.
-      subcls: A potential subclass.
-      supercls: A potential superclass.
-      attr: An attribute name.
-
-    Returns:
-      True if subcls_var is a subclass of supercls_var and overrides or newly
-      defines the attribute. False otherwise.
-    """
-    if subcls and supercls and supercls in subcls.mro:
-      subcls = self._base(subcls)
-      supercls = self._base(supercls)
-      for cls in subcls.mro:
-        if cls == supercls:
-          break
-        if isinstance(cls, mixin.LazyMembers):
-          cls.load_lazy_attribute(attr)
-        if attr in cls.members and cls.members[attr].bindings:
-          return True
-    return False
 
   def get_var_name(self, var):
     """Get the python variable name corresponding to a Variable."""
@@ -929,118 +462,17 @@ class VirtualMachine:
       return self._var_names.get(s.variable.id)
     return None
 
-  def _call_binop_on_bindings(self, node, name, xval, yval):
-    """Call a binary operator on two cfg.Binding objects."""
-    rname = slots.REVERSE_NAME_MAPPING.get(name)
-    if rname and isinstance(xval.data, abstract.AMBIGUOUS_OR_EMPTY):
-      # If the reverse operator is possible and x is ambiguous, then we have no
-      # way of determining whether __{op} or __r{op}__ is called.  Technically,
-      # the result is also unknown if y is ambiguous, but it is almost always
-      # reasonable to assume that, e.g., "hello " + y is a string, even though
-      # y could define __radd__.
-      return node, self.ctx.program.NewVariable([self.ctx.convert.unsolvable],
-                                                [xval, yval], node)
-    options = [(xval, yval, name)]
-    if rname:
-      options.append((yval, xval, rname))
-      if self._overrides(node, yval.data.cls, xval.data.cls, rname):
-        # If y is a subclass of x and defines its own reverse operator, then we
-        # need to try y.__r{op}__ before x.__{op}__.
-        options.reverse()
-    error = None
-    for left_val, right_val, attr_name in options:
-      if (isinstance(left_val.data, class_mixin.Class) and
-          attr_name == "__getitem__"):
-        # We're parameterizing a type annotation. Set valself to None to
-        # differentiate this action from a real __getitem__ call on the class.
-        valself = None
-      else:
-        valself = left_val
-      node, attr_var = self.ctx.attribute_handler.get_attribute(
-          node, left_val.data, attr_name, valself)
-      if attr_var and attr_var.bindings:
-        args = function.Args(posargs=(right_val.AssignToNewVariable(),))
-        try:
-          return function.call_function(
-              self.ctx, node, attr_var, args, fallback_to_unsolvable=False)
-        except (function.DictKeyMissing, function.FailedFunctionCall) as e:
-          # It's possible that this call failed because the function returned
-          # NotImplemented.  See, e.g.,
-          # test_operators.ReverseTest.check_reverse(), in which 1 {op} Bar()
-          # ends up using Bar.__r{op}__. Thus, we need to save the error and
-          # try the other operator.
-          if e > error:
-            error = e
-    if error:
-      raise error  # pylint: disable=raising-bad-type
-    else:
-      return node, None
-
-  def call_binary_operator(self, state, name, x, y, report_errors=False):
-    """Map a binary operator to "magic methods" (__add__ etc.)."""
-    results = []
-    log.debug("Calling binary operator %s", name)
-    nodes = []
-    error = None
-    for xval in x.bindings:
-      for yval in y.bindings:
-        try:
-          node, ret = self._call_binop_on_bindings(state.node, name, xval, yval)
-        except (function.DictKeyMissing, function.FailedFunctionCall) as e:
-          if e > error:
-            error = e
-        else:
-          if ret:
-            nodes.append(node)
-            results.append(ret)
-    if nodes:
-      state = state.change_cfg_node(self.ctx.join_cfg_nodes(nodes))
-    result = self.ctx.join_variables(state.node, results)
-    log.debug("Result: %r %r", result, result.data)
-    if not result.bindings and report_errors:
-      if error is None:
-        if self.ctx.options.report_errors:
-          self.ctx.errorlog.unsupported_operands(self.frames, name, x, y)
-        result = self.ctx.new_unsolvable(state.node)
-      elif isinstance(error, function.DictKeyMissing):
-        state, result = error.get_return(state)
-      else:
-        if self.ctx.options.report_errors:
-          self.ctx.errorlog.invalid_function_call(self.frames, error)
-        state, result = error.get_return(state)
-    return state, result
-
-  def call_inplace_operator(self, state, iname, x, y):
-    """Try to call a method like __iadd__, possibly fall back to __add__."""
-    state, attr = self.load_attr_noerror(state, x, iname)
-    if attr is None:
-      log.info("No inplace operator %s on %r", iname, x)
-      name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
-      state = state.forward_cfg_node()
-      state, ret = self.call_binary_operator(
-          state, name, x, y, report_errors=True)
-    else:
-      # TODO(b/159039220): If x is a Variable with distinct types, both __add__
-      # and __iadd__ might happen.
-      try:
-        state, ret = self.call_function_with_state(state, attr, (y,),
-                                                   fallback_to_unsolvable=False)
-      except function.FailedFunctionCall as e:
-        self.ctx.errorlog.invalid_function_call(self.frames, e)
-        state, ret = e.get_return(state)
-    return state, ret
-
   def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)
     with self._suppress_opcode_tracing():  # don't trace the magic method call
-      state, ret = self.call_binary_operator(
-          state, name, x, y, report_errors=report_errors)
+      state, ret = vm_utils.call_binary_operator(
+          state, name, x, y, report_errors=report_errors, ctx=self.ctx)
     self.trace_opcode(None, name, ret)
     return state.push(ret)
 
   def inplace_operator(self, state, name):
     state, (x, y) = state.popn(2)
-    state, ret = self.call_inplace_operator(state, name, x, y)
+    state, ret = vm_utils.call_inplace_operator(state, name, x, y, self.ctx)
     return state.push(ret)
 
   def trace_unknown(self, *args):
@@ -1097,22 +529,6 @@ class VirtualMachine:
     """Attempt to call the given function with made-up arguments."""
     return node0, self.ctx.new_unsolvable(node0)
 
-  def _process_decorator(self, func, posargs):
-    """Specific processing for decorated functions."""
-    if len(posargs) != 1 or not posargs[0].bindings:
-      return
-    # Assume the decorator and decorated function have one binding each.
-    # (This is valid due to how decorated functions/classes are created.)
-    decorator = func.data[0]
-    fn = posargs[0].data[0]
-    # TODO(b/153760963) We also need to check if the CALL_FUNCTION opcode has
-    # the same line number as the function declaration (it should suffice to
-    # check that the opcode lineno is in the set of decorators; we just need a
-    # way to access the line number here). Otherwise any function call taking a
-    # single function as an arg could trigger this code.
-    if fn.is_decorated:
-      log.info("Decorating %s with %s", fn.full_name, decorator.full_name)
-
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
@@ -1148,7 +564,6 @@ class VirtualMachine:
       else:
         posargs = args
     state, func = state.pop()
-    self._process_decorator(func, posargs)
     state, ret = self.call_function_with_state(
         state, func, posargs, namedargs, starargs, starstarargs)
     return state.push(ret)
@@ -1281,10 +696,6 @@ class VirtualMachine:
     """Called when a local is written."""
     return self._store_value(state, name, value, local=True)
 
-  def store_global(self, state, name, value):
-    """Same as store_local except for globals."""
-    return self._store_value(state, name, value, local=False)
-
   def _process_annotations(self, node, name, value):
     """Process any type annotations in the named value."""
     if not value.data or any(not isinstance(v, mixin.NestedAnnotation)
@@ -1329,37 +740,9 @@ class VirtualMachine:
           # cases where it is causing false positives or other issues.
           value = self.ctx.new_unsolvable(state.node)
     if check_types:
-      self.check_annotation_type_mismatch(
+      self.ctx.check_annotation_type_mismatch(
           state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
-
-  def check_annotation_type_mismatch(
-      self, node, name, typ, value, stack, allow_none, details=None):
-    """Checks for a mismatch between a variable's annotation and value.
-
-    Args:
-      node: node
-      name: variable name
-      typ: variable annotation
-      value: variable value
-      stack: a frame stack for error reporting
-      allow_none: whether a value of None is allowed for any type
-      details: any additional details to add to the error message
-    """
-    if not typ or not value:
-      return
-    if (value.data == [self.ctx.convert.ellipsis] or
-        allow_none and value.data == [self.ctx.convert.none]):
-      return
-    contained_type = abstract_utils.match_type_container(
-        typ, ("typing.ClassVar", "dataclasses.InitVar"))
-    if contained_type:
-      typ = contained_type
-    bad = self.ctx.matcher(node).bad_matches(value, typ)
-    for view, *_ in bad:
-      binding = view[value]
-      self.ctx.errorlog.annotation_type_mismatch(stack, typ, binding, name,
-                                                 details)
 
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
@@ -1845,158 +1228,6 @@ class VirtualMachine:
   def _is_private(self, name):
     return name.startswith("_") and not name.startswith("__")
 
-  def _get_scopes(
-      self, state, names: Sequence[str]
-  ) -> Sequence[Union[abstract.InterpreterClass, abstract.InterpreterFunction]]:
-    """Gets the class or function objects for a sequence of nested scope names.
-
-    For example, if the code under analysis is:
-      class Foo:
-        def f(self):
-          def g(): ...
-    then when called with ['Foo', 'f', 'g'], this method returns
-    [InterpreterClass(Foo), InterpreterFunction(f), InterpreterFunction(g)].
-
-    Arguments:
-      state: The current state.
-      names: A sequence of names for consecutive nested scopes in the module
-        under analysis. Must start with a module-level name.
-
-    Returns:
-      The class or function object corresponding to each name in 'names'.
-    """
-    scopes = []
-    for name in names:
-      prev = scopes[-1] if scopes else None
-      if not prev:
-        try:
-          _, var = self.load_global(state, name)
-        except KeyError:
-          break
-      elif isinstance(prev, abstract.InterpreterClass):
-        if name in prev.members:
-          var = prev.members[name]
-        else:
-          break
-      else:
-        assert isinstance(prev, abstract.InterpreterFunction)
-        # For last_frame to be populated, 'prev' has to have been called at
-        # least once. This has to be true for all functions except the innermost
-        # one, since pytype cannot detect a nested function without analyzing
-        # the code that defines the nested function.
-        if prev.last_frame and name in prev.last_frame.f_locals.pyval:
-          var = prev.last_frame.f_locals.pyval[name]
-        else:
-          break
-      try:
-        scopes.append(abstract_utils.get_atomic_value(
-            var, (abstract.InterpreterClass, abstract.InterpreterFunction)))
-      except abstract_utils.ConversionError:
-        break
-    return scopes
-
-  def _get_name_error_details(self, state, name: str) -> _NameErrorDetails:
-    """Gets a detailed error message for [name-error]."""
-    # 'name' is not defined in the current scope. To help the user better
-    # understand UnboundLocalError and other similarly confusing errors, we look
-    # for definitions of 'name' in outer scopes so we can print a more
-    # informative error message.
-
-    # Starting from the current (innermost) frame and moving outward, pytype
-    # represents any classes with their own frames until it hits the first
-    # function. It represents that function with its own frame and all remaining
-    # frames with a single SimpleFrame. For example, if we have:
-    #   def f():
-    #     class C:
-    #       def g():
-    #         class D:
-    #           class E:
-    # then self.frames looks like:
-    #   [SimpleFrame(), Frame(f.<locals>.C.g), Frame(D), Frame(E)]
-    class_frames = []
-    first_function_frame = None
-    for frame in reversed(self.frames):
-      if not frame.func:
-        break
-      if frame.func.data.is_class_builder:
-        class_frames.append(frame)
-      else:
-        first_function_frame = frame
-        break
-
-    # Nested function names include ".<locals>" after each outer function.
-    clean = lambda func_name: func_name.replace(".<locals>", "")
-
-    if first_function_frame:
-      # Functions have fully qualified names, so we can use the name of
-      # first_function_frame to look up the remaining frames.
-      parts = clean(first_function_frame.func.data.name).split(".")
-      if first_function_frame is self.frame:
-        parts = parts[:-1]
-    else:
-      parts = []
-
-    # Check if 'name' is defined in one of the outer classes and functions.
-    # Scope 'None' represents the global scope.
-    prefix, class_name_parts = None, []
-    for scope in itertools.chain(
-        reversed(self._get_scopes(state, parts)), [None]):
-      if class_name_parts:
-        # We have located a class that 'name' is defined in and are now
-        # constructing the name by which the class should be referenced.
-        if isinstance(scope, abstract.InterpreterClass):
-          class_name_parts.append(scope.name)
-        elif scope:
-          prefix = clean(scope.name)
-          break
-      elif isinstance(scope, abstract.InterpreterClass):
-        if name in scope.members:
-          # The user may have intended to reference <Class>.<name>
-          class_name_parts.append(scope.name)
-      else:
-        outer_scope = None
-        if scope:
-          # 'name' is defined in an outer function but not accessible, so it
-          # must be redefined in the current frame (an UnboundLocalError).
-          # Note that it is safe to assume that annotated_locals corresponds to
-          # 'scope' (rather than a different function with the same name) only
-          # when 'last_frame' is empty, since the latter being empty means that
-          # 'scope' is actively under analysis.
-          if ((scope.last_frame and name in scope.last_frame.f_locals.pyval) or
-              (not scope.last_frame and
-               name in self.annotated_locals[scope.name.rsplit(".", 1)[-1]])):
-            outer_scope = f"function {clean(scope.name)!r}"
-        else:
-          try:
-            _ = self.load_global(state, name)
-          except KeyError:
-            pass
-          else:
-            outer_scope = "global scope"
-        if outer_scope:
-          if self.frame.func.data.is_class_builder:
-            class_name = ".".join(parts + [
-                class_frame.func.data.name
-                for class_frame in reversed(class_frames)])
-            inner_scope = f"class {class_name!r}"
-          else:
-            inner_scope = f"function {clean(self.frame.func.data.name)!r}"
-          return _NameInOuterFunctionErrorDetails(
-              name, outer_scope, inner_scope)
-    if class_name_parts:
-      return _NameInOuterClassErrorDetails(
-          name, prefix, ".".join(reversed(class_name_parts)))
-
-    # Check if 'name' is defined in one of the classes with their own frames.
-    if class_frames:
-      for i, frame in enumerate(class_frames[1:]):
-        if name in self.annotated_locals[frame.func.data.name]:
-          class_parts = [part.func.data.name
-                         for part in reversed(class_frames[i+1:])]
-          class_name = ".".join(parts + class_parts)
-          return _NameInInnerClassErrorDetails(name, class_name)
-    return None
-
   def _name_error_or_late_annotation(self, state, name):
     """Returns a late annotation or returns Any and logs a name error."""
     if self._late_annotations_stack and self.late_annotations is not None:
@@ -2006,7 +1237,7 @@ class VirtualMachine:
       self.late_annotations[name].append(annot)
       return annot
     else:
-      details = self._get_name_error_details(state, name)
+      details = vm_utils.get_name_error_details(state, name, self.ctx)
       if details:
         details = "Note: " + details.to_error_message()
       self.ctx.errorlog.name_error(self.frames, name, details=details)
@@ -2034,7 +1265,7 @@ class VirtualMachine:
             one_val = self.ctx.convert.unsolvable
           self.trace_opcode(op, name, None)
           return state.push(one_val.to_variable(state.node))
-    self.check_for_deleted(state, name, val)
+    vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     return state.push(val)
 
@@ -2054,7 +1285,7 @@ class VirtualMachine:
     except KeyError:
       val = self._name_error_or_late_annotation(state, name).to_variable(
           state.node)
-    self.check_for_deleted(state, name, val)
+    vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     return state.push(val)
 
@@ -2083,7 +1314,7 @@ class VirtualMachine:
         self.trace_opcode(op, name, None)
         ret = self._name_error_or_late_annotation(state, name)
         return state.push(ret.to_variable(state.node))
-    self.check_for_deleted(state, name, val)
+    vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     return state.push(val)
 
@@ -2095,75 +1326,19 @@ class VirtualMachine:
     name = self.frame.f_code.co_names[op.arg]
     return self._del_name(op, state, name, local=False)
 
-  def get_closure_var_name(self, arg):
-    n_cellvars = len(self.frame.f_code.co_cellvars)
-    if arg < n_cellvars:
-      name = self.frame.f_code.co_cellvars[arg]
-    else:
-      name = self.frame.f_code.co_freevars[arg - n_cellvars]
-    return name
-
-  def check_for_deleted(self, state, name, var):
-    if any(isinstance(x, abstract.Deleted) for x in var.Data(state.node)):
-      # Referencing a deleted variable
-      # TODO(mdemello): A "use-after-delete" error would be more helpful.
-      self.ctx.errorlog.name_error(self.frames, name)
-
-  def load_closure_cell(self, state, op, check_bindings=False):
-    """Retrieve the value out of a closure cell.
-
-    Used to generate the 'closure' tuple for MAKE_CLOSURE.
-
-    Each entry in that tuple is typically retrieved using LOAD_CLOSURE.
-
-    Args:
-      state: The current VM state.
-      op: The opcode. op.arg is the index of a "cell variable": This corresponds
-        to an entry in co_cellvars or co_freevars and is a variable that's bound
-        into a closure.
-      check_bindings: Whether to check the retrieved value for bindings.
-    Returns:
-      A new state.
-    """
-    cell = self.frame.cells[op.arg]
-    # If we have closed over a variable in an inner function, then invoked the
-    # inner function before the variable is defined, raise a name error here.
-    # See test_closures.ClosuresTest.test_undefined_var
-    if check_bindings and not cell.bindings:
-      self.ctx.errorlog.name_error(self.frames, op.pretty_arg)
-    visible_bindings = cell.Filter(state.node, strict=False)
-    if len(visible_bindings) != len(cell.bindings):
-      # We need to filter here because the closure will be analyzed outside of
-      # its creating context, when information about what values are visible
-      # has been lost.
-      new_cell = self.ctx.program.NewVariable()
-      if visible_bindings:
-        for b in visible_bindings:
-          new_cell.AddBinding(b.data, {b}, state.node)
-      else:
-        # See test_closures.ClosuresTest.test_no_visible_bindings.
-        new_cell.AddBinding(self.ctx.convert.unsolvable)
-      # Update the cell because the DELETE_DEREF implementation works on
-      # variable identity.
-      self.frame.cells[op.arg] = cell = new_cell
-    name = self.get_closure_var_name(op.arg)
-    self.check_for_deleted(state, name, cell)
-    self.trace_opcode(op, name, cell)
-    return state.push(cell)
-
   def byte_LOAD_CLOSURE(self, state, op):
     """Retrieves a value out of a cell."""
-    return self.load_closure_cell(state, op)
+    return vm_utils.load_closure_cell(state, op, False, self.ctx)
 
   def byte_LOAD_DEREF(self, state, op):
     """Retrieves a value out of a cell."""
-    return self.load_closure_cell(state, op, True)
+    return vm_utils.load_closure_cell(state, op, True, self.ctx)
 
   def byte_STORE_DEREF(self, state, op):
     """Stores a value in a closure cell."""
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
-    name = self.get_closure_var_name(op.arg)
+    name = vm_utils.get_closure_var_name(self.frame, op.arg)
     value = self._apply_annotation(
         state, op, name, value, self.current_annotated_locals, check_types=True)
     state = state.forward_cfg_node()
@@ -2174,7 +1349,7 @@ class VirtualMachine:
 
   def byte_DELETE_DEREF(self, state, op):
     value = abstract.Deleted(self.ctx).to_variable(state.node)
-    name = self.get_closure_var_name(op.arg)
+    name = vm_utils.get_closure_var_name(self.frame, op.arg)
     state = state.forward_cfg_node()
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     state = state.forward_cfg_node()
@@ -2183,13 +1358,13 @@ class VirtualMachine:
 
   def byte_LOAD_CLASSDEREF(self, state, op):
     """Retrieves a value out of either locals or a closure cell."""
-    name = self.get_closure_var_name(op.arg)
+    name = vm_utils.get_closure_var_name(self.frame, op.arg)
     try:
       state, val = self.load_local(state, name)
       self.trace_opcode(op, name, val)
       return state.push(val)
     except KeyError:
-      return self.load_closure_cell(state, op)
+      return vm_utils.load_closure_cell(state, op, False, self.ctx)
 
   def _cmp_rel(self, state, op_name, x, y):
     """Implementation of relational operators CMP_(LT|LE|EQ|NE|GE|GT).
@@ -2211,8 +1386,8 @@ class VirtualMachine:
     leftover_y = self.ctx.program.NewVariable()
     for b1 in x.bindings:
       for b2 in y.bindings:
+        op = getattr(slots, op_name)
         try:
-          op = getattr(slots, op_name)
           val = compare.cmp_rel(self.ctx, op, b1.data, b2.data)
         except compare.CmpTypeError:
           val = None
@@ -2226,8 +1401,8 @@ class VirtualMachine:
                          state.node)
     if leftover_x.bindings:
       op = "__%s__" % op_name.lower()
-      state, leftover_ret = self.call_binary_operator(
-          state, op, leftover_x, leftover_y)
+      state, leftover_ret = vm_utils.call_binary_operator(
+          state, op, leftover_x, leftover_y, report_errors=False, ctx=self.ctx)
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 
@@ -2251,8 +1426,8 @@ class VirtualMachine:
     """Implementation of CMP_IN/CMP_NOT_IN."""
     state, has_contains = self.load_attr_noerror(state, seq, "__contains__")
     if has_contains:
-      state, ret = self.call_binary_operator(state, "__contains__", seq, item,
-                                             report_errors=True)
+      state, ret = vm_utils.call_binary_operator(
+          state, "__contains__", seq, item, report_errors=True, ctx=self.ctx)
       if ret.bindings:
         ret = self._coerce_to_bool(state.node, ret, true_val=true_val)
     else:
@@ -2664,11 +1839,11 @@ class VirtualMachine:
       elif next_op.__class__ in blocks.STORE_OPCODES:
         break
 
-    update_elements = self._unpack_iterable(state.node, update)
+    update_elements = vm_utils.unpack_iterable(state.node, update, self.ctx)
     if not keep_splats and any(
         abstract_utils.is_var_splat(x) for x in update_elements):
       for target_value in target.data:
-        self._merge_indefinite_iterables(
+        vm_utils.merge_indefinite_iterables(
             state.node, target_value, update_elements)
     else:
       for target_value in target.data:
@@ -2739,67 +1914,23 @@ class VirtualMachine:
     # Only used in the interactive interpreter, not in modules.
     return state.pop_and_discard()
 
-  def _jump_if(self, state, op, pop=False, jump_if=False, or_pop=False):
-    """Implementation of various _JUMP_IF bytecodes.
-
-    Args:
-      state: Initial FrameState.
-      op: An opcode.
-      pop: True if a value is popped off the stack regardless.
-      jump_if: True or False (indicates which value will lead to a jump).
-      or_pop: True if a value is popped off the stack only when the jump is
-          not taken.
-    Returns:
-      The new FrameState.
-    """
-    assert not (pop and or_pop)
-    # Determine the conditions.  Assume jump-if-true, then swap conditions
-    # if necessary.
-    if pop:
-      state, value = state.pop()
-    else:
-      value = state.top()
-    jump, normal = frame_state.split_conditions(
-        state.node, value)
-    if not jump_if:
-      jump, normal = normal, jump
-    # Jump.
-    if jump is not frame_state.UNSATISFIABLE:
-      if jump:
-        assert jump.binding
-        else_state = state.forward_cfg_node(jump.binding).forward_cfg_node()
-      else:
-        else_state = state.forward_cfg_node()
-      self.store_jump(op.target, else_state)
-    else:
-      else_state = None
-    # Don't jump.
-    if or_pop:
-      state = state.pop_and_discard()
-    if normal is frame_state.UNSATISFIABLE:
-      return state.set_why("unsatisfiable")
-    elif not else_state and not normal:
-      return state  # We didn't actually branch.
-    else:
-      return state.forward_cfg_node(normal.binding if normal else None)
-
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    return self._jump_if(state, op, jump_if=True, or_pop=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True, or_pop=True)
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    return self._jump_if(state, op, jump_if=False, or_pop=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False, or_pop=True)
 
   def byte_JUMP_IF_TRUE(self, state, op):
-    return self._jump_if(state, op, jump_if=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True)
 
   def byte_JUMP_IF_FALSE(self, state, op):
-    return self._jump_if(state, op, jump_if=False)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
-    return self._jump_if(state, op, pop=True, jump_if=True)
+    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=True)
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
-    return self._jump_if(state, op, pop=True, jump_if=False)
+    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
 
   def byte_JUMP_FORWARD(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node())
@@ -2818,11 +1949,11 @@ class VirtualMachine:
     state = self._replace_abstract_exception(state, exc_type)
     state = state.push(self.ctx.convert.bool_values[None].to_variable(
         state.node))
-    return self._jump_if(state, op, pop=True, jump_if=False)
+    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
-    return self.push_block(state, "loop")
+    return vm_utils.push_block(state, "loop")
 
   def byte_GET_ITER(self, state, op):
     """Get the iterator for an object."""
@@ -2872,7 +2003,7 @@ class VirtualMachine:
       # we don't do this.
       jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
-    return self.push_block(state, "setup-except")
+    return vm_utils.push_block(state, "setup-except")
 
   # Note: this opcode is removed in Python 3.8.
   def byte_SETUP_EXCEPT(self, state, op):
@@ -2904,7 +2035,7 @@ class VirtualMachine:
     # empty reason/why/continuation):
     self.store_jump(op.target,
                     state.push(self.ctx.convert.build_none(state.node)))
-    return self.push_block(state, "finally")
+    return vm_utils.push_block(state, "finally")
 
   # New python3.8+ exception handling opcodes:
   # BEGIN_FINALLY, END_ASYNC_FOR, CALL_FINALLY, POP_FINALLY
@@ -2959,7 +2090,7 @@ class VirtualMachine:
     state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
     state = state.push(exit_method)
     state, ctxmgr_obj = self._call(state, ctxmgr, "__enter__", ())
-    state = self.push_block(state, "finally", level)
+    state = vm_utils.push_block(state, "finally", level)
     return state.push(ctxmgr_obj)
 
   def _with_cleanup_start(self, state, op):
@@ -3011,8 +2142,8 @@ class VirtualMachine:
       kw_defaults[key] = value
     return kw_defaults
 
-  def _get_extra_function_args(self, state, arg):
-    """Get function annotations and defaults from the stack. (Python3.5-)."""
+  def _get_extra_closure_args(self, state, arg):
+    """Get closure annotations and defaults from the stack."""
     num_pos_defaults = arg & 0xff
     num_kw_defaults = (arg >> 8) & 0xff
     state, raw_annotations = state.popn((arg >> 16) & 0x7fff)
@@ -3024,8 +2155,8 @@ class VirtualMachine:
         state.node, raw_annotations)
     return state, pos_defaults, kw_defaults, annot, free_vars
 
-  def _get_extra_function_args_3_6(self, state, arg):
-    """Get function annotations and defaults from the stack (Python3.6+)."""
+  def _get_extra_function_args(self, state, arg):
+    """Get function annotations and defaults from the stack."""
     free_vars = None
     pos_defaults = ()
     kw_defaults = {}
@@ -3050,70 +2181,20 @@ class VirtualMachine:
         state.node, annot.items())
     return state, pos_defaults, kw_defaults, annot, free_vars
 
-  def _process_function_type_comment(self, node, op, func):
-    """Modifies annotations from a function type comment.
-
-    Checks if a type comment is present for the function.  If so, the type
-    comment is used to populate annotations.  It is an error to have
-    a type comment when annotations is not empty.
-
-    Args:
-      node: The current node.
-      op: An opcode (used to determine filename and line number).
-      func: An abstract.InterpreterFunction.
-    """
-    if not op.annotation:
-      return
-
-    comment, lineno = op.annotation
-
-    # It is an error to use a type comment on an annotated function.
-    if func.signature.annotations:
-      self.ctx.errorlog.redundant_function_type_comment(op.code.co_filename,
-                                                        lineno)
-      return
-
-    # Parse the comment, use a fake Opcode that is similar to the original
-    # opcode except that it is set to the line number of the type comment.
-    # This ensures that errors are printed with an accurate line number.
-    fake_stack = self.simple_stack(op.at_line(lineno))
-    m = _FUNCTION_TYPE_COMMENT_RE.match(comment)
-    if not m:
-      self.ctx.errorlog.invalid_function_type_comment(fake_stack, comment)
-      return
-    args, return_type = m.groups()
-
-    if args != "...":
-      annot = args.strip()
-      try:
-        self.ctx.annotation_utils.eval_multi_arg_annotation(
-            node, func, annot, fake_stack)
-      except abstract_utils.ConversionError:
-        self.ctx.errorlog.invalid_function_type_comment(
-            fake_stack, annot, details="Must be constant.")
-
-    ret = self.ctx.convert.build_string(None, return_type)
-    func.signature.set_annotation(
-        "return",
-        self.ctx.annotation_utils.extract_annotation(node, ret, "return",
-                                                     fake_stack))
-
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
     state, name_var = state.pop()
     name = abstract_utils.get_atomic_python_constant(name_var)
     state, code = state.pop()
-    if self.ctx.python_version >= (3, 6):
-      get_args = self._get_extra_function_args_3_6
-    else:
-      get_args = self._get_extra_function_args
-    state, defaults, kw_defaults, annot, free_vars = get_args(state, op.arg)
+    state, defaults, kw_defaults, annot, free_vars = (
+        self._get_extra_function_args(state, op.arg))
     globs = self.get_globals_dict()
-    fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, annotations=annot, closure=free_vars)
+    fn = vm_utils.make_function(
+        name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
+        closure=free_vars, ctx=self.ctx)
     if op.line in self._director.decorators:
       fn.data[0].is_decorated = True
-    self._process_function_type_comment(state.node, op, fn.data[0])
+    vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
     self.trace_opcode(op, name, fn)
     self.trace_functiondef(fn)
     return state.push(fn)
@@ -3124,10 +2205,11 @@ class VirtualMachine:
     name = abstract_utils.get_atomic_python_constant(name_var)
     state, (closure, code) = state.popn(2)
     state, defaults, kw_defaults, annot, _ = (
-        self._get_extra_function_args(state, op.arg))
+        self._get_extra_closure_args(state, op.arg))
     globs = self.get_globals_dict()
-    fn = self._make_function(name, state.node, code, globs, defaults,
-                             kw_defaults, annotations=annot, closure=closure)
+    fn = vm_utils.make_function(
+        name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
+        closure=closure, ctx=self.ctx)
     self.trace_functiondef(fn)
     return state.push(fn)
 
@@ -3136,7 +2218,7 @@ class VirtualMachine:
 
   def byte_CALL_FUNCTION_VAR(self, state, op):
     state, starargs = self.pop_varargs(state)
-    starargs = self._ensure_unpacked_starargs(state.node, starargs)
+    starargs = vm_utils.ensure_unpacked_starargs(state.node, starargs, self.ctx)
     return self.call_function_from_stack(state, op.arg, starargs, None)
 
   def byte_CALL_FUNCTION_KW(self, state, op):
@@ -3146,7 +2228,7 @@ class VirtualMachine:
   def byte_CALL_FUNCTION_VAR_KW(self, state, op):
     state, kwargs = self.pop_kwargs(state)
     state, starargs = self.pop_varargs(state)
-    starargs = self._ensure_unpacked_starargs(state.node, starargs)
+    starargs = vm_utils.ensure_unpacked_starargs(state.node, starargs, self.ctx)
     return self.call_function_from_stack(state, op.arg, starargs, kwargs)
 
   def byte_CALL_FUNCTION_EX(self, state, op):
@@ -3156,7 +2238,7 @@ class VirtualMachine:
     else:
       starstarargs = None
     state, starargs = state.pop()
-    starargs = self._ensure_unpacked_starargs(state.node, starargs)
+    starargs = vm_utils.ensure_unpacked_starargs(state.node, starargs, self.ctx)
     state, fn = state.pop()
     # TODO(mdemello): fix function.Args() to properly init namedargs,
     # and remove this.
@@ -3321,102 +2403,9 @@ class VirtualMachine:
     # coroutine first, and do nothing if it is, else call GET_ITER
     return self.byte_GET_ITER(state, op)
 
-  def _merge_tuple_bindings(self, node, var):
-    """Merge a set of heterogeneous tuples from var's bindings."""
-    # Helper function for _unpack_iterable. We have already checked that all the
-    # tuples are the same length.
-    if len(var.bindings) == 1:
-      return var
-    length = var.data[0].tuple_length
-    seq = [self.ctx.program.NewVariable() for _ in range(length)]
-    for tup in var.data:
-      for i in range(length):
-        seq[i].PasteVariable(tup.pyval[i])
-    return seq
-
-  def _unpack_iterable(self, node, var):
-    """Unpack an iterable."""
-    elements = []
-    try:
-      itr = abstract_utils.get_atomic_python_constant(
-          var, collections.abc.Iterable)
-    except abstract_utils.ConversionError:
-      if abstract_utils.is_var_indefinite_iterable(var):
-        elements.append(abstract.Splat(self.ctx, var).to_variable(node))
-      elif (all(isinstance(d, abstract.Tuple) for d in var.data) and
-            all(d.tuple_length == var.data[0].tuple_length for d in var.data)):
-        # If we have a set of bindings to tuples all of the same length, treat
-        # them as a definite tuple with union-typed fields.
-        vs = self._merge_tuple_bindings(node, var)
-        elements.extend(vs)
-      elif (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
-            all(isinstance(x, abstract.Unknown) for x in var.data)):
-        # If we have an unsolvable or unknown we are unpacking as an iterable,
-        # make sure it is treated as a tuple and not a single value.
-        v = self.ctx.convert.tuple_type.instantiate(node)
-        elements.append(abstract.Splat(self.ctx, v).to_variable(node))
-      else:
-        # If we reach here we have tried to unpack something that wasn't
-        # iterable. Wrap it in a splat and let the matcher raise an error.
-        elements.append(abstract.Splat(self.ctx, var).to_variable(node))
-    else:
-      for v in itr:
-        # Some iterable constants (e.g., tuples) already contain variables,
-        # whereas others (e.g., strings) need to be wrapped.
-        if isinstance(v, cfg.Variable):
-          elements.append(v)
-        else:
-          elements.append(self.ctx.convert.constant_to_var(v))
-    return elements
-
-  def _pop_and_unpack_list(self, state, count):
-    """Pop count iterables off the stack and concatenate."""
-    state, iterables = state.popn(count)
-    elements = []
-    for var in iterables:
-      elements.extend(self._unpack_iterable(state.node, var))
-    return state, elements
-
-  def _merge_indefinite_iterables(self, node, target, iterables_to_merge):
-    for var in iterables_to_merge:
-      if abstract_utils.is_var_splat(var):
-        for val in abstract_utils.unwrap_splat(var).data:
-          p = val.get_instance_type_parameter(abstract_utils.T)
-          target.merge_instance_type_parameter(node, abstract_utils.T, p)
-      else:
-        target.merge_instance_type_parameter(node, abstract_utils.T, var)
-
-  def _unpack_and_build(self, state, count, build_concrete, container_type):
-    state, seq = self._pop_and_unpack_list(state, count)
-    if any(abstract_utils.is_var_splat(x) for x in seq):
-      retval = abstract.Instance(container_type, self.ctx)
-      self._merge_indefinite_iterables(state.node, retval, seq)
-      ret = retval.to_variable(state.node)
-    else:
-      ret = build_concrete(state.node, seq)
-    return state.push(ret)
-
-  def _build_function_args_tuple(self, node, seq):
-    # If we are building function call args, do not collapse indefinite
-    # subsequences into a single tuple[x, ...], but allow them to be concrete
-    # elements to match against function parameters and *args.
-    tup = self.ctx.convert.tuple_to_value(seq)
-    tup.is_unpacked_function_args = True
-    return tup.to_variable(node)
-
-  def _ensure_unpacked_starargs(self, node, starargs):
-    """Unpack starargs if it has not been done already."""
-    # TODO(mdemello): If we *have* unpacked the arg in a previous opcode will it
-    # always have a single binding?
-    if not any(isinstance(x, abstract.Tuple) and x.is_unpacked_function_args
-               for x in starargs.data):
-      seq = self._unpack_iterable(node, starargs)
-      starargs = self._build_function_args_tuple(node, seq)
-    return starargs
-
   def byte_BUILD_LIST_UNPACK(self, state, op):
-    return self._unpack_and_build(state, op.arg, self.ctx.convert.build_list,
-                                  self.ctx.convert.list_type)
+    return vm_utils.unpack_and_build(state, op.arg, self.ctx.convert.build_list,
+                                     self.ctx.convert.list_type, self.ctx)
 
   def byte_LIST_TO_TUPLE(self, state, op):
     """Convert the list at the top of the stack to a tuple."""
@@ -3434,18 +2423,9 @@ class VirtualMachine:
         tup_var.AddBinding(tup, {b}, state.node)
     return state.push(tup_var)
 
-  def _build_map_unpack(self, state, arg_list):
-    """Merge a list of kw dicts into a single dict."""
-    args = abstract.Dict(self.ctx)
-    for arg in arg_list:
-      for data in arg.data:
-        args.update(state.node, data)
-    args = args.to_variable(state.node)
-    return args
-
   def byte_BUILD_MAP_UNPACK(self, state, op):
     state, maps = state.popn(op.arg)
-    args = self._build_map_unpack(state, maps)
+    args = vm_utils.build_map_unpack(state, maps, self.ctx)
     return state.push(args)
 
   def byte_BUILD_MAP_UNPACK_WITH_CALL(self, state, op):
@@ -3453,26 +2433,27 @@ class VirtualMachine:
       state, maps = state.popn(op.arg)
     else:
       state, maps = state.popn(op.arg & 0xff)
-    args = self._build_map_unpack(state, maps)
+    args = vm_utils.build_map_unpack(state, maps, self.ctx)
     return state.push(args)
 
   def byte_BUILD_TUPLE_UNPACK(self, state, op):
-    return self._unpack_and_build(state, op.arg, self.ctx.convert.build_tuple,
-                                  self.ctx.convert.tuple_type)
+    return vm_utils.unpack_and_build(
+        state, op.arg, self.ctx.convert.build_tuple,
+        self.ctx.convert.tuple_type, self.ctx)
 
   def byte_BUILD_TUPLE_UNPACK_WITH_CALL(self, state, op):
-    state, seq = self._pop_and_unpack_list(state, op.arg)
-    ret = self._build_function_args_tuple(state.node, seq)
+    state, seq = vm_utils.pop_and_unpack_list(state, op.arg, self.ctx)
+    ret = vm_utils.build_function_args_tuple(state.node, seq, self.ctx)
     return state.push(ret)
 
   def byte_BUILD_SET_UNPACK(self, state, op):
-    return self._unpack_and_build(state, op.arg, self.ctx.convert.build_set,
-                                  self.ctx.convert.set_type)
+    return vm_utils.unpack_and_build(state, op.arg, self.ctx.convert.build_set,
+                                     self.ctx.convert.set_type, self.ctx)
 
   def byte_SETUP_ASYNC_WITH(self, state, op):
     state, res = state.pop()
     level = len(state.data_stack)
-    state = self.push_block(state, "finally", level)
+    state = vm_utils.push_block(state, "finally", level)
     return state.push(res)
 
   def byte_FORMAT_VALUE(self, state, op):
@@ -3524,82 +2505,10 @@ class VirtualMachine:
     state, ctxmgr_obj = self._call(state, ctxmgr, "__aenter__", ())
     return state.push(ctxmgr_obj)
 
-  def _to_coroutine(self, state, obj, top=True):
-    """Convert any awaitables and generators in obj to coroutines.
-
-    Implements the GET_AWAITABLE opcode, which returns obj unchanged if it is a
-    coroutine or generator and otherwise resolves obj.__await__
-    (https://docs.python.org/3/library/dis.html#opcode-GET_AWAITABLE). So that
-    we don't have to handle awaitable generators specially, our implementation
-    converts generators to coroutines.
-
-    Args:
-      state: The current state.
-      obj: The object, a cfg.Variable.
-      top: Whether this is the top-level recursive call, to prevent incorrectly
-        recursing into the result of obj.__await__.
-
-    Returns:
-      A tuple of the state and a cfg.Variable of coroutines.
-    """
-    bad_bindings = []
-    for b in obj.bindings:
-      if self.ctx.matcher(state.node).match_var_against_type(
-          obj, self.ctx.convert.coroutine_type, {}, {obj: b}) is None:
-        bad_bindings.append(b)
-    if not bad_bindings:  # there are no non-coroutines
-      return state, obj
-    ret = self.ctx.program.NewVariable()
-    for b in obj.bindings:
-      state = self._binding_to_coroutine(state, b, bad_bindings, ret, top)
-    return state, ret
-
-  def _binding_to_coroutine(self, state, b, bad_bindings, ret, top):
-    """Helper for _to_coroutine.
-
-    Args:
-      state: The current state.
-      b: A cfg.Binding.
-      bad_bindings: Bindings that are not coroutines.
-      ret: A return variable that this helper will add to.
-      top: Whether this is the top-level recursive call.
-
-    Returns:
-      The state.
-    """
-    if b not in bad_bindings:  # this is already a coroutine
-      ret.PasteBinding(b)
-      return state
-    if self.ctx.matcher(state.node).match_var_against_type(
-        b.variable, self.ctx.convert.generator_type, {},
-        {b.variable: b}) is not None:
-      # This is a generator; convert it to a coroutine. This conversion is
-      # necessary even though generator-based coroutines convert their return
-      # values themselves because __await__ can return a generator.
-      ret_param = b.data.get_instance_type_parameter(abstract_utils.V)
-      coroutine = abstract.Coroutine(self.ctx, ret_param, state.node)
-      ret.AddBinding(coroutine, [b], state.node)
-      return state
-    # This is neither a coroutine or a generator; call __await__.
-    if not top:  # we've already called __await__
-      ret.PasteBinding(b)
-      return state
-    _, await_method = self.ctx.attribute_handler.get_attribute(
-        state.node, b.data, "__await__", b)
-    if await_method is None or not await_method.bindings:
-      # We don't need to log an error here; byte_GET_AWAITABLE will check
-      # that the final result is awaitable.
-      ret.PasteBinding(b)
-      return state
-    state, await_obj = self.call_function_with_state(state, await_method, ())
-    state, subret = self._to_coroutine(state, await_obj, top=False)
-    ret.PasteVariable(subret)
-    return state
-
   def byte_GET_AWAITABLE(self, state, op):
     """Implementation of the GET_AWAITABLE opcode."""
     state, obj = state.pop()
-    state, ret = self._to_coroutine(state, obj)
+    state, ret = vm_utils.to_coroutine(state, obj, True, self.ctx)
     if not self._check_return(state.node, ret, self.ctx.convert.awaitable_type):
       ret = self.ctx.new_unsolvable(state.node)
     return state.push(ret)

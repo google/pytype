@@ -300,14 +300,16 @@ class FunctionTest(AbstractTestBase):
                       (self._ctx.program.NewVariable(),))
 
   def test_call_with_bad_arg(self):
-    f = self._make_pytd_function((self._ctx.vm.lookup_builtin("builtins.str"),))
+    f = self._make_pytd_function(
+        (self._ctx.loader.lookup_builtin("builtins.str"),))
     arg = self._ctx.convert.primitive_class_instances[int].to_variable(
         self._ctx.root_node)
     self.assertRaises(
         function.WrongArgTypes, self._call_pytd_function, f, (arg,))
 
   def test_simple_call(self):
-    f = self._make_pytd_function((self._ctx.vm.lookup_builtin("builtins.str"),))
+    f = self._make_pytd_function(
+        (self._ctx.loader.lookup_builtin("builtins.str"),))
     arg = self._ctx.convert.primitive_class_instances[str].to_variable(
         self._ctx.root_node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -316,7 +318,8 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(retval.data, self._ctx.convert.unsolvable)
 
   def test_call_with_multiple_arg_bindings(self):
-    f = self._make_pytd_function((self._ctx.vm.lookup_builtin("builtins.str"),))
+    f = self._make_pytd_function(
+        (self._ctx.loader.lookup_builtin("builtins.str"),))
     arg = self._ctx.program.NewVariable()
     arg.AddBinding(self._ctx.convert.primitive_class_instances[str], [],
                    self._ctx.root_node)
@@ -328,7 +331,8 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(retval.data, self._ctx.convert.unsolvable)
 
   def test_call_with_skipped_combination(self):
-    f = self._make_pytd_function((self._ctx.vm.lookup_builtin("builtins.str"),))
+    f = self._make_pytd_function(
+        (self._ctx.loader.lookup_builtin("builtins.str"),))
     node = self._ctx.root_node.ConnectNew()
     arg = self._ctx.convert.primitive_class_instances[str].to_variable(node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -589,7 +593,7 @@ class FunctionTest(AbstractTestBase):
     self.assertEqual(f.full_name, "builtins.open")
     self.assertCountEqual(
         {sig.pytd_sig for sig in f.signatures},
-        self._ctx.vm.lookup_builtin("builtins.open").signatures)
+        self._ctx.loader.lookup_builtin("builtins.open").signatures)
     self.assertIs(f.kind, pytd.MethodTypes.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 

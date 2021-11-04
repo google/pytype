@@ -365,7 +365,7 @@ class BaseValue(utils.ContextWeakrefMixin):
 
     We do not analyse __init_subclass__ methods in the code, but overlays that
     wish to replicate metaprogramming constructs using __init_subclass__ can
-    define a class overriding this method, and vm.make_class will call
+    define a class overriding this method, and ctx.make_class will call
     Class.call_init_subclass(), which will invoke the init_subclass() method for
     all classes in the list of base classes.
 
@@ -1917,7 +1917,7 @@ class PyTDFunction(Function):
       if module not in ("builtins", "typing"):
         pyval = ctx.loader.import_name(module).Lookup(pyval_name)
       else:
-        pyval = ctx.vm.lookup_builtin(pyval_name)
+        pyval = ctx.loader.lookup_builtin(pyval_name)
     if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
       pyval = pyval.type
     f = ctx.convert.constant_to_value(pyval, {}, ctx.root_node)
@@ -4413,7 +4413,7 @@ class BuildClass(BaseValue):
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.
         return base.make_class(node, list(bases), cls_dict)
-    return self.ctx.vm.make_class(
+    return self.ctx.make_class(
         node,
         name,
         list(bases),
