@@ -261,8 +261,8 @@ class TestNode(unittest.TestCase):
     self.assertEqual(repr(new_v), new_v_expected)
 
   def test_ordering(self):
-    nodes = [Node1(1, 1), Node1(1, 2),
-             Node2(1, 1), Node2(2, 1),
+    nodes = [Node1(True, False), Node1(1, 2),
+             Node2(1, 1), Node2("2", "1"),
              Node3(1, 1), Node3(2, 2),
              V(2)]
     for n1, n2 in zip(nodes[:-1], nodes[1:]):

@@ -379,9 +379,14 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
-  def _new_instance(self, container):
+  def _new_instance(self, container, node, args):
+    """Returns a (possibly cached) instance of 'self'."""
+    del args  # unused
     # We allow only one "instance" per code location, regardless of call stack.
-    key = self.ctx.vm.frame.current_opcode
+    if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
+      key = self.ctx.vm.frame.current_opcode
+    else:
+      key = node
     assert key
     if key not in self._instance_cache:
       self._instance_cache[key] = self._to_instance(container)
@@ -392,17 +397,17 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
     node, variable = self._call_new_and_init(node, func, args)
     if variable is None:
-      value = self._new_instance(None)
+      value = self._new_instance(None, node, args)
       variable = self.ctx.program.NewVariable()
-      val = variable.AddBinding(value, [], node)
+      val = variable.AddBinding(value, [func], node)
       node = self.call_init(node, val, args)
     return node, variable
 
   def get_special_attribute(self, node, name, valself):
     """Fetch a special attribute."""
     if name == "__getitem__" and valself is None:
-      # See vm._call_binop_on_bindings: valself == None is a special value that
-      # indicates an annotation.
+      # See vm_utils._call_binop_on_bindings: valself == None is a special value
+      # that indicates an annotation.
       if self.cls.full_name != "builtins.type":
         # This class has a custom metaclass; check if it defines __getitem__.
         _, att = self.ctx.attribute_handler.get_attribute(

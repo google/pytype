@@ -334,7 +334,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     members["_field_defaults"] = field_dict_cls.instantiate(node)
     # _field_types and __annotations__ are both collections.OrderedDicts
     # that map field names (strings) to the types of the fields. Note that
-    # vm.make_class will take care of adding the __annotations__ member.
+    # ctx.make_class will take care of adding the __annotations__ member.
     field_types_cls = abstract.ParameterizedClass(ordered_dict_cls, {
         "K": self.ctx.convert.str_type,
         "V": self.ctx.convert.type_type
@@ -463,7 +463,7 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
           for field, typ in zip(field_names, field_types)
       }
 
-    node, cls_var = self.ctx.vm.make_class(
+    node, cls_var = self.ctx.make_class(
         node=node,
         name_var=self.ctx.convert.build_string(node, name),
         bases=final_bases,
@@ -660,8 +660,8 @@ class NewType(abstract.PyTDFunction):
         params=[Param(value_arg_name, type_value)])
     members = abstract.Dict(self.ctx)
     members.set_str_item(node, "__init__", constructor)
-    return self.ctx.vm.make_class(node, name_arg, (type_arg,),
-                                  members.to_variable(node), None)
+    return self.ctx.make_class(node, name_arg, (type_arg,),
+                               members.to_variable(node), None)
 
 
 class Overload(abstract.PyTDFunction):

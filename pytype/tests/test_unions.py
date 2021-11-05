@@ -38,6 +38,12 @@ class UnionTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e1": r"int", "e2": r"int"})
 
+  def test_bad_forward_reference(self):
+    self.CheckWithErrors("""
+      from typing import Union
+      X = Union[str, 'DoesNotExist']  # name-error
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

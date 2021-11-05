@@ -168,7 +168,7 @@ class ClosuresTest(test_base.BaseTest):
     """)
 
   def test_no_visible_bindings(self):
-    # Regression test for a crash; see vm.VirtualMachine.load_closure_cell.
+    # Regression test for a crash; see vm_utils.load_closure_cell.
     self.Check("""
       def foo():
         name = __any_object__

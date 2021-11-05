@@ -112,7 +112,7 @@ class Attrs(classgen.Decorator):
             attr.typ = self.ctx.convert.unsolvable
           elif attrib.type_source == TypeSource.CONVERTER:
             msg = "attr.ib type has been assigned by the converter."
-            self.ctx.vm.check_annotation_type_mismatch(
+            self.ctx.check_annotation_type_mismatch(
                 node,
                 name,
                 typ,
@@ -147,7 +147,7 @@ class Attrs(classgen.Decorator):
         msg = ("Note: The 'assignment' here is the 'default' or 'factory' arg,"
                " which conflicts with the field type (set via annotation or a"
                " 'type' or 'converter' arg).")
-        self.ctx.vm.check_annotation_type_mismatch(
+        self.ctx.check_annotation_type_mismatch(
             node,
             attr.name,
             attr.typ,
@@ -158,7 +158,7 @@ class Attrs(classgen.Decorator):
         own_attrs.append(attr)
       elif self.args[cls]["auto_attribs"]:
         if not match_classvar(typ):
-          self.ctx.vm.check_annotation_type_mismatch(
+          self.ctx.check_annotation_type_mismatch(
               node, name, typ, orig, local.stack, allow_none=True)
           attr = Attribute(
               name=name, typ=typ, init=True, kw_only=False, default=orig)
@@ -379,7 +379,7 @@ class Attrib(classgen.FieldConstructor):
       if type_source == TypeSource.TYPE:
         msg = ("The type annotation and assignment are set by the "
                "'type' and 'converter' args respectively.")
-        self.ctx.vm.check_annotation_type_mismatch(
+        self.ctx.check_annotation_type_mismatch(
             node,
             "attr.ib",
             typ,

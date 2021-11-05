@@ -365,7 +365,7 @@ class BaseValue(utils.ContextWeakrefMixin):
 
     We do not analyse __init_subclass__ methods in the code, but overlays that
     wish to replicate metaprogramming constructs using __init_subclass__ can
-    define a class overriding this method, and vm.make_class will call
+    define a class overriding this method, and ctx.make_class will call
     Class.call_init_subclass(), which will invoke the init_subclass() method for
     all classes in the list of base classes.
 
@@ -1637,9 +1637,16 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
+    self._printing = False
 
   def __repr__(self):
-    return "%s[%s]" % (self.name, ", ".join(repr(o) for o in self.options))
+    if self._printing:  # recursion detected
+      printed_contents = "..."
+    else:
+      self._printing = True
+      printed_contents = ", ".join(repr(o) for o in self.options)
+      self._printing = False
+    return "%s[%s]" % (self.name, printed_contents)
 
   def __eq__(self, other):
     if isinstance(other, type(self)):
@@ -1910,7 +1917,7 @@ class PyTDFunction(Function):
       if module not in ("builtins", "typing"):
         pyval = ctx.loader.import_name(module).Lookup(pyval_name)
       else:
-        pyval = ctx.vm.lookup_builtin(pyval_name)
+        pyval = ctx.loader.lookup_builtin(pyval_name)
     if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
       pyval = pyval.type
     f = ctx.convert.constant_to_value(pyval, {}, ctx.root_node)
@@ -2440,10 +2447,8 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
     elif self.full_name == "typing.ClassVar":
       return self.formal_type_parameters[abstract_utils.T].instantiate(
           node, container)
-    elif self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
-      return self._new_instance(container).to_variable(node)
     else:
-      return super().instantiate(node, container)
+      return self._new_instance(container, node, None).to_variable(node)
 
   @property
   def cls(self):
@@ -2850,7 +2855,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     else:
       raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
-  def _new_instance(self, args):  # pylint: disable=arguments-renamed
+  def _new_instance(self, container, node, args):
     if self.full_name == "builtins.tuple" and args.is_empty():
       value = Tuple((), self.ctx)
     else:
@@ -2861,17 +2866,6 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
       if name not in value.instance_type_parameters:
         value.instance_type_parameters[name] = self.ctx.program.NewVariable()
     return value
-
-  def call(self, node, func, args, alias_map=None):
-    if self.is_abstract and not self.from_annotation:
-      self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
-    node, variable = self._call_new_and_init(node, func, args)
-    if variable is None:
-      value = self._new_instance(args)
-      variable = self.ctx.program.NewVariable()
-      val = variable.AddBinding(value, [func], node)
-      node = self.call_init(node, val, args)
-    return node, variable
 
   def instantiate(self, node, container=None):
     return self.ctx.convert.constant_to_var(
@@ -3113,7 +3107,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
 
   def instantiate(self, node, container=None):
     if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
-      return self._new_instance(container).to_variable(node)
+      return self._new_instance(container, node, None).to_variable(node)
     else:
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
@@ -4419,7 +4413,7 @@ class BuildClass(BaseValue):
         # The subclass of NamedTuple will ignore all its base classes. This is
         # controled by a metaclass provided to NamedTuple.
         return base.make_class(node, list(bases), cls_dict)
-    return self.ctx.vm.make_class(
+    return self.ctx.make_class(
         node,
         name,
         list(bases),

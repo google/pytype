@@ -174,7 +174,7 @@ class Converter(utils.ContextWeakrefMixin):
 
   def name_to_value(self, name, subst=None, ast=None):
     if ast is None:
-      pytd_cls = self.ctx.vm.lookup_builtin(name)
+      pytd_cls = self.ctx.loader.lookup_builtin(name)
     else:
       pytd_cls = ast.Lookup(name)
     subst = subst or datatypes.AliasingDict()
@@ -548,9 +548,9 @@ class Converter(utils.ContextWeakrefMixin):
     return abstract.Module(self.ctx, ast.name, members, ast)
 
   def _get_literal_value(self, pyval):
-    if pyval == self.ctx.vm.lookup_builtin("builtins.True"):
+    if pyval == self.ctx.loader.lookup_builtin("builtins.True"):
       return True
-    elif pyval == self.ctx.vm.lookup_builtin("builtins.False"):
+    elif pyval == self.ctx.loader.lookup_builtin("builtins.False"):
       return False
     elif isinstance(pyval, str):
       prefix, value = parser_constants.STRING_RE.match(pyval).groups()[:2]
@@ -656,7 +656,8 @@ class Converter(utils.ContextWeakrefMixin):
           function.PyTDSignature(pyval.name, sig, self.ctx)
           for sig in pyval.signatures
       ]
-      type_new = self.ctx.vm.lookup_builtin("builtins.type").Lookup("__new__")
+      type_new = self.ctx.loader.lookup_builtin("builtins.type").Lookup(
+          "__new__")
       if pyval is type_new:
         f_cls = special_builtins.TypeNew
       else:
@@ -671,7 +672,7 @@ class Converter(utils.ContextWeakrefMixin):
         # If pyval is a reference to a class in builtins or typing, we can fill
         # in the class ourselves. lookup_builtin raises a KeyError if the name
         # is not found.
-        cls = self.ctx.vm.lookup_builtin(pyval.name)
+        cls = self.ctx.loader.lookup_builtin(pyval.name)
         assert isinstance(cls, pytd.Class)
       return self.constant_to_value(cls, subst, self.ctx.root_node)
     elif isinstance(pyval, pytd.NothingType):

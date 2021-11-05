@@ -5,9 +5,9 @@ is accessed by:
 1. abstract.BuildClass sees a class with enum.Enum as its parent, and calls
 EnumBuilder.make_class.
 2. EnumBuilder.make_class does some validation, then passes along the actual
-creation to vm.make_class. Notably, EnumBuilder passes in EnumInstance to
-vm.make_class, which provides enum-specific behavior.
-3. vm.make_class does its usual, then calls call_metaclass_init on the newly
+creation to ctx.make_class. Notably, EnumBuilder passes in EnumInstance to
+ctx.make_class, which provides enum-specific behavior.
+3. ctx.make_class does its usual, then calls call_metaclass_init on the newly
 created EnumInstance. This bounces back into the overlay, namely EnumMetaInit.
 4. EnumMetaInit does the actual transformation of members into proper enum
 members.
@@ -89,7 +89,7 @@ class EnumBuilder(abstract.PyTDClass):
           self.ctx.vm.frames, bases[-1], details=msg)
       return node, self.ctx.new_unsolvable(node)
     cls_var = cls_var or self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
-    return self.ctx.vm.make_class(
+    return self.ctx.make_class(
         node,
         name_var,
         bases,
@@ -176,7 +176,7 @@ class EnumBuilder(abstract.PyTDClass):
 
     metaclass = self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
 
-    return self.ctx.vm.make_class(
+    return self.ctx.make_class(
         node=node,
         name_var=cls_name_var,
         bases=[self.to_variable(node)],
@@ -267,7 +267,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
     _, argmap = self.match_and_map_args(node, args, alias_map)
     this_var = argmap["self"]
     other_var = argmap["other"]
-    # This is called by vm._call_binop_on_bindings, so both should have
+    # This is called by vm_utils._call_binop_on_bindings, so both should have
     # exactly 1 possibility.
     try:
       this = abstract_utils.get_atomic_value(this_var)
@@ -313,7 +313,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         defaults={},
         annotations={},
         ctx=ctx)
-    self._str_pytd = ctx.vm.lookup_builtin("builtins.str")
+    self._str_pytd = ctx.loader.lookup_builtin("builtins.str")
 
   def _get_class_locals(self, node, cls_name, cls_dict):
     # First, check if get_class_locals works for this class.

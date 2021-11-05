@@ -18,14 +18,12 @@ class RecursiveTypesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
 
   def test_use_alias_in_parameter(self):
-    self.options.tweak(allow_recursive_types=False)
-    errors = self.CheckWithErrors("""
+    self.Check("""
       from typing import List, Union
-      Foo = Union[str, List['Foo']]  # not-supported-yet[e]
+      Foo = Union[str, List['Foo']]
       def f(x: Foo):
         pass
     """)
-    self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
 
   def test_use_alias_in_comment(self):
     self.Check("""

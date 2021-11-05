@@ -182,6 +182,7 @@ py_library(
     .output
     .special_builtins
     .tracer_vm
+    .vm_utils
     pytype.abstract.abstract
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
@@ -438,16 +439,32 @@ py_library(
     .directors
     .overlay_dict
     .load_pytd
-    .metaclass
     .metrics
     .overlay
     .state
+    .vm_utils
     pytype.abstract.abstract
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    vm_utils
+  SRCS
+    vm_utils.py
+  DEPS
+    ._utils
+    .blocks
+    .metaclass
+    .state
+    pytype.abstract.abstract
+    pytype.pyc.pyc
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_test(
