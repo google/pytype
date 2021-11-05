@@ -1,31 +1,73 @@
-import __future__
-import attr._make
-from typing import Any, List
+from typing import (
+    Any,
+    AnyStr,
+    Callable,
+    Container,
+    Iterable,
+    List,
+    Mapping,
+    Match,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+    overload,
+)
 
-_AndValidator: Any
-_InValidator: Any
-_InstanceOfValidator: Any
-_OptionalValidator: Any
-_ProvidesValidator: Any
-_DeepMapping: Any
-_DeepIterable: Any
-_IsCallableValidator: Any
-_MatchesReValidator: Any
+from . import _ValidatorType
 
-__all__: List[str]
-absolute_import: __future__._Feature
-division: __future__._Feature
-print_function: __future__._Feature
+_T = TypeVar("_T")
+_T1 = TypeVar("_T1")
+_T2 = TypeVar("_T2")
+_T3 = TypeVar("_T3")
+# _I = TypeVar("_I", bound=Iterable)
+_I = TypeVar("_I")
+_K = TypeVar("_K")
+_V = TypeVar("_V")
+_M = TypeVar("_M", bound=Mapping)
 
-attrib = attr._make.attrib
-attrs = attr._make.attrs
-def and_(*validators) -> Any: ...
-def deep_iterable(member_validator, iterable_validator = ...) -> Any: ...
-def deep_mapping(key_validator, value_validator, mapping_validator = ...) -> Any: ...
-def in_(options) -> Any: ...
-def instance_of(type) -> Any: ...
-def instance_of(type) -> Any: ...
-def is_callable() -> Any: ...
-def matches_re(regex, flags: int = ..., func = ...) -> Any: ...
-def optional(validator) -> Any: ...
-def provides(interface) -> Any: ...
+# To be more precise on instance_of use some overloads.
+# If there are more than 3 items in the tuple then we fall back to Any
+@overload
+def instance_of(type: Type[_T]) -> _ValidatorType[_T]: ...
+@overload
+def instance_of(type: Tuple[Type[_T]]) -> _ValidatorType[_T]: ...
+@overload
+def instance_of(
+    type: Tuple[Type[_T1], Type[_T2]]
+) -> _ValidatorType[Union[_T1, _T2]]: ...
+@overload
+def instance_of(
+    type: Tuple[Type[_T1], Type[_T2], Type[_T3]]
+) -> _ValidatorType[Union[_T1, _T2, _T3]]: ...
+@overload
+def instance_of(type: Tuple[type, ...]) -> _ValidatorType[Any]: ...
+def provides(interface: Any) -> _ValidatorType[Any]: ...
+def optional(
+    validator: Union[_ValidatorType[_T], List[_ValidatorType[_T]]]
+) -> _ValidatorType[Optional[_T]]: ...
+def in_(options: Container[_T]) -> _ValidatorType[_T]: ...
+def and_(*validators: _ValidatorType[_T]) -> _ValidatorType[_T]: ...
+def matches_re(
+    regex: AnyStr,
+    flags: int = ...,
+    func: Optional[
+        Callable[[AnyStr, AnyStr, int], Optional[Match[AnyStr]]]
+    ] = ...,
+) -> _ValidatorType[AnyStr]: ...
+def deep_iterable(
+    member_validator: _ValidatorType[_T],
+    iterable_validator: Optional[_ValidatorType[_I]] = ...,
+) -> _ValidatorType[_I]: ...
+def deep_mapping(
+    key_validator: _ValidatorType[_K],
+    value_validator: _ValidatorType[_V],
+    mapping_validator: Optional[_ValidatorType[_M]] = ...,
+) -> _ValidatorType[_M]: ...
+def is_callable() -> _ValidatorType[_T]: ...
+def lt(val: _T) -> _ValidatorType[_T]: ...
+def le(val: _T) -> _ValidatorType[_T]: ...
+def ge(val: _T) -> _ValidatorType[_T]: ...
+def gt(val: _T) -> _ValidatorType[_T]: ...
+def max_len(length: int) -> _ValidatorType[_T]: ...

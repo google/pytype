@@ -6,10 +6,8 @@ filegroup(
   SRCS
     builtins/__builtin__.pytd
     builtins/attr/__init__.pytd
-    builtins/attr/_compat.pytd
-    builtins/attr/_config.pytd
-    builtins/attr/_funcs.pytd
-    builtins/attr/_make.pytd
+    builtins/attr/_cmp.pytd
+    builtins/attr/_version_info.pytd
     builtins/attr/converters.pytd
     builtins/attr/exceptions.pytd
     builtins/attr/filters.pytd
