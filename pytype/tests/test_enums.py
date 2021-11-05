@@ -484,6 +484,31 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(P.B.value, "str")
     """)
 
+  def test_functional_api_empty_enum(self):
+    # Empty enums can be extended (subclassed) so they can be used for the
+    # functional api.
+    self.Check("""
+      import enum
+      class Pretty(enum.Enum):
+        def __str__(self) -> str:
+          return self.name.replace("_", " ").title()
+      M = Pretty("M", "A B C")
+    """)
+
+  def test_functional_api_empty_pytd_enum(self):
+    # Empty enums can be extended (subclassed) so they can be used for the
+    # functional api.
+    with file_utils.Tempdir() as d:
+      d.create_file("pretty.pyi", """
+        enum: module
+        class Pretty(enum.Enum):
+          def __str__(self) -> str: ...
+      """)
+      self.Check("""
+        from pretty import Pretty
+        M = Pretty("M", "A B C")
+      """, pythonpath=[d.path])
+
   def test_functional_api_errors(self):
     self.CheckWithErrors("""
       import enum

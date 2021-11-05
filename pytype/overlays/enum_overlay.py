@@ -528,17 +528,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         member_attrs[attr_name].extend(member.members[attr_name].data)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
-    if base_type:
-      member_type = base_type
-    elif member_types:
-      member_type = self.ctx.convert.merge_classes(member_types)
-    else:
-      member_type = self.ctx.convert.unsolvable
-    member_attrs = {
-        n: self.ctx.convert.merge_classes(ts) for n, ts in member_attrs.items()
-    }
-    cls.member_type = member_type
-    cls.member_attrs = member_attrs
+    # After processing enum members, there's some work to do on the enum itself.
     # If cls has a __new__, save it for later. (See _get_member_new above.)
     # It needs to be marked as a classmethod, or else pytype will try to
     # pass an instance of cls instead of cls when analyzing it.
@@ -551,7 +541,22 @@ class EnumMetaInit(abstract.SimpleFunction):
             node, None, args)
       cls.members["__new_member__"] = saved_new
     self._mark_dynamic_enum(cls)
-    cls.members["__new__"] = self._make_new(node, member_type, cls)
+    if base_type:
+      member_type = base_type
+    elif member_types:
+      member_type = self.ctx.convert.merge_classes(member_types)
+      # Only set the lookup-only __new__ on non-empty enums, since using a
+      # non-empty enum for the functional API is a type error.
+      # Note that this has to happen AFTER _mark_dynamic_enum.
+      cls.members["__new__"] = self._make_new(node, member_type, cls)
+    else:
+      member_type = self.ctx.convert.unsolvable
+    cls.member_type = member_type
+
+    member_attrs = {
+        n: self.ctx.convert.merge_classes(ts) for n, ts in member_attrs.items()
+    }
+    cls.member_attrs = member_attrs
     # _generate_next_value_ is used as a static method of the enum, not a class
     # method. We need to rebind it here to make pytype analyze it correctly.
     # However, we skip this if it's already a staticmethod.
@@ -607,11 +612,13 @@ class EnumMetaInit(abstract.SimpleFunction):
     # Because we overwrite __new__, we need to mark dynamic enums here.
     # Of course, this can be moved later once custom __init__ is supported.
     self._mark_dynamic_enum(cls)
-    if not member_types:
-      member_types.append(pytd.AnythingType())
-    member_type = self.ctx.convert.constant_to_value(
-        pytd_utils.JoinTypes(member_types))
-    cls.members["__new__"] = self._make_new(node, member_type, cls)
+    if member_types:
+      member_type = self.ctx.convert.constant_to_value(
+          pytd_utils.JoinTypes(member_types))
+      # Only set the lookup-only __new__ on non-empty enums, since using a
+      # non-empty enum for the functional API is a type error.
+      # Note that this has to happen AFTER _mark_dynamic_enum.
+      cls.members["__new__"] = self._make_new(node, member_type, cls)
     return node
 
   def call(self, node, func, args, alias_map=None):
