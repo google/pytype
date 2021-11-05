@@ -1257,5 +1257,55 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A.value, str)
     """)
 
+  def test_valid_members_callables(self):
+    self.Check("""
+      import enum
+      from typing import Any, Callable
+      class M(enum.Enum):
+        A = lambda x: x
+        B = 1
+      assert_type(M.A, Callable[[Any], Any])
+      assert_type(M.B, M)
+    """)
+
+  def test_valid_members_pytd_callable(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def a(x) -> None: ...")
+      self.Check("""
+        import enum
+        from typing import Any, Callable
+        import foo
+        class M(enum.Enum):
+          A = foo.a
+          B = 1
+        assert_type(M.A, Callable[[Any], None])
+        assert_type(M.B, M)
+      """, pythonpath=[d.path])
+
+  def test_valid_members_dundername(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        __A__ = "hello"
+        B = "world"
+      assert_type(M.__A__, str)
+      assert_type(M.B, M)
+    """)
+
+  def test_valid_members_dundername_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        enum: module
+        class M(enum.Enum):
+          __A__: str
+          B: str
+      """)
+      self.Check("""
+        import foo
+        assert_type(foo.M.__A__, str)
+        assert_type(foo.M.B, foo.M)
+      """, pythonpath=[d.path])
+
+
 if __name__ == "__main__":
   test_base.main()

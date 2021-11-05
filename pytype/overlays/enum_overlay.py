@@ -400,6 +400,32 @@ class EnumMetaInit(abstract.SimpleFunction):
       return node, new.to_variable(node)
     return node, None
 
+  def _invalid_name(self, name) -> bool:
+    # "invalid" names mean the value should not be converted to an enum member.
+    # - its name is a dynamic attribute marker.
+    if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+      return True
+    # - its name is a __dunder__ name.
+    # Note that this is not useful in some cases, because __dunder__ names are
+    # not stored where get_class_locals will grab them.
+    if name.startswith("__") and name.endswith("__"):
+      return True
+    return False
+
+  def _not_valid_member(self, name, local) -> bool:
+    # Reject a class local if:
+    # - its name is invalid.
+    if self._invalid_name(name):
+      return True
+    # - it has no value. (This will cause an assert to fail later, but we
+    # check it here so we don't crash early on the next check.)
+    if not local.orig:
+      return True
+    # - it's a callable (i.e. a descriptor)
+    if any(abstract_utils.is_callable(d) for d in local.orig.data):
+      return True
+    return False
+
   def _is_orig_auto(self, orig):
     try:
       data = abstract_utils.get_atomic_value(orig)
@@ -478,7 +504,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # neither of those applies) and then calling __init__ on the member.
     node, enum_new = self._get_member_new(node, cls, base_type)
     for name, local in self._get_class_locals(node, cls.name, cls.members):
-      if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+      if self._not_valid_member(name, local):
         continue
       assert local.orig, ("A local with no assigned value was passed to the "
                           "enum overlay.")
@@ -577,7 +603,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # TODO(tsudol): Ensure only valid enum members are transformed.
     member_types = []
     for pytd_val in cls.pytd_cls.constants:
-      if pytd_val.name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+      if self._invalid_name(pytd_val.name):
         continue
       # @property values are instance attributes and must not be converted into
       # enum members. Ideally, these would only be present on the enum members,
