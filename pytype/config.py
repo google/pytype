@@ -119,6 +119,7 @@ def make_parser():
 
   # Options
   add_basic_options(o)
+  add_feature_flags(o)
   add_subtools(o)
   add_pickle_options(o)
   add_infrastructure_options(o)
@@ -137,46 +138,55 @@ def add_basic_options(o):
       dest="report_errors", default=True,
       help=("Don't report errors."))
   o.add_argument(
-      "--protocols", action="store_true",
-      dest="protocols", default=False,
-      help="Experimental: solve unknown types to label with structural types.")
-  o.add_argument(
       "-V", "--python_version", type=str, action="store",
       dest="python_version", default=None,
       help=("Python version to emulate (\"major.minor\", e.g. \"3.7\")"))
-  o.add_argument(
-      "--strict-import", action="store_true",
-      dest="strict_import", default=False,
-      help="Experimental: Only load submodules that are explicitly imported.")
-  o.add_argument(
-      "--precise-return", action="store_true", dest="precise_return",
-      default=False, help=("Experimental: Infer precise return types even for "
-                           "invalid function calls."))
-  temporary = ("This flag is temporary and will be removed once this behavior "
-               "is enabled by default.")
-  o.add_argument(
-      "--use-enum-overlay", action="store_true",
-      dest="use_enum_overlay", default=False,
-      help="Use the enum overlay for more precise enum checking. " + temporary)
-  o.add_argument(
-      "--allow-recursive-types", action="store_true",
-      dest="allow_recursive_types", default=False,
-      help="Allow recursive type definitions. " + temporary)
-  o.add_argument(
-      "--build-dict-literals-from-kwargs", action="store_true",
-      dest="build_dict_literals_from_kwargs", default=False,
-      help="Build dict literals from dict(k=v, ...) calls. " + temporary)
-  o.add_argument(
-      "--strict_namedtuple_checks", action="store_true",
-      dest="strict_namedtuple_checks", default=False,
-      help=(
-          "Enable stricter namedtuple checks, such as unpacking and "
-          "'typing.Tuple' compatibility. ") + temporary)
-  o.add_argument(
-      "--gen-stub-imports", action="store_true",
-      dest="gen_stub_imports", default=False,
-      help=("Generate import statements (`import x`) rather than constants "
-            "(`x: module`) for module names in stub files. ") + temporary)
+
+
+FEATURE_FLAGS = [
+    ("--use-enum-overlay", False,
+     "Use the enum overlay for more precise enum checking."),
+    ("--allow-recursive-types", False,
+     "Allow recursive type definitions."),
+    ("--build-dict-literals-from-kwargs", False,
+     "Build dict literals from dict(k=v, ...) calls."),
+    ("--strict_namedtuple_checks", False,
+     ("Enable stricter namedtuple checks, such as unpacking and "
+      "'typing.Tuple' compatibility.")),
+    ("--gen-stub-imports", False,
+     ("Generate import statements (`import x`) rather than constants "
+      "(`x: module`) for module names in stub files.")),
+]
+
+
+EXPERIMENTAL_FLAGS = [
+    ("--protocols", False,
+     "Solve unknown types to label with structural types."),
+    ("--strict-import", False,
+     "Only load submodules that are explicitly imported."),
+    ("--precise-return", False,
+     "Infer precise return types even for invalid function calls."),
+]
+
+
+def add_feature_flags(o):
+  """Add flags for experimental and temporarily gated features."""
+  def flag(opt, default, help_text, temporary):
+    temporary = ("This flag is temporary and will be removed once this "
+                 "behavior is enabled by default.")
+    dest = opt.lstrip("-").replace("-", "_")
+    if temporary:
+      help_text = f"{help_text} {temporary}"
+    else:
+      help_text = f"Experimental: {help_text}"
+    o.add_argument(
+        opt, action="store_true", dest=dest, help=help_text, default=default)
+
+  for opt, default, help_text in FEATURE_FLAGS:
+    flag(opt, default, help_text, True)
+
+  for opt, default, help_text in EXPERIMENTAL_FLAGS:
+    flag(opt, default, help_text, False)
 
 
 def add_subtools(o):

@@ -6,6 +6,7 @@ import os
 import sys
 import textwrap
 
+from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import utils
 from pytype.tools import config
@@ -60,29 +61,25 @@ ITEMS = {
 
 
 # The missing fields will be filled in by generate_sample_config_or_die.
-_PYTYPE_SINGLE_ITEMS = {
-    'use_enum_overlay': Item(
-        None, 'False', ArgInfo('--use-enum-overlay', None), None),
-    'allow_recursive_types': Item(
-        None, 'False', ArgInfo('--use-recursive-types', None), None),
-    'build_dict_literals_from_kwargs': Item(
-        None, 'False', ArgInfo('--build-dict-literals-from-kwargs', None),
-        None),
-    'gen_stub_imports': Item(
-        None, 'False', ArgInfo('--gen-stub-imports', None), None),
-    'disable': Item(
-        None, 'pyi-error', ArgInfo('--disable', ','.join),
-        'Comma or space separated list of error names to ignore.'),
-    'report_errors': Item(
-        None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
-    'precise_return': Item(
-        None, 'False', ArgInfo('--precise-return', None), None),
-    'protocols': Item(None, 'False', ArgInfo('--protocols', None), None),
-    'strict_import': Item(
-        None, 'False', ArgInfo('--strict-import', None), None),
-    'strict_namedtuple_checks': Item(
-        None, 'False', ArgInfo('--strict_namedtuple_checks', None), None),
-}
+def _pytype_single_items():
+  """Args to pass through to pytype_single."""
+  out = {}
+  flags = pytype_config.FEATURE_FLAGS + pytype_config.EXPERIMENTAL_FLAGS
+  for opt, _, default in flags:
+    dest = opt.lstrip('-').replace('-', '_')
+    default = str(default)
+    out[dest] = Item(None, default, ArgInfo(opt, None), None)
+  out.update({
+      'disable': Item(
+          None, 'pyi-error', ArgInfo('--disable', ','.join),
+          'Comma or space separated list of error names to ignore.'),
+      'report_errors': Item(
+          None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
+  })
+  return out
+
+
+_PYTYPE_SINGLE_ITEMS = _pytype_single_items()
 
 
 def get_pytype_single_item(name):

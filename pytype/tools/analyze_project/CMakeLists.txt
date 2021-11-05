@@ -16,6 +16,7 @@ py_library(
   SRCS
     config.py
   DEPS
+    pytype.api
     pytype.utils
     pytype.tools.tools
 )

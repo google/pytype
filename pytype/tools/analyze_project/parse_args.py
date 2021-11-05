@@ -128,6 +128,7 @@ def make_parser():
   # Adds options from pytype-single.
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
+  pytype_config.add_feature_flags(wrapper)
   return Parser(parser, wrapper.actions)
 
 
