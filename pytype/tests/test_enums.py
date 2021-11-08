@@ -1257,7 +1257,7 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.A.value, str)
     """)
 
-  def test_valid_members_callables(self):
+  def test_valid_members_functions(self):
     self.Check("""
       import enum
       from typing import Any, Callable
@@ -1268,7 +1268,7 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.B, M)
     """)
 
-  def test_valid_members_pytd_callable(self):
+  def test_valid_members_pytd_functions(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def a(x) -> None: ...")
       self.Check("""
@@ -1306,6 +1306,30 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(foo.M.B, foo.M)
       """, pythonpath=[d.path])
 
+  def test_valid_members_class(self):
+    # Class are callables, but they aren't descriptors.
+    self.Check("""
+      import enum
+      class Vclass: pass
+      class M(enum.Enum):
+        V = Vclass
+      assert_type(M.V, M)
+    """)
+
+  def test_valid_members_class_descriptor(self):
+    # Classes that have __get__ are descriptors though.
+    # TODO(b/172045608): M.V should be Vclass, not str.
+    self.Check("""
+      import enum
+      class Vclass:
+        def __get__(self, *args, **kwargs):
+          return "I'm a descriptor"
+      class M(enum.Enum):
+        V = Vclass
+        I = Vclass()
+      assert_type(M.V, str)  # Should be Vclass (b/172045608)
+      assert_type(M.I, str)
+    """)
 
 if __name__ == "__main__":
   test_base.main()

@@ -412,7 +412,27 @@ class EnumMetaInit(abstract.SimpleFunction):
       return True
     return False
 
-  def _not_valid_member(self, name, local) -> bool:
+  def _is_descriptor(self, node, local) -> bool:
+    # TODO(b/172045608): Revisit this once pytype supports descriptors better.
+    # Descriptors are not converted into enum members. Pytype doesn't currently
+    # support descriptors very well, so this check is a combination of looking
+    # for built-in descriptors (i.e. functions and methods -- NOT all callables)
+    # and anything that has __get__, __set__ or __delete__.
+    def _check(value):
+      if (value.isinstance_Function() or
+          value.isinstance_BoundFunction() or
+          value.isinstance_ClassMethod() or
+          value.isinstance_StaticMethod()):
+        return True
+      for attr_name in ("__get__", "__set__", "__delete__"):
+        _, attr = self.ctx.attribute_handler.get_attribute(
+            node, value, attr_name)
+        if attr is not None:
+          return True
+      return False
+    return any(_check(value) for value in local.orig.data)
+
+  def _not_valid_member(self, node, name, local) -> bool:
     # Reject a class local if:
     # - its name is invalid.
     if self._invalid_name(name):
@@ -421,10 +441,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     # check it here so we don't crash early on the next check.)
     if not local.orig:
       return True
-    # - it's a callable (i.e. a descriptor)
-    if any(abstract_utils.is_callable(d) for d in local.orig.data):
-      return True
-    return False
+    # - it's a descriptor.
+    return self._is_descriptor(node, local)
 
   def _is_orig_auto(self, orig):
     try:
@@ -504,7 +522,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # neither of those applies) and then calling __init__ on the member.
     node, enum_new = self._get_member_new(node, cls, base_type)
     for name, local in self._get_class_locals(node, cls.name, cls.members):
-      if self._not_valid_member(name, local):
+      if self._not_valid_member(node, name, local):
         continue
       assert local.orig, ("A local with no assigned value was passed to the "
                           "enum overlay.")
