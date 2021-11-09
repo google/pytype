@@ -15,29 +15,33 @@ on:
   workflow_dispatch:
 jobs:
   manylinux_wheels:
-    name: Python ${{ matrix.python_tag }} ${{ matrix.platform }} wheels
+    name: Python ${{ matrix.platform }} wheels(${{ matrix.pyver }})
     runs-on: ubuntu-latest
     strategy:
       matrix:
         platform:
           - manylinux2014_x86_64
+          - manylinux2014_aarch64
+        pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     steps:
       - uses: actions/checkout@v2
         with:
           submodules: recursive
+      - name: Set up QEMU
+        if: matrix.platform == 'manylinux2014_aarch64'
+        id: qemu
+        uses: docker/setup-qemu-action@v1
       - name: Pull Docker image
         run: |
           DOCKER_IMAGE="quay.io/pypa/${{ matrix.platform }}"
           echo "DOCKER_IMAGE=$DOCKER_IMAGE" >> $GITHUB_ENV
           docker image pull "$DOCKER_IMAGE"
       - name: Build manylinux wheels
-        env:
-          PYTHON_TAGS: 'cp36-cp36m cp37-cp37m cp38-cp38 cp39-cp39'
         run: |
           docker container run \
             --rm \
             -e PLAT=${{ matrix.platform }} \
-            -e PYTHON_TAGS="$PYTHON_TAGS" \
+            -e PYTHON_TAGS=${{ matrix.pyver }} \
             -v "$(pwd):/io" \
             "$DOCKER_IMAGE" \
             /io/build_scripts/wheels/manylinux.sh
