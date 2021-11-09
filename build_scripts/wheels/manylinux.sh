@@ -11,7 +11,7 @@ fi
 yum install -y gettext-devel python3-devel # gettext is for flex
 
 # TODO: what should be the update cadence for these?
-NINJA_VERSION='1.10.0'
+NINJA_VERSION='1.7.2'
 BISON_VERSION='3.6'
 FLEX_VERSION='2.6.4'
 
@@ -22,13 +22,19 @@ untar() {
 }
 
 # Install ninja/ninja-build (requires CMake)
-curl -sSL \
-  -o ninja.zip \
-  "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
-unzip ninja.zip
-mv ninja /usr/local/bin/
-rm -vf ninja*
-ln -s /usr/local/bin/ninja /usr/local/bin/ninja-build
+if [ `uname -m` == "aarch64" ]; then
+    yum install -y epel-release
+    yum-config-manager --enable epel
+    yum install -y ninja-build
+    ln -s /usr/bin/ninja-build /usr/bin/ninja
+else
+   curl -sSL \
+      -o ninja.zip \
+      "https://github.com/ninja-build/ninja/releases/download/v${NINJA_VERSION}/ninja-linux.zip"
+   unzip ninja.zip
+   mv ninja /usr/local/bin/
+   rm -vf ninja*
+fi
 
 TD="$(mktemp -d)"
 pushd "$TD" || exit 1
