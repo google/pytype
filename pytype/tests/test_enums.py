@@ -484,6 +484,31 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(P.B.value, "str")
     """)
 
+  def test_functional_api_empty_enum(self):
+    # Empty enums can be extended (subclassed) so they can be used for the
+    # functional api.
+    self.Check("""
+      import enum
+      class Pretty(enum.Enum):
+        def __str__(self) -> str:
+          return self.name.replace("_", " ").title()
+      M = Pretty("M", "A B C")
+    """)
+
+  def test_functional_api_empty_pytd_enum(self):
+    # Empty enums can be extended (subclassed) so they can be used for the
+    # functional api.
+    with file_utils.Tempdir() as d:
+      d.create_file("pretty.pyi", """
+        enum: module
+        class Pretty(enum.Enum):
+          def __str__(self) -> str: ...
+      """)
+      self.Check("""
+        from pretty import Pretty
+        M = Pretty("M", "A B C")
+      """, pythonpath=[d.path])
+
   def test_functional_api_errors(self):
     self.CheckWithErrors("""
       import enum
@@ -1011,6 +1036,28 @@ class EnumOverlayTest(test_base.BaseTest):
           self.x = a + b + c
     """)
 
+  def test_own_new_with_base_type(self):
+    self.Check("""
+      import enum
+
+      class M(str, enum.Enum):
+        def __new__(cls, value, a, b, c, d):
+          obj = str.__new__(cls, [value])
+          obj._value_ = value
+          obj.a = a
+          obj.b = b
+          obj.c = c
+          obj.d = d
+          return obj
+
+        A = ('a', 1, 2, 3, 4)
+        B = ('b', 2, 3, 4, 5)
+
+
+      def lookup(m: M):
+        m = M(m)
+    """)
+
   def test_own_member_new(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -1230,6 +1277,80 @@ class EnumOverlayTest(test_base.BaseTest):
 
       take_token(M.A)
       assert_type(M.A.value, str)
+    """)
+
+  def test_valid_members_functions(self):
+    self.Check("""
+      import enum
+      from typing import Any, Callable
+      class M(enum.Enum):
+        A = lambda x: x
+        B = 1
+      assert_type(M.A, Callable[[Any], Any])
+      assert_type(M.B, M)
+    """)
+
+  def test_valid_members_pytd_functions(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def a(x) -> None: ...")
+      self.Check("""
+        import enum
+        from typing import Any, Callable
+        import foo
+        class M(enum.Enum):
+          A = foo.a
+          B = 1
+        assert_type(M.A, Callable[[Any], None])
+        assert_type(M.B, M)
+      """, pythonpath=[d.path])
+
+  def test_valid_members_dundername(self):
+    self.Check("""
+      import enum
+      class M(enum.Enum):
+        __A__ = "hello"
+        B = "world"
+      assert_type(M.__A__, str)
+      assert_type(M.B, M)
+    """)
+
+  def test_valid_members_dundername_pytd(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        enum: module
+        class M(enum.Enum):
+          __A__: str
+          B: str
+      """)
+      self.Check("""
+        import foo
+        assert_type(foo.M.__A__, str)
+        assert_type(foo.M.B, foo.M)
+      """, pythonpath=[d.path])
+
+  def test_valid_members_class(self):
+    # Class are callables, but they aren't descriptors.
+    self.Check("""
+      import enum
+      class Vclass: pass
+      class M(enum.Enum):
+        V = Vclass
+      assert_type(M.V, M)
+    """)
+
+  def test_valid_members_class_descriptor(self):
+    # Classes that have __get__ are descriptors though.
+    # TODO(b/172045608): M.V should be Vclass, not str.
+    self.Check("""
+      import enum
+      class Vclass:
+        def __get__(self, *args, **kwargs):
+          return "I'm a descriptor"
+      class M(enum.Enum):
+        V = Vclass
+        I = Vclass()
+      assert_type(M.V, str)  # Should be Vclass (b/172045608)
+      assert_type(M.I, str)
     """)
 
 if __name__ == "__main__":

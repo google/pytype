@@ -187,7 +187,7 @@ class CmpTest(test_base.BaseTest):
       f(object(), "x")
     """, deep=False, show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
-    self.assertErrorRegexes(errors, {"e": "Primitive.*int.*str"})
+    self.assertErrorRegexes(errors, {"e": "Types.*int.*str"})
     self.assertErrorRegexes(errors, {"e": "Called from.*line 4"})
 
   def test_concrete(self):
@@ -199,7 +199,7 @@ class CmpTest(test_base.BaseTest):
       errors = self.CheckWithErrors(f"""
         '1' {op} 2 # unsupported-operands[e]
       """, deep=False)
-      self.assertErrorRegexes(errors, {"e": "Primitive.*str.*int"})
+      self.assertErrorRegexes(errors, {"e": "Types.*str.*int"})
 
   def test_overloaded(self):
     ty = self.Infer("""

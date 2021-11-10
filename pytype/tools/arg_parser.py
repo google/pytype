@@ -109,6 +109,7 @@ def add_pytype_and_parse(parser, argv):
   # Add options from pytype-single.
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
+  pytype_config.add_feature_flags(wrapper)
   parser = Parser(parser, wrapper.actions)
 
   # Parse argv

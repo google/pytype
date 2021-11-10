@@ -1,12 +1,13 @@
-import __future__
-import attr._make
-from typing import Any, Callable
+from typing import Callable, Optional, TypeVar, overload
 
-NOTHING: attr._make._Nothing
-absolute_import: __future__._Feature
-division: __future__._Feature
-print_function: __future__._Feature
+from . import _ConverterType
 
-Factory = attr._make.Factory
-def default_if_none(default = ..., factory = ...) -> Callable[[Any], Any]: ...
-def optional(converter) -> Callable[[Any], Any]: ...
+_T = TypeVar("_T")
+
+def pipe(*validators: _ConverterType) -> _ConverterType: ...
+def optional(converter: _ConverterType) -> _ConverterType: ...
+@overload
+def default_if_none(default: _T) -> _ConverterType: ...
+@overload
+def default_if_none(*, factory: Callable[[], _T]) -> _ConverterType: ...
+def to_bool(val: str) -> bool: ...

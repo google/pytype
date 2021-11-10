@@ -22,6 +22,7 @@ call_metaclass_init is called, allowing EnumMetaInit to transform the PyTDClass
 into a proper enum.
 """
 
+
 import collections
 import contextlib
 import logging
@@ -400,6 +401,50 @@ class EnumMetaInit(abstract.SimpleFunction):
       return node, new.to_variable(node)
     return node, None
 
+  def _invalid_name(self, name) -> bool:
+    # "invalid" names mean the value should not be converted to an enum member.
+    # - its name is a dynamic attribute marker.
+    if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+      return True
+    # - its name is a __dunder__ name.
+    # Note that this is not useful in some cases, because __dunder__ names are
+    # not stored where get_class_locals will grab them.
+    if name.startswith("__") and name.endswith("__"):
+      return True
+    return False
+
+  def _is_descriptor(self, node, local) -> bool:
+    # TODO(b/172045608): Revisit this once pytype supports descriptors better.
+    # Descriptors are not converted into enum members. Pytype doesn't currently
+    # support descriptors very well, so this check is a combination of looking
+    # for built-in descriptors (i.e. functions and methods -- NOT all callables)
+    # and anything that has __get__, __set__ or __delete__.
+    def _check(value):
+      if (value.isinstance_Function() or
+          value.isinstance_BoundFunction() or
+          value.isinstance_ClassMethod() or
+          value.isinstance_StaticMethod()):
+        return True
+      for attr_name in ("__get__", "__set__", "__delete__"):
+        _, attr = self.ctx.attribute_handler.get_attribute(
+            node, value, attr_name)
+        if attr is not None:
+          return True
+      return False
+    return any(_check(value) for value in local.orig.data)
+
+  def _not_valid_member(self, node, name, local) -> bool:
+    # Reject a class local if:
+    # - its name is invalid.
+    if self._invalid_name(name):
+      return True
+    # - it has no value. (This will cause an assert to fail later, but we
+    # check it here so we don't crash early on the next check.)
+    if not local.orig:
+      return True
+    # - it's a descriptor.
+    return self._is_descriptor(node, local)
+
   def _is_orig_auto(self, orig):
     try:
       data = abstract_utils.get_atomic_value(orig)
@@ -478,7 +523,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # neither of those applies) and then calling __init__ on the member.
     node, enum_new = self._get_member_new(node, cls, base_type)
     for name, local in self._get_class_locals(node, cls.name, cls.members):
-      if name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+      if self._not_valid_member(node, name, local):
         continue
       assert local.orig, ("A local with no assigned value was passed to the "
                           "enum overlay.")
@@ -528,17 +573,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         member_attrs[attr_name].extend(member.members[attr_name].data)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
-    if base_type:
-      member_type = base_type
-    elif member_types:
-      member_type = self.ctx.convert.merge_classes(member_types)
-    else:
-      member_type = self.ctx.convert.unsolvable
-    member_attrs = {
-        n: self.ctx.convert.merge_classes(ts) for n, ts in member_attrs.items()
-    }
-    cls.member_type = member_type
-    cls.member_attrs = member_attrs
+    # After processing enum members, there's some work to do on the enum itself.
     # If cls has a __new__, save it for later. (See _get_member_new above.)
     # It needs to be marked as a classmethod, or else pytype will try to
     # pass an instance of cls instead of cls when analyzing it.
@@ -551,7 +586,23 @@ class EnumMetaInit(abstract.SimpleFunction):
             node, None, args)
       cls.members["__new_member__"] = saved_new
     self._mark_dynamic_enum(cls)
-    cls.members["__new__"] = self._make_new(node, member_type, cls)
+    if base_type:
+      member_type = base_type
+    elif member_types:
+      member_type = self.ctx.convert.merge_classes(member_types)
+    else:
+      member_type = self.ctx.convert.unsolvable
+    # Only set the lookup-only __new__ on non-empty enums, since using a
+    # non-empty enum for the functional API is a type error.
+    # Note that this has to happen AFTER _mark_dynamic_enum.
+    if member_types:
+      cls.members["__new__"] = self._make_new(node, member_type, cls)
+    cls.member_type = member_type
+
+    member_attrs = {
+        n: self.ctx.convert.merge_classes(ts) for n, ts in member_attrs.items()
+    }
+    cls.member_attrs = member_attrs
     # _generate_next_value_ is used as a static method of the enum, not a class
     # method. We need to rebind it here to make pytype analyze it correctly.
     # However, we skip this if it's already a staticmethod.
@@ -572,7 +623,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     # TODO(tsudol): Ensure only valid enum members are transformed.
     member_types = []
     for pytd_val in cls.pytd_cls.constants:
-      if pytd_val.name in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS:
+      if self._invalid_name(pytd_val.name):
         continue
       # @property values are instance attributes and must not be converted into
       # enum members. Ideally, these would only be present on the enum members,
@@ -607,11 +658,13 @@ class EnumMetaInit(abstract.SimpleFunction):
     # Because we overwrite __new__, we need to mark dynamic enums here.
     # Of course, this can be moved later once custom __init__ is supported.
     self._mark_dynamic_enum(cls)
-    if not member_types:
-      member_types.append(pytd.AnythingType())
-    member_type = self.ctx.convert.constant_to_value(
-        pytd_utils.JoinTypes(member_types))
-    cls.members["__new__"] = self._make_new(node, member_type, cls)
+    if member_types:
+      member_type = self.ctx.convert.constant_to_value(
+          pytd_utils.JoinTypes(member_types))
+      # Only set the lookup-only __new__ on non-empty enums, since using a
+      # non-empty enum for the functional API is a type error.
+      # Note that this has to happen AFTER _mark_dynamic_enum.
+      cls.members["__new__"] = self._make_new(node, member_type, cls)
     return node
 
   def call(self, node, func, args, alias_map=None):

@@ -1384,25 +1384,42 @@ class VirtualMachine:
     # bool; see, e.g., test_overloaded in test_cmp.
     leftover_x = self.ctx.program.NewVariable()
     leftover_y = self.ctx.program.NewVariable()
+    op_not_eq = op_name not in ("EQ", "NE")
     for b1 in x.bindings:
       for b2 in y.bindings:
         op = getattr(slots, op_name)
         try:
+          err = False
           val = compare.cmp_rel(self.ctx, op, b1.data, b2.data)
         except compare.CmpTypeError:
           val = None
           if state.node.HasCombination([b1, b2]):
+            err = True
             self.ctx.errorlog.unsupported_operands(self.frames, op, x, y)
         if val is None:
-          leftover_x.AddBinding(b1.data, {b1}, state.node)
-          leftover_y.AddBinding(b2.data, {b2}, state.node)
+          # We have to special-case classes here, since getattribute(class, op)
+          # gets the class method, not the instance method of the metaclass, and
+          # raises an error message referring to the comparator method on
+          # `object` in addition to the error thrown by compare.
+          # TODO(b/205755440): We fail (with the aforementioned bad error
+          # message) when the comparator method is defined on a metaclass, since
+          # compare only raises an error for classes with metaclass=type.
+          if op_not_eq and isinstance(b1.data, class_mixin.Class) and err:
+            ret.AddBinding(self.ctx.convert.unsolvable, {b1, b2}, state.node)
+          else:
+            leftover_x.AddBinding(b1.data, {b1}, state.node)
+            leftover_y.AddBinding(b2.data, {b2}, state.node)
         else:
           ret.AddBinding(self.ctx.convert.bool_values[val], {b1, b2},
                          state.node)
     if leftover_x.bindings:
       op = "__%s__" % op_name.lower()
+      # If we do not already have a return value, raise any errors caught by the
+      # overloaded comparison method.
+      report_errors = op_not_eq and not bool(ret.bindings)
       state, leftover_ret = vm_utils.call_binary_operator(
-          state, op, leftover_x, leftover_y, report_errors=False, ctx=self.ctx)
+          state, op, leftover_x, leftover_y, report_errors=report_errors,
+          ctx=self.ctx)
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 

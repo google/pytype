@@ -12,11 +12,12 @@ freshness: { owner: 'mdemello' reviewed: '2020-12-04' }
       * [Library-only options](#library-only-options)
       * [Config internals](#config-internals)
          * [Argument parsing](#argument-parsing)
+         * [Feature Flags](#feature-flags)
          * [Postprocessing](#postprocessing)
       * [Adding a new option](#adding-a-new-option)
       * [Config files](#config-files)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: mdemello, at: 2021-11-05T12:44-07:00 -->
 
 <!--te-->
 
@@ -115,6 +116,7 @@ parser. Thus pytype itself sets up its parser via
 def make_parser():
   o = argparse.ArgumentParser(...)
   add_basic_options(o)
+  add_feature_flags(o)
   add_subtools(o)
   add_pickle_options(o)
   add_infrastructure_options(o)
@@ -131,6 +133,15 @@ Look at `tools/arg_parser.py` for an example of how tools can set up their own
 independent argument parser, and then add sections of pytype flags to it, using
 those to create a `config.Options()` object that they use to invoke pytype
 library functions.
+
+### Feature Flags
+
+Pytype has two classes of feature flag, defined in the `FEATURE_FLAGS` and
+`EXPERIMENTAL_FLAGS` constants. Flags in `FEATURE_FLAGS` are temporary, and go
+through the lifecycle default False -> default True -> removed. Flags in
+`EXPERIMENTAL_FLAGS` always default to False; these are features that change
+pytype's behaviour in large and complex ways, and which might still contain
+unexpected edge cases.
 
 ### Postprocessing
 

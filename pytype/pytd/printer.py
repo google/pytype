@@ -28,6 +28,8 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_alias = False
     self.in_parameter = False
     self.in_literal = False
+    self.in_constant = False
+    self.in_signature = False
     self.multiline_args = multiline_args
 
     self._unit = None
@@ -198,6 +200,12 @@ class PrintVisitor(base_visitor.Visitor):
                           if section_suite)
     return "\n\n".join(sections_as_string)
 
+  def EnterConstant(self, node):
+    self.in_constant = True
+
+  def LeaveConstant(self, node):
+    self.in_constant = False
+
   def VisitConstant(self, node):
     """Convert a class-level or module-level constant to a string."""
     if self.in_literal:
@@ -205,20 +213,16 @@ class PrintVisitor(base_visitor.Visitor):
       assert module == "builtins", module
       assert name in ("True", "False"), name
       return name
-
-    node_type = node.type
-    if node_type.startswith(("import ", "from ")):
-      # TODO(slebedev): Use types.ModuleType instead.
-      node_type = "module"
-    return f"{node.name}: {node_type}"
+    return f"{node.name}: {node.type}"
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()
 
   def VisitAlias(self, node):
     """Convert an import or alias to a string."""
-    if isinstance(self.old_node.type,
-                  (pytd.NamedType, pytd.ClassType, pytd.LateType)):
+    if (isinstance(self.old_node.type,
+                   (pytd.NamedType, pytd.ClassType, pytd.LateType)) and
+        not self.in_constant and not self.in_signature):
       full_name = self.old_node.type.name
       suffix = ""
       module, _, name = full_name.rpartition(".")
@@ -325,14 +329,17 @@ class PrintVisitor(base_visitor.Visitor):
     else:
       return self.Print(node.Replace(type=pytd.AnythingType(), optional=False))
 
+  def EnterSignature(self, node):
+    self.in_signature = True
+
+  def LeaveSignature(self, node):
+    self.in_signature = False
+
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
     if node.return_type == "nothing":
       return_type = "NoReturn"  # a prettier alias for nothing
       self._FromTyping(return_type)
-    elif node.return_type.startswith(("import ", "from ")):
-      # TODO(slebedev): Use types.ModuleType instead.
-      return_type = "module"
     else:
       return_type = node.return_type
     ret = f" -> {return_type}"
@@ -495,7 +502,10 @@ class PrintVisitor(base_visitor.Visitor):
     return node.name
 
   def VisitModule(self, node):
-    if not node.is_aliased:
+    if self.in_constant or self.in_signature:
+      # TODO(slebedev): Use types.ModuleType instead.
+      return "module"
+    elif not node.is_aliased:
       return f"import {node.module_name}"
     elif "." in node.module_name:
       # `import x.y as z` and `from x import y as z` are equivalent, but the

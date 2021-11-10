@@ -749,7 +749,7 @@ class TestAttrib(test_base.BaseTest):
       import attr
       @attr.s
       class Foo:
-        x = attr.ib(init=0, validator=10, type=int)  # wrong-arg-types
+        x = attr.ib(init=0, validator=10, type=int)  # wrong-arg-types  # wrong-arg-types
       a = Foo(10).x
       assert_type(a, int)
     """)

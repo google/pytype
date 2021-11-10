@@ -13,12 +13,12 @@ class TestDataclass(test_base.BaseTest):
   @contextlib.contextmanager
   def _add_chex(self):
     with file_utils.Tempdir() as d:
-      d.create_file("chex.pyi", """
+      d.create_file(
+          "chex.pyi", """
         from typing import Any
         def dataclass(
             cls = ..., *, init = ..., repr = ..., eq = ..., order = ...,
-            unsafe_hash = ..., frozen = ..., mappable_dataclass = ...,
-            restricted_inheritance = ...) -> Any: ...
+            unsafe_hash = ..., frozen = ..., mappable_dataclass = ...) -> Any: ...
       """)
       yield d
 

@@ -961,7 +961,7 @@ class ErrorLog(ErrorLogBase):
     args = " and ".join(str(operand) for operand in operands)
     if operator in slots.COMPARES:
       symbol = operator
-      details = f"Primitive types {args} are not comparable."
+      details = f"Types {args} are not comparable."
       self.error(stack, f"unsupported operand types for {symbol}",
                  details=details)
     else:
