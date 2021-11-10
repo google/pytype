@@ -54,14 +54,12 @@ class RecursiveTypesTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Recursive.*Y"})
 
-  def test_use_unsupported_typevar(self):
-    # Test that we don't crash when using this pattern (b/162274390)
-    self.options.tweak(allow_recursive_types=False)
-    self.CheckWithErrors("""
+  def test_generic_alias(self):
+    self.Check("""
       from typing import List, TypeVar, Union
       T = TypeVar("T")
-      Tree = Union[T, List['Tree']]  # not-supported-yet
-      def f(x: Tree[int]): ... # no error since Tree is set to Any
+      Tree = Union[T, List['Tree']]
+      def f(x: Tree[int]): ...
     """)
 
 

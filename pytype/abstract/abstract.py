@@ -1299,6 +1299,13 @@ class LateAnnotation:
           self.ctx.vm.reinitialize_if_initialized(node, instance)
     log.info("Resolved late annotation %r to %r", self.expr, self._type)
 
+  def set_type(self, typ):
+    # Used by annotation_utils.sub_one_annotation to substitute values into
+    # recursive aliases.
+    assert not self.resolved
+    self.resolved = True
+    self._type = typ
+
   def to_variable(self, node):
     if self.resolved:
       return self._type.to_variable(node)
