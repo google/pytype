@@ -715,6 +715,8 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
     state = state.change_cfg_node(ctx.join_cfg_nodes(nodes))
   result = ctx.join_variables(state.node, results)
   log.debug("Result: %r %r", result, result.data)
+  log.debug("Error: %r", error)
+  log.debug("Report Errors: %r", report_errors)
   if not result.bindings and report_errors:
     if error is None:
       if ctx.options.report_errors:

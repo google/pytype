@@ -175,6 +175,16 @@ def _compare_dict(op, left, right):
   return None
 
 
+def _compare_class(op, left, right):
+  del right  # unused
+  # Classes without a custom metaclass are not orderable.
+  if left.cls.full_name != "builtins.type":
+    return None
+  if _is_equality_cmp(op):
+    return None
+  raise CmpTypeError()
+
+
 def cmp_rel(ctx, op, left, right):
   """Compare two variables."""
   if _is_primitive_constant(ctx, left):
@@ -185,6 +195,8 @@ def cmp_rel(ctx, op, left, right):
     return _compare_tuple(op, left, right)
   elif isinstance(left, abstract.Dict):
     return _compare_dict(op, left, right)
+  elif isinstance(left, class_mixin.Class):
+    return _compare_class(op, left, right)
   else:
     return None
 

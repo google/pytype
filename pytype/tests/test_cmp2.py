@@ -78,21 +78,44 @@ class NotImplementedTest(test_base.BaseTest):
     """)
 
 
-class CmpOpTest(test_base.BaseTest):
-  """Tests comparison operator behavior in Python 3."""
+class CmpErrorTest(test_base.BaseTest):
+  """Tests comparisons with type errors."""
 
-  def test_lt(self):
-    # In Python 3, comparisons between two types that don't define their own
-    # comparison dunder methods is not guaranteed to succeed, except for ==, !=,
-    # is and is not.
-    # pytype infers a boolean value for those comparisons that always succeed,
-    # and currently infers Any for ones that don't.
-    # Comparison between types is necessary to trigger the "comparison always
-    # succeeds" behavior in vm.py.
-    ty = self.Infer("res = (1).__class__ < ''.__class__")
+  def test_compare_types(self):
+    ty, _ = self.InferWithErrors("""
+      res = (1).__class__ < ''.__class__  # unsupported-operands
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       res: Any
+    """)
+
+  def test_failed_override(self):
+    # Check that we add a return value binding and raise the error.
+    self.CheckWithErrors("""
+      import datetime
+      a = datetime.timedelta(0)
+      b = bool(a > 0)  # wrong-arg-types
+    """)
+
+
+class MetaclassTest(test_base.BaseTest):
+  """Tests comparisons on class objects with a custom metaclass."""
+
+  def test_compare_types(self):
+    # See b/205755440 - this is the wrong error message to be raising, and the
+    # test should fail once the bug is fixed. For now we test that we don't
+    # crash due to b/205333186.
+    self.CheckWithErrors("""
+      class Meta(type):
+        def __gt__(self, other):
+          return True
+          # return self.__name__ > other.__name__
+
+      class A(metaclass=Meta): pass
+      class B(metaclass=Meta): pass
+
+      print(A > B)  # missing-parameter
     """)
 
 
