@@ -1036,6 +1036,28 @@ class EnumOverlayTest(test_base.BaseTest):
           self.x = a + b + c
     """)
 
+  def test_own_new_with_base_type(self):
+    self.Check("""
+      import enum
+
+      class M(str, enum.Enum):
+        def __new__(cls, value, a, b, c, d):
+          obj = str.__new__(cls, [value])
+          obj._value_ = value
+          obj.a = a
+          obj.b = b
+          obj.c = c
+          obj.d = d
+          return obj
+
+        A = ('a', 1, 2, 3, 4)
+        B = ('b', 2, 3, 4, 5)
+
+
+      def lookup(m: M):
+        m = M(m)
+    """)
+
   def test_own_member_new(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

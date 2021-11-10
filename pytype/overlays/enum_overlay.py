@@ -22,6 +22,7 @@ call_metaclass_init is called, allowing EnumMetaInit to transform the PyTDClass
 into a proper enum.
 """
 
+
 import collections
 import contextlib
 import logging
@@ -589,12 +590,13 @@ class EnumMetaInit(abstract.SimpleFunction):
       member_type = base_type
     elif member_types:
       member_type = self.ctx.convert.merge_classes(member_types)
-      # Only set the lookup-only __new__ on non-empty enums, since using a
-      # non-empty enum for the functional API is a type error.
-      # Note that this has to happen AFTER _mark_dynamic_enum.
-      cls.members["__new__"] = self._make_new(node, member_type, cls)
     else:
       member_type = self.ctx.convert.unsolvable
+    # Only set the lookup-only __new__ on non-empty enums, since using a
+    # non-empty enum for the functional API is a type error.
+    # Note that this has to happen AFTER _mark_dynamic_enum.
+    if member_types:
+      cls.members["__new__"] = self._make_new(node, member_type, cls)
     cls.member_type = member_type
 
     member_attrs = {
