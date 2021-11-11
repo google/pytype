@@ -728,6 +728,14 @@ class ProtocolTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors, {"e": r"Actually returned[^\n]*\nAttributes[^\n]*$"})
 
+  def test_annotated_classmethod(self):
+    self.Check("""
+      from typing import Protocol
+      class Foo(Protocol):
+        @classmethod
+        def f(cls) -> str: ...
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.BaseTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
