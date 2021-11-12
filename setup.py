@@ -27,25 +27,25 @@ from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import
 def get_typegraph_ext():
   """Generates the typegraph extension."""
   return Pybind11Extension(
-    'pytype.typegraph.cfg',
-    sources=[
-      "pytype/typegraph/cfg.cc",
-      "pytype/typegraph/cfg_logging.cc",
-      "pytype/typegraph/pylogging.cc",
-      "pytype/typegraph/reachable.cc",
-      "pytype/typegraph/solver.cc",
-      "pytype/typegraph/typegraph.cc",
-    ],
-    depends=[
-      "pytype/typegraph/cfg_logging.h",
-      "pytype/typegraph/map_util.h",
-      "pytype/typegraph/memory_util.h",
-      "pytype/typegraph/pylogging.h",
-      "pytype/typegraph/reachable.h",
-      "pytype/typegraph/solver.h",
-      "pytype/typegraph/typegraph.h",
-    ],
-    cxx_std=11,
+      'pytype.typegraph.cfg',
+      sources=[
+          "pytype/typegraph/cfg.cc",
+          "pytype/typegraph/cfg_logging.cc",
+          "pytype/typegraph/pylogging.cc",
+          "pytype/typegraph/reachable.cc",
+          "pytype/typegraph/solver.cc",
+          "pytype/typegraph/typegraph.cc",
+      ],
+      depends=[
+          "pytype/typegraph/cfg_logging.h",
+          "pytype/typegraph/map_util.h",
+          "pytype/typegraph/memory_util.h",
+          "pytype/typegraph/pylogging.h",
+          "pytype/typegraph/reachable.h",
+          "pytype/typegraph/solver.h",
+          "pytype/typegraph/typegraph.h",
+      ],
+      cxx_std=11,
   )
 
 def copy_typeshed():
