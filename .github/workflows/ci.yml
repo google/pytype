@@ -44,10 +44,7 @@ jobs:
         sudo apt-get install python3.7
 
     - name: Install Dependencies
-      run: |
-        pip install -r requirements.txt
-        pip install --no-dependencies astroid==2.8.4
-        pip install --no-dependencies pylint==2.11.1
+      run: pip install -r requirements.txt
 
     - name: Run Tests
       if: matrix.python-version != '3.10-dev'
