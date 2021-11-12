@@ -446,10 +446,9 @@ class PrintTest(parser_test_base.ParserTest):
       from typing import Literal
       x1: Literal[""]
       x2: Literal[b""]
-      x3: Literal[u""]
-      x4: Literal[0]
-      x5: Literal[True]
-      x6: Literal[None]
+      x3: Literal[0]
+      x4: Literal[True]
+      x5: Literal[None]
     """)
     ast = ast.Visit(visitors.LookupBuiltins(self.loader.builtins))
     self.assertMultiLineEqual(pytd_utils.Print(ast), textwrap.dedent("""
@@ -457,10 +456,9 @@ class PrintTest(parser_test_base.ParserTest):
 
       x1: Literal['']
       x2: Literal[b'']
-      x3: Literal[u'']
-      x4: Literal[0]
-      x5: Literal[True]
-      x6: None
+      x3: Literal[0]
+      x4: Literal[True]
+      x5: None
     """).strip())
 
   def test_literal_union(self):

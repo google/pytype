@@ -1,6 +1,7 @@
 """Class definitions in pyi files."""
 
 import collections
+import sys
 
 from typing import Dict, Optional, List, Tuple
 
@@ -9,7 +10,12 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.parse import node as pytd_node
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 _PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")

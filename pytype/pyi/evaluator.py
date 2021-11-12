@@ -8,9 +8,16 @@ auto-stringifying type annotations.
 We also separate out string and node evaluation into separate functions.
 """
 
+import sys
+
 from pytype.pyi import types
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 _NUM_TYPES = (int, float, complex)
@@ -38,10 +45,10 @@ def _convert(node):
     return node.value
   elif isinstance(node, ast3.Name):
     return node.id
-  elif isinstance(node, types.Constant):
+  elif isinstance(node, types.Pyval):
     return node.value
   elif node.__class__.__name__ == "NamedType" and node.name == "None":
-    # We convert None to pytd.NamedType('None') in types.Constant
+    # We convert None to pytd.NamedType('None') in types.Pyval
     return None
   elif (isinstance(node, ast3.UnaryOp) and
         isinstance(node.op, (ast3.UAdd, ast3.USub))):

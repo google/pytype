@@ -1,5 +1,6 @@
 """Function definitions in pyi files."""
 
+import sys
 import textwrap
 
 from typing import Any, List, Optional
@@ -11,7 +12,12 @@ from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 class Mutator(visitors.Visitor):
@@ -173,7 +179,7 @@ def _apply_defaults(params: List[Param], defaults: List[Any]) -> None:
   for p, d in zip(reversed(params), reversed(defaults)):
     if d is None:
       continue
-    elif isinstance(d, types.Constant):
+    elif isinstance(d, types.Pyval):
       p.default = d.to_pytd()
     else:
       p.default = pytd.AnythingType()
