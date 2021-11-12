@@ -4,8 +4,6 @@ New features and updates:
 * Use the official pyi files from attrs.
 * Report a type error when comparing types (e.g. int > str) and when calling an
   overloaded comparison method like __gt__ fails.
-* Enable --gen-stub-imports by default and make the flag a no-op. It will be
-  removed in the next release.
 
 Bug fixes:
 * Use a homogeneous tuple as a pytd node sort key.

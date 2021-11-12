@@ -153,7 +153,7 @@ FEATURE_FLAGS = [
     ("--strict_namedtuple_checks", False,
      ("Enable stricter namedtuple checks, such as unpacking and "
       "'typing.Tuple' compatibility.")),
-    ("--gen-stub-imports", True,
+    ("--gen-stub-imports", False,
      ("Generate import statements (`import x`) rather than constants "
       "(`x: module`) for module names in stub files.")),
 ]
