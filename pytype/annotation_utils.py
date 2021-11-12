@@ -25,30 +25,63 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
 
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
-    if isinstance(annot, abstract.TypeParameter):
-      # We use the given substitutions to bind the annotation if
-      # (1) every subst provides at least one binding, and
-      # (2) none of the bindings are ambiguous, and
-      # (3) at least one binding is non-empty.
-      if all(annot.full_name in subst and subst[annot.full_name].bindings
-             for subst in substs):
-        vals = sum((subst[annot.full_name].data for subst in substs), [])
-      else:
-        vals = None
-      if (vals is None or
-          any(isinstance(v, abstract.AMBIGUOUS) for v in vals) or
-          all(isinstance(v, abstract.Empty) for v in vals)):
-        if instantiate_unbound:
-          vals = annot.instantiate(node).data
+    # We push annotations onto 'stack' and move them to the 'done' stack as they
+    # are processed. For each annotation, we also track an 'inner_type_keys'
+    # value, which is meaningful only for a NestedAnnotation. For a
+    # NestedAnnotation, inner_type_keys=None indicates the annotation has not
+    # yet been seen, so we push its inner types onto the stack, followed by the
+    # annotation itself with its real 'inner_type_keys' value. When we see the
+    # annotation again, we pull the processed inner types off the 'done' stack
+    # and construct the final annotation.
+    stack = [(annot, None)]
+    late_annotations = {}
+    done = []
+    while stack:
+      cur, inner_type_keys = stack.pop()
+      if not cur.formal:
+        done.append(cur)
+      elif isinstance(cur, mixin.NestedAnnotation):
+        if cur.is_late_annotation() and any(t[0] == cur for t in stack):
+          # We've found a recursive type. We generate a LateAnnotation as a
+          # placeholder for the substituted type.
+          late_annot = abstract.LateAnnotation(cur.expr, cur.stack, cur.ctx)
+          late_annotations[cur] = late_annot
+          done.append(late_annot)
+        elif inner_type_keys is None:
+          keys, vals = zip(*cur.get_inner_types())
+          stack.append((cur, keys))
+          stack.extend((val, None) for val in vals)
         else:
-          vals = [annot]
-      return self.ctx.convert.merge_classes(vals)
-    elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.sub_one_annotation(node, val, substs,
-                                                   instantiate_unbound))
-                     for key, val in annot.get_inner_types()]
-      return annot.replace(inner_types)
-    return annot
+          inner_types = []
+          for k in inner_type_keys:
+            inner_types.append((k, done.pop()))
+          done_annot = cur.replace(inner_types)
+          if cur in late_annotations:
+            # If we've generated a LateAnnotation placeholder for cur's
+            # substituted type, replace it now with the real type.
+            late_annotations[cur].set_type(done_annot)
+          done.append(cur.replace(inner_types))
+      else:
+        assert isinstance(cur, abstract.TypeParameter)
+        # We use the given substitutions to bind the annotation if
+        # (1) every subst provides at least one binding, and
+        # (2) none of the bindings are ambiguous, and
+        # (3) at least one binding is non-empty.
+        if all(cur.full_name in subst and subst[cur.full_name].bindings
+               for subst in substs):
+          vals = sum((subst[cur.full_name].data for subst in substs), [])
+        else:
+          vals = None
+        if (vals is None or
+            any(isinstance(v, abstract.AMBIGUOUS) for v in vals) or
+            all(isinstance(v, abstract.Empty) for v in vals)):
+          if instantiate_unbound:
+            vals = cur.instantiate(node).data
+          else:
+            vals = [cur]
+        done.append(self.ctx.convert.merge_classes(vals))
+    assert len(done) == 1
+    return done[0]
 
   def get_late_annotations(self, annot):
     if annot.is_late_annotation() and not annot.resolved:

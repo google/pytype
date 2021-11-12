@@ -286,7 +286,7 @@ class _ToTypeVisitor(Visitor):
   appropriate allow_constants and allow_functions values.
   """
 
-  def __init__(self, allow_singletons=False):
+  def __init__(self, allow_singletons):
     super().__init__()
     self._in_alias = False
     self._in_literal = 0
@@ -387,7 +387,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         names. If the source contains "import X as Y", module_alias_map should
         contain an entry mapping "Y": "X".
     """
-    super().__init__()
+    super().__init__(allow_singletons=False)
     self._module_map = module_map
     self._module_alias_map = module_alias_map or {}
     self.name = self_name
@@ -628,6 +628,11 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
 class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up local identifiers. Must be called on a TypeDeclUnit."""
 
+  def __init__(self, allow_singletons=False, toplevel=True):
+    super().__init__(allow_singletons)
+    self._toplevel = toplevel
+    self.local_names = set()
+
   def EnterTypeDeclUnit(self, unit):
     self.unit = unit
 
@@ -637,22 +642,45 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   def _LookupItemRecursive(self, name):
     return pytd.LookupItemRecursive(self.unit, name)
 
+  def _LookupLocalName(self, node):
+    assert "." not in node.name
+    self.local_names.add(node.name)
+    try:
+      item = self.unit.Lookup(self.unit.name + "." + node.name)
+    except KeyError:
+      # Happens for infer calling load_pytd.resolve_ast() for the final pyi
+      try:
+        item = self.unit.Lookup(node.name)
+      except KeyError as e:
+        if (self.allow_singletons and node.name in pytd.SINGLETON_TYPES):
+          # Let the builtins resolver handle it
+          return node
+        raise SymbolLookupError("Couldn't find %s in %s" % (
+            node.name, self.unit.name)) from e
+    return item
+
+  def _LookupLocalTypes(self, node):
+    visitor = LookupLocalTypes(self.allow_singletons, toplevel=False)
+    visitor.unit = self.unit
+    return node.Visit(visitor), visitor.local_names
+
   def VisitNamedType(self, node):
     """Do lookup on a pytd.NamedType."""
     module_name, dot, name = node.name.rpartition(".")
     if not dot:  # simple reference to a member of the current module
-      try:
-        item = self.unit.Lookup(self.unit.name + "." + node.name)
-      except KeyError:
-        # Happens for infer calling load_pytd.resolve_ast() for the final pyi
-        try:
-          item = self.unit.Lookup(node.name)
-        except KeyError as e:
-          if (self.allow_singletons and node.name in pytd.SINGLETON_TYPES):
-            # Let the builtins resolver handle it
-            return node
-          raise SymbolLookupError("Couldn't find %s in %s" % (
-              node.name, self.unit.name)) from e
+      item = self._LookupLocalName(node)
+      if self._toplevel:
+        # Check if the definition of this name refers back to itself.
+        while isinstance(item, pytd.Alias):
+          new_item, new_item_names = self._LookupLocalTypes(item)
+          if node.name in new_item_names:
+            # We've found a self-reference. This is a recursive type, so delay
+            # resolution by representing it as a LateType.
+            item = pytd.LateType(node.name)
+          elif new_item == item:
+            break
+          else:
+            item = new_item
       try:
         resolved_node = self.to_type(item)
       except NotImplementedError as e:
@@ -671,7 +699,7 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     if isinstance(resolved_node, (pytd.Constant, pytd.Function)):
       visitor = LookupLocalTypes()
       visitor.unit = self.unit
-      return resolved_node.Visit(visitor)
+      return self._LookupLocalTypes(resolved_node)[0]
     return resolved_node
 
 

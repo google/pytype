@@ -57,14 +57,11 @@ def generate_diffs(argv):
       print(json.dumps(output))
     """))
     f.flush()
-    # `capture_output` and `text` are Python 3.7+, so pytype errors in 3.6
-    # pytype: disable=wrong-keyword-args
     proc1 = subprocess.run([f'python{version1}', f.name], capture_output=True,
-                           text=True, check=True)
+                           text=True, check=True)  # pytype: disable=wrong-keyword-args
     dis1 = json.loads(proc1.stdout)
     proc2 = subprocess.run([f'python{version2}', f.name], capture_output=True,
-                           text=True, check=True)
-    # pytype: enable=wrong-keyword-args
+                           text=True, check=True)  # pytype: disable=wrong-keyword-args
     dis2 = json.loads(proc2.stdout)
 
   # Diff the two opcode mappings, generating a change dictionary with three

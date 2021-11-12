@@ -754,5 +754,82 @@ class MethodAliasTest(_LoaderTest):
                      "def b.f() -> int: ...")
 
 
+class RecursiveAliasTest(_LoaderTest):
+
+  def test_basic(self):
+    ast = self._import(a="""
+      from typing import List
+      X = List[X]
+    """)
+    actual_x = ast.Lookup("a.X")
+    expected_x = pytd.Alias(
+        name="a.X",
+        type=pytd.GenericType(
+            base_type=pytd.ClassType("builtins.list"),
+            parameters=(pytd.LateType("X"),)))
+    self.assertEqual(actual_x, expected_x)
+
+  def test_mutual_recursion(self):
+    ast = self._import(a="""
+      from typing import List
+      X = List[Y]
+      Y = List[X]
+    """)
+
+    actual_x = ast.Lookup("a.X")
+    expected_x = pytd.Alias(
+        name="a.X",
+        type=pytd.GenericType(
+            base_type=pytd.ClassType("builtins.list"),
+            parameters=(pytd.LateType("Y"),)))
+    self.assertEqual(actual_x, expected_x)
+
+    actual_y = ast.Lookup("a.Y")
+    expected_y = pytd.Alias(
+        name="a.Y",
+        type=pytd.GenericType(
+            base_type=pytd.ClassType("builtins.list"),
+            parameters=(
+                pytd.GenericType(
+                    base_type=pytd.ClassType("builtins.list"),
+                    parameters=(pytd.LateType("Y"),)),)))
+    self.assertEqual(actual_y, expected_y)
+
+  def test_very_mutual_recursion(self):
+    ast = self._import(a="""
+      from typing import List
+      X = List[Y]
+      Y = List[Z]
+      Z = List[X]
+    """)
+
+    actual_x = ast.Lookup("a.X")
+    expected_x = pytd.Alias(
+        name="a.X",
+        type=pytd.GenericType(
+            base_type=pytd.ClassType("builtins.list"),
+            parameters=(pytd.LateType("Y"),)))
+    self.assertEqual(actual_x, expected_x)
+
+    actual_y = ast.Lookup("a.Y")
+    expected_y = pytd.Alias(
+        name="a.Y",
+        type=pytd.GenericType(
+            base_type=pytd.ClassType("builtins.list"),
+            parameters=(pytd.LateType("Z"),)))
+    self.assertEqual(actual_y, expected_y)
+
+    actual_z = ast.Lookup("a.Z")
+    expected_z = pytd.Alias(
+        name="a.Z",
+        type=pytd.GenericType(
+            base_type=pytd.ClassType("builtins.list"),
+            parameters=(
+                pytd.GenericType(
+                    base_type=pytd.ClassType("builtins.list"),
+                    parameters=(pytd.LateType("Y"),)),)))
+    self.assertEqual(actual_z, expected_z)
+
+
 if __name__ == "__main__":
   unittest.main()

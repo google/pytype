@@ -909,5 +909,30 @@ class LiteralTest(test_base.BaseTest):
       x: Literal[M.A]
     """)
 
+  def test_overloads(self):
+    ty = self.Infer("""
+      from typing import Optional, overload
+      from typing_extensions import Literal
+
+      @overload
+      def f(x: Literal[False]) -> str: ...
+
+      @overload
+      def f(x: Literal[True]) -> Optional[str]: ...
+
+      def f(x) -> Optional[str]:
+        if x:
+          return None
+        return ""
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal, Optional, overload
+      @overload
+      def f(x: Literal[False]) -> str: ...
+      @overload
+      def f(x: Literal[True]) -> Optional[str]: ...
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

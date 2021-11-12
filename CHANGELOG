@@ -1,3 +1,25 @@
+Version 2021.11.12:
+
+New features and updates:
+* Use the official pyi files from attrs.
+* Report a type error when comparing types (e.g. int > str) and when calling an
+  overloaded comparison method like __gt__ fails.
+
+Bug fixes:
+* Use a homogeneous tuple as a pytd node sort key.
+* Fix crash in pytd.Lookup caused by ClassType with unfilled cls pointer.
+* Fix a pytd printer bug that was causing us to print 'Optional[import ...]'.
+* Fix a pytype bug in matching Literal against Literal.
+* Fix a bug in which classmethods weren't detected as protocol members.
+* --use-enum-overlay:
+  * Only add `__new__` to an enum if it has members to lookup.
+  * Skip potential enum members that are functions or have dunder names.
+  * Teach the enum overlay what a descriptor is.
+* --allow-recursive-types:
+  * Fix infinite recursion in vm.init_class.
+  * Support recursive types in sub_one_annotation.
+  * Add support in visitors.LookupLocalTypes.
+
 Version 2021.11.02:
 
 New features and updates:

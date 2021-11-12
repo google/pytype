@@ -694,6 +694,7 @@ class ClassMethod(BuiltinClass):
     arg = args.posargs[0]
     for d in arg.data:
       d.is_classmethod = True
+      d.is_attribute_of_class = True
     return node, ClassMethodInstance(self.ctx, self, arg).to_variable(node)
 
 
