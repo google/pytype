@@ -698,7 +698,6 @@ class AddInheritedMethods(visitors.Visitor):
     # Don't pull in methods that are named the same as existing methods in
     # this class, local methods override parent class methods.
     names = {m.name for m in cls.methods} | {c.name for c in cls.constants}
-    # TODO(b/159052405): This should do full-blown MRO.
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
     new_methods = list(cls.methods)
