@@ -192,13 +192,13 @@ class AnnotationVisitor(visitor.BaseVisitor):
       return self.defs.new_type(node.id)
 
   def _get_subscript_params(self, node):
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
       return node.slice
     else:
       return node.slice.value
 
   def _set_subscript_params(self, node, new_val):
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
       node.slice = new_val
     else:
       node.slice.value = new_val
@@ -681,7 +681,7 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   if sys.version_info >= (3, 8):
     kwargs["type_comments"] = True
   try:
-    ast_root_node = ast3.parse(src, filename, **kwargs)
+    ast_root_node = ast3.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
   except SyntaxError as e:
     raise ParseError(e.msg, line=e.lineno, filename=filename) from e
   return ast_root_node
