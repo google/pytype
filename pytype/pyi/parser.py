@@ -677,7 +677,7 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   if sys.version_info >= (3, 8):
     kwargs["type_comments"] = True
   try:
-    ast_root_node = ast3.parse(src, filename, **kwargs)
+    ast_root_node = ast3.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
   except SyntaxError as e:
     raise ParseError(e.msg, line=e.lineno, filename=filename) from e
   return ast_root_node
