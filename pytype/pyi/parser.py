@@ -192,13 +192,13 @@ class AnnotationVisitor(visitor.BaseVisitor):
       return self.defs.new_type(node.id)
 
   def _get_subscript_params(self, node):
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
       return node.slice
     else:
       return node.slice.value
 
   def _set_subscript_params(self, node, new_val):
-    if sys.version_info >= (3, 8):
+    if sys.version_info >= (3, 9):
       node.slice = new_val
     else:
       node.slice.value = new_val
