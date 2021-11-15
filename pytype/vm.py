@@ -12,6 +12,7 @@ program execution.
 
 import collections
 import contextlib
+import functools
 import itertools
 import logging
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -26,7 +27,6 @@ from pytype import load_pytd
 from pytype import metrics
 from pytype import overlay as overlay_lib
 from pytype import state as frame_state
-from pytype import utils
 from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -948,7 +948,7 @@ class VirtualMachine:
         overlay = self.loaded_overlays[name] = None
     return overlay
 
-  @utils.memoize
+  @functools.lru_cache(maxsize=None)
   def _import_module(self, name, level):
     """Import the module and return the module object.
 
