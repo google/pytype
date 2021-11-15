@@ -252,8 +252,6 @@ def get_class_locals(cls_name: str, allow_methods: bool, ordering, ctx):
   Returns:
     A collections.OrderedDict of the locals.
   """
-  # TODO(b/195453869): Once we drop Python 2 support, either use a normal dict
-  # or replace key deletion with OrderedDict.move_to_end().
   out = collections.OrderedDict()
   if cls_name not in ctx.vm.local_ops:
     # See TestAttribPy3.test_cannot_decorate in tests/test_attr2.py. The
@@ -271,7 +269,7 @@ def get_class_locals(cls_name: str, allow_methods: bool, ordering, ctx):
       if not op.is_assign():
         continue
       elif op.name in out:
-        del out[op.name]
+        out.move_to_end(op.name)
     out[op.name] = local
   return out
 
