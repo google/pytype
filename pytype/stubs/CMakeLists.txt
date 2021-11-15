@@ -4,7 +4,6 @@ filegroup(
   NAME
     stubs
   SRCS
-    builtins/__builtin__.pytd
     builtins/attr/__init__.pytd
     builtins/attr/_cmp.pytd
     builtins/attr/_version_info.pytd

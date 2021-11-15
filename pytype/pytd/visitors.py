@@ -210,25 +210,6 @@ class DropBuiltinPrefix(Visitor):
     return self.VisitClassType(node)
 
 
-# TODO(b/195453869): Get rid of this hack once we drop Python 2 support and all
-# typeshed references to __builtin__ are gone.
-def RenameBuiltinsPrefixInName(name):
-  module, _, basename = name.partition(".")
-  if module == "__builtin__":
-    return f"builtins.{basename}" if basename else "builtins"
-  return name
-
-
-class RenameBuiltinsPrefix(Visitor):
-  """Rename '__builtin__' to 'builtins' at import time."""
-
-  def VisitClassType(self, node):
-    return pytd.NamedType(RenameBuiltinsPrefixInName(node.name))
-
-  def VisitNamedType(self, node):
-    return self.VisitClassType(node)
-
-
 def LookupClasses(target, global_module=None, ignore_late_types=False):
   """Converts a PyTD object from one using NamedType to ClassType.
 

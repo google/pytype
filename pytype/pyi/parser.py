@@ -192,13 +192,13 @@ class AnnotationVisitor(visitor.BaseVisitor):
       return self.defs.new_type(node.id)
 
   def _get_subscript_params(self, node):
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 8):
       return node.slice
     else:
       return node.slice.value
 
   def _set_subscript_params(self, node, new_val):
-    if sys.version_info >= (3, 9):
+    if sys.version_info >= (3, 8):
       node.slice = new_val
     else:
       node.slice.value = new_val
@@ -668,10 +668,6 @@ def post_process_ast(ast, src, name=None):
     # information if an error is raised during transformation of a class node.
     raise ParseError.from_exc(e)
 
-  # Typeshed files that explicitly import and refer to "__builtin__" need to
-  # have that rewritten to builtins
-  ast = ast.Visit(visitors.RenameBuiltinsPrefix())
-
   return ast
 
 
@@ -681,7 +677,7 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   if sys.version_info >= (3, 8):
     kwargs["type_comments"] = True
   try:
-    ast_root_node = ast3.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
+    ast_root_node = ast3.parse(src, filename, **kwargs)
   except SyntaxError as e:
     raise ParseError(e.msg, line=e.lineno, filename=filename) from e
   return ast_root_node

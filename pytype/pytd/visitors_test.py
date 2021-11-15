@@ -1021,15 +1021,6 @@ class TestVisitors(parser_test_base.ParserTest):
            ) -> List[str]: ...
         """).strip())
 
-  def test_rename_builtins_prefix(self):
-    """__builtin__.foo should get rewritten to builtins.foo and then to foo."""
-    src = textwrap.dedent("""
-      import __builtin__
-      class MyError(__builtin__.KeyError): ...
-    """)
-    self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
-                              "class MyError(KeyError): ...")
-
 
 class ReplaceModulesWithAnyTest(unittest.TestCase):
 
