@@ -1,6 +1,7 @@
 """Common datatypes and pytd utilities."""
 
 import dataclasses
+import sys
 from typing import Any, Tuple
 
 from pytype import utils
@@ -8,7 +9,12 @@ from pytype.pytd import pytd
 from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 _STRING_TYPES = ("str", "bytes", "unicode")
@@ -90,7 +96,7 @@ class SlotDecl:
 
 
 @dataclasses.dataclass
-class Constant(ast3.AST):
+class Pyval(ast3.AST):
   """Literal constants in pyi files."""
   # Inherits from ast3.AST so it can be visited by ast visitors.
 
@@ -150,7 +156,7 @@ class Constant(ast3.AST):
   def negated(self):
     """Return a new constant with value -self.value."""
     if self.type in ("int", "float"):
-      return Constant(self.type, -self.value)
+      return Pyval(self.type, -self.value)
     raise ParseError("Unary `-` can only apply to numeric literals.")
 
   @classmethod
@@ -162,10 +168,10 @@ class Constant(ast3.AST):
 
 
 def string_value(val, context=None) -> str:
-  """Convert a Constant(str) to a string if needed."""
+  """Convert a Pyval(str) to a string if needed."""
   if isinstance(val, str):
     return val
-  elif Constant.is_str(val):
+  elif Pyval.is_str(val):
     return str(val.value)
   else:
     if context:

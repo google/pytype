@@ -22,7 +22,13 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
 from pytype.pytd.codegen import pytdgen
-from typed_ast import ast3
+
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 _DEFAULT_PLATFORM = "linux"
@@ -152,8 +158,8 @@ class AnnotationVisitor(visitor.BaseVisitor):
     ret = MetadataVisitor().visit(node)
     return ret if ret is not None else node
 
-  def visit_Constant(self, node):
-    # Handle a types.Constant node (converted from a literal constant).
+  def visit_Pyval(self, node):
+    # Handle a types.Pyval node (converted from a literal constant).
     # We do not handle the mixed case
     #   x: List['int']
     # since we need to not convert subscripts for typing.Literal, i.e.
@@ -185,11 +191,23 @@ class AnnotationVisitor(visitor.BaseVisitor):
     else:
       return self.defs.new_type(node.id)
 
+  def _get_subscript_params(self, node):
+    if sys.version_info >= (3, 9):
+      return node.slice
+    else:
+      return node.slice.value
+
+  def _set_subscript_params(self, node, new_val):
+    if sys.version_info >= (3, 9):
+      node.slice = new_val
+    else:
+      node.slice.value = new_val
+
   def _convert_typing_annotated(self, node):
-    typ, *args = node.slice.value.elts
+    typ, *args = self._get_subscript_params(node).elts
     typ = self.visit(typ)
     params = (self.convert_metadata(x) for x in args)
-    node.slice.value = (typ,) + tuple(params)
+    self._set_subscript_params(node, (typ,) + tuple(params))
 
   def enter_Subscript(self, node):
     if isinstance(node.value, ast3.Attribute):
@@ -199,7 +217,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
     self.subscripted.append(node.value)
 
   def visit_Subscript(self, node):
-    params = node.slice.value
+    params = self._get_subscript_params(node)
     if type(params) is not tuple:  # pylint: disable=unidiomatic-typecheck
       params = (params,)
     return self.defs.new_type(node.value, params)
@@ -282,7 +300,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     self.class_stack = []
 
   def show(self, node):
-    print(debug.dump(node, ast3, include_attributes=False))
+    print(debug.dump(node, ast3, include_attributes=True))
 
   def convert_node(self, node):
     # Converting a node via a visitor will convert the subnodes, but if the
@@ -318,7 +336,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     if node.value == self.defs.ELLIPSIS:
       # class x: ...
       return node.value
-    elif types.Constant.is_str(node.value):
+    elif types.Pyval.is_str(node.value):
       # docstrings
       return Splice([])
 
@@ -364,10 +382,10 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     # constant or alias from a partially converted typed_ast subtree.
     if name == "__slots__":
       if not (isinstance(value, ast3.List) and
-              all(types.Constant.is_str(x) for x in value.elts)):
+              all(types.Pyval.is_str(x) for x in value.elts)):
         raise ParseError("__slots__ must be a list of strings")
       return types.SlotDecl(tuple(x.value for x in value.elts))
-    elif isinstance(value, types.Constant):
+    elif isinstance(value, types.Pyval):
       return pytd.Constant(name, value.to_pytd())
     elif isinstance(value, types.Ellipsis):
       return pytd.Constant(name, pytd.AnythingType())
@@ -536,7 +554,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     # Special-case late types in bound since typeshed uses it.
     for kw in node.keywords:
       if kw.arg == "bound":
-        if isinstance(kw.value, types.Constant):
+        if isinstance(kw.value, types.Pyval):
           val = types.string_value(kw.value, context="TypeVar bound")
           kw.value = self.annotation_visitor.convert_late_annotation(val)
 
@@ -557,7 +575,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
   def enter_Call(self, node):
     # Some function arguments need to be converted from strings to types when
     # entering the node, rather than bottom-up when they would already have been
-    # converted to types.Constant.
+    # converted to types.Pyval.
     # We also convert some literal string nodes that are not meant to be types
     # (e.g. the first arg to TypeVar()) to their bare values since we are
     # passing them to internal functions directly in visit_Call.
@@ -659,8 +677,11 @@ def post_process_ast(ast, src, name=None):
 
 def _parse(src: str, feature_version: int, filename: str = ""):
   """Call the typed_ast parser with the appropriate feature version."""
+  kwargs = {"feature_version": feature_version}
+  if sys.version_info >= (3, 8):
+    kwargs["type_comments"] = True
   try:
-    ast_root_node = ast3.parse(src, filename, feature_version=feature_version)
+    ast_root_node = ast3.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
   except SyntaxError as e:
     raise ParseError(e.msg, line=e.lineno, filename=filename) from e
   return ast_root_node

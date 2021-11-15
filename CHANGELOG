@@ -1,9 +1,18 @@
+Version (upcoming):
+
+New features and updates:
+* Enable --gen-stub-imports by default and make the flag a no-op. It will be
+  removed in the next release.
+
+Bug fixes:
+
 Version 2021.11.12:
 
 New features and updates:
 * Use the official pyi files from attrs.
 * Report a type error when comparing types (e.g. int > str) and when calling an
   overloaded comparison method like __gt__ fails.
+* Ship Linux AArch64 wheels.
 
 Bug fixes:
 * Use a homogeneous tuple as a pytd node sort key.

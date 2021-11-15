@@ -1,5 +1,6 @@
 """Process conditional blocks in pyi files."""
 
+import sys
 from typing import Tuple
 
 from pytype import utils
@@ -7,7 +8,12 @@ from pytype.ast import visitor as ast_visitor
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import slots as cmp_slots
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 class ConditionEvaluator(ast_visitor.BaseVisitor):
@@ -91,6 +97,9 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     return slice(node.lower, node.upper, node.step)
 
   def visit_Index(self, node):
+    return node.value
+
+  def visit_Constant(self, node):
     return node.value
 
   def visit_Num(self, node):

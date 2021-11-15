@@ -3,6 +3,7 @@
 import collections
 import dataclasses
 import re
+import sys
 
 from typing import Any, Dict, List, Optional, Union
 
@@ -19,7 +20,12 @@ from pytype.pytd.codegen import namedtuple
 from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 # Typing members that represent sets of types.
@@ -147,7 +153,7 @@ def pytd_literal(parameters: List[Any]) -> pytd.Type:
     elif isinstance(p, pytd.NamedType):
       # TODO(b/173742489): support enums.
       literal_parameters.append(pytd.AnythingType())
-    elif isinstance(p, types.Constant):
+    elif isinstance(p, types.Pyval):
       literal_parameters.append(p.to_pytd_literal())
     elif isinstance(p, pytd.Literal):
       literal_parameters.append(p)
@@ -164,7 +170,7 @@ def pytd_literal(parameters: List[Any]) -> pytd.Type:
 
 def _convert_annotated(x):
   """Convert everything to a string to store it in pytd.Annotated."""
-  if isinstance(x, types.Constant):
+  if isinstance(x, types.Pyval):
     return x.repr_str()
   elif isinstance(x, dict):
     return metadata.to_string(x)
@@ -496,9 +502,9 @@ class Definitions:
       # We do not yet support PEP 647, User-Defined Type Guards. To avoid
       # blocking typeshed, convert type guards to plain bools.
       return pytd.NamedType("bool")
-    elif any(isinstance(p, types.Constant) for p in parameters):
+    elif any(isinstance(p, types.Pyval) for p in parameters):
       parameters = ", ".join(
-          p.repr_str() if isinstance(p, types.Constant) else "_"
+          p.repr_str() if isinstance(p, types.Pyval) else "_"
           for p in parameters)
       raise ParseError(
           "%s[%s] not supported" % (pytd_utils.Print(base_type), parameters))

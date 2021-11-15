@@ -68,6 +68,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.ctx = context.Context(self.errorlog, self.options, self.loader)
     self.ctx.vm = TraceVM(self.ctx)
 
+  @test_utils.skipUnlessPy((3, 7), reason="Only testing one version.")
   def test_simple(self):
     # Disassembled from:
     # | return None
@@ -80,6 +81,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     ctx.vm = vm.VirtualMachine(ctx)
     ctx.vm.run_bytecode(ctx.program.NewCFGNode(), code)
 
+  @test_utils.skipUnlessPy((3, 7), reason="Only testing one version.")
   def test_diamond(self):
     # Disassembled from:
     # | if []:
@@ -155,6 +157,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       _OPMAP["RETURN_VALUE"], 0,
   ])
 
+  @test_utils.skipUnlessPy((3, 7), reason="Only testing one version.")
   def test_each_instruction_once_loops(self):
     code_nested_loop = pyc.compile_src(
         src=self.src_nested_loop,
@@ -185,6 +188,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
       _OPMAP["RETURN_VALUE"], 0,
   ])
 
+  @test_utils.skipUnlessPy((3, 7), reason="Only testing one version.")
   def test_each_instruction_once_dead_code(self):
     code_deadcode = pyc.compile_src(
         src=self.src_deadcode,

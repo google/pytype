@@ -111,6 +111,10 @@ class Module:
     return bool(self.pickle)
 
   def is_package(self):
+    if self.filename == os.devnull:
+      # imports_map_loader adds os.devnull entries for __init__.py files in
+      # intermediate directories.
+      return True
     return self.filename and os.path.basename(self.filename) == "__init__.pyi"
 
 
