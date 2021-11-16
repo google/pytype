@@ -373,41 +373,6 @@ class _Resolver:
     return deps.dependencies
 
 
-# TODO(mdemello): move this to pytd.builtins
-class _BuiltinLoader:
-  """Load builtins from the pytype source tree."""
-
-  def __init__(self, python_version, gen_stub_imports):
-    self.python_version = python_version
-    self.gen_stub_imports = gen_stub_imports
-
-  def _parse_predefined(self, pytd_subdir, module, as_package=False):
-    """Parse a pyi/pytd file in the pytype source tree."""
-    try:
-      filename, src = pytd_utils.GetPredefinedFile(
-          pytd_subdir, module, as_package=as_package)
-    except IOError:
-      return None
-    ast = parser.parse_string(src, filename=filename, name=module,
-                              python_version=self.python_version,
-                              gen_stub_imports=self.gen_stub_imports)
-    assert ast.name == module
-    return ast
-
-  def get_builtin(self, builtin_dir, module_name):
-    """Load a stub that ships with pytype."""
-    mod = self._parse_predefined(builtin_dir, module_name)
-    # For stubs in pytype's stubs/ directory, we use the module name prefixed
-    # with "pytd:" for the filename. Package filenames need an "/__init__.pyi"
-    # suffix for Module.is_package to recognize them.
-    if mod:
-      filename = module_name
-    else:
-      mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
-      filename = os.path.join(module_name, "__init__.pyi")
-    return filename, mod
-
-
 class Loader:
   """A cache for loaded PyTD files.
 
@@ -443,7 +408,8 @@ class Loader:
     self.typing = self._modules["typing"].ast
     self.base_module = base_module
     self._path_finder = _PathFinder(imports_map, pythonpath)
-    self._builtin_loader = _BuiltinLoader(self.python_version, gen_stub_imports)
+    self._builtin_loader = builtins.BuiltinLoader(
+        self.python_version, gen_stub_imports)
     self._resolver = _Resolver(self.builtins)
     self.use_typeshed = use_typeshed
     self.open_function = open_function

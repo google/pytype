@@ -1,5 +1,7 @@
 """Utilities for parsing pytd files for builtins."""
 
+import os
+
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -10,10 +12,10 @@ def _FindBuiltinFile(name):
   return src
 
 
-# TODO(rechen): It would be nice to get rid of this file, or at least
-# GetBuiltinsAndTyping, but the cache currently prevents slowdowns in tests
-# that create loaders willy-nilly. Maybe load_pytd.py can warn if there are
-# more than n loaders in play, at any given time.
+# TODO(rechen): It would be nice to get rid of GetBuiltinsAndTyping, but the
+# cache currently prevents slowdowns in tests that create loaders willy-nilly.
+# Maybe load_pytd.py can warn if there are more than n loaders in play, at any
+# given time.
 _cached_builtins_pytd = []
 
 
@@ -73,3 +75,39 @@ def __getattr__(name: Any) -> Any: ...
 
 def GetDefaultAst(gen_stub_imports):
   return parser.parse_string(src=DEFAULT_SRC, gen_stub_imports=gen_stub_imports)
+
+
+class BuiltinLoader:
+  """Load builtins from the pytype source tree."""
+
+  def __init__(self, python_version, gen_stub_imports):
+    self.python_version = python_version
+    self.gen_stub_imports = gen_stub_imports
+
+  # pylint: disable=invalid-name
+  def _parse_predefined(self, pytd_subdir, module, as_package=False):
+    """Parse a pyi/pytd file in the pytype source tree."""
+    try:
+      filename, src = pytd_utils.GetPredefinedFile(
+          pytd_subdir, module, as_package=as_package)
+    except IOError:
+      return None
+    ast = parser.parse_string(
+        src, filename=filename, name=module, python_version=self.python_version,
+        gen_stub_imports=self.gen_stub_imports)
+    assert ast.name == module
+    return ast
+
+  def get_builtin(self, builtin_dir, module_name):
+    """Load a stub that ships with pytype."""
+    mod = self._parse_predefined(builtin_dir, module_name)
+    # For stubs in pytype's stubs/ directory, we use the module name prefixed
+    # with "pytd:" for the filename. Package filenames need an "/__init__.pyi"
+    # suffix for Module.is_package to recognize them.
+    if mod:
+      filename = module_name
+    else:
+      mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
+      filename = os.path.join(module_name, "__init__.pyi")
+    return filename, mod
+  # pylint: enable=invalid-name
