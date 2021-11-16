@@ -1138,9 +1138,8 @@ class ErrorLog(ErrorLogBase):
       self.error(stack, actual, details=details)
 
   @_error_name("annotation-type-mismatch")
-  def annotation_type_mismatch(self, stack, annot, binding, name, details=None):
-    # TODO(rpalaguachi): Include detailed error message for
-    # NonIterableStringError when a `str` is assigned to a string iterable.
+  def annotation_type_mismatch(
+      self, stack, annot, binding, name, protocol_err, nis_err, details=None):
     """Invalid combination of annotation and assignment."""
     if annot is None:
       return
@@ -1150,6 +1149,10 @@ class ErrorLog(ErrorLogBase):
     if actual_string == "None":
       annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
     additional_details = f"\n\n{details}" if details else ""
+    if protocol_err:
+      additional_details += "\n" + self._print_protocol_error(protocol_err)
+    if nis_err:
+      additional_details += "\n" + self._print_noniterable_str_error(nis_err)
     details = ("Annotation: %s\n" % annot_string +
                "Assignment: %s" % actual_string +
                additional_details)
