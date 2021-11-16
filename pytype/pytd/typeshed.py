@@ -224,7 +224,6 @@ class Typeshed:
       if path_rel in self.missing:
         return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
                 builtins.DEFAULT_SRC)
-      # TODO(mdemello): handle this in the calling code.
       for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
         try:
           name, src = self._load_file(path)
