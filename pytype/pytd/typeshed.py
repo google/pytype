@@ -320,10 +320,15 @@ class Typeshed:
 
   def blacklisted_modules(self):
     """Return the blacklist, as a list of module names. E.g. ["x", "y.z"]."""
-    for full_filename in self.read_blacklist():
-      filename, _ = os.path.splitext(full_filename)
-      path = filename.split(os.path.sep)  # E.g. ["stdlib", "html", "parser"]
-      yield module_utils.path_to_module_name(os.path.sep.join(path[2:]))
+    for path in self.read_blacklist():
+      parts = path.split(os.path.sep)  # E.g. ["stdlib", "html", "parser.pyi"]
+      if parts[0] == "stdlib":
+        filename = os.path.sep.join(parts[1:])
+      else:
+        filename = os.path.sep.join(parts[2:])
+      mod = module_utils.path_to_module_name(filename)
+      if mod:
+        yield mod
 
 
 _typeshed = None

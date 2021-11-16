@@ -54,8 +54,12 @@ def path_to_module_name(filename):
   if os.path.dirname(filename).startswith(os.pardir):
     # Don't try to infer a module name for filenames starting with ../
     return None
-  # TODO(mdemello): should we validate the extension?
-  filename, _ = os.path.splitext(filename)
+  filename, ext = os.path.splitext(filename)
+  if ext and not ext.startswith(".py"):
+    # If there is no extension, convert "foo/bar" to "foo.bar", since we use
+    # that in our imports_info map. If there is an extension, it needs to be
+    # a python source or stub file, so ".py*" should cover all the cases.
+    return None
   module_name = filename.replace(os.path.sep, ".")
   # strip __init__ suffix
   module_name, _, _ = module_name.partition(".__init__")

@@ -24,6 +24,7 @@ class ModuleUtilsTest(unittest.TestCase):
 
   def test_path_to_module_name(self):
     self.assertIsNone(module_utils.path_to_module_name("../foo.py"))
+    self.assertIsNone(module_utils.path_to_module_name("x/y/foo.txt"))
     self.assertEqual("x.y.z", module_utils.path_to_module_name("x/y/z.pyi"))
     self.assertEqual("x.y.z", module_utils.path_to_module_name("x/y/z.pytd"))
     self.assertEqual("x.y.z",
