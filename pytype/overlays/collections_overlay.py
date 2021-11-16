@@ -1,6 +1,5 @@
 """Implementation of types from Python 2's collections library."""
 
-# TODO(tsudol): Python 2 and Python 3 have different keyword lists.
 from keyword import iskeyword  # pylint: disable=g-importing-member
 import textwrap
 
