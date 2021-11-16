@@ -120,8 +120,6 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     if metaclass is None:
       metaclass = self._get_inherited_metaclass()
     if metaclass:
-      # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
-      # metaclasses of the base classes.
       self.cls = metaclass
     # Key-value store of metadata for overlays to use.
     self.metadata = {}
@@ -305,8 +303,6 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Only SignedFunctions (InterpreterFunction and SimpleFunction) have
       # interesting side effects.
       return node
-    # TODO(rechen): The signature is (cls, name, bases, dict); should we fill in
-    # the last arg more precisely?
     args = function.Args(
         posargs=(self.to_variable(node),
                  self.ctx.convert.build_string(node, self.name),

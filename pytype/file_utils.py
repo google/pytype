@@ -57,10 +57,8 @@ class Tempdir:
     if filedir:
       self.create_directory(filedir)
     path = os.path.join(self.path, filedir, filename)
-    if isinstance(indented_data, bytes) and not isinstance(indented_data, str):
+    if isinstance(indented_data, bytes):
       # This is binary data rather than text.
-      # TODO(rechen): The second isinstance() check can be dropped once we no
-      # longer support running under Python 2.
       mode = "wb"
       data = indented_data
     else:

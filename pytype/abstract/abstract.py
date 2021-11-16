@@ -354,8 +354,6 @@ class BaseValue(utils.ContextWeakrefMixin):
     Returns:
       A list of list of bindings.
     """
-    # TODO(rechen): Remember which values were merged under which type keys so
-    # we don't have to recompute this information in match_value_against_type.
     def _get_values(parameter):
       return {b.data.get_type_key(): b for b in parameter.bindings}.values()
     return [_get_values(parameter) for parameter in self._unique_parameters()]
@@ -1639,7 +1637,6 @@ class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     assert options
     self.options = list(options)
     self.cls = self._get_class()
-    # TODO(rechen): Don't allow a mix of formal and non-formal types
     self.formal = any(t.formal for t in self.options)
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
@@ -3779,7 +3776,6 @@ class InterpreterFunction(SignedFunction):
         # This function is a generator-based coroutine. We convert the return
         # value here even though byte_GET_AWAITABLE repeats the conversion so
         # that matching against a typing.Awaitable annotation succeeds.
-        # TODO(rechen): PyTDFunction probably also needs to do this.
         var = generator.get_instance_type_parameter(abstract_utils.V)
         ret = Coroutine(self.ctx, var, node2).to_variable(node2)
       else:
@@ -4599,7 +4595,6 @@ class Unknown(BaseValue):
       methods = (pytd.Function("__call__", calls, pytd.MethodTypes.METHOD),)
     else:
       methods = ()
-    # TODO(rechen): Should we convert self.cls to a metaclass here as well?
     return pytd.Class(
         name=class_name,
         metaclass=None,

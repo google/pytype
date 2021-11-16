@@ -1040,9 +1040,9 @@ class VirtualMachine:
 
   def _get_iter(self, state, seq, report_errors=True):
     """Get an iterator from a sequence."""
-    # TODO(rechen): We should iterate through seq's bindings, in order to fetch
-    # the attribute on the sequence's class, but two problems prevent us from
-    # doing so:
+    # TODO(b/201603421): We should iterate through seq's bindings, in order to
+    # fetch the attribute on the sequence's class, but two problems prevent us
+    # from doing so:
     # - Iterating through individual bindings causes a performance regression.
     # - Because __getitem__ is used for annotations, pytype sometime thinks the
     #   class attribute is AnnotationClass.getitem_slot.
@@ -2374,7 +2374,6 @@ class VirtualMachine:
     # TODO(b/159041010): this doesn't use __all__ properly.
     state, mod_var = state.pop()
     mod = abstract_utils.get_atomic_value(mod_var)
-    # TODO(rechen): Is mod ever an unknown?
     if isinstance(mod, (abstract.Unknown, abstract.Unsolvable)):
       self.has_unknown_wildcard_imports = True
       return state

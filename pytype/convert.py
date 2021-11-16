@@ -237,7 +237,6 @@ class Converter(utils.ContextWeakrefMixin):
 
   def build_list(self, node, content):
     """Create a VM list from the given sequence."""
-    # TODO(rechen): set T to empty if there is nothing in content
     content = [var.AssignToNewVariable(node) for var in content]
     return abstract.List(content, self.ctx).to_variable(node)
 
