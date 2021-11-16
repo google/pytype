@@ -226,6 +226,37 @@ def _collect_bytecode(ordered_code):
   return bytecode_blocks
 
 
+def _adjust_line_number(line, allowed_lines, min_line=1):
+  adjusted_line = line
+  while adjusted_line not in allowed_lines and adjusted_line >= min_line:
+    adjusted_line -= 1
+  return adjusted_line if adjusted_line >= min_line else None
+
+
+class _OpcodeLines:
+  """Stores opcode line numbers for Director.adjust_line_numbers()."""
+
+  def __init__(self, store_lines, make_function_lines, non_load_lines):
+    self.store_lines = store_lines
+    self.make_function_lines = make_function_lines
+    self.non_load_lines = non_load_lines
+
+  @classmethod
+  def from_code(cls, code):
+    """Builds an _OpcodeLines from a code object."""
+    store_lines = set()
+    make_function_lines = set()
+    non_load_lines = set()
+    for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
+      if opcode.name.startswith("STORE_"):
+        store_lines.add(opcode.line)
+      elif opcode.name == "MAKE_FUNCTION":
+        make_function_lines.add(opcode.line)
+      if not opcode.name.startswith("LOAD_"):
+        non_load_lines.add(opcode.line)
+    return cls(store_lines, make_function_lines, non_load_lines)
+
+
 class Director:
   """Holds all of the directive information for a source file."""
 
@@ -460,29 +491,12 @@ class Director:
             lineno not in self._disables[_ALL_ERRORS] and
             lineno not in self._disables[error.name])
 
-  def adjust_line_numbers(self, code):
-    """Uses the bytecode to adjust line numbers."""
-    store_lines = set()
-    make_function_lines = set()
-    non_load_lines = set()
-    for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
-      if opcode.name.startswith("STORE_"):
-        store_lines.add(opcode.line)
-      elif opcode.name == "MAKE_FUNCTION":
-        make_function_lines.add(opcode.line)
-      if not opcode.name.startswith("LOAD_"):
-        non_load_lines.add(opcode.line)
-
-    def adjust(line, allowed_lines, min_line=1):
-      adjusted_line = line
-      while adjusted_line not in allowed_lines and adjusted_line >= min_line:
-        adjusted_line -= 1
-      return adjusted_line if adjusted_line >= min_line else None
-
-    # Process type comments.
+  def _adjust_line_numbers_for_type_comments(self, opcode_lines):
+    """Adjusts line numbers for `# type:` comments."""
     for type_comment_set in self._type_comments:
       for line, comment in sorted(type_comment_set.type_comments.items()):
-        adjusted_line = adjust(line, store_lines, type_comment_set.start_line)
+        adjusted_line = _adjust_line_number(
+            line, opcode_lines.store_lines, type_comment_set.start_line)
         if not adjusted_line:
           # vm._FindIgnoredTypeComments will take care of error reporting.
           continue
@@ -493,9 +507,10 @@ class Director:
           type_comment_set.type_comments[adjusted_line] = comment
           del type_comment_set.type_comments[line]
 
-    # Process decorators.
+  def _adjust_line_numbers_for_decorators(self, opcode_lines):
     for line in sorted(self._decorators):
-      adjusted_line = adjust(line, make_function_lines)
+      adjusted_line = _adjust_line_number(
+          line, opcode_lines.make_function_lines)
       if not adjusted_line:
         log.error(
             "No MAKE_FUNCTION opcode found for decorator on line %d", line)
@@ -503,9 +518,9 @@ class Director:
         self._decorators.add(adjusted_line)
         self._decorators.remove(line)
 
-    # Process variable annotations.
+  def _adjust_line_numbers_for_variable_annotations(self, opcode_lines):
     for line, annot in sorted(self._variable_annotations.items()):
-      adjusted_line = adjust(line, store_lines)
+      adjusted_line = _adjust_line_number(line, opcode_lines.store_lines)
       if not adjusted_line:
         log.error(
             "No STORE_* opcode found for annotation %r on line %d", annot, line)
@@ -514,18 +529,29 @@ class Director:
         self._variable_annotations[adjusted_line] = annot
         del self._variable_annotations[line]
 
-    # Process annotation-type-mismatch directives.
-    if "annotation-type-mismatch" in self._disables:
-      lines = self._disables["annotation-type-mismatch"].lines
-      for line, membership in sorted(lines.items()):
-        min_line = line
-        # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
-        # line of the function signature, so we need to skip any LOAD_* opcodes
-        # in between.
-        while min_line not in non_load_lines and min_line > 1:
-          min_line -= 1
-        adjusted_line = adjust(
-            line, store_lines | make_function_lines, min_line)
-        if adjusted_line and adjusted_line != line:
-          lines[adjusted_line] = membership
-          del lines[line]
+  def _adjust_line_numbers_for_error_directives(self, opcode_lines):
+    """Adjusts line numbers for error directives."""
+    if "annotation-type-mismatch" not in self._disables:
+      return
+    lines = self._disables["annotation-type-mismatch"].lines
+    for line, membership in sorted(lines.items()):
+      min_line = line
+      # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
+      # line of the function signature, so we need to skip any LOAD_*
+      # opcodes in between.
+      while min_line not in opcode_lines.non_load_lines and min_line > 1:
+        min_line -= 1
+      allowed_lines = (
+          opcode_lines.store_lines | opcode_lines.make_function_lines)
+      adjusted_line = _adjust_line_number(line, allowed_lines, min_line)
+      if adjusted_line and adjusted_line != line:
+        lines[adjusted_line] = membership
+        del lines[line]
+
+  def adjust_line_numbers(self, code):
+    """Uses the bytecode to adjust line numbers."""
+    opcode_lines = _OpcodeLines.from_code(code)
+    self._adjust_line_numbers_for_type_comments(opcode_lines)
+    self._adjust_line_numbers_for_decorators(opcode_lines)
+    self._adjust_line_numbers_for_variable_annotations(opcode_lines)
+    self._adjust_line_numbers_for_error_directives(opcode_lines)
