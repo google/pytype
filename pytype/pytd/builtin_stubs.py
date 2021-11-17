@@ -13,6 +13,9 @@ from pytype.pytd import visitors
 # warn if there are more than n loaders in play, at any given time.
 _cached_builtins_pytd = []
 
+# pylint: disable=invalid-name
+# We use a mix of camel case and snake case method names in this file.
+
 
 def InvalidateCache():
   if _cached_builtins_pytd:
@@ -50,10 +53,6 @@ def __getattr__(name: Any) -> Any: ...
 # If you have a Loader available, use loader.get_default_ast() instead.
 def GetDefaultAst(gen_stub_imports):
   return parser.parse_string(src=DEFAULT_SRC, gen_stub_imports=gen_stub_imports)
-
-
-# pylint: disable=invalid-name
-# We use snake_case method names in the rest of the file.
 
 
 class BuiltinsAndTyping:
