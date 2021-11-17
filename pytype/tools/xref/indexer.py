@@ -2,6 +2,7 @@
 
 import collections
 import re
+import sys
 from typing import Optional
 
 import attr
@@ -24,7 +25,12 @@ from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import node_utils
 
-from typed_ast import ast3
+# pylint: disable=g-import-not-at-top
+if sys.version_info >= (3, 8):
+  import ast as ast3
+else:
+  from typed_ast import ast3
+# pylint: enable=g-import-not-at-top
 
 
 # A mapping of offsets between a node's start position and the symbol being
