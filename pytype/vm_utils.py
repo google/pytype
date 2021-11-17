@@ -766,8 +766,8 @@ def get_closure_var_name(frame, arg):
 def check_for_deleted(state, name, var, ctx):
   if any(isinstance(x, abstract.Deleted) for x in var.Data(state.node)):
     # Referencing a deleted variable
-    # TODO(mdemello): A "use-after-delete" error would be more helpful.
-    ctx.errorlog.name_error(ctx.vm.frames, name)
+    details = f"\nVariable {name} has been used after it has been deleted."
+    ctx.errorlog.name_error(ctx.vm.frames, name, details=details)
 
 
 def load_closure_cell(state, op, check_bindings, ctx):
