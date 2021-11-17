@@ -17,7 +17,7 @@ py_library(
     .abc_hierarchy
     .base_visitor
     .booleq
-    .builtins
+    .builtin_stubs
     .escape
     .mro
     .optimize
@@ -62,7 +62,7 @@ toplevel_py_binary(
   MAIN
     main.py
   DEPS
-    .builtins
+    .builtin_stubs
     .optimize
     .pytd_utils
     pytype.utils
@@ -99,9 +99,9 @@ py_library(
 
 py_library(
   NAME
-    builtins
+    builtin_stubs
   SRCS
-    builtins.py
+    builtin_stubs.py
   DEPS
     .pytd_utils
     .visitors
@@ -248,7 +248,7 @@ py_library(
   SRCS
     typeshed.py
   DEPS
-    .builtins
+    .builtin_stubs
     pytype.utils
     pytype.pyi.parser
 )
@@ -300,12 +300,12 @@ py_test(
 
 py_test(
   NAME
-    builtins_test
+    builtin_stubs_test
   SRCS
-    builtins_test.py
+    builtin_stubs_test.py
   DEPS
     ._pytd
-    .builtins
+    .builtin_stubs
     .visitors
     pytype.tests.test_base
 )
@@ -452,7 +452,7 @@ py_test(
   SRCS
     typeshed_test.py
   DEPS
-    .builtins
+    .builtin_stubs
     .typeshed
     pytype.utils
     pytype.pytd.parse.parser_test_base

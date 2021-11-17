@@ -7,15 +7,10 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
 
-def _FindBuiltinFile(name):
-  _, src = pytd_utils.GetPredefinedFile("builtins", name, ".pytd")
-  return src
-
-
-# TODO(rechen): It would be nice to get rid of GetBuiltinsAndTyping, but the
-# cache currently prevents slowdowns in tests that create loaders willy-nilly.
-# Maybe load_pytd.py can warn if there are more than n loaders in play, at any
-# given time.
+# TODO(rechen): It would be nice to get rid of GetBuiltinsAndTyping, and let the
+# loader call BuiltinsAndTyping.load directly, but the cache currently prevents
+# slowdowns in tests that create loaders willy-nilly.  Maybe load_pytd.py can
+# warn if there are more than n loaders in play, at any given time.
 _cached_builtins_pytd = []
 
 
@@ -24,36 +19,15 @@ def InvalidateCache():
     del _cached_builtins_pytd[0]
 
 
-# Deprecated. Use load_pytd instead.
+# Do not call this - get the "builtins" and "typing" modules via the loader.
 def GetBuiltinsAndTyping(gen_stub_imports):
-  """Get builtins.pytd and typing.pytd."""
   if not _cached_builtins_pytd:
-    t = parser.parse_string(_FindBuiltinFile("typing"), name="typing",
-                            gen_stub_imports=gen_stub_imports)
-    b = parser.parse_string(_FindBuiltinFile("builtins"), name="builtins",
-                            gen_stub_imports=gen_stub_imports)
-    b = b.Visit(visitors.LookupExternalTypes({"typing": t},
-                                             self_name="builtins"))
-    t = t.Visit(visitors.LookupBuiltins(b))
-    b = b.Visit(visitors.NamedTypeToClassType())
-    t = t.Visit(visitors.NamedTypeToClassType())
-    b = b.Visit(visitors.AdjustTypeParameters())
-    t = t.Visit(visitors.AdjustTypeParameters())
-    b = b.Visit(visitors.CanonicalOrderingVisitor())
-    t = t.Visit(visitors.CanonicalOrderingVisitor())
-    b.Visit(visitors.FillInLocalPointers({"": b, "typing": t,
-                                          "builtins": b}))
-    t.Visit(visitors.FillInLocalPointers({"": t, "typing": t,
-                                          "builtins": b}))
-    b.Visit(visitors.VerifyLookup())
-    t.Visit(visitors.VerifyLookup())
-    b.Visit(visitors.VerifyContainers())
-    t.Visit(visitors.VerifyContainers())
-    _cached_builtins_pytd.append((b, t))
+    _cached_builtins_pytd.append(BuiltinsAndTyping().load(gen_stub_imports))
   return _cached_builtins_pytd[0]
 
 
-def GetBuiltinsPyTD():  # Deprecated. Use Loader.concat_all.
+# Do not call this - use Loader.concat_all()
+def GetBuiltinsPyTD():
   """Get the "default" AST used to lookup built in types.
 
   Get an AST for all Python builtins as well as the most commonly used standard
@@ -73,8 +47,45 @@ def __getattr__(name: Any) -> Any: ...
 """
 
 
+# If you have a Loader available, use loader.get_default_ast() instead.
 def GetDefaultAst(gen_stub_imports):
   return parser.parse_string(src=DEFAULT_SRC, gen_stub_imports=gen_stub_imports)
+
+
+# pylint: disable=invalid-name
+# We use snake_case method names in the rest of the file.
+
+
+class BuiltinsAndTyping:
+  """The builtins and typing modules, which need to be treated specially."""
+
+  def _parse_predefined(self, name, gen_stub_imports):
+    _, src = pytd_utils.GetPredefinedFile("builtins", name, ".pytd")
+    mod = parser.parse_string(src, name=name, gen_stub_imports=gen_stub_imports)
+    return mod
+
+  def load(self, gen_stub_imports):
+    """Read builtins.pytd and typing.pytd, and return the parsed modules."""
+    t = self._parse_predefined("typing", gen_stub_imports)
+    b = self._parse_predefined("builtins", gen_stub_imports)
+    b = b.Visit(visitors.LookupExternalTypes({"typing": t},
+                                             self_name="builtins"))
+    t = t.Visit(visitors.LookupBuiltins(b))
+    b = b.Visit(visitors.NamedTypeToClassType())
+    t = t.Visit(visitors.NamedTypeToClassType())
+    b = b.Visit(visitors.AdjustTypeParameters())
+    t = t.Visit(visitors.AdjustTypeParameters())
+    b = b.Visit(visitors.CanonicalOrderingVisitor())
+    t = t.Visit(visitors.CanonicalOrderingVisitor())
+    b.Visit(visitors.FillInLocalPointers({"": b, "typing": t,
+                                          "builtins": b}))
+    t.Visit(visitors.FillInLocalPointers({"": t, "typing": t,
+                                          "builtins": b}))
+    b.Visit(visitors.VerifyLookup())
+    t.Visit(visitors.VerifyLookup())
+    b.Visit(visitors.VerifyContainers())
+    t.Visit(visitors.VerifyContainers())
+    return b, t
 
 
 class BuiltinLoader:
@@ -84,7 +95,6 @@ class BuiltinLoader:
     self.python_version = python_version
     self.gen_stub_imports = gen_stub_imports
 
-  # pylint: disable=invalid-name
   def _parse_predefined(self, pytd_subdir, module, as_package=False):
     """Parse a pyi/pytd file in the pytype source tree."""
     try:
@@ -110,4 +120,5 @@ class BuiltinLoader:
       mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
       filename = os.path.join(module_name, "__init__.pyi")
     return filename, mod
-  # pylint: enable=invalid-name
+
+# pylint: enable=invalid-name

@@ -16,7 +16,7 @@ from pytype import load_pytd
 from pytype import utils
 from pytype.pyc import pyc
 from pytype.pyi import parser
-from pytype.pytd import builtins as pytd_builtins
+from pytype.pytd import builtin_stubs as pytd_builtins
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
@@ -233,8 +233,7 @@ def write_pickle(ast, options, loader=None):
   except parser.ParseError as e:
     if options.nofail:
       ast = serialize_ast.PrepareForExport(
-          options.module_name,
-          pytd_builtins.GetDefaultAst(options.gen_stub_imports), loader)
+          options.module_name, loader.get_default_ast(), loader)
       log.warning("***Caught exception: %s", str(e), exc_info=True)
     else:
       raise

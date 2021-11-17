@@ -10,7 +10,7 @@ from typing import Dict, Iterable, Optional, Tuple
 from pytype import module_utils
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
@@ -192,7 +192,7 @@ class _ModuleMap:
     return resolved_modules
 
   def _base_modules(self):
-    bltins, typing = builtins.GetBuiltinsAndTyping(self.gen_stub_imports)
+    bltins, typing = builtin_stubs.GetBuiltinsAndTyping(self.gen_stub_imports)
     return {
         "builtins":
         Module("builtins", self.PREFIX + "builtins", bltins,
@@ -408,7 +408,7 @@ class Loader:
     self.typing = self._modules["typing"].ast
     self.base_module = base_module
     self._path_finder = _PathFinder(imports_map, pythonpath)
-    self._builtin_loader = builtins.BuiltinLoader(
+    self._builtin_loader = builtin_stubs.BuiltinLoader(
         self.python_version, gen_stub_imports)
     self._resolver = _Resolver(self.builtins)
     self.use_typeshed = use_typeshed
@@ -438,6 +438,9 @@ class Loader:
   def imports_map(self, val):
     self._path_finder.imports_map = val
 
+  def get_default_ast(self):
+    return builtin_stubs.GetDefaultAst(self.gen_stub_imports)
+
   def save_to_pickle(self, filename):
     """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
     # We assume that the Loader is in a consistent state here. In particular, we
@@ -449,7 +452,7 @@ class Loader:
         for name, module in sorted(self._modules.items()))
     # Preparing an ast for pickling clears its class pointers, making it
     # unsuitable for reuse, so we have to discard the builtins cache.
-    builtins.InvalidateCache()
+    builtin_stubs.InvalidateCache()
     # Now pickle the pickles. We keep the "inner" modules as pickles as a
     # performance optimization - unpickling is slow.
     pytd_utils.SavePickle(

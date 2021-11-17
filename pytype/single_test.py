@@ -13,7 +13,7 @@ from pytype import config
 from pytype import single
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd_utils
 from pytype.pytd import typeshed
 from pytype.tests import test_base
@@ -24,7 +24,7 @@ import unittest
 class PytypeTest(test_base.UnitTest):
   """Integration test for pytype."""
 
-  DEFAULT_PYI = builtins.DEFAULT_SRC
+  DEFAULT_PYI = builtin_stubs.DEFAULT_SRC
   INCLUDE = object()
 
   @classmethod

@@ -9,7 +9,7 @@ from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 
 import toml
 
@@ -223,7 +223,7 @@ class Typeshed:
       # Give precedence to MISSING_FILE
       if path_rel in self.missing:
         return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
-                builtins.DEFAULT_SRC)
+                builtin_stubs.DEFAULT_SRC)
       for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
         try:
           name, src = self._load_file(path)

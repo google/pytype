@@ -14,7 +14,7 @@ import sys
 
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 
@@ -83,7 +83,7 @@ def main():
 
   if opts.optimize:
     parsed = optimize.Optimize(parsed,
-                               builtins.GetBuiltinsPyTD(),
+                               builtin_stubs.GetBuiltinsPyTD(),
                                lossy=opts.lossy,
                                use_abcs=opts.use_abcs,
                                max_union=opts.max_union,
