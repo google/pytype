@@ -15,4 +15,4 @@ pybind11>=2.6.0rc3
 pylint
 tabulate
 toml
-typed_ast>=1.5.0
+typed_ast>=1.5.0; python_version < '3.8'
