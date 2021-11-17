@@ -4258,8 +4258,6 @@ class Iterator(Instance, mixin.HasSlots):
     super().__init__(ctx.convert.iterator_type, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__next__", self.next_slot)
-    # TODO(dbaum): Should we set instance_type_parameters[self.TYPE_PARAM] to
-    # something based on return_var?
     self._return_var = return_var
 
   def next_slot(self, node):
