@@ -3,12 +3,12 @@
 import bisect
 import collections
 import io
-import itertools
 import keyword
 import logging
 import re
 import sys
 import tokenize
+from typing import Collection
 
 from pytype import blocks
 from pytype import utils
@@ -21,6 +21,14 @@ _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
 _DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
+
+_FUNCTION_CALL_ERRORS = (
+    "duplicate-keyword",
+    "missing-parameter",
+    "wrong-arg-count",
+    "wrong-arg-types",
+    "wrong-keyword-args",
+)
 
 
 class _DirectiveError(Exception):
@@ -236,10 +244,28 @@ def _adjust_line_number(line, allowed_lines, min_line=1):
 class _OpcodeLines:
   """Stores opcode line numbers for Director.adjust_line_numbers()."""
 
-  def __init__(self, store_lines, make_function_lines, non_load_lines):
+  class Call:
+
+    def __init__(self, line):
+      self.line = line
+      self.children = set()
+
+    def __repr__(self):
+      return f"call @ line {self.line} ({len(self.children)} nested calls)"
+
+  def __init__(
+      self,
+      store_lines: Collection[int],
+      make_function_lines: Collection[int],
+      non_load_lines: Collection[int],
+      call_lines: Collection[Call]):
     self.store_lines = store_lines
     self.make_function_lines = make_function_lines
     self.non_load_lines = non_load_lines
+    # We transform call_lines into a line->Call mapping so that
+    # _adjust_line_number can treat it as a Collection[int] like the other
+    # *_lines attributes.
+    self.call_lines = {call.line: call for call in call_lines}
 
   @classmethod
   def from_code(cls, code):
@@ -247,14 +273,33 @@ class _OpcodeLines:
     store_lines = set()
     make_function_lines = set()
     non_load_lines = set()
-    for opcode in itertools.chain.from_iterable(_collect_bytecode(code)):
-      if opcode.name.startswith("STORE_"):
-        store_lines.add(opcode.line)
-      elif opcode.name == "MAKE_FUNCTION":
-        make_function_lines.add(opcode.line)
-      if not opcode.name.startswith("LOAD_"):
-        non_load_lines.add(opcode.line)
-    return cls(store_lines, make_function_lines, non_load_lines)
+    all_call_lines = []
+    for block in _collect_bytecode(code):
+      call_lines = []
+      for opcode in block:
+        if opcode.name.startswith("STORE_"):
+          store_lines.add(opcode.line)
+        elif opcode.name == "MAKE_FUNCTION":
+          make_function_lines.add(opcode.line)
+        elif opcode.name.startswith("CALL_"):
+          # Function calls can be nested, so we represent them as a sequence of
+          # call trees. As opcodes are typically ordered by increasing line
+          # number, we detect nested calls via decreasing line numbers. For
+          # example, for:
+          #   top_level1()  # line 1
+          #   top_level2(  # line 2
+          #     nested1(  # line 3
+          #       more_nested()),  # line 4
+          #     nested2())  # line 5
+          # the sequence of line numbers is [1, 4, 3, 5, 2].
+          call = _OpcodeLines.Call(opcode.line)
+          while call_lines and opcode.line < call_lines[-1].line:
+            call.children.add(call_lines.pop())
+          call_lines.append(call)
+        if not opcode.name.startswith("LOAD_"):
+          non_load_lines.add(opcode.line)
+      all_call_lines.extend(call_lines)
+    return cls(store_lines, make_function_lines, non_load_lines, all_call_lines)
 
 
 class Director:
@@ -531,22 +576,55 @@ class Director:
 
   def _adjust_line_numbers_for_error_directives(self, opcode_lines):
     """Adjusts line numbers for error directives."""
-    if "annotation-type-mismatch" not in self._disables:
-      return
-    lines = self._disables["annotation-type-mismatch"].lines
-    for line, membership in sorted(lines.items()):
-      min_line = line
-      # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
-      # line of the function signature, so we need to skip any LOAD_*
-      # opcodes in between.
-      while min_line not in opcode_lines.non_load_lines and min_line > 1:
-        min_line -= 1
-      allowed_lines = (
-          opcode_lines.store_lines | opcode_lines.make_function_lines)
-      adjusted_line = _adjust_line_number(line, allowed_lines, min_line)
-      if adjusted_line and adjusted_line != line:
-        lines[adjusted_line] = membership
-        del lines[line]
+    for error_class in _FUNCTION_CALL_ERRORS + ("annotation-type-mismatch",):
+      if error_class not in self._disables:
+        continue
+      lines = self._disables[error_class].lines
+      for line, membership in sorted(lines.items()):
+        if error_class == "annotation-type-mismatch":
+          min_line = line
+          # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
+          # line of the function signature, so we need to skip any LOAD_*
+          # opcodes in between.
+          while min_line not in opcode_lines.non_load_lines and min_line > 1:
+            min_line -= 1
+          allowed_lines = (
+              opcode_lines.store_lines | opcode_lines.make_function_lines)
+        else:
+          min_line = 1
+          allowed_lines = opcode_lines.call_lines
+        adjusted_line = _adjust_line_number(line, allowed_lines, min_line)
+        if adjusted_line and adjusted_line != line:
+          if error_class == "annotation-type-mismatch":
+            lines[adjusted_line] = membership
+            del lines[line]
+          else:
+            # 'adjusted_line' points to the top-level function call that
+            # contains 'line'. We apply the directive on 'line' to the top-level
+            # call as well as all nested calls between 'adjusted_line' and
+            # 'line'. For example, in:
+            # top_level_call(
+            #     nested1(),
+            #     nested2(),  # directive
+            #     nested3())
+            # the disable directive applies to top_level_call, nested1, and
+            # nested 2, but not nested3.
+            stack = [opcode_lines.call_lines[adjusted_line]]
+            found = False
+            while stack:
+              call = stack.pop()
+              if call.line > line:
+                continue
+              if call.line == line:
+                found = True
+              else:
+                lines[call.line] = membership
+              stack.extend(call.children)
+            # If 'line' does not itself contain a function call, then we delete
+            # the directive on 'line' after applying it to all the relevant
+            # lines that do contain function calls.
+            if not found:
+              del lines[line]
 
   def adjust_line_numbers(self, code):
     """Uses the bytecode to adjust line numbers."""

@@ -308,6 +308,13 @@ class ErrorTest(test_base.BaseTest):
           pass  # wrong-arg-types
     """)
 
+  def test_disable_location(self):
+    self.Check("""
+      import re
+      re.sub(
+        '', object(), '')  # pytype: disable=wrong-arg-types
+    """)
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""

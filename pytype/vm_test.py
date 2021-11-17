@@ -263,7 +263,8 @@ class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         })
 
 
-class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+class _DirectorLineNumbersTestCase(
+    test_base.BaseTest, test_utils.MakeCodeMixin):
 
   def setUp(self):
     super().setUp()
@@ -272,6 +273,9 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
 
   def run_program(self, src):
     return self.ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
+
+
+class DirectorLineNumbersTest(_DirectorLineNumbersTestCase):
 
   def test_type_comment_on_multiline_value(self):
     self.run_program("""
@@ -373,6 +377,116 @@ class DirectorLineNumbersTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         return 0 if x is None else x
     """)
     self.assertEqual(self.ctx.vm._director.decorators, {5, 8})
+
+
+class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
+
+  @property
+  def disables(self):
+    return self.ctx.vm._director._disables["wrong-arg-types"]
+
+  def test_basic(self):
+    self.run_program("""
+      toplevel(
+          a, b, c, d)  # pytype: disable=wrong-arg-types
+    """)
+    if self.python_version >= (3, 8):
+      self.assertIn(2, self.disables)
+      self.assertNotIn(3, self.disables)
+    else:
+      self.assertNotIn(2, self.disables)
+      self.assertIn(3, self.disables)
+
+  def test_nested(self):
+    self.run_program("""
+      toplevel(
+          nested())  # pytype: disable=wrong-arg-types
+    """)
+    if self.python_version >= (3, 8):
+      self.assertIn(2, self.disables)
+      self.assertIn(3, self.disables)
+    else:
+      self.assertNotIn(2, self.disables)
+      self.assertIn(3, self.disables)
+
+  def test_multiple_nested(self):
+    self.run_program("""
+      toplevel(
+        nested1(),
+        nested2(),  # pytype: disable=wrong-arg-types
+        nested3())
+    """)
+    if self.python_version >= (3, 8):
+      self.assertIn(2, self.disables)
+      self.assertIn(3, self.disables)
+      self.assertIn(4, self.disables)
+      self.assertNotIn(5, self.disables)
+    else:
+      self.assertNotIn(2, self.disables)
+      self.assertNotIn(3, self.disables)
+      self.assertIn(4, self.disables)
+      self.assertNotIn(5, self.disables)
+
+  def test_multiple_toplevel(self):
+    self.run_program("""
+      toplevel1()
+      toplevel2()  # pytype: disable=wrong-arg-types
+      toplevel3()
+    """)
+    self.assertNotIn(2, self.disables)
+    self.assertIn(3, self.disables)
+    self.assertNotIn(4, self.disables)
+
+  def test_deeply_nested(self):
+    self.run_program("""
+      toplevel(
+        nested1(),
+        nested2(
+          deeply_nested1(),  # pytype: disable=wrong-arg-types
+          deeply_nested2()),
+        nested3())
+    """)
+    if self.python_version >= (3, 8):
+      self.assertIn(2, self.disables)
+      self.assertIn(3, self.disables)
+      self.assertIn(4, self.disables)
+      self.assertIn(5, self.disables)
+      self.assertNotIn(6, self.disables)
+      self.assertNotIn(7, self.disables)
+    else:
+      self.assertNotIn(2, self.disables)
+      self.assertNotIn(3, self.disables)
+      self.assertNotIn(4, self.disables)
+      self.assertIn(5, self.disables)
+      self.assertNotIn(6, self.disables)
+      self.assertNotIn(7, self.disables)
+
+  def test_trailing_parenthesis(self):
+    self.run_program("""
+      toplevel(
+          a, b, c, d,
+      )  # pytype: disable=wrong-arg-types
+    """)
+    if self.python_version >= (3, 8):
+      self.assertIn(2, self.disables)
+      self.assertNotIn(3, self.disables)
+      self.assertNotIn(4, self.disables)
+    else:
+      self.assertNotIn(2, self.disables)
+      self.assertIn(3, self.disables)
+      self.assertNotIn(4, self.disables)
+
+  def test_multiple_bytecode_blocks(self):
+    self.run_program("""
+      def f():
+        call(a, b, c, d)
+      def g():
+        call(a, b, c, d)  # pytype: disable=wrong-arg-types
+    """)
+    self.assertNotIn(2, self.disables)
+    self.assertNotIn(3, self.disables)
+    self.assertNotIn(4, self.disables)
+    self.assertIn(5, self.disables)
 
 
 if __name__ == "__main__":
