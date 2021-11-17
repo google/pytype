@@ -24,6 +24,10 @@ jobs:
           - manylinux2014_aarch64
         pyver: [cp36-cp36m, cp37-cp37m, cp38-cp38, cp39-cp39]
     steps:
+      - name: Cancel previous
+        uses: styfle/cancel-workflow-action@0.8.0
+        with:
+          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
         with:
           submodules: recursive
@@ -60,6 +64,10 @@ jobs:
       matrix:
         python_version: [3.6, 3.7, 3.8, 3.9]
     steps:
+      - name: Cancel previous
+        uses: styfle/cancel-workflow-action@0.8.0
+        with:
+          access_token: ${{ github.token }}
       - uses: actions/checkout@v2
         with:
           submodules: recursive
