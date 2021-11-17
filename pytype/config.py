@@ -498,20 +498,19 @@ class Postprocessor:
     """Configure the python version."""
     if python_version:
       if isinstance(python_version, str):
-        self.output_options.python_version = utils.version_from_string(
-            python_version)
+        version = utils.version_from_string(python_version)
       elif isinstance(python_version, int):
-        self.output_options.python_version = utils.full_version_from_major(
-            python_version)
+        version = utils.normalize_version(python_version)
       else:
-        self.output_options.python_version = python_version
+        version = python_version
     else:
-      self.output_options.python_version = sys.version_info[:2]
-    if len(self.output_options.python_version) != 2:
+      version = sys.version_info[:2]
+    if len(version) != 2:
       self.error(
           "--python_version must be <major>.<minor>: %r" % python_version)
     # Check that we have a version supported by pytype.
-    utils.validate_version(self.output_options.python_version)
+    utils.validate_version(version)
+    self.output_options.python_version = version
 
     if utils.can_compile_bytecode_natively(self.output_options.python_version):
       # pytype does not need an exe for bytecode compilation. Abort early to
