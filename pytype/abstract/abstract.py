@@ -3623,6 +3623,28 @@ class InterpreterFunction(SignedFunction):
       for b in self.ctx.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
+  def _fix_args_for_unannotated_contextmanager_exit(self, node, func, args):
+    """Adjust argument types for a contextmanager's __exit__ method."""
+    # When a contextmanager is used in a 'with' statement, its __exit__ method
+    # is implicitly called with either (None, None, None) or
+    # (exc_type, exc_value, traceback) depending on whether an exception is
+    # encountered. These two cases generate different bytecode, and our VM
+    # always assumes no exception. But for analyzing __exit__, we should allow
+    # for both possibilities.
+    if not (isinstance(func.data, BoundInterpreterFunction) and
+            self.name.endswith(".__exit__") and len(args.posargs) == 4 and
+            not args.has_namedargs() and not args.starargs and
+            not args.starstarargs and not self.signature.has_param_annotations):
+      return args
+    exception_type = self.ctx.convert.name_to_value("builtins.BaseException")
+    arg1 = self.ctx.program.NewVariable(
+        [exception_type, self.ctx.convert.none], [], node)
+    arg2 = exception_type.instantiate(node)
+    arg2.AddBinding(self.ctx.convert.none, [], node)
+    arg3 = self.ctx.program.NewVariable(
+        [self.ctx.convert.unsolvable, self.ctx.convert.none], [], node)
+    return function.Args(posargs=(args.posargs[0], arg1, arg2, arg3))
+
   def call(self, node, func, args, new_locals=False, alias_map=None,
            frame_substs=()):
     if self.is_overload:
@@ -3632,6 +3654,7 @@ class InterpreterFunction(SignedFunction):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
       return node, self.ctx.new_unsolvable(node)
+    args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
     args = args.simplify(node, self.ctx, self.signature)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
     if sig is not self.signature:

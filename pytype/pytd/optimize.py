@@ -556,7 +556,6 @@ class SimplifyUnionsWithSuperclasses(visitors.Visitor):
   def VisitUnionType(self, union):
     c = collections.Counter()
     for t in set(union.type_list):
-      # TODO(b/159052794): How can we make this work with GenericType?
       if isinstance(t, pytd.GENERIC_BASE_TYPE):
         c += collections.Counter(self.hierarchy.ExpandSubClasses(str(t)))
     # Below, c[str[t]] can be zero - that's the default for non-existent items
@@ -693,14 +692,12 @@ class AddInheritedMethods(visitors.Visitor):
     if any(base for base in cls.parents if isinstance(base, pytd.NamedType)):
       raise AssertionError("AddInheritedMethods needs a resolved AST")
     # Filter out only the types we can reason about.
-    # TODO(b/159052794): Do we want handle UnionTypes and GenericTypes?
     bases = [base.cls
              for base in cls.parents
              if isinstance(base, pytd.ClassType)]
     # Don't pull in methods that are named the same as existing methods in
     # this class, local methods override parent class methods.
     names = {m.name for m in cls.methods} | {c.name for c in cls.constants}
-    # TODO(b/159052405): This should do full-blown MRO.
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
     new_methods = list(cls.methods)

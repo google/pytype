@@ -668,10 +668,6 @@ def post_process_ast(ast, src, name=None):
     # information if an error is raised during transformation of a class node.
     raise ParseError.from_exc(e)
 
-  # Typeshed files that explicitly import and refer to "__builtin__" need to
-  # have that rewritten to builtins
-  ast = ast.Visit(visitors.RenameBuiltinsPrefix())
-
   return ast
 
 

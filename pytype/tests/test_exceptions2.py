@@ -89,6 +89,19 @@ class TestExceptionsPy3(test_base.BaseTest):
           os.close(fd)
     """)
 
+  def test_contextmanager(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        def __enter__(self):
+          return self
+        def __exit__(self, exc_type, exc_value, tb):
+          reveal_type(exc_type)  # reveal-type[e]
+          return False
+      with Foo():
+        print(0)
+    """)
+    self.assertErrorSequences(errors, {"e": ["Optional[Type[BaseException]]"]})
+
 
 if __name__ == "__main__":
   test_base.main()

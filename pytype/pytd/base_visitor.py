@@ -1,5 +1,6 @@
 """Base class for visitors."""
 
+import re
 from typing import Any
 
 from pytype.pytd import pytd
@@ -171,13 +172,19 @@ class Visitor:
           visit_class_names.update(ancestors[node])
         elif node:
           # Visiting an unknown non-empty node means the visitor has defined
-          # behavior on nodes that are unknown to the ancestors list.  To be
-          # safe, visit everything.
-          #
-          # TODO(dbaum): Consider making this an error.  The only wrinkle is
-          # that StrictType is unknown to _FindNodeClasses(), does not appear
-          # in any preconditions, but has defined behavior in PrintVisitor.
-          visit_all = True
+          # behavior on nodes that are unknown to the ancestors list.
+          if node == "StrictType":
+            # This special case is here because pytd.type_match defines an extra
+            # StrictType node, and pytd.printer.PrintVisitor has a visitor to
+            # handle it.
+            visit_all = True
+          elif (cls.__module__ == "__main__" or
+                re.fullmatch(r".*(_test|test_[^\.]+)", cls.__module__)):
+            # We are running test code or something else that is defining its
+            # own pytd nodes directly in a top-level python file.
+            visit_all = True
+          else:
+            raise AssertionError("Unknown node type: %s %r" % (node, cls))
       if visit_all:
         visit_class_names = ALL_NODE_NAMES
       Visitor._visitor_functions_cache[cls] = (

@@ -23,8 +23,6 @@ class TestExceptions(test_base.BaseTest):
     """)
 
   def test_catching_exceptions(self):
-    # TODO(kramm): Don't warn about NameErrors that are being caught.
-    # Catch the exception precisely
     self.assertNoCrash(self.Check, """
       try:
         x[1]
