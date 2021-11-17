@@ -241,6 +241,16 @@ def _adjust_line_number(line, allowed_lines, min_line=1):
   return adjusted_line if adjusted_line >= min_line else None
 
 
+def _is_function_call(opcode_name):
+  if opcode_name.startswith("CALL_"):
+    return True
+  return opcode_name in {
+      "BINARY_SUBSCR",
+      "COMPARE_OP",
+      "FOR_ITER",
+  }
+
+
 class _OpcodeLines:
   """Stores opcode line numbers for Director.adjust_line_numbers()."""
 
@@ -281,7 +291,7 @@ class _OpcodeLines:
           store_lines.add(opcode.line)
         elif opcode.name == "MAKE_FUNCTION":
           make_function_lines.add(opcode.line)
-        elif opcode.name.startswith("CALL_"):
+        elif _is_function_call(opcode.name):
           # Function calls can be nested, so we represent them as a sequence of
           # call trees. As opcodes are typically ordered by increasing line
           # number, we detect nested calls via decreasing line numbers. For

@@ -272,6 +272,7 @@ class _DirectorLineNumbersTestCase(
     self.ctx = context.Context(self.errorlog, self.options, self.loader)
 
   def run_program(self, src):
+    self.num_lines = len(src.rstrip().splitlines())
     return self.ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
 
 
@@ -381,9 +382,14 @@ class DirectorLineNumbersTest(_DirectorLineNumbersTestCase):
 
 class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
 
-  @property
-  def disables(self):
-    return self.ctx.vm._director._disables["wrong-arg-types"]
+  def assertDisables(self, *disable_lines, error_class="wrong-arg-types"):
+    disables = self.ctx.vm._director._disables[error_class]
+    for i in range(self.num_lines):
+      lineno = i+1
+      if lineno in disable_lines:
+        self.assertIn(lineno, disables)
+      else:
+        self.assertNotIn(lineno, disables)
 
   def test_basic(self):
     self.run_program("""
@@ -391,11 +397,9 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
           a, b, c, d)  # pytype: disable=wrong-arg-types
     """)
     if self.python_version >= (3, 8):
-      self.assertIn(2, self.disables)
-      self.assertNotIn(3, self.disables)
+      self.assertDisables(2)
     else:
-      self.assertNotIn(2, self.disables)
-      self.assertIn(3, self.disables)
+      self.assertDisables(3)
 
   def test_nested(self):
     self.run_program("""
@@ -403,11 +407,9 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
           nested())  # pytype: disable=wrong-arg-types
     """)
     if self.python_version >= (3, 8):
-      self.assertIn(2, self.disables)
-      self.assertIn(3, self.disables)
+      self.assertDisables(2, 3)
     else:
-      self.assertNotIn(2, self.disables)
-      self.assertIn(3, self.disables)
+      self.assertDisables(3)
 
   def test_multiple_nested(self):
     self.run_program("""
@@ -417,15 +419,9 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
         nested3())
     """)
     if self.python_version >= (3, 8):
-      self.assertIn(2, self.disables)
-      self.assertIn(3, self.disables)
-      self.assertIn(4, self.disables)
-      self.assertNotIn(5, self.disables)
+      self.assertDisables(2, 3, 4)
     else:
-      self.assertNotIn(2, self.disables)
-      self.assertNotIn(3, self.disables)
-      self.assertIn(4, self.disables)
-      self.assertNotIn(5, self.disables)
+      self.assertDisables(4)
 
   def test_multiple_toplevel(self):
     self.run_program("""
@@ -433,9 +429,7 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
       toplevel2()  # pytype: disable=wrong-arg-types
       toplevel3()
     """)
-    self.assertNotIn(2, self.disables)
-    self.assertIn(3, self.disables)
-    self.assertNotIn(4, self.disables)
+    self.assertDisables(3)
 
   def test_deeply_nested(self):
     self.run_program("""
@@ -447,19 +441,9 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
         nested3())
     """)
     if self.python_version >= (3, 8):
-      self.assertIn(2, self.disables)
-      self.assertIn(3, self.disables)
-      self.assertIn(4, self.disables)
-      self.assertIn(5, self.disables)
-      self.assertNotIn(6, self.disables)
-      self.assertNotIn(7, self.disables)
+      self.assertDisables(2, 3, 4, 5)
     else:
-      self.assertNotIn(2, self.disables)
-      self.assertNotIn(3, self.disables)
-      self.assertNotIn(4, self.disables)
-      self.assertIn(5, self.disables)
-      self.assertNotIn(6, self.disables)
-      self.assertNotIn(7, self.disables)
+      self.assertDisables(5)
 
   def test_trailing_parenthesis(self):
     self.run_program("""
@@ -468,13 +452,9 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
       )  # pytype: disable=wrong-arg-types
     """)
     if self.python_version >= (3, 8):
-      self.assertIn(2, self.disables)
-      self.assertNotIn(3, self.disables)
-      self.assertNotIn(4, self.disables)
+      self.assertDisables(2)
     else:
-      self.assertNotIn(2, self.disables)
-      self.assertIn(3, self.disables)
-      self.assertNotIn(4, self.disables)
+      self.assertDisables(3)
 
   def test_multiple_bytecode_blocks(self):
     self.run_program("""
@@ -483,10 +463,37 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
       def g():
         call(a, b, c, d)  # pytype: disable=wrong-arg-types
     """)
-    self.assertNotIn(2, self.disables)
-    self.assertNotIn(3, self.disables)
-    self.assertNotIn(4, self.disables)
-    self.assertIn(5, self.disables)
+    self.assertDisables(5)
+
+  def test_compare(self):
+    self.run_program("""
+      import datetime
+      def f(right: datetime.date):
+        left = datetime.datetime(1, 1, 1, 1)
+        return left < right  # pytype: disable=wrong-arg-types
+    """)
+    self.assertDisables(5)
+
+  def test_iterate(self):
+    self.run_program("""
+      class Foo:
+        def __iter__(self, too, many, args):
+          pass
+      foo = Foo()
+      for x in foo:  # pytype: disable=missing-parameter
+        print(x)
+    """)
+    self.assertDisables(6, error_class="missing-parameter")
+
+  def test_subscript(self):
+    self.run_program("""
+      class Foo:
+        def __getitem__(self, too, many, args):
+          pass
+      x = Foo()
+      x['X']  # pytype: disable=missing-parameter
+    """)
+    self.assertDisables(6, error_class="missing-parameter")
 
 
 if __name__ == "__main__":
