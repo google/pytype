@@ -1,5 +1,6 @@
 """Base class for visitors."""
 
+import re
 from typing import Any
 
 from pytype.pytd import pytd
@@ -177,7 +178,8 @@ class Visitor:
             # StrictType node, and pytd.printer.PrintVisitor has a visitor to
             # handle it.
             visit_all = True
-          elif cls.__module__ == "__main__":
+          elif (cls.__module__ == "__main__" or
+                re.fullmatch(r".*(_test|test_[^\.]+)", cls.__module__)):
             # We are running test code or something else that is defining its
             # own pytd nodes directly in a top-level python file.
             visit_all = True
