@@ -13,7 +13,7 @@ from pytype import config
 from pytype import single
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd_utils
 from pytype.pytd import typeshed
 from pytype.tests import test_base
@@ -24,7 +24,7 @@ import unittest
 class PytypeTest(test_base.UnitTest):
   """Integration test for pytype."""
 
-  DEFAULT_PYI = builtins.DEFAULT_SRC
+  DEFAULT_PYI = builtin_stubs.DEFAULT_SRC
   INCLUDE = object()
 
   @classmethod
@@ -304,7 +304,7 @@ class PytypeTest(test_base.UnitTest):
   def test_generate_builtins(self):
     self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.py")
     self.pytype_args["--python_version"] = utils.format_version(
-        utils.full_version_from_major(3))
+        sys.version_info[:2])
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
@@ -535,7 +535,7 @@ class PytypeTest(test_base.UnitTest):
 
   def test_builtins_determinism(self):
     f1, f2 = self._generate_builtins_twice(
-        utils.format_version(utils.full_version_from_major(3)))
+        utils.format_version(sys.version_info[:2]))
     self.assertBuiltinsPickleEqual(f1, f2)
 
   def test_timeout(self):

@@ -1,6 +1,6 @@
 """Tests for pytype.pytd.parse.builtins."""
 
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.tests import test_base
@@ -13,7 +13,7 @@ class UtilsTest(test_base.UnitTest):
   @classmethod
   def setUpClass(cls):
     super(UtilsTest, cls).setUpClass()
-    cls.builtins = builtins.GetBuiltinsPyTD()
+    cls.builtins = builtin_stubs.GetBuiltinsPyTD()
 
   def test_get_builtins_pytd(self):
     self.assertIsNotNone(self.builtins)

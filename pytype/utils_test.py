@@ -69,10 +69,6 @@ class UtilsTest(unittest.TestCase):
   def test_version_from_string_tuple(self):
     self.assertEqual(utils.version_from_string("3.7"), (3, 7))
 
-  def test_full_version_from_major(self):
-    major, _ = utils.full_version_from_major(3)
-    self.assertEqual(major, 3)
-
   def test_normalize_version_int(self):
     self.assertEqual(utils.normalize_version(3), sys.version_info[:2])
 

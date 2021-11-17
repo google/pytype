@@ -58,27 +58,20 @@ def version_from_string(version_string):
   """Parse a version string like "3" or "3.7" into a tuple."""
   try:
     version_int = int(version_string)
+    return normalize_version(version_int)
   except ValueError:
     return tuple(map(int, version_string.split(".")))
-  return full_version_from_major(version_int)
-
-
-# TODO(b/195453869): There's no longer any reason to accept just a major
-# version, since all supported versions are Python 3.x.
-def full_version_from_major(major_version):
-  """Get a (major, minor) Python version tuple from a major version int."""
-  if major_version == sys.version_info.major:
-    return sys.version_info[:2]
-  else:
-    raise UsageError(
-        "Cannot infer Python minor version for major version %d. "
-        "Specify the version as <major>.<minor>." % major_version)
 
 
 def normalize_version(version):
   """Gets a version tuple from either a major version int or a version tuple."""
   if isinstance(version, int):
-    return full_version_from_major(version)
+    # TODO(b/195453869): There's no longer any reason to accept just a major
+    # version, since all supported versions are 3.x. This should be an error.
+    if version != 3:
+      validate_version((version, 7))
+    else:
+      return sys.version_info[:2]
   else:
     return version
 

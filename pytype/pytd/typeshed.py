@@ -9,7 +9,7 @@ from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
 from pytype.pyi import parser
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 
 import toml
 
@@ -223,8 +223,7 @@ class Typeshed:
       # Give precedence to MISSING_FILE
       if path_rel in self.missing:
         return (os.path.join(self._root, "nonexistent", path_rel + ".pyi"),
-                builtins.DEFAULT_SRC)
-      # TODO(mdemello): handle this in the calling code.
+                builtin_stubs.DEFAULT_SRC)
       for path in [os.path.join(path_rel, "__init__.pyi"), path_rel + ".pyi"]:
         try:
           name, src = self._load_file(path)
@@ -321,10 +320,15 @@ class Typeshed:
 
   def blacklisted_modules(self):
     """Return the blacklist, as a list of module names. E.g. ["x", "y.z"]."""
-    for full_filename in self.read_blacklist():
-      filename, _ = os.path.splitext(full_filename)
-      path = filename.split(os.path.sep)  # E.g. ["stdlib", "html", "parser"]
-      yield module_utils.path_to_module_name(os.path.sep.join(path[2:]))
+    for path in self.read_blacklist():
+      parts = path.split(os.path.sep)  # E.g. ["stdlib", "html", "parser.pyi"]
+      if parts[0] == "stdlib":
+        filename = os.path.sep.join(parts[1:])
+      else:
+        filename = os.path.sep.join(parts[2:])
+      mod = module_utils.path_to_module_name(filename)
+      if mod:
+        yield mod
 
 
 _typeshed = None

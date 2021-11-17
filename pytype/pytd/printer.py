@@ -503,7 +503,6 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitModule(self, node):
     if self.in_constant or self.in_signature:
-      # TODO(slebedev): Use types.ModuleType instead.
       return "module"
     elif not node.is_aliased:
       return f"import {node.module_name}"

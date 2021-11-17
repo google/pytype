@@ -471,7 +471,7 @@ class VariableAnnotationsTest(DirectorTestCase):
     self.assertFalse(self._director.annotations)
 
   def test_comment_is_not_an_annotation(self):
-    self._create("# TODO(b/xxx): pylint: disable=invalid-name")
+    self._create("# FOMO(b/xxx): pylint: disable=invalid-name")
     self.assertFalse(self._director.annotations)
 
   def test_string_is_not_an_annotation(self):

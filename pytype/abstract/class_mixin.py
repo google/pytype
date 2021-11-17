@@ -17,10 +17,6 @@ log = logging.getLogger(__name__)
 # Classes have a metadata dictionary that can store arbitrary metadata for
 # various overlays. We define the dictionary keys here so that they can be
 # shared by abstract.py and the overlays.
-# TODO(mdemello): We choose the key based on the attribute used by the actual
-# decorator for a similar purpose, but we never actually read that attribute. We
-# should just use the decorator name as a key and eliminate one level of
-# indirection.
 _METADATA_KEYS = {
     "dataclasses.dataclass": "__dataclass_fields__",
     # attr.s gets resolved to attr._make.attrs in pyi files but intercepted by
@@ -120,8 +116,6 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     if metaclass is None:
       metaclass = self._get_inherited_metaclass()
     if metaclass:
-      # TODO(rechen): Check that the metaclass is a (non-strict) subclass of the
-      # metaclasses of the base classes.
       self.cls = metaclass
     # Key-value store of metadata for overlays to use.
     self.metadata = {}
@@ -305,8 +299,6 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Only SignedFunctions (InterpreterFunction and SimpleFunction) have
       # interesting side effects.
       return node
-    # TODO(rechen): The signature is (cls, name, bases, dict); should we fill in
-    # the last arg more precisely?
     args = function.Args(
         posargs=(self.to_variable(node),
                  self.ctx.convert.build_string(node, self.name),

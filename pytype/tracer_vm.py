@@ -169,8 +169,9 @@ class CallTracer(vm.VirtualMachine):
 
   def call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
-    # TODO(tsudol): If expand this beyond __init__, need to handle
-    # DictKeyMissing
+    # Note that this should only be used for functions that raised a
+    # FailedFunctionCall error. This is not guaranteed to successfuly call a
+    # function that raised DictKeyMissing instead.
     nodes = []
     rets = []
     for funcb in funcv.bindings:

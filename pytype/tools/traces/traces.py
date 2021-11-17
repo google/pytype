@@ -110,7 +110,7 @@ class _SymbolMatcher:
     - a tuple of the above (will match if any member does)
   """
 
-  # TODO(rechen): In Python 3.7+, this type is exposed as `re.Pattern`.
+  # TODO(b/206035716): In Python 3.7+, this type is exposed as `re.Pattern`.
   _PATTERN_TYPE = type(re.compile(""))
 
   @classmethod

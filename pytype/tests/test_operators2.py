@@ -41,20 +41,6 @@ class OperatorsWithAnyTests(test_base.BaseTest):
       def t_testAdd3(x) -> Any: ...
     """)
 
-  @test_base.skip("Needs handling of immutable types for += on an unknown")
-  def test_add4(self):
-    # TODO(rechen): Fix test_stringio when this is working.
-    ty = self.Infer("""
-      def t_testAdd5(x):
-        x += "42"
-        return x
-    """)
-    # Currently missing str and unicode
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any, Union
-      def t_testAdd5(x: Union[str, unicode, bytearray, list[Any]]) -> Union[str, unicode, bytearray, list[Any]]: ...
-    """)
-
   def test_str_mul(self):
     """Test that __mul__, __rmul__ are working."""
     ty = self.Infer("""

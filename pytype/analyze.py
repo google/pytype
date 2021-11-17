@@ -8,7 +8,6 @@ from pytype import convert_structural
 from pytype import debug
 from pytype import metrics
 from pytype.abstract import abstract_utils
-from pytype.pytd import builtins
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
@@ -106,8 +105,7 @@ def infer_types(src,
   if ctx.vm.has_unknown_wildcard_imports or any(
       a in defs for a in abstract_utils.DYNAMIC_ATTRIBUTE_MARKERS):
     if "__getattr__" not in ast:
-      ast = pytd_utils.Concat(
-          ast, builtins.GetDefaultAst(options.gen_stub_imports))
+      ast = pytd_utils.Concat(ast, ctx.loader.get_default_ast())
   # If merged with other if statement, triggers a ValueError: Unresolved class
   # when attempts to load from the protocols file
   if options.protocols:

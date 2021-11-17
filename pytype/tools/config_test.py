@@ -7,7 +7,6 @@ from pytype.tools import config
 import unittest
 
 
-# TODO(rechen): How can we create and test a symlink loop?
 class TestFindConfigFile(unittest.TestCase):
   """Tests for config.find_config_file."""
 

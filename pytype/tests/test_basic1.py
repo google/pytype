@@ -245,12 +245,13 @@ class TestBasic(test_base.BaseTest):
       """)
 
   def test_deleting_names(self):
-    self.InferWithErrors("""
+    _, err = self.InferWithErrors("""
       g = 17
       assert g == 17
       del g
-      g  # name-error
+      g  # name-error[e]
     """)
+    self.assertErrorSequences(err, {"e": ["Variable g", "deleted"]})
 
   def test_deleting_local_names(self):
     self.InferWithErrors("""

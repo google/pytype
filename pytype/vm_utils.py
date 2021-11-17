@@ -534,7 +534,8 @@ def _check_defaults(node, method, ctx):
     raise AssertionError("Unexpected argument matching error: %s" %
                          e.__class__.__name__) from e
   for e, arg_name, value in errors:
-    expected_type = e.bad_call.bad_param.expected
+    bad_param = e.bad_call.bad_param
+    expected_type = bad_param.expected
     if value == ctx.convert.ellipsis:
       # `...` should be a valid default parameter value for overloads.
       # Unfortunately, the is_overload attribute is not yet set when
@@ -546,7 +547,8 @@ def _check_defaults(node, method, ctx):
       should_report = True
     if should_report:
       ctx.errorlog.annotation_type_mismatch(
-          ctx.vm.frames, expected_type, value.to_binding(node), arg_name)
+          ctx.vm.frames, expected_type, value.to_binding(node), arg_name,
+          bad_param.protocol_error, bad_param.noniterable_str_error)
 
 
 def make_function(name, node, code, globs, defaults, kw_defaults, closure,
@@ -764,8 +766,8 @@ def get_closure_var_name(frame, arg):
 def check_for_deleted(state, name, var, ctx):
   if any(isinstance(x, abstract.Deleted) for x in var.Data(state.node)):
     # Referencing a deleted variable
-    # TODO(mdemello): A "use-after-delete" error would be more helpful.
-    ctx.errorlog.name_error(ctx.vm.frames, name)
+    details = f"\nVariable {name} has been used after it has been deleted."
+    ctx.errorlog.name_error(ctx.vm.frames, name, details=details)
 
 
 def load_closure_cell(state, op, check_bindings, ctx):

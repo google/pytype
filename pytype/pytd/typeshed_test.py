@@ -3,7 +3,7 @@
 import os
 
 from pytype import file_utils
-from pytype.pytd import builtins
+from pytype.pytd import builtin_stubs
 from pytype.pytd import typeshed
 from pytype.pytd.parse import parser_test_base
 from pytype.tests import test_base
@@ -40,7 +40,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn(os.path.join("stdlib", "pytypecanary"), self.ts.missing)
     _, data = self.ts.get_module_file(
         "stdlib", "pytypecanary", self.python_version)
-    self.assertEqual(data, builtins.DEFAULT_SRC)
+    self.assertEqual(data, builtin_stubs.DEFAULT_SRC)
 
   def test_get_google_only_module_names(self):
     if not self.ts.missing:

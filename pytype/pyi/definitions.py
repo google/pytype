@@ -111,8 +111,6 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     if isinstance(value, pytd.Constant):
       if (not isinstance(value.type, pytd.NamedType) or
           value.type.name not in name_to_class):
-        # TODO(rechen): Parameterized constants of generic classes should
-        # probably also be allowed.
         return alias
       value = name_to_class[value.type.name]
     if not isinstance(value, pytd.Class):

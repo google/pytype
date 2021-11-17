@@ -972,8 +972,8 @@ class AssertionError(StandardError):
 class AttributeError(StandardError):
     pass
 
-# TODO(rechen): __traceback__ and with_traceback should use types.TracebackType,
-# but builtins can't depend on other modules.
+# Note: __traceback__ and with_traceback should use types.TracebackType, but
+# builtins can't depend on other modules.
 _TBE = TypeVar("_TBE", bound="BaseException")
 
 class BaseException(object):
