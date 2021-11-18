@@ -119,11 +119,7 @@ def make_method(ctx,
       ctx=ctx)
 
   # Check that the constructed function has a valid signature
-  bad_param = ret.signature.check_defaults()
-  if bad_param:
-    msg = "In method %s, non-default argument %s follows default argument" % (
-        name, bad_param)
-    ctx.errorlog.invalid_function_definition(ctx.vm.frames, msg)
+  ret.signature.check_defaults(ctx)
 
   retvar = ret.to_variable(node)
   if kind in (pytd.MethodTypes.METHOD, pytd.MethodTypes.PROPERTY):
