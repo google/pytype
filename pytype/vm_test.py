@@ -495,6 +495,22 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
     """)
     self.assertDisables(6, error_class="missing-parameter")
 
+  def test_attrs(self):
+    self.run_program("""
+      import attr
+      def converter(x):
+        return []
+      @attr.s
+      class Foo:
+        x = attr.ib(
+          converter=converter, factory=list, type=dict[str, str]
+        )  # pytype: disable=annotation-type-mismatch
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(7, error_class="annotation-type-mismatch")
+    else:
+      self.assertDisables(8, error_class="annotation-type-mismatch")
+
 
 if __name__ == "__main__":
   test_base.main()

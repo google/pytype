@@ -242,12 +242,18 @@ def _adjust_line_number(line, allowed_lines, min_line=1):
 
 
 def _is_function_call(opcode_name):
-  if opcode_name.startswith("CALL_"):
-    return True
-  return opcode_name in {
+  return opcode_name.startswith("CALL_") or opcode_name in {
       "BINARY_SUBSCR",
       "COMPARE_OP",
       "FOR_ITER",
+  }
+
+
+def _is_funcdef_op(opcode_name):
+  """Checks whether the opcode may appear in a function signature."""
+  return opcode_name.startswith("LOAD_") or opcode_name in {
+      "BINARY_SUBSCR",
+      "BUILD_TUPLE",
   }
 
 
@@ -267,11 +273,11 @@ class _OpcodeLines:
       self,
       store_lines: Collection[int],
       make_function_lines: Collection[int],
-      non_load_lines: Collection[int],
+      non_funcdef_lines: Collection[int],
       call_lines: Collection[Call]):
     self.store_lines = store_lines
     self.make_function_lines = make_function_lines
-    self.non_load_lines = non_load_lines
+    self.non_funcdef_lines = non_funcdef_lines
     # We transform call_lines into a line->Call mapping so that
     # _adjust_line_number can treat it as a Collection[int] like the other
     # *_lines attributes.
@@ -282,7 +288,7 @@ class _OpcodeLines:
     """Builds an _OpcodeLines from a code object."""
     store_lines = set()
     make_function_lines = set()
-    non_load_lines = set()
+    non_funcdef_lines = set()
     all_call_lines = []
     for block in _collect_bytecode(code):
       call_lines = []
@@ -306,10 +312,11 @@ class _OpcodeLines:
           while call_lines and opcode.line < call_lines[-1].line:
             call.children.add(call_lines.pop())
           call_lines.append(call)
-        if not opcode.name.startswith("LOAD_"):
-          non_load_lines.add(opcode.line)
+        if not _is_funcdef_op(opcode.name):
+          non_funcdef_lines.add(opcode.line)
       all_call_lines.extend(call_lines)
-    return cls(store_lines, make_function_lines, non_load_lines, all_call_lines)
+    return cls(
+        store_lines, make_function_lines, non_funcdef_lines, all_call_lines)
 
 
 class Director:
@@ -594,9 +601,9 @@ class Director:
         if error_class == "annotation-type-mismatch":
           min_line = line
           # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
-          # line of the function signature, so we need to skip any LOAD_*
-          # opcodes in between.
-          while min_line not in opcode_lines.non_load_lines and min_line > 1:
+          # line of the function signature, so we need to skip any opcodes
+          # associated with the signature in between.
+          while min_line not in opcode_lines.non_funcdef_lines and min_line > 1:
             min_line -= 1
           allowed_lines = (
               opcode_lines.store_lines | opcode_lines.make_function_lines)
