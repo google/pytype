@@ -191,6 +191,10 @@ class AnnotationVisitor(visitor.BaseVisitor):
     else:
       return self.defs.new_type(node.id)
 
+  def visit_Call(self, node):
+    raise ParseError("Constructors and function calls in type annotations "
+                     "are not supported.")
+
   def _get_subscript_params(self, node):
     if sys.version_info >= (3, 9):
       return node.slice
