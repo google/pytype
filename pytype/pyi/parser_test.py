@@ -1228,6 +1228,16 @@ class FunctionTest(parser_test_base.ParserTestBase):
                      line,
                      "Too many decorators for foo")
 
+  def test_module_getattr(self):
+    self.check("""
+      def __getattr__(name) -> int: ...
+    """)
+
+    self.check_error("""
+      def __getattr__(name) -> int: ...
+      def __getattr__(name) -> str: ...
+    """, None, "Multiple signatures for module __getattr__")
+
   def test_type_check_only(self):
     self.check("""
       from typing import type_check_only

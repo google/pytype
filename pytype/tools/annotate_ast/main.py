@@ -6,13 +6,7 @@ import sys
 from pytype.ast import debug
 from pytype.tools import arg_parser
 from pytype.tools.annotate_ast import annotate_ast
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
+from typed_ast import ast3
 
 
 def main():

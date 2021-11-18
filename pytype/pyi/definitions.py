@@ -703,6 +703,7 @@ class Definitions:
 
     classes = generated_classes + classes
     functions = function.merge_method_signatures(functions)
+    _check_module_functions(functions)
 
     name_to_class = {c.name: c for c in classes}
     name_to_constant = {c.name: c for c in constants}
@@ -731,12 +732,6 @@ class Definitions:
       raise ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
-    properties = [x for x in functions if x.kind == pytd.MethodTypes.PROPERTY]
-    if properties:
-      prop_names = ", ".join(p.name for p in properties)
-      raise ParseError(
-          "Module-level functions with property decorators: " + prop_names)
-
     return pytd.TypeDeclUnit(name=None,
                              constants=tuple(constants),
                              type_params=tuple(self.type_params),
@@ -750,3 +745,19 @@ def finalize_ast(ast: pytd.TypeDeclUnit):
   ast = ast.Visit(_InsertTypeParameters(ast.type_params))
   ast = ast.Visit(_VerifyMutators())
   return ast
+
+
+def _check_module_functions(functions):
+  """Validate top-level module functions."""
+  # module.__getattr__ should have a unique signature
+  g = [f for f in functions if f.name == "__getattr__"]
+  if g and len(g[0].signatures) > 1:
+    raise ParseError("Multiple signatures for module __getattr__")
+
+  # module-level functions cannot be properties
+  properties = [x for x in functions if x.kind == pytd.MethodTypes.PROPERTY]
+  if properties:
+    prop_names = ", ".join(p.name for p in properties)
+    raise ParseError(
+        "Module-level functions with property decorators: " + prop_names)
+
