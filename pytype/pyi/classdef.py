@@ -23,7 +23,7 @@ _TYPED_DICT_ALIASES = ("typing.TypedDict", "typing_extensions.TypedDict")
 
 
 def get_parents(
-    bases: List[ast3.AST]
+    bases: List[pytd.Type]
 ) -> Tuple[List[pytd_node.Node], Optional[int]]:
   """Collect base classes and namedtuple index."""
 
@@ -51,7 +51,7 @@ def get_parents(
   return parents, namedtuple_index
 
 
-def get_metaclass(keywords: List[ast3.AST], parents: List[pytd_node.Node]):
+def get_metaclass(keywords: List[ast3.keyword], parents: List[pytd_node.Node]):
   """Scan keywords for a metaclass."""
 
   for k in keywords:

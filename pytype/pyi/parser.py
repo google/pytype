@@ -54,7 +54,7 @@ _ANNOTATED_IDS = (
 # imports
 
 
-def _tuple_of_import(alias: ast3.AST) -> Tuple[str, str]:
+def _tuple_of_import(alias: ast3.alias) -> Union[str, Tuple[str, str]]:
   """Convert a typedast import into one that add_import expects."""
   if alias.asname is None:
     return alias.name
@@ -82,7 +82,7 @@ class _TypeVar:
   constraints: List[Any]
 
   @classmethod
-  def from_call(cls, node: ast3.AST) -> "_TypeVar":
+  def from_call(cls, node: ast3.Call) -> "_TypeVar":
     """Construct a _TypeVar from an ast.Call node."""
     name, *constraints = node.args
     bound = None
@@ -107,8 +107,8 @@ class _ParamSpec:
   name: str
 
   @classmethod
-  def from_call(cls, node: ast3.AST) -> "_ParamSpec":
-    name, = node.args
+  def from_call(cls, node: ast3.Call) -> "_ParamSpec":
+    name, = node.args  # pytype: disable=bad-unpacking
     return cls(name)
 
 
@@ -147,7 +147,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
         return self.defs.new_type(annotation)
       a = ast3.parse(annotation)
       # Unwrap the module the parser puts around the source string
-      typ = a.body[0].value
+      typ = a.body[0].value  # pytype: disable=attribute-error
       return self.visit(typ)
     except ParseError as e:
       # Clear out position information since it is relative to the typecomment
@@ -516,7 +516,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     self.defs.add_import(module, imports)
     return Splice([])
 
-  def _convert_newtype_args(self, node: ast3.AST):
+  def _convert_newtype_args(self, node: ast3.Call):
     if len(node.args) != 2:
       msg = "Wrong args: expected NewType(name, [(field, type), ...])"
       raise ParseError(msg)
@@ -524,7 +524,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     typ = self.convert_node(typ)
     node.args = [name.s, typ]
 
-  def _convert_typing_namedtuple_args(self, node: ast3.AST):
+  def _convert_typing_namedtuple_args(self, node: ast3.Call):
     # TODO(mdemello): handle NamedTuple("X", a=int, b=str, ...)
     if len(node.args) != 2:
       msg = "Wrong args: expected NamedTuple(name, [(field, type), ...])"
@@ -534,14 +534,14 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     fields = [(types.string_value(n), t) for (n, t) in fields]
     node.args = [name.s, fields]
 
-  def _convert_collections_namedtuple_args(self, node: ast3.AST):
+  def _convert_collections_namedtuple_args(self, node: ast3.Call):
     if len(node.args) != 2:
       msg = "Wrong args: expected namedtuple(name, [field, ...])"
       raise ParseError(msg)
     name, fields = node.args
     fields = self.convert_node(fields)
     fields = [(types.string_value(n), pytd.AnythingType()) for n in fields]
-    node.args = [name.s, fields]
+    node.args = [name.s, fields]  # pytype: disable=attribute-error
 
   def _convert_typevar_args(self, node):
     self.annotation_visitor.visit(node.keywords)
@@ -562,7 +562,7 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
     name, = node.args
     node.args = [name.s]
 
-  def _convert_typed_dict_args(self, node: ast3.AST):
+  def _convert_typed_dict_args(self, node: ast3.Call):
     # TODO(b/157603915): new_typed_dict currently doesn't do anything with the
     # args, so we don't bother converting them fully.
     msg = "Wrong args: expected TypedDict(name, {field: type, ...})"
