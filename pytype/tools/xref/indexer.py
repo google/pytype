@@ -1257,8 +1257,10 @@ def process_file(options, source_text=None, generate_callgraphs=False,
           loader=loader,
           ctx=ctx)
 
+  # pylint: disable=unexpected-keyword-arg
   ast_root_node = ast3.parse(src, options.input,
                              feature_version=options.python_version[1])
+  # pylint: enable=unexpected-keyword-arg
 
   # TODO(mdemello): Get from args
   module_name = "module"
