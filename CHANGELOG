@@ -1,10 +1,15 @@
-Version (upcoming):
+Version 2021.11.18:
 
 New features and updates:
 * Enable --gen-stub-imports by default and make the flag a no-op. It will be
   removed in the next release.
+* Pass more precise argument types to contextmanager __exit__ methods.
+* Add a helpful error message for use-after-delete.
 
 Bug fixes:
+* Recognize "/dev/null" as a package path in load_pytd.
+* Remove references to the `__builtin__` module.
+* Allow disables for invalid calls in 3.9 to be put on the same lines as in 3.7.
 
 Version 2021.11.12:
 
