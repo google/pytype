@@ -4,6 +4,7 @@ import collections
 import logging
 import os
 import pickle
+import sys
 
 from typing import Dict, Iterable, Optional, Tuple
 
@@ -375,14 +376,14 @@ class Loader:
 
   def __init__(self,
                base_module,
-               python_version,
+               python_version=None,
                pythonpath=(),
                imports_map=None,
                use_typeshed=True,
                modules=None,
                open_function=open,
                gen_stub_imports=True):
-    self.python_version = utils.normalize_version(python_version)
+    self.python_version = python_version or sys.version_info[:2]
     self._modules = _ModuleMap(self.python_version, modules, gen_stub_imports)
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast

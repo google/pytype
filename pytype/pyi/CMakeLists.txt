@@ -29,7 +29,6 @@ py_library(
     .modules
     .types
     .visitor
-    pytype.utils
     pytype.ast.ast
     pytype.pytd.pytd_for_parser
 )

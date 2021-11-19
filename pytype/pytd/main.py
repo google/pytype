@@ -53,7 +53,7 @@ def make_parser():
       help="Remove mutable parameters.")
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
-      dest="python_version", default="3",
+      dest="python_version", default=None,
       help=("Python version to target (\"major.minor\", e.g. \"3.7\")"))
   o.add_argument(
       "--multiline-args", action="store_true",
@@ -65,7 +65,10 @@ def make_parser():
 def main():
   argument_parser = make_parser()
   opts = argument_parser.parse_args()
-  python_version = utils.version_from_string(opts.python_version)
+  if opts.python_version:
+    python_version = utils.version_from_string(opts.python_version)
+  else:
+    python_version = sys.version_info[:2]
   try:
     utils.validate_version(python_version)
   except utils.UsageError as e:

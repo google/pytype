@@ -2747,7 +2747,6 @@ class ParamsTest(test_base.UnitTest):
 
   def test_feature_version(self):
     cases = [
-        [3, sys.version_info.minor],
         [(3,), sys.version_info.minor],
         [(3, 7), 7],
         [(3, 8, 2), 8]

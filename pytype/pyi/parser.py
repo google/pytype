@@ -3,10 +3,8 @@
 import dataclasses
 import hashlib
 import sys
-import typing
 from typing import Any, List, Optional, Tuple, Union
 
-from pytype import utils
 from pytype.ast import debug
 from pytype.pyi import classdef
 from pytype.pyi import conditions
@@ -688,24 +686,20 @@ def _parse(src: str, feature_version: int, filename: str = ""):
 
 
 # Python version input type.
-VersionType = Union[int, Tuple[int, ...]]
+VersionType = Optional[Tuple[int, ...]]
 
 
 def _feature_version(python_version: VersionType) -> int:
   """Get the python feature version for the parser."""
-  if isinstance(python_version, int):
+  if not python_version or len(python_version) == 1:
     return sys.version_info.minor
   else:
-    python_version = typing.cast(Tuple[int, ...], python_version)
-    if len(python_version) == 1:
-      return sys.version_info.minor
-    else:
-      return python_version[1]
+    return python_version[1]
 
 
 def parse_string(
     src: str,
-    python_version: VersionType = 3,
+    python_version: VersionType = None,
     name: Optional[str] = None,
     filename: Optional[str] = None,
     platform: Optional[str] = None,
@@ -720,14 +714,14 @@ def parse_pyi(
     src: str,
     filename: Optional[str],
     module_name: str,
-    python_version: VersionType = 3,
+    python_version: VersionType = None,
     platform: Optional[str] = None,
     gen_stub_imports: bool = True,
 ) -> pytd.TypeDeclUnit:
   """Parse a pyi string."""
   filename = filename or ""
   feature_version = _feature_version(python_version)
-  python_version = utils.normalize_version(python_version)
+  python_version = python_version or sys.version_info[:2]
   root = _parse(src, feature_version, filename)
   gen_pytd = GeneratePytdVisitor(
       src, filename, module_name, python_version, platform, gen_stub_imports)
@@ -740,12 +734,12 @@ def parse_pyi_debug(
     src: str,
     filename: str,
     module_name: str,
-    python_version: VersionType = 3,
+    python_version: VersionType = None,
     platform: Optional[str] = None,
 ) -> Tuple[pytd.TypeDeclUnit, GeneratePytdVisitor]:
   """Debug version of parse_pyi."""
   feature_version = _feature_version(python_version)
-  python_version = utils.normalize_version(python_version)
+  python_version = python_version or sys.version_info[:2]
   root = _parse(src, feature_version, filename)
   print(debug.dump(root, ast3, include_attributes=False))
   gen_pytd = GeneratePytdVisitor(
@@ -762,7 +756,7 @@ def parse_pyi_debug(
   return root, gen_pytd
 
 
-def canonical_pyi(pyi, python_version=3, multiline_args=False,
+def canonical_pyi(pyi, python_version=None, multiline_args=False,
                   gen_stub_imports=True):
   """Rewrite a pyi in canonical form."""
   ast = parse_string(pyi, python_version=python_version,

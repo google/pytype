@@ -500,8 +500,6 @@ class Postprocessor:
     if python_version:
       if isinstance(python_version, str):
         version = utils.version_from_string(python_version)
-      elif isinstance(python_version, int):
-        version = utils.normalize_version(python_version)
       else:
         version = python_version
     else:

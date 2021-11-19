@@ -55,25 +55,8 @@ def format_version(python_version):
 
 
 def version_from_string(version_string):
-  """Parse a version string like "3" or "3.7" into a tuple."""
-  try:
-    version_int = int(version_string)
-    return normalize_version(version_int)
-  except ValueError:
-    return tuple(map(int, version_string.split(".")))
-
-
-def normalize_version(version):
-  """Gets a version tuple from either a major version int or a version tuple."""
-  if isinstance(version, int):
-    # TODO(b/195453869): There's no longer any reason to accept just a major
-    # version, since all supported versions are 3.x. This should be an error.
-    if version != 3:
-      validate_version((version, 7))
-    else:
-      return sys.version_info[:2]
-  else:
-    return version
+  """Parse a version string like "3.7" into a tuple."""
+  return tuple(map(int, version_string.split(".")))
 
 
 def validate_version(python_version):
