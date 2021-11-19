@@ -20,12 +20,12 @@ class ConvertTest(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self._ctx = context.Context(errors.ErrorLog(), options,
-                                load_pytd.Loader(None, self.python_version))
+                                load_pytd.Loader(options))
 
   def _load_ast(self, name, src):
     with file_utils.Tempdir() as d:
       d.create_file(name + ".pyi", src)
-      self._ctx.loader.pythonpath = [d.path]  # monkeypatch
+      self._ctx.options.tweak(pythonpath=[d.path])  # monkeypatch
       return self._ctx.loader.import_name(name)
 
   def _convert_class(self, name, ast):

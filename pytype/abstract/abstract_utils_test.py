@@ -14,10 +14,9 @@ class GetViewsTest(test_base.UnitTest):
 
   def setUp(self):
     super().setUp()
+    options = config.Options.create(python_version=self.python_version)
     self._ctx = context.Context(
-        errors.ErrorLog(),
-        config.Options.create(python_version=self.python_version),
-        load_pytd.Loader(None, self.python_version))
+        errors.ErrorLog(), options, load_pytd.Loader(options))
 
   def test_basic(self):
     v1 = self._ctx.program.NewVariable([self._ctx.convert.unsolvable], [],

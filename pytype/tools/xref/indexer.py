@@ -907,7 +907,7 @@ class Indexer:
     self.loader = loader
     self.pytd_module = pytd_module
     self.resolved_modules = loader.get_resolved_modules()
-    self.imports = xref_utils.process_imports_map(loader.imports_map)
+    self.imports = xref_utils.process_imports_map(loader.options.imports_map)
     self.module_name = module_name
     self.traces = src.traces
     self.defs = None

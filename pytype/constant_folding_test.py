@@ -225,7 +225,7 @@ class TypeBuilderTestBase(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self.ctx = context.Context(errors.ErrorLog(), options,
-                               load_pytd.Loader(None, self.python_version))
+                               load_pytd.Loader(options))
     self.ctx.vm._fold_constants = True
 
   def assertPytd(self, val, expected):

@@ -260,8 +260,8 @@ def PrepareForExport(module_name, ast, loader):
   # their own visitors so they can be applied without printing.
   src = pytd_utils.Print(ast)
   ast = parser.parse_string(src=src, name=module_name,
-                            python_version=loader.python_version,
-                            gen_stub_imports=loader.gen_stub_imports)
+                            python_version=loader.options.python_version,
+                            gen_stub_imports=loader.options.gen_stub_imports)
   ast = ast.Visit(visitors.LookupBuiltins(loader.builtins, full_names=False))
   ast = ast.Visit(visitors.ExpandCompatibleBuiltins(loader.builtins))
   ast = ast.Visit(visitors.LookupLocalTypes())

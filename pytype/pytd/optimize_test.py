@@ -1,6 +1,7 @@
 import re
 import textwrap
 
+from pytype import config
 from pytype import load_pytd
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -25,7 +26,8 @@ class TestOptimize(parser_test_base.ParserTest):
   @classmethod
   def setUpClass(cls):
     super(TestOptimize, cls).setUpClass()
-    cls.loader = load_pytd.Loader(None, cls.python_version)
+    cls.loader = load_pytd.Loader(
+        config.Options.create(python_version=cls.python_version))
     cls.builtins = cls.loader.builtins
     cls.typing = cls.loader.typing
 

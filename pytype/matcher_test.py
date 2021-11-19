@@ -20,7 +20,7 @@ class MatcherTestBase(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self.ctx = context.Context(errors.ErrorLog(), options,
-                               load_pytd.Loader(None, self.python_version))
+                               load_pytd.Loader(options))
     self.matcher = self.ctx.matcher(self.ctx.root_node)
 
   def _match_var(self, left, right):
@@ -49,7 +49,7 @@ class MatcherTest(MatcherTestBase):
       filename = str(hash(src))
     with file_utils.Tempdir() as d:
       d.create_file(filename + ".pyi", src)
-      self.ctx.loader.pythonpath = [d.path]  # monkeypatch
+      self.ctx.options.tweak(pythonpath=[d.path])  # monkeypatch
       ast = self.ctx.loader.import_name(filename)
       return ast.Lookup(filename + "." + objname)
 

@@ -672,6 +672,7 @@ py_test(
   SRCS
     load_pytd_test.py
   DEPS
+    .config
     .file_utils
     .load_pytd
     .module_utils

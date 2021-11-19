@@ -4,6 +4,7 @@ import os
 import sys
 import textwrap
 
+from pytype import config
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
@@ -19,7 +20,8 @@ class ParserTest(test_base.UnitTest):
   @classmethod
   def setUpClass(cls):
     super(ParserTest, cls).setUpClass()
-    cls.loader = load_pytd.Loader(None, cls.python_version)
+    cls.loader = load_pytd.Loader(
+        config.Options.create(python_version=cls.python_version))
 
   def Parse(self, src, name=None, version=None, platform=None):
     version = version or self.python_version

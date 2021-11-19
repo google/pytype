@@ -44,10 +44,7 @@ def _MatchLoaderConfig(options, loader):
   if (options.use_pickled_files !=
       isinstance(loader, load_pytd.PickledPyiLoader)):
     return False
-  for loader_attr, opt in load_pytd.LOADER_ATTR_TO_CONFIG_OPTION_MAP.items():
-    if getattr(options, opt) != getattr(loader, loader_attr):
-      return False
-  return True
+  return options == loader.options
 
 
 def _Format(code):
