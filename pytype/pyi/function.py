@@ -58,7 +58,7 @@ class Param(pytd_function.Param):
   """Internal representation of function parameters."""
 
   @classmethod
-  def from_arg(cls, arg: ast3.AST, kwonly=False) -> "Param":
+  def from_arg(cls, arg: ast3.arg, kwonly=False) -> "Param":
     """Constructor from an ast.argument node."""
     p = cls(arg.arg)
     if arg.annotation:
@@ -71,7 +71,8 @@ class NameAndSig(pytd_function.NameAndSig):
   """Internal representation of function signatures."""
 
   @classmethod
-  def from_function(cls, function: ast3.AST, is_async: bool) -> "NameAndSig":
+  def from_function(
+      cls, function: ast3.FunctionDef, is_async: bool) -> "NameAndSig":
     """Constructor from an ast.FunctionDef node."""
     name = function.name
 
@@ -137,7 +138,7 @@ class NameAndSig(pytd_function.NameAndSig):
 
 
 def _pytd_signature(
-    function: ast3.AST,
+    function: ast3.FunctionDef,
     is_async: bool,
     exceptions: Optional[List[pytd.Type]] = None
 ) -> pytd.Signature:
@@ -161,14 +162,15 @@ def _pytd_signature(
                         exceptions=tuple(exceptions), template=())
 
 
-def _pytd_star_param(arg: ast3.AST) -> Optional[pytd.Parameter]:
+def _pytd_star_param(arg: ast3.arg) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a *args argument."""
   if not arg:
     return None
   return pytd_function.pytd_star_param(arg.arg, arg.annotation)
 
 
-def _pytd_starstar_param(arg: ast3.AST) -> Optional[pytd.Parameter]:
+def _pytd_starstar_param(
+    arg: Optional[ast3.arg]) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a **kwargs argument."""
   if not arg:
     return None
