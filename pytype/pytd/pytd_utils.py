@@ -7,6 +7,9 @@ locally or within a larger repository.
 # len(x) == 0 is clearer in some places:
 # pylint: disable=g-explicit-length-test
 
+# We use a mix of camel case and snake case for method names:
+# pylint: disable=invalid-name
+
 import collections
 import difflib
 import gzip
@@ -116,7 +119,6 @@ def JoinTypes(types):
     return pytd.NothingType()
 
 
-# pylint: disable=invalid-name
 def disabled_function(*unused_args, **unused_kwargs):
   """Disable a function.
 
