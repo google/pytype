@@ -10,7 +10,7 @@
       * [Pyi stub files](#pyi-stub-files)
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
 
-<!-- Added by: rechen, at: 2021-10-19T16:14-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -269,13 +269,13 @@ and [typeshed][typeshed]. If you find a mistake in one of these files, please
 
 <!-- References with different internal and external versions -->
 
-[merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
+[merge-pyi]: https://github.com/google/pytype/tree/main/pytype/tools/merge_pyi
 
 [new-bug]: https://github.com/google/pytype/issues/new
 
-[pytype-builtins]: https://github.com/google/pytype/tree/master/pytype/stubs/builtins
+[pytype-builtins]: https://github.com/google/pytype/tree/main/pytype/stubs/builtins
 
-[pytype-stdlib]: https://github.com/google/pytype/tree/master/pytype/stubs/stdlib
+[pytype-stdlib]: https://github.com/google/pytype/tree/main/pytype/stubs/stdlib
 
 [style-guide-conditional-imports]: https://google.github.io/styleguide/pyguide.html#31913-conditional-imports
 

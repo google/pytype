@@ -90,7 +90,7 @@ https://github.com/google/pytype/blob/a2ce16edc0ee992f97b328ce752b51318a00d513/.
 ### GitHub release
 
 Update the `classifiers` and `install_requires` fields in
-[setup.cfg](https://github.com/google/pytype/blob/master/setup.cfg) to include
+[setup.cfg](https://github.com/google/pytype/blob/main/setup.cfg) to include
 the new version.
 
 ### new features
@@ -108,13 +108,13 @@ and by searching for "New in version 3.x" in the
 
 [cpython-source]: https://github.com/python/cpython/blob/beba1a808000d5fc445cb28eab96bdb4cdb7c959/Lib/importlib/_bootstrap_external.py#L245
 
-[pyc.generate_opcode_diffs]: https://github.com/google/pytype/blob/master/pytype/pyc/generate_opcode_diffs.py
+[pyc.generate_opcode_diffs]: https://github.com/google/pytype/blob/main/pytype/pyc/generate_opcode_diffs.py
 
 [pyc.magic]: https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/pytype/pyc/magic.py#L97
 
 [pyc.opcodes.python_3_7_mapping]: https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/pytype/pyc/opcodes.py#L1101
 
-[test_data.simple]: https://github.com/google/pytype/blob/master/pytype/test_data/simple.py
+[test_data.simple]: https://github.com/google/pytype/blob/main/pytype/test_data/simple.py
 
 [utils.validate_version]: https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/pytype/utils.py#L74
 

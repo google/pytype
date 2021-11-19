@@ -22,7 +22,7 @@ freshness: { owner: 'tsudol' reviewed: '2020-11-20' }
          * [A More Complex Example](#a-more-complex-example)
          * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -273,8 +273,8 @@ pytype to continue analysis in the face of complexity.
 
 Pytype sets the default data to `abstract.Unsolvable`.
 
-[find_or_add_binding]: https://github.com/google/pytype/blob/master/pytype/typegraph/typegraph.cc#L238
-[get_views]: https://github.com/google/pytype/blob/master/pytype/abstract_utils.py#L124
+[find_or_add_binding]: https://github.com/google/pytype/blob/main/pytype/typegraph/typegraph.cc#L238
+[get_views]: https://github.com/google/pytype/blob/main/pytype/abstract_utils.py#L124
 
 ## Sets in the Typegraph
 

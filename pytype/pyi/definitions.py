@@ -760,3 +760,4 @@ def _check_module_functions(functions):
     prop_names = ", ".join(p.name for p in properties)
     raise ParseError(
         "Module-level functions with property decorators: " + prop_names)
+

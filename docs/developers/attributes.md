@@ -12,7 +12,7 @@
          * [get_special_attribute](#get_special_attribute)
          * [valself](#valself)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -130,7 +130,7 @@ value to use can be tricky:
      same as in case (1), except that methods will be returned unbound, since
      there is no instance of the class to bind to.
 
-[attribute]: https://github.com/google/pytype/blob/master/pytype/attribute.py
+[attribute]: https://github.com/google/pytype/blob/main/pytype/attribute.py
 
 [HasSlots]: https://github.com/google/pytype/blob/e760fd4c9f4fbfc2626db0f9a959d556e026b856/pytype/mixin.py#L128
 

@@ -18,7 +18,7 @@
          * [PrintVisitor](#printvisitor)
       * [Partial support](#partial-support)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -180,7 +180,7 @@ finish it later. Some tips for doing this gracefully:
 [parameterized-classes]: #parameterized-classes
 [parser]: type_stubs.md#parser
 
-[pytd]: https://github.com/google/pytype/blob/master/pytype/pytd/pytd.py
+[pytd]: https://github.com/google/pytype/blob/main/pytype/pytd/pytd.py
 
 [pytd-converter]: type_stubs.md#stub-generation
 
