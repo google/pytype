@@ -360,7 +360,6 @@ class FuncSignature:
       decorators (e.g. @staticmethod) are returned. If the function is not
       decorated or only non-simple decorators are found, return [].
     """
-    # TODO(tsudol): memoize
     node = self._node
     if node.parent is None:
       return []
@@ -378,7 +377,6 @@ class FuncSignature:
   @property
   def is_method(self):
     """Whether we are (directly) inside a class."""
-    # TODO(tsudol): memoize
     node = self._node.parent
     while node is not None:
       if node.type == syms.classdef:
@@ -414,7 +412,6 @@ class FuncSignature:
     self._inserted_ret_annotation = True
 
     colon = self._match_results.get('colon')
-    # TODO(tsudol): insert as a Node, not as a prefix
     colon.prefix = ' -> ' + str(ret_type).strip() + colon.prefix
 
   def try_insert_comment_annotation(self, annotation):
@@ -902,8 +899,6 @@ def clean_clone(node, strip_formatting):
   if strip_formatting:
     # strip formatting and comments, represent as prettyfied string
     # For comment-style annotations, important to have a single line
-    # TODO(tsudol): this seems to work if node is a type annotation but will
-    # break for a general node (example: 'import foo' -> 'importfoo'
     s = ''.join(
         ', ' if token.COMMA == n.type else n.value for n in node.leaves())
     assert s
@@ -917,7 +912,6 @@ def clean_clone(node, strip_formatting):
 
   node.parent = None
 
-  # TODO(tsudol): strip line numbers? Not clear if they matter.
   return node
 
 
@@ -941,8 +935,6 @@ def annotate_string(args, py_src, pyi_src):
   parsed_pyi = Pyi.parse(pyi_src)
   fixer.set_pyi_funcs(parsed_pyi.funcs)
 
-  # TODO(tsudol): tool.refactor_file knows how to handle encodings, look into
-  # using that instead.
   tree = tool.refactor_string(py_src + '\n', '<inline>')
   parsed_pyi.add_globals(tree, tuple(fixer.inserted_types))
 
