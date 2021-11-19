@@ -103,7 +103,7 @@ def get_long_description():
   # Fix relative links to the pytype docs.
   return re.sub(
       r'\[(.+)\]: docs/',
-      r'[\g<1>]: https://github.com/google/pytype/blob/master/docs/', desc)
+      r'[\g<1>]: https://github.com/google/pytype/blob/main/docs/', desc)
 
 
 copy_typeshed()
