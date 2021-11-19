@@ -28,10 +28,15 @@ from pytype.pytd.parse import parser_constants
 
 _PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
+PICKLE_EXT = ".pickled"
 
 ANON_PARAM = re.compile(r"_[0-9]+")
 
 _TUPLE_NAMES = ("builtins.tuple", "typing.Tuple")
+
+
+def IsPickle(filename):
+  return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
 
 
 def UnpackUnion(t):

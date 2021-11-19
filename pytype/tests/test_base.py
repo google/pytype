@@ -11,6 +11,7 @@ from pytype import config
 from pytype import directors
 from pytype import file_utils
 from pytype import load_pytd
+from pytype import module_utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -231,7 +232,7 @@ class BaseTest(unittest.TestCase):
         self.fail(
             "Cannot assert errors with InferFromFile(); use InferWithErrors()")
       self.ConfigureOptions(
-          module_name=load_pytd.get_module_name(filename, pythonpath),
+          module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
       unit, _ = analyze.infer_types(code, errorlog, self.options,
                                     loader=self.loader, filename=filename)

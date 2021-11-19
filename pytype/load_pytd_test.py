@@ -8,6 +8,7 @@ import textwrap
 
 from pytype import file_utils
 from pytype import load_pytd
+from pytype import module_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
@@ -54,7 +55,7 @@ class ImportPathsTest(_LoaderTest):
         ("../../foo.py", [".."], None)
     ]
     for filename, pythonpath, expected in test_cases:
-      module = load_pytd.get_module_name(filename, pythonpath)
+      module = module_utils.get_module_name(filename, pythonpath)
       self.assertEqual(module, expected)
 
   def test_builtin_sys(self):

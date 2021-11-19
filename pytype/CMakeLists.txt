@@ -133,7 +133,8 @@ py_library(
     .datatypes
     .errors
     .imports_map_loader
-    .load_pytd
+    .module_utils
+    pytype.pytd.pytd
     pytype.typegraph.cfg_utils
 )
 
@@ -673,6 +674,7 @@ py_test(
   DEPS
     .file_utils
     .load_pytd
+    .module_utils
     pytype.pytd.pytd
     pytype.stubs.stubs
     pytype.tests.test_base

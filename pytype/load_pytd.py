@@ -19,7 +19,6 @@ from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
-
 LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
     "base_module": "module_name",
     "imports_map": "imports_map",
@@ -30,24 +29,14 @@ LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
     "gen_stub_imports": "gen_stub_imports",
 }
 
-
-PICKLE_EXT = ".pickled"
-
-
 # Allow a file to be used as the designated default pyi for blacklisted files
 DEFAULT_PYI_PATH_SUFFIX = None
-
 
 # Always load this module from typeshed, even if we have it in the imports map
 _ALWAYS_PREFER_TYPESHED = frozenset({"typing_extensions"})
 
-
 # Type alias
 _AST = pytd.TypeDeclUnit
-
-
-def is_pickle(filename):
-  return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
 
 
 def _is_default_pyi(path):
@@ -65,15 +54,6 @@ def create_loader(options):
     return PickledPyiLoader(**kwargs)
   else:
     return Loader(**kwargs)
-
-
-def get_module_name(filename, pythonpath):
-  """Get the module name, or None if we can't determine it."""
-  if filename:
-    filename = os.path.normpath(filename)
-    # Keep path '' as is; infer_module will handle it.
-    pythonpath = [path and os.path.normpath(path) for path in pythonpath]
-    return module_utils.infer_module(filename, pythonpath).name
 
 
 ResolvedModule = collections.namedtuple(
@@ -820,7 +800,7 @@ class PickledPyiLoader(Loader):
 
   def load_file(self, module_name, filename, mod_ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if not is_pickle(filename):
+    if not pytd_utils.IsPickle(filename):
       return super().load_file(module_name, filename, mod_ast)
     existing = self._modules.get_existing_ast(module_name)
     if existing:
