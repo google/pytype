@@ -23,7 +23,7 @@ class AbstractTestBase(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self._ctx = context.Context(errors.ErrorLog(), options,
-                                load_pytd.Loader(None, self.python_version))
+                                load_pytd.Loader(options))
     self._program = self._ctx.program
     self._node = self._ctx.root_node.ConnectNew("test_node")
 

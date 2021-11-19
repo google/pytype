@@ -383,7 +383,6 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       g = module.Lookup(module_name + ".__getattr__")
     except KeyError:
       return None
-    # TODO(b/159059370): Make parser.py actually enforce this:
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 

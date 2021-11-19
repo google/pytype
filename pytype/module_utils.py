@@ -6,12 +6,14 @@ import os
 
 class Module(collections.namedtuple("_", "path target name kind")):
   """Inferred information about a module.
-  Args:
+
+  Attributes:
     path: The path to the module, e.g., foo/.
     target: The filename relative to the path, e.g., bar/baz.py.
     name: The module name, e.g., bar.baz.
     kind: The module kind: Builtin, Direct, Local, or System.
       See https://github.com/google/importlab/blob/master/importlab/resolve.py.
+    full_path: The full path to the module (path + target).
   """
 
   def __new__(cls, path, target, name, kind=None):
@@ -47,6 +49,15 @@ def infer_module(filename, pythonpath):
     # We have not found filename relative to anywhere in pythonpath.
     path = ""
   return Module(path, filename, path_to_module_name(filename))
+
+
+def get_module_name(filename, pythonpath):
+  """Get the module name, or None if we can't determine it."""
+  if filename:
+    filename = os.path.normpath(filename)
+    # Keep path '' as is; infer_module will handle it.
+    pythonpath = [path and os.path.normpath(path) for path in pythonpath]
+    return infer_module(filename, pythonpath).name
 
 
 def path_to_module_name(filename):

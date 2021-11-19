@@ -1,5 +1,6 @@
 import textwrap
 
+from pytype import config
 from pytype import load_pytd
 from pytype.pyi import parser
 from pytype.pytd import mro
@@ -40,7 +41,8 @@ class MroTest(parser_test_base.ParserTest):
       class Bar(Foo[int]): pass
     """), python_version=self.python_version)
     ast = ast.Visit(visitors.AdjustTypeParameters())
-    loader = load_pytd.Loader(None, self.python_version)
+    loader = load_pytd.Loader(
+        config.Options.create(python_version=self.python_version))
     ast = loader.resolve_ast(ast)
     bases = mro.GetBasesInMRO(ast.Lookup("Bar"), lookup_ast=ast)
     self.assertListEqual(["Foo", "typing.Generic", "builtins.object"],

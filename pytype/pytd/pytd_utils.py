@@ -7,6 +7,9 @@ locally or within a larger repository.
 # len(x) == 0 is clearer in some places:
 # pylint: disable=g-explicit-length-test
 
+# We use a mix of camel case and snake case for method names:
+# pylint: disable=invalid-name
+
 import collections
 import difflib
 import gzip
@@ -28,10 +31,15 @@ from pytype.pytd.parse import parser_constants
 
 _PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
+PICKLE_EXT = ".pickled"
 
 ANON_PARAM = re.compile(r"_[0-9]+")
 
 _TUPLE_NAMES = ("builtins.tuple", "typing.Tuple")
+
+
+def IsPickle(filename):
+  return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
 
 
 def UnpackUnion(t):
@@ -111,7 +119,6 @@ def JoinTypes(types):
     return pytd.NothingType()
 
 
-# pylint: disable=invalid-name
 def disabled_function(*unused_args, **unused_kwargs):
   """Disable a function.
 

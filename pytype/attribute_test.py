@@ -27,7 +27,7 @@ class ValselfTest(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self.ctx = context.Context(errors.ErrorLog(), options,
-                               load_pytd.Loader(None, self.python_version))
+                               load_pytd.Loader(options))
     self.node = self.ctx.root_node
     self.attribute_handler = self.ctx.attribute_handler
 
@@ -116,7 +116,7 @@ class AttributeTest(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
     self._ctx = context.Context(errors.ErrorLog(), options,
-                                load_pytd.Loader(None, self.python_version))
+                                load_pytd.Loader(options))
 
   def test_type_parameter_instance(self):
     t = abstract.TypeParameter(abstract_utils.T, self._ctx)

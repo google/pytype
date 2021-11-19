@@ -1,7 +1,5 @@
 """Tests for utils.py."""
 
-import sys
-
 from pytype import utils
 
 import unittest
@@ -63,17 +61,8 @@ class UtilsTest(unittest.TestCase):
       self.assertEqual(123, var.get())
     self.assertIsNone(var.get())
 
-  def test_version_from_string_int(self):
-    self.assertEqual(utils.version_from_string("3"), sys.version_info[:2])
-
-  def test_version_from_string_tuple(self):
+  def test_version_from_string(self):
     self.assertEqual(utils.version_from_string("3.7"), (3, 7))
-
-  def test_normalize_version_int(self):
-    self.assertEqual(utils.normalize_version(3), sys.version_info[:2])
-
-  def test_normalize_version_tuple(self):
-    self.assertEqual(utils.normalize_version((3, 7)), (3, 7))
 
   def test_validate_version(self):
     old = utils._VALIDATE_PYTHON_VERSION_UPPER_BOUND

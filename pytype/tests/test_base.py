@@ -11,6 +11,7 @@ from pytype import config
 from pytype import directors
 from pytype import file_utils
 from pytype import load_pytd
+from pytype import module_utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -43,10 +44,7 @@ def _MatchLoaderConfig(options, loader):
   if (options.use_pickled_files !=
       isinstance(loader, load_pytd.PickledPyiLoader)):
     return False
-  for loader_attr, opt in load_pytd.LOADER_ATTR_TO_CONFIG_OPTION_MAP.items():
-    if getattr(options, opt) != getattr(loader, loader_attr):
-      return False
-  return True
+  return options == loader.options
 
 
 def _Format(code):
@@ -231,7 +229,7 @@ class BaseTest(unittest.TestCase):
         self.fail(
             "Cannot assert errors with InferFromFile(); use InferWithErrors()")
       self.ConfigureOptions(
-          module_name=load_pytd.get_module_name(filename, pythonpath),
+          module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
       unit, _ = analyze.infer_types(code, errorlog, self.options,
                                     loader=self.loader, filename=filename)

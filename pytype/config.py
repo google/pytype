@@ -13,8 +13,9 @@ import sys
 from pytype import datatypes
 from pytype import errors
 from pytype import imports_map_loader
-from pytype import load_pytd
+from pytype import module_utils
 from pytype import utils
+from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
 
 
@@ -441,8 +442,8 @@ class Postprocessor:
     if pickle_output:
       if self.output_options.output is None:
         self.error("Can't use without --output", "pickle-output")
-      elif not load_pytd.is_pickle(self.output_options.output):
-        self.error("Must specify %s file for --output" % load_pytd.PICKLE_EXT,
+      elif not pytd_utils.IsPickle(self.output_options.output):
+        self.error("Must specify %s file for --output" % pytd_utils.PICKLE_EXT,
                    "pickle-output")
     self.output_options.pickle_output = pickle_output
 
@@ -454,7 +455,7 @@ class Postprocessor:
       self.error("Can't use without --pickle-output", "verify-pickle")
     else:
       self.output_options.verify_pickle = self.output_options.output.replace(
-          load_pytd.PICKLE_EXT, ".pyi")
+          pytd_utils.PICKLE_EXT, ".pyi")
 
   @uses(["input", "show_config", "pythonpath", "version"])
   def _store_generate_builtins(self, generate_builtins):
@@ -499,8 +500,6 @@ class Postprocessor:
     if python_version:
       if isinstance(python_version, str):
         version = utils.version_from_string(python_version)
-      elif isinstance(python_version, int):
-        version = utils.normalize_version(python_version)
       else:
         version = python_version
     else:
@@ -573,7 +572,7 @@ class Postprocessor:
   @uses(["input", "pythonpath"])
   def _store_module_name(self, module_name):
     if module_name is None:
-      module_name = load_pytd.get_module_name(
+      module_name = module_utils.get_module_name(
           self.output_options.input, self.output_options.pythonpath)
     self.output_options.module_name = module_name
 

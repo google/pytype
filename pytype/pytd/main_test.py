@@ -25,13 +25,13 @@ class TestPytdTool(unittest.TestCase):
     argument_parser = pytd_tool.make_parser()
     opts = argument_parser.parse_args([
         "--optimize", "--lossy", "--max-union=42", "--use-abcs",
-        "--remove-mutable", "--python_version=3.6", "in.pytd", "out.pytd"])
+        "--remove-mutable", "--python_version=3.9", "in.pytd", "out.pytd"])
     self.assertTrue(opts.optimize)
     self.assertTrue(opts.lossy)
     self.assertEqual(opts.max_union, 42)
     self.assertTrue(opts.use_abcs)
     self.assertTrue(opts.remove_mutable)
-    self.assertEqual(opts.python_version, "3.6")
+    self.assertEqual(opts.python_version, "3.9")
     self.assertEqual(opts.input, "in.pytd")
     self.assertEqual(opts.output, "out.pytd")
 

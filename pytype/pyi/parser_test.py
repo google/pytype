@@ -533,6 +533,16 @@ class ParserTest(parser_test_base.ParserTestBase):
       __all__: List[str]
     """)
 
+  def test_invalid_constructor(self):
+    e = "Constructors and function calls in type annotations are not supported."
+    self.check_error("""
+      x = ... # type: typing.NamedTuple("A", [])
+    """, 1, e)
+
+    self.check_error("""
+      x: typing.NamedTuple("A", []) = ...
+    """, 1, e)
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 
@@ -666,101 +676,6 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
 
 
 class NamedTupleTest(parser_test_base.ParserTestBase):
-
-  @unittest.skip("Constructors in type annotations not supported")
-  def test_no_fields(self):
-    self.check("x = ...  # type: NamedTuple('foo', [])", """
-      from typing import Any, Tuple, Type, TypeVar
-
-      x: namedtuple_foo_0
-
-      _Tnamedtuple_foo_0 = TypeVar('_Tnamedtuple_foo_0', bound=namedtuple_foo_0)
-
-      class namedtuple_foo_0(Tuple[()]):
-          __slots__ = []
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_foo_0]) -> _Tnamedtuple_foo_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-      """)
-
-  @unittest.skip("Constructors in type annotations not supported")
-  def test_multiple_fields(self):
-    expected = """
-      from typing import Any, Tuple, Type, TypeVar
-
-      x: namedtuple_foo_0
-
-      _Tnamedtuple_foo_0 = TypeVar('_Tnamedtuple_foo_0', bound=namedtuple_foo_0)
-
-      class namedtuple_foo_0(Tuple[int, str]):
-          __slots__ = ["a", "b"]
-          a: int
-          b: str
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_foo_0], a: int, b: str) -> _Tnamedtuple_foo_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-    """
-    self.check("x = ...  # type: NamedTuple('foo', [('a', int), ('b', str)])",
-               expected)
-    self.check("x = ...  # type: NamedTuple('foo', [('a', int), ('b', str),])",
-               expected)
-    self.check("x = ...  # type: NamedTuple('foo', [('a', int,), ('b', str),])",
-               expected)
-
-  # pylint: disable=line-too-long
-  @unittest.skip("Constructors in type annotations not supported")
-  def test_dedup_basename(self):
-    self.check("""
-      x = ...  # type: NamedTuple('foo', [('a', int,)])
-      y = ...  # type: NamedTuple('foo', [('b', str,)])""",
-               """
-      from typing import Any, Tuple, Type, TypeVar
-
-      x: namedtuple_foo_0
-      y: namedtuple_foo_1
-
-      _Tnamedtuple_foo_0 = TypeVar('_Tnamedtuple_foo_0', bound=namedtuple_foo_0)
-      _Tnamedtuple_foo_1 = TypeVar('_Tnamedtuple_foo_1', bound=namedtuple_foo_1)
-
-      class namedtuple_foo_0(Tuple[int]):
-          __slots__ = ["a"]
-          a: int
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_foo_0], a: int) -> _Tnamedtuple_foo_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-
-      class namedtuple_foo_1(Tuple[str]):
-          __slots__ = ["b"]
-          b: str
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_foo_1], b: str) -> _Tnamedtuple_foo_1: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-        """)
-  # pylint: enable=line-too-long
 
   def test_assign_namedtuple(self):
     self.check("X = NamedTuple('X', [])", """
@@ -1227,6 +1142,16 @@ class FunctionTest(parser_test_base.ParserTestBase):
       def foo() -> int: ...""",
                      line,
                      "Too many decorators for foo")
+
+  def test_module_getattr(self):
+    self.check("""
+      def __getattr__(name) -> int: ...
+    """)
+
+    self.check_error("""
+      def __getattr__(name) -> int: ...
+      def __getattr__(name) -> str: ...
+    """, None, "Multiple signatures for module __getattr__")
 
   def test_type_check_only(self):
     self.check("""
@@ -2822,7 +2747,6 @@ class ParamsTest(test_base.UnitTest):
 
   def test_feature_version(self):
     cases = [
-        [3, sys.version_info.minor],
         [(3,), sys.version_info.minor],
         [(3, 7), 7],
         [(3, 8, 2), 8]

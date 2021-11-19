@@ -17,7 +17,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-12-04' }
       * [Adding a new option](#adding-a-new-option)
       * [Config files](#config-files)
 
-<!-- Added by: mdemello, at: 2021-11-05T12:44-07:00 -->
+<!-- Added by: rechen, at: 2021-11-18T22:29-08:00 -->
 
 <!--te-->
 
@@ -170,9 +170,8 @@ copies options from the raw `input_options` to a final `output_options`. The
    @uses(["input", "pythonpath"])
    def _store_module_name(self, module_name):
      if module_name is None:
-       module_name = load_pytd.get_module_name(
-       self.output_options.input,
-       self.output_options.pythonpath)
+       module_name = module_utils.get_module_name(
+           self.output_options.input, self.output_options.pythonpath)
        self.output_options.module_name = module_name
    ```
 

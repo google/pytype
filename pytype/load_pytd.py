@@ -19,35 +19,14 @@ from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
 
-
-LOADER_ATTR_TO_CONFIG_OPTION_MAP = {
-    "base_module": "module_name",
-    "imports_map": "imports_map",
-    "open_function": "open_function",
-    "python_version": "python_version",
-    "pythonpath": "pythonpath",
-    "use_typeshed": "typeshed",
-    "gen_stub_imports": "gen_stub_imports",
-}
-
-
-PICKLE_EXT = ".pickled"
-
-
 # Allow a file to be used as the designated default pyi for blacklisted files
 DEFAULT_PYI_PATH_SUFFIX = None
-
 
 # Always load this module from typeshed, even if we have it in the imports map
 _ALWAYS_PREFER_TYPESHED = frozenset({"typing_extensions"})
 
-
 # Type alias
 _AST = pytd.TypeDeclUnit
-
-
-def is_pickle(filename):
-  return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
 
 
 def _is_default_pyi(path):
@@ -56,24 +35,13 @@ def _is_default_pyi(path):
 
 def create_loader(options):
   """Create a pytd loader."""
-  kwargs = {attr: getattr(options, opt)
-            for attr, opt in LOADER_ATTR_TO_CONFIG_OPTION_MAP.items()}
   if options.precompiled_builtins:
     return PickledPyiLoader.load_from_pickle(
-        options.precompiled_builtins, **kwargs)
+        options.precompiled_builtins, options)
   elif options.use_pickled_files:
-    return PickledPyiLoader(**kwargs)
+    return PickledPyiLoader(options)
   else:
-    return Loader(**kwargs)
-
-
-def get_module_name(filename, pythonpath):
-  """Get the module name, or None if we can't determine it."""
-  if filename:
-    filename = os.path.normpath(filename)
-    # Keep path '' as is; infer_module will handle it.
-    pythonpath = [path and os.path.normpath(path) for path in pythonpath]
-    return module_utils.infer_module(filename, pythonpath).name
+    return Loader(options)
 
 
 ResolvedModule = collections.namedtuple(
@@ -134,9 +102,8 @@ class _ModuleMap:
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
-  def __init__(self, python_version, modules, gen_stub_imports):
-    self.python_version = python_version
-    self.gen_stub_imports = gen_stub_imports
+  def __init__(self, options, modules):
+    self.options = options
     self._modules: Dict[str, Module] = modules or self._base_modules()
     if self._modules["builtins"].needs_unpickling():
       self._unpickle_module(self._modules["builtins"])
@@ -192,7 +159,8 @@ class _ModuleMap:
     return resolved_modules
 
   def _base_modules(self):
-    bltins, typing = builtin_stubs.GetBuiltinsAndTyping(self.gen_stub_imports)
+    bltins, typing = builtin_stubs.GetBuiltinsAndTyping(
+        self.options.gen_stub_imports)
     return {
         "builtins":
         Module("builtins", self.PREFIX + "builtins", bltins,
@@ -242,9 +210,8 @@ class _ModuleMap:
 class _PathFinder:
   """Find a filepath for a module."""
 
-  def __init__(self, imports_map, pythonpath):
-    self.imports_map = imports_map
-    self.pythonpath = pythonpath
+  def __init__(self, options):
+    self.options = options
 
   def find_import(self, module_name: str) -> Tuple[Optional[str], bool]:
     """Search through pythonpath for a module.
@@ -258,7 +225,7 @@ class _PathFinder:
       - None if we cannot find a full path
     """
     module_name_split = module_name.split(".")
-    for searchdir in self.pythonpath:
+    for searchdir in self.options.pythonpath:
       path = os.path.join(searchdir, *module_name_split)
       # See if this is a directory with a "__init__.py" defined.
       # (These also get automatically created in imports_map_loader.py)
@@ -267,7 +234,7 @@ class _PathFinder:
       if full_path is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
         return full_path, True
-      elif self.imports_map is None and os.path.isdir(path):
+      elif self.options.imports_map is None and os.path.isdir(path):
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
         log.debug("Created empty module %r with path %r",
@@ -283,9 +250,9 @@ class _PathFinder:
 
   def get_pyi_path(self, path: str) -> Optional[str]:
     """Get a pyi file from path if it exists."""
-    if self.imports_map is not None:
-      if path in self.imports_map:
-        full_path = self.imports_map[path]
+    if self.options.imports_map is not None:
+      if path in self.options.imports_map:
+        full_path = self.options.imports_map[path]
       else:
         return None
     else:
@@ -300,11 +267,11 @@ class _PathFinder:
 
   def log_module_not_found(self, module_name):
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
-                module_name, module_name, self.pythonpath,
-                "%d items" % len(self.imports_map) if
-                self.imports_map is not None else "none")
-    if log.isEnabledFor(logging.DEBUG) and self.imports_map:
-      for module, path in self.imports_map.items():
+                module_name, module_name, self.options.pythonpath,
+                "%d items" % len(self.options.imports_map) if
+                self.options.imports_map is not None else "none")
+    if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
+      for module, path in self.options.imports_map.items():
         log.debug("%s -> %s", module, path)
 
 
@@ -379,67 +346,31 @@ class Loader:
   Typically, you'll have one instance of this class, per module.
 
   Attributes:
+    options: A config.Options object.
     builtins: The builtins ast.
     typing: The typing ast.
-    base_module: The full name of the module we're based in (i.e., the module
-      that's importing other modules using this loader).
-    python_version: The target Python version.
-    pythonpath: The PYTHONPATH.
-    imports_map: A short_path -> full_name mapping for imports.
-    use_typeshed: Whether to use https://github.com/python/typeshed.
-    open_function: A custom file opening function.
-    gen_stub_imports: Temporary flag for releasing --gen-stub-imports.
   """
 
   PREFIX = "pytd:"  # for pytd files that ship with pytype
 
-  def __init__(self,
-               base_module,
-               python_version,
-               pythonpath=(),
-               imports_map=None,
-               use_typeshed=True,
-               modules=None,
-               open_function=open,
-               gen_stub_imports=True):
-    self.python_version = utils.normalize_version(python_version)
-    self._modules = _ModuleMap(self.python_version, modules, gen_stub_imports)
+  def __init__(self, options, modules=None):
+    self.options = options
+    self._modules = _ModuleMap(options, modules)
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
-    self.base_module = base_module
-    self._path_finder = _PathFinder(imports_map, pythonpath)
+    self._path_finder = _PathFinder(options)
     self._builtin_loader = builtin_stubs.BuiltinLoader(
-        self.python_version, gen_stub_imports)
+        options.python_version, options.gen_stub_imports)
     self._resolver = _Resolver(self.builtins)
-    self.use_typeshed = use_typeshed
-    self.open_function = open_function
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
     self._prefixes = set()
-    self.gen_stub_imports = gen_stub_imports
     # Paranoid verification that pytype.main properly checked the flags:
-    if imports_map is not None:
-      assert pythonpath == [""], pythonpath
-
-  # Delegate some attributes
-  @property
-  def pythonpath(self):
-    return self._path_finder.pythonpath
-
-  @pythonpath.setter
-  def pythonpath(self, val):
-    self._path_finder.pythonpath = val
-
-  @property
-  def imports_map(self):
-    return self._path_finder.imports_map
-
-  @imports_map.setter
-  def imports_map(self, val):
-    self._path_finder.imports_map = val
+    if options.imports_map is not None:
+      assert options.pythonpath == [""], options.pythonpath
 
   def get_default_ast(self):
-    return builtin_stubs.GetDefaultAst(self.gen_stub_imports)
+    return builtin_stubs.GetDefaultAst(self.options.gen_stub_imports)
 
   def save_to_pickle(self, filename):
     """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
@@ -448,15 +379,15 @@ class Loader:
     # have been loaded.
     items = tuple(
         (name, serialize_ast.StoreAst(
-            module.ast, open_function=self.open_function))
+            module.ast, open_function=self.options.open_function))
         for name, module in sorted(self._modules.items()))
     # Preparing an ast for pickling clears its class pointers, making it
     # unsuitable for reuse, so we have to discard the builtins cache.
     builtin_stubs.InvalidateCache()
     # Now pickle the pickles. We keep the "inner" modules as pickles as a
     # performance optimization - unpickling is slow.
-    pytd_utils.SavePickle(
-        items, filename, compress=True, open_function=self.open_function)
+    pytd_utils.SavePickle(items, filename, compress=True,
+                          open_function=self.options.open_function)
 
   def _resolve_external_and_local_types(self, mod_ast, lookup_ast=None):
     dependencies = self._resolver.collect_dependencies(mod_ast)
@@ -482,11 +413,11 @@ class Loader:
     if existing:
       return existing
     if not mod_ast:
-      with self.open_function(filename, "r") as f:
+      with self.options.open_function(filename, "r") as f:
         mod_ast = parser.parse_string(
             f.read(), filename=filename, name=module_name,
-            python_version=self.python_version,
-            gen_stub_imports=self.gen_stub_imports)
+            python_version=self.options.python_version,
+            gen_stub_imports=self.options.gen_stub_imports)
     return self._process_module(module_name, filename, mod_ast)
 
   def _process_module(self, module_name, filename, mod_ast):
@@ -625,9 +556,9 @@ class Loader:
 
   def import_relative_name(self, name: str) -> _AST:
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
-    if self.base_module is None:
+    if self.options.module_name is None:
       raise ValueError("Attempting relative import in non-package.")
-    path = self.base_module.split(".")[:-1]
+    path = self.options.module_name.split(".")[:-1]
     path.append(name)
     return self.import_name(".".join(path))
 
@@ -650,9 +581,9 @@ class Loader:
       ValueError: If we don't know the name of the base module.
     """
     assert level >= 1
-    if self.base_module is None:
+    if self.options.module_name is None:
       raise ValueError("Attempting relative import in non-package.")
-    components = self.base_module.split(".")
+    components = self.options.module_name.split(".")
     sub_module = ".".join(components[0:-level])
     return self.import_name(sub_module)
 
@@ -695,14 +626,15 @@ class Loader:
       if mod_ast:
         return self.load_file(filename=self.PREFIX + filename,
                               module_name=module_name, mod_ast=mod_ast)
-    if self.use_typeshed:
+    if self.options.typeshed:
       return self._load_typeshed_builtin(subdir, module_name)
     return None
 
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
     loaded = typeshed.parse_type_definition(
-        subdir, module_name, self.python_version, self.gen_stub_imports)
+        subdir, module_name, self.options.python_version,
+        self.options.gen_stub_imports)
     if loaded:
       filename, mod_ast = loaded
       return self.load_file(filename=self.PREFIX + filename,
@@ -766,7 +698,7 @@ class Loader:
   def _import_file(self, module_name):
     """Helper for import_relative: try to load an AST, using pythonpath.
 
-    Loops over self.pythonpath, taking care of the semantics for
+    Loops over self.options.pythonpath, taking care of the semantics for
     __init__, and pretending there's an empty __init__ if the path (derived from
     module_name) is a directory.
 
@@ -802,31 +734,27 @@ class Loader:
 class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-
   @classmethod
-  def load_from_pickle(cls, filename, base_module, **kwargs):
+  def load_from_pickle(cls, filename, options):
     """Load a pytd module from a pickle file."""
-    items = pytd_utils.LoadPickle(
-        filename, compress=True,
-        open_function=kwargs.get("open_function", open))
+    items = pytd_utils.LoadPickle(filename, compress=True,
+                                  open_function=options.open_function)
     modules = {
         name: Module(name, filename=None, ast=None, pickle=pickle,
                      has_unresolved_pointers=False)
         for name, pickle in items
     }
-    return cls(base_module=base_module, modules=modules, **kwargs)
+    return cls(options, modules=modules)
 
   def load_file(self, module_name, filename, mod_ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if not is_pickle(filename):
+    if not pytd_utils.IsPickle(filename):
       return super().load_file(module_name, filename, mod_ast)
     existing = self._modules.get_existing_ast(module_name)
     if existing:
       return existing
     loaded_ast = pytd_utils.LoadPickle(
-        filename, open_function=self.open_function)
+        filename, open_function=self.options.open_function)
     # At this point ast.name and module_name could be different.
     # They are later synced in ProcessAst.
     dependencies = {d: names for d, names in loaded_ast.dependencies

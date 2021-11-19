@@ -176,7 +176,7 @@ class PickleTest(test_base.BaseTest):
       """, module_name="foo")
     with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
-      self.loader.imports_map = {"foo": foo}
+      self.options.tweak(imports_map={"foo": foo})
       pickled_bar = self.PicklePyi("""
         from foo import f  # Alias(name="f", type=Function("foo.f", ...))
       """, module_name="bar")

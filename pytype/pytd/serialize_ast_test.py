@@ -1,6 +1,7 @@
 import os
 import pickle
 
+from pytype import config
 from pytype import file_utils
 from pytype import load_pytd
 from pytype.pytd import pytd_utils
@@ -50,9 +51,8 @@ class SerializeAstTest(test_base.UnitTest):
             pass
     """)
 
-    loader = load_pytd.Loader(base_module=None,
-                              python_version=self.python_version,
-                              pythonpath=[temp_dir.path])
+    loader = load_pytd.Loader(config.Options.create(
+        python_version=self.python_version, pythonpath=temp_dir.path))
     ast = loader.load_file(module_name, pyi_filename)
     # serialize_ast.StoreAst sorts the ast for determinism, so we should do the
     # same to the original ast to do pre- and post-pickling comparisons.
