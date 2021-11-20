@@ -384,9 +384,25 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       self._instance_cache[key] = self._to_instance(container)
     return self._instance_cache[key]
 
+  def _check_not_instantiable(self):
+    """Report [not-instantiable] if the class cannot be instantiated."""
+    # We report a not-instantiable error if all of the following are true:
+    # - The class is abstract.
+    # - It was not created from an explicit type annotation.
+    # - The instantiation is not occuring inside one of the class's own methods.
+    # We check the last condition by seeing whether ctx.vm.frame.func is an
+    # InterpreterFunction whose name starts with "<class>."
+    if not self.is_abstract or self.from_annotation:
+      return
+    if self.ctx.vm.frame and self.ctx.vm.frame.func:
+      calling_func = self.ctx.vm.frame.func.data
+      if (calling_func.isinstance_InterpreterFunction() and
+          calling_func.name.startswith(f"{self.name}.")):
+        return
+    self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
+
   def call(self, node, func, args):
-    if self.is_abstract and not self.from_annotation:
-      self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
+    self._check_not_instantiable()
     node, variable = self._call_new_and_init(node, func, args)
     if variable is None:
       value = self._new_instance(None, node, args)
