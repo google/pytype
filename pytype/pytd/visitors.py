@@ -612,6 +612,7 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     super().__init__(allow_singletons)
     self._toplevel = toplevel
     self.local_names = set()
+    self.class_names = []
 
   def EnterTypeDeclUnit(self, unit):
     self.unit = unit
@@ -622,21 +623,43 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   def _LookupItemRecursive(self, name):
     return pytd.LookupItemRecursive(self.unit, name)
 
+  def EnterClass(self, node):
+    self.class_names.append(node.name)
+
+  def LeaveClass(self, unused_node):
+    self.class_names.pop()
+
+  def _LookupScopedName(self, name):
+    """Look up a name in the chain of nested class scopes."""
+    scopes = [self.unit.name] + self.class_names
+    prefix = f"{self.unit.name}."
+    item = None
+    while item is None and scopes:
+      inner = scopes.pop()
+      lookup_name = f"{inner}.{name}"[len(prefix):]
+      try:
+        item = self._LookupItemRecursive(lookup_name)
+      except KeyError:
+        pass
+    return item
+
   def _LookupLocalName(self, node):
     assert "." not in node.name
     self.local_names.add(node.name)
-    try:
-      item = self.unit.Lookup(self.unit.name + "." + node.name)
-    except KeyError:
-      # Happens for infer calling load_pytd.resolve_ast() for the final pyi
+    item = self._LookupScopedName(node.name)
+    if item is None:
+      # Node names are not prefixed by the unit name when infer calls
+      # load_pytd.resolve_ast() for the final pyi.
       try:
         item = self.unit.Lookup(node.name)
-      except KeyError as e:
-        if (self.allow_singletons and node.name in pytd.SINGLETON_TYPES):
-          # Let the builtins resolver handle it
-          return node
-        raise SymbolLookupError("Couldn't find %s in %s" % (
-            node.name, self.unit.name)) from e
+      except KeyError:
+        pass
+    if item is None:
+      if (self.allow_singletons and node.name in pytd.SINGLETON_TYPES):
+        # Let the builtins resolver handle it
+        return node
+      msg = f"Couldn't find {node.name} in {self.unit.name}"
+      raise SymbolLookupError(msg)
     return item
 
   def _LookupLocalTypes(self, node):
