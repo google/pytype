@@ -26,13 +26,12 @@ class Import:
 class Module:
   """Module and package details."""
 
-  def __init__(self, filename, module_name, gen_stub_imports):
+  def __init__(self, filename, module_name):
     self.filename = filename
     self.module_name = module_name
     is_package = file_utils.is_pyi_directory_init(filename)
     self.package_name = module_utils.get_package_name(module_name, is_package)
     self.parent_name = module_utils.get_package_name(self.package_name, False)
-    self.gen_stub_imports = gen_stub_imports
 
   def _qualify_name_with_special_dir(self, orig_name):
     """Handle the case of '.' and '..' as package names."""
@@ -75,11 +74,8 @@ class Module:
     """Process 'import a, b as c, ...'."""
     if isinstance(item, tuple):
       name, new_name = item
-    elif self.gen_stub_imports:
-      name = new_name = item
     else:
-      # We don't care about imports that are not aliased.
-      return None
+      name = new_name = item
     if name == new_name == "__builtin__":
       # 'import __builtin__' should be completely ignored; this is the PY2 name
       # of the builtins module.

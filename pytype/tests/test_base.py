@@ -132,7 +132,6 @@ class BaseTest(unittest.TestCase):
     self.options = config.Options.create(python_version=self.python_version,
                                          allow_recursive_types=True,
                                          build_dict_literals_from_kwargs=True,
-                                         gen_stub_imports=True,
                                          strict_namedtuple_checks=True,
                                          use_enum_overlay=True)
 
@@ -401,7 +400,8 @@ class BaseTest(unittest.TestCase):
   def assertTypesMatchPytd(self, ty, pytd_src):
     """Parses pytd_src and compares with ty."""
     pytd_tree = parser.parse_string(
-        textwrap.dedent(pytd_src), python_version=self.python_version)
+        textwrap.dedent(pytd_src),
+        options=parser.PyiOptions(python_version=self.python_version))
     pytd_tree = pytd_tree.Visit(visitors.LookupBuiltins(
         self.loader.builtins, full_names=False))
     pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())

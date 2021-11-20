@@ -212,6 +212,7 @@ py_test(
     collections_overlay_test.py
   DEPS
     .collections_overlay
+    pytype.config
     pytype.pytd.pytd
     pytype.tests.test_base
 )

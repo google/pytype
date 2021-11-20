@@ -23,24 +23,10 @@ def InvalidateCache():
 
 
 # Do not call this - get the "builtins" and "typing" modules via the loader.
-def GetBuiltinsAndTyping(gen_stub_imports):
+def GetBuiltinsAndTyping(options):
   if not _cached_builtins_pytd:
-    _cached_builtins_pytd.append(BuiltinsAndTyping().load(gen_stub_imports))
+    _cached_builtins_pytd.append(BuiltinsAndTyping().load(options))
   return _cached_builtins_pytd[0]
-
-
-# Do not call this - use Loader.concat_all()
-def GetBuiltinsPyTD():
-  """Get the "default" AST used to lookup built in types.
-
-  Get an AST for all Python builtins as well as the most commonly used standard
-  libraries.
-
-  Returns:
-    A pytd.TypeDeclUnit instance. It'll directly contain the builtin classes
-    and functions, and submodules for each of the standard library modules.
-  """
-  return pytd_utils.Concat(*GetBuiltinsAndTyping(True))
 
 
 # pyi for a catch-all module
@@ -51,22 +37,22 @@ def __getattr__(name: Any) -> Any: ...
 
 
 # If you have a Loader available, use loader.get_default_ast() instead.
-def GetDefaultAst(gen_stub_imports):
-  return parser.parse_string(src=DEFAULT_SRC, gen_stub_imports=gen_stub_imports)
+def GetDefaultAst(options):
+  return parser.parse_string(src=DEFAULT_SRC, options=options)
 
 
 class BuiltinsAndTyping:
   """The builtins and typing modules, which need to be treated specially."""
 
-  def _parse_predefined(self, name, gen_stub_imports):
+  def _parse_predefined(self, name, options):
     _, src = pytd_utils.GetPredefinedFile("builtins", name, ".pytd")
-    mod = parser.parse_string(src, name=name, gen_stub_imports=gen_stub_imports)
+    mod = parser.parse_string(src, name=name, options=options)
     return mod
 
-  def load(self, gen_stub_imports):
+  def load(self, options):
     """Read builtins.pytd and typing.pytd, and return the parsed modules."""
-    t = self._parse_predefined("typing", gen_stub_imports)
-    b = self._parse_predefined("builtins", gen_stub_imports)
+    t = self._parse_predefined("typing", options)
+    b = self._parse_predefined("builtins", options)
     b = b.Visit(visitors.LookupExternalTypes({"typing": t},
                                              self_name="builtins"))
     t = t.Visit(visitors.LookupBuiltins(b))
@@ -90,9 +76,8 @@ class BuiltinsAndTyping:
 class BuiltinLoader:
   """Load builtins from the pytype source tree."""
 
-  def __init__(self, python_version, gen_stub_imports):
-    self.python_version = python_version
-    self.gen_stub_imports = gen_stub_imports
+  def __init__(self, options):
+    self.options = options
 
   def _parse_predefined(self, pytd_subdir, module, as_package=False):
     """Parse a pyi/pytd file in the pytype source tree."""
@@ -102,8 +87,7 @@ class BuiltinLoader:
     except IOError:
       return None
     ast = parser.parse_string(
-        src, filename=filename, name=module, python_version=self.python_version,
-        gen_stub_imports=self.gen_stub_imports)
+        src, filename=filename, name=module, options=self.options)
     assert ast.name == module
     return ast
 

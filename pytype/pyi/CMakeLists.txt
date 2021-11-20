@@ -142,7 +142,6 @@ toplevel_py_binary(
     ._ast_parser
     .types
     pytype.utils
-    pytype.pyi.parser
     pytype.pytd.pytd_for_parser
 )
 

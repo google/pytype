@@ -105,7 +105,6 @@ py_library(
   DEPS
     .pytd_utils
     .visitors
-    pytype.utils
     pytype.pyi.parser
 )
 
@@ -306,7 +305,9 @@ py_test(
   DEPS
     ._pytd
     .builtin_stubs
+    .pytd_utils
     .visitors
+    pytype.pyi.parser
     pytype.tests.test_base
 )
 

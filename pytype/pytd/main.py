@@ -75,23 +75,26 @@ def main():
     sys.stderr.write("Usage error: %s\n" % utils.message(e))
     sys.exit(1)
 
+  options = parser.PyiOptions(python_version=python_version)
+
   with open(opts.input) as fi:
     sourcecode = fi.read()
     try:
-      parsed = parser.parse_string(sourcecode, filename=opts.input,
-                                   python_version=python_version)
+      parsed = parser.parse_string(
+          sourcecode, filename=opts.input, options=options)
     except parser.ParseError as e:
       sys.stderr.write(str(e))
       sys.exit(1)
 
   if opts.optimize:
-    parsed = optimize.Optimize(parsed,
-                               builtin_stubs.GetBuiltinsPyTD(),
-                               lossy=opts.lossy,
-                               use_abcs=opts.use_abcs,
-                               max_union=opts.max_union,
-                               remove_mutable=opts.remove_mutable,
-                               can_do_lookup=False)
+    parsed = optimize.Optimize(
+        parsed,
+        pytd_utils.Concat(*builtin_stubs.GetBuiltinsAndTyping(options)),
+        lossy=opts.lossy,
+        use_abcs=opts.use_abcs,
+        max_union=opts.max_union,
+        remove_mutable=opts.remove_mutable,
+        can_do_lookup=False)
 
   if opts.output is not None:
     out_text = pytd_utils.Print(parsed, opts.multiline_args)

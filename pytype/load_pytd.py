@@ -160,7 +160,7 @@ class _ModuleMap:
 
   def _base_modules(self):
     bltins, typing = builtin_stubs.GetBuiltinsAndTyping(
-        self.options.gen_stub_imports)
+        parser.PyiOptions.from_toplevel_options(self.options))
     return {
         "builtins":
         Module("builtins", self.PREFIX + "builtins", bltins,
@@ -360,7 +360,7 @@ class Loader:
     self.typing = self._modules["typing"].ast
     self._path_finder = _PathFinder(options)
     self._builtin_loader = builtin_stubs.BuiltinLoader(
-        options.python_version, options.gen_stub_imports)
+        parser.PyiOptions.from_toplevel_options(options))
     self._resolver = _Resolver(self.builtins)
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
@@ -370,7 +370,8 @@ class Loader:
       assert options.pythonpath == [""], options.pythonpath
 
   def get_default_ast(self):
-    return builtin_stubs.GetDefaultAst(self.options.gen_stub_imports)
+    return builtin_stubs.GetDefaultAst(
+        parser.PyiOptions.from_toplevel_options(self.options))
 
   def save_to_pickle(self, filename):
     """Save to a pickle. See PickledPyiLoader.load_from_pickle for reverse."""
@@ -416,8 +417,7 @@ class Loader:
       with self.options.open_function(filename, "r") as f:
         mod_ast = parser.parse_string(
             f.read(), filename=filename, name=module_name,
-            python_version=self.options.python_version,
-            gen_stub_imports=self.options.gen_stub_imports)
+            options=parser.PyiOptions.from_toplevel_options(self.options))
     return self._process_module(module_name, filename, mod_ast)
 
   def _process_module(self, module_name, filename, mod_ast):
@@ -633,8 +633,8 @@ class Loader:
   def _load_typeshed_builtin(self, subdir, module_name):
     """Load a pyi from typeshed."""
     loaded = typeshed.parse_type_definition(
-        subdir, module_name, self.options.python_version,
-        self.options.gen_stub_imports)
+        subdir, module_name,
+        parser.PyiOptions.from_toplevel_options(self.options))
     if loaded:
       filename, mod_ast = loaded
       return self.load_file(filename=self.PREFIX + filename,

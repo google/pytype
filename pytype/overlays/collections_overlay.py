@@ -17,24 +17,14 @@ def _repeat_type(type_str, n):
   return ", ".join((type_str,) * n) if n else "()"
 
 
-def namedtuple_ast(name,
-                   fields,
-                   defaults,
-                   python_version=None,
-                   strict_namedtuple_checks=True,
-                   gen_stub_imports=True):
+def namedtuple_ast(name, fields, defaults, options):
   """Make an AST with a namedtuple definition for the given name and fields.
 
   Args:
     name: The namedtuple name.
     fields: The namedtuple fields.
     defaults: Sequence of booleans, whether each field has a default.
-    python_version: Optionally, the python version of the code under analysis.
-    strict_namedtuple_checks: Whether to enable a stricter type annotation
-      hierarchy for generated NamedType. e.g. Tuple[n*[Any]] instead of tuple.
-      This should usually be set to the value of
-        ctx.options.strict_namedtuple_checks.
-    gen_stub_imports: Set this to the value of ctx.options.gen_stub_imports.
+    options: A config.Options object.
 
   Returns:
     A pytd.TypeDeclUnit with the namedtuple definition in its classes.
@@ -48,6 +38,11 @@ def namedtuple_ast(name,
       ", " + field + (" = ..." if default else "")
       for field, default in zip(fields, defaults))
   field_names_as_strings = ", ".join(repr(field) for field in fields)
+  if options.strict_namedtuple_checks:
+    tuple_superclass_type = "typing.Tuple[{}]".format(
+        _repeat_type("typing.Any", num_fields))
+  else:
+    tuple_superclass_type = "tuple"
 
   nt = textwrap.dedent("""
     {typevar} = TypeVar("{typevar}", bound={name})
@@ -73,15 +68,13 @@ def namedtuple_ast(name,
       typevar=typevar,
       name=name,
       repeat_str=_repeat_type("str", num_fields),
-      tuple_superclass_type=("typing.Tuple[{}]".format(
-          _repeat_type("typing.Any", num_fields))
-                             if strict_namedtuple_checks else "tuple"),
+      tuple_superclass_type=tuple_superclass_type,
       field_defs=field_defs,
       repeat_any=_repeat_type("typing.Any", num_fields),
       fields_as_parameters=fields_as_parameters,
       field_names_as_strings=field_names_as_strings)
-  return parser.parse_string(nt, python_version=python_version,
-                             gen_stub_imports=gen_stub_imports)
+  return parser.parse_string(
+      nt, options=parser.PyiOptions.from_toplevel_options(options))
 
 
 class CollectionsOverlay(overlay.Overlay):
@@ -300,13 +293,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       return node, self.ctx.new_unsolvable(node)
 
     name = escape.pack_namedtuple(name, field_names)
-    ast = namedtuple_ast(
-        name,
-        field_names,
-        defaults,
-        python_version=self.ctx.python_version,
-        strict_namedtuple_checks=self.ctx.options.strict_namedtuple_checks,
-        gen_stub_imports=self.ctx.options.gen_stub_imports)
+    ast = namedtuple_ast(name, field_names, defaults, options=self.ctx.options)
     mapping = self._get_known_types_mapping()
 
     # A truly well-formed pyi for the namedtuple will have references to the new

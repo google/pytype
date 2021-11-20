@@ -135,7 +135,8 @@ def check_or_generate_pyi(options, loader=None):
 
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
-  ast = pytd_builtins.GetDefaultAst(options.gen_stub_imports)
+  ast = pytd_builtins.GetDefaultAst(
+      parser.PyiOptions.from_toplevel_options(options))
   try:
     src = read_source_file(options.input, options.open_function)
     if options.check:

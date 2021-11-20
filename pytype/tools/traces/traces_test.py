@@ -83,10 +83,6 @@ class MatchAstTestCase(unittest.TestCase):
 
   def _parse(self, text, options=None):
     text = textwrap.dedent(text).lstrip()
-    if options:
-      options.tweak(gen_stub_imports=True)
-    else:
-      options = config.Options.create(gen_stub_imports=True)
     return ast.parse(text), traces.trace(text, options)
 
   def _get_traces(self, text, node_type, options=None):

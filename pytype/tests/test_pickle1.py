@@ -14,7 +14,8 @@ class PickleTest(test_base.BaseTest):
 
   def PicklePyi(self, src, module_name):
     src = textwrap.dedent(src)
-    ast = parser.parse_string(src, python_version=self.python_version)
+    ast = parser.parse_string(
+        src, options=parser.PyiOptions.from_toplevel_options(self.options))
     ast = ast.Visit(visitors.LookupBuiltins(
         self.loader.builtins, full_names=False))
     return self._Pickle(ast, module_name)

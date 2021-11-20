@@ -23,11 +23,17 @@ class ParserTest(test_base.UnitTest):
     cls.loader = load_pytd.Loader(
         config.Options.create(python_version=cls.python_version))
 
+  def setUp(self):
+    super().setUp()
+    self.options = parser.PyiOptions(python_version=self.python_version)
+
   def Parse(self, src, name=None, version=None, platform=None):
-    version = version or self.python_version
+    if version:
+      self.options.python_version = version
+    if platform:
+      self.options.platform = platform
     tree = parser.parse_string(
-        textwrap.dedent(src), name=name, python_version=version,
-        platform=platform)
+        textwrap.dedent(src), name=name, options=self.options)
     tree = tree.Visit(visitors.NamedTypeToClassType())
     tree = tree.Visit(visitors.AdjustTypeParameters())
     # Convert back to named types for easier testing
@@ -36,8 +42,7 @@ class ParserTest(test_base.UnitTest):
     return tree
 
   def ParseWithBuiltins(self, src):
-    ast = parser.parse_string(textwrap.dedent(src),
-                              python_version=self.python_version)
+    ast = parser.parse_string(textwrap.dedent(src), options=self.options)
     ast = ast.Visit(visitors.LookupExternalTypes(
         {"builtins": self.loader.builtins, "typing": self.loader.typing}))
     ast = ast.Visit(visitors.NamedTypeToClassType())

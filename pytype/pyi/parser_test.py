@@ -462,7 +462,7 @@ class ParserTest(parser_test_base.ParserTestBase):
         this is not valid"""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src).lstrip(), filename="foo.py",
-                          python_version=self.python_version)
+                          options=self.options)
     self.assertMultiLineEqual(textwrap.dedent("""
         File: "foo.py", line 2
           this is not valid
@@ -503,7 +503,7 @@ class ParserTest(parser_test_base.ParserTestBase):
         X = ... # type: Any
       y = bar.X.Baz
       z = X.Baz
-    """), name="foo", python_version=self.python_version)
+    """), name="foo", options=self.options)
     self.assertEqual("foo.bar.X.Baz", ast.Lookup("foo.y").type.name)
     self.assertEqual("bar.X.Baz", ast.Lookup("foo.z").type.name)
 
@@ -2191,7 +2191,7 @@ class CanonicalPyiTest(parser_test_base.ParserTestBase):
         def foo(x: str) -> Any: ...
     """).strip()
     self.assertMultiLineEqual(
-        parser.canonical_pyi(src, self.python_version), expected)
+        parser.canonical_pyi(src, options=self.options), expected)
 
 
 class TypeMacroTest(parser_test_base.ParserTestBase):
@@ -2326,7 +2326,7 @@ class ImportTypeIgnoreTest(parser_test_base.ParserTestBase):
       from mod import attr  # type: ignore
       def f(x: attr) -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.python_version)
+    ast = parser.parse_string(src, options=self.options)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
 
@@ -2335,7 +2335,7 @@ class ImportTypeIgnoreTest(parser_test_base.ParserTestBase):
       from . import attr  # type: ignore
       def f(x: attr) -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.python_version)
+    ast = parser.parse_string(src, options=self.options)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
 
@@ -2344,7 +2344,7 @@ class ImportTypeIgnoreTest(parser_test_base.ParserTestBase):
       from .. import attr  # type: ignore
       def f(x: attr) -> None: ...
     """)
-    ast = parser.parse_string(src, python_version=self.python_version)
+    ast = parser.parse_string(src, options=self.options)
     self.assertTrue(ast.Lookup("attr"))
     self.assertTrue(ast.Lookup("f"))
 
@@ -2731,7 +2731,7 @@ class ErrorTest(test_base.UnitTest):
       a: int
     """)
     with self.assertRaisesRegex(parser.ParseError, "File.*foo.pyi"):
-      parser.parse_pyi(src, "foo.pyi", "foo", (3, 6))
+      parser.parse_pyi(src, "foo.pyi", "foo")
 
   def test_lineno(self):
     src = textwrap.dedent("""
@@ -2739,7 +2739,7 @@ class ErrorTest(test_base.UnitTest):
         __slots__ = 0
     """)
     with self.assertRaisesRegex(parser.ParseError, "line 3"):
-      parser.parse_pyi(src, "foo.py", "foo", (3, 6))
+      parser.parse_pyi(src, "foo.py", "foo")
 
 
 class ParamsTest(test_base.UnitTest):
