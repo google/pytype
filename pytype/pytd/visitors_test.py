@@ -513,23 +513,23 @@ class TestVisitors(parser_test_base.ParserTest):
     foo = ast.Lookup("Foo")
     bar = ast.Lookup("Bar")
     qux = ast.Lookup("Qux")
-    foo_parent, = foo.parents
-    bar_parent, = bar.parents
-    qux_parent, = qux.parents
+    foo_base, = foo.bases
+    bar_base, = bar.bases
+    qux_base, = qux.bases
     # Expected:
-    #  Class(Foo, parent=GenericType(List, parameters=(int,)), template=())
-    #  Class(Bar, parent=GenericType(Dict, parameters=(T, int)), template=(T))
-    #  Class(Qux, parent=GenericType(Baz, parameters=(str, int)), template=())
-    self.assertEqual((pytd.ClassType("int"),), foo_parent.parameters)
+    #  Class(Foo, base=GenericType(List, parameters=(int,)), template=())
+    #  Class(Bar, base=GenericType(Dict, parameters=(T, int)), template=(T))
+    #  Class(Qux, base=GenericType(Baz, parameters=(str, int)), template=())
+    self.assertEqual((pytd.ClassType("int"),), foo_base.parameters)
     self.assertEqual((), foo.template)
     self.assertEqual(
         (pytd.TypeParameter("T", scope="Bar"), pytd.ClassType("int")),
-        bar_parent.parameters)
+        bar_base.parameters)
     self.assertEqual(
         (pytd.TemplateItem(pytd.TypeParameter("T", scope="Bar")),),
         bar.template)
     self.assertEqual((pytd.ClassType("str"), pytd.ClassType("int")),
-                     qux_parent.parameters)
+                     qux_base.parameters)
     self.assertEqual((), qux.template)
 
   def test_adjust_type_parameters_with_duplicates(self):
@@ -771,9 +771,9 @@ class TestVisitors(parser_test_base.ParserTest):
                       lambda: t2.Visit(visitors.VerifyContainers()))
     # Okay
     param = pytd.TypeParameter("T")
-    parent = pytd.GenericType(gen, (param,))
+    generic_base = pytd.GenericType(gen, (param,))
     base.cls = pytd.Class(
-        "tuple", None, (parent,), (), (), (), (), None,
+        "tuple", None, (generic_base,), (), (), (), (), None,
         (pytd.TemplateItem(param),))
     t3 = pytd.TupleType(base, (pytd.NamedType("str"), pytd.NamedType("float")))
     t3.Visit(visitors.VerifyContainers())

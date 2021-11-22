@@ -2831,8 +2831,8 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     convert = self.ctx.convert
     return [
         convert.constant_to_var(
-            parent, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
-        for parent in self.pytd_cls.parents
+            base, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
+        for base in self.pytd_cls.bases
     ]
 
   def load_lazy_attribute(self, name, subst=None):
@@ -2917,7 +2917,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     return pytd.Class(
         name=self.name,
         metaclass=self.pytd_cls.metaclass,
-        parents=self.pytd_cls.parents,
+        bases=self.pytd_cls.bases,
         methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
         constants=self.pytd_cls.constants,
         classes=self.pytd_cls.classes,
@@ -4596,7 +4596,7 @@ class Unknown(BaseValue):
     return pytd.Class(
         name=class_name,
         metaclass=None,
-        parents=(pytd.NamedType("builtins.object"),),
+        bases=(pytd.NamedType("builtins.object"),),
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
                         for name, c in self.members.items()),

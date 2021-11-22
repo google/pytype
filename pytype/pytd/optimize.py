@@ -689,14 +689,14 @@ class AddInheritedMethods(visitors.Visitor):
 
   def VisitClass(self, cls):
     """Add superclass methods and constants to this Class."""
-    if any(base for base in cls.parents if isinstance(base, pytd.NamedType)):
+    if any(base for base in cls.bases if isinstance(base, pytd.NamedType)):
       raise AssertionError("AddInheritedMethods needs a resolved AST")
     # Filter out only the types we can reason about.
     bases = [base.cls
-             for base in cls.parents
+             for base in cls.bases
              if isinstance(base, pytd.ClassType)]
     # Don't pull in methods that are named the same as existing methods in
-    # this class, local methods override parent class methods.
+    # this class, local methods override base class methods.
     names = {m.name for m in cls.methods} | {c.name for c in cls.constants}
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
@@ -749,7 +749,7 @@ class PullInMethodClasses(visitors.Visitor):
     """True if a signature has a self parameter.
 
     This only checks for the name, since the type can be too many different
-    things (type of the method, type of the parent class, object, unknown etc.)
+    things (type of the method, type of the base class, object, unknown etc.)
     and doesn't carry over to the simplified version, anyway.
 
     Arguments:

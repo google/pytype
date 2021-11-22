@@ -50,7 +50,7 @@ class MixinMeta(type):
     # pytype: disable=attribute-error
     for supercls in type(method.__self__).__mro__:
       # Fetch from __dict__ rather than using getattr() because we only want
-      # to consider methods defined on supercls itself (not on a parent).
+      # to consider methods defined on supercls itself (not on a base).
       if ("__mixin_overloads__" in supercls.__dict__ and
           supercls.__mixin_overloads__.get(method.__name__) is cls):
         method_cls = supercls

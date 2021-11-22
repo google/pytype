@@ -296,10 +296,10 @@ def _merge_type(t0, t1, name, cls):
     return t1
   if t1 is None or t1.isinstance_Unsolvable():
     return t0
-  # t0 is parent of t1
+  # t0 is a base of t1
   if t0 in t1.mro:
     return t1
-  # t1 is parent of t0
+  # t1 is a base of t0
   if t1 in t0.mro:
     return t0
   raise GenericTypeError(cls, "Conflicting value for TypeVar %s" % name)

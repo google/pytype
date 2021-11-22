@@ -258,14 +258,14 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitClass(self, node):
     """Visit a class, producing a multi-line, properly indented string."""
-    parents = node.parents
-    # If object is the only parent, we don't need to list any parents.
-    if parents == ("object",):
-      parents = ()
+    bases = node.bases
+    # If object is the only base, we don't need to list any bases.
+    if bases == ("object",):
+      bases = ()
     if node.metaclass is not None:
-      parents += ("metaclass=" + node.metaclass,)
-    parents_str = f"({', '.join(parents)})" if parents else ""
-    header = [f"class {node.name}{parents_str}:"]
+      bases += ("metaclass=" + node.metaclass,)
+    bases_str = f"({', '.join(bases)})" if bases else ""
+    header = [f"class {node.name}{bases_str}:"]
     if node.slots is not None:
       slots_str = ", ".join(f"\"{s}\"" for s in node.slots)
       slots = [self.INDENT + f"__slots__ = [{slots_str}]"]

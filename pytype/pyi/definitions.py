@@ -118,13 +118,13 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     try:
       value = value.Lookup(part)
     except KeyError:
-      for parent in value.parents:
-        if parent.name not in name_to_class:
-          # If the parent is unknown, we don't know whether it contains 'part',
+      for base in value.bases:
+        if base.name not in name_to_class:
+          # If the base is unknown, we don't know whether it contains 'part',
           # so it cannot be resolved.
           return alias
         try:
-          value = name_to_class[parent.name].Lookup(part)
+          value = name_to_class[base.name].Lookup(part)
         except KeyError:
           continue  # continue up the MRO
         else:
@@ -224,7 +224,7 @@ class _VerifyMutators(visitors.Visitor):
 
   def EnterClass(self, node):
     params = set()
-    for cls in node.parents:
+    for cls in node.bases:
       params |= self._GetTypeParameters(cls)
     self._AddParams(params)
 
@@ -366,7 +366,7 @@ class Definitions:
         name, len(self.generated_classes[name]))
     cls = pytd.Class(name=cls_name,
                      metaclass=None,
-                     parents=(typ,),
+                     bases=(typ,),
                      methods=tuple(methods),
                      constants=(),
                      decorators=(),
@@ -620,8 +620,8 @@ class Definitions:
       self, class_name, bases, keywords, decorators, defs
   ) -> pytd.Class:
     """Build a pytd.Class from definitions collected from an ast node."""
-    parents, namedtuple_index = classdef.get_parents(bases)
-    metaclass = classdef.get_metaclass(keywords, parents)
+    bases, namedtuple_index = classdef.get_bases(bases)
+    metaclass = classdef.get_metaclass(keywords, bases)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
     # Make sure we don't have duplicate definitions.
@@ -629,9 +629,9 @@ class Definitions:
 
     # Generate a NamedTuple proxy base class if needed
     if namedtuple_index is not None:
-      namedtuple_parent = self.new_named_tuple(
+      namedtuple_base = self.new_named_tuple(
           class_name, [(c.name, c.type) for c in constants])
-      parents[namedtuple_index] = namedtuple_parent
+      bases[namedtuple_index] = namedtuple_base
       constants = []
 
     if aliases:
@@ -669,16 +669,16 @@ class Definitions:
             t = val.type
           constants.append(pytd.Constant(name, t))
 
-    parents = [p for p in parents if not isinstance(p, pytd.NothingType)]
+    bases = [p for p in bases if not isinstance(p, pytd.NothingType)]
     methods = function.merge_method_signatures(methods)
-    if not parents and class_name not in ["classobj", "object"]:
-      # A parent-less class inherits from classobj in Python 2 and from object
+    if not bases and class_name not in ["classobj", "object"]:
+      # A bases-less class inherits from classobj in Python 2 and from object
       # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we
       # do the same here.
-      parents = (pytd.NamedType("object"),)
+      bases = (pytd.NamedType("object"),)
 
     return pytd.Class(name=class_name, metaclass=metaclass,
-                      parents=tuple(parents),
+                      bases=tuple(bases),
                       methods=tuple(methods),
                       constants=tuple(constants),
                       classes=tuple(classes),

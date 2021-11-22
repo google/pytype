@@ -22,36 +22,36 @@ _PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
 _TYPED_DICT_ALIASES = ("typing.TypedDict", "typing_extensions.TypedDict")
 
 
-def get_parents(
+def get_bases(
     bases: List[pytd.Type]
 ) -> Tuple[List[pytd_node.Node], Optional[int]]:
   """Collect base classes and namedtuple index."""
 
-  parents = []
+  bases_out = []
   namedtuple_index = None
   for i, p in enumerate(bases):
     if p.name and pytd_utils.MatchesFullName(p, _PROTOCOL_ALIASES):
-      parents.append(pytd.NamedType("typing.Protocol"))
+      bases_out.append(pytd.NamedType("typing.Protocol"))
       if isinstance(p, pytd.GenericType):
         # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
         # `Protocol, Generic[T, S, ...]`."
         # https://www.python.org/dev/peps/pep-0544/#generic-protocols
-        parents.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
+        bases_out.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
     elif isinstance(p, pytd.NamedType) and p.name == "typing.NamedTuple":
       if namedtuple_index is not None:
         raise ParseError("cannot inherit from bare NamedTuple more than once")
       namedtuple_index = i
-      parents.append(p)
+      bases_out.append(p)
     elif isinstance(p, pytd.Type):
-      parents.append(p)
+      bases_out.append(p)
     else:
       msg = f"Unexpected class base: {p}"
       raise ParseError(msg)
 
-  return parents, namedtuple_index
+  return bases_out, namedtuple_index
 
 
-def get_metaclass(keywords: List[ast3.keyword], parents: List[pytd_node.Node]):
+def get_metaclass(keywords: List[ast3.keyword], bases: List[pytd_node.Node]):
   """Scan keywords for a metaclass."""
 
   for k in keywords:
@@ -59,9 +59,9 @@ def get_metaclass(keywords: List[ast3.keyword], parents: List[pytd_node.Node]):
     if keyword not in ("metaclass", "total"):
       raise ParseError(f"Unexpected classdef kwarg {keyword!r}")
     elif keyword == "total" and not any(
-        isinstance(parent, pytd.NamedType) and
-        pytd_utils.MatchesFullName(parent, _TYPED_DICT_ALIASES)
-        for parent in parents):
+        isinstance(base, pytd.NamedType) and
+        pytd_utils.MatchesFullName(base, _TYPED_DICT_ALIASES)
+        for base in bases):
       raise ParseError(
           "'total' allowed as classdef kwarg only for TypedDict subclasses")
     if keyword == "metaclass":

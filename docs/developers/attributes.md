@@ -81,7 +81,7 @@ in order to emulate the behavior of the Python interpreter:
 1. Both `_get_attribute_computed` and `_lookup_from_mro_and_handle_descriptors`
    use `_lookup_from_mro` to do attribute lookup on a class. The latter walks
    the class's MRO, calling `_get_attribute_flat` - which in turn calls
-   `_get_member` - to check for the attribute on the class and its parents.
+   `_get_member` - to check for the attribute on the class and its bases.
 1. Similar to `_set_member`, `_get_member` uses
    `_maybe_load_as_instance_attribute` to force lazy loading and then checks
    the `members` dict for the requested attribute.

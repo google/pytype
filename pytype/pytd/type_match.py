@@ -107,7 +107,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
         A list of pytd.Type.
     """
     if isinstance(t, pytd.ClassType):
-      return sum((self.get_superclasses(c) for c in t.cls.parents), [t])
+      return sum((self.get_superclasses(c) for c in t.cls.bases), [t])
     elif isinstance(t, pytd.AnythingType):
       # All types, even "?", inherit from object.
       return [pytd.NamedType("builtins.object")]
@@ -439,7 +439,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     if f1.name not in cls2_methods:
       # The class itself doesn't have this method, but base classes might.
       # TODO(b/159058933): This should do MRO order, not depth-first.
-      for base in cls2.parents:
+      for base in cls2.bases:
         if isinstance(base, pytd.AnythingType):
           # AnythingType can contain any method. However, that would mean that
           # a class that inherits from AnythingType contains any method

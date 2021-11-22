@@ -35,9 +35,9 @@ class UtilsTest(test_base.UnitTest):
 
   def test_has_object_superclass(self):
     cls = self.builtins.Lookup("builtins.memoryview")
-    self.assertEqual(cls.parents, (pytd.ClassType("builtins.object"),))
+    self.assertEqual(cls.bases, (pytd.ClassType("builtins.object"),))
     cls = self.builtins.Lookup("builtins.object")
-    self.assertEqual(cls.parents, ())
+    self.assertEqual(cls.bases, ())
 
 
 if __name__ == "__main__":

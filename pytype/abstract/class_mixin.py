@@ -157,17 +157,17 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Get the attributes defined by this class."""
     raise NotImplementedError(self.__class__.__name__)
 
-  def has_protocol_parent(self):
+  def has_protocol_base(self):
     """Whether this class inherits directly from typing.Protocol."""
     if self.isinstance_PyTDClass():
-      for parent in self.pytd_cls.parents:
-        if parent.name == "typing.Protocol":
+      for base in self.pytd_cls.bases:
+        if base.name == "typing.Protocol":
           return True
     elif self.isinstance_InterpreterClass():
-      for parent_var in self._bases:
-        for parent in parent_var.data:
-          if (parent.isinstance_PyTDClass() and
-              parent.full_name == "typing.Protocol"):
+      for base_var in self._bases:
+        for base in base_var.data:
+          if (base.isinstance_PyTDClass() and
+              base.full_name == "typing.Protocol"):
             return True
     return False
 
@@ -176,7 +176,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     if self.isinstance_ParameterizedClass():
       self.protocol_attributes = self.base_cls.protocol_attributes
       return
-    if not self.has_protocol_parent():
+    if not self.has_protocol_base():
       self.protocol_attributes = set()
       return
     if self.isinstance_PyTDClass() and self.pytd_cls.name.startswith("typing."):
@@ -246,7 +246,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     self.abstract_methods = abstract_methods
 
   def _has_explicit_abcmeta(self):
-    return any(parent.full_name == "abc.ABCMeta" for parent in self.cls.mro)
+    return any(base.full_name == "abc.ABCMeta" for base in self.cls.mro)
 
   def _has_implicit_abcmeta(self):
     """Whether the class should be considered implicitly abstract."""
@@ -254,12 +254,12 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # [ignored-abstractmethod] check for interpreter classes.
     if not self.isinstance_InterpreterClass():
       return False
-    # We check self._bases (immediate parents) instead of self.mro because our
+    # We check self._bases (immediate bases) instead of self.mro because our
     # builtins and typing stubs are inconsistent about implementing abstract
     # methods, and we don't want [not-instantiable] errors all over the place
     # because a class has Protocol buried in its MRO.
     for var in self._bases:
-      if any(parent.full_name == "typing.Protocol" for parent in var.data):
+      if any(base.full_name == "typing.Protocol" for base in var.data):
         return True
     return False
 

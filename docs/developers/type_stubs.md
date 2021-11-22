@@ -133,8 +133,8 @@ of an AST, contains the following (simplified) logic for visiting a class:
 
 ```python
 def VisitClass(self, node):
-  parents_str = "(" + ", ".join(node.parents) + ")"
-  header = ["class " + node.name + parents_str + ":"]
+  bases_str = "(" + ", ".join(node.bases) + ")"
+  header = ["class " + node.name + bases_str + ":"]
   method_lines = sum((m.splitlines() for m in node.methods), [])
   methods = ["  " + m for m in method_lines]
   return "\n".join(header + methods) + "\n"

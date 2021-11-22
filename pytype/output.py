@@ -761,7 +761,7 @@ class Converter(utils.ContextWeakrefMixin):
 
     cls = pytd.Class(name=class_name,
                      metaclass=metaclass,
-                     parents=tuple(bases),
+                     bases=tuple(bases),
                      methods=tuple(methods.values()),
                      constants=tuple(constants),
                      classes=(),

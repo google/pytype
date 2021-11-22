@@ -807,7 +807,7 @@ class AdjustSelf(Visitor):
     return node
 
   def VisitParameter(self, p):
-    """Adjust all parameters called "self" to have their parent class type.
+    """Adjust all parameters called "self" to have their base class type.
 
     But do this only if their original type is unoccupied ("object" or,
     if configured, "Any").
@@ -1376,7 +1376,7 @@ class AdjustTypeParameters(Visitor):
     for x in params:
       if x.name in seen:
         raise ContainerError(
-            "Duplicate type parameter %s in typing.Generic parent of class %s" %
+            "Duplicate type parameter %s in typing.Generic base of class %s" %
             (x.name, class_name))
       seen.add(x.name)
 
@@ -1385,11 +1385,11 @@ class AdjustTypeParameters(Visitor):
     templates = []
     generic_template = None
 
-    for parent in node.parents:
-      if isinstance(parent, pytd.GenericType):
+    for base in node.bases:
+      if isinstance(base, pytd.GenericType):
         params = sum((self._GetTemplateItems(param)
-                      for param in parent.parameters), [])
-        if parent.name in ["typing.Generic", "Generic"]:
+                      for param in base.parameters), [])
+        if base.name in ["typing.Generic", "Generic"]:
           # TODO(mdemello): Do we need "Generic" in here or is it guaranteed
           # to be replaced by typing.Generic by the time this visitor is called?
           self._CheckDuplicateNames(params, node.name)
@@ -1433,7 +1433,7 @@ class AdjustTypeParameters(Visitor):
     self.class_template.pop()
 
   def VisitClass(self, node):
-    """Builds a template for the class from its GenericType parents."""
+    """Builds a template for the class from its GenericType bases."""
     # The template items will not have been properly scoped because they were
     # stored outside of the ast and not visited while processing the class
     # subtree.  They now need to be scoped similar to VisitTypeParameter,
@@ -1555,7 +1555,7 @@ class VerifyContainers(Visitor):
   """Visitor for verifying containers.
 
   Every container (except typing.Generic) must inherit from typing.Generic and
-  have an explicitly parameterized parent that is also a container. The
+  have an explicitly parameterized base that is also a container. The
   parameters on typing.Generic must all be TypeVar instances. A container must
   have at most as many parameters as specified in its template.
 
@@ -1613,7 +1613,7 @@ class VerifyContainers(Visitor):
     """
     mapping = collections.defaultdict(list)
     seen_bases = set()
-    bases = list(reversed(node.parents))
+    bases = list(reversed(node.bases))
     while bases:
       base = bases.pop()
       if base in seen_bases:
@@ -1622,9 +1622,9 @@ class VerifyContainers(Visitor):
       if (isinstance(base, pytd.GenericType) and
           isinstance(base.base_type, pytd.ClassType)):
         mapping[base.base_type].append(base)
-        bases.extend(reversed(base.base_type.cls.parents))
+        bases.extend(reversed(base.base_type.cls.bases))
       elif isinstance(base, pytd.ClassType):
-        bases.extend(reversed(base.cls.parents))
+        bases.extend(reversed(base.cls.bases))
     return mapping
 
   def _UpdateParamToValuesMapping(self, mapping, param, value):

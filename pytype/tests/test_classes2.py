@@ -162,7 +162,7 @@ class ClassesTest(test_base.BaseTest):
           return [x for x in foo.f()]
         """, pythonpath=[d.path])
 
-  def test_parent_init(self):
+  def test_base_init(self):
     errors = self.CheckWithErrors("""
       from typing import Sequence
       class X:
@@ -461,7 +461,7 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"abc\.ABCMeta.*Foo"})
 
-  def test_new_no_parents(self):
+  def test_new_no_bases(self):
     self.Check("""
       class Foo:
         def __new__(cls, x):
@@ -471,7 +471,7 @@ class ClassesTestPython3Feature(test_base.BaseTest):
       Foo(0)
     """)
 
-  def test_new_pyi_no_parents(self):
+  def test_new_pyi_no_bases(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:

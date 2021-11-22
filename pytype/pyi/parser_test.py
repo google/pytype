@@ -287,8 +287,8 @@ class ParserTest(parser_test_base.ParserTestBase):
   def test_from_import(self):
     ast = self.check("from foo import c\nclass Bar(c.X): ...",
                      parser_test_base.IGNORE)
-    parent, = ast.Lookup("Bar").parents
-    self.assertEqual(parent, pytd.NamedType("foo.c.X"))
+    base, = ast.Lookup("Bar").bases
+    self.assertEqual(base, pytd.NamedType("foo.c.X"))
 
   def test_duplicate_names(self):
     self.check_error("""
@@ -901,7 +901,7 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
       class X(dict, namedtuple_X_0): ...
     """)
 
-  def test_multi_namedtuple_parent(self):
+  def test_multi_namedtuple_base(self):
     self.check_error("""
       from typing import NamedTuple
       class X(NamedTuple, NamedTuple): ...
@@ -1297,7 +1297,7 @@ class FunctionTest(parser_test_base.ParserTestBase):
 
 class ClassTest(parser_test_base.ParserTestBase):
 
-  def test_no_parents(self):
+  def test_no_bases(self):
     canonical = """
       class Foo: ...
       """
@@ -1308,7 +1308,7 @@ class ClassTest(parser_test_base.ParserTestBase):
           pass
       """, canonical)
 
-  def test_parents(self):
+  def test_bases(self):
     self.check("""
       class Foo(Bar): ...
     """)
@@ -1316,7 +1316,7 @@ class ClassTest(parser_test_base.ParserTestBase):
       class Foo(Bar, Baz): ...
       """)
 
-  def test_parent_remove_nothingtype(self):
+  def test_base_remove_nothingtype(self):
     self.check("""
       class Foo(nothing): ...
       """, """
@@ -1449,14 +1449,14 @@ class ClassTest(parser_test_base.ParserTestBase):
           def x(self) -> str: ...
       """)
 
-  def test_protocol_parent(self):
+  def test_protocol_base(self):
     self.check("""
       from typing import Protocol
 
       class Foo(Protocol): ...
     """)
 
-  def test_parameterized_protocol_parent(self):
+  def test_parameterized_protocol_base(self):
     self.check("""
       from typing import Protocol, TypeVar
 
