@@ -12,7 +12,7 @@ class Module(collections.namedtuple("_", "path target name kind")):
     target: The filename relative to the path, e.g., bar/baz.py.
     name: The module name, e.g., bar.baz.
     kind: The module kind: Builtin, Direct, Local, or System.
-      See https://github.com/google/importlab/blob/master/importlab/resolve.py.
+      See https://github.com/google/importlab/blob/main/importlab/resolve.py.
     full_path: The full path to the module (path + target).
   """
 
