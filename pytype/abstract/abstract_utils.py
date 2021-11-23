@@ -9,7 +9,6 @@ from pytype import datatypes
 from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
-from pytype.pytd import mro
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -234,23 +233,6 @@ def apply_mutations(node, get_mutations):
   return node
 
 
-def get_template(val: Any):
-  """Get the value's class template."""
-  if _isinstance(val, "Class"):
-    res = {t.full_name for t in val.template}
-    if _isinstance(val, "ParameterizedClass"):
-      res.update(get_template(val.base_cls))
-    elif _isinstance(val, ("PyTDClass", "InterpreterClass")):
-      for base in val.bases():
-        base = get_atomic_value(base, default=val.ctx.convert.unsolvable)
-        res.update(get_template(base))
-    return res
-  elif val.cls != val:
-    return get_template(val.cls)
-  else:
-    return set()
-
-
 def get_mro_bases(bases, ctx):
   """Get bases for MRO computation."""
   mro_bases = []
@@ -407,85 +389,6 @@ def maybe_extract_tuple(t):
   if not _isinstance(v, "Tuple"):
     return (t,)
   return v.pyval
-
-
-def compute_template(val: Any):
-  """Compute the precedence list of template parameters according to C3.
-
-  1. For the base class list, if it contains `typing.Generic`, then all the
-  type parameters should be provided. That means we don't need to parse extra
-  base class and then we can get all the type parameters.
-  2. If there is no `typing.Generic`, parse the precedence list according to
-  C3 based on all the base classes.
-  3. If `typing.Generic` exists, it must contain at least one type parameters.
-  And there is at most one `typing.Generic` in the base classes. Report error
-  if the check fails.
-
-  Args:
-    val: The abstract.BaseValue to compute a template for.
-
-  Returns:
-    parsed type parameters
-
-  Raises:
-    GenericTypeError: if the type annotation for generic type is incorrect
-  """
-  if _isinstance(val, "PyTDClass"):
-    return [
-        val.ctx.convert.constant_to_value(itm.type_param)
-        for itm in val.pytd_cls.template
-    ]
-  elif not _isinstance(val, "InterpreterClass"):
-    return ()
-  bases = [
-      get_atomic_value(base, default=val.ctx.convert.unsolvable)
-      for base in val.bases()
-  ]
-  template = []
-
-  # Compute the number of `typing.Generic` and collect the type parameters
-  for base in bases:
-    if base.full_name == "typing.Generic":
-      if _isinstance(base, "PyTDClass"):
-        raise GenericTypeError(val, "Cannot inherit from plain Generic")
-      if template:
-        raise GenericTypeError(
-            val, "Cannot inherit from Generic[...] multiple times")
-      for item in base.template:
-        param = base.formal_type_parameters.get(item.name)
-        template.append(param.with_module(val.full_name))
-
-  if template:
-    # All type parameters in the base classes should appear in
-    # `typing.Generic`
-    for base in bases:
-      if base.full_name != "typing.Generic":
-        if _isinstance(base, "ParameterizedClass"):
-          for item in base.template:
-            param = base.formal_type_parameters.get(item.name)
-            if _isinstance(base, "TypeParameter"):
-              t = param.with_module(val.full_name)
-              if t not in template:
-                raise GenericTypeError(
-                    val, "Generic should contain all the type variables")
-  else:
-    # Compute template parameters according to C3
-    seqs = []
-    for base in bases:
-      if _isinstance(base, "ParameterizedClass"):
-        seq = []
-        for item in base.template:
-          param = base.formal_type_parameters.get(item.name)
-          if _isinstance(param, "TypeParameter"):
-            seq.append(param.with_module(val.full_name))
-        seqs.append(seq)
-    try:
-      template.extend(mro.MergeSequences(seqs))
-    except ValueError as e:
-      raise GenericTypeError(
-          val, "Illegal type parameter order in class %s" % val.name) from e
-
-  return template
 
 
 def _hash_dict(vardict, names):
