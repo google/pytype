@@ -3,10 +3,12 @@
 import logging
 from typing import Any, Dict, Type
 
+from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
+_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
 class MixinMeta(type):
@@ -124,7 +126,7 @@ class HasSlots(metaclass=MixinMeta):
     # For getting a slot value, we don't need a ParameterizedClass's type
     # parameters, and evaluating them in the middle of constructing the class
     # can trigger a recursion error, so use only the base class.
-    base = self.base_cls if self.isinstance_ParameterizedClass() else self
+    base = self.base_cls if _isinstance(self, "ParameterizedClass") else self
     _, attr = self.ctx.attribute_handler.get_attribute(
         self.ctx.root_node, base, name, base.to_binding(self.ctx.root_node))
     self._super[name] = attr

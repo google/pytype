@@ -72,6 +72,7 @@ py_library(
   SRCS
     mixin.py
   DEPS
+    .abstract_utils
     .function
     pytype.typegraph.cfg
 )

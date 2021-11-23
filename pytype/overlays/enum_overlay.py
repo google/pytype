@@ -420,10 +420,8 @@ class EnumMetaInit(abstract.SimpleFunction):
     # for built-in descriptors (i.e. functions and methods -- NOT all callables)
     # and anything that has __get__, __set__ or __delete__.
     def _check(value):
-      if (value.isinstance_Function() or
-          value.isinstance_BoundFunction() or
-          value.isinstance_ClassMethod() or
-          value.isinstance_StaticMethod()):
+      if isinstance(value, (abstract.Function, abstract.BoundFunction,
+                            abstract.ClassMethod, abstract.StaticMethod)):
         return True
       for attr_name in ("__get__", "__set__", "__delete__"):
         _, attr = self.ctx.attribute_handler.get_attribute(

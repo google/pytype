@@ -11,6 +11,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 
 log = logging.getLogger(__name__)
+_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
 def argname(i):
@@ -20,25 +21,25 @@ def argname(i):
 
 def get_signatures(func):
   """Gets the given function's signatures."""
-  if func.isinstance_PyTDFunction():
+  if _isinstance(func, "PyTDFunction"):
     return [sig.signature for sig in func.signatures]
-  elif func.isinstance_InterpreterFunction():
+  elif _isinstance(func, "InterpreterFunction"):
     return [f.signature for f in func.signature_functions()]
-  elif func.isinstance_BoundFunction():
+  elif _isinstance(func, "BoundFunction"):
     sigs = get_signatures(func.underlying)
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
-  elif func.isinstance_ClassMethod() or func.isinstance_StaticMethod():
+  elif _isinstance(func, ("ClassMethod", "StaticMethod")):
     return get_signatures(func.method)
-  elif func.isinstance_SimpleFunction():
+  elif _isinstance(func, "SimpleFunction"):
     return [func.signature]
-  elif func.cls.isinstance_CallableClass():
+  elif _isinstance(func.cls, "CallableClass"):
     return [Signature.from_callable(func.cls)]
   else:
     unwrapped = abstract_utils.maybe_unwrap_decorated_function(func)
     if unwrapped:
       return list(itertools.chain.from_iterable(
           get_signatures(f) for f in unwrapped.data))
-    if func.isinstance_Instance():
+    if _isinstance(func, "Instance"):
       _, call_var = func.ctx.attribute_handler.get_attribute(
           func.ctx.root_node, func, "__call__",
           func.to_binding(func.ctx.root_node))
@@ -375,7 +376,7 @@ class Args(collections.namedtuple(
     if not self.starstarargs or len(self.starstarargs.data) != 1:
       return None
     kwdict, = self.starstarargs.data
-    if not kwdict.isinstance_Dict():
+    if not _isinstance(kwdict, "Dict"):
       return None
     return kwdict.pyval
 
@@ -491,9 +492,9 @@ class Args(collections.namedtuple(
       # preserve it as an abstract dict. If not, we just had named args packed
       # into starstarargs, so set starstarargs to None.
       kwdict = starstarargs.data[0]
-      if kwdict.isinstance_Dict() and kwdict.could_contain_anything:
+      if _isinstance(kwdict, "Dict") and kwdict.could_contain_anything:
         cls = kwdict.cls
-        if cls.isinstance_PyTDClass():
+        if _isinstance(cls, "PyTDClass"):
           # If cls is not already parameterized with the key and value types, we
           # parameterize it now to preserve them.
           params = {
@@ -728,7 +729,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       raise WrongArgCount(self.signature, args, self.ctx)
     # Extra positional args are passed via the *args argument.
     varargs_type = self.signature.annotations.get(self.signature.varargs_name)
-    if varargs_type and varargs_type.isinstance_ParameterizedClass():
+    if _isinstance(varargs_type, "ParameterizedClass"):
       for (i, vararg) in enumerate(args.posargs[num_expected_posargs:]):
         name = argname(num_expected_posargs + i)
         arg_dict[name] = view[vararg]
@@ -745,7 +746,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       raise WrongKeywordArgs(self.signature, args, self.ctx, extra_kwargs)
     # Extra keyword args are passed via the **kwargs argument.
     kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
-    if kwargs_type and kwargs_type.isinstance_ParameterizedClass():
+    if _isinstance(kwargs_type, "ParameterizedClass"):
       # We sort the kwargs so that matching always happens in the same order.
       for name in sorted(extra_kwargs):
         formal_args.append(
@@ -901,7 +902,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
       arg = actual.data
-      if (formal.mutated_type is not None and arg.isinstance_SimpleValue()):
+      if (formal.mutated_type is not None and _isinstance(arg, "SimpleValue")):
         try:
           all_names_actuals = self._collect_mutated_parameters(
               formal.type, formal.mutated_type)
@@ -1058,11 +1059,11 @@ def call_function(ctx,
   elif ctx.options.precise_return and len(func_var.bindings) == 1:
     funcb, = func_var.bindings
     func = funcb.data
-    if func.isinstance_BoundFunction():
+    if _isinstance(func, "BoundFunction"):
       func = func.underlying
-    if func.isinstance_PyTDFunction():
+    if _isinstance(func, "PyTDFunction"):
       node, result = func.signatures[0].instantiate_return(node, {}, [funcb])
-    elif func.isinstance_InterpreterFunction():
+    elif _isinstance(func, "InterpreterFunction"):
       sig = func.signature_functions()[0].signature
       ret = sig.annotations.get("return", ctx.convert.unsolvable)
       node, result = ctx.vm.init_class(node, ret)
