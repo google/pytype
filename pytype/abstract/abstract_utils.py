@@ -9,7 +9,6 @@ from pytype import datatypes
 from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
-from pytype.pytd import mro
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -216,7 +215,7 @@ def func_name_is_class_init(name):
 
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
-  return (binding.data.isinstance_Class() and
+  return (_isinstance(binding.data, "Class") and
           binding.data.full_name == cls.full_name)
 
 
@@ -234,23 +233,6 @@ def apply_mutations(node, get_mutations):
   return node
 
 
-def get_template(val):
-  """Get the value's class template."""
-  if val.isinstance_Class():
-    res = {t.full_name for t in val.template}
-    if val.isinstance_ParameterizedClass():
-      res.update(get_template(val.base_cls))
-    elif val.isinstance_PyTDClass() or val.isinstance_InterpreterClass():
-      for base in val.bases():
-        base = get_atomic_value(base, default=val.ctx.convert.unsolvable)
-        res.update(get_template(base))
-    return res
-  elif val.cls != val:
-    return get_template(val.cls)
-  else:
-    return set()
-
-
 def get_mro_bases(bases, ctx):
   """Get bases for MRO computation."""
   mro_bases = []
@@ -264,7 +246,7 @@ def get_mro_bases(bases, ctx):
     base = get_atomic_value(base_var, default=ctx.convert.unsolvable)
     mro_bases.append(base)
     # check if it contains user-defined generic types
-    if (base.isinstance_ParameterizedClass() and
+    if (_isinstance(base, "ParameterizedClass") and
         base.full_name != "typing.Generic"):
       has_user_generic = True
   # if user-defined generic type exists, we won't add `typing.Generic` to
@@ -292,9 +274,9 @@ def _merge_type(t0, t1, name, cls):
   Raises:
     GenericTypeError: if the types don't match.
   """
-  if t0 is None or t0.isinstance_Unsolvable():
+  if t0 is None or _isinstance(t0, "Unsolvable"):
     return t1
-  if t1 is None or t1.isinstance_Unsolvable():
+  if t1 is None or _isinstance(t1, "Unsolvable"):
     return t0
   # t0 is a base of t1
   if t0 in t1.mro:
@@ -324,11 +306,10 @@ def parse_formal_type_parameters(
   def merge(t0, t1, name):
     return _merge_type(t0, t1, name, base)
 
-  if base.isinstance_ParameterizedClass():
+  if _isinstance(base, "ParameterizedClass"):
     if base.full_name == "typing.Generic":
       return
-    if (base.base_cls.isinstance_InterpreterClass() or
-        base.base_cls.isinstance_PyTDClass()):
+    if _isinstance(base.base_cls, ("InterpreterClass", "PyTDClass")):
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
           base.base_cls.all_formal_type_parameters, merge)
@@ -338,7 +319,7 @@ def parse_formal_type_parameters(
     else:
       container_template = ()
     for name, param in params.items():
-      if param.isinstance_TypeParameter():
+      if _isinstance(param, "TypeParameter"):
         # We have type parameter renaming, e.g.,
         #  class List(Generic[T]): pass
         #  class Foo(List[U]): pass
@@ -360,14 +341,14 @@ def parse_formal_type_parameters(
           last_type = formal_type_parameters[name]
           formal_type_parameters[name] = merge(last_type, param, name)
   else:
-    if base.isinstance_InterpreterClass() or base.isinstance_PyTDClass():
+    if _isinstance(base, ("InterpreterClass", "PyTDClass")):
       # merge the type parameters info from base class
       formal_type_parameters.merge_from(
           base.all_formal_type_parameters, merge)
     if base.template:
       # handle unbound type parameters
       for item in base.template:
-        if item.isinstance_TypeParameter():
+        if _isinstance(item, "TypeParameter"):
           # This type parameter will be set as `ANY`.
           name = full_type_name(base, item.name)
           if name not in formal_type_parameters:
@@ -384,7 +365,7 @@ def full_type_name(val, name):
   Returns:
     The full type parameter name (e.g., List.T).
   """
-  if val.isinstance_Instance():
+  if _isinstance(val, "Instance"):
     return full_type_name(val.cls, name)
   # The type is in current `class`
   for t in val.template:
@@ -405,88 +386,9 @@ def maybe_extract_tuple(t):
   if len(values) > 1:
     return (t,)
   v, = values
-  if not v.isinstance_Tuple():
+  if not _isinstance(v, "Tuple"):
     return (t,)
   return v.pyval
-
-
-def compute_template(val):
-  """Compute the precedence list of template parameters according to C3.
-
-  1. For the base class list, if it contains `typing.Generic`, then all the
-  type parameters should be provided. That means we don't need to parse extra
-  base class and then we can get all the type parameters.
-  2. If there is no `typing.Generic`, parse the precedence list according to
-  C3 based on all the base classes.
-  3. If `typing.Generic` exists, it must contain at least one type parameters.
-  And there is at most one `typing.Generic` in the base classes. Report error
-  if the check fails.
-
-  Args:
-    val: The abstract.BaseValue to compute a template for.
-
-  Returns:
-    parsed type parameters
-
-  Raises:
-    GenericTypeError: if the type annotation for generic type is incorrect
-  """
-  if val.isinstance_PyTDClass():
-    return [
-        val.ctx.convert.constant_to_value(itm.type_param)
-        for itm in val.pytd_cls.template
-    ]
-  elif not val.isinstance_InterpreterClass():
-    return ()
-  bases = [
-      get_atomic_value(base, default=val.ctx.convert.unsolvable)
-      for base in val.bases()
-  ]
-  template = []
-
-  # Compute the number of `typing.Generic` and collect the type parameters
-  for base in bases:
-    if base.full_name == "typing.Generic":
-      if base.isinstance_PyTDClass():
-        raise GenericTypeError(val, "Cannot inherit from plain Generic")
-      if template:
-        raise GenericTypeError(
-            val, "Cannot inherit from Generic[...] multiple times")
-      for item in base.template:
-        param = base.formal_type_parameters.get(item.name)
-        template.append(param.with_module(val.full_name))
-
-  if template:
-    # All type parameters in the base classes should appear in
-    # `typing.Generic`
-    for base in bases:
-      if base.full_name != "typing.Generic":
-        if base.isinstance_ParameterizedClass():
-          for item in base.template:
-            param = base.formal_type_parameters.get(item.name)
-            if param.isinstance_TypeParameter():
-              t = param.with_module(val.full_name)
-              if t not in template:
-                raise GenericTypeError(
-                    val, "Generic should contain all the type variables")
-  else:
-    # Compute template parameters according to C3
-    seqs = []
-    for base in bases:
-      if base.isinstance_ParameterizedClass():
-        seq = []
-        for item in base.template:
-          param = base.formal_type_parameters.get(item.name)
-          if param.isinstance_TypeParameter():
-            seq.append(param.with_module(val.full_name))
-        seqs.append(seq)
-    try:
-      template.extend(mro.MergeSequences(seqs))
-    except ValueError as e:
-      raise GenericTypeError(
-          val, "Illegal type parameter order in class %s" % val.name) from e
-
-  return template
 
 
 def _hash_dict(vardict, names):
@@ -519,16 +421,16 @@ def hash_all_dicts(*hash_args):
 
 def _matches_generator(type_obj, allowed_types):
   """Check if type_obj matches a Generator/AsyncGenerator type."""
-  if type_obj.isinstance_Union():
+  if _isinstance(type_obj, "Union"):
     return all(_matches_generator(sub_type, allowed_types)
                for sub_type in type_obj.options)
   else:
     base_cls = type_obj
-    if type_obj.isinstance_ParameterizedClass():
+    if _isinstance(type_obj, "ParameterizedClass"):
       base_cls = type_obj.base_cls
-    return ((base_cls.isinstance_PyTDClass() and
+    return ((_isinstance(base_cls, "PyTDClass") and
              base_cls.name in allowed_types) or
-            base_cls.isinstance_AMBIGUOUS_OR_EMPTY())
+            _isinstance(base_cls, "AMBIGUOUS_OR_EMPTY"))
 
 
 def matches_generator(type_obj):
@@ -600,10 +502,10 @@ def check_classes(var, check):
   if not var:
     return False
   for v in var.data:
-    if v.isinstance_Class():
+    if _isinstance(v, "Class"):
       if not check(v):
         return False
-    elif v.cls.isinstance_Class() and v.cls != v:
+    elif _isinstance(v.cls, "Class") and v.cls != v:
       if not check(v.cls):
         return False
   return True
@@ -615,7 +517,7 @@ def match_type_container(typ, container_type_name: Union[str, Tuple[str, ...]]):
     return None
   if isinstance(container_type_name, str):
     container_type_name = (container_type_name,)
-  if not (typ.isinstance_ParameterizedClass() and
+  if not (_isinstance(typ, "ParameterizedClass") and
           typ.full_name in container_type_name):
     return None
   param = typ.get_formal_type_parameter(T)
@@ -641,7 +543,7 @@ def get_annotations_dict(members):
     annots = get_atomic_value(annots_var)
   except ConversionError:
     return None
-  return annots if annots.isinstance_AnnotationsDict() else None
+  return annots if _isinstance(annots, "AnnotationsDict") else None
 
 
 class Local:
@@ -691,31 +593,29 @@ class Local:
 
 
 def is_literal(annot: Optional[_BaseValue]):
-  if not annot:
-    return False
-  if annot.isinstance_Union():
-    return all(is_literal(o) for o in annot.options)
-  return annot.isinstance_LiteralClass()
+  if _isinstance(annot, "Union"):
+    return all(is_literal(o) for o in annot.options)  # pytype: disable=attribute-error
+  return _isinstance(annot, "LiteralClass")
 
 
 def is_concrete_dict(val: _BaseValue):
-  return val.isinstance_Dict() and not val.could_contain_anything
+  return _isinstance(val, "Dict") and not val.could_contain_anything
 
 
 def is_concrete_list(val: _BaseValue):
-  return val.isinstance_List() and not val.could_contain_anything
+  return _isinstance(val, "List") and not val.could_contain_anything
 
 
 def is_concrete(val: _BaseValue):
-  return (val.isinstance_PythonConstant() and
+  return (_isinstance(val, "PythonConstant") and
           not getattr(val, "could_contain_anything", False))
 
 
 def is_indefinite_iterable(val: _BaseValue):
   """True if val is a non-concrete instance of typing.Iterable."""
-  instance = val.isinstance_Instance()
+  instance = _isinstance(val, "Instance")
   concrete = is_concrete(val)
-  cls_instance = val.cls.isinstance_Class()
+  cls_instance = _isinstance(val.cls, "Class")
   if not (instance and cls_instance and not concrete):
     return False
   for cls in val.cls.mro:
@@ -724,7 +624,7 @@ def is_indefinite_iterable(val: _BaseValue):
     elif cls.full_name == "builtins.tuple":
       # A tuple's cls attribute may point to either PyTDClass(tuple) or
       # TupleClass; only the former is indefinite.
-      return cls.isinstance_PyTDClass()
+      return _isinstance(cls, "PyTDClass")
     elif cls.full_name == "typing.Iterable":
       return True
   return False
@@ -745,7 +645,7 @@ def merged_type_parameter(node, var, param):
 
 
 def is_var_splat(var):
-  if var.data and var.data[0].isinstance_Splat():
+  if var.data and _isinstance(var.data[0], "Splat"):
     # A splat should never have more than one binding, since we create and use
     # it immediately.
     assert len(var.bindings) == 1
@@ -759,12 +659,10 @@ def unwrap_splat(var):
 
 def is_callable(value: _BaseValue):
   """Returns whether 'value' is a callable."""
-  if (value.isinstance_Function() or
-      value.isinstance_BoundFunction() or
-      value.isinstance_ClassMethod() or
-      value.isinstance_StaticMethod()):
+  if _isinstance(
+      value, ("Function", "BoundFunction", "ClassMethod", "StaticMethod")):
     return True
-  if not value.cls.isinstance_Class():
+  if not _isinstance(value.cls, "Class"):
     return False
   _, attr = value.ctx.attribute_handler.get_attribute(value.ctx.root_node,
                                                       value.cls, "__call__")
@@ -775,7 +673,7 @@ def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
   bindings = list(bindings)
   while bindings:
     b = bindings.pop(0)
-    if b.data.isinstance_TypeParameterInstance():
+    if _isinstance(b.data, "TypeParameterInstance"):
       param_value = b.data.instance.get_instance_type_parameter(b.data.name)
       if param_value.bindings:
         bindings = param_value.bindings + bindings
@@ -789,7 +687,7 @@ def get_type_parameter_substitutions(
   """Get values for type_params from val's type parameters."""
   subst = {}
   for p in type_params:
-    if val.isinstance_Class():
+    if _isinstance(val, "Class"):
       param_value = val.get_formal_type_parameter(p.name).instantiate(
           val.ctx.root_node)
     else:
@@ -802,12 +700,12 @@ def build_generic_template(
     type_params: Sequence[_BaseValue], base_type: _BaseValue
 ) -> Tuple[Sequence[str], Sequence[_TypeParameter]]:
   """Build a typing.Generic template from a sequence of type parameters."""
-  if not all(item.isinstance_TypeParameter() for item in type_params):
+  if not all(_isinstance(item, "TypeParameter") for item in type_params):
     base_type.ctx.errorlog.invalid_annotation(
         base_type.ctx.vm.frames, base_type,
         "Parameters to Generic[...] must all be type variables")
     type_params = [item for item in type_params
-                   if item.isinstance_TypeParameter()]
+                   if _isinstance(item, "TypeParameter")]
 
   template = [item.name for item in type_params]
 
@@ -820,7 +718,7 @@ def build_generic_template(
 
 
 def is_generic_protocol(val: _BaseValue) -> bool:
-  return (val.isinstance_ParameterizedClass() and
+  return (_isinstance(val, "ParameterizedClass") and
           val.full_name == "typing.Protocol")
 
 
@@ -856,13 +754,13 @@ def flatten(value, classes):
     True iff a value was ignored during flattening.
   """
   # Used by special_builtins.IsInstance and IsSubclass
-  if value.isinstance_AnnotationClass():
+  if _isinstance(value, "AnnotationClass"):
     value = value.base_cls
-  if value.isinstance_Class():
+  if _isinstance(value, "Class"):
     # A single class, no ambiguity.
     classes.append(value)
     return False
-  elif value.isinstance_Tuple():
+  elif _isinstance(value, "Tuple"):
     # A tuple, need to process each element.
     ambiguous = False
     for var in value.pyval:
@@ -910,3 +808,39 @@ def maybe_unwrap_decorated_function(func):
   except AttributeError:
     return None
   return func.func
+
+
+def _isinstance(obj, name_or_names):
+  """Do an isinstance() call for a class defined in pytype.abstract.
+
+  This method should be used only in pytype.abstract submodules that are unable
+  to do normal isinstance() checks on abstract values due to circular
+  dependencies. To prevent accidental misuse, this method is marked private.
+  Callers are expected to alias it like so:
+    _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+  Args:
+    obj: An instance.
+    name_or_names: A name or tuple of names of classes in pytype.abstract.
+
+  Returns:
+    Whether obj is an instance of name_or_names.
+  """
+  if not obj.__class__.__module__.startswith("pytype."):
+    return False
+  if isinstance(name_or_names, tuple):
+    names = name_or_names
+  elif name_or_names == "AMBIGUOUS_OR_EMPTY":
+    names = ("Unknown", "Unsolvable", "Empty")
+  else:
+    names = (name_or_names,)
+  obj_cls = obj.__class__
+  if obj_cls.__module__.startswith("pytype.abstract") and obj_cls in names:
+    # Do a simple check first to avoid expensive recursive calls and mro lookup
+    # when possible.
+    return True
+  if len(names) > 1:
+    return any(_isinstance(obj, name) for name in names)
+  name = names[0]
+  return any(cls.__module__.startswith("pytype.abstract") and
+             cls.__name__ == name for cls in obj.__class__.mro())

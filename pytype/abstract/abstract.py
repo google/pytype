@@ -22,6 +22,7 @@ from typing import Mapping
 import attr
 from pytype import datatypes
 from pytype import utils
+from pytype.abstract import _base
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
@@ -37,445 +38,8 @@ from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 
-
-class BaseValue(utils.ContextWeakrefMixin):
-  """A single abstract value such as a type or function signature.
-
-  This is the base class of the things that appear in Variables. It represents
-  an atomic object that the abstract interpreter works over just as variables
-  represent sets of parallel options.
-
-  Conceptually abstract values represent sets of possible concrete values in
-  compact form. For instance, an abstract value with .__class__ = int represents
-  all ints.
-  """
-
-  formal = False  # is this type non-instantiable?
-
-  def __init__(self, name, ctx):
-    """Basic initializer for all BaseValues."""
-    super().__init__(ctx)
-    # This default cls value is used by things like Unsolvable that inherit
-    # directly from BaseValue. Classes and instances overwrite the default with
-    # a more sensible value.
-    self.cls = self
-    self.name = name
-    self.mro = self.compute_mro()
-    self.module = None
-    self.official_name = None
-    self.slots = None  # writable attributes (or None if everything is writable)
-    # true for functions and classes that have decorators applied to them.
-    self.is_decorated = False
-    # The template for the current class. It is usually a constant, lazily
-    # loaded to accommodate recursive types, but in the case of typing.Generic
-    # (only), it'll change every time when a new generic class is instantiated.
-    self._template = None
-    # names in the templates of the current class and its base classes
-    self._all_template_names = None
-    self._instance = None
-
-    # The variable or function arg name with the type annotation that this
-    # instance was created from. For example,
-    #   x: str = "hello"
-    # would create an instance of str with from_annotation = 'x'
-    self.from_annotation = None
-
-  @property
-  def all_template_names(self):
-    if self._all_template_names is None:
-      self._all_template_names = abstract_utils.get_template(self)
-    return self._all_template_names
-
-  @property
-  def template(self):
-    if self._template is None:
-      # Won't recompute if `compute_template` throws exception
-      self._template = ()
-      self._template = abstract_utils.compute_template(self)
-    return self._template
-
-  @property
-  def full_name(self):
-    return (self.module + "." if self.module else "") + self.name
-
-  def __repr__(self):
-    return self.name
-
-  def compute_mro(self):
-    # default for objects with no MRO
-    return []
-
-  def default_mro(self):
-    # default for objects with unknown MRO
-    return [self, self.ctx.convert.object_type]
-
-  def get_fullhash(self):
-    """Hash this value and all of its children."""
-    m = hashlib.md5()
-    seen_data = set()
-    stack = [self]
-    while stack:
-      data = stack.pop()
-      data_hash = hash(data)
-      if data_hash in seen_data:
-        continue
-      seen_data.add(data_hash)
-      m.update(str(data_hash).encode("utf-8"))
-      for mapping in data.get_children_maps():
-        m.update(str(mapping.changestamp).encode("utf-8"))
-        stack.extend(mapping.data)
-    return m.digest()
-
-  def get_children_maps(self):
-    """Get this value's dictionaries of children.
-
-    Returns:
-      A sequence of dictionaries from names to child values.
-    """
-    return ()
-
-  def get_instance_type_parameter(self, name, node=None):
-    """Get a cfg.Variable of the instance's values for the type parameter.
-
-    Treating self as an abstract.Instance, gets the variable of its values for
-    the given type parameter. For the real implementation, see
-    SimpleValue.get_instance_type_parameter.
-
-    Args:
-      name: The name of the type parameter.
-      node: Optionally, the current CFG node.
-    Returns:
-      A Variable which may be empty.
-    """
-    del name
-    if node is None:
-      node = self.ctx.root_node
-    return self.ctx.new_unsolvable(node)
-
-  def get_formal_type_parameter(self, t):
-    """Get the class's type for the type parameter.
-
-    Treating self as a class_mixin.Class, gets its formal type for the given
-    type parameter. For the real implementation, see
-    ParameterizedClass.get_formal_type_parameter.
-
-    Args:
-      t: The name of the type parameter.
-    Returns:
-      A formal type.
-    """
-    del t
-    return self.ctx.convert.unsolvable
-
-  def property_get(self, callself, is_class=False):
-    """Bind this value to the given self or cls.
-
-    This function is similar to __get__ except at the abstract level. This does
-    not trigger any code execution inside the VM. See __get__ for more details.
-
-    Args:
-      callself: The Variable that should be passed as self or cls when the call
-        is made. We only need one of self or cls, so having them share a
-        parameter prevents accidentally passing in both.
-      is_class: Whether callself is self or cls. Should be cls only when we
-        want to directly pass in a class to bind a class method to, rather than
-        passing in an instance and calling get_class().
-
-    Returns:
-      Another abstract value that should be returned in place of this one. The
-      default implementation returns self, so this can always be called safely.
-    """
-    del callself, is_class
-    return self
-
-  def get_special_attribute(self, unused_node, name, unused_valself):
-    """Fetch a special attribute (e.g., __get__, __iter__)."""
-    if name == "__class__":
-      if self.full_name == "typing.Protocol":
-        # Protocol.__class__ is a _ProtocolMeta class that inherits from
-        # abc.ABCMeta. Changing the definition of Protocol in typing.pytd to
-        # include this metaclass causes a bunch of weird breakages, so we
-        # instead return the metaclass when type() or __class__ is accessed on
-        # Protocol. For simplicity, we pretend the metaclass is ABCMeta rather
-        # than a subclass.
-        abc = self.ctx.vm.import_module("abc", "abc", 0).get_module("ABCMeta")
-        abc.load_lazy_attribute("ABCMeta")
-        return abc.members["ABCMeta"]
-      else:
-        return self.cls.to_variable(self.ctx.root_node)
-    return None
-
-  def get_own_new(self, node, value):
-    """Get this value's __new__ method, if it isn't object.__new__."""
-    del value  # Unused, only classes have methods.
-    return node, None
-
-  def call(self, node, func, args, alias_map=None):
-    """Call this abstract value with the given arguments.
-
-    The posargs and namedargs arguments may be modified by this function.
-
-    Args:
-      node: The CFGNode calling this function
-      func: The cfg.Binding containing this function.
-      args: Arguments for the call.
-      alias_map: A datatypes.UnionFind, which stores all the type renaming
-        information, mapping of type parameter name to its representative.
-    Returns:
-      A tuple (cfg.Node, cfg.Variable). The CFGNode corresponds
-      to the function's "return" statement(s).
-    Raises:
-      function.FailedFunctionCall
-
-    Make the call as required by this specific kind of atomic value, and make
-    sure to annotate the results correctly with the origins (val and also other
-    values appearing in the arguments).
-    """
-    raise NotImplementedError(self.__class__.__name__)
-
-  def argcount(self, node):
-    """Returns the minimum number of arguments needed for a call."""
-    raise NotImplementedError(self.__class__.__name__)
-
-  def register_instance(self, instance):  # pylint: disable=unused-arg
-    """Treating self as a class definition, register an instance of it.
-
-    This is used for keeping merging call records on instances when generating
-    the formal definition of a class. See InterpreterClass and TupleClass.
-
-    Args:
-      instance: An instance of this class (as a BaseValue)
-    """
-
-  def get_instance_type(self, node=None, instance=None, seen=None, view=None):
-    """Get the type an instance of us would have."""
-    return self.ctx.pytd_convert.value_instance_to_pytd_type(
-        node, self, instance, seen, view)
-
-  def to_type(self, node=None, seen=None, view=None):
-    """Get a PyTD type representing this object, as seen at a node."""
-    return self.ctx.pytd_convert.value_to_pytd_type(node, self, seen, view)
-
-  def to_pytd_def(self, node, name):
-    """Get a PyTD definition for this object."""
-    return self.ctx.pytd_convert.value_to_pytd_def(node, self, name)
-
-  def get_default_type_key(self):
-    """Gets a default type key. See get_type_key."""
-    return type(self)
-
-  def get_type_key(self, seen=None):  # pylint: disable=unused-argument
-    """Build a key from the information used to perform type matching.
-
-    Get a hashable object containing this value's type information. Type keys
-    are only compared amongst themselves, so we don't care what the internals
-    look like, only that values with different types *always* have different
-    type keys and values with the same type preferably have the same type key.
-
-    Args:
-      seen: The set of values seen before while computing the type key.
-
-    Returns:
-      A hashable object built from this value's type information.
-    """
-    return self.get_default_type_key()
-
-  def instantiate(self, node, container=None):
-    """Create an instance of self.
-
-    Note that this method does not call __init__, so the instance may be
-    incomplete. If you need a complete instance, use self.ctx.vm.init_class
-    instead.
-
-    Args:
-      node: The current node.
-      container: Optionally, the value that contains self. (See TypeParameter.)
-
-    Returns:
-      The instance.
-    """
-    return self._to_instance(container).to_variable(node)
-
-  def _to_instance(self, container):
-    return Instance(self, self.ctx, container=container)
-
-  def to_annotation_container(self):
-    if isinstance(self, PyTDClass) and self.full_name == "builtins.tuple":
-      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
-      # that heterogeneous tuple annotations work. We need the isinstance()
-      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
-      # the latter appears here when a generic type alias is being substituted.
-      typing = self.ctx.vm.import_module("typing", "typing",
-                                         0).get_module("Tuple")
-      typing.load_lazy_attribute("Tuple")
-      return abstract_utils.get_atomic_value(typing.members["Tuple"])
-    return AnnotationContainer(self.name, self.ctx, self)
-
-  def to_variable(self, node):
-    """Build a variable out of this abstract value.
-
-    Args:
-      node: The current CFG node.
-    Returns:
-      A cfg.Variable.
-    """
-    return self.ctx.program.NewVariable([self], source_set=[], where=node)
-
-  def to_binding(self, node):
-    binding, = self.to_variable(node).bindings
-    return binding
-
-  def has_varargs(self):
-    """Return True if this is a function and has a *args parameter."""
-    return False
-
-  def has_kwargs(self):
-    """Return True if this is a function and has a **kwargs parameter."""
-    return False
-
-  def _unique_parameters(self):
-    """Get unique parameter subtypes as variables.
-
-    This will retrieve 'children' of this value that contribute to the
-    type of it. So it will retrieve type parameters, but not attributes. To
-    keep the number of possible combinations reasonable, when we encounter
-    multiple instances of the same type, we include only one.
-
-    Returns:
-      A list of variables.
-    """
-    return []
-
-  def unique_parameter_values(self):
-    """Get unique parameter subtypes as bindings.
-
-    Like _unique_parameters, but returns bindings instead of variables.
-
-    Returns:
-      A list of list of bindings.
-    """
-    def _get_values(parameter):
-      return {b.data.get_type_key(): b for b in parameter.bindings}.values()
-    return [_get_values(parameter) for parameter in self._unique_parameters()]
-
-  def init_subclass(self, node, cls):
-    """Allow metaprogramming via __init_subclass__.
-
-    We do not analyse __init_subclass__ methods in the code, but overlays that
-    wish to replicate metaprogramming constructs using __init_subclass__ can
-    define a class overriding this method, and ctx.make_class will call
-    Class.call_init_subclass(), which will invoke the init_subclass() method for
-    all classes in the list of base classes.
-
-    This is here rather than in class_mixin.Class because a class's list of
-    bases can include abstract objects that do not derive from Class (e.g.
-    Unknown and Unsolvable).
-
-    Args:
-      node: cfg node
-      cls: the abstract.InterpreterClass that is being constructed with subclass
-           as a base
-    Returns:
-      A possibly new cfg node
-    """
-    del cls
-    return node
-
-  def update_official_name(self, _):
-    """Update the official name."""
-
-  # The below methods allow code to do isinstance() checks on abstract values
-  # without importing abstract.py, making it easier to avoid import cycles.
-
-  def isinstance_AMBIGUOUS_OR_EMPTY(self):
-    return isinstance(self, AMBIGUOUS_OR_EMPTY)
-
-  def isinstance_AnnotationClass(self):
-    return isinstance(self, AnnotationClass)
-
-  def isinstance_AnnotationsDict(self):
-    return isinstance(self, AnnotationsDict)
-
-  def isinstance_BoundFunction(self):
-    return isinstance(self, BoundFunction)
-
-  def isinstance_CallableClass(self):
-    return isinstance(self, CallableClass)
-
-  def isinstance_Class(self):
-    return isinstance(self, class_mixin.Class)
-
-  def isinstance_ClassMethod(self):
-    return isinstance(self, ClassMethod)
-
-  def isinstance_Dict(self):
-    return isinstance(self, Dict)
-
-  def isinstance_Function(self):
-    return isinstance(self, Function)
-
-  def isinstance_Instance(self):
-    return isinstance(self, Instance)
-
-  def isinstance_InterpreterClass(self):
-    return isinstance(self, InterpreterClass)
-
-  def isinstance_InterpreterFunction(self):
-    return isinstance(self, InterpreterFunction)
-
-  def isinstance_List(self):
-    return isinstance(self, List)
-
-  def isinstance_LiteralClass(self):
-    return isinstance(self, LiteralClass)
-
-  def isinstance_ParameterizedClass(self):
-    return isinstance(self, ParameterizedClass)
-
-  def isinstance_PyTDClass(self):
-    return isinstance(self, PyTDClass)
-
-  def isinstance_PyTDFunction(self):
-    return isinstance(self, PyTDFunction)
-
-  def isinstance_PythonConstant(self):
-    return isinstance(self, mixin.PythonConstant)
-
-  def isinstance_SignedFunction(self):
-    return isinstance(self, SignedFunction)
-
-  def isinstance_SimpleFunction(self):
-    return isinstance(self, SimpleFunction)
-
-  def isinstance_SimpleValue(self):
-    return isinstance(self, SimpleValue)
-
-  def isinstance_Splat(self):
-    return isinstance(self, Splat)
-
-  def isinstance_StaticMethod(self):
-    return isinstance(self, StaticMethod)
-
-  def isinstance_Tuple(self):
-    return isinstance(self, Tuple)
-
-  def isinstance_TypeParameter(self):
-    return isinstance(self, TypeParameter)
-
-  def isinstance_TypeParameterInstance(self):
-    return isinstance(self, TypeParameterInstance)
-
-  def isinstance_Union(self):
-    return isinstance(self, Union)
-
-  def isinstance_Unknown(self):
-    return isinstance(self, Unknown)
-
-  def isinstance_Unsolvable(self):
-    return isinstance(self, Unsolvable)
-
-  def is_late_annotation(self):
-    return False
+# For simplicity, we pretend all abstract values are defined in abstract.py.
+BaseValue = _base.BaseValue
 
 
 class Singleton(BaseValue):
@@ -1321,7 +885,7 @@ class LateAnnotation:
 
   def get_special_attribute(self, node, name, valself):
     if name == "__getitem__" and not self.resolved:
-      container = BaseValue.to_annotation_container(self)
+      container = AnnotationContainer.from_value(self)
       return container.get_special_attribute(node, name, valself)
     return self._type.get_special_attribute(node, name, valself)
 
@@ -1380,6 +944,19 @@ class AnnotationClass(SimpleValue, mixin.HasSlots):
 
 class AnnotationContainer(AnnotationClass):
   """Implementation of X[...] for annotations."""
+
+  @classmethod
+  def from_value(cls, value):
+    if isinstance(value, PyTDClass) and value.full_name == "builtins.tuple":
+      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
+      # that heterogeneous tuple annotations work. We need the isinstance()
+      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
+      # the latter appears here when a generic type alias is being substituted.
+      typing = value.ctx.vm.import_module("typing", "typing",
+                                          0).get_module("Tuple")
+      typing.load_lazy_attribute("Tuple")
+      return abstract_utils.get_atomic_value(typing.members["Tuple"])
+    return cls(value.name, value.ctx, value)
 
   def __init__(self, name, ctx, base_cls):
     super().__init__(name, ctx)
@@ -2341,7 +1918,8 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       self._template = template
     self.slots = self.base_cls.slots
     self.is_dynamic = self.base_cls.is_dynamic
-    class_mixin.Class.init_mixin(self, base_cls.cls)
+    class_mixin.Class.init_mixin(
+        self, base_cls.cls, Instance, AnnotationContainer)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
 
@@ -2761,7 +2339,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
-    class_mixin.Class.init_mixin(self, metaclass)
+    class_mixin.Class.init_mixin(self, metaclass, Instance, AnnotationContainer)
     if decorated:
       self._populate_decorator_metadata()
 
@@ -2958,7 +2536,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
-    class_mixin.Class.init_mixin(self, cls)
+    class_mixin.Class.init_mixin(self, cls, Instance, AnnotationContainer)
     self.instances = set()  # filled through register_instance
     # instances created by analyze.py for the purpose of analyzing this class,
     # a subset of 'instances'. Filled through register_canonical_instance.
@@ -3116,7 +2694,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
       # the frame is a SimpleFrame with no opcode.
-      return super().instantiate(node, container)
+      return self._to_instance(container).to_variable(node)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name
