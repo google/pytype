@@ -185,6 +185,7 @@ class object():
     __slots__ = []  # if used as base class
     __bases__ = ...  # type: Tuple[Any, ...]
     __dict__ = ...  # type: Dict[str, Any]
+    __dir__ = ... # type: List[str]
     __doc__ = ...  # type: str
     __mro__ = ...  # type: list[Any]
     __name__ = ...  # type: str
