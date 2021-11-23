@@ -294,22 +294,7 @@ class BaseValue(utils.ContextWeakrefMixin):
     Returns:
       The instance.
     """
-    return self._to_instance(container).to_variable(node)
-
-  def _to_instance(self, container):
-    return Instance(self, self.ctx, container=container)
-
-  def to_annotation_container(self):
-    if isinstance(self, PyTDClass) and self.full_name == "builtins.tuple":
-      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
-      # that heterogeneous tuple annotations work. We need the isinstance()
-      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
-      # the latter appears here when a generic type alias is being substituted.
-      typing = self.ctx.vm.import_module("typing", "typing",
-                                         0).get_module("Tuple")
-      typing.load_lazy_attribute("Tuple")
-      return abstract_utils.get_atomic_value(typing.members["Tuple"])
-    return AnnotationContainer(self.name, self.ctx, self)
+    raise NotImplementedError(self.__class__.__name__)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.
@@ -1231,7 +1216,7 @@ class LateAnnotation:
 
   def get_special_attribute(self, node, name, valself):
     if name == "__getitem__" and not self.resolved:
-      container = BaseValue.to_annotation_container(self)
+      container = AnnotationContainer.from_value(self)
       return container.get_special_attribute(node, name, valself)
     return self._type.get_special_attribute(node, name, valself)
 
@@ -1290,6 +1275,19 @@ class AnnotationClass(SimpleValue, mixin.HasSlots):
 
 class AnnotationContainer(AnnotationClass):
   """Implementation of X[...] for annotations."""
+
+  @classmethod
+  def from_value(cls, value):
+    if isinstance(value, PyTDClass) and value.full_name == "builtins.tuple":
+      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
+      # that heterogeneous tuple annotations work. We need the isinstance()
+      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
+      # the latter appears here when a generic type alias is being substituted.
+      typing = value.ctx.vm.import_module("typing", "typing",
+                                          0).get_module("Tuple")
+      typing.load_lazy_attribute("Tuple")
+      return abstract_utils.get_atomic_value(typing.members["Tuple"])
+    return cls(value.name, value.ctx, value)
 
   def __init__(self, name, ctx, base_cls):
     super().__init__(name, ctx)
@@ -2251,7 +2249,8 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       self._template = template
     self.slots = self.base_cls.slots
     self.is_dynamic = self.base_cls.is_dynamic
-    class_mixin.Class.init_mixin(self, base_cls.cls)
+    class_mixin.Class.init_mixin(
+        self, base_cls.cls, Instance, AnnotationContainer)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
 
@@ -2671,7 +2670,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
-    class_mixin.Class.init_mixin(self, metaclass)
+    class_mixin.Class.init_mixin(self, metaclass, Instance, AnnotationContainer)
     if decorated:
       self._populate_decorator_metadata()
 
@@ -2868,7 +2867,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
-    class_mixin.Class.init_mixin(self, cls)
+    class_mixin.Class.init_mixin(self, cls, Instance, AnnotationContainer)
     self.instances = set()  # filled through register_instance
     # instances created by analyze.py for the purpose of analyzing this class,
     # a subset of 'instances'. Filled through register_canonical_instance.
@@ -3026,7 +3025,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
       # the frame is a SimpleFrame with no opcode.
-      return super().instantiate(node, container)
+      return self._to_instance(container).to_variable(node)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name

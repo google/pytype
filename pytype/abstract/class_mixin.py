@@ -112,7 +112,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls)
 
-  def init_mixin(self, metaclass):
+  def init_mixin(self, metaclass, instance_abstract_class,
+                 annotation_container_abstract_class):
     """Mix-in equivalent of __init__."""
     if metaclass is None:
       metaclass = self._get_inherited_metaclass()
@@ -126,6 +127,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     self._init_overrides_bool()
     self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
     self._all_formal_type_parameters_loaded = False
+    # References to abstract.py classes. *Use these only in modules in which it
+    # is not possible to import abstract.py!* Ideally, mixins would not need to
+    # know about abstract.py, but over time, we've accumulated implicit circular
+    # dependencies that are hard to get rid of.
+    self._instance_abstract_class = instance_abstract_class
+    self._annotation_container_abstract_class = (
+        annotation_container_abstract_class)
     # Call these methods in addition to __init__ when constructing instances.
     self.additional_init_methods = []
     if self.is_test_class():
@@ -373,6 +381,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
+  def _to_instance(self, container):
+    return self._instance_abstract_class(self, self.ctx, container=container)
+
   def _new_instance(self, container, node, args):
     """Returns a (possibly cached) instance of 'self'."""
     del args  # unused
@@ -427,7 +438,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Treat this class as a parameterized container in an annotation. We do
       # not need to worry about the class not being a container: in that case,
       # AnnotationContainer's param length check reports an appropriate error.
-      container = self.to_annotation_container()
+      container = self._annotation_container_abstract_class.from_value(self)
       return container.get_special_attribute(node, name, valself)
     return Class.super(self.get_special_attribute)(node, name, valself)
 
