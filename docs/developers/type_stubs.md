@@ -13,7 +13,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -133,8 +133,8 @@ of an AST, contains the following (simplified) logic for visiting a class:
 
 ```python
 def VisitClass(self, node):
-  parents_str = "(" + ", ".join(node.parents) + ")"
-  header = ["class " + node.name + parents_str + ":"]
+  bases_str = "(" + ", ".join(node.bases) + ")"
+  header = ["class " + node.name + bases_str + ":"]
   method_lines = sum((m.splitlines() for m in node.methods), [])
   methods = ["  " + m for m in method_lines]
   return "\n".join(header + methods) + "\n"
@@ -234,14 +234,14 @@ used to debug pickles.
 
 [pickle-utils]: https://github.com/google/pytype/blob/0206bf70c0ebc6e2ab3db12e35045aa05ff0ae02/pytype/pytd/pytd_utils.py#L445-L475
 
-[pytd]: https://github.com/google/pytype/tree/master/pytype/pytd
+[pytd]: https://github.com/google/pytype/tree/main/pytype/pytd
 
-[pytype.output]: https://github.com/google/pytype/blob/master/pytype/output.py
+[pytype.output]: https://github.com/google/pytype/blob/main/pytype/output.py
 
-[pytype.pyi]: https://github.com/google/pytype/tree/master/pytype/pyi
+[pytype.pyi]: https://github.com/google/pytype/tree/main/pytype/pyi
 
-[pytype.pytd.optimize]: https://github.com/google/pytype/blob/master/pytype/pytd/optimize.py
+[pytype.pytd.optimize]: https://github.com/google/pytype/blob/main/pytype/pytd/optimize.py
 
-[pytype.pytd.pytd]: https://github.com/google/pytype/blob/master/pytype/pytd/pytd.py
+[pytype.pytd.pytd]: https://github.com/google/pytype/blob/main/pytype/pytd/pytd.py
 
 [typeshed]: https://github.com/python/typeshed

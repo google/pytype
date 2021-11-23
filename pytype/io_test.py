@@ -80,8 +80,7 @@ class IOTest(unittest.TestCase):
       with self._tmpfile(
           "{mod} {path}".format(mod=pyi_name, path=pyi.name)) as imports_map:
         src = "import {mod}; y = {mod}.x".format(mod=pyi_name)
-        options = config.Options.create(imports_map=imports_map.name,
-                                        gen_stub_imports=True)
+        options = config.Options.create(imports_map=imports_map.name)
         _, pyi_string, _ = io.generate_pyi(src, options)
     self.assertEqual(pyi_string,
                      "import {mod}\n\ny: int\n".format(mod=pyi_name))

@@ -80,7 +80,7 @@ SUPERCLASSES = {
 def GetSuperClasses():
   """Get a Python type hierarchy mapping.
 
-  This generates a dictionary that can be used to look up the parents of
+  This generates a dictionary that can be used to look up the bases of
   a type in the abstract base class hierarchy.
 
   Returns:

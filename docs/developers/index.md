@@ -12,7 +12,7 @@ pytype's core concepts and code layout, as well as tips on suggested workflow.
       * [Basic concepts](#basic-concepts)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -64,7 +64,7 @@ Add new images to the [images directory][images-dir]. Check in both an SVG and a
 PNG, and embed the latter in docs for consistent rendering.
 
 <!-- General references -->
-[dev-landing-page]: https://github.com/google/pytype/blob/master/docs/_layouts/dev_guide.html
+[dev-landing-page]: https://github.com/google/pytype/blob/main/docs/_layouts/dev_guide.html
 [issue-tracker]: process.md#issue-tracker
-[images-dir]: https://github.com/google/pytype/blob/master/docs/images/
+[images-dir]: https://github.com/google/pytype/blob/main/docs/images/
 [main-loop]: main_loop.md

@@ -99,19 +99,19 @@ def _ComputeMRO(t, mros, lookup_ast):
   if isinstance(t, pytd.ClassType):
     if t not in mros:
       mros[t] = None
-      parent_mros = []
-      for parent in _GetClass(t, lookup_ast).parents:
-        if parent in mros:
-          if mros[parent] is None:
+      base_mros = []
+      for base in _GetClass(t, lookup_ast).bases:
+        if base in mros:
+          if mros[base] is None:
             raise MROError([[t]])
           else:
-            parent_mro = mros[parent]
+            base_mro = mros[base]
         else:
-          parent_mro = _ComputeMRO(parent, mros, lookup_ast)
-        parent_mros.append(parent_mro)
+          base_mro = _ComputeMRO(base, mros, lookup_ast)
+        base_mros.append(base_mro)
       mros[t] = tuple(
-          MROMerge([[t]] + parent_mros + [_Degenerify(
-              _GetClass(t, lookup_ast).parents)]))
+          MROMerge([[t]] + base_mros + [_Degenerify(
+              _GetClass(t, lookup_ast).bases)]))
     return mros[t]
   elif isinstance(t, pytd.GenericType):
     return _ComputeMRO(t.base_type, mros, lookup_ast)
@@ -122,7 +122,7 @@ def _ComputeMRO(t, mros, lookup_ast):
 def GetBasesInMRO(cls, lookup_ast=None):
   """Get the given class's bases in Python's method resolution order."""
   mros = {}
-  parent_mros = []
-  for p in cls.parents:
-    parent_mros.append(_ComputeMRO(p, mros, lookup_ast))
-  return tuple(MROMerge(parent_mros + [_Degenerify(cls.parents)]))
+  base_mros = []
+  for p in cls.bases:
+    base_mros.append(_ComputeMRO(p, mros, lookup_ast))
+  return tuple(MROMerge(base_mros + [_Degenerify(cls.bases)]))

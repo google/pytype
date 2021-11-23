@@ -350,9 +350,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       # In this case, we want to use the MRO of starting_cls but skip all the
       # classes up to and including current_cls.
       skip = set()
-      for parent in starting_cls.mro:
-        skip.add(parent)
-        if parent.full_name == current_cls.full_name:
+      for base in starting_cls.mro:
+        skip.add(base)
+        if base.full_name == current_cls.full_name:
           break
     else:
       starting_cls = self.ctx.convert.super_type

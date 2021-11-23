@@ -1,7 +1,9 @@
 """Tests for pytype.pytd.parse.builtins."""
 
+from pytype.pyi import parser
 from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
 
@@ -13,7 +15,8 @@ class UtilsTest(test_base.UnitTest):
   @classmethod
   def setUpClass(cls):
     super(UtilsTest, cls).setUpClass()
-    cls.builtins = builtin_stubs.GetBuiltinsPyTD()
+    cls.builtins = pytd_utils.Concat(*builtin_stubs.GetBuiltinsAndTyping(
+        parser.PyiOptions(python_version=cls.python_version)))
 
   def test_get_builtins_pytd(self):
     self.assertIsNotNone(self.builtins)
@@ -32,9 +35,9 @@ class UtilsTest(test_base.UnitTest):
 
   def test_has_object_superclass(self):
     cls = self.builtins.Lookup("builtins.memoryview")
-    self.assertEqual(cls.parents, (pytd.ClassType("builtins.object"),))
+    self.assertEqual(cls.bases, (pytd.ClassType("builtins.object"),))
     cls = self.builtins.Lookup("builtins.object")
-    self.assertEqual(cls.parents, ())
+    self.assertEqual(cls.bases, ())
 
 
 if __name__ == "__main__":

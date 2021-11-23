@@ -14,6 +14,10 @@ IGNORE = object()
 class ParserTestBase(test_base.UnitTest):
   """Base class for pyi parsing tests."""
 
+  def setUp(self):
+    super().setUp()
+    self.options = parser.PyiOptions(python_version=self.python_version)
+
   def check(self, src, expected=None, prologue=None, name=None,
             version=None, platform=None):
     """Check the parsing of src.
@@ -36,10 +40,13 @@ class ParserTestBase(test_base.UnitTest):
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
+    if version:
+      self.options.python_version = version
+    if platform:
+      self.options.platform = platform
     version = version or self.python_version
     src = textwrap.dedent(src).lstrip()
-    ast = parser.parse_string(src, name=name, python_version=version,
-                              platform=platform)
+    ast = parser.parse_string(src, name=name, options=self.options)
     actual = pytd_utils.Print(ast)
     if expected != IGNORE:
       if expected is None:
@@ -55,7 +62,6 @@ class ParserTestBase(test_base.UnitTest):
   def check_error(self, src, expected_line, message):
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
-      parser.parse_string(textwrap.dedent(src).lstrip(),
-                          python_version=self.python_version)
+      parser.parse_string(textwrap.dedent(src).lstrip(), options=self.options)
     self.assertRegex(utils.message(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)

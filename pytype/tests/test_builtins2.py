@@ -315,7 +315,7 @@ class BuiltinTests2(test_base.BaseTest):
       class BaseException(Exception): pass
       class CryptoException(BaseException, ValueError): pass
     """, deep=False)
-    p1, p2 = ty.Lookup("CryptoException").parents
+    p1, p2 = ty.Lookup("CryptoException").bases
     self.assertEqual(p1.name, "BaseException")
     self.assertEqual(p2.name, "builtins.ValueError")
     self.assertTypesMatchPytd(ty, """

@@ -869,5 +869,37 @@ class RecursiveAliasTest(_LoaderTest):
     self.assertEqual(actual_z, expected_z)
 
 
+class NestedClassTest(_LoaderTest):
+
+  def test_basic(self):
+    ast = self._import(a="""
+      class A:
+        class B:
+          def f(self) -> C: ...
+        class C(B): ...
+    """)
+    actual_f = pytd.LookupItemRecursive(ast, "A.B.f")
+    self.assertEqual(pytd_utils.Print(actual_f),
+                     "def f(self: a.A.B) -> a.A.C: ...")
+    actual_c = pytd.LookupItemRecursive(ast, "A.C")
+    self.assertEqual(pytd_utils.Print(actual_c).rstrip(),
+                     "class a.A.C(a.A.B): ...")
+
+  @test_base.skip("This does not work yet")
+  def test_shadowing(self):
+    ast = self._import(a="""
+      class A:
+        class A(A):
+          def f(self) -> A: ...
+        class C(A): ...
+    """)
+    self.assertEqual(pytd_utils.Print(ast).rstrip(), textwrap.dedent("""
+      class a.A:
+          class a.A.A(a.A):
+              def f(self) -> a.A.A: ...
+          class a.A.C(a.A.A): ...
+      """).strip())
+
+
 if __name__ == "__main__":
   unittest.main()

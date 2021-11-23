@@ -483,9 +483,7 @@ class BuiltinTests(test_base.BaseTest):
     """)
     name = escape.pack_namedtuple("_Foo", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(
-        name, ["x", "y", "z"], [False] * 3,
-        self.python_version,
-        strict_namedtuple_checks=self.options.strict_namedtuple_checks)
+        name, ["x", "y", "z"], [False] * 3, self.options)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
       import collections
       class Foo({name}): ...""").format(name=name)
@@ -504,9 +502,7 @@ class BuiltinTests(test_base.BaseTest):
     """)
     name = escape.pack_namedtuple("t", ["x", "y", "z"])
     ast = collections_overlay.namedtuple_ast(
-        name, ["x", "y", "z"], [False] * 3,
-        self.python_version,
-        strict_namedtuple_checks=self.options.strict_namedtuple_checks)
+        name, ["x", "y", "z"], [False] * 3, self.options)
     expected = pytd_utils.Print(ast) + textwrap.dedent("""
       import collections
       t = {name}

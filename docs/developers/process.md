@@ -10,7 +10,7 @@
       * [Debugging](#debugging)
       * [Profiling](#profiling)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -100,7 +100,7 @@ for different machines on otherwise identical code have happened. The relative
 rank of functions in the profile is stable between runs.
 
 <!-- General references -->
-[contributing-md]: https://github.com/google/pytype/blob/master/CONTRIBUTING.md
+[contributing-md]: https://github.com/google/pytype/blob/main/CONTRIBUTING.md
 [github-issues]: https://github.com/google/pytype/issues
 [good-first-issues]: https://github.com/google/pytype/issues?q=is%3Aopen+is%3Aissue+label%3A%22good+first+issue%22
 [help-wanted-issues]: https://github.com/google/pytype/labels/help%20wanted
@@ -110,4 +110,4 @@ rank of functions in the profile is stable between runs.
 [pytype-quickstart]: https://github.com/google/pytype#quickstart
 [pstats]: https://docs.python.org/3/library/profile.html#module-pstats
 [source-install-instructions]: https://github.com/google/pytype#installing
-[tests-readme-oss]: https://github.com/google/pytype/blob/master/pytype/tests/README.md
+[tests-readme-oss]: https://github.com/google/pytype/blob/main/pytype/tests/README.md

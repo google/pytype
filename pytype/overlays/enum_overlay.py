@@ -2,7 +2,7 @@
 
 For InterpreterClass enums, i.e. ones in the file being analyzed, the overlay
 is accessed by:
-1. abstract.BuildClass sees a class with enum.Enum as its parent, and calls
+1. abstract.BuildClass sees a class with enum.Enum as its base, and calls
 EnumBuilder.make_class.
 2. EnumBuilder.make_class does some validation, then passes along the actual
 creation to ctx.make_class. Notably, EnumBuilder passes in EnumInstance to

@@ -39,7 +39,7 @@ class MroTest(parser_test_base.ParserTest):
       T = TypeVar("T")
       class Foo(Generic[T]): pass
       class Bar(Foo[int]): pass
-    """), python_version=self.python_version)
+    """), options=self.options)
     ast = ast.Visit(visitors.AdjustTypeParameters())
     loader = load_pytd.Loader(
         config.Options.create(python_version=self.python_version))

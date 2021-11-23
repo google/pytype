@@ -134,6 +134,17 @@ class AbstractMethodTests(test_base.BaseTest):
         return x()
     """)
 
+  def test_instantiate_abstract_class_in_own_method(self):
+    self.Check("""
+      import abc
+      class Foo(abc.ABC):
+        @abc.abstractmethod
+        def f(self): ...
+        @classmethod
+        def g(cls):
+          return cls()
+    """)
+
   def test_abstract_classmethod(self):
     self.Check("""
       import abc

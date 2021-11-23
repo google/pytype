@@ -98,7 +98,8 @@ class PytypeTest(test_base.UnitTest):
 
   def _parse_string(self, string):
     """A wrapper for parser.parse_string that inserts the python version."""
-    return parser.parse_string(string, python_version=self.python_version)
+    return parser.parse_string(
+        string, options=parser.PyiOptions(python_version=self.python_version))
 
   def _generate_builtins_twice(self, python_version):
     os.environ["PYTHONHASHSEED"] = "0"

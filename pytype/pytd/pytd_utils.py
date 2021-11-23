@@ -460,8 +460,8 @@ def MergeBaseClass(cls, base):
   Returns:
     a pytd.Class of the two merged classes.
   """
-  bases = tuple(b for b in cls.parents if b != base)
-  bases += tuple(b for b in base.parents if b not in bases)
+  bases = tuple(b for b in cls.bases if b != base)
+  bases += tuple(b for b in base.bases if b not in bases)
   method_names = [m.name for m in cls.methods]
   methods = cls.methods + tuple(m for m in base.methods
                                 if m.name not in method_names)
@@ -479,7 +479,7 @@ def MergeBaseClass(cls, base):
     slots = base.slots
   return pytd.Class(name=cls.name,
                     metaclass=cls.metaclass or base.metaclass,
-                    parents=bases,
+                    bases=bases,
                     methods=methods,
                     constants=constants,
                     classes=classes,

@@ -498,7 +498,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           "typing.Hashable"]:
         return subst
       elif (isinstance(other_type, class_mixin.Class) and
-            other_type.has_protocol_parent()):
+            other_type.has_protocol_base()):
         return self._match_instance_against_type(
             left, other_type, subst, view)
       else:
@@ -757,7 +757,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         if other_type.is_protocol:
           with self._track_partially_matched_protocols():
             return self._match_against_protocol(left, other_type, subst, view)
-        elif other_type.has_protocol_parent():
+        elif other_type.has_protocol_base():
           # 'is_protocol' returns True only if the protocol has at least one
           # attribute that needs checking. In the edge case of a protocol being
           # completely empty, everything should match.
@@ -809,7 +809,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     """Used by _match_instance."""
     def assert_classes_match(cls1, cls2):
       # We need the somewhat complex assertion below to allow internal
-      # subclasses of abstract classes to act as their parent classes.
+      # subclasses of abstract classes to act as their base classes.
       assert isinstance(cls1, type(cls2)) or isinstance(cls2, type(cls1))
 
     if isinstance(other_type, abstract.ParameterizedClass):

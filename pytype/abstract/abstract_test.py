@@ -206,15 +206,15 @@ class PyTDTest(AbstractTestBase):
     self.assertEqual(pytd_cls.metaclass, pytd.NamedType("M"))
 
   def test_inherited_metaclass(self):
-    parent = abstract.InterpreterClass("X", [], {}, None, self._ctx)
-    parent.official_name = "X"
+    base = abstract.InterpreterClass("X", [], {}, None, self._ctx)
+    base.official_name = "X"
     meta = abstract.InterpreterClass("M", [], {}, None, self._ctx)
     meta.official_name = "M"
-    parent.cls = meta
+    base.cls = meta
     child = abstract.InterpreterClass("Y",
-                                      [parent.to_variable(self._ctx.root_node)],
+                                      [base.to_variable(self._ctx.root_node)],
                                       {}, None, self._ctx)
-    self.assertIs(child.cls, parent.cls)
+    self.assertIs(child.cls, base.cls)
     pytd_cls = child.to_pytd_def(self._ctx.root_node, "Y")
     self.assertIs(pytd_cls.metaclass, None)
 

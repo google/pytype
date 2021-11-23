@@ -151,7 +151,7 @@ class Class(Node):
 
   Attributes:
     name: Class name (string)
-    parents: The super classes of this class (instances of pytd.Type).
+    bases: The super classes of this class (instances of pytd.Type).
     methods: Tuple of methods, classmethods, staticmethods
       (instances of pytd.Function).
     constants: Tuple of constant class attributes (instances of pytd.Constant).
@@ -161,16 +161,13 @@ class Class(Node):
   """
   name: str
   metaclass: Union[None, Type]
-  parents: Tuple[Union['Class', Type], ...]
+  bases: Tuple[Union['Class', Type], ...]
   methods: Tuple['Function', ...]
   constants: Tuple[Constant, ...]
   classes: Tuple['Class', ...]
   decorators: Tuple[Alias, ...]
   slots: Optional[Tuple[str, ...]]
   template: Tuple['TemplateItem', ...]
-
-  # TODO(b/159053187): Rename "parents" to "bases". "Parents" is confusing since
-  # we're in a tree.
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the class namespace.
@@ -607,7 +604,7 @@ def IsContainer(t):
   assert isinstance(t, Class)
   if t.name in ('typing.Generic', 'typing.Protocol'):
     return True
-  for p in t.parents:
+  for p in t.bases:
     if isinstance(p, GenericType):
       base = p.base_type
       # We need to check for Generic and Protocol again here because base may
@@ -749,10 +746,10 @@ def LookupItemRecursive(module, name):
     except KeyError:
       if not isinstance(item, Class):
         raise
-      for parent in item.parents:
-        parent_cls = ExtractClass(parent)  # may raise KeyError
+      for base in item.bases:
+        base_cls = ExtractClass(base)  # may raise KeyError
         try:
-          item = Lookup(parent_cls, lookup_name, part)
+          item = Lookup(base_cls, lookup_name, part)
         except KeyError:
           continue  # continue up the MRO
         else:

@@ -272,10 +272,7 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.GenericType(base_type=pytd.NamedType("builtins.type"),
                               parameters=(param,))
     elif isinstance(v, abstract.Module):
-      if self.ctx.options.gen_stub_imports:
-        return pytd.Alias(v.name, pytd.Module(v.name, module_name=v.full_name))
-      else:
-        return pytd.NamedType("builtins.module")
+      return pytd.Alias(v.name, pytd.Module(v.name, module_name=v.full_name))
     elif (self._output_mode >= Converter.OutputMode.LITERAL and
           isinstance(v, abstract.ConcreteValue) and
           isinstance(v.pyval, (int, str, bytes))):
@@ -358,7 +355,7 @@ class Converter(utils.ContextWeakrefMixin):
     Returns:
       A PyTD definition.
     """
-    if self.ctx.options.gen_stub_imports and isinstance(v, abstract.Module):
+    if isinstance(v, abstract.Module):
       return pytd.Alias(name, pytd.Module(name, module_name=v.full_name))
     elif isinstance(v, abstract.BoundFunction):
       d = self.value_to_pytd_def(node, v.underlying, name)
@@ -764,7 +761,7 @@ class Converter(utils.ContextWeakrefMixin):
 
     cls = pytd.Class(name=class_name,
                      metaclass=metaclass,
-                     parents=tuple(bases),
+                     bases=tuple(bases),
                      methods=tuple(methods.values()),
                      constants=tuple(constants),
                      classes=(),

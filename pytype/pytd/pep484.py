@@ -99,13 +99,13 @@ class ConvertTypingToNative(base_visitor.Visitor):
 
   def VisitClass(self, node):
     if self.module == "builtins":
-      parents = []
-      for old_parent, new_parent in zip(self.old_node.parents, node.parents):
-        if self._GetModuleAndName(new_parent)[1] == node.name:
+      bases = []
+      for old_base, new_base in zip(self.old_node.bases, node.bases):
+        if self._GetModuleAndName(new_base)[1] == node.name:
           # Don't do conversions like class list(List) -> class list(list)
-          parents.append(old_parent)
+          bases.append(old_base)
         else:
-          parents.append(new_parent)
-      return node.Replace(parents=tuple(parents))
+          bases.append(new_base)
+      return node.Replace(bases=tuple(bases))
     else:
       return node

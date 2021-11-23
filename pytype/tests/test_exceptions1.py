@@ -30,7 +30,7 @@ class TestExceptions(test_base.BaseTest):
       except NameError:
         print("caught it!")
       """)
-    # Catch the exception by a parent class
+    # Catch the exception by a base class
     self.assertNoCrash(self.Check, """
       try:
         x[1]

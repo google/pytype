@@ -1179,9 +1179,9 @@ class ErrorLog(ErrorLogBase):
       mutations: a dict of {parameter name: (annotated types, new types)}
       name: the variable name (or None)
     """
-    for parent in obj.cls.mro:
-      if isinstance(parent, abstract.ParameterizedClass):
-        cls = parent
+    for base in obj.cls.mro:
+      if isinstance(base, abstract.ParameterizedClass):
+        cls = base
         break
     else:
       assert False, f"{obj.cls.full_name} is not a container"

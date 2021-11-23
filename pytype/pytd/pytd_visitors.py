@@ -35,7 +35,7 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
     return pytd.Class(
         name=node.name,
         metaclass=node.metaclass,
-        parents=node.parents,
+        bases=node.bases,
         methods=tuple(sorted(node.methods)),
         constants=tuple(constants),
         decorators=tuple(sorted(node.decorators)),
@@ -102,12 +102,12 @@ class ExtractSuperClasses(base_visitor.Visitor):
     return self._superclasses
 
   def EnterClass(self, cls):
-    parents = []
-    for p in cls.parents:
-      parent = self._Key(p)
-      if parent is not None:
-        parents.append(parent)
-    self._superclasses[self._Key(cls)] = parents
+    bases = []
+    for p in cls.bases:
+      base = self._Key(p)
+      if base is not None:
+        bases.append(base)
+    self._superclasses[self._Key(cls)] = bases
 
 
 class RenameModuleVisitor(base_visitor.Visitor):

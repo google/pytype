@@ -273,8 +273,8 @@ This is not an official Google product.
 [faq-diff]: faq.md#how-is-pytype-different-from-other-type-checkers
 [github]: https://github.com/google/pytype/
 [importlab-github-actions]: https://github.com/google/importlab/blob/master/.github/workflows/ci.yml
-[license]: https://github.com/google/pytype/blob/master/LICENSE
-[merge-pyi]: https://github.com/google/pytype/tree/master/pytype/tools/merge_pyi
+[license]: https://github.com/google/pytype/blob/main/LICENSE
+[merge-pyi]: https://github.com/google/pytype/tree/main/pytype/tools/merge_pyi
 [ninja-build-issue]: https://github.com/google/pytype/issues/957
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pyi-stub-files]: user_guide.md#pyi-stub-files

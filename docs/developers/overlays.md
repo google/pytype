@@ -9,7 +9,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -88,13 +88,13 @@ abstract.BaseValue instance.
 1.  Implement the new module members! The existing overlays contain plenty of
     examples of how to do this.
 
-[overlays-cmake]: https://github.com/google/pytype/blob/master/pytype/overlays/CMakeLists.txt
+[overlays-cmake]: https://github.com/google/pytype/blob/main/pytype/overlays/CMakeLists.txt
 
 [member-conversion]: https://github.com/google/pytype/blob/2f2a1483751171421490c352f05955655ea572fa/pytype/overlay.py#L45
 
 [overlay-check]: https://github.com/google/pytype/blob/2f2a1483751171421490c352f05955655ea572fa/pytype/vm.py#L1569-L1580
 
-[overlay_dict]: https://github.com/google/pytype/blob/master/pytype/overlay_dict.py
+[overlay_dict]: https://github.com/google/pytype/blob/main/pytype/overlay_dict.py
 
 [overlay.Overlay]: https://github.com/google/pytype/blob/2f2a1483751171421490c352f05955655ea572fa/pytype/overlay.py#L6
 

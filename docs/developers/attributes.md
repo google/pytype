@@ -12,7 +12,7 @@
          * [get_special_attribute](#get_special_attribute)
          * [valself](#valself)
 
-<!-- Added by: rechen, at: 2021-10-19T16:13-07:00 -->
+<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
 
 <!--te-->
 
@@ -81,7 +81,7 @@ in order to emulate the behavior of the Python interpreter:
 1. Both `_get_attribute_computed` and `_lookup_from_mro_and_handle_descriptors`
    use `_lookup_from_mro` to do attribute lookup on a class. The latter walks
    the class's MRO, calling `_get_attribute_flat` - which in turn calls
-   `_get_member` - to check for the attribute on the class and its parents.
+   `_get_member` - to check for the attribute on the class and its bases.
 1. Similar to `_set_member`, `_get_member` uses
    `_maybe_load_as_instance_attribute` to force lazy loading and then checks
    the `members` dict for the requested attribute.
@@ -130,7 +130,7 @@ value to use can be tricky:
      same as in case (1), except that methods will be returned unbound, since
      there is no instance of the class to bind to.
 
-[attribute]: https://github.com/google/pytype/blob/master/pytype/attribute.py
+[attribute]: https://github.com/google/pytype/blob/main/pytype/attribute.py
 
 [HasSlots]: https://github.com/google/pytype/blob/e760fd4c9f4fbfc2626db0f9a959d556e026b856/pytype/mixin.py#L128
 

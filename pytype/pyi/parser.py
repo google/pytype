@@ -28,13 +28,10 @@ else:
   from typed_ast import ast3
 # pylint: enable=g-import-not-at-top
 
-
 _DEFAULT_PLATFORM = "linux"
-
 
 # reexport as parser.ParseError
 ParseError = types.ParseError
-
 
 _TYPEVAR_IDS = ("TypeVar", "typing.TypeVar")
 _PARAMSPEC_IDS = (
@@ -46,7 +43,6 @@ _TYPEDDICT_IDS = (
 _NEWTYPE_IDS = ("NewType", "typing.NewType")
 _ANNOTATED_IDS = (
     "Annotated", "typing.Annotated", "typing_extensions.Annotated")
-
 
 #------------------------------------------------------
 # imports
@@ -284,18 +280,15 @@ class Splice:
     return str(self)
 
 
-class GeneratePytdVisitor(visitor.BaseVisitor):
+class _GeneratePytdVisitor(visitor.BaseVisitor):
   """Converts a typed_ast tree to a pytd tree."""
 
-  def __init__(self, src, filename, module_name, version, platform,
-               gen_stub_imports):
-    defs = definitions.Definitions(
-        modules.Module(filename, module_name, gen_stub_imports))
+  def __init__(self, src, filename, module_name, options):
+    defs = definitions.Definitions(modules.Module(filename, module_name))
     super().__init__(defs=defs, filename=filename)
     self.src_code = src
     self.module_name = module_name
-    self.version = version
-    self.platform = platform or _DEFAULT_PLATFORM
+    self.options = options
     self.level = 0
     self.in_function = False  # pyi will not have nested defs
     self.annotation_visitor = AnnotationVisitor(defs=defs, filename=filename)
@@ -485,7 +478,8 @@ class GeneratePytdVisitor(visitor.BaseVisitor):
   def enter_If(self, node):
     # Evaluate the test and preemptively remove the invalid branch so we don't
     # waste time traversing it.
-    node.test = conditions.evaluate(node.test, self.version, self.platform)
+    node.test = conditions.evaluate(
+        node.test, self.options.python_version, self.options.platform)
     if not isinstance(node.test, bool):
       raise ParseError("Unexpected if statement" + debug.dump(node, ast3))
 
@@ -685,46 +679,56 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   return ast_root_node
 
 
-# Python version input type.
-VersionType = Optional[Tuple[int, ...]]
-
-
-def _feature_version(python_version: VersionType) -> int:
+def _feature_version(python_version: Tuple[int, ...]) -> int:
   """Get the python feature version for the parser."""
-  if not python_version or len(python_version) == 1:
+  if len(python_version) == 1:
     return sys.version_info.minor
   else:
     return python_version[1]
 
 
+# Options that will be copied from pytype.config.Options.
+_TOPLEVEL_PYI_OPTIONS = (
+    "python_version",
+)
+
+
+@dataclasses.dataclass
+class PyiOptions:
+  """Pyi parsing options."""
+
+  python_version: Tuple[int, int] = sys.version_info[:2]
+  platform: str = _DEFAULT_PLATFORM
+
+  @classmethod
+  def from_toplevel_options(cls, toplevel_options):
+    kwargs = {}
+    for k in _TOPLEVEL_PYI_OPTIONS:
+      kwargs[k] = getattr(toplevel_options, k)
+    return cls(**kwargs)
+
+
 def parse_string(
     src: str,
-    python_version: VersionType = None,
     name: Optional[str] = None,
     filename: Optional[str] = None,
-    platform: Optional[str] = None,
-    gen_stub_imports: bool = True,
+    options: Optional[PyiOptions] = None,
 ):
-  return parse_pyi(src, filename=filename, module_name=name,
-                   platform=platform, python_version=python_version,
-                   gen_stub_imports=gen_stub_imports)
+  return parse_pyi(src, filename=filename, module_name=name, options=options)
 
 
 def parse_pyi(
     src: str,
     filename: Optional[str],
     module_name: str,
-    python_version: VersionType = None,
-    platform: Optional[str] = None,
-    gen_stub_imports: bool = True,
+    options: Optional[PyiOptions] = None,
 ) -> pytd.TypeDeclUnit:
   """Parse a pyi string."""
   filename = filename or ""
-  feature_version = _feature_version(python_version)
-  python_version = python_version or sys.version_info[:2]
+  options = options or PyiOptions()
+  feature_version = _feature_version(options.python_version)
   root = _parse(src, feature_version, filename)
-  gen_pytd = GeneratePytdVisitor(
-      src, filename, module_name, python_version, platform, gen_stub_imports)
+  gen_pytd = _GeneratePytdVisitor(src, filename, module_name, options)
   root = gen_pytd.visit(root)
   root = post_process_ast(root, src, module_name)
   return root
@@ -734,16 +738,14 @@ def parse_pyi_debug(
     src: str,
     filename: str,
     module_name: str,
-    python_version: VersionType = None,
-    platform: Optional[str] = None,
-) -> Tuple[pytd.TypeDeclUnit, GeneratePytdVisitor]:
+    options: Optional[PyiOptions] = None,
+) -> Tuple[pytd.TypeDeclUnit, _GeneratePytdVisitor]:
   """Debug version of parse_pyi."""
-  feature_version = _feature_version(python_version)
-  python_version = python_version or sys.version_info[:2]
+  options = options or PyiOptions()
+  feature_version = _feature_version(options.python_version)
   root = _parse(src, feature_version, filename)
   print(debug.dump(root, ast3, include_attributes=False))
-  gen_pytd = GeneratePytdVisitor(
-      src, filename, module_name, python_version, platform, True)
+  gen_pytd = _GeneratePytdVisitor(src, filename, module_name, options)
   root = gen_pytd.visit(root)
   print("---transformed parse tree--------------------")
   print(root)
@@ -756,11 +758,9 @@ def parse_pyi_debug(
   return root, gen_pytd
 
 
-def canonical_pyi(pyi, python_version=None, multiline_args=False,
-                  gen_stub_imports=True):
+def canonical_pyi(pyi, multiline_args=False, options=None):
   """Rewrite a pyi in canonical form."""
-  ast = parse_string(pyi, python_version=python_version,
-                     gen_stub_imports=gen_stub_imports)
+  ast = parse_string(pyi, options=options)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
   ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
   ast.Visit(visitors.VerifyVisitor())

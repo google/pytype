@@ -37,7 +37,7 @@ class NamedTuple:
     Returns:
       A generated class that describes the named tuple.
     """
-    class_parent = pytdgen.heterogeneous_tuple(
+    class_base = pytdgen.heterogeneous_tuple(
         pytd.NamedType("tuple"),
         tuple(t for _, t in fields))
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
@@ -49,7 +49,7 @@ class NamedTuple:
         [self._make_new(class_name, fields), self._make_init()])
     return pytd.Class(name=class_name,
                       metaclass=None,
-                      parents=(class_parent,),
+                      bases=(class_base,),
                       methods=tuple(methods),
                       constants=class_constants,
                       decorators=(),
