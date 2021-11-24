@@ -396,9 +396,16 @@ class SimpleValue(BaseValue):
     parameters.extend(self.instance_type_parameters.values())
     return parameters
 
+  def instantiate(self, node, container=None):
+    return Instance.from_value(self, container).to_variable(node)
+
 
 class Instance(SimpleValue):
   """An instance of some object."""
+
+  @classmethod
+  def from_value(cls, value, container=None):
+    return cls(value, value.ctx, container=container)
 
   def __init__(self, cls, ctx, container=None):
     super().__init__(cls.name, ctx)
@@ -2694,7 +2701,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
       # When the analyze_x methods in CallTracer instantiate classes in
       # preparation for analysis, often there is no frame on the stack yet, or
       # the frame is a SimpleFrame with no opcode.
-      return self._to_instance(container).to_variable(node)
+      return super().instantiate(node, container)
 
   def __repr__(self):
     return "InterpreterClass(%s)" % self.name

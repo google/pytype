@@ -65,6 +65,13 @@ class ImportTest(test_base.BaseTest):
         print(err.name)
     """)
 
+  def test_datetime_datetime(self):
+    with self.DepTree([("foo.py", "from datetime import datetime")]):
+      self.Check("""
+        import foo
+        assert_type(foo.datetime(1, 1, 1), "datetime.datetime")
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

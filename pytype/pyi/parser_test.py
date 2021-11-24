@@ -2026,6 +2026,21 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
           def name(self) -> int: ...
       """, 1, "Invalid property decorators for method `name`")
 
+  def test_abstract_property(self):
+    self.check("""
+      class Foo:
+        @property
+        @abstractmethod
+        def x(self) -> int: ...
+        @x.setter
+        def x(self, y: int) -> None: ...
+    """, """
+      from typing import Annotated
+
+      class Foo:
+          x: Annotated[int, 'property']
+    """)
+
 
 class MergeSignaturesTest(parser_test_base.ParserTestBase):
 
