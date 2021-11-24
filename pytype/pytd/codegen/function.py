@@ -1,10 +1,9 @@
 """Function definitions in pyi files."""
 
 import collections
+import dataclasses
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
-
-import dataclasses
 
 from pytype.pytd import pytd
 
@@ -226,6 +225,10 @@ class _DecoratedFunction:
       # For properties, we can have at most one of setter, getter and deleter,
       # and no other overloads
       self.add_property(fn.decorator, fn.signature)
+      # For properties, it's fine if, e.g., the getter is abstract but the
+      # setter is not, so we skip the @abstractmethod and  @coroutine
+      # consistency checks.
+      return
     elif self.decorator == fn.decorator:
       # For other decorators, we can have multiple overloads but they need to
       # all have the same decorator
