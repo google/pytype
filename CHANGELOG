@@ -1,3 +1,22 @@
+Version 2021.11.24:
+
+New features and updates:
+* Update typeshed pin to commit 7cc5eb2 from Aug 8.
+* Remove pytype's ability to accept python_version=3.
+* Rename pytype "master" branch to "main".
+* Remove the --gen-stub-imports flag. This was a no-op as of version 2021.11.18.
+* Look up local names in nested class scopes when importing pyi files.
+* Consistently use "base" instead of "parent" to refer to base classes. This
+  changes the pickled representation of pytd.Class.
+
+Bug fixes:
+* Check for multiple module-level `__getattr__` overloads.
+* Raise a not supported error for constructors in type annotations in pyi files.
+* Fix a [not-instantiable] false positive.
+* Add a feature flag, --fix-module-collisions, to fix a 'duplicate top-level
+  identifier' pyi issue.
+* Don't enforce @abstractmethod and @coroutine consistency on properties.
+
 Version 2021.11.18:
 
 New features and updates:
