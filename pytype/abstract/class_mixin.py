@@ -381,9 +381,6 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       node = self._call_method(node, value, method, function.Args(()))
     return node
 
-  def _to_instance(self, container):
-    return self._instance_abstract_class(self, self.ctx, container=container)
-
   def _new_instance(self, container, node, args):
     """Returns a (possibly cached) instance of 'self'."""
     del args  # unused
@@ -394,7 +391,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       key = node
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = self._to_instance(container)
+      self._instance_cache[key] = self._instance_abstract_class.from_value(
+          self, container)
     return self._instance_cache[key]
 
   def _check_not_instantiable(self):
