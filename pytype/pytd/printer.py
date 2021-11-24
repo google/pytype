@@ -441,13 +441,14 @@ class PrintVisitor(base_visitor.Visitor):
   def _GuessModule(self, maybe_module):
     """Guess which part of the given name is the module prefix."""
     if "." not in maybe_module:
-      return maybe_module
+      return maybe_module, ""
     prefix, suffix = maybe_module.rsplit(".", 1)
     # Heuristic: modules are typically lowercase, classes uppercase.
     if suffix[0].islower():
-      return maybe_module
+      return maybe_module, ""
     else:
-      return self._GuessModule(prefix)
+      module, rest = self._GuessModule(prefix)
+      return module, f"{rest}.{suffix}" if rest else suffix
 
   def VisitNamedType(self, node):
     """Convert a type to a string."""
@@ -467,8 +468,16 @@ class PrintVisitor(base_visitor.Visitor):
           if aliased_name:
             node_name = aliased_name
           else:
-            self._RequireImport(self._GuessModule(prefix))
-            node_name = node.name
+            module, rest = self._GuessModule(prefix)
+            module_alias = module
+            while self._NameCollision(module_alias):
+              module_alias = f"_{module_alias}"
+            if module_alias == module:
+              self._RequireImport(module)
+              node_name = node.name
+            else:
+              self._RequireImport(f"{module} as {module_alias}")
+              node_name = ".".join(filter(bool, (module_alias, rest, suffix)))
         else:
           node_name = node.name
       else:
