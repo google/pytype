@@ -146,9 +146,11 @@ class PytypeRunner:
     self.keep_going = conf.keep_going
     self.jobs = conf.jobs
 
-  def set_custom_options(self, flags_with_values, binary_flags):
+  def set_custom_options(self, flags_with_values, binary_flags, report_errors):
     """Merge self.custom_options into flags_with_values and binary_flags."""
     for dest, value in self.custom_options:
+      if not report_errors and dest in config.REPORT_ERRORS_ITEMS:
+        continue
       arg_info = config.get_pytype_single_item(dest).arg_info
       if arg_info.to_command_line:
         value = arg_info.to_command_line(value)
@@ -174,8 +176,7 @@ class PytypeRunner:
         '--analyze-annotated' if report_errors else '--no-report-errors',
         '--nofail',
     }
-    if report_errors:
-      self.set_custom_options(flags_with_values, binary_flags)
+    self.set_custom_options(flags_with_values, binary_flags, report_errors)
     # Order the flags so that ninja recognizes commands across runs.
     return (
         exe +

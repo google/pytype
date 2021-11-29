@@ -154,37 +154,39 @@ class TestCustomOptions(TestBase):
     self.conf.disable = ['import-error', 'name-error']
     runner = make_runner([], [], self.conf)
     flags_with_values = {}
-    runner.set_custom_options(flags_with_values, set())
+    runner.set_custom_options(flags_with_values, set(), self.conf.report_errors)
     self.assertEqual(flags_with_values['--disable'], 'import-error,name-error')
 
   def test_no_disable(self):
     self.conf.disable = []
     runner = make_runner([], [], self.conf)
     flags_with_values = {}
-    runner.set_custom_options(flags_with_values, set())
+    runner.set_custom_options(flags_with_values, set(), self.conf.report_errors)
     self.assertFalse(flags_with_values)
 
-  # --no-report-errors tests a binary flag with a custom to_command_line.
+  # The purpose of the following --no-report-errors tests is to test a generic
+  # binary flag with a custom to_command_line. These tests do not reflect actual
+  # error-reporting behavior; for that, see TestGetRunCmd.test_error_reporting.
 
   def test_report_errors(self):
     self.conf.report_errors = True
     runner = make_runner([], [], self.conf)
     binary_flags = {'--no-report-errors'}
-    runner.set_custom_options({}, binary_flags)
+    runner.set_custom_options({}, binary_flags, True)
     self.assertFlags(binary_flags, set())
 
   def test_no_report_errors(self):
     self.conf.report_errors = False
     runner = make_runner([], [], self.conf)
     binary_flags = set()
-    runner.set_custom_options({}, binary_flags)
+    runner.set_custom_options({}, binary_flags, True)
     self.assertFlags(binary_flags, {'--no-report-errors'})
 
   def test_report_errors_default(self):
     self.conf.report_errors = True
     runner = make_runner([], [], self.conf)
     binary_flags = set()
-    runner.set_custom_options({}, binary_flags)
+    runner.set_custom_options({}, binary_flags, True)
     self.assertFlags(binary_flags, set())
 
   # --protocols tests a binary flag whose value is passed through transparently.
@@ -193,21 +195,21 @@ class TestCustomOptions(TestBase):
     self.conf.protocols = True
     runner = make_runner([], [], self.conf)
     binary_flags = set()
-    runner.set_custom_options({}, binary_flags)
+    runner.set_custom_options({}, binary_flags, self.conf.report_errors)
     self.assertFlags(binary_flags, {'--protocols'})
 
   def test_no_protocols(self):
     self.conf.protocols = False
     runner = make_runner([], [], self.conf)
     binary_flags = {'--protocols'}
-    runner.set_custom_options({}, binary_flags)
+    runner.set_custom_options({}, binary_flags, self.conf.report_errors)
     self.assertFlags(binary_flags, set())
 
   def test_no_protocols_default(self):
     self.conf.protocols = False
     runner = make_runner([], [], self.conf)
     binary_flags = set()
-    runner.set_custom_options({}, binary_flags)
+    runner.set_custom_options({}, binary_flags, self.conf.report_errors)
     self.assertFlags(binary_flags, set())
 
 
@@ -263,6 +265,17 @@ class TestGetRunCmd(TestBase):
     args = self.runner.get_pytype_command_for_ninja(report_errors=True)
     options = self.get_options(args)
     self.assertEqual(options.disable, ['import-error', 'name-error'])
+
+  def test_custom_option_no_report_errors(self):
+    custom_conf = self.parser.config_from_defaults()
+    # If the --precise-return flag is ever removed, replace it with another
+    # feature or experimental flag from pytype.config - preferably one expected
+    # to be long-lived to reduce churn.
+    custom_conf.precise_return = True
+    self.runner = make_runner([], [], custom_conf)
+    args = self.runner.get_pytype_command_for_ninja(report_errors=False)
+    options = self.get_options(args)
+    self.assertTrue(options.precise_return)
 
 
 class TestGetModuleAction(TestBase):

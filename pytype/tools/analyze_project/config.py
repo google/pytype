@@ -60,6 +60,15 @@ ITEMS = {
 }
 
 
+REPORT_ERRORS_ITEMS = {
+    'disable': Item(
+        None, 'pyi-error', ArgInfo('--disable', ','.join),
+        'Comma or space separated list of error names to ignore.'),
+    'report_errors': Item(
+        None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
+}
+
+
 # The missing fields will be filled in by generate_sample_config_or_die.
 def _pytype_single_items():
   """Args to pass through to pytype_single."""
@@ -69,13 +78,7 @@ def _pytype_single_items():
     dest = opt.lstrip('-').replace('-', '_')
     default = str(default)
     out[dest] = Item(None, default, ArgInfo(opt, None), None)
-  out.update({
-      'disable': Item(
-          None, 'pyi-error', ArgInfo('--disable', ','.join),
-          'Comma or space separated list of error names to ignore.'),
-      'report_errors': Item(
-          None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
-  })
+  out.update(REPORT_ERRORS_ITEMS)
   return out
 
 
