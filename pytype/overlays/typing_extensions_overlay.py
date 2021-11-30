@@ -7,15 +7,16 @@ class TypingExtensionsOverlay(overlay.Overlay):
   """A custom overlay for the 'typing_extensions' module."""
 
   def __init__(self, ctx):
+    ast = ctx.loader.import_name("typing_extensions")
     member_map = {
         "Annotated": typing_overlay.typing_overlay["Annotated"],
         "final": typing_overlay.typing_overlay["final"],
         "Literal": typing_overlay.typing_overlay["Literal"],
-        "Protocol": build_protocol,
-        "runtime": build_runtime,  # alias for runtime_checkable
+        "Protocol": _build("typing.Protocol"),
+        "runtime": _build("typing.runtime_checkable"),
+        "SupportsIndex": _build("typing_extensions.SupportsIndex", ast),
         "TypedDict": typing_overlay.typing_overlay["TypedDict"],
     }
-    ast = ctx.loader.import_name("typing_extensions")
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:
       # Any public typing_extensions members that are not explicitly implemented
       # are unsupported.
@@ -39,9 +40,5 @@ class TypingExtensionsOverlay(overlay.Overlay):
     return var
 
 
-def build_protocol(ctx):
-  return ctx.convert.name_to_value("typing.Protocol")
-
-
-def build_runtime(ctx):
-  return ctx.convert.name_to_value("typing.runtime_checkable")
+def _build(name, ast=None):
+  return lambda ctx: ctx.convert.name_to_value(name, ast=ast)

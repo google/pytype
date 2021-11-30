@@ -736,6 +736,14 @@ class ProtocolTest(test_base.BaseTest):
         def f(cls) -> str: ...
     """)
 
+  def test_typing_extensions_protocol(self):
+    self.Check("""
+      from typing_extensions import SupportsIndex
+      def f(x: SupportsIndex):
+        pass
+      f(0)
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.BaseTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""
