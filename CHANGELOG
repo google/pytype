@@ -1,3 +1,8 @@
+Version 2021.11.29:
+
+Bug fixes:
+* Pass feature flags to the INFER command.
+
 Version 2021.11.24:
 
 New features and updates:
