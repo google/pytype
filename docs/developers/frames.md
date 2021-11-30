@@ -1,7 +1,7 @@
 # Stack Frames
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2021-08-16' }
+freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
 *-->
 
 <!--ts-->
@@ -14,7 +14,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-16' }
          * [LOAD and STORE operations](#load-and-store-operations)
       * [The block stack](#the-block-stack)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: mdemello, at: 2021-11-29T20:54-08:00 -->
 
 <!--te-->
 
@@ -221,7 +221,7 @@ NOTE: Some of the `SETUP_*` opcodes changed in python 3.8, however the basic
 principle remains the same. See `vm.py/byte_SETUP_FINALLY()` for a quick look at
 how pytype handles version-specific opcode differences.
 
-Internally, pytype represents a block as an object with four fields:
+Internally, pytype represents a block as an object with two fields:
 
 ```
 Block = collections.namedtuple("Block", [

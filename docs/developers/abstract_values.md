@@ -1,7 +1,7 @@
 # Abstract values
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
+freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
 *-->
 
 <!--ts-->
@@ -12,7 +12,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Matching](#matching)
       * [Construction](#construction)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: mdemello, at: 2021-11-29T20:54-08:00 -->
 
 <!--te-->
 
@@ -118,12 +118,12 @@ obj3.members['x'] = builtinclass_int
 globals = {'A': obj1, 'foo': obj3}
 ```
 
-The `abstract.*` classes are defined in `abstract.py`. They all inherit from the
-base class `BaseValue`, which is the pytype representation of a python object,
-and store various metadata that is relevant to type inference and checking (e.g.
-the `InterpreterClass` object stores a list of base classes and a dictionary of
-members, and the `Instance` object stores a reference to the `InterpreterClass`
-object it was instantiated from).
+The `abstract.*` classes are defined in `abstract/abstract.py`. They all inherit
+from the base class `BaseValue`, which is the pytype representation of a python
+object, and store various metadata that is relevant to type inference and
+checking (e.g. an `InterpreterClass` object stores a list of base classes and
+a dictionary of members, and an `Instance` object stores a reference to the
+`InterpreterClass` object it was instantiated from).
 
 TIP: The [abstract_utils][abstract_utils] module contains many useful functions
 for working with abstract values. Additionally, all abstract values have a `ctx`
@@ -183,7 +183,7 @@ contents, so there was no type violation.
 ## Matching
 
 Most of the errors that pytype reports are detected via a mismatch between an
-expected and an observed type. [`pytype/matcher.py`][matcher] contains the logic
+expected and an observed type. [pytype/matcher.py][matcher] contains the logic
 for matching abstract values against each other. For example, when analyzing:
 
 ```python
