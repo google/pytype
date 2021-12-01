@@ -1,7 +1,7 @@
 # Bytecode Compilation
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
+freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
 *-->
 
 <!--ts-->
@@ -10,7 +10,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-08-09' }
       * [Host and Target Versions](#host-and-target-versions)
       * [Opcodes](#opcodes)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: mdemello, at: 2021-11-29T20:54-08:00 -->
 
 <!--te-->
 
@@ -38,7 +38,7 @@ between the **host** and the **target** python version:
 
 * The **host** version is the version of the python interpreter that is used to
   run pytype
-* The **target** version is the version of python that the code we are analysing
+* The **target** version is the version of python for the code we are analysing
   (as specified by `--version`). If no version is specified, we assume it is the
   same as the host version.
 

@@ -1,6 +1,8 @@
 # Type Annotations
 
-<!--* freshness: { owner: 'mdemello' reviewed: '2020-12-08' } *-->
+<!--*
+freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
+*-->
 
 <!--ts-->
    * [Type Annotations](#type-annotations)
@@ -12,7 +14,7 @@
          * [Conversion to abstract types](#conversion-to-abstract-types)
       * [Tracking local operations](#tracking-local-operations)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: mdemello, at: 2021-11-29T20:54-08:00 -->
 
 <!--te-->
 

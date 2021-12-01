@@ -1,7 +1,7 @@
 # Pytype's Type System
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2021-07-27' }
+freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
 *-->
 
 <!--ts-->
@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-07-27' }
       * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
       * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: mdemello, at: 2021-11-29T20:55-08:00 -->
 
 <!--te-->
 

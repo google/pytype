@@ -667,16 +667,19 @@ class ImportTest(test_base.BaseTest):
   def test_import_function(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-          from math import pow as mypow
+        from typing import SupportsFloat
+        def pow(__x: SupportsFloat, __y: SupportsFloat) -> float: ...
+      """)
+      d.create_file("bar.pyi", """
+          from foo import pow as mypow
       """)
       ty = self.Infer("""
-        import foo
-        d = foo.mypow
+        import bar
+        d = bar.mypow
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
         from typing import SupportsFloat
-        import foo
+        import bar
         def d(__x: SupportsFloat, __y: SupportsFloat) -> float: ...
       """)
 

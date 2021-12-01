@@ -659,13 +659,17 @@ def ToType(item, allow_constants=False, allow_functions=False,
         return item.type.parameters[0]
       else:
         return AnythingType()
+    elif item.type.name == 'typing_extensions._SpecialForm':
+      # We convert known special forms to their corresponding types and
+      # otherwise treat them as unknown types.
+      if item.name == 'typing_extensions.Protocol':
+        return NamedType('typing.Protocol')
+      else:
+        return AnythingType()
     elif (isinstance(item.type, AnythingType) or
-          item.type.name == 'typing_extensions._SpecialForm' or
           item.name == 'typing_extensions.TypedDict'):
-      # The following constants are treated as (unknown) types:
-      # * one whose type is Any or typing_extensions._SpecialForm
-      # * one whose name is typing_extensions.TypedDict, as TypedDict is a class
-      #   that looks like a constant:
+      # A constant with type Any may be a type, and TypedDict is a class that
+      # looks like a constant:
       #   https://github.com/python/typeshed/blob/8cad322a8ccf4b104cafbac2c798413edaa4f327/third_party/2and3/typing_extensions.pyi#L68
       return AnythingType()
     elif allow_constants:

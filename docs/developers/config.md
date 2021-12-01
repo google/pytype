@@ -1,7 +1,7 @@
 # Configuring pytype
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2020-12-04' }
+freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
 *-->
 
 <!--ts-->
@@ -17,7 +17,7 @@ freshness: { owner: 'mdemello' reviewed: '2020-12-04' }
       * [Adding a new option](#adding-a-new-option)
       * [Config files](#config-files)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: mdemello, at: 2021-11-29T20:54-08:00 -->
 
 <!--te-->
 
@@ -197,7 +197,7 @@ If your option needs validation or postprocessing, add a corresponding method to
 the `Postprocessor` class.
 
 Options added to `basic_options` should also be added to the
-`_PYTYPE_SINGLE_ITEMS` dict in `tools/analyze_project/config.py`
+`flags_with_values` dict in `tools/analyze_project/pytype_runner.py`
 
 For instance, look at the complete code for the `pythonpath` option:
 
