@@ -119,6 +119,23 @@ class BuiltinTests(test_base.BaseTest):
         return sum(x)
     """)
 
+  def test_sum_custom(self):
+    self.Check("""
+      class Foo:
+        def __init__(self, v):
+          self.v = v
+        def __add__(self, other: 'Foo') -> 'Foo':
+          return Foo(self.v + other.v)
+      assert_type(sum([Foo(0), Foo(1)]), Foo)
+    """)
+
+  def test_sum_bad(self):
+    self.CheckWithErrors("""
+      class Foo:
+        pass
+      sum([Foo(), Foo()])  # wrong-arg-types
+    """)
+
   def test_print_function(self):
     self.Check("""
       import sys
