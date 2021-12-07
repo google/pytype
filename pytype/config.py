@@ -337,6 +337,10 @@ def add_debug_options(o):
       dest="timestamp_logs", default=None,
       help=("Add timestamps to the logs"))
   o.add_argument(
+      "--debug-logs", action="store_true",
+      dest="debug_logs", default=None,
+      help=("Add debugging information to the logs"))
+  o.add_argument(
       "--verify-pickle", action="store_true", default=False,
       dest="verify_pickle",
       help=("Loads the generated PYI file and compares it with the abstract "
@@ -482,7 +486,7 @@ class Postprocessor:
     else:
       self.output_options.typeshed = True
 
-  @uses(["timestamp_logs"])
+  @uses(["timestamp_logs", "debug_logs"])
   def _store_verbosity(self, verbosity):
     """Configure logging."""
     if not -1 <= verbosity < len(LOG_LEVELS):
@@ -598,7 +602,7 @@ class Postprocessor:
                  "separated by %r" % (item, os.pathsep))
 
 
-def _set_verbosity(verbosity, timestamp_logs):
+def _set_verbosity(verbosity, timestamp_logs, debug_logs):
   """Set the logging verbosity."""
   if verbosity >= 0:
     basic_logging_level = LOG_LEVELS[verbosity]
@@ -610,9 +614,13 @@ def _set_verbosity(verbosity, timestamp_logs):
     # When calling pytype as a library, override the caller's logging level.
     logging.getLogger().setLevel(basic_logging_level)
   else:
-    fmt = "%(levelname)s:%(name)s %(message)s"
-    if timestamp_logs:
-      fmt = "%(relativeCreated)f " + fmt
+    if debug_logs:
+      fmt = (":%(relativeCreated)f:%(levelname)s:%(name)s:%(funcName)s:"
+             "%(lineno)s: %(message)s")
+    else:
+      fmt = "%(levelname)s:%(name)s %(message)s"
+      if timestamp_logs:
+        fmt = "%(relativeCreated)f " + fmt
     logging.basicConfig(level=basic_logging_level, format=fmt)
 
 
@@ -632,7 +640,7 @@ def verbosity_from(options):
     Nothing.
   """
   level = logging.getLogger().getEffectiveLevel()
-  _set_verbosity(options.verbosity, options.timestamp_logs)
+  _set_verbosity(options.verbosity, options.timestamp_logs, options.debug_logs)
   try:
     yield
   finally:
