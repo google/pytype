@@ -132,10 +132,8 @@ py_library(
   DEPS
     ._pytd
     .abc_hierarchy
-    .booleq
     .escape
     .pytd_utils
-    .type_match
     .visitors
     pytype.utils
 )

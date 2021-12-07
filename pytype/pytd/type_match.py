@@ -401,7 +401,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
     # a kwonly on the left side means that it was a keyword param.
     for p1, p2 in zip(params1, params2):
       if p1.optional and not p2.optional:
-        return booleq.FALSE  # needed for optimize.py:RemoveRedundantSignatures
+        return booleq.FALSE
     for i, p2 in enumerate(params2):
       if i >= len(params1):
         if not p2.optional:
