@@ -7,8 +7,11 @@ from pytype.tests import test_base
 class ProtocolInferenceTest(test_base.BaseTest):
   """Tests for protocol implementation."""
 
-  def test_multiple_signatures_with_type_parameter(self):
+  def setUp(self):
+    super().setUp()
     self.options.tweak(protocols=True)
+
+  def test_multiple_signatures_with_type_parameter(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
@@ -28,7 +31,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_unknown_single_signature(self):
-    self.options.tweak(protocols=True)
     # Test that the right signature is picked in the presence of an unknown
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -49,7 +51,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_unknown(self):
-    self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(arg1: str) -> float: ...
@@ -67,7 +68,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
-    self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> int: ...
@@ -85,7 +85,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_kwarg(self):
-    self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*, y: int) -> bool: ...
@@ -103,7 +102,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_pow2(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def t_testPow2(x, y):
         # pow(int, int) returns int, or float if the exponent is negative.
@@ -117,7 +115,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   @test_base.skip("Moving to protocols.")
   def test_slices(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def trim(docstring):
         lines = docstring.splitlines()
@@ -131,7 +128,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_match_unknown_against_container(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       a = {1}
       def f(x):
@@ -145,7 +141,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_lower(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.lower()
@@ -157,7 +152,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_container(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x, y):
           return y in x
@@ -168,7 +162,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_int(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.__int__()
@@ -179,7 +172,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_float(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
           return x.__float__()
@@ -190,7 +182,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_complex(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.__complex__()
@@ -201,7 +192,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_sized(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.__len__()
@@ -212,7 +202,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_abs(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         y = abs(x)
@@ -225,7 +214,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   @test_base.skip("doesn't match arguments correctly")
   def test_supports_round(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         y = x.__round__()
@@ -236,7 +224,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_reversible(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         y = x.__reversed__()
@@ -248,7 +235,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_iterable(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.__iter__()
@@ -260,7 +246,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   @test_base.skip("Iterator not implemented, breaks other functionality")
   def test_iterator(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.next()
@@ -271,7 +256,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_callable(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x().lower()
@@ -284,7 +268,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   @test_base.skip("Matches Mapping[int, Any] but not Sequence")
   def test_sequence(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         x.index(6)
@@ -299,7 +282,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   @test_base.skip("doesn't match arguments correctly on exit")
   def test_context_manager(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         x.__enter__()
@@ -312,7 +294,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_protocol_needs_parameter(self):
-    self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Sized, SupportsAbs
@@ -330,7 +311,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_protocol_needs_parameter_builtin(self):
-    self.options.tweak(protocols=True)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import SupportsAbs
@@ -349,7 +329,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   @test_base.skip("Unexpectedly assumes returned result is sequence")
   def test_mapping_abstractmethod(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x, y):
         return x.__getitem__(y)
@@ -360,7 +339,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_upper(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.upper()
@@ -372,7 +350,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_startswith(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.startswith("foo")
@@ -384,7 +361,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_endswith(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.endswith("foo")
@@ -396,7 +372,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_lstrip(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.lstrip()
@@ -408,7 +383,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_replace(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.replace("foo", "bar")
@@ -420,7 +394,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_encode(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.encode()
@@ -432,7 +405,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_decode(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.decode()
@@ -444,7 +416,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_splitlines(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.splitlines()
@@ -456,7 +427,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_split(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.split()
@@ -468,7 +438,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_strip(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.strip()
@@ -480,7 +449,6 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_supports_find(self):
-    self.options.tweak(protocols=True)
     ty = self.Infer("""
       def f(x):
         return x.find("foo")
@@ -489,6 +457,15 @@ class ProtocolInferenceTest(test_base.BaseTest):
       import protocols
       from typing import Any
       def f(x: protocols.SupportsFind) -> Any: ...
+    """)
+
+  def test_signature_template(self):
+    # Regression test for https://github.com/google/pytype/issues/410
+    self.assertNoCrash(self.Infer, """
+      def rearrange_proc_table(val):
+        procs = val['procs']
+        val['procs'] = dict((ix, procs[ix]) for ix in range(0, len(procs)))
+        del val['fields']
     """)
 
 
