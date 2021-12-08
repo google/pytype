@@ -1,3 +1,15 @@
+Version 2021.12.08:
+
+New features and updates:
+* Update typeshed pin to commit 3b6a52b from Nov 29.
+
+Bug fixes:
+* Recognize typing_extensions.SupportsIndex as a protocol.
+* Allow summing anything with an __add__ method.
+* Remove pytd optimizations that broke overloads.
+* Fix a crash in --protocols mode.
+* Add object.__dir__ to builtins.pytd.
+
 Version 2021.11.29:
 
 Bug fixes:
