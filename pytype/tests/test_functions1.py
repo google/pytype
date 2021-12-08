@@ -929,7 +929,11 @@ class TestFunctions(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import struct
+      from typing import overload
+      @overload
       def int2byte(*v) -> bytes: ...
+      @overload
+      def int2byte(i: int) -> str: ...
     """)
 
   def test_preserve_return_union(self):

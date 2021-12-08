@@ -232,6 +232,40 @@ class OverloadTest(test_base.BaseTest):
         def f4() -> str: ...
       """)
 
+  def test_init_kwargs_overloads(self):
+    ty = self.Infer("""
+      from typing import overload
+      class Foo:
+        @overload
+        def __init__(self, x: int, **kw) -> None: ...
+        @overload
+        def __init__(self, **kw) -> None: ...
+        def __init__(self, x: int, **kw): pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+        from typing import overload
+        class Foo:
+          @overload
+          def __init__(self, x: int, **kw) -> None: ...
+          @overload
+          def __init__(self, **kw) -> None: ...
+      """)
+
+  def test_use_init_kwargs_overloads(self):
+    with self.DepTree([("foo.py", """
+      from typing import overload
+      class Foo:
+        @overload
+        def __init__(self, x: int, **kw) -> None: ...
+        @overload
+        def __init__(self, **kw) -> None: ...
+        def __init__(self, x: int, **kw): pass
+    """)]):
+      self.Check("""
+        import foo
+        foo.Foo(0)
+      """)
+
 
 class OverloadTestPy3(test_base.BaseTest):
   """Python 3 tests for typing.overload."""

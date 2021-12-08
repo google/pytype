@@ -11,11 +11,9 @@ import logging
 
 from pytype import utils
 from pytype.pytd import abc_hierarchy
-from pytype.pytd import booleq
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd import type_match
 from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
@@ -38,6 +36,42 @@ class RenameUnknowns(visitors.Visitor):
       return node
 
 
+class NormalizeGenericSelfTypes(visitors.Visitor):
+  """Removes unwanted parameter types from the 'self' parameter.
+
+  For example, this transforms
+    class Foo(Generic[T]):
+      def f(self: Foo[int]): ...
+  to
+    class Foo(Generic[T]):
+      def f(self: Foo): ...
+  """
+
+  def __init__(self):
+    super().__init__()
+    self.class_stack = []
+
+  def EnterClass(self, node):
+    self.class_stack.append(node.name)
+
+  def LeaveClass(self, node):
+    self.class_stack.pop()
+
+  def VisitFunction(self, node):
+    if not self.class_stack:
+      return node
+    signatures = []
+    for sig in node.signatures:
+      if (sig.params and sig.params[0].name == "self" and
+          isinstance(sig.params[0].type, pytd.GenericType) and
+          sig.params[0].type.base_type.name == self.class_stack[-1]):
+        param = sig.params[0].Replace(type=sig.params[0].type.base_type)
+        signatures.append(sig.Replace(params=(param,) + sig.params[1:]))
+      else:
+        signatures.append(sig)
+    return node.Replace(signatures=tuple(signatures))
+
+
 class RemoveDuplicates(visitors.Visitor):
   """Remove duplicate function signatures.
 
@@ -54,56 +88,6 @@ class RemoveDuplicates(visitors.Visitor):
     # We remove duplicates, but keep existing entries in the same order.
     return node.Replace(
         signatures=tuple(pytd_utils.OrderedSet(node.signatures)))
-
-
-class RemoveRedundantSignatures(visitors.Visitor):
-  """Remove duplicate function signatures.
-
-  For example, this transforms
-    def f(x: int) -> float
-    def f(x: Union[int, float]) -> float
-  to
-    def f(x: Union[int, float]) -> float
-  In order to be removed, a signature has to be "contained" (a subclass of)
-  an existing one.
-  """
-
-  def __init__(self, hierarchy):
-    super().__init__()
-    self.match = type_match.TypeMatch(hierarchy.GetSuperClasses(),
-                                      any_also_is_bottom=False)
-    self.subst = {}
-
-  def EnterClass(self, cls):
-    # Preserve the identify of each type parameter, and don't
-    # allow them to match against anything by themselves.
-    self.subst = {p.type_param: pytd.NamedType("$" + p.name)
-                  for p in cls.template}
-
-  def LeaveClass(self, _):
-    self.subst = {}
-
-  def VisitFunction(self, node):
-    new_signatures = []
-    matches = set()
-    # We keep track of which signature matched which other signatures, purely
-    # for optimization - that way we don't have to query the reverse direction.
-    for i, s1 in enumerate(node.signatures):
-      for j, s2 in enumerate(node.signatures):
-        if i != j and (j, i) not in matches:
-          if s1.exceptions or s2.exceptions:
-            # We don't support matching of exceptions.
-            continue
-          if s1.template:
-            # type_match doesn't support polymorphic functions on the
-            # left side yet.
-            continue
-          if self.match.match(s1, s2, self.subst) == booleq.TRUE:
-            matches.add((i, j))
-            break
-      else:
-        new_signatures.append(s1)
-    return node.Replace(signatures=tuple(new_signatures))
 
 
 class SimplifyUnions(visitors.Visitor):
@@ -407,67 +391,6 @@ class Factorize(visitors.Visitor):
       signatures = new_sigs
 
     return f.Replace(signatures=tuple(signatures))
-
-
-class ApplyOptionalArguments(visitors.Visitor):
-  """Removes functions that are instances of a more specific case.
-
-  For example, this reduces
-    def f(x: int, ...)    # [1]
-    def f(x: int, y: int) # [2]
-  to just
-    def f(x: int, ...)
-
-  Because "..." makes it possible to pass any additional arguments to [1],
-  it encompasses both declarations, hence we can omit [2].
-  """
-
-  def _HasShorterVersion(self, sig, optional_arg_sigs):
-    """Find a shorter signature with optional arguments for a longer signature.
-
-    Arguments:
-      sig: The function signature we'd like to shorten
-      optional_arg_sigs: A set of function signatures with optional arguments
-        that will be matched against sig.
-
-    Returns:
-      True if there is a shorter signature that generalizes sig, but is not
-          identical to sig.
-    """
-
-    param_count = len(sig.params)
-
-    if not sig.has_optional:
-      param_count += 1  # also consider f(x, y, ...) for f(x, y)
-
-    for i in range(param_count):
-      if sig.params[0:i] in optional_arg_sigs:
-        return True
-    return False
-
-  def VisitFunction(self, f):
-    """Remove all signatures that have a shorter version.
-
-    We use signatures with optional argument (has_opt=True) as template
-    and then match all signatures against those templates, removing those
-    that match.
-
-    Arguments:
-      f: An instance of pytd.Function
-
-    Returns:
-      A potentially simplified instance of pytd.Function.
-    """
-
-    # Set of signatures that can replace longer ones. Only used for matching,
-    # hence we can use an unordered data structure.
-    optional_arg_sigs = frozenset(s.params
-                                  for s in f.signatures
-                                  if s.has_optional)
-
-    new_signatures = (s for s in f.signatures
-                      if not self._HasShorterVersion(s, optional_arg_sigs))
-    return f.Replace(signatures=tuple(new_signatures))
 
 
 class SuperClassHierarchy:
@@ -1033,11 +956,11 @@ def Optimize(node,
   Returns:
     An optimized node.
   """
+  node = node.Visit(NormalizeGenericSelfTypes())
   node = node.Visit(RemoveDuplicates())
   node = node.Visit(SimplifyUnions())
   node = node.Visit(CombineReturnsAndExceptions())
   node = node.Visit(Factorize())
-  node = node.Visit(ApplyOptionalArguments())
   node = node.Visit(CombineContainers())
   node = node.Visit(SimplifyContainers())
   if builtins:
@@ -1060,5 +983,4 @@ def Optimize(node,
   node = node.Visit(SimplifyContainers())
   if builtins and can_do_lookup:
     node = visitors.LookupClasses(node, builtins, ignore_late_types=True)
-    node = node.Visit(RemoveRedundantSignatures(hierarchy))
   return node
