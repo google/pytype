@@ -376,10 +376,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
     Returns:
       An instance of booleq.BooleanTerm, i.e. a boolean formula.
     """
-    assert not sig1.template
     # Signatures have type parameters, too. We ignore them, since they can
     # be anything. (See maybe_lookup_type_param())
-    subst.update({p.type_param: None for p in sig2.template})
+    subst.update({p.type_param: None for p in sig1.template + sig2.template})
     params1 = sig1.params
     params2 = sig2.params
     if skip_self:
