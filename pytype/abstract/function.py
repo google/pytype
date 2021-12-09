@@ -133,7 +133,8 @@ class Signature:
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):
         param.ctx.errorlog.invalid_annotation(
-            stack, param, "Appears only once in the signature")
+            stack, param, (f"TypeVar {param.name!r} appears only once in the "
+                           "function signature"))
 
   def drop_first_parameter(self):
     return self._replace(param_names=self.param_names[1:])
