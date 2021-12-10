@@ -91,6 +91,20 @@ class TestAttributes(test_base.BaseTest):
     self.assertErrorRegexes(
         errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"})
 
+  def test_disable(self):
+    self.Check("""
+      x = [None]
+      y = ''.join(z.oops
+                  for z in x)  # pytype: disable=attribute-error
+    """)
+
+  def test_method_disable(self):
+    self.Check("""
+      x = [None]
+      y = ''.join(z.oops()
+                  for z in x)  # pytype: disable=attribute-error
+    """)
+
 
 class TestAttributesPython3FeatureTest(test_base.BaseTest):
   """Tests for attributes over target code using Python 3 features."""

@@ -30,6 +30,8 @@ _FUNCTION_CALL_ERRORS = (
     "wrong-keyword-args",
 )
 
+_LOAD_ATTRIBUTE_OPCODES = ("LOAD_ATTR", "LOAD_METHOD")
+
 
 class _DirectiveError(Exception):
   pass
@@ -274,10 +276,12 @@ class _OpcodeLines:
       store_lines: Collection[int],
       make_function_lines: Collection[int],
       non_funcdef_lines: Collection[int],
+      load_attr_lines: Collection[int],
       call_lines: Collection[Call]):
     self.store_lines = store_lines
     self.make_function_lines = make_function_lines
     self.non_funcdef_lines = non_funcdef_lines
+    self.load_attr_lines = load_attr_lines
     # We transform call_lines into a line->Call mapping so that
     # _adjust_line_number can treat it as a Collection[int] like the other
     # *_lines attributes.
@@ -289,6 +293,7 @@ class _OpcodeLines:
     store_lines = set()
     make_function_lines = set()
     non_funcdef_lines = set()
+    load_attr_lines = set()
     all_call_lines = []
     for block in _collect_bytecode(code):
       call_lines = []
@@ -297,6 +302,8 @@ class _OpcodeLines:
           store_lines.add(opcode.line)
         elif opcode.name == "MAKE_FUNCTION":
           make_function_lines.add(opcode.line)
+        elif opcode.name in _LOAD_ATTRIBUTE_OPCODES:
+          load_attr_lines.add(opcode.line)
         elif _is_function_call(opcode.name):
           # Function calls can be nested, so we represent them as a sequence of
           # call trees. As opcodes are typically ordered by increasing line
@@ -315,8 +322,8 @@ class _OpcodeLines:
         if not _is_funcdef_op(opcode.name):
           non_funcdef_lines.add(opcode.line)
       all_call_lines.extend(call_lines)
-    return cls(
-        store_lines, make_function_lines, non_funcdef_lines, all_call_lines)
+    return cls(store_lines, make_function_lines, non_funcdef_lines,
+               load_attr_lines, all_call_lines)
 
 
 class Director:
@@ -593,7 +600,8 @@ class Director:
 
   def _adjust_line_numbers_for_error_directives(self, opcode_lines):
     """Adjusts line numbers for error directives."""
-    for error_class in _FUNCTION_CALL_ERRORS + ("annotation-type-mismatch",):
+    for error_class in _FUNCTION_CALL_ERRORS + (
+        "annotation-type-mismatch", "attribute-error"):
       if error_class not in self._disables:
         continue
       lines = self._disables[error_class].lines
@@ -607,12 +615,15 @@ class Director:
             min_line -= 1
           allowed_lines = (
               opcode_lines.store_lines | opcode_lines.make_function_lines)
+        elif error_class == "attribute-error":
+          min_line = 1
+          allowed_lines = opcode_lines.load_attr_lines
         else:
           min_line = 1
           allowed_lines = opcode_lines.call_lines
         adjusted_line = _adjust_line_number(line, allowed_lines, min_line)
         if adjusted_line and adjusted_line != line:
-          if error_class == "annotation-type-mismatch":
+          if error_class in ("annotation-type-mismatch", "attribute-error"):
             lines[adjusted_line] = membership
             del lines[line]
           else:
