@@ -1,6 +1,6 @@
 # Developer guide
 
-<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2021-12-09' } *-->
 
 This documentation is for developers of and contributors to pytype. It covers
 pytype's core concepts and code layout, as well as tips on suggested workflow.
@@ -12,7 +12,7 @@ pytype's core concepts and code layout, as well as tips on suggested workflow.
       * [Basic concepts](#basic-concepts)
       * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: rechen, at: 2021-12-09T19:13-08:00 -->
 
 <!--te-->
 

@@ -1,6 +1,6 @@
 # Attributes
 
-<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2021-12-09' } *-->
 
 <!--ts-->
    * [Attributes](#attributes)
@@ -12,7 +12,7 @@
          * [get_special_attribute](#get_special_attribute)
          * [valself](#valself)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: rechen, at: 2021-12-09T19:13-08:00 -->
 
 <!--te-->
 
@@ -56,35 +56,38 @@ in order to emulate the behavior of the Python interpreter:
 
 ![get_attribute diagram](../images/get_attribute.png)
 
-1. Like `set_attribute`, `get_attribute` recursively calls itself to unpack the
-   target object.
-1. Once the object has been unpacked, it is either a module, class instance,
-   class, or super instance (the result of a `super()` call). The corresponding
-   helper method is called.
+1.  Like `set_attribute`, `get_attribute` recursively calls itself to unpack the
+    target object.
+1.  Once the object has been unpacked, it is either a module, class instance,
+    class, or super instance (the result of a `super()` call). The corresponding
+    helper method is called.
 
-   a. `_get_module_attribute` forwards to `_get_instance_attribute`.
+    a. `_get_module_attribute` forwards to `_get_instance_attribute`.
 
-   b. `_get_instance_attribute` and `_get_class_attribute` forward to
-      `_get_attribute`.
+    b. `_get_instance_attribute` and `_get_class_attribute` forward to
+    `_get_attribute`.
 
-   c. `_get_attribute_from_super_instance` determines the super class and calls
-      `_lookup_from_mro_and_handle_descriptors` on it.
-1. Python classes can define a magic method, `__getattribute__`, that is called
-   unconditionally to implement attribute access, as well as a fallback method,
-   `__getattr__`, that is only called when normal attribute lookup fails. (See
-   the [Python data model documentation][python-attribute-access] for more
-   information.) To mimic this, `_get_attribute` first calls
-   `_get_attribute_computed("__getattribute__")`, then calls either
-   `_get_member` or `_lookup_from_mro_and_handle_descriptors` depending on
-   whether the target object is a class instance or a class, and finally calls
-   `_get_attribute_computed("__getattr__")`.
-1. Both `_get_attribute_computed` and `_lookup_from_mro_and_handle_descriptors`
-   use `_lookup_from_mro` to do attribute lookup on a class. The latter walks
-   the class's MRO, calling `_get_attribute_flat` - which in turn calls
-   `_get_member` - to check for the attribute on the class and its bases.
-1. Similar to `_set_member`, `_get_member` uses
-   `_maybe_load_as_instance_attribute` to force lazy loading and then checks
-   the `members` dict for the requested attribute.
+    c. `_get_attribute_from_super_instance` determines the super class and calls
+    `_lookup_from_mro_and_handle_descriptors` on it.
+
+1.  Python classes can define a magic method, `__getattribute__`, that is called
+    unconditionally to implement attribute access, as well as a fallback method,
+    `__getattr__`, that is only called when normal attribute lookup fails. (See
+    the [Python data model documentation][python-attribute-access] for more
+    information.) To mimic this, `_get_attribute` first calls
+    `_get_attribute_computed("__getattribute__")`, then calls either
+    `_get_member` or `_lookup_from_mro_and_handle_descriptors` depending on
+    whether the target object is a class instance or a class, and finally calls
+    `_get_attribute_computed("__getattr__")`.
+
+1.  Both `_get_attribute_computed` and `_lookup_from_mro_and_handle_descriptors`
+    use `_lookup_from_mro` to do attribute lookup on a class. The latter walks
+    the class's MRO, calling `_get_attribute_flat` - which in turn calls
+    `_get_member` - to check for the attribute on the class and its bases.
+
+1.  Similar to `_set_member`, `_get_member` uses
+    `_maybe_load_as_instance_attribute` to force lazy loading and then checks
+    the `members` dict for the requested attribute.
 
 ### get_special_attribute
 
