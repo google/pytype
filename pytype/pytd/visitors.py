@@ -87,9 +87,12 @@ class FillInLocalPointers(Visitor):
 
   def _Lookup(self, node):
     """Look up a node by name."""
-    module, _, _ = node.name.rpartition(".")
-    if module:
-      modules_to_try = [("", module)]
+    if "." in node.name:
+      modules_to_try = []
+      module = node.name
+      while "." in module:
+        module, _, _ = module.rpartition(".")
+        modules_to_try.append(("", module))
     else:
       modules_to_try = [("", ""),
                         ("", "builtins"),
@@ -98,8 +101,13 @@ class FillInLocalPointers(Visitor):
     for prefix, module in modules_to_try:
       mod_ast = self._lookup_map.get(module)
       if mod_ast:
+        name = prefix + node.name
+        mod_prefix = f"{mod_ast.name}."
         try:
-          item = mod_ast.Lookup(prefix + node.name)
+          if name.startswith(mod_prefix) and mod_prefix != "builtins.":
+            item = pytd.LookupItemRecursive(mod_ast, name[len(mod_prefix):])
+          else:
+            item = mod_ast.Lookup(name)
         except KeyError:
           pass
         else:
@@ -445,6 +453,8 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         return t
       raise
     module_name = module.name
+    if module_name == self.name:  # dotted local reference
+      return t
     name = cls_prefix + name
     try:
       if name == "*":
@@ -669,8 +679,35 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
 
   def VisitNamedType(self, node):
     """Do lookup on a pytd.NamedType."""
-    module_name, dot, name = node.name.rpartition(".")
-    if not dot:  # simple reference to a member of the current module
+    # TODO(rechen): This method and FillInLocalPointers._Lookup do very similar
+    # things; is there any common code we can extract out?
+    if "." in node.name:
+      resolved_node = None
+      module_name, name = node.name, ""
+      while "." in module_name:
+        module_name, _, prefix = module_name.rpartition(".")
+        name = f"{prefix}.{name}" if name else prefix
+        if module_name == self.unit.name:
+          # Fully qualified reference to a member of the current module. May
+          # contain nested items that need to be recursively resolved.
+          try:
+            resolved_node = self.to_type(self._LookupItemRecursive(name))
+          except (KeyError, NotImplementedError):
+            if "." in name:
+              # This might be a dotted local reference without a module_name
+              # prefix, so we'll do another lookup attempt below.
+              pass
+            else:
+              raise
+          break
+      if resolved_node is None:
+        # Possibly a reference to a member of the current module that does not
+        # have a module_name prefix.
+        try:
+          resolved_node = self.to_type(self._LookupItemRecursive(node.name))
+        except KeyError:
+          resolved_node = node  # lookup failures are handled later
+    else:  # simple reference to a member of the current module
       item = self._LookupLocalName(node)
       if self._toplevel:
         # Check if the definition of this name refers back to itself.
@@ -688,17 +725,6 @@ class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         resolved_node = self.to_type(item)
       except NotImplementedError as e:
         raise SymbolLookupError("%s is not a type" % item) from e
-    elif module_name == self.unit.name:
-      # Fully qualified reference to a member of the current module. May contain
-      # nested items that need to be recursively resolved.
-      resolved_node = self.to_type(self._LookupItemRecursive(name))
-    else:
-      # Possibly a reference to a member of the current module that does not
-      # have a module_name prefix.
-      try:
-        resolved_node = self.to_type(self._LookupItemRecursive(node.name))
-      except KeyError:
-        resolved_node = node  # lookup failures are handled later
     if isinstance(resolved_node, (pytd.Constant, pytd.Function)):
       visitor = LookupLocalTypes()
       visitor.unit = self.unit

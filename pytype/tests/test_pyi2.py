@@ -60,6 +60,22 @@ class PYITest(test_base.BaseTest):
         y = foo.f(1)  # wrong-arg-types
       """, pythonpath=[d.path])
 
+  def test_resolve_nested_type(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("meta.pyi", """
+        class Meta(type): ...
+      """)
+      d.create_file("foo.pyi", """
+        import meta
+        class Foo:
+          class Bar(int, metaclass=meta.Meta): ...
+          CONST: Foo.Bar
+      """)
+      self.Check("""
+        import foo
+        print(foo.Foo.CONST)
+      """, pythonpath=[d.path])
+
 
 class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""
