@@ -38,6 +38,55 @@ class UsageTest(test_base.BaseTest):
       def f(x: Tree[int]): ...
     """)
 
+  def test_match_as_type(self):
+    errors = self.CheckWithErrors("""
+      from typing import List, Union
+      X = Union[str, List['X']]
+      def f(x: X):
+        pass
+      f('')  # ok
+      f([''])  # ok
+      f([['']])  # ok
+      f(0)  # wrong-arg-types[e0]
+      f([0])  # wrong-arg-types[e1]
+      f([[0]])  # wrong-arg-types[e2]
+    """)
+    self.assertErrorSequences(errors, {
+        "e0": ["Expected", "Union[List[X], str]", "Actual", "int"],
+        "e1": ["Expected", "Union[List[X], str]", "Actual", "List[int]"],
+        "e2": ["Expected", "Union[List[X], str]", "Actual", "List[List[int]]"],
+    })
+
+  def test_match_as_value(self):
+    self.CheckWithErrors("""
+      from typing import Any, List, Union
+      X = Union[str, List['X']]
+      x: X = None
+
+      def ok(x: Union[str, List[Any]]):
+        pass
+      def bad(x: Union[int, List[int]]):
+        pass
+      ok(x)
+      bad(x)  # wrong-arg-types
+    """)
+
+  @test_base.skip("TODO(b/109648354): implement")
+  def test_match_as_value_and_type(self):
+    self.CheckWithErrors("""
+      from typing import List, Union
+      X = Union[str, List['X']]
+      Y = Union[str, List['Y']]
+      x: X = None
+
+      def matches_X(x: X):
+        pass
+      def matches_Y(y: Y):
+        pass
+      matches_X(x)
+      matches_Y(x)  # wrong-arg-types
+    """)
+
 
 # TODO(b/109648354): Enable --allow-recursive-types on these tests as we get
 # them passing.
@@ -45,27 +94,41 @@ class InferenceTest(test_base.BaseTest):
   """Tests inference of recursive types."""
 
   def test_basic(self):
-    self.options.tweak(allow_recursive_types=False)
-    ty, errors = self.InferWithErrors("""
+    ty = self.Infer("""
       from typing import List
-      Foo = List["Foo"]  # not-supported-yet[e]
-    """)
-    self.assertTypesMatchPytd(ty, "from builtins import list as Foo")
-    self.assertErrorRegexes(errors, {"e": r"Recursive.*Foo"})
-
-  def test_mutual_recursion(self):
-    self.options.tweak(allow_recursive_types=False)
-    ty, errors = self.InferWithErrors("""
-      from typing import List
-      X = List["Y"]
-      Y = List["X"]  # not-supported-yet[e]
+      Foo = List["Foo"]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, List
-      X = List[Y]
-      Y = List[list]
+      from typing import List
+      Foo = List[Foo]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Recursive.*Y"})
+
+  def test_mutual_recursion(self):
+    ty = self.Infer("""
+      from typing import List
+      X = List["Y"]
+      Y = List["X"]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      X = List[Y]
+      Y = List[List[Y]]
+    """)
+
+  @test_base.skip("TODO(b/109648354): implement")
+  def test_parameterization(self):
+    ty = self.Infer("""
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = List["Y[int]"]
+      Y = Union[T, List["Y"]]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = List[Y[int]]
+      Y = Union[T, List[Y]]
+    """)
 
 
 class PyiTest(test_base.BaseTest):
