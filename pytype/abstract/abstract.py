@@ -899,6 +899,22 @@ class LateAnnotation:
   def is_late_annotation(self):
     return True
 
+  def is_recursive(self):
+    """Check whether this is a recursive type."""
+    if not self.resolved:
+      return False
+    seen = {self}
+    stack = [self._type]
+    while stack:
+      t = stack.pop()
+      if t.is_late_annotation():
+        if t in seen:
+          return True
+        seen.add(t)
+      if isinstance(t, mixin.NestedAnnotation):
+        stack.extend(child for _, child in t.get_inner_types())
+    return False
+
 
 class AnnotationClass(SimpleValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""

@@ -249,7 +249,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     frame = self.ctx.vm.frame
     substs = frame.substs
     if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
-      self_var = frame.f_locals.pyval.get("self")
+      self_var = frame.first_arg
       if self_var:
         type_params = []
         for v in self_var.data:

@@ -1,6 +1,6 @@
 # Python version upgrades
 
-<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2021-12-09' } *-->
 
 This doc contains instructions for how to upgrade pytype to support a new Python
 version, using the Python 3.6->3.7 upgrade as an example.

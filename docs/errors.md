@@ -65,7 +65,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: rechen, at: 2021-12-08T17:44-08:00 -->
 
 <!--te-->
 
@@ -365,21 +365,33 @@ The module being imported was not found.
 
 ## invalid-annotation
 
-Something is wrong with this annotation. Examples:
+Something is wrong with this annotation. A common issue is a TypeVar that
+appears only once in a function signature:
 
 <!-- bad -->
 ```python
-from typing import List, TypeVar, Union
-
+from typing import TypeVar
 T = TypeVar("T")
+def f(x: T):  # bad: the TypeVar appears only once in the signature
+  pass
+```
+
+A TypeVar is meaningful only when it appears multiple times in the same
+class/function, since it's used to indicate that two or more values have the
+same type.
+
+Other examples:
+
+<!-- bad -->
+```python
+from typing import List, Union
+
 condition = ...  # type: bool
 class _Foo: ...
 def Foo():
   return _Foo()
 
 def f(x: List[int, str]):  # bad: too many parameters for List
-  pass
-def f(x: T):  # bad: the TypeVar appears only once in the signature
   pass
 def f(x: Foo):  # bad: not a type
   pass

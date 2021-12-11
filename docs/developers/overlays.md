@@ -1,6 +1,6 @@
 # Overlays
 
-<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2021-12-09' } *-->
 
 <!--ts-->
    * [Overlays](#overlays)
@@ -9,7 +9,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: rechen, at: 2021-12-09T19:13-08:00 -->
 
 <!--te-->
 
@@ -39,7 +39,7 @@ class SysOverlay(overlay.Overlay):
     [...]
 ```
 
-And the build method has access to the VM's `python_version` attribute:
+And the build method has access to the context's `python_version` attribute:
 
 ```python
 def build_version_info(ctx):
@@ -59,7 +59,7 @@ Overlays inherit from the [overlay.Overlay][overlay.Overlay] class, a subclass
 of abstract.Module that [overrides][member-conversion] member lookup so that
 when a member name is present in the overlay map, the representation of that
 member is constructed by calling the constructor specified in the map. The
-constructor can be any callable that accepts a VM instance and returns an
+constructor can be any callable that accepts a context instance and returns an
 abstract.BaseValue instance.
 
 ## Adding an overlay

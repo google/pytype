@@ -1,6 +1,6 @@
 # Type stubs
 
-<!--* freshness: { owner: 'rechen' reviewed: '2020-12-08' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2021-12-09' } *-->
 
 <!--ts-->
    * [Type stubs](#type-stubs)
@@ -13,7 +13,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: rechen, at: 2021-12-09T19:13-08:00 -->
 
 <!--te-->
 
@@ -63,7 +63,7 @@ pytype relies on the stubs provided by the open-source [typeshed][typeshed]
 project for most of its standard library and third party type information. For
 modules for which accurate mutation information is important, we shadow the
 typeshed stubs with custom pytd stubs located in
-[pytype/pytd/{builtins,stdlib}][pytd].
+[pytype/stubs/{builtins,stdlib}][stubs].
 During analysis, pytype
 will emit stubs of inferred type information for local files to communicate
 between `pytype-single` runs.
@@ -234,8 +234,6 @@ used to debug pickles.
 
 [pickle-utils]: https://github.com/google/pytype/blob/0206bf70c0ebc6e2ab3db12e35045aa05ff0ae02/pytype/pytd/pytd_utils.py#L445-L475
 
-[pytd]: https://github.com/google/pytype/tree/main/pytype/pytd
-
 [pytype.output]: https://github.com/google/pytype/blob/main/pytype/output.py
 
 [pytype.pyi]: https://github.com/google/pytype/tree/main/pytype/pyi
@@ -243,5 +241,7 @@ used to debug pickles.
 [pytype.pytd.optimize]: https://github.com/google/pytype/blob/main/pytype/pytd/optimize.py
 
 [pytype.pytd.pytd]: https://github.com/google/pytype/blob/main/pytype/pytd/pytd.py
+
+[stubs]: https://github.com/google/pytype/tree/main/pytype/stubs
 
 [typeshed]: https://github.com/python/typeshed

@@ -288,7 +288,7 @@ class GenericBasicTest(test_base.BaseTest):
           pass
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"V.*Appears only once in the signature"})
+        errors, {"e": r"V.*appears only once in the function signature"})
 
   def test_type_parameter_without_substitution(self):
     with file_utils.Tempdir() as d:
