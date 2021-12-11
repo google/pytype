@@ -353,6 +353,23 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         f2: Callable[[T], int]  # ok, since T is from the signature of g
     """)
 
+  def test_typevar_annot_and_list_comprehension(self):
+    # Regression test for https://github.com/google/pytype/issues/1083.
+    self.Check("""
+      from collections import defaultdict
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class Min(Generic[T]):
+        def __init__(self, items: list[T]):
+          self.min = 2
+          self.items = items
+        def __call__(self) -> list[T]:
+          counts: defaultdict[T, int] = defaultdict(int)
+          return [b for b in self.items if counts[b] >= self.min]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
