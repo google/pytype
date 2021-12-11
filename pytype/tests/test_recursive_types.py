@@ -88,8 +88,6 @@ class UsageTest(test_base.BaseTest):
     """)
 
 
-# TODO(b/109648354): Enable --allow-recursive-types on these tests as we get
-# them passing.
 class InferenceTest(test_base.BaseTest):
   """Tests inference of recursive types."""
 
@@ -115,7 +113,6 @@ class InferenceTest(test_base.BaseTest):
       Y = List[List[Y]]
     """)
 
-  @test_base.skip("TODO(b/109648354): implement")
   def test_parameterization(self):
     ty = self.Infer("""
       from typing import List, TypeVar, Union
@@ -131,6 +128,10 @@ class InferenceTest(test_base.BaseTest):
     """)
 
 
+# TODO(b/109648354): also test:
+# - reingesting mutually recursive types
+# - reingesting parameterized recursive types
+# - pickling
 class PyiTest(test_base.BaseTest):
   """Tests recursive types defined in pyi files."""
 
@@ -143,6 +144,22 @@ class PyiTest(test_base.BaseTest):
       self.Check("""
         import foo
       """, pythonpath=[d.path])
+
+  @test_base.skip("TODO(b/109648354): implement")
+  def test_reingest(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, Union
+      X = Union[int, List['X']]
+    """)]):
+      ty = self.Infer("""
+        import foo
+        X = foo.X
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import foo
+      from typing import List, Union
+      X = Union[int, List[X]]
+    """)
 
 
 if __name__ == "__main__":
