@@ -19,6 +19,12 @@ class ListTestBasic(test_base.BaseTest):
         return ([__any_object__] + [''] + x,)  # bad-return-type
     """)
 
+  def test_bad_comprehension(self):
+    self.CheckWithErrors("""
+      x = None
+      l = [y for y in x]  # attribute-error
+    """)
+
 
 class ListTest(test_base.BaseTest):
   """Tests for builtins.list in Python 3."""

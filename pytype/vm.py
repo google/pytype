@@ -15,6 +15,7 @@ import contextlib
 import functools
 import itertools
 import logging
+import re
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from pytype import blocks
@@ -1283,8 +1284,15 @@ class VirtualMachine:
     try:
       state, val = self.load_local(state, name)
     except KeyError:
-      val = self._name_error_or_late_annotation(state, name).to_variable(
-          state.node)
+      # Variables with a ".n" naming scheme are created by the interpreter under
+      # the hood to store things like iterators for list comprehensions. Even if
+      # something goes wrong, we should not expose this implementation detail to
+      # the user.
+      if re.fullmatch(r"\.\d+", name):
+        val = self.ctx.new_unsolvable(state.node)
+      else:
+        val = self._name_error_or_late_annotation(state, name).to_variable(
+            state.node)
     vm_utils.check_for_deleted(state, name, val, self.ctx)
     self.trace_opcode(op, name, val)
     return state.push(val)
