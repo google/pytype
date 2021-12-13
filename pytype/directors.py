@@ -30,8 +30,6 @@ _FUNCTION_CALL_ERRORS = (
     "wrong-keyword-args",
 )
 
-_LOAD_ATTRIBUTE_OPCODES = ("LOAD_ATTR", "LOAD_METHOD")
-
 
 class _DirectiveError(Exception):
   pass
@@ -259,6 +257,17 @@ def _is_funcdef_op(opcode_name):
   }
 
 
+def _is_load_attribute_op(opcode_name):
+  """Checks whether the opcode loads an attribute."""
+  return (opcode_name.startswith("GET_") or
+          opcode_name.startswith("UNPACK_") or
+          opcode_name in {
+              "LOAD_ATTR",
+              "LOAD_METHOD",
+              "SETUP_WITH",
+          })
+
+
 class _OpcodeLines:
   """Stores opcode line numbers for Director.adjust_line_numbers()."""
 
@@ -302,7 +311,7 @@ class _OpcodeLines:
           store_lines.add(opcode.line)
         elif opcode.name == "MAKE_FUNCTION":
           make_function_lines.add(opcode.line)
-        elif opcode.name in _LOAD_ATTRIBUTE_OPCODES:
+        elif _is_load_attribute_op(opcode.name):
           load_attr_lines.add(opcode.line)
         elif _is_function_call(opcode.name):
           # Function calls can be nested, so we represent them as a sequence of
