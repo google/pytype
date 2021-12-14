@@ -20,6 +20,7 @@ py_library(
   DEPS
     ._base
     ._instance
+    ._singletons
     .abstract_utils
     .class_mixin
     .function
@@ -53,6 +54,18 @@ py_library(
     .class_mixin
     .function
     pytype.utils
+)
+
+py_library(
+  NAME
+    _singletons
+  SRCS
+    _singletons.py
+  DEPS
+    ._base
+    pytype.utils
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(
