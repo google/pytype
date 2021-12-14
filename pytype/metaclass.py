@@ -63,8 +63,7 @@ class WithMetaclassInstance(abstract.BaseValue, class_mixin.Class):
 
   def __init__(self, ctx, cls, bases):
     super().__init__("WithMetaclassInstance", ctx)
-    class_mixin.Class.init_mixin(
-        self, cls, abstract.Instance, abstract.AnnotationContainer)
+    class_mixin.Class.init_mixin(self, cls)
     self.bases = bases
 
   def get_own_attributes(self):

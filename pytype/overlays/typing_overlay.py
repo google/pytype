@@ -317,8 +317,8 @@ class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
     # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
     # __slots__ and _fields are tuples containing the names of the fields.
     slots = tuple(self.ctx.convert.build_string(node, f) for f in field_names)
-    members["__slots__"] = abstract.Tuple(slots, self.ctx).to_variable(node)
-    members["_fields"] = abstract.Tuple(slots, self.ctx).to_variable(node)
+    members["__slots__"] = self.ctx.convert.build_tuple(node, slots)
+    members["_fields"] = self.ctx.convert.build_tuple(node, slots)
     # __dict__ and _field_defaults are both collections.OrderedDicts that map
     # field names (strings) to objects of the field types.
     ordered_dict_cls = self.ctx.convert.name_to_value(
@@ -540,8 +540,8 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
           self.ctx.vm.frames, err_msg=errmsg)
     if namedargs and len(posargs) == 1:
       namedargs = [
-          abstract.Tuple((self.ctx.convert.build_string(node, k), v),
-                         self.ctx).to_variable(node)
+          self.ctx.convert.build_tuple(
+              node, (self.ctx.convert.build_string(node, k), v))
           for k, v in namedargs.items()
       ]
       namedargs = abstract.List(namedargs, self.ctx).to_variable(node)
@@ -593,7 +593,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     if not isinstance(cls_val, abstract.Unsolvable):
       # set __new__.__defaults__
-      defaults = abstract.Tuple(tuple(defaults), self.ctx).to_variable(node)
+      defaults = self.ctx.convert.build_tuple(node, defaults)
       node, new_attr = self.ctx.attribute_handler.get_attribute(
           node, cls_val, "__new__")
       new_attr = abstract_utils.get_atomic_value(new_attr)

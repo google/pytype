@@ -93,15 +93,15 @@ class TupleTest(CompareTestBase):
     self._var.AddBinding(abstract.Unknown(self._ctx), [], self._node)
 
   def test_compatible_with__not_empty(self):
-    t = abstract.Tuple((self._var,), self._ctx)
+    t = self._ctx.convert.tuple_to_value((self._var,))
     self.assertTruthy(t)
 
   def test_compatible_with__empty(self):
-    t = abstract.Tuple((), self._ctx)
+    t = self._ctx.convert.tuple_to_value(())
     self.assertFalsy(t)
 
   def test_getitem__concrete_index(self):
-    t = abstract.Tuple((self._var,), self._ctx)
+    t = self._ctx.convert.tuple_to_value((self._var,))
     index = self._convert.constant_to_var(0)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
@@ -109,7 +109,7 @@ class TupleTest(CompareTestBase):
                   abstract_utils.get_atomic_value(self._var))
 
   def test_getitem__abstract_index(self):
-    t = abstract.Tuple((self._var,), self._ctx)
+    t = self._ctx.convert.tuple_to_value((self._var,))
     index = self._convert.build_int(self._node)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
@@ -149,11 +149,10 @@ class TupleTest(CompareTestBase):
       self.assertIsNone(compare.cmp_rel(self._ctx, op, tup2, tup1))
 
   def test_cmp_rel__prefix_equal(self):
-    tup1 = abstract.Tuple(
+    tup1 = self._ctx.convert.tuple_to_value(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.constant_to_value(1).to_variable(self._node),
-         self._convert.primitive_class_instances[int].to_variable(self._node)),
-        self._ctx)
+         self._convert.primitive_class_instances[int].to_variable(self._node)))
     tup2 = self._convert.constant_to_value((3, 1))
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
@@ -169,11 +168,10 @@ class TupleTest(CompareTestBase):
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__prefix_not_equal(self):
-    tup1 = abstract.Tuple(
+    tup1 = self._ctx.convert.tuple_to_value(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.constant_to_value(1).to_variable(self._node),
-         self._convert.primitive_class_instances[int].to_variable(self._node)),
-        self._ctx)
+         self._convert.primitive_class_instances[int].to_variable(self._node)))
     tup2 = self._convert.constant_to_value((4, 2))
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
@@ -189,10 +187,9 @@ class TupleTest(CompareTestBase):
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__prefix_unknown(self):
-    tup1 = abstract.Tuple(
+    tup1 = self._ctx.convert.tuple_to_value(
         (self._convert.constant_to_value(3).to_variable(self._node),
-         self._convert.primitive_class_instances[int].to_variable(self._node)),
-        self._ctx)
+         self._convert.primitive_class_instances[int].to_variable(self._node)))
     tup2 = self._convert.constant_to_value((3, 1))
     for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
       self.assertIsNone(compare.cmp_rel(self._ctx, op, tup1, tup2))

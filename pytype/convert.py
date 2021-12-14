@@ -756,7 +756,7 @@ class Converter(utils.ContextWeakrefMixin):
           content = tuple(self.constant_to_var(abstract_utils.AsInstance(p),
                                                subst, get_node())
                           for p in cls.parameters)
-          return abstract.Tuple(content, self.ctx)
+          return self.tuple_to_value(content)
         elif isinstance(cls, pytd.CallableType):
           clsval = self.constant_to_value(cls, subst, self.ctx.root_node)
           return abstract.Instance(clsval, self.ctx)

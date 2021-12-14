@@ -443,10 +443,6 @@ def matches_async_generator(type_obj):
   return _matches_generator(type_obj, allowed_types)
 
 
-def var_map(func, var):
-  return (func(v) for v in var.data)
-
-
 def eval_expr(ctx, node, f_globals, f_locals, expr):
   """Evaluate an expression with the given node and globals."""
   # This is used to resolve type comments and late annotations.
@@ -835,12 +831,12 @@ def _isinstance(obj, name_or_names):
   else:
     names = (name_or_names,)
   obj_cls = obj.__class__
-  if obj_cls.__module__.startswith("pytype.abstract") and obj_cls in names:
+  if obj_cls.__module__.startswith("pytype.abstract.") and obj_cls in names:
     # Do a simple check first to avoid expensive recursive calls and mro lookup
     # when possible.
     return True
   if len(names) > 1:
     return any(_isinstance(obj, name) for name in names)
   name = names[0]
-  return any(cls.__module__.startswith("pytype.abstract") and
+  return any(cls.__module__.startswith("pytype.abstract.") and
              cls.__name__ == name for cls in obj.__class__.mro())
