@@ -19,6 +19,7 @@ py_library(
     abstract.py
   DEPS
     ._base
+    ._instance
     .abstract_utils
     .class_mixin
     .function
@@ -32,6 +33,30 @@ py_library(
 
 py_library(
   NAME
+    _base
+  SRCS
+    _base.py
+  DEPS
+    .abstract_utils
+    pytype.utils
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    _instance
+  SRCS
+    _instance.py
+  DEPS
+    ._base
+    .abstract_utils
+    .class_mixin
+    .function
+    pytype.utils
+)
+
+py_library(
+  NAME
     abstract_utils
   SRCS
     abstract_utils.py
@@ -40,17 +65,6 @@ py_library(
     pytype.pyc.pyc
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    _base
-  SRCS
-    _base.py
-  DEPS
-    .abstract_utils
-    pytype.utils
-    pytype.pytd.pytd
 )
 
 py_library(

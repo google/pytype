@@ -105,7 +105,13 @@ class Attribute:
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   """Mix-in to mark all class-like values."""
 
-  overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")
+  overloads = (
+      "_get_class",
+      "call",
+      "compute_mro",
+      "get_own_new",
+      "get_special_attribute",
+  )
 
   def __new__(cls, *unused_args, **unused_kwds):
     """Prevent direct instantiation."""
@@ -138,6 +144,9 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     self.additional_init_methods = []
     if self.is_test_class():
       self.additional_init_methods.append("setUp")
+
+  def _get_class(self):
+    return self.ctx.convert.type_type
 
   def bases(self):
     return []
