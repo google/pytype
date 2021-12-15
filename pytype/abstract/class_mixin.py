@@ -105,15 +105,20 @@ class Attribute:
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   """Mix-in to mark all class-like values."""
 
-  overloads = ("get_special_attribute", "get_own_new", "call", "compute_mro")
+  overloads = (
+      "_get_class",
+      "call",
+      "compute_mro",
+      "get_own_new",
+      "get_special_attribute",
+  )
 
   def __new__(cls, *unused_args, **unused_kwds):
     """Prevent direct instantiation."""
     assert cls is not Class, "Cannot instantiate Class"
     return object.__new__(cls)
 
-  def init_mixin(self, metaclass, instance_abstract_class,
-                 annotation_container_abstract_class):
+  def init_mixin(self, metaclass):
     """Mix-in equivalent of __init__."""
     if metaclass is None:
       metaclass = self._get_inherited_metaclass()
@@ -127,17 +132,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     self._init_overrides_bool()
     self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
     self._all_formal_type_parameters_loaded = False
-    # References to abstract.py classes. *Use these only in modules in which it
-    # is not possible to import abstract.py!* Ideally, mixins would not need to
-    # know about abstract.py, but over time, we've accumulated implicit circular
-    # dependencies that are hard to get rid of.
-    self._instance_abstract_class = instance_abstract_class
-    self._annotation_container_abstract_class = (
-        annotation_container_abstract_class)
     # Call these methods in addition to __init__ when constructing instances.
     self.additional_init_methods = []
     if self.is_test_class():
       self.additional_init_methods.append("setUp")
+
+  def _get_class(self):
+    return self.ctx.convert.type_type
 
   def bases(self):
     return []
@@ -391,8 +392,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       key = node
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = self._instance_abstract_class.from_value(
-          self, container)
+      self._instance_cache[key] = self.ctx.abstract_classes_for_submodules[
+          "Instance"].from_value(self, container)
     return self._instance_cache[key]
 
   def _check_not_instantiable(self):
@@ -436,7 +437,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Treat this class as a parameterized container in an annotation. We do
       # not need to worry about the class not being a container: in that case,
       # AnnotationContainer's param length check reports an appropriate error.
-      container = self._annotation_container_abstract_class.from_value(self)
+      container = self.ctx.abstract_classes_for_submodules[
+          "AnnotationContainer"].from_value(self)
       return container.get_special_attribute(node, name, valself)
     return Class.super(self.get_special_attribute)(node, name, valself)
 

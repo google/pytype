@@ -13,7 +13,6 @@ are in mixin.py, and other abstract logic is in abstract_utils.py.
 
 import collections
 import contextlib
-import hashlib
 import inspect
 import itertools
 import logging
@@ -23,17 +22,18 @@ import attr
 from pytype import datatypes
 from pytype import utils
 from pytype.abstract import _base
+from pytype.abstract import _instance_base
+from pytype.abstract import _instances
+from pytype.abstract import _singletons
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
-from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
-from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
@@ -41,78 +41,27 @@ log = logging.getLogger(__name__)
 # For simplicity, we pretend all abstract values are defined in abstract.py.
 BaseValue = _base.BaseValue
 
+SimpleValue = _instance_base.SimpleValue
+Instance = _instance_base.Instance
 
-class Singleton(BaseValue):
-  """A Singleton class must only be instantiated once.
+LazyConcreteDict = _instances.LazyConcreteDict
+ConcreteValue = _instances.ConcreteValue
+Module = _instances.Module
+Coroutine = _instances.Coroutine
+Iterator = _instances.Iterator
+BaseGenerator = _instances.BaseGenerator
+AsyncGenerator = _instances.AsyncGenerator
+Generator = _instances.Generator
+Tuple = _instances.Tuple
+List = _instances.List
+Dict = _instances.Dict
+AnnotationsDict = _instances.AnnotationsDict
 
-  This is essentially an ABC for Unsolvable, Empty, and others.
-  """
-
-  _instance = None
-
-  def __new__(cls, *args, **kwargs):
-    # If cls is a subclass of a subclass of Singleton, cls._instance will be
-    # filled by its parent. cls needs to be given its own instance.
-    if not cls._instance or type(cls._instance) != cls:  # pylint: disable=unidiomatic-typecheck
-      log.debug("Singleton: Making new instance for %s", cls)
-      cls._instance = super().__new__(cls)
-    return cls._instance
-
-  def get_special_attribute(self, node, name, valself):
-    del name, valself
-    return self.to_variable(node)
-
-  def compute_mro(self):
-    return self.default_mro()
-
-  def call(self, node, func, args, alias_map=None):
-    del func, args
-    return node, self.to_variable(node)
-
-  def instantiate(self, node, container=None):
-    return self.to_variable(node)
-
-
-class Empty(Singleton):
-  """An empty value.
-
-  These values represent items extracted from empty containers. Because of false
-  positives in flagging containers as empty (consider:
-    x = []
-    def initialize():
-      populate(x)
-    def f():
-      iterate(x)
-  ), we treat these values as placeholders that we can do anything with, similar
-  to Unsolvable, with the difference that they eventually convert to
-  NothingType so that cases in which they are truly empty are discarded (see:
-    x = ...  # type: List[nothing] or Dict[int, str]
-    y = [i for i in x]  # The type of i is int; y is List[int]
-  ). On the other hand, if Empty is the sole type candidate, we assume that the
-  container was populated elsewhere:
-    x = []
-    def initialize():
-      populate(x)
-    def f():
-      return x[0]  # Oops! The return type should be Any rather than nothing.
-  The nothing -> anything conversion happens in
-  convert.Converter._function_to_def and tracer_vm.CallTracer.pytd_for_types.
-  """
-
-  def __init__(self, ctx):
-    super().__init__("empty", ctx)
-
-
-class Deleted(Empty):
-  """Assigned to variables that have del called on them."""
-
-  def __init__(self, ctx):
-    super().__init__(ctx)
-    self.name = "deleted"
-
-  def get_special_attribute(self, node, name, valself):
-    del name, valself  # unused
-    return self.ctx.new_unsolvable(node)
+Unknown = _singletons.Unknown
+Singleton = _singletons.Singleton
+Empty = _singletons.Empty
+Deleted = _singletons.Deleted
+Unsolvable = _singletons.Unsolvable
 
 
 class TypeParameter(BaseValue):
@@ -221,585 +170,6 @@ class TypeParameterInstance(BaseValue):
     return hash((self.param, self.instance))
 
 
-class SimpleValue(BaseValue):
-  """A basic abstract value that represents instances.
-
-  This class implements instances in the Python sense. Instances of the same
-  class may vary.
-
-  Note that the cls attribute will point to another abstract value that
-  represents the class object itself, not to some special type representation.
-
-  Attributes:
-    members: A name->value dictionary of the instance's attributes.
-  """
-
-  def __init__(self, name, ctx):
-    """Initialize a SimpleValue.
-
-    Args:
-      name: Name of this value. For debugging and error reporting.
-      ctx: The abstract context.
-    """
-    super().__init__(name, ctx)
-    self._cls = None  # lazily loaded 'cls' attribute
-    self.members = datatypes.MonitorDict()
-    # Lazily loaded to handle recursive types.
-    # See Instance._load_instance_type_parameters().
-    self._instance_type_parameters = datatypes.AliasingMonitorDict()
-    # This attribute depends on self.cls, which isn't yet set to its true value.
-    self._maybe_missing_members = None
-    # The latter caches the result of get_type_key. This is a recursive function
-    # that has the potential to generate too many calls for large definitions.
-    self._cached_type_key = (
-        (self.members.changestamp, self._instance_type_parameters.changestamp),
-        None)
-
-  @property
-  def instance_type_parameters(self):
-    return self._instance_type_parameters
-
-  @property
-  def maybe_missing_members(self):
-    if self._maybe_missing_members is None:
-      self._maybe_missing_members = isinstance(
-          self.cls, (InterpreterClass, PyTDClass)) and self.cls.is_dynamic
-    return self._maybe_missing_members
-
-  @maybe_missing_members.setter
-  def maybe_missing_members(self, v):
-    self._maybe_missing_members = v
-
-  def has_instance_type_parameter(self, name):
-    """Check if the key is in `instance_type_parameters`."""
-    name = abstract_utils.full_type_name(self, name)
-    return name in self.instance_type_parameters
-
-  def get_children_maps(self):
-    return (self.instance_type_parameters, self.members)
-
-  def get_instance_type_parameter(self, name, node=None):
-    name = abstract_utils.full_type_name(self, name)
-    param = self.instance_type_parameters.get(name)
-    if not param:
-      log.info("Creating new empty type param %s", name)
-      if node is None:
-        node = self.ctx.root_node
-      param = self.ctx.program.NewVariable([], [], node)
-      self.instance_type_parameters[name] = param
-    return param
-
-  def merge_instance_type_parameter(self, node, name, value):
-    """Set the value of a type parameter.
-
-    This will always add to the type parameter unlike set_attribute which will
-    replace value from the same basic block. This is because type parameters may
-    be affected by a side effect so we need to collect all the information
-    regardless of multiple assignments in one basic block.
-
-    Args:
-      node: Optionally, the current CFG node.
-      name: The name of the type parameter.
-      value: The value that is being used for this type parameter as a Variable.
-    """
-    name = abstract_utils.full_type_name(self, name)
-    log.info("Modifying type param %s", name)
-    if name in self.instance_type_parameters:
-      self.instance_type_parameters[name].PasteVariable(value, node)
-    else:
-      self.instance_type_parameters[name] = value
-
-  def call(self, node, _, args, alias_map=None):
-    node, var = self.ctx.attribute_handler.get_attribute(
-        node, self, "__call__", self.to_binding(node))
-    if var is not None and var.bindings:
-      return function.call_function(self.ctx, node, var, args)
-    else:
-      raise function.NotCallable(self)
-
-  def argcount(self, node):
-    node, var = self.ctx.attribute_handler.get_attribute(
-        node, self, "__call__", self.to_binding(node))
-    if var and var.bindings:
-      return min(v.argcount(node) for v in var.data)
-    else:
-      # It doesn't matter what we return here, since any attempt to call this
-      # value will lead to a not-callable error anyways.
-      return 0
-
-  def __repr__(self):
-    return "<%s [%r]>" % (self.name, self.cls)
-
-  def _get_class(self):
-    if isinstance(self, InterpreterClass):
-      return ParameterizedClass(self.ctx.convert.type_type,
-                                {abstract_utils.T: self}, self.ctx)
-    elif isinstance(self, (AnnotationClass, class_mixin.Class)):
-      return self.ctx.convert.type_type
-    else:
-      return self.ctx.convert.unsolvable
-
-  @property
-  def cls(self):
-    if not self.ctx.converter_minimally_initialized:
-      return self.ctx.convert.unsolvable
-    if not self._cls:
-      self._cls = self.ctx.convert.unsolvable  # prevent infinite recursion
-      self._cls = self._get_class()
-    return self._cls
-
-  @cls.setter
-  def cls(self, cls):
-    self._cls = cls
-
-  def set_class(self, node, var):
-    """Set the __class__ of an instance, for code that does "x.__class__ = y."""
-    # Simplification: Setting __class__ is done rarely, and supporting this
-    # action would complicate pytype considerably by forcing us to track the
-    # class in a variable, so we instead fall back to Any.
-    try:
-      new_cls = abstract_utils.get_atomic_value(var)
-    except abstract_utils.ConversionError:
-      self.cls = self.ctx.convert.unsolvable
-    else:
-      if self.cls != new_cls:
-        self.cls = self.ctx.convert.unsolvable
-    return node
-
-  def get_type_key(self, seen=None):
-    cached_changestamps, saved_key = self._cached_type_key
-    if saved_key and cached_changestamps == (
-        self.members.changestamp,
-        self.instance_type_parameters.changestamp):
-      return saved_key
-    if not seen:
-      seen = set()
-    seen.add(self)
-    key = {self.cls}
-    for name, var in self.instance_type_parameters.items():
-      subkey = frozenset(
-          value.data.get_default_type_key()  # pylint: disable=g-long-ternary
-          if value.data in seen else value.data.get_type_key(seen)
-          for value in var.bindings)
-      key.add((name, subkey))
-    if key:
-      type_key = frozenset(key)
-    else:
-      type_key = super().get_type_key()
-    self._cached_type_key = (
-        (self.members.changestamp, self.instance_type_parameters.changestamp),
-        type_key)
-    return type_key
-
-  def _unique_parameters(self):
-    parameters = super()._unique_parameters()
-    parameters.extend(self.instance_type_parameters.values())
-    return parameters
-
-  def instantiate(self, node, container=None):
-    return Instance.from_value(self, container).to_variable(node)
-
-
-class Instance(SimpleValue):
-  """An instance of some object."""
-
-  @classmethod
-  def from_value(cls, value, container=None):
-    return cls(value, value.ctx, container=container)
-
-  def __init__(self, cls, ctx, container=None):
-    super().__init__(cls.name, ctx)
-    self.cls = cls
-    self._instance_type_parameters_loaded = False
-    self._container = container
-    cls.register_instance(self)
-
-  def _load_instance_type_parameters(self):
-    if self._instance_type_parameters_loaded:
-      return
-    all_formal_type_parameters = datatypes.AliasingMonitorDict()
-    abstract_utils.parse_formal_type_parameters(
-        self.cls, None, all_formal_type_parameters, self._container)
-    self._instance_type_parameters.uf = all_formal_type_parameters.uf
-    for name, param in all_formal_type_parameters.items():
-      if param is None:
-        value = self.ctx.program.NewVariable()
-        log.info("Initializing type param %s: %r", name, value)
-        self._instance_type_parameters[name] = value
-      else:
-        self._instance_type_parameters[name] = param.instantiate(
-            self.ctx.root_node, self._container or self)
-    # We purposely set this flag at the very end so that accidentally accessing
-    # instance_type_parameters during loading will trigger an obvious crash due
-    # to infinite recursion, rather than silently returning an incomplete dict.
-    self._instance_type_parameters_loaded = True
-
-  @property
-  def full_name(self):
-    return self.cls.full_name
-
-  @property
-  def instance_type_parameters(self):
-    self._load_instance_type_parameters()
-    return self._instance_type_parameters
-
-
-class List(Instance, mixin.HasSlots, mixin.PythonConstant):
-  """Representation of Python 'list' objects."""
-
-  def __init__(self, content, ctx):
-    super().__init__(ctx.convert.list_type, ctx)
-    self._instance_cache = {}
-    mixin.PythonConstant.init_mixin(self, content)
-    mixin.HasSlots.init_mixin(self)
-    combined_content = ctx.convert.build_content(content)
-    self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
-    self.could_contain_anything = False
-    self.set_slot("__getitem__", self.getitem_slot)
-    self.set_slot("__getslice__", self.getslice_slot)
-
-  def str_of_constant(self, printer):
-    return "[%s]" % ", ".join(" or ".join(abstract_utils.var_map(printer, val))
-                              for val in self.pyval)
-
-  def __repr__(self):
-    if self.could_contain_anything:
-      return Instance.__repr__(self)
-    else:
-      return mixin.PythonConstant.__repr__(self)
-
-  def merge_instance_type_parameter(self, node, name, value):
-    self.could_contain_anything = True
-    super().merge_instance_type_parameter(node, name, value)
-
-  def getitem_slot(self, node, index_var):
-    """Implements __getitem__ for List.
-
-    Arguments:
-      node: The current CFG node.
-      index_var: The Variable containing the index value, the i in lst[i].
-
-    Returns:
-      Tuple of (node, return_variable). node may be the same as the argument.
-      return_variable is a Variable with bindings of the possible return values.
-    """
-    results = []
-    unresolved = False
-    node, ret = self.call_pytd(node, "__getitem__", index_var)
-    if not self.could_contain_anything:
-      for val in index_var.bindings:
-        try:
-          index = self.ctx.convert.value_to_constant(val.data, int)
-        except abstract_utils.ConversionError:
-          unresolved = True
-        else:
-          self_len = len(self.pyval)
-          if -self_len <= index < self_len:
-            results.append(self.pyval[index])
-          else:
-            unresolved = True
-    if unresolved or self.could_contain_anything:
-      results.append(ret)
-    return node, self.ctx.join_variables(node, results)
-
-  def _get_index(self, data):
-    """Helper function for getslice_slot that extracts int or None from data.
-
-    If data is an Instance of int, None is returned.
-
-    Args:
-      data: The object to extract from. Usually a ConcreteValue or an
-        Instance.
-
-    Returns:
-      The value (an int or None) of the index.
-
-    Raises:
-      abstract_utils.ConversionError: If the data could not be converted.
-    """
-    if isinstance(data, ConcreteValue):
-      return self.ctx.convert.value_to_constant(data, (int, type(None)))
-    elif isinstance(data, Instance):
-      if data.cls != self.ctx.convert.int_type:
-        raise abstract_utils.ConversionError()
-      else:
-        return None
-    else:
-      raise abstract_utils.ConversionError()
-
-  def getslice_slot(self, node, start_var, end_var):
-    """Implements __getslice__ for List.
-
-    Arguments:
-      node: The current CFG node.
-      start_var: A Variable containing the i in lst[i:j].
-      end_var: A Variable containing the j in lst[i:j].
-
-    Returns:
-      Tuple of (node, return_variable). node may be the same as the argument.
-      return_variable is a Variable with bindings of the possible return values.
-    """
-    # call_pytd will typecheck start_var and end_var.
-    node, ret = self.call_pytd(node, "__getslice__", start_var, end_var)
-    results = []
-    unresolved = False
-    if not self.could_contain_anything:
-      for start_val, end_val in cfg_utils.variable_product([start_var,
-                                                            end_var]):
-        try:
-          start = self._get_index(start_val.data)
-          end = self._get_index(end_val.data)
-        except abstract_utils.ConversionError:
-          unresolved = True
-        else:
-          results.append(
-              List(self.pyval[start:end], self.ctx).to_variable(node))
-    if unresolved or self.could_contain_anything:
-      results.append(ret)
-    return node, self.ctx.join_variables(node, results)
-
-
-class Tuple(Instance, mixin.PythonConstant):
-  """Representation of Python 'tuple' objects."""
-
-  def __init__(self, content, ctx):
-    combined_content = ctx.convert.build_content(content)
-    class_params = {
-        name: ctx.convert.merge_classes(instance_param.data)
-        for name, instance_param in tuple(enumerate(content)) +
-        ((abstract_utils.T, combined_content),)
-    }
-    cls = TupleClass(ctx.convert.tuple_type, class_params, ctx)
-    super().__init__(cls, ctx)
-    self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
-    mixin.PythonConstant.init_mixin(self, content)
-    self.tuple_length = len(self.pyval)
-    self._hash = None  # memoized due to expensive computation
-    # set this to true when creating a function arg tuple
-    self.is_unpacked_function_args = False
-
-  def str_of_constant(self, printer):
-    content = ", ".join(" or ".join(abstract_utils.var_map(printer, val))
-                        for val in self.pyval)
-    if self.tuple_length == 1:
-      content += ","
-    return "(%s)" % content
-
-  def _unique_parameters(self):
-    parameters = super()._unique_parameters()
-    parameters.extend(self.pyval)
-    return parameters
-
-  def __eq__(self, other):
-    if isinstance(other, type(self)):
-      return (self.tuple_length == other.tuple_length and
-              all(e.data == other_e.data
-                  for e, other_e in zip(self.pyval, other.pyval)))
-    return NotImplemented
-
-  def __hash__(self):
-    if self._hash is None:
-      # Descending into pyval would trigger infinite recursion in the case of a
-      # tuple containing itself, so we approximate the inner values with their
-      # full names.
-      approximate_hash = lambda var: tuple(v.full_name for v in var.data)
-      self._hash = hash((self.tuple_length,) +
-                        tuple(approximate_hash(e) for e in self.pyval))
-    return self._hash
-
-
-class Dict(Instance, mixin.HasSlots, mixin.PythonDict):
-  """Representation of Python 'dict' objects.
-
-  It works like builtins.dict, except that, for string keys, it keeps track
-  of what got stored.
-  """
-
-  def __init__(self, ctx):
-    super().__init__(ctx.convert.dict_type, ctx)
-    mixin.HasSlots.init_mixin(self)
-    self.set_slot("__contains__", self.contains_slot)
-    self.set_slot("__getitem__", self.getitem_slot)
-    self.set_slot("__setitem__", self.setitem_slot)
-    self.set_slot("pop", self.pop_slot)
-    self.set_slot("setdefault", self.setdefault_slot)
-    self.set_slot("update", self.update_slot)
-    self.could_contain_anything = False
-    # Use OrderedDict instead of dict, so that it can be compatible with
-    # where needs ordered dict.
-    # For example: f_locals["__annotations__"]
-    mixin.PythonDict.init_mixin(self, collections.OrderedDict())
-
-  def str_of_constant(self, printer):
-    return str({name: " or ".join(abstract_utils.var_map(printer, value))
-                for name, value in self.pyval.items()})
-
-  def __repr__(self):
-    if not hasattr(self, "could_contain_anything"):
-      return "Dict (not fully initialized)"
-    elif self.could_contain_anything:
-      return Instance.__repr__(self)
-    else:
-      return mixin.PythonConstant.__repr__(self)
-
-  def getitem_slot(self, node, name_var):
-    """Implements the __getitem__ slot."""
-    results = []
-    unresolved = False
-    if not self.could_contain_anything:
-      for val in name_var.bindings:
-        try:
-          name = self.ctx.convert.value_to_constant(val.data, str)
-        except abstract_utils.ConversionError:
-          unresolved = True
-        else:
-          try:
-            results.append(self.pyval[name])
-          except KeyError as e:
-            unresolved = True
-            raise function.DictKeyMissing(name) from e
-    node, ret = self.call_pytd(node, "__getitem__", name_var)
-    if unresolved or self.could_contain_anything:
-      # We *do* know the overall type of the values through the "V" type
-      # parameter, even if we don't know the exact type of self[name]. So let's
-      # just use the (less accurate) value from pytd.
-      results.append(ret)
-    return node, self.ctx.join_variables(node, results)
-
-  def set_str_item(self, node, name, value_var):
-    self.merge_instance_type_parameter(
-        node, abstract_utils.K, self.ctx.convert.build_string(node, name))
-    self.merge_instance_type_parameter(node, abstract_utils.V, value_var)
-    if name in self.pyval:
-      self.pyval[name].PasteVariable(value_var, node)
-    else:
-      self.pyval[name] = value_var
-    return node
-
-  def setitem(self, node, name_var, value_var):
-    assert isinstance(name_var, cfg.Variable)
-    assert isinstance(value_var, cfg.Variable)
-    for val in name_var.bindings:
-      try:
-        name = self.ctx.convert.value_to_constant(val.data, str)
-      except abstract_utils.ConversionError:
-        # Now the dictionary is abstract: We don't know what it contains
-        # anymore. Note that the below is not a variable, so it'll affect
-        # all branches.
-        self.could_contain_anything = True
-        continue
-      if name in self.pyval:
-        self.pyval[name].PasteVariable(value_var, node)
-      else:
-        self.pyval[name] = value_var
-
-  def setitem_slot(self, node, name_var, value_var):
-    """Implements the __setitem__ slot."""
-    self.setitem(node, name_var, value_var)
-    return self.call_pytd(node, "__setitem__", name_var, value_var)
-
-  def setdefault_slot(self, node, name_var, value_var=None):
-    if value_var is None:
-      value_var = self.ctx.convert.build_none(node)
-    # We don't have a good way of modelling the exact setdefault behavior -
-    # whether the key already exists might depend on a code path, so setting it
-    # again should depend on an if-splitting condition, but we don't support
-    # negative conditions.
-    self.setitem(node, name_var, value_var)
-    return self.call_pytd(node, "setdefault", name_var, value_var)
-
-  def contains_slot(self, node, key_var):
-    if self.could_contain_anything:
-      value = None
-    else:
-      try:
-        str_key = abstract_utils.get_atomic_python_constant(key_var, str)
-      except abstract_utils.ConversionError:
-        value = None
-      else:
-        value = str_key in self.pyval
-    return node, self.ctx.convert.build_bool(node, value)
-
-  def pop_slot(self, node, key_var, default_var=None):
-    try:
-      str_key = abstract_utils.get_atomic_python_constant(key_var, str)
-    except abstract_utils.ConversionError:
-      self.could_contain_anything = True
-    if self.could_contain_anything:
-      if default_var:
-        return self.call_pytd(node, "pop", key_var, default_var)
-      else:
-        return self.call_pytd(node, "pop", key_var)
-    if default_var:
-      return node, self.pyval.pop(str_key, default_var)
-    else:
-      try:
-        return node, self.pyval.pop(str_key)
-      except KeyError as e:
-        raise function.DictKeyMissing(str_key) from e
-
-  def update_slot(self, node, *args, **kwargs):
-    posargs_handled = False
-    if len(args) == 1:
-      arg_data = args[0].data
-      if len(arg_data) == 1:
-        self.update(node, arg_data[0])
-        posargs_handled = True
-    elif not args:
-      posargs_handled = True
-    self.update(node, kwargs)
-    if not posargs_handled:
-      self.could_contain_anything = True
-      return self.call_pytd(node, "update", *args)
-    else:
-      return node, self.ctx.convert.none.to_variable(node)
-
-  def update(self, node, other_dict, omit=()):
-    if isinstance(other_dict, (Dict, dict)):
-      for key, value in other_dict.items():
-        if key not in omit:
-          self.set_str_item(node, key, value)
-      if isinstance(other_dict, Dict):
-        k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
-        v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
-        self.merge_instance_type_parameter(node, abstract_utils.K, k)
-        self.merge_instance_type_parameter(node, abstract_utils.V, v)
-        self.could_contain_anything |= other_dict.could_contain_anything
-    else:
-      assert isinstance(other_dict, BaseValue)
-      if (isinstance(other_dict, Instance) and
-          other_dict.full_name == "builtins.dict"):
-        k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
-        v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
-      else:
-        k = v = self.ctx.new_unsolvable(node)
-      self.merge_instance_type_parameter(node, abstract_utils.K, k)
-      self.merge_instance_type_parameter(node, abstract_utils.V, v)
-      self.could_contain_anything = True
-
-
-class AnnotationsDict(Dict):
-  """__annotations__ dict."""
-
-  def __init__(self, annotated_locals, ctx):
-    super().__init__(ctx)
-    self.annotated_locals = annotated_locals
-
-  def get_type(self, node, name):
-    if name not in self.annotated_locals:
-      return None
-    return self.annotated_locals[name].get_type(node, name)
-
-  def get_annotations(self, node):
-    for name, local in self.annotated_locals.items():
-      typ = local.get_type(node, name)
-      if typ:
-        yield name, typ
-
-  def __repr__(self):
-    return repr(self.annotated_locals)
-
-
 class LateAnnotation:
   """A late annotation.
 
@@ -903,14 +273,14 @@ class LateAnnotation:
     """Check whether this is a recursive type."""
     if not self.resolved:
       return False
-    seen = {self}
+    seen = {id(self)}
     stack = [self._type]
     while stack:
       t = stack.pop()
       if t.is_late_annotation():
-        if t in seen:
+        if id(t) in seen:
           return True
-        seen.add(t)
+        seen.add(id(t))
       if isinstance(t, mixin.NestedAnnotation):
         stack.extend(child for _, child in t.get_inner_types())
     return False
@@ -963,6 +333,9 @@ class AnnotationClass(SimpleValue, mixin.HasSlots):
 
   def __repr__(self):
     return "AnnotationClass(%s)" % self.name
+
+  def _get_class(self):
+    return self.ctx.convert.type_type
 
 
 class AnnotationContainer(AnnotationClass):
@@ -1198,29 +571,6 @@ class AnnotationContainer(AnnotationClass):
     except abstract_utils.GenericTypeError as e:
       self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, e.annot, e.error)
       return self.ctx.convert.unsolvable
-
-
-class ConcreteValue(Instance, mixin.PythonConstant):
-  """Abstract value with a concrete fallback."""
-
-  def __init__(self, pyval, cls, ctx):
-    super().__init__(cls, ctx)
-    mixin.PythonConstant.init_mixin(self, pyval)
-
-
-class LazyConcreteDict(SimpleValue, mixin.PythonConstant, mixin.LazyMembers):
-  """Dictionary with lazy values."""
-
-  def __init__(self, name, member_map, ctx):
-    super().__init__(name, ctx)
-    mixin.PythonConstant.init_mixin(self, self.members)
-    mixin.LazyMembers.init_mixin(self, member_map)
-
-  def _convert_member(self, member, subst=None):
-    return self.ctx.convert.constant_to_var(member)
-
-  def is_empty(self):
-    return not bool(self._member_map)
 
 
 class Union(BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
@@ -1941,8 +1291,7 @@ class ParameterizedClass(BaseValue, class_mixin.Class, mixin.NestedAnnotation):
       self._template = template
     self.slots = self.base_cls.slots
     self.is_dynamic = self.base_cls.is_dynamic
-    class_mixin.Class.init_mixin(
-        self, base_cls.cls, Instance, AnnotationContainer)
+    class_mixin.Class.init_mixin(self, base_cls.cls)
     mixin.NestedAnnotation.init_mixin(self)
     self.type_param_check()
 
@@ -2362,7 +1711,7 @@ class PyTDClass(SimpleValue, class_mixin.Class, mixin.LazyMembers):
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
-    class_mixin.Class.init_mixin(self, metaclass, Instance, AnnotationContainer)
+    class_mixin.Class.init_mixin(self, metaclass)
     if decorated:
       self._populate_decorator_metadata()
 
@@ -2559,7 +1908,7 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
-    class_mixin.Class.init_mixin(self, cls, Instance, AnnotationContainer)
+    class_mixin.Class.init_mixin(self, cls)
     self.instances = set()  # filled through register_instance
     # instances created by analyze.py for the purpose of analyzing this class,
     # a subset of 'instances'. Filled through register_canonical_instance.
@@ -2569,6 +1918,10 @@ class InterpreterClass(SimpleValue, class_mixin.Class):
     log.info("Created class: %r", self)
     self.type_param_check()
     self.decorators = []
+
+  def _get_class(self):
+    return ParameterizedClass(self.ctx.convert.type_type,
+                              {abstract_utils.T: self}, self.ctx)
 
   def update_signature_scope(self, method):
     method.signature.excluded_types.update(
@@ -3751,120 +3104,6 @@ class BoundPyTDFunction(BoundFunction):
   pass
 
 
-class Coroutine(Instance):
-  """A representation of instances of coroutine."""
-
-  def __init__(self, ctx, ret_var, node):
-    super().__init__(ctx.convert.coroutine_type, ctx)
-    self.merge_instance_type_parameter(node, abstract_utils.T,
-                                       self.ctx.new_unsolvable(node))
-    self.merge_instance_type_parameter(node, abstract_utils.T2,
-                                       self.ctx.new_unsolvable(node))
-    self.merge_instance_type_parameter(
-        node, abstract_utils.V, ret_var.AssignToNewVariable(node))
-
-  @classmethod
-  def make(cls, ctx, func, node):
-    """Get return type of coroutine function."""
-    assert func.signature.has_return_annotation
-    ret_val = func.signature.annotations["return"]
-    if func.code.has_coroutine():
-      ret_var = ret_val.instantiate(node)
-    elif func.code.has_iterable_coroutine():
-      ret_var = ret_val.get_formal_type_parameter(
-          abstract_utils.V).instantiate(node)
-    return cls(ctx, ret_var, node)
-
-
-class BaseGenerator(Instance):
-  """A base class of instances of generators and async generators."""
-
-  def __init__(self, generator_type, frame, ctx, is_return_allowed):
-    super().__init__(generator_type, ctx)
-    self.frame = frame
-    self.runs = 0
-    self.is_return_allowed = is_return_allowed  # if return statement is allowed
-
-  def run_generator(self, node):
-    """Run the generator."""
-    if self.runs == 0:  # Optimization: We only run it once.
-      node, _ = self.ctx.vm.resume_frame(node, self.frame)
-      ret_type = self.frame.allowed_returns
-      if ret_type:
-        # set type parameters according to annotated Generator return type
-        type_params = [abstract_utils.T, abstract_utils.T2]
-        if self.is_return_allowed:
-          type_params.append(abstract_utils.V)
-        for param_name in type_params:
-          _, param_var = self.ctx.vm.init_class(
-              node, ret_type.get_formal_type_parameter(param_name))
-          self.merge_instance_type_parameter(node, param_name, param_var)
-      else:
-        # infer the type parameters based on the collected type information.
-        self.merge_instance_type_parameter(
-            node, abstract_utils.T, self.frame.yield_variable)
-        # For T2 type, it can not be decided until the send/asend function is
-        # called later on. So set T2 type as ANY so that the type check will
-        # not fail when the function is called afterwards.
-        self.merge_instance_type_parameter(node, abstract_utils.T2,
-                                           self.ctx.new_unsolvable(node))
-        if self.is_return_allowed:
-          self.merge_instance_type_parameter(
-              node, abstract_utils.V, self.frame.return_variable)
-      self.runs += 1
-    return node, self.get_instance_type_parameter(abstract_utils.T)
-
-  def call(self, node, func, args, alias_map=None):
-    """Call this generator or (more common) its "next/anext" attribute."""
-    del func, args
-    return self.run_generator(node)
-
-
-class Generator(BaseGenerator):
-  """A representation of instances of generators."""
-
-  def __init__(self, generator_frame, ctx):
-    super().__init__(ctx.convert.generator_type, generator_frame, ctx, True)
-
-  def get_special_attribute(self, node, name, valself):
-    if name == "__iter__":
-      f = NativeFunction(name, self.__iter__, self.ctx)
-      return f.to_variable(node)
-    elif name == "__next__":
-      return self.to_variable(node)
-    elif name == "throw":
-      # We don't model exceptions in a way that would allow us to induce one
-      # inside a coroutine. So just return ourself, mapping the call of
-      # throw() to a next() (which won't be executed).
-      return self.to_variable(node)
-    else:
-      return super().get_special_attribute(node, name, valself)
-
-  def __iter__(self, node):  # pylint: disable=non-iterator-returned,unexpected-special-method-signature
-    return node, self.to_variable(node)
-
-
-class AsyncGenerator(BaseGenerator):
-  """A representation of instances of async generators."""
-
-  def __init__(self, async_generator_frame, ctx):
-    super().__init__(ctx.convert.async_generator_type, async_generator_frame,
-                     ctx, False)
-
-
-class Iterator(Instance, mixin.HasSlots):
-  """A representation of instances of iterators."""
-
-  def __init__(self, ctx, return_var):
-    super().__init__(ctx.convert.iterator_type, ctx)
-    mixin.HasSlots.init_mixin(self)
-    self.set_slot("__next__", self.next_slot)
-    self._return_var = return_var
-
-  def next_slot(self, node):
-    return node, self._return_var
-
-
 class Splat(BaseValue):
   """Representation of unpacked iterables."""
 
@@ -3882,90 +3121,6 @@ class Splat(BaseValue):
 
   def __repr__(self):
     return "splat(%r)" % self.iterable.data
-
-
-class Module(Instance, mixin.LazyMembers):
-  """Represents an (imported) module."""
-
-  def __init__(self, ctx, name, member_map, ast):
-    super().__init__(ctx.convert.module_type, ctx)
-    self.name = name
-    self.ast = ast
-    mixin.LazyMembers.init_mixin(self, member_map)
-
-  def _convert_member(self, member, subst=None):
-    """Called to convert the items in _member_map to cfg.Variable."""
-    var = self.ctx.convert.constant_to_var(member)
-    for value in var.data:
-      # Only do this if this is a class which isn't already part of a module, or
-      # is a module itself.
-      # (This happens if e.g. foo.py does "from bar import x" and we then
-      #  do "from foo import x".)
-      if not value.module and not isinstance(value, Module):
-        value.module = self.name
-    return var
-
-  @property
-  def module(self):
-    return None
-
-  @module.setter
-  def module(self, m):
-    assert (m is None or m == self.ast.name), (m, self.ast.name)
-
-  @property
-  def full_name(self):
-    return self.ast.name
-
-  def has_getattr(self):
-    """Does this module have a module-level __getattr__?
-
-    We allow __getattr__ on the module level to specify that this module doesn't
-    have any contents. The typical syntax is
-      def __getattr__(name) -> Any
-    .
-    See https://www.python.org/dev/peps/pep-0484/#stub-files
-
-    Returns:
-      True if we have __getattr__.
-    """
-    f = self._member_map.get("__getattr__")
-    if f:
-      if isinstance(f, pytd.Function):
-        if len(f.signatures) != 1:
-          log.warning("overloaded module-level __getattr__ (in %s)", self.name)
-        elif f.signatures[0].return_type != pytd.AnythingType():
-          log.warning("module-level __getattr__ doesn't return Any (in %s)",
-                      self.name)
-        return True
-      else:
-        log.warning("__getattr__ in %s is not a function", self.name)
-    return False
-
-  def get_submodule(self, node, name):
-    full_name = self.name + "." + name
-    mod = self.ctx.vm.import_module(full_name, full_name,
-                                    0)  # 0: absolute import
-    if mod is not None:
-      return mod.to_variable(node)
-    elif self.has_getattr():
-      return self.ctx.new_unsolvable(node)
-    else:
-      log.warning("Couldn't find attribute / module %r", full_name)
-      return None
-
-  def items(self):
-    for name in self._member_map:
-      self.load_lazy_attribute(name)
-    return list(self.members.items())
-
-  def get_fullhash(self):
-    """Hash the set of member names."""
-    m = hashlib.md5()
-    m.update(self.full_name.encode("utf-8"))
-    for k in self._member_map:
-      m.update(k.encode("utf-8"))
-    return m.digest()
 
 
 class BuildClass(BaseValue):
@@ -4046,168 +3201,6 @@ class BuildClass(BaseValue):
         metaclass,
         new_class_var=class_closure_var,
         is_decorated=self.is_decorated)
-
-
-class Unsolvable(Singleton):
-  """Representation of value we know nothing about.
-
-  Unlike "Unknowns", we don't treat these as solveable. We just put them
-  where values are needed, but make no effort to later try to map them
-  to named types. This helps conserve memory where creating and solving
-  hundreds of unknowns would yield us little to no information.
-
-  This is typically a singleton. Since unsolvables are indistinguishable, we
-  only need one.
-  """
-  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
-
-  # Since an unsolvable gets generated e.g. for every unresolved import, we
-  # can have multiple circular Unsolvables in a class' MRO. Treat those special.
-  SINGLETON = True
-
-  def __init__(self, ctx):
-    super().__init__("unsolveable", ctx)
-
-  def get_special_attribute(self, node, name, _):
-    # Overrides Singleton.get_special_attributes.
-    if name in self.IGNORED_ATTRIBUTES:
-      return None
-    else:
-      return self.to_variable(node)
-
-  def argcount(self, _):
-    return 0
-
-
-class Unknown(BaseValue):
-  """Representation of unknown values.
-
-  These are e.g. the return values of certain functions (e.g. eval()). They
-  "adapt": E.g. they'll respond to get_attribute requests by creating that
-  attribute.
-
-  Attributes:
-    members: Attributes that were written or read so far. Mapping of str to
-      cfg.Variable.
-    owner: cfg.Binding that contains this instance as data.
-  """
-
-  _current_id = 0
-
-  # For simplicity, Unknown doesn't emulate descriptors:
-  IGNORED_ATTRIBUTES = ["__get__", "__set__", "__getattribute__"]
-
-  def __init__(self, ctx):
-    name = escape.unknown(Unknown._current_id)
-    super().__init__(name, ctx)
-    self.members = datatypes.MonitorDict()
-    self.owner = None
-    Unknown._current_id += 1
-    self.class_name = self.name
-    self._calls = []
-    log.info("Creating %s", self.class_name)
-
-  def compute_mro(self):
-    return self.default_mro()
-
-  def get_fullhash(self):
-    # Unknown needs its own implementation of get_fullhash to ensure equivalent
-    # Unknowns produce the same hash. "Equivalent" in this case means "has the
-    # same members," so member names are used in the hash instead of id().
-    m = hashlib.md5()
-    for name in self.members:
-      m.update(name.encode("utf-8"))
-    return m.digest()
-
-  def get_children_maps(self):
-    return (self.members,)
-
-  @classmethod
-  def _to_pytd(cls, node, v):
-    if isinstance(v, cfg.Variable):
-      return pytd_utils.JoinTypes(cls._to_pytd(node, t) for t in v.data)
-    elif isinstance(v, Unknown):
-      # Do this directly, and use NamedType, in case there's a circular
-      # dependency among the Unknown instances.
-      return pytd.NamedType(v.class_name)
-    else:
-      return v.to_type(node)
-
-  @classmethod
-  def _make_params(cls, node, args):
-    """Convert a list of types/variables to pytd parameters."""
-    def _make_param(i, p):
-      return pytd.Parameter("_%d" % (i + 1), cls._to_pytd(node, p),
-                            kwonly=False, optional=False, mutated_type=None)
-    return tuple(_make_param(i, p) for i, p in enumerate(args))
-
-  def get_special_attribute(self, node, name, valself):
-    del node, valself
-    if name in self.IGNORED_ATTRIBUTES:
-      return None
-    if name in self.members:
-      return self.members[name]
-    new = self.ctx.convert.create_new_unknown(
-        self.ctx.root_node, action="getattr_" + self.name + ":" + name)
-    # We store this at the root node, even though we only just created this.
-    # From the analyzing point of view, we don't know when the "real" version
-    # of this attribute (the one that's not an unknown) gets created, hence
-    # we assume it's there since the program start.  If something overwrites it
-    # in some later CFG node, that's fine, we'll then work only with the new
-    # value, which is more accurate than the "fictional" value we create here.
-    self.ctx.attribute_handler.set_attribute(self.ctx.root_node, self, name,
-                                             new)
-    return new
-
-  def call(self, node, _, args, alias_map=None):
-    ret = self.ctx.convert.create_new_unknown(
-        node, source=self.owner, action="call:" + self.name)
-    self._calls.append((args.posargs, args.namedargs, ret))
-    return node, ret
-
-  def argcount(self, _):
-    return 0
-
-  def to_variable(self, node):
-    v = self.ctx.program.NewVariable()
-    val = v.AddBinding(self, source_set=[], where=node)
-    self.owner = val
-    self.ctx.vm.trace_unknown(self.class_name, val)
-    return v
-
-  def to_structural_def(self, node, class_name):
-    """Convert this Unknown to a pytd.Class."""
-    self_param = (pytd.Parameter("self", pytd.AnythingType(),
-                                 False, False, None),)
-    starargs = None
-    starstarargs = None
-    def _make_sig(args, ret):
-      return pytd.Signature(self_param + self._make_params(node, args),
-                            starargs,
-                            starstarargs,
-                            return_type=Unknown._to_pytd(node, ret),
-                            exceptions=(),
-                            template=())
-    calls = tuple(pytd_utils.OrderedSet(
-        _make_sig(args, ret) for args, _, ret in self._calls))
-    if calls:
-      methods = (pytd.Function("__call__", calls, pytd.MethodTypes.METHOD),)
-    else:
-      methods = ()
-    return pytd.Class(
-        name=class_name,
-        metaclass=None,
-        bases=(pytd.NamedType("builtins.object"),),
-        methods=methods,
-        constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
-                        for name, c in self.members.items()),
-        classes=(),
-        decorators=(),
-        slots=None,
-        template=())
-
-  def instantiate(self, node, container=None):
-    return self.to_variable(node)
 
 
 AMBIGUOUS = (Unknown, Unsolvable)

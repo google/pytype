@@ -19,6 +19,9 @@ py_library(
     abstract.py
   DEPS
     ._base
+    ._instance_base
+    ._instances
+    ._singletons
     .abstract_utils
     .class_mixin
     .function
@@ -26,19 +29,6 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.pytd.codegen.codegen
-    pytype.typegraph.cfg
-    pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    abstract_utils
-  SRCS
-    abstract_utils.py
-  DEPS
-    pytype.utils
-    pytype.pyc.pyc
-    pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
 
@@ -51,6 +41,59 @@ py_library(
     .abstract_utils
     pytype.utils
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    _instance_base
+  SRCS
+    _instance_base.py
+  DEPS
+    ._base
+    .abstract_utils
+    .class_mixin
+    .function
+    pytype.utils
+)
+
+py_library(
+  NAME
+    _instances
+  SRCS
+    _instances.py
+  DEPS
+    ._base
+    ._instance_base
+    .abstract_utils
+    .function
+    .mixin
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    _singletons
+  SRCS
+    _singletons.py
+  DEPS
+    ._base
+    pytype.utils
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    abstract_utils
+  SRCS
+    abstract_utils.py
+  DEPS
+    pytype.utils
+    pytype.pyc.pyc
+    pytype.typegraph.cfg
+    pytype.typegraph.cfg_utils
 )
 
 py_library(

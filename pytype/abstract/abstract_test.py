@@ -253,7 +253,7 @@ class PyTDTest(AbstractTestBase):
     param2 = self._ctx.convert.primitive_class_instances[str]
     param_var = param1.to_variable(self._ctx.root_node)
     str_binding = param_var.AddBinding(param2, [], self._ctx.root_node)
-    instance = abstract.Tuple((param_var,), self._ctx)
+    instance = self._ctx.convert.tuple_to_value((param_var,))
     view = {param_var: str_binding}
     pytd_type = instance.to_type(self._ctx.root_node, seen=None, view=view)
     self.assertEqual(pytd_type.parameters[0],
@@ -756,9 +756,9 @@ class SimpleFunctionTest(AbstractTestBase):
             "arg": self._ctx.convert.str_type,
             "return": self._ctx.convert.str_type
         })
-    starargs = abstract.Tuple(
-        (self._ctx.convert.build_string(self._ctx.root_node, ""),),
-        self._ctx).to_variable(self._ctx.root_node)
+    starargs = self._ctx.convert.build_tuple(
+        self._ctx.root_node,
+        (self._ctx.convert.build_string(self._ctx.root_node, ""),))
     args = function.Args(posargs=(), starargs=starargs)
     node, ret = f.call(self._ctx.root_node, f, args)
     self.assertIs(node, self._ctx.root_node)
@@ -767,10 +767,10 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_call_with_bad_varargs(self):
     f = self._make_func(
         varargs_name="arg", annotations={"arg": self._ctx.convert.str_type})
-    starargs = abstract.Tuple(
+    starargs = self._ctx.convert.build_tuple(
+        self._ctx.root_node,
         (self._ctx.convert.build_string(self._ctx.root_node, ""),
-         self._ctx.convert.build_int(self._ctx.root_node)),
-        self._ctx).to_variable(self._ctx.root_node)
+         self._ctx.convert.build_int(self._ctx.root_node)))
     args = function.Args(posargs=(), starargs=starargs)
     self.assertRaises(function.WrongArgTypes, f.call, self._ctx.root_node, f,
                       args)
@@ -783,8 +783,7 @@ class SimpleFunctionTest(AbstractTestBase):
                    self._ctx.root_node)
     arg.AddBinding(self._ctx.convert.primitive_class_instances[int], [],
                    self._ctx.root_node)
-    starargs = abstract.Tuple((arg,), self._ctx)
-    starargs = starargs.to_variable(self._ctx.root_node)
+    starargs = self._ctx.convert.build_tuple(self._ctx.root_node, (arg,))
     args = function.Args(posargs=(), starargs=starargs)
     f.call(self._ctx.root_node, f, args)
 
@@ -864,8 +863,8 @@ class SimpleFunctionTest(AbstractTestBase):
     posargs = (self._ctx.convert.build_string(self._ctx.root_node, "1"),
                self._ctx.convert.build_int(self._ctx.root_node))
     float_inst = self._ctx.convert.primitive_class_instances[float]
-    stararg = abstract.Tuple((float_inst.to_variable(self._ctx.root_node),),
-                             self._ctx).to_variable(self._ctx.root_node)
+    stararg = self._ctx.convert.build_tuple(
+        self._ctx.root_node, (float_inst.to_variable(self._ctx.root_node),))
     namedargs = abstract.Dict(self._ctx)
     kwarg = abstract.Dict(self._ctx)
     kwarg.update(
@@ -939,9 +938,10 @@ class SimpleFunctionTest(AbstractTestBase):
         posargs=(self._ctx.convert.build_int(self._ctx.root_node),
                  self._ctx.convert.build_int(self._ctx.root_node)))
     f.call(self._ctx.root_node, f, args)
-    new_defaults = abstract.Tuple((self._ctx.convert.build_int(
-        self._ctx.root_node), self._ctx.convert.build_int(self._ctx.root_node)),
-                                  self._ctx).to_variable(self._ctx.root_node)
+    new_defaults = self._ctx.convert.build_tuple(
+        self._ctx.root_node,
+        (self._ctx.convert.build_int(self._ctx.root_node),
+         self._ctx.convert.build_int(self._ctx.root_node)))
     f.set_function_defaults(self._ctx.root_node, new_defaults)
     f.call(self._ctx.root_node, f, args)
     args = function.Args(

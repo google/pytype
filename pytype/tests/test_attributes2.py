@@ -105,6 +105,27 @@ class TestAttributes(test_base.BaseTest):
                   for z in x)  # pytype: disable=attribute-error
     """)
 
+  def test_iter_disable(self):
+    self.Check("""
+      x = [y for y in None
+          ]  # pytype: disable=attribute-error
+    """)
+
+  def test_unpack_disable(self):
+    self.Check("""
+      x, y, z = (
+        None)  # pytype: disable=attribute-error
+    """)
+
+  def test_contextmanager_disable(self):
+    self.Check("""
+      def f():
+        return None
+      with f(
+          ):  # pytype: disable=attribute-error
+        pass
+    """)
+
 
 class TestAttributesPython3FeatureTest(test_base.BaseTest):
   """Tests for attributes over target code using Python 3 features."""
