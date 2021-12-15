@@ -251,13 +251,22 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
       self_var = frame.first_arg
       if self_var:
+        # self_var is an instance of (a subclass of) the class on which
+        # frame.func is defined. We walk self_var's class's MRO to find the
+        # defining class and grab its type parameter substitutions.
+        defining_cls_name, _, _ = frame.func.data.name.rpartition(".")
         type_params = []
+        defining_classes = []
         for v in self_var.data:
-          # Normalize type parameter names by dropping the scope.
-          type_params.extend(p.with_module(None) for p in v.cls.template)
+          for cls in v.cls.mro:
+            if cls.name == defining_cls_name:
+              # Normalize type parameter names by dropping the scope.
+              type_params.extend(p.with_module(None) for p in cls.template)
+              defining_classes.append(cls)
+              break
         self_substs = tuple(
-            abstract_utils.get_type_parameter_substitutions(v, type_params)
-            for v in self_var.data)
+            abstract_utils.get_type_parameter_substitutions(cls, type_params)
+            for cls in defining_classes)
         substs = abstract_utils.combine_substs(substs, self_substs)
     allowed_type_params = set(
         itertools.chain(*substs, self.get_callable_type_parameter_names(var)))

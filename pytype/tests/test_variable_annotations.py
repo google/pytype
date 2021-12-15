@@ -29,6 +29,19 @@ class VariableAnnotationsBasicTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e1": r"int.*List", "e2": r"int.*str"})
 
+  def test_typevar_annot_with_subclass(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        def f(self):
+          x: T = None
+          return x
+      class Bar(Foo[str]):
+        pass
+      assert_type(Bar().f(), str)
+    """)
+
 
 class VariableAnnotationsFeatureTest(test_base.BaseTest):
   """Tests for PEP526 variable annotations."""
