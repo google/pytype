@@ -1,7 +1,9 @@
 """Matching logic for abstract values."""
 import collections
 import contextlib
+import dataclasses
 import logging
+from typing import Optional
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -63,6 +65,22 @@ class ProtocolTypeError(ProtocolError):
     self.expected_type = expected
 
 
+class TypedDictError(Exception):
+
+  def __init__(self, bad, extra, missing):
+    super().__init__()
+    self.bad = bad
+    self.missing = missing
+    self.extra = extra
+
+
+@dataclasses.dataclass
+class ErrorDetails:
+  protocol: Optional[ProtocolError] = None
+  noniterable_str: Optional[NonIterableStrError] = None
+  typed_dict: Optional[TypedDictError] = None
+
+
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -73,6 +91,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._recursive_annots_cache = set()
     self._protocol_error = None
     self._noniterable_str_error = None
+    self._typed_dict_error = None
     self._error_subst = None
 
   @contextlib.contextmanager
@@ -90,6 +109,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     old_protocol_cache = set(self._protocol_cache)
     yield
     self._protocol_cache = old_protocol_cache
+
+  def _error_details(self):
+    """Package up additional error details."""
+    return ErrorDetails(
+        protocol=self._protocol_error,
+        noniterable_str=self._noniterable_str_error,
+        typed_dict=self._typed_dict_error
+    )
 
   def compute_subst(self, formal_args, arg_dict, view, alias_map=None):
     """Compute information about type parameters using one-way unification.
@@ -128,8 +155,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._node, formal, [self._error_subst or {}])
 
         return None, function.BadParam(
-            name=name, expected=formal, protocol_error=self._protocol_error,
-            noniterable_str_error=self._noniterable_str_error)
+            name=name, expected=formal, error_details=self._error_details())
       if name == "self":
         self_subst = subst
     if self_subst:
@@ -168,7 +194,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self._noniterable_str_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
-          bad.append((view, self._protocol_error, self._noniterable_str_error))
+          bad.append((view, self._error_details()))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
         skip_future = False
@@ -756,6 +782,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return self._match_type_against_type(
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
+    elif isinstance(other_type, abstract.TypedDictClass):
+      if not self._match_dict_against_typed_dict(left, other_type):
+        return None
+      return subst
     elif isinstance(other_type, class_mixin.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
         self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
@@ -944,6 +974,26 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if subst is None:
         return None
     return subst
+
+  def _match_dict_against_typed_dict(self, left, other_type):
+    assert isinstance(other_type, abstract.TypedDictClass)
+    self._typed_dict_error = None
+    if not isinstance(left, abstract.Dict):
+      return False
+    missing, extra, bad = [], [], []
+    fields = other_type.fields
+    for k, v in left.pyval.items():
+      if k not in fields:
+        extra.append(k)
+        continue
+      typ = abstract_utils.get_atomic_value(fields[k])
+      b = self.bad_matches(v, typ)
+      if b:
+        bad.append((k, v, typ, b))
+    if missing or extra or bad:
+      self._typed_dict_error = TypedDictError(bad, extra, missing)
+      return False
+    return True
 
   def _get_attribute_names(self, left):
     """Get the attributes implemented (or implicit) on a type."""

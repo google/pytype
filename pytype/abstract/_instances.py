@@ -624,10 +624,10 @@ class TypedDict(Dict):
     name = abstract_utils.get_atomic_python_constant(name_var, str)
     typ = abstract_utils.get_atomic_value(self.fields[name])
     bad = self.ctx.matcher(node).bad_matches(value_var, typ)
-    for view, *error_details in bad:
+    for view, error_details in bad:
       binding = view[value_var]
       self.ctx.errorlog.annotation_type_mismatch(
-          self.ctx.vm.frames, typ, binding, name, *error_details,
+          self.ctx.vm.frames, typ, binding, name, error_details,
           typed_dict=self
       )
 

@@ -548,7 +548,7 @@ def _check_defaults(node, method, ctx):
     if should_report:
       ctx.errorlog.annotation_type_mismatch(
           ctx.vm.frames, expected_type, value.to_binding(node), arg_name,
-          bad_param.protocol_error, bad_param.noniterable_str_error)
+          bad_param.error_details)
 
 
 def make_function(name, node, code, globs, defaults, kw_defaults, closure,

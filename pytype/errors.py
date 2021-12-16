@@ -529,13 +529,15 @@ class ErrorLog(ErrorLogBase):
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       expected = self._pytd_print(formal.get_instance_type(node))
+      if isinstance(formal, abstract.TypedDictClass):
+        expected = expected + "(TypedDict)"
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
     else:
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
       bad_actual = self._pytd_print(pytd_utils.JoinTypes(
-          view[actual].data.to_type(node, view=view) for view, _, _ in bad))
+          view[actual].data.to_type(node, view=view) for view, _ in bad))
       if len(actual.bindings) > len(bad):
         full_actual = self._pytd_print(pytd_utils.JoinTypes(
             v.to_type(node) for v in actual.data))
@@ -543,9 +545,8 @@ class ErrorLog(ErrorLogBase):
         full_actual = bad_actual
     # typing.NoReturn is a prettier alias for nothing.
     fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
-    protocol_details, nis_details = self._prepare_errorlog_details(bad)
-    return (fmt(expected), fmt(bad_actual), fmt(full_actual), protocol_details,
-            nis_details)
+    error_details = self._prepare_errorlog_details(bad)
+    return (fmt(expected), fmt(bad_actual), fmt(full_actual), error_details)
 
   def _print_as_function_def(self, fn):
     assert isinstance(fn, abstract.Function)
@@ -582,20 +583,47 @@ class ErrorLog(ErrorLogBase):
                 f"wrong type in {left}: expected {expected}, got {actual}")
 
   def _print_noniterable_str_error(self, error):
+    """Pretty-print the matcher.NonIterableStrError instance."""
     return (
         f"Note: {error.left_type.name} does not match iterables by default. "
         "Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables")
 
-  def _prepare_errorlog_details(self, bad):
-    protocol_details = set()
-    nis_details = set()
-    for _, protocol_err, nis_err in bad:
-      if protocol_err:
-        protocol_details.add("\n" + self._print_protocol_error(protocol_err))
-      if nis_err:
-        nis_details.add("\n" + self._print_noniterable_str_error(nis_err))
+  def _print_typed_dict_error(self, error):
+    """Pretty-print the matcher.TypedDictError instance."""
+    ret = ""
+    if error.missing:
+      ret += "\nTypedDict missing keys: " + ", ".join(error.missing)
+    if error.extra:
+      ret += "\nTypedDict extra keys: " + ", ".join(error.extra)
+    if error.bad:
+      ret += "\nTypedDict type errors: "
+      for k, v, typ, bad in error.bad:
+        for view, _ in bad:
+          actual = self._print_as_actual_type(view[v].data)
+          expected = self._print_as_expected_type(typ)
+          ret += f"\n  {{'{k}': ...}}: expected {expected}, got {actual}"
+    return ret
 
-    return sorted(protocol_details), sorted(nis_details)
+  def _print_error_details(self, error_details):
+    printers = [
+        (error_details.protocol, self._print_protocol_error),
+        (error_details.noniterable_str, self._print_noniterable_str_error),
+        (error_details.typed_dict, self._print_typed_dict_error)
+    ]
+    return ["\n" + printer(err) if err else "" for err, printer in printers]
+
+  def _prepare_errorlog_details(self, bad):
+    """Prepare printable annotation matching errors."""
+    details = collections.defaultdict(set)
+    for _, err in bad:
+      d = self._print_error_details(err)
+      for i, detail in enumerate(d):
+        if detail:
+          details[i].add(detail)
+    ret = []
+    for i in sorted(details.keys()):
+      ret.extend(sorted(details[i]))
+    return ret
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
@@ -743,11 +771,8 @@ class ErrorLog(ErrorLogBase):
         "       Expected: (", expected, ")\n",
         "Actually passed: (", actual,
         ")"])
-    if bad_param and bad_param.protocol_error:
-      details += "\n" + self._print_protocol_error(bad_param.protocol_error)
-    if bad_param and bad_param.noniterable_str_error:
-      details += "\n" + self._print_noniterable_str_error(
-          bad_param.noniterable_str_error)
+    if bad_param and bad_param.error_details:
+      details += "".join(self._print_error_details(bad_param.error_details))
     self.error(stack, message, details, bad_call=bad_call)
 
   @_error_name("wrong-arg-count")
@@ -899,7 +924,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, node, formal, actual, bad):
     """Logs a [bad-return-type] error."""
-    expected, bad_actual, full_actual, protocol_details, nis_details = (
+    expected, bad_actual, full_actual, error_details = (
         self._print_as_return_types(node, formal, actual, bad))
     if full_actual == bad_actual:
       message = "bad return type"
@@ -907,7 +932,7 @@ class ErrorLog(ErrorLogBase):
       message = f"bad option {bad_actual!r} in return type"
     details = ["         Expected: ", expected, "\n",
                "Actually returned: ", full_actual]
-    details.extend(protocol_details + nis_details)
+    details.extend(error_details)
     self.error(stack, message, "".join(details))
 
   @_error_name("bad-yield-annotation")
@@ -923,13 +948,13 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, formal, actual, bad, details=None):
-    expected, actual, _, protocol_details, nis_details = (
+    expected, actual, _, error_details = (
         self._print_as_return_types(node, formal, actual, bad))
     full_details = ["       Expected: ", expected, "\n",
                     "Actually passed: ", actual]
     if details:
       full_details.append("\n" + details)
-    full_details.extend(protocol_details + nis_details)
+    full_details.extend(error_details)
     self.error(
         stack, "Invalid instantiation of generic class", "".join(full_details))
 
@@ -1139,21 +1164,20 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("annotation-type-mismatch")
   def annotation_type_mismatch(
-      self, stack, annot, binding, name, protocol_err, nis_err,
-      details=None, *, typed_dict=None):
+      self, stack, annot, binding, name, error_details, details=None, *,
+      typed_dict=None):
     """Invalid combination of annotation and assignment."""
     if annot is None:
       return
     annot_string = self._print_as_expected_type(annot)
+    if isinstance(annot, abstract.TypedDictClass):
+      annot_string = annot_string + "(TypedDict)"
     literal = "Literal[" in annot_string
     actual_string = self._print_as_actual_type(binding.data, literal=literal)
     if actual_string == "None":
       annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
     additional_details = f"\n\n{details}" if details else ""
-    if protocol_err:
-      additional_details += "\n" + self._print_protocol_error(protocol_err)
-    if nis_err:
-      additional_details += "\n" + self._print_noniterable_str_error(nis_err)
+    additional_details += "".join(self._print_error_details(error_details))
     details = ("Annotation: %s\n" % annot_string +
                "Assignment: %s" % actual_string +
                additional_details)

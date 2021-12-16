@@ -174,7 +174,7 @@ class Context:
     if contained_type:
       typ = contained_type
     bad = self.matcher(node).bad_matches(value, typ)
-    for view, *error_details in bad:
+    for view, error_details in bad:
       binding = view[value]
       self.errorlog.annotation_type_mismatch(
-          stack, typ, binding, name, *error_details, details)
+          stack, typ, binding, name, error_details, details)

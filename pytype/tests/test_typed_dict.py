@@ -94,6 +94,35 @@ class TypedDictTest(test_base.BaseTest):
         "Duplicate", "key x", "Foo", "Baz"
     ]})
 
+  def test_annotation(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+        y: str
+      a: A = {'x': '10', 'z': 20}  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": [
+        "Annotation: A(TypedDict)",
+        "extra keys", "z",
+        "type errors", "{'x': ...}", "expected int", "got str"
+    ]})
+
+  def test_return_type(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+        y: str
+      def f() -> A:
+        return {'x': '10', 'z': 20}  # bad-return-type[e]
+    """)
+    self.assertErrorSequences(err, {"e": [
+        "Expected: A(TypedDict)",
+        "extra keys", "z",
+        "type errors", "{'x': ...}", "expected int", "got str"
+    ]})
+
 
 if __name__ == "__main__":
   test_base.main()
