@@ -251,10 +251,9 @@ def _is_function_call(opcode_name):
 
 def _is_funcdef_op(opcode_name):
   """Checks whether the opcode may appear in a function signature."""
-  return opcode_name.startswith("LOAD_") or opcode_name in {
-      "BINARY_SUBSCR",
-      "BUILD_TUPLE",
-  }
+  return (opcode_name.startswith("BUILD_") or
+          opcode_name.startswith("LOAD_") or
+          opcode_name == "BINARY_SUBSCR")
 
 
 def _is_load_attribute_op(opcode_name):
