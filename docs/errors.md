@@ -59,13 +59,14 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [recursion-error](#recursion-error)
       * [redundant-function-type-comment](#redundant-function-type-comment)
       * [reveal-type](#reveal-type)
+      * [typed-dict-error](#typed-dict-error)
       * [unbound-type-param](#unbound-type-param)
       * [unsupported-operands](#unsupported-operands)
       * [wrong-arg-count](#wrong-arg-count)
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2021-12-08T17:44-08:00 -->
+<!-- Added by: mdemello, at: 2021-12-14T20:25-08:00 -->
 
 <!--te-->
 
@@ -78,6 +79,20 @@ Example:
 <!-- bad -->
 ```python
 x: int = 'hello world'
+```
+
+This error is also raised for wrongly assigning a value in a `TypedDict`:
+
+<!-- bad -->
+```python
+from typing import TypedDict
+
+class A(TypedDict):
+  x: int
+  y: str
+
+a = A()
+a['x'] = '10'
 ```
 
 ## assert-type
@@ -720,6 +735,23 @@ reveal_type(os.path.join("hello", u"world"))  # reveal-type: unicode
 
 This feature is implemented as an error to ensure that `reveal_type()` calls are
 removed after debugging.
+
+## typed-dict-error
+
+A [TypedDict](https://www.python.org/dev/peps/pep-0589/) has been accessed with
+an invalid key. Example:
+
+<!-- bad -->
+```python
+from typing import TypedDict
+
+class A(TypedDict):
+  x: int
+  y: str
+
+a = A()
+a['z'] = 10
+```
 
 ## unbound-type-param
 

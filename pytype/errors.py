@@ -1139,7 +1139,8 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("annotation-type-mismatch")
   def annotation_type_mismatch(
-      self, stack, annot, binding, name, protocol_err, nis_err, details=None):
+      self, stack, annot, binding, name, protocol_err, nis_err,
+      details=None, *, typed_dict=None):
     """Invalid combination of annotation and assignment."""
     if annot is None:
       return
@@ -1165,8 +1166,13 @@ class ErrorLog(ErrorLogBase):
       if len(print_types) > 1:
         details += "\nIn assignment of type: %s" % self._join_printed_types(
             print_types)
-    suffix = "" if name is None else " for " + name
-    err_msg = "Type annotation%s does not match type of assignment" % suffix
+    if typed_dict is not None:
+      suffix = f" for key {name} in TypedDict {typed_dict.class_name}"
+    elif name is not None:
+      suffix = " for " + name
+    else:
+      suffix = ""
+    err_msg = f"Type annotation{suffix} does not match type of assignment"
     self.error(stack, err_msg, details=details)
 
   @_error_name("container-type-mismatch")
@@ -1210,6 +1216,21 @@ class ErrorLog(ErrorLogBase):
   def invalid_function_definition(self, stack, msg):
     """Invalid function constructed via metaprogramming."""
     self.error(stack, msg)
+
+  @_error_name("typed-dict-error")
+  def typed_dict_error(self, stack, obj, name):
+    """Accessing a nonexistent key in a typed dict.
+
+    Args:
+      stack: the frame stack
+      obj: the typed dict instance
+      name: the key name
+    """
+    if name:
+      err_msg = f"TypedDict {obj.class_name} does not contain key {name}"
+    else:
+      err_msg = f"TypedDict {obj.class_name} requires all keys to be strings"
+    self.error(stack, err_msg)
 
 
 def get_error_names_set():

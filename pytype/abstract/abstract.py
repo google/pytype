@@ -55,6 +55,7 @@ Generator = _instances.Generator
 Tuple = _instances.Tuple
 List = _instances.List
 Dict = _instances.Dict
+TypedDict = _instances.TypedDict
 AnnotationsDict = _instances.AnnotationsDict
 
 Unknown = _singletons.Unknown
@@ -1894,6 +1895,21 @@ class FunctionPyTDClass(PyTDClass):
     return self.func.to_variable(node)
 
 
+class TypedDictClass(PyTDClass):
+  """A template for typed dicts."""
+
+  def __init__(self, name, fields, ctx):
+    self.class_name = name
+    self.fields = fields
+    super().__init__(name, ctx.convert.dict_type.pytd_cls, ctx)
+
+  def __repr__(self):
+    return f"TypedDictClass({self.name})"
+
+  def _new_instance(self, container, node, args):
+    return TypedDict(self, self.ctx)
+
+
 class InterpreterClass(SimpleValue, class_mixin.Class):
   """An abstract wrapper for user-defined class objects.
 
@@ -3189,10 +3205,14 @@ class BuildClass(BaseValue):
         return enum_base.make_class(
             node, name, list(bases), cls_dict, metaclass,
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
-      if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
-        # The subclass of NamedTuple will ignore all its base classes. This is
-        # controled by a metaclass provided to NamedTuple.
-        return base.make_class(node, list(bases), cls_dict)
+      if isinstance(base, PyTDClass):
+        if base.full_name == "typing.NamedTuple":
+          # The subclass of NamedTuple will ignore all its base classes. This is
+          # controled by a metaclass provided to NamedTuple.
+          return base.make_class(node, list(bases), cls_dict)
+        elif base.full_name == "typing.TypedDict":
+          return base.make_class(node, list(bases), cls_dict)
+
     return self.ctx.make_class(
         node,
         name,

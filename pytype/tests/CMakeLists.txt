@@ -1195,3 +1195,12 @@ py_test(
   DEPS
     .test_base
 )
+
+py_test(
+  NAME
+    test_typed_dict
+  SRCS
+    test_typed_dict.py
+  DEPS
+    .test_base
+)

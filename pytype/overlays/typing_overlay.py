@@ -616,6 +616,48 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return node, cls_var
 
 
+class TypedDictBuilder(abstract.PyTDClass):
+  """Factory for creating typing.TypedDict classes."""
+
+  def __init__(self, ctx):
+    typing_ast = ctx.loader.import_name("typing")
+    pyval = typing_ast.Lookup("typing._TypedDict")
+    pyval = pyval.Replace(name="typing.TypedDict")
+    super().__init__("TypedDict", pyval, ctx)
+
+  def call(self, node, _, args):
+    raise NotImplementedError()
+
+  def make_class(self, node, bases, f_locals):
+    # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
+    # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
+    # applies here.
+    if isinstance(f_locals.data[0], abstract.Unsolvable):
+      return node, self.ctx.new_unsolvable(node)
+
+    f_locals = abstract_utils.get_atomic_python_constant(f_locals)
+
+    # retrieve __qualname__ to get the name of class
+    name_var = f_locals["__qualname__"]
+    cls_name = abstract_utils.get_atomic_python_constant(name_var)
+    if "." in cls_name:
+      cls_name = cls_name.rsplit(".", 1)[-1]
+
+    # Collect the key types
+    fields = {}
+    cls_locals = classgen.get_class_locals(
+        cls_name,
+        allow_methods=False,
+        ordering=classgen.Ordering.FIRST_ANNOTATE,
+        ctx=self.ctx)
+    for k, local in cls_locals.items():
+      assert local.typ
+      fields[k] = local.typ
+    cls = abstract.TypedDictClass(cls_name, fields, self.ctx)
+    cls_var = cls.to_variable(node)
+    return node, cls_var
+
+
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
@@ -746,6 +788,10 @@ def build_namedtuple(ctx):
     return NamedTupleClassBuilder(ctx)
 
 
+def build_typeddict(ctx):
+  return TypedDictBuilder(ctx)
+
+
 def build_newtype(ctx):
   return NewType.make("NewType", ctx, "typing")
 
@@ -788,7 +834,7 @@ typing_overlay = {
     "Optional": overlay.build("Optional", Optional),
     "Tuple": overlay.build("Tuple", Tuple),
     "TypeVar": build_typevar,
-    "TypedDict": overlay.build("TypedDict", not_supported_yet),
+    "TypedDict": build_typeddict,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,
