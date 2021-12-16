@@ -628,6 +628,35 @@ class TypedDictBuilder(abstract.PyTDClass):
   def call(self, node, _, args):
     raise NotImplementedError()
 
+  def _validate_bases(self, cls_name, bases):
+    """Check that all base classes are valid."""
+    for base_var in bases:
+      for base in base_var.data:
+        if not isinstance(base, (abstract.TypedDictClass, TypedDictBuilder)):
+          details = (f"TypedDict {cls_name} cannot inherit from "
+                     "a non-TypedDict class.")
+          self.ctx.errorlog.base_class_error(
+              self.ctx.vm.frames, base_var, details)
+
+  def _merge_base_class_fields(self, fields, cls_name, bases):
+    """Add the merged list of base class fields to the fields dict."""
+    # Updates the fields dict in place, raises an error if a duplicate key is
+    # encountered.
+    provenance = {k: cls_name for k in fields}
+    for base_var in bases:
+      for base in base_var.data:
+        if not isinstance(base, abstract.TypedDictClass):
+          continue
+        for k, v in base.fields.items():
+          if k in fields:
+            classes = f"{base.name} and {provenance[k]}"
+            details = f"Duplicate TypedDict key {k} in classes {classes}"
+            self.ctx.errorlog.base_class_error(
+                self.ctx.vm.frames, base_var, details)
+          else:
+            fields[k] = v
+            provenance[k] = base.name
+
   def make_class(self, node, bases, f_locals):
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
     # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
@@ -653,7 +682,12 @@ class TypedDictBuilder(abstract.PyTDClass):
     for k, local in cls_locals.items():
       assert local.typ
       fields[k] = local.typ
-    cls = abstract.TypedDictClass(cls_name, fields, self.ctx)
+
+    # Process base classes
+    self._validate_bases(cls_name, bases)
+    self._merge_base_class_fields(fields, cls_name, bases)
+
+    cls = abstract.TypedDictClass(cls_name, fields, self, self.ctx)
     cls_var = cls.to_variable(node)
     return node, cls_var
 

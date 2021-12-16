@@ -1898,9 +1898,10 @@ class FunctionPyTDClass(PyTDClass):
 class TypedDictClass(PyTDClass):
   """A template for typed dicts."""
 
-  def __init__(self, name, fields, ctx):
+  def __init__(self, name, fields, base_cls, ctx):
     self.class_name = name
     self.fields = fields
+    self.base_cls = base_cls  # TypedDictBuilder for constructing subclasses
     super().__init__(name, ctx.convert.dict_type.pytd_cls, ctx)
 
   def __repr__(self):
@@ -3206,12 +3207,12 @@ class BuildClass(BaseValue):
             node, name, list(bases), cls_dict, metaclass,
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
       if isinstance(base, PyTDClass):
-        if base.full_name == "typing.NamedTuple":
-          # The subclass of NamedTuple will ignore all its base classes. This is
-          # controled by a metaclass provided to NamedTuple.
+        # Subclasses of these classes define their own class constructors.
+        if (base.full_name == "typing.NamedTuple" or
+            base.full_name == "typing.TypedDict"):
           return base.make_class(node, list(bases), cls_dict)
-        elif base.full_name == "typing.TypedDict":
-          return base.make_class(node, list(bases), cls_dict)
+        elif isinstance(base, TypedDictClass):
+          return base.base_cls.make_class(node, list(bases), cls_dict)
 
     return self.ctx.make_class(
         node,

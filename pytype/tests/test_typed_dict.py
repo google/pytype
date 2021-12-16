@@ -53,5 +53,47 @@ class TypedDictTest(test_base.BaseTest):
         "Annotation: Union[int, str]", "Assignment: List[nothing]"
     ]})
 
+  def test_bad_base_class(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class Foo: pass
+      class Bar(TypedDict, Foo):  # base-class-error[e]
+        x: int
+    """)
+    self.assertErrorSequences(err, {"e": [
+        "Invalid base class", "Foo", "TypedDict Bar", "cannot inherit"
+    ]})
+
+  def test_inheritance(self):
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict):
+        x: int
+      class Bar(TypedDict):
+        y: str
+      class Baz(Foo, Bar):
+        z: bool
+      a = Baz()
+      a['x'] = 1
+      a['y'] = 2  # annotation-type-mismatch
+      a['z'] = True
+      a['w'] = True  # typed-dict-error
+    """)
+
+  def test_inheritance_clash(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict):
+        x: int
+      class Bar(TypedDict):
+        y: str
+      class Baz(Foo, Bar):  # base-class-error[e]
+        x: bool
+    """)
+    self.assertErrorSequences(err, {"e": [
+        "Duplicate", "key x", "Foo", "Baz"
+    ]})
+
+
 if __name__ == "__main__":
   test_base.main()
