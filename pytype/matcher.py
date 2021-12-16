@@ -70,6 +70,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     super().__init__(ctx)
     self._node = node
     self._protocol_cache = set()
+    self._recursive_annots_cache = set()
     self._protocol_error = None
     self._noniterable_str_error = None
     self._error_subst = None
@@ -277,6 +278,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     left = value.data
     assert isinstance(left, abstract.BaseValue), left
     assert isinstance(other_type, abstract.BaseValue), other_type
+
+    # Make sure we don't recurse infinitely when matching recursive types.
+    if other_type.is_late_annotation() and other_type.is_recursive():
+      key = (left, other_type)
+      if key in self._recursive_annots_cache:
+        return subst
+      self._recursive_annots_cache.add(key)
 
     if left.formal:
       # 'left' contains a TypeParameter. The code under analysis is likely doing
