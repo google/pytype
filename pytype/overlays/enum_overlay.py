@@ -102,7 +102,7 @@ class EnumBuilder(abstract.PyTDClass):
   def call(self, node, func, args, alias_map=None):
     """Implements the behavior of the enum functional API."""
     # Because of how this is called, we supply our own "self" argument.
-    # See class_mixin.Class._call_new_and_init.
+    # See abstract.Class._call_new_and_init.
     args = args.simplify(node, self.ctx)
     args = args.replace(posargs=(self.ctx.new_unsolvable(node),) + args.posargs)
     # It's possible that this class has been called in order to look up an enum

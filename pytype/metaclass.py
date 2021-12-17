@@ -8,7 +8,6 @@ import logging
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 
 log = logging.getLogger(__name__)
@@ -35,7 +34,7 @@ class AddMetaclassInstance(abstract.BaseValue):
       # For metaclasses defined natively or using with_metaclass, the
       # metaclass's initializer is called in vm.make_class. However, with
       # add_metaclass, the metaclass is not known until the decorator fires.
-      if isinstance(cls, class_mixin.Class):
+      if isinstance(cls, abstract.Class):
         node = cls.call_metaclass_init(node)
     return node, cls_var
 
@@ -60,22 +59,22 @@ class AddMetaclass(abstract.PyTDFunction):
                                       self.module_name).to_variable(node)
 
 
-class WithMetaclassInstance(abstract.BaseValue, class_mixin.Class):
+class WithMetaclassInstance(abstract.BaseValue, abstract.Class):
   """Anonymous class created by with_metaclass."""
 
   def __init__(self, ctx, cls, bases):
     super().__init__("WithMetaclassInstance", ctx)
-    class_mixin.Class.init_mixin(self, cls)
+    abstract.Class.init_mixin(self, cls)
     self.bases = bases
 
   def get_own_attributes(self):
-    if isinstance(self.cls, class_mixin.Class):
+    if isinstance(self.cls, abstract.Class):
       return self.cls.get_own_attributes()
     else:
       return set()
 
   def get_own_abstract_methods(self):
-    if isinstance(self.cls, class_mixin.Class):
+    if isinstance(self.cls, abstract.Class):
       return self.cls.get_own_abstract_methods()
     else:
       return set()

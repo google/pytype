@@ -10,7 +10,6 @@ from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import attr_overlay
@@ -312,7 +311,7 @@ class Converter(utils.ContextWeakrefMixin):
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""
     if not isinstance(arg_type, abstract.ParameterizedClass):
-      assert (isinstance(arg_type, class_mixin.Class) and
+      assert (isinstance(arg_type, abstract.Class) and
               arg_type.full_name in ("builtins.dict", "builtins.tuple"))
       return None
     elif arg_type.base_cls is self.dict_type:
@@ -328,7 +327,7 @@ class Converter(utils.ContextWeakrefMixin):
                                          old_container.formal_type_parameters,
                                          self.ctx)
     else:
-      assert isinstance(old_container, class_mixin.Class)
+      assert isinstance(old_container, abstract.Class)
       return new_container
 
   def widen_type(self, container):
@@ -796,7 +795,7 @@ class Converter(utils.ContextWeakrefMixin):
         base = pyval.base_type.cls
       assert isinstance(base, pytd.Class), base
       base_cls = self.constant_to_value(base, subst, self.ctx.root_node)
-      if not isinstance(base_cls, class_mixin.Class):
+      if not isinstance(base_cls, abstract.Class):
         # base_cls can be, e.g., an unsolvable due to an mro error.
         return self.unsolvable
       if isinstance(pyval, pytd.TupleType):

@@ -15,7 +15,6 @@ from pytype import state as frame_state
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.pyc import opcodes
@@ -358,7 +357,7 @@ def _process_base_class(node, base, ctx):
     else:
       new_base.AddBinding(base_val, {b}, node)
   base = new_base
-  if not any(isinstance(t, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
+  if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
              for t in base.data):
     ctx.errorlog.base_class_error(ctx.vm.frames, base)
   return base
@@ -668,7 +667,7 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
       options.reverse()
   error = None
   for left_val, right_val, attr_name in options:
-    if (isinstance(left_val.data, class_mixin.Class) and
+    if (isinstance(left_val.data, abstract.Class) and
         attr_name == "__getitem__"):
       # We're parameterizing a type annotation. Set valself to None to
       # differentiate this action from a real __getitem__ call on the class.

@@ -15,7 +15,6 @@ from pytype import matcher
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.pytd import escape
@@ -497,7 +496,7 @@ class ErrorLog(ErrorLogBase):
     if t.is_late_annotation():
       return typing.cast(abstract.LateAnnotation, t).expr
     elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
-                        class_mixin.Class, abstract.Union)):
+                        abstract.Class, abstract.Union)):
       with t.ctx.pytd_convert.set_output_mode(
           t.ctx.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))

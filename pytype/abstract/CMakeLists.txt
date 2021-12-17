@@ -27,6 +27,7 @@ py_library(
     ._pytd_function
     ._singletons
     ._typing
+    .class_mixin
 )
 
 py_library(

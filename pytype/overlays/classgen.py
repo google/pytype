@@ -153,7 +153,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     # We should only have a single binding here
     cls, = cls_var.data
 
-    if not isinstance(cls, class_mixin.Class):
+    if not isinstance(cls, abstract.Class):
       # There are other valid types like abstract.Unsolvable that we don't need
       # to do anything with.
       return node, cls_var

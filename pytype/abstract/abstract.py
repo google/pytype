@@ -15,11 +15,15 @@ from pytype.abstract import _interpreter_function
 from pytype.abstract import _pytd_function
 from pytype.abstract import _singletons
 from pytype.abstract import _typing
+from pytype.abstract import class_mixin
 
 log = logging.getLogger(__name__)
 
 # For simplicity, we pretend all abstract values are defined in abstract.py.
 BaseValue = _base.BaseValue
+
+# This is technically a mixin, but we use it a lot in isinstance() checks.
+Class = class_mixin.Class
 
 BuildClass = _classes.BuildClass
 InterpreterClass = _classes.InterpreterClass

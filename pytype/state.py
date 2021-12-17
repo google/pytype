@@ -9,7 +9,6 @@ from pytype import compare
 from pytype import metrics
 from pytype import utils
 from pytype.abstract import abstract
-from pytype.abstract import class_mixin
 from pytype.abstract import mixin
 from pytype.typegraph import cfg
 
@@ -389,8 +388,8 @@ def _is_or_is_not_cmp(left, right, is_not=False):
       # comparing types.
       return is_not
     return None
-  elif (isinstance(left, class_mixin.Class) and
-        isinstance(right, class_mixin.Class)):
+  elif (isinstance(left, abstract.Class) and
+        isinstance(right, abstract.Class)):
     # types are singletons. We use the name so that, e.g., two different
     # TupleClass instances compare as identical.
     return is_not ^ (left.full_name == right.full_name)
