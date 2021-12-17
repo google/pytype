@@ -281,6 +281,9 @@ def _contains_any_type(ast, type_names):
 class _PropertyToConstant(visitors.Visitor):
   """Convert some properties to constant types."""
 
+  type_param_names: List[str]
+  const_properties: List[List[pytd.Function]]
+
   def EnterTypeDeclUnit(self, node):
     self.type_param_names = [x.name for x in node.type_params]
     self.const_properties = []

@@ -197,16 +197,15 @@ class TestOptimize(parser_test_base.ParserTest):
       def f(x: Union[float, int]) -> bool: ...
     """)
     new_src = pytd_src("""
-      def a(x) -> bool: ...  # max_union=2 makes this object
-      def b(x: Union[int, float]) -> bool: ...
-      def c(x: int) -> bool: ...
-      def d(x: int) -> bool: ...
-      def e(x: Union[float, int]) -> bool: ...
-      def f(x: Union[float, int]) -> bool: ...
+      def a(x) -> builtins.bool: ...  # max_union=2 makes this object
+      def b(x: Union[builtins.int, builtins.float]) -> builtins.bool: ...
+      def c(x: builtins.int) -> builtins.bool: ...
+      def d(x: builtins.int) -> builtins.bool: ...
+      def e(x: Union[builtins.float, builtins.int]) -> builtins.bool: ...
+      def f(x: Union[builtins.float, builtins.int]) -> builtins.bool: ...
     """)
     ast = self.ParseAndResolve(src)
     optimized = self.Optimize(ast, lossy=False, max_union=2)
-    optimized = optimized.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(optimized, new_src)
 
   def test_simplify_unions(self):
@@ -271,7 +270,7 @@ class TestOptimize(parser_test_base.ParserTest):
         def f(x: Union[list, object], y: Union[complex, memoryview]) -> Union[int, bool]: ...
     """)
     expected = pytd_src("""
-        def f(x: object, y: object) -> int: ...
+        def f(x: builtins.object, y: builtins.object) -> builtins.int: ...
     """)
     hierarchy = self.builtins.Visit(visitors.ExtractSuperClassesByName())
     hierarchy.update(self.typing.Visit(visitors.ExtractSuperClassesByName()))
@@ -279,7 +278,6 @@ class TestOptimize(parser_test_base.ParserTest):
         optimize.SuperClassHierarchy(hierarchy))
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(visitor)
-    ast = ast.Visit(visitors.DropBuiltinPrefix())
     ast = ast.Visit(visitors.CanonicalOrderingVisitor())
     self.AssertSourceEquals(ast, expected)
 
@@ -393,7 +391,6 @@ class TestOptimize(parser_test_base.ParserTest):
     """)
     ast = self.ParseAndResolve(src)
     ast = ast.Visit(optimize.CollapseLongUnions(max_length=4))
-    ast = ast.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(ast, expected)
 
   def test_collapse_long_constant_unions(self):

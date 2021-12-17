@@ -1,12 +1,10 @@
 """Visitor(s) for walking ASTs."""
 
-# Because pytype takes too long:
-# pytype: skip-file
-
 import collections
 import itertools
 import logging
 import re
+from typing import Set
 
 from pytype import datatypes
 from pytype import module_utils
@@ -40,27 +38,6 @@ CollectTypeParameters = pytd_visitors.CollectTypeParameters
 ExtractSuperClasses = pytd_visitors.ExtractSuperClasses
 PrintVisitor = printer.PrintVisitor
 RenameModuleVisitor = pytd_visitors.RenameModuleVisitor
-
-
-class StripSelf(Visitor):
-  """Transforms the tree into one where methods don't have the "self" parameter.
-
-  This is useful for certain kinds of postprocessing and testing.
-  """
-
-  def VisitClass(self, node):
-    """Visits a Class, and removes "self" from all its methods."""
-    return node.Replace(methods=tuple(self._StripFunction(m)
-                                      for m in node.methods))
-
-  def _StripFunction(self, node):
-    """Remove "self" from all signatures of a method."""
-    return node.Replace(signatures=tuple(self.StripSignature(s)
-                                         for s in node.signatures))
-
-  def StripSignature(self, node):
-    """Remove "self" from a Signature. Assumes "self" is the first argument."""
-    return node.Replace(params=node.params[1:])
 
 
 class FillInLocalPointers(Visitor):
@@ -133,7 +110,7 @@ class FillInLocalPointers(Visitor):
                         prefix + node.name, type(cls))
 
 
-class RemoveTypeParametersFromGenericAny(Visitor):
+class _RemoveTypeParametersFromGenericAny(Visitor):
   """Adjusts GenericType nodes to handle base type changes."""
 
   unchecked_node_names = ("GenericType",)
@@ -147,7 +124,7 @@ class RemoveTypeParametersFromGenericAny(Visitor):
       return node
 
 
-class DefaceUnresolved(RemoveTypeParametersFromGenericAny):
+class DefaceUnresolved(_RemoveTypeParametersFromGenericAny):
   """Replace all types not in a symbol table with AnythingType."""
 
   def __init__(self, lookup_list, do_not_log_prefix=None):
@@ -205,17 +182,6 @@ class NamedTypeToClassType(Visitor):
       A ClassType. This ClassType will (temporarily) only have a name.
     """
     return pytd.ClassType(node.name)
-
-
-class DropBuiltinPrefix(Visitor):
-  """Drop 'builtins.' prefix."""
-
-  def VisitClassType(self, node):
-    _, _, name = node.name.rpartition("builtins.")
-    return pytd.NamedType(name)
-
-  def VisitNamedType(self, node):
-    return self.VisitClassType(node)
 
 
 def LookupClasses(target, global_module=None, ignore_late_types=False):
@@ -362,7 +328,7 @@ def MaybeSubstituteParameters(base_type, parameters=None):
   return base_type.Visit(ReplaceTypeParameters(mapping))
 
 
-class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
+class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up NamedType pointers using a symbol table."""
 
   def __init__(self, module_map, self_name=None, module_alias_map=None):
@@ -615,7 +581,7 @@ class LookupExternalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
             tuple(new_aliases)))
 
 
-class LookupLocalTypes(RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
+class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up local identifiers. Must be called on a TypeDeclUnit."""
 
   def __init__(self, allow_singletons=False, toplevel=True):
@@ -1032,31 +998,10 @@ class CreateTypeParametersForSignatures(Visitor):
       return unit
 
 
-class RaiseIfContainsUnknown(Visitor):
-  """Find any 'unknown' Class or ClassType (not: pytd.AnythingType!) in a class.
-
-  It throws HasUnknown on the first occurrence.
-  """
-
-  class HasUnknown(Exception):  # pylint: disable=g-bad-exception-name
-    """Used for aborting the RaiseIfContainsUnknown visitor early."""
-
-  # COV_NF_START
-  def EnterNamedType(self, _):
-    raise AssertionError("This visitor needs the AST to be resolved.")
-  # COV_NF_END
-
-  def EnterClassType(self, t):
-    if escape.is_unknown(t.name):
-      raise RaiseIfContainsUnknown.HasUnknown()
-
-  def EnterClass(self, cls):
-    if escape.is_unknown(cls.name):
-      raise RaiseIfContainsUnknown.HasUnknown()
-
-
 class VerifyVisitor(Visitor):
   """Visitor for verifying pytd ASTs. For tests."""
+
+  _all_templates: Set[pytd.Node]
 
   def __init__(self):
     super().__init__()
@@ -1108,20 +1053,6 @@ class VerifyVisitor(Visitor):
 
   def EnterGenericType(self, node):
     assert node.parameters, node
-
-
-class RemoveFunctionsAndClasses(Visitor):
-  """Visitor for removing unwanted functions or classes."""
-
-  def __init__(self, names):
-    super().__init__()
-    self.names = names
-
-  def VisitTypeDeclUnit(self, node):
-    return node.Replace(functions=tuple(f for f in node.functions
-                                        if f.name not in self.names),
-                        classes=tuple(c for c in node.classes
-                                      if c.name not in self.names))
 
 
 class RemoveMethods(Visitor):
@@ -1826,7 +1757,7 @@ class ClearClassPointers(Visitor):
     node.cls = None
 
 
-class ReplaceModulesWithAny(RemoveTypeParametersFromGenericAny):
+class ReplaceModulesWithAny(_RemoveTypeParametersFromGenericAny):
   """Replace all references to modules in a list with AnythingType."""
 
   def __init__(self, module_list):
