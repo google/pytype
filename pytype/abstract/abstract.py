@@ -263,7 +263,7 @@ class LateAnnotation:
 
   def get_special_attribute(self, node, name, valself):
     if name == "__getitem__" and not self.resolved:
-      container = AnnotationContainer.from_value(self)
+      container = BaseValue.to_annotation_container(self)
       return container.get_special_attribute(node, name, valself)
     return self._type.get_special_attribute(node, name, valself)
 
@@ -341,19 +341,6 @@ class AnnotationClass(SimpleValue, mixin.HasSlots):
 
 class AnnotationContainer(AnnotationClass):
   """Implementation of X[...] for annotations."""
-
-  @classmethod
-  def from_value(cls, value):
-    if isinstance(value, PyTDClass) and value.full_name == "builtins.tuple":
-      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
-      # that heterogeneous tuple annotations work. We need the isinstance()
-      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
-      # the latter appears here when a generic type alias is being substituted.
-      typing = value.ctx.vm.import_module("typing", "typing",
-                                          0).get_module("Tuple")
-      typing.load_lazy_attribute("Tuple")
-      return abstract_utils.get_atomic_value(typing.members["Tuple"])
-    return cls(value.name, value.ctx, value)
 
   def __init__(self, name, ctx, base_cls):
     super().__init__(name, ctx)

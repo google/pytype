@@ -12,6 +12,7 @@ from pytype.pytd import pytd_utils
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 def argname(i):
@@ -108,10 +109,15 @@ class Signature:
     self.annotations = annotations
 
   def _postprocess_annotation(self, name, annotation):
+    """Postprocess the given annotation."""
+    ctx = annotation.ctx
     if name == self.varargs_name:
-      return annotation.ctx.convert.create_new_varargs_value(annotation)
+      return _make("ParameterizedClass",
+                   ctx.convert.tuple_type, {abstract_utils.T: annotation}, ctx)
     elif name == self.kwargs_name:
-      return annotation.ctx.convert.create_new_kwargs_value(annotation)
+      params = {abstract_utils.K: ctx.convert.str_type,
+                abstract_utils.V: annotation}
+      return _make("ParameterizedClass", ctx.convert.dict_type, params, ctx)
     else:
       return annotation
 
@@ -503,7 +509,7 @@ class Args(collections.namedtuple(
                   kwdict.get_instance_type_parameter(name, node).data)
               for name in (abstract_utils.K, abstract_utils.V)
           }
-          cls = ctx.convert.build_map_class(node, params)
+          cls = _make("ParameterizedClass", ctx.convert.dict_type, params, ctx)
         starstarargs = cls.instantiate(node)
       else:
         starstarargs = None

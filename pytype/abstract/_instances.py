@@ -14,6 +14,7 @@ from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
+_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 def _var_map(func, var):
@@ -226,8 +227,7 @@ class Generator(BaseGenerator):
 
   def get_special_attribute(self, node, name, valself):
     if name == "__iter__":
-      f = self.ctx.abstract_classes_for_submodules["NativeFunction"](
-          name, self.__iter__, self.ctx)
+      f = _make("NativeFunction", name, self.__iter__, self.ctx)
       return f.to_variable(node)
     elif name == "__next__":
       return self.to_variable(node)
@@ -253,8 +253,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
         for name, instance_param in tuple(enumerate(content)) +
         ((abstract_utils.T, combined_content),)
     }
-    cls = ctx.abstract_classes_for_submodules["TupleClass"](
-        ctx.convert.tuple_type, class_params, ctx)
+    cls = _make("TupleClass", ctx.convert.tuple_type, class_params, ctx)
     super().__init__(cls, ctx)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     mixin.PythonConstant.init_mixin(self, content)

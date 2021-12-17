@@ -262,10 +262,6 @@ class Converter(utils.ContextWeakrefMixin):
     """Create an empty VM dict."""
     return abstract.Dict(self.ctx).to_variable(node)
 
-  def build_map_class(self, node, type_params):
-    assert set(type_params) == {abstract_utils.K, abstract_utils.V}
-    return abstract.ParameterizedClass(self.dict_type, type_params, self.ctx)
-
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
     return self.tuple_to_value(content).to_variable(node)
@@ -312,16 +308,6 @@ class Converter(utils.ContextWeakrefMixin):
     unknown.owner = val
     self.ctx.vm.trace_unknown(unknown.class_name, val)
     return v
-
-  def create_new_varargs_value(self, arg_type):
-    """Create a varargs argument given its element type."""
-    params = {abstract_utils.T: arg_type}
-    return abstract.ParameterizedClass(self.tuple_type, params, self.ctx)
-
-  def create_new_kwargs_value(self, arg_type):
-    """Create a kwargs argument given its element type."""
-    params = {abstract_utils.K: self.str_type, abstract_utils.V: arg_type}
-    return abstract.ParameterizedClass(self.dict_type, params, self.ctx)
 
   def get_element_type(self, arg_type):
     """Extract the element type of a vararg or kwarg."""

@@ -806,14 +806,15 @@ def maybe_unwrap_decorated_function(func):
   return func.func
 
 
+# The _isinstance and _make methods should be used only in pytype.abstract
+# submodules that are unable to reference abstract.py classes due to circular
+# dependencies. To prevent accidental misuse, the methods are marked private.
+# Callers are expected to alias them like so:
+#   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+
 def _isinstance(obj, name_or_names):
   """Do an isinstance() call for a class defined in pytype.abstract.
-
-  This method should be used only in pytype.abstract submodules that are unable
-  to do normal isinstance() checks on abstract values due to circular
-  dependencies. To prevent accidental misuse, this method is marked private.
-  Callers are expected to alias it like so:
-    _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
   Args:
     obj: An instance.
@@ -840,3 +841,9 @@ def _isinstance(obj, name_or_names):
   name = names[0]
   return any(cls.__module__.startswith("pytype.abstract.") and
              cls.__name__ == name for cls in obj.__class__.mro())
+
+
+def _make(cls_name, *args, **kwargs):
+  """Make an instance of cls_name with the given arguments."""
+  from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  return getattr(abstract, cls_name)(*args, **kwargs)
