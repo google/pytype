@@ -23,6 +23,7 @@ py_library(
     ._instance_base
     ._instances
     ._singletons
+    ._typing
     .abstract_utils
     .class_mixin
     .function
@@ -100,6 +101,22 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    _typing
+  SRCS
+    _typing.py
+  DEPS
+    ._base
+    ._classes
+    ._instance_base
+    .abstract_utils
+    .function
+    .mixin
+    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_library(
