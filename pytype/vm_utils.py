@@ -246,7 +246,7 @@ def get_name_error_details(
   # Scope 'None' represents the global scope.
   prefix, class_name_parts = None, []
   for scope in itertools.chain(
-      reversed(_get_scopes(state, parts, ctx)), [None]):
+      reversed(_get_scopes(state, parts, ctx)), [None]):  # pytype: disable=wrong-arg-types
     if class_name_parts:
       # We have located a class that 'name' is defined in and are now
       # constructing the name by which the class should be referenced.

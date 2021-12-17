@@ -232,6 +232,8 @@ def build_any(ctx):
 class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   """Factory for creating typing.NamedTuple classes."""
 
+  _fields_param: function.BadParam
+
   @classmethod
   def make(cls, ctx):
     typing_ast = ctx.loader.import_name("typing")

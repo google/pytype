@@ -43,6 +43,8 @@ class AddMetaclassInstance(abstract.BaseValue):
 class AddMetaclass(abstract.PyTDFunction):
   """Implements the add_metaclass decorator."""
 
+  module_name: str
+
   @classmethod
   def make(cls, name, ctx, module_name):
     self = super().make(name, ctx, module_name)

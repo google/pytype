@@ -99,6 +99,8 @@ class CollectionsOverlay(overlay.Overlay):
 class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
+  collections_ast: pytd.TypeDeclUnit
+
   @classmethod
   def make(cls, name, ctx, pyval=None):
     # Loading the ast should be memoized after the import in CollectionsOverlay

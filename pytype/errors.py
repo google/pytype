@@ -7,6 +7,7 @@ import io
 import logging
 import re
 import sys
+import typing
 from typing import Iterable, Optional, Union
 
 from pytype import debug
@@ -16,6 +17,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.abstract import mixin
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
@@ -493,7 +495,7 @@ class ErrorLog(ErrorLogBase):
   def _print_as_expected_type(self, t: abstract.BaseValue, instance=None):
     """Print abstract value t as a pytd type."""
     if t.is_late_annotation():
-      return t.expr
+      return typing.cast(abstract.LateAnnotation, t).expr
     elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
                         class_mixin.Class, abstract.Union)):
       with t.ctx.pytd_convert.set_output_mode(
@@ -501,7 +503,8 @@ class ErrorLog(ErrorLogBase):
         return self._pytd_print(t.get_instance_type(instance=instance))
     elif abstract_utils.is_concrete(t):
       return re.sub(r"(\\n|\s)+", " ",
-                    t.str_of_constant(self._print_as_expected_type))
+                    typing.cast(mixin.PythonConstant, t).str_of_constant(
+                        self._print_as_expected_type))
     elif isinstance(t, abstract.AnnotationClass) or t.cls == t:
       return t.name
     else:

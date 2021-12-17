@@ -157,6 +157,9 @@ class ObjectPredicate(BuiltinFunction):
         None: ctx.convert.primitive_class_instances[bool],
     }
 
+  def run(self, node, args, result):
+    raise NotImplementedError(self.__class__.__name__)
+
   def call(self, node, _, args):
     try:
       self.match_args(node, args)
@@ -177,6 +180,9 @@ class UnaryPredicate(ObjectPredicate):
   _call_predicate(self, node, obj): The implementation of the predicate.
   """
 
+  def _call_predicate(self, node, obj):
+    raise NotImplementedError(self.__class__.__name__)
+
   def run(self, node, args, result):
     for obj in args.posargs[0].bindings:
       node, pyval = self._call_predicate(node, obj)
@@ -191,6 +197,9 @@ class BinaryPredicate(ObjectPredicate):
 
   _call_predicate(self, node, left, right): The implementation of the predicate.
   """
+
+  def _call_predicate(self, node, left, right):
+    raise NotImplementedError(self.__class__.__name__)
 
   def run(self, node, args, result):
     for left in abstract_utils.expand_type_parameter_instances(

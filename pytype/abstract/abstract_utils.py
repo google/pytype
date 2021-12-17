@@ -1,7 +1,6 @@
 """Utilities for abstract.py."""
 
 import collections
-import hashlib
 import logging
 from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
@@ -391,58 +390,6 @@ def maybe_extract_tuple(t):
   return v.pyval
 
 
-def _hash_dict(vardict, names):
-  """Hash a dictionary.
-
-  This contains the keys and the full hashes of the data in the values.
-
-  Arguments:
-    vardict: A dictionary mapping str to Variable.
-    names: If this is non-None, the snapshot will include only those
-      dictionary entries whose keys appear in names.
-
-  Returns:
-    A hash of the dictionary.
-  """
-  if names is not None:
-    vardict = {name: vardict[name] for name in names.intersection(vardict)}
-  m = hashlib.md5()
-  for name, var in sorted(vardict.items()):
-    m.update(str(name).encode("utf-8"))
-    for value in var.bindings:
-      m.update(value.data.get_fullhash())
-  return m.digest()
-
-
-def hash_all_dicts(*hash_args):
-  """Convenience method for hashing a sequence of dicts."""
-  return hashlib.md5(b"".join(_hash_dict(*args) for args in hash_args)).digest()
-
-
-def _matches_generator(type_obj, allowed_types):
-  """Check if type_obj matches a Generator/AsyncGenerator type."""
-  if _isinstance(type_obj, "Union"):
-    return all(_matches_generator(sub_type, allowed_types)
-               for sub_type in type_obj.options)
-  else:
-    base_cls = type_obj
-    if _isinstance(type_obj, "ParameterizedClass"):
-      base_cls = type_obj.base_cls
-    return ((_isinstance(base_cls, "PyTDClass") and
-             base_cls.name in allowed_types) or
-            _isinstance(base_cls, "AMBIGUOUS_OR_EMPTY"))
-
-
-def matches_generator(type_obj):
-  allowed_types = ("generator", "Iterable", "Iterator")
-  return _matches_generator(type_obj, allowed_types)
-
-
-def matches_async_generator(type_obj):
-  allowed_types = ("asyncgenerator", "AsyncIterable", "AsyncIterator")
-  return _matches_generator(type_obj, allowed_types)
-
-
 def eval_expr(ctx, node, f_globals, f_locals, expr):
   """Evaluate an expression with the given node and globals."""
   # This is used to resolve type comments and late annotations.
@@ -483,28 +430,6 @@ def eval_expr(ctx, node, f_globals, f_locals, expr):
   else:
     e = None
   return ret, e
-
-
-def check_classes(var, check):
-  """Check whether the cls of each value in `var` is a class and passes `check`.
-
-  Args:
-    var: A cfg.Variable or empty.
-    check: (BaseValue) -> bool.
-
-  Returns:
-    Whether the check passes.
-  """
-  if not var:
-    return False
-  for v in var.data:
-    if _isinstance(v, "Class"):
-      if not check(v):
-        return False
-    elif _isinstance(v.cls, "Class") and v.cls != v:
-      if not check(v.cls):
-        return False
-  return True
 
 
 def match_type_container(typ, container_type_name: Union[str, Tuple[str, ...]]):
@@ -586,12 +511,6 @@ class Local:
       return values[0]
     else:
       return None
-
-
-def is_literal(annot: Optional[_BaseValue]):
-  if _isinstance(annot, "Union"):
-    return all(is_literal(o) for o in annot.options)  # pytype: disable=attribute-error
-  return _isinstance(annot, "LiteralClass")
 
 
 def is_concrete_dict(val: _BaseValue):
