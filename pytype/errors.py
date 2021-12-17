@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 import typing
-from typing import Iterable, Optional, Union
+from typing import Callable, Iterable, Optional, TypeVar, Union
 
 from pytype import debug
 from pytype import matcher
@@ -49,8 +49,10 @@ TRACEBACK_MARKER = "Called from (traceback):"
 # Symbol representing an elided portion of the stack.
 _ELLIPSIS = object()
 
+_FuncT = TypeVar("_FuncT", bound=Callable)
 
-def _error_name(name):
+
+def _error_name(name) -> Callable[[_FuncT], _FuncT]:
   """Decorate a function so that it binds the current error name."""
   _ERROR_NAMES.add(name)
   def wrap(func):
