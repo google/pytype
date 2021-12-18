@@ -123,6 +123,13 @@ class TypedDictTest(test_base.BaseTest):
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
 
+  def test_functional_constructor(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      A = TypedDict("A", {'x': int, 'y': str})  # not-supported-yet[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["Use the class definition form"]})
+
 
 if __name__ == "__main__":
   test_base.main()

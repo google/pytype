@@ -627,8 +627,11 @@ class TypedDictBuilder(abstract.PyTDClass):
     pyval = pyval.Replace(name="typing.TypedDict")
     super().__init__("TypedDict", pyval, ctx)
 
-  def call(self, node, _, args):
-    raise NotImplementedError()
+  def call(self, node, *args):
+    details = ("Use the class definition form of TypedDict instead.")
+    self.ctx.errorlog.not_supported_yet(
+        self.ctx.vm.frames, "TypedDict functional constructor", details)
+    return node, self.ctx.new_unsolvable(node)
 
   def _validate_bases(self, cls_name, bases):
     """Check that all base classes are valid."""
