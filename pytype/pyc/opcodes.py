@@ -34,7 +34,7 @@ class Opcode:
     self.folded = None  # elided by constant folding
 
   def at_line(self, line):
-    """Return a new opcode simliar to this one but with a different line."""
+    """Return a new opcode similar to this one but with a different line."""
     # Ignore the optional slots (prev, next, block_target).
     op = Opcode(self.index, line)
     op.target = self.target

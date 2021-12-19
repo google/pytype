@@ -987,7 +987,7 @@ class PyTDFunction(Function):
     # if we removed the len(bindings) check.
     if all_mutations and len(func.variable.Bindings(node)) == 1:
       # Raise an error if:
-      # - An annotation has a type param that is not ambigious or empty
+      # - An annotation has a type param that is not ambiguous or empty
       # - The mutation adds a type that is not ambiguous or empty
       def should_check(value):
         return not isinstance(value, AMBIGUOUS_OR_EMPTY)
@@ -2724,7 +2724,7 @@ class InterpreterFunction(SignedFunction):
     if self.code.has_generator():
       generator = Generator(frame, self.ctx)
       # Run the generator right now, even though the program didn't call it,
-      # because we need to know the contained type for futher matching.
+      # because we need to know the contained type for further matching.
       node2, _ = generator.run_generator(node)
       if self.is_coroutine():
         # This function is a generator-based coroutine. We convert the return
@@ -3191,7 +3191,7 @@ class BuildClass(BaseValue):
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
       if isinstance(base, PyTDClass) and base.full_name == "typing.NamedTuple":
         # The subclass of NamedTuple will ignore all its base classes. This is
-        # controled by a metaclass provided to NamedTuple.
+        # controlled by a metaclass provided to NamedTuple.
         return base.make_class(node, list(bases), cls_dict)
     return self.ctx.make_class(
         node,

@@ -115,7 +115,7 @@ def main():
       upload_package(pkg_path, args.mode == TEST_MODE)
   except ReleaseError as error:
     sys.exit(">>> Release Failed <<<\n%s" % error.msg)
-  print("!!! Release Successfull !!!\n")
+  print("!!! Release Successful !!!\n")
 
 
 if __name__ == "__main__":

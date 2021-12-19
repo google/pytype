@@ -60,7 +60,7 @@ class AttrOverlay(overlay.Overlay):
 class _NoChange():
   pass
 
-# A unique sentinal value to signal not to write anything, not even the
+# A unique sentinel value to signal not to write anything, not even the
 # original value.
 _NO_CHANGE = _NoChange()
 

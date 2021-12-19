@@ -435,7 +435,7 @@ class Converter(utils.ContextWeakrefMixin):
     result = self.constant_to_value(pyval, subst, node)
     if result is not None:
       return result.to_variable(node)
-    # There might still be bugs on the abstract intepreter when it returns,
+    # There might still be bugs on the abstract interpreter when it returns,
     # e.g. a list of values instead of a list of types:
     assert pyval.__class__ != cfg.Variable, pyval
     if pyval.__class__ == tuple:
