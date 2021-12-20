@@ -699,7 +699,7 @@ class PullInMethodClasses(visitors.Visitor):
   def _CanDelete(self, cls):
     """Checks whether this class can be deleted.
 
-    Returns whether all occurrences of this class as a type were due to
+    Returns whether all occurences of this class as a type were due to
     constants we removed.
 
     Arguments:

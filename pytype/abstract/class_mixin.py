@@ -401,7 +401,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # We report a not-instantiable error if all of the following are true:
     # - The class is abstract.
     # - It was not created from an explicit type annotation.
-    # - The instantiation is not occurring inside one of the class's own methods.
+    # - The instantiation is not occuring inside one of the class's own methods.
     # We check the last condition by seeing whether ctx.vm.frame.func is an
     # InterpreterFunction whose name starts with "<class>."
     if not self.is_abstract or self.from_annotation:

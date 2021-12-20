@@ -258,8 +258,7 @@ def PrepareForExport(module_name, ast, loader):
   # applies transformations,
   # e.g. visitors.PrintVisitor._FormatContainerContents, which need to move to
   # their own visitors so they can be applied without printing.
-  src = pytd_utils.Print(
-      ast, fix_module_collisions=loader.options.fix_module_collisions)
+  src = pytd_utils.Print(ast)
   ast = parser.parse_string(
       src=src, name=module_name,
       options=parser.PyiOptions.from_toplevel_options(loader.options))

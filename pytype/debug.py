@@ -164,7 +164,7 @@ def _pretty_variable(var):
     binding = "%s %s" % (var_prefix, data)
 
     if len(value.origins) == 1:
-      # Single origin.  Use the binding as a prefix when writing the origin.
+      # Single origin.  Use the binding as a prefix when writing the orign.
       prefix = binding + ", "
     else:
       # Multiple origins, write the binding on its own line, then indent all

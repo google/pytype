@@ -87,7 +87,7 @@ def _prepare_for_test(enabled=True):
 
 
 def get_cpu_clock():
-  """Returns CPU clock to keep compatibility with various Python versions."""
+  """Returns CPU clock to keep compatibilty with various Python versions."""
   return time.process_time()
 
 

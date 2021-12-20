@@ -287,7 +287,7 @@ class Binding {
   // then.
   Variable* variable() const { return variable_; }
 
-  // User data, for specifying what this binding is set to.
+  // User data, for specifing what this binding is set to.
   const BindingData& data() const { return data_; }
 
   // Used by solver.cc:

@@ -21,7 +21,7 @@ class PrintVisitor(base_visitor.Visitor):
   _RESERVED = frozenset(parser_constants.RESERVED +
                         parser_constants.RESERVED_PYTHON)
 
-  def __init__(self, multiline_args=False, fix_module_collisions=True):
+  def __init__(self, multiline_args=False):
     super().__init__()
     self.class_names = []  # allow nested classes
     self.imports = collections.defaultdict(set)
@@ -31,7 +31,6 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_constant = False
     self.in_signature = False
     self.multiline_args = multiline_args
-    self._fix_module_collisions = fix_module_collisions
 
     self._unit = None
     self._local_names = {}
@@ -470,19 +469,15 @@ class PrintVisitor(base_visitor.Visitor):
             node_name = aliased_name
           else:
             module, rest = self._GuessModule(prefix)
-            if self._fix_module_collisions:
-              module_alias = module
-              while self._NameCollision(module_alias):
-                module_alias = f"_{module_alias}"
-              if module_alias == module:
-                self._RequireImport(module)
-                node_name = node.name
-              else:
-                self._RequireImport(f"{module} as {module_alias}")
-                node_name = ".".join(filter(bool, (module_alias, rest, suffix)))
-            else:
+            module_alias = module
+            while self._NameCollision(module_alias):
+              module_alias = f"_{module_alias}"
+            if module_alias == module:
               self._RequireImport(module)
               node_name = node.name
+            else:
+              self._RequireImport(f"{module} as {module_alias}")
+              node_name = ".".join(filter(bool, (module_alias, rest, suffix)))
         else:
           node_name = node.name
       else:

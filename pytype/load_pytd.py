@@ -171,7 +171,7 @@ class _ModuleMap:
     }
 
   def _unpickle_module(self, module):
-    """Unpickle a pickled ast and its dependencies."""
+    """Unpickle a pickled ast and its dependncies."""
     if not module.pickle:
       return
     todo = [module]

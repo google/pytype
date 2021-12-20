@@ -184,8 +184,8 @@ def GetAllSubClasses(ast):
   return utils.invert_dict(hierarchy)
 
 
-def Print(ast, multiline_args=False, fix_module_collisions=True):
-  return ast.Visit(printer.PrintVisitor(multiline_args, fix_module_collisions))
+def Print(ast, multiline_args=False):
+  return ast.Visit(printer.PrintVisitor(multiline_args))
 
 
 def CreateModule(name="<empty>", **kwargs):
