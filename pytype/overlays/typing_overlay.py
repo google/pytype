@@ -828,7 +828,10 @@ def build_namedtuple(ctx):
 
 
 def build_typeddict(ctx):
-  return TypedDictBuilder(ctx)
+  if ctx.options.enable_typed_dicts:
+    return TypedDictBuilder(ctx)
+  else:
+    return not_supported_yet("TypedDict", ctx)
 
 
 def build_newtype(ctx):

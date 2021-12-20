@@ -6,6 +6,10 @@ from pytype.tests import test_base
 class TypedDictTest(test_base.BaseTest):
   """Tests for typing.TypedDict."""
 
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enable_typed_dicts=True)
+
   def test_key_error(self):
     err = self.CheckWithErrors("""
       from typing_extensions import TypedDict
