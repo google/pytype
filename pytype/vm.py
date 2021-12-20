@@ -2563,6 +2563,8 @@ class VirtualMachine:
           result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
       else:
         result.AddBinding(val, {b}, state.node)
+    if not result.bindings:
+      result.AddBinding(self.ctx.convert.unsolvable, [], state.node)
     return state.push(result)
 
   def byte_LOAD_METHOD(self, state, op):

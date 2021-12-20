@@ -196,6 +196,7 @@ py_test(
     test_generators2.py
   DEPS
     .test_base
+    pytype.utils
 )
 
 py_test(
