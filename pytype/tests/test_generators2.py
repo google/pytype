@@ -1,5 +1,6 @@
 """Tests for generators."""
 
+from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -129,6 +130,29 @@ class GeneratorFeatureTest(test_base.BaseTest):
       c.gi_running
       c.gi_yieldfrom
     """)
+
+  def test_empty_yield_from(self):
+    # Regression test for https://github.com/google/pytype/issues/978.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import abc
+        from typing import Any, AsyncContextManager, Coroutine
+        class Connection(AsyncContextManager): ...
+        class ConnectionFactory(metaclass=abc.ABCMeta):
+          @abc.abstractmethod
+          def new(self) -> Coroutine[Any, Any, Connection]: ...
+      """)
+      self.Check("""
+        from typing import Any
+        from foo import ConnectionFactory
+        class RetryingConnection:
+          _connection_factory: ConnectionFactory
+          _reinitializer: Any
+          async def _run_loop(self):
+            conn_fut = self._connection_factory.new()
+            async with (await conn_fut) as connection:
+              await connection
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":

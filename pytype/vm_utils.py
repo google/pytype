@@ -15,7 +15,6 @@ from pytype import state as frame_state
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.pyc import opcodes
@@ -246,7 +245,7 @@ def get_name_error_details(
   # Scope 'None' represents the global scope.
   prefix, class_name_parts = None, []
   for scope in itertools.chain(
-      reversed(_get_scopes(state, parts, ctx)), [None]):
+      reversed(_get_scopes(state, parts, ctx)), [None]):  # pytype: disable=wrong-arg-types
     if class_name_parts:
       # We have located a class that 'name' is defined in and are now
       # constructing the name by which the class should be referenced.
@@ -358,7 +357,7 @@ def _process_base_class(node, base, ctx):
     else:
       new_base.AddBinding(base_val, {b}, node)
   base = new_base
-  if not any(isinstance(t, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY))
+  if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
              for t in base.data):
     ctx.errorlog.base_class_error(ctx.vm.frames, base)
   return base
@@ -548,7 +547,7 @@ def _check_defaults(node, method, ctx):
     if should_report:
       ctx.errorlog.annotation_type_mismatch(
           ctx.vm.frames, expected_type, value.to_binding(node), arg_name,
-          bad_param.protocol_error, bad_param.noniterable_str_error)
+          bad_param.error_details)
 
 
 def make_function(name, node, code, globs, defaults, kw_defaults, closure,
@@ -668,7 +667,7 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
       options.reverse()
   error = None
   for left_val, right_val, attr_name in options:
-    if (isinstance(left_val.data, class_mixin.Class) and
+    if (isinstance(left_val.data, abstract.Class) and
         attr_name == "__getitem__"):
       # We're parameterizing a type annotation. Set valself to None to
       # differentiate this action from a real __getitem__ call on the class.

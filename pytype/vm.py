@@ -1,4 +1,4 @@
-"""A abstract virtual machine for python bytecode.
+"""An abstract virtual machine for python bytecode.
 
 A VM for python byte code that uses pytype/pytd/cfg to generate a trace of the
 program execution.
@@ -31,7 +31,6 @@ from pytype import state as frame_state
 from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.pyc import loadmarshal
@@ -99,7 +98,7 @@ class VirtualMachine:
     self.annotated_locals: Dict[str, Dict[str, abstract_utils.Local]] = {}
     self.filename: str = None
     self.concrete_classes: List[
-        Tuple[class_mixin.Class, Sequence[frame_state.SimpleFrame]]] = []
+        Tuple[abstract.Class, Sequence[frame_state.SimpleFrame]]] = []
     self.functions_type_params_check: List[
         Tuple[abstract.InterpreterFunction, opcodes.Opcode]] = []
 
@@ -1412,7 +1411,7 @@ class VirtualMachine:
           # TODO(b/205755440): We fail (with the aforementioned bad error
           # message) when the comparator method is defined on a metaclass, since
           # compare only raises an error for classes with metaclass=type.
-          if op_not_eq and isinstance(b1.data, class_mixin.Class) and err:
+          if op_not_eq and isinstance(b1.data, abstract.Class) and err:
             ret.AddBinding(self.ctx.convert.unsolvable, {b1, b2}, state.node)
           else:
             leftover_x.AddBinding(b1.data, {b1}, state.node)
@@ -1499,7 +1498,7 @@ class VirtualMachine:
         sub_value, sub_types = self._instantiate_exception(node, sub_exc_type)
         value.PasteVariable(sub_value)
         types.extend(sub_types)
-      elif isinstance(e, class_mixin.Class) and any(
+      elif isinstance(e, abstract.Class) and any(
           base.full_name == "builtins.BaseException" or
           isinstance(base, abstract.AMBIGUOUS_OR_EMPTY) for base in e.mro):
         node, instance = self.init_class(node, e)
@@ -1509,8 +1508,8 @@ class VirtualMachine:
         stack.extend(e.options)
       else:
         if not isinstance(e, abstract.AMBIGUOUS_OR_EMPTY):
-          if isinstance(e, class_mixin.Class):
-            mro_seqs = [e.mro] if isinstance(e, class_mixin.Class) else []
+          if isinstance(e, abstract.Class):
+            mro_seqs = [e.mro] if isinstance(e, abstract.Class) else []
             msg = "%s does not inherit from BaseException" % e.name
           else:
             mro_seqs = []
@@ -2564,6 +2563,8 @@ class VirtualMachine:
           result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
       else:
         result.AddBinding(val, {b}, state.node)
+    if not result.bindings:
+      result.AddBinding(self.ctx.convert.unsolvable, [], state.node)
     return state.push(result)
 
   def byte_LOAD_METHOD(self, state, op):
@@ -2624,7 +2625,7 @@ class VirtualMachine:
     if not isinstance(f, abstract.BoundFunction) or len(f.callself.data) != 1:
       return state
     cls = f.callself.data[0].cls
-    if not (isinstance(cls, class_mixin.Class) and cls.is_test_class()):
+    if not (isinstance(cls, abstract.Class) and cls.is_test_class()):
       return state
     if f.name == "assertIsNotNone":
       if len(args) == 1:

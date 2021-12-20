@@ -19,17 +19,15 @@ py_library(
     abstract.py
   DEPS
     ._base
+    ._classes
+    ._function_base
     ._instance_base
     ._instances
+    ._interpreter_function
+    ._pytd_function
     ._singletons
-    .abstract_utils
+    ._typing
     .class_mixin
-    .function
-    .mixin
-    pytype.utils
-    pytype.pytd.pytd
-    pytype.pytd.codegen.codegen
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -41,6 +39,42 @@ py_library(
     .abstract_utils
     pytype.utils
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    _classes
+  SRCS
+    _classes.py
+  DEPS
+    ._base
+    ._instance_base
+    ._instances
+    .abstract_utils
+    .class_mixin
+    .function
+    .mixin
+    pytype.utils
+    pytype.pytd.pytd
+    pytype.pytd.codegen.codegen
+)
+
+py_library(
+  NAME
+    _function_base
+  SRCS
+    _function_base.py
+  DEPS
+    ._base
+    ._classes
+    ._instance_base
+    ._instances
+    ._singletons
+    ._typing
+    .abstract_utils
+    .class_mixin
+    .function
+    pytype.utils
 )
 
 py_library(
@@ -74,6 +108,42 @@ py_library(
 
 py_library(
   NAME
+    _interpreter_function
+  SRCS
+    _interpreter_function.py
+  DEPS
+    ._classes
+    ._function_base
+    ._instance_base
+    ._instances
+    ._singletons
+    ._typing
+    .abstract_utils
+    .class_mixin
+    .function
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    _pytd_function
+  SRCS
+    _pytd_function.py
+  DEPS
+    ._base
+    ._classes
+    ._function_base
+    ._instance_base
+    ._singletons
+    ._typing
+    .abstract_utils
+    .function
+    .mixin
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     _singletons
   SRCS
     _singletons.py
@@ -82,6 +152,22 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    _typing
+  SRCS
+    _typing.py
+  DEPS
+    ._base
+    ._classes
+    ._instance_base
+    .abstract_utils
+    .function
+    .mixin
+    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_library(

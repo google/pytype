@@ -432,7 +432,6 @@ py_library(
     __init__.py
     vm.py
   DEPS
-    ._utils
     .blocks
     .compare
     .constant_folding

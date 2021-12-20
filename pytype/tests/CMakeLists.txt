@@ -196,6 +196,7 @@ py_test(
     test_generators2.py
   DEPS
     .test_base
+    pytype.utils
 )
 
 py_test(
@@ -1192,6 +1193,15 @@ py_test(
     test_test_code
   SRCS
     test_test_code.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
+    test_typed_dict
+  SRCS
+    test_typed_dict.py
   DEPS
     .test_base
 )

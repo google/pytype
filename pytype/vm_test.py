@@ -511,6 +511,19 @@ class FunctionCallDisableTest(_DirectorLineNumbersTestCase):
     else:
       self.assertDisables(8, error_class="annotation-type-mismatch")
 
+  def test_return(self):
+    self.run_program("""
+       def f(x):
+         return x
+       def g() -> int:
+         return f(
+             "oops")  # pytype: disable=bad-return-type
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(5, error_class="bad-return-type")
+    else:
+      self.assertDisables(6, error_class="bad-return-type")
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -99,6 +99,8 @@ class CollectionsOverlay(overlay.Overlay):
 class NamedTupleBuilder(abstract.PyTDFunction):
   """Factory for creating collections.namedtuple typing information."""
 
+  collections_ast: pytd.TypeDeclUnit
+
   @classmethod
   def make(cls, name, ctx, pyval=None):
     # Loading the ast should be memoized after the import in CollectionsOverlay
@@ -263,7 +265,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     Returns:
       a tuple of the given CFG node and an abstract.PyTDClass instance (wrapped
       in a Variable) representing the constructed namedtuple class.
-      If a abstract_utils.ConversionError occurs or if field names are invalid,
+      If an abstract_utils.ConversionError occurs or if field names are invalid,
       this function returns Unsolvable (in a Variable) instead of a PyTDClass.
 
     Raises:

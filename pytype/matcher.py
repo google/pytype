@@ -1,14 +1,15 @@
 """Matching logic for abstract values."""
 import collections
 import contextlib
+import dataclasses
 import logging
+from typing import Optional
 
 from pytype import datatypes
 from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import typing_overlay
@@ -26,7 +27,7 @@ _COMPATIBLE_BUILTINS = [
 
 
 def _is_callback_protocol(typ):
-  return (isinstance(typ, class_mixin.Class) and typ.is_protocol and
+  return (isinstance(typ, abstract.Class) and typ.is_protocol and
           "__call__" in typ.protocol_attributes)
 
 
@@ -63,6 +64,22 @@ class ProtocolTypeError(ProtocolError):
     self.expected_type = expected
 
 
+class TypedDictError(Exception):
+
+  def __init__(self, bad, extra, missing):
+    super().__init__()
+    self.bad = bad
+    self.missing = missing
+    self.extra = extra
+
+
+@dataclasses.dataclass
+class ErrorDetails:
+  protocol: Optional[ProtocolError] = None
+  noniterable_str: Optional[NonIterableStrError] = None
+  typed_dict: Optional[TypedDictError] = None
+
+
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -70,8 +87,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     super().__init__(ctx)
     self._node = node
     self._protocol_cache = set()
+    self._recursive_annots_cache = set()
     self._protocol_error = None
     self._noniterable_str_error = None
+    self._typed_dict_error = None
     self._error_subst = None
 
   @contextlib.contextmanager
@@ -89,6 +108,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     old_protocol_cache = set(self._protocol_cache)
     yield
     self._protocol_cache = old_protocol_cache
+
+  def _error_details(self):
+    """Package up additional error details."""
+    return ErrorDetails(
+        protocol=self._protocol_error,
+        noniterable_str=self._noniterable_str_error,
+        typed_dict=self._typed_dict_error
+    )
 
   def compute_subst(self, formal_args, arg_dict, view, alias_map=None):
     """Compute information about type parameters using one-way unification.
@@ -127,8 +154,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._node, formal, [self._error_subst or {}])
 
         return None, function.BadParam(
-            name=name, expected=formal, protocol_error=self._protocol_error,
-            noniterable_str_error=self._noniterable_str_error)
+            name=name, expected=formal, error_details=self._error_details())
       if name == "self":
         self_subst = subst
     if self_subst:
@@ -167,7 +193,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self._noniterable_str_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
-          bad.append((view, self._protocol_error, self._noniterable_str_error))
+          bad.append((view, self._error_details()))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
         skip_future = False
@@ -192,7 +218,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         base_cls = base.base_cls
       else:
         base_cls = base
-      if isinstance(base_cls, class_mixin.Class):
+      if isinstance(base_cls, abstract.Class):
         if other_type.full_name == base_cls.full_name or (
             isinstance(other_type, abstract.ParameterizedClass) and
             other_type.base_cls is base_cls) or (allow_compat_builtins and (
@@ -277,6 +303,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     left = value.data
     assert isinstance(left, abstract.BaseValue), left
     assert isinstance(other_type, abstract.BaseValue), other_type
+
+    # Make sure we don't recurse infinitely when matching recursive types.
+    if other_type.is_late_annotation() and other_type.is_recursive():
+      key = (left, other_type)
+      if key in self._recursive_annots_cache:
+        return subst
+      self._recursive_annots_cache.add(key)
 
     if left.formal:
       # 'left' contains a TypeParameter. The code under analysis is likely doing
@@ -408,7 +441,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return subst
       else:
         return None
-    elif isinstance(other_type, class_mixin.Class):
+    elif isinstance(other_type, abstract.Class):
       # Accumulate substitutions in "subst", or break in case of error:
       return self._match_type_against_type(left, other_type, subst, view)
     elif isinstance(other_type, abstract.Union):
@@ -457,7 +490,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
     Args:
       left: A type.
-      other_type: A formal type. E.g. class_mixin.Class or abstract.Union.
+      other_type: A formal type. E.g. abstract.Class or abstract.Union.
       subst: The current type parameter assignment.
       view: The current mapping of Variable to Value.
     Returns:
@@ -473,7 +506,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       else:
         value = self.ctx.convert.unsolvable
       return self._mutate_type_parameters(params, value, subst)
-    elif isinstance(left, class_mixin.Class):
+    elif isinstance(left, abstract.Class):
       if (other_type.full_name == "builtins.type" and
           isinstance(other_type, abstract.ParameterizedClass)):
         other_type = other_type.get_formal_type_parameter(abstract_utils.T)
@@ -497,7 +530,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           "builtins.module", "builtins.object", "types.ModuleType",
           "typing.Hashable"]:
         return subst
-      elif (isinstance(other_type, class_mixin.Class) and
+      elif (isinstance(other_type, abstract.Class) and
             other_type.has_protocol_base()):
         return self._match_instance_against_type(
             left, other_type, subst, view)
@@ -727,7 +760,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
     Args:
       left: An instance of a type.
-      other_type: A formal type. E.g. class_mixin.Class or abstract.Union.
+      other_type: A formal type. E.g. abstract.Class or abstract.Union.
       subst: The current type parameter assignment.
       view: The current mapping of Variable to Value.
     Returns:
@@ -748,7 +781,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return self._match_type_against_type(
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
-    elif isinstance(other_type, class_mixin.Class):
+    elif isinstance(other_type, abstract.TypedDictClass):
+      if not self._match_dict_against_typed_dict(left, other_type):
+        return None
+      return subst
+    elif isinstance(other_type, abstract.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
         self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
         return None
@@ -937,6 +974,26 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return None
     return subst
 
+  def _match_dict_against_typed_dict(self, left, other_type):
+    assert isinstance(other_type, abstract.TypedDictClass)
+    self._typed_dict_error = None
+    if not isinstance(left, abstract.Dict):
+      return False
+    missing, extra, bad = [], [], []
+    fields = other_type.fields
+    for k, v in left.pyval.items():
+      if k not in fields:
+        extra.append(k)
+        continue
+      typ = abstract_utils.get_atomic_value(fields[k])
+      b = self.bad_matches(v, typ)
+      if b:
+        bad.append((k, v, typ, b))
+    if missing or extra or bad:
+      self._typed_dict_error = TypedDictError(bad, extra, missing)
+      return False
+    return True
+
   def _get_attribute_names(self, left):
     """Get the attributes implemented (or implicit) on a type."""
     left_attributes = set()
@@ -945,7 +1002,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     if isinstance(left, abstract.SimpleValue):
       left_attributes.update(left.members)
     left_attributes.update(*(cls.get_own_attributes() for cls in left.cls.mro
-                             if isinstance(cls, class_mixin.Class)))
+                             if isinstance(cls, abstract.Class)))
     if "__getitem__" in left_attributes and "__iter__" not in left_attributes:
       # If a class has a __getitem__ method, it also (implicitly) has a
       # __iter__: Python will emulate __iter__ by calling __getitem__ with
@@ -1050,7 +1107,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self.ctx.convert.unsolvable)
       if isinstance(other_type, abstract.ParameterizedClass):
         annotation_subst = datatypes.AliasingDict()
-        if isinstance(other_type.base_cls, class_mixin.Class):
+        if isinstance(other_type.base_cls, abstract.Class):
           annotation_subst.uf = (
               other_type.base_cls.all_formal_type_parameters.uf)
         for (param, value) in other_type.get_formal_type_parameters().items():

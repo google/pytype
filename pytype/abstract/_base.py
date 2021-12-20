@@ -12,6 +12,7 @@ from pytype.abstract import abstract_utils
 from pytype.pytd import mro
 
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 class BaseValue(utils.ContextWeakrefMixin):
@@ -271,6 +272,18 @@ class BaseValue(utils.ContextWeakrefMixin):
       The instance.
     """
     raise NotImplementedError(self.__class__.__name__)
+
+  def to_annotation_container(self):
+    if _isinstance(self, "PyTDClass") and self.full_name == "builtins.tuple":
+      # If we are parameterizing builtins.tuple, replace it with typing.Tuple so
+      # that heterogeneous tuple annotations work. We need the isinstance()
+      # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
+      # the latter appears here when a generic type alias is being substituted.
+      typing = self.ctx.vm.import_module("typing", "typing",
+                                         0).get_module("Tuple")
+      typing.load_lazy_attribute("Tuple")
+      return abstract_utils.get_atomic_value(typing.members["Tuple"])
+    return _make("AnnotationContainer", self.name, self.ctx, self)
 
   def to_variable(self, node):
     """Build a variable out of this abstract value.

@@ -195,7 +195,7 @@ class TypingTest(test_base.BaseTest):
     # an unsupported member to replace it with from
     # https://github.com/python/typeshed/blob/master/third_party/2and3/typing_extensions.pyi
     self.CheckWithErrors("""
-      from typing_extensions import TypedDict  # not-supported-yet
+      from typing_extensions import final  # not-supported-yet
     """)
 
   def test_reuse_name(self):
