@@ -565,6 +565,27 @@ class TestAttrs(test_base.BaseTest):
         def foo(cls) -> None: ...
     """)
 
+  def test_auto_attrs_with_dataclass_constructor(self):
+    ty = self.Infer("""
+      import attr
+      @attr.dataclass
+      class Foo:
+        x: int
+        y: 'Foo'
+        z = 10
+        a: str = 'hello'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import attr
+      @attr.s
+      class Foo:
+        x: int
+        y: Foo
+        a: str
+        z: int
+        def __init__(self, x: int, y: Foo, a: str = ...) -> None: ...
+    """)
+
   def test_init_false_generates_attrs_init(self):
     ty = self.Infer("""
       import attr

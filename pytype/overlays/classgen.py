@@ -63,15 +63,23 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     # decorate, so we need to first store the args and then associate them to
     # the right class.
     self._current_args = None
+    # Some constructors like attr.dataclass partially apply args, overriding the
+    # defaults attached to the class.
+    self.partial_args = {}
     self.args = {}  # map from each class we decorate to its args
 
   @abc.abstractmethod
   def decorate(self, node, cls):
     """Apply the decorator to cls."""
 
+  def get_initial_args(self):
+    ret = self._DEFAULT_ARGS.copy()
+    ret.update(self.partial_args)
+    return ret
+
   def update_kwargs(self, args):
     """Update current_args with the Args passed to the decorator."""
-    self._current_args = self._DEFAULT_ARGS.copy()
+    self._current_args = self.get_initial_args()
     for k, v in args.namedargs.items():
       if k in self._current_args:
         try:
@@ -82,7 +90,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
   def set_current_args(self, kwargs):
     """Set current_args when constructing a class directly."""
-    self._current_args = self._DEFAULT_ARGS.copy()
+    self._current_args = self.get_initial_args()
     self._current_args.update(kwargs)
 
   def init_name(self, attr):
