@@ -261,9 +261,9 @@ of its dependencies.
 
 ## 2021 Roadmap
 
-* Python 3.9 support
-* Better performance on large files
-* Support for numerical libraries
+* Python 3.9 support.
+* Better performance on large files.
+* Support for numerical libraries.
 
 ## License
 [Apache 2.0][license]
