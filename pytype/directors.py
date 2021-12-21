@@ -598,7 +598,7 @@ class Director:
       adjusted_line = _adjust_line_number(
           line, opcode_lines.make_function_lines)
       if not adjusted_line:
-        log.error(
+        log.warning(
             "No MAKE_FUNCTION opcode found for decorator on line %d", line)
       elif adjusted_line != line:
         self._decorators.add(adjusted_line)
