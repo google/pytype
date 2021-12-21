@@ -141,7 +141,7 @@ class Module(abstract.PyTDClass):
 
   @property
   def full_name(self):
-    # Overide the full name here rather than overriding the module name in the
+    # Override the full name here rather than overriding the module name in the
     # overlay because we might want to overlay other things from flax.linen.
     return "flax.linen.module.Module"
 

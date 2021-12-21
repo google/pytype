@@ -31,7 +31,7 @@ class ParserTestBase(test_base.UnitTest):
         used instead.  The special value IGNORE can be used to skip
         checking the parsed results against expected text.
       prologue: An optional prologue to be prepended to the expected text
-        before comparisson.  Useful for imports that are introduced during
+        before comparison.  Useful for imports that are introduced during
         printing the AST.
       name: The name of the module.
       version: A python version tuple (None for default value).

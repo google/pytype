@@ -53,7 +53,7 @@ class Dataclass(Protocol[T]):
   baz(Bar(x='yes', y='no'))  # ok
   baz(Baz(x='yes', y=1))     # error, not a dataclass
 
-  The only way to identify a dataclass is to test for the presense of the
+  The only way to identify a dataclass is to test for the presence of the
   __dataclass_fields__ member; that is what dataclasses.is_dataclass uses:
   https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L1036.
   """
