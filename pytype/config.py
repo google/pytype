@@ -154,8 +154,6 @@ FEATURE_FLAGS = [
     ("--strict_namedtuple_checks", False,
      ("Enable stricter namedtuple checks, such as unpacking and "
       "'typing.Tuple' compatibility.")),
-    ("--fix-module-collisions", True,
-     ("Fix collisions between module and local names in pyi files.")),
     ("--enable-typed-dicts", False,
      ("Enable support for TypedDicts.")),
 ]

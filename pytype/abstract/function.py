@@ -198,13 +198,16 @@ class Signature:
     )
 
   @classmethod
-  def from_param_names(cls, name, param_names):
+  def from_param_names(cls, name, param_names, kwonly=False):
     """Construct a minimal signature from a name and a list of param names."""
+    names = tuple(param_names)
+    param_names = () if kwonly else names
+    kwonly_params = names if kwonly else ()
     return cls(
         name=name,
-        param_names=tuple(param_names),
+        param_names=param_names,
         varargs_name=None,
-        kwonly_params=(),
+        kwonly_params=kwonly_params,
         kwargs_name=None,
         defaults={},
         annotations={},

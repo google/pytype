@@ -526,9 +526,10 @@ class FunctionPyTDClass(PyTDClass):
 class TypedDictClass(PyTDClass):
   """A template for typed dicts."""
 
-  def __init__(self, name, fields, base_cls, ctx):
+  def __init__(self, name, fields, init_method, base_cls, ctx):
     self.class_name = name
     self.fields = fields
+    self.init_method = init_method
     self.base_cls = base_cls  # TypedDictBuilder for constructing subclasses
     super().__init__(name, ctx.convert.dict_type.pytd_cls, ctx)
 
@@ -536,7 +537,11 @@ class TypedDictClass(PyTDClass):
     return f"TypedDictClass({self.name})"
 
   def _new_instance(self, container, node, args):
-    return _instances.TypedDict(self, self.ctx)
+    self.init_method.match_and_map_args(node, args, {})
+    ret = _instances.TypedDict(self, self.ctx)
+    for (k, v) in args.namedargs.items():
+      ret.set_str_item(node, k, v)
+    return ret
 
 
 class ParameterizedClass(

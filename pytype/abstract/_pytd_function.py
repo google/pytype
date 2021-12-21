@@ -173,7 +173,7 @@ class PyTDFunction(_function_base.Function):
     # if we removed the len(bindings) check.
     if all_mutations and len(func.variable.Bindings(node)) == 1:
       # Raise an error if:
-      # - An annotation has a type param that is not ambigious or empty
+      # - An annotation has a type param that is not ambiguous or empty
       # - The mutation adds a type that is not ambiguous or empty
       def should_check(value):
         return not _isinstance(value, "AMBIGUOUS_OR_EMPTY")
