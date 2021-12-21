@@ -111,14 +111,16 @@ class Converter(utils.ContextWeakrefMixin):
               node or self.ctx.root_node).data
         else:
           param_values = [self.ctx.convert.unsolvable]
-        if (param_values == [self.ctx.convert.unsolvable] and
-            isinstance(v, abstract.ParameterizedClass) and
-            not v.get_formal_type_parameter(t).formal):
-          # When the instance's parameter value is unsolvable, we can get a
-          # more precise type from the class. Note that we need to be careful
-          # not to introduce unbound type parameters.
+        formal_param = v.get_formal_type_parameter(t)
+        # If the instance's parameter value is unsolvable or the parameter type
+        # is recursive, we can get a more precise type from the class. Note that
+        # we need to be careful not to introduce unbound type parameters.
+        if (isinstance(v, abstract.ParameterizedClass) and
+            not formal_param.formal and
+            (param_values == [self.ctx.convert.unsolvable] or
+             abstract_utils.is_recursive_annotation(formal_param))):
           arg = self.value_instance_to_pytd_type(
-              node, v.get_formal_type_parameter(t), None, seen, view)
+              node, formal_param, None, seen, view)
         else:
           arg = pytd_utils.JoinTypes(self.value_to_pytd_type(
               node, p, seen, view) for p in param_values)
@@ -140,7 +142,7 @@ class Converter(utils.ContextWeakrefMixin):
     Returns:
       A PyTD type.
     """
-    if v.is_late_annotation() and v.is_recursive():
+    if abstract_utils.is_recursive_annotation(v):
       return pytd.LateType(v.expr)
     elif isinstance(v, abstract.Union):
       return pytd.UnionType(tuple(
