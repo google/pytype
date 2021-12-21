@@ -10,13 +10,30 @@ class TypedDictTest(test_base.BaseTest):
     super().setUp()
     self.options.tweak(enable_typed_dicts=True)
 
+  def test_init(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+        y: str
+      a = A(x=1, y='2')
+      b = A(x=1, y=2)  # wrong-arg-types[e1]
+      c = A(x=1)  # missing-parameter[e2]
+      d = A(y='1')  # missing-parameter
+      e = A(1, '2')  # missing-parameter
+    """)
+    self.assertErrorSequences(err, {
+        "e1": ["Expected", "(*, x, y: str)", "Actual", "(x, y: int)"],
+        "e2": ["Expected", "(*, x, y)", "Actual", "(x)"]
+    })
+
   def test_key_error(self):
     err = self.CheckWithErrors("""
       from typing_extensions import TypedDict
       class A(TypedDict):
         x: int
         y: str
-      a = A()
+      a = A(x=1, y="2")
       a["z"] = 10  # typed-dict-error[e1]
       a[10] = 10  # typed-dict-error[e2]
       b = a["z"]  # typed-dict-error
@@ -33,7 +50,7 @@ class TypedDictTest(test_base.BaseTest):
       class A(TypedDict):
         x: int
         y: str
-      a = A()
+      a = A(x=1, y="2")
       a["x"] = "10"  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(err, {"e": [
@@ -48,7 +65,7 @@ class TypedDictTest(test_base.BaseTest):
       class A(TypedDict):
         x: Union[int, str]
         y: Union[int, str]
-      a = A()
+      a = A(x=1, y="2")
       a["x"] = "10"
       a["y"] = []  # annotation-type-mismatch[e]
     """)
@@ -77,7 +94,7 @@ class TypedDictTest(test_base.BaseTest):
         y: str
       class Baz(Foo, Bar):
         z: bool
-      a = Baz()
+      a = Baz(x=1, y='2', z=False)
       a['x'] = 1
       a['y'] = 2  # annotation-type-mismatch
       a['z'] = True

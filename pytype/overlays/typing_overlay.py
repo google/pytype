@@ -662,6 +662,16 @@ class TypedDictBuilder(abstract.PyTDClass):
             fields[k] = v
             provenance[k] = base.name
 
+  def _make_init(self, cls_name, fields):
+    # __init__ method for type checking signatures.
+    # We construct this here and pass it to TypedDictClass because we need
+    # access to abstract.SignedFunction.
+    sig = function.Signature.from_param_names(
+        f"{cls_name}.__init__", fields.keys(), kwonly=True)
+    sig.annotations = {k: abstract_utils.get_atomic_value(v)
+                       for k, v in fields.items()}
+    return abstract.SignedFunction(sig, self.ctx)
+
   def make_class(self, node, bases, f_locals):
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
     # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
@@ -677,7 +687,7 @@ class TypedDictBuilder(abstract.PyTDClass):
     if "." in cls_name:
       cls_name = cls_name.rsplit(".", 1)[-1]
 
-    # Collect the key types
+    # Collect the key types defined in the current class.
     fields = {}
     cls_locals = classgen.get_class_locals(
         cls_name,
@@ -688,11 +698,12 @@ class TypedDictBuilder(abstract.PyTDClass):
       assert local.typ
       fields[k] = local.typ
 
-    # Process base classes
+    # Process base classes and generate the __init__ signature.
     self._validate_bases(cls_name, bases)
     self._merge_base_class_fields(fields, cls_name, bases)
+    init_method = self._make_init(cls_name, fields)
 
-    cls = abstract.TypedDictClass(cls_name, fields, self, self.ctx)
+    cls = abstract.TypedDictClass(cls_name, fields, init_method, self, self.ctx)
     cls_var = cls.to_variable(node)
     return node, cls_var
 

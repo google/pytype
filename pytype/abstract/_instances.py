@@ -605,22 +605,15 @@ class TypedDict(Dict):
   def __repr__(self):
     return f"<TypedDict {self.class_name}>"
 
-  def _check_key(self, name_var):
-    """Check that key is in the typed dict."""
-    try:
-      name = abstract_utils.get_atomic_python_constant(name_var, str)
-    except abstract_utils.ConversionError:
-      self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name=None)
-      return False
+  def _check_str_key(self, name):
     if name not in self.fields:
       self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name)
       return False
     return True
 
-  def _check_value(self, node, name_var, value_var):
-    """Check that value has the right type."""
-    # We have already called check_key so name is in fields
-    name = abstract_utils.get_atomic_python_constant(name_var, str)
+  def _check_str_key_value(self, node, name, value_var):
+    if not self._check_str_key(name):
+      return
     typ = abstract_utils.get_atomic_value(self.fields[name])
     bad = self.ctx.matcher(node).bad_matches(value_var, typ)
     for view, error_details in bad:
@@ -630,6 +623,21 @@ class TypedDict(Dict):
           typed_dict=self
       )
 
+  def _check_key(self, name_var):
+    """Check that key is in the typed dict."""
+    try:
+      name = abstract_utils.get_atomic_python_constant(name_var, str)
+    except abstract_utils.ConversionError:
+      self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name=None)
+      return False
+    return self._check_str_key(name)
+
+  def _check_value(self, node, name_var, value_var):
+    """Check that value has the right type."""
+    # We have already called check_key so name is in fields
+    name = abstract_utils.get_atomic_python_constant(name_var, str)
+    self._check_str_key_value(node, name, value_var)
+
   def getitem_slot(self, node, name_var):
     self._check_key(name_var)
     return super().getitem_slot(node, name_var)
@@ -638,6 +646,10 @@ class TypedDict(Dict):
     if self._check_key(name_var):
       self._check_value(node, name_var, value_var)
     return super().setitem_slot(node, name_var, value_var)
+
+  def set_str_item(self, node, name, value_var):
+    self._check_str_key_value(node, name, value_var)
+    return super().set_str_item(node, name, value_var)
 
   def delitem_slot(self, node, name_var):
     self._check_key(name_var)
