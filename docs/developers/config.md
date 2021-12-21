@@ -126,7 +126,7 @@ def make_parser():
 
 but tools that wish to reuse and forward pytype flags can call any of the
 `add_*` functions and populate their argument parser with a subset of pytype's
-flags without needing to either define individial flags or support the entire
+flags without needing to either define individual flags or support the entire
 set of pytype options.
 
 Look at `tools/arg_parser.py` for an example of how tools can set up their own

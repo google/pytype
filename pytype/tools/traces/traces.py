@@ -105,7 +105,7 @@ class _SymbolMatcher:
   """Symbol matcher for MatchAstVisitor._get_traces.
 
   Allows matching against:
-    - a regular expression (wil use re.match)
+    - a regular expression (will use re.match)
     - an arbitrary object (will use object equality)
     - a tuple of the above (will match if any member does)
   """

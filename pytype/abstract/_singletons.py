@@ -220,7 +220,7 @@ class Deleted(Empty):
 class Unsolvable(Singleton):
   """Representation of value we know nothing about.
 
-  Unlike "Unknowns", we don't treat these as solveable. We just put them
+  Unlike "Unknowns", we don't treat these as solvable. We just put them
   where values are needed, but make no effort to later try to map them
   to named types. This helps conserve memory where creating and solving
   hundreds of unknowns would yield us little to no information.

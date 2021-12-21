@@ -342,9 +342,9 @@ def _get_typeshed():
       _typeshed = Typeshed()
     except IOError as e:
       # This happens if typeshed is not available. Which is a setup error
-      # and should be propagated to the user. The IOError is catched further up
+      # and should be propagated to the user. The IOError is caught further up
       # in the stack.
-      raise utils.UsageError("Couldn't initalize typeshed:\n %s" % str(e))
+      raise utils.UsageError("Couldn't initialize typeshed:\n %s" % str(e))
   return _typeshed
 
 

@@ -396,7 +396,7 @@ bool Solver::RecallOrFindSolution(
     query_metrics_.back().set_from_cache(true);
     std::string indent(current_depth, ' ');
     if (*status) {
-      LOG(INFO) << indent << "Known state: solveable.";
+      LOG(INFO) << indent << "Known state: solvable.";
     } else {
       LOG(INFO) << indent << "Known state: not solvable.";
     }

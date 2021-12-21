@@ -739,7 +739,7 @@ class ImportTest(test_base.BaseTest):
   def test_two_level(self):
     with file_utils.Tempdir() as d:
       d.create_file("a.pyi", """
-        +++ /&* unparseable *&/ +++
+        +++ /&* unparsable *&/ +++
       """)
       d.create_file("b.pyi", """
         import a

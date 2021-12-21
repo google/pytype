@@ -170,7 +170,7 @@ class CallTracer(vm.VirtualMachine):
   def call_with_fake_args(self, node0, funcv):
     """Attempt to call the given function with made-up arguments."""
     # Note that this should only be used for functions that raised a
-    # FailedFunctionCall error. This is not guaranteed to successfuly call a
+    # FailedFunctionCall error. This is not guaranteed to successfully call a
     # function that raised DictKeyMissing instead.
     nodes = []
     rets = []

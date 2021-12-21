@@ -725,7 +725,7 @@ class InterpreterFunction(SignedFunction):
     if self.code.has_generator():
       generator = _instances.Generator(frame, self.ctx)
       # Run the generator right now, even though the program didn't call it,
-      # because we need to know the contained type for futher matching.
+      # because we need to know the contained type for further matching.
       node2, _ = generator.run_generator(node)
       if self.is_coroutine():
         # This function is a generator-based coroutine. We convert the return

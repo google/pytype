@@ -132,8 +132,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         representative.
     Returns:
       A tuple (subst, name), with "subst" the datatypes.HashableDict if we found
-      a working substition, None otherwise, and "name" the bad parameter in case
-      subst=None.
+      a working substitution, None otherwise, and "name" the bad parameter in
+      case subst=None.
     """
     if not arg_dict:
       # A call with no arguments always succeeds.
@@ -297,8 +297,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       subst: The current substitution. This dictionary is not modified.
       view: A mapping of Variable to Value.
     Returns:
-      A new (or unmodified original) substitution dict if the matching succeded,
-      None otherwise.
+      A new (or unmodified original) substitution dict if the matching
+      succeeded, None otherwise.
     """
     left = value.data
     assert isinstance(left, abstract.BaseValue), left
