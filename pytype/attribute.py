@@ -7,7 +7,6 @@ from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.typegraph import cfg
@@ -26,7 +25,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       obj: The object.
       name: The name of the attribute to retrieve.
       valself: A cfg.Binding to a self reference to include in the attribute's
-        origins. If obj is a class_mixin.Class, valself can be a binding to:
+        origins. If obj is an abstract.Class, valself can be a binding to:
         * an instance of obj - obj will be treated strictly as a class.
         * obj itself - obj will be treated as an instance of its metaclass.
         * None - if name == "__getitem__", obj is a type annotation; else, obj
@@ -50,7 +49,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         return self._get_instance_attribute(node, obj, name, valself)
     elif isinstance(obj, abstract.ParameterizedClass):
       return self.get_attribute(node, obj.base_cls, name, valself)
-    elif isinstance(obj, class_mixin.Class):
+    elif isinstance(obj, abstract.Class):
       return self._get_class_attribute(node, obj, name, valself)
     elif isinstance(obj, overlay.Overlay):
       return self._get_module_attribute(
@@ -222,7 +221,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
 
   def _get_class_attribute(self, node, cls, name, valself=None):
     """Get an attribute from a class."""
-    assert isinstance(cls, class_mixin.Class)
+    assert isinstance(cls, abstract.Class)
     if (not valself or not abstract_utils.equivalent_to(valself, cls) or
         cls == self.ctx.convert.type_type):
       # Since type(type) == type, the type_type check prevents an infinite loop.
@@ -268,7 +267,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       attr = None
     if attr is None:
       # Check for the attribute on the instance.
-      if isinstance(obj, class_mixin.Class):
+      if isinstance(obj, abstract.Class):
         # A class is an instance of its metaclass.
         node, attr = self._lookup_from_mro_and_handle_descriptors(
             node, obj, name, valself, skip=())
@@ -400,7 +399,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
   def _get_attribute_computed(self, node, cls, name, valself, compute_function):
     """Call compute_function (if defined) to compute an attribute."""
     assert isinstance(
-        cls, (class_mixin.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
+        cls, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
     if (valself and not isinstance(valself.data, abstract.Module) and
         self._computable(name)):
       attr_var = self._lookup_from_mro(
@@ -464,7 +463,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     """Flat attribute retrieval (no mro lookup)."""
     if isinstance(cls, abstract.ParameterizedClass):
       return self._get_attribute_flat(node, cls.base_cls, name, valself)
-    elif isinstance(cls, class_mixin.Class):
+    elif isinstance(cls, abstract.Class):
       node, attr = self._get_member(node, cls, name, valself)
       if attr is not None:
         attr = self._filter_var(node, attr)
@@ -546,7 +545,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
 
   def _maybe_load_as_instance_attribute(self, node, obj, name):
     assert isinstance(obj, abstract.SimpleValue)
-    if not isinstance(obj.cls, class_mixin.Class):
+    if not isinstance(obj.cls, abstract.Class):
       return
     for base in obj.cls.mro:
       if isinstance(base, abstract.ParameterizedClass):

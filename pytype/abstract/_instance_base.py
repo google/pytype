@@ -181,15 +181,11 @@ class SimpleValue(_base.BaseValue):
     return parameters
 
   def instantiate(self, node, container=None):
-    return Instance.from_value(self, container).to_variable(node)
+    return Instance(self, self.ctx, container).to_variable(node)
 
 
 class Instance(SimpleValue):
   """An instance of some object."""
-
-  @classmethod
-  def from_value(cls, value, container=None):
-    return cls(value, value.ctx, container=container)
 
   def __init__(self, cls, ctx, container=None):
     super().__init__(cls.name, ctx)

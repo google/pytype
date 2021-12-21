@@ -71,21 +71,34 @@ class UsageTest(test_base.BaseTest):
       bad(x)  # wrong-arg-types
     """)
 
-  @test_base.skip("TODO(b/109648354): implement")
   def test_match_as_value_and_type(self):
-    self.CheckWithErrors("""
-      from typing import List, Union
-      X = Union[str, List['X']]
-      Y = Union[str, List['Y']]
-      x: X = None
+    errors = self.CheckWithErrors("""
+      from typing import List, Set, Union
+      X1 = Union[str, List['X1']]
+      X2 = Union[str, List['X2']]
+      Y = Union[int, Set['Y']]
+      Z = Union[int, List[Y]]
+      x: X1 = None
 
-      def matches_X(x: X):
+      def matches_X1(x: X1):
+        pass
+      def matches_X2(x: X2):
         pass
       def matches_Y(y: Y):
         pass
-      matches_X(x)
-      matches_Y(x)  # wrong-arg-types
+      def matches_Z(z: Z):
+        pass
+      matches_X1(x)
+      matches_X2(x)  # ok because X1 and X2 are structurally equivalent
+      matches_Y(x)  # wrong-arg-types[e1]
+      matches_Z(x)  # wrong-arg-types[e2]
     """)
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected", "Union[Set[Y], int]",
+               "Actual", "Union[List[Union[list, str]], str]"],
+        "e2": ["Expected", "Union[List[Union[Set[Y], int]], int]",
+               "Actual", "Union[List[Union[list, str]], str]"],
+    })
 
 
 class InferenceTest(test_base.BaseTest):

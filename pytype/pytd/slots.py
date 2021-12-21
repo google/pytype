@@ -5,7 +5,8 @@ of PyTypeObject structures, and also other constants, like compare operator
 mappings.
 """
 
-from typing import List
+import dataclasses
+from typing import List, Optional
 
 TYPEOBJECT_PREFIX = "tp_"
 NUMBER_PREFIX = "nb_"
@@ -13,6 +14,7 @@ SEQUENCE_PREFIX = "sq_"
 MAPPING_PREFIX = "mp_"
 
 
+@dataclasses.dataclass
 class Slot:
   """A "slot" describes a Python operator.
 
@@ -35,15 +37,13 @@ class Slot:
       "item retrieval" for __getitem__.
   """
 
-  def __init__(self, python_name, c_name, function_type, index=None,
-               opcode=None, python_version="*", symbol=None):
-    self.python_name = python_name
-    self.c_name = c_name
-    self.function_type = function_type
-    self.index = index
-    self.opcode = opcode
-    self.python_version = python_version
-    self.symbol = symbol
+  python_name: str
+  c_name: str
+  function_type: str
+  index: Optional[int] = None
+  opcode: Optional[str] = None
+  python_version: Optional[str] = "*"
+  symbol: Optional[str] = None
 
 
 SLOTS: List[Slot] = [

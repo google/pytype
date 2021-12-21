@@ -2,7 +2,6 @@
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 
@@ -157,6 +156,9 @@ class ObjectPredicate(BuiltinFunction):
         None: ctx.convert.primitive_class_instances[bool],
     }
 
+  def run(self, node, args, result):
+    raise NotImplementedError(self.__class__.__name__)
+
   def call(self, node, _, args):
     try:
       self.match_args(node, args)
@@ -177,6 +179,9 @@ class UnaryPredicate(ObjectPredicate):
   _call_predicate(self, node, obj): The implementation of the predicate.
   """
 
+  def _call_predicate(self, node, obj):
+    raise NotImplementedError(self.__class__.__name__)
+
   def run(self, node, args, result):
     for obj in args.posargs[0].bindings:
       node, pyval = self._call_predicate(node, obj)
@@ -191,6 +196,9 @@ class BinaryPredicate(ObjectPredicate):
 
   _call_predicate(self, node, left, right): The implementation of the predicate.
   """
+
+  def _call_predicate(self, node, left, right):
+    raise NotImplementedError(self.__class__.__name__)
 
   def run(self, node, args, result):
     for left in abstract_utils.expand_type_parameter_instances(
@@ -314,7 +322,7 @@ class IsCallable(UnaryPredicate):
     if isinstance(val, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # Classes are always callable.
-    if isinstance(val, class_mixin.Class):
+    if isinstance(val, abstract.Class):
       return node, True
     # Otherwise, see if the object has a __call__ method.
     node, ret = self.ctx.attribute_handler.get_attribute(
@@ -426,7 +434,7 @@ class Super(BuiltinClass):
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     for cls in cls_var.bindings:
-      if not isinstance(cls.data, (class_mixin.Class,
+      if not isinstance(cls.data, (abstract.Class,
                                    abstract.AMBIGUOUS_OR_EMPTY)):
         bad = function.BadParam(name="cls", expected=self.ctx.convert.type_type)
         raise function.WrongArgTypes(
@@ -467,7 +475,7 @@ class Object(BuiltinClass):
 
     Args:
       node: The current node.
-      cls: A class_mixin.Class.
+      cls: An abstract.Class.
       method: The method name. So that we don't have to handle the cases when
         the method doesn't exist, we only support "__new__" and "__init__".
 
@@ -476,7 +484,7 @@ class Object(BuiltinClass):
       definition in builtins.object, False otherwise.
     """
     assert method in ("__new__", "__init__")
-    if not isinstance(cls, class_mixin.Class):
+    if not isinstance(cls, abstract.Class):
       return False
     self.load_lazy_attribute(method)
     obj_method = self.members[method]

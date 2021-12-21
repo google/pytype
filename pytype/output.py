@@ -169,7 +169,7 @@ class Converter(utils.ContextWeakrefMixin):
         assert isinstance(v.value.pyval, int), v.value.pyval
         value = v.value.pyval
       return pytd.Literal(value)
-    elif isinstance(v, class_mixin.Class):
+    elif isinstance(v, abstract.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
       if seen is None:
@@ -269,7 +269,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, (special_builtins.IsInstance,
                         special_builtins.ClassMethodCallable)):
       return pytd.NamedType("typing.Callable")
-    elif isinstance(v, class_mixin.Class):
+    elif isinstance(v, abstract.Class):
       param = self.value_instance_to_pytd_type(node, v, None, seen, view)
       return pytd.GenericType(base_type=pytd.NamedType("builtins.type"),
                               parameters=(param,))

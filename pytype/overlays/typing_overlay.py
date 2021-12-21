@@ -232,6 +232,8 @@ def build_any(ctx):
 class NamedTupleFuncBuilder(collections_overlay.NamedTupleBuilder):
   """Factory for creating typing.NamedTuple classes."""
 
+  _fields_param: function.BadParam
+
   @classmethod
   def make(cls, ctx):
     typing_ast = ctx.loader.import_name("typing")
@@ -616,6 +618,85 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return node, cls_var
 
 
+class TypedDictBuilder(abstract.PyTDClass):
+  """Factory for creating typing.TypedDict classes."""
+
+  def __init__(self, ctx):
+    typing_ast = ctx.loader.import_name("typing")
+    pyval = typing_ast.Lookup("typing._TypedDict")
+    pyval = pyval.Replace(name="typing.TypedDict")
+    super().__init__("TypedDict", pyval, ctx)
+
+  def call(self, node, *args):
+    details = ("Use the class definition form of TypedDict instead.")
+    self.ctx.errorlog.not_supported_yet(
+        self.ctx.vm.frames, "TypedDict functional constructor", details)
+    return node, self.ctx.new_unsolvable(node)
+
+  def _validate_bases(self, cls_name, bases):
+    """Check that all base classes are valid."""
+    for base_var in bases:
+      for base in base_var.data:
+        if not isinstance(base, (abstract.TypedDictClass, TypedDictBuilder)):
+          details = (f"TypedDict {cls_name} cannot inherit from "
+                     "a non-TypedDict class.")
+          self.ctx.errorlog.base_class_error(
+              self.ctx.vm.frames, base_var, details)
+
+  def _merge_base_class_fields(self, fields, cls_name, bases):
+    """Add the merged list of base class fields to the fields dict."""
+    # Updates the fields dict in place, raises an error if a duplicate key is
+    # encountered.
+    provenance = {k: cls_name for k in fields}
+    for base_var in bases:
+      for base in base_var.data:
+        if not isinstance(base, abstract.TypedDictClass):
+          continue
+        for k, v in base.fields.items():
+          if k in fields:
+            classes = f"{base.name} and {provenance[k]}"
+            details = f"Duplicate TypedDict key {k} in classes {classes}"
+            self.ctx.errorlog.base_class_error(
+                self.ctx.vm.frames, base_var, details)
+          else:
+            fields[k] = v
+            provenance[k] = base.name
+
+  def make_class(self, node, bases, f_locals):
+    # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
+    # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
+    # applies here.
+    if isinstance(f_locals.data[0], abstract.Unsolvable):
+      return node, self.ctx.new_unsolvable(node)
+
+    f_locals = abstract_utils.get_atomic_python_constant(f_locals)
+
+    # retrieve __qualname__ to get the name of class
+    name_var = f_locals["__qualname__"]
+    cls_name = abstract_utils.get_atomic_python_constant(name_var)
+    if "." in cls_name:
+      cls_name = cls_name.rsplit(".", 1)[-1]
+
+    # Collect the key types
+    fields = {}
+    cls_locals = classgen.get_class_locals(
+        cls_name,
+        allow_methods=False,
+        ordering=classgen.Ordering.FIRST_ANNOTATE,
+        ctx=self.ctx)
+    for k, local in cls_locals.items():
+      assert local.typ
+      fields[k] = local.typ
+
+    # Process base classes
+    self._validate_bases(cls_name, bases)
+    self._merge_base_class_fields(fields, cls_name, bases)
+
+    cls = abstract.TypedDictClass(cls_name, fields, self, self.ctx)
+    cls_var = cls.to_variable(node)
+    return node, cls_var
+
+
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
@@ -746,6 +827,13 @@ def build_namedtuple(ctx):
     return NamedTupleClassBuilder(ctx)
 
 
+def build_typeddict(ctx):
+  if ctx.options.enable_typed_dicts:
+    return TypedDictBuilder(ctx)
+  else:
+    return not_supported_yet("TypedDict", ctx)
+
+
 def build_newtype(ctx):
   return NewType.make("NewType", ctx, "typing")
 
@@ -788,7 +876,7 @@ typing_overlay = {
     "Optional": overlay.build("Optional", Optional),
     "Tuple": overlay.build("Tuple", Tuple),
     "TypeVar": build_typevar,
-    "TypedDict": overlay.build("TypedDict", not_supported_yet),
+    "TypedDict": build_typeddict,
     "Union": Union,
     "TYPE_CHECKING": build_typechecking,
     "cast": build_cast,

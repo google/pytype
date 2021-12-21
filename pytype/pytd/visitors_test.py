@@ -156,26 +156,6 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertCountEqual(("A", "B"), data["D"])
     self.assertCountEqual(("A", "C", "D"), data["E"])
 
-  def test_strip_self(self):
-    src = textwrap.dedent("""
-        def add(x: int, y: int) -> int: ...
-        class A:
-            def bar(self, x: int) -> float: ...
-            def baz(self) -> float: ...
-            def foo(self, x: int, y: float) -> float: ...
-    """)
-    expected = textwrap.dedent("""
-        def add(x: int, y: int) -> int: ...
-
-        class A:
-            def bar(x: int) -> float: ...
-            def baz() -> float: ...
-            def foo(x: int, y: float) -> float: ...
-    """)
-    tree = self.Parse(src)
-    new_tree = tree.Visit(visitors.StripSelf())
-    self.AssertSourceEquals(new_tree, expected)
-
   def test_remove_unknown_classes(self):
     src = pytd_src("""
         from typing import Union
@@ -193,36 +173,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     tree = self.Parse(src)
     tree = tree.Visit(visitors.RemoveUnknownClasses())
-    tree = tree.Visit(visitors.DropBuiltinPrefix())
     self.AssertSourceEquals(tree, expected)
-
-  def test_find_unknown_visitor(self):
-    src = pytd_src("""
-        from typing import Any
-        class object:
-          pass
-        class `~unknown1`():
-          pass
-        class `~unknown_foobar`():
-          pass
-        class `~int`():
-          pass
-        class A():
-          def foobar(self, x: `~unknown1`) -> Any: ...
-        class B():
-          def foobar(self, x: `~int`) -> Any: ...
-        class C():
-          x = ... # type: `~unknown_foobar`
-        class D(`~unknown1`):
-          pass
-    """)
-    tree = self.Parse(src)
-    tree = visitors.LookupClasses(tree)
-    find_on = lambda x: tree.Lookup(x).Visit(visitors.RaiseIfContainsUnknown())
-    self.assertRaises(visitors.RaiseIfContainsUnknown.HasUnknown, find_on, "A")
-    find_on("B")  # shouldn't raise
-    self.assertRaises(visitors.RaiseIfContainsUnknown.HasUnknown, find_on, "C")
-    self.assertRaises(visitors.RaiseIfContainsUnknown.HasUnknown, find_on, "D")
 
   def test_in_place_lookup_external_classes(self):
     src1 = textwrap.dedent("""

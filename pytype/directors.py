@@ -251,10 +251,9 @@ def _is_function_call(opcode_name):
 
 def _is_funcdef_op(opcode_name):
   """Checks whether the opcode may appear in a function signature."""
-  return opcode_name.startswith("LOAD_") or opcode_name in {
-      "BINARY_SUBSCR",
-      "BUILD_TUPLE",
-  }
+  return (opcode_name.startswith("BUILD_") or
+          opcode_name.startswith("LOAD_") or
+          opcode_name == "BINARY_SUBSCR")
 
 
 def _is_load_attribute_op(opcode_name):
@@ -266,6 +265,10 @@ def _is_load_attribute_op(opcode_name):
               "LOAD_METHOD",
               "SETUP_WITH",
           })
+
+
+def _is_return_op(opcode_name):
+  return opcode_name.startswith("YIELD_") or opcode_name == "RETURN_VALUE"
 
 
 class _OpcodeLines:
@@ -286,11 +289,13 @@ class _OpcodeLines:
       make_function_lines: Collection[int],
       non_funcdef_lines: Collection[int],
       load_attr_lines: Collection[int],
+      return_lines: Collection[int],
       call_lines: Collection[Call]):
     self.store_lines = store_lines
     self.make_function_lines = make_function_lines
     self.non_funcdef_lines = non_funcdef_lines
     self.load_attr_lines = load_attr_lines
+    self.return_lines = return_lines
     # We transform call_lines into a line->Call mapping so that
     # _adjust_line_number can treat it as a Collection[int] like the other
     # *_lines attributes.
@@ -303,6 +308,7 @@ class _OpcodeLines:
     make_function_lines = set()
     non_funcdef_lines = set()
     load_attr_lines = set()
+    return_lines = set()
     all_call_lines = []
     for block in _collect_bytecode(code):
       call_lines = []
@@ -313,6 +319,8 @@ class _OpcodeLines:
           make_function_lines.add(opcode.line)
         elif _is_load_attribute_op(opcode.name):
           load_attr_lines.add(opcode.line)
+        elif _is_return_op(opcode.name):
+          return_lines.add(opcode.line)
         elif _is_function_call(opcode.name):
           # Function calls can be nested, so we represent them as a sequence of
           # call trees. As opcodes are typically ordered by increasing line
@@ -332,7 +340,7 @@ class _OpcodeLines:
           non_funcdef_lines.add(opcode.line)
       all_call_lines.extend(call_lines)
     return cls(store_lines, make_function_lines, non_funcdef_lines,
-               load_attr_lines, all_call_lines)
+               load_attr_lines, return_lines, all_call_lines)
 
 
 class Director:
@@ -610,7 +618,7 @@ class Director:
   def _adjust_line_numbers_for_error_directives(self, opcode_lines):
     """Adjusts line numbers for error directives."""
     for error_class in _FUNCTION_CALL_ERRORS + (
-        "annotation-type-mismatch", "attribute-error"):
+        "annotation-type-mismatch", "attribute-error", "bad-return-type"):
       if error_class not in self._disables:
         continue
       lines = self._disables[error_class].lines
@@ -627,12 +635,16 @@ class Director:
         elif error_class == "attribute-error":
           min_line = 1
           allowed_lines = opcode_lines.load_attr_lines
+        elif error_class == "bad-return-type":
+          min_line = 1
+          allowed_lines = opcode_lines.return_lines
         else:
           min_line = 1
           allowed_lines = opcode_lines.call_lines
         adjusted_line = _adjust_line_number(line, allowed_lines, min_line)
         if adjusted_line and adjusted_line != line:
-          if error_class in ("annotation-type-mismatch", "attribute-error"):
+          if error_class in (
+              "annotation-type-mismatch", "attribute-error", "bad-return-type"):
             lines[adjusted_line] = membership
             del lines[line]
           else:

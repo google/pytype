@@ -93,18 +93,6 @@ class Context:
     # If set, allow construction of recursive values, setting the
     # self-referential field to Any
     self.recursion_allowed = False
-    # Saves references to a few abstract classes so that modules in
-    # pytype/abstract/ that cannot import abstract.py can use them. *Use this
-    # attribute as little as possible!* Ideally, this wouldn't exist at all, but
-    # over time, we've accumulated implicit circular dependencies that are hard
-    # to get rid of. This attribute intentionally has an inconveniently long
-    # name to help discourage unnecessary use.
-    self.abstract_classes_for_submodules: Dict[str, abstract.BaseValue] = {
-        "AnnotationContainer": abstract.AnnotationContainer,
-        "Instance": abstract.Instance,
-        "NativeFunction": abstract.NativeFunction,
-        "TupleClass": abstract.TupleClass,
-    }
 
   def matcher(self, node):
     return matcher.AbstractMatcher(node, self)
@@ -174,7 +162,7 @@ class Context:
     if contained_type:
       typ = contained_type
     bad = self.matcher(node).bad_matches(value, typ)
-    for view, *error_details in bad:
+    for view, error_details in bad:
       binding = view[value]
       self.errorlog.annotation_type_mismatch(
-          stack, typ, binding, name, *error_details, details)
+          stack, typ, binding, name, error_details, details)

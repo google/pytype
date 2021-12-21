@@ -14,6 +14,7 @@ from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
+_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 def _var_map(func, var):
@@ -226,8 +227,7 @@ class Generator(BaseGenerator):
 
   def get_special_attribute(self, node, name, valself):
     if name == "__iter__":
-      f = self.ctx.abstract_classes_for_submodules["NativeFunction"](
-          name, self.__iter__, self.ctx)
+      f = _make("NativeFunction", name, self.__iter__, self.ctx)
       return f.to_variable(node)
     elif name == "__next__":
       return self.to_variable(node)
@@ -253,8 +253,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
         for name, instance_param in tuple(enumerate(content)) +
         ((abstract_utils.T, combined_content),)
     }
-    cls = ctx.abstract_classes_for_submodules["TupleClass"](
-        ctx.convert.tuple_type, class_params, ctx)
+    cls = _make("TupleClass", ctx.convert.tuple_type, class_params, ctx)
     super().__init__(cls, ctx)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     mixin.PythonConstant.init_mixin(self, content)
@@ -576,6 +575,77 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       self.merge_instance_type_parameter(node, abstract_utils.K, k)
       self.merge_instance_type_parameter(node, abstract_utils.V, v)
       self.could_contain_anything = True
+
+
+class TypedDict(Dict):
+  """Representation of TypedDict instances.
+
+  Internally, a TypedDict is a dict with a restricted set of string keys
+  allowed, each with a fixed type. We implement it as a subclass of Dict, with
+  some type checks wrapped around key accesses. If a check fails, we simply add
+  an error to the logs and then continue processing the method as though it were
+  a regular dict.
+  """
+
+  def __init__(self, cls, ctx):
+    super().__init__(ctx)
+    # Do not set self.cls, since a TypedDict should be a dict, but store the
+    # actual class for typed-dict-specific uses.
+    self.typed_dict_cls = cls
+    self.set_slot("__delitem__", self.delitem_slot)
+
+  @property
+  def fields(self):
+    return self.typed_dict_cls.fields
+
+  @property
+  def class_name(self):
+    return self.typed_dict_cls.class_name
+
+  def __repr__(self):
+    return f"<TypedDict {self.class_name}>"
+
+  def _check_key(self, name_var):
+    """Check that key is in the typed dict."""
+    try:
+      name = abstract_utils.get_atomic_python_constant(name_var, str)
+    except abstract_utils.ConversionError:
+      self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name=None)
+      return False
+    if name not in self.fields:
+      self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name)
+      return False
+    return True
+
+  def _check_value(self, node, name_var, value_var):
+    """Check that value has the right type."""
+    # We have already called check_key so name is in fields
+    name = abstract_utils.get_atomic_python_constant(name_var, str)
+    typ = abstract_utils.get_atomic_value(self.fields[name])
+    bad = self.ctx.matcher(node).bad_matches(value_var, typ)
+    for view, error_details in bad:
+      binding = view[value_var]
+      self.ctx.errorlog.annotation_type_mismatch(
+          self.ctx.vm.frames, typ, binding, name, error_details,
+          typed_dict=self
+      )
+
+  def getitem_slot(self, node, name_var):
+    self._check_key(name_var)
+    return super().getitem_slot(node, name_var)
+
+  def setitem_slot(self, node, name_var, value_var):
+    if self._check_key(name_var):
+      self._check_value(node, name_var, value_var)
+    return super().setitem_slot(node, name_var, value_var)
+
+  def delitem_slot(self, node, name_var):
+    self._check_key(name_var)
+    return self.call_pytd(node, "__delitem__", name_var)
+
+  def pop_slot(self, node, key_var, default_var=None):
+    self._check_key(key_var)
+    return super().pop_slot(node, key_var, default_var)
 
 
 class AnnotationsDict(Dict):

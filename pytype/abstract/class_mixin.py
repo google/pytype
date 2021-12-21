@@ -13,6 +13,7 @@ from pytype.pytd import pytd
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 # Classes have a metadata dictionary that can store arbitrary metadata for
@@ -392,8 +393,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       key = node
     assert key
     if key not in self._instance_cache:
-      self._instance_cache[key] = self.ctx.abstract_classes_for_submodules[
-          "Instance"].from_value(self, container)
+      self._instance_cache[key] = _make("Instance", self, self.ctx, container)
     return self._instance_cache[key]
 
   def _check_not_instantiable(self):
@@ -437,8 +437,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Treat this class as a parameterized container in an annotation. We do
       # not need to worry about the class not being a container: in that case,
       # AnnotationContainer's param length check reports an appropriate error.
-      container = self.ctx.abstract_classes_for_submodules[
-          "AnnotationContainer"].from_value(self)
+      container = self.to_annotation_container()
       return container.get_special_attribute(node, name, valself)
     return Class.super(self.get_special_attribute)(node, name, valself)
 

@@ -8,7 +8,6 @@ from pytype import overlay
 from pytype import overlay_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import classgen
@@ -443,7 +442,7 @@ class Attrib(classgen.FieldConstructor):
     if not converter_var:
       return None, None
     converter = converter_var.data[0]
-    if isinstance(converter, class_mixin.Class):
+    if isinstance(converter, abstract.Class):
       # If the converter is a class, set the field type to the class and the
       # init type to Any.
       # TODO(b/135553563): Check that converter.__init__ takes one argument and

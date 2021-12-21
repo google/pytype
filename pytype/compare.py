@@ -2,7 +2,6 @@
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import mixin
 from pytype.pytd import slots
 
@@ -195,7 +194,7 @@ def cmp_rel(ctx, op, left, right):
     return _compare_tuple(op, left, right)
   elif isinstance(left, abstract.Dict):
     return _compare_dict(op, left, right)
-  elif isinstance(left, class_mixin.Class):
+  elif isinstance(left, abstract.Class):
     return _compare_class(op, left, right)
   else:
     return None
@@ -240,7 +239,7 @@ def compatible_with(value, logical_value):
     elif name in NUMERIC:
       # Numeric types can match both True and False
       return True
-    elif (isinstance(value.cls, class_mixin.Class) and
+    elif (isinstance(value.cls, abstract.Class) and
           not value.cls.overrides_bool):
       if getattr(value.cls, "template", None):
         # A parameterized class can match both True and False, since it might be
@@ -249,7 +248,7 @@ def compatible_with(value, logical_value):
       # Objects evaluate to True unless explicitly overridden.
       return logical_value
     return True
-  elif isinstance(value, (abstract.Function, class_mixin.Class)):
+  elif isinstance(value, (abstract.Function, abstract.Class)):
     # Functions and classes always evaluate to True.
     return logical_value
   else:

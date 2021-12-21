@@ -156,6 +156,8 @@ FEATURE_FLAGS = [
       "'typing.Tuple' compatibility.")),
     ("--fix-module-collisions", True,
      ("Fix collisions between module and local names in pyi files.")),
+    ("--enable-typed-dicts", False,
+     ("Enable support for TypedDicts.")),
 ]
 
 
