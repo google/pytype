@@ -151,6 +151,44 @@ class TypedDictTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(err, {"e": ["Use the class definition form"]})
 
+  def test_total_with_constructor(self):
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict, total=True):
+        w: int
+        x: int
+      class Bar(TypedDict, total=False):
+        y: str
+        z: bool
+      class Baz(Foo, Bar):
+        a: int
+      a = Baz(w=1, x=1, y='2', z=False, a=2)
+      b = Baz(w=1, x=1, a=2)
+      c = Baz(w=1, x=1, y='2')  # missing-parameter
+      d = Baz(w=1, x=1, a=2, b=3)  # wrong-keyword-args
+    """)
+
+  def test_total_with_annotation(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict, total=True):
+        w: int
+        x: int
+      class Bar(TypedDict, total=False):
+        y: str
+        z: bool
+      class Baz(Foo, Bar):
+        a: int
+      a: Baz = {'w': 1, 'x': 1, 'y': '2', 'z': False, 'a': 2}
+      b: Baz = {'w': 1, 'x': 1, 'a': 2}
+      c: Baz = {'w': 1, 'y': '2', 'z': False, 'a': 2}  # annotation-type-mismatch[e1]
+      d: Baz = {'w': 1, 'x': 1, 'y': '2', 'b': False, 'a': 2}  # annotation-type-mismatch[e2]
+    """)
+    self.assertErrorSequences(err, {
+        "e1": ["missing keys", "x"],
+        "e2": ["extra keys", "b"],
+    })
+
 
 if __name__ == "__main__":
   test_base.main()

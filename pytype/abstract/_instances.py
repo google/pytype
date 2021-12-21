@@ -587,20 +587,18 @@ class TypedDict(Dict):
   a regular dict.
   """
 
-  def __init__(self, cls, ctx):
+  def __init__(self, props, ctx):
     super().__init__(ctx)
-    # Do not set self.cls, since a TypedDict should be a dict, but store the
-    # actual class for typed-dict-specific uses.
-    self.typed_dict_cls = cls
+    self.props = props
     self.set_slot("__delitem__", self.delitem_slot)
 
   @property
   def fields(self):
-    return self.typed_dict_cls.fields
+    return self.props.fields
 
   @property
   def class_name(self):
-    return self.typed_dict_cls.class_name
+    return self.props.name
 
   def __repr__(self):
     return f"<TypedDict {self.class_name}>"

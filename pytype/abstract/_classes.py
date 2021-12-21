@@ -72,8 +72,6 @@ class BuildClass(_base.BaseValue):
       func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
     for base in bases:
-      # If base class is NamedTuple, we will call its own make_class method to
-      # make a class.
       base = abstract_utils.get_atomic_value(
           base, default=self.ctx.convert.unsolvable)
       cls_dict = func.f_locals.to_variable(node)
@@ -88,11 +86,14 @@ class BuildClass(_base.BaseValue):
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
       if isinstance(base, PyTDClass):
         # Subclasses of these classes define their own class constructors.
-        if (base.full_name == "typing.NamedTuple" or
-            base.full_name == "typing.TypedDict"):
+        if base.full_name == "typing.NamedTuple":
           return base.make_class(node, list(bases), cls_dict)
+        elif base.full_name == "typing.TypedDict":
+          return base.make_class(node, list(bases), cls_dict,
+                                 total=kwargs.get("total"))
         elif isinstance(base, TypedDictClass):
-          return base.base_cls.make_class(node, list(bases), cls_dict)
+          return base.base_cls.make_class(node, list(bases), cls_dict,
+                                          total=kwargs.get("total"))
 
     return self.ctx.make_class(
         node,
@@ -526,19 +527,18 @@ class FunctionPyTDClass(PyTDClass):
 class TypedDictClass(PyTDClass):
   """A template for typed dicts."""
 
-  def __init__(self, name, fields, init_method, base_cls, ctx):
-    self.class_name = name
-    self.fields = fields
+  def __init__(self, props, init_method, base_cls, ctx):
+    self.props = props
     self.init_method = init_method
     self.base_cls = base_cls  # TypedDictBuilder for constructing subclasses
-    super().__init__(name, ctx.convert.dict_type.pytd_cls, ctx)
+    super().__init__(props.name, ctx.convert.dict_type.pytd_cls, ctx)
 
   def __repr__(self):
     return f"TypedDictClass({self.name})"
 
   def _new_instance(self, container, node, args):
     self.init_method.match_and_map_args(node, args, {})
-    ret = _instances.TypedDict(self, self.ctx)
+    ret = _instances.TypedDict(self.props, self.ctx)
     for (k, v) in args.namedargs.items():
       ret.set_str_item(node, k, v)
     return ret

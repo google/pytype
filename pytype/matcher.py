@@ -979,11 +979,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._typed_dict_error = None
     if not isinstance(left, abstract.Dict):
       return False
-    missing, extra, bad = [], [], []
-    fields = other_type.fields
+    missing, extra = other_type.props.check_keys(left.pyval.keys())
+    bad = []
+    fields = other_type.props.fields
     for k, v in left.pyval.items():
       if k not in fields:
-        extra.append(k)
         continue
       typ = abstract_utils.get_atomic_value(fields[k])
       b = self.bad_matches(v, typ)
