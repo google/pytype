@@ -235,6 +235,7 @@ py_library(
     .debug
     .matcher
     pytype.abstract.abstract
+    pytype.overlays.overlays
     pytype.pytd.pytd
 )
 

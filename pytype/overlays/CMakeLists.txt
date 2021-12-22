@@ -17,6 +17,7 @@ py_library(
     .six_overlay
     .subprocess_overlay
     .sys_overlay
+    .typed_dict
     .typing_extensions_overlay
     .typing_overlay
 )
@@ -182,6 +183,17 @@ py_library(
 
 py_library(
   NAME
+    typed_dict
+  SRCS
+    typed_dict.py
+  DEPS
+    .classgen
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     typing_extensions_overlay
   SRCS
     typing_extensions_overlay.py
@@ -198,6 +210,7 @@ py_library(
   DEPS
     .classgen
     .collections_overlay
+    .typed_dict
     pytype.overlay
     pytype.overlay_utils
     pytype.utils

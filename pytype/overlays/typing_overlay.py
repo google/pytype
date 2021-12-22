@@ -3,10 +3,6 @@
 # pylint's detection of this is error-prone:
 # pylint: disable=unpacking-non-sequence
 
-import dataclasses
-
-from typing import Any, Dict, Set
-
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import utils
@@ -15,6 +11,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.overlays import collections_overlay
+from pytype.overlays import typed_dict
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import visitors
@@ -622,132 +619,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     return node, cls_var
 
 
-@dataclasses.dataclass
-class TypedDictProperties:
-  """Collection of typed dict properties passed between various stages."""
-
-  name: str
-  fields: Dict[str, Any]
-  required: Set[str]
-  total: bool
-
-  @property
-  def keys(self):
-    return set(self.fields.keys())
-
-  @property
-  def optional(self):
-    return self.keys - self.required
-
-  def add(self, k, v, total):
-    self.fields[k] = v
-    if total:
-      self.required.add(k)
-
-  def check_keys(self, keys):
-    keys = set(keys)
-    missing = (self.keys - keys) & self.required
-    extra = keys - self.keys
-    return missing, extra
-
-
-class TypedDictBuilder(abstract.PyTDClass):
-  """Factory for creating typing.TypedDict classes."""
-
-  def __init__(self, ctx):
-    typing_ast = ctx.loader.import_name("typing")
-    pyval = typing_ast.Lookup("typing._TypedDict")
-    pyval = pyval.Replace(name="typing.TypedDict")
-    super().__init__("TypedDict", pyval, ctx)
-
-  def call(self, node, *args):
-    details = ("Use the class definition form of TypedDict instead.")
-    self.ctx.errorlog.not_supported_yet(
-        self.ctx.vm.frames, "TypedDict functional constructor", details)
-    return node, self.ctx.new_unsolvable(node)
-
-  def _validate_bases(self, cls_name, bases):
-    """Check that all base classes are valid."""
-    for base_var in bases:
-      for base in base_var.data:
-        if not isinstance(base, (abstract.TypedDictClass, TypedDictBuilder)):
-          details = (f"TypedDict {cls_name} cannot inherit from "
-                     "a non-TypedDict class.")
-          self.ctx.errorlog.base_class_error(
-              self.ctx.vm.frames, base_var, details)
-
-  def _merge_base_class_fields(self, bases, props):
-    """Add the merged list of base class fields to the fields dict."""
-    # Updates props in place, raises an error if a duplicate key is encountered.
-    provenance = {k: props.name for k in props.fields}
-    for base_var in bases:
-      for base in base_var.data:
-        if not isinstance(base, abstract.TypedDictClass):
-          continue
-        for k, v in base.props.fields.items():
-          if k in props.fields:
-            classes = f"{base.name} and {provenance[k]}"
-            details = f"Duplicate TypedDict key {k} in classes {classes}"
-            self.ctx.errorlog.base_class_error(
-                self.ctx.vm.frames, base_var, details)
-          else:
-            props.add(k, v, base.props.total)
-            provenance[k] = base.name
-
-  def _make_init(self, node, props):
-    # __init__ method for type checking signatures.
-    # We construct this here and pass it to TypedDictClass because we need
-    # access to abstract.SignedFunction.
-    sig = function.Signature.from_param_names(
-        f"{props.name}.__init__", props.fields.keys(), kwonly=True)
-    sig.annotations = {k: abstract_utils.get_atomic_value(v)
-                       for k, v in props.fields.items()}
-    sig.defaults = {k: self.ctx.new_unsolvable(node)
-                    for k in props.optional}
-    return abstract.SignedFunction(sig, self.ctx)
-
-  def make_class(self, node, bases, f_locals, total):
-    # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
-    # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
-    # applies here.
-    if isinstance(f_locals.data[0], abstract.Unsolvable):
-      return node, self.ctx.new_unsolvable(node)
-
-    f_locals = abstract_utils.get_atomic_python_constant(f_locals)
-
-    # retrieve __qualname__ to get the name of class
-    name_var = f_locals["__qualname__"]
-    cls_name = abstract_utils.get_atomic_python_constant(name_var)
-    if "." in cls_name:
-      cls_name = cls_name.rsplit(".", 1)[-1]
-
-    if total is None:
-      total = True
-    else:
-      total = abstract_utils.get_atomic_python_constant(total, bool)
-    props = TypedDictProperties(
-        name=cls_name, fields={}, required=set(), total=total)
-
-    # Collect the key types defined in the current class.
-    cls_locals = classgen.get_class_locals(
-        cls_name,
-        allow_methods=False,
-        ordering=classgen.Ordering.FIRST_ANNOTATE,
-        ctx=self.ctx)
-    for k, local in cls_locals.items():
-      assert local.typ
-      props.add(k, local.typ, total)
-
-    # Process base classes and generate the __init__ signature.
-    self._validate_bases(cls_name, bases)
-    self._merge_base_class_fields(bases, props)
-    init_method = self._make_init(node, props)
-
-    cls = abstract.TypedDictClass(props, init_method, self, self.ctx)
-    cls_var = cls.to_variable(node)
-    return node, cls_var
-
-
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
@@ -880,7 +751,7 @@ def build_namedtuple(ctx):
 
 def build_typeddict(ctx):
   if ctx.options.enable_typed_dicts:
-    return TypedDictBuilder(ctx)
+    return typed_dict.TypedDictBuilder(ctx)
   else:
     return not_supported_yet("TypedDict", ctx)
 

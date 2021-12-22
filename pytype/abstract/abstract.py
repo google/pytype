@@ -29,7 +29,6 @@ BuildClass = _classes.BuildClass
 InterpreterClass = _classes.InterpreterClass
 PyTDClass = _classes.PyTDClass
 FunctionPyTDClass = _classes.FunctionPyTDClass
-TypedDictClass = _classes.TypedDictClass
 ParameterizedClass = _classes.ParameterizedClass
 CallableClass = _classes.CallableClass
 LiteralClass = _classes.LiteralClass
@@ -59,7 +58,6 @@ Generator = _instances.Generator
 Tuple = _instances.Tuple
 List = _instances.List
 Dict = _instances.Dict
-TypedDict = _instances.TypedDict
 AnnotationsDict = _instances.AnnotationsDict
 
 SignedFunction = _interpreter_function.SignedFunction

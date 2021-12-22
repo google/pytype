@@ -12,6 +12,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd_utils
@@ -781,7 +782,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return self._match_type_against_type(
             left, other_type.formal_type_parameters[abstract_utils.T], subst,
             view)
-    elif isinstance(other_type, abstract.TypedDictClass):
+    elif isinstance(other_type, typed_dict.TypedDictClass):
       if not self._match_dict_against_typed_dict(left, other_type):
         return None
       return subst
@@ -975,7 +976,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return subst
 
   def _match_dict_against_typed_dict(self, left, other_type):
-    assert isinstance(other_type, abstract.TypedDictClass)
+    assert isinstance(other_type, typed_dict.TypedDictClass)
     self._typed_dict_error = None
     if not isinstance(left, abstract.Dict):
       return False

@@ -17,6 +17,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
@@ -533,7 +534,7 @@ class ErrorLog(ErrorLogBase):
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       expected = self._pytd_print(formal.get_instance_type(node))
-      if isinstance(formal, abstract.TypedDictClass):
+      if isinstance(formal, typed_dict_overlay.TypedDictClass):
         expected = expected + "(TypedDict)"
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
@@ -1174,7 +1175,7 @@ class ErrorLog(ErrorLogBase):
     if annot is None:
       return
     annot_string = self._print_as_expected_type(annot)
-    if isinstance(annot, abstract.TypedDictClass):
+    if isinstance(annot, typed_dict_overlay.TypedDictClass):
       annot_string = annot_string + "(TypedDict)"
     literal = "Literal[" in annot_string
     actual_string = self._print_as_actual_type(binding.data, literal=literal)
