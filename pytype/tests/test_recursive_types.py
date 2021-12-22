@@ -46,34 +46,26 @@ class MatchTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       from typing import List
       X = List['X']
-      def f(x: X):
-        pass
       x = []
       x.append(x)
-      f(x)  # ok
-      f([0])  # wrong-arg-types[e]
-      f([[0]])  # wrong-arg-types
+      ok: X = x
+      bad1: X = [0]  # annotation-type-mismatch[e]
+      bad2: X = [[0]]  # annotation-type-mismatch
     """)
     self.assertErrorSequences(errors, {
-        "e": ["Expected", "List[X]", "Actual", "List[int]"]})
+        "e": ["Annotation", "List[X]", "Assignment", "List[int]"]})
 
   def test_value(self):
     errors = self.CheckWithErrors("""
       from typing import Any, List
       X = List['X']
-      def ok1(x: List[Any]):
-        pass
-      def ok2(x: List[X]):
-        pass
-      def bad(x: List[int]):
-        pass
       x: X = None
-      ok1(x)
-      ok2(x)
-      bad(x)  # wrong-arg-types[e]
+      ok1: List[Any] = x
+      ok2: List[X] = x
+      bad: List[int] = x  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(errors, {
-        "e": ["Expected", "List[int]", "Actual", "List[X]"]})
+        "e": ["Annotation", "List[int]", "Assignment", "List[X]"]})
 
   def test_value_and_type(self):
     errors = self.CheckWithErrors("""
@@ -81,82 +73,90 @@ class MatchTest(test_base.BaseTest):
       X1 = List['X1']
       X2 = List['X2']
       Bad = Set['Bad']
-      def matches_X1(x: X1):
-        pass
-      def matches_X2(x: X2):
-        pass
-      def matches_Bad(x: Bad):
-        pass
       x: X1 = None
-      matches_X1(x)
-      matches_X2(x)  # ok because X1 and X2 are structurally equivalent
-      matches_Bad(x)  # wrong-arg-types[e]
+      ok1: X1 = x
+      ok2: X2 = x  # ok because X1 and X2 are structurally equivalent
+      bad: Bad = x  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(errors, {
-        "e": ["Expected", "Set[Bad]", "Actual", "List[X1]"]})
+        "e": ["Annotation", "Set[Bad]", "Assignment", "List[X1]"]})
 
   def test_union_as_type(self):
     errors = self.CheckWithErrors("""
       from typing import List, Union
       X = Union[str, List['X']]
-      def f(x: X):
-        pass
-      f('')  # ok
-      f([''])  # ok
-      f([['']])  # ok
-      f(0)  # wrong-arg-types[e]
-      f([0])  # wrong-arg-types
-      f([[0]])  # wrong-arg-types
+      ok1: X = ''
+      ok2: X = ['']
+      ok3: X = [['']]
+      bad1: X = 0  # annotation-type-mismatch[e]
+      bad2: X = [0]  # annotation-type-mismatch
+      bad3: X = [[0]]  # annotation-type-mismatch
     """)
     self.assertErrorSequences(errors, {
-        "e": ["Expected", "Union[List[X], str]", "Actual", "int"],
+        "e": ["Annotation", "Union[List[X], str]", "Assignment", "int"],
     })
 
   def test_union_as_value(self):
     errors = self.CheckWithErrors("""
       from typing import Any, List, Union
       X = Union[str, List['X']]
-      def ok(x: Union[str, List[Any]]):
-        pass
-      def bad(x: Union[int, List[int]]):
-        pass
       x: X = None
-      ok(x)
-      bad(x)  # wrong-arg-types[e]
+      ok: Union[str, List[Any]] = x
+      bad1: Union[int, List[Any]] = x  # annotation-type-mismatch[e]
+      bad2: Union[str, List[int]] = x  # annotation-type-mismatch
     """)
     self.assertErrorSequences(errors, {
-        "e": ["Expected", "Union[List[int], int]",
-              "Actual", "Union[List[X], str]"]})
+        "e": ["Annotation", "Union[int, list]",
+              "Assignment", "Union[List[X], str]"]})
 
   def test_union_as_value_and_type(self):
     errors = self.CheckWithErrors("""
       from typing import List, Set, Union
       X1 = Union[str, List['X1']]
       X2 = Union[str, List['X2']]
-      Bad1 = Union[int, Set['Bad1']]
-      Bad2 = Union[int, List[Bad1]]
-      Bad3 = Union[int, List['Bad3']]
-      def matches_X1(x: X1):
-        pass
-      def matches_X2(x: X2):
-        pass
-      def matches_Bad1(x: Bad1):
-        pass
-      def matches_Bad2(x: Bad2):
-        pass
-      def matches_Bad3(x: Bad3):
-        pass
+      X3 = Union[int, Union[List['X3'], str]]
+      Bad1 = Union[str, Set['Bad1']]
+      Bad2 = Union[int, List['Bad2']]
+      Bad3 = Union[int, Union[List['Bad3'], int]]
       x: X1 = None
-      matches_X1(x)
-      matches_X2(x)  # ok because X1 and X2 are structurally equivalent
-      matches_Bad1(x)  # wrong-arg-types[e]
-      matches_Bad2(x)  # wrong-arg-types
-      matches_Bad3(x)  # TODO(b/109648354): catch this error
+      ok1: X1 = x
+      ok2: X2 = x  # ok because X1 and X2 are structurally equivalent
+      ok3: X3 = x  # ok because (the equivalent of) X1 is contained in X3
+      bad1: Bad1 = x  # annotation-type-mismatch[e]
+      bad2: Bad2 = x  # annotation-type-mismatch  # annotation-type-mismatch
+      bad3: Bad3 = x  # annotation-type-mismatch  # annotation-type-mismatch
     """)
     self.assertErrorSequences(errors, {
-        "e": ["Expected", "Union[Set[Bad1], int]",
-              "Actual", "Union[List[X1], str]"],
+        "e": ["Annotation", "Union[Set[Bad1], str]",
+              "Assignment", "List[X1]",
+              "In assignment", "Union[List[X1], str]"],
     })
+
+  def test_contained_union(self):
+    self.CheckWithErrors("""
+      from typing import List, Union
+      X = List[Union[str, List['X']]]
+      Y = List[Union[int, List['Y']]]
+      x: X = None
+      ok: X = x
+      bad: Y = x  # annotation-type-mismatch
+    """)
+
+  def test_union_no_base_case(self):
+    self.CheckWithErrors("""
+      from typing import Any, List, Set, Union
+      X = Union[List['X'], Set['X']]
+      x1: X = None
+      x2 = []
+      x2.append(x2)
+      x3 = set()
+      x3.add(x3)
+      ok1: X = x1
+      ok2: X = x2
+      ok3: X = x3
+      bad1: X = {0}  # annotation-type-mismatch
+      bad2: Set[Any] = x1  # annotation-type-mismatch
+    """)
 
 
 class InferenceTest(test_base.BaseTest):
