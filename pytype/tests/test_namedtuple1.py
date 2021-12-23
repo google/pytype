@@ -1,9 +1,9 @@
-"""Tests for the namedtuple implementation in collections_overlay.py."""
+"""Tests for the collections.namedtuple implementation."""
 
 import textwrap
 
 from pytype import file_utils
-from pytype.overlays import collections_overlay
+from pytype.overlays import named_tuple
 from pytype.pytd import escape
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
@@ -13,7 +13,7 @@ class NamedtupleTests(test_base.BaseTest):
   """Tests for collections.namedtuple."""
 
   def _namedtuple_ast(self, name, fields):
-    return collections_overlay.namedtuple_ast(
+    return named_tuple.namedtuple_ast(
         name, fields, [False] * len(fields), self.options)
 
   def _namedtuple_def(self, suffix="", **kws):
