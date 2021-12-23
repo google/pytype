@@ -525,7 +525,11 @@ class LateAnnotation:
     self.resolved = False
     self._type = ctx.convert.unsolvable  # the resolved type of `expr`
     self._unresolved_instances = set()
-    # _attribute_names needs to be defined last!
+    # _attribute_names needs to be defined last! This contains the names of all
+    # of LateAnnotation's attributes, discovered by looking at
+    # LateAnnotation.__dict__ and self.__dict__. These names are used in
+    # __getattribute__ and __setattr__ to determine whether a given get/setattr
+    # call should operate on the LateAnnotation itself or its resolved type.
     self._attribute_names = (
         set(LateAnnotation.__dict__) |
         set(super().__getattribute__("__dict__")))
@@ -547,6 +551,11 @@ class LateAnnotation:
     if name == "_attribute_names" or name in self._attribute_names:
       return super().__getattribute__(name)
     return self._type.__getattribute__(name)  # pytype: disable=attribute-error
+
+  def __setattr__(self, name, value):
+    if not hasattr(self, "_attribute_names") or name in self._attribute_names:
+      return super().__setattr__(name, value)
+    return self._type.__setattr__(name, value)
 
   def resolve(self, node, f_globals, f_locals):
     """Resolve the late annotation."""

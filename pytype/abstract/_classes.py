@@ -572,7 +572,7 @@ class ParameterizedClass(
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (
         self.base_cls,
-        self.formal_type_parameters)
+        self._formal_type_parameters)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""

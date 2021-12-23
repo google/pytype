@@ -212,11 +212,16 @@ class PyiTest(test_base.BaseTest):
         from typing import List
         X = List[X]
       """)
-      self.Check("""
+      self.CheckWithErrors("""
         import foo
+        from typing import Any, Set, List
+        x: foo.X = None
+        ok1: foo.X = x
+        ok2: List[Any] = x
+        bad1: List[str] = x  # annotation-type-mismatch
+        bad2: Set[Any] = x  # annotation-type-mismatch
       """, pythonpath=[d.path])
 
-  @test_base.skip("TODO(b/109648354): implement")
   def test_reingest(self):
     with self.DepTree([("foo.py", """
       from typing import List, Union
@@ -229,8 +234,61 @@ class PyiTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       import foo
       from typing import List, Union
-      X = Union[int, List[X]]
+      X = Union[int, List[foo.X]]
     """)
+
+  def test_reingest_and_use(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, Union
+      X = Union[int, List['X']]
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        from typing import Any, List, Set, Union
+        X = foo.X
+        x_local: X = None
+        x_imported: foo.X = None
+        ok1: X = x_local
+        ok2: Union[int, List[Any]] = x_local
+        ok3: foo.X = x_local
+        ok4: X = x_imported
+        bad1: Union[int, List[int]] = x_local  # annotation-type-mismatch
+        bad2: Union[int, Set[Any]] = x_local  # annotation-type-mismatch
+      """)
+
+  def test_reingest_n_times(self):
+    deps = [("foo1.py", """
+      from typing import List
+      X = List['X']
+    """)]
+    for i in range(3):
+      deps.append((f"foo{i+2}.py", f"""
+        import foo{i+1}
+        X = foo{i+1}.X
+      """))
+    with self.DepTree(deps):
+      self.CheckWithErrors("""
+        import foo2
+        import foo4
+        from typing import Any, List, Set
+        X = foo4.X
+        # Test local X
+        x_local: X = None
+        ok1: X = x_local
+        bad1: Set[Any] = x_local  # annotation-type-mismatch
+        # Test imported foo4.X
+        x_foo4: foo4.X = None
+        ok2: foo4.X = x_foo4
+        bad2: Set[Any] = x_foo4  # annotation-type-mismatch
+        # Test interactions
+        x_foo2: foo2.X = None
+        ok3: foo2.X = x_local
+        ok4: foo2.X = x_foo4
+        ok5: foo4.X = x_local
+        ok6: foo4.X = x_foo2
+        ok7: X = x_foo2
+        ok8: X = x_foo4
+      """)
 
 
 if __name__ == "__main__":

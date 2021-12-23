@@ -483,6 +483,11 @@ class Converter(utils.ContextWeakrefMixin):
         #     # visible inside the "if", is used, which will eventually lead
         #     # pytype to think that the V->complex binding isn't visible.
         #     d = {"a": 1j}
+        if isinstance(pyval, pytd.LateType):
+          annot = abstract.LateAnnotation(
+              pyval.name, self.ctx.vm.frames, self.ctx)
+          annot.set_type(value)
+          value = annot
         self._convert_cache[key] = value
       return value
 
