@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 import typing
-from typing import Callable, Iterable, Optional, TypeVar, Union
+from typing import Callable, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
 from pytype import matcher
@@ -1006,6 +1006,29 @@ class ErrorLog(ErrorLogBase):
     if isinstance(annot, abstract.BaseValue):
       annot = self._print_as_expected_type(annot)
     self._invalid_annotation(stack, annot, details, name)
+
+  def _print_params_helper(self, param_or_params):
+    if isinstance(param_or_params, abstract.BaseValue):
+      return self._print_as_expected_type(param_or_params)
+    else:
+      return "[%s]" % ", ".join(
+          self._print_params_helper(p) for p in param_or_params)
+
+  def wrong_annotation_parameter_count(
+      self, stack, annot: abstract.BaseValue,
+      params: Sequence[abstract.BaseValue], expected_count: int,
+      template: Optional[Iterable[str]] = None):
+    """Log an error for an annotation with the wrong number of parameters."""
+    base_type = self._print_as_expected_type(annot)
+    full_type = base_type + self._print_params_helper(params)
+    if template:
+      templated_type = "%s[%s]" % (base_type, ", ".join(template))
+    else:
+      templated_type = base_type
+    details = "%s expected %d parameter%s, got %d" % (
+        templated_type, expected_count, "" if expected_count == 1 else "s",
+        len(params))
+    self._invalid_annotation(stack, full_type, details, name=None)
 
   def invalid_ellipses(self, stack, indices, container_name):
     if indices:

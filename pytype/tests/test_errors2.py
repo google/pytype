@@ -35,8 +35,8 @@ class ErrorTest(test_base.BaseTest):
         pass
     """)
     self.assertErrorSequences(errors, {
-        "e1": ["typing.Dict[_K, _V]", "2", "1"],
-        "e2": ["typing.List[_T]", "1", "2"],
+        "e1": ["dict[str]", "dict[_K, _V]", "2", "1"],
+        "e2": ["list[int, str]", "list[_T]", "1", "2"],
         "e3": ["Union", "x"]
     })
 
