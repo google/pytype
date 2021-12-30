@@ -498,8 +498,11 @@ class ErrorLog(ErrorLogBase):
     """Print abstract value t as a pytd type."""
     if t.is_late_annotation():
       return typing.cast(abstract.LateAnnotation, t).expr
+    elif isinstance(t, abstract.Union):
+      return self._join_printed_types(self._print_as_expected_type(o)
+                                      for o in t.options)
     elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
-                        abstract.Class, abstract.Union)):
+                        abstract.Class)):
       with t.ctx.pytd_convert.set_output_mode(
           t.ctx.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
@@ -632,15 +635,30 @@ class ErrorLog(ErrorLogBase):
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
-    types = sorted(set(types))  # dedup
+    types = set(types)  # dedup
     if len(types) == 1:
       return next(iter(types))
     elif types:
-      if "None" in types:
-        types.remove("None")
-        return "Optional[%s]" % self._join_printed_types(types)
+      literal_contents = set()
+      optional = False
+      new_types = []
+      for t in types:
+        if t.startswith("Literal["):
+          literal_contents.update(t[len("Literal["):-1].split(", "))
+        elif t == "None":
+          optional = True
+        else:
+          new_types.append(t)
+      if literal_contents:
+        literal = "Literal[%s]" %", ".join(sorted(literal_contents))
+        new_types.append(literal)
+      if len(new_types) > 1:
+        out = "Union[%s]" % ", ".join(sorted(new_types))
       else:
-        return "Union[%s]" % ", ".join(types)
+        out = new_types[0]
+      if optional:
+        out = "Optional[%s]" % out
+      return out
     else:
       return "nothing"
 

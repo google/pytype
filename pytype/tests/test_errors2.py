@@ -315,6 +315,23 @@ class ErrorTest(test_base.BaseTest):
         '', object(), '')  # pytype: disable=wrong-arg-types
     """)
 
+  def test_union_with_any(self):
+    errors = self.CheckWithErrors("""
+      from typing import Any, Union
+      X = Union[Any, int]
+      Y = X[str]  # invalid-annotation[e]
+    """)
+    self.assertErrorSequences(errors, {
+        "e": ["Union[Any, int][str]", "Union[Any, int]", "0", "1"]})
+
+  def test_optional_union(self):
+    errors = self.CheckWithErrors("""
+      from typing import Union
+      X = Union[int, str, None]
+      Y = X[float]  # invalid-annotation[e]
+    """)
+    self.assertErrorSequences(errors, {"e": "Optional[Union[int, str]"})
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""
