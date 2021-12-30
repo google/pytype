@@ -470,10 +470,8 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     concrete = []
     for var in slice_content:
       value = var.data[0]
-      if value.formal:
-        concrete.append(value.to_variable(node))
-      else:
-        concrete.append(value.instantiate(node))
+      concrete.append(
+          value.instantiate(node, container=abstract_utils.DUMMY_CONTAINER))
     substs = [dict(zip(params, concrete))]
     new = self.ctx.annotation_utils.sub_one_annotation(node, self, substs)
     return node, new.to_variable(node)

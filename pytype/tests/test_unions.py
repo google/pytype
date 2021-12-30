@@ -44,6 +44,24 @@ class UnionTest(test_base.BaseTest):
       X = Union[str, 'DoesNotExist']  # name-error
     """)
 
+  def test_parameterization(self):
+    ty = self.Infer("""
+      from typing import Optional, Union, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Union[int, T1]
+      Y = X[Optional[T2]]
+      Z = Y[str]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional, Union, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Union[int, T1]
+      Y = Union[int, Optional[T2]]
+      Z = Union[int, Optional[str]]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
