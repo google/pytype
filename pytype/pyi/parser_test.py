@@ -2889,6 +2889,34 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       def f(x: Callable[..., T], *args, **kwargs) -> T: ...
     """)
 
+  def test_paramspec_args_error(self):
+    self.check_error("""
+      from typing import Any, Callable
+      from typing_extensions import ParamSpec
+      _P = ParamSpec("_P")
+
+      class Foo:
+        def __init__(
+            self, func: Callable[_P, Any], args: _P.args, kwds: _P.kwds
+        ) -> None: ...
+    """, 7, "Unrecognized ParamSpec attribute: kwds")
+
+  def test_two_classes(self):
+    self.check("""
+      from typing import Generic, ParamSpec
+      P = ParamSpec('P')
+      class C1(Generic[P]): ...
+      class C2(Generic[P]): ...
+    """, """
+      from typing import Generic, TypeVar
+
+      P = TypeVar('P')
+
+      class C1(Generic[P]): ...
+
+      class C2(Generic[P]): ...
+    """)
+
 
 class ConcatenateTest(parser_test_base.ParserTestBase):
 
