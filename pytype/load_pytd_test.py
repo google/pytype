@@ -804,7 +804,7 @@ class RecursiveAliasTest(_LoaderTest):
         name="a.X",
         type=pytd.GenericType(
             base_type=pytd.ClassType("builtins.list"),
-            parameters=(pytd.LateType("a.X"),)))
+            parameters=(pytd.LateType("a.X", recursive=True),)))
     self.assertEqual(actual_x, expected_x)
 
   def test_mutual_recursion(self):
@@ -819,7 +819,7 @@ class RecursiveAliasTest(_LoaderTest):
         name="a.X",
         type=pytd.GenericType(
             base_type=pytd.ClassType("builtins.list"),
-            parameters=(pytd.LateType("a.Y"),)))
+            parameters=(pytd.LateType("a.Y", recursive=True),)))
     self.assertEqual(actual_x, expected_x)
 
     actual_y = ast.Lookup("a.Y")
@@ -830,7 +830,7 @@ class RecursiveAliasTest(_LoaderTest):
             parameters=(
                 pytd.GenericType(
                     base_type=pytd.ClassType("builtins.list"),
-                    parameters=(pytd.LateType("a.Y"),)),)))
+                    parameters=(pytd.LateType("a.Y", recursive=True),)),)))
     self.assertEqual(actual_y, expected_y)
 
   def test_very_mutual_recursion(self):
@@ -846,7 +846,7 @@ class RecursiveAliasTest(_LoaderTest):
         name="a.X",
         type=pytd.GenericType(
             base_type=pytd.ClassType("builtins.list"),
-            parameters=(pytd.LateType("a.Y"),)))
+            parameters=(pytd.LateType("a.Y", recursive=True),)))
     self.assertEqual(actual_x, expected_x)
 
     actual_y = ast.Lookup("a.Y")
@@ -854,7 +854,7 @@ class RecursiveAliasTest(_LoaderTest):
         name="a.Y",
         type=pytd.GenericType(
             base_type=pytd.ClassType("builtins.list"),
-            parameters=(pytd.LateType("a.Z"),)))
+            parameters=(pytd.LateType("a.Z", recursive=True),)))
     self.assertEqual(actual_y, expected_y)
 
     actual_z = ast.Lookup("a.Z")
@@ -865,7 +865,7 @@ class RecursiveAliasTest(_LoaderTest):
             parameters=(
                 pytd.GenericType(
                     base_type=pytd.ClassType("builtins.list"),
-                    parameters=(pytd.LateType("a.Y"),)),)))
+                    parameters=(pytd.LateType("a.Y", recursive=True),)),)))
     self.assertEqual(actual_z, expected_z)
 
 
