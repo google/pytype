@@ -34,6 +34,7 @@ class AttrOverlay(overlay.Overlay):
         "attrs": Attrs.make,
         "attrib": Attrib.make,
         "s": Attrs.make,
+        "dataclass": Attrs.make_dataclass,
         "ib": Attrib.make,
         "Factory": Factory.make,
 
@@ -70,6 +71,12 @@ class Attrs(classgen.Decorator):
   @classmethod
   def make(cls, ctx):
     return super().make("s", ctx, "attr")
+
+  @classmethod
+  def make_dataclass(cls, ctx):
+    ret = super().make("s", ctx, "attr")
+    ret.partial_args["auto_attribs"] = True
+    return ret
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs

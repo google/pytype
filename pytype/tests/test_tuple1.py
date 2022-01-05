@@ -96,7 +96,7 @@ class TupleTest(test_base.BaseTest):
       v = type((3, ""))
       w = v[0]  # invalid-annotation[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Expected 0 parameter\(s\), got 1"})
+    self.assertErrorRegexes(errors, {"e": r"expected 0 parameters, got 1"})
 
   def test_tuple_isinstance(self):
     ty = self.Infer("""
@@ -168,7 +168,7 @@ class TupleTest(test_base.BaseTest):
       from typing import Tuple
       X = Tuple[int][str]  # invalid-annotation[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"Expected 0 parameter\(s\), got 1"})
+    self.assertErrorRegexes(errors, {"e": r"expected 0 parameters, got 1"})
 
   def test_legal_extra_parameterization(self):
     ty = self.Infer("""

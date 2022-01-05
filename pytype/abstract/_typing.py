@@ -177,7 +177,7 @@ class AnnotationContainer(AnnotationClass):
       # alias matches the number of raw parameters provided.
       template_length = raw_template_length = len(
           set(self.ctx.annotation_utils.get_type_parameters(self.base_cls)))
-      inner_length = raw_inner_length = len(raw_inner)
+      inner_length = len(raw_inner)
       base_cls = self.base_cls.base_cls
     else:
       # In all other cases, we check that the final template length and
@@ -186,7 +186,6 @@ class AnnotationContainer(AnnotationClass):
       template_length = len(template)
       raw_template_length = len(self.base_cls.template)
       inner_length = len(inner)
-      raw_inner_length = len(raw_inner)
       base_cls = self.base_cls
     if inner_length != template_length:
       if not template:
@@ -195,12 +194,13 @@ class AnnotationContainer(AnnotationClass):
       else:
         # Use the unprocessed values of `template` and `inner` so that the error
         # message matches what the user sees.
-        name = "%s[%s]" % (
-            self.full_name, ", ".join(t.name for t in base_cls.template))
-        error = "Expected %d parameter(s), got %d" % (
-            raw_template_length, raw_inner_length)
-        self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, None, error,
-                                             name)
+        if isinstance(self.base_cls, _classes.ParameterizedClass):
+          error_template = None
+        else:
+          error_template = (t.name for t in base_cls.template)
+        self.ctx.errorlog.wrong_annotation_parameter_count(
+            self.ctx.vm.frames, self.base_cls, raw_inner, raw_template_length,
+            error_template)
     else:
       if len(inner) == 1:
         val, = inner
@@ -463,18 +463,15 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     params = self._get_type_params()
     # Check that we are instantiating all the unbound type parameters
     if len(params) != len(slice_content):
-      details = ("Union has %d type parameters but was instantiated with %d" %
-                 (len(params), len(slice_content)))
-      self.ctx.errorlog.invalid_annotation(
-          self.ctx.vm.frames, self, details=details)
+      self.ctx.errorlog.wrong_annotation_parameter_count(
+          self.ctx.vm.frames, self, [v.data[0] for v in slice_content],
+          len(params))
       return node, self.ctx.new_unsolvable(node)
     concrete = []
     for var in slice_content:
       value = var.data[0]
-      if value.formal:
-        concrete.append(value.to_variable(node))
-      else:
-        concrete.append(value.instantiate(node))
+      concrete.append(
+          value.instantiate(node, container=abstract_utils.DUMMY_CONTAINER))
     substs = [dict(zip(params, concrete))]
     new = self.ctx.annotation_utils.sub_one_annotation(node, self, substs)
     return node, new.to_variable(node)
@@ -525,7 +522,11 @@ class LateAnnotation:
     self.resolved = False
     self._type = ctx.convert.unsolvable  # the resolved type of `expr`
     self._unresolved_instances = set()
-    # _attribute_names needs to be defined last!
+    # _attribute_names needs to be defined last! This contains the names of all
+    # of LateAnnotation's attributes, discovered by looking at
+    # LateAnnotation.__dict__ and self.__dict__. These names are used in
+    # __getattribute__ and __setattr__ to determine whether a given get/setattr
+    # call should operate on the LateAnnotation itself or its resolved type.
     self._attribute_names = (
         set(LateAnnotation.__dict__) |
         set(super().__getattribute__("__dict__")))
@@ -547,6 +548,11 @@ class LateAnnotation:
     if name == "_attribute_names" or name in self._attribute_names:
       return super().__getattribute__(name)
     return self._type.__getattribute__(name)  # pytype: disable=attribute-error
+
+  def __setattr__(self, name, value):
+    if not hasattr(self, "_attribute_names") or name in self._attribute_names:
+      return super().__setattr__(name, value)
+    return self._type.__setattr__(name, value)
 
   def resolve(self, node, f_globals, f_locals):
     """Resolve the late annotation."""

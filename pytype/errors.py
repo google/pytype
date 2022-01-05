@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 import typing
-from typing import Callable, Iterable, Optional, TypeVar, Union
+from typing import Callable, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
 from pytype import matcher
@@ -17,6 +17,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import escape
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
@@ -497,8 +498,11 @@ class ErrorLog(ErrorLogBase):
     """Print abstract value t as a pytd type."""
     if t.is_late_annotation():
       return typing.cast(abstract.LateAnnotation, t).expr
+    elif isinstance(t, abstract.Union):
+      return self._join_printed_types(self._print_as_expected_type(o)
+                                      for o in t.options)
     elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
-                        abstract.Class, abstract.Union)):
+                        abstract.Class)):
       with t.ctx.pytd_convert.set_output_mode(
           t.ctx.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
@@ -533,7 +537,7 @@ class ErrorLog(ErrorLogBase):
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       expected = self._pytd_print(formal.get_instance_type(node))
-      if isinstance(formal, abstract.TypedDictClass):
+      if isinstance(formal, typed_dict_overlay.TypedDictClass):
         expected = expected + "(TypedDict)"
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
@@ -631,15 +635,30 @@ class ErrorLog(ErrorLogBase):
 
   def _join_printed_types(self, types):
     """Pretty-print the union of the printed types."""
-    types = sorted(set(types))  # dedup
+    types = set(types)  # dedup
     if len(types) == 1:
       return next(iter(types))
     elif types:
-      if "None" in types:
-        types.remove("None")
-        return "Optional[%s]" % self._join_printed_types(types)
+      literal_contents = set()
+      optional = False
+      new_types = []
+      for t in types:
+        if t.startswith("Literal["):
+          literal_contents.update(t[len("Literal["):-1].split(", "))
+        elif t == "None":
+          optional = True
+        else:
+          new_types.append(t)
+      if literal_contents:
+        literal = "Literal[%s]" %", ".join(sorted(literal_contents))
+        new_types.append(literal)
+      if len(new_types) > 1:
+        out = "Union[%s]" % ", ".join(sorted(new_types))
       else:
-        return "Union[%s]" % ", ".join(types)
+        out = new_types[0]
+      if optional:
+        out = "Optional[%s]" % out
+      return out
     else:
       return "nothing"
 
@@ -1006,6 +1025,29 @@ class ErrorLog(ErrorLogBase):
       annot = self._print_as_expected_type(annot)
     self._invalid_annotation(stack, annot, details, name)
 
+  def _print_params_helper(self, param_or_params):
+    if isinstance(param_or_params, abstract.BaseValue):
+      return self._print_as_expected_type(param_or_params)
+    else:
+      return "[%s]" % ", ".join(
+          self._print_params_helper(p) for p in param_or_params)
+
+  def wrong_annotation_parameter_count(
+      self, stack, annot: abstract.BaseValue,
+      params: Sequence[abstract.BaseValue], expected_count: int,
+      template: Optional[Iterable[str]] = None):
+    """Log an error for an annotation with the wrong number of parameters."""
+    base_type = self._print_as_expected_type(annot)
+    full_type = base_type + self._print_params_helper(params)
+    if template:
+      templated_type = "%s[%s]" % (base_type, ", ".join(template))
+    else:
+      templated_type = base_type
+    details = "%s expected %d parameter%s, got %d" % (
+        templated_type, expected_count, "" if expected_count == 1 else "s",
+        len(params))
+    self._invalid_annotation(stack, full_type, details, name=None)
+
   def invalid_ellipses(self, stack, indices, container_name):
     if indices:
       details = "Not allowed at %s %s in %s" % (
@@ -1174,7 +1216,7 @@ class ErrorLog(ErrorLogBase):
     if annot is None:
       return
     annot_string = self._print_as_expected_type(annot)
-    if isinstance(annot, abstract.TypedDictClass):
+    if isinstance(annot, typed_dict_overlay.TypedDictClass):
       annot_string = annot_string + "(TypedDict)"
     literal = "Literal[" in annot_string
     actual_string = self._print_as_actual_type(binding.data, literal=literal)

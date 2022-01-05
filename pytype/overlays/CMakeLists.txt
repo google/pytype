@@ -13,10 +13,12 @@ py_library(
     .enum_overlay
     .flax_overlay
     .future_overlay
+    .named_tuple
     .pytype_extensions_overlay
     .six_overlay
     .subprocess_overlay
     .sys_overlay
+    .typed_dict
     .typing_extensions_overlay
     .typing_overlay
 )
@@ -85,11 +87,8 @@ py_library(
   SRCS
     collections_overlay.py
   DEPS
+    .named_tuple
     pytype.overlay
-    pytype.utils
-    pytype.abstract.abstract
-    pytype.pyi.parser
-    pytype.pytd.pytd
 )
 
 py_library(
@@ -142,6 +141,20 @@ py_library(
 
 py_library(
   NAME
+    named_tuple
+  SRCS
+    named_tuple.py
+  DEPS
+    .classgen
+    pytype.overlay_utils
+    pytype.utils
+    pytype.abstract.abstract
+    pytype.pyi.parser
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     pytype_extensions_overlay
   SRCS
     pytype_extensions_overlay.py
@@ -182,6 +195,17 @@ py_library(
 
 py_library(
   NAME
+    typed_dict
+  SRCS
+    typed_dict.py
+  DEPS
+    .classgen
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     typing_extensions_overlay
   SRCS
     typing_extensions_overlay.py
@@ -198,6 +222,8 @@ py_library(
   DEPS
     .classgen
     .collections_overlay
+    .named_tuple
+    .typed_dict
     pytype.overlay
     pytype.overlay_utils
     pytype.utils
@@ -207,11 +233,11 @@ py_library(
 
 py_test(
   NAME
-    collections_overlay_test
+    named_tuple_test
   SRCS
-    collections_overlay_test.py
+    named_tuple_test.py
   DEPS
-    .collections_overlay
+    .named_tuple
     pytype.config
     pytype.pytd.pytd
     pytype.tests.test_base

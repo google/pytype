@@ -766,3 +766,7 @@ def _make(cls_name, *args, **kwargs):
   """Make an instance of cls_name with the given arguments."""
   from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
   return getattr(abstract, cls_name)(*args, **kwargs)
+
+
+def is_recursive_annotation(annot):
+  return annot.is_late_annotation() and annot.is_recursive()

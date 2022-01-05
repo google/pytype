@@ -172,7 +172,7 @@ class TypingTest(test_base.BaseTest):
         "e5": r"int or str.*Must be constant",
         "e6": r"instance of List\[int\].*Must be constant",
         "e7": r"instance of int",
-        "e8": r"Callable.*Expected 2.*got 3",
+        "e8": r"Callable.*expected 2.*got 3",
         "e9": r"'Any'.*must be a list of argument types or ellipsis",
         "e10": r"Callable\[_ARGS, _RET].*2.*1"})
 

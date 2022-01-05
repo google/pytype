@@ -104,9 +104,9 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def func3() -> Generator[int]:  # invalid-annotation[e2]
         yield 5
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"typing.Generator\[_T, _T2, _V].*3.*2",
-        "e2": r"typing.Generator\[_T, _T2, _V].*3.*1"})
+    self.assertErrorSequences(errors, {
+        "e1": ["generator[int, int]", "generator[_T, _T2, _V]", "3", "2"],
+        "e2": ["generator[int]", "generator[_T, _T2, _V]", "3", "1"]})
 
   def test_hidden_fields(self):
     self.Check("""

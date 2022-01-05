@@ -292,6 +292,11 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   def is_protocol(self):
     return bool(self.protocol_attributes)
 
+  @property
+  def is_typed_dict_class(self):
+    return (self.full_name == "typing.TypedDict" or
+            self.__class__.__name__ == "TypedDictClass")
+
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:
       if (isinstance(base, Class) and

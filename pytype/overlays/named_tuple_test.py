@@ -1,7 +1,7 @@
-"""Tests for collections_overlay.py."""
+"""Tests for named_tuple.py."""
 
 from pytype import config
-from pytype.overlays import collections_overlay
+from pytype.overlays import named_tuple
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -11,10 +11,10 @@ import unittest
 
 
 class NamedTupleAstTest(test_base.UnitTest):
-  """Test collection_overlay's namedtuple AST generation."""
+  """Test namedtuple AST generation."""
 
   def _namedtuple_ast(self, name, fields):
-    return collections_overlay.namedtuple_ast(
+    return named_tuple.namedtuple_ast(
         name, fields, [False] * len(fields),
         config.Options.create(python_version=self.python_version,
                               strict_namedtuple_checks=True))

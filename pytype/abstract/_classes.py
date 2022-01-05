@@ -72,8 +72,6 @@ class BuildClass(_base.BaseValue):
       func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
     for base in bases:
-      # If base class is NamedTuple, we will call its own make_class method to
-      # make a class.
       base = abstract_utils.get_atomic_value(
           base, default=self.ctx.convert.unsolvable)
       cls_dict = func.f_locals.to_variable(node)
@@ -88,11 +86,11 @@ class BuildClass(_base.BaseValue):
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
       if isinstance(base, PyTDClass):
         # Subclasses of these classes define their own class constructors.
-        if (base.full_name == "typing.NamedTuple" or
-            base.full_name == "typing.TypedDict"):
+        if base.full_name == "typing.NamedTuple":
           return base.make_class(node, list(bases), cls_dict)
-        elif isinstance(base, TypedDictClass):
-          return base.base_cls.make_class(node, list(bases), cls_dict)
+        elif base.is_typed_dict_class:
+          return base.make_class(
+              node, list(bases), cls_dict, total=kwargs.get("total"))
 
     return self.ctx.make_class(
         node,
@@ -523,27 +521,6 @@ class FunctionPyTDClass(PyTDClass):
     return self.func.to_variable(node)
 
 
-class TypedDictClass(PyTDClass):
-  """A template for typed dicts."""
-
-  def __init__(self, name, fields, init_method, base_cls, ctx):
-    self.class_name = name
-    self.fields = fields
-    self.init_method = init_method
-    self.base_cls = base_cls  # TypedDictBuilder for constructing subclasses
-    super().__init__(name, ctx.convert.dict_type.pytd_cls, ctx)
-
-  def __repr__(self):
-    return f"TypedDictClass({self.name})"
-
-  def _new_instance(self, container, node, args):
-    self.init_method.match_and_map_args(node, args, {})
-    ret = _instances.TypedDict(self, self.ctx)
-    for (k, v) in args.namedargs.items():
-      ret.set_str_item(node, k, v)
-    return ret
-
-
 class ParameterizedClass(
     _base.BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   """A class that contains additional parameters.
@@ -577,6 +554,7 @@ class ParameterizedClass(
     # See the formal_type_parameters() property.
     self._formal_type_parameters = formal_type_parameters
     self._formal_type_parameters_loaded = False
+    self._seen_for_formal = False  # for calculating the 'formal' property
     self._hash = None  # memoized due to expensive computation
     self.official_name = self.base_cls.official_name
     if template is None:
@@ -594,7 +572,7 @@ class ParameterizedClass(
   def __repr__(self):
     return "ParameterizedClass(cls=%r params=%s)" % (
         self.base_cls,
-        self.formal_type_parameters)
+        self._formal_type_parameters)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
@@ -657,7 +635,12 @@ class ParameterizedClass(
     # We can't compute self.formal in __init__ because doing so would force
     # evaluation of our type parameters during initialization, possibly
     # leading to an infinite loop.
-    return any(t.formal for t in self.formal_type_parameters.values())
+    if self._seen_for_formal:
+      return False
+    self._seen_for_formal = True
+    formal = any(t.formal for t in self.formal_type_parameters.values())
+    self._seen_for_formal = False
+    return formal
 
   @property
   def formal_type_parameters(self):

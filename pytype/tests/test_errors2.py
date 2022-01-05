@@ -35,8 +35,8 @@ class ErrorTest(test_base.BaseTest):
         pass
     """)
     self.assertErrorSequences(errors, {
-        "e1": ["typing.Dict[_K, _V]", "2", "1"],
-        "e2": ["typing.List[_T]", "1", "2"],
+        "e1": ["dict[str]", "dict[_K, _V]", "2", "1"],
+        "e2": ["list[int, str]", "list[_T]", "1", "2"],
         "e3": ["Union", "x"]
     })
 
@@ -314,6 +314,23 @@ class ErrorTest(test_base.BaseTest):
       re.sub(
         '', object(), '')  # pytype: disable=wrong-arg-types
     """)
+
+  def test_union_with_any(self):
+    errors = self.CheckWithErrors("""
+      from typing import Any, Union
+      X = Union[Any, int]
+      Y = X[str]  # invalid-annotation[e]
+    """)
+    self.assertErrorSequences(errors, {
+        "e": ["Union[Any, int][str]", "Union[Any, int]", "0", "1"]})
+
+  def test_optional_union(self):
+    errors = self.CheckWithErrors("""
+      from typing import Union
+      X = Union[int, str, None]
+      Y = X[float]  # invalid-annotation[e]
+    """)
+    self.assertErrorSequences(errors, {"e": "Optional[Union[int, str]"})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):

@@ -682,7 +682,10 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
           if node.name in new_item_names:
             # We've found a self-reference. This is a recursive type, so delay
             # resolution by representing it as a LateType.
-            item = pytd.LateType(node.name)
+            if item.name.startswith(f"{self.unit.name}."):
+              item = pytd.LateType(f"{self.unit.name}.{node.name}")
+            else:
+              item = pytd.LateType(node.name)
           elif new_item == item:
             break
           else:

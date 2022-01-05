@@ -439,7 +439,7 @@ class TypeVarTest(test_base.BaseTest):
       Foo = Union[T, List[T], Dict[T, List[U]], complex]
       def f(x: Foo[int]): ...  # invalid-annotation[e]
     """)
-    self.assertErrorRegexes(err, {"e": "Union.*2.*instantiated.*1"})
+    self.assertErrorRegexes(err, {"e": "Union.*2.*got.*1"})
 
   def test_cast_generic_tuple(self):
     self.Check("""
@@ -773,7 +773,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       def f(x: X[int, str]):  # invalid-annotation[e]
         pass
     """)
-    self.assertErrorRegexes(errors, {"e": r"Expected 1 parameter\(s\), got 2"})
+    self.assertErrorRegexes(errors, {"e": r"expected 1 parameter, got 2"})
 
   def test_missing_parameter(self):
     errors = self.CheckWithErrors("""
@@ -784,7 +784,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       def f(x: X[int]):  # invalid-annotation[e]
         pass
     """)
-    self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 1"})
+    self.assertErrorRegexes(errors, {"e": r"expected 2 parameters, got 1"})
 
   def test_nested_typevars(self):
     ty = self.Infer("""
@@ -819,7 +819,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       X = Callable[[int], Dict[K, V]]
       def f(x: Callable[[int], Dict[float, str]]) -> None: ...
     """)
-    self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 3"})
+    self.assertErrorRegexes(errors, {"e": r"expected 2 parameters, got 3"})
 
   def test_missing_nested_parameter(self):
     ty, errors = self.InferWithErrors("""
@@ -837,7 +837,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       X = Callable[[int], Dict[K, V]]
       def f(x: Callable[[int], Dict[float, Any]]) -> None: ...
     """)
-    self.assertErrorRegexes(errors, {"e": r"Expected 2 parameter\(s\), got 1"})
+    self.assertErrorRegexes(errors, {"e": r"expected 2 parameters, got 1"})
 
   def test_reingest_union(self):
     foo = self.Infer("""

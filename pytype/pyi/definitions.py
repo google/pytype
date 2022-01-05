@@ -2,7 +2,6 @@
 
 import collections
 import dataclasses
-import re
 import sys
 
 from typing import Any, Dict, List, Optional, Union
@@ -529,7 +528,8 @@ class Definitions:
               self._matches_full_name(base_type, "typing.Generic")):
           # Replacing a ParamSpec with a TypeVar isn't correct, but it'll work
           # for simple cases in which the filled value is also a ParamSpec.
-          self.type_params.append(pytd.TypeParameter(p.name))
+          if not any(t.name == p.name for t in self.type_params):
+            self.type_params.append(pytd.TypeParameter(p.name))
           processed = p
         elif (p in self.param_specs or
               (isinstance(p, pytd.GenericType) and
@@ -590,7 +590,10 @@ class Definitions:
     """
     base_type = self.resolve_type(name)
     for p in self.param_specs:
-      if re.fullmatch(rf"{p.name}\.(args|kwargs)", base_type.name):
+      if base_type.name.startswith(f"{p.name}."):
+        _, attr = base_type.name.split(".", 1)
+        if attr not in ("args", "kwargs"):
+          raise ParseError(f"Unrecognized ParamSpec attribute: {attr}")
         # We do not yet support typing.ParamSpec, so replace references to its
         # args and kwargs attributes with Any.
         return pytd.AnythingType()
