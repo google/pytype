@@ -437,6 +437,7 @@ class ClassType(Node, Type):
 class LateType(Node, Type):
   """A type we have yet to resolve."""
   name: str
+  recursive: bool = False
 
   def __str__(self):
     return self.name
