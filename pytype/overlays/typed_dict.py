@@ -238,5 +238,3 @@ class TypedDict(abstract.Dict):
   def pop_slot(self, node, key_var, default_var=None):
     self._check_key(key_var)
     return super().pop_slot(node, key_var, default_var)
-
-

@@ -486,7 +486,7 @@ class Converter(utils.ContextWeakrefMixin):
         if (self.ctx.options.allow_recursive_types and
             isinstance(pyval, pytd.LateType)):
           annot = abstract.LateAnnotation(
-              pyval.name, self.ctx.vm.frames, self.ctx)
+              pyval.name, self.ctx.vm.frames, self.ctx)  # pytype: disable=attribute-error
           annot.set_type(value)
           value = annot
         self._convert_cache[key] = value
