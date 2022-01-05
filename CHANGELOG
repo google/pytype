@@ -1,3 +1,23 @@
+Version 2022.01.05:
+
+New features and updates:
+* Add a feature flag, --enable-typed-dicts, for basic TypedDict support. Once
+  this feature is stable, the flag will be removed and its behavior made the
+  default.
+* Delete --fix-module-collisions flag. It has been a no-op since the last
+  release.
+* Add support for @attr.dataclass.
+* Add a 'recursive' attribute to pytd.LateType.
+* This is the last release that supports Python 3.6. Starting from the next
+  release, pytype will only support Python 3.7+.
+
+Bug fixes:
+* Don't report an unhelpful name error when YIELD_FROM yields nothing.
+* Downgrade 'no MAKE_FUNCTION opcode found for decorator' to a warning.
+* Improve an [invalid-annotation] error message.
+* Fix a bug in parameterizing a generic type alias with a TypeVar.
+* Fix ParamSpec bugs that are blocking typeshed.
+
 Version 2021.12.15:
 
 New features and updates:
