@@ -360,6 +360,25 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     assert len(g.signatures) == 1
     return g.signatures[0].return_type
 
+  def _ResolveUsingStarImport(self, module, name):
+    """Try to use any star imports in 'module' to resolve 'name'."""
+    wanted_name = self._ModulePrefix() + name
+    for alias in module.aliases:
+      type_name = alias.type.name
+      if not type_name or not type_name.endswith(".*"):
+        continue
+      imported_module = type_name[:-2]
+      # 'module' contains 'from imported_module import *'. If we can find an AST
+      # for imported_module, check whether any of the imported names match the
+      # one we want to resolve.
+      if imported_module not in self._module_map:
+        continue
+      imported_aliases, _ = self._ImportAll(imported_module)
+      for imported_alias in imported_aliases:
+        if imported_alias.name == wanted_name:
+          return imported_alias
+    return None
+
   def EnterAlias(self, t):
     super().EnterAlias(t)
     assert not self._alias_name
@@ -431,7 +450,12 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     except KeyError as e:
       item = self._ResolveUsingGetattr(module_name, module)
       if item is None:
-        raise KeyError("No %s in module %s" % (name, module_name)) from e
+        # If 'module' is involved in a circular dependency, it may contain a
+        # star import that has not yet been resolved via the usual mechanism, so
+        # we need to manually resolve it here.
+        item = self._ResolveUsingStarImport(module, name)
+        if item is None:
+          raise KeyError("No %s in module %s" % (name, module_name)) from e
     if not self._in_generic_type and isinstance(item, pytd.Alias):
       # If `item` contains type parameters and is not inside a GenericType, then
       # we replace the parameters with Any.
