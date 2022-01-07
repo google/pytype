@@ -49,7 +49,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("pytypecanary", modules)
 
   def test_get_all_module_names(self):
-    modules = self.ts.get_all_module_names((3, 6))
+    modules = self.ts.get_all_module_names((3, 9))
     self.assertIn("asyncio", modules)
     self.assertIn("collections", modules)
     self.assertIn("configparser", modules)

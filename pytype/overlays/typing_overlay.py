@@ -352,10 +352,7 @@ def not_supported_yet(name, ctx):
 
 
 def build_namedtuple(ctx):
-  if ctx.python_version < (3, 6):
-    return named_tuple.NamedTupleFuncBuilder.make(ctx)
-  else:
-    return named_tuple.NamedTupleClassBuilder(ctx)
+  return named_tuple.NamedTupleClassBuilder(ctx)
 
 
 def build_typeddict(ctx):

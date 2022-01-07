@@ -740,19 +740,9 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       f(bytearray())
     """)
 
-  @test_utils.skipBeforePy((3, 7), "breakpoint support is new in 3.7")
   def test_breakpoint(self):
     self.Check("""
       breakpoint()
-    """)
-
-  @test_utils.skipFromPy(
-      (3, 7),
-      "breakpoint not available as builtin method until 3.7",
-  )
-  def test_breakpoint_not_defined(self):
-    self.CheckWithErrors("""
-      breakpoint()  # name-error
     """)
 
 

@@ -1,7 +1,6 @@
 """Tests for the namedtuple implementation in collections_overlay.py."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class NamedtupleTests(test_base.BaseTest):
@@ -42,7 +41,6 @@ class NamedtupleTestsPy3(test_base.BaseTest):
         foo = Foo(x=0)
     """)
 
-  @test_utils.skipBeforePy((3, 7), "'defaults' is new in 3.7")
   def test_namedtuple_defaults(self):
     self.Check("""
       import collections

@@ -66,7 +66,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2021-12-14T20:25-08:00 -->
+<!-- Added by: rechen, at: 2022-01-06T16:56-08:00 -->
 
 <!--te-->
 
@@ -161,18 +161,6 @@ class A(object):
 ```
 
 NOTE: This declaration does *not* define the attribute at runtime.
-
-The above variable annotation syntax is available only in Python 3.6+, so in
-earlier versions, declare a class attribute (with the literal ellipses) and
-supply the type in a type comment:
-
-<!-- good -->
-```python
-class A(object):
-  foo = ...  # type: int
-```
-
-NOTE: This pattern *does* define a runtime attribute.
 
 ## bad-concrete-type
 

@@ -151,21 +151,21 @@ class SkipTest(test_base.BaseTest):
         name_error
     """)
 
-  @test_utils.skipBeforePy((3, 7), reason="testing skipBeforePy")
+  @test_utils.skipBeforePy((3, 8), reason="testing skipBeforePy")
   def test_skip_before_py(self):
-    # This will fail before 3.7.
+    # This will fail before 3.8.
     self.Check("""
       import sys
-      if sys.version_info.minor < 7:
+      if sys.version_info.minor < 8:
         name_error
     """)
 
-  @test_utils.skipFromPy((3, 7), reason="testing skipFromPy")
+  @test_utils.skipFromPy((3, 8), reason="testing skipFromPy")
   def test_skip_from_py(self):
-    # This will fail in 3.7+.
+    # This will fail in 3.8+.
     self.Check("""
       import sys
-      if sys.version_info.minor >= 7:
+      if sys.version_info.minor >= 8:
         name_error
     """)
 

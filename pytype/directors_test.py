@@ -5,7 +5,6 @@ import sys
 
 from pytype import directors
 from pytype import errors
-from pytype.tests import test_utils
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -426,7 +425,6 @@ class DirectorTest(DirectorTestCase):
     }, self._director._decorators)
 
 
-@test_utils.skipBeforePy((3, 6), reason="Variable annotations are 3.6+.")
 class VariableAnnotationsTest(DirectorTestCase):
 
   def test_annotations(self):

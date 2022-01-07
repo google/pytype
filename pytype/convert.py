@@ -131,9 +131,7 @@ class Converter(utils.ContextWeakrefMixin):
     self.iterator_type = self.constant_to_value(IteratorType)
     self.coroutine_type = self.constant_to_value(CoroutineType)
     self.awaitable_type = self.constant_to_value(AwaitableType)
-    if self.ctx.python_version >= (3, 6):
-      self.async_generator_type = self.constant_to_value(
-          AsyncGeneratorType)
+    self.async_generator_type = self.constant_to_value(AsyncGeneratorType)
     self.bool_values = {
         True: self.true,
         False: self.false,
@@ -483,8 +481,7 @@ class Converter(utils.ContextWeakrefMixin):
         #     # visible inside the "if", is used, which will eventually lead
         #     # pytype to think that the V->complex binding isn't visible.
         #     d = {"a": 1j}
-        if (self.ctx.options.allow_recursive_types and
-            isinstance(pyval, pytd.LateType)):
+        if isinstance(pyval, pytd.LateType) and pyval.recursive:
           annot = abstract.LateAnnotation(
               pyval.name, self.ctx.vm.frames, self.ctx)  # pytype: disable=attribute-error
           annot.set_type(value)

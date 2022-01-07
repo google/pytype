@@ -613,10 +613,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       namedargs = args.namedargs
     else:
       namedargs = self.ctx.convert.value_to_constant(args.namedargs, dict)
-    if namedargs and self.ctx.python_version < (3, 6):
-      errmsg = "Keyword syntax for NamedTuple is only supported in Python 3.6+"
-      self.ctx.errorlog.invalid_namedtuple_arg(
-          self.ctx.vm.frames, err_msg=errmsg)
     if namedargs and len(posargs) == 1:
       namedargs = [
           self.ctx.convert.build_tuple(

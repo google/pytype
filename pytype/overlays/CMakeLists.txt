@@ -220,8 +220,6 @@ py_library(
   SRCS
     typing_overlay.py
   DEPS
-    .classgen
-    .collections_overlay
     .named_tuple
     .typed_dict
     pytype.overlay

@@ -12,7 +12,6 @@ from typing import (
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
 
-# "_T", "_K", and "_V" are hardcoded in abstract.py
 _T = TypeVar('_T')
 _T2 = TypeVar('_T2')
 _T3 = TypeVar('_T3')
@@ -33,8 +32,9 @@ _SummableT = TypeVar('_SummableT', bound=_Summable)
 _AnyStr = TypeVar('_AnyStr', bytes, str)
 
 # isinstance() and issubclass() can take a type or an arbitrarily nested
-# tuple of types. This adds support for a few levels; in theory we want
-# TypeTuple = type or tuple[TypeTuple]
+# tuple of types. This adds support for a few levels.
+# TODO(b/109648354): Replace this with:
+#   TypeTuple = Union[type, tuple[TypeTuple]]
 TypeTuple = Union[type, tuple[Union[type, tuple[type, ...]], ...]]
 
 def __import__(name: Union[str, bytes, bytearray], *args, **kwargs) -> module: ...

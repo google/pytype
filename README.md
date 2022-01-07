@@ -90,9 +90,9 @@ merge-pyi -i <filepath>.py .pytype/pyi/<filename>.pyi
 
 ## Requirements
 
-You need a Python 3.6-3.9 interpreter to run pytype, as well as an
+You need a Python 3.7-3.9 interpreter to run pytype, as well as an
 interpreter in `$PATH` for the Python version of the code you're analyzing
-(supported: 3.6-3.9).
+(supported: 3.7-3.9).
 
 Platform support:
 
@@ -208,7 +208,7 @@ analyze package `~/repo1/foo`, which depends on package `~/repo2/bar`:
 ```
 
 Here is the filled-in config file, which instructs pytype to type-check
-`~/repo1/foo` as Python 3.6 code, look for packages in `~/repo1` and `~/repo2`,
+`~/repo1/foo` as Python 3.9 code, look for packages in `~/repo1` and `~/repo2`,
 and ignore attribute errors. Notice that the path to a package does not include
 the package itself.
 
@@ -224,7 +224,7 @@ inputs =
     foo
 
 # Python version (major.minor) of the target code.
-python_version = 3.6
+python_version = 3.9
 
 # Paths to source code directories, separated by ':'.
 pythonpath =
@@ -259,11 +259,9 @@ single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
 * `pyxref`, a cross references generator.
 
-## 2021 Roadmap
+## 2022 Roadmap
 
-* Python 3.9 support
-* Better performance on large files
-* Support for numerical libraries
+Coming soon!
 
 ## License
 [Apache 2.0][license]

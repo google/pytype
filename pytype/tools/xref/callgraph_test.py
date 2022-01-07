@@ -2,12 +2,10 @@ from pytype import config
 from pytype import file_utils
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 from pytype.tools.xref import indexer
 
 
-@test_utils.skipUnlessPy(
-    (3, 5), (3, 6), reason="The callgraph code only works in Python 3.5-6.")
+@test_base.skip(reason="The callgraph code only works in Python 3.5-6.")
 class CallgraphTest(test_base.BaseTest):
   """Tests for the callgraph."""
 

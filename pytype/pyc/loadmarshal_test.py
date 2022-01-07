@@ -12,11 +12,11 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(type(s1), type(s2))
 
   def load(self, s, python_version=None):
-    python_version = python_version or (3, 6)
+    python_version = python_version or (3, 9)
     return loadmarshal.loads(s, python_version)
 
   def test_load_none(self):
-    self.assertEqual(self.load(b'N'), None)
+    self.assertIsNone(self.load(b'N'))
 
   def test_load_false(self):
     self.assertEqual(self.load(b'F'), False)
@@ -62,7 +62,7 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(self.load(b'l\xfe\xff\xff\xff\1\0\2\0'), -65537)
 
   def test_load_string(self):
-    self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 6)), bytes(b'test'))
+    self.assertStrictEqual(self.load(b's\4\0\0\0test', (3, 9)), bytes(b'test'))
 
   def test_load_interned(self):
     self.assertStrictEqual(self.load(b't\4\0\0\0test'), 'test')
@@ -116,13 +116,13 @@ class TestLoadMarshal(unittest.TestCase):
     self.assertEqual(code.co_cellvars, ())
     self.assertEqual(code.co_filename, 'test.py')
     self.assertEqual(code.co_firstlineno, 6)
-    self.assertEqual(code.co_lnotab, None)
+    self.assertIsNone(code.co_lnotab)
 
   def test_load_unicode(self):
-    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (3, 6)), 'test')
+    self.assertStrictEqual(self.load(b'u\4\0\0\0test', (3, 9)), 'test')
     # This character is \u00e4 (umlaut a).
     s = b'u\2\0\0\0\xc3\xa4'
-    self.assertStrictEqual(self.load(s, (3, 6)), '\xe4')
+    self.assertStrictEqual(self.load(s, (3, 9)), '\xe4')
 
   def test_load_set(self):
     self.assertEqual(self.load(b'<\3\0\0\0FTN'), {True, False, None})

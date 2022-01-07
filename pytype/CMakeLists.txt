@@ -663,7 +663,6 @@ py_test(
   DEPS
     .directors
     .errors
-    pytype.tests.test_base
 )
 
 py_test(

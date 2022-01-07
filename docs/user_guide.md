@@ -10,7 +10,7 @@
       * [Pyi stub files](#pyi-stub-files)
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
 
-<!-- Added by: rechen, at: 2021-11-19T12:52-08:00 -->
+<!-- Added by: rechen, at: 2022-01-06T16:54-08:00 -->
 
 <!--te-->
 
@@ -167,46 +167,13 @@ It's preferred to use the precise form (`pytype: disable=some-error`) instead of
 ## Variable annotations
 
 Above, we only silenced the error pytype gave us. A better fix is to make pytype
-aware of the attributes `Server` has (or is going to have). For this, we use
-the following approaches to add a *variable annotation*.
+aware of the attributes `Server` has (or is going to have). For this, we add a
+[PEP 526][pep-526]-style *variable annotation*:
 
-1. Preferred: [PEP 526][pep-526]-style annotation.
-
-   As of Python 3.6, the preferred approach is to add a
-   [PEP 526][pep-526]-style annotation:
-
-   ```python
-   class Server:
-     socket: socket.socket
-   ```
-
-   However, this way uses new syntax that is not available before Python 3.6.
-
-2. Type comment in `__init___`.
-
-   ```python
-   class Server:
-     def __init__(self):
-       self.socket = None  # type: socket.socket
-   ```
-
-   While this method doesn't look as clear as the first, it can be used if you
-   need to support early versions of Python 3.
-
-3. Type comment as class attribute.
-
-   ```python
-   class Server:
-     socket = ...  # type: socket.socket
-   ```
-
-   This method is not recommended unless you want to define a class attribute
-   for reasons other than typing, since it creates an unnecessary class
-   attribute compared with the first two methods.
-
-   Assigning to `...` is a convention to indicate that the attribute has no
-   value yet. If the attribute will be accessed before being set to its actual
-   value, you should instead assign it a sensible initial value such as `None`.
+```python
+class Server:
+  socket: socket.socket
+```
 
 ## Hiding extra dependencies
 

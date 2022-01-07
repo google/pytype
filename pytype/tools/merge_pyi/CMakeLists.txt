@@ -16,8 +16,6 @@ py_library(
     merge_pyi
   SRCS
     merge_pyi.py
-  DEPS
-    .grammar
 )
 
 py_test(
@@ -49,18 +47,14 @@ py_test(
 
 filegroup(
   NAME
-    grammar
-  SRCS
-    Grammar.txt
-)
-
-filegroup(
-  NAME
     test_data
   SRCS
     test_data/__init__.py
     test_data/any.comment.py
     test_data/any.py
+    test_data/async.comment.py
+    test_data/async.pep484.py
+    test_data/async.py
     test_data/decoration.comment.py
     test_data/decoration.pep484.py
     test_data/decoration.py
@@ -101,10 +95,6 @@ filegroup(
     test_data/partial.comment.py
     test_data/partial.pep484.py
     test_data/partial.py
-    test_data/py36/__init__.py
-    test_data/py36/async.comment.py
-    test_data/py36/async.pep484.py
-    test_data/py36/async.py
     test_data/pyi_variations.comment.py
     test_data/pyi_variations.pep484.py
     test_data/pyi_variations.py
@@ -134,6 +124,7 @@ filegroup(
     test_data/var_annot.pep484.py
     test_data/var_annot.py
     test_data/any.pyi
+    test_data/async.pyi
     test_data/decoration.pyi
     test_data/defaults.pyi
     test_data/heuristics.pyi
@@ -148,7 +139,6 @@ filegroup(
     test_data/packed_tuple.pyi
     test_data/parse_error.pyi
     test_data/partial.pyi
-    test_data/py36/async.pyi
     test_data/pyi_variations.pyi
     test_data/redefine.pyi
     test_data/retval_heuristics.pyi
