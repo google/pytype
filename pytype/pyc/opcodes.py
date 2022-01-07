@@ -846,7 +846,7 @@ def _overlay_mapping(mapping, new_entries):
   return dict((k, v) for k, v in ret.items() if v is not None)
 
 
-python_3_6_mapping = {
+python_3_7_mapping = {
     1: POP_TOP,
     2: ROT_TWO,
     3: ROT_THREE,
@@ -938,7 +938,6 @@ python_3_6_mapping = {
     124: LOAD_FAST,
     125: STORE_FAST,
     126: DELETE_FAST,
-    127: STORE_ANNOTATION,  # removed in Python 3.7
     130: RAISE_VARARGS,
     131: CALL_FUNCTION,
     132: MAKE_FUNCTION,
@@ -966,13 +965,9 @@ python_3_6_mapping = {
     156: BUILD_CONST_KEY_MAP,
     157: BUILD_STRING,
     158: BUILD_TUPLE_UNPACK_WITH_CALL,
-}
-
-python_3_7_mapping = _overlay_mapping(python_3_6_mapping, {
-    127: None,
     160: LOAD_METHOD,
     161: CALL_METHOD,
-})
+}
 
 python_3_8_mapping = _overlay_mapping(python_3_7_mapping, {
     6: ROT_FOUR,  # ROT_FOUR returns under a different, cooler id!
@@ -1155,7 +1150,6 @@ def dis(data, python_version, *args, **kwargs):
   major, minor = python_version[0], python_version[1]
   assert major == 3
   mapping = {
-      (3, 6): python_3_6_mapping,
       (3, 7): python_3_7_mapping,
       (3, 8): python_3_8_mapping,
       (3, 9): python_3_9_mapping,

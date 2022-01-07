@@ -243,7 +243,6 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(actual, expected)
 
 
-@test_utils.skipBeforePy((3, 6), reason="Variable annotations are 3.6+.")
 class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
   """Tests for recording annotations."""
 
@@ -290,10 +289,8 @@ class DirectorLineNumbersTest(_DirectorLineNumbersTestCase):
     # The line number of STORE_NAME v changes between versions.
     if self.python_version >= (3, 8):
       lineno = 2
-    elif self.python_version >= (3, 7):
-      lineno = 3
     else:
-      lineno = 4
+      lineno = 3
     self.assertEqual({lineno: "dict"}, self.ctx.vm._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
@@ -313,11 +310,8 @@ class DirectorLineNumbersTest(_DirectorLineNumbersTestCase):
     if self.python_version >= (3, 8):
       v_lineno = 2
       w_lineno = 7
-    elif self.python_version >= (3, 7):
-      v_lineno = 3
-      w_lineno = 9
     else:
-      v_lineno = 4
+      v_lineno = 3
       w_lineno = 9
     self.assertEqual({
         v_lineno: "dict",

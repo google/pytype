@@ -1259,9 +1259,6 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
 class TestStringifiedAnnotations(test_base.BaseTest):
   """Tests for stringified annotations."""
 
-  SKIP_REASON = "__future__.annotations is new in 3.7."
-
-  @test_utils.skipBeforePy((3, 7), reason=SKIP_REASON)
   def test_postponed_evaluation(self):
     self.Check("""
       from __future__ import annotations
@@ -1269,7 +1266,6 @@ class TestStringifiedAnnotations(test_base.BaseTest):
         return 0
     """)
 
-  @test_utils.skipBeforePy((3, 7), reason=SKIP_REASON)
   def test_postponed_evaluation_error(self):
     self.CheckWithErrors("""
       from __future__ import annotations
@@ -1277,7 +1273,6 @@ class TestStringifiedAnnotations(test_base.BaseTest):
         return 0  # bad-return-type
     """)
 
-  @test_utils.skipBeforePy((3, 7), reason=SKIP_REASON)
   def test_forward_reference(self):
     self.Check("""
       from __future__ import annotations
@@ -1289,7 +1284,6 @@ class TestStringifiedAnnotations(test_base.BaseTest):
       assert_type(A().b, Optional[B])
     """)
 
-  @test_utils.skipBeforePy((3, 7), reason=SKIP_REASON)
   def test_explicit_forward_reference(self):
     # Check that explicit string annotations still work.
     self.Check("""

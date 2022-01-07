@@ -60,7 +60,6 @@ py_test(
     loadmarshal_test.py
   DEPS
     .loadmarshal
-    pytype.utils
 )
 
 py_test(
@@ -70,7 +69,6 @@ py_test(
     opcodes_test.py
   DEPS
     .opcodes
-    pytype.utils
 )
 
 py_test(

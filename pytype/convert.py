@@ -131,9 +131,7 @@ class Converter(utils.ContextWeakrefMixin):
     self.iterator_type = self.constant_to_value(IteratorType)
     self.coroutine_type = self.constant_to_value(CoroutineType)
     self.awaitable_type = self.constant_to_value(AwaitableType)
-    if self.ctx.python_version >= (3, 6):
-      self.async_generator_type = self.constant_to_value(
-          AsyncGeneratorType)
+    self.async_generator_type = self.constant_to_value(AsyncGeneratorType)
     self.bool_values = {
         True: self.true,
         False: self.false,

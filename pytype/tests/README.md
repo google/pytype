@@ -1,8 +1,8 @@
 # Pytype Functional Tests
 
 This directory contains functional tests for Pytype. They target the same Python
-version that pytype is running under; as of August 2021, the pytype tests run in
-Python 3.6 - 3.9.
+version that pytype is running under; as of January 2022, the pytype tests run
+in Python 3.7 - 3.9.
 
 ## Adding New Tests
 

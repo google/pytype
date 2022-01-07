@@ -92,10 +92,10 @@ class CommonTest(_TestBase):
     self.assertDisassembly(code, expected)
 
 
-class Python36Test(_TestBase):
-  """Test bytecodes specific to Python 3.6."""
+class Python37Test(_TestBase):
+  """Test bytecodes specific to Python 3.7."""
 
-  python_version = (3, 6, 0)
+  python_version = (3, 7, 0)
 
   def test_load_build_class(self):
     self.assertSimple(71, 'LOAD_BUILD_CLASS')
@@ -112,9 +112,6 @@ class Python36Test(_TestBase):
   def test_setup_annotations(self):
     self.assertSimple(85, 'SETUP_ANNOTATIONS')
 
-  def test_store_annotation(self):
-    self.assertName([127, 0], 'STORE_ANNOTATION')
-
   def test_extended_arg(self):
     # LOAD_CONST should be stored in the jump table with an address of 0, due to
     # the extended arg; if we don't do this we would throw an exception.
@@ -128,12 +125,6 @@ class Python36Test(_TestBase):
         ('JUMP_ABSOLUTE',)
     ]
     self.assertDisassembly(code, expected)
-
-
-class Python37Test(_TestBase):
-  """Test bytecodes specific to Python 3.7."""
-
-  python_version = (3, 7, 0)
 
   def test_load_method(self):
     self.assertName([160, 1], 'LOAD_METHOD')

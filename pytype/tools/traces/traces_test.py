@@ -202,7 +202,7 @@ class MatchCallTest(MatchAstTestCase):
     self.assertTracesEqual(matches, [
         ((3, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "float"))])
 
-  def _test_chain(self, call_method_op):
+  def test_chain(self):
     matches = self._get_traces("""
       class Foo:
         def f(self, x):
@@ -211,17 +211,7 @@ class MatchCallTest(MatchAstTestCase):
     """, ast.Call)
     self.assertTracesEqual(matches, [
         ((4, 0), "CALL_FUNCTION", "Foo", ("Type[Foo]", "Foo")),
-        ((4, 0), call_method_op, "f", ("Callable[[Any], Any]", "int"))])
-
-  @test_utils.skipFromPy((3, 7),
-                         reason="instance methods match CALL_FUNCTION pre-3.7")
-  def test_chain_pre37(self):
-    self._test_chain("CALL_FUNCTION")
-
-  @test_utils.skipBeforePy((3, 7),
-                           reason="instance methods match CALL_METHOD in 3.7+")
-  def test_chain_37(self):
-    self._test_chain("CALL_METHOD")
+        ((4, 0), "CALL_METHOD", "f", ("Callable[[Any], Any]", "int"))])
 
   def test_multiple_bindings(self):
     matches = self._get_traces("""
@@ -248,20 +238,10 @@ class MatchCallTest(MatchAstTestCase):
     self.assertTracesEqual(
         matches, [((2, 0), "CALL_FUNCTION", "f", ("Callable[[], Any]", "Any"))])
 
-  def _test_literal(self, call_method_op):
+  def test_literal(self):
     matches = self._get_traces("''.upper()", ast.Call)
     self.assertTracesEqual(matches, [
-        ((1, 0), call_method_op, "upper", ("Callable[[], str]", "str"))])
-
-  @test_utils.skipFromPy((3, 7),
-                         reason="instance methods match CALL_FUNCTION pre-3.7")
-  def test_literal_pre37(self):
-    self._test_literal("CALL_FUNCTION")
-
-  @test_utils.skipBeforePy((3, 7),
-                           reason="instance methods match CALL_METHOD in 3.7+")
-  def test_literal_37(self):
-    self._test_literal("CALL_METHOD")
+        ((1, 0), "CALL_METHOD", "upper", ("Callable[[], str]", "str"))])
 
   def test_lookahead(self):
     matches = self._get_traces("""

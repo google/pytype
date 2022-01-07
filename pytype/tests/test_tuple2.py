@@ -3,7 +3,6 @@
 from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class TupleTest(test_base.BaseTest):
@@ -236,7 +235,6 @@ class TupleTestPython3Feature(test_base.BaseTest):
       minute: int
     """)
 
-  @test_utils.skipBeforePy((3, 7), "requires stringified annotations or 3.9+")
   def test_parameterize_builtins_tuple(self):
     self.CheckWithErrors("""
       from __future__ import annotations

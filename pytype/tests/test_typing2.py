@@ -3,7 +3,6 @@
 from pytype import file_utils
 from pytype.pytd import pep484
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class TypingTest(test_base.BaseTest):
@@ -714,7 +713,6 @@ class TypingTestPython3Feature(test_base.BaseTest):
         x: ClassVar[int]
     """)
 
-  @test_utils.skipBeforePy((3, 7), "typing.OrderedDict is new in 3.7")
   def test_ordered_dict(self):
     self.Check("""
       import collections

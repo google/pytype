@@ -542,27 +542,16 @@ class VirtualMachine:
       else:
         namedargs.setitem_slot(node, key, self.ctx.new_unsolvable(node))
 
-    # The way arguments are put on the stack changed in python 3.6:
-    #   https://github.com/python/cpython/blob/3.5/Python/ceval.c#L4712
-    #   https://github.com/python/cpython/blob/3.6/Python/ceval.c#L4806
-    if self.ctx.python_version < (3, 6):
-      num_kw, num_pos = divmod(num, 256)
-
-      for _ in range(num_kw):
-        state, (key, val) = state.popn(2)
-        set_named_arg(state.node, key, val)
-      state, posargs = state.popn(num_pos)
+    state, args = state.popn(num)
+    if starstarargs:
+      kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
+      n = len(args) - len(kwnames)
+      for key, arg in zip(kwnames, args[n:]):
+        set_named_arg(state.node, key, arg)
+      posargs = args[0:n]
+      starstarargs = None
     else:
-      state, args = state.popn(num)
-      if starstarargs:
-        kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
-        n = len(args) - len(kwnames)
-        for key, arg in zip(kwnames, args[n:]):
-          set_named_arg(state.node, key, arg)
-        posargs = args[0:n]
-        starstarargs = None
-      else:
-        posargs = args
+      posargs = args
     state, func = state.pop()
     state, ret = self.call_function_with_state(
         state, func, posargs, namedargs, starargs, starstarargs)
@@ -2452,10 +2441,7 @@ class VirtualMachine:
     return state.push(args)
 
   def byte_BUILD_MAP_UNPACK_WITH_CALL(self, state, op):
-    if self.ctx.python_version >= (3, 6):
-      state, maps = state.popn(op.arg)
-    else:
-      state, maps = state.popn(op.arg & 0xff)
+    state, maps = state.popn(op.arg)
     args = vm_utils.build_map_unpack(state, maps, self.ctx)
     return state.push(args)
 

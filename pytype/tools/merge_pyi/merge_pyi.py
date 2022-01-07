@@ -41,8 +41,6 @@ Finally, it knows that __init__() is supposed to return None.
 import collections
 import itertools
 import logging
-import os
-import sys
 
 from lib2to3 import pygram
 from lib2to3 import pytree
@@ -62,8 +60,6 @@ __all__ = ['KnownError',
            'FixMergePyi',
            'annotate_string']
 
-_GRAMMAR_FILE = os.path.join(os.path.dirname(__file__), 'Grammar.txt')
-
 
 def patch_grammar(grammar_file):
   """Patch in the given lib2to3 grammar."""
@@ -73,12 +69,6 @@ def patch_grammar(grammar_file):
   for name, symbol in grammar.symbol2number.items():
     setattr(pygram.python_symbols, name, symbol)
   pygram.python_grammar = grammar
-
-
-if sys.version_info < (3, 6):
-  # Before Python 3.6, lib2to3's grammar cannot parse PEP 526-style variable
-  # annotations, so we patch in an improved grammar that can.
-  patch_grammar(_GRAMMAR_FILE)
 
 
 class KnownError(Exception):

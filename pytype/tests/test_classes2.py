@@ -267,7 +267,7 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
 
   def test_build_class_quick(self):
-    # A() hits maximum stack depth in python3.6
+    # A() hits maximum stack depth
     ty = self.Infer("""
       def f():
         class A: pass

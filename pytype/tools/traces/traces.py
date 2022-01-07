@@ -2,7 +2,6 @@
 
 import itertools
 import re
-import sys
 
 from pytype import analyze
 from pytype import config
@@ -110,9 +109,6 @@ class _SymbolMatcher:
     - a tuple of the above (will match if any member does)
   """
 
-  # TODO(b/206035716): In Python 3.7+, this type is exposed as `re.Pattern`.
-  _PATTERN_TYPE = type(re.compile(""))
-
   @classmethod
   def from_one_match(cls, match):
     return cls((match,))
@@ -130,7 +126,7 @@ class _SymbolMatcher:
 
   def match(self, symbol):
     for match in self._matches:
-      if isinstance(match, self._PATTERN_TYPE):
+      if isinstance(match, re.Pattern):
         if match.match(str(symbol)):
           return True
       elif match == symbol:
@@ -148,29 +144,16 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def __init__(self, src_code, *args, **kwargs):
     super().__init__(*args, **kwargs)
     self.source = src_code
-    # In Python versions before 3.7, there is a mismatch between where the ast
-    # and bytecode representations think some nodes are located, so we manually
-    # track the last line for multiline assign statements. This is safe because
-    # assign is not an expression and hence cannot be nested.
-    self._assign_end_line = None
     # Needed for x[i] = <multiline statement>
     self._assign_subscr = None
     # For tracking already matched traces
     self._matched = None
 
   def enter_Assign(self, node):
-    self._assign_end_line = self._get_last_line(node.value)
     if isinstance(node.targets[0], self._ast.Subscript):
       self._assign_subscr = node.targets[0].value
 
-  def _get_last_line(self, node):
-    """Walks a node, returning the latest line number of any of its children."""
-    v = _LineNumberVisitor(self._ast)
-    v.visit(node)
-    return v.line
-
   def leave_Assign(self, _):
-    self._assign_end_line = None
     self._assign_subscr = None
 
   def enter_Module(self, _):
@@ -244,16 +227,10 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def match_Name(self, node):
     if isinstance(node.ctx, self._ast.Load):
-      if self._assign_subscr and sys.version_info < (3, 7):
-        lineno = self._assign_end_line
-      else:
-        lineno = node.lineno
+      lineno = node.lineno
       ops = _LOAD_OPS
     elif isinstance(node.ctx, self._ast.Store):
-      if self._assign_end_line and sys.version_info < (3, 7):
-        lineno = self._assign_end_line
-      else:
-        lineno = node.lineno
+      lineno = node.lineno
       ops = _STORE_OPS
     else:
       return []
