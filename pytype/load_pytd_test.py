@@ -525,6 +525,21 @@ class ImportPathsTest(_LoaderTest):
     """).strip()
     self.assertMultiLineEqual(pytd_utils.Print(ast), expected)
 
+  def test_star_import_in_circular_dep(self):
+    stub3_ast = self._import(stub1="""
+      from stub2 import Foo
+      from typing import Mapping as Mapping
+    """, stub2="""
+      from stub3 import Mapping
+      class Foo: ...
+    """, stub3="""
+      from stub1 import *
+    """)
+    self.assertEqual(stub3_ast.Lookup("stub3.Foo").type,
+                     pytd.ClassType("stub2.Foo"))
+    self.assertEqual(stub3_ast.Lookup("stub3.Mapping").type,
+                     pytd.ClassType("typing.Mapping"))
+
 
 class ImportTypeMacroTest(_LoaderTest):
 
