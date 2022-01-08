@@ -212,7 +212,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     """Convert a (name, raw_annot) list to a {name: annotation} dict."""
     annotations = {}
     for name, t in annotations_list:
-      if t is None:
+      if t is None or t == self.ctx.convert.ellipsis:
+        # '...' is an experimental "inferred type": see b/213607272.
         continue
       annot = self._process_one_annotation(node, t, name,
                                            self.ctx.vm.simple_stack())
@@ -287,6 +288,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if not op.annotation:
       return None, value
     annot = op.annotation
+    if annot == "...":
+      # Experimental "inferred type": see b/213607272.
+      return None, value
     frame = self.ctx.vm.frame
     with self.ctx.vm.generate_late_annotations(self.ctx.vm.simple_stack()):
       var, errorlog = abstract_utils.eval_expr(self.ctx, node, frame.f_globals,

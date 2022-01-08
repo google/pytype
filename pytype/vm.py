@@ -1668,7 +1668,10 @@ class VirtualMachine:
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
     # Check whether obj is the __annotations__ dict.
-    if len(obj.data) == 1 and isinstance(obj.data[0], abstract.AnnotationsDict):
+    # '...' is an experimental "inferred type": see b/213607272.
+    if (len(obj.data) == 1 and
+        isinstance(obj.data[0], abstract.AnnotationsDict) and
+        val.data != [self.ctx.convert.ellipsis]):
       try:
         name = abstract_utils.get_atomic_python_constant(subscr, str)
       except abstract_utils.ConversionError:
