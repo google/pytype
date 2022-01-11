@@ -1,6 +1,5 @@
 """Tests for recursive types."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -198,20 +197,51 @@ class InferenceTest(test_base.BaseTest):
       Y = Union[T, List[Y]]
     """)
 
+  @test_base.skip("Crashes with 'Invalid top level pytd item: UnionType'")
+  def test_branching(self):
+    ty = self.Infer("""
+      from typing import Mapping, TypeVar, Union
 
-# TODO(b/109648354): also test:
-# - reingesting mutually recursive types
-# - reingesting parameterized recursive types
-# - pickling
+      K = TypeVar('K')
+      V = TypeVar('V')
+
+      StructureKV = Union[Mapping[K, 'StructureKV[K, V]'], V]
+
+      try:
+        Structure = Union[Mapping[str, StructureKV[str, V]], V]
+      except TypeError:
+        Structure = Union[Mapping[str, 'Structure[V]'], V]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Mapping, TypeVar, Union
+
+      K = TypeVar('K')
+      V = TypeVar('V')
+
+      StructureKV = Union[Mapping[K, StructureKV[K, V]], V]
+
+      # The two Mapping values are redundant, but pytype isn't smart enough to
+      # deduplicate them.
+      Structure = Union[
+          Mapping[str, Union[StructureKV[str, V], Structure[V]]],
+          V,
+      ]
+    """)
+
+
 class PyiTest(test_base.BaseTest):
   """Tests recursive types defined in pyi files."""
 
+  pickle = False
+
+  def DepTree(self, deps):
+    return super().DepTree([d + ({"pickle": self.pickle},) for d in deps])
+
   def test_basic(self):
-    with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from typing import List
-        X = List[X]
-      """)
+    with self.DepTree([("foo.py", """
+      from typing import List
+      X = List['X']
+    """)]):
       self.CheckWithErrors("""
         import foo
         from typing import Any, Set, List
@@ -220,7 +250,7 @@ class PyiTest(test_base.BaseTest):
         ok2: List[Any] = x
         bad1: List[str] = x  # annotation-type-mismatch
         bad2: Set[Any] = x  # annotation-type-mismatch
-      """, pythonpath=[d.path])
+      """)
 
   def test_reingest(self):
     with self.DepTree([("foo.py", """
@@ -289,6 +319,42 @@ class PyiTest(test_base.BaseTest):
         ok7: X = x_foo2
         ok8: X = x_foo4
       """)
+
+  def test_mutually_recursive(self):
+    with self.DepTree([("foo.py", """
+      from typing import List
+      X = List['Y']
+      Y = List[X]
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        from typing import Any, List
+        x: foo.X = None
+        ok: List[List[Any]] = x
+        bad: List[List[int]] = x  # annotation-type-mismatch
+      """)
+
+  @test_base.skip("Not yet implemented")
+  def test_parameterization(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List['X']]
+      Y = X[int]
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        ok1: foo.X[str] = ['']
+        ok2: foo.Y = [0]
+        bad1: foo.X[str] = [0]  # annotation-type-mismatch
+        bad2: foo.Y = ['']  # annotation-type-mismatch
+      """)
+
+
+class PickleTest(PyiTest):
+  """Test recursive types defined in pickled pyi files."""
+
+  pickle = True
 
 
 if __name__ == "__main__":
