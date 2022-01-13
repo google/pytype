@@ -2259,20 +2259,6 @@ class TypeMacroTest(parser_test_base.ParserTestBase):
 
       def f(x: List[Dict[K, V]]) -> Dict[K, V]: ...""")
 
-  def test_no_parameters(self):
-    self.check("""
-      from typing import List, TypeVar
-      Alias = List[List[T]]
-      T = TypeVar('T')
-      def f(x: Alias) -> None: ...""", """
-      from typing import Any, List, TypeVar
-
-      Alias = List[List[T]]
-
-      T = TypeVar('T')
-
-      def f(x: List[List[Any]]) -> None: ...""")
-
   def test_union(self):
     self.check("""
       from typing import List, TypeVar, Union

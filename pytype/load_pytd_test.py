@@ -580,19 +580,6 @@ class ImportTypeMacroTest(_LoaderTest):
         Strings = a.Alias[str, str]
       """)
 
-  def test_no_parameters(self):
-    ast = self._import(a="""
-      from typing import List, TypeVar
-      T = TypeVar('T')
-      Alias = List[T]
-    """, b="""
-      import a
-      def f(x: a.Alias): ...
-    """)
-    self.assertEqual(
-        pytd_utils.Print(ast.Lookup("b.f").signatures[0].params[0].type),
-        "List[Any]")
-
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 
