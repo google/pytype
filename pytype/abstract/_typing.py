@@ -533,6 +533,31 @@ class LateAnnotation:
         set(LateAnnotation.__dict__) |
         set(super().__getattribute__("__dict__")))
 
+  def flatten_expr(self):
+    """Flattens the expression into a legal variable name if necessary.
+
+    Pytype stores parameterized recursive types in intermediate variables. If
+    self is such a type, this method flattens self.expr into a string that can
+    serve as a variable name. For example, 'MyRecursiveAlias[int, str]' is
+    flattened into '_MyRecursiveAlias_LBAR_int_COMMA_str_RBAR'.
+
+    Returns:
+      If self is a parameterized recursive type, a flattened version of
+      self.expr that is a legal variable name. Otherwise, self.expr unchanged.
+    """
+    if "[" in self.expr and self.is_recursive():
+      return "_" + self.expr.replace("[", "_LBAR_").replace(
+          "]", "_RBAR").replace(", ", "_COMMA_")
+    return self.expr
+
+  def unflatten_expr(self):
+    """Unflattens a flattened expression."""
+    if "_LBAR_" in self.expr:
+      mod, dot, rest = self.expr.rpartition(".")
+      return mod + dot + rest[1:].replace("_LBAR_", "[").replace(
+          "_RBAR", "]").replace("_COMMA_", ", ")
+    return self.expr
+
   def __repr__(self):
     return "LateAnnotation(%r, resolved=%r)" % (
         self.expr, self._type if self.resolved else None)

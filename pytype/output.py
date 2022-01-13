@@ -143,7 +143,7 @@ class Converter(utils.ContextWeakrefMixin):
       A PyTD type.
     """
     if abstract_utils.is_recursive_annotation(v):
-      return pytd.LateType(v.expr)
+      return pytd.LateType(v.unflatten_expr() if self._detailed else v.expr)
     elif isinstance(v, abstract.Union):
       return pytd.UnionType(tuple(
           self.value_instance_to_pytd_type(node, t, instance, seen, view)

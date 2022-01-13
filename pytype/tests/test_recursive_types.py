@@ -212,11 +212,11 @@ class InferenceTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
-      X = List[Y[int]]
+      X = List[_Y_LBAR_int_RBAR]
       Y = Union[T, List[Y]]
+      _Y_LBAR_int_RBAR = Union[int, List[_Y_LBAR_int_RBAR]]
     """)
 
-  @test_base.skip("Wrong pyi output.")
   def test_parameterization_with_inner_parameter(self):
     ty = self.Infer("""
       from typing import List, TypeVar, Union
@@ -227,11 +227,13 @@ class InferenceTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
-      X = Union[T, List[X[T]]]
-      Y = List[Union[int, List[X[T][int]]]]
+      X = Union[T, List[_X_LBAR_T_RBAR]]
+      Y = List[Union[int, List[_X_LBAR_T_RBAR_LBAR_int_RBAR]]]
+      _X_LBAR_T_RBAR = Union[T, List[_X_LBAR_T_RBAR]]
+      _X_LBAR_T_RBAR_LBAR_int_RBAR = Union[int, List[
+          _X_LBAR_T_RBAR_LBAR_int_RBAR]]
     """)
 
-  @test_base.skip("Wrong pyi output.")
   def test_branching(self):
     ty = self.Infer("""
       from typing import Mapping, TypeVar, Union
@@ -252,14 +254,22 @@ class InferenceTest(test_base.BaseTest):
       K = TypeVar('K')
       V = TypeVar('V')
 
-      StructureKV = Union[Mapping[K, StructureKV[K, V]], V]
+      StructureKV = Union[Mapping[K, _StructureKV_LBAR_K_COMMA_V_RBAR], V]
 
       # The two Mapping values are redundant, but pytype isn't smart enough to
       # deduplicate them.
       Structure = Union[
-          Mapping[str, Union[StructureKV[str, V], Structure[V]]],
+          Mapping[str, Union[
+              _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR,
+              _Structure_LBAR_V_RBAR]],
           V,
       ]
+
+      _StructureKV_LBAR_K_COMMA_V_RBAR = Union[Mapping[
+          K, _StructureKV_LBAR_K_COMMA_V_RBAR], V]
+      _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR = Union[Mapping[
+          str, _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR], V]
+      _Structure_LBAR_V_RBAR = Union[Mapping[str, _Structure_LBAR_V_RBAR], V]
     """)
 
 
@@ -368,7 +378,6 @@ class PyiTest(test_base.BaseTest):
         bad: List[List[int]] = x  # annotation-type-mismatch
       """)
 
-  @test_base.skip("Not yet implemented")
   def test_parameterization(self):
     foo_src = """
       from typing import List, TypeVar, Union

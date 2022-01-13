@@ -438,10 +438,17 @@ class VirtualMachine:
       # If `annot` has already been resolved, this is a no-op. Otherwise, it
       # contains a real name error that will be logged when we resolve it now.
       annot.resolve(node, f_globals, f_locals)
+      self.flatten_late_annotation(node, annot, f_globals)
     self.late_annotations = None  # prevent adding unresolvable annotations
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
+
+  def flatten_late_annotation(self, node, annot, f_globals):
+    flattened_expr = annot.flatten_expr()
+    if flattened_expr != annot.expr:
+      annot.expr = flattened_expr
+      f_globals.members[flattened_expr] = annot.to_variable(node)
 
   def get_var_name(self, var):
     """Get the python variable name corresponding to a Variable."""
