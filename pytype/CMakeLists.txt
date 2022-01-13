@@ -88,6 +88,7 @@ py_library(
     ._utils
     pytype.abstract.abstract
     pytype.overlays.overlays
+    pytype.pytd.pytd
 )
 
 py_library(

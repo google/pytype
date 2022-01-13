@@ -8,6 +8,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
 from pytype.overlays import typing_overlay
+from pytype.pytd import pytd_utils
 
 
 class AnnotationUtils(utils.ContextWeakrefMixin):
@@ -20,6 +21,27 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                                             instantiate_unbound)
               for name, annot in annotations.items()}
     return annotations
+
+  def _get_type_parameter_subst(self, node, annot, substs, instantiate_unbound):
+    """Helper for sub_one_annotation."""
+    assert isinstance(annot, abstract.TypeParameter)
+    # We use the given substitutions to bind the annotation if
+    # (1) every subst provides at least one binding, and
+    # (2) none of the bindings are ambiguous, and
+    # (3) at least one binding is non-empty.
+    if all(annot.full_name in subst and subst[annot.full_name].bindings
+           for subst in substs):
+      vals = sum((subst[annot.full_name].data for subst in substs), [])
+    else:
+      vals = None
+    if (vals is None or
+        any(isinstance(v, abstract.AMBIGUOUS) for v in vals) or
+        all(isinstance(v, abstract.Empty) for v in vals)):
+      if instantiate_unbound:
+        vals = annot.instantiate(node).data
+      else:
+        vals = [annot]
+    return self.ctx.convert.merge_classes(vals)
 
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
     """Apply type parameter substitutions to an annotation."""
@@ -42,7 +64,13 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         if cur.is_late_annotation() and any(t[0] == cur for t in stack):
           # We've found a recursive type. We generate a LateAnnotation as a
           # placeholder for the substituted type.
-          late_annot = abstract.LateAnnotation(cur.expr, cur.stack, cur.ctx)
+          param_strings = []
+          for t in utils.unique_list(self.get_type_parameters(cur)):
+            s = pytd_utils.Print(self._get_type_parameter_subst(
+                node, t, substs, instantiate_unbound).get_instance_type(node))
+            param_strings.append(s)
+          expr = "%s[%s]" % (cur.expr, ", ".join(param_strings))
+          late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
           late_annotations[cur] = late_annot
           done.append(late_annot)
         elif inner_type_keys is None:
@@ -57,27 +85,19 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           if cur in late_annotations:
             # If we've generated a LateAnnotation placeholder for cur's
             # substituted type, replace it now with the real type.
-            late_annotations[cur].set_type(done_annot)
-          done.append(cur.replace(inner_types))
+            late_annot = late_annotations[cur]
+            late_annot.set_type(done_annot)
+            if "[" in late_annot.expr:
+              if self.ctx.vm.late_annotations is None:
+                self.ctx.vm.flatten_late_annotation(
+                    node, late_annot, self.ctx.vm.frame.f_globals)
+              else:
+                self.ctx.vm.late_annotations[
+                    late_annot.expr.split("[", 1)[0]].append(late_annot)
+          done.append(done_annot)
       else:
-        assert isinstance(cur, abstract.TypeParameter)
-        # We use the given substitutions to bind the annotation if
-        # (1) every subst provides at least one binding, and
-        # (2) none of the bindings are ambiguous, and
-        # (3) at least one binding is non-empty.
-        if all(cur.full_name in subst and subst[cur.full_name].bindings
-               for subst in substs):
-          vals = sum((subst[cur.full_name].data for subst in substs), [])
-        else:
-          vals = None
-        if (vals is None or
-            any(isinstance(v, abstract.AMBIGUOUS) for v in vals) or
-            all(isinstance(v, abstract.Empty) for v in vals)):
-          if instantiate_unbound:
-            vals = cur.instantiate(node).data
-          else:
-            vals = [cur]
-        done.append(self.ctx.convert.merge_classes(vals))
+        done.append(self._get_type_parameter_subst(
+            node, cur, substs, instantiate_unbound))
     assert len(done) == 1
     return done[0]
 
@@ -212,7 +232,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     """Convert a (name, raw_annot) list to a {name: annotation} dict."""
     annotations = {}
     for name, t in annotations_list:
-      if t is None:
+      if t is None or t == self.ctx.convert.ellipsis:
+        # '...' is an experimental "inferred type": see b/213607272.
         continue
       annot = self._process_one_annotation(node, t, name,
                                            self.ctx.vm.simple_stack())
@@ -287,6 +308,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if not op.annotation:
       return None, value
     annot = op.annotation
+    if annot == "...":
+      # Experimental "inferred type": see b/213607272.
+      return None, value
     frame = self.ctx.vm.frame
     with self.ctx.vm.generate_late_annotations(self.ctx.vm.simple_stack()):
       var, errorlog = abstract_utils.eval_expr(self.ctx, node, frame.f_globals,

@@ -2,6 +2,7 @@
 
 import contextlib
 import logging
+import os.path
 import sys
 import textwrap
 from typing import Tuple
@@ -148,15 +149,17 @@ class BaseTest(unittest.TestCase):
         "Individual tests cannot set the python_version of the config options.")
     self.options.tweak(**kwargs)
 
-  def _GetPythonpath(self, pythonpath, imports_map):
+  def _GetPythonpathArgs(self, pythonpath, imports_map):
     if pythonpath:
-      return pythonpath
+      pythonpath_arg = pythonpath
+      imports_map_arg = imports_map
     elif imports_map:
-      return [""]
-    elif self.options.pythonpath:
-      return self.options.pythonpath
+      pythonpath_arg = [""]
+      imports_map_arg = imports_map
     else:
-      return pythonpath
+      pythonpath_arg = self.options.pythonpath
+      imports_map_arg = self.options.imports_map
+    return {"pythonpath": pythonpath_arg, "imports_map": imports_map_arg}
 
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
@@ -165,9 +168,8 @@ class BaseTest(unittest.TestCase):
             **kwargs):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(
-        skip_repeat_calls=skip_repeat_calls,
-        pythonpath=self._GetPythonpath(pythonpath, imports_map),
-        quick=quick, imports_map=imports_map)
+        skip_repeat_calls=skip_repeat_calls, quick=quick,
+        **self._GetPythonpathArgs(pythonpath, imports_map))
     try:
       src = _Format(code)
       errorlog = test_utils.TestErrorLog(code)
@@ -190,9 +192,8 @@ class BaseTest(unittest.TestCase):
     code = _Format(code)
     errorlog = test_utils.TestErrorLog(code)
     self.ConfigureOptions(
-        pythonpath=self._GetPythonpath(pythonpath, imports_map),
         analyze_annotated=analyze_annotated, quick=quick,
-        imports_map=imports_map)
+        **self._GetPythonpathArgs(pythonpath, imports_map))
     return {"src": code, "errorlog": errorlog, "options": self.options,
             "loader": self.loader}
 
@@ -383,8 +384,8 @@ class BaseTest(unittest.TestCase):
     """
     self.ConfigureOptions(
         module_name=module_name, quick=quick, use_pickled_files=True,
-        pythonpath=self._GetPythonpath(pythonpath, imports_map),
-        imports_map=imports_map, analyze_annotated=analyze_annotated)
+        analyze_annotated=analyze_annotated,
+        **self._GetPythonpathArgs(pythonpath, imports_map))
     errorlog = test_utils.TestErrorLog(src)
     if errorlog.expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
@@ -431,26 +432,33 @@ class BaseTest(unittest.TestCase):
   @contextlib.contextmanager
   def DepTree(self, deps):
     old_pythonpath = self.options.pythonpath
+    old_imports_map = self.options.imports_map
     try:
       with file_utils.Tempdir() as d:
-        self.ConfigureOptions(pythonpath=[d.path])
+        self.ConfigureOptions(pythonpath=[""], imports_map={})
         for dep in deps:
           if len(dep) == 3:
             path, contents, opts = dep
           else:
             path, contents = dep
             opts = {}
-          if path.endswith(".pyi"):
-            d.create_file(path, contents)
-          elif path.endswith(".py"):
-            path = path + "i"
-            pyi = pytd_utils.Print(self.Infer(contents, **opts))
-            d.create_file(path, pyi)
+          base, ext = os.path.splitext(path)
+          if ext == ".pyi":
+            filepath = d.create_file(path, contents)
+          elif ext == ".py":
+            pickle = opts.get("pickle", False)
+            new_ext = ".pickled" if pickle else ".pyi"
+            pyi = self.Infer(contents, module_name=base, **opts)
+            if not pickle:
+              pyi = pytd_utils.Print(pyi)
+            filepath = d.create_file(base + new_ext, pyi)
           else:
             raise ValueError(f"Unrecognised dependency type: {path}")
+          self.options.imports_map[base] = filepath
         yield d
     finally:
-      self.ConfigureOptions(pythonpath=old_pythonpath)
+      self.ConfigureOptions(pythonpath=old_pythonpath,
+                            imports_map=old_imports_map)
 
 
 def _PrintErrorDebug(descr, value):

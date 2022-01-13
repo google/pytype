@@ -315,16 +315,12 @@ def MaybeSubstituteParameters(base_type, parameters=None):
   # Check if `base_type` is a generic type whose type parameters should be
   # substituted by `parameters` (a "type macro").
   template = pytd_utils.GetTypeParameters(base_type)
-  if not template:
+  if not template or parameters is None:
     return None
-  if parameters is None:
-    # TODO(rechen): Respect type parameters' bounds and constraints.
-    mapping = {t: pytd.AnythingType() for t in template}
-  elif len(template) != len(parameters):
+  if len(template) != len(parameters):
     raise ValueError("%s expected %d parameters, got %s" % (
         pytd_utils.Print(base_type), len(template), len(parameters)))
-  else:
-    mapping = dict(zip(template, parameters))
+  mapping = dict(zip(template, parameters))
   return base_type.Visit(ReplaceTypeParameters(mapping))
 
 

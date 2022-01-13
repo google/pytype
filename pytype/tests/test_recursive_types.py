@@ -1,6 +1,5 @@
 """Tests for recursive types."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 
 
@@ -24,18 +23,37 @@ class UsageTest(test_base.BaseTest):
 
   def test_alias(self):
     self.Check("""
-      from typing import Any, Iterable, TypeVar, Union
-      T = TypeVar("T")
-      X = Union[Any, Iterable["X"]]
+      from typing import Any, Iterable, Union
+      X = Union[Any, Iterable['X']]
       Y = Union[Any, X]
     """)
 
   def test_generic_alias(self):
-    self.Check("""
+    src = """
       from typing import List, TypeVar, Union
-      T = TypeVar("T")
-      Tree = Union[T, List['Tree']]
+      T = TypeVar('T')
+      Tree = Union[T, List['Tree{inner_parameter}']]
       def f(x: Tree[int]): ...
+    """
+    for inner_parameter in ("", "[T]"):
+      with self.subTest(inner_parameter=inner_parameter):
+        self.Check(src.format(inner_parameter=inner_parameter))
+
+  def test_generic_alias_rename_type_params(self):
+    self.CheckWithErrors("""
+      from typing import List, Set, TypeVar, Union
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Union[T1, Set[T2], List['X[T2, T1]']]
+      Y = X[int, str]
+      ok1: Y = 0
+      ok2: Y = {''}
+      ok3: Y = ['']
+      ok4: Y = [{0}]
+      bad1: Y = ''  # annotation-type-mismatch
+      bad2: Y = {0}  # annotation-type-mismatch
+      bad3: Y = [0]  # annotation-type-mismatch
+      bad4: Y = [{''}]  # annotation-type-mismatch
     """)
 
 
@@ -165,7 +183,7 @@ class InferenceTest(test_base.BaseTest):
   def test_basic(self):
     ty = self.Infer("""
       from typing import List
-      Foo = List["Foo"]
+      Foo = List['Foo']
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
@@ -175,8 +193,8 @@ class InferenceTest(test_base.BaseTest):
   def test_mutual_recursion(self):
     ty = self.Infer("""
       from typing import List
-      X = List["Y"]
-      Y = List["X"]
+      X = List['Y']
+      Y = List['X']
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
@@ -188,30 +206,86 @@ class InferenceTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import List, TypeVar, Union
       T = TypeVar('T')
-      X = List["Y[int]"]
-      Y = Union[T, List["Y"]]
+      X = List['Y[int]']
+      Y = Union[T, List['Y']]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
-      X = List[Y[int]]
+      X = List[_Y_LBAR_int_RBAR]
       Y = Union[T, List[Y]]
+      _Y_LBAR_int_RBAR = Union[int, List[_Y_LBAR_int_RBAR]]
+    """)
+
+  def test_parameterization_with_inner_parameter(self):
+    ty = self.Infer("""
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+      Y = List[X[int]]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List[_X_LBAR_T_RBAR]]
+      Y = List[Union[int, List[_X_LBAR_T_RBAR_LBAR_int_RBAR]]]
+      _X_LBAR_T_RBAR = Union[T, List[_X_LBAR_T_RBAR]]
+      _X_LBAR_T_RBAR_LBAR_int_RBAR = Union[int, List[
+          _X_LBAR_T_RBAR_LBAR_int_RBAR]]
+    """)
+
+  def test_branching(self):
+    ty = self.Infer("""
+      from typing import Mapping, TypeVar, Union
+
+      K = TypeVar('K')
+      V = TypeVar('V')
+
+      StructureKV = Union[Mapping[K, 'StructureKV[K, V]'], V]
+
+      try:
+        Structure = StructureKV[str, V]
+      except TypeError:
+        Structure = Union[Mapping[str, 'Structure[V]'], V]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Mapping, TypeVar, Union
+
+      K = TypeVar('K')
+      V = TypeVar('V')
+
+      StructureKV = Union[Mapping[K, _StructureKV_LBAR_K_COMMA_V_RBAR], V]
+
+      # The two Mapping values are redundant, but pytype isn't smart enough to
+      # deduplicate them.
+      Structure = Union[
+          Mapping[str, Union[
+              _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR,
+              _Structure_LBAR_V_RBAR]],
+          V,
+      ]
+
+      _StructureKV_LBAR_K_COMMA_V_RBAR = Union[Mapping[
+          K, _StructureKV_LBAR_K_COMMA_V_RBAR], V]
+      _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR = Union[Mapping[
+          str, _StructureKV_LBAR_K_COMMA_V_RBAR_LBAR_str_COMMA_V_RBAR], V]
+      _Structure_LBAR_V_RBAR = Union[Mapping[str, _Structure_LBAR_V_RBAR], V]
     """)
 
 
-# TODO(b/109648354): also test:
-# - reingesting mutually recursive types
-# - reingesting parameterized recursive types
-# - pickling
 class PyiTest(test_base.BaseTest):
   """Tests recursive types defined in pyi files."""
 
+  pickle = False
+
+  def DepTree(self, deps):
+    return super().DepTree([d + ({"pickle": self.pickle},) for d in deps])
+
   def test_basic(self):
-    with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from typing import List
-        X = List[X]
-      """)
+    with self.DepTree([("foo.py", """
+      from typing import List
+      X = List['X']
+    """)]):
       self.CheckWithErrors("""
         import foo
         from typing import Any, Set, List
@@ -220,7 +294,7 @@ class PyiTest(test_base.BaseTest):
         ok2: List[Any] = x
         bad1: List[str] = x  # annotation-type-mismatch
         bad2: Set[Any] = x  # annotation-type-mismatch
-      """, pythonpath=[d.path])
+      """)
 
   def test_reingest(self):
     with self.DepTree([("foo.py", """
@@ -289,6 +363,48 @@ class PyiTest(test_base.BaseTest):
         ok7: X = x_foo2
         ok8: X = x_foo4
       """)
+
+  def test_mutually_recursive(self):
+    with self.DepTree([("foo.py", """
+      from typing import List
+      X = List['Y']
+      Y = List[X]
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        from typing import Any, List
+        x: foo.X = None
+        ok: List[List[Any]] = x
+        bad: List[List[int]] = x  # annotation-type-mismatch
+      """)
+
+  def test_parameterization(self):
+    foo_src = """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List['X{inner_parameter}']]
+      Y = X[int]
+    """
+    for inner_parameter in ("", "[T]"):
+      with self.subTest(inner_parameter=inner_parameter):
+        with self.DepTree([
+            ("foo.py", foo_src.format(inner_parameter=inner_parameter))]):
+          errors = self.CheckWithErrors("""
+            import foo
+            ok1: foo.X[str] = ['']
+            ok2: foo.Y = [0]
+            bad1: foo.X[str] = [0]  # annotation-type-mismatch
+            bad2: foo.Y = ['']  # annotation-type-mismatch[e]
+          """)
+          self.assertErrorSequences(errors, {
+              "e": ["Annotation: Union[List[foo.X[int]], int]",
+                    "Assignment: List[str]"]})
+
+
+class PickleTest(PyiTest):
+  """Test recursive types defined in pickled pyi files."""
+
+  pickle = True
 
 
 if __name__ == "__main__":

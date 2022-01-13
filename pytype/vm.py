@@ -438,10 +438,17 @@ class VirtualMachine:
       # If `annot` has already been resolved, this is a no-op. Otherwise, it
       # contains a real name error that will be logged when we resolve it now.
       annot.resolve(node, f_globals, f_locals)
+      self.flatten_late_annotation(node, annot, f_globals)
     self.late_annotations = None  # prevent adding unresolvable annotations
     assert not self.frames, "Frames left over!"
     log.info("Final node: <%d>%s", node.id, node.name)
     return node, f_globals.members
+
+  def flatten_late_annotation(self, node, annot, f_globals):
+    flattened_expr = annot.flatten_expr()
+    if flattened_expr != annot.expr:
+      annot.expr = flattened_expr
+      f_globals.members[flattened_expr] = annot.to_variable(node)
 
   def get_var_name(self, var):
     """Get the python variable name corresponding to a Variable."""
@@ -677,7 +684,9 @@ class VirtualMachine:
     node = self.ctx.attribute_handler.set_attribute(state.node, target, name,
                                                     value)
     if target is self.frame.f_globals and self.late_annotations:
-      for annot in self.late_annotations[name]:
+      # We sort the annotations so that a parameterized class's base class is
+      # resolved before the parameterized class itself.
+      for annot in sorted(self.late_annotations[name], key=lambda t: t.expr):
         annot.resolve(node, self.frame.f_globals, self.frame.f_locals)
     return state.change_cfg_node(node)
 
@@ -1668,7 +1677,10 @@ class VirtualMachine:
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
     # Check whether obj is the __annotations__ dict.
-    if len(obj.data) == 1 and isinstance(obj.data[0], abstract.AnnotationsDict):
+    # '...' is an experimental "inferred type": see b/213607272.
+    if (len(obj.data) == 1 and
+        isinstance(obj.data[0], abstract.AnnotationsDict) and
+        val.data != [self.ctx.convert.ellipsis]):
       try:
         name = abstract_utils.get_atomic_python_constant(subscr, str)
       except abstract_utils.ConversionError:

@@ -885,6 +885,22 @@ class GenericTypeAliasTest(test_base.BaseTest):
       Y = Union[Sequence, Mapping[str, Any], V]
     """)
 
+  def test_multiple_typevar_options(self):
+    ty = self.Infer("""
+      from typing import TypeVar
+      if __random__:
+        T1 = TypeVar('T1')
+        T2 = TypeVar('T2')
+      else:
+        T1 = TypeVar('T1')
+        T2 = TypeVar('T2', bound=str)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, TypeVar
+      T1 = TypeVar('T1')
+      T2: Any
+    """)
+
 
 class TypeVarTestPy3(test_base.BaseTest):
   """Tests for TypeVar in Python 3."""

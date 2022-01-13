@@ -515,6 +515,8 @@ class LateAnnotation:
   Use `x.is_late_annotation()` to check whether x is a late annotation.
   """
 
+  _RESOLVING = object()
+
   def __init__(self, expr, stack, ctx):
     self.expr = expr
     self.stack = stack
@@ -530,6 +532,31 @@ class LateAnnotation:
     self._attribute_names = (
         set(LateAnnotation.__dict__) |
         set(super().__getattribute__("__dict__")))
+
+  def flatten_expr(self):
+    """Flattens the expression into a legal variable name if necessary.
+
+    Pytype stores parameterized recursive types in intermediate variables. If
+    self is such a type, this method flattens self.expr into a string that can
+    serve as a variable name. For example, 'MyRecursiveAlias[int, str]' is
+    flattened into '_MyRecursiveAlias_LBAR_int_COMMA_str_RBAR'.
+
+    Returns:
+      If self is a parameterized recursive type, a flattened version of
+      self.expr that is a legal variable name. Otherwise, self.expr unchanged.
+    """
+    if "[" in self.expr and self.is_recursive():
+      return "_" + self.expr.replace("[", "_LBAR_").replace(
+          "]", "_RBAR").replace(", ", "_COMMA_")
+    return self.expr
+
+  def unflatten_expr(self):
+    """Unflattens a flattened expression."""
+    if "_LBAR_" in self.expr:
+      mod, dot, rest = self.expr.rpartition(".")
+      return mod + dot + rest[1:].replace("_LBAR_", "[").replace(
+          "_RBAR", "]").replace("_COMMA_", ", ")
+    return self.expr
 
   def __repr__(self):
     return "LateAnnotation(%r, resolved=%r)" % (
@@ -558,7 +585,10 @@ class LateAnnotation:
     """Resolve the late annotation."""
     if self.resolved:
       return
-    self.resolved = True
+    # Sets resolved to a truthy value distinguishable from True so that
+    # 'if self.resolved' is True when self is partially resolved, but code that
+    # really needs to tell partially and fully resolved apart can do so.
+    self.resolved = LateAnnotation._RESOLVING
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
                                              f_locals, self.expr)
     if errorlog:

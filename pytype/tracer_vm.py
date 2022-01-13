@@ -495,12 +495,20 @@ class CallTracer(vm.VirtualMachine):
       options = var.FilteredData(self.ctx.exitpoint, strict=False)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
-        if all(
-            isinstance(o, (abstract.ParameterizedClass, abstract.TypeParameter,
-                           abstract.Union)) for o in options):  # type alias
-          data.append(
-              pytd_utils.JoinTypes(
-                  t.to_pytd_def(self.ctx.exitpoint, name) for t in options))
+        if all(isinstance(o, abstract.TypeParameter) for o in options):
+          pytd_def = pytd_utils.JoinTypes(
+              t.to_pytd_def(self.ctx.exitpoint, name) for t in options)
+          if isinstance(pytd_def, pytd.TypeParameter):
+            data.append(pytd_def)
+          else:
+            # We have multiple definitions for the same TypeVar name. There's no
+            # good way to handle this.
+            data.append(pytd.Constant(name, pytd.AnythingType()))
+        elif all(isinstance(o, (abstract.ParameterizedClass, abstract.Union))
+                 for o in options):  # type alias
+          pytd_def = pytd_utils.JoinTypes(
+              t.to_pytd_def(self.ctx.exitpoint, name).type for t in options)
+          data.append(pytd.Alias(name, pytd_def))
         else:
           # It's ambiguous whether this is a type, a function or something
           # else, so encode it as a constant.

@@ -940,9 +940,9 @@ class AnnotationTest(test_base.BaseTest):
   def test_ellipsis(self):
     ty, errors = self.InferWithErrors("""
       from typing import Dict, Tuple
-      def f(x: ...): pass  # invalid-annotation[e1]
+      def f(x: ...): pass  # experimental "inferred type": see b/213607272
       def g(x: Tuple[str, ...]): pass
-      def h(x: Dict[..., int]): pass  # invalid-annotation[e2]
+      def h(x: Dict[..., int]): pass  # invalid-annotation[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Tuple
@@ -950,8 +950,7 @@ class AnnotationTest(test_base.BaseTest):
       def g(x: Tuple[str, ...]) -> None: ...
       def h(x: Dict[Any, int]) -> None: ...
     """)
-    self.assertErrorRegexes(
-        errors, {"e1": r"Ellipsis.*x", "e2": r"Ellipsis.*Dict"})
+    self.assertErrorRegexes(errors, {"e": r"Ellipsis.*Dict"})
 
   def test_custom_container(self):
     with file_utils.Tempdir() as d:
@@ -1297,6 +1296,43 @@ class TestStringifiedAnnotations(test_base.BaseTest):
       assert_type(A().b, Optional[B])
       assert_type(A().c, Optional[B])
     """)
+
+
+class EllipsisTest(test_base.BaseTest):
+  """Tests usage of '...' to mean "inferred type".
+
+  This is an experimental feature that makes it possible to explicitly annotate
+  a type as inferred. See b/213607272.
+  """
+
+  def test_variable(self):
+    ty = self.Infer("x: ... = 0")
+    self.assertTypesMatchPytd(ty, "x: int")
+
+  def test_function(self):
+    ty = self.Infer("""
+      def f(x: ...) -> ...:
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      _T0 = TypeVar('_T0')
+      def f(x: _T0) -> _T0: ...
+    """)
+
+  def test_class(self):
+    ty = self.Infer("""
+      class Foo:
+        x: ...
+        def f(self):
+          self.x = 5
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        x: int
+        def f(self) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

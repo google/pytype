@@ -1,3 +1,16 @@
+Version 2022.01.13:
+
+New features and updates:
+* Make available an initial implementation of recursive type aliases with a
+  feature flag, --allow-recursive-types. Once this feature is stable, the flag
+  will be removed and its behavior made the default.
+* Allow using '...' as a top-level type annotation. This is an experimental
+  annotation that means "inferred type".
+
+Bug fixes:
+* Stop replacing unsubstituted type params in generic aliases with Any in stubs.
+* Better handle type aliases with multiple options.
+
 Version 2022.01.07:
 
 New features and updates:

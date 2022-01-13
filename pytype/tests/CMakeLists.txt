@@ -624,7 +624,6 @@ py_test(
     test_recursive_types.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
