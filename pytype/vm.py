@@ -677,7 +677,9 @@ class VirtualMachine:
     node = self.ctx.attribute_handler.set_attribute(state.node, target, name,
                                                     value)
     if target is self.frame.f_globals and self.late_annotations:
-      for annot in self.late_annotations[name]:
+      # We sort the annotations so that a parameterized class's base class is
+      # resolved before the parameterized class itself.
+      for annot in sorted(self.late_annotations[name], key=lambda t: t.expr):
         annot.resolve(node, self.frame.f_globals, self.frame.f_locals)
     return state.change_cfg_node(node)
 

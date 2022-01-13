@@ -515,6 +515,8 @@ class LateAnnotation:
   Use `x.is_late_annotation()` to check whether x is a late annotation.
   """
 
+  _RESOLVING = object()
+
   def __init__(self, expr, stack, ctx):
     self.expr = expr
     self.stack = stack
@@ -558,7 +560,10 @@ class LateAnnotation:
     """Resolve the late annotation."""
     if self.resolved:
       return
-    self.resolved = True
+    # Sets resolved to a truthy value distinguishable from True so that
+    # 'if self.resolved' is True when self is partially resolved, but code that
+    # really needs to tell partially and fully resolved apart can do so.
+    self.resolved = LateAnnotation._RESOLVING
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
                                              f_locals, self.expr)
     if errorlog:

@@ -23,18 +23,37 @@ class UsageTest(test_base.BaseTest):
 
   def test_alias(self):
     self.Check("""
-      from typing import Any, Iterable, TypeVar, Union
-      T = TypeVar("T")
-      X = Union[Any, Iterable["X"]]
+      from typing import Any, Iterable, Union
+      X = Union[Any, Iterable['X']]
       Y = Union[Any, X]
     """)
 
   def test_generic_alias(self):
-    self.Check("""
+    src = """
       from typing import List, TypeVar, Union
-      T = TypeVar("T")
-      Tree = Union[T, List['Tree']]
+      T = TypeVar('T')
+      Tree = Union[T, List['Tree{inner_parameter}']]
       def f(x: Tree[int]): ...
+    """
+    for inner_parameter in ("", "[T]"):
+      with self.subTest(inner_parameter=inner_parameter):
+        self.Check(src.format(inner_parameter=inner_parameter))
+
+  def test_generic_alias_rename_type_params(self):
+    self.CheckWithErrors("""
+      from typing import List, Set, TypeVar, Union
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      X = Union[T1, Set[T2], List['X[T2, T1]']]
+      Y = X[int, str]
+      ok1: Y = 0
+      ok2: Y = {''}
+      ok3: Y = ['']
+      ok4: Y = [{0}]
+      bad1: Y = ''  # annotation-type-mismatch
+      bad2: Y = {0}  # annotation-type-mismatch
+      bad3: Y = [0]  # annotation-type-mismatch
+      bad4: Y = [{''}]  # annotation-type-mismatch
     """)
 
 
@@ -164,7 +183,7 @@ class InferenceTest(test_base.BaseTest):
   def test_basic(self):
     ty = self.Infer("""
       from typing import List
-      Foo = List["Foo"]
+      Foo = List['Foo']
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
@@ -174,8 +193,8 @@ class InferenceTest(test_base.BaseTest):
   def test_mutual_recursion(self):
     ty = self.Infer("""
       from typing import List
-      X = List["Y"]
-      Y = List["X"]
+      X = List['Y']
+      Y = List['X']
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
@@ -187,8 +206,8 @@ class InferenceTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import List, TypeVar, Union
       T = TypeVar('T')
-      X = List["Y[int]"]
-      Y = Union[T, List["Y"]]
+      X = List['Y[int]']
+      Y = Union[T, List['Y']]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar, Union
@@ -197,7 +216,22 @@ class InferenceTest(test_base.BaseTest):
       Y = Union[T, List[Y]]
     """)
 
-  @test_base.skip("Crashes with 'Invalid top level pytd item: UnionType'")
+  @test_base.skip("Wrong pyi output.")
+  def test_parameterization_with_inner_parameter(self):
+    ty = self.Infer("""
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+      Y = List[X[int]]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List[X[T]]]
+      Y = List[Union[int, List[X[T][int]]]]
+    """)
+
+  @test_base.skip("Wrong pyi output.")
   def test_branching(self):
     ty = self.Infer("""
       from typing import Mapping, TypeVar, Union
@@ -208,7 +242,7 @@ class InferenceTest(test_base.BaseTest):
       StructureKV = Union[Mapping[K, 'StructureKV[K, V]'], V]
 
       try:
-        Structure = Union[Mapping[str, StructureKV[str, V]], V]
+        Structure = StructureKV[str, V]
       except TypeError:
         Structure = Union[Mapping[str, 'Structure[V]'], V]
     """)
@@ -336,19 +370,26 @@ class PyiTest(test_base.BaseTest):
 
   @test_base.skip("Not yet implemented")
   def test_parameterization(self):
-    with self.DepTree([("foo.py", """
+    foo_src = """
       from typing import List, TypeVar, Union
       T = TypeVar('T')
-      X = Union[T, List['X']]
+      X = Union[T, List['X{inner_parameter}']]
       Y = X[int]
-    """)]):
-      self.CheckWithErrors("""
-        import foo
-        ok1: foo.X[str] = ['']
-        ok2: foo.Y = [0]
-        bad1: foo.X[str] = [0]  # annotation-type-mismatch
-        bad2: foo.Y = ['']  # annotation-type-mismatch
-      """)
+    """
+    for inner_parameter in ("", "[T]"):
+      with self.subTest(inner_parameter=inner_parameter):
+        with self.DepTree([
+            ("foo.py", foo_src.format(inner_parameter=inner_parameter))]):
+          errors = self.CheckWithErrors("""
+            import foo
+            ok1: foo.X[str] = ['']
+            ok2: foo.Y = [0]
+            bad1: foo.X[str] = [0]  # annotation-type-mismatch
+            bad2: foo.Y = ['']  # annotation-type-mismatch[e]
+          """)
+          self.assertErrorSequences(errors, {
+              "e": ["Annotation: Union[List[foo.X[int]], int]",
+                    "Assignment: List[str]"]})
 
 
 class PickleTest(PyiTest):

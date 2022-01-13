@@ -600,14 +600,25 @@ class ParameterizedClass(
     if self._hash is None:
       if isinstance(self._formal_type_parameters,
                     abstract_utils.LazyFormalTypeParameters):
-        items = tuple(self._raw_formal_type_parameters())
+        items = self._raw_formal_type_parameters()
+        cache = False
       else:
         # Use the names of the parameter values to approximate a hash, to avoid
         # infinite recursion on recursive type annotations.
-        items = tuple((name, val.full_name)
-                      for name, val in self.formal_type_parameters.items())
-      self._hash = hash((self.base_cls, items))
-    return self._hash
+        items = []
+        cache = True
+        for name, val in self.formal_type_parameters.items():
+          # The 'is not True' check is to prevent us from incorrectly caching
+          # the hash when val.resolved == LateAnnotation._RESOLVING.
+          if val.is_late_annotation() and val.resolved is not True:  # pylint: disable=g-bool-id-comparison
+            cache = False
+          items.append((name, val.full_name))
+      hashval = hash((self.base_cls, tuple(items)))
+      if cache:
+        self._hash = hashval
+    else:
+      hashval = self._hash
+    return hashval
 
   def __contains__(self, name):
     return name in self.base_cls

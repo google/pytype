@@ -496,16 +496,14 @@ class ErrorLog(ErrorLogBase):
 
   def _print_as_expected_type(self, t: abstract.BaseValue, instance=None):
     """Print abstract value t as a pytd type."""
-    if t.is_late_annotation():
-      return typing.cast(abstract.LateAnnotation, t).expr
-    elif isinstance(t, abstract.Union):
-      return self._join_printed_types(self._print_as_expected_type(o)
-                                      for o in t.options)
-    elif isinstance(t, (abstract.Unknown, abstract.Unsolvable,
-                        abstract.Class)):
+    if isinstance(t, (abstract.Unknown, abstract.Unsolvable,
+                      abstract.Class)) or t.is_late_annotation():
       with t.ctx.pytd_convert.set_output_mode(
           t.ctx.pytd_convert.OutputMode.DETAILED):
         return self._pytd_print(t.get_instance_type(instance=instance))
+    elif isinstance(t, abstract.Union):
+      return self._join_printed_types(self._print_as_expected_type(o)
+                                      for o in t.options)
     elif abstract_utils.is_concrete(t):
       return re.sub(r"(\\n|\s)+", " ",
                     typing.cast(mixin.PythonConstant, t).str_of_constant(
