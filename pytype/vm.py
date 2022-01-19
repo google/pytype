@@ -722,8 +722,12 @@ class VirtualMachine:
     """Applies the type annotation, if any, associated with this object."""
     typ, value = self.ctx.annotation_utils.apply_annotation(
         state.node, op, name, orig_val)
+    final = False
+    local = False
     if annotations_dict is not None:
+      final = name in annotations_dict and annotations_dict[name].final
       if annotations_dict is self.current_annotated_locals:
+        local = True
         self._record_local(state.node, op, name, typ, orig_val)
       elif name not in annotations_dict or not annotations_dict[name].typ:
         # When updating non-local annotations, we only record the first one
@@ -738,8 +742,13 @@ class VirtualMachine:
           # cases where it is causing false positives or other issues.
           value = self.ctx.new_unsolvable(state.node)
     if check_types:
-      self.ctx.check_annotation_type_mismatch(
-          state.node, name, typ, orig_val, self.frames, allow_none=True)
+      if isinstance(typ, abstract.FinalAnnotation):
+        typ = typ.annotation
+      if final:
+        self.ctx.errorlog.assigning_to_final(self.frames, name, local)
+      else:
+        self.ctx.check_annotation_type_mismatch(
+            state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
 
   def _pop_and_store(self, state, op, name, local):
@@ -1672,30 +1681,37 @@ class VirtualMachine:
     state, _ = self._call(state, obj, "__setitem__", (key, val))
     return state
 
+  def _record_annotation_dict_store(self, state, obj, subscr, val, op):
+    """Record a store_subscr to an __annotations__ dict."""
+    try:
+      name = abstract_utils.get_atomic_python_constant(subscr, str)
+    except abstract_utils.ConversionError:
+      pass
+    else:
+      allowed_type_params = (
+          self.frame.type_params
+          | self.ctx.annotation_utils.get_callable_type_parameter_names(val))
+      typ = self.ctx.annotation_utils.extract_annotation(
+          state.node,
+          val,
+          name,
+          self.simple_stack(),
+          allowed_type_params=allowed_type_params)
+      self._record_annotation(state.node, op, name, typ)
+
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
     # Check whether obj is the __annotations__ dict.
-    # '...' is an experimental "inferred type": see b/213607272.
-    if (len(obj.data) == 1 and
-        isinstance(obj.data[0], abstract.AnnotationsDict) and
-        val.data != [self.ctx.convert.ellipsis]):
-      try:
-        name = abstract_utils.get_atomic_python_constant(subscr, str)
-      except abstract_utils.ConversionError:
+    if abstract_utils.match_atomic_value(obj, abstract.AnnotationsDict):
+      if val.data == [self.ctx.convert.ellipsis]:
+        # '...' is an experimental "inferred type": see b/213607272.
         pass
       else:
-        allowed_type_params = (
-            self.frame.type_params
-            | self.ctx.annotation_utils.get_callable_type_parameter_names(val))
-        typ = self.ctx.annotation_utils.extract_annotation(
-            state.node,
-            val,
-            name,
-            self.simple_stack(),
-            allowed_type_params=allowed_type_params)
-        self._record_annotation(state.node, op, name, typ)
+        if abstract_utils.match_atomic_value(val, abstract.FinalAnnotation):
+          val = val.data[0].annotation.to_variable(state.node)
+        self._record_annotation_dict_store(state, obj, subscr, val, op)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 

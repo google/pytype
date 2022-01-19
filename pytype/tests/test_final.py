@@ -40,5 +40,89 @@ class TestFinalDecorator(test_base.BaseTest):
     self.assertErrorSequences(err, {"e": ["final class A"]})
 
 
+class TestFinal(test_base.BaseTest):
+  """Test Final."""
+
+  def test_reassign_with_same_type(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      x: Final[int] = 10
+      x = 20  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
+
+  def test_reassign_with_different_type(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      x: Final[int] = 10
+      x = "20"  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
+
+  def test_reassign_with_new_annotation(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      x: Final[int] = 10
+      x: str = "20"  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
+
+  def test_reassign_with_final(self):
+    self.Check("""
+      from typing import Final
+      x: str = "20"
+      x: Final[int] = 10
+    """)
+
+  def test_reassign_after_reassigning_with_final(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      x: str = "hello"
+      x: Final[str] = "world"
+      x = "20"  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
+
+  def test_local_variable(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      def f():
+        x: Final[int] = 10
+        x: str = "20"  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
+
+  def test_local_shadowing_global(self):
+    self.Check("""
+      from typing import Final
+      x: Final[int] = 10
+      def f():
+        x: str = "20"
+    """)
+
+  @test_base.skip("Does not work with non-final annotations either")
+  def test_modifying_global_within_function(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      x: Final[int] = 10
+      def f():
+        global x
+        x = "20"  # annotation_type_mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
+
+  def test_attribute(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      class A:
+        def __init__(self):
+          self.x: Final[int] = 10
+        def f(self):
+          self.x = 20  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["attribute", "x", "annotated with Final"]})
+
+
 if __name__ == "__main__":
   test_base.main()

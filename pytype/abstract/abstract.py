@@ -78,6 +78,7 @@ TypeParameter = _typing.TypeParameter
 TypeParameterInstance = _typing.TypeParameterInstance
 Union = _typing.Union
 LateAnnotation = _typing.LateAnnotation
+FinalAnnotation = _typing.FinalAnnotation
 
 AMBIGUOUS = (Unknown, Unsolvable)
 AMBIGUOUS_OR_EMPTY = AMBIGUOUS + (Empty,)

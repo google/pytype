@@ -57,6 +57,17 @@ class Annotated(abstract.AnnotationClass):
     return inner[0]
 
 
+class Final(abstract.AnnotationClass):
+  """Implementation of typing.Final[T]."""
+
+  def _build_value(self, node, inner, ellipses):
+    self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
+    if len(inner) != 1:
+      error = "typing.Final must wrap a single type"
+      self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
+    return abstract.FinalAnnotation(inner[0], self.ctx)
+
+
 class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, ctx):
@@ -411,7 +422,7 @@ typing_overlay = {
     "Any": build_any,
     "Callable": overlay.build("Callable", Callable),
     "final": build_final_decorator,
-    "Final": build_final,
+    "Final": overlay.build("Final", Final),
     "Generic": overlay.build("Generic", Generic),
     "Literal": overlay.build("Literal", Literal),
     "NamedTuple": build_namedtuple,

@@ -1243,6 +1243,13 @@ class ErrorLog(ErrorLogBase):
     err_msg = f"Type annotation{suffix} does not match type of assignment"
     self.error(stack, err_msg, details=details)
 
+  @_error_name("annotation-type-mismatch")
+  def assigning_to_final(self, stack, name, local):
+    """Attempting to reassign a variable annotated with Final."""
+    obj = "variable" if local else "attribute"
+    err_msg = f"Assigning to {obj} {name}, which was annotated with Final"
+    self.error(stack, err_msg)
+
   @_error_name("container-type-mismatch")
   def container_type_mismatch(self, stack, obj, mutations, name):
     """Invalid combination of annotation and mutation.

@@ -128,6 +128,14 @@ def get_atomic_value(variable, constant_type=None, default=_None()):
       % (name, variable, [b.data for b in bindings]))
 
 
+def match_atomic_value(variable, typ=None):
+  try:
+    get_atomic_value(variable, typ)
+  except ConversionError:
+    return False
+  return True
+
+
 def get_atomic_python_constant(variable, constant_type=None):
   """Get the concrete atomic Python value stored in this variable.
 
@@ -473,7 +481,11 @@ class Local:
   def __init__(self, node, op: Optional[opcodes.Opcode],
                typ: Optional[_BaseValue], orig: Optional[cfg.Variable], ctx):
     self._ops = [op]
+    self.final = False
     if typ:
+      if _isinstance(typ, "FinalAnnotation"):
+        typ = typ.annotation
+        self.final = True
       self.typ = ctx.program.NewVariable([typ], [], node)
     else:
       # Creating too many variables bloats the typegraph, hurting performance,
@@ -492,6 +504,9 @@ class Local:
       return
     self._ops.append(op)
     if typ:
+      if _isinstance(typ, "FinalAnnotation"):
+        typ = typ.annotation
+        self.final = True
       if self.typ:
         self.typ.AddBinding(typ, [], node)
       else:

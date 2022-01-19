@@ -292,13 +292,14 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         name,
         self.ctx.vm.simple_stack(),
         allowed_type_params=allowed_type_params)
+    orig_typ = typ
+    if isinstance(typ, abstract.FinalAnnotation):
+      typ = typ.annotation
     if typ.formal:
-      resolved_type = self.sub_one_annotation(node, typ, substs,
-                                              instantiate_unbound=False)
-      _, value = self.init_annotation(node, name, resolved_type)
-    else:
-      _, value = self.init_annotation(node, name, typ)
-    return typ, value
+      typ = self.sub_one_annotation(node, typ, substs,
+                                    instantiate_unbound=False)
+    _, value = self.init_annotation(node, name, typ)
+    return orig_typ, value
 
   def apply_annotation(self, node, op, name, value):
     """If there is an annotation for the op, return its value."""
@@ -461,6 +462,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     elif isinstance(annotation, (abstract.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,
                                  abstract.TypeParameter,
+                                 abstract.FinalAnnotation,
                                  typing_overlay.NoReturn)):
       return annotation
     else:
