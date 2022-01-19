@@ -162,6 +162,15 @@ py_test(
 
 py_test(
   NAME
+    test_final
+  SRCS
+    test_final.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_functions1
   SRCS
     test_functions1.py
