@@ -1292,6 +1292,12 @@ class ErrorLog(ErrorLogBase):
     """Invalid function constructed via metaprogramming."""
     self.error(stack, msg)
 
+  @_error_name("invalid-function-definition")
+  def overriding_final_method(self, stack, cls, base, method, details=None):
+    msg = (f"Class {cls.name} overrides final method {method}, "
+           f"defined in base class {base.name}")
+    self.error(stack, msg, details=details)
+
   @_error_name("typed-dict-error")
   def typed_dict_error(self, stack, obj, name):
     """Accessing a nonexistent key in a typed dict.

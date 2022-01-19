@@ -39,6 +39,36 @@ class TestFinalDecorator(test_base.BaseTest):
     """)
     self.assertErrorSequences(err, {"e": ["final class A"]})
 
+  def test_override_method_in_base(self):
+    err = self.CheckWithErrors("""
+      from typing import final
+      class A:
+        @final
+        def f(self):
+          pass
+      class B(A):  # invalid-function-definition[e]
+        def f(self):
+          pass
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["Class B", "overrides", "final method f", "base class A"]})
+
+  def test_override_method_in_mro(self):
+    err = self.CheckWithErrors("""
+      from typing import final
+      class A:
+        @final
+        def f(self):
+          pass
+      class B(A):
+        pass
+      class C(B):  # invalid-function-definition[e]
+        def f(self):
+          pass
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["Class C", "overrides", "final method f", "base class A"]})
+
 
 class TestFinal(test_base.BaseTest):
   """Test Final."""
