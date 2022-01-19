@@ -125,6 +125,20 @@ class _TypeCommentSet:
     self.start_line = start_lineno
     self.end_line = None
     self.type_comments = {}
+    self._found_equal = False
+
+  def process_equal(self, lineno):
+    if not self.type_comments and not self._found_equal:
+      self.start_line = lineno
+      self._found_equal = True
+
+  def get_lineno_for_version(self, lineno, python_version):
+    # In 3.8+, the STORE_* opcode for a multiline variable assignment is
+    # at the first line in the assignment; before that, it is at the last.
+    if self._found_equal and python_version >= (3, 8):
+      return self.start_line
+    else:
+      return lineno
 
 
 class _FunctionDefinition:
@@ -154,6 +168,9 @@ class _FunctionDefinition:
     if lineno < self._start_line:
       return False
     return self._end_line is None or lineno <= self._end_line
+
+  def is_open(self):
+    return self._end_line is None
 
 
 class _VariableAnnotation:
@@ -359,6 +376,7 @@ class Director:
     """
     self._filename = filename
     self._errorlog = errorlog
+    self._python_version = python_version
     self._type_comments = []  # _TypeCommentSet objects.
     self._variable_annotations = {}  # Map from line number to annotation.
     self._docstrings = set()  # Start lines of docstrings.
@@ -377,7 +395,7 @@ class Director:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
     # Parse the source code for directives.
-    self._parse_source(src, python_version)
+    self._parse_source(src)
 
   @property
   def type_comments(self):
@@ -401,7 +419,7 @@ class Director:
   def decorators(self):
     return self._decorators
 
-  def _parse_source(self, src, python_version):
+  def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     f = io.StringIO(src)
     defs_start = None
@@ -441,6 +459,9 @@ class Director:
           open_type_comment_set.end_line = lineno
           self._type_comments.append(open_type_comment_set)
         open_type_comment_set = _TypeCommentSet.start(lineno + 1)
+      elif tok == tokenize.EQUAL and not (
+          last_function_definition and last_function_definition.is_open()):
+        open_type_comment_set.process_equal(lineno)
 
       # Process the token for variable annotations.
       if last_function_definition and last_function_definition.contains(lineno):
@@ -454,7 +475,7 @@ class Director:
         if annotation and open_variable_annotation.closed:
           # In 3.8+, the STORE_* opcode for a multiline variable assignment is
           # at the first line in the assignment; before that, it is at the last.
-          if python_version >= (3, 8):
+          if self._python_version >= (3, 8):
             assert open_variable_annotation.start_lineno
             annotation_lineno = open_variable_annotation.start_lineno
           else:
@@ -582,7 +603,8 @@ class Director:
     for type_comment_set in self._type_comments:
       for line, comment in sorted(type_comment_set.type_comments.items()):
         adjusted_line = _adjust_line_number(
-            line, opcode_lines.store_lines, type_comment_set.start_line)
+            type_comment_set.get_lineno_for_version(line, self._python_version),
+            opcode_lines.store_lines, type_comment_set.start_line)
         if not adjusted_line:
           # vm._FindIgnoredTypeComments will take care of error reporting.
           continue
