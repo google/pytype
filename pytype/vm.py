@@ -107,7 +107,6 @@ class VirtualMachine:
     self._analyzing = False  # Are we in self.analyze()?
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
-    self._fold_constants = True
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
@@ -418,10 +417,7 @@ class VirtualMachine:
     for line in visitor.ignored_lines():
       self.ctx.errorlog.ignored_type_comment(self.filename, line,
                                              self._director.type_comments[line])
-
-    if self._fold_constants:
-      # Disabled while the feature is in development.
-      code = constant_folding.optimize(code)
+    code = constant_folding.optimize(code)
 
     node = self.ctx.root_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
