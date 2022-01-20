@@ -1,7 +1,10 @@
 """Utilities for inline type annotations."""
 
 import collections
+import dataclasses
 import itertools
+
+from typing import Any
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -9,6 +12,13 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd_utils
+
+
+@dataclasses.dataclass
+class AnnotatedValue:
+  typ: Any
+  value: Any
+  final: bool = False
 
 
 class AnnotationUtils(utils.ContextWeakrefMixin):
@@ -295,6 +305,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     orig_typ = typ
     if isinstance(typ, abstract.FinalAnnotation):
       typ = typ.annotation
+    elif isinstance(typ, typing_overlay.Final):
+      typ = self.ctx.convert.unsolvable
     if typ.formal:
       typ = self.sub_one_annotation(node, typ, substs,
                                     instantiate_unbound=False)
@@ -305,13 +317,13 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     """If there is an annotation for the op, return its value."""
     assert op is self.ctx.vm.frame.current_opcode
     if op.code.co_filename != self.ctx.vm.filename:
-      return None, value
+      return AnnotatedValue(None, value)
     if not op.annotation:
-      return None, value
+      return AnnotatedValue(None, value)
     annot = op.annotation
     if annot == "...":
       # Experimental "inferred type": see b/213607272.
-      return None, value
+      return AnnotatedValue(None, value)
     frame = self.ctx.vm.frame
     with self.ctx.vm.generate_late_annotations(self.ctx.vm.simple_stack()):
       var, errorlog = abstract_utils.eval_expr(self.ctx, node, frame.f_globals,
@@ -319,7 +331,14 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if errorlog:
       self.ctx.errorlog.invalid_annotation(
           self.ctx.vm.frames, annot, details=errorlog.details)
-    return self.extract_and_init_annotation(node, name, var)
+    typ, annot_val = self.extract_and_init_annotation(node, name, var)
+    if isinstance(typ, typing_overlay.Final):
+      # return the original value, we want type inference here.
+      return AnnotatedValue(None, value, final=True)
+    elif isinstance(typ, abstract.FinalAnnotation):
+      return AnnotatedValue(typ.annotation, annot_val, final=True)
+    else:
+      return AnnotatedValue(typ, annot_val)
 
   def extract_annotation(
       self, node, var, name, stack, allowed_type_params=None):
@@ -463,6 +482,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                                  abstract.AMBIGUOUS_OR_EMPTY,
                                  abstract.TypeParameter,
                                  abstract.FinalAnnotation,
+                                 typing_overlay.Final,
                                  typing_overlay.NoReturn)):
       return annotation
     else:

@@ -638,7 +638,7 @@ class VirtualMachine:
         return ret
     raise KeyError(name)
 
-  def _record_local(self, node, op, name, typ, orig_val=None):
+  def _record_local(self, node, op, name, typ, orig_val=None, final=None):
     """Record a type annotation on a local variable.
 
     This method records three types of local operations:
@@ -655,21 +655,26 @@ class VirtualMachine:
       name: The variable name.
       typ: The annotation.
       orig_val: The original value, if any.
+      final: Whether the annotation is tagged Final (None to preserve any
+          existing Final tag when updating an existing annotation).
     """
     if orig_val:
       self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
     self._update_annotations_dict(
-        node, op, name, typ, orig_val, self.current_annotated_locals)
+        node, op, name, typ, orig_val, self.current_annotated_locals,
+        final=final)
 
   def _update_annotations_dict(
-      self, node, op, name, typ, orig_val, annotations_dict):
+      self, node, op, name, typ, orig_val, annotations_dict, final=None):
     if name in annotations_dict:
       annotations_dict[name].update(node, op, typ, orig_val)
     else:
       annotations_dict[name] = abstract_utils.Local(node, op, typ, orig_val,
                                                     self.ctx)
+    if final is not None:
+      annotations_dict[name].final = final
 
   def _store_value(self, state, name, value, local):
     """Store 'value' under 'name'."""
@@ -716,21 +721,22 @@ class VirtualMachine:
   def _apply_annotation(
       self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
-    typ, value = self.ctx.annotation_utils.apply_annotation(
+    ann = self.ctx.annotation_utils.apply_annotation(
         state.node, op, name, orig_val)
+    typ, value = ann.typ, ann.value
     final = False
     local = False
     if annotations_dict is not None:
       final = name in annotations_dict and annotations_dict[name].final
       if annotations_dict is self.current_annotated_locals:
         local = True
-        self._record_local(state.node, op, name, typ, orig_val)
+        self._record_local(state.node, op, name, typ, orig_val, ann.final)
       elif name not in annotations_dict or not annotations_dict[name].typ:
         # When updating non-local annotations, we only record the first one
         # encountered so that if, say, an instance attribute is annotated in
         # both __init__ and another method, the __init__ annotation is used.
         self._update_annotations_dict(
-            state.node, op, name, typ, orig_val, annotations_dict)
+            state.node, op, name, typ, orig_val, annotations_dict, ann.final)
       if typ is None and name in annotations_dict:
         typ = annotations_dict[name].get_type(state.node, name)
         if typ == self.ctx.convert.unsolvable:
@@ -738,8 +744,6 @@ class VirtualMachine:
           # cases where it is causing false positives or other issues.
           value = self.ctx.new_unsolvable(state.node)
     if check_types:
-      if isinstance(typ, abstract.FinalAnnotation):
-        typ = typ.annotation
       if final:
         self.ctx.errorlog.assigning_to_final(self.frames, name, local)
       else:

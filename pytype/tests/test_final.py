@@ -153,6 +153,14 @@ class TestFinal(test_base.BaseTest):
     self.assertErrorSequences(
         err, {"e": ["attribute", "x", "annotated with Final"]})
 
+  def test_inference(self):
+    self.CheckWithErrors("""
+      from typing import Final
+      x: Final = 10
+      assert_type(x, int)
+      x = 20  # annotation-type-mismatch
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

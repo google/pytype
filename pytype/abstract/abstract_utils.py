@@ -483,9 +483,6 @@ class Local:
     self._ops = [op]
     self.final = False
     if typ:
-      if _isinstance(typ, "FinalAnnotation"):
-        typ = typ.annotation
-        self.final = True
       self.typ = ctx.program.NewVariable([typ], [], node)
     else:
       # Creating too many variables bloats the typegraph, hurting performance,
@@ -494,19 +491,20 @@ class Local:
     self.orig = orig
     self.ctx = ctx
 
+  def __repr__(self):
+    return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
+
   @property
   def stack(self):
     return self.ctx.vm.simple_stack(self._ops[-1])
 
-  def update(self, node, op, typ, orig):
+  def update(self, node, op, typ, orig, final=False):
     """Update this variable's annotation and/or value."""
     if op in self._ops:
       return
     self._ops.append(op)
+    self.final = final
     if typ:
-      if _isinstance(typ, "FinalAnnotation"):
-        typ = typ.annotation
-        self.final = True
       if self.typ:
         self.typ.AddBinding(typ, [], node)
       else:
