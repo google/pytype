@@ -362,8 +362,7 @@ class VirtualMachine:
     code = blocks.process_code(code, self.ctx.python_version)
     if mode == "exec":
       self._director.adjust_line_numbers(code)
-    return blocks.merge_annotations(code, self._director.annotations,
-                                    self._director.docstrings)
+    return blocks.merge_annotations(code, self._director.annotations)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""

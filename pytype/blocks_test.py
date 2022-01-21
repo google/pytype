@@ -500,7 +500,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE, 0,
     ])
     ordered_code = blocks.merge_annotations(
-        blocks.process_code(co, self.python_version), {1: "float"}, [])
+        blocks.process_code(co, self.python_version), {1: "float"})
     bytecode = ordered_code.order[0].code
     self.assertIsNone(bytecode[1].annotation)
     self.assertEqual(bytecode[3].annotation, "float")

@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
-_DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
@@ -386,7 +385,6 @@ class Director:
     self._python_version = python_version
     self._type_comments = []  # _TypeCommentSet objects.
     self._variable_annotations = {}  # Map from line number to annotation.
-    self._docstrings = set()  # Start lines of docstrings.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -413,10 +411,6 @@ class Director:
     # It's okay to overwrite type comments with variable annotations here
     # because _FindIgnoredTypeComments in vm.py will flag ignored comments.
     return {**self.type_comments, **self._variable_annotations}
-
-  @property
-  def docstrings(self):
-    return sorted(self._docstrings)
 
   @property
   def ignore(self):
@@ -491,10 +485,6 @@ class Director:
         open_variable_annotation = None
       else:
         open_variable_annotation.add_token(lineno, token)
-
-      # Record docstrings.
-      if _DOCSTRING_RE.match(line):
-        self._docstrings.add(lineno)
 
     if defs_start is not None:
       disables = list(self._disables.items())

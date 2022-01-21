@@ -1,7 +1,5 @@
 """Functions for computing the execution order of bytecode."""
 
-import bisect
-
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
@@ -379,7 +377,7 @@ def _is_function_def(fn_code):
   return True
 
 
-def merge_annotations(code, annotations, docstrings):
+def merge_annotations(code, annotations):
   """Merges type comments into their associated opcodes.
 
   Modifies code in place.
@@ -387,7 +385,6 @@ def merge_annotations(code, annotations, docstrings):
   Args:
     code: An OrderedCode object.
     annotations: A map of lines to annotations.
-    docstrings: A sorted list of lines starting docstrings.
 
   Returns:
     The code with annotations added to the relevant opcodes.
@@ -401,22 +398,8 @@ def merge_annotations(code, annotations, docstrings):
       op.annotation = annotations[line]
 
   # Apply type comments to the MAKE_FUNCTION opcodes
-  # To avoid associating a docstring with multiple functions when a one-line
-  # function is followed by a body-less function with a docstring, we do not
-  # search for a function's docstring past the start of the next function.
-  max_docstring_index = len(docstrings)
   for start, (end, op) in sorted(
       visitor.make_function_ops.items(), reverse=True):
-    # Check if the function has a docstring.
-    i = bisect.bisect_left(docstrings, start, hi=max_docstring_index)
-    if start == end:
-      # This is either a one-line function like `def f(): pass` or a function
-      # with no body code, just a docstring. If it is the latter, use the
-      # docstring as the new 'end'.
-      if i != max_docstring_index:
-        end = docstrings[i]
-    max_docstring_index = i
-
     for i in range(start, end):
       # Take the first comment we find as the function typecomment.
       if i in annotations:
