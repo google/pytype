@@ -155,6 +155,10 @@ class TypedDictClass(abstract.PyTDClass):
       ret.set_str_item(node, k, v)
     return ret
 
+  def instantiate(self, node, container):
+    del container
+    return TypedDict(self.props, self.ctx).to_variable(node)
+
   def make_class(self, *args, **kwargs):
     return self._base_cls.make_class(*args, **kwargs)
 
