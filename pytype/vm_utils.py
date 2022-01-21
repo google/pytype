@@ -417,6 +417,17 @@ def _expand_generic_protocols(node, bases, ctx):
   return expanded_bases
 
 
+def _check_final_methods(cls, class_dict, ctx):
+  """Check if methods defined in a new class override a @final method."""
+  methods = class_dict.keys()
+  for base in cls.mro[1:]:
+    if isinstance(base, abstract.Class):
+      for m in methods:
+        if m in base.members:
+          if any(x.final for x in base.members[m].data):
+            ctx.errorlog.overriding_final_method(ctx.vm.frames, cls, base, m)
+
+
 def make_class(node, name_var, bases, class_dict_var, cls_var, new_class_var,
                is_decorated, class_type, ctx):
   """Create a class with the name, bases and methods given.
@@ -498,6 +509,7 @@ def make_class(node, name_var, bases, class_dict_var, cls_var, new_class_var,
       elif class_type is not abstract.InterpreterClass:
         assert issubclass(class_type, abstract.InterpreterClass)
       val = class_type(name, bases, class_dict.pyval, cls, ctx)
+      _check_final_methods(val, class_dict.pyval, ctx)
       val.is_decorated = is_decorated
     except mro.MROError as e:
       ctx.errorlog.mro_error(ctx.vm.frames, name, e.mro_seqs)

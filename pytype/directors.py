@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 import tokenize
-from typing import Collection
+from typing import AbstractSet, Sequence
 
 from pytype import blocks
 from pytype import utils
@@ -18,7 +18,6 @@ log = logging.getLogger(__name__)
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
 _CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
-_DOCSTRING_RE = re.compile(r"^\s*(\"\"\"|''')")
 _DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
@@ -28,6 +27,13 @@ _FUNCTION_CALL_ERRORS = (
     "wrong-arg-count",
     "wrong-arg-types",
     "wrong-keyword-args",
+)
+
+
+_ALL_ADJUSTABLE_ERRORS = _FUNCTION_CALL_ERRORS + (
+    "annotation-type-mismatch",
+    "attribute-error",
+    "bad-return-type",
 )
 
 
@@ -125,6 +131,20 @@ class _TypeCommentSet:
     self.start_line = start_lineno
     self.end_line = None
     self.type_comments = {}
+    self._found_equal = False
+
+  def process_equal(self, lineno):
+    if not self.type_comments and not self._found_equal:
+      self.start_line = lineno
+      self._found_equal = True
+
+  def get_lineno_for_version(self, lineno, python_version):
+    # In 3.8+, the STORE_* opcode for a multiline variable assignment is
+    # at the first line in the assignment; before that, it is at the last.
+    if self._found_equal and python_version >= (3, 8):
+      return self.start_line
+    else:
+      return lineno
 
 
 class _FunctionDefinition:
@@ -154,6 +174,9 @@ class _FunctionDefinition:
     if lineno < self._start_line:
       return False
     return self._end_line is None or lineno <= self._end_line
+
+  def is_open(self):
+    return self._end_line is None
 
 
 class _VariableAnnotation:
@@ -285,19 +308,19 @@ class _OpcodeLines:
 
   def __init__(
       self,
-      store_lines: Collection[int],
-      make_function_lines: Collection[int],
-      non_funcdef_lines: Collection[int],
-      load_attr_lines: Collection[int],
-      return_lines: Collection[int],
-      call_lines: Collection[Call]):
+      store_lines: AbstractSet[int],
+      make_function_lines: AbstractSet[int],
+      non_funcdef_lines: AbstractSet[int],
+      load_attr_lines: AbstractSet[int],
+      return_lines: AbstractSet[int],
+      call_lines: Sequence[Call]):
     self.store_lines = store_lines
     self.make_function_lines = make_function_lines
     self.non_funcdef_lines = non_funcdef_lines
     self.load_attr_lines = load_attr_lines
     self.return_lines = return_lines
     # We transform call_lines into a line->Call mapping so that
-    # _adjust_line_number can treat it as a Collection[int] like the other
+    # _adjust_line_number can treat it as a AbstractSet[int] like the other
     # *_lines attributes.
     self.call_lines = {call.line: call for call in call_lines}
 
@@ -359,9 +382,9 @@ class Director:
     """
     self._filename = filename
     self._errorlog = errorlog
+    self._python_version = python_version
     self._type_comments = []  # _TypeCommentSet objects.
     self._variable_annotations = {}  # Map from line number to annotation.
-    self._docstrings = set()  # Start lines of docstrings.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -377,7 +400,7 @@ class Director:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
     # Parse the source code for directives.
-    self._parse_source(src, python_version)
+    self._parse_source(src)
 
   @property
   def type_comments(self):
@@ -390,10 +413,6 @@ class Director:
     return {**self.type_comments, **self._variable_annotations}
 
   @property
-  def docstrings(self):
-    return sorted(self._docstrings)
-
-  @property
   def ignore(self):
     return self._ignore
 
@@ -401,7 +420,7 @@ class Director:
   def decorators(self):
     return self._decorators
 
-  def _parse_source(self, src, python_version):
+  def _parse_source(self, src):
     """Parse a source file, extracting directives from comments."""
     f = io.StringIO(src)
     defs_start = None
@@ -441,6 +460,9 @@ class Director:
           open_type_comment_set.end_line = lineno
           self._type_comments.append(open_type_comment_set)
         open_type_comment_set = _TypeCommentSet.start(lineno + 1)
+      elif tok == tokenize.EQUAL and not (
+          last_function_definition and last_function_definition.is_open()):
+        open_type_comment_set.process_equal(lineno)
 
       # Process the token for variable annotations.
       if last_function_definition and last_function_definition.contains(lineno):
@@ -454,7 +476,7 @@ class Director:
         if annotation and open_variable_annotation.closed:
           # In 3.8+, the STORE_* opcode for a multiline variable assignment is
           # at the first line in the assignment; before that, it is at the last.
-          if python_version >= (3, 8):
+          if self._python_version >= (3, 8):
             assert open_variable_annotation.start_lineno
             annotation_lineno = open_variable_annotation.start_lineno
           else:
@@ -463,10 +485,6 @@ class Director:
         open_variable_annotation = None
       else:
         open_variable_annotation.add_token(lineno, token)
-
-      # Record docstrings.
-      if _DOCSTRING_RE.match(line):
-        self._docstrings.add(lineno)
 
     if defs_start is not None:
       disables = list(self._disables.items())
@@ -582,7 +600,8 @@ class Director:
     for type_comment_set in self._type_comments:
       for line, comment in sorted(type_comment_set.type_comments.items()):
         adjusted_line = _adjust_line_number(
-            line, opcode_lines.store_lines, type_comment_set.start_line)
+            type_comment_set.get_lineno_for_version(line, self._python_version),
+            opcode_lines.store_lines, type_comment_set.start_line)
         if not adjusted_line:
           # vm._FindIgnoredTypeComments will take care of error reporting.
           continue
@@ -617,8 +636,7 @@ class Director:
 
   def _adjust_line_numbers_for_error_directives(self, opcode_lines):
     """Adjusts line numbers for error directives."""
-    for error_class in _FUNCTION_CALL_ERRORS + (
-        "annotation-type-mismatch", "attribute-error", "bad-return-type"):
+    for error_class in _ALL_ADJUSTABLE_ERRORS:
       if error_class not in self._disables:
         continue
       lines = self._disables[error_class].lines

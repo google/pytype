@@ -654,3 +654,14 @@ class LateAnnotation:
       if isinstance(t, mixin.NestedAnnotation):
         stack.extend(child for _, child in t.get_inner_types())
     return False
+
+
+class FinalAnnotation(_base.BaseValue):
+  """Container for a Final annotation."""
+
+  def __init__(self, annotation, ctx):
+    super().__init__("FinalAnnotation", ctx)
+    self.annotation = annotation
+
+  def __repr__(self):
+    return f"Final[{self.annotation}]"

@@ -261,7 +261,8 @@ of its dependencies.
 
 ## 2022 Roadmap
 
-Coming soon!
+* Complete Python 3.9 feature support.
+* Basic Python 3.10 support.
 
 ## License
 [Apache 2.0][license]

@@ -57,6 +57,17 @@ class Annotated(abstract.AnnotationClass):
     return inner[0]
 
 
+class Final(abstract.AnnotationClass):
+  """Implementation of typing.Final[T]."""
+
+  def _build_value(self, node, inner, ellipses):
+    self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
+    if len(inner) != 1:
+      error = "typing.Final must wrap a single type"
+      self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
+    return abstract.FinalAnnotation(inner[0], self.ctx)
+
+
 class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, ctx):
@@ -294,6 +305,18 @@ class Overload(abstract.PyTDFunction):
     return node, func_var
 
 
+class FinalDecorator(abstract.PyTDFunction):
+  """Implementation of typing.final."""
+
+  def call(self, node, unused_func, args):
+    """Marks that the given function is final."""
+    self.match_args(node, args)
+    arg = args.posargs[0]
+    for obj in arg.data:
+      obj.final = True
+    return node, arg
+
+
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 
@@ -386,16 +409,20 @@ def build_cast(ctx):
   return Cast.make("cast", ctx, "typing")
 
 
+def build_final_decorator(ctx):
+  return FinalDecorator.make("final", ctx, "typing")
+
+
 def build_final(ctx):
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, "typing.final")
-  return ctx.convert.name_to_value("typing.final")
+  return not_supported_yet("Final", ctx)
 
 
 typing_overlay = {
     "Annotated": overlay.build("Annotated", Annotated),
     "Any": build_any,
     "Callable": overlay.build("Callable", Callable),
-    "final": build_final,
+    "final": build_final_decorator,
+    "Final": overlay.build("Final", Final),
     "Generic": overlay.build("Generic", Generic),
     "Literal": overlay.build("Literal", Literal),
     "NamedTuple": build_namedtuple,

@@ -59,5 +59,24 @@ class Py3TypeCommentTest(test_base.BaseTest):
         return cast_type
     """)
 
+  def test_multiline_comment(self):
+    self.Check("""
+      x = [
+        k for k in range(5)
+      ]  # type: list[int]
+    """)
+
+  def test_multiline_comment_on_function_close_line(self):
+    # This is an admittedly contrived example to test an edge case in
+    # directors.py's type comment handling.
+    self.Check("""
+      def f(
+        x=None
+      ): y = [
+          k for k in range(5)
+      ]  # type: list[int]
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

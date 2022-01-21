@@ -50,6 +50,7 @@ class BaseValue(utils.ContextWeakrefMixin):
     # names in the templates of the current class and its base classes
     self._all_template_names = None
     self._instance = None
+    self.final = False
 
     # The variable or function arg name with the type annotation that this
     # instance was created from. For example,

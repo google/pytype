@@ -188,6 +188,7 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
     self.assertErrorRegexes(errors, {"e": r"ClassVar.*1.*2"})
 
+  @test_base.skip("running out of unsupported features")
   def test_not_supported_yet(self):
     # Tests that typing_extension members not implemented in
     # typing_extensions_overlay are reported as [not-supported-yet]. If this

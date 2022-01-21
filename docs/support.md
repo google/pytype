@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-01-13T13:48-08:00 -->
+<!-- Added by: rechen, at: 2022-01-19T00:46-08:00 -->
 
 <!--te-->
 
@@ -70,7 +70,8 @@ Feature                                                         | Version | Supp
 [PEP 593 -- Flexible Function and Variable Annotations][593]    | 3.9     | ✅       |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]           | 3.10    | ❌       | [#785][union-pipe]
 [PEP 612 -- Parameter Specification Variables][612]             | 3.10    | ❌       | [#786][param-spec]
-[PEP 613 -- Explicit Type Aliases][613]                         | 3.11+   | ❌       | [#787][typealias]
+[PEP 613 -- Explicit Type Aliases][613]                         | 3.10    | ❌       | [#787][typealias]
+[PEP 646 -- Variadic Generics][646]                             | 3.11    | ❌       |
 [PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
 Custom Recursive Types                                          | 3.6     | 🟡       | Requires `--allow-recursive-types` flag externally, not yet available internally
 Generic Type Aliases                                            | 3.6     | ✅       |
@@ -102,6 +103,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [604]: https://www.python.org/dev/peps/pep-0604
 [612]: https://www.python.org/dev/peps/pep-0612
 [613]: https://www.python.org/dev/peps/pep-0613
+[646]: https://www.python.org/dev/peps/pep-0646
 [647]: https://www.python.org/dev/peps/pep-0647
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81

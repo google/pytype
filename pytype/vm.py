@@ -107,7 +107,6 @@ class VirtualMachine:
     self._analyzing = False  # Are we in self.analyze()?
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
-    self._fold_constants = True
     # If set, we will generate LateAnnotations with this stack rather than
     # logging name errors.
     self._late_annotations_stack = None
@@ -363,8 +362,7 @@ class VirtualMachine:
     code = blocks.process_code(code, self.ctx.python_version)
     if mode == "exec":
       self._director.adjust_line_numbers(code)
-    return blocks.merge_annotations(code, self._director.annotations,
-                                    self._director.docstrings)
+    return blocks.merge_annotations(code, self._director.annotations)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""
@@ -418,10 +416,7 @@ class VirtualMachine:
     for line in visitor.ignored_lines():
       self.ctx.errorlog.ignored_type_comment(self.filename, line,
                                              self._director.type_comments[line])
-
-    if self._fold_constants:
-      # Disabled while the feature is in development.
-      code = constant_folding.optimize(code)
+    code = constant_folding.optimize(code)
 
     node = self.ctx.root_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
@@ -642,7 +637,7 @@ class VirtualMachine:
         return ret
     raise KeyError(name)
 
-  def _record_local(self, node, op, name, typ, orig_val=None):
+  def _record_local(self, node, op, name, typ, orig_val=None, final=None):
     """Record a type annotation on a local variable.
 
     This method records three types of local operations:
@@ -659,21 +654,26 @@ class VirtualMachine:
       name: The variable name.
       typ: The annotation.
       orig_val: The original value, if any.
+      final: Whether the annotation is tagged Final (None to preserve any
+          existing Final tag when updating an existing annotation).
     """
     if orig_val:
       self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
     if typ:
       self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
     self._update_annotations_dict(
-        node, op, name, typ, orig_val, self.current_annotated_locals)
+        node, op, name, typ, orig_val, self.current_annotated_locals,
+        final=final)
 
   def _update_annotations_dict(
-      self, node, op, name, typ, orig_val, annotations_dict):
+      self, node, op, name, typ, orig_val, annotations_dict, final=None):
     if name in annotations_dict:
       annotations_dict[name].update(node, op, typ, orig_val)
     else:
       annotations_dict[name] = abstract_utils.Local(node, op, typ, orig_val,
                                                     self.ctx)
+    if final is not None:
+      annotations_dict[name].final = final
 
   def _store_value(self, state, name, value, local):
     """Store 'value' under 'name'."""
@@ -720,17 +720,22 @@ class VirtualMachine:
   def _apply_annotation(
       self, state, op, name, orig_val, annotations_dict, check_types):
     """Applies the type annotation, if any, associated with this object."""
-    typ, value = self.ctx.annotation_utils.apply_annotation(
+    ann = self.ctx.annotation_utils.apply_annotation(
         state.node, op, name, orig_val)
+    typ, value = ann.typ, ann.value
+    final = False
+    local = False
     if annotations_dict is not None:
+      final = name in annotations_dict and annotations_dict[name].final
       if annotations_dict is self.current_annotated_locals:
-        self._record_local(state.node, op, name, typ, orig_val)
+        local = True
+        self._record_local(state.node, op, name, typ, orig_val, ann.final)
       elif name not in annotations_dict or not annotations_dict[name].typ:
         # When updating non-local annotations, we only record the first one
         # encountered so that if, say, an instance attribute is annotated in
         # both __init__ and another method, the __init__ annotation is used.
         self._update_annotations_dict(
-            state.node, op, name, typ, orig_val, annotations_dict)
+            state.node, op, name, typ, orig_val, annotations_dict, ann.final)
       if typ is None and name in annotations_dict:
         typ = annotations_dict[name].get_type(state.node, name)
         if typ == self.ctx.convert.unsolvable:
@@ -738,8 +743,11 @@ class VirtualMachine:
           # cases where it is causing false positives or other issues.
           value = self.ctx.new_unsolvable(state.node)
     if check_types:
-      self.ctx.check_annotation_type_mismatch(
-          state.node, name, typ, orig_val, self.frames, allow_none=True)
+      if final:
+        self.ctx.errorlog.assigning_to_final(self.frames, name, local)
+      else:
+        self.ctx.check_annotation_type_mismatch(
+            state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
 
   def _pop_and_store(self, state, op, name, local):
@@ -1672,30 +1680,37 @@ class VirtualMachine:
     state, _ = self._call(state, obj, "__setitem__", (key, val))
     return state
 
+  def _record_annotation_dict_store(self, state, obj, subscr, val, op):
+    """Record a store_subscr to an __annotations__ dict."""
+    try:
+      name = abstract_utils.get_atomic_python_constant(subscr, str)
+    except abstract_utils.ConversionError:
+      pass
+    else:
+      allowed_type_params = (
+          self.frame.type_params
+          | self.ctx.annotation_utils.get_callable_type_parameter_names(val))
+      typ = self.ctx.annotation_utils.extract_annotation(
+          state.node,
+          val,
+          name,
+          self.simple_stack(),
+          allowed_type_params=allowed_type_params)
+      self._record_annotation(state.node, op, name, typ)
+
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
     state = state.forward_cfg_node()
     # Check whether obj is the __annotations__ dict.
-    # '...' is an experimental "inferred type": see b/213607272.
-    if (len(obj.data) == 1 and
-        isinstance(obj.data[0], abstract.AnnotationsDict) and
-        val.data != [self.ctx.convert.ellipsis]):
-      try:
-        name = abstract_utils.get_atomic_python_constant(subscr, str)
-      except abstract_utils.ConversionError:
+    if abstract_utils.match_atomic_value(obj, abstract.AnnotationsDict):
+      if val.data == [self.ctx.convert.ellipsis]:
+        # '...' is an experimental "inferred type": see b/213607272.
         pass
       else:
-        allowed_type_params = (
-            self.frame.type_params
-            | self.ctx.annotation_utils.get_callable_type_parameter_names(val))
-        typ = self.ctx.annotation_utils.extract_annotation(
-            state.node,
-            val,
-            name,
-            self.simple_stack(),
-            allowed_type_params=allowed_type_params)
-        self._record_annotation(state.node, op, name, typ)
+        if abstract_utils.match_atomic_value(val, abstract.FinalAnnotation):
+          val = val.data[0].annotation.to_variable(state.node)
+        self._record_annotation_dict_store(state, obj, subscr, val, op)
     state = self.store_subscr(state, obj, subscr, val)
     return state
 

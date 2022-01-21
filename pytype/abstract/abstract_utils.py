@@ -128,6 +128,14 @@ def get_atomic_value(variable, constant_type=None, default=_None()):
       % (name, variable, [b.data for b in bindings]))
 
 
+def match_atomic_value(variable, typ=None):
+  try:
+    get_atomic_value(variable, typ)
+  except ConversionError:
+    return False
+  return True
+
+
 def get_atomic_python_constant(variable, constant_type=None):
   """Get the concrete atomic Python value stored in this variable.
 
@@ -473,6 +481,7 @@ class Local:
   def __init__(self, node, op: Optional[opcodes.Opcode],
                typ: Optional[_BaseValue], orig: Optional[cfg.Variable], ctx):
     self._ops = [op]
+    self.final = False
     if typ:
       self.typ = ctx.program.NewVariable([typ], [], node)
     else:
@@ -482,15 +491,19 @@ class Local:
     self.orig = orig
     self.ctx = ctx
 
+  def __repr__(self):
+    return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
+
   @property
   def stack(self):
     return self.ctx.vm.simple_stack(self._ops[-1])
 
-  def update(self, node, op, typ, orig):
+  def update(self, node, op, typ, orig, final=False):
     """Update this variable's annotation and/or value."""
     if op in self._ops:
       return
     self._ops.append(op)
+    self.final = final
     if typ:
       if self.typ:
         self.typ.AddBinding(typ, [], node)

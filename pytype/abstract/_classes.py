@@ -56,6 +56,10 @@ class BuildClass(_base.BaseValue):
     any_var = self.ctx.new_unsolvable(node)
     for basevar in bases:
       for base in basevar.data:
+        if base.final:
+          self.ctx.errorlog.base_class_error(
+              self.ctx.vm.frames, basevar,
+              details=f"Cannot subclass final class {base.name}")
         if isinstance(base, ParameterizedClass):
           subst.update(
               {v.name: any_var for v in base.formal_type_parameters.values()
