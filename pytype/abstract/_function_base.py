@@ -36,6 +36,7 @@ class Function(_instance_base.SimpleValue):
     self.is_attribute_of_class = False
     self.is_classmethod = False
     self.is_abstract = False
+    self.is_method = "." in name
     self.members["func_name"] = self.ctx.convert.build_string(
         self.ctx.root_node, name)
 

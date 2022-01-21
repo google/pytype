@@ -1329,6 +1329,16 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, "Cannot subclass final class: %s" % base_cls,
                details=details, keyword=base_cls)
 
+  @_error_name("final-error")
+  def bad_final_decorator(self, stack, obj, details=None):
+    name = getattr(obj, "name", None)
+    if not name:
+      typ = self._print_as_expected_type(obj)
+      name = f"object of type {typ}"
+    msg = f"Cannot apply @final decorator to {name}"
+    details = "@final can only be applied to classes and methods."
+    self.error(stack, msg, details=details)
+
 
 def get_error_names_set():
   return _ERROR_NAMES

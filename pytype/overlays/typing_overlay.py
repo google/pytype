@@ -313,8 +313,18 @@ class FinalDecorator(abstract.PyTDFunction):
     self.match_args(node, args)
     arg = args.posargs[0]
     for obj in arg.data:
-      obj.final = True
+      if self._can_be_final(obj):
+        obj.final = True
+      else:
+        self.ctx.errorlog.bad_final_decorator(self.ctx.vm.frames, obj)
     return node, arg
+
+  def _can_be_final(self, obj):
+    if isinstance(obj, abstract.Class):
+      return True
+    if isinstance(obj, abstract.Function):
+      return obj.is_method
+    return False
 
 
 class Generic(TypingContainer):

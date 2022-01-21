@@ -70,6 +70,47 @@ class TestFinalDecorator(test_base.BaseTest):
         err, {"e": ["Class C", "overrides", "final method f", "base class A"]})
 
 
+class TestFinalDecoratorValidity(test_base.BaseTest):
+  """Test whether @final is applicable in context."""
+
+  def test_basic(self):
+    self.Check("""
+      from typing import final
+      @final
+      class A:
+        @final
+        def f(self):
+          pass
+    """)
+
+  def test_decorators(self):
+    self.Check("""
+      from typing import final
+      class A:
+        @final
+        @property
+        def f(self):
+          pass
+        @final
+        @classmethod
+        def f(self):
+          pass
+        @final
+        @staticmethod
+        def f(self):
+          pass
+    """)
+
+  def test_invalid(self):
+    err = self.CheckWithErrors("""
+      from typing import final
+      @final  # final-error[e]
+      def f(x):
+        pass
+    """)
+    self.assertErrorSequences(err, {"e": ["Cannot apply @final", "f"]})
+
+
 class TestFinal(test_base.BaseTest):
   """Test Final."""
 
