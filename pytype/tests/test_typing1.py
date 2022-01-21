@@ -188,15 +188,14 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
     self.assertErrorRegexes(errors, {"e": r"ClassVar.*1.*2"})
 
-  @test_base.skip("running out of unsupported features")
   def test_not_supported_yet(self):
     # Tests that typing_extension members not implemented in
     # typing_extensions_overlay are reported as [not-supported-yet]. If this
     # test starts failing due to this specific member gaining support, just pick
     # an unsupported member to replace it with from
-    # https://github.com/python/typeshed/blob/master/third_party/2and3/typing_extensions.pyi
+    # https://github.com/python/typeshed/blob/master/stdlib/typing_extensions.pyi
     self.CheckWithErrors("""
-      from typing_extensions import final  # not-supported-yet
+      from typing_extensions import TypeGuard  # not-supported-yet
     """)
 
   def test_reuse_name(self):
