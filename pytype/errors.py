@@ -1243,13 +1243,6 @@ class ErrorLog(ErrorLogBase):
     err_msg = f"Type annotation{suffix} does not match type of assignment"
     self.error(stack, err_msg, details=details)
 
-  @_error_name("annotation-type-mismatch")
-  def assigning_to_final(self, stack, name, local):
-    """Attempting to reassign a variable annotated with Final."""
-    obj = "variable" if local else "attribute"
-    err_msg = f"Assigning to {obj} {name}, which was annotated with Final"
-    self.error(stack, err_msg)
-
   @_error_name("container-type-mismatch")
   def container_type_mismatch(self, stack, obj, mutations, name):
     """Invalid combination of annotation and mutation.
@@ -1292,12 +1285,6 @@ class ErrorLog(ErrorLogBase):
     """Invalid function constructed via metaprogramming."""
     self.error(stack, msg)
 
-  @_error_name("invalid-function-definition")
-  def overriding_final_method(self, stack, cls, base, method, details=None):
-    msg = (f"Class {cls.name} overrides final method {method}, "
-           f"defined in base class {base.name}")
-    self.error(stack, msg, details=details)
-
   @_error_name("typed-dict-error")
   def typed_dict_error(self, stack, obj, name):
     """Accessing a nonexistent key in a typed dict.
@@ -1312,6 +1299,35 @@ class ErrorLog(ErrorLogBase):
     else:
       err_msg = f"TypedDict {obj.class_name} requires all keys to be strings"
     self.error(stack, err_msg)
+
+  @_error_name("final-error")
+  def _overriding_final(self, stack, cls, base, name, *, is_method, details):
+    desc = "method" if is_method else "class attribute"
+    msg = (f"Class {cls.name} overrides final {desc} {name}, "
+           f"defined in base class {base.name}")
+    self.error(stack, msg, details=details)
+
+  def overriding_final_method(self, stack, cls, base, name, details=None):
+    self._overriding_final(stack, cls, base, name, details=details,
+                           is_method=True)
+
+  def overriding_final_attribute(self, stack, cls, base, name, details=None):
+    self._overriding_final(stack, cls, base, name, details=details,
+                           is_method=False)
+
+  @_error_name("final-error")
+  def assigning_to_final(self, stack, name, local):
+    """Attempting to reassign a variable annotated with Final."""
+    obj = "variable" if local else "attribute"
+    err_msg = f"Assigning to {obj} {name}, which was annotated with Final"
+    self.error(stack, err_msg)
+
+  @_error_name("final-error")
+  def subclassing_final_class(self, stack, base_var, details=None):
+    base_cls = self._join_printed_types(
+        self._print_as_expected_type(t) for t in base_var.data)
+    self.error(stack, "Cannot subclass final class: %s" % base_cls,
+               details=details, keyword=base_cls)
 
 
 def get_error_names_set():

@@ -57,9 +57,7 @@ class BuildClass(_base.BaseValue):
     for basevar in bases:
       for base in basevar.data:
         if base.final:
-          self.ctx.errorlog.base_class_error(
-              self.ctx.vm.frames, basevar,
-              details=f"Cannot subclass final class {base.name}")
+          self.ctx.errorlog.subclassing_final_class(self.ctx.vm.frames, basevar)
         if isinstance(base, ParameterizedClass):
           subst.update(
               {v.name: any_var for v in base.formal_type_parameters.values()

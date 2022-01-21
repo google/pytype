@@ -12,10 +12,10 @@ class TestFinalDecorator(test_base.BaseTest):
       @final
       class A:
         pass
-      class B(A):  # base-class-error[e]
+      class B(A):  # final-error[e]
         pass
     """)
-    self.assertErrorSequences(err, {"e": ["final class A"]})
+    self.assertErrorSequences(err, {"e": ["final class", "A"]})
 
   def test_subclass_with_other_bases(self):
     err = self.CheckWithErrors("""
@@ -23,10 +23,10 @@ class TestFinalDecorator(test_base.BaseTest):
       @final
       class A:
         pass
-      class B(list, A):  # base-class-error[e]
+      class B(list, A):  # final-error[e]
         pass
     """)
-    self.assertErrorSequences(err, {"e": ["final class A"]})
+    self.assertErrorSequences(err, {"e": ["final class", "A"]})
 
   def test_typing_extensions_import(self):
     err = self.CheckWithErrors("""
@@ -34,10 +34,10 @@ class TestFinalDecorator(test_base.BaseTest):
       @final
       class A:
         pass
-      class B(A):  # base-class-error[e]
+      class B(A):  # final-error[e]
         pass
     """)
-    self.assertErrorSequences(err, {"e": ["final class A"]})
+    self.assertErrorSequences(err, {"e": ["final class", "A"]})
 
   def test_override_method_in_base(self):
     err = self.CheckWithErrors("""
@@ -46,7 +46,7 @@ class TestFinalDecorator(test_base.BaseTest):
         @final
         def f(self):
           pass
-      class B(A):  # invalid-function-definition[e]
+      class B(A):  # final-error[e]
         def f(self):
           pass
     """)
@@ -62,7 +62,7 @@ class TestFinalDecorator(test_base.BaseTest):
           pass
       class B(A):
         pass
-      class C(B):  # invalid-function-definition[e]
+      class C(B):  # final-error[e]
         def f(self):
           pass
     """)
@@ -77,7 +77,7 @@ class TestFinal(test_base.BaseTest):
     err = self.CheckWithErrors("""
       from typing import Final
       x: Final[int] = 10
-      x = 20  # annotation-type-mismatch[e]
+      x = 20  # final-error[e]
     """)
     self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
 
@@ -85,7 +85,7 @@ class TestFinal(test_base.BaseTest):
     err = self.CheckWithErrors("""
       from typing import Final
       x: Final[int] = 10
-      x = "20"  # annotation-type-mismatch[e]
+      x = "20"  # final-error[e]
     """)
     self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
 
@@ -93,7 +93,7 @@ class TestFinal(test_base.BaseTest):
     err = self.CheckWithErrors("""
       from typing import Final
       x: Final[int] = 10
-      x: str = "20"  # annotation-type-mismatch[e]
+      x: str = "20"  # final-error[e]
     """)
     self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
 
@@ -109,7 +109,7 @@ class TestFinal(test_base.BaseTest):
       from typing import Final
       x: str = "hello"
       x: Final[str] = "world"
-      x = "20"  # annotation-type-mismatch[e]
+      x = "20"  # final-error[e]
     """)
     self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
 
@@ -118,7 +118,7 @@ class TestFinal(test_base.BaseTest):
       from typing import Final
       def f():
         x: Final[int] = 10
-        x: str = "20"  # annotation-type-mismatch[e]
+        x: str = "20"  # final-error[e]
     """)
     self.assertErrorSequences(err, {"e": ["x", "annotated with Final"]})
 
@@ -148,7 +148,7 @@ class TestFinal(test_base.BaseTest):
         def __init__(self):
           self.x: Final[int] = 10
         def f(self):
-          self.x = 20  # annotation-type-mismatch[e]
+          self.x = 20  # final-error[e]
     """)
     self.assertErrorSequences(
         err, {"e": ["attribute", "x", "annotated with Final"]})
@@ -158,8 +158,34 @@ class TestFinal(test_base.BaseTest):
       from typing import Final
       x: Final = 10
       assert_type(x, int)
-      x = 20  # annotation-type-mismatch
+      x = 20  # final-error
     """)
+
+  def test_override_attr_in_base(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      class A:
+        FOO: Final[int] = 10
+      class B(A):  # final-error[e]
+        FOO = 20
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["Class B", "overrides", "final class attribute", "FOO",
+                    "base class A"]})
+
+  def test_override_attr_in_mro(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      class A:
+        FOO: Final[int] = 10
+      class B(A):
+        pass
+      class C(B):  # final-error[e]
+        FOO = 20
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["Class C", "overrides", "final class attribute", "FOO",
+                    "base class A"]})
 
 
 if __name__ == "__main__":
