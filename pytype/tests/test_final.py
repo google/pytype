@@ -1,6 +1,7 @@
 """Tests for typing.Final and typing.final."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestFinalDecorator(test_base.BaseTest):
@@ -101,11 +102,22 @@ class TestFinalDecoratorValidity(test_base.BaseTest):
           pass
     """)
 
-  def test_invalid(self):
+  @test_utils.skipFromPy((3, 8), "MAKE_FUNCTION opcode lineno changed in 3.8")
+  def test_invalid_pre38(self):
     err = self.CheckWithErrors("""
       from typing import final
       @final  # final-error[e]
       def f(x):
+        pass
+    """)
+    self.assertErrorSequences(err, {"e": ["Cannot apply @final", "f"]})
+
+  @test_utils.skipBeforePy((3, 8), "MAKE_FUNCTION opcode lineno changed in 3.8")
+  def test_invalid(self):
+    err = self.CheckWithErrors("""
+      from typing import final
+      @final
+      def f(x):  # final-error[e]
         pass
     """)
     self.assertErrorSequences(err, {"e": ["Cannot apply @final", "f"]})
