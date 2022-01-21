@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 import tokenize
-from typing import Collection
+from typing import AbstractSet, Sequence
 
 from pytype import blocks
 from pytype import utils
@@ -28,6 +28,13 @@ _FUNCTION_CALL_ERRORS = (
     "wrong-arg-count",
     "wrong-arg-types",
     "wrong-keyword-args",
+)
+
+
+_ALL_ADJUSTABLE_ERRORS = _FUNCTION_CALL_ERRORS + (
+    "annotation-type-mismatch",
+    "attribute-error",
+    "bad-return-type",
 )
 
 
@@ -302,19 +309,19 @@ class _OpcodeLines:
 
   def __init__(
       self,
-      store_lines: Collection[int],
-      make_function_lines: Collection[int],
-      non_funcdef_lines: Collection[int],
-      load_attr_lines: Collection[int],
-      return_lines: Collection[int],
-      call_lines: Collection[Call]):
+      store_lines: AbstractSet[int],
+      make_function_lines: AbstractSet[int],
+      non_funcdef_lines: AbstractSet[int],
+      load_attr_lines: AbstractSet[int],
+      return_lines: AbstractSet[int],
+      call_lines: Sequence[Call]):
     self.store_lines = store_lines
     self.make_function_lines = make_function_lines
     self.non_funcdef_lines = non_funcdef_lines
     self.load_attr_lines = load_attr_lines
     self.return_lines = return_lines
     # We transform call_lines into a line->Call mapping so that
-    # _adjust_line_number can treat it as a Collection[int] like the other
+    # _adjust_line_number can treat it as a AbstractSet[int] like the other
     # *_lines attributes.
     self.call_lines = {call.line: call for call in call_lines}
 
@@ -639,8 +646,7 @@ class Director:
 
   def _adjust_line_numbers_for_error_directives(self, opcode_lines):
     """Adjusts line numbers for error directives."""
-    for error_class in _FUNCTION_CALL_ERRORS + (
-        "annotation-type-mismatch", "attribute-error", "bad-return-type"):
+    for error_class in _ALL_ADJUSTABLE_ERRORS:
       if error_class not in self._disables:
         continue
       lines = self._disables[error_class].lines

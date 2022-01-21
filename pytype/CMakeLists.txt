@@ -662,8 +662,10 @@ py_test(
   SRCS
     directors_test.py
   DEPS
+    .blocks
     .directors
     .errors
+    pytype.pyc.pyc
 )
 
 py_test(

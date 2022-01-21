@@ -2,9 +2,12 @@
 """Tests for directors.py."""
 
 import sys
+import textwrap
 
+from pytype import blocks
 from pytype import directors
 from pytype import errors
+from pytype.pyc import pyc
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -99,6 +102,8 @@ class LineSetTest(unittest.TestCase):
 
 class DirectorTestCase(unittest.TestCase):
 
+  python_version = sys.version_info[:2]
+
   @classmethod
   def setUpClass(cls):
     super(DirectorTestCase, cls).setUpClass()
@@ -108,9 +113,14 @@ class DirectorTestCase(unittest.TestCase):
       errors._error_name(name)
 
   def _create(self, src, disable=()):
+    self.num_lines = len(src.rstrip().splitlines())
+    src = textwrap.dedent(src)
     self._errorlog = errors.ErrorLog()
     self._director = directors.Director(src, self._errorlog, _TEST_FILENAME,
-                                        disable, sys.version_info[:2])
+                                        disable, self.python_version)
+    raw_code = pyc.compile_src(src, _TEST_FILENAME, self.python_version, None)
+    code = blocks.process_code(raw_code, self.python_version)
+    self._director.adjust_line_numbers(code)
 
   def _should_report(self, expected, lineno, error_name="test-error",
                      filename=_TEST_FILENAME):
@@ -150,7 +160,7 @@ class DirectorTest(DirectorTestCase):
 
   def test_utf8(self):
     self._create("""
-    x = u"abc□def\n"
+    x = u"abc□def\\n"
     """)
 
   def test_ignore_extra_characters(self):
@@ -354,76 +364,6 @@ class DirectorTest(DirectorTestCase):
         4: "str",
     }, self._director.type_comments)
 
-  def test_type_comment_on_multiline_value(self):
-    # should_be_ignored will be filtered out later by adjust_line_numbers.
-    self._create("""
-    v = [
-      ("hello",
-       "world",  # type: should_be_ignored
-
-      )
-    ]  # type: dict
-    """)
-    self.assertEqual({
-        4: "should_be_ignored",
-        7: "dict",
-    }, self._director.type_comments)
-
-  def test_type_comment_with_trailing_comma(self):
-    self._create("""
-    v = [
-      ("hello",
-       "world"
-      ),
-    ]  # type: dict
-    w = [
-      ["hello",
-       "world"
-      ],  # some comment
-    ]  # type: dict
-    """)
-    self.assertEqual({
-        6: "dict",
-        11: "dict",
-    }, self._director.type_comments)
-
-  def test_decorators(self):
-    self._create("""
-      class A:
-        '''
-        @decorator in a docstring
-        '''
-        @real_decorator
-        def f(x):
-          x = foo @ bar @ baz
-
-        @decorator(
-            x, y
-        )
-
-        def bar():
-          pass
-    """)
-    self.assertEqual({
-        7,  # real_decorator
-        14  # decorator
-    }, self._director._decorators)
-
-  def test_stacked_decorators(self):
-    self._create("""
-      @decorator(
-          x, y
-      )
-
-      @foo
-
-      class A:
-          pass
-    """)
-    self.assertEqual({
-        8  # foo
-    }, self._director._decorators)
-
 
 class VariableAnnotationsTest(DirectorTestCase):
 
@@ -494,7 +434,7 @@ class VariableAnnotationsTest(DirectorTestCase):
           1,
       ]
     """)
-    lineno = 2 if sys.version_info[:2] >= (3, 8) else 5
+    lineno = 2 if sys.version_info[:2] >= (3, 8) else 4
     self.assertEqual({lineno: "List[int]"}, self._director.annotations)
 
   def test_complicated_annotation(self):
@@ -516,6 +456,250 @@ class VariableAnnotationsTest(DirectorTestCase):
       v: int = 0
     """)
     self.assertEqual({3: "int"}, self._director.annotations)
+
+
+class LineNumbersTest(DirectorTestCase):
+
+  def test_type_comment_on_multiline_value(self):
+    self._create("""
+      v = [
+        ("hello",
+         "world",  # type: should_be_ignored
+
+        )
+      ]  # type: dict
+    """)
+    # The line number of STORE_NAME v changes between versions.
+    if self.python_version >= (3, 8):
+      lineno = 2
+    else:
+      lineno = 3
+    self.assertEqual({lineno: "dict"}, self._director.type_comments)
+
+  def test_type_comment_with_trailing_comma(self):
+    self._create("""
+      v = [
+        ("hello",
+         "world"
+        ),
+      ]  # type: dict
+      w = [
+        ["hello",
+         "world"
+        ],  # some comment
+      ]  # type: dict
+    """)
+    # The line numbers of STORE_NAME change between versions.
+    if self.python_version >= (3, 8):
+      v_lineno = 2
+      w_lineno = 7
+    else:
+      v_lineno = 3
+      w_lineno = 9
+    self.assertEqual({
+        v_lineno: "dict",
+        w_lineno: "dict"
+    }, self._director.type_comments)
+
+  def test_decorators(self):
+    self._create("""
+      class A:
+        '''
+        @decorator in a docstring
+        '''
+        @real_decorator
+        def f(x):
+          x = foo @ bar @ baz
+
+        @decorator(
+            x, y
+        )
+
+        def bar():
+          pass
+    """)
+    if self.python_version >= (3, 8):
+      real_decorator_lineno = 7
+      decorator_lineno = 14
+    else:
+      real_decorator_lineno = 6
+      decorator_lineno = 11
+    self.assertEqual(self._director.decorators,
+                     {real_decorator_lineno, decorator_lineno})
+
+  def test_stacked_decorators(self):
+    self._create("""
+      @decorator(
+          x, y
+      )
+
+      @foo
+
+      class A:
+          pass
+    """)
+    lineno = 8 if self.python_version >= (3, 8) else 6
+    self.assertEqual(self._director.decorators, {lineno})
+
+  def test_overload(self):
+    self._create("""
+      from typing import overload
+
+      @overload
+      def f() -> int: ...
+
+      @overload
+      def f(x: str) -> str: ...
+
+      def f(x=None):
+        return 0 if x is None else x
+    """)
+    self.assertEqual(self._director.decorators, {5, 8})
+
+
+class FunctionCallDisableTest(DirectorTestCase):
+
+  def assertDisables(self, *disable_lines, error_class="wrong-arg-types"):
+    disables = self._director._disables[error_class]
+    for i in range(self.num_lines):
+      lineno = i+1
+      if lineno in disable_lines:
+        self.assertIn(lineno, disables)
+      else:
+        self.assertNotIn(lineno, disables)
+
+  def test_basic(self):
+    self._create("""
+      toplevel(
+          a, b, c, d)  # pytype: disable=wrong-arg-types
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2)
+    else:
+      self.assertDisables(3)
+
+  def test_nested(self):
+    self._create("""
+      toplevel(
+          nested())  # pytype: disable=wrong-arg-types
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3)
+    else:
+      self.assertDisables(3)
+
+  def test_multiple_nested(self):
+    self._create("""
+      toplevel(
+        nested1(),
+        nested2(),  # pytype: disable=wrong-arg-types
+        nested3())
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, 4)
+    else:
+      self.assertDisables(4)
+
+  def test_multiple_toplevel(self):
+    self._create("""
+      toplevel1()
+      toplevel2()  # pytype: disable=wrong-arg-types
+      toplevel3()
+    """)
+    self.assertDisables(3)
+
+  def test_deeply_nested(self):
+    self._create("""
+      toplevel(
+        nested1(),
+        nested2(
+          deeply_nested1(),  # pytype: disable=wrong-arg-types
+          deeply_nested2()),
+        nested3())
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, 4, 5)
+    else:
+      self.assertDisables(5)
+
+  def test_trailing_parenthesis(self):
+    self._create("""
+      toplevel(
+          a, b, c, d,
+      )  # pytype: disable=wrong-arg-types
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2)
+    else:
+      self.assertDisables(3)
+
+  def test_multiple_bytecode_blocks(self):
+    self._create("""
+      def f():
+        call(a, b, c, d)
+      def g():
+        call(a, b, c, d)  # pytype: disable=wrong-arg-types
+    """)
+    self.assertDisables(5)
+
+  def test_compare(self):
+    self._create("""
+      import datetime
+      def f(right: datetime.date):
+        left = datetime.datetime(1, 1, 1, 1)
+        return left < right  # pytype: disable=wrong-arg-types
+    """)
+    self.assertDisables(5)
+
+  def test_iterate(self):
+    self._create("""
+      class Foo:
+        def __iter__(self, too, many, args):
+          pass
+      foo = Foo()
+      for x in foo:  # pytype: disable=missing-parameter
+        print(x)
+    """)
+    self.assertDisables(6, error_class="missing-parameter")
+
+  def test_subscript(self):
+    self._create("""
+      class Foo:
+        def __getitem__(self, too, many, args):
+          pass
+      x = Foo()
+      x['X']  # pytype: disable=missing-parameter
+    """)
+    self.assertDisables(6, error_class="missing-parameter")
+
+  def test_attrs(self):
+    self._create("""
+      import attr
+      def converter(x):
+        return []
+      @attr.s
+      class Foo:
+        x = attr.ib(
+          converter=converter, factory=list, type=dict[str, str]
+        )  # pytype: disable=annotation-type-mismatch
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(7, error_class="annotation-type-mismatch")
+    else:
+      self.assertDisables(8, error_class="annotation-type-mismatch")
+
+  def test_return(self):
+    self._create("""
+       def f(x):
+         return x
+       def g() -> int:
+         return f(
+             "oops")  # pytype: disable=bad-return-type
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(5, error_class="bad-return-type")
+    else:
+      self.assertDisables(6, error_class="bad-return-type")
 
 
 if __name__ == "__main__":
