@@ -240,6 +240,27 @@ class TestFinal(test_base.BaseTest):
         err, {"e": ["Class C", "overrides", "final class attribute", "FOO",
                     "base class A"]})
 
+  def test_cannot_use_in_signature(self):
+    err = self.CheckWithErrors("""
+      from typing import Final
+      def f(x: Final[int]):  # final-error[e]
+        pass
+      def g(x: Final):  # final-error
+        pass
+      def h(x) -> Final[int]:
+        pass  # bad-return-type # final-error
+      def i(x) -> Final:
+        pass  # bad-return-type # final-error
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["only be used", "assignments", "variable annotations"]})
+
+  def test_cannot_use_in_type_params(self):
+    self.CheckWithErrors("""
+      from typing import Final, List, Tuple
+      x: List[Final[int]] = [10]  # invalid-annotation  # final-error
+      y: Tuple[int, Final[int]] = (1, 2)  # invalid-annotation  # final-error
+    """)
 
 if __name__ == "__main__":
   test_base.main()

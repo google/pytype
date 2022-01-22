@@ -109,10 +109,13 @@ def _make_traceback_str(frames):
 def _dedup_opcodes(stack):
   """Dedup the opcodes in a stack of frames."""
   deduped_stack = []
+  if len(stack) > 1:
+    stack = [x for x in stack if not x.skip_in_tracebacks]
   for frame in stack:
-    if frame.current_opcode and (
-        not deduped_stack or
-        frame.current_opcode.line != deduped_stack[-1].current_opcode.line):
+    if frame.current_opcode:
+      if deduped_stack and (
+          frame.current_opcode.line == deduped_stack[-1].current_opcode.line):
+        continue
       # We can have consecutive opcodes with the same line number due to, e.g.,
       # a set comprehension. The first opcode we encounter is the one with the
       # real method name, whereas the second's method name is something like
@@ -1337,6 +1340,13 @@ class ErrorLog(ErrorLogBase):
       name = f"object of type {typ}"
     msg = f"Cannot apply @final decorator to {name}"
     details = "@final can only be applied to classes and methods."
+    self.error(stack, msg, details=details)
+
+  @_error_name("final-error")
+  def invalid_final_type(self, stack, details=None):
+    msg = "Invalid use of typing.Final"
+    details = ("Final may only be used as the outermost type in assignments "
+               "or variable annotations.")
     self.error(stack, msg, details=details)
 
 

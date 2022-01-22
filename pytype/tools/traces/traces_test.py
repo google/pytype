@@ -73,7 +73,7 @@ class TraceTest(unittest.TestCase):
     # pytype represents unannotated function parameters as unknowns. Make sure
     # unknowns don't appear in the traced types.
     src = traces.trace("def f(x): return x")
-    trace, = (x for x in src.traces[1] if x.op == "LOAD_FAST")
+    trace = next(x for x in src.traces[1] if x.op == "LOAD_FAST")
     pyval, = trace.types
     self.assertIsInstance(pyval, pytd.AnythingType)
 

@@ -308,6 +308,10 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.NamedType(v.class_name)
     elif isinstance(v, abstract.BuildClass):
       return pytd.NamedType("typing.Callable")
+    elif isinstance(v, abstract.FinalAnnotation):
+      param = self.value_to_pytd_type(node, v.annotation, seen, view)
+      return pytd.GenericType(base_type=pytd.NamedType("typing.Final"),
+                              parameters=(param,))
     else:
       raise NotImplementedError(v.__class__.__name__)
 

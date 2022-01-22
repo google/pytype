@@ -67,6 +67,10 @@ class Final(abstract.AnnotationClass):
       self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
     return abstract.FinalAnnotation(inner[0], self.ctx)
 
+  def instantiate(self, node, container=None):
+    self.ctx.errorlog.invalid_final_type(self.ctx.vm.frames)
+    return self.ctx.new_unsolvable(node)
+
 
 class TypingContainer(abstract.AnnotationContainer):
 

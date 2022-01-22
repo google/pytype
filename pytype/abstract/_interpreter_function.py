@@ -367,8 +367,8 @@ class InterpreterFunction(SignedFunction):
   _function_cache = {}
 
   @classmethod
-  def make(cls, name, code, f_locals, f_globals, defaults, kw_defaults, closure,
-           annotations, ctx):
+  def make(cls, name, *, def_opcode, code, f_locals, f_globals, defaults,
+           kw_defaults, closure, annotations, ctx):
     """Get an InterpreterFunction.
 
     Things like anonymous functions and generator expressions are created
@@ -378,6 +378,7 @@ class InterpreterFunction(SignedFunction):
 
     Arguments:
       name: Function name.
+      def_opcode: The opcode for the def statement
       code: A code object.
       f_locals: The locals used for name resolution.
       f_globals: The globals used for name resolution.
@@ -417,16 +418,18 @@ class InterpreterFunction(SignedFunction):
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
     if key not in cls._function_cache:
-      cls._function_cache[key] = cls(name, code, f_locals, f_globals, defaults,
-                                     kw_defaults, closure, annotations,
+      cls._function_cache[key] = cls(name, def_opcode, code, f_locals,
+                                     f_globals, defaults, kw_defaults, closure,
+                                     annotations,
                                      overloads, ctx)
     return cls._function_cache[key]
 
-  def __init__(self, name, code, f_locals, f_globals, defaults, kw_defaults,
-               closure, annotations, overloads, ctx):
+  def __init__(self, name, def_opcode, code, f_locals, f_globals, defaults,
+               kw_defaults, closure, annotations, overloads, ctx):
     log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
     self.bound_class = _function_base.BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
+    self.def_opcode = def_opcode
     self.code = code
     self.f_globals = f_globals
     self.f_locals = f_locals

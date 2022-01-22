@@ -566,7 +566,7 @@ def _check_defaults(node, method, ctx):
 
 
 def make_function(name, node, code, globs, defaults, kw_defaults, closure,
-                  annotations, ctx):
+                  annotations, opcode, ctx):
   """Create a function or closure given the arguments."""
   if closure:
     closure = tuple(
@@ -578,6 +578,7 @@ def make_function(name, node, code, globs, defaults, kw_defaults, closure,
     name = "<lambda>"
   val = abstract.InterpreterFunction.make(
       name,
+      def_opcode=opcode,
       code=abstract_utils.get_atomic_python_constant(code),
       f_locals=ctx.vm.frame.f_locals,
       f_globals=globs,

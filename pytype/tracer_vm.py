@@ -131,7 +131,20 @@ class CallTracer(vm.VirtualMachine):
 
   def call_function_in_frame(self, node, var, args, kwargs,
                              starargs, starstarargs):
-    frame = frame_state.SimpleFrame(node=node)
+    # Try to get the function opcode with position information to construct the
+    # frame, so that we have the data for any error messages raised before we
+    # get to func.call().
+    fn = var.data[0]
+    opcode = None
+    if isinstance(fn, abstract.InterpreterFunction):
+      opcode = fn.def_opcode
+    if opcode:
+      frame = frame_state.SimpleFrame(node=node, opcode=opcode)
+    else:
+      frame = frame_state.SimpleFrame(node=node)
+    # We only want this frame to show up in errors if it's at the top of the
+    # stack (i.e. we haven't started analysing the actual function yet)
+    frame.skip_in_tracebacks = True
     self.push_frame(frame)
     log.info("Analyzing %r", [v.name for v in var.data])
     state = frame_state.FrameState.init(node, self.ctx)

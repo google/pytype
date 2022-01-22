@@ -2231,7 +2231,7 @@ class VirtualMachine:
     globs = self.get_globals_dict()
     fn = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
-        closure=free_vars, ctx=self.ctx)
+        closure=free_vars, opcode=op, ctx=self.ctx)
     if op.line in self._director.decorators:
       fn.data[0].is_decorated = True
     vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
@@ -2249,7 +2249,7 @@ class VirtualMachine:
     globs = self.get_globals_dict()
     fn = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
-        closure=closure, ctx=self.ctx)
+        closure=closure, opcode=op, ctx=self.ctx)
     self.trace_functiondef(fn)
     return state.push(fn)
 
