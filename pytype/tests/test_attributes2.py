@@ -126,6 +126,16 @@ class TestAttributes(test_base.BaseTest):
         pass
     """)
 
+  def test_regular_disable(self):
+    self.Check("""
+      class Foo:
+        pass
+      def f(a):
+        pass
+      f(
+          Foo.nonexistent)  # pytype: disable=attribute-error
+    """)
+
 
 class TestAttributesPython3FeatureTest(test_base.BaseTest):
   """Tests for attributes over target code using Python 3 features."""

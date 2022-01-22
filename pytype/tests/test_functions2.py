@@ -750,6 +750,27 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         def __init__(self) -> None: ...
     """)
 
+  def test_disable_invalid_parameter_annotation(self):
+    self.Check("""
+      def f(
+        x: 0 = 0
+      ):  # pytype: disable=invalid-annotation
+        pass
+    """)
+
+  def test_disable_invalid_return_annotation(self):
+    self.Check("""
+      def f() -> (
+        list[
+            3.14]):  # pytype: disable=invalid-annotation
+        return []
+      def g(
+      ) -> list[
+          3.14
+      ]:  # pytype: disable=invalid-annotation
+        return []
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -332,6 +332,12 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": "Optional[Union[int, str]"})
 
+  def test_skip_file_with_comment(self):
+    self.Check("""
+      # pytype: skip-file  # extra comment here
+      import nonsense
+    """)
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""

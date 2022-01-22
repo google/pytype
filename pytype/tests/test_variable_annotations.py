@@ -210,11 +210,24 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
 
-  @test_base.skip("directors._VariableAnnotation assumes a variable annotation "
-                  "starts at the beginning of the line.")
+  @test_base.skip("b/167613685")
+  def test_function_local_annotation_no_assignment(self):
+    ty = self.Infer("""
+      def f():
+        x: int
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> int: ...")
+
   def test_multi_statement_line(self):
-    ty = self.Infer("if __random__: v: int = None")
-    self.assertTypesMatchPytd(ty, "v: int")
+    ty = self.Infer("""
+      def f():
+        if __random__: v: int = None
+        return v
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
+    """)
 
   def test_multi_line_assignment(self):
     ty = self.Infer("""
