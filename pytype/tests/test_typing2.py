@@ -544,6 +544,13 @@ class TypingTest(test_base.BaseTest):
         "e3": r"NoReturn is not allowed", "e4": r"NoReturn is not allowed",
         "e5": r"NoReturn is not allowed"})
 
+  def test_noreturn_in_tuple(self):
+    self.Check("""
+      from typing import NoReturn
+      def _returns(annotations) -> bool:
+        return annotations["return"] not in (None, NoReturn)
+    """)
+
   def test_SupportsComplex(self):
     self.Check("""
       from typing import SupportsComplex
