@@ -422,10 +422,10 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     self.options = list(options)
     self.cls = self._get_class()
     self.formal = any(t.formal for t in self.options)
+    self._printing = False
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
-    self._printing = False
 
   def __repr__(self):
     if self._printing:  # recursion detected
@@ -672,5 +672,4 @@ class FinalAnnotation(_base.BaseValue):
     return f"Final[{self.annotation}]"
 
   def instantiate(self, node, container=None):
-    self.ctx.errorlog.invalid_final_type(self.ctx.vm.frames)
-    return self.annotation.to_variable(node)
+    return self.to_variable(node)

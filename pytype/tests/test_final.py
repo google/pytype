@@ -247,10 +247,10 @@ class TestFinal(test_base.BaseTest):
         pass
       def g(x: Final):  # final-error
         pass
-      def h(x) -> Final[int]:
-        pass  # bad-return-type # final-error
+      def h(x) -> Final[int]:  # final-error
+        pass  # bad-return-type
       def i(x) -> Final:
-        pass  # bad-return-type # final-error
+        pass  # bad-return-type  # final-error
     """)
     self.assertErrorSequences(
         err, {"e": ["only be used", "assignments", "variable annotations"]})
@@ -260,6 +260,13 @@ class TestFinal(test_base.BaseTest):
       from typing import Final, List, Tuple
       x: List[Final[int]] = [10]  # invalid-annotation  # final-error
       y: Tuple[int, Final[int]] = (1, 2)  # invalid-annotation  # final-error
+    """)
+
+  def test_can_use_in_annotated(self):
+    self.CheckWithErrors("""
+      from typing import Annotated, Final, List
+      x: Annotated[Final[List[int]], 'valid'] = [10]
+      y: Annotated[List[Final[int]], 'invalid'] = [10]  # invalid-annotation  # final-error
     """)
 
 
