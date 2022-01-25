@@ -764,6 +764,19 @@ class DisableDirectivesTest(DirectorTestCase):
     """)
     self.assertDisables(3, 4, 5, error_class="attribute-error")
 
+  def test_ignore(self):
+    # We have no idea if the '# type: ignore' is for the list construction, the
+    # function call, or the function argument, so we apply it to all of them.
+    self._create("""
+      x = [
+        some_bad_function(
+            "some bad arg")]  # type: ignore
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, 4, disables=self._director.ignore)
+    else:
+      self.assertDisables(4, disables=self._director.ignore)
+
   def test_ignore_range(self):
     self._create("""
       x = [
@@ -772,6 +785,20 @@ class DisableDirectivesTest(DirectorTestCase):
       ]
     """)
     self.assertDisables(3, 4, 5, disables=self._director.ignore)
+
+  def test_with_and_backslash_continuation(self):
+    self._create("""
+      with foo("a",
+               "b"), \\
+           bar("c",
+               "d"),  \\
+           baz("e"):  # pytype: disable=wrong-arg-types
+        pass
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 6)
+    else:
+      self.assertDisables(6)
 
 
 if __name__ == "__main__":

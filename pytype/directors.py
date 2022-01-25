@@ -16,6 +16,7 @@ from pytype import utils
 log = logging.getLogger(__name__)
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
+# Also supports mypy-style ignore[code, ...] syntax, treated as regular ignores.
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
@@ -288,17 +289,25 @@ class _ParseVisitor(libcst.CSTVisitor):
     """Adds an empty _StructuredComment group with the given line range."""
     if cls is _LineRange and self._has_containing_group(start_line, end_line):
       return
-    # We keep structured_comment_groups ordered by inserting the new line
-    # range at the end, then calling move_to_end() on all line ranges that
-    # should come after it. We encounter line ranges in roughly ascending order
-    # anyway, so this reordering is not expensive.
+    # We keep structured_comment_groups ordered by inserting the new line range
+    # at the end, then absorbing line ranges that the new range contains and
+    # calling move_to_end() on ones that should come after it. We encounter line
+    # ranges in roughly ascending order, so this reordering is not expensive.
+    keys_to_absorb = []
     keys_to_move = []
     for line_range in reversed(self.structured_comment_groups):
-      if line_range.start_line > start_line:
+      if (cls is type(line_range) is _LineRange and
+          start_line <= line_range.start_line and
+          line_range.end_line <= end_line):
+        keys_to_absorb.append(line_range)
+      elif line_range.start_line > start_line:
         keys_to_move.append(line_range)
       else:
         break
-    self.structured_comment_groups[cls(start_line, end_line)] = []
+    self.structured_comment_groups[cls(start_line, end_line)] = new_group = []
+    for k in reversed(keys_to_absorb):
+      new_group.extend(self.structured_comment_groups[k])
+      del self.structured_comment_groups[k]
     for k in reversed(keys_to_move):
       self.structured_comment_groups.move_to_end(k)
 
@@ -324,9 +333,10 @@ class _ParseVisitor(libcst.CSTVisitor):
           # A structured comment belongs to exactly one logical statement.
           group.append(structured_comment)
           break
-        elif tool == "pytype" and not open_ended:
-          # A "pytype:" comment can additionally belong to any number of
-          # overlapping attribute accesses and function calls.
+        elif not open_ended and (
+            tool == "pytype" or (tool == "type" and _IGNORE_RE.match(data))):
+          # A "type: ignore" or "pytype:" comment can additionally belong to any
+          # number of overlapping attribute accesses and function calls.
           group.append(structured_comment)
       else:
         raise AssertionError("Could not find a line range for comment "
@@ -363,9 +373,11 @@ class _ParseVisitor(libcst.CSTVisitor):
     # The comment's line range goes from the first line of the header to the
     # comment line.
     parent = self.get_metadata(libcst.metadata.ParentNodeProvider, node)
-    start = self._get_position(parent).start
-    end = self._get_position(node.header).start
-    self._add_structured_comment_group(start.line, end.line)
+    # visit_FunctionDef takes care of adding line ranges for FunctionDef.
+    if not isinstance(parent, libcst.FunctionDef):
+      start = self._get_position(parent).start
+      end = self._get_position(node.header).start
+      self._add_structured_comment_group(start.line, end.line)
 
   def visit_ParenthesizedWhitespace(self, node):
     self._visit_comment_owner(node)
@@ -419,15 +431,20 @@ class _ParseVisitor(libcst.CSTVisitor):
     self._visit_def(node)
 
   def visit_FunctionDef(self, node):
-    # A function signature has two line ranges:
-    # * One for the function parameters, starting at the beginning of the
-    #   signature and ending at the closing parenthesis.
-    # * One spanning the return annotation.
-    params_start = self._get_position(node).start
-    params_end = self._get_position(node.params).end
-    self._add_structured_comment_group(params_start.line, params_end.line)
+    start = self._get_position(node).start
     if node.returns:
+      # A fully annotated function signature has two line ranges:
+      # * One for the function parameters, starting at the beginning of the
+      #   signature and ending at the closing parenthesis.
+      # * One spanning the return annotation.
+      params_end = self._get_position(node.params).end
+      self._add_structured_comment_group(start.line, params_end.line)
       self._visit_comment_owner(node.returns.annotation)
+    else:
+      # Otherwise, the signature has one line range that starts at its beginning
+      # and ends at the final colon.
+      self._add_structured_comment_group(
+          start.line, self._get_position(node.whitespace_before_colon).end.line)
     self._visit_decorators(node)
     self._visit_def(node)
 
@@ -567,8 +584,6 @@ class Director:
       self, line: int, data: str, open_ended: bool, line_range: _LineRange,
       opcode_lines: Optional[_OpcodeLines]):
     """Process a type: comment."""
-    # Also supports mypy-style ignore[code, ...] syntax, treated as regular
-    # ignores.
     is_ignore = _IGNORE_RE.match(data)
     if not is_ignore and line != line_range.end_line:
       # Warn and discard type comments placed in the middle of expressions.
@@ -583,6 +598,7 @@ class Director:
       if open_ended:
         self._ignore.start_range(line, True)
       else:
+        self._ignore.set_line(line, True)
         self._ignore.set_line(final_line, True)
     else:
       if final_line in self._type_comments:
