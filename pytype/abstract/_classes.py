@@ -319,14 +319,23 @@ class PyTDClass(
     pytd_cls, decorated = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, ctx)
+    if decorate.has_decorator(
+        pytd_cls, ("typing.final", "typing_extensions.final")):
+      self.final = True
+    # Keep track of the names of final methods and instance variables.
+    self.final_members = {}
     mm = {}
     for val in pytd_cls.constants:
       if isinstance(val.type, pytd.Annotated):
+        if "'Final'" in val.type.annotations:
+          self.final_members[val.name] = val
         mm[val.name] = val.Replace(type=val.type.base_type)
       else:
         mm[val.name] = val
     for val in pytd_cls.methods:
       mm[val.name] = val
+      if val.is_final:
+        self.final_members[val.name] = val
     for val in pytd_cls.classes:
       mm[val.name.rsplit(".", 1)[-1]] = val
     if pytd_cls.metaclass is None:
