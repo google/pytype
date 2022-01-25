@@ -359,10 +359,7 @@ class VirtualMachine:
         python_exe=self.ctx.options.python_exe,
         filename=filename,
         mode=mode)
-    code = blocks.process_code(code, self.ctx.python_version)
-    if mode == "exec":
-      self._director.adjust_line_numbers(code)
-    return blocks.merge_annotations(code, self._director.annotations)
+    return blocks.process_code(code, self.ctx.python_version)
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""
@@ -398,19 +395,22 @@ class VirtualMachine:
       A tuple (CFGNode, set) containing the last CFGNode of the program as
         well as all the top-level names defined by it.
     """
+    self.filename = filename
+    self._maximum_depth = maximum_depth
+    src_tree = directors.parse_src(src, self.ctx.python_version)
+    code = self.compile_src(src, filename=filename)
+    # In Python 3.8+, opcodes are consistently at the first line of the
+    # corresponding source code. Before 3.8, they are on one of the last lines
+    # but the exact positioning is unpredictable, so we pass the bytecode to the
+    # director to make adjustments based on the opcodes' observed line numbers.
     director = directors.Director(
-        src, self.ctx.errorlog, filename, self.ctx.options.disable,
-        self.ctx.python_version)
-
+        src_tree, self.ctx.errorlog, filename, self.ctx.options.disable,
+        code if self.ctx.python_version < (3, 8) else None)
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.ctx.errorlog.set_error_filter(director.should_report_error)
     self._director = director
-    self.filename = filename
-
-    self._maximum_depth = maximum_depth
-
-    code = self.compile_src(src, filename=filename)
+    code = blocks.merge_annotations(code, self._director.annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():
@@ -2231,7 +2231,7 @@ class VirtualMachine:
     globs = self.get_globals_dict()
     fn = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
-        closure=free_vars, ctx=self.ctx)
+        closure=free_vars, opcode=op, ctx=self.ctx)
     if op.line in self._director.decorators:
       fn.data[0].is_decorated = True
     vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
@@ -2249,7 +2249,7 @@ class VirtualMachine:
     globs = self.get_globals_dict()
     fn = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
-        closure=closure, ctx=self.ctx)
+        closure=closure, opcode=op, ctx=self.ctx)
     self.trace_functiondef(fn)
     return state.push(fn)
 

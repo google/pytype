@@ -109,10 +109,13 @@ def _make_traceback_str(frames):
 def _dedup_opcodes(stack):
   """Dedup the opcodes in a stack of frames."""
   deduped_stack = []
+  if len(stack) > 1:
+    stack = [x for x in stack if not x.skip_in_tracebacks]
   for frame in stack:
-    if frame.current_opcode and (
-        not deduped_stack or
-        frame.current_opcode.line != deduped_stack[-1].current_opcode.line):
+    if frame.current_opcode:
+      if deduped_stack and (
+          frame.current_opcode.line == deduped_stack[-1].current_opcode.line):
+        continue
       # We can have consecutive opcodes with the same line number due to, e.g.,
       # a set comprehension. The first opcode we encounter is the one with the
       # real method name, whereas the second's method name is something like
@@ -1243,13 +1246,6 @@ class ErrorLog(ErrorLogBase):
     err_msg = f"Type annotation{suffix} does not match type of assignment"
     self.error(stack, err_msg, details=details)
 
-  @_error_name("annotation-type-mismatch")
-  def assigning_to_final(self, stack, name, local):
-    """Attempting to reassign a variable annotated with Final."""
-    obj = "variable" if local else "attribute"
-    err_msg = f"Assigning to {obj} {name}, which was annotated with Final"
-    self.error(stack, err_msg)
-
   @_error_name("container-type-mismatch")
   def container_type_mismatch(self, stack, obj, mutations, name):
     """Invalid combination of annotation and mutation.
@@ -1292,12 +1288,6 @@ class ErrorLog(ErrorLogBase):
     """Invalid function constructed via metaprogramming."""
     self.error(stack, msg)
 
-  @_error_name("invalid-function-definition")
-  def overriding_final_method(self, stack, cls, base, method, details=None):
-    msg = (f"Class {cls.name} overrides final method {method}, "
-           f"defined in base class {base.name}")
-    self.error(stack, msg, details=details)
-
   @_error_name("typed-dict-error")
   def typed_dict_error(self, stack, obj, name):
     """Accessing a nonexistent key in a typed dict.
@@ -1312,6 +1302,52 @@ class ErrorLog(ErrorLogBase):
     else:
       err_msg = f"TypedDict {obj.class_name} requires all keys to be strings"
     self.error(stack, err_msg)
+
+  @_error_name("final-error")
+  def _overriding_final(self, stack, cls, base, name, *, is_method, details):
+    desc = "method" if is_method else "class attribute"
+    msg = (f"Class {cls.name} overrides final {desc} {name}, "
+           f"defined in base class {base.name}")
+    self.error(stack, msg, details=details)
+
+  def overriding_final_method(self, stack, cls, base, name, details=None):
+    self._overriding_final(stack, cls, base, name, details=details,
+                           is_method=True)
+
+  def overriding_final_attribute(self, stack, cls, base, name, details=None):
+    self._overriding_final(stack, cls, base, name, details=details,
+                           is_method=False)
+
+  @_error_name("final-error")
+  def assigning_to_final(self, stack, name, local):
+    """Attempting to reassign a variable annotated with Final."""
+    obj = "variable" if local else "attribute"
+    err_msg = f"Assigning to {obj} {name}, which was annotated with Final"
+    self.error(stack, err_msg)
+
+  @_error_name("final-error")
+  def subclassing_final_class(self, stack, base_var, details=None):
+    base_cls = self._join_printed_types(
+        self._print_as_expected_type(t) for t in base_var.data)
+    self.error(stack, "Cannot subclass final class: %s" % base_cls,
+               details=details, keyword=base_cls)
+
+  @_error_name("final-error")
+  def bad_final_decorator(self, stack, obj, details=None):
+    name = getattr(obj, "name", None)
+    if not name:
+      typ = self._print_as_expected_type(obj)
+      name = f"object of type {typ}"
+    msg = f"Cannot apply @final decorator to {name}"
+    details = "@final can only be applied to classes and methods."
+    self.error(stack, msg, details=details)
+
+  @_error_name("final-error")
+  def invalid_final_type(self, stack, details=None):
+    msg = "Invalid use of typing.Final"
+    details = ("Final may only be used as the outermost type in assignments "
+               "or variable annotations.")
+    self.error(stack, msg, details=details)
 
 
 def get_error_names_set():

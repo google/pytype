@@ -305,6 +305,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     assert isinstance(left, abstract.BaseValue), left
     assert isinstance(other_type, abstract.BaseValue), other_type
 
+    # Unwrap Final[T] here
+    if isinstance(left, abstract.FinalAnnotation):
+      left = left.annotation
+    if isinstance(other_type, abstract.FinalAnnotation):
+      other_type = other_type.annotation
+
     # Make sure we don't recurse infinitely when matching recursive types.
     if abstract_utils.is_recursive_annotation(other_type):
       key = (left, other_type)

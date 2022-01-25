@@ -276,6 +276,13 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     return False
 
   @property
+  def annotations_dict(self):
+    ann = self.members.get("__annotations__")
+    if ann:
+      return abstract_utils.get_atomic_value(ann)
+    return None
+
+  @property
   def is_abstract(self):
     return ((self._has_explicit_abcmeta() or self._has_implicit_abcmeta()) and
             bool(self.abstract_methods))
@@ -296,6 +303,10 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
   def is_typed_dict_class(self):
     return (self.full_name == "typing.TypedDict" or
             self.__class__.__name__ == "TypedDictClass")
+
+  def get_annotated_local(self, name):
+    ann = self.annotations_dict
+    return ann and ann.annotated_locals.get(name)
 
   def _get_inherited_metaclass(self):
     for base in self.mro[1:]:

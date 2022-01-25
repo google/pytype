@@ -33,6 +33,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [base-class-error](#base-class-error)
       * [container-type-mismatch](#container-type-mismatch)
       * [duplicate-keyword-argument](#duplicate-keyword-argument)
+      * [final-error](#final-error)
       * [ignored-abstractmethod](#ignored-abstractmethod)
       * [ignored-metaclass](#ignored-metaclass)
       * [ignored-type-comment](#ignored-type-comment)
@@ -66,7 +67,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2022-01-06T16:56-08:00 -->
+<!-- Added by: mdemello, at: 2022-01-20T12:15-08:00 -->
 
 <!--te-->
 
@@ -289,6 +290,21 @@ f(True, x=False)  # duplicate-keyword-argument
 
 If you believe you are seeing this error due to a bug on pytype's end, see
 [this section][pyi-stub-files] for where the type information we use is located.
+
+## final-error
+
+An attempt was made to subclass, override or reassign a final object or
+variable. The exact meaning of "final" is context dependent; see [PEP
+591][pep-591] for the full details. Example:
+
+<!-- bad -->
+```python
+class A:
+  FOO: Final[int] = 10
+
+class B(A):
+  FOO = 20  # final-error
+```
 
 ## ignored-abstractmethod
 
@@ -821,6 +837,7 @@ If you believe you are seeing this error due to a bug on pytype's end, see
 [pyi-stub-files]: user_guide.md#pytypes-pyi-stub-files
 [silencing-errors]: user_guide.md#silencing-errors
 [pytype-faq]: faq.md#noniterable-strings
+[pep-591]: https://www.python.org/dev/peps/pep-0591/
 
 <!-- References with different internal and external versions -->
 [new-bug]: https://github.com/google/pytype/issues/new

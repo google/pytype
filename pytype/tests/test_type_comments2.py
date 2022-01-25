@@ -77,6 +77,19 @@ class Py3TypeCommentTest(test_base.BaseTest):
       ]  # type: list[int]
     """)
 
+  def test_type_comment_and_type_ignore(self):
+    self.Check("""
+      x = ''  # type: int  # type: ignore
+    """)
+
+  def test_adjust_type_ignore(self):
+    self.Check("""
+      def f(x: int):
+        pass
+      f(
+          'oops')  # type: ignore
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

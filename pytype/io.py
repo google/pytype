@@ -4,8 +4,9 @@ import contextlib
 import logging
 import os
 import sys
-import tokenize
 import traceback
+
+import libcst
 
 from pytype import __version__
 from pytype import analyze
@@ -150,9 +151,8 @@ def check_or_generate_pyi(options, loader=None):
     errorlog.python_compiler_error(options.input, e.lineno, e.error)
   except IndentationError as e:
     errorlog.python_compiler_error(options.input, e.lineno, e.msg)
-  except tokenize.TokenError as e:
-    msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
-    errorlog.python_compiler_error(options.input, lineno, msg)
+  except libcst.ParserSyntaxError as e:
+    errorlog.python_compiler_error(options.input, e.raw_line, e.message)
   except directors.SkipFileError:
     result += "# skip-file found, file not analyzed"
   except Exception as e:  # pylint: disable=broad-except
@@ -312,10 +312,9 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   except pyc.CompileError as e:
     raise exception_type("Error reading file %s at line %s: %s" %
                          (filename, e.lineno, e.error)) from e
-  except tokenize.TokenError as e:
-    msg, (lineno, unused_column) = e.args  # pylint: disable=unbalanced-tuple-unpacking
+  except libcst.ParserSyntaxError as e:
     raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, lineno, msg)) from e
+                         (filename, e.raw_line, e.message)) from e
   except directors.SkipFileError as e:
     raise exception_type("Pytype could not analyze file %s: "
                          "'# skip-file' directive found" % filename) from e

@@ -2,13 +2,13 @@
 
 import bisect
 import collections
-import io
-import keyword
+import dataclasses
 import logging
 import re
 import sys
-import tokenize
-from typing import AbstractSet, Sequence
+from typing import AbstractSet, Optional
+
+import libcst
 
 from pytype import blocks
 from pytype import utils
@@ -16,9 +16,8 @@ from pytype import utils
 log = logging.getLogger(__name__)
 
 _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
+# Also supports mypy-style ignore[code, ...] syntax, treated as regular ignores.
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
-_CLASS_OR_FUNC_RE = re.compile(r"^(def|class)\s")
-_DECORATOR_RE = re.compile(r"^\s*@(\w+)([(]|\s*$)")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 _FUNCTION_CALL_ERRORS = (
@@ -29,12 +28,15 @@ _FUNCTION_CALL_ERRORS = (
     "wrong-keyword-args",
 )
 
-
-_ALL_ADJUSTABLE_ERRORS = _FUNCTION_CALL_ERRORS + (
-    "annotation-type-mismatch",
-    "attribute-error",
-    "bad-return-type",
-)
+_ALL_ADJUSTABLE_ERRORS = frozenset(
+    _FUNCTION_CALL_ERRORS + (
+        "annotation-type-mismatch",
+        "attribute-error",
+        "bad-return-type",
+        "container-type-mismatch",
+        "invalid-annotation",
+        "not-supported-yet",
+    ))
 
 
 class _DirectiveError(Exception):
@@ -113,136 +115,49 @@ class _LineSet:
     pos = bisect.bisect(self._transitions, line)
     return (pos % 2) == 1
 
-  def get_disable_after(self, lineno):
-    """Get an unclosed disable, if any, that starts after lineno."""
-    if len(self._transitions) % 2 == 1 and self._transitions[-1] >= lineno:
+  def get_disable_after(self, line):
+    """Get an unclosed disable, if any, that starts after line."""
+    if len(self._transitions) % 2 == 1 and self._transitions[-1] >= line:
       return self._transitions[-1]
     return None
 
 
-class _TypeCommentSet:
-  """A set of type comments in a single logical line."""
-
-  @classmethod
-  def start(cls, lineno):
-    return cls(lineno)
-
-  def __init__(self, start_lineno):
-    self.start_line = start_lineno
-    self.end_line = None
-    self.type_comments = {}
-    self._found_equal = False
-
-  def process_equal(self, lineno):
-    if not self.type_comments and not self._found_equal:
-      self.start_line = lineno
-      self._found_equal = True
-
-  def get_lineno_for_version(self, lineno, python_version):
-    # In 3.8+, the STORE_* opcode for a multiline variable assignment is
-    # at the first line in the assignment; before that, it is at the last.
-    if self._found_equal and python_version >= (3, 8):
-      return self.start_line
-    else:
-      return lineno
+@dataclasses.dataclass(frozen=True)
+class _LineRange:
+  start_line: int
+  end_line: int
 
 
-class _FunctionDefinition:
-  """Tracks the line numbers of function definitions."""
+@dataclasses.dataclass(frozen=True)
+class _StructuredComment:
+  """A structured comment.
 
-  @classmethod
-  def start(cls, lineno):
-    return cls(lineno)
-
-  def __init__(self, start_lineno):
-    self._paren_count = 0
-    self._start_line = start_lineno
-    self._end_line = None
-
-  def add_lpar(self, lineno):
-    assert lineno >= self._start_line
-    self._paren_count += 1
-
-  def add_rpar(self, lineno):
-    if self._end_line is not None:
-      return
-    self._paren_count -= 1
-    if self._paren_count == 0:
-      self._end_line = lineno
-
-  def contains(self, lineno):
-    if lineno < self._start_line:
-      return False
-    return self._end_line is None or lineno <= self._end_line
-
-  def is_open(self):
-    return self._end_line is None
+  Attributes:
+    line: The line number.
+    tool: The tool label, e.g., "type" for "# type: int".
+    data: The data, e.g., "int" for "# type: int".
+    open_ended: True if the comment appears on a line by itself (i.e., it is
+     open-ended rather than attached to a line of code).
+  """
+  line: int
+  tool: str
+  data: str
+  open_ended: bool
 
 
-class _VariableAnnotation:
-  """Processes a single logical line, looking for a variable annotation."""
+@dataclasses.dataclass(frozen=True)
+class _Attribute(_LineRange):
+  """Tag to identify attribute accesses."""
 
-  @classmethod
-  def start(cls, lineno, token):
-    self = cls()
-    self.add_token(lineno, token)
-    return self
 
-  def __init__(self):
-    self._tokens = []
-    self.annotation = ""
-    # Set to True when the full annotation has been found, or if we determine
-    # that the line does not contain an annotation.
-    self.closed = False
-    # Set to the line on which the colon is found. We do not use the line at
-    # which start() is called because the latter may be a blank line.
-    self.start_lineno = None
-    # Used to consume a 'self.' or 'cls.' prefix so we can detect variable
-    # annotations on attributes.
-    self._attr_prefix = []
+@dataclasses.dataclass(frozen=True)
+class _Call(_LineRange):
+  """Tag to identify function calls."""
 
-  def _add_to_attr_prefix(self, token):
-    if self._tokens:
-      return False
-    if (not self._attr_prefix and token.string in ("self", "cls") or
-        len(self._attr_prefix) == 1 and token.exact_type == tokenize.DOT):
-      self._attr_prefix.append(token)
-      return True
-    return False
 
-  def _accept(self, token):
-    if self.closed:
-      return False
-    # Allow comments and whitespace before the NAME token signifying the start
-    # of the annotation.
-    return token.exact_type != tokenize.COMMENT and token.string.strip()
-
-  def add_token(self, lineno, token):
-    """Process a token."""
-    if not self._accept(token):
-      return
-    if self._add_to_attr_prefix(token):
-      return
-    # Match NAME COLON [annotation] EQUAL. We assume the annotation starts at
-    # the beginning of the line, which greatly simplifies matching at the cost
-    # of failing to find annotations in lines like `if __random__: v: int = 0`.
-    if not self._tokens:
-      # Filter out false positives like `else: x = 0`.
-      if token.exact_type != tokenize.NAME or keyword.iskeyword(token.string):
-        self.closed = True
-    elif len(self._tokens) == 1:
-      if token.exact_type == tokenize.COLON:
-        self.start_lineno = lineno
-      else:
-        self.closed = True
-    elif token.exact_type == tokenize.EQUAL:
-      self.closed = True
-    else:
-      if self.annotation and self._tokens[-1].end[0] == token.start[0]:
-        # Preserve whitespace.
-        self.annotation += token.line[self._tokens[-1].end[1]:token.start[1]]
-      self.annotation += token.string
-    self._tokens.append(token)
+@dataclasses.dataclass(frozen=True)
+class _VariableAnnotation(_LineRange):
+  annotation: str
 
 
 def _collect_bytecode(ordered_code):
@@ -257,7 +172,7 @@ def _collect_bytecode(ordered_code):
   return bytecode_blocks
 
 
-def _adjust_line_number(line, allowed_lines, min_line=1):
+def _adjust_line_number(line, allowed_lines, min_line):
   adjusted_line = line
   while adjusted_line not in allowed_lines and adjusted_line >= min_line:
     adjusted_line -= 1
@@ -270,13 +185,6 @@ def _is_function_call(opcode_name):
       "COMPARE_OP",
       "FOR_ITER",
   }
-
-
-def _is_funcdef_op(opcode_name):
-  """Checks whether the opcode may appear in a function signature."""
-  return (opcode_name.startswith("BUILD_") or
-          opcode_name.startswith("LOAD_") or
-          opcode_name == "BINARY_SUBSCR")
 
 
 def _is_load_attribute_op(opcode_name):
@@ -294,47 +202,25 @@ def _is_return_op(opcode_name):
   return opcode_name.startswith("YIELD_") or opcode_name == "RETURN_VALUE"
 
 
+@dataclasses.dataclass
 class _OpcodeLines:
   """Stores opcode line numbers for Director.adjust_line_numbers()."""
 
-  class Call:
-
-    def __init__(self, line):
-      self.line = line
-      self.children = set()
-
-    def __repr__(self):
-      return f"call @ line {self.line} ({len(self.children)} nested calls)"
-
-  def __init__(
-      self,
-      store_lines: AbstractSet[int],
-      make_function_lines: AbstractSet[int],
-      non_funcdef_lines: AbstractSet[int],
-      load_attr_lines: AbstractSet[int],
-      return_lines: AbstractSet[int],
-      call_lines: Sequence[Call]):
-    self.store_lines = store_lines
-    self.make_function_lines = make_function_lines
-    self.non_funcdef_lines = non_funcdef_lines
-    self.load_attr_lines = load_attr_lines
-    self.return_lines = return_lines
-    # We transform call_lines into a line->Call mapping so that
-    # _adjust_line_number can treat it as a AbstractSet[int] like the other
-    # *_lines attributes.
-    self.call_lines = {call.line: call for call in call_lines}
+  store_lines: AbstractSet[int]
+  make_function_lines: AbstractSet[int]
+  load_attr_lines: AbstractSet[int]
+  return_lines: AbstractSet[int]
+  call_lines: AbstractSet[int]
 
   @classmethod
   def from_code(cls, code):
     """Builds an _OpcodeLines from a code object."""
     store_lines = set()
     make_function_lines = set()
-    non_funcdef_lines = set()
     load_attr_lines = set()
     return_lines = set()
-    all_call_lines = []
+    call_lines = set()
     for block in _collect_bytecode(code):
-      call_lines = []
       for opcode in block:
         if opcode.name.startswith("STORE_"):
           store_lines.add(opcode.line)
@@ -345,45 +231,244 @@ class _OpcodeLines:
         elif _is_return_op(opcode.name):
           return_lines.add(opcode.line)
         elif _is_function_call(opcode.name):
-          # Function calls can be nested, so we represent them as a sequence of
-          # call trees. As opcodes are typically ordered by increasing line
-          # number, we detect nested calls via decreasing line numbers. For
-          # example, for:
-          #   top_level1()  # line 1
-          #   top_level2(  # line 2
-          #     nested1(  # line 3
-          #       more_nested()),  # line 4
-          #     nested2())  # line 5
-          # the sequence of line numbers is [1, 4, 3, 5, 2].
-          call = _OpcodeLines.Call(opcode.line)
-          while call_lines and opcode.line < call_lines[-1].line:
-            call.children.add(call_lines.pop())
-          call_lines.append(call)
-        if not _is_funcdef_op(opcode.name):
-          non_funcdef_lines.add(opcode.line)
-      all_call_lines.extend(call_lines)
-    return cls(store_lines, make_function_lines, non_funcdef_lines,
-               load_attr_lines, return_lines, all_call_lines)
+          call_lines.add(opcode.line)
+    return cls(store_lines, make_function_lines, load_attr_lines, return_lines,
+               call_lines)
+
+
+class _ParseVisitor(libcst.CSTVisitor):
+  """Visitor for parsing a source tree.
+
+  Attributes:
+    structured_comment_groups: Ordered map from a line range to the "type:" and
+      "pytype:" comments within the range. Line ranges come in several flavors:
+      * Instances of the base _LineRange class represent single logical
+        statements. These ranges are ascending and non-overlapping and record
+        all structured comments found.
+      * Instances of the _Attribute and _Call subclasses represent attribute
+        accesses and function calls, respectively. These ranges are ascending by
+        start_line but may overlap and only record "pytype:" comments.
+    variable_annotations: Sequence of PEP 526-style variable annotations with
+      line numbers.
+    decorators: Sequence of lines at which decorated functions are defined.
+    defs_start: The line number at which the first class or function definition
+      appears, if any.
+  """
+
+  METADATA_DEPENDENCIES = (libcst.metadata.PositionProvider,
+                           libcst.metadata.ParentNodeProvider,)
+
+  def __init__(self):
+    self.structured_comment_groups = collections.OrderedDict()
+    self.variable_annotations = []
+    self.decorators = []
+    self.defs_start = None
+
+  def _get_containing_groups(self, start_line, end_line=None):
+    """Get _StructuredComment groups that fully contain the given line range."""
+    end_line = end_line or start_line
+    # Since the visitor processes the source file roughly from top to bottom,
+    # the given line range should be within a recently added comment group. We
+    # also keep the groups ordered. So we do a reverse search and stop as soon
+    # as we hit a statement that does not overlap with our given range.
+    for line_range, group in reversed(self.structured_comment_groups.items()):
+      if (line_range.start_line <= start_line and
+          end_line <= line_range.end_line):
+        yield (line_range, group)
+      elif (not isinstance(line_range, (_Attribute, _Call)) and
+            line_range.end_line < start_line):
+        return
+
+  def _has_containing_group(self, start_line, end_line=None):
+    for line_range, _ in self._get_containing_groups(start_line, end_line):
+      if not isinstance(line_range, (_Attribute, _Call)):
+        return True
+    return False
+
+  def _add_structured_comment_group(self, start_line, end_line, cls=_LineRange):
+    """Adds an empty _StructuredComment group with the given line range."""
+    if cls is _LineRange and self._has_containing_group(start_line, end_line):
+      return
+    # We keep structured_comment_groups ordered by inserting the new line range
+    # at the end, then absorbing line ranges that the new range contains and
+    # calling move_to_end() on ones that should come after it. We encounter line
+    # ranges in roughly ascending order, so this reordering is not expensive.
+    keys_to_absorb = []
+    keys_to_move = []
+    for line_range in reversed(self.structured_comment_groups):
+      if (cls is type(line_range) is _LineRange and
+          start_line <= line_range.start_line and
+          line_range.end_line <= end_line):
+        keys_to_absorb.append(line_range)
+      elif line_range.start_line > start_line:
+        keys_to_move.append(line_range)
+      else:
+        break
+    self.structured_comment_groups[cls(start_line, end_line)] = new_group = []
+    for k in reversed(keys_to_absorb):
+      new_group.extend(self.structured_comment_groups[k])
+      del self.structured_comment_groups[k]
+    for k in reversed(keys_to_move):
+      self.structured_comment_groups.move_to_end(k)
+
+  def _process_comment(self, line, comment, open_ended):
+    """Process a single comment."""
+    matches = list(_DIRECTIVE_RE.finditer(comment))
+    if not matches:
+      return
+    is_nested = matches[0].start(0) > 0
+    for m in matches:
+      tool, data = m.groups()
+      assert data is not None
+      data = data.strip()
+      if tool == "pytype" and data == "skip-file":
+        # Abort immediately to avoid unnecessary processing.
+        raise SkipFileError()
+      if tool == "type" and open_ended and is_nested:
+        # Discard type comments embedded in larger whole-line comments.
+        continue
+      structured_comment = _StructuredComment(line, tool, data, open_ended)
+      for line_range, group in self._get_containing_groups(line):
+        if not isinstance(line_range, (_Attribute, _Call)):
+          # A structured comment belongs to exactly one logical statement.
+          group.append(structured_comment)
+          break
+        elif not open_ended and (
+            tool == "pytype" or (tool == "type" and _IGNORE_RE.match(data))):
+          # A "type: ignore" or "pytype:" comment can additionally belong to any
+          # number of overlapping attribute accesses and function calls.
+          group.append(structured_comment)
+      else:
+        raise AssertionError("Could not find a line range for comment "
+                             f"{structured_comment} on line {line}")
+
+  def _get_position(self, node):
+    return self.get_metadata(libcst.metadata.PositionProvider, node)
+
+  # Comments are found inside TrailingWhitespace and EmptyLine nodes. We visit
+  # all the nodes that can contain a TrailingWhitespace node and add a comment
+  # group for each of them, then populate the groups with TrailingWhitespace
+  # comments. EmptyLine comments form their own single-line groups. Note that
+  # comment.start should be used to get the line at which a comment is located;
+  # comment.end is at column 0 of the following line.
+
+  def _visit_comment_owner(self, node, cls=_LineRange):
+    pos = self._get_position(node)
+    self._add_structured_comment_group(pos.start.line, pos.end.line, cls)
+
+  def visit_Decorator(self, node):
+    self._visit_comment_owner(node)
+
+  def visit_SimpleStatementLine(self, node):
+    self._visit_comment_owner(node)
+
+  def visit_SimpleStatementSuite(self, node):
+    self._visit_comment_owner(node)
+
+  def visit_IndentedBlock(self, node):
+    # An indented block has a "header" child that holds any trailing comment
+    # from the block's header, e.g.:
+    #   if __random__:  # header comment
+    #     indented_block
+    # The comment's line range goes from the first line of the header to the
+    # comment line.
+    parent = self.get_metadata(libcst.metadata.ParentNodeProvider, node)
+    # visit_FunctionDef takes care of adding line ranges for FunctionDef.
+    if not isinstance(parent, libcst.FunctionDef):
+      start = self._get_position(parent).start
+      end = self._get_position(node.header).start
+      self._add_structured_comment_group(start.line, end.line)
+
+  def visit_ParenthesizedWhitespace(self, node):
+    self._visit_comment_owner(node)
+
+  def visit_Attribute(self, node):
+    self._visit_comment_owner(node, cls=_Attribute)
+
+  def visit_Call(self, node):
+    self._visit_comment_owner(node, cls=_Call)
+
+  def visit_TrailingWhitespace(self, node):
+    if node.comment:
+      line = self._get_position(node).start.line
+      self._process_comment(line, node.comment.value, open_ended=False)
+
+  def visit_EmptyLine(self, node):
+    if node.comment:
+      line = self._get_position(node).start.line
+      self._add_structured_comment_group(line, line)
+      self._process_comment(line, node.comment.value, open_ended=True)
+
+  def visit_AnnAssign(self, node):
+    if not node.value:
+      # TODO(b/167613685): Stop discarding annotations without values.
+      return
+    pos = self._get_position(node)
+    # Gets a string representation of the annotation.
+    annotation = re.sub(
+        r"\s*(#.*)?\n\s*", "",
+        libcst.Module([node.annotation.annotation]).code)
+    self.variable_annotations.append(
+        _VariableAnnotation(pos.start.line, pos.end.line, annotation))
+
+  def _visit_decorators(self, node):
+    if not node.decorators:
+      return
+    # The line range for this definition starts at the beginning of the last
+    # decorator and ends at the definition's name.
+    decorator = node.decorators[-1]
+    start = self._get_position(decorator).start
+    end = self._get_position(node.name).start
+    self.decorators.append(_LineRange(start.line, end.line))
+
+  def _visit_def(self, node):
+    line = self._get_position(node).start.line
+    if not self.defs_start or line < self.defs_start:
+      self.defs_start = line
+
+  def visit_ClassDef(self, node):
+    self._visit_decorators(node)
+    self._visit_def(node)
+
+  def visit_FunctionDef(self, node):
+    start = self._get_position(node).start
+    if node.returns:
+      # A fully annotated function signature has two line ranges:
+      # * One for the function parameters, starting at the beginning of the
+      #   signature and ending at the closing parenthesis.
+      # * One spanning the return annotation.
+      params_end = self._get_position(node.params).end
+      self._add_structured_comment_group(start.line, params_end.line)
+      self._visit_comment_owner(node.returns.annotation)
+    else:
+      # Otherwise, the signature has one line range that starts at its beginning
+      # and ends at the final colon.
+      self._add_structured_comment_group(
+          start.line, self._get_position(node.whitespace_before_colon).end.line)
+    self._visit_decorators(node)
+    self._visit_def(node)
 
 
 class Director:
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src, errorlog, filename, disable, python_version):
+  def __init__(self, src_tree, errorlog, filename, disable, code):
     """Create a Director for a source file.
 
     Args:
-      src:  The source text as a string.
+      src_tree:  The source text as a LibCST tree.
       errorlog: An ErrorLog object.  Directive errors will be logged to the
-          errorlog.
+        errorlog.
       filename: The name of the source file.
       disable: List of error messages to always ignore.
-      python_version: The target python version.
+      code: Optionally, bytecode for adjusting line numbers. If provided,
+        directives will be moved to lines at which corresponding opcodes are
+        present. Otherwise, directives will be moved to the starting line of
+        their containing statement.
     """
     self._filename = filename
     self._errorlog = errorlog
-    self._python_version = python_version
-    self._type_comments = []  # _TypeCommentSet objects.
+    self._type_comments = {}  # Map from line number to type comment.
     self._variable_annotations = {}  # Map from line number to annotation.
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
@@ -400,17 +485,17 @@ class Director:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
     # Parse the source code for directives.
-    self._parse_source(src)
+    self._parse_src_tree(src_tree, code)
 
   @property
   def type_comments(self):
-    return collections.ChainMap(*(s.type_comments for s in self._type_comments))
+    return self._type_comments
 
   @property
   def annotations(self):
     # It's okay to overwrite type comments with variable annotations here
     # because _FindIgnoredTypeComments in vm.py will flag ignored comments.
-    return {**self.type_comments, **self._variable_annotations}
+    return {**self._type_comments, **self._variable_annotations}
 
   @property
   def ignore(self):
@@ -420,131 +505,117 @@ class Director:
   def decorators(self):
     return self._decorators
 
-  def _parse_source(self, src):
+  def _parse_src_tree(self, src_tree, code):
     """Parse a source file, extracting directives from comments."""
-    f = io.StringIO(src)
-    defs_start = None
-    open_type_comment_set = _TypeCommentSet.start(1)
-    open_decorator = False
-    last_function_definition = None
-    open_variable_annotation = None
-    for token in tokenize.generate_tokens(f.readline):
-      tok = token.exact_type
-      line = token.line
-      lineno, col = token.start
+    # The docstring for unsafe_skip_copy says:
+    #
+    # When true, this skips the deep cloning of the module.
+    # This can provide a small performance benefit, but you should only use this
+    # if you know that there are no duplicate nodes in your tree (e.g. this
+    # module came from the parser).
+    #
+    # We only pass in trees constructed by libcst.parse_module, so we disable
+    # copying for the performance benefit.
+    src_tree_with_metadata = libcst.metadata.MetadataWrapper(
+        src_tree, unsafe_skip_copy=True)
+    visitor = _ParseVisitor()
+    try:
+      src_tree_with_metadata.visit(visitor)
+    except RecursionError:
+      log.warning("File parsing failed. Comment directives and some variable "
+                  "annotations will be ignored.")
+      return
+    if code:
+      opcode_lines = _OpcodeLines.from_code(code)
+    else:
+      opcode_lines = None
 
-      # Check for the first line with a top-level class or function definition.
-      if defs_start is None and _CLASS_OR_FUNC_RE.match(line):
-        defs_start = lineno
+    for line_range, group in visitor.structured_comment_groups.items():
+      for comment in group:
+        if comment.tool == "type":
+          self._process_type(comment.line, comment.data, comment.open_ended,
+                             line_range, opcode_lines)
+        else:
+          assert comment.tool == "pytype"
+          try:
+            self._process_pytype(comment.line, comment.data, comment.open_ended,
+                                 line_range, opcode_lines)
+          except _DirectiveError as e:
+            self._errorlog.invalid_directive(
+                self._filename, comment.line, utils.message(e))
 
-      # Process the token for decorators, function definitions, and comments.
-      if tok == tokenize.AT:
-        if _DECORATOR_RE.match(line):
-          open_decorator = True
-      elif tok == tokenize.NAME:
-        if open_decorator and token.string in ("class", "def"):
-          self.decorators.add(lineno)
-          open_decorator = False
-        if token.string == "def":
-          last_function_definition = _FunctionDefinition.start(lineno)
-      elif tok == tokenize.COMMENT:
-        self._process_comment(line, lineno, col, open_type_comment_set)
-      elif tok == tokenize.LPAR:
-        if last_function_definition:
-          last_function_definition.add_lpar(lineno)
-      elif tok == tokenize.RPAR:
-        if last_function_definition:
-          last_function_definition.add_rpar(lineno)
-      elif tok in (tokenize.NEWLINE, tokenize.ENDMARKER):
-        if open_type_comment_set.type_comments:
-          open_type_comment_set.end_line = lineno
-          self._type_comments.append(open_type_comment_set)
-        open_type_comment_set = _TypeCommentSet.start(lineno + 1)
-      elif tok == tokenize.EQUAL and not (
-          last_function_definition and last_function_definition.is_open()):
-        open_type_comment_set.process_equal(lineno)
-
-      # Process the token for variable annotations.
-      if last_function_definition and last_function_definition.contains(lineno):
-        pass  # ignore function annotations
-      elif not open_variable_annotation:
-        open_variable_annotation = _VariableAnnotation.start(lineno, token)
-      elif tok in (tokenize.NEWLINE, tokenize.SEMI):
-        # NEWLINE indicates the end of a *logical* line of Python code, allowing
-        # us to handle annotations split over multiple lines.
-        annotation = open_variable_annotation.annotation
-        if annotation and open_variable_annotation.closed:
-          # In 3.8+, the STORE_* opcode for a multiline variable assignment is
-          # at the first line in the assignment; before that, it is at the last.
-          if self._python_version >= (3, 8):
-            assert open_variable_annotation.start_lineno
-            annotation_lineno = open_variable_annotation.start_lineno
-          else:
-            annotation_lineno = lineno
-          self._variable_annotations[annotation_lineno] = annotation
-        open_variable_annotation = None
+    for annot in visitor.variable_annotations:
+      if opcode_lines:
+        final_line = _adjust_line_number(
+            annot.end_line, opcode_lines.store_lines, annot.start_line)
+        if not final_line:
+          log.error("No STORE_* opcode found for annotation %r on line %d",
+                    annot, annot.end_line)
+          continue
       else:
-        open_variable_annotation.add_token(lineno, token)
+        final_line = annot.start_line
+      self._variable_annotations[final_line] = annot.annotation
 
-    if defs_start is not None:
+    for decorator in visitor.decorators:
+      # The MAKE_FUNCTION opcode is usually at the 'def' line but pre-3.8 was
+      # sometimes somewhere in the last decorator's line range.
+      if opcode_lines:
+        final_line = _adjust_line_number(
+            decorator.end_line, opcode_lines.make_function_lines,
+            decorator.start_line)
+        if not final_line:
+          log.warning("No MAKE_FUNCTION opcode found for decorator on line %d",
+                      decorator.end_line)
+          continue
+      else:
+        final_line = decorator.end_line
+      self._decorators.add(final_line)
+
+    if visitor.defs_start is not None:
       disables = list(self._disables.items())
       # Add "# type: ignore" to the list of disables that we check.
       disables.append(("Type checking", self._ignore))
       for name, lineset in disables:
-        lineno = lineset.get_disable_after(defs_start)
+        lineno = lineset.get_disable_after(visitor.defs_start)
         if lineno is not None:
           self._errorlog.late_directive(self._filename, lineno, name)
 
-  def _process_comment(self, line, lineno, col, type_comment_set):
-    """Process a single comment."""
-    matches = list(_DIRECTIVE_RE.finditer(line[col:]))
-    is_nested = bool(matches) and matches[0].start(0) > 0
-    for m in matches:
-      code = line[:col].strip()
-      open_ended = not code
-      tool, data = m.groups()
-      assert data is not None
-      data = data.strip()
-      if tool == "type":
-        self._process_type(lineno, code, data, is_nested, type_comment_set)
-      elif tool == "pytype":
-        try:
-          self._process_pytype(lineno, data, open_ended)
-        except _DirectiveError as e:
-          self._errorlog.invalid_directive(
-              self._filename, lineno, utils.message(e))
-      else:
-        pass  # ignore comments for other tools
-
-  def _process_type(self, lineno, code, data, is_nested, type_comment_set):
+  def _process_type(
+      self, line: int, data: str, open_ended: bool, line_range: _LineRange,
+      opcode_lines: Optional[_OpcodeLines]):
     """Process a type: comment."""
-    # Discard type comments embedded in larger whole-line comments.
-    if not code and is_nested:
+    is_ignore = _IGNORE_RE.match(data)
+    if not is_ignore and line != line_range.end_line:
+      # Warn and discard type comments placed in the middle of expressions.
+      self._errorlog.ignored_type_comment(self._filename, line, data)
       return
-    if lineno in type_comment_set.type_comments:
-      # If we have multiple type comments on the same line, take the last one,
-      # but add an error to the log.
-      self._errorlog.invalid_directive(
-          self._filename, lineno,
-          "Multiple type comments on the same line.")
-    # Also supports mypy-style ignore[code, ...] syntax, treated as regular
-    # ignores.
-    if _IGNORE_RE.match(data):
-      if not code:
-        self._ignore.start_range(lineno, True)
-      else:
-        self._ignore.set_line(lineno, True)
+    if opcode_lines:
+      final_line = _adjust_line_number(
+          line, opcode_lines.store_lines, line_range.start_line) or line
     else:
-      type_comment_set.type_comments[lineno] = data
+      final_line = line_range.start_line
+    if is_ignore:
+      if open_ended:
+        self._ignore.start_range(line, True)
+      else:
+        self._ignore.set_line(line, True)
+        self._ignore.set_line(final_line, True)
+    else:
+      if final_line in self._type_comments:
+        # If we have multiple type comments on the same line, take the last one,
+        # but add an error to the log.
+        self._errorlog.invalid_directive(
+            self._filename, line, "Multiple type comments on the same line.")
+      self._type_comments[final_line] = data
 
-  def _process_pytype(self, lineno, data, open_ended):
+  def _process_pytype(
+      self, line: int, data: str, open_ended: bool, line_range: _LineRange,
+      opcode_lines: Optional[_OpcodeLines]):
     """Process a pytype: comment."""
     if not data:
       raise _DirectiveError("Invalid directive syntax.")
     for option in data.split():
       # Parse the command.
-      if option == "skip-file":
-        raise SkipFileError()
       try:
         command, values = option.split("=", 1)
         values = values.split(",")
@@ -561,17 +632,58 @@ class Director:
       if not values:
         raise _DirectiveError(
             "Disable/enable must specify one or more error names.")
+
+      def keep(error_name):
+        if isinstance(line_range, _Attribute):
+          return error_name == "attribute-error"
+        elif isinstance(line_range, _Call):
+          # A function call may implicitly access a magic method attribute.
+          return error_name in _FUNCTION_CALL_ERRORS + ("attribute-error",)
+        else:
+          return True
+
       for error_name in values:
         if (error_name == _ALL_ERRORS or
             self._errorlog.is_valid_error_name(error_name)):
+          if not keep(error_name):
+            # Skip the directive if we are in a line range that is irrelevant to
+            # it. (Every directive is also recorded in a base _LineRange that is
+            # never skipped.)
+            continue
           lines = self._disables[error_name]
           if open_ended:
-            lines.start_range(lineno, disable)
+            lines.start_range(line, disable)
           else:
-            lines.set_line(lineno, disable)
+            final_line = self._adjust_line_number_for_pytype_directive(
+                line, error_name, line_range, opcode_lines)
+            lines.set_line(final_line, disable)
         else:
           self._errorlog.invalid_directive(
-              self._filename, lineno, "Invalid error name: '%s'" % error_name)
+              self._filename, line, "Invalid error name: '%s'" % error_name)
+
+  def _adjust_line_number_for_pytype_directive(
+      self, line: int, error_class: str, line_range: _LineRange,
+      opcode_lines: Optional[_OpcodeLines]):
+    """Adjusts the line number for a pytype directive."""
+    if error_class not in _ALL_ADJUSTABLE_ERRORS:
+      return line
+    if not opcode_lines:
+      return line_range.start_line
+    if error_class == "annotation-type-mismatch":
+      allowed_lines = (
+          opcode_lines.store_lines | opcode_lines.make_function_lines)
+    elif error_class == "attribute-error":
+      allowed_lines = opcode_lines.load_attr_lines
+    elif error_class == "bad-return-type":
+      allowed_lines = opcode_lines.return_lines
+    elif error_class == "invalid-annotation":
+      allowed_lines = opcode_lines.make_function_lines
+    elif error_class == "not-supported-yet":
+      allowed_lines = opcode_lines.store_lines
+    else:
+      allowed_lines = opcode_lines.call_lines
+    return _adjust_line_number(
+        line, allowed_lines, line_range.start_line) or line
 
   def should_report_error(self, error):
     """Return whether the error should be logged.
@@ -588,115 +700,20 @@ class Director:
     # number.
     if error.filename != self._filename or error.lineno is None:
       return True
-    # Treat lineno=0 as below the file, so we can filter it.
-    lineno = error.lineno or sys.maxsize
+    # Treat line=0 as below the file, so we can filter it.
+    line = error.lineno or sys.maxsize
     # Report the error if it isn't subject to any ignore or disable.
-    return (lineno not in self._ignore and
-            lineno not in self._disables[_ALL_ERRORS] and
-            lineno not in self._disables[error.name])
+    return (line not in self._ignore and
+            line not in self._disables[_ALL_ERRORS] and
+            line not in self._disables[error.name])
 
-  def _adjust_line_numbers_for_type_comments(self, opcode_lines):
-    """Adjusts line numbers for `# type:` comments."""
-    for type_comment_set in self._type_comments:
-      for line, comment in sorted(type_comment_set.type_comments.items()):
-        adjusted_line = _adjust_line_number(
-            type_comment_set.get_lineno_for_version(line, self._python_version),
-            opcode_lines.store_lines, type_comment_set.start_line)
-        if not adjusted_line:
-          # vm._FindIgnoredTypeComments will take care of error reporting.
-          continue
-        if line != type_comment_set.end_line:
-          self._errorlog.ignored_type_comment(self._filename, line, comment)
-          del type_comment_set.type_comments[line]
-        elif adjusted_line != line:
-          type_comment_set.type_comments[adjusted_line] = comment
-          del type_comment_set.type_comments[line]
 
-  def _adjust_line_numbers_for_decorators(self, opcode_lines):
-    for line in sorted(self._decorators):
-      adjusted_line = _adjust_line_number(
-          line, opcode_lines.make_function_lines)
-      if not adjusted_line:
-        log.warning(
-            "No MAKE_FUNCTION opcode found for decorator on line %d", line)
-      elif adjusted_line != line:
-        self._decorators.add(adjusted_line)
-        self._decorators.remove(line)
-
-  def _adjust_line_numbers_for_variable_annotations(self, opcode_lines):
-    for line, annot in sorted(self._variable_annotations.items()):
-      adjusted_line = _adjust_line_number(line, opcode_lines.store_lines)
-      if not adjusted_line:
-        log.error(
-            "No STORE_* opcode found for annotation %r on line %d", annot, line)
-        del self._variable_annotations[line]
-      elif adjusted_line != line:
-        self._variable_annotations[adjusted_line] = annot
-        del self._variable_annotations[line]
-
-  def _adjust_line_numbers_for_error_directives(self, opcode_lines):
-    """Adjusts line numbers for error directives."""
-    for error_class in _ALL_ADJUSTABLE_ERRORS:
-      if error_class not in self._disables:
-        continue
-      lines = self._disables[error_class].lines
-      for line, membership in sorted(lines.items()):
-        if error_class == "annotation-type-mismatch":
-          min_line = line
-          # In Python 3.8+, the MAKE_FUNCTION opcode's line number is the first
-          # line of the function signature, so we need to skip any opcodes
-          # associated with the signature in between.
-          while min_line not in opcode_lines.non_funcdef_lines and min_line > 1:
-            min_line -= 1
-          allowed_lines = (
-              opcode_lines.store_lines | opcode_lines.make_function_lines)
-        elif error_class == "attribute-error":
-          min_line = 1
-          allowed_lines = opcode_lines.load_attr_lines
-        elif error_class == "bad-return-type":
-          min_line = 1
-          allowed_lines = opcode_lines.return_lines
-        else:
-          min_line = 1
-          allowed_lines = opcode_lines.call_lines
-        adjusted_line = _adjust_line_number(line, allowed_lines, min_line)
-        if adjusted_line and adjusted_line != line:
-          if error_class in (
-              "annotation-type-mismatch", "attribute-error", "bad-return-type"):
-            lines[adjusted_line] = membership
-            del lines[line]
-          else:
-            # 'adjusted_line' points to the top-level function call that
-            # contains 'line'. We apply the directive on 'line' to the top-level
-            # call as well as all nested calls between 'adjusted_line' and
-            # 'line'. For example, in:
-            # top_level_call(
-            #     nested1(),
-            #     nested2(),  # directive
-            #     nested3())
-            # the disable directive applies to top_level_call, nested1, and
-            # nested 2, but not nested3.
-            stack = [opcode_lines.call_lines[adjusted_line]]
-            found = False
-            while stack:
-              call = stack.pop()
-              if call.line > line:
-                continue
-              if call.line == line:
-                found = True
-              else:
-                lines[call.line] = membership
-              stack.extend(call.children)
-            # If 'line' does not itself contain a function call, then we delete
-            # the directive on 'line' after applying it to all the relevant
-            # lines that do contain function calls.
-            if not found:
-              del lines[line]
-
-  def adjust_line_numbers(self, code):
-    """Uses the bytecode to adjust line numbers."""
-    opcode_lines = _OpcodeLines.from_code(code)
-    self._adjust_line_numbers_for_type_comments(opcode_lines)
-    self._adjust_line_numbers_for_decorators(opcode_lines)
-    self._adjust_line_numbers_for_variable_annotations(opcode_lines)
-    self._adjust_line_numbers_for_error_directives(opcode_lines)
+def parse_src(src, python_version):
+  """Parses a string of source code into a LibCST tree."""
+  version_str = utils.format_version(python_version)
+  if python_version >= (3, 9):
+    log.warning("LibCST does not support Python %s; parsing with 3.8 instead.",
+                version_str)
+    version_str = "3.8"
+  config = libcst.PartialParserConfig(python_version=version_str)
+  return libcst.parse_module(src, config)

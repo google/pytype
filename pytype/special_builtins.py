@@ -590,6 +590,7 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     self.set_slot("setter", self.setter_slot)
     self.set_slot("deleter", self.deleter_slot)
     self.is_abstract = any(_is_fn_abstract(x) for x in [fget, fset, fdel])
+    self.is_method = True
     self.bound_class = abstract.BoundFunction
 
   def fget_slot(self, node, obj, objtype):
@@ -645,6 +646,7 @@ class StaticMethodInstance(abstract.Function, mixin.HasSlots):
     self.cls = cls
     self.set_slot("__get__", self.func_slot)
     self.is_abstract = _is_fn_abstract(func)
+    self.is_method = True
     self.bound_class = abstract.BoundFunction
 
   def func_slot(self, node, obj, objtype):
@@ -681,6 +683,7 @@ class ClassMethodInstance(abstract.Function, mixin.HasSlots):
     self.func = func
     self.set_slot("__get__", self.func_slot)
     self.is_abstract = _is_fn_abstract(func)
+    self.is_method = True
     self.bound_class = ClassMethodCallable
 
   def func_slot(self, node, obj, objtype):

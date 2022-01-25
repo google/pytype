@@ -189,6 +189,33 @@ class TypedDictTest(test_base.BaseTest):
         "e2": ["extra keys", "b"],
     })
 
+  def test_function_arg_matching(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+        y: str
+      def f(a: A):
+        pass
+      a: A = {'x': 10, 'y': 'a'}
+      b = {'x': 10, 'y': 'a'}
+      c = {'x': 10}
+      f(a)
+      f(b)
+      f(c)  # wrong-arg-types[e]
+    """)
+    self.assertErrorSequences(err, {"e": ["TypedDict", "missing keys", "y"]})
+
+  def test_function_arg_instantiation(self):
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+        y: str
+      def f(a: A):
+        a['z'] = 10  # typed-dict-error
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

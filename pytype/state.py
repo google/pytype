@@ -164,6 +164,7 @@ class SimpleFrame:
     self.node = node
     self.substs = ()
     self.func = None
+    self.skip_in_tracebacks = False
 
 
 class Frame(utils.ContextWeakrefMixin):
@@ -292,6 +293,8 @@ class Frame(utils.ContextWeakrefMixin):
         self.class_closure_var = self.cells[i]
     self.func = func
     self.substs = substs
+    # Do not add to error tracebacks
+    self.skip_in_tracebacks = False
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (

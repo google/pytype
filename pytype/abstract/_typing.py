@@ -213,6 +213,11 @@ class AnnotationContainer(AnnotationClass):
           # Don't report this error again.
           inner = (self.ctx.convert.unsolvable,)
           self.ctx.errorlog.not_indexable(self.ctx.vm.frames, self.name)
+      # Check for a misused Final annotation
+      if any(isinstance(val, FinalAnnotation) for val in inner):
+        self.ctx.errorlog.invalid_final_type(self.ctx.vm.frames)
+        inner = [val.annotation if isinstance(val, FinalAnnotation) else val
+                 for val in inner]
     return inner
 
   def _build_value(self, node, inner, ellipses):
@@ -665,3 +670,7 @@ class FinalAnnotation(_base.BaseValue):
 
   def __repr__(self):
     return f"Final[{self.annotation}]"
+
+  def instantiate(self, node, container=None):
+    self.ctx.errorlog.invalid_final_type(self.ctx.vm.frames)
+    return self.annotation.to_variable(node)

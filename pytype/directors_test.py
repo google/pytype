@@ -115,12 +115,15 @@ class DirectorTestCase(unittest.TestCase):
   def _create(self, src, disable=()):
     self.num_lines = len(src.rstrip().splitlines())
     src = textwrap.dedent(src)
+    src_tree = directors.parse_src(src, self.python_version)
     self._errorlog = errors.ErrorLog()
-    self._director = directors.Director(src, self._errorlog, _TEST_FILENAME,
-                                        disable, self.python_version)
-    raw_code = pyc.compile_src(src, _TEST_FILENAME, self.python_version, None)
-    code = blocks.process_code(raw_code, self.python_version)
-    self._director.adjust_line_numbers(code)
+    if self.python_version < (3, 8):
+      raw_code = pyc.compile_src(src, _TEST_FILENAME, self.python_version, None)
+      code = blocks.process_code(raw_code, self.python_version)
+    else:
+      code = None
+    self._director = directors.Director(
+        src_tree, self._errorlog, _TEST_FILENAME, disable, code)
 
   def _should_report(self, expected, lineno, error_name="test-error",
                      filename=_TEST_FILENAME):
@@ -364,6 +367,14 @@ class DirectorTest(DirectorTestCase):
         4: "str",
     }, self._director.type_comments)
 
+  def test_huge_string(self):
+    # Tests that the director doesn't choke on this huge, repetitive file.
+    src = ["x = ("]
+    for i in range(2000):
+      src.append(f"    'string{i}'")
+    src.append(")")
+    self._create("\n".join(src))
+
 
 class VariableAnnotationsTest(DirectorTestCase):
 
@@ -391,9 +402,6 @@ class VariableAnnotationsTest(DirectorTestCase):
     """)
     self.assertFalse(self._director.annotations)
 
-  @unittest.skip(
-      "directors._VariableAnnotation assumes a variable annotation starts at "
-      "the beginning of the line.")
   def test_multistatement_line(self):
     self._create("""
       if __random__: v1: int = 0
@@ -421,7 +429,7 @@ class VariableAnnotationsTest(DirectorTestCase):
 
   def test_multiline_annotation(self):
     self._create("""
-      v: Callable[
+      v: Callable[  # a very important comment
           [], int] = None
     """)
     lineno = 2 if sys.version_info[:2] >= (3, 8) else 3
@@ -557,10 +565,12 @@ class LineNumbersTest(DirectorTestCase):
     self.assertEqual(self._director.decorators, {5, 8})
 
 
-class FunctionCallDisableTest(DirectorTestCase):
+class DisableDirectivesTest(DirectorTestCase):
 
-  def assertDisables(self, *disable_lines, error_class="wrong-arg-types"):
-    disables = self._director._disables[error_class]
+  def assertDisables(self, *disable_lines, error_class=None, disables=None):
+    assert not (error_class and disables)
+    error_class = error_class or "wrong-arg-types"
+    disables = disables or self._director._disables[error_class]
     for i in range(self.num_lines):
       lineno = i+1
       if lineno in disable_lines:
@@ -596,7 +606,7 @@ class FunctionCallDisableTest(DirectorTestCase):
         nested3())
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, 4)
+      self.assertDisables(2, 4)
     else:
       self.assertDisables(4)
 
@@ -618,9 +628,31 @@ class FunctionCallDisableTest(DirectorTestCase):
         nested3())
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, 4, 5)
+      self.assertDisables(2, 4, 5)
     else:
       self.assertDisables(5)
+
+  def test_non_toplevel(self):
+    self._create("""
+      x = [
+        f("oops")  # pytype: disable=wrong-arg-types
+      ]
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3)
+    else:
+      self.assertDisables(3)
+
+  def test_non_toplevel_bad_annotation(self):
+    self._create("""
+      x: list[int] = [
+        f(
+            "oops")]  # pytype: disable=annotation-type-mismatch
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, error_class="annotation-type-mismatch")
+    else:
+      self.assertDisables(4, error_class="annotation-type-mismatch")
 
   def test_trailing_parenthesis(self):
     self._create("""
@@ -700,6 +732,73 @@ class FunctionCallDisableTest(DirectorTestCase):
       self.assertDisables(5, error_class="bad-return-type")
     else:
       self.assertDisables(6, error_class="bad-return-type")
+
+  def test_if(self):
+    self._create("""
+      if (__random__ and
+          name_error and  # pytype: disable=name-error
+          __random__):
+        pass
+    """)
+    self.assertDisables(3, error_class="name-error")
+
+  def test_unsupported(self):
+    self._create("""
+      x = [
+        "something_unsupported"
+      ]  # pytype: disable=not-supported-yet
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, error_class="not-supported-yet")
+    else:
+      self.assertDisables(3, error_class="not-supported-yet")
+
+  def test_range(self):
+    self._create("""
+      f(
+        # pytype: disable=attribute-error
+        a.nonsense,
+        b.nonsense,
+        # pytype: enable=attribute-error
+      )
+    """)
+    self.assertDisables(3, 4, 5, error_class="attribute-error")
+
+  def test_ignore(self):
+    # We have no idea if the '# type: ignore' is for the list construction, the
+    # function call, or the function argument, so we apply it to all of them.
+    self._create("""
+      x = [
+        some_bad_function(
+            "some bad arg")]  # type: ignore
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, 4, disables=self._director.ignore)
+    else:
+      self.assertDisables(4, disables=self._director.ignore)
+
+  def test_ignore_range(self):
+    self._create("""
+      x = [
+        # type: ignore
+        "oops"
+      ]
+    """)
+    self.assertDisables(3, 4, 5, disables=self._director.ignore)
+
+  def test_with_and_backslash_continuation(self):
+    self._create("""
+      with foo("a",
+               "b"), \\
+           bar("c",
+               "d"),  \\
+           baz("e"):  # pytype: disable=wrong-arg-types
+        pass
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 6)
+    else:
+      self.assertDisables(6)
 
 
 if __name__ == "__main__":
