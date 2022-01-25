@@ -285,6 +285,9 @@ def add_infrastructure_options(o):
       "-Z", "--quick", action="store_true",
       dest="quick", default=None,
       help=("Only do an approximation."))
+  o.add_argument(
+      "--color", action="store", choices=["False", "True"], default="True",
+      help="Choose False to disable color in the shell output.")
 
 
 def add_debug_options(o):
@@ -571,6 +574,15 @@ class Postprocessor:
     if output_errors_csv and not self.output_options.report_errors:
       self.error("Not allowed with --no-report-errors", "output-errors-csv")
     self.output_options.output_errors_csv = output_errors_csv
+
+  def _store_color(self, color):
+    if color not in ("False", "True"):
+      raise ValueError(f"--color flag allows only False or True, not {color!r}")
+    self.output_options.color = (
+        color == "True" and
+        sys.platform in ("linux", "cygwin", "darwin") and
+        sys.stderr.isatty()
+    )
 
   @uses(["input", "pythonpath"])
   def _store_module_name(self, module_name):

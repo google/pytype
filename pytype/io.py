@@ -267,7 +267,7 @@ def handle_errors(errorlog, options):
     errorlog.print_to_csv_file(options.output_errors_csv, options.open_function)
     return 0  # Command is successful regardless of errors.
 
-  errorlog.print_to_stderr()
+  errorlog.print_to_stderr(color=options.color)
   print_error_doc_url(errorlog)
 
   return 1 if errorlog.has_error() else 0  # exit code

@@ -21,7 +21,8 @@ class AbstractTestBase(test_base.UnitTest):
 
   def setUp(self):
     super().setUp()
-    options = config.Options.create(python_version=self.python_version)
+    options = config.Options.create(python_version=self.python_version,
+                                    color="False")
     self._ctx = context.Context(errors.ErrorLog(), options,
                                 load_pytd.Loader(options))
     self._program = self._ctx.program

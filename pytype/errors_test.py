@@ -2,8 +2,10 @@
 
 import collections
 import csv
+import io
 import os
 import textwrap
+from unittest import mock
 
 from pytype import errors
 from pytype import file_utils
@@ -145,6 +147,15 @@ class ErrorTest(unittest.TestCase):
           Called from (traceback):
             line 0, in function0""").lstrip())
 
+  @errors._error_name(_TEST_ERROR)
+  def test_color(self):
+    e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
+                     lineno=123, methodname="foo", keyword="here")
+    color_snippet = "'here' [\x1b[1m\x1b[31mtest-error\x1b[39m\x1b[0m]"
+    self.assertIn(color_snippet, e.as_string(color=True))
+    self.assertNotIn(color_snippet, e.as_string())
+    self.assertEqual(str(e), e.as_string())
+
 
 class ErrorLogBaseTest(unittest.TestCase):
 
@@ -250,6 +261,32 @@ class ErrorLogBaseTest(unittest.TestCase):
     unique_errors = errorlog.unique_sorted_errors()
     self.assertEqual(len(unique_errors), 2)
     self.assertSetEqual(set(errorlog), set(unique_errors))
+
+  @errors._error_name(_TEST_ERROR)
+  def test_color_print_to_stderr(self):
+    errorlog = errors.ErrorLog()
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    errorlog.error(op.to_stack(), "unknown attribute %s" % "xyz")
+    self.assertEqual(len(errorlog), 1)
+
+    mock_stderr = io.StringIO()
+    with mock.patch("sys.stderr", mock_stderr):
+      errorlog.print_to_stderr()
+    color_snippet = "xyz [\x1b[1m\x1b[31mtest-error\x1b[39m\x1b[0m]"
+    self.assertIn(color_snippet, mock_stderr.getvalue())
+
+  @errors._error_name(_TEST_ERROR)
+  def test_color_print_to_file(self):
+    errorlog = errors.ErrorLog()
+    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    errorlog.error(op.to_stack(), "unknown attribute %s" % "xyz")
+    self.assertEqual(len(errorlog), 1)
+
+    string_io = io.StringIO()
+    errorlog.print_to_file(string_io)
+    self.assertIn("[test-error]", string_io.getvalue())
+    color_snippet = "xyz [\x1b[1m\x1b[31mtest-error\x1b[39m\x1b[0m]"
+    self.assertNotIn(color_snippet, string_io.getvalue())
 
 
 class ErrorDocTest(unittest.TestCase):
