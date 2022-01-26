@@ -20,23 +20,27 @@ _DIRECTIVE_RE = re.compile(r"#\s*(pytype|type)\s*:\s?([^#]*)")
 _IGNORE_RE = re.compile(r"^ignore(\[.+\])?$")
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
-_FUNCTION_CALL_ERRORS = (
+_FUNCTION_CALL_ERRORS = frozenset((
+    # A function call may implicitly access a magic method attribute.
+    "attribute-error",
     "duplicate-keyword",
+    # Subscripting an annotation is a __getitem__ call.
+    "invalid-annotation",
     "missing-parameter",
+    "not-instantiable",
     "wrong-arg-count",
     "wrong-arg-types",
     "wrong-keyword-args",
-)
+    "unsupported-operands",
+))
 
-_ALL_ADJUSTABLE_ERRORS = frozenset(
-    _FUNCTION_CALL_ERRORS + (
-        "annotation-type-mismatch",
-        "attribute-error",
-        "bad-return-type",
-        "container-type-mismatch",
-        "invalid-annotation",
-        "not-supported-yet",
-    ))
+_ALL_ADJUSTABLE_ERRORS = _FUNCTION_CALL_ERRORS.union((
+    "annotation-type-mismatch",
+    "bad-return-type",
+    "bad-yield-annotation",
+    "container-type-mismatch",
+    "not-supported-yet",
+))
 
 
 class _DirectiveError(Exception):
@@ -388,6 +392,12 @@ class _ParseVisitor(libcst.CSTVisitor):
   def visit_Call(self, node):
     self._visit_comment_owner(node, cls=_Call)
 
+  def visit_Comparison(self, node):
+    self._visit_comment_owner(node, cls=_Call)
+
+  def visit_Subscript(self, node):
+    self._visit_comment_owner(node, cls=_Call)
+
   def visit_TrailingWhitespace(self, node):
     if node.comment:
       line = self._get_position(node).start.line
@@ -431,20 +441,11 @@ class _ParseVisitor(libcst.CSTVisitor):
     self._visit_def(node)
 
   def visit_FunctionDef(self, node):
-    start = self._get_position(node).start
-    if node.returns:
-      # A fully annotated function signature has two line ranges:
-      # * One for the function parameters, starting at the beginning of the
-      #   signature and ending at the closing parenthesis.
-      # * One spanning the return annotation.
-      params_end = self._get_position(node.params).end
-      self._add_structured_comment_group(start.line, params_end.line)
-      self._visit_comment_owner(node.returns.annotation)
-    else:
-      # Otherwise, the signature has one line range that starts at its beginning
-      # and ends at the final colon.
-      self._add_structured_comment_group(
-          start.line, self._get_position(node.whitespace_before_colon).end.line)
+    # A function signature's line range starts at the beginning of the signature
+    # and ends at the final colon.
+    self._add_structured_comment_group(
+        self._get_position(node).start.line,
+        self._get_position(node.whitespace_before_colon).end.line)
     self._visit_decorators(node)
     self._visit_def(node)
 
@@ -637,8 +638,7 @@ class Director:
         if isinstance(line_range, _Attribute):
           return error_name == "attribute-error"
         elif isinstance(line_range, _Call):
-          # A function call may implicitly access a magic method attribute.
-          return error_name in _FUNCTION_CALL_ERRORS + ("attribute-error",)
+          return error_name in _FUNCTION_CALL_ERRORS
         else:
           return True
 
@@ -676,10 +676,14 @@ class Director:
       allowed_lines = opcode_lines.load_attr_lines
     elif error_class == "bad-return-type":
       allowed_lines = opcode_lines.return_lines
+    elif error_class == "bad-yield-annotation":
+      allowed_lines = opcode_lines.make_function_lines
     elif error_class == "invalid-annotation":
       allowed_lines = opcode_lines.make_function_lines
     elif error_class == "not-supported-yet":
       allowed_lines = opcode_lines.store_lines
+    elif error_class == "unsupported-operands":
+      allowed_lines = opcode_lines.store_lines | opcode_lines.call_lines
     else:
       allowed_lines = opcode_lines.call_lines
     return _adjust_line_number(
