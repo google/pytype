@@ -14,6 +14,7 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyi import metadata
 from pytype.pytd import pytd
@@ -392,6 +393,11 @@ class Converter(utils.ContextWeakrefMixin):
       # something from another module to the local namespace. We *could*
       # reproduce the entire class, but we choose a more dense representation.
       return v.to_type(node)
+    elif isinstance(v, typed_dict.TypedDictClass):
+      typ = pytd.GenericType(
+          base_type=pytd.NamedType("typing.Dict"),
+          parameters=(pytd.NamedType("builtins.str"), pytd.AnythingType()))
+      return pytd.Alias(name, typ)
     elif isinstance(v, abstract.PyTDClass):  # a namedtuple instance
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
