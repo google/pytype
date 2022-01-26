@@ -750,7 +750,11 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         def __init__(self) -> None: ...
     """)
 
-  def test_disable_invalid_parameter_annotation(self):
+
+class DisableTest(test_base.BaseTest):
+  """Tests for error disabling."""
+
+  def test_invalid_parameter_annotation(self):
     self.Check("""
       def f(
         x: 0 = 0
@@ -758,7 +762,7 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         pass
     """)
 
-  def test_disable_invalid_return_annotation(self):
+  def test_invalid_return_annotation(self):
     self.Check("""
       def f() -> (
         list[
@@ -769,6 +773,21 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
           3.14
       ]:  # pytype: disable=invalid-annotation
         return []
+    """)
+
+  def test_invalid_subscripted_parameter_annotation(self):
+    self.Check("""
+      def f(
+        x: list[3.14]  # pytype: disable=invalid-annotation
+      ):
+        pass
+    """)
+
+  def test_bad_yield_annotation(self):
+    self.Check("""
+      def f(
+          x: int) -> int:  # pytype: disable=bad-yield-annotation
+        yield x
     """)
 
 

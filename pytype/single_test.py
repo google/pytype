@@ -45,7 +45,8 @@ class PytypeTest(test_base.UnitTest):
   def _reset_pytype_args(self):
     self.pytype_args = {
         "--python_version": utils.format_version(self.python_version),
-        "--verbosity": 1
+        "--verbosity": 1,
+        "--color": "False",
     }
 
   def _data_path(self, filename):

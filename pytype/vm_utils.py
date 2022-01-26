@@ -19,6 +19,7 @@ from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.pyc import opcodes
 from pytype.pytd import mro
+from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.typegraph import cfg
 
@@ -421,7 +422,15 @@ def _check_final_members(cls, class_dict, ctx):
   """Check if the new class overrides a final attribute or method."""
   methods = class_dict.keys()
   for base in cls.mro[1:]:
-    if isinstance(base, abstract.Class):
+    if isinstance(base, abstract.PyTDClass):
+      # TODO(mdemello): Unify this with IntepreterClass
+      for m in methods:
+        member = base.final_members.get(m)
+        if isinstance(member, pytd.Function):
+          ctx.errorlog.overriding_final_method(ctx.vm.frames, cls, base, m)
+        elif member:
+          ctx.errorlog.overriding_final_attribute(ctx.vm.frames, cls, base, m)
+    elif isinstance(base, abstract.Class):
       for m in methods:
         if m in base.members:
           if any(x.final for x in base.members[m].data):

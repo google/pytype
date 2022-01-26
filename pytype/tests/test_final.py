@@ -247,10 +247,10 @@ class TestFinal(test_base.BaseTest):
         pass
       def g(x: Final):  # final-error
         pass
-      def h(x) -> Final[int]:
-        pass  # bad-return-type # final-error
+      def h(x) -> Final[int]:  # final-error
+        pass  # bad-return-type
       def i(x) -> Final:
-        pass  # bad-return-type # final-error
+        pass  # bad-return-type  # final-error
     """)
     self.assertErrorSequences(
         err, {"e": ["only be used", "assignments", "variable annotations"]})
@@ -261,6 +261,134 @@ class TestFinal(test_base.BaseTest):
       x: List[Final[int]] = [10]  # invalid-annotation  # final-error
       y: Tuple[int, Final[int]] = (1, 2)  # invalid-annotation  # final-error
     """)
+
+  def test_can_use_in_annotated(self):
+    self.CheckWithErrors("""
+      from typing import Annotated, Final, List
+      x: Annotated[Final[List[int]], 'valid'] = [10]
+      y: Annotated[List[Final[int]], 'invalid'] = [10]  # invalid-annotation  # final-error
+    """)
+
+
+class TestFinalDecoratorInPyi(test_base.BaseTest):
+  """Test @final in pyi files."""
+
+  _FINAL_CLASS = """
+    from typing import final
+    @final
+    class A: ...
+  """
+
+  _FINAL_METHOD = """
+    from typing import final
+    class A:
+      @final
+      def f(self):
+        pass
+  """
+
+  def test_subclass(self):
+    with self.DepTree([("foo.pyi", self._FINAL_CLASS)]):
+      err = self.CheckWithErrors("""
+        from foo import A
+        class B(A):  # final-error[e]
+          pass
+      """)
+    self.assertErrorSequences(err, {"e": ["final class", "A"]})
+
+  def test_subclass_with_other_bases(self):
+    with self.DepTree([("foo.pyi", self._FINAL_CLASS)]):
+      err = self.CheckWithErrors("""
+        from foo import A
+        class B(list, A):  # final-error[e]
+          pass
+      """)
+    self.assertErrorSequences(err, {"e": ["final class", "A"]})
+
+  def test_typing_extensions_import(self):
+    foo = """
+      from typing_extensions import final
+      @final
+      class A:
+        pass
+    """
+    with self.DepTree([("foo.pyi", foo)]):
+      self.CheckWithErrors("""
+        from foo import A
+        class B(A):  # final-error[e]
+          pass
+      """)
+
+  def test_override_method_in_base(self):
+    with self.DepTree([("foo.pyi", self._FINAL_METHOD)]):
+      err = self.CheckWithErrors("""
+        from foo import A
+        class B(A):  # final-error[e]
+          def f(self):
+            pass
+      """)
+    self.assertErrorSequences(
+        err, {"e": ["Class B", "overrides", "final method f", "base class A"]})
+
+  def test_override_method_in_mro(self):
+    with self.DepTree([("foo.pyi", self._FINAL_METHOD)]):
+      self.CheckWithErrors("""
+        from foo import A
+        class B(A):
+          pass
+        class C(B):  # final-error[e]
+          def f(self):
+            pass
+      """)
+
+
+class TestFinalInPyi(test_base.BaseTest):
+  """Test Final in pyi files."""
+
+  _FINAL_ATTR = """
+    from typing import Final
+    class A:
+      x: Final[int] = ...
+  """
+
+  def test_attribute(self):
+    with self.DepTree([("foo.pyi", self._FINAL_ATTR)]):
+      err = self.CheckWithErrors("""
+        from foo import A
+        a = A()
+        a.x = 10  # final-error[e]
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["attribute", "x", "annotated with Final"]})
+
+  def test_override_attr_in_base(self):
+    with self.DepTree([("foo.pyi", self._FINAL_ATTR)]):
+      err = self.CheckWithErrors("""
+        from foo import A
+        class B(A):  # final-error[e]
+          x = 20
+    """)
+    self.assertErrorSequences(
+        err, {"e": ["Class B", "overrides", "final class attribute", "x",
+                    "base class A"]})
+
+  def test_override_attr_in_mro(self):
+    foo = """
+      from typing import Final
+      class A:
+        x: Final[int] = ...
+      class B(A):
+        pass
+    """
+    with self.DepTree([("foo.pyi", foo)]):
+      err = self.CheckWithErrors("""
+        from foo import B
+        class C(B):  # final-error[e]
+          x = 20
+      """)
+    self.assertErrorSequences(
+        err, {"e": ["Class C", "overrides", "final class attribute", "x",
+                    "base class A"]})
 
 if __name__ == "__main__":
   test_base.main()

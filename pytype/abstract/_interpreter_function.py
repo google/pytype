@@ -448,6 +448,7 @@ class InterpreterFunction(SignedFunction):
       self.nonstararg_count += self.code.co_kwonlyargcount
     signature = self._build_signature(name, annotations)
     super().__init__(signature, ctx)
+    self._check_annotations(name, annotations)
     self._update_signature_scope()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
@@ -463,6 +464,13 @@ class InterpreterFunction(SignedFunction):
     self._store_call_records = True
     yield
     self._store_call_records = old
+
+  def _check_annotations(self, name, annotations):
+    """Validate function annotations."""
+    for ann in annotations.values():
+      if isinstance(ann, _typing.FinalAnnotation):
+        self.ctx.errorlog.invalid_final_type(
+            self.ctx.vm.simple_stack(self.def_opcode))
 
   def _build_signature(self, name, annotations):
     """Build a function.Signature object representing this function."""

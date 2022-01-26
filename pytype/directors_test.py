@@ -800,6 +800,38 @@ class DisableDirectivesTest(DirectorTestCase):
     else:
       self.assertDisables(6)
 
+  def test_not_instantiable(self):
+    self._create("""
+      x = [
+        A(
+      )]  # pytype: disable=not-instantiable
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, error_class="not-instantiable")
+    else:
+      self.assertDisables(3, error_class="not-instantiable")
+
+  def test_unsupported_operands_in_call(self):
+    self._create("""
+      some_func(
+        x < y)  # pytype: disable=unsupported-operands
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, error_class="unsupported-operands")
+    else:
+      self.assertDisables(3, error_class="unsupported-operands")
+
+  def test_unsupported_operands_in_assignment(self):
+    self._create("""
+      x["wrong key type"] = (
+        some_call(),
+        "oops")  # pytype: disable=unsupported-operands
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, error_class="unsupported-operands")
+    else:
+      self.assertDisables(4, error_class="unsupported-operands")
+
 
 if __name__ == "__main__":
   unittest.main()

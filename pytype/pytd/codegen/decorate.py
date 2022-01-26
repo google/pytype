@@ -35,6 +35,10 @@ def _decorator_names(cls: pytd.Class) -> List[str]:
   return [x.type.name for x in reversed(cls.decorators)]
 
 
+def has_decorator(cls: pytd.Class, names):
+  return bool(set(names) & set(_decorator_names(cls)))
+
+
 def check_defaults(fields: Iterable[pytd.Constant], cls_name: str):
   """Check that a non-default field does not follow a default one."""
   default = None

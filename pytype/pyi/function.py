@@ -81,14 +81,13 @@ class NameAndSig(pytd_function.NameAndSig):
     abstracts = {"abstractmethod", "abc.abstractmethod"}
     coroutines = {"coroutine", "asyncio.coroutine", "coroutines.coroutine"}
     overload = {"overload"}
+    final = {"final"}
     ignored = {"type_check_only"}
     is_abstract = bool(decorators & abstracts)
     is_coroutine = bool(decorators & coroutines)
     is_overload = bool(decorators & overload)
-    decorators -= abstracts
-    decorators -= coroutines
-    decorators -= overload
-    decorators -= ignored
+    is_final = bool(decorators & final)
+    decorators -= (abstracts | coroutines | overload | final | ignored)
     # TODO(mdemello): do we need this limitation?
     if len(decorators) > 1:
       raise ParseError(f"Too many decorators for {name}")
@@ -134,7 +133,8 @@ class NameAndSig(pytd_function.NameAndSig):
       if not mutator.successful:
         raise ParseError(f"No parameter named {mutator.name!r}")
 
-    return cls(name, sig, decorator, is_abstract, is_coroutine, is_overload)
+    return cls(name, sig, decorator, is_abstract, is_coroutine, is_final,
+               is_overload)
 
 
 def _pytd_signature(

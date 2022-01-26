@@ -58,6 +58,7 @@ class NameAndSig:
   decorator: Optional[str] = None
   is_abstract: bool = False
   is_coroutine: bool = False
+  is_final: bool = False
   is_overload: bool = False
 
   @classmethod
@@ -187,6 +188,7 @@ class _DecoratedFunction:
   sigs: List[pytd.Signature]
   is_abstract: bool = False
   is_coroutine: bool = False
+  is_final: bool = False
   decorator: Optional[str] = None
   properties: Optional[_Properties] = dataclasses.field(init=False)
   prop_names: Dict[str, _Property] = dataclasses.field(init=False)
@@ -198,6 +200,7 @@ class _DecoratedFunction:
         sigs=[fn.signature],
         is_abstract=fn.is_abstract,
         is_coroutine=fn.is_coroutine,
+        is_final=fn.is_final,
         decorator=fn.decorator)
 
   def __post_init__(self):
@@ -283,5 +286,7 @@ def merge_method_signatures(
       flags |= pytd.MethodFlags.ABSTRACT
     if fn.is_coroutine:
       flags |= pytd.MethodFlags.COROUTINE
+    if fn.is_final:
+      flags |= pytd.MethodFlags.FINAL
     methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags))
   return methods

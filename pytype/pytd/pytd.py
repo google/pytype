@@ -203,6 +203,7 @@ class MethodTypes:
 class MethodFlags:
   ABSTRACT = 1
   COROUTINE = 2
+  FINAL = 4
 
   @classmethod
   def abstract_flag(cls, is_abstract):  # pylint: disable=invalid-name
@@ -233,6 +234,10 @@ class Function(Node):
   @property
   def is_coroutine(self):
     return bool(self.flags & MethodFlags.COROUTINE)
+
+  @property
+  def is_final(self):
+    return bool(self.flags & MethodFlags.FINAL)
 
   def with_flag(self, flag, value):
     """Return a copy of self with flag set to value."""

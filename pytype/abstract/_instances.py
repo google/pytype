@@ -581,8 +581,8 @@ class AnnotationsDict(Dict):
   """__annotations__ dict."""
 
   def __init__(self, annotated_locals, ctx):
-    super().__init__(ctx)
     self.annotated_locals = annotated_locals
+    super().__init__(ctx)
 
   def get_type(self, node, name):
     if name not in self.annotated_locals:

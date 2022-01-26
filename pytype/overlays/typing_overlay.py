@@ -237,6 +237,9 @@ class NoReturn(abstract.Singleton):
 
   def __init__(self, ctx):
     super().__init__("NoReturn", ctx)
+    # Sets cls to Type so that runtime usages of NoReturn don't cause pytype to
+    # think that NoReturn is being used illegally in type annotations.
+    self.cls = ctx.convert.type_type
 
 
 def build_any(ctx):

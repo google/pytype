@@ -52,6 +52,13 @@ _ELLIPSIS = object()
 
 _FuncT = TypeVar("_FuncT", bound=Callable)
 
+_STYLE_BRIGHT = "\x1b[1m"
+_STYLE_RESET_ALL = "\x1b[0m"
+_FORE_RED = "\x1b[31m"
+_FORE_RESET = "\x1b[39m"
+_COLOR_ERROR_NAME_TEMPLATE = (_STYLE_BRIGHT + _FORE_RED + "%s" + _FORE_RESET +
+                              _STYLE_RESET_ALL)
+
 
 def _error_name(name) -> Callable[[_FuncT], _FuncT]:
   """Decorate a function so that it binds the current error name."""
@@ -311,10 +318,15 @@ class Error:
       return ""
 
   def __str__(self):
+    return self.as_string()
+
+  def as_string(self, *, color=False):
+    """Format the error as a friendly string, optionally with shell coloring."""
     pos = self._position()
     if pos:
       pos += ": "
-    text = "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), self._name)
+    name = _COLOR_ERROR_NAME_TEMPLATE % (self._name,) if color else self._name
+    text = "%s%s [%s]" % (pos, self._message.replace("\n", "\n  "), name)
     if self._details:
       text += "\n  " + self._details.replace("\n", "\n  ")
     if self._traceback:
@@ -423,9 +435,9 @@ class ErrorLogBase:
              error._message,
              details])
 
-  def print_to_file(self, fi):
+  def print_to_file(self, fi, *, color=False):
     for error in self.unique_sorted_errors():
-      print(error, file=fi)
+      print(error.as_string(color=color), file=fi)
 
   def unique_sorted_errors(self):
     """Gets the unique errors in this log, sorted on filename and lineno."""
@@ -462,8 +474,8 @@ class ErrorLogBase:
   def _sorted_errors(self):
     return sorted(self._errors, key=lambda x: (x.filename or "", x.lineno))
 
-  def print_to_stderr(self):
-    self.print_to_file(sys.stderr)
+  def print_to_stderr(self, *, color=True):
+    self.print_to_file(sys.stderr, color=color)
 
   def __str__(self):
     f = io.StringIO()

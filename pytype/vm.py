@@ -1660,6 +1660,9 @@ class VirtualMachine:
         # still apply it so that setting an attribute value on an instance of a
         # class doesn't affect the attribute type in other instances.
         check_attribute_types = False
+        # We can still check for final members being assigned to.
+        if name in maybe_cls.final_members:
+          self.ctx.errorlog.assigning_to_final(self.frames, name, local=False)
       else:
         annotations_dict = None
     val = self._apply_annotation(
