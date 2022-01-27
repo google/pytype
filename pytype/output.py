@@ -172,6 +172,10 @@ class Converter(utils.ContextWeakrefMixin):
         assert isinstance(v.value.pyval, int), v.value.pyval
         value = v.value.pyval
       return pytd.Literal(value)
+    elif isinstance(v, typed_dict.TypedDictClass):
+      # TypedDict inherits from abstract.Dict for analysis purposes, but when
+      # outputting to a pyi we do not want to treat it as a generic type.
+      return pytd.NamedType(v.name)
     elif isinstance(v, abstract.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
@@ -255,6 +259,8 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.Annotated(ret, ("'pytype_metadata'", md))
     elif isinstance(v, special_builtins.PropertyInstance):
       return pytd.NamedType("builtins.property")
+    elif isinstance(v, typed_dict.TypedDict):
+      return pytd.NamedType(v.props.name)
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = function.get_signatures(v)
@@ -394,10 +400,7 @@ class Converter(utils.ContextWeakrefMixin):
       # reproduce the entire class, but we choose a more dense representation.
       return v.to_type(node)
     elif isinstance(v, typed_dict.TypedDictClass):
-      typ = pytd.GenericType(
-          base_type=pytd.NamedType("typing.Dict"),
-          parameters=(pytd.NamedType("builtins.str"), pytd.AnythingType()))
-      return pytd.Alias(name, typ)
+      return self._typed_dict_to_def(node, v, name)
     elif isinstance(v, abstract.PyTDClass):  # a namedtuple instance
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
@@ -792,3 +795,23 @@ class Converter(utils.ContextWeakrefMixin):
     constraints = tuple(c.get_instance_type(node) for c in v.constraints)
     bound = v.bound and v.bound.get_instance_type(node)
     return pytd.TypeParameter(name, constraints=constraints, bound=bound)
+
+  def _typed_dict_to_def(self, node, v, name):
+    constants = []
+    for k, var in v.props.fields.items():
+      typ = pytd_utils.JoinTypes(
+          self.value_instance_to_pytd_type(node, p, None, set(), {})
+          for p in var.data)
+      constants.append(pytd.Constant(k, typ))
+    bases = (pytd.NamedType("typing.TypedDict"),)
+    return pytd.Class(name=name,
+                      metaclass=None,
+                      bases=bases,
+                      methods=(),
+                      constants=tuple(constants),
+                      classes=(),
+                      decorators=(),
+                      slots=None,
+                      template=())
+
+

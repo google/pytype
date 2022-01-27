@@ -229,12 +229,15 @@ class TypedDictTest(test_base.BaseTest):
       foo = Foo(x=1, y="2")
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Dict
+      from typing import TypedDict
 
-      Foo = Dict[str, Any]
-      foo: dict
+      foo: Foo
 
-      def f(x) -> None: ...
+      class Foo(TypedDict):
+        x: int
+        y: str
+
+      def f(x: Foo) -> None: ...
     """)
 
 
