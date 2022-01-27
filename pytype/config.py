@@ -286,8 +286,9 @@ def add_infrastructure_options(o):
       dest="quick", default=None,
       help=("Only do an approximation."))
   o.add_argument(
-      "--color", action="store", choices=["False", "True"], default="True",
-      help="Choose False to disable color in the shell output.")
+      "--color", action="store", choices=["always", "auto", "never"],
+      default="auto",
+      help="Choose never to disable color in the shell output.")
 
 
 def add_debug_options(o):
@@ -576,12 +577,16 @@ class Postprocessor:
     self.output_options.output_errors_csv = output_errors_csv
 
   def _store_color(self, color):
-    if color not in ("False", "True"):
-      raise ValueError(f"--color flag allows only False or True, not {color!r}")
+    if color not in ("always", "auto", "never"):
+      raise ValueError(f"--color flag allows only 'always', 'auto' or 'never', "
+                       f"not {color!r}")
+
     self.output_options.color = (
-        color == "True" and
         sys.platform in ("linux", "cygwin", "darwin") and
-        sys.stderr.isatty()
+        (
+            color == "always" or
+            (color == "auto" and sys.stderr.isatty())
+        )
     )
 
   @uses(["input", "pythonpath"])

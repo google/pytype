@@ -26,7 +26,7 @@ class ValselfTest(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version,
-                                    color="False")
+                                    color="never")
     self.ctx = context.Context(errors.ErrorLog(), options,
                                load_pytd.Loader(options))
     self.node = self.ctx.root_node
