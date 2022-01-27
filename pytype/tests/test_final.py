@@ -70,6 +70,43 @@ class TestFinalDecorator(test_base.BaseTest):
     self.assertErrorSequences(
         err, {"e": ["Class C", "overrides", "final method f", "base class A"]})
 
+  def test_output_class(self):
+    ty = self.Infer("""
+      from typing import final
+      @final
+      class A:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import final
+      @final
+      class A: ...
+    """)
+
+  def test_output_method(self):
+    ty = self.Infer("""
+      from typing import final
+      class A:
+        @final
+        def f(self):
+          pass
+        @final
+        @classmethod
+        def g(cls):
+          pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import final, Type
+      class A:
+        @final
+        def f(self) -> None:
+          pass
+        @final
+        @classmethod
+        def g(cls: Type[A]) -> None:
+          pass
+    """)
+
 
 class TestFinalDecoratorValidity(test_base.BaseTest):
   """Test whether @final is applicable in context."""

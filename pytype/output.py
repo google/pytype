@@ -603,11 +603,18 @@ class Converter(utils.ContextWeakrefMixin):
         node, v.metadata, annots))
     add_constants(self.annotations_to_instance_types(node, annots))
 
+    def add_final(defn, value):
+      if value.final:
+        return defn.Replace(flags=defn.flags | pytd.MethodFlags.FINAL)
+      else:
+        return defn
+
     def get_decorated_method(name, value, func_slot):
       fvar = getattr(value, func_slot)
       func = abstract_utils.get_atomic_value(fvar, abstract.Function)
       defn = self.value_to_pytd_def(node, func, name)
       defn = defn.Visit(visitors.DropMutableParameters())
+      defn = add_final(defn, value)
       return defn
 
     def add_decorated_method(name, value, kind):
@@ -628,6 +635,9 @@ class Converter(utils.ContextWeakrefMixin):
         pytd.Alias(x, pytd.Function(x, (sig,), pytd.MethodTypes.METHOD, 0))
         for x in v.decorators
     ]
+    if v.final:
+      fn = pytd.Function("typing.final", (sig,), pytd.MethodTypes.METHOD, 0)
+      decorators.append(pytd.Alias("final", fn))
 
     # class-level attributes
     for name, member in v.members.items():
@@ -661,6 +671,7 @@ class Converter(utils.ContextWeakrefMixin):
             # ones recorded; when inferring types for ParentClass.__init__, we
             # do not want `self: Union[ParentClass, Subclass]`.
             method = method.Replace(signatures=signatures)
+          method = add_final(method, value)
           # TODO(rechen): Removing mutations altogether won't work for generic
           # classes. To support those, we'll need to change the mutated type's
           # base to the current class, rename aliased type parameters, and
