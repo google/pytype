@@ -601,16 +601,21 @@ if sys.version_info >= (3, 6):
 class _TypedDict(Mapping[str, object]): ...
 
 
-# final is new in Python 3.8; we don't put a version guard here because we want
-# to reuse this definition for typing_extensions in lower versions.
+# The following types are new in Python 3.8 or 3.9; we don't put a version
+# guard here because we want to reuse the definitions for typing_extensions in
+# lower versions.
+
+# if sys.version_info >= (3, 8):
 def final(x: _T) -> _T: ...
 
-if sys.version_info >= (3, 8):
-  # Not supported yet, but we want typeshed to be able to reference this.
-  class TypedDict: ...
+# if sys.version_info >= (3, 8):
+class Final: ...
 
-if sys.version_info >= (3, 9):
-  class Annotated: ...
+# if sys.version_info >= (3, 8):
+class TypedDict: ...
+
+# if sys.version_info >= (3, 9):
+class Annotated: ...
 
 TYPE_CHECKING = ...  # type: bool
 

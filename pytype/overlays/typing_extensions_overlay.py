@@ -11,6 +11,7 @@ class TypingExtensionsOverlay(overlay.Overlay):
     member_map = {
         "Annotated": typing_overlay.typing_overlay["Annotated"],
         "final": typing_overlay.typing_overlay["final"],
+        "Final": typing_overlay.typing_overlay["Final"],
         "Literal": typing_overlay.typing_overlay["Literal"],
         "Protocol": _build("typing.Protocol"),
         "runtime": _build("typing.runtime_checkable"),
