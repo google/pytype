@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-01-19T00:46-08:00 -->
+<!-- Added by: mdemello, at: 2022-01-27T18:23-08:00 -->
 
 <!--te-->
 
@@ -66,13 +66,14 @@ Feature                                                         | Version | Supp
 [PEP 585 -- Type Hinting Generics in Standard Collections][585] | 3.9     | ✅       |
 [PEP 586 -- Literal Types][586]                                 | 3.8     | 🟡       | [#790][literal-enums]
 [PEP 589 -- TypedDict][589]                                     | 3.8     | ✅       | Requires `--enable-typed-dicts` flag externally
-[PEP 591 -- Adding a Final Qualifier to Typing][591]            | 3.8     | ❌       | [#680][final]
+[PEP 591 -- Adding a Final Qualifier to Typing][591]            | 3.8     | ✅       |
 [PEP 593 -- Flexible Function and Variable Annotations][593]    | 3.9     | ✅       |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]           | 3.10    | ❌       | [#785][union-pipe]
 [PEP 612 -- Parameter Specification Variables][612]             | 3.10    | ❌       | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                         | 3.10    | ❌       | [#787][typealias]
 [PEP 646 -- Variadic Generics][646]                             | 3.11    | ❌       |
 [PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
+[PEP 673 -- Self Type][673]                                     | 3.11    | ❌       |
 Custom Recursive Types                                          | 3.6     | 🟡       | Requires `--allow-recursive-types` flag externally, not yet available internally
 Generic Type Aliases                                            | 3.6     | ✅       |
 Type Annotation Inheritance                                     | 3.6     | ❌       | [#81][annotation-inheritance]
@@ -105,9 +106,9 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [613]: https://www.python.org/dev/peps/pep-0613
 [646]: https://www.python.org/dev/peps/pep-0646
 [647]: https://www.python.org/dev/peps/pep-0647
+[673]: https://www.python.org/dev/peps/pep-0673
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
-[final]: https://github.com/google/pytype/issues/680
 [generic-aliases]: https://github.com/google/pytype/issues/793
 [literal-enums]: https://github.com/google/pytype/issues/790
 [packaging]: https://github.com/google/pytype/issues/151
