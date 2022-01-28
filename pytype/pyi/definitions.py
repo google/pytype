@@ -501,7 +501,7 @@ class Definitions:
       return pytd_annotated(parameters)
     elif self._matches_named_type(base_type, _FINAL_TYPES):
       typ, = parameters
-      return pytd.Annotated(base_type=typ, annotations=("'Final'",))
+      return pytd.GenericType(pytd.NamedType("typing.Final"), (typ,))
     elif self._matches_named_type(base_type, _TYPEGUARD_TYPES):
       # We do not yet support PEP 647, User-Defined Type Guards. To avoid
       # blocking typeshed, convert type guards to plain bools.

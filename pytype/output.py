@@ -441,8 +441,13 @@ class Converter(utils.ContextWeakrefMixin):
   def annotations_to_instance_types(self, node, annots):
     """Get instance types for annotations not present in the members map."""
     if annots:
-      for name, typ in annots.get_annotations(node):
-        yield name, typ.get_instance_type(node)
+      for name, local in annots.annotated_locals.items():
+        typ = local.get_type(node, name)
+        if typ:
+          t = typ.get_instance_type(node)
+          if local.final:
+            t = pytd.GenericType(pytd.NamedType("typing.Final"), (t,))
+          yield name, t
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""

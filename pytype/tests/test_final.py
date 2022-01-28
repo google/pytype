@@ -306,6 +306,26 @@ class TestFinal(test_base.BaseTest):
       y: Annotated[List[Final[int]], 'invalid'] = [10]  # invalid-annotation  # final-error
     """)
 
+  def test_output_in_pyi(self):
+    ty = self.Infer("""
+      from typing import Final
+      x: Final[int] = 10
+      class A:
+        y: Final[int] = 20
+        def __init__(self):
+          self.z: Final[int] = 30
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Final
+
+      x: Final[int]
+
+      class A:
+          y: Final[int]
+          z: Final[int]
+          def __init__(self) -> None: ...
+    """)
+
 
 class TestFinalDecoratorInPyi(test_base.BaseTest):
   """Test @final in pyi files."""
