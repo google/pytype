@@ -273,6 +273,13 @@ class PrintVisitor(base_visitor.Visitor):
       slots = []
     decorators = ["@" + self.VisitNamedType(d)
                   for d in self.old_node.decorators]
+    # Our handling of class decorators is a bit hacky (see output.py); this
+    # makes sure that typing classes read in directly from a pyi file and then
+    # reemitted (e.g. in assertTypesMatchPytd) have their required module
+    # imports handled correctly.
+    for d in self.old_node.decorators:
+      if d.type.name.startswith("typing."):
+        self.VisitNamedType(d.type)
     if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
@@ -294,6 +301,8 @@ class PrintVisitor(base_visitor.Visitor):
     """Visit function, producing multi-line string (one for each signature)."""
     function_name = node.name
     decorators = ""
+    if node.is_final:
+      decorators += "@" + self._FromTyping("final") + "\n"
     if (node.kind == pytd.MethodTypes.STATICMETHOD and
         function_name != "__new__"):
       decorators += "@staticmethod\n"

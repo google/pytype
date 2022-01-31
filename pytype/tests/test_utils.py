@@ -1,8 +1,8 @@
 """Utility class and function for tests."""
 
 import collections
+import copy
 import io
-import itertools
 import re
 import sys
 import tokenize
@@ -242,29 +242,36 @@ class TestErrorLog(errors.ErrorLog):
     raise AssertionError(msg)
 
   def assert_errors_match_expected(self):
-    expected_errors = itertools.chain.from_iterable(
-        [(line, code, mark) for (code, mark) in errors]
-        for line, errors in self.expected.items())
-    self.marks = {}
-
     def _format_error(line, code, mark=None):
       formatted = "Line %d: %s" % (line, code)
       if mark:
         formatted += "[%s]" % mark
       return formatted
 
+    self.marks = {}
+    expected = copy.deepcopy(self.expected)
+
     for error in self.unique_sorted_errors():
-      try:
-        line, code, mark = next(expected_errors)
-      except StopIteration:
-        self._fail("Unexpected error:\n%s" % error)
-      if line != error.lineno or code != error.name:
-        self._fail("Error does not match:\nExpected: %s\nActual: %s" %
-                   (_format_error(line, code, mark),
-                    _format_error(error.lineno, error.name)))
-      elif mark:
-        self.marks[mark] = error
-    leftover_errors = [_format_error(*error) for error in expected_errors]
+      errs = expected[error.lineno]
+      for i, (code, mark) in enumerate(errs):
+        if code == error.name:
+          if mark:
+            self.marks[mark] = error
+          del errs[i]
+          break
+      else:
+        if errs:
+          code, mark = errs[0]
+          exp = _format_error(error.lineno, code, mark)
+          actual = _format_error(error.lineno, error.name)
+          self._fail("Error does not match:\nExpected: %s\nActual: %s" %
+                     (exp, actual))
+        else:
+          self._fail("Unexpected error:\n%s" % error)
+    leftover_errors = []
+    for line in sorted(expected):
+      leftover_errors.extend(_format_error(line, code, mark)
+                             for code, mark in expected[line])
     if leftover_errors:
       self._fail("Errors not found:\n" + "\n".join(leftover_errors))
 

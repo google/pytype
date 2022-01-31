@@ -14,6 +14,7 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyi import metadata
 from pytype.pytd import pytd
@@ -171,6 +172,10 @@ class Converter(utils.ContextWeakrefMixin):
         assert isinstance(v.value.pyval, int), v.value.pyval
         value = v.value.pyval
       return pytd.Literal(value)
+    elif isinstance(v, typed_dict.TypedDictClass):
+      # TypedDict inherits from abstract.Dict for analysis purposes, but when
+      # outputting to a pyi we do not want to treat it as a generic type.
+      return pytd.NamedType(v.name)
     elif isinstance(v, abstract.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()
@@ -254,6 +259,8 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.Annotated(ret, ("'pytype_metadata'", md))
     elif isinstance(v, special_builtins.PropertyInstance):
       return pytd.NamedType("builtins.property")
+    elif isinstance(v, typed_dict.TypedDict):
+      return pytd.NamedType(v.props.name)
     elif isinstance(v, abstract.FUNCTION_TYPES):
       try:
         signatures = function.get_signatures(v)
@@ -392,6 +399,8 @@ class Converter(utils.ContextWeakrefMixin):
       # something from another module to the local namespace. We *could*
       # reproduce the entire class, but we choose a more dense representation.
       return v.to_type(node)
+    elif isinstance(v, typed_dict.TypedDictClass):
+      return self._typed_dict_to_def(node, v, name)
     elif isinstance(v, abstract.PyTDClass):  # a namedtuple instance
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
@@ -432,8 +441,13 @@ class Converter(utils.ContextWeakrefMixin):
   def annotations_to_instance_types(self, node, annots):
     """Get instance types for annotations not present in the members map."""
     if annots:
-      for name, typ in annots.get_annotations(node):
-        yield name, typ.get_instance_type(node)
+      for name, local in annots.annotated_locals.items():
+        typ = local.get_type(node, name)
+        if typ:
+          t = typ.get_instance_type(node)
+          if local.final:
+            t = pytd.GenericType(pytd.NamedType("typing.Final"), (t,))
+          yield name, t
 
   def _function_call_to_return_type(self, node, v, seen_return, num_returns):
     """Get a function call's pytd return type."""
@@ -594,11 +608,18 @@ class Converter(utils.ContextWeakrefMixin):
         node, v.metadata, annots))
     add_constants(self.annotations_to_instance_types(node, annots))
 
+    def add_final(defn, value):
+      if value.final:
+        return defn.Replace(flags=defn.flags | pytd.MethodFlags.FINAL)
+      else:
+        return defn
+
     def get_decorated_method(name, value, func_slot):
       fvar = getattr(value, func_slot)
       func = abstract_utils.get_atomic_value(fvar, abstract.Function)
       defn = self.value_to_pytd_def(node, func, name)
       defn = defn.Visit(visitors.DropMutableParameters())
+      defn = add_final(defn, value)
       return defn
 
     def add_decorated_method(name, value, kind):
@@ -619,6 +640,9 @@ class Converter(utils.ContextWeakrefMixin):
         pytd.Alias(x, pytd.Function(x, (sig,), pytd.MethodTypes.METHOD, 0))
         for x in v.decorators
     ]
+    if v.final:
+      fn = pytd.Function("typing.final", (sig,), pytd.MethodTypes.METHOD, 0)
+      decorators.append(pytd.Alias("final", fn))
 
     # class-level attributes
     for name, member in v.members.items():
@@ -652,6 +676,7 @@ class Converter(utils.ContextWeakrefMixin):
             # ones recorded; when inferring types for ParentClass.__init__, we
             # do not want `self: Union[ParentClass, Subclass]`.
             method = method.Replace(signatures=signatures)
+          method = add_final(method, value)
           # TODO(rechen): Removing mutations altogether won't work for generic
           # classes. To support those, we'll need to change the mutated type's
           # base to the current class, rename aliased type parameters, and
@@ -786,3 +811,21 @@ class Converter(utils.ContextWeakrefMixin):
     constraints = tuple(c.get_instance_type(node) for c in v.constraints)
     bound = v.bound and v.bound.get_instance_type(node)
     return pytd.TypeParameter(name, constraints=constraints, bound=bound)
+
+  def _typed_dict_to_def(self, node, v, name):
+    constants = []
+    for k, var in v.props.fields.items():
+      typ = pytd_utils.JoinTypes(
+          self.value_instance_to_pytd_type(node, p, None, set(), {})
+          for p in var.data)
+      constants.append(pytd.Constant(k, typ))
+    bases = (pytd.NamedType("typing.TypedDict"),)
+    return pytd.Class(name=name,
+                      metaclass=None,
+                      bases=bases,
+                      methods=(),
+                      constants=tuple(constants),
+                      classes=(),
+                      decorators=(),
+                      slots=None,
+                      template=())

@@ -327,9 +327,11 @@ class PyTDClass(
     mm = {}
     for val in pytd_cls.constants:
       if isinstance(val.type, pytd.Annotated):
-        if "'Final'" in val.type.annotations:
-          self.final_members[val.name] = val
         mm[val.name] = val.Replace(type=val.type.base_type)
+      elif (isinstance(val.type, pytd.GenericType) and
+            val.type.base_type.name == "typing.Final"):
+        self.final_members[val.name] = val
+        mm[val.name] = val.Replace(type=val.type.parameters[0])
       else:
         mm[val.name] = val
     for val in pytd_cls.methods:

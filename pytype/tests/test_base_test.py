@@ -36,6 +36,14 @@ class ErrorLogTest(test_base.BaseTest):
     self.assertIn("on int", err.marks["e1"].message)
     self.assertIn("on str", err.marks["e2"].message)
 
+  def test_different_order_of_errors_one_line(self):
+    self.CheckWithErrors("""
+      x = a.foo, "hello".foo  # name-error[e1]  # attribute-error[e2]
+    """)
+    self.CheckWithErrors("""
+      x = a.foo, "hello".foo  # attribute-error[e2]  # name-error[e1]
+    """)
+
   def test_populate_marks(self):
     # Test that assert_error_regexes populates self.marks if not already done.
     errorlog = test_utils.TestErrorLog("x = 0")

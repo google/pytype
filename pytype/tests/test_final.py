@@ -70,6 +70,43 @@ class TestFinalDecorator(test_base.BaseTest):
     self.assertErrorSequences(
         err, {"e": ["Class C", "overrides", "final method f", "base class A"]})
 
+  def test_output_class(self):
+    ty = self.Infer("""
+      from typing import final
+      @final
+      class A:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import final
+      @final
+      class A: ...
+    """)
+
+  def test_output_method(self):
+    ty = self.Infer("""
+      from typing import final
+      class A:
+        @final
+        def f(self):
+          pass
+        @final
+        @classmethod
+        def g(cls):
+          pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import final, Type
+      class A:
+        @final
+        def f(self) -> None:
+          pass
+        @final
+        @classmethod
+        def g(cls: Type[A]) -> None:
+          pass
+    """)
+
 
 class TestFinalDecoratorValidity(test_base.BaseTest):
   """Test whether @final is applicable in context."""
@@ -267,6 +304,26 @@ class TestFinal(test_base.BaseTest):
       from typing import Annotated, Final, List
       x: Annotated[Final[List[int]], 'valid'] = [10]
       y: Annotated[List[Final[int]], 'invalid'] = [10]  # invalid-annotation  # final-error
+    """)
+
+  def test_output_in_pyi(self):
+    ty = self.Infer("""
+      from typing import Final
+      x: Final[int] = 10
+      class A:
+        y: Final[int] = 20
+        def __init__(self):
+          self.z: Final[int] = 30
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Final
+
+      x: Final[int]
+
+      class A:
+          y: Final[int]
+          z: Final[int]
+          def __init__(self) -> None: ...
     """)
 
 

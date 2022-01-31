@@ -216,6 +216,30 @@ class TypedDictTest(test_base.BaseTest):
         a['z'] = 10  # typed-dict-error
     """)
 
+  def test_output_type(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict):
+        x: int
+        y: str
+
+      def f(x: Foo) -> None:
+        pass
+
+      foo = Foo(x=1, y="2")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+
+      foo: Foo
+
+      class Foo(TypedDict):
+        x: int
+        y: str
+
+      def f(x: Foo) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
