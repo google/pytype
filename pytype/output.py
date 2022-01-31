@@ -829,5 +829,3 @@ class Converter(utils.ContextWeakrefMixin):
                       decorators=(),
                       slots=None,
                       template=())
-
-
