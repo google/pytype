@@ -1,3 +1,16 @@
+Version 2022.01.31:
+
+New features and updates:
+* Support typing.final and typing.Final.
+* Rework directors.py's source parsing using LibCST.
+* Show error name in red in Linux-like environments.
+
+Bug fixes:
+* Add fixes for instantiating a typed dict from an annotation.
+* Prevent misfiring of "NoReturn is not allowed as inner type" error.
+* Defer checking of `Final` so that it can be used with `Annotated`.
+* Output typed dicts into the pyi file.
+
 Version 2022.01.13:
 
 New features and updates:
