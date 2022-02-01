@@ -551,16 +551,20 @@ class LateAnnotation:
       self.expr that is a legal variable name. Otherwise, self.expr unchanged.
     """
     if "[" in self.expr and self.is_recursive():
-      return "_" + self.expr.replace("[", "_LBAR_").replace(
-          "]", "_RBAR").replace(", ", "_COMMA_")
+      # _DOT and _RBAR have no trailing underscore because they precede names
+      # that we already prefix an underscore to.
+      return "_" + self.expr.replace(".", "_DOT").replace(
+          "[", "_LBAR_").replace("]", "_RBAR").replace(", ", "_COMMA_")
     return self.expr
 
   def unflatten_expr(self):
     """Unflattens a flattened expression."""
     if "_LBAR_" in self.expr:
       mod, dot, rest = self.expr.rpartition(".")
-      return mod + dot + rest[1:].replace("_LBAR_", "[").replace(
-          "_RBAR", "]").replace("_COMMA_", ", ")
+      # The [1:] slicing and trailing underscore in _DOT_ are to get rid of
+      # leading underscores added when flattening.
+      return mod + dot + rest[1:].replace("_DOT_", ".").replace(
+          "_LBAR_", "[").replace("_RBAR", "]").replace("_COMMA_", ", ")
     return self.expr
 
   def __repr__(self):

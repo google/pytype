@@ -400,6 +400,20 @@ class PyiTest(test_base.BaseTest):
               "e": ["Annotation: Union[List[foo.X[int]], int]",
                     "Assignment: List[str]"]})
 
+  def test_parameterize_and_forward(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+    """), ("bar.py", """
+      import foo
+      Y = foo.X[str]
+    """)]):
+      self.Check("""
+        import bar
+        assert_type(bar.Y, "Type[Union[List[bar.foo.X[T][str]], str]]")
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""
