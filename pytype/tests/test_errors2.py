@@ -338,6 +338,23 @@ class ErrorTest(test_base.BaseTest):
       import nonsense
     """)
 
+  def test_nested_class(self):
+    errors = self.CheckWithErrors("""
+      from typing import Protocol, TypeVar
+      T = TypeVar('T')
+      def f():
+        class X(Protocol[T]):
+          def __len__(self) -> T: ...
+        class Y:
+          def __len__(self) -> int:
+            return 0
+        def g(x: X[str]):
+          pass
+        g(Y())  # wrong-arg-types[e]
+    """)
+    self.assertErrorSequences(errors, {"e": [
+        "Method __len__ of protocol X[str] has the wrong signature in Y"]})
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""

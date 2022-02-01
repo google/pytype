@@ -571,14 +571,18 @@ class ErrorLog(ErrorLogBase):
 
   def _print_as_function_def(self, fn):
     assert isinstance(fn, abstract.Function)
-    conv = fn.ctx.pytd_convert
+    convert = fn.ctx.pytd_convert
     name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
-    return pytd_utils.Print(conv.value_to_pytd_def(fn.ctx.root_node, fn, name))
+    with convert.set_output_mode(convert.OutputMode.DETAILED):
+      pytd_def = convert.value_to_pytd_def(fn.ctx.root_node, fn, name)
+    return pytd_utils.Print(pytd_def)
 
   def _print_protocol_error(self, error):
     """Pretty-print the matcher.ProtocolError instance."""
-    left = self._pytd_print(error.left_type.get_instance_type())
-    protocol = self._pytd_print(error.other_type.get_instance_type())
+    convert = error.left_type.ctx.pytd_convert
+    with convert.set_output_mode(convert.OutputMode.DETAILED):
+      left = self._pytd_print(error.left_type.get_instance_type())
+      protocol = self._pytd_print(error.other_type.get_instance_type())
     if isinstance(error, matcher.ProtocolMissingAttributesError):
       missing = ", ".join(sorted(error.missing))
       return (f"Attributes of protocol {protocol} are not implemented on "
@@ -598,8 +602,9 @@ class ErrorLog(ErrorLogBase):
                 f">> {protocol} expects:\n{expected}\n\n"
                 f">> {left} defines:\n{actual}")
       else:
-        actual = self._pytd_print(error.actual_type.to_type())
-        expected = self._pytd_print(error.expected_type.to_type())
+        with convert.set_output_mode(convert.OutputMode.DETAILED):
+          actual = self._pytd_print(error.actual_type.to_type())
+          expected = self._pytd_print(error.expected_type.to_type())
         return (f"Attribute {error.attribute_name} of protocol {protocol} has "
                 f"wrong type in {left}: expected {expected}, got {actual}")
 
