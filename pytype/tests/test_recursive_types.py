@@ -414,6 +414,22 @@ class PyiTest(test_base.BaseTest):
         assert_type(bar.Y, "Type[Union[List[bar.foo.X[T][str]], str]]")
       """)
 
+  def test_dataclass(self):
+    with self.DepTree([("foo.py", """
+      import dataclasses
+      from typing import Dict, List, Optional, Union
+      X = Union[List[str], 'X']
+      Y = Dict[str, X]
+      @dataclasses.dataclass
+      class Foo:
+        y: Optional[Y] = None
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: foo.Foo):
+          pass
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""

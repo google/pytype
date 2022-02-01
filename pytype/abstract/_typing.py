@@ -423,6 +423,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     self.cls = self._get_class()
     self.formal = any(t.formal for t in self.options)
     self._printing = False
+    self._instance_cache = {}
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
@@ -445,7 +446,9 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     return not self == other
 
   def __hash__(self):
-    return hash(tuple(self.options))
+    # Use the names of the parameter values to approximate a hash, to avoid
+    # infinite recursion on recursive type annotations.
+    return hash(tuple(o.full_name for o in self.options))
 
   def _unique_parameters(self):
     return [o.to_variable(self.ctx.root_node) for o in self.options]
@@ -484,7 +487,16 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
     for option in self.options:
-      var.PasteVariable(option.instantiate(node, container), node)
+      k = (node, container, option)
+      if k in self._instance_cache:
+        if self._instance_cache[k] is None:
+          self._instance_cache[k] = self.ctx.new_unsolvable(node)
+        instance = self._instance_cache[k]
+      else:
+        self._instance_cache[k] = None
+        instance = option.instantiate(node, container)
+        self._instance_cache[k] = instance
+      var.PasteVariable(instance, node)
     return var
 
   def call(self, node, func, args, alias_map=None):

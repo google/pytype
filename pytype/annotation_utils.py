@@ -174,7 +174,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     seen = seen or set()
     if annot in seen:
       return []
-    if isinstance(annot, abstract.ParameterizedClass):
+    if isinstance(annot, mixin.NestedAnnotation):
       # We track parameterized classes to avoid recursion errors when a class
       # contains itself.
       seen = seen | {annot}
