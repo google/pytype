@@ -492,7 +492,11 @@ class Converter(utils.ContextWeakrefMixin):
   def _load_late_type_module(self, late_type):
     parts = late_type.name.split(".")
     for i in range(len(parts)-1):
-      module = ".".join(parts[:-(i+1)])
+      module_parts = parts[:-(i+1)]
+      if module_parts and module_parts[-1] == "__init__":
+        module = ".".join(module_parts[:-1])
+      else:
+        module = ".".join(module_parts)
       ast = self.ctx.loader.import_name(module)
       if ast:
         return ast, ".".join(parts[-(i+1):])

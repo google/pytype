@@ -147,6 +147,8 @@ class RenameModuleVisitor(base_visitor.Visitor):
     """
     if not name:
       return name
+    if name == self._old[:-1]:
+      return self._module_name
     before, match, after = name.partition(self._old)
     if match and not before and "." not in after:
       return self._new + after
