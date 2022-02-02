@@ -156,10 +156,10 @@ class SimpleFrame:
   error logging.
   """
 
-  def __init__(self, opcode=None, node=None):
+  def __init__(self, opcode=None, node=None, f_globals=None):
     self.f_code = None  # for recursion detection
     self.f_builtins = None
-    self.f_globals = None
+    self.f_globals = f_globals
     self.current_opcode = opcode  # for memoization of unknowns
     self.node = node
     self.substs = ()

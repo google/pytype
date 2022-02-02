@@ -453,6 +453,20 @@ class PyiTest(test_base.BaseTest):
         def f3(x: bar.BarX[str]): ...
       """)
 
+  def test_formal_alias(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, Union, TypeVar
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+    """)]):
+      self.Check("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T')
+        def f(x: foo.X[T], y: T):
+          pass
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""

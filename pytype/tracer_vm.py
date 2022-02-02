@@ -124,32 +124,37 @@ class CallTracer(vm.VirtualMachine):
     Returns:
       A tuple of (1) a node and (2) a cfg.Variable of the return value.
     """
-    fvar = val.AssignToNewVariable(node)
+    assert isinstance(val.data, abstract.INTERPRETER_FUNCTION_TYPES)
     with val.data.record_calls():
-      new_node, ret = self.call_function_in_frame(node, fvar, *args)
+      new_node, ret = self._call_function_in_frame(node, val, *args)
     return new_node, ret
 
-  def call_function_in_frame(self, node, var, args, kwargs,
-                             starargs, starstarargs):
+  def _call_function_in_frame(self, node, val, args, kwargs,
+                              starargs, starstarargs):
     # Try to get the function opcode with position information to construct the
     # frame, so that we have the data for any error messages raised before we
     # get to func.call().
-    fn = var.data[0]
-    opcode = None
-    if isinstance(fn, abstract.InterpreterFunction):
-      opcode = fn.def_opcode
-    if opcode:
-      frame = frame_state.SimpleFrame(node=node, opcode=opcode)
+    fn = val.data
+    if isinstance(fn, abstract.BoundInterpreterFunction):
+      # Note that using fn.underlying.def_opcode here would lead to over-caching
+      # in Class._new_instance().
+      opcode = None
+      f_globals = fn.underlying.f_globals
     else:
-      frame = frame_state.SimpleFrame(node=node)
+      assert isinstance(fn, abstract.InterpreterFunction)
+      opcode = fn.def_opcode
+      f_globals = fn.f_globals
+    frame = frame_state.SimpleFrame(
+        node=node, opcode=opcode, f_globals=f_globals)
     # We only want this frame to show up in errors if it's at the top of the
     # stack (i.e. we haven't started analysing the actual function yet)
     frame.skip_in_tracebacks = True
     self.push_frame(frame)
-    log.info("Analyzing %r", [v.name for v in var.data])
+    log.info("Analyzing %r", fn.name)
     state = frame_state.FrameState.init(node, self.ctx)
     state, ret = self.call_function_with_state(
-        state, var, args, kwargs, starargs, starstarargs)
+        state, val.AssignToNewVariable(node), args, kwargs, starargs,
+        starstarargs)
     self.pop_frame(frame)
     return state.node, ret
 
