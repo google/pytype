@@ -255,10 +255,10 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     }
     cls = _make("TupleClass", ctx.convert.tuple_type, class_params, ctx)
     super().__init__(cls, ctx)
-    self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     mixin.PythonConstant.init_mixin(self, content)
-    self.tuple_length = len(self.pyval)
     self._hash = None  # memoized due to expensive computation
+    self.tuple_length = len(self.pyval)
+    self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     # set this to true when creating a function arg tuple
     self.is_unpacked_function_args = False
 

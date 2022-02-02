@@ -75,15 +75,16 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         if cur.is_late_annotation() and any(t[0] == cur for t in stack):
           # We've found a recursive type. We generate a LateAnnotation as a
           # placeholder for the substituted type.
-          param_strings = []
-          for t in utils.unique_list(self.get_type_parameters(cur)):
-            s = pytd_utils.Print(self._get_type_parameter_subst(
-                node, t, substs, instantiate_unbound).get_instance_type(node))
-            param_strings.append(s)
-          expr = "%s[%s]" % (cur.expr, ", ".join(param_strings))
-          late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
-          late_annotations[cur] = late_annot
-          done.append(late_annot)
+          if cur not in late_annotations:
+            param_strings = []
+            for t in utils.unique_list(self.get_type_parameters(cur)):
+              s = pytd_utils.Print(self._get_type_parameter_subst(
+                  node, t, substs, instantiate_unbound).get_instance_type(node))
+              param_strings.append(s)
+            expr = "%s[%s]" % (cur.expr, ", ".join(param_strings))
+            late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
+            late_annotations[cur] = late_annot
+          done.append(late_annotations[cur])
         elif inner_type_keys is None:
           keys, vals = zip(*cur.get_inner_types())
           stack.append((cur, keys))
@@ -96,7 +97,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           if cur in late_annotations:
             # If we've generated a LateAnnotation placeholder for cur's
             # substituted type, replace it now with the real type.
-            late_annot = late_annotations[cur]
+            late_annot = late_annotations.pop(cur)
             late_annot.set_type(done_annot)
             if "[" in late_annot.expr:
               if self.ctx.vm.late_annotations is None:
@@ -119,17 +120,23 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       for _, typ in annot.get_inner_types():
         yield from self.get_late_annotations(typ)
 
-  def remove_late_annotations(self, annot):
+  def remove_late_annotations(self, annot, seen=None):
     """Replace unresolved late annotations with unsolvables."""
+    if seen is None:
+      seen = {annot}
+    elif annot in seen:
+      return annot
+    else:
+      seen.add(annot)
     if annot.is_late_annotation() and not annot.resolved:
       return self.ctx.convert.unsolvable
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.remove_late_annotations(val))
+      inner_types = [(key, self.remove_late_annotations(val, seen))
                      for key, val in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot
 
-  def add_scope(self, annot, types, module):
+  def add_scope(self, annot, types, module, seen=None):
     """Add scope for type parameters.
 
     In original type class, all type parameters that should be added a scope
@@ -139,24 +146,25 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       annot: The type class.
       types: A type name list that should be added a scope.
       module: Module name.
+      seen: Already seen types.
 
     Returns:
       The type with fresh type parameters that have been added the scope.
     """
+    if seen is None:
+      seen = {annot}
+    elif annot in seen:
+      return annot
+    else:
+      seen.add(annot)
     if isinstance(annot, abstract.TypeParameter):
       if annot.name in types:
         new_annot = annot.copy()
         new_annot.module = module
         return new_annot
       return annot
-    elif isinstance(annot, abstract.TupleClass):
-      params = {}
-      for name, param in annot.formal_type_parameters.items():
-        params[name] = self.add_scope(param, types, module)
-      return abstract.TupleClass(annot.base_cls, params, self.ctx,
-                                 annot.template)
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.add_scope(typ, types, module))
+      inner_types = [(key, self.add_scope(typ, types, module, seen))
                      for key, typ in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot
@@ -174,7 +182,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     seen = seen or set()
     if annot in seen:
       return []
-    if isinstance(annot, abstract.ParameterizedClass):
+    if isinstance(annot, mixin.NestedAnnotation):
       # We track parameterized classes to avoid recursion errors when a class
       # contains itself.
       seen = seen | {annot}

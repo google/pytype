@@ -4,7 +4,7 @@ import logging
 import typing
 from typing import Mapping, Tuple, Type, Union as _Union
 
-from pytype import utils
+from pytype import datatypes
 from pytype.abstract import _base
 from pytype.abstract import _classes
 from pytype.abstract import _instance_base
@@ -421,8 +421,8 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     assert options
     self.options = list(options)
     self.cls = self._get_class()
-    self.formal = any(t.formal for t in self.options)
     self._printing = False
+    self._instance_cache = {}
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
@@ -445,15 +445,12 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     return not self == other
 
   def __hash__(self):
-    return hash(tuple(self.options))
+    # Use the names of the parameter values to approximate a hash, to avoid
+    # infinite recursion on recursive type annotations.
+    return hash(tuple(o.full_name for o in self.options))
 
   def _unique_parameters(self):
     return [o.to_variable(self.ctx.root_node) for o in self.options]
-
-  def _get_type_params(self):
-    params = self.ctx.annotation_utils.get_type_parameters(self)
-    params = [x.full_name for x in params]
-    return utils.unique_list(params)
 
   def _get_class(self):
     classes = {o.cls for o in self.options}
@@ -465,26 +462,41 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
     slice_content = abstract_utils.maybe_extract_tuple(slice_var)
-    params = self._get_type_params()
+    params = self.ctx.annotation_utils.get_type_parameters(self)
+    num_params = len({x.name for x in params})
     # Check that we are instantiating all the unbound type parameters
-    if len(params) != len(slice_content):
+    if num_params != len(slice_content):
       self.ctx.errorlog.wrong_annotation_parameter_count(
           self.ctx.vm.frames, self, [v.data[0] for v in slice_content],
-          len(params))
+          num_params)
       return node, self.ctx.new_unsolvable(node)
-    concrete = []
-    for var in slice_content:
-      value = var.data[0]
-      concrete.append(
-          value.instantiate(node, container=abstract_utils.DUMMY_CONTAINER))
-    substs = [dict(zip(params, concrete))]
-    new = self.ctx.annotation_utils.sub_one_annotation(node, self, substs)
+    concrete = (
+        var.data[0].instantiate(node, container=abstract_utils.DUMMY_CONTAINER)
+        for var in slice_content)
+    subst = datatypes.AliasingDict()
+    for p in params:
+      for k in subst:
+        if k == p.name or k.endswith(f".{p.name}"):
+          subst.add_alias(p.full_name, k)
+          break
+      else:
+        subst[p.full_name] = next(concrete)
+    new = self.ctx.annotation_utils.sub_one_annotation(node, self, [subst])
     return node, new.to_variable(node)
 
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
     for option in self.options:
-      var.PasteVariable(option.instantiate(node, container), node)
+      k = (node, container, option)
+      if k in self._instance_cache:
+        if self._instance_cache[k] is None:
+          self._instance_cache[k] = self.ctx.new_unsolvable(node)
+        instance = self._instance_cache[k]
+      else:
+        self._instance_cache[k] = None
+        instance = option.instantiate(node, container)
+        self._instance_cache[k] = instance
+      var.PasteVariable(instance, node)
     return var
 
   def call(self, node, func, args, alias_map=None):
@@ -551,16 +563,20 @@ class LateAnnotation:
       self.expr that is a legal variable name. Otherwise, self.expr unchanged.
     """
     if "[" in self.expr and self.is_recursive():
-      return "_" + self.expr.replace("[", "_LBAR_").replace(
-          "]", "_RBAR").replace(", ", "_COMMA_")
+      # _DOT and _RBAR have no trailing underscore because they precede names
+      # that we already prefix an underscore to.
+      return "_" + self.expr.replace(".", "_DOT").replace(
+          "[", "_LBAR_").replace("]", "_RBAR").replace(", ", "_COMMA_")
     return self.expr
 
   def unflatten_expr(self):
     """Unflattens a flattened expression."""
     if "_LBAR_" in self.expr:
       mod, dot, rest = self.expr.rpartition(".")
-      return mod + dot + rest[1:].replace("_LBAR_", "[").replace(
-          "_RBAR", "]").replace("_COMMA_", ", ")
+      # The [1:] slicing and trailing underscore in _DOT_ are to get rid of
+      # leading underscores added when flattening.
+      return mod + dot + rest[1:].replace("_DOT_", ".").replace(
+          "_LBAR_", "[").replace("_RBAR", "]").replace("_COMMA_", ", ")
     return self.expr
 
   def __repr__(self):

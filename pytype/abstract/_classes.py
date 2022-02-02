@@ -567,7 +567,6 @@ class ParameterizedClass(
     # See the formal_type_parameters() property.
     self._formal_type_parameters = formal_type_parameters
     self._formal_type_parameters_loaded = False
-    self._seen_for_formal = False  # for calculating the 'formal' property
     self._hash = None  # memoized due to expensive computation
     self.official_name = self.base_cls.official_name
     if template is None:
@@ -653,18 +652,6 @@ class ParameterizedClass(
   @property
   def members(self):
     return self.base_cls.members
-
-  @property
-  def formal(self):
-    # We can't compute self.formal in __init__ because doing so would force
-    # evaluation of our type parameters during initialization, possibly
-    # leading to an infinite loop.
-    if self._seen_for_formal:
-      return False
-    self._seen_for_formal = True
-    formal = any(t.formal for t in self.formal_type_parameters.values())
-    self._seen_for_formal = False
-    return formal
 
   @property
   def formal_type_parameters(self):

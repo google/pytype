@@ -470,7 +470,12 @@ class Converter(utils.ContextWeakrefMixin):
       def get_node():
         need_node[0] = True
         return node
-      value = self._constant_to_value(pyval, subst, get_node)
+      recursive = isinstance(pyval, pytd.LateType) and pyval.recursive
+      if recursive:
+        with self.ctx.allow_recursive_convert():
+          value = self._constant_to_value(pyval, subst, get_node)
+      else:
+        value = self._constant_to_value(pyval, subst, get_node)
       if not need_node[0] or node is self.ctx.root_node:
         # Values that contain a non-root node cannot be cached. Otherwise,
         # we'd introduce bugs such as the following:
@@ -481,7 +486,7 @@ class Converter(utils.ContextWeakrefMixin):
         #     # visible inside the "if", is used, which will eventually lead
         #     # pytype to think that the V->complex binding isn't visible.
         #     d = {"a": 1j}
-        if isinstance(pyval, pytd.LateType) and pyval.recursive:
+        if recursive:
           annot = abstract.LateAnnotation(
               pyval.name, self.ctx.vm.frames, self.ctx)  # pytype: disable=attribute-error
           annot.set_type(value)
@@ -492,7 +497,11 @@ class Converter(utils.ContextWeakrefMixin):
   def _load_late_type_module(self, late_type):
     parts = late_type.name.split(".")
     for i in range(len(parts)-1):
-      module = ".".join(parts[:-(i+1)])
+      module_parts = parts[:-(i+1)]
+      if module_parts and module_parts[-1] == "__init__":
+        module = ".".join(module_parts[:-1])
+      else:
+        module = ".".join(module_parts)
       ast = self.ctx.loader.import_name(module)
       if ast:
         return ast, ".".join(parts[-(i+1):])

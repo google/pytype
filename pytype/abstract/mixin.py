@@ -166,8 +166,24 @@ class NestedAnnotation(metaclass=MixinMeta):
     one but with the given inner types, again as a (key, typ) sequence.
   """
 
+  overloads = ("formal",)
+
   def init_mixin(self):
     self.processed = False
+    self._seen_for_formal = False  # for calculating the 'formal' property
+
+  @property
+  def formal(self):
+    """See BaseValue.formal."""
+    # We can't compute self.formal in __init__ because doing so would force
+    # evaluation of our type parameters during initialization, possibly
+    # leading to an infinite loop.
+    if self._seen_for_formal:
+      return False
+    self._seen_for_formal = True
+    formal = any(t.formal for _, t in self.get_inner_types())
+    self._seen_for_formal = False
+    return formal
 
   def get_inner_types(self):
     raise NotImplementedError()

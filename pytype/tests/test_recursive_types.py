@@ -400,6 +400,98 @@ class PyiTest(test_base.BaseTest):
               "e": ["Annotation: Union[List[foo.X[int]], int]",
                     "Assignment: List[str]"]})
 
+  def test_parameterize_and_forward(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+    """), ("bar.py", """
+      import foo
+      Y = foo.X[str]
+    """)]):
+      self.Check("""
+        import bar
+        assert_type(bar.Y, "Type[Union[List[bar.foo.X[T][str]], str]]")
+      """)
+
+  def test_dataclass(self):
+    with self.DepTree([("foo.py", """
+      import dataclasses
+      from typing import Dict, List, Optional, Union
+      X = Union[List[str], 'X']
+      Y = Dict[str, X]
+      @dataclasses.dataclass
+      class Foo:
+        y: Optional[Y] = None
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: foo.Foo):
+          pass
+      """)
+
+  def test_import_multiple_aliases(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, Union, TypeVar
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+    """), ("bar.py", """
+      import foo
+      BarX = foo.X
+    """), ("baz.py", """
+      import foo
+      BazX = foo.X
+    """)]):
+      self.Check("""
+        import bar
+        import baz
+        # Reference BarX, then BazX, then BarX again to test that we've fixed an
+        # odd bug where importing an alias in a different namespace changed the
+        # scopes of cached TypeVars.
+        def f1(x: bar.BarX[str]): ...
+        def f2(x: baz.BazX[str]): ...
+        def f3(x: bar.BarX[str]): ...
+      """)
+
+  def test_formal_alias(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, Union, TypeVar
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+    """)]):
+      self.Check("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T')
+        def f(x: foo.X[T], y: T):
+          pass
+      """)
+
+  def test_use_branched_alias(self):
+    with self.DepTree([("foo.py", """
+      from typing import Mapping, Sequence, TypeVar, Union
+      K = TypeVar('K')
+      V = TypeVar('V')
+      StructureKV = Union[
+          Sequence['StructureKV[K, V]'],
+          Mapping[K, 'StructureKV[K, V]'],
+          V,
+      ]
+      try:
+        Structure = StructureKV[str, V]
+      except TypeError:
+        Structure = Union[
+            Sequence['Structure[V]'], Mapping[str, 'Structure[V]'], V]
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Any
+        X = foo.Structure[Any]
+        def f(x: X):
+          y = x[0]
+          return y["k"]
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""
