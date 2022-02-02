@@ -4,7 +4,7 @@ import logging
 import typing
 from typing import Mapping, Tuple, Type, Union as _Union
 
-from pytype import utils
+from pytype import datatypes
 from pytype.abstract import _base
 from pytype.abstract import _classes
 from pytype.abstract import _instance_base
@@ -453,11 +453,6 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   def _unique_parameters(self):
     return [o.to_variable(self.ctx.root_node) for o in self.options]
 
-  def _get_type_params(self):
-    params = self.ctx.annotation_utils.get_type_parameters(self)
-    params = [x.full_name for x in params]
-    return utils.unique_list(params)
-
   def _get_class(self):
     classes = {o.cls for o in self.options}
     if len(classes) > 1:
@@ -468,20 +463,26 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
     slice_content = abstract_utils.maybe_extract_tuple(slice_var)
-    params = self._get_type_params()
+    params = self.ctx.annotation_utils.get_type_parameters(self)
+    num_params = len({x.name for x in params})
     # Check that we are instantiating all the unbound type parameters
-    if len(params) != len(slice_content):
+    if num_params != len(slice_content):
       self.ctx.errorlog.wrong_annotation_parameter_count(
           self.ctx.vm.frames, self, [v.data[0] for v in slice_content],
-          len(params))
+          num_params)
       return node, self.ctx.new_unsolvable(node)
-    concrete = []
-    for var in slice_content:
-      value = var.data[0]
-      concrete.append(
-          value.instantiate(node, container=abstract_utils.DUMMY_CONTAINER))
-    substs = [dict(zip(params, concrete))]
-    new = self.ctx.annotation_utils.sub_one_annotation(node, self, substs)
+    concrete = (
+        var.data[0].instantiate(node, container=abstract_utils.DUMMY_CONTAINER)
+        for var in slice_content)
+    subst = datatypes.AliasingDict()
+    for p in params:
+      for k in subst:
+        if k == p.name or k.endswith(f".{p.name}"):
+          subst.add_alias(p.full_name, k)
+          break
+      else:
+        subst[p.full_name] = next(concrete)
+    new = self.ctx.annotation_utils.sub_one_annotation(node, self, [subst])
     return node, new.to_variable(node)
 
   def instantiate(self, node, container=None):

@@ -430,6 +430,29 @@ class PyiTest(test_base.BaseTest):
           pass
       """)
 
+  def test_import_multiple_aliases(self):
+    with self.DepTree([("foo.py", """
+      from typing import List, Union, TypeVar
+      T = TypeVar('T')
+      X = Union[T, List['X[T]']]
+    """), ("bar.py", """
+      import foo
+      BarX = foo.X
+    """), ("baz.py", """
+      import foo
+      BazX = foo.X
+    """)]):
+      self.Check("""
+        import bar
+        import baz
+        # Reference BarX, then BazX, then BarX again to test that we've fixed an
+        # odd bug where importing an alias in a different namespace changed the
+        # scopes of cached TypeVars.
+        def f1(x: bar.BarX[str]): ...
+        def f2(x: baz.BazX[str]): ...
+        def f3(x: bar.BarX[str]): ...
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""
