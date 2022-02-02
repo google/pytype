@@ -119,17 +119,23 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       for _, typ in annot.get_inner_types():
         yield from self.get_late_annotations(typ)
 
-  def remove_late_annotations(self, annot):
+  def remove_late_annotations(self, annot, seen=None):
     """Replace unresolved late annotations with unsolvables."""
+    if seen is None:
+      seen = {annot}
+    elif annot in seen:
+      return annot
+    else:
+      seen.add(annot)
     if annot.is_late_annotation() and not annot.resolved:
       return self.ctx.convert.unsolvable
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.remove_late_annotations(val))
+      inner_types = [(key, self.remove_late_annotations(val, seen))
                      for key, val in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot
 
-  def add_scope(self, annot, types, module):
+  def add_scope(self, annot, types, module, seen=None):
     """Add scope for type parameters.
 
     In original type class, all type parameters that should be added a scope
@@ -139,24 +145,25 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       annot: The type class.
       types: A type name list that should be added a scope.
       module: Module name.
+      seen: Already seen types.
 
     Returns:
       The type with fresh type parameters that have been added the scope.
     """
+    if seen is None:
+      seen = {annot}
+    elif annot in seen:
+      return annot
+    else:
+      seen.add(annot)
     if isinstance(annot, abstract.TypeParameter):
       if annot.name in types:
         new_annot = annot.copy()
         new_annot.module = module
         return new_annot
       return annot
-    elif isinstance(annot, abstract.TupleClass):
-      params = {}
-      for name, param in annot.formal_type_parameters.items():
-        params[name] = self.add_scope(param, types, module)
-      return abstract.TupleClass(annot.base_cls, params, self.ctx,
-                                 annot.template)
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.add_scope(typ, types, module))
+      inner_types = [(key, self.add_scope(typ, types, module, seen))
                      for key, typ in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot

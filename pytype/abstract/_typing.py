@@ -421,7 +421,6 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     assert options
     self.options = list(options)
     self.cls = self._get_class()
-    self.formal = any(t.formal for t in self.options)
     self._printing = False
     self._instance_cache = {}
     mixin.NestedAnnotation.init_mixin(self)
