@@ -75,15 +75,16 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         if cur.is_late_annotation() and any(t[0] == cur for t in stack):
           # We've found a recursive type. We generate a LateAnnotation as a
           # placeholder for the substituted type.
-          param_strings = []
-          for t in utils.unique_list(self.get_type_parameters(cur)):
-            s = pytd_utils.Print(self._get_type_parameter_subst(
-                node, t, substs, instantiate_unbound).get_instance_type(node))
-            param_strings.append(s)
-          expr = "%s[%s]" % (cur.expr, ", ".join(param_strings))
-          late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
-          late_annotations[cur] = late_annot
-          done.append(late_annot)
+          if cur not in late_annotations:
+            param_strings = []
+            for t in utils.unique_list(self.get_type_parameters(cur)):
+              s = pytd_utils.Print(self._get_type_parameter_subst(
+                  node, t, substs, instantiate_unbound).get_instance_type(node))
+              param_strings.append(s)
+            expr = "%s[%s]" % (cur.expr, ", ".join(param_strings))
+            late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
+            late_annotations[cur] = late_annot
+          done.append(late_annotations[cur])
         elif inner_type_keys is None:
           keys, vals = zip(*cur.get_inner_types())
           stack.append((cur, keys))
@@ -96,7 +97,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           if cur in late_annotations:
             # If we've generated a LateAnnotation placeholder for cur's
             # substituted type, replace it now with the real type.
-            late_annot = late_annotations[cur]
+            late_annot = late_annotations.pop(cur)
             late_annot.set_type(done_annot)
             if "[" in late_annot.expr:
               if self.ctx.vm.late_annotations is None:

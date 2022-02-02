@@ -467,6 +467,31 @@ class PyiTest(test_base.BaseTest):
           pass
       """)
 
+  def test_use_branched_alias(self):
+    with self.DepTree([("foo.py", """
+      from typing import Mapping, Sequence, TypeVar, Union
+      K = TypeVar('K')
+      V = TypeVar('V')
+      StructureKV = Union[
+          Sequence['StructureKV[K, V]'],
+          Mapping[K, 'StructureKV[K, V]'],
+          V,
+      ]
+      try:
+        Structure = StructureKV[str, V]
+      except TypeError:
+        Structure = Union[
+            Sequence['Structure[V]'], Mapping[str, 'Structure[V]'], V]
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Any
+        X = foo.Structure[Any]
+        def f(x: X):
+          y = x[0]
+          return y["k"]
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""
