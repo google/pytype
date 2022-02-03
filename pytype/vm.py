@@ -2446,9 +2446,24 @@ class VirtualMachine:
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):
-    # TODO(mdemello): We should check if TOS is a generator iterator or
-    # coroutine first, and do nothing if it is, else call GET_ITER
-    return self.byte_GET_ITER(state, op)
+    """Implementation of the GET_YIELD_FROM_ITER opcode."""
+    # Do nothing with TOS bindings that are generator iterators or coroutines;
+    # call GET_ITER on the rest.
+    get_iter = self.ctx.program.NewVariable()
+    unchanged = self.ctx.program.NewVariable()
+    state, tos = state.pop()
+    for b in tos.bindings:
+      if b.data.full_name in ("builtins.generator", "builtins.coroutine"):
+        unchanged.PasteBinding(b)
+      else:
+        get_iter.PasteBinding(b)
+    if get_iter.bindings:
+      state = state.push(get_iter)
+      state = self.byte_GET_ITER(state, op)
+      state.peek(0).PasteVariable(unchanged)
+    else:
+      state = state.push(unchanged)
+    return state
 
   def byte_BUILD_LIST_UNPACK(self, state, op):
     return vm_utils.unpack_and_build(state, op.arg, self.ctx.convert.build_list,
