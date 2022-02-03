@@ -970,8 +970,9 @@ class ClassesTest(test_base.BaseTest):
 
   def test_call_parameterized_class(self):
     self.InferWithErrors("""
-      from typing import List
-      List[str]()  # not-callable
+      from typing import Deque
+      list[str]()
+      Deque[str]()
     """)
 
   def test_errorful_constructors(self):

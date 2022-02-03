@@ -721,9 +721,11 @@ class ParameterizedClass(
     #   from typing import List
     #   print(List[str]())
     # produces 'TypeError: Type List cannot be instantiated; use list() instead'
-    # at runtime. We also disallow the builtins module because pytype represents
-    # concrete typing classes like List with their builtins equivalents.
-    return not self.is_abstract and self.module not in ("builtins", "typing")
+    # at runtime. However, pytype represents concrete typing classes like List
+    # with their builtins equivalents, so we can't distinguish between
+    # List[str]() (illegal) and list[str]() (legal in Python 3.9+); we err on
+    # the side of allowing such calls.
+    return not self.is_abstract
 
   def call(self, node, func, args, alias_map=None):
     if not self._is_callable():
