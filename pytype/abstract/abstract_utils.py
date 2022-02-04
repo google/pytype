@@ -498,6 +498,10 @@ class Local:
   def stack(self):
     return self.ctx.vm.simple_stack(self._ops[-1])
 
+  @property
+  def last_update_op(self):
+    return self._ops[-1]
+
   def update(self, node, op, typ, orig, final=False):
     """Update this variable's annotation and/or value."""
     if op in self._ops:

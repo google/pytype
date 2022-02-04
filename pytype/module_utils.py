@@ -2,6 +2,7 @@
 
 import collections
 import os
+from typing import Sequence
 
 
 class Module(collections.namedtuple("_", "path target name kind")):
@@ -75,6 +76,10 @@ def path_to_module_name(filename):
   # strip __init__ suffix
   module_name, _, _ = module_name.partition(".__init__")
   return module_name
+
+
+def strip_init_suffix(parts: Sequence[str]):
+  return parts[:-1] if parts and parts[-1] == "__init__" else parts
 
 
 def get_absolute_name(prefix, relative_name):

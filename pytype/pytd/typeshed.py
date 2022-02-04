@@ -193,7 +193,8 @@ class Typeshed:
         there exists a pytype pyi directory with this name, and "third_party"
         corresponds to the the typeshed/stubs/ directory.
       module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
-        it's a submodule.
+        it's a submodule. Package names should omit the "__init__" suffix (e.g.,
+        pass in "os", not "os.__init__").
       version: The Python version. (major, minor)
 
     Returns:
@@ -243,6 +244,7 @@ class Typeshed:
     return None
 
   def _is_module_in_typeshed(self, module_parts, version):
+    assert module_parts[-1] != "__init__", module_parts
     version_info = self._lookup_stdlib_version(module_parts)
     if version_info is None:
       return False
@@ -272,7 +274,8 @@ class Typeshed:
       parts = path.split("/")
       if "stdlib" in parts:
         # Check supported versions for stubs directly in stdlib/.
-        module_parts = os.path.splitext(filename)[0].split("/", 1)
+        module_parts = module_utils.strip_init_suffix(
+            os.path.splitext(filename)[0].split("/"))
         if not self._is_module_in_typeshed(module_parts, python_version):
           continue
       yield filename
@@ -353,8 +356,8 @@ def parse_type_definition(pyi_subdir, module, options):
 
   Args:
     pyi_subdir: the directory where the module should be found.
-    module: the module name (without any file extension)
-    options: the parsing options
+    module: the module name (without any file extension or "__init__" suffix).
+    options: the parsing options.
 
   Returns:
     None if the module doesn't have a definition.

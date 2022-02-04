@@ -243,6 +243,20 @@ class TestFinal(test_base.BaseTest):
     self.assertErrorSequences(
         err, {"e": ["attribute", "x", "annotated with Final"]})
 
+  def test_constructor(self):
+    # Should not raise an error when analyzing __init__ multiple times.
+    self.CheckWithErrors("""
+      from typing import Final
+      class A:
+        def __init__(self, x: int):
+          self.x: Final[int] = x
+      b = A(10)
+      c = A(20)
+      assert_type(b.x, int)
+      assert_type(c.x, int)
+      b.x = 20  # final-error
+    """)
+
   def test_inference(self):
     self.CheckWithErrors("""
       from typing import Final
@@ -446,6 +460,7 @@ class TestFinalInPyi(test_base.BaseTest):
     self.assertErrorSequences(
         err, {"e": ["Class C", "overrides", "final class attribute", "x",
                     "base class A"]})
+
 
 if __name__ == "__main__":
   test_base.main()

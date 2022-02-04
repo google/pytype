@@ -723,10 +723,15 @@ class VirtualMachine:
     ann = self.ctx.annotation_utils.apply_annotation(
         state.node, op, name, orig_val)
     typ, value = ann.typ, ann.value
-    final = False
+    final_violation = False
     local = False
     if annotations_dict is not None:
-      final = name in annotations_dict and annotations_dict[name].final
+      # If we are assigning to a member that is in the class annotation dict as
+      # Final, don't raise an error if we are simply analysing the same method
+      # repeatedly and have hit the STORE_ opcode a second time.
+      final_violation = (name in annotations_dict and
+                         annotations_dict[name].final and
+                         op != annotations_dict[name].last_update_op)
       if annotations_dict is self.current_annotated_locals:
         local = True
         self._record_local(state.node, op, name, typ, orig_val, ann.final)
@@ -743,7 +748,7 @@ class VirtualMachine:
           # cases where it is causing false positives or other issues.
           value = self.ctx.new_unsolvable(state.node)
     if check_types:
-      if final:
+      if final_violation:
         self.ctx.errorlog.assigning_to_final(self.frames, name, local)
       else:
         self.ctx.check_annotation_type_mismatch(
@@ -2441,9 +2446,24 @@ class VirtualMachine:
     return self.store_local(state, "__annotations__", annotations_var)
 
   def byte_GET_YIELD_FROM_ITER(self, state, op):
-    # TODO(mdemello): We should check if TOS is a generator iterator or
-    # coroutine first, and do nothing if it is, else call GET_ITER
-    return self.byte_GET_ITER(state, op)
+    """Implementation of the GET_YIELD_FROM_ITER opcode."""
+    # Do nothing with TOS bindings that are generator iterators or coroutines;
+    # call GET_ITER on the rest.
+    get_iter = self.ctx.program.NewVariable()
+    unchanged = self.ctx.program.NewVariable()
+    state, tos = state.pop()
+    for b in tos.bindings:
+      if b.data.full_name in ("builtins.generator", "builtins.coroutine"):
+        unchanged.PasteBinding(b)
+      else:
+        get_iter.PasteBinding(b)
+    if get_iter.bindings:
+      state = state.push(get_iter)
+      state = self.byte_GET_ITER(state, op)
+      state.peek(0).PasteVariable(unchanged)
+    else:
+      state = state.push(unchanged)
+    return state
 
   def byte_BUILD_LIST_UNPACK(self, state, op):
     return vm_utils.unpack_and_build(state, op.arg, self.ctx.convert.build_list,
