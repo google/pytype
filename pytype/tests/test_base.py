@@ -131,7 +131,6 @@ class BaseTest(unittest.TestCase):
   def setUp(self):
     super().setUp()
     self.options = config.Options.create(python_version=self.python_version,
-                                         allow_recursive_types=True,
                                          build_dict_literals_from_kwargs=True,
                                          strict_namedtuple_checks=True,
                                          use_enum_overlay=True)
@@ -150,6 +149,7 @@ class BaseTest(unittest.TestCase):
     self.options.tweak(**kwargs)
 
   def _GetPythonpathArgs(self, pythonpath, imports_map):
+    """Gets values for --pythonpath and --imports_map."""
     if pythonpath:
       pythonpath_arg = pythonpath
       imports_map_arg = imports_map
@@ -200,6 +200,7 @@ class BaseTest(unittest.TestCase):
   def InferWithErrors(self, code, deep=True, pythonpath=(), module_name=None,
                       analyze_annotated=True, quick=False, imports_map=None,
                       **kwargs):
+    """Runs inference on code expected to have type errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
@@ -222,6 +223,7 @@ class BaseTest(unittest.TestCase):
     return errorlog
 
   def InferFromFile(self, filename, pythonpath):
+    """Runs inference on the contents of a file."""
     with open(filename, "r") as fi:
       code = fi.read()
       errorlog = test_utils.TestErrorLog(code)
@@ -269,6 +271,7 @@ class BaseTest(unittest.TestCase):
         pytd_utils.Print(return_type))
 
   def assertHasOnlySignatures(self, func, *sigs):
+    """Asserts that the function has the given signatures and no others."""
     self.assertIsInstance(func, pytd.Function)
     for parameter_types, return_type in sigs:
       if not self.HasExactSignature(func, parameter_types, return_type):
@@ -347,6 +350,7 @@ class BaseTest(unittest.TestCase):
   def Infer(self, srccode, pythonpath=(), deep=True,
             report_errors=True, analyze_annotated=True, pickle=False,
             module_name=None, **kwargs):
+    """Runs inference on srccode."""
     types, builtins_pytd = self._InferAndVerify(
         _Format(srccode), pythonpath=pythonpath, deep=deep,
         analyze_annotated=analyze_annotated, module_name=module_name,
@@ -431,6 +435,7 @@ class BaseTest(unittest.TestCase):
 
   @contextlib.contextmanager
   def DepTree(self, deps):
+    """Creates a tree of .pyi deps."""
     old_pythonpath = self.options.pythonpath
     old_imports_map = self.options.imports_map
     try:

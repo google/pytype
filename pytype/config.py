@@ -147,8 +147,6 @@ def add_basic_options(o):
 FEATURE_FLAGS = [
     ("--use-enum-overlay", False,
      "Use the enum overlay for more precise enum checking."),
-    ("--allow-recursive-types", True,
-     "Allow recursive type definitions."),
     ("--build-dict-literals-from-kwargs", False,
      "Build dict literals from dict(k=v, ...) calls."),
     ("--strict_namedtuple_checks", False,

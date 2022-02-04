@@ -701,20 +701,6 @@ class VirtualMachine:
       return value
     stack = self.simple_stack()
     typ = self.ctx.annotation_utils.extract_annotation(node, value, name, stack)
-    if self.ctx.options.allow_recursive_types:
-      return typ.to_variable(node)
-    if self.late_annotations:
-      recursive_annots = set(self.late_annotations[name])
-    else:
-      recursive_annots = set()
-    for late_annot in self.ctx.annotation_utils.get_late_annotations(typ):
-      if late_annot in recursive_annots:
-        self.ctx.errorlog.not_supported_yet(
-            stack,
-            "Recursive type annotations",
-            details="In annotation %r on %s" % (late_annot.expr, name))
-        typ = self.ctx.annotation_utils.remove_late_annotations(typ)
-        break
     return typ.to_variable(node)
 
   def _apply_annotation(
