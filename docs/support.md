@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: mdemello, at: 2022-01-27T18:23-08:00 -->
+<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
 
 <!--te-->
 
@@ -74,7 +74,7 @@ Feature                                                         | Version | Supp
 [PEP 646 -- Variadic Generics][646]                             | 3.11    | ❌       |
 [PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
 [PEP 673 -- Self Type][673]                                     | 3.11    | ❌       |
-Custom Recursive Types                                          | 3.6     | 🟡       | Requires `--allow-recursive-types` flag externally, not yet available internally
+Custom Recursive Types                                          | 3.6     | ✅       |
 Generic Type Aliases                                            | 3.6     | ✅       |
 Type Annotation Inheritance                                     | 3.6     | ❌       | [#81][annotation-inheritance]
 

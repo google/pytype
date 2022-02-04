@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
       * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
       * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
 
-<!-- Added by: mdemello, at: 2021-11-29T20:55-08:00 -->
+<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
 
 <!--te-->
 
@@ -23,11 +23,11 @@ There are several python type checkers, and while they do aim for consistency
 with the relevant PEPs, they do not behave identically. For more information,
 check out:
 
-* A [PyCon lightning talk][lightning-talk] comparing pytype and mypy,
-another popular type checker. The slides are [here][lightning-talk-slides].
-* A more detailed written discussion in a [Lobste.rs post][lobsters-comment].
-* A [paper][type-system-paper] detailing pytype and mypy's differing views of
-  python's type system.
+*   A [PyCon lightning talk][lightning-talk] comparing pytype and mypy, another
+    popular type checker. The slides are [here][lightning-talk-slides].
+*   A more detailed written discussion in a [Lobste.rs post][lobsters-comment].
+*   A [paper][type-system-paper] detailing pytype and mypy's differing views of
+    python's type system.
 
 As the primary open source type checker, [mypy] tends to de facto define the
 semantics of what people think of as "python typing" in areas not formally
