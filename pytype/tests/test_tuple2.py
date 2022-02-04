@@ -193,6 +193,12 @@ class TupleTest(test_base.BaseTest):
           return f(foo.integrate())
       """, pythonpath=[d.path])
 
+  def test_empty_tuple_class(self):
+    self.Check("""
+      x = ()
+      print(x.__class__())
+    """)
+
 
 class TupleTestPython3Feature(test_base.BaseTest):
   """Tests for builtins.tuple."""

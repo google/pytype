@@ -897,9 +897,10 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     return {abstract_utils.full_type_name(self, abstract_utils.T):
             self.formal_type_parameters[abstract_utils.T]}
 
-  def instantiate(self, node, container=None):
+  def _new_instance(self, container, node, args):
+    del args  # unused
     if self._instance:
-      return self._instance.to_variable(node)
+      return self._instance
     content = []
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
@@ -910,7 +911,12 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
         content.append(p.instantiate(self.ctx.root_node, container))
       else:
         content.append(p.instantiate(self.ctx.root_node))
-    return _instances.Tuple(tuple(content), self.ctx).to_variable(node)
+    # Note that we intentionally don't set self._instance to the new tuple,
+    # since the tuple will create and register itself with a fresh TupleClass.
+    return _instances.Tuple(tuple(content), self.ctx)
+
+  def instantiate(self, node, container=None):
+    return self._new_instance(container, node, None).to_variable(node)
 
   def _instantiate_index(self, node, index):
     if self._instance:
