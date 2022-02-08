@@ -1,3 +1,15 @@
+Version 2022.02.08:
+
+New features and updates:
+* Remove the --allow-recursive-types flag. Recursive types are now fully
+  supported and the behavior of this flag is enabled by default.
+
+Bug fixes:
+* Don't raise a final-error when analysing the same method repeatedly.
+* Get rid of an overly restrictive [not-callable] check in ParameterizedClass.
+* Strip "__init__" from module names when checking supported versions.
+* Finish a TODO in byte_GET_YIELD_FROM_ITER.
+
 Version 2022.01.31:
 
 New features and updates:
