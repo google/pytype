@@ -242,7 +242,7 @@ def is_relevant_class_local(class_local: abstract_utils.Local,
   """
   if is_dunder(class_local_name):
     return False
-  if not allow_methods and is_method(class_local.orig):
+  if not allow_methods and not class_local.typ and is_method(class_local.orig):
     return False
   return True
 
