@@ -58,7 +58,9 @@ class Signature:
 
   Attributes:
     name: Name of the function.
-    param_names: A tuple of positional parameter names.
+    param_names: A tuple of positional parameter names. This DOES include
+      positional-only parameters and does NOT include keyword-only parameters.
+    posonly_count: Number of positional-only parameters. (Python 3.8)
     varargs_name: Name of the varargs parameter. (The "args" in *args)
     kwonly_params: Tuple of keyword-only parameters. (Python 3)
       E.g. ("x", "y") for "def f(a, *, x, y=2)". These do NOT appear in
@@ -71,13 +73,16 @@ class Signature:
     type_params: The set of type parameter names that appear in annotations.
     has_return_annotation: Whether the function has a return annotation.
     has_param_annotations: Whether the function has parameter annotations.
+    posonly_params: Tuple of positional-only parameters (i.e., the first
+      posonly_count names in param_names).
   """
 
-  def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations,
+  def __init__(self, name, param_names, posonly_count, varargs_name,
+               kwonly_params, kwargs_name, defaults, annotations,
                postprocess_annotations=True):
     self.name = name
     self.param_names = param_names
+    self.posonly_count = posonly_count
     self.varargs_name = varargs_name
     self.kwonly_params = kwonly_params
     self.kwargs_name = kwargs_name
@@ -99,6 +104,10 @@ class Signature:
   @property
   def has_param_annotations(self):
     return bool(self.annotations.keys() - {"return"})
+
+  @property
+  def posonly_params(self):
+    return self.param_names[:self.posonly_count]
 
   def add_scope(self, module):
     """Add scope for type parameters in annotations."""
@@ -168,11 +177,21 @@ class Signature:
       return ctx.convert.constant_to_var(
           p.type, subst=datatypes.AliasingDict(), node=ctx.root_node)
 
+    param_names = []
+    posonly_count = 0
+    kwonly_params = []
+    for p in sig.params:
+      if p.kind == pytd.ParameterKind.KWONLY:
+        kwonly_params.append(p.name)
+        continue
+      param_names.append(p.name)
+      posonly_count += p.kind == pytd.ParameterKind.POSONLY
     return cls(
         name=name,
-        param_names=tuple(p.name for p in sig.params if not p.kwonly),
+        param_names=tuple(param_names),
+        posonly_count=posonly_count,
         varargs_name=None if sig.starargs is None else sig.starargs.name,
-        kwonly_params=tuple(p.name for p in sig.params if p.kwonly),
+        kwonly_params=tuple(kwonly_params),
         kwargs_name=None if sig.starstarargs is None else sig.starstarargs.name,
         defaults={p.name: param_to_var(p) for p in sig.params if p.optional},
         annotations={
@@ -190,6 +209,7 @@ class Signature:
     return cls(
         name="<callable>",
         param_names=tuple(sorted(annotations)),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -198,14 +218,26 @@ class Signature:
     )
 
   @classmethod
-  def from_param_names(cls, name, param_names, kwonly=False):
+  def from_param_names(cls, name, param_names, kind=pytd.ParameterKind.REGULAR):
     """Construct a minimal signature from a name and a list of param names."""
     names = tuple(param_names)
-    param_names = () if kwonly else names
-    kwonly_params = names if kwonly else ()
+    if kind == pytd.ParameterKind.REGULAR:
+      param_names = names
+      posonly_count = 0
+      kwonly_params = ()
+    elif kind == pytd.ParameterKind.POSONLY:
+      param_names = names
+      posonly_count = len(names)
+      kwonly_params = ()
+    else:
+      assert kind == pytd.ParameterKind.KWONLY
+      param_names = ()
+      posonly_count = 0
+      kwonly_params = names
     return cls(
         name=name,
         param_names=param_names,
+        posonly_count=posonly_count,
         varargs_name=None,
         kwonly_params=kwonly_params,
         kwargs_name=None,
@@ -748,9 +780,13 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       if name in arg_dict:
         raise DuplicateKeyword(self.signature, args, self.ctx, name)
       arg_dict[name] = view[arg]
-    extra_kwargs = set(args.namedargs) - {p.name for p in self.pytd_sig.params}
+    kws = set(args.namedargs)
+    extra_kwargs = kws - {p.name for p in self.pytd_sig.params}
     if extra_kwargs and not self.pytd_sig.starstarargs:
       raise WrongKeywordArgs(self.signature, args, self.ctx, extra_kwargs)
+    posonly_kwargs = kws.intersection(self.signature.posonly_params)
+    if posonly_kwargs:
+      raise WrongKeywordArgs(self.signature, args, self.ctx, posonly_kwargs)
     # Extra keyword args are passed via the **kwargs argument.
     kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
     if _isinstance(kwargs_type, "ParameterizedClass"):
@@ -942,7 +978,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
   def get_positional_names(self):
     return [p.name for p in self.pytd_sig.params
-            if not p.kwonly]
+            if p.kind != pytd.ParameterKind.KWONLY]
 
   def set_defaults(self, defaults):
     """Set signature's default arguments. Requires rebuilding PyTD signature.
@@ -961,7 +997,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         params.append(pytd.Parameter(
             name=param.name,
             type=param.type,
-            kwonly=param.kwonly,
+            kind=param.kind,
             optional=True,
             mutated_type=param.mutated_type
         ))
@@ -969,7 +1005,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         params.append(pytd.Parameter(
             name=param.name,
             type=param.type,
-            kwonly=param.kwonly,
+            kind=param.kind,
             optional=False,  # Reset any previously-set defaults
             mutated_type=param.mutated_type
         ))

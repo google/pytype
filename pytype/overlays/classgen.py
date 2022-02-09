@@ -120,7 +120,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
         pos_params.append(param)
 
     return overlay_utils.make_method(self.ctx, node, init_method_name,
-                                     pos_params, kwonly_params)
+                                     pos_params, 0, kwonly_params)
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""

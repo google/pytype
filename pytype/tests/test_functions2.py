@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestClosures(test_base.BaseTest):
@@ -749,6 +750,40 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         f: Callable
         def __init__(self) -> None: ...
     """)
+
+  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
+  def test_positional_only_parameter(self):
+    ty, errors = self.InferWithErrors("""
+      def f(x, /, y):
+        pass
+      f(0, 1)  # ok
+      f(0, y=1)  # ok
+      f(x=0, y=1)  # wrong-keyword-args[e]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x, /, y) -> None: ...
+    """)
+    # TODO(rechen): We currently print "Actually passed: (x, y)", which is
+    # confusing. We should somehow indicate that x was passed in by keyword.
+    self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
+                                             "Expected: (x, /, y)"]})
+
+  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
+  def test_positional_only_parameter_pyi(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x, /, y) -> None: ...
+      """)
+      errors = self.CheckWithErrors("""
+        import foo
+        foo.f(0, 1)  # ok
+        foo.f(0, y=1)  # ok
+        foo.f(x=0, y=1)  # wrong-keyword-args[e]
+      """, pythonpath=[d.path])
+      # TODO(rechen): We currently print "Actually passed: (x, y)", which is
+      # confusing. We should somehow indicate that x was passed in by keyword.
+      self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
+                                               "Expected: (x, /, y)"]})
 
 
 class DisableTest(test_base.BaseTest):

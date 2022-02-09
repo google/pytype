@@ -72,7 +72,8 @@ class Unknown(_base.BaseValue):
     """Convert a list of types/variables to pytd parameters."""
     def _make_param(i, p):
       return pytd.Parameter("_%d" % (i + 1), cls._to_pytd(node, p),
-                            kwonly=False, optional=False, mutated_type=None)
+                            kind=pytd.ParameterKind.REGULAR, optional=False,
+                            mutated_type=None)
     return tuple(_make_param(i, p) for i, p in enumerate(args))
 
   def get_special_attribute(self, node, name, valself):
@@ -112,7 +113,7 @@ class Unknown(_base.BaseValue):
   def to_structural_def(self, node, class_name):
     """Convert this Unknown to a pytd.Class."""
     self_param = (pytd.Parameter("self", pytd.AnythingType(),
-                                 False, False, None),)
+                                 pytd.ParameterKind.REGULAR, False, None),)
     starargs = None
     starstarargs = None
     def _make_sig(args, ret):
@@ -125,7 +126,7 @@ class Unknown(_base.BaseValue):
     calls = tuple(pytd_utils.OrderedSet(
         _make_sig(args, ret) for args, _, ret in self._calls))
     if calls:
-      methods = (pytd.Function("__call__", calls, pytd.MethodTypes.METHOD),)
+      methods = (pytd.Function("__call__", calls, pytd.MethodKind.METHOD),)
     else:
       methods = ()
     return pytd.Class(

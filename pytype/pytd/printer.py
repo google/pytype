@@ -303,13 +303,13 @@ class PrintVisitor(base_visitor.Visitor):
     decorators = ""
     if node.is_final:
       decorators += "@" + self._FromTyping("final") + "\n"
-    if (node.kind == pytd.MethodTypes.STATICMETHOD and
+    if (node.kind == pytd.MethodKind.STATICMETHOD and
         function_name != "__new__"):
       decorators += "@staticmethod\n"
-    elif (node.kind == pytd.MethodTypes.CLASSMETHOD and
+    elif (node.kind == pytd.MethodKind.CLASSMETHOD and
           function_name != "__init_subclass__"):
       decorators += "@classmethod\n"
-    elif node.kind == pytd.MethodTypes.PROPERTY:
+    elif node.kind == pytd.MethodKind.PROPERTY:
       decorators += "@property\n"
     if node.is_abstract:
       decorators += "@abstractmethod\n"
@@ -361,18 +361,25 @@ class PrintVisitor(base_visitor.Visitor):
       # We don't have explicit *args, but we might need to print "*", for
       # kwonly params.
       starargs = ""
-    params = node.params
-    for i, p in enumerate(params):
-      if self.old_node.params[i].kwonly:
-        assert all(p.kwonly for p in self.old_node.params[i:])
-        params = params[0:i] + ("*"+starargs,) + params[i:]
+    params = []
+    for i, p in enumerate(node.params):
+      if self.old_node.params[i].kind == pytd.ParameterKind.KWONLY:
+        assert all(p.kind == pytd.ParameterKind.KWONLY
+                   for p in self.old_node.params[i:])
+        params.append("*" + starargs)
+        params.extend(node.params[i:])
         break
+      params.append(p)
+      if (self.old_node.params[i].kind == pytd.ParameterKind.POSONLY and
+          (i == len(node.params)-1 or
+           self.old_node.params[i+1].kind != pytd.ParameterKind.POSONLY)):
+        params.append("/")
     else:
       if starargs:
-        params += (f"*{starargs}",)
+        params.append(f"*{starargs}")
     if self.old_node.starstarargs is not None:
       starstarargs = self._FormatContainerContents(self.old_node.starstarargs)
-      params += (f"**{starstarargs}",)
+      params.append(f"**{starstarargs}")
 
     body = []
     # Handle Mutable parameters

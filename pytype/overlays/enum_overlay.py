@@ -255,6 +255,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
     super().__init__(
         name="__eq__",
         param_names=("self", "other"),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -308,6 +309,7 @@ class EnumMetaInit(abstract.SimpleFunction):
     super().__init__(
         name="__init__",
         param_names=("cls", "name", "bases", "namespace"),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -701,6 +703,7 @@ class EnumMetaGetItem(abstract.SimpleFunction):
     super().__init__(
         name="__getitem__",
         param_names=("cls", "name"),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,

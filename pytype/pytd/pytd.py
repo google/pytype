@@ -15,6 +15,7 @@ rather than
 """
 
 import collections
+import enum
 import itertools
 
 import typing
@@ -193,22 +194,23 @@ class Class(Node):
       return self._name2item[name]
 
 
-class MethodTypes:
+class MethodKind(enum.Enum):
   METHOD = 'method'
   STATICMETHOD = 'staticmethod'
   CLASSMETHOD = 'classmethod'
   PROPERTY = 'property'
 
 
-class MethodFlags:
-  ABSTRACT = 1
-  COROUTINE = 2
-  FINAL = 4
+class MethodFlag(enum.Flag):
+  NONE = enum.auto()
+  ABSTRACT = enum.auto()
+  COROUTINE = enum.auto()
+  FINAL = enum.auto()
 
   @classmethod
   def abstract_flag(cls, is_abstract):  # pylint: disable=invalid-name
     # Useful when creating functions directly (other flags aren't needed there).
-    return cls.ABSTRACT if is_abstract else 0
+    return cls.ABSTRACT if is_abstract else cls.NONE
 
 
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
@@ -219,25 +221,25 @@ class Function(Node):
   Attributes:
     name: The name of this function.
     signatures: Tuple of possible parameter type combinations for this function.
-    kind: The type of this function. One of: STATICMETHOD, CLASSMETHOD, METHOD
+    kind: The kind of function (e.g., MethodKind.STATICMETHOD).
     flags: A bitfield of flags like is_abstract
   """
   name: str
   signatures: Tuple['Signature', ...]
-  kind: str
-  flags: int = 0
+  kind: MethodKind
+  flags: MethodFlag = MethodFlag.NONE
 
   @property
   def is_abstract(self):
-    return bool(self.flags & MethodFlags.ABSTRACT)
+    return bool(self.flags & MethodFlag.ABSTRACT)
 
   @property
   def is_coroutine(self):
-    return bool(self.flags & MethodFlags.COROUTINE)
+    return bool(self.flags & MethodFlag.COROUTINE)
 
   @property
   def is_final(self):
-    return bool(self.flags & MethodFlags.FINAL)
+    return bool(self.flags & MethodFlag.FINAL)
 
   def with_flag(self, flag, value):
     """Return a copy of self with flag set to value."""
@@ -278,6 +280,12 @@ class Signature(Node):
     return self.starargs is not None or self.starstarargs is not None
 
 
+class ParameterKind(enum.Enum):
+  REGULAR = 'regular'
+  POSONLY = 'posonly'
+  KWONLY = 'kwonly'
+
+
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
         cache_hash=True)
 class Parameter(Node):
@@ -286,14 +294,14 @@ class Parameter(Node):
   Attributes:
     name: The name of the parameter.
     type: The type of the parameter.
-    kwonly: True if this parameter can only be passed as a keyword parameter.
+    kind: The kind of parameter (e.g., ParameterKind.KWONLY).
     optional: If the parameter is optional.
     mutated_type: The type the parameter will have after the function is called
       if the type is mutated, None otherwise.
   """
   name: str
   type: Type
-  kwonly: bool
+  kind: ParameterKind
   optional: bool
   mutated_type: Optional[Type]
 
@@ -708,9 +716,9 @@ def AliasMethod(func, from_constant):
   # When a static method is aliased, or a normal method is aliased from a class
   # (not an instance), the entire method signature is copied. Otherwise, the
   # first parameter ('self' or 'cls') is dropped.
-  new_func = func.Replace(kind=MethodTypes.METHOD)
-  if func.kind == MethodTypes.STATICMETHOD or (
-      func.kind == MethodTypes.METHOD and not from_constant):
+  new_func = func.Replace(kind=MethodKind.METHOD)
+  if func.kind == MethodKind.STATICMETHOD or (
+      func.kind == MethodKind.METHOD and not from_constant):
     return new_func
   return new_func.Replace(signatures=tuple(
       s.Replace(params=s.params[1:]) for s in new_func.signatures))

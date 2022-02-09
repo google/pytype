@@ -43,12 +43,13 @@ def make_method(ctx,
                 node,
                 name,
                 params=None,
+                posonly_count=0,
                 kwonly_params=None,
                 return_type=None,
                 self_param=None,
                 varargs=None,
                 kwargs=None,
-                kind=pytd.MethodTypes.METHOD):
+                kind=pytd.MethodKind.METHOD):
   """Make a method from params.
 
   Args:
@@ -56,6 +57,7 @@ def make_method(ctx,
     node: Node to create the method variable at
     name: The method name
     params: Positional params [type: [Param]]
+    posonly_count: Number of positional-only parameters
     kwonly_params: Keyword only params [type: [Param]]
     return_type: Return type [type: PARAM_TYPES]
     self_param: Self param [type: Param, defaults to self: Any]
@@ -84,12 +86,12 @@ def make_method(ctx,
   # Set default values
   params = params or []
   kwonly_params = kwonly_params or []
-  if kind in (pytd.MethodTypes.METHOD, pytd.MethodTypes.PROPERTY):
+  if kind in (pytd.MethodKind.METHOD, pytd.MethodKind.PROPERTY):
     self_param = [self_param or Param("self", None, None)]
-  elif kind == pytd.MethodTypes.CLASSMETHOD:
+  elif kind == pytd.MethodKind.CLASSMETHOD:
     self_param = [Param("cls", None, None)]
   else:
-    assert kind == pytd.MethodTypes.STATICMETHOD
+    assert kind == pytd.MethodKind.STATICMETHOD
     self_param = []
   annotations = {}
 
@@ -110,6 +112,7 @@ def make_method(ctx,
   ret = abstract.SimpleFunction(
       name=name,
       param_names=param_names,
+      posonly_count=posonly_count,
       varargs_name=varargs_name,
       kwonly_params=kwonly_names,
       kwargs_name=kwargs_name,
@@ -121,12 +124,12 @@ def make_method(ctx,
   ret.signature.check_defaults(ctx)
 
   retvar = ret.to_variable(node)
-  if kind in (pytd.MethodTypes.METHOD, pytd.MethodTypes.PROPERTY):
+  if kind in (pytd.MethodKind.METHOD, pytd.MethodKind.PROPERTY):
     return retvar
-  if kind == pytd.MethodTypes.CLASSMETHOD:
+  if kind == pytd.MethodKind.CLASSMETHOD:
     decorator = ctx.vm.load_special_builtin("classmethod")
   else:
-    assert kind == pytd.MethodTypes.STATICMETHOD
+    assert kind == pytd.MethodKind.STATICMETHOD
     decorator = ctx.vm.load_special_builtin("staticmethod")
   args = function.Args(posargs=(retvar,))
   return decorator.call(node, funcv=None, args=args)[1]

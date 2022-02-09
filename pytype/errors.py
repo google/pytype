@@ -682,7 +682,11 @@ class ErrorLog(ErrorLogBase):
 
   def _iter_sig(self, sig):
     """Iterate through a function.Signature object. Focus on a bad parameter."""
-    for name in sig.param_names:
+    for name in sig.posonly_params:
+      yield "", name
+    if sig.posonly_params:
+      yield ("/", "")
+    for name in sig.param_names[sig.posonly_count:]:
       yield "", name
     if sig.varargs_name is not None:
       yield "*", sig.varargs_name

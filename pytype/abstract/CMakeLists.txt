@@ -121,6 +121,7 @@ py_library(
     .abstract_utils
     .class_mixin
     .function
+    pytype.pytd.pytd
     pytype.typegraph.cfg_utils
 )
 

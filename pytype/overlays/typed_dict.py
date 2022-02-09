@@ -8,6 +8,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
+from pytype.pytd import pytd
 
 
 @dataclasses.dataclass
@@ -87,7 +88,8 @@ class TypedDictBuilder(abstract.PyTDClass):
     # We construct this here and pass it to TypedDictClass because we need
     # access to abstract.SignedFunction.
     sig = function.Signature.from_param_names(
-        f"{props.name}.__init__", props.fields.keys(), kwonly=True)
+        f"{props.name}.__init__", props.fields.keys(),
+        kind=pytd.ParameterKind.KWONLY)
     sig.annotations = {k: abstract_utils.get_atomic_value(v)
                        for k, v in props.fields.items()}
     sig.defaults = {k: self.ctx.new_unsolvable(node)

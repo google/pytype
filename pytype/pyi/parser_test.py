@@ -2101,7 +2101,8 @@ class MergeSignaturesTest(parser_test_base.ParserTestBase):
           @classmethod
           def foo(x: int) -> str: ...
       """)
-    self.assertEqual("classmethod", ast.classes[0].methods[0].kind)
+    self.assertEqual(pytd.MethodKind.CLASSMETHOD,
+                     ast.classes[0].methods[0].kind)
 
   def test_staticmethod(self):
     ast = self.check("""
@@ -2109,14 +2110,16 @@ class MergeSignaturesTest(parser_test_base.ParserTestBase):
           @staticmethod
           def foo(x: int) -> str: ...
       """)
-    self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
+    self.assertEqual(pytd.MethodKind.STATICMETHOD,
+                     ast.classes[0].methods[0].kind)
 
   def test_new(self):
     ast = self.check("""
       class A:
           def __new__(self) -> A: ...
       """)
-    self.assertEqual("staticmethod", ast.classes[0].methods[0].kind)
+    self.assertEqual(pytd.MethodKind.STATICMETHOD,
+                     ast.classes[0].methods[0].kind)
 
   def test_abstractmethod(self):
     ast = self.check("""
@@ -2124,7 +2127,7 @@ class MergeSignaturesTest(parser_test_base.ParserTestBase):
           @abstractmethod
           def foo(x: int) -> str: ...
       """)
-    self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)
+    self.assertEqual(pytd.MethodKind.METHOD, ast.Lookup("A").Lookup("foo").kind)
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_abstractmethod_manysignatures(self):
@@ -2150,7 +2153,7 @@ class MergeSignaturesTest(parser_test_base.ParserTestBase):
           @overload
           def foo(x: int, y: int, z: int) -> str: ...
       """)
-    self.assertEqual("method", ast.Lookup("A").Lookup("foo").kind)
+    self.assertEqual(pytd.MethodKind.METHOD, ast.Lookup("A").Lookup("foo").kind)
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_abstractmethod_conflict(self):

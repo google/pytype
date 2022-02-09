@@ -309,7 +309,7 @@ class _PropertyToConstant(visitors.Visitor):
 
   def EnterFunction(self, node):
     if (self.const_properties and
-        node.kind == pytd.MethodTypes.PROPERTY and
+        node.kind == pytd.MethodKind.PROPERTY and
         not self._is_parametrised(node)):
       self.const_properties[-1].append(node)
 
@@ -765,7 +765,7 @@ def _check_module_functions(functions):
     raise ParseError("Multiple signatures for module __getattr__")
 
   # module-level functions cannot be properties
-  properties = [x for x in functions if x.kind == pytd.MethodTypes.PROPERTY]
+  properties = [x for x in functions if x.kind == pytd.MethodKind.PROPERTY]
   if properties:
     prop_names = ", ".join(p.name for p in properties)
     raise ParseError(

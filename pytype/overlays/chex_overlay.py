@@ -47,7 +47,7 @@ class Dataclass(dataclass_overlay.Dataclass):
         name="from_tuple",
         params=[overlay_utils.Param("args")],
         return_type=cls,
-        kind=pytd.MethodTypes.STATICMETHOD,
+        kind=pytd.MethodKind.STATICMETHOD,
     )
 
   def _add_to_tuple_method(self, node, cls):

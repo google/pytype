@@ -15,6 +15,7 @@ from pytype.abstract import _typing
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.pytd import pytd
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
@@ -167,9 +168,13 @@ class SignedFunction(_function_base.Function):
     for key in positional:
       if key in kws:
         raise function.DuplicateKeyword(sig, args, self.ctx, key)
-    extra_kws = set(kws).difference(sig.param_names + sig.kwonly_params)
+    kwnames = set(kws)
+    extra_kws = kwnames.difference(sig.param_names + sig.kwonly_params)
     if extra_kws and not sig.kwargs_name:
       raise function.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
+    posonly_kws = kwnames.intersection(sig.posonly_params)
+    if posonly_kws:
+      raise function.WrongKeywordArgs(sig, args, self.ctx, posonly_kws)
     callargs.update(positional)
     callargs.update(kws)
     for key, kwonly in self.get_nondefault_params():
@@ -289,16 +294,17 @@ class SimpleFunction(SignedFunction):
   record calls or try to infer types.
   """
 
-  def __init__(self, name, param_names, varargs_name, kwonly_params,
-               kwargs_name, defaults, annotations, ctx):
+  def __init__(self, name, param_names, posonly_count, varargs_name,
+               kwonly_params, kwargs_name, defaults, annotations, ctx):
     """Create a SimpleFunction.
 
     Args:
       name: Name of the function as a string
-      param_names: Tuple of parameter names as strings.
+      param_names: Tuple of parameter names as strings. This DOES include
+        positional-only parameters and does NOT include keyword-only parameters.
+      posonly_count: Number of positional-only parameters.
       varargs_name: The "args" in "*args". String or None.
-      kwonly_params: Tuple of keyword-only parameters as strings. These do NOT
-        appear in param_names.
+      kwonly_params: Tuple of keyword-only parameters as strings.
       kwargs_name: The "kwargs" in "**kwargs". String or None.
       defaults: Dictionary of string names to values of default arguments.
       annotations: Dictionary of string names to annotations (strings or types).
@@ -312,9 +318,9 @@ class SimpleFunction(SignedFunction):
         annotations[n] = ctx.convert.unsolvable
     if not isinstance(defaults, dict):
       defaults = dict(zip(param_names[-len(defaults):], defaults))
-    signature = function.Signature(name, param_names, varargs_name,
-                                   kwonly_params, kwargs_name, defaults,
-                                   annotations)
+    signature = function.Signature(name, param_names, posonly_count,
+                                   varargs_name, kwonly_params, kwargs_name,
+                                   defaults, annotations)
     super().__init__(signature, ctx)
     self.bound_class = _function_base.BoundFunction
 
@@ -324,6 +330,7 @@ class SimpleFunction(SignedFunction):
     return cls(
         name=signature.name,
         param_names=signature.param_names,
+        posonly_count=signature.posonly_count,
         varargs_name=signature.varargs_name,
         kwonly_params=signature.kwonly_params,
         kwargs_name=signature.kwargs_name,
@@ -443,6 +450,7 @@ class InterpreterFunction(SignedFunction):
     self._overloads = overloads
     self.has_overloads = bool(overloads)
     self.is_overload = False  # will be set by typing_overlay.Overload.call
+    self.posonlyarg_count = max(self.code.co_posonlyargcount, 0)
     self.nonstararg_count = self.code.co_argcount
     if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
       self.nonstararg_count += self.code.co_kwonlyargcount
@@ -491,6 +499,7 @@ class InterpreterFunction(SignedFunction):
     return function.Signature(
         name,
         tuple(self.code.co_varnames[:self.code.co_argcount]),
+        self.posonlyarg_count,
         vararg_name,
         tuple(kwonly),
         kwarg_name,
@@ -826,10 +835,14 @@ class InterpreterFunction(SignedFunction):
     default_pos = self.code.co_argcount - len(self.defaults)
     i = 0
     for name in self.get_positional_names():
-      yield name, False, i >= default_pos
+      if i < self.posonlyarg_count:
+        kind = pytd.ParameterKind.POSONLY
+      else:
+        kind = pytd.ParameterKind.REGULAR
+      yield name, kind, i >= default_pos
       i += 1
     for name in self.get_kwonly_names():
-      yield name, True, name in self.kw_defaults
+      yield name, pytd.ParameterKind.KWONLY, name in self.kw_defaults
       i += 1
 
   def has_varargs(self):
