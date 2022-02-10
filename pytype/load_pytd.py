@@ -189,7 +189,15 @@ class _ModuleMap:
       deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
       loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
       assert m.module_name in self._modules
-      todo.extend(self._modules[dependency] for dependency in deps)
+      for dependency in deps:
+        module_prefix = dependency
+        while module_prefix == dependency or "." in module_prefix:
+          if module_prefix in self._modules:
+            break
+          module_prefix, _, _ = module_prefix.rpartition(".")
+        else:
+          raise KeyError(f"Module not found: {dependency}")
+        todo.append(self._modules[module_prefix])
       newly_loaded_asts.append(loaded_ast)
       m.ast = loaded_ast.ast
       m.pickle = None
