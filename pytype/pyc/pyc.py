@@ -169,20 +169,28 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
   return code
 
 
+# This cache is needed to avoid visiting the same code object twice, since some
+# visitors mutate the input object.
+_VISIT_CACHE = {}
+
+
 def visit(c, visitor):
   """Recursively process constants in a pyc using a visitor."""
   if hasattr(c, "co_consts"):
     # This is a CodeType object (because it has co_consts). Visit co_consts,
     # and then the CodeType object itself.
-    new_consts = []
-    changed = False
-    for const in c.co_consts:
-      new_const = visit(const, visitor)
-      changed |= new_const is not const
-      new_consts.append(new_const)
-    if changed:
-      c = copy.copy(c)
-      c.co_consts = new_consts
-    return visitor.visit_code(c)
+    k = (c, visitor)
+    if k not in _VISIT_CACHE:
+      new_consts = []
+      changed = False
+      for const in c.co_consts:
+        new_const = visit(const, visitor)
+        changed |= new_const is not const
+        new_consts.append(new_const)
+      if changed:
+        c = copy.copy(c)
+        c.co_consts = new_consts
+      _VISIT_CACHE[k] = visitor.visit_code(c)
+    return _VISIT_CACHE[k]
   else:
     return c
