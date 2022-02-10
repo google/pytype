@@ -387,7 +387,7 @@ class Converter(utils.ContextWeakrefMixin):
           name=name,
           signatures=tuple(sig.pytd_sig for sig in v.signatures),
           kind=v.kind,
-          flags=pytd.MethodFlags.abstract_flag(v.is_abstract))
+          flags=pytd.MethodFlag.abstract_flag(v.is_abstract))
     elif isinstance(v, abstract.InterpreterFunction):
       return self._function_to_def(node, v, name)
     elif isinstance(v, abstract.SimpleFunction):
@@ -469,7 +469,7 @@ class Converter(utils.ContextWeakrefMixin):
       self, func, call_combination, num_combinations):
     node_after, combination, return_value = call_combination
     params = []
-    for i, (name, kwonly, optional) in enumerate(func.get_parameters()):
+    for i, (name, kind, optional) in enumerate(func.get_parameters()):
       if i < func.nonstararg_count and name in func.signature.annotations:
         t = func.signature.annotations[name].get_instance_type(node_after)
       else:
@@ -477,7 +477,7 @@ class Converter(utils.ContextWeakrefMixin):
       # Python uses ".0" etc. for the names of parameters that are tuples,
       # like e.g. in: "def f((x,  y), z)".
       params.append(
-          pytd.Parameter(name.replace(".", "_"), t, kwonly, optional, None))
+          pytd.Parameter(name.replace(".", "_"), t, kind, optional, None))
     ret = self._function_call_to_return_type(
         node_after, func, return_value, num_combinations)
     if func.has_varargs():
@@ -486,8 +486,8 @@ class Converter(utils.ContextWeakrefMixin):
         typ = annot.get_instance_type(node_after)
       else:
         typ = pytd.NamedType("builtins.tuple")
-      starargs = pytd.Parameter(
-          func.signature.varargs_name, typ, False, True, None)
+      starargs = pytd.Parameter(func.signature.varargs_name, typ,
+                                pytd.ParameterKind.REGULAR, True, None)
     else:
       starargs = None
     if func.has_kwargs():
@@ -496,8 +496,8 @@ class Converter(utils.ContextWeakrefMixin):
         typ = annot.get_instance_type(node_after)
       else:
         typ = pytd.NamedType("builtins.dict")
-      starstarargs = pytd.Parameter(
-          func.signature.kwargs_name, typ, False, True, None)
+      starstarargs = pytd.Parameter(func.signature.kwargs_name, typ,
+                                    pytd.ParameterKind.REGULAR, True, None)
     else:
       starstarargs = None
     return pytd.Signature(
@@ -518,31 +518,42 @@ class Converter(utils.ContextWeakrefMixin):
           self._function_call_combination_to_signature(
               func, combination, num_combinations)
           for combination in combinations)
-    return pytd.Function(name=function_name,
-                         signatures=tuple(signatures),
-                         kind=pytd.MethodTypes.METHOD,
-                         flags=pytd.MethodFlags.abstract_flag(v.is_abstract))
+    return pytd.Function(
+        name=function_name,
+        signatures=tuple(signatures),
+        kind=pytd.MethodKind.METHOD,
+        flags=pytd.MethodFlag.abstract_flag(v.is_abstract))
 
   def _simple_func_to_def(self, node, v, name):
     """Convert a SimpleFunction to a PyTD definition."""
     sig = v.signature
-    def get_parameter(p, kwonly):
-      return pytd.Parameter(p, sig.annotations[p].get_instance_type(node),
-                            kwonly, p in sig.defaults, None)
-    params = [get_parameter(p, False) for p in sig.param_names]
-    kwonly = [get_parameter(p, True) for p in sig.kwonly_params]
+
+    def get_parameter(p, kind):
+      return pytd.Parameter(p, sig.annotations[p].get_instance_type(node), kind,
+                            p in sig.defaults, None)
+
+    posonly = [
+        get_parameter(p, pytd.ParameterKind.POSONLY) for p in sig.posonly_params
+    ]
+    params = [
+        get_parameter(p, pytd.ParameterKind.REGULAR)
+        for p in sig.param_names[sig.posonly_count:]
+    ]
+    kwonly = [
+        get_parameter(p, pytd.ParameterKind.KWONLY) for p in sig.kwonly_params
+    ]
     if sig.varargs_name:
       star = pytd.Parameter(
           sig.varargs_name,
           sig.annotations[sig.varargs_name].get_instance_type(node),
-          False, False, None)
+          pytd.ParameterKind.REGULAR, False, None)
     else:
       star = None
     if sig.kwargs_name:
       starstar = pytd.Parameter(
           sig.kwargs_name,
           sig.annotations[sig.kwargs_name].get_instance_type(node),
-          False, False, None)
+          pytd.ParameterKind.REGULAR, False, None)
     else:
       starstar = None
     if sig.has_return_annotation:
@@ -550,13 +561,13 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       ret_type = pytd.NamedType("builtins.NoneType")
     pytd_sig = pytd.Signature(
-        params=tuple(params+kwonly),
+        params=tuple(posonly+params+kwonly),
         starargs=star,
         starstarargs=starstar,
         return_type=ret_type,
         exceptions=(),
         template=())
-    return pytd.Function(name, (pytd_sig,), pytd.MethodTypes.METHOD)
+    return pytd.Function(name, (pytd_sig,), pytd.MethodKind.METHOD)
 
   def _function_to_return_types(self, node, fvar):
     """Convert a function variable to a list of PyTD return types."""
@@ -610,7 +621,7 @@ class Converter(utils.ContextWeakrefMixin):
 
     def add_final(defn, value):
       if value.final:
-        return defn.Replace(flags=defn.flags | pytd.MethodFlags.FINAL)
+        return defn.Replace(flags=defn.flags | pytd.MethodFlag.FINAL)
       else:
         return defn
 
@@ -637,11 +648,13 @@ class Converter(utils.ContextWeakrefMixin):
     # fully resolved name at this stage, we just output a minimal pytd.Function
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     decorators = [
-        pytd.Alias(x, pytd.Function(x, (sig,), pytd.MethodTypes.METHOD, 0))
+        pytd.Alias(x, pytd.Function(x, (sig,), pytd.MethodKind.METHOD,
+                                    pytd.MethodFlag.NONE))
         for x in v.decorators
     ]
     if v.final:
-      fn = pytd.Function("typing.final", (sig,), pytd.MethodTypes.METHOD, 0)
+      fn = pytd.Function("typing.final", (sig,), pytd.MethodKind.METHOD,
+                         pytd.MethodFlag.NONE)
       decorators.append(pytd.Alias("final", fn))
 
     # class-level attributes
@@ -660,9 +673,9 @@ class Converter(utils.ContextWeakrefMixin):
             constants[name].add_type(
                 pytd.Annotated(pytd.AnythingType(), ("'property'",)))
         elif isinstance(value, special_builtins.StaticMethodInstance):
-          add_decorated_method(name, value, pytd.MethodTypes.STATICMETHOD)
+          add_decorated_method(name, value, pytd.MethodKind.STATICMETHOD)
         elif isinstance(value, special_builtins.ClassMethodInstance):
-          add_decorated_method(name, value, pytd.MethodTypes.CLASSMETHOD)
+          add_decorated_method(name, value, pytd.MethodKind.CLASSMETHOD)
         elif isinstance(value, abstract.Function):
           # value_to_pytd_def returns different pytd node types depending on the
           # input type, which pytype struggles to reason about.

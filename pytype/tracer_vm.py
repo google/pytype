@@ -567,16 +567,17 @@ class CallTracer(vm.VirtualMachine):
       starargs = None
       starstarargs = None
       funcs[func.data.name].add(pytd.Signature(
-          tuple(pytd.Parameter(n, t, False, False, None)
+          tuple(pytd.Parameter(n, t, pytd.ParameterKind.REGULAR, False, None)
                 for n, t in zip(arg_names, arg_types)) +
-          tuple(pytd.Parameter(name, a.data.to_type(node), False, False, None)
+          tuple(pytd.Parameter(name, a.data.to_type(node),
+                               pytd.ParameterKind.REGULAR, False, None)
                 for name, a in kws),
           starargs, starstarargs,
           ret, exceptions=(), template=()))
     functions = []
     for name, signatures in funcs.items():
       functions.append(pytd.Function(name_transform(name), tuple(signatures),
-                                     pytd.MethodTypes.METHOD))
+                                     pytd.MethodKind.METHOD))
     return functions
 
   def _is_typing_member(self, name, var):

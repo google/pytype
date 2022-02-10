@@ -246,8 +246,8 @@ class ConvertTest(test_base.UnitTest):
   def test_abstract_method_round_trip(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     f_pytd = pytd.Function(
-        name="f", signatures=(sig,), kind=pytd.MethodTypes.METHOD,
-        flags=pytd.MethodFlags.ABSTRACT)
+        name="f", signatures=(sig,), kind=pytd.MethodKind.METHOD,
+        flags=pytd.MethodFlag.ABSTRACT)
     f = self._ctx.convert.constant_to_value(f_pytd, {}, self._ctx.root_node)
     self.assertTrue(f.is_abstract)
     f_out = f.to_pytd_def(self._ctx.root_node, f.name)

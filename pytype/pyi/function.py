@@ -58,12 +58,12 @@ class Param(pytd_function.Param):
   """Internal representation of function parameters."""
 
   @classmethod
-  def from_arg(cls, arg: ast3.arg, kwonly=False) -> "Param":
+  def from_arg(cls, arg: ast3.arg, kind: pytd.ParameterKind) -> "Param":
     """Constructor from an ast.argument node."""
     p = cls(arg.arg)
     if arg.annotation:
       p.type = arg.annotation
-    p.kwonly = kwonly
+    p.kind = kind
     return p
 
 
@@ -145,11 +145,16 @@ def _pytd_signature(
   """Construct a pytd signature from an ast.FunctionDef node."""
   name = function.name
   args = function.args
-  pos_params = [Param.from_arg(a, False) for a in args.args]
-  kwonly_params = [Param.from_arg(a, True) for a in args.kwonlyargs]
-  _apply_defaults(pos_params, args.defaults)
+  # Positional-only parameters are new in Python 3.8.
+  posonly_params = [Param.from_arg(a, pytd.ParameterKind.POSONLY)
+                    for a in getattr(args, "posonlyargs", ())]
+  pos_params = [Param.from_arg(a, pytd.ParameterKind.REGULAR)
+                for a in args.args]
+  kwonly_params = [Param.from_arg(a, pytd.ParameterKind.KWONLY)
+                   for a in args.kwonlyargs]
+  _apply_defaults(posonly_params + pos_params, args.defaults)
   _apply_defaults(kwonly_params, args.kw_defaults)
-  all_params = pos_params + kwonly_params
+  all_params = posonly_params + pos_params + kwonly_params
   params = tuple(x.to_pytd() for x in all_params)
   starargs = _pytd_star_param(args.vararg)
   starstarargs = _pytd_starstar_param(args.kwarg)

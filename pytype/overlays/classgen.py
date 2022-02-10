@@ -120,7 +120,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
         pos_params.append(param)
 
     return overlay_utils.make_method(self.ctx, node, init_method_name,
-                                     pos_params, kwonly_params)
+                                     pos_params, 0, kwonly_params)
 
   def call(self, node, func, args):
     """Construct a decorator, and call it on the class."""
@@ -242,7 +242,7 @@ def is_relevant_class_local(class_local: abstract_utils.Local,
   """
   if is_dunder(class_local_name):
     return False
-  if not allow_methods and is_method(class_local.orig):
+  if not allow_methods and not class_local.typ and is_method(class_local.orig):
     return False
   return True
 

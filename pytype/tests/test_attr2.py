@@ -565,6 +565,23 @@ class TestAttrs(test_base.BaseTest):
         def foo(cls) -> None: ...
     """)
 
+  def test_callable_attrib(self):
+    ty = self.Infer("""
+      import attr
+      from typing import Callable
+      @attr.s(auto_attribs=True)
+      class Foo:
+        x: Callable = lambda x: x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import attr
+      from typing import Callable
+      @attr.s
+      class Foo:
+        x: Callable
+        def __init__(self, x: Callable = ...) -> None: ...
+    """)
+
   def test_auto_attrs_with_dataclass_constructor(self):
     ty = self.Infer("""
       import attr

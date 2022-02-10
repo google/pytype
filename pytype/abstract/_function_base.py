@@ -196,7 +196,7 @@ class NativeFunction(Function):
         # empty, then we can be certain of a WrongArgCount error.
         argnames = tuple("_" + str(i) for i in range(expected_argcount))
         sig = function.Signature(
-            self.name, argnames, None, set(), None, {}, {}, {})
+            self.name, argnames, 0, None, set(), None, {}, {}, {})
         raise function.WrongArgCount(sig, args, self.ctx)
       assert actual_argcount < expected_argcount
       # Assume that starargs or starstarargs fills in the missing arguments.

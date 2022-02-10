@@ -34,7 +34,7 @@ class Param:
   name: str
   type: Optional[pytd.Type] = None
   default: Any = None
-  kwonly: bool = False
+  kind: pytd.ParameterKind = pytd.ParameterKind.REGULAR
 
   def to_pytd(self) -> pytd.Parameter:
     """Return a pytd.Parameter object for a normal argument."""
@@ -46,7 +46,7 @@ class Param:
       self.type = pytd.AnythingType()
 
     optional = self.default is not None
-    return pytd.Parameter(self.name, self.type, self.kwonly, optional, None)
+    return pytd.Parameter(self.name, self.type, self.kind, optional, None)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -100,11 +100,13 @@ def pytd_return_type(
 
 
 def pytd_default_star_param() -> pytd.Parameter:
-  return pytd.Parameter("args", pytd.NamedType("tuple"), False, True, None)
+  return pytd.Parameter(
+      "args", pytd.NamedType("tuple"), pytd.ParameterKind.REGULAR, True, None)
 
 
 def pytd_default_starstar_param() -> pytd.Parameter:
-  return pytd.Parameter("kwargs", pytd.NamedType("dict"), False, True, None)
+  return pytd.Parameter(
+      "kwargs", pytd.NamedType("dict"), pytd.ParameterKind.REGULAR, True, None)
 
 
 def pytd_star_param(name: str, annotation: pytd.Type) -> pytd.Parameter:
@@ -114,7 +116,8 @@ def pytd_star_param(name: str, annotation: pytd.Type) -> pytd.Parameter:
   else:
     param_type = pytd.GenericType(
         pytd.NamedType("tuple"), (annotation,))
-  return pytd.Parameter(name, param_type, False, True, None)
+  return pytd.Parameter(
+      name, param_type, pytd.ParameterKind.REGULAR, True, None)
 
 
 def pytd_starstar_param(
@@ -126,7 +129,8 @@ def pytd_starstar_param(
   else:
     param_type = pytd.GenericType(
         pytd.NamedType("dict"), (pytd.NamedType("str"), annotation))
-  return pytd.Parameter(name, param_type, False, True, None)
+  return pytd.Parameter(
+      name, param_type, pytd.ParameterKind.REGULAR, True, None)
 
 
 def _make_param(attr: pytd.Constant) -> pytd.Parameter:
@@ -143,7 +147,7 @@ def generate_init(fields: Iterable[pytd.Constant]) -> pytd.Function:
   sig = pytd.Signature(params=params, return_type=ret,
                        starargs=None, starstarargs=None,
                        exceptions=(), template=())
-  return pytd.Function("__init__", (sig,), kind=pytd.MethodTypes.METHOD)
+  return pytd.Function("__init__", (sig,), kind=pytd.MethodKind.METHOD)
 
 
 # -------------------------------------------
@@ -260,11 +264,11 @@ def merge_method_signatures(
   methods = []
   for name, fn in functions.items():
     if name == "__new__" or fn.decorator == "staticmethod":
-      kind = pytd.MethodTypes.STATICMETHOD
+      kind = pytd.MethodKind.STATICMETHOD
     elif name == "__init_subclass__" or fn.decorator == "classmethod":
-      kind = pytd.MethodTypes.CLASSMETHOD
+      kind = pytd.MethodKind.CLASSMETHOD
     elif fn.properties:
-      kind = pytd.MethodTypes.PROPERTY
+      kind = pytd.MethodKind.PROPERTY
       # If we have only setters and/or deleters, replace them with a single
       # method foo(...) -> Any, so that we infer a constant `foo: Any` even if
       # the original method signatures are all `foo(...) -> None`. (If we have a
@@ -280,13 +284,13 @@ def merge_method_signatures(
       raise ValueError("Unhandled decorator: %s" % fn.decorator)
     else:
       # Other decorators do not affect the kind
-      kind = pytd.MethodTypes.METHOD
-    flags = 0
+      kind = pytd.MethodKind.METHOD
+    flags = pytd.MethodFlag.NONE
     if fn.is_abstract:
-      flags |= pytd.MethodFlags.ABSTRACT
+      flags |= pytd.MethodFlag.ABSTRACT
     if fn.is_coroutine:
-      flags |= pytd.MethodFlags.COROUTINE
+      flags |= pytd.MethodFlag.COROUTINE
     if fn.is_final:
-      flags |= pytd.MethodFlags.FINAL
+      flags |= pytd.MethodFlag.FINAL
     methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags))
   return methods

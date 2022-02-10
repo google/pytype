@@ -284,11 +284,12 @@ class FunctionTest(AbstractTestBase):
       p_type = pytd.ClassType(p.name)
       p_type.cls = p
       pytd_params.append(
-          pytd.Parameter(function.argname(i), p_type, False, False, None))
+          pytd.Parameter(function.argname(i), p_type,
+                         pytd.ParameterKind.REGULAR, False, None))
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
     sig = function.PyTDSignature(name, pytd_sig, self._ctx)
-    return abstract.PyTDFunction(name, (sig,), pytd.MethodTypes.METHOD,
+    return abstract.PyTDFunction(name, (sig,), pytd.MethodKind.METHOD,
                                  self._ctx)
 
   def _call_pytd_function(self, f, args):
@@ -342,8 +343,10 @@ class FunctionTest(AbstractTestBase):
 
   def test_signature_from_pytd(self):
     # def f(self: Any, *args: Any)
-    self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
-    args_param = pytd.Parameter("args", pytd.AnythingType(), False, True, None)
+    self_param = pytd.Parameter(
+        "self", pytd.AnythingType(), pytd.ParameterKind.REGULAR, False, None)
+    args_param = pytd.Parameter(
+        "args", pytd.AnythingType(), pytd.ParameterKind.REGULAR, True, None)
     sig = function.Signature.from_pytd(
         self._ctx, "f",
         pytd.Signature((self_param,), args_param, None, pytd.AnythingType(), (),
@@ -379,12 +382,14 @@ class FunctionTest(AbstractTestBase):
 
   def test_signature_annotations(self):
     # def f(self: Any, *args: Any)
-    self_param = pytd.Parameter("self", pytd.AnythingType(), False, False, None)
+    self_param = pytd.Parameter(
+        "self", pytd.AnythingType(), pytd.ParameterKind.REGULAR, False, None)
     # Imitate the parser's conversion of '*args: Any' to '*args: Tuple[Any]'.
     tup = pytd.ClassType("builtins.tuple")
     tup.cls = self._ctx.convert.tuple_type.pytd_cls
     any_tuple = pytd.GenericType(tup, (pytd.AnythingType(),))
-    args_param = pytd.Parameter("args", any_tuple, False, True, None)
+    args_param = pytd.Parameter(
+        "args", any_tuple, pytd.ParameterKind.REGULAR, True, None)
     sig = function.Signature.from_pytd(
         self._ctx, "f",
         pytd.Signature((self_param,), args_param, None, pytd.AnythingType(), (),
@@ -405,6 +410,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=("v",),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -425,6 +431,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=("x",),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -443,6 +450,7 @@ class FunctionTest(AbstractTestBase):
             "x",
             "y",
         ),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -458,6 +466,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=(),
+        posonly_count=0,
         varargs_name="args",
         kwonly_params=(),
         kwargs_name=None,
@@ -473,6 +482,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=(),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name="kwargs",
@@ -488,6 +498,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=(),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=("y",),
         kwargs_name=None,
@@ -503,6 +514,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=("x",),
+        posonly_count=0,
         varargs_name="args",
         kwonly_params={"y"},
         kwargs_name="kwargs",
@@ -519,6 +531,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=("x",),
+        posonly_count=0,
         varargs_name="args",
         kwonly_params={"y"},
         kwargs_name="kwargs",
@@ -543,6 +556,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=("x",),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -562,6 +576,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=("x",),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -581,6 +596,7 @@ class FunctionTest(AbstractTestBase):
     sig = function.Signature(
         name="f",
         param_names=(),
+        posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
@@ -595,17 +611,18 @@ class FunctionTest(AbstractTestBase):
     self.assertCountEqual(
         {sig.pytd_sig for sig in f.signatures},
         self._ctx.loader.lookup_builtin("builtins.open").signatures)
-    self.assertIs(f.kind, pytd.MethodTypes.METHOD)
+    self.assertIs(f.kind, pytd.MethodKind.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 
   def test_constructor_args_pyval(self):
     sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
-    pyval = pytd.Function("blah", (sig,), pytd.MethodTypes.STATICMETHOD, 0)
+    pyval = pytd.Function(
+        "blah", (sig,), pytd.MethodKind.STATICMETHOD, pytd.MethodFlag.NONE)
     f = abstract.PyTDFunction.make("open", self._ctx, "builtins", pyval=pyval)
     self.assertEqual(f.full_name, "builtins.open")
     f_sig, = f.signatures
     self.assertIs(f_sig.pytd_sig, sig)
-    self.assertIs(f.kind, pytd.MethodTypes.STATICMETHOD)
+    self.assertIs(f.kind, pytd.MethodKind.STATICMETHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 
   def test_get_constructor_args(self):
@@ -615,7 +632,7 @@ class FunctionTest(AbstractTestBase):
     self.assertCountEqual({sig.pytd_sig for sig in f.signatures},
                           self._ctx.loader.import_name("typing").Lookup(
                               "typing._typevar_new").signatures)
-    self.assertIs(f.kind, pytd.MethodTypes.METHOD)
+    self.assertIs(f.kind, pytd.MethodKind.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 
   def test_bound_function_repr(self):
@@ -700,12 +717,12 @@ class AbstractMethodsTest(AbstractTestBase):
 
 class SimpleFunctionTest(AbstractTestBase):
 
-  def _make_func(self, name="_", param_names=None, varargs_name=None,
-                 kwonly_params=(), kwargs_name=None, defaults=(),
-                 annotations=None):
-    return abstract.SimpleFunction(name, param_names or (), varargs_name,
-                                   kwonly_params, kwargs_name, defaults,
-                                   annotations or {}, self._ctx)
+  def _make_func(self, name="_", param_names=None, posonly_count=0,
+                 varargs_name=None, kwonly_params=(), kwargs_name=None,
+                 defaults=(), annotations=None):
+    return abstract.SimpleFunction(name, param_names or (), posonly_count,
+                                   varargs_name, kwonly_params, kwargs_name,
+                                   defaults, annotations or {}, self._ctx)
 
   def _simple_sig(self, param_types, ret_type=None):
     annots = {("_%d" % i): t for i, t in enumerate(param_types)}

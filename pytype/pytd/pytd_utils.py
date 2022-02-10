@@ -438,16 +438,17 @@ def DummyMethod(name, *params):
     A pytd.Function.
   """
   def make_param(param):
-    return pytd.Parameter(param, type=pytd.AnythingType(), kwonly=False,
-                          optional=False, mutated_type=None)
+    return pytd.Parameter(
+        param, type=pytd.AnythingType(), kind=pytd.ParameterKind.REGULAR,
+        optional=False, mutated_type=None)
   sig = pytd.Signature(tuple(make_param(param) for param in params),
                        starargs=None, starstarargs=None,
                        return_type=pytd.AnythingType(),
                        exceptions=(), template=())
   return pytd.Function(name=name,
                        signatures=(sig,),
-                       kind=pytd.MethodTypes.METHOD,
-                       flags=0)
+                       kind=pytd.MethodKind.METHOD,
+                       flags=pytd.MethodFlag.NONE)
 
 
 def MergeBaseClass(cls, base):

@@ -85,7 +85,7 @@ class PyTDFunction(_function_base.Function):
       sig.name = self.name
 
   def property_get(self, callself, is_class=False):
-    if self.kind == pytd.MethodTypes.STATICMETHOD:
+    if self.kind == pytd.MethodKind.STATICMETHOD:
       if is_class:
         # Binding the function to None rather than not binding it tells
         # output.py to infer the type as a Callable rather than reproducing the
@@ -93,7 +93,7 @@ class PyTDFunction(_function_base.Function):
         # undesirable for module-level aliases.
         callself = None
       return _function_base.StaticMethod(self.name, self, callself, self.ctx)
-    elif self.kind == pytd.MethodTypes.CLASSMETHOD:
+    elif self.kind == pytd.MethodKind.CLASSMETHOD:
       if not is_class:
         callself = abstract_utils.get_atomic_value(
             callself, default=self.ctx.convert.unsolvable)
@@ -104,7 +104,7 @@ class PyTDFunction(_function_base.Function):
         # callself is the instance, and we want to bind to its class.
         callself = callself.cls.to_variable(self.ctx.root_node)
       return _function_base.ClassMethod(self.name, self, callself, self.ctx)
-    elif self.kind == pytd.MethodTypes.PROPERTY and not is_class:
+    elif self.kind == pytd.MethodKind.PROPERTY and not is_class:
       return _function_base.Property(self.name, self, callself, self.ctx)
     else:
       return super().property_get(callself, is_class)
@@ -432,4 +432,4 @@ class PyTDFunction(_function_base.Function):
         name=self.name,
         signatures=tuple(s.pytd_sig for s in self.signatures),
         kind=self.kind,
-        flags=pytd.MethodFlags.abstract_flag(self.is_abstract))
+        flags=pytd.MethodFlag.abstract_flag(self.is_abstract))

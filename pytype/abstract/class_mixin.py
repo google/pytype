@@ -90,7 +90,8 @@ class Attribute:
   @classmethod
   def from_param(cls, param, ctx):
     const = pytd.Constant(param.name, param.type, param.optional)
-    return cls.from_pytd_constant(const, ctx, kw_only=param.kwonly)
+    return cls.from_pytd_constant(
+        const, ctx, kw_only=param.kind == pytd.ParameterKind.KWONLY)
 
   def to_pytd_constant(self):
     # TODO(mdemello): This is a bit fragile, but we only call this when
