@@ -72,6 +72,10 @@ def main():
     print(io.get_pytype_version())
     sys.exit(0)
 
+  if options.exec_log:
+    with options.open_function(options.exec_log, "w") as f:
+      f.write(" ".join(sys.argv))
+
   if options.timeout is not None:
     signal.alarm(options.timeout)
 

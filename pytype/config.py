@@ -343,6 +343,10 @@ def add_debug_options(o):
       dest="debug_logs", default=None,
       help=("Add debugging information to the logs"))
   o.add_argument(
+      "--exec-log", type=str, action="store",
+      dest="exec_log", default=None,
+      help=("Write pytype execution details to the specified file."))
+  o.add_argument(
       "--verify-pickle", action="store_true", default=False,
       dest="verify_pickle",
       help=("Loads the generated PYI file and compares it with the abstract "
@@ -573,6 +577,9 @@ class Postprocessor:
     if output_errors_csv and not self.output_options.report_errors:
       self.error("Not allowed with --no-report-errors", "output-errors-csv")
     self.output_options.output_errors_csv = output_errors_csv
+
+  def _store_exec_log(self, exec_log):
+    self.output_options.exec_log = exec_log
 
   def _store_color(self, color):
     if color not in ("always", "auto", "never"):
