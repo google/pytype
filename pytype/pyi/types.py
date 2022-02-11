@@ -135,7 +135,7 @@ class Pyval(ast3.AST):
     elif self.type == "unicode":
       val = f"u'{self.value}'"
     elif self.type == "bytes":
-      val = str(self.value)
+      val = repr(self.value)
     else:
       # For non-strings
       val = repr(self.value)
