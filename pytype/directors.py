@@ -300,10 +300,13 @@ class _ParseVisitor(libcst.CSTVisitor):
     keys_to_absorb = []
     keys_to_move = []
     for line_range in reversed(self.structured_comment_groups):
-      if (cls is type(line_range) is _LineRange and
+      if (cls is _LineRange and
           start_line <= line_range.start_line and
           line_range.end_line <= end_line):
-        keys_to_absorb.append(line_range)
+        if type(line_range) is _LineRange:  # pylint: disable=unidiomatic-typecheck
+          keys_to_absorb.append(line_range)
+        else:
+          keys_to_move.append(line_range)
       elif line_range.start_line > start_line:
         keys_to_move.append(line_range)
       else:

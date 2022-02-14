@@ -832,6 +832,18 @@ class DisableDirectivesTest(DirectorTestCase):
     else:
       self.assertDisables(4, error_class="unsupported-operands")
 
+  def test_header(self):
+    self._create("""
+      if (x == 0 and
+          (0).nonsense and  # pytype: disable=attribute-error
+          y == 0):
+        pass
+    """)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, error_class="attribute-error")
+    else:
+      self.assertDisables(3, error_class="attribute-error")
+
 
 if __name__ == "__main__":
   unittest.main()
