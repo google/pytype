@@ -1698,7 +1698,9 @@ class VirtualMachine:
     state = state.forward_cfg_node()
     # Check whether obj is the __annotations__ dict.
     if abstract_utils.match_atomic_value(obj, abstract.AnnotationsDict):
-      if val.data == [self.ctx.convert.ellipsis]:
+      if (val.data == [self.ctx.convert.ellipsis] or
+          (val.data and abstract_utils.is_concrete(val.data[0]) and
+           val.data[0].pyval == "...")):
         # '...' is an experimental "inferred type": see b/213607272.
         pass
       else:
@@ -1865,12 +1867,19 @@ class VirtualMachine:
     # converted to indefinite iterables.
     keep_splats = False
     next_op = op
+    # Before Python 3.9, BUILD_TUPLE_UNPACK took care of tuple unpacking. In
+    # 3.9+, this opcode is replaced by LIST_EXTEND+LIST_TO_TUPLE+CALL_FUNCTION,
+    # so CALL_FUNCTION needs to be considered as consuming the list.
+    if self.ctx.python_version >= (3, 9):
+      stop_classes = blocks.STORE_OPCODES + (opcodes.CALL_FUNCTION,)
+    else:
+      stop_classes = blocks.STORE_OPCODES
     while next_op:
       next_op = next_op.next
       if isinstance(next_op, opcodes.CALL_FUNCTION_EX):
         keep_splats = True
         break
-      elif next_op.__class__ in blocks.STORE_OPCODES:
+      elif next_op.__class__ in stop_classes:
         break
 
     update_elements = vm_utils.unpack_iterable(state.node, update, self.ctx)
@@ -2081,6 +2090,7 @@ class VirtualMachine:
     return state
 
   def byte_END_ASYNC_FOR(self, state, op):
+    state, _ = state.popn(7)
     return state
 
   def byte_POP_FINALLY(self, state, op):

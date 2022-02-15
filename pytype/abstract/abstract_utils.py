@@ -46,7 +46,6 @@ TOP_LEVEL_IGNORE = frozenset({
     "__module__",
     "__name__",
     "__annotations__",
-    "google_type_annotations",
 })
 CLASS_LEVEL_IGNORE = frozenset({
     "__builtins__",
