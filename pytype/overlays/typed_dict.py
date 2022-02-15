@@ -83,19 +83,6 @@ class TypedDictBuilder(abstract.PyTDClass):
             props.add(k, v, base.props.total)
             provenance[k] = base.name
 
-  def _make_init(self, node, props):
-    # __init__ method for type checking signatures.
-    # We construct this here and pass it to TypedDictClass because we need
-    # access to abstract.SignedFunction.
-    sig = function.Signature.from_param_names(
-        f"{props.name}.__init__", props.fields.keys(),
-        kind=pytd.ParameterKind.KWONLY)
-    sig.annotations = {k: abstract_utils.get_atomic_value(v)
-                       for k, v in props.fields.items()}
-    sig.defaults = {k: self.ctx.new_unsolvable(node)
-                    for k in props.optional}
-    return abstract.SignedFunction(sig, self.ctx)
-
   def make_class(self, node, bases, f_locals, total):
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]
     # See comment in NamedTupleClassBuilder.make_class(); equivalent logic
@@ -131,24 +118,57 @@ class TypedDictBuilder(abstract.PyTDClass):
     # Process base classes and generate the __init__ signature.
     self._validate_bases(cls_name, bases)
     self._merge_base_class_fields(bases, props)
-    init_method = self._make_init(node, props)
 
-    cls = TypedDictClass(props, init_method, self, self.ctx)
+    cls = TypedDictClass(props, self, self.ctx)
     cls_var = cls.to_variable(node)
     return node, cls_var
+
+  def make_class_from_pyi(self, cls_name, pytd_cls, total=True):
+    """Make a TypedDictClass from a pyi class."""
+    # NOTE: Returns the abstract class, not a variable.
+    if total is None:
+      total = True
+    props = TypedDictProperties(
+        name=cls_name, fields={}, required=set(), total=total)
+
+    for c in pytd_cls.constants:
+      typ = self.ctx.convert.constant_to_var(c.type)
+      props.add(c.name, typ, total)
+
+    # Process base classes and generate the __init__ signature.
+    bases = [self.ctx.convert.constant_to_var(x)
+             for x in pytd_cls.bases]
+    self._validate_bases(cls_name, bases)
+    self._merge_base_class_fields(bases, props)
+
+    cls = TypedDictClass(props, self, self.ctx)
+    return cls
 
 
 class TypedDictClass(abstract.PyTDClass):
   """A template for typed dicts."""
 
-  def __init__(self, props, init_method, base_cls, ctx):
+  def __init__(self, props, base_cls, ctx):
     self.props = props
-    self.init_method = init_method
     self._base_cls = base_cls  # TypedDictBuilder for constructing subclasses
     super().__init__(props.name, ctx.convert.dict_type.pytd_cls, ctx)
+    self.init_method = self._make_init(props)
 
   def __repr__(self):
     return f"TypedDictClass({self.name})"
+
+  def _make_init(self, props):
+    # __init__ method for type checking signatures.
+    # We construct this here and pass it to TypedDictClass because we need
+    # access to abstract.SignedFunction.
+    sig = function.Signature.from_param_names(
+        f"{props.name}.__init__", props.fields.keys(),
+        kind=pytd.ParameterKind.KWONLY)
+    sig.annotations = {k: abstract_utils.get_atomic_value(v)
+                       for k, v in props.fields.items()}
+    sig.defaults = {k: self.ctx.new_unsolvable(self.ctx.root_node)
+                    for k in props.optional}
+    return abstract.SignedFunction(sig, self.ctx)
 
   def _new_instance(self, container, node, args):
     self.init_method.match_and_map_args(node, args, {})

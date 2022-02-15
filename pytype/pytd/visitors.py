@@ -456,6 +456,14 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       # If `item` contains type parameters and is not inside a GenericType, then
       # we replace the parameters with Any.
       item = MaybeSubstituteParameters(item.type) or item
+    # Special case for typing_extensions.TypedDict
+    # typing_extensions.pyi defines this as
+    #   TypedDict: object = ...
+    # with a note that it is a special form. Convert it to typing.TypedDict here
+    # so that it doesn't resolve as Any.
+    if (isinstance(item, pytd.Constant) and
+        item.name == "typing_extensions.TypedDict"):
+      return self.to_type(pytd.NamedType("typing.TypedDict"))
     return self.to_type(item)
 
   def VisitClassType(self, t):

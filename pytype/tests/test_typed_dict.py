@@ -241,5 +241,109 @@ class TypedDictTest(test_base.BaseTest):
     """)
 
 
+_SINGLE = """
+  from typing import TypedDict
+  class A(TypedDict):
+    x: int
+    y: str
+"""
+
+_MULTIPLE = """
+  from typing import TypedDict
+  class A(TypedDict):
+    x: int
+    y: str
+
+  class B(A):
+    z: int
+"""
+
+
+class PyiTypedDictTest(test_base.BaseTest):
+  """Tests for typing.TypedDict in pyi files."""
+
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(enable_typed_dicts=True)
+
+  def test_basic(self):
+    with self.DepTree([("foo.pyi", _SINGLE)]):
+      self.CheckWithErrors("""
+        from foo import A
+        a = A(x=1, y='2')
+        b = A(x=1, y=2)  # wrong-arg-types
+      """)
+
+  def test_function_arg(self):
+    with self.DepTree([("foo.pyi", _SINGLE)]):
+      self.CheckWithErrors("""
+        from foo import A
+        def f(d: A):
+          a = d['x']
+          b = d['z']  # typed-dict-error
+      """)
+
+  def test_function_return_type(self):
+    with self.DepTree([("foo.pyi", _SINGLE)]):
+      self.Check("""
+        from foo import A
+        def f() -> A:
+          return {'x': 1, 'y': '2'}
+      """)
+
+  def test_inheritance(self):
+    with self.DepTree([("foo.pyi", _SINGLE)]):
+      self.CheckWithErrors("""
+        from foo import A
+        class B(A):
+          z: int
+        def f() -> B:
+          return {'x': 1, 'y': '2', 'z': 3}
+        def g() -> B:
+          return {'x': 1, 'y': '2'}  # bad-return-type
+      """)
+
+  def test_pyi_inheritance(self):
+    with self.DepTree([("foo.pyi", _MULTIPLE)]):
+      self.CheckWithErrors("""
+        from foo import A, B
+        def f() -> B:
+          return {'x': 1, 'y': '2', 'z': 3}
+        def g() -> B:
+          return {'x': 1, 'y': '2'}  # bad-return-type
+      """)
+
+  def test_multi_module_pyi_inheritance(self):
+    with self.DepTree([
+        ("foo.pyi", _MULTIPLE),
+        ("bar.pyi", """
+         from foo import B
+         class C(B):
+           w: int
+         """)
+    ]):
+      self.CheckWithErrors("""
+        from bar import C
+        def f() -> C:
+          return {'x': 1, 'y': '2', 'z': 3, 'w': 4}
+        a = C(x=1, y='2', z=3, w='4')  # wrong-arg-types
+      """)
+
+  def test_typing_extensions_import(self):
+    with self.DepTree([
+        ("foo.pyi", """
+         from typing_extensions import TypedDict
+         class A(TypedDict):
+           x: int
+           y: str
+         """)
+    ]):
+      self.CheckWithErrors("""
+        from foo import A
+        a = A(x=1, y='2')
+        b = A(x=1, y=2)  # wrong-arg-types
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()

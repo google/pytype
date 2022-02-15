@@ -14,6 +14,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import attr_overlay
+from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyc import loadmarshal
 from pytype.pyi import metadata
@@ -263,6 +264,15 @@ class Converter(utils.ContextWeakrefMixin):
   def build_tuple(self, node, content):
     """Create a VM tuple from the given sequence."""
     return self.tuple_to_value(content).to_variable(node)
+
+  def make_typed_dict_builder(self, ctx):
+    """Make a typed dict builder."""
+    return typed_dict.TypedDictBuilder(ctx)
+
+  def make_typed_dict(self, name, pytd_cls, ctx):
+    """Make a typed dict from a pytd class."""
+    builder = typed_dict.TypedDictBuilder(ctx)
+    return builder.make_class_from_pyi(name, pytd_cls)
 
   def get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
@@ -635,7 +645,7 @@ class Converter(utils.ContextWeakrefMixin):
             overlay.load_lazy_attribute(base_name)
             return abstract_utils.get_atomic_value(overlay.members[base_name])
         try:
-          cls = abstract.PyTDClass(base_name, pyval, self.ctx)
+          cls = abstract.PyTDClass.make(base_name, pyval, self.ctx)
         except mro.MROError as e:
           self.ctx.errorlog.mro_error(self.ctx.vm.frames, base_name, e.mro_seqs)
           cls = self.unsolvable

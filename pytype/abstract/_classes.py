@@ -20,6 +20,9 @@ log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
+_TYPED_DICT_CLASSES = ("typing.TypedDict", "typing_extensions.TypedDict")
+
+
 class BuildClass(_base.BaseValue):
   """Representation of the Python 3 __build_class__ object."""
 
@@ -354,6 +357,30 @@ class PyTDClass(
     class_mixin.Class.init_mixin(self, metaclass)
     if decorated:
       self._populate_decorator_metadata()
+
+  @classmethod
+  def make(cls, name, pytd_cls, ctx):
+    def is_typed_dict(b):
+      return isinstance(b, pytd.ClassType) and b.name in _TYPED_DICT_CLASSES
+
+    def has_typed_dict_ancestor(c):
+      # Check if we have typed dicts in the MRO by seeing if we have already
+      # created a TypedDictClass for one of the ancestor classes.
+      return any(isinstance(b, class_mixin.Class) and b.is_typed_dict_class
+                 for b in c.mro)
+
+    if pytd_cls.name in _TYPED_DICT_CLASSES:
+      return ctx.convert.make_typed_dict_builder(ctx)
+    elif any(is_typed_dict(b) for b in pytd_cls.bases):
+      return ctx.convert.make_typed_dict(name, pytd_cls, ctx)
+
+    c = cls(name, pytd_cls, ctx)
+    # We need to check the MRO for typed dicts now, because it is created only
+    # after we instantiate the PyTDClass
+    if has_typed_dict_ancestor(c):
+      # Discard the PyTDClass and create a typed dict
+      return ctx.convert.make_typed_dict(name, pytd_cls, ctx)
+    return c
 
   def _populate_decorator_metadata(self):
     """Fill in class attribute metadata for decorators like @dataclass."""
