@@ -1333,6 +1333,27 @@ class EllipsisTest(test_base.BaseTest):
         def f(self) -> None: ...
     """)
 
+  def test_future(self):
+    ty = self.Infer("""
+      from __future__ import annotations
+      x: ...
+      x = 5
+      def f(x: ...): pass
+      class Foo:
+        x: ...
+        def f(self):
+          self.x = 5
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      annotations: __future__._Feature
+      x: int
+      def f(x) -> None: ...
+      class Foo:
+        x: int
+        def f(self) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

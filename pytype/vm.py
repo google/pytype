@@ -1698,7 +1698,9 @@ class VirtualMachine:
     state = state.forward_cfg_node()
     # Check whether obj is the __annotations__ dict.
     if abstract_utils.match_atomic_value(obj, abstract.AnnotationsDict):
-      if val.data == [self.ctx.convert.ellipsis]:
+      if (val.data == [self.ctx.convert.ellipsis] or
+          (val.data and abstract_utils.is_concrete(val.data[0]) and
+           val.data[0].pyval == "...")):
         # '...' is an experimental "inferred type": see b/213607272.
         pass
       else:
