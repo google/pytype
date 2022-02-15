@@ -786,3 +786,8 @@ def _make(cls_name, *args, **kwargs):
 
 def is_recursive_annotation(annot):
   return annot.is_late_annotation() and annot.is_recursive()
+
+
+def is_ellipsis(val):
+  return (val == val.ctx.convert.ellipsis or
+          (is_concrete(val) and val.pyval == "..."))
