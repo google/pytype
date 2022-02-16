@@ -647,6 +647,35 @@ class GenericBasicTest(test_base.BaseTest):
       def g(x) -> Tuple[str, int]: ...
     """)
 
+  def test_generic_abc_with_getitem(self):
+    # Regression test for b/219709586 - the metaclass should not lead to
+    # incorrectly calling __getitem__ on the generic class for type subscripts.
+    self.Check("""
+      import abc
+      from typing import Any, Generic, Optional, Tuple, TypeVar
+
+      T = TypeVar('T')
+
+      class Filterable(Generic[T], abc.ABC):
+        @abc.abstractmethod
+        def get_filtered(self) -> T:
+          pass
+
+      class SequenceHolder(Generic[T], Filterable[Any]):
+        def __init__(self, *sequence: Optional[T]) -> None:
+          self._sequence = sequence
+
+        def __getitem__(self, key: int) -> Optional[T]:
+          return self._sequence[key]
+
+        def get_filtered(self) -> 'SequenceHolder[T]':
+          filtered_sequence = tuple(
+              item for item in self._sequence if item is not None)
+          return SequenceHolder(*filtered_sequence)
+
+      sequence_holder = SequenceHolder('Hello', None, 'World')
+    """)
+
   def test_check_class_param(self):
     errors = self.CheckWithErrors("""
       from typing import Generic, Tuple, TypeVar
