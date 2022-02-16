@@ -328,7 +328,7 @@ class FunctionTest(CompareTestBase):
 
   def test_compatible_with(self):
     pytd_sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
-    sig = function.PyTDSignature("f", pytd_sig, self._ctx)
+    sig = abstract.PyTDSignature("f", pytd_sig, self._ctx)
     f = abstract.PyTDFunction("f", (sig,), pytd.MethodKind.METHOD, self._ctx)
     self.assertTruthy(f)
 

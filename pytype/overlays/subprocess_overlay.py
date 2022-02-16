@@ -2,7 +2,6 @@
 
 from pytype import overlay
 from pytype.abstract import abstract
-from pytype.abstract import function
 
 
 class SubprocessOverlay(overlay.Overlay):
@@ -37,7 +36,7 @@ class Popen(abstract.PyTDClass):
         self._new = None
       else:
         sigs = [
-            function.PyTDSignature(f.name, sig, self.ctx)
+            abstract.PyTDSignature(f.name, sig, self.ctx)
             for sig in f.signatures
         ]
         self._new = PopenNew(f.name, sigs, f.kind, self.ctx)

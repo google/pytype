@@ -288,7 +288,7 @@ class FunctionTest(AbstractTestBase):
                          pytd.ParameterKind.REGULAR, False, None))
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
-    sig = function.PyTDSignature(name, pytd_sig, self._ctx)
+    sig = abstract.PyTDSignature(name, pytd_sig, self._ctx)
     return abstract.PyTDFunction(name, (sig,), pytd.MethodKind.METHOD,
                                  self._ctx)
 

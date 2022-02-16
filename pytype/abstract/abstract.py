@@ -65,6 +65,7 @@ SimpleFunction = _interpreter_function.SimpleFunction
 InterpreterFunction = _interpreter_function.InterpreterFunction
 
 PyTDFunction = _pytd_function.PyTDFunction
+PyTDSignature = _pytd_function.PyTDSignature
 
 Unknown = _singletons.Unknown
 Singleton = _singletons.Singleton

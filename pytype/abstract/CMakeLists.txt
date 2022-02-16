@@ -140,6 +140,7 @@ py_library(
     .abstract_utils
     .function
     .mixin
+    pytype.utils
     pytype.pytd.pytd
 )
 
