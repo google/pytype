@@ -19,7 +19,6 @@ else:
 
 
 _PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
-_TYPED_DICT_ALIASES = ("typing.TypedDict", "typing_extensions.TypedDict")
 
 
 def get_bases(
@@ -51,19 +50,17 @@ def get_bases(
   return bases_out, namedtuple_index
 
 
-def get_metaclass(keywords: List[ast3.keyword], bases: List[pytd_node.Node]):
+def get_metaclass(keywords: List[ast3.keyword]):
   """Scan keywords for a metaclass."""
 
   for k in keywords:
     keyword, value = k.arg, k.value
     if keyword not in ("metaclass", "total"):
       raise ParseError(f"Unexpected classdef kwarg {keyword!r}")
-    elif keyword == "total" and not any(
-        isinstance(base, pytd.NamedType) and
-        pytd_utils.MatchesFullName(base, _TYPED_DICT_ALIASES)
-        for base in bases):
-      raise ParseError(
-          "'total' allowed as classdef kwarg only for TypedDict subclasses")
+    # TODO(rechen): We should store the "total" value instead of throwing it
+    # away and validate in load_pytd that "total" is passed only to TypedDict
+    # subclasses. We can't do the validation here because external types need to
+    # be resolved first.
     if keyword == "metaclass":
       return value
   return None

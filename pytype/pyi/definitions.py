@@ -631,7 +631,7 @@ class Definitions:
   ) -> pytd.Class:
     """Build a pytd.Class from definitions collected from an ast node."""
     bases, namedtuple_index = classdef.get_bases(bases)
-    metaclass = classdef.get_metaclass(keywords, bases)
+    metaclass = classdef.get_metaclass(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
     # Make sure we don't have duplicate definitions.
