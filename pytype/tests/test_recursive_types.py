@@ -478,10 +478,10 @@ class PyiTest(test_base.BaseTest):
           V,
       ]
       try:
-        Structure = StructureKV[str, V]
+        Structure = StructureKV[int, V]
       except TypeError:
         Structure = Union[
-            Sequence['Structure[V]'], Mapping[str, 'Structure[V]'], V]
+            Sequence['Structure[V]'], Mapping[int, 'Structure[V]'], V]
     """)]):
       self.Check("""
         import foo
@@ -489,7 +489,7 @@ class PyiTest(test_base.BaseTest):
         X = foo.Structure[Any]
         def f(x: X):
           y = x[0]
-          return y["k"]
+          return y[1]
       """)
 
 

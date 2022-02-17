@@ -46,6 +46,9 @@ class TestUnpack(test_base.BaseTest):
     """)
 
   def test_unpack_in_function_args(self):
+    # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
+    # wrong-arg-types error on line 6.
+    self.options.tweak(strict_parameter_checks=False)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple

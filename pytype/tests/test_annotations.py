@@ -68,7 +68,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"x: int.*x: float"})
 
   def test_ambiguous_arg(self):
-    self.Check("""
+    errors = self.CheckWithErrors("""
       def f(x: int):
         return x
       def g(y, z):
@@ -78,8 +78,11 @@ class AnnotationTest(test_base.BaseTest):
           x = 3j
         else:
           x = "foo"
-        f(x)
+        f(x)  # wrong-arg-types[e]
     """)
+    self.assertErrorSequences(errors, {
+        "e": ["Expected: (x: int)",
+              "Actually passed: (x: Union[complex, int, str]"]})
 
   def test_inner_error(self):
     _, errors = self.InferWithErrors("""

@@ -743,11 +743,13 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
   log.debug("Result: %r %r", result, result.data)
   log.debug("Error: %r", error)
   log.debug("Report Errors: %r", report_errors)
-  if not result.bindings and report_errors:
+  if report_errors and (
+      not result.bindings or ctx.options.strict_parameter_checks):
     if error is None:
-      if ctx.options.report_errors:
-        ctx.errorlog.unsupported_operands(ctx.vm.frames, name, x, y)
-      result = ctx.new_unsolvable(state.node)
+      if not result.bindings:
+        if ctx.options.report_errors:
+          ctx.errorlog.unsupported_operands(ctx.vm.frames, name, x, y)
+        result = ctx.new_unsolvable(state.node)
     elif isinstance(error, function.DictKeyMissing):
       state, result = error.get_return(state)
     else:

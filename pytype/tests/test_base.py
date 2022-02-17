@@ -133,6 +133,7 @@ class BaseTest(unittest.TestCase):
     self.options = config.Options.create(python_version=self.python_version,
                                          build_dict_literals_from_kwargs=True,
                                          strict_namedtuple_checks=True,
+                                         strict_parameter_checks=True,
                                          use_enum_overlay=True)
 
   @property

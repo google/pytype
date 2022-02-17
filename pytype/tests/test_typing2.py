@@ -874,6 +874,10 @@ class LiteralTest(test_base.BaseTest):
     """)
 
   def test_iterate(self):
+    # TODO(b/63407497): Enabling --strict-parameter-checks leads to a cryptic
+    # wrong-arg-types error on line 5 in which the actual type is
+    # "Union[str, Literal['x']]".
+    self.options.tweak(strict_parameter_checks=False)
     self.Check("""
       from typing_extensions import Literal
       def f(x: Literal["x", "y"]):
