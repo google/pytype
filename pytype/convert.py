@@ -11,7 +11,6 @@ from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import attr_overlay
 from pytype.overlays import typed_dict
@@ -656,7 +655,7 @@ class Converter(utils.ContextWeakrefMixin):
         return cls
     elif isinstance(pyval, pytd.Function):
       signatures = [
-          function.PyTDSignature(pyval.name, sig, self.ctx)
+          abstract.PyTDSignature(pyval.name, sig, self.ctx)
           for sig in pyval.signatures
       ]
       type_new = self.ctx.loader.lookup_builtin("builtins.type").Lookup(

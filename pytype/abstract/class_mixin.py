@@ -449,7 +449,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       if self.cls.full_name != "builtins.type":
         # This class has a custom metaclass; check if it defines __getitem__.
         _, att = self.ctx.attribute_handler.get_attribute(
-            node, self, name, self.to_binding(node))
+            node, self.cls, name, self.to_binding(node))
         if att:
           return att
       # Treat this class as a parameterized container in an annotation. We do

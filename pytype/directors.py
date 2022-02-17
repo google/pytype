@@ -659,6 +659,11 @@ class Director:
           else:
             final_line = self._adjust_line_number_for_pytype_directive(
                 line, error_name, line_range, opcode_lines)
+            if final_line != line:
+              # Set the disable on the original line so that, even if we mess up
+              # adjusting the line number, silencing an error by adding a
+              # disable to the exact line the error is reported on always works.
+              lines.set_line(line, disable)
             lines.set_line(final_line, disable)
         else:
           self._errorlog.invalid_directive(

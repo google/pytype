@@ -584,7 +584,7 @@ class DisableDirectivesTest(DirectorTestCase):
           a, b, c, d)  # pytype: disable=wrong-arg-types
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2)
+      self.assertDisables(2, 3)
     else:
       self.assertDisables(3)
 
@@ -650,7 +650,7 @@ class DisableDirectivesTest(DirectorTestCase):
             "oops")]  # pytype: disable=annotation-type-mismatch
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2, error_class="annotation-type-mismatch")
+      self.assertDisables(2, 4, error_class="annotation-type-mismatch")
     else:
       self.assertDisables(4, error_class="annotation-type-mismatch")
 
@@ -661,9 +661,9 @@ class DisableDirectivesTest(DirectorTestCase):
       )  # pytype: disable=wrong-arg-types
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2)
+      self.assertDisables(2, 4)
     else:
-      self.assertDisables(3)
+      self.assertDisables(3, 4)
 
   def test_multiple_bytecode_blocks(self):
     self._create("""
@@ -716,9 +716,9 @@ class DisableDirectivesTest(DirectorTestCase):
         )  # pytype: disable=annotation-type-mismatch
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(7, error_class="annotation-type-mismatch")
+      self.assertDisables(7, 9, error_class="annotation-type-mismatch")
     else:
-      self.assertDisables(8, error_class="annotation-type-mismatch")
+      self.assertDisables(8, 9, error_class="annotation-type-mismatch")
 
   def test_return(self):
     self._create("""
@@ -729,7 +729,7 @@ class DisableDirectivesTest(DirectorTestCase):
              "oops")  # pytype: disable=bad-return-type
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(5, error_class="bad-return-type")
+      self.assertDisables(5, 6, error_class="bad-return-type")
     else:
       self.assertDisables(6, error_class="bad-return-type")
 
@@ -749,9 +749,9 @@ class DisableDirectivesTest(DirectorTestCase):
       ]  # pytype: disable=not-supported-yet
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2, error_class="not-supported-yet")
+      self.assertDisables(2, 4, error_class="not-supported-yet")
     else:
-      self.assertDisables(3, error_class="not-supported-yet")
+      self.assertDisables(3, 4, error_class="not-supported-yet")
 
   def test_range(self):
     self._create("""
@@ -807,9 +807,9 @@ class DisableDirectivesTest(DirectorTestCase):
       )]  # pytype: disable=not-instantiable
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, error_class="not-instantiable")
+      self.assertDisables(2, 3, 4, error_class="not-instantiable")
     else:
-      self.assertDisables(3, error_class="not-instantiable")
+      self.assertDisables(3, 4, error_class="not-instantiable")
 
   def test_unsupported_operands_in_call(self):
     self._create("""
@@ -828,7 +828,7 @@ class DisableDirectivesTest(DirectorTestCase):
         "oops")  # pytype: disable=unsupported-operands
     """)
     if self.python_version >= (3, 8):
-      self.assertDisables(2, error_class="unsupported-operands")
+      self.assertDisables(2, 4, error_class="unsupported-operands")
     else:
       self.assertDisables(4, error_class="unsupported-operands")
 

@@ -355,6 +355,18 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": [
         "Method __len__ of protocol X[str] has the wrong signature in Y"]})
 
+  def test_missing_parameter_disable(self):
+    self.Check("""
+      class Foo:
+        def __iter__(self, x, y):
+          pass
+      def f(x):
+        pass
+      f(
+        x=[x for x in Foo],  # pytype: disable=missing-parameter
+      )
+    """)
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""
