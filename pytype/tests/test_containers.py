@@ -493,7 +493,7 @@ class ContainerTest(test_base.BaseTest):
       def f():
         l = [__any_object__]
         if __random__:
-          pos = None
+          pos = __any_object__
         else:
           pos = 0
         l[pos] += 1

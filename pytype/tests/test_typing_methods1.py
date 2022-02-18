@@ -144,6 +144,9 @@ class TypingMethodsTest(test_base.BaseTest):
       """)
 
   def test_mutablesequence_and_list(self):
+    # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
+    # wrong-arg-types error on line 10.
+    self.options.tweak(strict_parameter_checks=False)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, MutableSequence
@@ -278,6 +281,9 @@ class TypingMethodsTest(test_base.BaseTest):
     self._check_call("FrozenSet", "3 in x")
 
   def test_mutableset(self):
+    # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
+    # wrong-arg-types error on line 8.
+    self.options.tweak(strict_parameter_checks=False)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import MutableSet

@@ -92,12 +92,21 @@ class OperatorsWithAnyTests(test_base.BaseTest):
 
   def test_subscr(self):
     self.Check("""
-      x = "foo" if __random__ else None
+      x = "foo" if __random__ else __any_object__
       d = {"foo": 42}
       d[x]  # BINARY_SUBSCR
       "foo" + x  # BINARY_ADD
       "%s" % x  # BINARY_MODULO
     """)
+
+  def test_bad_add(self):
+    # TODO(b/71764667): Why doesn't 'x + "foo"' trigger an error?
+    errors = self.CheckWithErrors("""
+       x = "foo" if __random__ else None
+       "foo" + x  # unsupported-operands[e]
+    """)
+    self.assertErrorSequences(errors, {"e": [
+        "unsupported operand type(s) for +: str and None"]})
 
 
 if __name__ == "__main__":

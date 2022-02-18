@@ -28,6 +28,9 @@ class TypedDictTest(test_base.BaseTest):
     })
 
   def test_key_error(self):
+    # TODO(b/63407497): Enabling --strict-parameter-checks leads to an extra
+    # wrong-arg-types error on line 8.
+    self.options.tweak(strict_parameter_checks=False)
     err = self.CheckWithErrors("""
       from typing_extensions import TypedDict
       class A(TypedDict):

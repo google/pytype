@@ -152,8 +152,10 @@ FEATURE_FLAGS = [
     ("--strict_namedtuple_checks", False,
      ("Enable stricter namedtuple checks, such as unpacking and "
       "'typing.Tuple' compatibility.")),
+    ("--strict-parameter-checks", False,
+     "Enable exhaustive checking of function parameter types."),
     ("--enable-typed-dicts", False,
-     ("Enable support for TypedDicts.")),
+     "Enable support for TypedDicts."),
 ]
 
 

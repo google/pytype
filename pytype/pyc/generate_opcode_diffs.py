@@ -20,6 +20,10 @@ The output has three sections:
   obvious where it goes. Then add the new mapping to the mapping dict in the
   top-level dis function in the same module.
 * "OPCODE STUB IMPLEMENTATIONS" are new methods that should be added to vm.py.
+If the output contains "NOTE:" lines about modified opcodes, then there are
+opcode names that exist in both versions but at different indices. For such
+opcodes, the script generates a new class definition for pyc/opcodes.py but does
+not generate a new stub implementation for vm.py.
 """
 
 import json
@@ -36,12 +40,16 @@ def generate_diffs(argv):
   # Create a temporary script to print out information about the opcode mapping
   # of the Python version that the script is running under, and use subprocess
   # to run the script under the two versions we want to diff.
+  # opmap is a mapping from opcode name to index, e.g. {'RERAISE': 119}.
+  # opname is a sequence of opcode names in which the sequence index corresponds
+  # to the opcode index. A name of "<i>" means that i is an unused index.
   with tempfile.NamedTemporaryFile(mode='w', suffix='.py') as f:
     f.write(textwrap.dedent("""
       import dis
       import json
       output = {
         'opmap': dis.opmap,
+        'opname': dis.opname,
         'HAVE_ARGUMENT': dis.HAVE_ARGUMENT,
         'HAS_CONST': dis.hasconst,
         'HAS_NAME': dis.hasname,
@@ -69,17 +77,25 @@ def generate_diffs(argv):
   #   index: ('DELETE', deleted opcode)
   #   index: ('CHANGE', old opcode at this index, new opcode at this index)
   #   index: ('ADD', new opcode)
+  num_opcodes = len(dis1['opname'])
+  assert num_opcodes == len(dis2['opname'])
   changed = {}
-  for name, op in dis1['opmap'].items():
-    if name not in dis2['opmap']:
-      changed[op] = ('DELETE', name)
+  moved = set()
 
-  for name, op in dis2['opmap'].items():
-    if name not in dis1['opmap']:
-      if op in changed:
-        changed[op] = ('CHANGE', changed[op][1], name)
+  def is_unset(opname_entry):
+    return opname_entry == f'<{i}>'
+
+  for i in range(num_opcodes):
+    if dis1['opname'][i] != dis2['opname'][i]:
+      if is_unset(dis2['opname'][i]):
+        changed[i] = ('DELETE', dis1['opname'][i])
       else:
-        changed[op] = ('ADD', name)
+        if dis2['opname'][i] in dis1['opmap']:
+          moved.add(dis2['opname'][i])
+        if is_unset(dis1['opname'][i]):
+          changed[i] = ('ADD', dis2['opname'][i])
+        else:
+          changed[i] = ('CHANGE', dis1['opname'][i], dis2['opname'][i])
 
   # Generate opcode classes.
   classes = []
@@ -124,21 +140,29 @@ def generate_diffs(argv):
     if diff[0] == 'DELETE':
       continue
     name = diff[-1]
+    if name in moved:
+      continue
     stubs.append(['def byte_{}(self, state, op):'.format(name),
                   '  del op',
                   '  return state'])
 
-  return classes, diffs, stubs
+  return classes, diffs, stubs, sorted(moved)
 
 
 def main(argv):
-  classes, diff, stubs = generate_diffs(argv)
+  classes, diff, stubs, moved = generate_diffs(argv)
   print('---- NEW OPCODES (pyc/opcodes.py) ----\n')
   print('\n\n\n'.join('\n'.join(cls) for cls in classes))
+  if moved:
+    print('\nNOTE: Delete the old class definitions for the following '
+          'modified opcodes: ' + ', '.join(moved))
   print('\n---- OPCODE MAPPING DIFF (pyc/opcodes.py) ----\n')
   print('    ' + '\n    '.join(diff))
   print('\n---- OPCODE STUB IMPLEMENTATIONS (vm.py) ----\n')
   print('\n\n'.join('  ' + '\n  '.join(stub) for stub in stubs))
+  if moved:
+    print('\nNOTE: The implementations of the following modified opcodes may '
+          'need to be updated: ' + ', '.join(moved))
 
 
 if __name__ == '__main__':

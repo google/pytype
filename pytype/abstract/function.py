@@ -615,6 +615,9 @@ class FailedFunctionCall(Exception, ReturnValueMixin):
   def __gt__(self, other):
     return other is None
 
+  def __le__(self, other):
+    return not self.__gt__(other)
+
 
 class NotCallable(FailedFunctionCall):
   """For objects that don't have __call__."""
@@ -641,6 +644,9 @@ class DictKeyMissing(Exception, ReturnValueMixin):
 
   def __gt__(self, other):
     return other is None
+
+  def __le__(self, other):
+    return not self.__gt__(other)
 
 
 BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
@@ -680,6 +686,9 @@ class WrongArgTypes(InvalidParameters):
       return (bool(err.bad_call.sig.varargs_name) +
               bool(err.bad_call.sig.kwargs_name))
     return starcount(self) < starcount(other)
+
+  def __le__(self, other):
+    return not self.__gt__(other)
 
 
 class WrongArgCount(InvalidParameters):

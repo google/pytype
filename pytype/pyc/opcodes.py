@@ -754,10 +754,6 @@ class POP_FINALLY(OpcodeWithArg):
   __slots__ = ()
 
 
-class RERAISE(Opcode):
-  __slots__ = ()
-
-
 class WITH_EXCEPT_START(Opcode):
   __slots__ = ()
 
@@ -826,6 +822,11 @@ class COPY_DICT_WITHOUT_KEYS(Opcode):
 
 
 class ROT_N(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class RERAISE(OpcodeWithArg):
   FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
@@ -1010,7 +1011,9 @@ python_3_10_mapping = _overlay_mapping(python_3_9_mapping, {
     32: MATCH_SEQUENCE,
     33: MATCH_KEYS,
     34: COPY_DICT_WITHOUT_KEYS,
+    48: None,  # was RERAISE in 3.9
     99: ROT_N,
+    119: RERAISE,
     129: GEN_START,
     152: MATCH_CLASS,
 })
@@ -1073,7 +1076,8 @@ def _prettyprint_arg(cls, oparg, co_consts, co_names,
 def _wordcode_reader(data, mapping):
   """Reads binary data from pyc files as wordcode.
 
-  Works with Python3.6 and above.
+  Works with Python3.6 and above. Based on
+  https://github.com/python/cpython/blob/feb44550888eb4755efee11bf01daeb285e5b685/Lib/dis.py#L422.
 
   Arguments:
     data: The block of binary pyc code
@@ -1103,7 +1107,7 @@ def _wordcode_reader(data, mapping):
       start = pos + 2
 
 
-def _dis(data, mapping,
+def _dis(data, python_version, mapping,
          co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
          co_freevars=None, co_lnotab=None, co_firstlineno=None):
   """Disassemble a string into a list of Opcode instances."""
@@ -1126,7 +1130,14 @@ def _dis(data, mapping,
       # single line programs don't have co_lnotab
       line = co_firstlineno
     if oparg is not None:
-      if cls.has_jrel():
+      if python_version >= (3, 10):
+        # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
+        # changed how oparg is calculated.
+        if cls.has_jrel():
+          oparg = oparg * 2 + end_pos
+        elif cls.has_jabs():
+          oparg *= 2
+      elif cls.has_jrel():
         oparg += end_pos
       pretty = _prettyprint_arg(cls, oparg, co_consts, co_names, co_varnames,
                                 cellvars_freevars)
@@ -1155,7 +1166,7 @@ def dis(data, python_version, *args, **kwargs):
       (3, 9): python_3_9_mapping,
       (3, 10): python_3_10_mapping,
   }[(major, minor)]
-  return _dis(data, mapping, *args, **kwargs)
+  return _dis(data, python_version, mapping, *args, **kwargs)
 
 
 def dis_code(code):

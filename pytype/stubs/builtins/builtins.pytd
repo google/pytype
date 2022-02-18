@@ -182,7 +182,7 @@ def zip(seq1, seq2, seq3, *seqs: Iterable) -> Iterator[tuple]: ...
 # None: NoneType = ...
 # __debug__: bool = ...
 
-NotImplemented = ...  # type: NotImplementedType
+NotImplemented = ...  # type: _NotImplementedType
 Ellipsis = ...  # type: ellipsis
 
 class object():
@@ -234,7 +234,7 @@ class classobj(object):
     def __cmp__(self, y) -> bool: ...
 
 # Not actually a builtin
-class NotImplementedType(bool):
+class _NotImplementedType(bool):
     pass
 
 class NoneType(object):

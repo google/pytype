@@ -146,6 +146,9 @@ class StdlibTestsFeatures(test_base.BaseTest,
         "ValuesView", "{}.values()", "42", r"ValuesView.*int")
 
   def test_tempfile(self):
+    # TODO(b/63407497): Enabling --strict_parameter_checks leads to a bunch of
+    # str vs bytes wrong-arg-types errors.
+    self.options.tweak(strict_parameter_checks=False)
     ty = self.Infer("""
       import tempfile
       import typing

@@ -155,6 +155,9 @@ class TupleTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"1.*3"})
 
   def test_count(self):
+    # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
+    # wrong-arg-types error on line 3.
+    self.options.tweak(strict_parameter_checks=False)
     self.Check("""
       from typing import Optional
       def f(x: Optional[str] = None, y: Optional[str] = None):

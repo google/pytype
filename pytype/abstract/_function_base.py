@@ -85,18 +85,18 @@ class Function(_instance_base.SimpleValue):
       try:
         match = self._match_view(node, args, view, alias_map)
       except function.FailedFunctionCall as e:
-        if e > error and node.HasCombination(list(view.values())):
-          # Add the name of the caller if possible.
-          if hasattr(self, "parent"):
-            e.name = "%s.%s" % (self.parent.name, e.name)
-          error = e
-          skip_future = True
-        else:
+        if not node.HasCombination(list(view.values())) or e <= error:
           # This error was ignored, but future ones with the same accessed
           # subset may need to be recorded, so we can't skip them.
           skip_future = False
-        if match_all_views:
-          raise e
+        else:
+          # Add the name of the caller if possible.
+          if hasattr(self, "parent"):
+            e.name = "%s.%s" % (self.parent.name, e.name)
+          if match_all_views or self.ctx.options.strict_parameter_checks:
+            raise e
+          error = e
+          skip_future = True
       else:
         matched.append(match)
         skip_future = True

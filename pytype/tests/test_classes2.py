@@ -103,7 +103,7 @@ class ClassesTest(test_base.BaseTest):
           for name in __any_object__:
             Bar.Create()
             name
-        def __init__(self, x: Foo): pass
+        def __init__(self, x: Optional[Foo]): pass
     """)
 
   def test_inherit_from_generic_class(self):

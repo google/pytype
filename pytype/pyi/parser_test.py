@@ -2491,6 +2491,58 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x: Literal[0.0]
     """, 2, "Invalid type `float` in Literal[0.0].")
 
+  def test_final_literals(self):
+    # See https://github.com/python/typeshed/issues/7258 for context.
+    self.check("""
+      import enum
+      from typing_extensions import Final
+
+      class Color(enum.Enum):
+        RED: str
+
+      x1: Final = 3
+      x2: Final = True
+      x3: Final = 'x3'
+      x4: Final = b'x4'
+      x5: Final = None
+      x6: Final = Color.RED
+    """, """
+      import enum
+      from typing import Any, Literal
+      from typing_extensions import Final
+
+      x1: Literal[3]
+      x2: Literal[True]
+      x3: Literal['x3']
+      x4: Literal[b'x4']
+      x5: Literal[None]
+      x6: Literal[Color.RED]
+
+      class Color(enum.Enum):
+          RED: str
+    """)
+
+  def test_final_non_literal(self):
+    self.check("""
+      from typing_extensions import Final
+      x: Final
+      y: Final = ...
+    """, """
+      import typing_extensions
+      from typing_extensions import Final
+
+      x: typing_extensions.Final
+      y: typing_extensions.Final
+    """)
+
+  def test_bad_final_literal(self):
+    msg = ("Default value for x: Final can only be '...' or a legal Literal "
+           "parameter, got LITERAL(3.14)")
+    self.check_error("""
+      from typing_extensions import Final
+      x: Final = 3.14
+    """, 2, msg)
+
 
 class TypedDictTest(parser_test_base.ParserTestBase):
 
