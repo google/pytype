@@ -9,7 +9,6 @@ architecture issues (e.g., you can write a Python value to a file on a PC,
 Details of the format may change between Python versions.
 """
 
-import contextlib
 import struct
 import sys
 
@@ -133,16 +132,6 @@ class _LoadMarshal:
     self.python_version = python_version
     self.refs = []
     self._stringtable = []
-    # When running under Python 3 and analyzing Python 2, whether load_string
-    # should convert bytes to native strings.
-    self._keep_bytes = False
-
-  @contextlib.contextmanager
-  def keep_bytes(self):
-    old = self._keep_bytes
-    self._keep_bytes = True
-    yield
-    self._keep_bytes = old
 
   def eof(self):
     """Return True if we reached the end of the stream."""
@@ -362,10 +351,9 @@ class _LoadMarshal:
     nlocals = self._read_long()
     stacksize = self._read_long()
     flags = self._read_long()
-    with self.keep_bytes():
-      # The code field is a 'string of raw compiled bytecode'
-      # (https://docs.python.org/3/library/inspect.html#types-and-members).
-      code = self.load()
+    # The code field is a 'string of raw compiled bytecode'
+    # (https://docs.python.org/3/library/inspect.html#types-and-members).
+    code = self.load()
     consts = self.load()
     names = self.load()
     varnames = self.load()
@@ -374,11 +362,10 @@ class _LoadMarshal:
     filename = self.load()
     name = self.load()
     firstlineno = self._read_long()
-    with self.keep_bytes():
-      # lnotab, from
-      # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt:
-      # 'an array of unsigned bytes disguised as a Python bytes object'.
-      lnotab = self.load()
+    # lnotab, from
+    # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt:
+    # 'an array of unsigned bytes disguised as a Python bytes object'.
+    lnotab = self.load()
     return CodeType(argcount, posonlyargcount, kwonlyargcount, nlocals,
                     stacksize, flags, code, consts, names, varnames, filename,
                     name, firstlineno, lnotab, freevars, cellvars,
