@@ -66,6 +66,14 @@ class TypeDeclUnit(Node):
   functions: Tuple['Function', ...]
   aliases: Tuple['Alias', ...]
 
+  def _InitCache(self):
+    # TODO(b/159053187): Put constants, functions, classes and aliases into a
+    # combined dict.
+    self.PopulateLookupCache(
+        self.constants, self.functions, self.classes, self.aliases)
+    for x in self.type_params:
+      self._name2item[x.full_name] = x
+
   def Lookup(self, name):
     """Convenience function: Look up a given name in the global namespace.
 
@@ -80,24 +88,22 @@ class TypeDeclUnit(Node):
     Raises:
       KeyError: if this identifier doesn't exist.
     """
-    # TODO(b/159053187): Put constants, functions, classes and aliases into a
-    # combined dict.
     try:
       return self._name2item[name]
     except AttributeError:
-      object.__setattr__(self, '_name2item', {})
-      for x in self.type_params:
-        self._name2item[x.full_name] = x
-      for x in self.constants + self.functions + self.classes + self.aliases:
-        self._name2item[x.name] = x
+      self._InitCache()
       return self._name2item[name]
 
-  def __contains__(self, name):
+  def Get(self, name):
+    """Version of Lookup that returns None instead of raising."""
     try:
-      self.Lookup(name)
-    except KeyError:
-      return False
-    return True
+      return self._name2item.get(name)
+    except AttributeError:
+      self._InitCache()
+      return self._name2item.get(name)
+
+  def __contains__(self, name):
+    return bool(self.Get(name))
 
   # The hash/eq/ne values are used for caching and speed things up quite a bit.
 
@@ -170,6 +176,11 @@ class Class(Node):
   slots: Optional[Tuple[str, ...]]
   template: Tuple['TemplateItem', ...]
 
+  def _InitCache(self):
+    # TODO(b/159053187): Put constants, functions, classes and aliases into a
+    # combined dict.
+    self.PopulateLookupCache(self.methods, self.constants, self.classes)
+
   def Lookup(self, name):
     """Convenience function: Look up a given name in the class namespace.
 
@@ -188,10 +199,16 @@ class Class(Node):
     try:
       return self._name2item[name]
     except AttributeError:
-      object.__setattr__(self, '_name2item', {})
-      for x in self.methods + self.constants + self.classes:
-        self._name2item[x.name] = x
+      self._InitCache()
       return self._name2item[name]
+
+  def Get(self, name):
+    """Version of Lookup that returns None instead of raising."""
+    try:
+      return self._name2item.get(name)
+    except AttributeError:
+      self._InitCache()
+      return self._name2item.get(name)
 
 
 class MethodKind(enum.Enum):
@@ -726,54 +743,58 @@ def AliasMethod(func, from_constant):
 
 def LookupItemRecursive(module, name):
   """Recursively look up name in module."""
-  parts = name.split('.')
-  partial_name = module.name
-  prev_item = None
-  item = module
 
   def ExtractClass(t):
     if isinstance(t, ClassType) and t.cls:
       return t.cls
-    t = module.Lookup(t.name)  # may raise KeyError
+    t = module.Get(t.name)
     if isinstance(t, Class):
       return t
-    raise KeyError(t.name)
+    return None
+
+  def Lookup(item, *names):
+    for name in names:
+      found = item.Get(name)
+      if found is not None:
+        return found
+    return None
+
+  parts = name.split('.')
+  partial_name = module.name
+  prev_item = None
+  item = module
 
   for part in parts:
     prev_item = item
     # Check the type of item and give up if we encounter a type we don't know
     # how to handle.
     if isinstance(item, Constant):
-      item = ExtractClass(item.type)  # may raise KeyError
+      found = ExtractClass(item.type)
+      if not found:
+        raise KeyError(item.type.name)
+      item = found
     elif not isinstance(item, (TypeDeclUnit, Class)):
       raise KeyError(name)
     lookup_name = partial_name + '.' + part
 
-    def Lookup(item, *names):
-      for name in names:
-        try:
-          return item.Lookup(name)
-        except KeyError:
-          continue
-      raise KeyError(names[-1])
-
     # Nested class names are fully qualified while function names are not, so
     # we try lookup for both naming conventions.
-    try:
-      item = Lookup(item, lookup_name, part)
-    except KeyError:
+    found = Lookup(item, lookup_name, part)
+    if found:
+      item = found
+    else:
       if not isinstance(item, Class):
-        raise
+        raise KeyError(item)
       for base in item.bases:
-        base_cls = ExtractClass(base)  # may raise KeyError
-        try:
-          item = Lookup(base_cls, lookup_name, part)
-        except KeyError:
-          continue  # continue up the MRO
-        else:
+        base_cls = ExtractClass(base)
+        if base_cls is None:
+          raise KeyError(item)
+        found = Lookup(base_cls, lookup_name, part)
+        if found:  # if not we continue up the MRO
+          item = found
           break  # name found!
       else:
-        raise  # unresolved
+        raise KeyError(item)  # unresolved
     if isinstance(item, Constant):
       partial_name += '.' + item.name.rsplit('.', 1)[-1]
     else:

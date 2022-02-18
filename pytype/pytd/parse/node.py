@@ -26,6 +26,13 @@ class Node:
 
   _name2item: Dict[str, Any]  # Lookup cache used by module and class nodes
 
+  def PopulateLookupCache(self, *members):
+    # Instances are typically frozen attrs
+    object.__setattr__(self, "_name2item", {})
+    for x in members:
+      for item in x:
+        self._name2item[item.name] = item
+
   def __iter__(self):
     # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
     for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
