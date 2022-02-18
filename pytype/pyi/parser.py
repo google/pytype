@@ -43,6 +43,7 @@ _TYPEDDICT_IDS = (
 _NEWTYPE_IDS = ("NewType", "typing.NewType")
 _ANNOTATED_IDS = (
     "Annotated", "typing.Annotated", "typing_extensions.Annotated")
+_FINAL_IDS = ("typing.Final", "typing_extensions.Final")
 
 #------------------------------------------------------
 # imports
@@ -412,8 +413,21 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     name = node.target.id
     typ = node.annotation
     val = self.convert_node(node.value)
+    msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
+    if typ.name and pytd_utils.MatchesFullName(typ, _FINAL_IDS):
+      if isinstance(node.value, types.Pyval):
+        # to_pytd_literal raises an exception if the value is a float, but
+        # checking upfront allows us to generate a nicer error message.
+        if isinstance(node.value.value, float):
+          msg = (f"Default value for {name}: Final can only be '...' or a "
+                 f"legal Literal parameter, got {val}")
+        else:
+          typ = node.value.to_pytd_literal()
+          val = pytd.AnythingType()
+      elif isinstance(val, pytd.NamedType):
+        typ = pytd.Literal(val)
+        val = pytd.AnythingType()
     if val and not types.is_any(val):
-      msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
       raise ParseError(msg)
     return pytd.Constant(name, typ, val)
 
