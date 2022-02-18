@@ -754,10 +754,6 @@ class POP_FINALLY(OpcodeWithArg):
   __slots__ = ()
 
 
-class RERAISE(Opcode):
-  __slots__ = ()
-
-
 class WITH_EXCEPT_START(Opcode):
   __slots__ = ()
 
@@ -826,6 +822,11 @@ class COPY_DICT_WITHOUT_KEYS(Opcode):
 
 
 class ROT_N(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class RERAISE(OpcodeWithArg):
   FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
@@ -1010,7 +1011,9 @@ python_3_10_mapping = _overlay_mapping(python_3_9_mapping, {
     32: MATCH_SEQUENCE,
     33: MATCH_KEYS,
     34: COPY_DICT_WITHOUT_KEYS,
+    48: None,  # was RERAISE in 3.9
     99: ROT_N,
+    119: RERAISE,
     129: GEN_START,
     152: MATCH_CLASS,
 })
