@@ -115,20 +115,17 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
       value = name_to_class[value.type.name]
     if not isinstance(value, pytd.Class):
       return alias
-    try:
+    if part in value:
       value = value.Lookup(part)
-    except KeyError:
+    else:
       for base in value.bases:
         if base.name not in name_to_class:
           # If the base is unknown, we don't know whether it contains 'part',
           # so it cannot be resolved.
           return alias
-        try:
+        if part in name_to_class[base.name]:
           value = name_to_class[base.name].Lookup(part)
-        except KeyError:
-          continue  # continue up the MRO
-        else:
-          break  # 'part' found!
+          break  # else continue up the MRO
       else:
         return alias  # unresolved
   if isinstance(value, pytd.Class):

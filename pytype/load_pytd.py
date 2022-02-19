@@ -515,10 +515,7 @@ class Loader:
         full_name = "%s.%s" % (name, base_name)
         # Check whether full_name is a submodule based on whether it is
         # defined in the __init__ file.
-        try:
-          attr = dep_ast.Lookup(full_name)
-        except KeyError:
-          attr = None
+        attr = dep_ast.Get(full_name)
         # 'from . import submodule as submodule' produces
         # Alias(submodule, NamedType(submodule)).
         if attr is None or (
@@ -733,10 +730,8 @@ class Loader:
     return self._modules.get_resolved_modules()
 
   def lookup_builtin(self, name):
-    try:
-      return self.builtins.Lookup(name)
-    except KeyError:
-      return self.typing.Lookup(name)
+    found = self.builtins.Get(name)
+    return found if found is not None else self.typing.Lookup(name)
 
 
 class PickledPyiLoader(Loader):

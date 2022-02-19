@@ -30,11 +30,10 @@ class Popen(abstract.PyTDClass):
   @property
   def new(self):
     if isinstance(self._new, Popen._Unloaded):
-      try:
-        f = self.pytd_cls.Lookup("__new__")
-      except KeyError:
+      if "__new__" not in self.pytd_cls:
         self._new = None
       else:
+        f = self.pytd_cls.Lookup("__new__")
         sigs = [
             abstract.PyTDSignature(f.name, sig, self.ctx)
             for sig in f.signatures
