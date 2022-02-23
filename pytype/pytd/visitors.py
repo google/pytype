@@ -504,6 +504,8 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     for member in sum((ast.constants, ast.type_params, ast.classes,
                        ast.functions, ast.aliases), ()):
       _, _, member_name = member.name.rpartition(".")
+      if member_name == "__all__":
+        continue
       new_name = self._ModulePrefix() + member_name
       if isinstance(member, pytd.Function) and member_name == "__getattr__":
         # def __getattr__(name) -> Any needs to be imported directly rather
@@ -511,10 +513,13 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         getattrs.add(member.Replace(name=new_name))
       else:
         # Imported type parameters produce both a type parameter definition and
-        # an alias. Keep the definition and discard the alias.
+        # an alias. Keep the definition if the name is not underscore-prefixed;
+        # always discard the alias.
         if isinstance(member, pytd.TypeParameter):
           type_param_names.add(new_name)
         elif new_name in type_param_names:
+          continue
+        if member_name.startswith("_"):
           continue
         t = pytd.ToType(member, allow_constants=True, allow_functions=True)
         aliases.append(pytd.Alias(new_name, t))
