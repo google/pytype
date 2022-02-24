@@ -9,7 +9,7 @@ import subprocess
 import sys
 import threading
 import traceback
-from typing import List, Tuple
+from typing import Iterable, List
 import weakref
 
 from pytype import pytype_source_utils
@@ -148,23 +148,25 @@ def native_str(s, errors="strict"):
     return s.decode("utf-8", errors)
 
 
-def get_python_exe(python_version) -> Tuple[List[str], List[str]]:
-  """Find a python executable to use.
+def get_python_exes(python_version) -> Iterable[List[str]]:
+  """Find possible python executables to use.
 
   Arguments:
     python_version: the version tuple (e.g. (3, 7))
-  Returns:
-    A tuple of the path to the executable and any command-line flags
+  Yields:
+    The path to the executable
   """
   # Use custom interpreters, if provided, in preference to the ones in $PATH
   custom_python_exe = pytype_source_utils.get_custom_python_exe(python_version)
   if custom_python_exe:
-    python_exe = [custom_python_exe]
-  elif sys.platform == "win32":
-    python_exe = ["py", "-%d.%d" % python_version]
-  else:
-    python_exe = ["python%d.%d" % python_version]
-  return python_exe, []
+    yield [custom_python_exe]
+    return
+  for version in (format_version(python_version), "3"):
+    if sys.platform == "win32":
+      python_exe = ["py", f"-{version}"]
+    else:
+      python_exe = [f"python{version}"]
+    yield python_exe
 
 
 def get_python_exe_version(python_exe: List[str]):
@@ -178,7 +180,7 @@ def get_python_exe_version(python_exe: List[str]):
   try:
     python_exe_version = subprocess.check_output(
         python_exe + ["-V"], stderr=subprocess.STDOUT).decode()
-  except subprocess.CalledProcessError:
+  except (subprocess.CalledProcessError, FileNotFoundError):
     return None
 
   return parse_exe_version_string(python_exe_version)

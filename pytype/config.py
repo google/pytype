@@ -525,15 +525,17 @@ class Postprocessor:
     if utils.can_compile_bytecode_natively(self.output_options.python_version):
       # pytype does not need an exe for bytecode compilation. Abort early to
       # avoid extracting a large unused exe into /tmp.
-      self.output_options.python_exe = (None, None)
+      self.output_options.python_exe = None
       return
 
-    python_exe, flags = utils.get_python_exe(self.output_options.python_version)
-    python_exe_version = utils.get_python_exe_version(python_exe)
-    if python_exe_version != self.output_options.python_version:
+    for exe in utils.get_python_exes(self.output_options.python_version):
+      exe_version = utils.get_python_exe_version(exe)
+      if exe_version == self.output_options.python_version:
+        self.output_options.python_exe = exe
+        break
+    else:
       self.error("Need a valid python%d.%d executable in $PATH" %
                  self.output_options.python_version)
-    self.output_options.python_exe = (python_exe, flags)
 
   def _store_disable(self, disable):
     if disable:
