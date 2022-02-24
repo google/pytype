@@ -20,9 +20,11 @@ class TestParseArgs(unittest.TestCase):
     _, kythe_args, _ = parse_args.parse_args(
         ["a.py",
          "--kythe_corpus", "foo",
-         "--kythe_root", "bar"])
+         "--kythe_root", "bar",
+         "--kythe_path", "baz"])
     self.assertEqual(kythe_args.corpus, "foo")
     self.assertEqual(kythe_args.root, "bar")
+    self.assertEqual(kythe_args.path, "baz")
 
   def test_imports_info(self):
     # The code reads and validates an import map within pytype's setup, so we
