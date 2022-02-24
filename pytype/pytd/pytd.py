@@ -210,6 +210,9 @@ class Class(Node):
       self._InitCache()
       return self._name2item.get(name)
 
+  def __contains__(self, name):
+    return bool(self.Get(name))
+
 
 class MethodKind(enum.Enum):
   METHOD = 'method'

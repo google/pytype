@@ -540,6 +540,26 @@ class ImportPathsTest(_LoaderTest):
     self.assertEqual(stub3_ast.Lookup("stub3.Mapping").type,
                      pytd.ClassType("typing.Mapping"))
 
+  def test_import_all(self):
+    ast = self._import(foo="__all__ = ['foo']", bar="__all__ = ['bar']", baz="""
+      from foo import *
+      from bar import *
+    """)
+    self.assertFalse(ast.aliases)
+
+  def test_import_private_typevar(self):
+    ast = self._import(foo="""
+      from typing import TypeVar
+      _T = TypeVar('_T')
+    """, bar="""
+      from typing import TypeVar
+      _T = TypeVar('_T')
+    """, baz="""
+      from foo import *
+      from bar import *
+    """)
+    self.assertFalse(ast.type_params)
+
 
 class ImportTypeMacroTest(_LoaderTest):
 

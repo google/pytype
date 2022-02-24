@@ -512,10 +512,9 @@ class PyTDClass(
     Returns:
       The converted attribute.
     """
-    try:
-      c = self.pytd_cls.Lookup(name)
-    except KeyError:
+    if name not in self.pytd_cls:
       return None
+    c = self.pytd_cls.Lookup(name)
     if isinstance(c, pytd.Constant):
       try:
         self._convert_member(c)
