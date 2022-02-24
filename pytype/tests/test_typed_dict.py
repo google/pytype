@@ -219,6 +219,18 @@ class TypedDictTest(test_base.BaseTest):
         a['z'] = 10  # typed-dict-error
     """)
 
+  def test_function_arg_getitem(self):
+    self.CheckWithErrors("""
+      from typing import TypedDict, Union
+      class A(TypedDict):
+        x: int
+        y: Union[int, str]
+      def f(a: A) -> int:
+        assert_type(a['x'], int)
+        assert_type(a['y'], Union[int, str])
+        return a['z']  # typed-dict-error
+    """)
+
   def test_output_type(self):
     ty = self.Infer("""
       from typing_extensions import TypedDict
@@ -281,9 +293,11 @@ class PyiTypedDictTest(test_base.BaseTest):
     with self.DepTree([("foo.pyi", _SINGLE)]):
       self.CheckWithErrors("""
         from foo import A
-        def f(d: A):
+        def f(d: A) -> str:
           a = d['x']
+          assert_type(a, int)
           b = d['z']  # typed-dict-error
+          return d['y']
       """)
 
   def test_function_return_type(self):
