@@ -403,6 +403,10 @@ class Converter(utils.ContextWeakrefMixin):
       elif (isinstance(pyval, abstract_utils.AsReturnValue) and
             isinstance(cls, pytd.NothingType)):
         return self.no_return.to_variable(node)
+      elif isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
+        param, = cls.parameters
+        return self.constant_to_var(abstract_utils.AsInstance(param), subst,
+                                    node, source_sets, discard_concrete_values)
       var = self.ctx.program.NewVariable()
       for t in pytd_utils.UnpackUnion(cls):
         if isinstance(t, pytd.TypeParameter):

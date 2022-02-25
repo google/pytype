@@ -720,6 +720,21 @@ class TypingTestPython3Feature(test_base.BaseTest):
         x: ClassVar[int]
     """)
 
+  def test_pyi_classvar_of_union(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import ClassVar, Optional
+        class Foo:
+          x: ClassVar[Optional[str]]
+      """)
+      self.Check("""
+        import foo
+        from typing import Optional
+        def f(x: Optional[str]):
+          pass
+        f(foo.Foo.x)
+      """, pythonpath=[d.path])
+
   def test_ordered_dict(self):
     self.Check("""
       import collections
