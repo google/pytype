@@ -36,8 +36,7 @@ class ConfigTest(unittest.TestCase):
     self.assertEqual(opts.input, "foo.py")
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, version)
-    exe, _ = opts.python_exe
-    self.assertIsNone(exe)
+    self.assertIsNone(opts.python_exe)
 
   def test_analyze_annotated_check(self):
     argv = ["--check", "test.py"]

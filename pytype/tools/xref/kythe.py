@@ -9,7 +9,7 @@ from pytype.tools.xref import indexer
 
 FILE_ANCHOR_SIGNATURE = ":module:"
 
-Args = collections.namedtuple("Args", ["root", "corpus"])
+Args = collections.namedtuple("Args", ["root", "corpus", "path"])
 
 
 # Kythe nodes
@@ -31,13 +31,14 @@ class Kythe:
   """Store a list of kythe graph entries."""
 
   def __init__(self, source, args=None):
-    self.path = source.filename
     if args:
       self.root = args.root
       self.corpus = args.corpus
+      self.path = args.path or source.filename
     else:
       self.root = ""
       self.corpus = ""
+      self.path = source.filename
     self.entries = []
     self._seen_entries = set()
     self.file_vname = self._add_file(source.text)

@@ -245,8 +245,14 @@ class TypedDict(abstract.Dict):
     self._check_str_key_value(node, name, value_var)
 
   def getitem_slot(self, node, name_var):
-    self._check_key(name_var)
-    return super().getitem_slot(node, name_var)
+    # A typed dict getitem should have a concrete string arg. If we have a var
+    # with multiple bindings just fall back to Any.
+    if not self._check_key(name_var):
+      return node, self.ctx.new_unsolvable(node)
+    name = abstract_utils.get_atomic_python_constant(name_var, str)
+    typ = self.fields[name]
+    ret = [v.instantiate(node) for v in typ.data]
+    return node, self.ctx.join_variables(node, ret)
 
   def setitem_slot(self, node, name_var, value_var):
     if self._check_key(name_var):

@@ -24,6 +24,7 @@ def make_parser():
   parser = argparse.ArgumentParser(usage="%(prog)s [options] input")
   add_kythe_field(parser, "kythe_corpus")
   add_kythe_field(parser, "kythe_root")
+  add_kythe_field(parser, "kythe_path")
   parser.add_argument("inputs", metavar="input", nargs=1,
                       help="A .py file to index")
   parser.add_argument("--debug", action="store_true",
@@ -67,5 +68,6 @@ def parse_args(argv):
 
   pytype_options = pytype_config.Options(cli_args, command_line=True)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
-  kythe_args = kythe.Args(corpus=args.kythe_corpus, root=args.kythe_root)
+  kythe_args = kythe.Args(
+      corpus=args.kythe_corpus, root=args.kythe_root, path=args.kythe_path)
   return (args, kythe_args, pytype_options)

@@ -35,9 +35,9 @@ def check_python_exe_or_die(required) -> List[str]:
   """Check if a python executable with the required version is in path."""
   error = []
   if sys.platform == "win32":
-    possible_exes = (["py"], ["py", "-%s" % required])
+    possible_exes = (["py", "-%s" % required], ["py3"], ["py"])
   else:
-    possible_exes = (["python"], ["python%s" % required])
+    possible_exes = (["python%s" % required], ["python3"], ["python"])
   for exe in possible_exes:
     valid, out = check_python_version(exe, required)
     if valid:
@@ -46,7 +46,7 @@ def check_python_exe_or_die(required) -> List[str]:
       error.append(out)
   logging.critical(
       "Could not find a valid python%s interpreter in path (found %s)",
-      required, ", ".join(error))
+      required, ", ".join(sorted(set(error))))
   sys.exit(1)
 
 

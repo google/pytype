@@ -162,7 +162,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     code_nested_loop = pyc.compile_src(
         src=self.src_nested_loop,
         python_version=self.python_version,
-        python_exe=utils.get_python_exe(self.python_version),
+        python_exe=next(utils.get_python_exes(self.python_version)),
         filename="<>")
     self.assertEqual(code_nested_loop.co_code,
                      self.code_nested_loop)
@@ -193,7 +193,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     code_deadcode = pyc.compile_src(
         src=self.src_deadcode,
         python_version=self.python_version,
-        python_exe=utils.get_python_exe(self.python_version),
+        python_exe=next(utils.get_python_exes(self.python_version)),
         filename="<>")
     self.assertEqual(code_deadcode.co_code,
                      self.code_deadcode)

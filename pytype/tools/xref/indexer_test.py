@@ -31,7 +31,7 @@ class IndexerTestMixin:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
-      kythe_args = kythe.Args(corpus="corpus", root="root")
+      kythe_args = kythe.Args(corpus="corpus", root="root", path="path")
       ix = indexer.process_file(options)
       kg = kythe.generate_graph(ix, kythe_args)
       # Collect all the references from the kythe graph.
@@ -178,6 +178,7 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
     k = kythe_index[0]["source"]
     self.assertEqual(k["corpus"], "corpus")
     self.assertEqual(k["root"], "root")
+    self.assertEqual(k["path"], "path")
 
   def test_kythe_file_node(self):
     code = textwrap.dedent("""

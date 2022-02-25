@@ -6,7 +6,7 @@ import os
 import re
 import subprocess
 import tempfile
-from typing import List, Tuple
+from typing import List
 
 from pytype import pytype_source_utils
 from pytype import utils
@@ -36,8 +36,7 @@ class CompileError(Exception):
 
 
 def compile_src_string_to_pyc_string(
-    src, filename, python_version, python_exe: Tuple[List[str], List[str]],
-    mode="exec"):
+    src, filename, python_version, python_exe: List[str], mode="exec"):
   """Compile Python source code to pyc data.
 
   This may use py_compile if the src is for the same version as we're running,
@@ -48,7 +47,7 @@ def compile_src_string_to_pyc_string(
     src: Python sourcecode
     filename: Name of the source file. For error messages.
     python_version: Python version, (major, minor).
-    python_exe: Tuple of a path to a Python interpreter and command-line flags.
+    python_exe: A path to a Python interpreter.
     mode: Same as builtins.compile: "exec" if source consists of a
       sequence of statements, "eval" if it consists of a single expression,
       or "single" if it consists of a single interactive statement.
@@ -75,8 +74,7 @@ def compile_src_string_to_pyc_string(
       # from the one we're running under, we spawn an external process.
       # We pass -E to ignore the environment so that PYTHONPATH and
       # sitecustomize on some people's systems don't mess with the interpreter.
-      exe, flags = python_exe
-      cmd = exe + flags + ["-E", "-", fi.name, filename or fi.name, mode]
+      cmd = python_exe + ["-E", "-", fi.name, filename or fi.name, mode]
 
       compile_script_src = pytype_source_utils.load_binary_file(COMPILE_SCRIPT)
 
@@ -148,7 +146,7 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
     src: Python source code.
     filename: The filename the sourcecode is from.
     python_version: Python version, (major, minor).
-    python_exe: Tuple of the path to Python interpreter and command-line flags.
+    python_exe: The path to Python interpreter.
     mode: "exec", "eval" or "single".
 
   Returns:
