@@ -1,11 +1,6 @@
 # Python dependencies for building and testing the pytype source code.
 # Make sure you also install the non-Python dependencies described in
 # https://github.com/google/pytype/blob/master/CONTRIBUTING.md#pytype-dependencies.
-
-# see https://github.com/PyCQA/astroid/issues/1237, can be removed once pylint
-# requires this version.
-astroid>=2.8.5
-
 attrs>=21.2.0
 dataclasses; python_version < '3.7'
 importlab>=0.7
