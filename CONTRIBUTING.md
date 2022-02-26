@@ -35,7 +35,6 @@ dependencies.
    and active, you can skip installing the official ninja distribution.
 6. __Python3.x Interpreter__: You will need to install an interpreter for a
    Python version that pytype can run under (see [Requirements](README.md#requirements)).
-   Make sure you also install the developer package (often named python3.x-dev).
 
 Required Python packages are listed in the [requirements.txt](requirements.txt)
 file in this repository. They can be installed with pip with the following
