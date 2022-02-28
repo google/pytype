@@ -95,7 +95,17 @@ class CmpErrorTest(test_base.BaseTest):
     self.CheckWithErrors("""
       import datetime
       a = datetime.timedelta(0)
-      b = bool(a > 0)  # wrong-arg-types
+      b = bool(a > 0)  # unsupported-operands
+    """)
+
+  def test_compare_primitives(self):
+    self.CheckWithErrors("""
+      100 < 'a'  # unsupported-operands
+      'a' <= 1.0  # unsupported-operands
+      10 < 10.0
+      10.0 >= 10
+      def f(x: int, y: str) -> bool:
+        return x < y  # unsupported-operands
     """)
 
 

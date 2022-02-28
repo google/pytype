@@ -77,12 +77,12 @@ SLOTS: List[Slot] = [
     # all typically done by __richcompare__
     Slot("__cmp__", "tp_compare", "cmp",
          python_version="2"),  # "tp_reserved" in Python 3
-    Slot("__lt__", "tp_richcompare", "richcmpfunc"),
-    Slot("__le__", "tp_richcompare", "richcmpfunc"),
-    Slot("__eq__", "tp_richcompare", "richcmpfunc"),
-    Slot("__ne__", "tp_richcompare", "richcmpfunc"),
-    Slot("__gt__", "tp_richcompare", "richcmpfunc"),
-    Slot("__ge__", "tp_richcompare", "richcmpfunc"),
+    Slot("__lt__", "tp_richcompare", "richcmpfunc", symbol="<"),
+    Slot("__le__", "tp_richcompare", "richcmpfunc", symbol="<="),
+    Slot("__eq__", "tp_richcompare", "richcmpfunc", symbol="=="),
+    Slot("__ne__", "tp_richcompare", "richcmpfunc", symbol="!="),
+    Slot("__gt__", "tp_richcompare", "richcmpfunc", symbol=">"),
+    Slot("__ge__", "tp_richcompare", "richcmpfunc", symbol=">="),
 
     Slot("__richcompare__", "tp_richcompare", "richcmpfunc"),
 

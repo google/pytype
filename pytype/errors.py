@@ -1027,14 +1027,20 @@ class ErrorLog(ErrorLogBase):
   @_error_name("unsupported-operands")
   def _unsupported_operands(self, stack, operator, *operands, details=None):
     """Unsupported operands."""
-    args = " and ".join(str(operand) for operand in operands)
-    if operator in slots.COMPARES:
+    # `operator` is sometimes the symbol and sometimes the method name, so we
+    # need to check for both here.
+    # TODO(mdemello): This is a mess, we should fix the call sites.
+    if operator in slots.SYMBOL_MAPPING:
+      symbol = slots.SYMBOL_MAPPING[operator]
+    else:
       symbol = operator
+    cmp = operator in slots.COMPARES or symbol in slots.COMPARES
+    args = " and ".join(str(operand) for operand in operands)
+    if cmp:
       details = f"Types {args} are not comparable."
       self.error(stack, f"unsupported operand types for {symbol}",
                  details=details)
     else:
-      symbol = slots.SYMBOL_MAPPING[operator]
       self.error(stack, f"unsupported operand type(s) for {symbol}: {args}",
                  details=details)
 
