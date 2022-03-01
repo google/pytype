@@ -1,7 +1,6 @@
 """Implementation of special members of typing_extensions."""
 from pytype import overlay
 from pytype.overlays import typing_overlay
-from pytype.pytd import pytd
 
 
 class TypingExtensionsOverlay(overlay.Overlay):
@@ -27,8 +26,7 @@ class TypingExtensionsOverlay(overlay.Overlay):
         continue
       if f"typing.{name}" not in ctx.loader.typing:
         if name not in member_map:
-          member_map[name] = _build_not_supported_yet(
-              f"typing_extensions.{name}", ast)
+          member_map[name] = _build_not_supported_yet(name, ast)
     super().__init__(ctx, "typing_extensions", member_map, ast)
 
   def _convert_member(self, member, subst=None):
@@ -47,12 +45,4 @@ def _build(name, ast=None):
 
 
 def _build_not_supported_yet(name, ast):
-
-  def build(ctx):
-    # Returns the actual type instead of just Any so that users can still get
-    # some utility out of unsupported features.
-    ctx.errorlog.not_supported_yet(ctx.vm.frames, name)
-    pytd_type = pytd.ToType(ast.Lookup(name), True, True, True)
-    return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)
-
-  return build
+  return lambda ctx: typing_overlay.not_supported_yet(name, ctx, ast)

@@ -386,9 +386,12 @@ class Literal(TypingContainer):
     return self.ctx.convert.merge_values(values)
 
 
-def not_supported_yet(name, ctx):
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, "typing." + name)
-  return ctx.convert.unsolvable
+def not_supported_yet(name, ctx, ast=None):
+  ast = ast or ctx.loader.typing
+  full_name = f"{ast.name}.{name}"
+  ctx.errorlog.not_supported_yet(ctx.vm.frames, full_name)
+  pytd_type = pytd.ToType(ast.Lookup(full_name), True, True, True)
+  return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)
 
 
 def build_namedtuple(ctx):
@@ -428,10 +431,6 @@ def build_cast(ctx):
 
 def build_final_decorator(ctx):
   return FinalDecorator.make("final", ctx, "typing")
-
-
-def build_final(ctx):
-  return not_supported_yet("Final", ctx)
 
 
 typing_overlay = {
