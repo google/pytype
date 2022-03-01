@@ -279,7 +279,7 @@ class Remote:
 
   @property
   def typename(self):
-    name = self.name.split(".")[0]
+    name = self.name.split(".", 1)[0]
     return self.module + "." + name
 
 
