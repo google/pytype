@@ -1,51 +1,53 @@
 """Trace function arguments, return values and calls to other functions."""
 
 import collections
+import dataclasses
 
-import attr
+from typing import Any, List
+
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 
 
-@attr.s
+@dataclasses.dataclass
 class Attr:
-  name = attr.ib()
-  node_type = attr.ib()
-  type = attr.ib()
-  attrib = attr.ib()
-  location = attr.ib()
+  name: str
+  node_type: str
+  type: Any
+  attrib: str
+  location: str
 
 
-@attr.s
+@dataclasses.dataclass
 class Arg:
-  name = attr.ib()
-  node_type = attr.ib()
-  type = attr.ib()
+  name: str
+  node_type: str
+  type: Any
 
 
-@attr.s
+@dataclasses.dataclass
 class Param:
-  name = attr.ib()
-  type = attr.ib()
+  name: str
+  type: Any
 
 
-@attr.s
+@dataclasses.dataclass
 class Call:
-  function_id = attr.ib()
-  args = attr.ib()
-  location = attr.ib()
+  function_id: str
+  args: List[Arg]
+  location: str
 
 
-@attr.s
+@dataclasses.dataclass
 class Function:
-  id = attr.ib()
-  params = attr.ib(factory=list)
-  param_attrs = attr.ib(factory=list)
-  local_attrs = attr.ib(factory=list)
-  calls = attr.ib(factory=list)
-  ret = attr.ib(default=None)
-  location = attr.ib(default=None)
+  id: str
+  params: List[Any] = dataclasses.field(default_factory=list)
+  param_attrs: List[Any] = dataclasses.field(default_factory=list)
+  local_attrs: List[Any] = dataclasses.field(default_factory=list)
+  calls: List[Any] = dataclasses.field(default_factory=list)
+  ret: Any = dataclasses.field(default=None)
+  location: Any = dataclasses.field(default=None)
 
 
 def unknown_to_any(typename):

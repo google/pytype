@@ -1389,6 +1389,7 @@ class VirtualMachine:
     leftover_x = self.ctx.program.NewVariable()
     leftover_y = self.ctx.program.NewVariable()
     op_not_eq = op_name not in ("EQ", "NE")
+    reported = False
     for b1 in x.bindings:
       for b2 in y.bindings:
         op = getattr(slots, op_name)
@@ -1399,6 +1400,7 @@ class VirtualMachine:
           val = None
           if state.node.HasCombination([b1, b2]):
             err = True
+            reported = True  # do not report the wrong-arg-types as well
             self.ctx.errorlog.unsupported_operands(self.frames, op, x, y)
         if val is None:
           # We have to special-case classes here, since getattribute(class, op)
@@ -1420,7 +1422,7 @@ class VirtualMachine:
       op = "__%s__" % op_name.lower()
       # If we do not already have a return value, raise any errors caught by the
       # overloaded comparison method.
-      report_errors = op_not_eq and not bool(ret.bindings)
+      report_errors = op_not_eq and not bool(ret.bindings) and not reported
       state, leftover_ret = vm_utils.call_binary_operator(
           state, op, leftover_x, leftover_y, report_errors=report_errors,
           ctx=self.ctx)

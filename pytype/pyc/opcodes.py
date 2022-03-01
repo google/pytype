@@ -1,5 +1,7 @@
 """Opcode definitions."""
 
+import abc
+
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
 
@@ -1019,20 +1021,23 @@ python_3_10_mapping = _overlay_mapping(python_3_9_mapping, {
 })
 
 
-class _LineNumberTableParser:
+class _BaseLineNumberTableParser(abc.ABC):
   """State machine for decoding a Python line number array."""
 
-  def __init__(self, lnotab, firstlineno):
+  def __init__(self, lnotab: bytes, firstlineno: int):
     assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
     self.next_addr = self.lnotab[0] if self.lnotab else 0
     self.pos = 0
 
-  def get(self, i):
+  @abc.abstractmethod
+  def get(self, i: int) -> int:
     """Get the line number for the instruction at the given position.
 
-    This does NOT allow random access. Call with incremental numbers.
+    This does NOT allow random access. Call with incremental numbers. The format
+    of the line number table is described in
+    https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt.
 
     Args:
       i: The byte position in the bytecode. i needs to stay constant or increase
@@ -1041,10 +1046,15 @@ class _LineNumberTableParser:
     Returns:
       The line number corresponding to the position at i.
     """
+
+
+class _LineNumberTableParserPre310(_BaseLineNumberTableParser):
+  """Parses the pre-Python 3.10 line number table format."""
+
+  def get(self, i):
     while i >= self.next_addr and self.pos < len(self.lnotab):
       line_diff = self.lnotab[self.pos + 1]
       # The Python docs have more details on this weird bit twiddling.
-      # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt
       # https://github.com/python/cpython/commit/f3914eb16d28ad9eb20fe5133d9aa83658bcc27f
       if line_diff >= 0x80:
         line_diff -= 0x100
@@ -1053,6 +1063,22 @@ class _LineNumberTableParser:
       self.pos += 2
       if self.pos < len(self.lnotab):
         self.next_addr += self.lnotab[self.pos]
+    return self.lineno
+
+
+class _LineNumberTableParser(_BaseLineNumberTableParser):
+  """Parses the Python 3.10+ line number table format.
+
+  See
+  https://github.com/python/cpython/commit/877df851c3ecdb55306840e247596e7b7805a60a
+  """
+
+  def get(self, i):
+    while i >= self.next_addr and self.pos < len(self.lnotab):
+      self.pos += 2
+      if self.pos < len(self.lnotab):
+        self.next_addr += self.lnotab[self.pos]
+        self.lineno += self.lnotab[self.pos + 1]
     return self.lineno
 
 
@@ -1112,10 +1138,12 @@ def _dis(data, python_version, mapping,
          co_freevars=None, co_lnotab=None, co_firstlineno=None):
   """Disassemble a string into a list of Opcode instances."""
   code = []
-  if co_lnotab:
+  if not co_lnotab:
+    lp = None
+  elif python_version >= (3, 10):
     lp = _LineNumberTableParser(co_lnotab, co_firstlineno)
   else:
-    lp = None
+    lp = _LineNumberTableParserPre310(co_lnotab, co_firstlineno)
   offset_to_index = {}
   if co_cellvars is not None and co_freevars is not None:
     cellvars_freevars = co_cellvars + co_freevars

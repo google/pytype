@@ -2,6 +2,7 @@
 
 import base64
 import collections
+import dataclasses
 
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import indexer
@@ -9,22 +10,39 @@ from pytype.tools.xref import indexer
 
 FILE_ANCHOR_SIGNATURE = ":module:"
 
-Args = collections.namedtuple("Args", ["root", "corpus", "path"])
+
+@dataclasses.dataclass(frozen=True)
+class Args:
+  root: str
+  corpus: str
+  path: str
 
 
 # Kythe nodes
 
-VName = collections.namedtuple(
-    "VName", ["signature", "path", "language", "root", "corpus"])
 
-Entry = collections.namedtuple(
-    "Entry", ["source", "kind", "target", "fact_label", "value"])
+@dataclasses.dataclass(frozen=True)
+class VName:
+  signature: str
+  path: str
+  language: str
+  root: str
+  corpus: str
 
-Fact = collections.namedtuple(
-    "Fact", ["source", "fact_name", "fact_value"])
 
-Edge = collections.namedtuple(
-    "Edge", ["source", "edge_kind", "target", "fact_name"])
+@dataclasses.dataclass(frozen=True)
+class Fact:
+  source: str
+  fact_name: str
+  fact_value: str
+
+
+@dataclasses.dataclass(frozen=True)
+class Edge:
+  source: str
+  edge_kind: str
+  target: str
+  fact_name: str
 
 
 class Kythe:
