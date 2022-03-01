@@ -1,11 +1,11 @@
 """Generate cross references from a project."""
 
 import collections
+import dataclasses
 import re
 import sys
-from typing import Optional
+from typing import Any, List, Optional
 
-import attr
 from pytype import analyze
 from pytype import config
 from pytype import context
@@ -102,16 +102,16 @@ class AttrError(Exception):
   pass
 
 
-@attr.s
+@dataclasses.dataclass
 class PytypeValue:
   """Stores a value inferred by pytype."""
 
-  module = attr.ib()
-  name = attr.ib()
-  typ = attr.ib()
-  id = attr.ib(default=None, init=False)
+  module: str
+  name: str
+  typ: Any
+  id: Optional[str] = dataclasses.field(default=None, init=False)
 
-  def __attrs_post_init__(self):
+  def __post_init__(self):
     self.id = self.module + "." + self.name
 
   def format(self):
@@ -159,10 +159,10 @@ class PytypeValue:
     return self.to_signature()
 
 
-@attr.s
+@dataclasses.dataclass
 class Module:
   """Module representation."""
-  name = attr.ib()
+  name: str
 
   def attr(self, attr_name):
     return Remote(self.name, attr_name, resolved=True)
@@ -172,13 +172,13 @@ class Module:
     return Remote(name, IMPORT_FILE_MARKER, resolved=True)
 
 
-@attr.s
+@dataclasses.dataclass
 class DocString:
   """Store the text and location of a docstring."""
 
-  text = attr.ib()
-  location = attr.ib()
-  length = attr.ib()
+  text: str
+  location: source.Location
+  length: int
 
   @classmethod
   def from_node(cls, ast, node):
@@ -196,7 +196,7 @@ class DocString:
     return None
 
 
-@attr.s
+@dataclasses.dataclass
 class Definition:
   """A symbol definition.
 
@@ -210,15 +210,15 @@ class Definition:
     id: The id
   """
 
-  name = attr.ib()
-  typ = attr.ib()
-  data = attr.ib()
-  scope = attr.ib()
-  target = attr.ib()
-  doc = attr.ib()
-  id = attr.ib(default=None, init=False)
+  name: str
+  typ: Any
+  data: Any
+  scope: str
+  target: Any
+  doc: Optional[str]
+  id: Optional[str] = dataclasses.field(default=None, init=False)
 
-  def __attrs_post_init__(self):
+  def __post_init__(self):
     self.id = self.scope + "." + self.name
 
   def format(self):
@@ -258,17 +258,17 @@ class Definition:
       return "typing.Any"
 
 
-@attr.s
+@dataclasses.dataclass
 class Remote:
   """A symbol from another module."""
 
-  module = attr.ib()
-  name = attr.ib()
-  resolved = attr.ib()
-  id = attr.ib(default=None, init=False)
-  typ = attr.ib(default=None, init=False)
+  module: str
+  name: str
+  resolved: bool
+  id: Optional[str] = dataclasses.field(default=None, init=False)
+  typ: Any = dataclasses.field(default=None, init=False)
 
-  def __attrs_post_init__(self):
+  def __post_init__(self):
     self.id = self.module + "/module." + self.name
 
   def attr(self, attr_name):
@@ -283,7 +283,7 @@ class Remote:
     return self.module + "." + name
 
 
-@attr.s
+@dataclasses.dataclass
 class DefLocation:
   """A location of a symbol definition.
 
@@ -295,20 +295,20 @@ class DefLocation:
   are redefined in the code.
   """
 
-  def_id = attr.ib()
-  location = attr.ib()
+  def_id: str
+  location: source.Location
 
 
-@attr.s
+@dataclasses.dataclass
 class FunctionParam:
   """A link between a function def and the defs of its params."""
 
-  def_id = attr.ib(type=str)
-  param_id = attr.ib(type=str)
-  position = attr.ib(type=int)
+  def_id: str
+  param_id: str
+  position: int
 
 
-@attr.s
+@dataclasses.dataclass
 class Reference:
   """A symbol holding a reference to a definition.
 
@@ -323,48 +323,48 @@ class Reference:
     id: The id
   """
 
-  name = attr.ib()
-  typ = attr.ib()
-  data = attr.ib()
-  scope = attr.ib()
-  ref_scope = attr.ib()
-  target = attr.ib()
-  location = attr.ib()
-  id = attr.ib(default=None, init=False)
+  name: str
+  typ: Any
+  data: Any
+  scope: str
+  ref_scope: Optional[str]
+  target: Any
+  location: source.Location
+  id: Optional[str] = dataclasses.field(default=None, init=False)
 
-  def __attrs_post_init__(self):
+  def __post_init__(self):
     self.id = self.scope + "." + self.name
 
   def format(self):
     return self.id
 
 
-@attr.s
+@dataclasses.dataclass
 class NameArg:
   """Representation of a single-variable function call argument."""
 
-  name = attr.ib()
-  type = attr.ib()
+  name: str
+  type: Any
 
 
-@attr.s
+@dataclasses.dataclass
 class ExprArg:
   """Representation of an expression function call argument."""
 
-  names = attr.ib()
-  type = attr.ib()
+  names: List[str]
+  type: Any
 
 
-@attr.s
+@dataclasses.dataclass
 class Funcall:
   """Representation of a function call."""
 
-  name = attr.ib()
-  scope = attr.ib()
-  func = attr.ib()
-  location = attr.ib()
-  args = attr.ib()
-  return_type = attr.ib()
+  name: str
+  scope: str
+  func: str
+  location: source.Location
+  args: List[Any]
+  return_type: str
 
 
 class Env:
