@@ -36,7 +36,6 @@ class AttrOverlay(overlay.Overlay):
         "s": Attrs.make,
         "dataclass": Attrs.make_dataclass,
         "ib": Attrib.make,
-        "Factory": Factory.make,
 
         # Attr's next-gen APIs
         # See https://www.attrs.org/en/stable/api.html#next-gen
@@ -506,11 +505,3 @@ def get_type_from_default(default_var, ctx):
     # Tuple[Any, ...], not Tuple[()].
     return ctx.convert.tuple_type
   return typ
-
-
-class Factory(abstract.PyTDFunction):
-  """Implementation of attr.Factory."""
-
-  @classmethod
-  def make(cls, ctx):
-    return super().make("Factory", ctx, "attr")
