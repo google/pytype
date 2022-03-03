@@ -59,26 +59,6 @@ class Dataclass(dataclass_overlay.Dataclass):
         return_type=self.ctx.convert.tuple_type,
     )
 
-  def _add_mapping_base(self, node, cls):
-    mapping = self.ctx.convert.name_to_value("typing.Mapping")
-    # The class's MRO is constructed from its bases at the moment the class is
-    # created, so both need to be updated.
-    bases = cls.bases()
-    # If any class in Mapping's MRO already exists in the list of bases, Mapping
-    # needs to be inserted before it, otherwise we put it at the end.
-    mapping_mro = {x.full_name for x in mapping.mro}
-    cls_bases = [x.data[0].full_name for x in bases]
-    cls_mro = [x.full_name for x in cls.mro]
-    bpos = [i for i, x in enumerate(cls_bases) if x in mapping_mro]
-    mpos = [i for i, x in enumerate(cls_mro) if x in mapping_mro]
-    if bpos:
-      bpos, mpos = bpos[0], mpos[0]
-      bases.insert(bpos, mapping.to_variable(node))
-      cls.mro = cls.mro[:mpos] + (mapping,) + cls.mro[mpos:]
-    else:
-      bases.append(mapping.to_variable(node))
-      cls.mro = cls.mro + (mapping,)
-
   def decorate(self, node, cls):
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
@@ -88,4 +68,5 @@ class Dataclass(dataclass_overlay.Dataclass):
     self._add_to_tuple_method(node, cls)
     if not self.args[cls]["mappable_dataclass"]:
       return
-    self._add_mapping_base(node, cls)
+    mapping = self.ctx.convert.name_to_value("typing.Mapping")
+    overlay_utils.add_base_class(node, cls, mapping)
