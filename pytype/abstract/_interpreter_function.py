@@ -429,6 +429,10 @@ class InterpreterFunction(SignedFunction):
                                      f_globals, defaults, kw_defaults, closure,
                                      annotations,
                                      overloads, ctx)
+    elif closure:
+      # Reusing the old closure variables would lead to the closure containing
+      # future values, such as Deleted.
+      cls._function_cache[key].closure = closure
     return cls._function_cache[key]
 
   def __init__(self, name, def_opcode, code, f_locals, f_globals, defaults,
