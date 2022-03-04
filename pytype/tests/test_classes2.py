@@ -232,6 +232,25 @@ class ClassesTest(test_base.BaseTest):
           return self.nonsense  # attribute-error
     """)
 
+  def test_callable_attribute(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Callable
+        class Foo:
+          x: Callable[[int], int]
+      """)
+      self.Check("""
+        import foo
+        from typing import Callable, Tuple
+        class Bar:
+          x: Callable[[int], int]
+          y: Callable[[int], int] = lambda i: i
+          def __init__(self, z: Callable[[int], int]):
+            self.z = z
+          def f(self) -> Tuple[int, int, int, int]:
+            return self.x(0), self.y(0), self.z(0), foo.Foo().x(0)
+      """, pythonpath=[d.path])
+
 
 class ClassesTestPython3Feature(test_base.BaseTest):
   """Tests for classes."""

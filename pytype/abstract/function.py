@@ -205,9 +205,11 @@ class Signature:
   def from_callable(cls, val):
     annotations = {argname(i): val.formal_type_parameters[i]
                    for i in range(val.num_args)}
+    param_names = tuple(sorted(annotations))
+    annotations["return"] = val.formal_type_parameters[abstract_utils.RET]
     return cls(
         name="<callable>",
-        param_names=tuple(sorted(annotations)),
+        param_names=param_names,
         posonly_count=0,
         varargs_name=None,
         kwonly_params=(),
