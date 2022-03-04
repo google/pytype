@@ -575,11 +575,40 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       obj.set_function_defaults(node, var)
       return node
 
+    def should_convert_to_func(v):
+      return (not v.from_annotation and
+              isinstance(v.cls, abstract.CallableClass) and
+              v.cls.num_args >= 1)
+
     if isinstance(obj, abstract.Instance) and name not in obj.members:
       # The previous value needs to be loaded at the root node so that
       # (1) it is overwritten by the current value and (2) it is still
       # visible on branches where the current value is not
       self._maybe_load_as_instance_attribute(self.ctx.root_node, obj, name)
+    elif (self.ctx.vm.frame.func and
+          self.ctx.vm.frame.func.data.is_class_builder and
+          obj is self.ctx.vm.frame.f_locals and
+          any(should_convert_to_func(v) for v in var.data)):
+      # If we are setting a class attribute to a Callable whose type does not
+      # come from a user-provided annotation, we convert the Callable to a
+      # SimpleFunction, so "self" is accounted for correctly in bound and
+      # unbound calls. We don't do this for user annotations because those
+      # typically omit "self".
+      var2 = self.ctx.program.NewVariable()
+      for b in var.bindings:
+        if not should_convert_to_func(b.data):
+          var2.PasteBinding(b)
+          continue
+        sig = function.Signature.from_callable(b.data.cls)
+        sig.name = name
+        # Rename the first parameter to "self".
+        self_name = sig.param_names[0]
+        sig.set_annotation("self", sig.annotations[self_name])
+        sig.del_annotation(self_name)
+        sig.param_names = ("self",) + sig.param_names[1:]
+        new_val = abstract.SimpleFunction.from_signature(sig, self.ctx)
+        var2.AddBinding(new_val, {b}, node)
+      var = var2
 
     variable = obj.members.get(name)
     if variable:

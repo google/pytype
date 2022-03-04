@@ -290,6 +290,69 @@ class DecoratorsTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
 
+  def test_instance_method_with_annotated_decorator(self):
+    ty = self.Infer("""
+      from typing import Any, Callable
+      def decorate(f: Callable[[Any, int], int]) -> Callable[[Any, int], int]:
+        return f
+      class Foo:
+        @decorate
+        def f(self, x):
+          return x
+      Foo().f(0)
+      Foo.f(Foo(), 0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Callable
+      def decorate(f: Callable[[Any, int], int]) -> Callable[[Any, int], int]:
+        ...
+      class Foo:
+        def f(self, _1: int) -> int: ...
+    """)
+
+  def test_instance_method_with_unannotated_decorator(self):
+    with self.DepTree([("lock.py", """
+      class Lock:
+        def __call__(self, f):
+          def wrapped(a, b):
+            pass
+          return wrapped
+    """)]):
+      ty = self.Infer("""
+        import lock
+        class Foo:
+          @lock.Lock()
+          def f(self):
+            pass
+        Foo().f(0)
+      """)
+      self.assertTypesMatchPytd(ty, """
+        import lock
+        from typing import Any
+        class Foo:
+          def f(self, _1) -> Any: ...
+      """)
+
+  def test_instance_method_from_generic_callable(self):
+    ty = self.Infer("""
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      def decorate(f) -> Callable[[T], T]:
+        return lambda x: x
+      class Foo:
+        @decorate
+        def f(self):
+          pass
+      assert_type(Foo().f(), Foo)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      def decorate(f) -> Callable[[T], T]: ...
+      class Foo:
+        def f(self: T) -> T: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
