@@ -133,3 +133,24 @@ def make_method(ctx,
     decorator = ctx.vm.load_special_builtin("staticmethod")
   args = function.Args(posargs=(retvar,))
   return decorator.call(node, funcv=None, args=args)[1]
+
+
+def add_base_class(node, cls, base_cls):
+  """Inserts base_cls into the MRO of cls."""
+  # The class's MRO is constructed from its bases at the moment the class is
+  # created, so both need to be updated.
+  bases = cls.bases()
+  # If any class in base_cls's MRO already exists in the list of bases, base_cls
+  # needs to be inserted before it, otherwise we put it at the end.
+  base_cls_mro = {x.full_name for x in base_cls.mro}
+  cls_bases = [x.data[0].full_name for x in bases]
+  cls_mro = [x.full_name for x in cls.mro]
+  bpos = [i for i, x in enumerate(cls_bases) if x in base_cls_mro]
+  mpos = [i for i, x in enumerate(cls_mro) if x in base_cls_mro]
+  if bpos:
+    bpos, mpos = bpos[0], mpos[0]
+    bases.insert(bpos, base_cls.to_variable(node))
+    cls.mro = cls.mro[:mpos] + (base_cls,) + cls.mro[mpos:]
+  else:
+    bases.append(base_cls.to_variable(node))
+    cls.mro = cls.mro + (base_cls,)

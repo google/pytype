@@ -212,7 +212,6 @@ py_library(
   DEPS
     .typing_overlay
     pytype.overlay
-    pytype.pytd.pytd
 )
 
 py_library(

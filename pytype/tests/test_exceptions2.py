@@ -102,6 +102,18 @@ class TestExceptionsPy3(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": ["Optional[Type[BaseException]]"]})
 
+  def test_yield_from(self):
+    self.Check("""
+      def f():
+        yield from g()
+      def g():
+        try:
+          __any_object__()
+        except Exception as e:
+          print(any(s in str(e) for s in 'abcde'))
+        yield None
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
