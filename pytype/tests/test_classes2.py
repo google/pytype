@@ -221,6 +221,17 @@ class ClassesTest(test_base.BaseTest):
         my_object: Type[MyClass]
     """)
 
+  def test_decorated_class(self):
+    self.CheckWithErrors("""
+      from typing import Any
+      def decorate(cls) -> Any:
+        return cls
+      @decorate
+      class Foo:
+        def f(self):
+          return self.nonsense  # attribute-error
+    """)
+
 
 class ClassesTestPython3Feature(test_base.BaseTest):
   """Tests for classes."""

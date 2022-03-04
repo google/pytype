@@ -76,6 +76,7 @@ class BuildClass(_base.BaseValue):
       # We have hit 'maximum depth' before setting func.last_frame
       func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
+    clsvar = None
     for base in bases:
       base = abstract_utils.get_atomic_value(
           base, default=self.ctx.convert.unsolvable)
@@ -86,25 +87,32 @@ class BuildClass(_base.BaseValue):
           self.ctx.options.use_enum_overlay):
         enum_base = abstract_utils.get_atomic_value(
             self.ctx.vm.loaded_overlays["enum"].members["Enum"])
-        return enum_base.make_class(
+        node, clsvar = enum_base.make_class(
             node, name, list(bases), cls_dict, metaclass,
             new_class_var=class_closure_var, is_decorated=self.is_decorated)
+        break
       if isinstance(base, PyTDClass):
         # Subclasses of these classes define their own class constructors.
         if base.full_name == "typing.NamedTuple":
-          return base.make_class(node, list(bases), cls_dict)
+          node, clsvar = base.make_class(node, list(bases), cls_dict)
+          break
         elif base.is_typed_dict_class:
-          return base.make_class(
+          node, clsvar = base.make_class(
               node, list(bases), cls_dict, total=kwargs.get("total"))
+          break
 
-    return self.ctx.make_class(
-        node,
-        name,
-        list(bases),
-        func.f_locals.to_variable(node),
-        metaclass,
-        new_class_var=class_closure_var,
-        is_decorated=self.is_decorated)
+    if not clsvar:
+      node, clsvar = self.ctx.make_class(
+          node,
+          name,
+          list(bases),
+          func.f_locals.to_variable(node),
+          metaclass,
+          new_class_var=class_closure_var,
+          is_decorated=self.is_decorated)
+    if self.ctx.options.trace_all_classes:
+      self.ctx.vm.trace_classdef(clsvar)
+    return node, clsvar
 
 
 class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
