@@ -158,6 +158,8 @@ FEATURE_FLAGS = [
      "Enable support for TypedDicts."),
     ("--trace-all-classes", False,
      "Trace class creation for better type analysis of class bodies."),
+    ("--strict-primitive-comparisons", False,
+     "Emit errors for comparisons between incompatible primitive types."),
 ]
 
 

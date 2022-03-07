@@ -492,10 +492,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def enter_If(self, node):
     # Evaluate the test and preemptively remove the invalid branch so we don't
     # waste time traversing it.
-    node.test = conditions.evaluate(
-        node.test, self.options.python_version, self.options.platform)
+    node.test = conditions.evaluate(node.test, self.options)
     if not isinstance(node.test, bool):
-      raise ParseError("Unexpected if statement" + debug.dump(node, ast3))
+      raise ParseError("Unexpected if statement " + debug.dump(node, ast3))
 
     if node.test:
       node.orelse = []
@@ -504,7 +503,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
 
   def visit_If(self, node):
     if not isinstance(node.test, bool):
-      raise ParseError("Unexpected if statement" + debug.dump(node, ast3))
+      raise ParseError("Unexpected if statement " + debug.dump(node, ast3))
 
     if node.test:
       return Splice(node.body)
@@ -704,6 +703,7 @@ def _feature_version(python_version: Tuple[int, ...]) -> int:
 # Options that will be copied from pytype.config.Options.
 _TOPLEVEL_PYI_OPTIONS = (
     "python_version",
+    "strict_primitive_comparisons",
 )
 
 
@@ -713,6 +713,7 @@ class PyiOptions:
 
   python_version: Tuple[int, int] = sys.version_info[:2]
   platform: str = _DEFAULT_PLATFORM
+  strict_primitive_comparisons: bool = True
 
   @classmethod
   def from_toplevel_options(cls, toplevel_options):

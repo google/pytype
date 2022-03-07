@@ -1,7 +1,6 @@
 """Process conditional blocks in pyi files."""
 
 import sys
-from typing import Tuple
 
 from pytype import utils
 from pytype.ast import visitor as ast_visitor
@@ -19,7 +18,7 @@ else:
 class ConditionEvaluator(ast_visitor.BaseVisitor):
   """Evaluates if statements in pyi files."""
 
-  def __init__(self, version, platform):
+  def __init__(self, options):
     super().__init__(ast=ast3)
     self._compares = {
         ast3.Eq: cmp_slots.EQ,
@@ -29,8 +28,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
         ast3.LtE: cmp_slots.LE,
         ast3.NotEq: cmp_slots.NE
     }
-    self._version = version
-    self._platform = platform
+    self._options = options
 
   def _eval_comparison(self, ident, op, value) -> bool:
     """Evaluate a comparison and return a bool.
@@ -59,7 +57,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
         raise ParseError(
             "sys.version_info must be compared to a tuple of integers")
       try:
-        actual = self._version[key]
+        actual = self._options.python_version[key]
       except IndexError as e:
         raise ParseError(utils.message(e)) from e
       if isinstance(key, slice):
@@ -72,7 +70,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
       if op not in valid_cmps:
         raise ParseError(
             "sys.platform must be compared using %s or %s" % valid_cmps)
-      actual = self._platform
+      actual = self._options.platform
     else:
       raise ParseError(f"Unsupported condition: {name!r}.")
     return cmp_slots.COMPARES[op](actual, value)
@@ -89,9 +87,12 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     if not isinstance(node.value, ast3.Name):
       self.fail()
     name = f"{node.value.id}.{node.attr}"
-    if node.value.id != "sys":
-      self.fail(name)
-    return name
+    if node.value.id == "sys":
+      return name
+    elif node.value.id == "PYTYPE_OPTIONS":
+      if hasattr(self._options, node.attr):
+        return bool(getattr(self._options, node.attr))
+    self.fail(name)
 
   def visit_Slice(self, node):
     return slice(node.lower, node.upper, node.step)
@@ -138,8 +139,8 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     return self._eval_comparison(ident, op, right)
 
 
-def evaluate(test: ast3.AST, version: Tuple[int, int], platform: str) -> bool:
-  return ConditionEvaluator(version, platform).visit(test)
+def evaluate(test: ast3.AST, options) -> bool:
+  return ConditionEvaluator(options).visit(test)
 
 
 def _is_int_tuple(value):
