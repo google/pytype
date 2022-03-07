@@ -362,6 +362,9 @@ class PytypeTest(test_base.UnitTest):
   def test_multi_line_statement_token_error(self):
     self._check_types_and_errors("tokenerror2.py", ["python-compiler-error"])
 
+  def test_constant_folding_error(self):
+    self._check_types_and_errors("constant.py", ["python-compiler-error"])
+
   def test_complex(self):
     self._check_types_and_errors("complex.py", [])
 
