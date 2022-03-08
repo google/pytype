@@ -20,6 +20,7 @@ from pytype.abstract import mixin
 from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import escape
 from pytype.pytd import optimize
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import slots
 from pytype.pytd import visitors
@@ -1005,6 +1006,8 @@ class ErrorLog(ErrorLogBase):
 
   def _show_variable(self, var):
     """Show variable as 'name: typ' or 'pyval: typ' if available."""
+    if not var.data:
+      return self._pytd_print(pytd.NothingType())
     val = var.data[0]
     name = val.ctx.vm.get_var_name(var)
     typ = self._join_printed_types(
