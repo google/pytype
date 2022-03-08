@@ -1,3 +1,25 @@
+Version 2022.03.08:
+
+Updates:
+* New feature flags:
+  * --trace-all-classes: traces class creation for better analysis of class
+    bodies.
+  * --strict-primitive-comparisons: catches illegal types in comparisons
+    involving primitives.
+  Once these features are stable, the flags will be removed and their behavior
+  made the default.
+
+Bug fixes:
+* Catch type errors when folding constants.
+* Fix Callable argument count inconsistency for decorated instance methods.
+* Fix a caching bug that caused closure variables to be reused.
+* Still look up typing and typing_extensions types when reporting
+  not-supported-yet.
+* Parse Python 3.10's new line number table format.
+* Unpack ClassVar in constant_to_var so unions are handled correctly.
+* Handle `__getitem__` correctly for typed dicts passed as function args.
+* Allow using the `python3` executable if it matches the requested version.
+
 Version 2022.02.23:
 
 Bug fixes:

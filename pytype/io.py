@@ -11,6 +11,7 @@ import libcst
 from pytype import __version__
 from pytype import analyze
 from pytype import config
+from pytype import constant_folding
 from pytype import directors
 from pytype import errors
 from pytype import load_pytd
@@ -149,6 +150,8 @@ def check_or_generate_pyi(options, loader=None):
     raise
   except pyc.CompileError as e:
     errorlog.python_compiler_error(options.input, e.lineno, e.error)
+  except constant_folding.ConstantError as e:
+    errorlog.python_compiler_error(options.input, e.lineno, e.message)
   except IndentationError as e:
     errorlog.python_compiler_error(options.input, e.lineno, e.msg)
   except libcst.ParserSyntaxError as e:

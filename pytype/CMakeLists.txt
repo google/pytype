@@ -264,6 +264,7 @@ py_library(
     ._utils
     .analyze
     .config
+    .constant_folding
     .directors
     .errors
     .load_pytd

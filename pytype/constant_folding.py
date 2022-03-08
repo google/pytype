@@ -40,6 +40,15 @@ from pytype.pyc import pyc
 MAX_VAR_SIZE = 64
 
 
+class ConstantError(Exception):
+  """Errors raised during constant folding."""
+
+  def __init__(self, message, op):
+    super().__init__(message)
+    self.lineno = op.line
+    self.message = message
+
+
 #  We track constants at three levels:
 #    typ: A typestruct representing the abstract type of the constant
 #    elements: A list or map of top-level types
@@ -221,11 +230,15 @@ class _Stack:
     return ret
 
   def build(self, python_type, op):
+    """Build a folded type."""
     collection = self.fold_args(op.arg, op)
     if collection:
       typename = python_type.__name__
       typ = (typename, collection.types)
-      value = python_type(collection.values)
+      try:
+        value = python_type(collection.values)
+      except TypeError as e:
+        raise ConstantError(f'TypeError: {e.args[0]}', op) from e
       elements = collection.elements
       self.push(_Constant(typ, value, elements, op))
 

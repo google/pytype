@@ -134,6 +134,7 @@ class BaseTest(unittest.TestCase):
                                          build_dict_literals_from_kwargs=True,
                                          strict_namedtuple_checks=True,
                                          strict_parameter_checks=True,
+                                         strict_primitive_comparisons=True,
                                          trace_all_classes=True,
                                          use_enum_overlay=True)
 

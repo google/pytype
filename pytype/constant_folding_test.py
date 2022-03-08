@@ -217,6 +217,10 @@ class TestFolding(test_base.UnitTest):
     """)
     self.assertCountEqual(actual, [(4, str, "", None), (7, str, "", None)])
 
+  def test_type_error(self):
+    with self.assertRaises(constant_folding.ConstantError):
+      self._process("x = {[1, 2]}")
+
 
 class TypeBuilderTestBase(test_base.UnitTest):
   """Base class for constructing and testing vm types."""
@@ -432,6 +436,7 @@ class PyvalTest(TypeBuilderTestBase):
     self.assertPytd(c, "Dict[str, int]")
     self.assertPytd(d, "int")
     self.assertPytd(e, "List[Union[bool, int]]")
+
 
 if __name__ == "__main__":
   unittest.main()
