@@ -461,6 +461,20 @@ class TestFinalInPyi(test_base.BaseTest):
         err, {"e": ["Class C", "overrides", "final class attribute", "x",
                     "base class A"]})
 
+  def test_match_assignment_against_annotation(self):
+    foo = """
+      from typing import Final
+      k: Final[float] = ...
+    """
+    with self.DepTree([("foo.pyi", foo)]):
+      err = self.CheckWithErrors("""
+        from foo import k
+        x: float = k
+        y: str = k  # annotation-type-mismatch[e]
+      """)
+    self.assertErrorSequences(
+        err, {"e": ["annotation for y", "str", "Final[float]"]})
+
 
 if __name__ == "__main__":
   test_base.main()

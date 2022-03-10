@@ -177,7 +177,7 @@ class TypedDictClass(abstract.PyTDClass):
       ret.set_str_item(node, k, v)
     return ret
 
-  def instantiate(self, node, container):
+  def instantiate(self, node, container=None):
     del container
     return TypedDict(self.props, self.ctx).to_variable(node)
 

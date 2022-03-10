@@ -1,8 +1,5 @@
 """Data structures and algorithms for boolean equations."""
 
-# "a += b" looks odd if a is a frozenset:
-# pylint: disable=g-no-augmented-assignment
-
 import collections
 import itertools
 
