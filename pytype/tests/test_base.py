@@ -10,6 +10,7 @@ from typing import Tuple
 from pytype import analyze
 from pytype import config
 from pytype import directors
+from pytype import errors
 from pytype import file_utils
 from pytype import load_pytd
 from pytype import module_utils
@@ -175,9 +176,9 @@ class BaseTest(unittest.TestCase):
         **self._GetPythonpathArgs(pythonpath, imports_map))
     try:
       src = _Format(code)
-      errorlog = test_utils.TestErrorLog(code)
-      if errorlog.expected:
+      if test_utils.ErrorMatcher(code).expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
+      errorlog = errors.ErrorLog()
       analyze.check_types(
           src, filename, loader=self.loader,
           errorlog=errorlog, options=self.options, **kwargs)
@@ -193,7 +194,7 @@ class BaseTest(unittest.TestCase):
   def _SetUpErrorHandling(self, code, pythonpath, analyze_annotated, quick,
                           imports_map):
     code = _Format(code)
-    errorlog = test_utils.TestErrorLog(code)
+    errorlog = errors.ErrorLog()
     self.ConfigureOptions(
         analyze_annotated=analyze_annotated, quick=quick,
         **self._GetPythonpathArgs(pythonpath, imports_map))
@@ -212,30 +213,35 @@ class BaseTest(unittest.TestCase):
     unit = optimize.Optimize(unit, builtins_pytd, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
     errorlog = kwargs["errorlog"]
-    errorlog.assert_errors_match_expected()
-    return pytd_utils.CanonicalOrdering(unit), errorlog
+    src = kwargs["src"]
+    matcher = test_utils.ErrorMatcher(src)
+    matcher.assert_errors_match_expected(errorlog)
+    return pytd_utils.CanonicalOrdering(unit), matcher
 
   def CheckWithErrors(self, code, deep=True, pythonpath=(),
                       analyze_annotated=True, quick=False, imports_map=None,
                       **kwargs):
+    """Check and match errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     analyze.check_types(filename="<inline>", deep=deep, **kwargs)
     errorlog = kwargs["errorlog"]
-    errorlog.assert_errors_match_expected()
-    return errorlog
+    src = kwargs["src"]
+    matcher = test_utils.ErrorMatcher(src)
+    matcher.assert_errors_match_expected(errorlog)
+    return matcher
 
   def InferFromFile(self, filename, pythonpath):
     """Runs inference on the contents of a file."""
     with open(filename, "r") as fi:
       code = fi.read()
-      errorlog = test_utils.TestErrorLog(code)
-      if errorlog.expected:
+      if test_utils.ErrorMatcher(code).expected:
         self.fail(
             "Cannot assert errors with InferFromFile(); use InferWithErrors()")
       self.ConfigureOptions(
           module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
+      errorlog = errors.ErrorLog()
       unit, _ = analyze.infer_types(code, errorlog, self.options,
                                     loader=self.loader, filename=filename)
       unit.Visit(visitors.VerifyVisitor())
@@ -339,11 +345,11 @@ class BaseTest(unittest.TestCase):
       self.assertEqual(param1.type, sig.return_type,
                        "Not identity: %r" % pytd_utils.Print(func))
 
-  def assertErrorRegexes(self, errorlog, expected_errors):
-    errorlog.assert_error_regexes(expected_errors)
+  def assertErrorRegexes(self, matcher, expected_errors):
+    matcher.assert_error_regexes(expected_errors)
 
-  def assertErrorSequences(self, errorlog, expected_errors):
-    errorlog.assert_error_sequences(expected_errors)
+  def assertErrorSequences(self, matcher, expected_errors):
+    matcher.assert_error_sequences(expected_errors)
 
   def _Pickle(self, ast, module_name):
     assert module_name
@@ -393,9 +399,9 @@ class BaseTest(unittest.TestCase):
         module_name=module_name, quick=quick, use_pickled_files=True,
         analyze_annotated=analyze_annotated,
         **self._GetPythonpathArgs(pythonpath, imports_map))
-    errorlog = test_utils.TestErrorLog(src)
-    if errorlog.expected:
+    if test_utils.ErrorMatcher(src).expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
+    errorlog = errors.ErrorLog()
     unit, builtins_pytd = analyze.infer_types(
         src, errorlog, self.options, loader=self.loader, **kwargs)
     unit.Visit(visitors.VerifyVisitor())

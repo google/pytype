@@ -2,6 +2,7 @@
 
 import os
 
+from pytype import errors
 from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -46,10 +47,11 @@ class ErrorLogTest(test_base.BaseTest):
 
   def test_populate_marks(self):
     # Test that assert_error_regexes populates self.marks if not already done.
-    errorlog = test_utils.TestErrorLog("x = 0")
-    self.assertIsNone(errorlog.marks)
-    self.assertErrorRegexes(errorlog, {})
-    self.assertIsNotNone(errorlog.marks)
+    matcher = test_utils.ErrorMatcher("x = 0")
+    self.assertIsNone(matcher.marks)
+    matcher.assert_errors_match_expected(errors.ErrorLog())
+    self.assertErrorRegexes(matcher, {})
+    self.assertIsNotNone(matcher.marks)
 
   def test_duplicate_mark(self):
     with self.assertRaises(AssertionError) as ctx:

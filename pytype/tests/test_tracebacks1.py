@@ -41,7 +41,7 @@ class TracebackTest(test_base.BaseTest):
         return {x.upper() for x in range(10)}  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*int$"})
-    error, = errors
+    error, = errors.errorlog
     self.assertEqual(error.methodname, "f")
 
   def test_comprehension_in_traceback(self):
