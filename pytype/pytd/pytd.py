@@ -36,9 +36,13 @@ class Type:
   name: Optional[str]
 
   # We type-annotate many things as pytd.Type when we'd really want them to be
-  # Intersection[pytd.Type, pytd.parse.node.Node], so we need to copy the type
-  # signature of Node.Visit here.
+  # Intersection[pytd.Type, pytd.parse.node.Node], so we need to copy some type
+  # signatures from Node here.
   if typing.TYPE_CHECKING:
+
+    def Replace(self: _TypeT, **kwargs) -> _TypeT:
+      del kwargs  # unused
+      return self
 
     def Visit(self: _TypeT, visitor, *args, **kwargs) -> _TypeT:
       del visitor, args, kwargs  # unused
