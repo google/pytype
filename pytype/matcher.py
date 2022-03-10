@@ -289,6 +289,19 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           return None  # a constraint option isn't allowed by the bound
     return subst
 
+  def _unwrap_final(self, val):
+    """Unwrap Final[T] -> T."""
+    if isinstance(val, abstract.FinalAnnotation):
+      # Final type created via an annotation in the current module
+      return val.annotation
+    elif (isinstance(val, abstract.Instance) and
+          val.cls.full_name == "typing.Final"):
+      # Final types loaded from a pyi file get converted to abstract.Instance
+      # with cls=typing.Final and instance type parameter T
+      return abstract_utils.get_atomic_value(
+          val.get_instance_type_parameter(abstract_utils.T))
+    return val
+
   def _match_value_against_type(self, value, other_type, subst, view):
     """One-way unify value into pytd type given a substitution.
 
@@ -306,10 +319,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     assert isinstance(other_type, abstract.BaseValue), other_type
 
     # Unwrap Final[T] here
-    if isinstance(left, abstract.FinalAnnotation):
-      left = left.annotation
-    if isinstance(other_type, abstract.FinalAnnotation):
-      other_type = other_type.annotation
+    left = self._unwrap_final(left)
+    other_type = self._unwrap_final(other_type)
 
     # Make sure we don't recurse infinitely when matching recursive types.
     if abstract_utils.is_recursive_annotation(other_type):
