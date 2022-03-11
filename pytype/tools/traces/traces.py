@@ -78,7 +78,6 @@ def trace(src, options=None):
     ret = analyze.infer_types(
         src=src,
         filename=options.input,
-        errorlog=None,
         options=options,
         loader=loader,
         ctx=ctx)

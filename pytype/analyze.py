@@ -32,11 +32,10 @@ class Analysis:
   errorlog: errors.ErrorLog
 
 
-def check_types(src, filename, errorlog, options, loader,
-                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
+def check_types(src, filename, options, loader, deep=True,
+                init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 maximum_depth=None, **kwargs):
   """Verify the Python code."""
-  del errorlog  # unused
   ctx = context.Context(
       options=options,
       generate_unknowns=False,
@@ -56,7 +55,6 @@ def check_types(src, filename, errorlog, options, loader,
 
 
 def infer_types(src,
-                errorlog,
                 options,
                 loader,
                 filename=None,
@@ -70,7 +68,6 @@ def infer_types(src,
 
   Args:
     src: A string containing Python source code.
-    errorlog: Where error messages go. Instance of errors.ErrorLog.
     options: config.Options object
     loader: A load_pytd.Loader instance to load PYI information.
     filename: Filename of the program we're parsing.
@@ -87,7 +84,6 @@ def infer_types(src,
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
-  del errorlog  # unused
   if not ctx:
     ctx = context.Context(
         options=options,

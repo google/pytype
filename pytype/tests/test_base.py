@@ -178,8 +178,7 @@ class BaseTest(unittest.TestCase):
       if test_utils.ErrorMatcher(code).expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
       ret = analyze.check_types(
-          src, filename, loader=self.loader,
-          errorlog=None, options=self.options, **kwargs)
+          src, filename, loader=self.loader, options=self.options, **kwargs)
       errorlog = ret.errorlog
     except directors.SkipFileError:
       errorlog = None
@@ -196,8 +195,7 @@ class BaseTest(unittest.TestCase):
     self.ConfigureOptions(
         analyze_annotated=analyze_annotated, quick=quick,
         **self._GetPythonpathArgs(pythonpath, imports_map))
-    return {"src": code, "errorlog": None, "options": self.options,
-            "loader": self.loader}
+    return {"src": code, "options": self.options, "loader": self.loader}
 
   def InferWithErrors(self, code, deep=True, pythonpath=(), module_name=None,
                       analyze_annotated=True, quick=False, imports_map=None,
@@ -240,8 +238,8 @@ class BaseTest(unittest.TestCase):
       self.ConfigureOptions(
           module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
-      ret = analyze.infer_types(code, errorlog=None, options=self.options,
-                                loader=self.loader, filename=filename)
+      ret = analyze.infer_types(code, options=self.options, loader=self.loader,
+                                filename=filename)
       unit = ret.ast
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
@@ -401,7 +399,7 @@ class BaseTest(unittest.TestCase):
     if test_utils.ErrorMatcher(src).expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
     ret = analyze.infer_types(
-        src, errorlog=None, options=self.options, loader=self.loader, **kwargs)
+        src, options=self.options, loader=self.loader, **kwargs)
     errorlog = ret.errorlog
     unit = ret.ast
     unit.Visit(visitors.VerifyVisitor())

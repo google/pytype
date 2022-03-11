@@ -71,7 +71,6 @@ def _call(analyze_types, src, options, loader):
   return analyze_types(
       src=src,
       filename=options.input,
-      errorlog=None,
       options=options,
       loader=loader,
       deep=deep)

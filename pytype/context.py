@@ -2,7 +2,7 @@
 
 import contextlib
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 from pytype import annotation_utils
 from pytype import attribute
@@ -30,12 +30,10 @@ class Context:
       self,
       options: config.Options,
       loader: load_pytd.Loader,
-      errorlog: Optional[errors.ErrorLog] = None,
       generate_unknowns: bool = False,
       store_all_calls: bool = False,
   ):
     # Inputs
-    self.errorlog = errorlog if errorlog is not None else errors.ErrorLog()
     self.options = options
     self.python_version: Tuple[int, int] = self.options.python_version
     self.loader = loader
@@ -51,6 +49,7 @@ class Context:
 
     # Helper classes/modules
     self.vm = tracer_vm.CallTracer(self)
+    self.errorlog = errors.ErrorLog()
     self.annotation_utils = annotation_utils.AnnotationUtils(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.converter_minimally_initialized = False

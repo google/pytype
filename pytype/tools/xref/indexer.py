@@ -1249,7 +1249,6 @@ def process_file(options, source_text=None, generate_callgraphs=False,
       ret = analyze.infer_types(
           src=src,
           filename=options.input,
-          errorlog=None,
           options=options,
           loader=loader,
           ctx=ctx)
