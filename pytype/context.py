@@ -2,7 +2,7 @@
 
 import contextlib
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pytype import annotation_utils
 from pytype import attribute
@@ -28,14 +28,14 @@ class Context:
 
   def __init__(
       self,
-      errorlog: errors.ErrorLog,
       options: config.Options,
       loader: load_pytd.Loader,
-      generate_unknowns=False,
-      store_all_calls=False,
+      errorlog: Optional[errors.ErrorLog] = None,
+      generate_unknowns: bool = False,
+      store_all_calls: bool = False,
   ):
     # Inputs
-    self.errorlog = errorlog
+    self.errorlog = errorlog if errorlog is not None else errors.ErrorLog()
     self.options = options
     self.python_version: Tuple[int, int] = self.options.python_version
     self.loader = loader

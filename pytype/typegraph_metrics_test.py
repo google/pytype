@@ -12,7 +12,9 @@ class MetricsTest(test_base.BaseTest):
   def setUp(self):
     super().setUp()
     self.errorlog = errors.ErrorLog()
-    self.ctx = context.Context(self.errorlog, self.options, self.loader)
+    self.ctx = context.Context(errorlog=self.errorlog,
+                               options=self.options,
+                               loader=self.loader)
 
   def run_program(self, src):
     return self.ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)

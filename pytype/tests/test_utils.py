@@ -7,6 +7,9 @@ import re
 import sys
 import tokenize
 
+from pytype import context
+from pytype import errors
+from pytype import load_pytd
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -354,4 +357,11 @@ def skipBeforePy(version, reason):
 
 def skipFromPy(version, reason):
   return unittest.skipUnless(sys.version_info[:2] < version, reason)
+
+
+def make_context(options):
+  """Create a minimal context for tests."""
+  return context.Context(errorlog=errors.ErrorLog(), options=options,
+                         loader=load_pytd.Loader(options))
+
 # pylint: enable=invalid-name

@@ -5,9 +5,6 @@ import textwrap
 from pytype import blocks
 from pytype import config
 from pytype import constant_folding
-from pytype import context
-from pytype import errors
-from pytype import load_pytd
 from pytype import state as frame_state
 from pytype.abstract import abstract
 from pytype.pyc import opcodes
@@ -228,8 +225,7 @@ class TypeBuilderTestBase(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
-    self.ctx = context.Context(errors.ErrorLog(), options,
-                               load_pytd.Loader(options))
+    self.ctx = test_utils.make_context(options)
 
   def assertPytd(self, val, expected):
     pytd_tree = val.to_type()

@@ -1,9 +1,6 @@
 """Tests for abstract.py."""
 
 from pytype import config
-from pytype import context
-from pytype import errors
-from pytype import load_pytd
 from pytype import special_builtins
 from pytype import state as frame_state
 from pytype.abstract import abstract
@@ -12,6 +9,7 @@ from pytype.abstract import function
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 from pytype.typegraph import cfg
 
 import unittest
@@ -23,8 +21,7 @@ class AbstractTestBase(test_base.UnitTest):
     super().setUp()
     options = config.Options.create(python_version=self.python_version,
                                     color="never")
-    self._ctx = context.Context(errors.ErrorLog(), options,
-                                load_pytd.Loader(options))
+    self._ctx = test_utils.make_context(options)
     self._program = self._ctx.program
     self._node = self._ctx.root_node.ConnectNew("test_node")
 
