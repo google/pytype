@@ -65,14 +65,13 @@ def _set_verbosity_from(posarg):
 @_set_verbosity_from(posarg=2)
 def _call(analyze_types, src, options, loader):
   """Helper function to call analyze.check/infer_types."""
-  errorlog = errors.ErrorLog()
   # 'deep' tells the analyzer whether to analyze functions not called from main.
   deep = not options.main_only
   loader = loader or load_pytd.create_loader(options)
-  return errorlog, analyze_types(
+  return analyze_types(
       src=src,
       filename=options.input,
-      errorlog=errorlog,
+      errorlog=None,
       options=options,
       loader=loader,
       deep=deep)
@@ -82,8 +81,8 @@ def check_py(src, options=None, loader=None):
   """Check the types of a string of source code."""
   options = options or config.Options.create()
   with config.verbosity_from(options):
-    errorlog, _ = _call(analyze.check_types, src, options, loader)
-  return errorlog
+    ret = _call(analyze.check_types, src, options, loader)
+  return ret.errorlog
 
 
 def generate_pyi(src, options=None, loader=None):
@@ -103,10 +102,11 @@ def generate_pyi(src, options=None, loader=None):
   """
   options = options or config.Options.create()
   with config.verbosity_from(options):
-    errorlog, (mod, builtins) = _call(analyze.infer_types, src, options, loader)
+    ret = _call(analyze.infer_types, src, options, loader)
+    mod = ret.ast
     mod.Visit(visitors.VerifyVisitor())
     mod = optimize.Optimize(mod,
-                            builtins,
+                            ret.builtins,
                             lossy=False,
                             use_abcs=False,
                             max_union=7,
@@ -120,7 +120,7 @@ def generate_pyi(src, options=None, loader=None):
   result += "\n"
   if options.quick:
     result = "# (generated with --quick)\n\n" + result
-  return errorlog, result, mod
+  return ret.errorlog, result, mod
 
 
 @_set_verbosity_from(posarg=0)

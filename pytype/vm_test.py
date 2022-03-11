@@ -22,7 +22,6 @@ import textwrap
 
 from pytype import blocks
 from pytype import context
-from pytype import errors
 from pytype import utils
 from pytype import vm
 from pytype.pyc import opcodes
@@ -60,12 +59,10 @@ class VmTestBase(test_base.BaseTest, test_utils.MakeCodeMixin):
 
   def setUp(self):
     super().setUp()
-    self.errorlog = errors.ErrorLog()
     self.ctx = self.make_context()
 
   def make_context(self):
-    return context.Context(errorlog=self.errorlog, options=self.options,
-                           loader=self.loader)
+    return context.Context(options=self.options, loader=self.loader)
 
 
 class TraceVmTestBase(VmTestBase):

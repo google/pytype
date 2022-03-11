@@ -9,7 +9,6 @@ from typing import Any, List, Optional
 from pytype import analyze
 from pytype import config
 from pytype import context
-from pytype import errors
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
@@ -1239,24 +1238,22 @@ def process_file(options, source_text=None, generate_callgraphs=False,
     PytypeError if pytype fails.
   """
   with config.verbosity_from(options):
-    errorlog = errors.ErrorLog()
     loader = load_pytd.create_loader(options)
     src = source_text or io.read_source_file(options.input)
     ctx = context.Context(
-        errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
         store_all_calls=True,
         loader=loader)
     with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
-      pytd_module, _ = analyze.infer_types(
+      ret = analyze.infer_types(
           src=src,
           filename=options.input,
-          errorlog=errorlog,
+          errorlog=None,
           options=options,
           loader=loader,
           ctx=ctx)
-
+      pytd_module = ret.ast
   # pylint: disable=unexpected-keyword-arg
   ast_root_node = ast3.parse(src, options.input,
                              feature_version=options.python_version[1])

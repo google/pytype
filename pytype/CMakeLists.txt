@@ -74,6 +74,7 @@ py_library(
     .context
     .convert_structural
     .debug
+    .errors
     .metrics
     pytype.abstract.abstract
     pytype.pytd.pytd
