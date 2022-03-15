@@ -7,7 +7,6 @@ import dataclasses
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import indexer
 
-
 FILE_ANCHOR_SIGNATURE = ":module:"
 
 
@@ -32,16 +31,16 @@ class VName:
 
 @dataclasses.dataclass(frozen=True)
 class Fact:
-  source: str
+  source: VName
   fact_name: str
   fact_value: str
 
 
 @dataclasses.dataclass(frozen=True)
 class Edge:
-  source: str
+  source: VName
   edge_kind: str
-  target: str
+  target: VName
   fact_name: str
 
 
@@ -154,18 +153,12 @@ def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
       start, end = index.get_def_offsets(defloc)
       anchor_vname = kythe.add_anchor(start, end)
       kythe.add_fact(
-          source=defn_vname,
-          fact_name="node/kind",
-          fact_value=defn.node_kind())
+          source=defn_vname, fact_name="node/kind", fact_value=defn.node_kind())
       if defn.subkind() is not None:
         kythe.add_fact(
-            source=defn_vname,
-            fact_name="subkind",
-            fact_value=defn.subkind())
+            source=defn_vname, fact_name="subkind", fact_value=defn.subkind())
       kythe.add_edge(
-          source=anchor_vname,
-          target=defn_vname,
-          edge_name="defines/binding")
+          source=anchor_vname, target=defn_vname, edge_name="defines/binding")
 
       try:
         alias = index.aliases[defn.id]
@@ -183,21 +176,12 @@ def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
         start, end = index.get_doc_offsets(defn.doc)
         anchor_vname = kythe.add_anchor(start, end)
         kythe.add_fact(
-            source=doc_vname,
-            fact_name="node/kind",
-            fact_value="doc")
-        kythe.add_fact(
-            source=doc_vname,
-            fact_name="text",
-            fact_value=doc.text)
+            source=doc_vname, fact_name="node/kind", fact_value="doc")
+        kythe.add_fact(source=doc_vname, fact_name="text", fact_value=doc.text)
         kythe.add_edge(
-            source=anchor_vname,
-            target=doc_vname,
-            edge_name="defines")
+            source=anchor_vname, target=doc_vname, edge_name="defines")
         kythe.add_edge(
-            source=doc_vname,
-            target=defn_vname,
-            edge_name="documents")
+            source=doc_vname, target=defn_vname, edge_name="documents")
 
 
 def _process_params(kythe, index):
@@ -286,10 +270,7 @@ def _process_calls(kythe, index):
       if target:
         start, end = index.get_ref_bounds(call_ref)
         anchor_vname = kythe.anchor_vname(start, end)
-        kythe.add_edge(
-            source=anchor_vname,
-            target=target,
-            edge_name="ref/call")
+        kythe.add_edge(source=anchor_vname, target=target, edge_name="ref/call")
         # The call is a child of the enclosing function/class (this lets us
         # generate call graphs).
         if ref.scope != "module":
