@@ -3,13 +3,11 @@
 import textwrap
 
 from pytype import config
-from pytype import context
-from pytype import errors
 from pytype import file_utils
-from pytype import load_pytd
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 import unittest
 
@@ -19,8 +17,7 @@ class MatcherTestBase(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
-    self.ctx = context.Context(errors.ErrorLog(), options,
-                               load_pytd.Loader(options))
+    self.ctx = test_utils.make_context(options)
     self.matcher = self.ctx.matcher(self.ctx.root_node)
 
   def _match_var(self, left, right):

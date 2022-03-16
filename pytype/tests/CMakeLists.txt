@@ -39,6 +39,7 @@ py_test(
   DEPS
     ._test_base
     .test_utils
+    pytype.libvm
     pytype.utils
 )
 

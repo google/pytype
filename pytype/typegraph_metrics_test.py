@@ -2,7 +2,6 @@
 import textwrap
 
 from pytype import context
-from pytype import errors
 from pytype import typegraph
 from pytype.tests import test_base
 
@@ -11,8 +10,7 @@ class MetricsTest(test_base.BaseTest):
 
   def setUp(self):
     super().setUp()
-    self.errorlog = errors.ErrorLog()
-    self.ctx = context.Context(self.errorlog, self.options, self.loader)
+    self.ctx = context.Context(options=self.options, loader=self.loader)
 
   def run_program(self, src):
     return self.ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)

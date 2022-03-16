@@ -7,7 +7,8 @@ import re
 import sys
 import tokenize
 
-from pytype import errors
+from pytype import context
+from pytype import load_pytd
 from pytype import state as frame_state
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -213,17 +214,18 @@ class SequenceMatcher:
     return repr(self.seq)
 
 
-class TestErrorLog(errors.ErrorLog):
-  """A subclass of ErrorLog that holds extra information for tests.
+class ErrorMatcher:
+  """An ErrorLog matcher to help with test assertions.
 
   Takes the source code as an init argument, and constructs two dictionaries
   holding parsed comment directives.
 
   Attributes:
+    errorlog: The errorlog being matched against
     marks: { mark_name : errors.Error object }
     expected: { line number : sequence of expected error codes and mark names }
 
-  Also adds an assertion matcher to match self.errors against a list of expected
+  Adds an assertion matcher to match errorlog.errors against a list of expected
   errors of the form [(line number, error code, message regex)].
 
   See tests/test_base_test.py for usage examples.
@@ -232,26 +234,33 @@ class TestErrorLog(errors.ErrorLog):
   ERROR_RE = re.compile(r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?$")
 
   def __init__(self, src):
-    super().__init__()
-    self.marks = None  # set by assert_errors_match_expected()
+    # errorlog and marks are set by assert_errors_match_expected()
+    self.errorlog = None
+    self.marks = None
     self.expected = self._parse_comments(src)
 
   def _fail(self, msg):
     if self.marks:
-      self.print_to_stderr()
+      self.errorlog.print_to_stderr()
     raise AssertionError(msg)
 
-  def assert_errors_match_expected(self):
+  def has_error(self):
+    return self.errorlog and self.errorlog.has_error()
+
+  def assert_errors_match_expected(self, errorlog):
+    """Matches expected errors against the errorlog, populating self.marks."""
+
     def _format_error(line, code, mark=None):
       formatted = "Line %d: %s" % (line, code)
       if mark:
         formatted += "[%s]" % mark
       return formatted
 
+    self.errorlog = errorlog
     self.marks = {}
     expected = copy.deepcopy(self.expected)
 
-    for error in self.unique_sorted_errors():
+    for error in self.errorlog.unique_sorted_errors():
       errs = expected[error.lineno]
       for i, (code, mark) in enumerate(errs):
         if code == error.name:
@@ -276,8 +285,8 @@ class TestErrorLog(errors.ErrorLog):
       self._fail("Errors not found:\n" + "\n".join(leftover_errors))
 
   def _assert_error_messages(self, matchers):
-    if self.marks is None:
-      self.assert_errors_match_expected()  # populates self.marks
+    """Assert error messages."""
+    assert self.marks is not None
     for mark, error in self.marks.items():
       try:
         matcher = matchers.pop(mark)
@@ -298,6 +307,7 @@ class TestErrorLog(errors.ErrorLog):
     self._assert_error_messages(matchers)
 
   def _parse_comments(self, src):
+    """Parse comments."""
     src = io.StringIO(src)
     expected = collections.defaultdict(list)
     used_marks = set()
@@ -346,4 +356,10 @@ def skipBeforePy(version, reason):
 
 def skipFromPy(version, reason):
   return unittest.skipUnless(sys.version_info[:2] < version, reason)
+
+
+def make_context(options):
+  """Create a minimal context for tests."""
+  return context.Context(options=options, loader=load_pytd.Loader(options))
+
 # pylint: enable=invalid-name

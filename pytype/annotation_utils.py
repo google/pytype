@@ -334,7 +334,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       # Experimental "inferred type": see b/213607272.
       return AnnotatedValue(None, value)
     frame = self.ctx.vm.frame
-    with self.ctx.vm.generate_late_annotations(self.ctx.vm.simple_stack()):
+    stack = self.ctx.vm.simple_stack()
+    with self.ctx.vm.generate_late_annotations(stack):
       var, errorlog = abstract_utils.eval_expr(self.ctx, node, frame.f_globals,
                                                frame.f_locals, annot)
     if errorlog:
@@ -350,6 +351,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       # We do not want to instantiate a TypedDict annotation if we have a
       # concrete value.
       return AnnotatedValue(typ, value)
+    elif typ.full_name == "typing.TypeAlias":
+      # Validate that 'value' is a legal type alias.
+      self.extract_annotation(node, value, name, stack)
+      return AnnotatedValue(None, value)
     else:
       return AnnotatedValue(typ, annot_val)
 

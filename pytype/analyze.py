@@ -1,13 +1,18 @@
 """Code for checking and inferring types."""
 
+import dataclasses
 import logging
 import subprocess
+
+from typing import Optional
 
 from pytype import context
 from pytype import convert_structural
 from pytype import debug
+from pytype import errors
 from pytype import metrics
 from pytype.abstract import abstract_utils
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
@@ -20,12 +25,18 @@ QUICK_CHECK_MAXIMUM_DEPTH = 2  # during quick checking
 QUICK_INFER_MAXIMUM_DEPTH = 1  # during quick inference
 
 
-def check_types(src, filename, errorlog, options, loader,
-                deep=True, init_maximum_depth=INIT_MAXIMUM_DEPTH,
+@dataclasses.dataclass
+class Analysis:
+  ast: Optional[pytd.TypeDeclUnit]
+  builtins: Optional[pytd.TypeDeclUnit]
+  errorlog: errors.ErrorLog
+
+
+def check_types(src, filename, options, loader, deep=True,
+                init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 maximum_depth=None, **kwargs):
   """Verify the Python code."""
   ctx = context.Context(
-      errorlog=errorlog,
       options=options,
       generate_unknowns=False,
       loader=loader,
@@ -40,10 +51,10 @@ def check_types(src, filename, errorlog, options, loader,
     ctx.vm.analyze(loc, defs, maximum_depth=maximum_depth)
   snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, ctx.program)
+  return Analysis(None, None, ctx.errorlog)
 
 
 def infer_types(src,
-                errorlog,
                 options,
                 loader,
                 filename=None,
@@ -57,7 +68,6 @@ def infer_types(src,
 
   Args:
     src: A string containing Python source code.
-    errorlog: Where error messages go. Instance of errors.ErrorLog.
     options: config.Options object
     loader: A load_pytd.Loader instance to load PYI information.
     filename: Filename of the program we're parsing.
@@ -76,7 +86,6 @@ def infer_types(src,
   """
   if not ctx:
     ctx = context.Context(
-        errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
         store_all_calls=not deep,
@@ -126,7 +135,7 @@ def infer_types(src,
     # Remove "~list" etc.:
     ast = convert_structural.extract_local(ast)
   _maybe_output_debug(options, ctx.program)
-  return ast, builtins_pytd
+  return Analysis(ast, builtins_pytd, ctx.errorlog)
 
 
 def _maybe_output_debug(options, program):

@@ -1,11 +1,9 @@
 """Tests for abstract_utils.py."""
 
 from pytype import config
-from pytype import context
-from pytype import errors
-from pytype import load_pytd
 from pytype.abstract import abstract_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 import unittest
 
@@ -15,8 +13,7 @@ class GetViewsTest(test_base.UnitTest):
   def setUp(self):
     super().setUp()
     options = config.Options.create(python_version=self.python_version)
-    self._ctx = context.Context(
-        errors.ErrorLog(), options, load_pytd.Loader(options))
+    self._ctx = test_utils.make_context(options)
 
   def test_basic(self):
     v1 = self._ctx.program.NewVariable([self._ctx.convert.unsolvable], [],

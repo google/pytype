@@ -22,7 +22,6 @@ import textwrap
 
 from pytype import blocks
 from pytype import context
-from pytype import errors
 from pytype import utils
 from pytype import vm
 from pytype.pyc import opcodes
@@ -55,18 +54,31 @@ class TraceVM(vm.VirtualMachine):
     return super().run_instruction(op, state)
 
 
-class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+class VmTestBase(test_base.BaseTest, test_utils.MakeCodeMixin):
+  """Base for VM tests."""
+
+  def setUp(self):
+    super().setUp()
+    self.ctx = self.make_context()
+
+  def make_context(self):
+    return context.Context(options=self.options, loader=self.loader)
+
+
+class TraceVmTestBase(VmTestBase):
+  """Base for VM tests with a tracer vm."""
+
+  def setUp(self):
+    super().setUp()
+    self.ctx.vm = TraceVM(self.ctx)
+
+
+class BytecodeTest(TraceVmTestBase):
   """Tests for process_code in blocks.py and VM integration."""
 
   # We only test Python 3.7 bytecode (see setUpClass()), since the bytecode
   # changes from version to version.
   python_version = (3, 7)
-
-  def setUp(self):
-    super().setUp()
-    self.errorlog = errors.ErrorLog()
-    self.ctx = context.Context(self.errorlog, self.options, self.loader)
-    self.ctx.vm = TraceVM(self.ctx)
 
   @test_utils.skipUnlessPy((3, 7), reason="Only testing one version.")
   def test_simple(self):
@@ -77,7 +89,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         0x53, 0,  # 3 RETURN_VALUE (0)
     ], name="simple")
     code = blocks.process_code(code, self.python_version)
-    ctx = context.Context(self.errorlog, self.options, loader=self.loader)
+    ctx = self.make_context()
     ctx.vm = vm.VirtualMachine(ctx)
     ctx.vm.run_bytecode(ctx.program.NewCFGNode(), code)
 
@@ -111,7 +123,7 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
         o.RETURN_VALUE, 0,
     ])
     code = blocks.process_code(code, self.python_version)
-    ctx = context.Context(self.errorlog, self.options, loader=self.loader)
+    ctx = self.make_context()
     ctx.vm = vm.VirtualMachine(ctx)
     ctx.vm.run_bytecode(ctx.program.NewCFGNode(), code)
 
@@ -201,14 +213,8 @@ class BytecodeTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertCountEqual(self.ctx.vm.instructions_executed, [0, 1])
 
 
-class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+class TraceTest(TraceVmTestBase):
   """Tests for opcode tracing in the VM."""
-
-  def setUp(self):
-    super().setUp()
-    self.errorlog = errors.ErrorLog()
-    self.ctx = context.Context(self.errorlog, self.options, self.loader)
-    self.ctx.vm = TraceVM(self.ctx)
 
   def test_empty_data(self):
     """Test that we can trace values without data."""
@@ -243,13 +249,8 @@ class TraceTest(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.assertEqual(actual, expected)
 
 
-class AnnotationsTest(test_base.BaseTest, test_utils.MakeCodeMixin):
+class AnnotationsTest(VmTestBase):
   """Tests for recording annotations."""
-
-  def setUp(self):
-    super().setUp()
-    self.errorlog = errors.ErrorLog()
-    self.ctx = context.Context(self.errorlog, self.options, self.loader)
 
   def test_record_local_ops(self):
     self.ctx.vm.run_program("v: int = None", "", maximum_depth=10)

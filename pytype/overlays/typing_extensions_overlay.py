@@ -16,6 +16,7 @@ class TypingExtensionsOverlay(overlay.Overlay):
         "Protocol": _build("typing.Protocol"),
         "runtime": _build("typing.runtime_checkable"),
         "SupportsIndex": _build("typing_extensions.SupportsIndex", ast),
+        "TypeAlias": _build("typing.TypeAlias"),
         "TypedDict": typing_overlay.typing_overlay["TypedDict"],
     }
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:

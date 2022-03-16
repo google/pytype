@@ -6,7 +6,6 @@ import re
 from pytype import analyze
 from pytype import config
 from pytype import context
-from pytype import errors
 from pytype import load_pytd
 from pytype.ast import visitor
 from pytype.pytd import pytd
@@ -69,22 +68,20 @@ def trace(src, options=None):
   Returns:
     A source.Code object.
   """
-  errorlog = errors.ErrorLog()
   options = options or config.Options.create()
   with config.verbosity_from(options):
     loader = load_pytd.create_loader(options)
     ctx = context.Context(
-        errorlog=errorlog,
         options=options,
         generate_unknowns=options.protocols,
         loader=loader)
-    pytd_module, _ = analyze.infer_types(
+    ret = analyze.infer_types(
         src=src,
         filename=options.input,
-        errorlog=errorlog,
         options=options,
         loader=loader,
         ctx=ctx)
+    pytd_module = ret.ast
     raw_traces = []
     for op, symbol, data in ctx.vm.opcode_traces:
       raw_traces.append(

@@ -28,14 +28,12 @@ class Context:
 
   def __init__(
       self,
-      errorlog: errors.ErrorLog,
       options: config.Options,
       loader: load_pytd.Loader,
-      generate_unknowns=False,
-      store_all_calls=False,
+      generate_unknowns: bool = False,
+      store_all_calls: bool = False,
   ):
     # Inputs
-    self.errorlog = errorlog
     self.options = options
     self.python_version: Tuple[int, int] = self.options.python_version
     self.loader = loader
@@ -51,6 +49,7 @@ class Context:
 
     # Helper classes/modules
     self.vm = tracer_vm.CallTracer(self)
+    self.errorlog = errors.ErrorLog()
     self.annotation_utils = annotation_utils.AnnotationUtils(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.converter_minimally_initialized = False
