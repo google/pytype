@@ -936,5 +936,42 @@ class LiteralTest(test_base.BaseTest):
     """)
 
 
+class TypeAliasTest(test_base.BaseTest):
+  """Tests for typing.TypeAlias."""
+
+  def test_basic(self):
+    for suffix in ("", "_extensions"):
+      typing_module = f"typing{suffix}"
+      with self.subTest(typing_module=typing_module):
+        ty = self.Infer(f"""
+          from {typing_module} import TypeAlias
+          X: TypeAlias = int
+        """)
+        self.assertTypesMatchPytd(ty, """
+          from typing import Type
+          X: Type[int]
+        """)
+
+  def test_bad_alias(self):
+    self.CheckWithErrors("""
+      from typing import TypeAlias
+      X: TypeAlias = 0  # invalid-annotation
+    """)
+
+  def test_pyi(self):
+    for suffix in ("", "_extensions"):
+      typing_module = f"typing{suffix}"
+      with self.subTest(typing_module=typing_module):
+        with file_utils.Tempdir() as d:
+          d.create_file("foo.pyi", f"""
+            from {typing_module} import TypeAlias
+            X: TypeAlias = int
+          """)
+          self.Check("""
+            import foo
+            assert_type(foo.X, "Type[int]")
+          """, pythonpath=[d.path])
+
+
 if __name__ == "__main__":
   test_base.main()
