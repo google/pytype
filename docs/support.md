@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-03-16T18:14-07:00 -->
 
 <!--te-->
 
@@ -70,7 +70,7 @@ Feature                                                         | Version | Supp
 [PEP 593 -- Flexible Function and Variable Annotations][593]    | 3.9     | ✅       |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]           | 3.10    | ❌       | [#785][union-pipe]
 [PEP 612 -- Parameter Specification Variables][612]             | 3.10    | ❌       | [#786][param-spec]
-[PEP 613 -- Explicit Type Aliases][613]                         | 3.10    | ❌       | [#787][typealias]
+[PEP 613 -- Explicit Type Aliases][613]                         | 3.10    | ✅       |
 [PEP 646 -- Variadic Generics][646]                             | 3.11    | ❌       |
 [PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
 [PEP 673 -- Self Type][673]                                     | 3.11    | ❌       |
@@ -118,5 +118,4 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [py39]: https://github.com/google/pytype/issues/749
 [py310]: https://github.com/google/pytype/issues/1022
 [type-guards]: https://github.com/google/pytype/issues/916
-[typealias]: https://github.com/google/pytype/issues/787
 [union-pipe]: https://github.com/google/pytype/issues/785
