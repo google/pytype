@@ -972,6 +972,16 @@ class TypeAliasTest(test_base.BaseTest):
             assert_type(foo.X, "Type[int]")
           """, pythonpath=[d.path])
 
+  def test_forward_ref(self):
+    ty = self.Infer("""
+      from typing import TypeAlias
+      X: TypeAlias = "int"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Type
+      X: Type[int]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
