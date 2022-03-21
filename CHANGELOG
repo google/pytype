@@ -1,3 +1,14 @@
+Version 2022.03.21:
+
+Updates:
+* Support typing.TypeAlias.
+
+Bug fixes:
+* Fix a crash when reporting an error for an undefined value.
+* Fix TypedDictClass.instantiate(...) signature.
+* Fix matching of Final[T] against T for imported final constants.
+* Check IsVisible() before reporting errors in function.call_function.
+
 Version 2022.03.08:
 
 Updates:
