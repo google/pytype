@@ -99,9 +99,10 @@ class SimpleValue(_base.BaseValue):
     else:
       self.instance_type_parameters[name] = value
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
+    binding = func if self == func.data else self.to_binding(node)
     node, var = self.ctx.attribute_handler.get_attribute(
-        node, self, "__call__", self.to_binding(node))
+        node, self, "__call__", binding)
     if var is not None and var.bindings:
       return function.call_function(self.ctx, node, var, args)
     else:

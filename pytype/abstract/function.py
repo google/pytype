@@ -772,7 +772,7 @@ def call_function(ctx,
     try:
       new_node, one_result = func.call(node, funcb, args)
     except (DictKeyMissing, FailedFunctionCall) as e:
-      if e > error:
+      if e > error and funcb.IsVisible(node):
         error = e
     else:
       if ctx.convert.no_return in one_result.data:
@@ -818,7 +818,7 @@ def call_function(ctx,
     result = ctx.new_unsolvable(node)
   ctx.vm.trace_opcode(None, func_var.data[0].name.rpartition(".")[-1],
                       (func_var, result))
-  if nodes:
+  if nodes or not error:
     return node, result
   elif fallback_to_unsolvable:
     if not isinstance(error, DictKeyMissing):
@@ -826,7 +826,6 @@ def call_function(ctx,
     return node, result
   else:
     # We were called by something that does its own error handling.
-    assert error
     error.set_return(node, result)
     raise error  # pylint: disable=raising-bad-type
 

@@ -101,6 +101,20 @@ class TestMethods(test_base.BaseTest):
           return self.x.upper()
     """, maximum_depth=2)
 
+  def test_call_dispatch(self):
+    self.Check("""
+      from typing import Union
+      class Foo:
+        def __call__(self):
+          pass
+      class Bar:
+        def __call__(self, x):
+          pass
+      def f(x: Union[Foo, Bar]):
+        if isinstance(x, Foo):
+          return x()
+    """)
+
 
 class TestMethodsPy3(test_base.BaseTest):
   """Test python3-specific method features."""

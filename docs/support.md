@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-03-21T14:17-07:00 -->
 
 <!--te-->
 
@@ -56,27 +56,29 @@ Enums                                    | ✅        | Requires `--use-enum-ove
 
 ### Typing
 
-Feature                                                         | Version | Supports | Issues
---------------------------------------------------------------- | :-----: | :------: | :----:
-[PEP 484 -- Type Hints][484]                                    | 3.5     | ✅       |
-[PEP 526 -- Syntax for Variable Annotations][526]               | 3.6     | ✅       |
-[PEP 544 -- Protocols][544]                                     | 3.8     | ✅       |
-[PEP 561 -- Distributing and Packaging Type Information][561]   | 3.7     | ❌       | [#151][packaging]
-[PEP 563 -- Postponed Evaluation of Annotations][563]           | 3.7     | ✅       |
-[PEP 585 -- Type Hinting Generics in Standard Collections][585] | 3.9     | ✅       |
-[PEP 586 -- Literal Types][586]                                 | 3.8     | 🟡       | [#790][literal-enums]
-[PEP 589 -- TypedDict][589]                                     | 3.8     | ✅       | Requires `--enable-typed-dicts` flag externally
-[PEP 591 -- Adding a Final Qualifier to Typing][591]            | 3.8     | ✅       |
-[PEP 593 -- Flexible Function and Variable Annotations][593]    | 3.9     | ✅       |
-[PEP 604 -- Allow Writing Union Types as X \| Y][604]           | 3.10    | ❌       | [#785][union-pipe]
-[PEP 612 -- Parameter Specification Variables][612]             | 3.10    | ❌       | [#786][param-spec]
-[PEP 613 -- Explicit Type Aliases][613]                         | 3.10    | ❌       | [#787][typealias]
-[PEP 646 -- Variadic Generics][646]                             | 3.11    | ❌       |
-[PEP 647 -- User-Defined Type Guards][647]                      | 3.10    | ❌       | [#916][type-guards]
-[PEP 673 -- Self Type][673]                                     | 3.11    | ❌       |
-Custom Recursive Types                                          | 3.6     | ✅       |
-Generic Type Aliases                                            | 3.6     | ✅       |
-Type Annotation Inheritance                                     | 3.6     | ❌       | [#81][annotation-inheritance]
+Feature                                                                                 | Version | Supports | Issues
+--------------------------------------------------------------------------------------- | :-----: | :------: | :----:
+[PEP 484 -- Type Hints][484]                                                            | 3.5     | ✅        |
+[PEP 526 -- Syntax for Variable Annotations][526]                                       | 3.6     | ✅        |
+[PEP 544 -- Protocols][544]                                                             | 3.8     | ✅        |
+[PEP 561 -- Distributing and Packaging Type Information][561]                           | 3.7     | ❌        | [#151][packaging]
+[PEP 563 -- Postponed Evaluation of Annotations][563]                                   | 3.7     | ✅        |
+[PEP 585 -- Type Hinting Generics in Standard Collections][585]                         | 3.9     | ✅        |
+[PEP 586 -- Literal Types][586]                                                         | 3.8     | 🟡        | [#790][literal-enums]
+[PEP 589 -- TypedDict][589]                                                             | 3.8     | ✅        | Requires `--enable-typed-dicts` flag externally
+[PEP 591 -- Adding a Final Qualifier to Typing][591]                                    | 3.8     | ✅        |
+[PEP 593 -- Flexible Function and Variable Annotations][593]                            | 3.9     | ✅        |
+[PEP 604 -- Allow Writing Union Types as X \| Y][604]                                   | 3.10    | ❌        | [#785][union-pipe]
+[PEP 612 -- Parameter Specification Variables][612]                                     | 3.10    | ❌        | [#786][param-spec]
+[PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
+[PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        |
+[PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ❌        | [#916][type-guards]
+[PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
+[PEP 673 -- Self Type][673]                                                             | 3.11    | ❌        |
+[PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
+Custom Recursive Types                                                                  | 3.6     | ✅        |
+Generic Type Aliases                                                                    | 3.6     | ✅        |
+Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
 
 ### Third-Party Libraries
 
@@ -106,7 +108,9 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [613]: https://www.python.org/dev/peps/pep-0613
 [646]: https://www.python.org/dev/peps/pep-0646
 [647]: https://www.python.org/dev/peps/pep-0647
+[655]: https://peps.python.org/pep-0655/
 [673]: https://www.python.org/dev/peps/pep-0673
+[675]: https://peps.python.org/pep-0675/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [generic-aliases]: https://github.com/google/pytype/issues/793
@@ -118,5 +122,4 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [py39]: https://github.com/google/pytype/issues/749
 [py310]: https://github.com/google/pytype/issues/1022
 [type-guards]: https://github.com/google/pytype/issues/916
-[typealias]: https://github.com/google/pytype/issues/787
 [union-pipe]: https://github.com/google/pytype/issues/785

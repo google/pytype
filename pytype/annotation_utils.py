@@ -352,9 +352,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       # concrete value.
       return AnnotatedValue(typ, value)
     elif typ.full_name == "typing.TypeAlias":
-      # Validate that 'value' is a legal type alias.
-      self.extract_annotation(node, value, name, stack)
-      return AnnotatedValue(None, value)
+      # Validate that 'value' is a legal type alias and use it.
+      annot = self.extract_annotation(node, value, name, stack)
+      return AnnotatedValue(None, annot.to_variable(node))
     else:
       return AnnotatedValue(typ, annot_val)
 

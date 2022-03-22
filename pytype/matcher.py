@@ -891,7 +891,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
               type_param.full_name, self._node)
         if instance_param.bindings and instance_param not in view:
           binding, = instance_param.bindings
-          assert isinstance(binding.data, abstract.Unsolvable)
+          assert isinstance(binding.data, abstract.Unsolvable), binding.data
           view = view.copy()
           view[instance_param] = binding
         subst = self.match_var_against_type(instance_param, class_param,

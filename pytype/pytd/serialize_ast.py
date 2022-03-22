@@ -259,6 +259,11 @@ def PrepareForExport(module_name, ast, loader):
   # e.g. visitors.PrintVisitor._FormatContainerContents, which need to move to
   # their own visitors so they can be applied without printing.
   src = pytd_utils.Print(ast)
+  return SourceToExportableAst(module_name, src, loader)
+
+
+def SourceToExportableAst(module_name, src, loader):
+  """Parse the source code into a pickle-able ast."""
   ast = parser.parse_string(
       src=src, name=module_name,
       options=parser.PyiOptions.from_toplevel_options(loader.options))
