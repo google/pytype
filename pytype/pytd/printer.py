@@ -209,10 +209,13 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitConstant(self, node):
     """Convert a class-level or module-level constant to a string."""
     if self.in_literal:
-      module, _, name = node.name.partition(".")
-      assert module == "builtins", module
-      assert name in ("True", "False"), name
-      return name
+      # This should be either True, False or an enum. For the booleans, strip
+      # off the module name. For enums, print the whole name.
+      if "builtins." in node.name:
+        _, _, name = node.name.partition(".")
+        return name
+      else:
+        return node.name
     return f"{node.name}: {node.type}"
 
   def EnterAlias(self, _):

@@ -339,6 +339,7 @@ class _Resolver:
       name = mod_name or mod_ast.name
       raise BadDependencyError(utils.message(e), name) from e
     mod_ast.Visit(visitors.VerifyContainers())
+    mod_ast.Visit(visitors.VerifyLiterals())
 
   @classmethod
   def collect_dependencies(cls, mod_ast):

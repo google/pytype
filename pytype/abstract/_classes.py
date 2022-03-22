@@ -884,10 +884,7 @@ class LiteralClass(ParameterizedClass):
 
   @property
   def value(self):
-    if isinstance(self._instance, _instances.ConcreteValue):
-      return self._instance
-    # TODO(b/173742489): Remove this workaround once we support literal enums.
-    return None
+    return self._instance
 
   def instantiate(self, node, container=None):
     return self._instance.to_variable(node)

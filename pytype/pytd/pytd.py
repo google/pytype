@@ -615,7 +615,7 @@ class CallableType(GenericType):
 @attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
         cache_hash=True)
 class Literal(Node, Type):
-  value: Union[int, str, Type]
+  value: Union[int, str, Type, Constant]
 
   @property
   def name(self):

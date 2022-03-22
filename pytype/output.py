@@ -153,11 +153,11 @@ class Converter(utils.ContextWeakrefMixin):
       return self.value_instance_to_pytd_type(
           node, v.base_cls, instance, seen, view)
     elif isinstance(v, abstract.LiteralClass):
-      if not v.value:
-        # TODO(b/173742489): Remove this workaround once we support literal
-        # enums.
-        return pytd.AnythingType()
-      if isinstance(v.value.pyval, (str, bytes)):
+      if isinstance(v.value, abstract.Instance) and v.value.cls.is_enum:
+        typ = pytd_utils.NamedTypeWithModule(
+            v.value.cls.official_name or v.value.cls.name, v.value.cls.module)
+        value = pytd.Constant(v.value.name, typ)
+      elif isinstance(v.value.pyval, (str, bytes)):
         # Strings are stored as strings of their representations, prefix and
         # quotes and all.
         value = repr(v.value.pyval)
@@ -167,8 +167,7 @@ class Converter(utils.ContextWeakrefMixin):
       else:
         # Ints are stored as their literal values. Note that Literal[None] or a
         # nested literal will never appear here, since we simplified it to None
-        # or unnested it, respectively, in typing_overlay. Literal[<enum>] does
-        # not appear here yet because it is unsupported.
+        # or unnested it, respectively, in typing_overlay.
         assert isinstance(v.value.pyval, int), v.value.pyval
         value = v.value.pyval
       return pytd.Literal(value)

@@ -553,6 +553,11 @@ class EnumMetaInit(abstract.SimpleFunction):
         # creating the class -- pytype complains about recursive types.
         member = abstract.Instance(cls, self.ctx)
         member_var = member.to_variable(node)
+      # This makes literal enum equality checks easier. We could check the name
+      # attribute that we set below, but it's easier to compare these strings.
+      # Use the fully qualified name to be consistent with how literal enums
+      # are parsed from type stubs.
+      member.name = f"{cls.full_name}.{name}"
       if "_value_" not in member.members:
         if base_type:
           args = function.Args(
@@ -641,8 +646,15 @@ class EnumMetaInit(abstract.SimpleFunction):
       # Build instances directly, because you can't call instantiate() when
       # creating the class -- pytype complains about recursive types.
       member = abstract.Instance(cls, self.ctx)
+      # This makes literal enum equality checks easier. We could check the name
+      # attribute that we set below, but those aren't real strings.
+      # Use the fully qualified name to be consistent with how literal enums
+      # are parsed from type stubs.
+      member.name = f"{cls.full_name}.{pytd_val.name}"
       member.members["name"] = self.ctx.convert.constant_to_var(
-          pyval=pytd.Constant(name="name", type=self._str_pytd), node=node)
+          pyval=pytd.Constant(
+              name="name", type=self._str_pytd, value=pytd_val.name),
+          node=node)
       # Some type stubs may use the class type for enum member values, instead
       # of the actual value type. Detect that and use Any.
       if pytd_val.type.name == cls.pytd_cls.name:

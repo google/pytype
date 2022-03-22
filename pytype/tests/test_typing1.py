@@ -284,11 +284,14 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, "import foo")
 
-  # TODO(b/173742489): Include enums once we support looking up local enums.
   def test_pyi_value(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
+        import enum
         from typing import Literal
+
+        class Color(enum.Enum):
+          RED: str
 
         def f1(x: Literal[True]) -> None: ...
         def f2(x: Literal[2]) -> None: ...
@@ -296,6 +299,7 @@ class LiteralTest(test_base.BaseTest):
         def f4(x: Literal['hello']) -> None: ...
         def f5(x: Literal[b'hello']) -> None: ...
         def f6(x: Literal[u'hello']) -> None: ...
+        def f7(x: Literal[Color.RED]) -> None: ...
       """)
       self.Check("""
         import foo
@@ -305,6 +309,7 @@ class LiteralTest(test_base.BaseTest):
         foo.f4('hello')
         foo.f5(b'hello')
         foo.f6(u'hello')
+        foo.f7(foo.Color.RED)
       """, pythonpath=[d.path])
 
   def test_pyi_multiple(self):
@@ -411,6 +416,48 @@ class LiteralTest(test_base.BaseTest):
         def f1() -> int: ...
         def f2() -> str: ...
       """)
+
+  def test_illegal_literal_class(self):
+    # This should be a pyi-error, but checking happens during conversion.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal
+        class NotEnum:
+          A: int
+        x: Literal[NotEnum.A]
+      """)
+      self.CheckWithErrors("""
+        import foo  # pyi-error
+      """, pythonpath=[d.path])
+
+  def test_illegal_literal_class_indirect(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        class NotEnum:
+          A: int
+      """)
+      d.create_file("bar.pyi", """
+        from typing import Literal
+        import foo
+        y: Literal[foo.NotEnum.A]
+      """)
+      self.CheckWithErrors("""
+        import bar  # pyi-error
+      """, pythonpath=[d.path])
+
+  def test_missing_enum_member(self):
+    # This should be a pyi-error, but checking happens during conversion.
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        import enum
+        from typing import Literal
+        class M(enum.Enum):
+          A: int
+        x: Literal[M.B]
+      """)
+      self.CheckWithErrors("""
+        import foo  # pyi-error
+      """, pythonpath=[d.path])
 
 
 if __name__ == "__main__":

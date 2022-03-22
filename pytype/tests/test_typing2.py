@@ -792,6 +792,40 @@ class LiteralTest(test_base.BaseTest):
       x6: None
     """)
 
+  def test_basic_enum(self):
+    ty = self.Infer("""
+      import enum
+      from typing_extensions import Literal
+      class Color(enum.Enum):
+        RED = "RED"
+      x: Literal[Color.RED]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Literal
+      x: Literal[Color.RED]
+      class Color(enum.Enum):
+        RED: str
+    """)
+
+  @test_base.skip("Pytype loads N.A and treats it as a literal.")
+  def test_not_an_enum(self):
+    self.CheckWithErrors("""
+      from typing import Literal
+      class N:
+        A = 1
+      x: Literal[N.A]  # bad-annotation
+    """)
+
+  def test_missing_enum_member(self):
+    self.CheckWithErrors("""
+      import enum
+      from typing import Literal
+      class M(enum.Enum):
+        A = 1
+      x: Literal[M.B]  # attribute-error
+    """)
+
   def test_union(self):
     ty = self.Infer("""
       from typing_extensions import Literal
@@ -888,6 +922,25 @@ class LiteralTest(test_base.BaseTest):
       g(x)  # wrong-arg-types
     """)
 
+  def test_match_enum(self):
+    self.CheckWithErrors("""
+    from typing import Literal
+    import enum
+
+    class M(enum.Enum):
+      A = 1
+      B = 2
+
+    x: Literal[M.A]
+
+    def f(x: Literal[M.A]) -> None:
+      pass
+
+    f(M.A)
+    f(x)
+    f(M.B)  # wrong-arg-types
+    """)
+
   def test_iterate(self):
     # TODO(b/63407497): Enabling --strict-parameter-checks leads to a cryptic
     # wrong-arg-types error on line 5 in which the actual type is
@@ -899,16 +952,6 @@ class LiteralTest(test_base.BaseTest):
         pass
       for x in ["x", "y"]:
         f(x)
-    """)
-
-  def test_enum(self):
-    # Requires the enum overlay
-    self.Check("""
-      import enum
-      from typing import Literal
-      class M(enum.Enum):
-        A = 1
-      x: Literal[M.A]
     """)
 
   def test_overloads(self):
