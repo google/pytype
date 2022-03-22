@@ -99,7 +99,8 @@ class Util:
           return True
     return False
 
-  driver = driver.Driver(pygram.python_grammar, convert=pytree.convert)
+  driver = driver.Driver(
+      pygram.python_grammar_no_print_statement, convert=pytree.convert)
 
   @classmethod
   def parse_string(cls, text):
@@ -237,6 +238,8 @@ class ArgSignature:
       return is_tuple, stars, arg_type, arg, default
 
     if len(arg) != 1:
+      if not arg and stars == '*':
+        return is_tuple, stars, arg_type, arg, default
       raise KnownError()  # expected/parse_error.py
 
     node = arg[0]
@@ -918,7 +921,7 @@ def split_comma(nodes):
 def annotate_string(args, py_src, pyi_src):
   """Applies the annotations in pyi_src to py_src."""
 
-  tool = StandaloneRefactoringTool(options={})
+  tool = StandaloneRefactoringTool(options={'print_function': True})
   fixer = tool.fixer
 
   fixer.annotate_pep484 = not args.as_comments
