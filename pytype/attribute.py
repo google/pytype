@@ -446,7 +446,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             # parameters we're passing here.
             value = value.property_get(
                 valself.AssignToNewVariable(node),
-                abstract_utils.equivalent_to(valself, cls))
+                abstract_utils.is_subclass(valself, cls))
           if isinstance(value, abstract.Property):
             node, value = value.call(node, None, None)
             final_values = value.data
