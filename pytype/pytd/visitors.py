@@ -1762,8 +1762,8 @@ class VerifyLiterals(Visitor):
         stack.extend(cls.bases)
     else:
       n = pytd_utils.Print(node)
-      raise LiteralValueError(f"In {n}: {this_cls.name} is not an enum and "
-                              "cannot be used in typing.Literal")
+      msg = f"In {n}: {this_cls.name} is not an enum and cannot be used in typing.Literal"
+      raise LiteralValueError(msg)
 
     # Second check: The member named in the Literal exists in the enum.
     # We know at this point that value.name is "file.enum_class.member_name".

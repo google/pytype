@@ -644,7 +644,7 @@ class MethodsTest(test_base.BaseTest):
       """)
 
   def test_none_or_function(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       def g():
         return 3
 
@@ -655,10 +655,14 @@ class MethodsTest(test_base.BaseTest):
           x = g
 
         if __random__:
-          return x()
+          return x()  # not-callable
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasSignature(ty.Lookup("f"), (), self.int)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Optional
+      def g() -> int: ...
+      def f() -> Optional[int]: ...
+    """)
 
   def test_define_classmethod(self):
     ty = self.Infer("""
@@ -821,15 +825,18 @@ class MethodsTest(test_base.BaseTest):
     self.assertHasSignature(ty.Lookup("g"), (), self.str)
 
   def test_register(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       class Foo:
         pass
       def f():
         lookup = {}
         lookup[''] = Foo
-        lookup.get('')()
-    """, show_library_calls=True)
-    self.assertHasSignature(ty.Lookup("f"), (), self.float)
+        return lookup.get('')()  # not-callable
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo: ...
+      def f() -> Foo: ...
+    """)
 
   def test_copy_method(self):
     ty = self.Infer("""
