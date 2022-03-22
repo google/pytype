@@ -146,8 +146,10 @@ def pytd_literal(parameters: List[Any]) -> pytd.Type:
     if pytdgen.is_none(p):
       literal_parameters.append(p)
     elif isinstance(p, pytd.NamedType):
-      # TODO(b/173742489): support enums.
-      literal_parameters.append(pytd.AnythingType())
+      cls_name = p.name.rsplit(".", 1)[0]
+      literal_parameters.append(pytd.Literal(
+          pytd.Constant(name=p.name, type=pytd.NamedType(cls_name))
+      ))
     elif isinstance(p, types.Pyval):
       literal_parameters.append(p.to_pytd_literal())
     elif isinstance(p, pytd.Literal):

@@ -786,19 +786,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     """
     if isinstance(other_type, abstract.LiteralClass):
       other_value = other_type.value
-      if other_value and isinstance(left, abstract.ConcreteValue):
+      if isinstance(left, abstract.ConcreteValue):
         return subst if left.pyval == other_value.pyval else None
-      elif other_value:
-        # `left` does not contain a concrete value. Literal overloads are
-        # always followed by at least one non-literal fallback, so we should
-        # fail here.
-        return None
+      elif isinstance(left, abstract.Instance) and left.cls.is_enum:
+        names_match = left.name == other_value.name
+        clses_match = left.cls == other_value.cls
+        return subst if names_match and clses_match else None
       else:
-        # TODO(b/173742489): Remove this workaround once we can match against
-        # literal enums.
-        return self._match_type_against_type(
-            left, other_type.formal_type_parameters[abstract_utils.T], subst,
-            view)
+        return None
     elif isinstance(other_type, typed_dict.TypedDictClass):
       if not self._match_dict_against_typed_dict(left, other_type):
         return None

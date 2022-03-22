@@ -225,6 +225,13 @@ def equivalent_to(binding, cls):
           binding.data.full_name == cls.full_name)
 
 
+def is_subclass(binding, cls):
+  """Wehther binding.data is a subclass of cls, modulo parameterization."""
+  return (_isinstance(binding.data, "Class") and
+          any(binding_cls.full_name == cls.full_name
+              for binding_cls in binding.data.mro))
+
+
 def apply_mutations(node, get_mutations):
   """Apply mutations yielded from a get_mutations function."""
   log.info("Applying mutations")

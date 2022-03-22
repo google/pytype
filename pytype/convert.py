@@ -553,19 +553,31 @@ class Converter(utils.ContextWeakrefMixin):
       members[name] = val
     return abstract.Module(self.ctx, ast.name, members, ast)
 
-  def _get_literal_value(self, pyval):
+  def _get_literal_value(self, pyval, subst):
+    """Extract and convert the value of a pytd.Literal."""
+    if isinstance(pyval, pytd.Constant):
+      # Literal enums are stored as Constants with the name set to the member
+      # name and the type set to a ClassType pointing to the enum cls.
+      cls = self.constant_to_value(pyval.type.cls)
+      _, name = pyval.name.rsplit(".", 1)
+      # Bad values should have been caught by visitors.VerifyEnumValues.
+      assert cls.is_enum, f"Non-enum type used in Literal: {cls.official_name}"
+      assert name in cls, ("Literal enum refers to non-existent member "
+                           f"\"{pyval.name}\" of {cls.official_name}")
+      # The cls has already been converted, so don't try to convert the member.
+      return abstract_utils.get_atomic_value(cls.members[name])
     if pyval == self.ctx.loader.lookup_builtin("builtins.True"):
-      return True
+      value = True
     elif pyval == self.ctx.loader.lookup_builtin("builtins.False"):
-      return False
+      value = False
     elif isinstance(pyval, str):
       prefix, value = parser_constants.STRING_RE.match(pyval).groups()[:2]
       value = value[1:-1]  # remove quotation marks
       if "b" in prefix:
         value = str(value).encode("utf-8")
-      return value
     else:
-      return pyval
+      value = pyval
+    return self.constant_to_value(value, subst, self.ctx.root_node)
 
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a BaseValue that represents a python constant.
@@ -798,8 +810,7 @@ class Converter(utils.ContextWeakrefMixin):
           self._convert_cache[key] = instance
         return self._convert_cache[key]
       elif isinstance(cls, pytd.Literal):
-        return self.constant_to_value(
-            self._get_literal_value(cls.value), subst, self.ctx.root_node)
+        return self._get_literal_value(cls.value, subst)
       else:
         return self.constant_to_value(cls, subst, self.ctx.root_node)
     elif (isinstance(pyval, pytd.GenericType) and
@@ -846,8 +857,7 @@ class Converter(utils.ContextWeakrefMixin):
           template, parameters, subst)
       return abstract_class(base_cls, type_parameters, self.ctx)
     elif isinstance(pyval, pytd.Literal):
-      value = self.constant_to_value(
-          self._get_literal_value(pyval.value), subst, self.ctx.root_node)
+      value = self._get_literal_value(pyval.value, subst)
       return abstract.LiteralClass(value, self.ctx)
     elif isinstance(pyval, pytd.Annotated):
       typ = self.constant_to_value(pyval.base_type, subst, self.ctx.root_node)

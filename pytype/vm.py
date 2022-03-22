@@ -925,7 +925,8 @@ class VirtualMachine:
       # Since we have explicitly imported full_name, add it to the prefix list.
       self.ctx.loader.add_module_prefixes(full_name)
     except (parser.ParseError, load_pytd.BadDependencyError,
-            visitors.ContainerError, visitors.SymbolLookupError) as e:
+            visitors.ContainerError, visitors.SymbolLookupError,
+            visitors.LiteralValueError) as e:
       self.ctx.errorlog.pyi_error(self.frames, full_name, e)
       module = self.ctx.convert.unsolvable
     return module

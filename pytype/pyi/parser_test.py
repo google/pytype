@@ -2404,20 +2404,11 @@ class LiteralTest(parser_test_base.ParserTestBase):
     """, "x: None")
 
   def test_enum(self):
-    # TODO(b/173742489): support enums.
     self.check("""
       import enum
       from typing import Literal
 
       x: Literal[Color.RED]
-
-      class Color(enum.Enum):
-          RED: str
-    """, """
-      import enum
-      from typing import Any
-
-      x: Any
 
       class Color(enum.Enum):
           RED: str

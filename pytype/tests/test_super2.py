@@ -215,6 +215,27 @@ class TestSuperPython3Feature(test_base.BaseTest):
       x: int
     """)
 
+  def test_classmethod_inheritance_chain(self):
+    with self.DepTree([("base.py", """
+      from typing import Type, TypeVar
+      BaseT = TypeVar('BaseT', bound='Base')
+      class Base:
+        @classmethod
+        def test(cls: Type[BaseT]) -> BaseT:
+          return cls()
+    """)]):
+      self.Check("""
+        import base
+        class Foo(base.Base):
+          @classmethod
+          def test(cls):
+            return super().test()
+        class Bar(Foo):
+          @classmethod
+          def test(cls):
+            return super().test()
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

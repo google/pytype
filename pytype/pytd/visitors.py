@@ -28,6 +28,10 @@ class SymbolLookupError(Exception):
   pass
 
 
+class LiteralValueError(Exception):
+  pass
+
+
 # All public elements of pytd_visitors are aliased here so that we can maintain
 # the conceptually simpler illusion of having a single visitors module.
 ALL_NODE_NAMES = base_visitor.ALL_NODE_NAMES
@@ -1707,6 +1711,67 @@ class VerifyContainers(Visitor):
         raise ContainerError(
             "Conflicting value %s for TypeVar %s" % (value,
                                                      t.type_param.full_name))
+
+
+class VerifyLiterals(Visitor):
+  """Visitor for verifying that Literal[object] contains an enum.
+
+  Other valid Literal types are checked by the parser, e.g. to make sure no
+  `float` values are used in Literals. Checking that an object in a Literal is
+  an enum member is more complex, so it gets its own visitor.
+
+  Because this visitor walks up the class hierarchy, it must be run after
+  ClassType pointers are filled in.
+  """
+
+  def EnterLiteral(self, node):
+    value = node.value
+    if not isinstance(value, pytd.Constant):
+      # This Literal does not hold an object, no need to check further.
+      return
+
+    if value.name in ("builtins.True", "builtins.False"):
+      # When outputting `x: Literal[True]` from a source file, we write it as
+      # a Literal(Constant("builtins.True", type=ClassType("builtins.bool")))
+      # This is fine and does not need to be checked for enum-ness.
+      return
+
+    typ = value.type
+    if not isinstance(typ, pytd.ClassType):
+      # This happens sometimes, e.g. with stdlib type stubs that interact with
+      # C extensions. (tkinter.pyi, for example.) There's no point in trying to
+      # handle these case.
+      return
+    this_cls = typ.cls
+    assert this_cls, ("VerifyLiterals visitor must be run after ClassType "
+                      "pointers are filled.")
+
+    # The fun part: Walk through each class in the MRO and figure out if it
+    # inherits from enum.Enum.
+    stack = [this_cls]
+    while stack:
+      cls = stack.pop()
+      if cls.name == "enum.Enum":
+        break
+      # We're only going to handle ClassType and Class here. The other types
+      # that may appear in ClassType.cls pointers or Class.bases lists are not
+      # common and may indicate that something is wrong.
+      if isinstance(cls, pytd.ClassType):
+        stack.extend(cls.cls.bases)
+      elif isinstance(cls, pytd.Class):
+        stack.extend(cls.bases)
+    else:
+      n = pytd_utils.Print(node)
+      raise LiteralValueError(f"In {n}: {this_cls.name} is not an enum and "
+                              "cannot be used in typing.Literal")
+
+    # Second check: The member named in the Literal exists in the enum.
+    # We know at this point that value.name is "file.enum_class.member_name".
+    _, member_name = value.name.rsplit(".", 1)
+    if member_name not in this_cls:
+      n = pytd_utils.Print(node)
+      msg = f"In {n}: {value.name} is not a member of enum {this_cls.name}"
+      raise LiteralValueError(msg)
 
 
 class ExpandCompatibleBuiltins(Visitor):
