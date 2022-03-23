@@ -1065,6 +1065,10 @@ class VirtualMachine:
             self.ctx.errorlog.attribute_error(self.frames, m, "__iter__")
     return state, itr
 
+  def byte_NOP(self, state, op):
+    del op  # unused
+    return state
+
   def byte_UNARY_NOT(self, state, op):
     """Implement the UNARY_NOT bytecode."""
     state, var = state.pop()
@@ -2210,8 +2214,21 @@ class VirtualMachine:
       state, free_vars = state.pop()
     if arg & loadmarshal.MAKE_FUNCTION_HAS_ANNOTATIONS:
       state, packed_annot = state.pop()
-      annot = abstract_utils.get_atomic_python_constant(packed_annot, dict)
-      for k in annot.keys():
+      # In Python 3.10+, packed_annot is a tuple of variables:
+      # (param_name1, param_type1, param_name2, param_type2, ...)
+      # Previously, it was a name->param_type dictionary.
+      if self.ctx.python_version >= (3, 10):
+        annot_seq = abstract_utils.get_atomic_python_constant(
+            packed_annot, tuple)
+        double_num_annots = len(annot_seq)
+        assert not double_num_annots % 2
+        annot = {}
+        for i in range(double_num_annots // 2):
+          name = abstract_utils.get_atomic_python_constant(annot_seq[i*2], str)
+          annot[name] = annot_seq[i*2 + 1]
+      else:
+        annot = abstract_utils.get_atomic_python_constant(packed_annot, dict)
+      for k in annot:
         annot[k] = self.ctx.annotation_utils.convert_function_type_annotation(
             k, annot[k])
     if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:

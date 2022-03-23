@@ -45,6 +45,7 @@ _ANNOTATED_IDS = (
     "Annotated", "typing.Annotated", "typing_extensions.Annotated")
 _FINAL_IDS = ("typing.Final", "typing_extensions.Final")
 _TYPE_ALIAS_IDS = ("typing.TypeAlias", "typing_extensions.TypeAlias")
+_TYPING_LITERAL_IDS = ("Literal", "typing.Literal", "typing_extensions.Literal")
 
 #------------------------------------------------------
 # imports
@@ -230,6 +231,11 @@ class AnnotationVisitor(visitor.BaseVisitor):
     return self.defs.new_type(annotation)
 
   def visit_BinOp(self, node):
+    if self.subscripted:
+      last = self.subscripted[-1]
+      if ((isinstance(last, ast3.Name) and last.id in _TYPING_LITERAL_IDS) or
+          isinstance(last, str) and last in _TYPING_LITERAL_IDS):
+        raise ParseError("Expressions are not allowed in typing.Literal.")
     if isinstance(node.op, ast3.BitOr):
       return self.defs.new_type("typing.Union", [node.left, node.right])
     else:
@@ -415,6 +421,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     typ = node.annotation
     val = self.convert_node(node.value)
     msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
+    is_alias = False
     if typ.name:
       if pytd_utils.MatchesFullName(typ, _FINAL_IDS):
         if isinstance(node.value, types.Pyval):
@@ -430,11 +437,19 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           typ = pytd.Literal(val)
           val = pytd.AnythingType()
       elif pytd_utils.MatchesFullName(typ, _TYPE_ALIAS_IDS):
-        typ = pytd.GenericType(pytd.NamedType("type"), (val,))
-        val = pytd.AnythingType()
+        typ = val
+        val = None
+        is_alias = True
     if val and not types.is_any(val):
       raise ParseError(msg)
-    return pytd.Constant(name, typ, val)
+    if is_alias:
+      assert not val
+      ret = pytd.Alias(name, typ)
+    else:
+      ret = pytd.Constant(name, typ, val)
+    if self.level == 0:
+      self.defs.add_alias_or_constant(ret)
+    return ret
 
   def _assign(self, node, target, value):
     name = target.id

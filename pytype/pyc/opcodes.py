@@ -829,7 +829,7 @@ class ROT_N(OpcodeWithArg):
 
 
 class RERAISE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  FLAGS = HAS_ARGUMENT | NO_NEXT
   __slots__ = ()
 
 

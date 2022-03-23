@@ -818,7 +818,7 @@ def call_function(ctx,
     result = ctx.new_unsolvable(node)
   ctx.vm.trace_opcode(None, func_var.data[0].name.rpartition(".")[-1],
                       (func_var, result))
-  if nodes or not error:
+  if (nodes and not ctx.options.strict_parameter_checks) or not error:
     return node, result
   elif fallback_to_unsolvable:
     if not isinstance(error, DictKeyMissing):
