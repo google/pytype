@@ -421,6 +421,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     typ = node.annotation
     val = self.convert_node(node.value)
     msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
+    is_alias = False
     if typ.name:
       if pytd_utils.MatchesFullName(typ, _FINAL_IDS):
         if isinstance(node.value, types.Pyval):
@@ -436,11 +437,19 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           typ = pytd.Literal(val)
           val = pytd.AnythingType()
       elif pytd_utils.MatchesFullName(typ, _TYPE_ALIAS_IDS):
-        typ = pytd.GenericType(pytd.NamedType("type"), (val,))
-        val = pytd.AnythingType()
+        typ = val
+        val = None
+        is_alias = True
     if val and not types.is_any(val):
       raise ParseError(msg)
-    return pytd.Constant(name, typ, val)
+    if is_alias:
+      assert not val
+      ret = pytd.Alias(name, typ)
+    else:
+      ret = pytd.Constant(name, typ, val)
+    if self.level == 0:
+      self.defs.add_alias_or_constant(ret)
+    return ret
 
   def _assign(self, node, target, value):
     name = target.id
