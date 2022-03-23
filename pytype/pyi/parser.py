@@ -45,6 +45,7 @@ _ANNOTATED_IDS = (
     "Annotated", "typing.Annotated", "typing_extensions.Annotated")
 _FINAL_IDS = ("typing.Final", "typing_extensions.Final")
 _TYPE_ALIAS_IDS = ("typing.TypeAlias", "typing_extensions.TypeAlias")
+_TYPING_LITERAL_IDS = ("Literal", "typing.Literal", "typing_extensions.Literal")
 
 #------------------------------------------------------
 # imports
@@ -230,6 +231,11 @@ class AnnotationVisitor(visitor.BaseVisitor):
     return self.defs.new_type(annotation)
 
   def visit_BinOp(self, node):
+    if self.subscripted:
+      last = self.subscripted[-1]
+      if ((isinstance(last, ast3.Name) and last.id in _TYPING_LITERAL_IDS) or
+          isinstance(last, str) and last in _TYPING_LITERAL_IDS):
+        raise ParseError("Expressions are not allowed in typing.Literal.")
     if isinstance(node.op, ast3.BitOr):
       return self.defs.new_type("typing.Union", [node.left, node.right])
     else:

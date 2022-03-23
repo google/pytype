@@ -2482,6 +2482,25 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x: Literal[0.0]
     """, 2, "Invalid type `float` in Literal[0.0].")
 
+  def test_forbid_expressions(self):
+    msg = "Expressions are not allowed in typing.Literal."
+    self.check_error("""
+      from typing import Literal
+      x: Literal[3+4]
+    """, 2, msg)
+    self.check_error("""
+      from typing_extensions import Literal
+      x: Literal[3+4]
+    """, 2, msg)
+    self.check_error("""
+      import typing
+      x: typing.Literal[3+4]
+    """, 2, msg)
+    self.check_error("""
+      import typing_extensions
+      x: typing_extensions.Literal[3+4]
+    """, 2, msg)
+
   def test_final_literals(self):
     # See https://github.com/python/typeshed/issues/7258 for context.
     self.check("""
