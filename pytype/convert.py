@@ -562,7 +562,8 @@ class Converter(utils.ContextWeakrefMixin):
       _, name = pyval.name.rsplit(".", 1)
       # Bad values should have been caught by visitors.VerifyEnumValues.
       assert cls.is_enum, f"Non-enum type used in Literal: {cls.official_name}"
-      assert name in cls, f"Literal enum refers to non-existent member \"{pyval.name}\" of {cls.official_name}"
+      assert name in cls, ("Literal enum refers to non-existent member "
+                           f"\"{pyval.name}\" of {cls.official_name}")
       # The cls has already been converted, so don't try to convert the member.
       return abstract_utils.get_atomic_value(cls.members[name])
     if pyval == self.ctx.loader.lookup_builtin("builtins.True"):
