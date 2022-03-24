@@ -786,9 +786,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     """
     if isinstance(other_type, abstract.LiteralClass):
       other_value = other_type.value
-      if isinstance(left, abstract.ConcreteValue):
+      if isinstance(left, abstract.ConcreteValue) and isinstance(
+          other_value, abstract.ConcreteValue):
         return subst if left.pyval == other_value.pyval else None
-      elif isinstance(left, abstract.Instance) and left.cls.is_enum:
+      elif (isinstance(left, abstract.Instance) and left.cls.is_enum and
+            isinstance(other_value, abstract.Instance) and
+            other_value.cls.is_enum):
         names_match = left.name == other_value.name
         clses_match = left.cls == other_value.cls
         return subst if names_match and clses_match else None

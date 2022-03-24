@@ -558,7 +558,12 @@ class Converter(utils.ContextWeakrefMixin):
     if isinstance(pyval, pytd.Constant):
       # Literal enums are stored as Constants with the name set to the member
       # name and the type set to a ClassType pointing to the enum cls.
-      cls = self.constant_to_value(pyval.type.cls)
+      # However, the type may be a LateType due to pickling.
+      if isinstance(pyval.type, pytd.LateType):
+        typ = self._load_late_type(pyval.type)
+      else:
+        typ = pyval.type.cls
+      cls = self.constant_to_value(typ)
       _, name = pyval.name.rsplit(".", 1)
       # Bad values should have been caught by visitors.VerifyEnumValues.
       assert cls.is_enum, f"Non-enum type used in Literal: {cls.official_name}"
