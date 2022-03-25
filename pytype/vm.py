@@ -498,9 +498,9 @@ class VirtualMachine:
     # This dummy implementation is overwritten in tracer_vm.py.
     return node
 
-  def init_class(self, node, cls, extra_key=None):
+  def init_class(self, node, cls, container=None, extra_key=None):
     # This dummy implementation is overwritten in tracer_vm.py.
-    del cls, extra_key
+    del cls, container, extra_key
     return node, None
 
   def call_function_with_state(self, state, funcv, posargs, namedargs=None,
