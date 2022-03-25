@@ -76,6 +76,24 @@ class PYITest(test_base.BaseTest):
         print(foo.Foo.CONST)
       """, pythonpath=[d.path])
 
+  def test_partial_forward_reference(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Generic, TypeVar
+        X1 = list['Y']
+        X2 = list['Z[str]']
+        X3 = int | 'Z[int]'
+        Y = int
+        T = TypeVar('T')
+        class Z(Generic[T]): ...
+      """)
+      self.Check("""
+        import foo
+        assert_type(foo.X1, "Type[List[int]]")
+        assert_type(foo.X2, "Type[List[foo.Z[str]]]")
+        assert_type(foo.X3, "Type[Union[foo.Z[int], int]]")
+      """, pythonpath=[d.path])
+
 
 class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""

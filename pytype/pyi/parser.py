@@ -221,7 +221,13 @@ class AnnotationVisitor(visitor.BaseVisitor):
     params = self._get_subscript_params(node)
     if type(params) is not tuple:  # pylint: disable=unidiomatic-typecheck
       params = (params,)
-    return self.defs.new_type(node.value, params)
+    try:
+      return self.defs.new_type(node.value, params)
+    except definitions.StringParseError:
+      params = tuple(self.convert_late_annotation(p.value)
+                     if isinstance(p, types.Pyval) and p.type == "str" else p
+                     for p in params)
+      return self.defs.new_type(node.value, params)
 
   def leave_Subscript(self, node):
     self.subscripted.pop()
