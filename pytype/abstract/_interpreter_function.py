@@ -623,7 +623,7 @@ class InterpreterFunction(SignedFunction):
         [self.ctx.convert.unsolvable, self.ctx.convert.none], [], node)
     return function.Args(posargs=(args.posargs[0], arg1, arg2, arg3))
 
-  def call(self, node, func, args, alias_map=None, new_locals=False,
+  def call(self, node, func, args, new_locals=False, alias_map=None,
            frame_substs=()):
     if self.is_overload:
       raise function.NotCallable(self)

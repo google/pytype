@@ -8,6 +8,7 @@ from pytype import datatypes
 from pytype.abstract import _base
 from pytype.abstract import _instance_base
 from pytype.abstract import _instances
+from pytype.abstract import _special_classes
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
@@ -18,9 +19,6 @@ from pytype.pytd.codegen import decorate
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-
-
-_TYPED_DICT_CLASSES = ("typing.TypedDict", "typing_extensions.TypedDict")
 
 
 class BuildClass(_base.BaseValue):
@@ -368,26 +366,21 @@ class PyTDClass(
 
   @classmethod
   def make(cls, name, pytd_cls, ctx):
-    def is_typed_dict(b):
-      return isinstance(b, pytd.ClassType) and b.name in _TYPED_DICT_CLASSES
+    # See if any of the special classes can be built directly from the pytd
+    # class or its list of direct base classes.
+    ret = _special_classes.maybe_build_from_pytd(name, pytd_cls, ctx)
+    if ret:
+      return ret
 
-    def has_typed_dict_ancestor(c):
-      # Check if we have typed dicts in the MRO by seeing if we have already
-      # created a TypedDictClass for one of the ancestor classes.
-      return any(isinstance(b, class_mixin.Class) and b.is_typed_dict_class
-                 for b in c.mro)
-
-    if pytd_cls.name in _TYPED_DICT_CLASSES:
-      return ctx.convert.make_typed_dict_builder(ctx)
-    elif any(is_typed_dict(b) for b in pytd_cls.bases):
-      return ctx.convert.make_typed_dict(name, pytd_cls, ctx)
-
+    # Now construct the PyTDClass, since we need a fully constructed class to
+    # check the MRO. If the MRO does match a special class we build it and
+    # discard the class constructed here.
     c = cls(name, pytd_cls, ctx)
-    # We need to check the MRO for typed dicts now, because it is created only
-    # after we instantiate the PyTDClass
-    if has_typed_dict_ancestor(c):
-      # Discard the PyTDClass and create a typed dict
-      return ctx.convert.make_typed_dict(name, pytd_cls, ctx)
+    ret = _special_classes.maybe_build_from_mro(c, name, pytd_cls, ctx)
+    if ret:
+      return ret
+
+    # If none of the special classes have matched, return the PyTDClass
     return c
 
   def _populate_decorator_metadata(self):
