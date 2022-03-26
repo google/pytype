@@ -897,6 +897,21 @@ class LiteralTest(test_base.BaseTest):
         "e": (r"Expected.*Literal\['x', 'z'\].*Actual.*Literal\['y'\]")
     })
 
+  def test_mixed_union(self):
+    # "hello" is a ConcreteValue, M.A is an Instance. There was a crash when
+    # comparing another ConcreteValue against the Instance variant.
+    self.CheckWithErrors("""
+      import enum
+      from typing import Literal
+
+      class M(enum.Enum):
+        A = 1
+
+      def use(x: Literal["hello", M.A]) -> None: ...
+
+      use(None)  # wrong-arg-types
+  """)
+
   def test_return(self):
     errors = self.CheckWithErrors("""
       from typing_extensions import Literal

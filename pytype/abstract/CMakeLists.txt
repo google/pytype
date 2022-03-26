@@ -50,6 +50,7 @@ py_library(
     ._base
     ._instance_base
     ._instances
+    ._special_classes
     .abstract_utils
     .class_mixin
     .function
@@ -154,6 +155,16 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    _special_classes
+  SRCS
+    _special_classes.py
+  DEPS
+    .class_mixin
+    pytype.pytd.pytd
 )
 
 py_library(

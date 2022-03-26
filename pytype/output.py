@@ -103,28 +103,37 @@ class Converter(utils.ContextWeakrefMixin):
       type_arguments = []
       for t in template:
         if isinstance(instance, abstract.Tuple):
-          param_values = self._get_values(node, instance.pyval[t], view)
+          param_values = {val: view for val in self._get_values(
+              node, instance.pyval[t], view)}
         elif instance.has_instance_type_parameter(t):
-          param_values = self._get_values(
-              node, instance.get_instance_type_parameter(t), view)
+          param_values = {val: view for val in self._get_values(
+              node, instance.get_instance_type_parameter(t), view)}
         elif isinstance(v, abstract.CallableClass):
-          param_values = v.get_formal_type_parameter(t).instantiate(
-              node or self.ctx.root_node).data
+          param_node = node or self.ctx.root_node
+          param_var = v.get_formal_type_parameter(t).instantiate(param_node)
+          if view is None:
+            param_values = {val: None for val in param_var.data}
+          else:
+            param_values = {}
+            for new_view in abstract_utils.get_views([param_var], param_node):
+              new_view.update(view)
+              param_values[new_view[param_var].data] = new_view
         else:
-          param_values = [self.ctx.convert.unsolvable]
+          param_values = {self.ctx.convert.unsolvable: view}
         formal_param = v.get_formal_type_parameter(t)
         # If the instance's parameter value is unsolvable or the parameter type
         # is recursive, we can get a more precise type from the class. Note that
         # we need to be careful not to introduce unbound type parameters.
         if (isinstance(v, abstract.ParameterizedClass) and
             not formal_param.formal and
-            (param_values == [self.ctx.convert.unsolvable] or
+            (list(param_values.keys()) == [self.ctx.convert.unsolvable] or
              abstract_utils.is_recursive_annotation(formal_param))):
           arg = self.value_instance_to_pytd_type(
               node, formal_param, None, seen, view)
         else:
-          arg = pytd_utils.JoinTypes(self.value_to_pytd_type(
-              node, p, seen, view) for p in param_values)
+          arg = pytd_utils.JoinTypes(
+              self.value_to_pytd_type(node, p, seen, param_view)
+              for p, param_view in param_values.items())
         type_arguments.append(arg)
       return type_arguments
     else:

@@ -1073,6 +1073,11 @@ class _LineNumberTableParser(_BaseLineNumberTableParser):
   https://github.com/python/cpython/commit/877df851c3ecdb55306840e247596e7b7805a60a
   """
 
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    if self.lnotab:
+      self.lineno += self.lnotab[1]
+
   def get(self, i):
     while i >= self.next_addr and self.pos < len(self.lnotab):
       self.pos += 2

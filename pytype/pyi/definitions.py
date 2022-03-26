@@ -40,6 +40,10 @@ _TUPLE_TYPES = ("tuple", "builtins.tuple", "typing.Tuple")
 _TYPEGUARD_TYPES = ("typing.TypeGuard", "typing_extensions.TypeGuard")
 
 
+class StringParseError(ParseError):
+  pass
+
+
 def _split_definitions(defs: List[Any]):
   """Return [constants], [functions] given a mixed list of definitions."""
   constants = []
@@ -506,10 +510,15 @@ class Definitions:
       # blocking typeshed, convert type guards to plain bools.
       return pytd.NamedType("bool")
     elif any(isinstance(p, types.Pyval) for p in parameters):
+      if all(not isinstance(p, types.Pyval) or
+             p.type == "str" and p.value for p in parameters):
+        error_cls = StringParseError
+      else:
+        error_cls = ParseError
       parameters = ", ".join(
           p.repr_str() if isinstance(p, types.Pyval) else "_"
           for p in parameters)
-      raise ParseError(
+      raise error_cls(
           "%s[%s] not supported" % (pytd_utils.Print(base_type), parameters))
     elif pytdgen.is_any(base_type):
       return pytd.AnythingType()

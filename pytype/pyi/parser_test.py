@@ -565,9 +565,6 @@ class QuotedTypeTest(parser_test_base.ParserTestBase):
       def f(x: int) -> str: ...
     """)
 
-  def test_subscript(self):
-    self.check_error("x: List['int']", 1, "List['int'] not supported")
-
 
 class HomogeneousTypeTest(parser_test_base.ParserTestBase):
 
