@@ -131,6 +131,44 @@ class PYITestPython3Feature(test_base.BaseTest):
         x: float
       """)
 
+  def test_imported_literal_alias(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Literal
+      X = Literal["a", "b"]
+    """), ("bar.pyi", """
+      import foo
+      from typing import Literal
+      Y = Literal[foo.X, "c", "d"]
+    """)]):
+      self.Check("""
+        import bar
+        assert_type(bar.Y, "Type[Literal['a', 'b', 'c', 'd']]")
+      """)
+
+  def test_literal_in_dataclass(self):
+    self.options.tweak(use_enum_overlay=False)
+    with self.DepTree([("foo.pyi", """
+      import enum
+      class Base: ...
+      class Foo(Base, enum.Enum):
+        FOO = 'FOO'
+    """), ("bar.pyi", """
+      import dataclasses
+      import foo
+      from typing import Literal, Optional
+      @dataclasses.dataclass
+      class Bar(foo.Base):
+        bar: Optional[Literal[foo.Foo.FOO]]
+    """)]):
+      self.Check("""
+        import bar
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class Baz(foo.Base):
+          baz: bar.Bar
+      """)
+
 
 class PYITestAnnotated(test_base.BaseTest):
   """Tests for typing.Annotated."""

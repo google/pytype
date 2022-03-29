@@ -569,6 +569,10 @@ class Converter(utils.ContextWeakrefMixin):
       assert cls.is_enum, f"Non-enum type used in Literal: {cls.official_name}"
       assert name in cls, ("Literal enum refers to non-existent member "
                            f"\"{pyval.name}\" of {cls.official_name}")
+      # TODO(rechen): This call to load_lazy_attribute appears to be necessary
+      # only when --use-enum-overlay is disabled; check if we can remove it once
+      # the overlay is always enabled.
+      cls.load_lazy_attribute(name)
       # The cls has already been converted, so don't try to convert the member.
       return abstract_utils.get_atomic_value(cls.members[name])
     if pyval == self.ctx.loader.lookup_builtin("builtins.True"):
