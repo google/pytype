@@ -274,12 +274,21 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     parameters.extend(self.pyval)
     return parameters
 
+  def _is_recursive(self):
+    """True if the tuple contains itself."""
+    return any(any(x is self for x in e.data) for e in self.pyval)
+
   def __eq__(self, other):
-    if isinstance(other, type(self)):
-      return (self.tuple_length == other.tuple_length and
-              all(e.data == other_e.data
-                  for e, other_e in zip(self.pyval, other.pyval)))
-    return NotImplemented
+    if not isinstance(other, type(self)):
+      return NotImplemented
+    elif self.tuple_length != other.tuple_length:
+      return False
+    # If we find a tuple that contains itself, fall back to comparing hashes.
+    if self._is_recursive() or other._is_recursive():
+      return self._hash == other._hash
+    # Otherwise do an elementwise comparison.
+    return all(e.data == other_e.data
+               for e, other_e in zip(self.pyval, other.pyval))
 
   def __hash__(self):
     if self._hash is None:
