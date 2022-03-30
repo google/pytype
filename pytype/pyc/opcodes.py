@@ -1076,14 +1076,25 @@ class _LineNumberTableParser(_BaseLineNumberTableParser):
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
     if self.lnotab:
-      self.lineno += self.lnotab[1]
+      self.lineno += self.line_delta
+
+  @property
+  def line_delta(self):
+    line_delta = self.lnotab[self.pos + 1]
+    # These line delta adjustments are based on
+    # https://github.com/python/cpython/blob/ee912ad6f66bb8cf5a8a2b4a7ecd2752bf070864/Tools/gdb/libpython.py#L666-L669
+    if line_delta == 128:
+      line_delta = 0
+    elif line_delta > 128:
+      line_delta -= 256
+    return line_delta
 
   def get(self, i):
     while i >= self.next_addr and self.pos < len(self.lnotab):
       self.pos += 2
       if self.pos < len(self.lnotab):
         self.next_addr += self.lnotab[self.pos]
-        self.lineno += self.lnotab[self.pos + 1]
+        self.lineno += self.line_delta
     return self.lineno
 
 

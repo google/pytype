@@ -143,17 +143,23 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     return value.Replace(name=alias.name)
 
 
-def pytd_literal(parameters: List[Any]) -> pytd.Type:
+def pytd_literal(
+    parameters: List[Any], aliases: Dict[str, pytd.Alias]) -> pytd.Type:
   """Create a pytd.Literal."""
   literal_parameters = []
   for p in parameters:
     if pytdgen.is_none(p):
       literal_parameters.append(p)
     elif isinstance(p, pytd.NamedType):
-      cls_name = p.name.rsplit(".", 1)[0]
-      literal_parameters.append(pytd.Literal(
-          pytd.Constant(name=p.name, type=pytd.NamedType(cls_name))
-      ))
+      prefix = p.name.rsplit(".", 1)[0]
+      # If prefix is a module name, then p is an alias to a Literal in another
+      # module. Otherwise, prefix is an enum type and p is a member of the enum.
+      if prefix in aliases and isinstance(aliases[prefix].type, pytd.Module):
+        literal_parameters.append(p)
+      else:
+        literal_parameters.append(pytd.Literal(
+            pytd.Constant(name=p.name, type=pytd.NamedType(prefix))
+        ))
     elif isinstance(p, types.Pyval):
       literal_parameters.append(p.to_pytd_literal())
     elif isinstance(p, pytd.Literal):
@@ -499,7 +505,7 @@ class Definitions:
   def _parameterized_type(self, base_type: Any, parameters):
     """Return a parameterized type."""
     if self._matches_named_type(base_type, _LITERAL_TYPES):
-      return pytd_literal(parameters)
+      return pytd_literal(parameters, self.aliases)
     elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
       return pytd_annotated(parameters)
     elif self._matches_named_type(base_type, _FINAL_TYPES):
