@@ -2,7 +2,6 @@
 
 import dataclasses
 from keyword import iskeyword  # pylint: disable=g-importing-member
-import textwrap
 
 from typing import Any, List
 
@@ -12,8 +11,6 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
-from pytype.pyi import parser
-from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 
@@ -38,6 +35,12 @@ class NamedTupleProperties:
   name: str
   fields: List[Field]
   bases: List[Any]
+
+  @classmethod
+  def from_field_names(cls, name, field_names, ctx):
+    """Make a NamedTupleProperties from field names with no types."""
+    fields = [Field(n, ctx.convert.unsolvable, None) for n in field_names]
+    return cls(name, fields, [])
 
   def validate_and_rename_fields(self, rename):
     """Validate and rename self.fields."""
@@ -64,70 +67,6 @@ class NamedTupleProperties:
         else:
           raise ValueError(f.name)
       seen.add(f.name)
-
-
-def _repeat_type(type_str, n):
-  return ", ".join((type_str,) * n) if n else "()"
-
-
-def namedtuple_ast(name, fields, defaults, options):
-  """Make an AST with a namedtuple definition for the given name and fields.
-
-  Args:
-    name: The namedtuple name.
-    fields: The namedtuple fields.
-    defaults: Sequence of booleans, whether each field has a default.
-    options: A config.Options object.
-
-  Returns:
-    A pytd.TypeDeclUnit with the namedtuple definition in its classes.
-  """
-
-  typevar = visitors.CreateTypeParametersForSignatures.PREFIX + name
-  num_fields = len(fields)
-  field_defs = "\n  ".join(
-      "%s = ...  # type: typing.Any" % field for field in fields)
-  fields_as_parameters = "".join(
-      ", " + field + (" = ..." if default else "")
-      for field, default in zip(fields, defaults))
-  field_names_as_strings = ", ".join(repr(field) for field in fields)
-  if options.strict_namedtuple_checks:
-    tuple_superclass_type = "typing.Tuple[{}]".format(
-        _repeat_type("typing.Any", num_fields))
-  else:
-    tuple_superclass_type = "tuple"
-
-  nt = textwrap.dedent("""
-    {typevar} = TypeVar("{typevar}", bound={name})
-    class {name}({tuple_superclass_type}):
-      __dict__ = ...  # type: collections.OrderedDict[str, typing.Any]
-      __slots__ = [{field_names_as_strings}]
-      _fields = ...  # type: typing.Tuple[{repeat_str}]
-      {field_defs}
-      def __getnewargs__(self) -> typing.Tuple[{repeat_any}]: ...
-      def __getstate__(self) -> None: ...
-      def __init__(self, *args, **kwargs) -> None: ...
-      def __new__(
-          cls: typing.Type[{typevar}]{fields_as_parameters}) -> {typevar}: ...
-      def _asdict(self) -> collections.OrderedDict[str, typing.Any]: ...
-      @classmethod
-      def _make(cls: typing.Type[{typevar}],
-                iterable: typing.Iterable,
-                new = ...,
-                len: typing.Callable[[typing.Sized], int] = ...
-      ) -> {typevar}: ...
-      def _replace(self: {typevar}, **kwds) -> {typevar}: ...
-  """).format(
-      typevar=typevar,
-      name=name,
-      repeat_str=_repeat_type("str", num_fields),
-      tuple_superclass_type=tuple_superclass_type,
-      field_defs=field_defs,
-      repeat_any=_repeat_type("typing.Any", num_fields),
-      fields_as_parameters=fields_as_parameters,
-      field_names_as_strings=field_names_as_strings)
-  return parser.parse_string(
-      nt, options=parser.PyiOptions.from_toplevel_options(options))
 
 
 class NamedTupleBuilder(abstract.PyTDFunction):
@@ -242,6 +181,7 @@ class NamedTupleBuilder(abstract.PyTDFunction):
 
   def _validate_and_rename_args(self, typename, field_names, rename):
     # See comment in NamedTupleProperties.validate_and_rename_fields
+    # TODO(mdemello): Remove this entirely and use the properties method.
 
     if _invalid_name(typename):
       raise ValueError(typename)
@@ -302,38 +242,21 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     except abstract_utils.ConversionError:
       return node, self.ctx.new_unsolvable(node)
 
+    props = NamedTupleProperties.from_field_names(name, field_names, self.ctx)
+    for f, d in zip(props.fields, defaults):
+      f.default = self.ctx.new_unsolvable(node) if d else None
+
     # namedtuple does some checking and optionally renaming of field names,
     # so we do too.
     try:
-      field_names = self._validate_and_rename_args(name, field_names, rename)
+      props.validate_and_rename_fields(rename)
     except ValueError as e:
-      self.ctx.errorlog.invalid_namedtuple_arg(self.ctx.vm.frames,
-                                               utils.message(e))
+      self.ctx.errorlog.invalid_namedtuple_arg(
+          self.ctx.vm.frames, utils.message(e))
       return node, self.ctx.new_unsolvable(node)
 
-    name = escape.pack_namedtuple(name, field_names)
-    ast = namedtuple_ast(name, field_names, defaults, options=self.ctx.options)
-    mapping = self._get_known_types_mapping()
-
-    # A truly well-formed pyi for the namedtuple will have references to the new
-    # namedtuple class itself for all `self` params and as the return type for
-    # methods like __new__, _replace and _make. In order to do that, we need a
-    # ClassType.
-    cls_type = pytd.ClassType(name)
-    mapping[name] = cls_type
-
-    cls = ast.Lookup(name).Visit(visitors.ReplaceTypes(mapping))
-    cls_type.cls = cls
-
-    # Make sure all NamedType nodes have been replaced by ClassType nodes with
-    # filled cls pointers.
-    cls.Visit(visitors.VerifyLookup())
-
-    # We can't build the PyTDClass directly, and instead must run it through
-    # convert.constant_to_value first, for caching.
-    instance = self.ctx.convert.constant_to_value(cls, {}, self.ctx.root_node)
-    self.ctx.vm.trace_namedtuple(instance)
-    return node, instance.to_variable(node)
+    node, cls_var = _build_namedtuple(props, node, self.ctx)
+    return node, cls_var
 
 
 class NamedTupleFuncBuilder(NamedTupleBuilder):
@@ -540,14 +463,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     cls_val = abstract_utils.get_atomic_value(cls_var)
 
     if not isinstance(cls_val, abstract.Unsolvable):
-      # set __new__.__defaults__
-      defaults = [f.default for f in props.fields if f.default is not None]
-      defaults = self.ctx.convert.build_tuple(node, defaults)
-      node, new_attr = self.ctx.attribute_handler.get_attribute(
-          node, cls_val, "__new__")
-      new_attr = abstract_utils.get_atomic_value(new_attr)
-      node = self.ctx.attribute_handler.set_attribute(
-          node, new_attr, "__defaults__", defaults)
 
       # set the attribute without overriding special namedtuple attributes
       node, fields = self.ctx.attribute_handler.get_attribute(
@@ -757,5 +672,14 @@ def _build_namedtuple(props, node, ctx):
   # Now that the class has been made, we can complete the TypeParameter used
   # by __new__, _make and _replace.
   cls_type_param.bound = cls
+
+  # set __new__.__defaults__
+  defaults = [f.default for f in props.fields if f.default is not None]
+  defaults = ctx.convert.build_tuple(node, defaults)
+  node, new_attr = ctx.attribute_handler.get_attribute(
+      node, cls, "__new__")
+  new_attr = abstract_utils.get_atomic_value(new_attr)
+  node = ctx.attribute_handler.set_attribute(
+      node, new_attr, "__defaults__", defaults)
 
   return node, cls_var
