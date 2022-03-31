@@ -1,85 +1,87 @@
 """Tests for the collections.namedtuple implementation."""
 
-import textwrap
-
 from pytype import file_utils
-from pytype.overlays import named_tuple
-from pytype.pytd import escape
-from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 
 
 class NamedtupleTests(test_base.BaseTest):
   """Tests for collections.namedtuple."""
 
-  def _namedtuple_ast(self, name, fields):
-    return named_tuple.namedtuple_ast(
-        name, fields, [False] * len(fields), self.options)
-
-  def _namedtuple_def(self, suffix="", **kws):
-    """Generate the expected pyi for a simple namedtuple definition.
-
-    Args:
-      suffix: Optionally, extra text to append to the pyi.
-      **kws: Must contain exactly one argument of the form
-        alias=(name, [<fields>]). For example, to generate a definition for
-        X = namedtuple("_X", "y z"), the method call should be
-        _namedtuple_def(X=("_X", ["y", "z"])).
-
-    Returns:
-      The expected pyi for the namedtuple instance.
-    """
-    (alias, (name, fields)), = kws.items()  # pylint: disable=unbalanced-tuple-unpacking
-    name = escape.pack_namedtuple(name, fields)
-    suffix += f"\n{alias} = {name}"
-    return pytd_utils.Print(self._namedtuple_ast(name, fields)) + "\n" + suffix
-
   def test_basic_namedtuple(self):
+    self.Check("""
+      import collections
+
+      X = collections.namedtuple("X", ["y", "z"])
+      a = X(y=1, z=2)
+      assert_type(a, X)
+      """, deep=False)
+
+  def test_pytd(self):
     ty = self.Infer("""
       import collections
 
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
       """, deep=False)
-    self.assertTypesMatchPytd(ty, self._namedtuple_def(
-        X=("X", ["y", "z"]), suffix="a = ...  # type: X"))
+    self.assertTypesMatchPytd(ty, """
+      import collections
+      from typing import Any, Callable, Iterable, Sized, Tuple, Type, TypeVar
+
+      a: X
+
+      _TX = TypeVar('_TX', bound=X)
+
+      class X(Tuple[Any, Any]):
+          __slots__ = ["y", "z"]
+          __dict__: collections.OrderedDict[str, Any]
+          _field_defaults: collections.OrderedDict[str, Any]
+          _field_types: collections.OrderedDict[str, type]
+          _fields: Tuple[str, str]
+          y: Any
+          z: Any
+          def __getnewargs__(self) -> Tuple[Any, Any]: ...
+          def __getstate__(self) -> None: ...
+          def __init__(self, *args, **kwargs) -> None: ...
+          def __new__(cls: Type[_TX], y, z) -> _TX: ...
+          def _asdict(self) -> collections.OrderedDict[str, Any]: ...
+          @classmethod
+          def _make(cls: Type[_TX], iterable: Iterable, new = ..., len: Callable[[Sized], int] = ...) -> _TX: ...
+          def _replace(self: _TX, **kwds) -> _TX: ...
+    """)
 
   def test_no_fields(self):
-    ty = self.Infer("""
+    self.Check("""
         import collections
 
         F = collections.namedtuple("F", [])
         a = F()
         """, deep=False)
-    self.assertTypesMatchPytd(
-        ty, self._namedtuple_def(F=("F", []), suffix="a = ...  # type: F"))
 
   def test_str_args(self):
-    ty = self.Infer("""
+    self.Check("""
         import collections
 
         S = collections.namedtuple("S", "a b c")
         b = S(1, 2, 3)
+        c = (b.a, b.b, b.c)
     """, deep=False)
-    self.assertTypesMatchPytd(ty, self._namedtuple_def(
-        S=("S", ["a", "b", "c"]), suffix="b = ...  # type: S"))
 
   def test_str_args2(self):
     self.Check("""
         import collections
-        collections.namedtuple("_", "a,b,c")
+        collections.namedtuple("_", "a,b,c")(1, 2, 3)
         """)
     self.Check("""
         import collections
-        collections.namedtuple("_", "a, b, c")
+        collections.namedtuple("_", "a, b, c")(1, 2, 3)
         """)
     self.Check("""
         import collections
-        collections.namedtuple("_", "a ,b")
+        collections.namedtuple("_", "a ,b")(1, 2)
         """)
 
   def test_bad_fieldnames(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
         import collections
         collections.namedtuple("_", ["abc", "def", "ghi"])  # invalid-namedtuple-arg
         collections.namedtuple("_", "_")  # invalid-namedtuple-arg
@@ -90,16 +92,16 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_rename(self):
-    ty = self.Infer("""
+    self.Check("""
         import collections
 
         S = collections.namedtuple("S", "abc def ghi abc", rename=True)
+        a = S(1, 2, 3, 4)
+        b = a._3
         """, deep=False)
-    self.assertTypesMatchPytd(
-        ty, self._namedtuple_def(S=("S", ["abc", "_1", "ghi", "_3"])))
 
   def test_bad_initialize(self):
-    self.InferWithErrors("""
+    self.CheckWithErrors("""
         from collections import namedtuple
 
         X = namedtuple("X", "y z")
@@ -110,13 +112,13 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_class_name(self):
-    ty = self.Infer(
+    self.CheckWithErrors(
         """
         import collections
         F = collections.namedtuple("S", ['a', 'b', 'c'])
+        a = F(1, 2, 3)
+        b = S(1, 2, 3)  # name-error
         """)
-    self.assertTypesMatchPytd(
-        ty, self._namedtuple_def(F=("S", ["a", "b", "c"])))
 
   def test_constructors(self):
     self.Check("""
@@ -128,14 +130,12 @@ class NamedtupleTests(test_base.BaseTest):
         """)
 
   def test_instance_types(self):
-    ty = self.Infer(
+    self.Check(
         """
         import collections
         X = collections.namedtuple("X", "a b c")
         a = X._make((1, 2, 3))
         """)
-    self.assertTypesMatchPytd(ty, self._namedtuple_def(
-        X=("X", ["a", "b", "c"]), suffix="a = ...  # type: X"))
 
   def test_fields(self):
     self.Check(
@@ -308,55 +308,40 @@ class NamedtupleTests(test_base.BaseTest):
     """)
 
   def test_name_conflict(self):
-    ty = self.Infer("""
+    self.Check("""
       import collections
       X = collections.namedtuple("_", [])
       Y = collections.namedtuple("_", [])
       Z = collections.namedtuple("_", "a")
     """, deep=False)
-    name_x = escape.pack_namedtuple("_", [])
-    name_z = escape.pack_namedtuple("_", ["a"])
-    ast_x = self._namedtuple_ast(name_x, [])
-    ast_z = self._namedtuple_ast(name_z, ["a"])
-    ast = pytd_utils.Concat(ast_x, ast_z)
-    expected = pytd_utils.Print(ast) + textwrap.dedent("""
-      X = {name_x}
-      Y = {name_x}
-      Z = {name_z}""").format(name_x=name_x, name_z=name_z)
-    self.assertTypesMatchPytd(ty, expected)
 
   def test_subclass(self):
-    ty = self.Infer("""
+    self.Check("""
       import collections
       class X(collections.namedtuple("X", [])):
         def __new__(cls, _):
           return super(X, cls).__new__(cls)
+      a = X(1)
+      assert_type(a, X)
     """)
-    name = escape.pack_namedtuple("X", [])
-    ast = self._namedtuple_ast(name, [])
-    expected = pytd_utils.Print(ast) + textwrap.dedent("""
-      _TX = TypeVar("_TX", bound=X)
-      class X({name}):
-        def __new__(cls: Type[_TX], _) -> _TX: ...""").format(name=name)
-    self.assertTypesMatchPytd(ty, expected)
 
   def test_subclass_replace(self):
-    ty = self.Infer("""
+    self.Check("""
       import collections
       X = collections.namedtuple("X", "a")
       class Y(X): pass
       z = Y(1)._replace(a=2)
     """)
-    self.assertEqual(pytd_utils.Print(ty.Lookup("z")), "z: Y")
 
   def test_subclass_make(self):
-    ty = self.Infer("""
+    self.Check("""
       import collections
       X = collections.namedtuple("X", "a")
       class Y(X): pass
       z = Y._make([1])
+      assert_type(z, Y)
     """)
-    self.assertEqual(pytd_utils.Print(ty.Lookup("z")), "z: Y")
+
 
 if __name__ == "__main__":
   test_base.main()

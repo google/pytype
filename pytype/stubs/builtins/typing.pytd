@@ -112,13 +112,6 @@ if sys.version_info >= (3, 0):
     def __bytes__(self) -> bytes: ...
 
 
-if sys.version_info >= (3, 8):
-  class SupportsIndex(Protocol):
-    __slots__ = []
-    @abstractmethod
-    def __index__(self) -> int: ...
-
-
 class Reversible(Generic[_T], Protocol):
   __slots__ = []
   @abstractmethod
@@ -608,26 +601,6 @@ if sys.version_info >= (3, 6):
 # typing_extensions.TypedDict before 3.8 and typing.TypedDict thereafter.
 class _TypedDict(Mapping[str, object]): ...
 
-
-# The following types are available only in newer versions; we don't put a
-# version guard here because we want to reuse the definitions for
-# typing_extensions in lower versions.
-
-# if sys.version_info >= (3, 8):
-def final(x: _T) -> _T: ...
-
-# if sys.version_info >= (3, 8):
-class Final(Generic[_T]): ...
-
-# if sys.version_info >= (3, 8):
-class TypedDict: ...
-
-# if sys.version_info >= (3, 9):
-class Annotated: ...
-
-# if sys.version_info >= (3, 10):
-class TypeAlias: ...
-
 TYPE_CHECKING = ...  # type: bool
 
 # This does not exist at runtime; it needs to be here because it's used by
@@ -635,8 +608,30 @@ TYPE_CHECKING = ...  # type: bool
 class _Alias:
     def __getitem__(self, typeargs: Any) -> Any: ...
 
-if sys.version_info >= (3, 10):
-  class Concatenate: ...
-  class ParamSpec: ...
-  class TypeGuard: ...
-  def is_typeddict(tp) -> bool: ...
+# When adding a typing construct that is not available in all runtime versions,
+# do *not* add a sys.version_info guard here, as that would prevent us from
+# reusing the definition for typing_extensions. Instead, go to
+# pytype/overlays/typing_overlay and add the lowest supported version to the
+# typing_overlay dict.
+
+# Python 3.8
+def final(x: _T) -> _T: ...
+
+class Final(Generic[_T]): ...
+
+class SupportsIndex(Protocol):
+    __slots__ = []
+    @abstractmethod
+    def __index__(self) -> int: ...
+
+class TypedDict: ...
+
+# Python 3.9
+class Annotated: ...
+
+# Python 3.10
+class TypeAlias: ...
+class Concatenate: ...
+class ParamSpec: ...
+class TypeGuard: ...
+def is_typeddict(tp) -> bool: ...

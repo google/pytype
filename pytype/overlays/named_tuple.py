@@ -1,10 +1,9 @@
 """Implementation of named tuples."""
 
 import dataclasses
-from keyword import iskeyword  # pylint: disable=g-importing-member
-import textwrap
+import keyword
 
-from typing import Any, List
+from typing import Any, List, Optional
 
 from pytype import overlay_utils
 from pytype import utils
@@ -12,14 +11,21 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
-from pytype.pyi import parser
-from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 
 
 # type alias
 Param = overlay_utils.Param
+
+
+# This module has classes and methods which benefit from extended docstrings,
+# but whose argument list documentation is trivial and only adds clutter.
+# Disable the lint check rather than convert the extended docstrings to
+# one-line docstrings + comments.
+# pylint: disable=g-doc-args
+# pylint: disable=g-doc-return-or-yield
+# pylint: disable=g-doc-exception
 
 
 @dataclasses.dataclass
@@ -39,26 +45,42 @@ class NamedTupleProperties:
   fields: List[Field]
   bases: List[Any]
 
-  def validate_and_rename_fields(self, rename):
-    """Validate and rename self.fields."""
-    # namedtuple field names have some requirements:
-    # - must not be a Python keyword
-    # - must consist of only alphanumeric characters and "_"
-    # - must not start with "_" or a digit
-    # Basically, they're valid Python identifiers that don't start with "_" or a
-    # digit. Also, there can be no duplicate field names.
-    # Typename has the same requirements, except it can start with "_".
-    # If rename is true, any invalid field names are changed to "_%d". For
-    # example, "abc def ghi abc" becomes "abc _1 def _3" because "def" is a
-    # keyword and "abc" is a duplicate.
-    # The typename cannot be changed.
+  @classmethod
+  def from_field_names(cls, name, field_names, ctx):
+    """Make a NamedTupleProperties from field names with no types."""
+    fields = [Field(n, ctx.convert.unsolvable, None) for n in field_names]
+    return cls(name, fields, [])
 
-    if _invalid_name(self.name):
+  def validate_and_rename_fields(self, rename):
+    """Validate and rename self.fields.
+
+    namedtuple field names have some requirements:
+    - must not be a Python keyword
+    - must consist of only alphanumeric characters and "_"
+    - must not start with "_" or a digit
+
+    Basically, they're valid Python identifiers that don't start with "_" or a
+    digit. Also, there can be no duplicate field names.
+
+    If rename is true, any invalid field names are changed to "_%d". For
+    example, "abc def ghi abc" becomes "abc _1 def _3" because "def" is a
+    keyword and "abc" is a duplicate.
+
+    Also validates self.name, which has the same requirements, except it can
+    start with "_", and cannot be changed.
+    """
+    def invalid_name(field_name):
+      return (not all(c.isalnum() or c == "_" for c in field_name)
+              or keyword.iskeyword(field_name)
+              or not field_name  # catches empty string, etc.
+              or field_name[0].isdigit())
+
+    if invalid_name(self.name):
       raise ValueError(self.name)
 
     seen = set()
     for idx, f in enumerate(self.fields):
-      if _invalid_name(f.name) or f.name.startswith("_") or f.name in seen:
+      if invalid_name(f.name) or f.name.startswith("_") or f.name in seen:
         if rename:
           f.name = "_%d" % idx
         else:
@@ -66,72 +88,99 @@ class NamedTupleProperties:
       seen.add(f.name)
 
 
-def _repeat_type(type_str, n):
-  return ", ".join((type_str,) * n) if n else "()"
+@dataclasses.dataclass
+class _Args:
+  """Args for both collections.namedtuple and typing.NamedTuple."""
+
+  name: str
+  field_names: List[str]
+  field_types: Optional[List[Any]] = None
+  defaults: Optional[List[Any]] = None
+  rename: bool = False
 
 
-def namedtuple_ast(name, fields, defaults, options):
-  """Make an AST with a namedtuple definition for the given name and fields.
+class _ArgsError(Exception):
+  pass
 
-  Args:
-    name: The namedtuple name.
-    fields: The namedtuple fields.
-    defaults: Sequence of booleans, whether each field has a default.
-    options: A config.Options object.
 
-  Returns:
-    A pytd.TypeDeclUnit with the namedtuple definition in its classes.
+class _FieldMatchError(Exception):
+  """Errors when postprocessing field args, to be converted to WrongArgTypes."""
+
+  def __init__(self, param):
+    super().__init__()
+    self.param = param
+
+
+class NamedTupleBuilderBase(abstract.PyTDFunction):
+  """Base class that handles namedtuple function args processing.
+
+  Performs the same argument checking as collections.namedtuple, e.g. making
+  sure field names don't start with _ or digits, making sure no keywords are
+  used for the typename or field names, and so on.
+
+  If incorrect arguments are passed, a subclass of function.FailedFunctionCall
+  will be raised. Other cases (e.g. if any of the arguments have multiple
+  bindings) raise _ArgsError(). This also occurs if an argument value is
+  invalid, e.g. a keyword is used as a field name and rename is False.
+  Subclasses catch _ArgsError() and return Any in place of a named tuple class.
   """
 
-  typevar = visitors.CreateTypeParametersForSignatures.PREFIX + name
-  num_fields = len(fields)
-  field_defs = "\n  ".join(
-      "%s = ...  # type: typing.Any" % field for field in fields)
-  fields_as_parameters = "".join(
-      ", " + field + (" = ..." if default else "")
-      for field, default in zip(fields, defaults))
-  field_names_as_strings = ", ".join(repr(field) for field in fields)
-  if options.strict_namedtuple_checks:
-    tuple_superclass_type = "typing.Tuple[{}]".format(
-        _repeat_type("typing.Any", num_fields))
-  else:
-    tuple_superclass_type = "tuple"
+  # Args are processed in several stages:
+  #   raw_args: The incoming function.Args passed to the constructor.
+  #   callargs: A dict of {key: unwrapped arg value}
+  #   _Args: Postprocessed arg values struct, unifies collections.namedtuple and
+  #     the typing.NamedTuple functional constructor
+  #   NamedTupleProperties: The final list of properties passed to the class
+  #     builder. Unifies the functional constructors with the subclass
+  #     constructor (which has class annotations rather than function args).
 
-  nt = textwrap.dedent("""
-    {typevar} = TypeVar("{typevar}", bound={name})
-    class {name}({tuple_superclass_type}):
-      __dict__ = ...  # type: collections.OrderedDict[str, typing.Any]
-      __slots__ = [{field_names_as_strings}]
-      _fields = ...  # type: typing.Tuple[{repeat_str}]
-      {field_defs}
-      def __getnewargs__(self) -> typing.Tuple[{repeat_any}]: ...
-      def __getstate__(self) -> None: ...
-      def __init__(self, *args, **kwargs) -> None: ...
-      def __new__(
-          cls: typing.Type[{typevar}]{fields_as_parameters}) -> {typevar}: ...
-      def _asdict(self) -> collections.OrderedDict[str, typing.Any]: ...
-      @classmethod
-      def _make(cls: typing.Type[{typevar}],
-                iterable: typing.Iterable,
-                new = ...,
-                len: typing.Callable[[typing.Sized], int] = ...
-      ) -> {typevar}: ...
-      def _replace(self: {typevar}, **kwds) -> {typevar}: ...
-  """).format(
-      typevar=typevar,
-      name=name,
-      repeat_str=_repeat_type("str", num_fields),
-      tuple_superclass_type=tuple_superclass_type,
-      field_defs=field_defs,
-      repeat_any=_repeat_type("typing.Any", num_fields),
-      fields_as_parameters=fields_as_parameters,
-      field_names_as_strings=field_names_as_strings)
-  return parser.parse_string(
-      nt, options=parser.PyiOptions.from_toplevel_options(options))
+  def extract_args(self, node, callargs):
+    """Extract callargs into an _Args object.
+
+    Subclasses should implement extract_args for their specific args.
+    """
+    raise NotImplementedError()
+
+  def process_args(self, node, raw_args):
+    """Convert namedtuple call args into a NamedTupleProperties.
+
+    Returns both the NamedTupleProperties and an _Args struct in case the caller
+    wants to do any more args processing before calling the class builder.
+    """
+
+    # Check the args against the pytd signature
+    self.match_args(node, raw_args)
+
+    # namedtuple only has one signature
+    sig, = self.signatures
+
+    try:
+      callargs = {name: abstract_utils.get_atomic_python_constant(var)
+                  for name, var, _ in sig.signature.iter_args(raw_args)}
+      args = self.extract_args(node, callargs)
+    except abstract_utils.ConversionError:
+      raise _ArgsError()  # pylint: disable=raise-missing-from
+    except _FieldMatchError as e:
+      raise function.WrongArgTypes(sig.signature, raw_args, self.ctx, e.param)
+
+    props = NamedTupleProperties.from_field_names(
+        args.name, args.field_names, self.ctx)
+    try:
+      props.validate_and_rename_fields(args.rename)
+    except ValueError as e:
+      self.ctx.errorlog.invalid_namedtuple_arg(
+          self.ctx.vm.frames, utils.message(e))
+      raise _ArgsError()  # pylint: disable=raise-missing-from
+
+    if args.defaults:
+      for f, d in zip(props.fields, args.defaults):
+        f.default = self.ctx.new_unsolvable(node) if d else None
+
+    return args, props
 
 
-class NamedTupleBuilder(abstract.PyTDFunction):
-  """Factory for creating collections.namedtuple typing information."""
+class NamedTupleBuilder(NamedTupleBuilderBase):
+  """Factory for creating collections.namedtuple classes."""
 
   collections_ast: pytd.TypeDeclUnit
 
@@ -146,73 +195,24 @@ class NamedTupleBuilder(abstract.PyTDFunction):
     self.collections_ast = collections_ast
     return self
 
-  def _get_builtin_classtype(self, name):
-    fullname = "builtins.%s" % name
-    return pytd.ClassType(fullname, self.ctx.loader.builtins.Lookup(fullname))
-
-  def _get_typing_classtype(self, name):
-    fullname = "typing.%s" % name
-    return pytd.ClassType(fullname, self.ctx.loader.typing.Lookup(fullname))
-
-  def _get_known_types_mapping(self):
-    # The mapping includes only the types needed to define a namedtuple.
-    builtin_classes = (
-        "dict", "int", "NoneType", "object", "str", "tuple", "type")
-    typing_classes = ("Callable", "Iterable", "Sized")
-    d = {c: self._get_builtin_classtype(c) for c in builtin_classes}
-    for c in typing_classes:
-      d["typing." + c] = self._get_typing_classtype(c)
-    d["collections.OrderedDict"] = pytd.ClassType(
-        "collections.OrderedDict",
-        self.collections_ast.Lookup("collections.OrderedDict"))
-    return d
-
-  def _getargs(self, node, args):
+  def extract_args(self, node, callargs):
     """Extracts the typename, field_names and rename arguments.
 
-    collections.namedtuple takes potentially 4 arguments, but we only care about
-    three of them. This function checks the argument count and ensures multiple
-    values aren't passed for 'verbose' and 'rename'.
+    collections.namedtuple takes a 'verbose' argument too but we don't care
+    about that.
 
-    Args:
-      node: The current CFG node. Used by match_args.
-      args: A function.Args object
-
-    Returns:
-      A tuple containing the typename, field_names, defaults, and rename
-      arguments passed to this call to collections.namedtuple. defaults is
-      postprocessed from a sequence of defaults to a sequence of bools
-      describing whether each field has a default (e.g., for
-        collections.namedtuple('X', field_names=['a', 'b'], defaults=[0])
-      this method will return [False, True] for defaults to indicate that 'a'
-      does not have a default while 'b' does).
-
-    Raises:
-      function.FailedFunctionCall: The arguments do not match those needed by
-        the function call. See also: abstract.PyTDFunction.match_args().
-      abstract_utils.ConversionError: One of the args could not be extracted.
-        Typically occurs if typename or one of the field names is in unicode.
+    The 'defaults' arg is postprocessed from a sequence of defaults to a
+    sequence of bools describing whether each field has a default (e.g., for
+    collections.namedtuple('X', field_names=['a', 'b'], defaults=[0]) this
+    method will return [False, True] for defaults to indicate that 'a' does not
+    have a default while 'b' does).
     """
+    name = callargs["typename"]
 
-    # abstract.PyTDFunction.match_args checks the args for this call.
-    self.match_args(node, args)
-
-    # namedtuple only has one signature
-    sig, = self.signatures
-    callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
-
-    # The name of the namedtuple class is the first arg (a Variable)
-    # We need the actual Variable later, so we'll just return name_var and
-    # extract the name itself later.
-    name_var = callargs["typename"]
-
-    # The fields are also a Variable, which stores the field names as Variables.
-    # Extract the list itself, we don't need the wrapper.
-    fields_var = callargs["field_names"]
-    fields = abstract_utils.get_atomic_python_constant(fields_var)
     # namedtuple fields can be given as a single string, e.g. "a, b, c" or as a
     # list [Variable('a'), Variable('b'), Variable('c')].
     # We just want a list of strings.
+    fields = callargs["field_names"]
     if isinstance(fields, (bytes, str)):
       fields = utils.native_str(fields)
       field_names = fields.replace(",", " ").split()
@@ -222,122 +222,32 @@ class NamedTupleBuilder(abstract.PyTDFunction):
       field_names = [utils.native_str(f) for f in field_names]
 
     if "defaults" in callargs:
-      default_vars = abstract_utils.get_atomic_python_constant(
-          callargs["defaults"])
+      default_vars = callargs["defaults"]
       num_defaults = len(default_vars)
       defaults = [False] * (len(fields) - num_defaults) + [True] * num_defaults
     else:
       defaults = [False] * len(fields)
 
-    # namedtuple also takes a "verbose" argument, but we don't care about that.
-
     # rename will take any problematic field names and give them a new name.
-    # Like the other args, it's stored as a Variable, but we want just a bool.
-    if "rename" in callargs:
-      rename = abstract_utils.get_atomic_python_constant(callargs["rename"])
-    else:
-      rename = False
+    rename = callargs.get("rename", False)
 
-    return name_var, field_names, defaults, rename
-
-  def _validate_and_rename_args(self, typename, field_names, rename):
-    # See comment in NamedTupleProperties.validate_and_rename_fields
-
-    if _invalid_name(typename):
-      raise ValueError(typename)
-
-    valid_fields = list(field_names)
-    seen = set()
-    for idx, name in enumerate(field_names):
-      if _invalid_name(name) or name.startswith("_") or name in seen:
-        if rename:
-          valid_fields[idx] = "_%d" % idx
-        else:
-          raise ValueError(name)
-      seen.add(name)
-    return valid_fields
+    return _Args(
+        name=name, field_names=field_names, defaults=defaults, rename=rename)
 
   def call(self, node, _, args):
-    """Creates a namedtuple class definition.
-
-    Performs the same argument checking as collections.namedtuple, e.g. making
-    sure field names don't start with _ or digits, making sure no keywords are
-    used for the typename or field names, and so on. Because the methods of the
-    class have to be changed to match the number and names of the fields, we
-    construct pytd.Function and pytd.Constant instances for each member of the
-    class. Finally, the pytd.Class is wrapped in an abstract.PyTDClass.
-
-    If incorrect arguments are passed, a subclass of function.FailedFunctionCall
-    will be raised. Other cases may raise abstract_utils.ConversionError
-    exceptions, such as when the arguments are in unicode or any of the
-    arguments have multiple bindings, but these are caught and return Any. This
-    also occurs if an argument to namedtuple is invalid, e.g. a keyword is used
-    as a field name and rename is False.
-
-    Arguments:
-      node: the current CFG node
-      _: the func binding, ignored.
-      args: a function.Args instance
-
-    Returns:
-      a tuple of the given CFG node and an abstract.PyTDClass instance (wrapped
-      in a Variable) representing the constructed namedtuple class.
-      If an abstract_utils.ConversionError occurs or if field names are invalid,
-      this function returns Unsolvable (in a Variable) instead of a PyTDClass.
-
-    Raises:
-      function.FailedFunctionCall: Raised by _getargs if any of the arguments
-        do not match the function signature.
-    """
+    """Creates a namedtuple class definition."""
     # If we can't extract the arguments, we take the easy way out and return Any
     try:
-      name_var, field_names, defaults, rename = self._getargs(node, args)
-    except abstract_utils.ConversionError:
+      _, props = self.process_args(node, args)
+    except _ArgsError:
       return node, self.ctx.new_unsolvable(node)
 
-    # We need the bare name for a few things, so pull that out now.
-    # The same unicode issue can strike here, so again return Any.
-    try:
-      name = abstract_utils.get_atomic_python_constant(name_var)
-    except abstract_utils.ConversionError:
-      return node, self.ctx.new_unsolvable(node)
-
-    # namedtuple does some checking and optionally renaming of field names,
-    # so we do too.
-    try:
-      field_names = self._validate_and_rename_args(name, field_names, rename)
-    except ValueError as e:
-      self.ctx.errorlog.invalid_namedtuple_arg(self.ctx.vm.frames,
-                                               utils.message(e))
-      return node, self.ctx.new_unsolvable(node)
-
-    name = escape.pack_namedtuple(name, field_names)
-    ast = namedtuple_ast(name, field_names, defaults, options=self.ctx.options)
-    mapping = self._get_known_types_mapping()
-
-    # A truly well-formed pyi for the namedtuple will have references to the new
-    # namedtuple class itself for all `self` params and as the return type for
-    # methods like __new__, _replace and _make. In order to do that, we need a
-    # ClassType.
-    cls_type = pytd.ClassType(name)
-    mapping[name] = cls_type
-
-    cls = ast.Lookup(name).Visit(visitors.ReplaceTypes(mapping))
-    cls_type.cls = cls
-
-    # Make sure all NamedType nodes have been replaced by ClassType nodes with
-    # filled cls pointers.
-    cls.Visit(visitors.VerifyLookup())
-
-    # We can't build the PyTDClass directly, and instead must run it through
-    # convert.constant_to_value first, for caching.
-    instance = self.ctx.convert.constant_to_value(cls, {}, self.ctx.root_node)
-    self.ctx.vm.trace_namedtuple(instance)
-    return node, instance.to_variable(node)
+    node, cls_var = _build_namedtuple(props, node, self.ctx)
+    return node, cls_var
 
 
-class NamedTupleFuncBuilder(NamedTupleBuilder):
-  """Factory for creating typing.NamedTuple classes."""
+class NamedTupleFuncBuilder(NamedTupleBuilderBase):
+  """Factory for creating typing.NamedTuples via the function constructor."""
 
   _fields_param: function.BadParam
 
@@ -349,7 +259,7 @@ class NamedTupleFuncBuilder(NamedTupleBuilder):
     # error messages will correctly display "typing.NamedTuple".
     pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
-    self = super().make("NamedTuple", ctx, pyval)
+    self = super().make("NamedTuple", ctx, "typing", pyval)
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
@@ -364,18 +274,20 @@ class NamedTupleFuncBuilder(NamedTupleBuilder):
     return (isinstance(val, abstract.Instance) and
             val.full_name in ("builtins.str", "builtins.unicode"))
 
-  def _getargs(self, node, args):
-    self.match_args(node, args)
-    sig, = self.signatures
-    callargs = {name: var for name, var, _ in sig.signature.iter_args(args)}
-    # typing.NamedTuple doesn't support rename or verbose
-    name_var = callargs["typename"]
-    fields_var = callargs["fields"]
-    fields = abstract_utils.get_atomic_python_constant(fields_var)
+  def extract_args(self, node, callargs):
+    """Extracts the typename and fields arguments.
+
+    fields is postprocessed into field_names and field_types.
+
+    typing.NamedTuple doesn't support rename, it will default to False
+    """
+
+    cls_name = callargs["typename"]
+
+    fields = callargs["fields"]
     if isinstance(fields, str):
       # Since str matches Sequence, we have to manually check for it.
-      raise function.WrongArgTypes(sig.signature, args, self.ctx,
-                                   self._fields_param)
+      raise _FieldMatchError(self._fields_param)
     # The fields is a list of tuples, so we need to deeply unwrap them.
     fields = [abstract_utils.get_atomic_python_constant(t) for t in fields]
     # We need the actual string for the field names and the BaseValue
@@ -385,14 +297,12 @@ class NamedTupleFuncBuilder(NamedTupleBuilder):
     for field in fields:
       if isinstance(field, str):
         # Since str matches Sequence, we have to manually check for it.
-        raise function.WrongArgTypes(sig.signature, args, self.ctx,
-                                     self._fields_param)
+        raise _FieldMatchError(self._fields_param)
       if (len(field) != 2 or
           any(not self._is_str_instance(v) for v in field[0].data)):
         # Note that we don't need to check field[1] because both 'str'
         # (forward reference) and 'type' are valid for it.
-        raise function.WrongArgTypes(sig.signature, args, self.ctx,
-                                     self._fields_param)
+        raise _FieldMatchError(self._fields_param)
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
       names.append(name_py_constant)
@@ -405,60 +315,27 @@ class NamedTupleFuncBuilder(NamedTupleBuilder):
           self.ctx.vm.simple_stack(),
           allowed_type_params=allowed_type_params)
       types.append(annot)
-    return name_var, names, types
 
-  def call(self, node, _, args, bases=None):
+    return _Args(name=cls_name, field_names=names, field_types=types)
+
+  def call(self, node, _, args):
     try:
-      name_var, field_names, field_types = self._getargs(node, args)
-    except abstract_utils.ConversionError:
+      args, props = self.process_args(node, args)
+    except _ArgsError:
       return node, self.ctx.new_unsolvable(node)
 
-    try:
-      name = abstract_utils.get_atomic_python_constant(name_var)
-    except abstract_utils.ConversionError:
-      return node, self.ctx.new_unsolvable(node)
-
-    try:
-      field_names = self._validate_and_rename_args(name, field_names, False)
-    except ValueError as e:
-      self.ctx.errorlog.invalid_namedtuple_arg(self.ctx.vm.frames,
-                                               utils.message(e))
-      return node, self.ctx.new_unsolvable(node)
-
+    # fill in field types from annotations
     annots = self.ctx.annotation_utils.convert_annotations_list(
-        node, zip(field_names, field_types))
-    field_types = [
-        annots.get(field_name, self.ctx.convert.unsolvable)
-        for field_name in field_names
-    ]
-    fields = [Field(n, t) for n, t in zip(field_names, field_types)]
-    props = NamedTupleProperties(name, fields, bases)
-    node, cls_var = _build_namedtuple(props, node, self.ctx)
+        node, zip(args.field_names, args.field_types))
+    for f in props.fields:
+      f.typ = annots.get(f.name, self.ctx.convert.unsolvable)
 
-    self.ctx.vm.trace_classdef(cls_var)
+    node, cls_var = _build_namedtuple(props, node, self.ctx)
     return node, cls_var
 
 
-class NamedTupleClass(abstract.PyTDClass):
-  """Representation of NamedTuple classes."""
-
-  def __init__(self, props, ctx):
-    self.props = props
-    typing_ast = ctx.loader.import_name("typing")
-    # Because NamedTuple is a special case for the pyi parser, typing.pytd has
-    # "_NamedTuple" instead. Replace the name of the returned function so that
-    # error messages will correctly display "typing.NamedTuple".
-    pyval = typing_ast.Lookup("typing._NamedTuple")
-    pyval = pyval.Replace(name="typing.NamedTuple")
-    super().__init__(props.name, pyval, ctx)
-    self.init_method = self._make_init(props)
-
-  def __repr__(self):
-    return f"NamedTupleClass({self.name})"
-
-
 class NamedTupleClassBuilder(abstract.PyTDClass):
-  """Factory for creating typing.NamedTuple classes."""
+  """Factory for creating typing.NamedTuples by subclassing NamedTuple."""
 
   # attributes prohibited to set in NamedTuple class syntax
   _prohibited = ("__new__", "__init__", "__slots__", "__getnewargs__",
@@ -540,14 +417,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     cls_val = abstract_utils.get_atomic_value(cls_var)
 
     if not isinstance(cls_val, abstract.Unsolvable):
-      # set __new__.__defaults__
-      defaults = [f.default for f in props.fields if f.default is not None]
-      defaults = self.ctx.convert.build_tuple(node, defaults)
-      node, new_attr = self.ctx.attribute_handler.get_attribute(
-          node, cls_val, "__new__")
-      new_attr = abstract_utils.get_atomic_value(new_attr)
-      node = self.ctx.attribute_handler.set_attribute(
-          node, new_attr, "__defaults__", defaults)
 
       # set the attribute without overriding special namedtuple attributes
       node, fields = self.ctx.attribute_handler.get_attribute(
@@ -563,14 +432,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
               node, cls_val, key, f_locals[key])
 
     return node, cls_var
-
-
-# Small helper function for checking typename and field names.
-def _invalid_name(field_name):
-  return (not all(c.isalnum() or c == "_" for c in field_name)
-          or iskeyword(field_name)
-          or not field_name  # catches empty string, etc.
-          or field_name[0].isdigit())
 
 
 class _DictBuilder:
@@ -602,6 +463,8 @@ def _build_namedtuple(props, node, ctx):
 
   members = {f.name: f.typ.instantiate(node) for f in props.fields}
 
+  # NOTE: We add the full list of private methods to all namedtuples.
+  # Technically collections.namedtuple has a smaller set.
   # collections.namedtuple has: __dict__, __slots__ and _fields.
   # typing.NamedTuple adds: _field_types, __annotations__ and _field_defaults.
   # __slots__ and _fields are tuples containing the names of the fields.
@@ -758,4 +621,14 @@ def _build_namedtuple(props, node, ctx):
   # by __new__, _make and _replace.
   cls_type_param.bound = cls
 
+  # set __new__.__defaults__
+  defaults = [f.default for f in props.fields if f.default is not None]
+  defaults = ctx.convert.build_tuple(node, defaults)
+  node, new_attr = ctx.attribute_handler.get_attribute(
+      node, cls, "__new__")
+  new_attr = abstract_utils.get_atomic_value(new_attr)
+  node = ctx.attribute_handler.set_attribute(
+      node, new_attr, "__defaults__", defaults)
+
+  ctx.vm.trace_classdef(cls_var)
   return node, cls_var

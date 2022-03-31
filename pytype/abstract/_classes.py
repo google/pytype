@@ -461,7 +461,7 @@ class PyTDClass(
                                            e.type_param_name)
       self.members[name] = self.ctx.new_unsolvable(self.ctx.root_node)
 
-  def _convert_member(self, member, subst=None):
+  def _convert_member(self, name, member, subst=None):
     """Convert a member as a variable. For lazy lookup."""
     subst = subst or datatypes.AliasingDict()
     node = self.ctx.root_node
@@ -518,7 +518,7 @@ class PyTDClass(
     c = self.pytd_cls.Lookup(name)
     if isinstance(c, pytd.Constant):
       try:
-        self._convert_member(c)
+        self._convert_member(name, c)
       except self.ctx.convert.TypeParameterError:
         # Constant c cannot be converted without type parameter substitutions,
         # so it must be an instance attribute.
@@ -527,7 +527,7 @@ class PyTDClass(
           subst[itm.full_name] = self.ctx.convert.constant_to_value(
               itm.type_param, {}).instantiate(
                   self.ctx.root_node, container=instance)
-        return self._convert_member(c, subst)
+        return self._convert_member(name, c, subst)
 
   def generate_ast(self):
     """Generate this class's AST, including updated members."""

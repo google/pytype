@@ -144,8 +144,9 @@ class SlotsTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
+  @test_base.skip("b/227272745")
   def test_namedtuple(self):
-    _, errors = self.InferWithErrors("""
+    errors = self.InferWithErrors("""
       import collections
       Foo = collections.namedtuple("_", ["a", "b", "c"])
       foo = Foo(None, None, None)

@@ -345,6 +345,7 @@ py_library(
   DEPS
     .datatypes
     pytype.abstract.abstract
+    pytype.typegraph.cfg
 )
 
 py_library(

@@ -811,7 +811,7 @@ class LiteralTest(test_base.BaseTest):
   @test_base.skip("Pytype loads N.A and treats it as a literal.")
   def test_not_an_enum(self):
     self.CheckWithErrors("""
-      from typing import Literal
+      from typing_extensions import Literal
       class N:
         A = 1
       x: Literal[N.A]  # bad-annotation
@@ -820,7 +820,7 @@ class LiteralTest(test_base.BaseTest):
   def test_missing_enum_member(self):
     self.CheckWithErrors("""
       import enum
-      from typing import Literal
+      from typing_extensions import Literal
       class M(enum.Enum):
         A = 1
       x: Literal[M.B]  # attribute-error
@@ -902,7 +902,7 @@ class LiteralTest(test_base.BaseTest):
     # comparing another ConcreteValue against the Instance variant.
     self.CheckWithErrors("""
       import enum
-      from typing import Literal
+      from typing_extensions import Literal
 
       class M(enum.Enum):
         A = 1
@@ -939,7 +939,7 @@ class LiteralTest(test_base.BaseTest):
 
   def test_match_enum(self):
     self.CheckWithErrors("""
-    from typing import Literal
+    from typing_extensions import Literal
     import enum
 
     class M(enum.Enum):

@@ -147,8 +147,8 @@ class ErrorTest(test_base.BaseTest):
       bar(a)  # wrong-arg-types[e5]
       """)
     self.assertErrorSequences(errors, {
-        "e1": ["x: X"], "e2": ["x: Z"], "e3": ["x: W"],
-        "e4": ["Iterator"], "e5": ["Union[int, X]"]
+        "e1": ["x: X"], "e2": ["x: Y"], "e3": ["x: W"],
+        "e4": ["Iterator"], "e5": ["Union[X, int]"]
     })
 
   def test_argument_order(self):

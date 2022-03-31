@@ -612,6 +612,28 @@ class NamedTupleTestPy3(test_base.BaseTest):
         assert_type(foo.Bar(x=__any_object__).x(0), int)
       """, pythonpath=[d.path])
 
+  def test_recursive_tuple(self):
+    """Regression test for a recursive tuple containing a namedtuple."""
+    # See b/227506303 for details
+    self.Check("""
+      from typing import Any, NamedTuple
+
+      A = NamedTuple("A", [("x", Any), ("y", Any)])
+
+      def decorator(fn):
+        def wrapper(*args, **kwargs):
+          return fn(*args, **kwargs)
+        return wrapper
+
+      @decorator
+      def g(x, y):
+        nt = A(1, 2)
+        x = x, nt
+        y = y, nt
+        def h():
+          max(x, y)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -227,16 +227,5 @@ py_library(
     pytype.utils
     pytype.abstract.abstract
     pytype.pytd.pytd
-)
-
-py_test(
-  NAME
-    named_tuple_test
-  SRCS
-    named_tuple_test.py
-  DEPS
-    .named_tuple
-    pytype.config
-    pytype.pytd.pytd
-    pytype.tests.test_base
+    pytype.typegraph.cfg
 )

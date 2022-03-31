@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypingTest(test_base.BaseTest):
@@ -187,16 +188,6 @@ class TypingTest(test_base.BaseTest):
         import foo  # pyi-error[e]
       """, pythonpath=[d.path])
     self.assertErrorRegexes(errors, {"e": r"ClassVar.*1.*2"})
-
-  def test_not_supported_yet(self):
-    # Tests that typing_extension members not implemented in
-    # typing_extensions_overlay are reported as [not-supported-yet]. If this
-    # test starts failing due to this specific member gaining support, just pick
-    # an unsupported member to replace it with from
-    # https://github.com/python/typeshed/blob/master/stdlib/typing_extensions.pyi
-    self.CheckWithErrors("""
-      from typing_extensions import TypeGuard  # not-supported-yet
-    """)
 
   def test_reuse_name(self):
     ty = self.Infer("""
@@ -458,6 +449,64 @@ class LiteralTest(test_base.BaseTest):
       self.CheckWithErrors("""
         import foo  # pyi-error
       """, pythonpath=[d.path])
+
+
+class NotSupportedYetTest(test_base.BaseTest):
+  """Tests for importing typing constructs only present in some Python versions.
+
+  We want pytype to behave as follows:
+
+  Is the construct supported by pytype?
+  |
+  -> No: Log a plain [not supported-yet] error.
+  |
+  -> Yes: Is the construct being imported from typing_extensions or typing?
+     |
+     -> typing_extensions: Do not log any errors.
+     |
+     -> typing: Is the construct present in the runtime typing module?
+        |
+        -> No: Log [not-supported-yet] with a hint to use typing_extensions.
+        |
+        -> Yes: Do not log any errors.
+
+  These tests currently use TypeGuard (added in 3.10) as the unsupported
+  construct and Final (added in 3.8) as the supported construct. Replace them as
+  needed as pytype's supported features and runtime versions change.
+  """
+
+  def test_unsupported_extension(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import TypeGuard  # not-supported-yet[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"typing.TypeGuard not supported yet$"})
+
+  def test_unsupported_construct(self):
+    errors = self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet[e]
+    """)
+    self.assertErrorRegexes(
+        errors, {"e": r"typing.TypeGuard not supported yet$"})
+
+  def test_supported_extension(self):
+    self.Check("""
+      from typing_extensions import Final
+    """)
+
+  @test_utils.skipFromPy((3, 8), "Final is added to typing in 3.8")
+  def test_supported_construct_in_unsupported_version(self):
+    errors = self.CheckWithErrors("""
+      from typing import Final  # not-supported-yet[e]
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Import Final from typing_extensions", "before 3.8"]})
+
+  @test_utils.skipBeforePy((3, 8), "Final is added to typing in Python 3.8")
+  def test_supported_construct_in_supported_version(self):
+    self.Check("""
+      from typing import Final
+    """)
 
 
 if __name__ == "__main__":
