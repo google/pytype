@@ -216,13 +216,13 @@ class LazyMembers(metaclass=MixinMeta):
   def init_mixin(self, member_map):
     self._member_map = member_map
 
-  def _convert_member(self, member, subst=None):
+  def _convert_member(self, name, member, subst=None):
     raise NotImplementedError()
 
   def load_lazy_attribute(self, name, subst=None):
     """Load the named attribute into self.members."""
     if name not in self.members and name in self._member_map:
-      variable = self._convert_member(self._member_map[name], subst)
+      variable = self._convert_member(name, self._member_map[name], subst)
       assert isinstance(variable, cfg.Variable)
       self.members[name] = variable
 

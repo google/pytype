@@ -3,6 +3,8 @@
 # pylint's detection of this is error-prone:
 # pylint: disable=unpacking-non-sequence
 
+from typing import Dict as _Dict, Optional as _Optional, Tuple as _Tuple
+
 from pytype import overlay
 from pytype import overlay_utils
 from pytype import utils
@@ -13,6 +15,7 @@ from pytype.overlays import named_tuple
 from pytype.overlays import typed_dict
 from pytype.pytd import pep484
 from pytype.pytd import pytd
+from pytype.typegraph import cfg
 
 
 # type alias
@@ -20,7 +23,14 @@ Param = overlay_utils.Param
 
 
 class TypingOverlay(overlay.Overlay):
-  """A representation of the 'typing' module that allows custom overlays."""
+  """A representation of the 'typing' module that allows custom overlays.
+
+  This overlay's member_map is a little different from others'. Members are a
+  tuple of a builder method and the lowest runtime version that supports that
+  member. This allows us to reuse the same code for both typing and
+  typing_extensions and to direct users to typing_extensions when they attempt
+  to import a typing member in a too-low runtime version.
+  """
 
   def __init__(self, ctx):
     # Make sure we have typing available as a dependency
@@ -29,8 +39,25 @@ class TypingOverlay(overlay.Overlay):
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and pytd.IsContainer(cls) and cls.template:
-        member_map[name] = overlay.build(name, TypingContainer)
+        member_map[name] = (overlay.build(name, TypingContainer), None)
     super().__init__(ctx, "typing", member_map, ast)
+
+  def _convert_member(
+      self, name: str, member: _Tuple[overlay.BuilderType, _Tuple[int, int]],
+      subst: _Optional[_Dict[str, cfg.Variable]] = None
+  ) -> cfg.Variable:
+    builder, lowest_supported_version = member
+    if (lowest_supported_version and
+        self.ctx.python_version < lowest_supported_version and
+        name not in _unsupported_members):
+      # For typing constructs that are being imported in a runtime version that
+      # does not support them but are supported by pytype, we print a hint to
+      # import them from typing_extensions instead.
+      details = (f"Import {name} from typing_extensions in Python versions "
+                 f"before {utils.format_version(lowest_supported_version)}.")
+      return not_supported_yet(name, self.ctx, details=details).to_variable(
+          self.ctx.root_node)
+    return super()._convert_member(name, builder, subst)
 
 
 class Union(abstract.AnnotationClass):
@@ -242,10 +269,6 @@ class NoReturn(abstract.Singleton):
     self.cls = ctx.convert.type_type
 
 
-def build_any(ctx):
-  return ctx.convert.unsolvable
-
-
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
@@ -386,12 +409,16 @@ class Literal(TypingContainer):
     return self.ctx.convert.merge_values(values)
 
 
-def not_supported_yet(name, ctx, ast=None):
+def not_supported_yet(name, ctx, *, ast=None, details=None):
   ast = ast or ctx.loader.typing
   full_name = f"{ast.name}.{name}"
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, full_name)
+  ctx.errorlog.not_supported_yet(ctx.vm.frames, full_name, details=details)
   pytd_type = pytd.ToType(ast.Lookup(full_name), True, True, True)
   return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)
+
+
+def build_any(ctx):
+  return ctx.convert.unsolvable
 
 
 def build_namedtuple(ctx):
@@ -433,23 +460,35 @@ def build_final_decorator(ctx):
   return FinalDecorator.make("final", ctx, "typing")
 
 
+# name -> lowest_supported_version
+_unsupported_members = {
+    "Concatenate": (3, 10),
+    "ParamSpec": (3, 10),
+    "TypeGuard": (3, 10),
+    "is_typeddict": (3, 10),
+}
+
+
+# name -> (builder, lowest_supported_version)
 typing_overlay = {
-    "Annotated": overlay.build("Annotated", Annotated),
-    "Any": build_any,
-    "Callable": overlay.build("Callable", Callable),
-    "final": build_final_decorator,
-    "Final": overlay.build("Final", Final),
-    "Generic": overlay.build("Generic", Generic),
-    "Literal": overlay.build("Literal", Literal),
-    "NamedTuple": build_namedtuple,
-    "NewType": build_newtype,
-    "NoReturn": build_noreturn,
-    "Optional": overlay.build("Optional", Optional),
-    "Tuple": overlay.build("Tuple", Tuple),
-    "TypeVar": build_typevar,
-    "TypedDict": build_typeddict,
-    "Union": Union,
-    "TYPE_CHECKING": build_typechecking,
-    "cast": build_cast,
-    "overload": build_overload,
+    "Annotated": (overlay.build("Annotated", Annotated), (3, 9)),
+    "Any": (build_any, None),
+    "Callable": (overlay.build("Callable", Callable), None),
+    "final": (build_final_decorator, (3, 8)),
+    "Final": (overlay.build("Final", Final), (3, 8)),
+    "Generic": (overlay.build("Generic", Generic), None),
+    "Literal": (overlay.build("Literal", Literal), (3, 8)),
+    "NamedTuple": (build_namedtuple, None),
+    "NewType": (build_newtype, None),
+    "NoReturn": (build_noreturn, None),
+    "Optional": (overlay.build("Optional", Optional), None),
+    "Tuple": (overlay.build("Tuple", Tuple), None),
+    "TypeVar": (build_typevar, None),
+    "TypedDict": (build_typeddict, (3, 8)),
+    "Union": (Union, None),
+    "TYPE_CHECKING": (build_typechecking, None),
+    "cast": (build_cast, None),
+    "overload": (build_overload, None),
+    **{k: (overlay.build(k, not_supported_yet), v)
+       for k, v in _unsupported_members.items()}
 }

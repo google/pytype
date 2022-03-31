@@ -1,6 +1,14 @@
 """Base class for module overlays."""
+
+from typing import Any, Callable, Dict, Optional
+
 from pytype import datatypes
 from pytype.abstract import abstract
+from pytype.typegraph import cfg
+
+# The argument type is pytype.context.Context, but we can't import context here
+# due to a circular dependency.
+BuilderType = Callable[[Any], abstract.BaseValue]
 
 
 class Overlay(abstract.Module):
@@ -37,7 +45,9 @@ class Overlay(abstract.Module):
     self.real_module = ctx.convert.constant_to_value(
         ast, subst=datatypes.AliasingDict(), node=ctx.root_node)
 
-  def _convert_member(self, member, subst=None):
+  def _convert_member(
+      self, name: str, member: BuilderType,
+      subst: Optional[Dict[str, cfg.Variable]] = None) -> cfg.Variable:
     val = member(self.ctx)
     val.module = self.name
     return val.to_variable(self.ctx.root_node)

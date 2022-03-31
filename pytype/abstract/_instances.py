@@ -30,7 +30,7 @@ class LazyConcreteDict(
     mixin.PythonConstant.init_mixin(self, self.members)
     mixin.LazyMembers.init_mixin(self, member_map)
 
-  def _convert_member(self, member, subst=None):
+  def _convert_member(self, name, member, subst=None):
     return self.ctx.convert.constant_to_var(member)
 
   def is_empty(self):
@@ -54,7 +54,7 @@ class Module(_instance_base.Instance, mixin.LazyMembers):
     self.ast = ast
     mixin.LazyMembers.init_mixin(self, member_map)
 
-  def _convert_member(self, member, subst=None):
+  def _convert_member(self, name, member, subst=None):
     """Called to convert the items in _member_map to cfg.Variable."""
     var = self.ctx.convert.constant_to_var(member)
     for value in var.data:

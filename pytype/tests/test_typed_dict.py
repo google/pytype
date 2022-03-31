@@ -221,7 +221,8 @@ class TypedDictTest(test_base.BaseTest):
 
   def test_function_arg_getitem(self):
     self.CheckWithErrors("""
-      from typing import TypedDict, Union
+      from typing import Union
+      from typing_extensions import TypedDict
       class A(TypedDict):
         x: int
         y: Union[int, str]
