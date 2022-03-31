@@ -208,7 +208,8 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e1": r"Expected.*int.*Actual.*str",
                                      "e2": r"Expected.*int.*Actual.*complex"})
 
-  def test_ambiguous_return(self):
+  @test_utils.skipFromPy((3, 10), "Logs one error for all bad returns pre-3.10")
+  def test_ambiguous_return_pre310(self):
     _, errors = self.InferWithErrors("""
       def foo(x: str) -> int:
         if x:
@@ -219,6 +220,20 @@ class AnnotationTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(
         errors, {"e": r"Expected.*int.*Actual.*Union(?=.*complex).*str"})
+
+  @test_utils.skipBeforePy((3, 10), "Logs one error per bad return in 3.10+")
+  def test_ambiguous_return(self):
+    _, errors = self.InferWithErrors("""
+      def foo(x: str) -> int:
+        if x:
+          y = "foo"
+        else:
+          y = 3j
+        return y  # bad-return-type[e1]  # bad-return-type[e2]
+    """)
+    self.assertErrorSequences(
+        errors, {"e1": ["Expected: int", "Actually returned: str"],
+                 "e2": ["Expected: int", "Actually returned: complex"]})
 
   def test_default_return(self):
     ty = self.Infer("""
