@@ -318,13 +318,11 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
 
     return _Args(name=cls_name, field_names=names, field_types=types)
 
-  def call(self, node, _, args, bases=None):
+  def call(self, node, _, args):
     try:
       args, props = self.process_args(node, args)
     except _ArgsError:
       return node, self.ctx.new_unsolvable(node)
-
-    props.bases = bases
 
     # fill in field types from annotations
     annots = self.ctx.annotation_utils.convert_annotations_list(
