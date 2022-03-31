@@ -18,7 +18,7 @@
          * [PrintVisitor](#printvisitor)
       * [Partial support](#partial-support)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-03-30T20:47-07:00 -->
 
 <!--te-->
 
@@ -97,15 +97,12 @@ subclassing `abstract.ParameterizedClass`.
 
 If you implement a feature that is not available in all Python versions that
 pytype supports, it can be backported to earlier versions by adding it to the
-third-party `typing_extensions` module. For example, `typing.Literal` is new in
-Python 3.8, so we support referring to it as `typing_extensions.Literal` in 3.7
-and below. To backport a feature, simply make `typing_extensions.{FeatureName}`
-an alias to `typing.{FeatureName}`:
-
-* For features that do not have an entry in `typing_overlay`, you can do this by
-  lookup via the abstract converter ([example][typing_extensions.Protocol]).
-* For features in the overlay, you should instead copy over the overlay member
-  ([example][typing_extensions.Literal]).
+third-party `typing_extensions` module. If the name and behavior of the
+construct in `typing_extensions` are the same as in `typing`, you don't have to
+do anything; the backport will be done automatically by our `typing_extensions`
+overlay. If you need to customize the behavior of the `typing_extensions`
+backport, add an entry to the `typing_extensions` member map
+[here][typing-extensions-member-map].
 
 ### Matching
 
@@ -189,5 +186,7 @@ finish it later. Some tips for doing this gracefully:
 [type_stubs]: type_stubs.md
 
 [typing_extensions.Literal]: https://github.com/google/pytype/blob/ffc6aab636329075ee2d9cd443e83d0f790a9b4c/pytype/overlays/typing_extensions_overlay.py#L11
+
+[typing-extensions-member-map]: https://github.com/google/pytype/blob/a07a86ad8fb12dfb953ae426b03a008f4dfb23a8/pytype/overlays/typing_extensions_overlay.py#L11
 
 [typing_extensions.Protocol]: https://github.com/google/pytype/blob/ffc6aab636329075ee2d9cd443e83d0f790a9b4c/pytype/overlays/typing_extensions_overlay.py#L43
