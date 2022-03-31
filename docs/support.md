@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-03-31T11:20-07:00 -->
+<!-- Added by: rechen, at: 2022-03-31T11:25-07:00 -->
 
 <!--te-->
 
@@ -89,6 +89,7 @@ custom support.
 Feature    | Supports | Issues
 ---------- | :------: | :----------------------:
 Attrs      | ✅        |
+Chex       | 🟡        | Google-internal
 Flax       | 🟡        | Google-internal
 Numpy      | 🟡        | Minimal type stub
 Tensorflow | 🟡        | Minimal, Google-internal
