@@ -163,6 +163,7 @@ py_library(
   SRCS
     _special_classes.py
   DEPS
+    .abstract_utils
     .class_mixin
     pytype.pytd.pytd
 )
