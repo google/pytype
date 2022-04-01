@@ -32,6 +32,7 @@ from pytype import overlay_utils
 from pytype import special_builtins
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.pytd import pytd
@@ -90,14 +91,14 @@ class EnumBuilder(abstract.PyTDClass):
           self.ctx.vm.frames, bases[-1], details=msg)
       return node, self.ctx.new_unsolvable(node)
     cls_var = cls_var or self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
-    return self.ctx.make_class(
-        node,
-        name_var,
-        bases,
-        class_dict_var,
-        cls_var,
-        new_class_var,
+    props = class_mixin.ClassBuilderProperties(
+        name_var=name_var,
+        bases=bases,
+        class_dict_var=class_dict_var,
+        metaclass_var=cls_var,
+        new_class_var=new_class_var,
         class_type=EnumInstance)
+    return self.ctx.make_class(node, props)
 
   def call(self, node, func, args, alias_map=None):
     """Implements the behavior of the enum functional API."""
@@ -177,13 +178,13 @@ class EnumBuilder(abstract.PyTDClass):
 
     metaclass = self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
 
-    return self.ctx.make_class(
-        node=node,
+    props = class_mixin.ClassBuilderProperties(
         name_var=cls_name_var,
         bases=[self.to_variable(node)],
         class_dict_var=cls_dict.to_variable(node),
-        cls_var=metaclass,
+        metaclass_var=metaclass,
         class_type=EnumInstance)
+    return self.ctx.make_class(node, props)
 
 
 class IntEnumBuilder(EnumBuilder):

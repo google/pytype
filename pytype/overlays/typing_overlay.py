@@ -10,6 +10,7 @@ from pytype import overlay_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import named_tuple
 from pytype.overlays import typed_dict
@@ -313,8 +314,11 @@ class NewType(abstract.PyTDFunction):
         params=[Param(value_arg_name, type_value)])
     members = abstract.Dict(self.ctx)
     members.set_str_item(node, "__init__", constructor)
-    return self.ctx.make_class(node, name_arg, (type_arg,),
-                               members.to_variable(node), None)
+    props = class_mixin.ClassBuilderProperties(
+        name_var=name_arg,
+        bases=[type_arg],
+        class_dict_var=members.to_variable(node))
+    return self.ctx.make_class(node, props)
 
 
 class Overload(abstract.PyTDFunction):

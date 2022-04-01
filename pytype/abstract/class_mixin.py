@@ -1,15 +1,17 @@
 """Mixin for all class-like abstract classes."""
 
+import dataclasses
 import logging
-from typing import Any
+from typing import Any, List, Optional, Type
 
-import attr
 from pytype import datatypes
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin  # pylint: disable=unused-import
 from pytype.pytd import mro
 from pytype.pytd import pytd
+from pytype.typegraph import cfg
+
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -51,7 +53,7 @@ class AttributeKinds:
   INITVAR = "initvar"
 
 
-@attr.s(auto_attribs=True)
+@dataclasses.dataclass
 class Attribute:
   """Represents a class member variable.
 
@@ -102,6 +104,34 @@ class Attribute:
   def __repr__(self):
     return str({"name": self.name, "typ": self.typ, "init": self.init,
                 "default": self.default})
+
+
+@dataclasses.dataclass
+class ClassBuilderProperties:
+  """Inputs to ctx.make_class.
+
+  Members:
+    name_var: Class name.
+    bases: Base classes.
+    class_dict_var: Members of the class, as a Variable containing an
+        abstract.Dict value.
+    metaclass_var: The class's metaclass, if any.
+    new_class_var: If not None, make_class() will return new_class_var with
+        the newly constructed class added as a binding. Otherwise, a new
+        variable if returned.
+    is_decorated: True if the class definition has a decorator.
+    class_type: The internal type to build an instance of. Defaults to
+        abstract.InterpreterClass. If set, must be a subclass of
+        abstract.InterpreterClass.
+  """
+
+  name_var: cfg.Variable
+  bases: List[Any]
+  class_dict_var: cfg.Variable
+  metaclass_var: Optional[cfg.Variable] = None
+  new_class_var: Optional[cfg.Variable] = None
+  class_type: Optional[Type["Class"]] = None
+  is_decorated: bool = False
 
 
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable

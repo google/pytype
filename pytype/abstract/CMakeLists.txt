@@ -206,6 +206,7 @@ py_library(
     .mixin
     pytype.utils
     pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(

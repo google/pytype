@@ -99,15 +99,15 @@ class BuildClass(_base.BaseValue):
               node, list(bases), cls_dict, total=kwargs.get("total"))
           break
 
+    props = class_mixin.ClassBuilderProperties(
+        name_var=name,
+        bases=list(bases),
+        class_dict_var=func.f_locals.to_variable(node),
+        metaclass_var=metaclass,
+        new_class_var=class_closure_var,
+        is_decorated=self.is_decorated)
     if not clsvar:
-      node, clsvar = self.ctx.make_class(
-          node,
-          name,
-          list(bases),
-          func.f_locals.to_variable(node),
-          metaclass,
-          new_class_var=class_closure_var,
-          is_decorated=self.is_decorated)
+      node, clsvar = self.ctx.make_class(node, props)
     if self.ctx.options.trace_all_classes:
       self.ctx.vm.trace_classdef(clsvar)
     return node, clsvar
