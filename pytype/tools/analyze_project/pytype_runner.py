@@ -138,6 +138,7 @@ class PytypeRunner:
     # all source modules as a sequence of (module, direct_deps)
     self.sorted_sources = sorted_sources
     self.python_version = conf.python_version
+    self.platform = conf.platform
     self.pyi_dir = os.path.join(conf.output, 'pyi')
     self.imports_dir = os.path.join(conf.output, 'imports')
     self.ninja_file = os.path.join(conf.output, 'build.ninja')
@@ -170,6 +171,7 @@ class PytypeRunner:
         '-V': self.python_version,
         '-o': '$out',
         '--module-name': '$module',
+        '--platform': self.platform,
     }
     binary_flags = {
         '--quick',

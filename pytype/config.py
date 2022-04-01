@@ -133,15 +133,19 @@ def add_basic_options(o):
   o.add_argument(
       "-d", "--disable", action="store",
       dest="disable", default=None,
-      help=("Comma separated list of error names to ignore."))
+      help="Comma separated list of error names to ignore.")
   o.add_argument(
       "--no-report-errors", action="store_false",
       dest="report_errors", default=True,
-      help=("Don't report errors."))
+      help="Don't report errors.")
   o.add_argument(
       "-V", "--python_version", type=str, action="store",
       dest="python_version", default=None,
-      help=("Python version to emulate (\"major.minor\", e.g. \"3.7\")"))
+      help='Python version to emulate ("major.minor", e.g. "3.7")')
+  o.add_argument(
+      "--platform", type=str, action="store", dest="platform",
+      default=sys.platform,
+      help='Platform to emulate (e.g., "linux", "win32").')
 
 
 FEATURE_FLAGS = [

@@ -115,6 +115,7 @@ def make_parser():
       (('-k', '--keep-going'), {'action': 'store_true', 'type': None}),
       (('-j', '--jobs'), {'action': 'store', 'type': parse_jobs,
                           'metavar': 'N'}),
+      (('--platform',),),
       (('-P', '--pythonpath'),),
       (('-V', '--python-version'),)
   ]:

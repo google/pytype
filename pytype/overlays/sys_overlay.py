@@ -9,7 +9,8 @@ class SysOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
-        "version_info": build_version_info
+        "platform": build_platform,
+        "version_info": build_version_info,
     }
     ast = ctx.loader.import_name("sys")
     super().__init__(ctx, "sys", member_map, ast)
@@ -25,6 +26,10 @@ class VersionInfo(abstract.Tuple):
     except ValueError:
       return None
     return self.pyval[index]
+
+
+def build_platform(ctx):
+  return ctx.convert.constant_to_value(ctx.options.platform)
 
 
 def build_version_info(ctx):
