@@ -248,7 +248,11 @@ class FunctionCommentTest(test_base.BaseTest):
         # type: (abc def) -> int  # invalid-function-type-comment[e]
         return x
     """)
-    self.assertErrorRegexes(errors, {"e": r"abc def.*unexpected EOF"})
+    if self.python_version >= (3, 10):
+      error_reason = "invalid syntax"
+    else:
+      error_reason = "unexpected EOF"
+    self.assertErrorRegexes(errors, {"e": rf"abc def.*{error_reason}"})
 
   def test_ambiguous_annotation(self):
     _, errors = self.InferWithErrors("""
@@ -344,7 +348,11 @@ class AssignmentCommentTest(test_base.BaseTest):
     ty, errors = self.InferWithErrors("""
       X = None  # type: abc def  # invalid-annotation[e]
     """, deep=True)
-    self.assertErrorRegexes(errors, {"e": r"abc def.*unexpected EOF"})
+    if self.python_version >= (3, 10):
+      error_reason = "invalid syntax"
+    else:
+      error_reason = "unexpected EOF"
+    self.assertErrorRegexes(errors, {"e": rf"abc def.*{error_reason}"})
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       X = ...  # type: Any

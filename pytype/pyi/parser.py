@@ -28,8 +28,6 @@ else:
   from typed_ast import ast3
 # pylint: enable=g-import-not-at-top
 
-_DEFAULT_PLATFORM = "linux"
-
 # reexport as parser.ParseError
 ParseError = types.ParseError
 
@@ -728,6 +726,7 @@ def _feature_version(python_version: Tuple[int, ...]) -> int:
 
 # Options that will be copied from pytype.config.Options.
 _TOPLEVEL_PYI_OPTIONS = (
+    "platform",
     "python_version",
     "strict_primitive_comparisons",
 )
@@ -738,7 +737,7 @@ class PyiOptions:
   """Pyi parsing options."""
 
   python_version: Tuple[int, int] = sys.version_info[:2]
-  platform: str = _DEFAULT_PLATFORM
+  platform: str = sys.platform
   strict_primitive_comparisons: bool = True
 
   @classmethod

@@ -51,6 +51,9 @@ ITEMS = {
         'to the number of CPUs on the host system.'),
     'output': Item(
         '.pytype', '.pytype', None, 'All pytype output goes here.'),
+    'platform': Item(
+        '', sys.platform, None,
+        'Platform (e.g., "linux", "win32") that the target code runs on.'),
     'pythonpath': Item(
         '', '.', None,
         'Paths to source code directories, separated by %r.' % os.pathsep),
@@ -74,7 +77,7 @@ def _pytype_single_items():
   """Args to pass through to pytype_single."""
   out = {}
   flags = pytype_config.FEATURE_FLAGS + pytype_config.EXPERIMENTAL_FLAGS
-  for opt, _, default in flags:
+  for opt, default, _ in flags:
     dest = opt.lstrip('-').replace('-', '_')
     default = str(default)
     out[dest] = Item(None, default, ArgInfo(opt, None), None)
@@ -100,8 +103,12 @@ def concat_disabled_rules(s):
   return ','.join(t for t in s.split() if t)
 
 
+def get_platform(p):
+  return p or sys.platform
+
+
 def get_python_version(v):
-  return v if v else utils.format_version(sys.version_info[:2])
+  return v or utils.format_version(sys.version_info[:2])
 
 
 def make_converters(cwd=None):
@@ -111,6 +118,7 @@ def make_converters(cwd=None):
       'keep_going': string_to_bool,
       'inputs': lambda v: file_utils.expand_source_files(v, cwd),
       'output': lambda v: file_utils.expand_path(v, cwd),
+      'platform': get_platform,
       'python_version': get_python_version,
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
       'disable': concat_disabled_rules,

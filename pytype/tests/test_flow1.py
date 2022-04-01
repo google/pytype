@@ -253,9 +253,13 @@ class FlowTest(test_base.BaseTest):
         while b:
           b = False
     """)
-    self.assertTypesMatchPytd(ty, """
+    if self.python_version >= (3, 10):
+      expected_return_type = "None"
+    else:
+      expected_return_type = "Any"
+    self.assertTypesMatchPytd(ty, f"""
       from typing import Any
-      def f() -> Any: ...
+      def f() -> {expected_return_type}: ...
     """)
 
   def test_independent_calls(self):

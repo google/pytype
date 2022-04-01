@@ -309,6 +309,20 @@ class StdlibTestsFeatures(test_base.BaseTest,
       v: int
     """)
 
+  def test_sys_platform(self):
+    self.options.tweak(platform="linux")
+    ty = self.Infer("""
+      import sys
+      if sys.platform == "linux":
+        x = 0
+      else:
+        x = "0"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import sys
+      x: int
+    """)
+
   def test_async(self):
     """Test various asyncio features."""
     ty = self.Infer("""

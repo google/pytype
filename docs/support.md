@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-03-21T14:17-07:00 -->
+<!-- Added by: rechen, at: 2022-03-31T11:25-07:00 -->
 
 <!--te-->
 
@@ -64,7 +64,7 @@ Feature                                                                         
 [PEP 561 -- Distributing and Packaging Type Information][561]                           | 3.7     | ❌        | [#151][packaging]
 [PEP 563 -- Postponed Evaluation of Annotations][563]                                   | 3.7     | ✅        |
 [PEP 585 -- Type Hinting Generics in Standard Collections][585]                         | 3.9     | ✅        |
-[PEP 586 -- Literal Types][586]                                                         | 3.8     | 🟡        | [#790][literal-enums]
+[PEP 586 -- Literal Types][586]                                                         | 3.8     | ✅        |
 [PEP 589 -- TypedDict][589]                                                             | 3.8     | ✅        | Requires `--enable-typed-dicts` flag externally
 [PEP 591 -- Adding a Final Qualifier to Typing][591]                                    | 3.8     | ✅        |
 [PEP 593 -- Flexible Function and Variable Annotations][593]                            | 3.9     | ✅        |
@@ -89,6 +89,7 @@ custom support.
 Feature    | Supports | Issues
 ---------- | :------: | :----------------------:
 Attrs      | ✅        |
+Chex       | 🟡        | Google-internal
 Flax       | 🟡        | Google-internal
 Numpy      | 🟡        | Minimal type stub
 Tensorflow | 🟡        | Minimal, Google-internal
@@ -114,7 +115,6 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [generic-aliases]: https://github.com/google/pytype/issues/793
-[literal-enums]: https://github.com/google/pytype/issues/790
 [packaging]: https://github.com/google/pytype/issues/151
 [param-spec]: https://github.com/google/pytype/issues/786
 [py27]: https://github.com/google/pytype/issues/545

@@ -19,7 +19,7 @@ class ParserTestBase(test_base.UnitTest):
     self.options = parser.PyiOptions(python_version=self.python_version)
 
   def check(self, src, expected=None, prologue=None, name=None,
-            version=None, platform=None):
+            version=None, platform="linux"):
     """Check the parsing of src.
 
     This checks that parsing the source and then printing the resulting
@@ -35,15 +35,14 @@ class ParserTestBase(test_base.UnitTest):
         printing the AST.
       name: The name of the module.
       version: A python version tuple (None for default value).
-      platform: A platform string (None for default value).
+      platform: A platform string (defaults to "linux").
 
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
     if version:
       self.options.python_version = version
-    if platform:
-      self.options.platform = platform
+    self.options.platform = platform
     version = version or self.python_version
     src = textwrap.dedent(src).lstrip()
     ast = parser.parse_string(src, name=name, options=self.options)
