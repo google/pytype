@@ -178,8 +178,11 @@ class TypedDictClass(abstract.PyTDClass):
     return ret
 
   def instantiate(self, node, container=None):
-    del container
-    return TypedDict(self.props, self.ctx).to_variable(node)
+    args = function.Args(())
+    for name, typ in self.props.fields.items():
+      args.namedargs[name] = self.ctx.join_variables(
+          node, [t.instantiate(node) for t in typ.data])
+    return self._new_instance(container, node, args).to_variable(node)
 
   def make_class(self, *args, **kwargs):
     return self._base_cls.make_class(*args, **kwargs)
@@ -249,10 +252,7 @@ class TypedDict(abstract.Dict):
     # with multiple bindings just fall back to Any.
     if not self._check_key(name_var):
       return node, self.ctx.new_unsolvable(node)
-    name = abstract_utils.get_atomic_python_constant(name_var, str)
-    typ = self.fields[name]
-    ret = [v.instantiate(node) for v in typ.data]
-    return node, self.ctx.join_variables(node, ret)
+    return super().getitem_slot(node, name_var)
 
   def setitem_slot(self, node, name_var, value_var):
     if self._check_key(name_var):

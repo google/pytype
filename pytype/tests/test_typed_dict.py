@@ -256,6 +256,17 @@ class TypedDictTest(test_base.BaseTest):
       def f(x: Foo) -> None: ...
     """)
 
+  def test_instantiate(self):
+    self.Check("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict):
+        x: int
+      def f(x: Foo):
+        pass
+      x: Foo
+      f(x)
+    """)
+
 
 _SINGLE = """
   from typing import TypedDict
