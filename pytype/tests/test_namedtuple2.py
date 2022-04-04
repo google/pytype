@@ -17,6 +17,32 @@ class NamedtupleTests(test_base.BaseTest):
           return {"hello": X(__any_object__)}
         """)
 
+  def test_namedtuple_different_name(self):
+    with self.DepTree([("foo.py", """
+      import collections
+      X1 = collections.namedtuple("X", ["a", "b"])
+      X2 = collections.namedtuple("X", ["c", "d"])
+    """)]):
+      self.Check("""
+        import foo
+        def f() -> foo.X2:
+          return foo.X2(0, 0)
+      """)
+
+  def test_namedtuple_inheritance(self):
+    self.Check("""
+      import collections
+      class Base(collections.namedtuple('Base', ['x', 'y'])):
+        pass
+      class Foo(Base):
+        def __new__(cls, **kwargs):
+          return super().__new__(cls, **kwargs)
+      def f(x: Foo):
+        pass
+      def g(x: Foo):
+        return f(x)
+    """)
+
 
 class NamedtupleTestsPy3(test_base.BaseTest):
   """Tests for collections.namedtuple in Python 3."""

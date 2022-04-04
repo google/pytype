@@ -74,40 +74,19 @@ class BuildClass(_base.BaseValue):
       # We have hit 'maximum depth' before setting func.last_frame
       func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
-    clsvar = None
-    for base in bases:
-      base = abstract_utils.get_atomic_value(
-          base, default=self.ctx.convert.unsolvable)
-      cls_dict = func.f_locals.to_variable(node)
-      # Every subclass of an enum is itself an enum. To properly process them,
-      # the class must be built by the enum overlay.
-      if (isinstance(base, class_mixin.Class) and base.is_enum and
-          self.ctx.options.use_enum_overlay):
-        enum_base = abstract_utils.get_atomic_value(
-            self.ctx.vm.loaded_overlays["enum"].members["Enum"])
-        node, clsvar = enum_base.make_class(
-            node, name, list(bases), cls_dict, metaclass,
-            new_class_var=class_closure_var, is_decorated=self.is_decorated)
-        break
-      if isinstance(base, PyTDClass):
-        # Subclasses of these classes define their own class constructors.
-        if base.full_name == "typing.NamedTuple":
-          node, clsvar = base.make_class(node, list(bases), cls_dict)
-          break
-        elif base.is_typed_dict_class:
-          node, clsvar = base.make_class(
-              node, list(bases), cls_dict, total=kwargs.get("total"))
-          break
 
+    props = class_mixin.ClassBuilderProperties(
+        name_var=name,
+        bases=list(bases),
+        class_dict_var=func.f_locals.to_variable(node),
+        metaclass_var=metaclass,
+        new_class_var=class_closure_var,
+        is_decorated=self.is_decorated)
+    # Check for special classes first.
+    node, clsvar = _special_classes.build_class(node, props, kwargs, self.ctx)
     if not clsvar:
-      node, clsvar = self.ctx.make_class(
-          node,
-          name,
-          list(bases),
-          func.f_locals.to_variable(node),
-          metaclass,
-          new_class_var=class_closure_var,
-          is_decorated=self.is_decorated)
+      node, clsvar = self.ctx.make_class(node, props)
+
     if self.ctx.options.trace_all_classes:
       self.ctx.vm.trace_classdef(clsvar)
     return node, clsvar

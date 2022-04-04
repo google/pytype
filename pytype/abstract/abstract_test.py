@@ -864,14 +864,13 @@ class SimpleFunctionTest(AbstractTestBase):
 
   def test_call_with_all_args(self):
     f = self._make_func(
-        param_names=("a", "b", "c"),
+        param_names=("a", "b"),
         varargs_name="arg",
         kwargs_name="kwarg",
         defaults=(self._ctx.convert.build_int(self._ctx.root_node),),
         annotations={
             "a": self._ctx.convert.str_type,
             "b": self._ctx.convert.int_type,
-            "c": self._ctx.convert.int_type,
             "arg": self._ctx.convert.primitive_classes[float],
             "kwarg": self._ctx.convert.primitive_classes[bool]
         })

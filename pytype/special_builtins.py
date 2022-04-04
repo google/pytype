@@ -2,6 +2,7 @@
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 
@@ -17,8 +18,9 @@ class TypeNew(abstract.PyTDFunction):
         bases = list(abstract_utils.get_atomic_python_constant(bases_var))
         if not bases:
           bases = [self.ctx.convert.object_type.to_variable(self.ctx.root_node)]
-        node, variable = self.ctx.make_class(node, name_var, bases,
-                                             class_dict_var, cls)
+        props = class_mixin.ClassBuilderProperties(
+            name_var, bases, class_dict_var, metaclass_var=cls)
+        node, variable = self.ctx.make_class(node, props)
       except abstract_utils.ConversionError:
         pass
       else:

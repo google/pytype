@@ -133,10 +133,8 @@ class Context:
   def make_native_function(self, name, method):
     return abstract.NativeFunction(name, method, self)
 
-  def make_class(self, node, name_var, bases, class_dict_var, cls_var,
-                 new_class_var=None, is_decorated=False, class_type=None):
-    return vm_utils.make_class(node, name_var, bases, class_dict_var, cls_var,
-                               new_class_var, is_decorated, class_type, self)
+  def make_class(self, node, props):
+    return vm_utils.make_class(node, props, self)
 
   def check_annotation_type_mismatch(
       self, node, name, typ, value, stack, allow_none, details=None):

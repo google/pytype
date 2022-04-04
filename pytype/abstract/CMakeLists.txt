@@ -163,6 +163,7 @@ py_library(
   SRCS
     _special_classes.py
   DEPS
+    .abstract_utils
     .class_mixin
     pytype.pytd.pytd
 )
@@ -206,6 +207,7 @@ py_library(
     .mixin
     pytype.utils
     pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(

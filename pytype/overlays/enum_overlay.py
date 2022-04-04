@@ -32,6 +32,7 @@ from pytype import overlay_utils
 from pytype import special_builtins
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.pytd import pytd
@@ -67,11 +68,10 @@ class EnumBuilder(abstract.PyTDClass):
     pyval = enum_ast.Lookup(f"enum.{name}")
     super().__init__(name, pyval, ctx)
 
-  def make_class(self, node, name_var, bases, class_dict_var, cls_var,
-                 new_class_var=None, is_decorated=False):
+  def make_class(self, node, props):
     """Check the members for errors, then create the enum class."""
     # TODO(tsudol): Handle is_decorated: @enum.unique, for example.
-    del is_decorated
+
     # make_class intercepts the class creation for enums in order to check for
     # errors. EnumMeta turns the class into a full enum, but that's too late for
     # proper error checking.
@@ -80,24 +80,19 @@ class EnumBuilder(abstract.PyTDClass):
     # Enums have a specific ordering for base classes:
     # https://docs.python.org/3/library/enum.html#restricted-enum-subclassing
     # Mostly, we just care that the last base is some kind of Enum.
-    if not bases:
-      # This should be impossible.
-      bases = [self.to_variable(node)]
-    elif not any(b.is_enum for b in bases[-1].data):
+    # It should be impossible for bases to be empty.
+    props.bases = props.bases or [self.to_variable(node)]
+    last_base = props.bases[-1]
+    if not any(b.is_enum for b in last_base.data):
       msg = ("The last base class for an enum must be enum.Enum or a subclass "
              "of enum.Enum")
       self.ctx.errorlog.base_class_error(
-          self.ctx.vm.frames, bases[-1], details=msg)
+          self.ctx.vm.frames, last_base, details=msg)
       return node, self.ctx.new_unsolvable(node)
-    cls_var = cls_var or self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
-    return self.ctx.make_class(
-        node,
-        name_var,
-        bases,
-        class_dict_var,
-        cls_var,
-        new_class_var,
-        class_type=EnumInstance)
+    props.metaclass_var = props.metaclass_var or (
+        self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"])
+    props.class_type = EnumInstance
+    return self.ctx.make_class(node, props)
 
   def call(self, node, func, args, alias_map=None):
     """Implements the behavior of the enum functional API."""
@@ -177,13 +172,13 @@ class EnumBuilder(abstract.PyTDClass):
 
     metaclass = self.ctx.vm.loaded_overlays["enum"].members["EnumMeta"]
 
-    return self.ctx.make_class(
-        node=node,
+    props = class_mixin.ClassBuilderProperties(
         name_var=cls_name_var,
         bases=[self.to_variable(node)],
         class_dict_var=cls_dict.to_variable(node),
-        cls_var=metaclass,
+        metaclass_var=metaclass,
         class_type=EnumInstance)
+    return self.ctx.make_class(node, props)
 
 
 class IntEnumBuilder(EnumBuilder):

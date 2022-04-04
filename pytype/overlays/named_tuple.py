@@ -9,8 +9,10 @@ from pytype import overlay_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import classgen
+from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 
@@ -492,10 +494,12 @@ def _build_namedtuple(props, node, ctx):
   # signature that visitor.CreateTypeParametersForSignatures would create.
   # This allows subclasses of the NamedTuple to get the correct type from
   # their constructors.
-  cls_type_param = abstract.TypeParameter(
-      visitors.CreateTypeParametersForSignatures.PREFIX + props.name,
-      ctx,
-      bound=None)
+  # The TypeParameter name is built from the class name and field names to avoid
+  # name clashes with other namedtuples.
+  cls_type_param_name = (
+      visitors.CreateTypeParametersForSignatures.PREFIX +
+      escape.pack_namedtuple(props.name, [f.name for f in props.fields]))
+  cls_type_param = abstract.TypeParameter(cls_type_param_name, ctx, bound=None)
   cls_type = abstract.ParameterizedClass(ctx.convert.type_type,
                                          {abstract_utils.T: cls_type_param},
                                          ctx)
@@ -609,12 +613,11 @@ def _build_namedtuple(props, node, ctx):
         for f in props.fields
     }
 
-  node, cls_var = ctx.make_class(
-      node=node,
+  cls_props = class_mixin.ClassBuilderProperties(
       name_var=ctx.convert.build_string(node, props.name),
       bases=final_bases,
-      class_dict_var=cls_dict.to_variable(node),
-      cls_var=None)
+      class_dict_var=cls_dict.to_variable(node))
+  node, cls_var = ctx.make_class(node, cls_props)
   cls = cls_var.data[0]
 
   # Now that the class has been made, we can complete the TypeParameter used

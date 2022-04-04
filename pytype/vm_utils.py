@@ -440,40 +440,27 @@ def _check_final_members(cls, class_dict, ctx):
             ctx.errorlog.overriding_final_attribute(ctx.vm.frames, cls, base, m)
 
 
-def make_class(node, name_var, bases, class_dict_var, cls_var, new_class_var,
-               is_decorated, class_type, ctx):
+def make_class(node, props, ctx):
   """Create a class with the name, bases and methods given.
 
   Args:
     node: The current CFG node.
-    name_var: Class name.
-    bases: Base classes.
-    class_dict_var: Members of the class, as a Variable containing an
-        abstract.Dict value.
-    cls_var: The class's metaclass, if any.
-    new_class_var: If not None, make_class() will return new_class_var with
-        the newly constructed class added as a binding. Otherwise, a new
-        variable if returned.
-    is_decorated: True if the class definition has a decorator.
-    class_type: The internal type to build an instance of. Defaults to
-        abstract.InterpreterClass. If set, must be a subclass of
-        abstract.InterpreterClass.
+    props: class_mixin.ClassBuilderProperties required to build the class
     ctx: The current context.
 
   Returns:
     A node and an instance of class_type.
   """
-  name = abstract_utils.get_atomic_python_constant(name_var)
+  name = abstract_utils.get_atomic_python_constant(props.name_var)
   log.info("Declaring class %s", name)
   try:
-    class_dict = abstract_utils.get_atomic_value(class_dict_var)
+    class_dict = abstract_utils.get_atomic_value(props.class_dict_var)
   except abstract_utils.ConversionError:
     log.error("Error initializing class %r", name)
     return ctx.convert.create_new_unknown(node)
   # Handle six.with_metaclass.
-  metacls, bases = _filter_out_metaclasses(bases, ctx)
-  if metacls:
-    cls_var = metacls
+  metacls, bases = _filter_out_metaclasses(props.bases, ctx)
+  cls_var = metacls if metacls else props.metaclass_var
   # Flatten Unions in the bases
   bases = [_process_base_class(node, base, ctx) for base in bases]
   # Expand Protocol[T, ...] to Protocol, Generic[T, ...]
@@ -516,13 +503,11 @@ def make_class(node, name_var, bases, class_dict_var, cls_var, new_class_var,
         class_dict.members["__annotations__"] = annotations_member
         class_dict.pyval["__annotations__"] = annotations_member
     try:
-      if not class_type:
-        class_type = abstract.InterpreterClass
-      elif class_type is not abstract.InterpreterClass:
-        assert issubclass(class_type, abstract.InterpreterClass)
+      class_type = props.class_type or abstract.InterpreterClass
+      assert issubclass(class_type, abstract.InterpreterClass)
       val = class_type(name, bases, class_dict.pyval, cls, ctx)
       _check_final_members(val, class_dict.pyval, ctx)
-      val.is_decorated = is_decorated
+      val.is_decorated = props.is_decorated
     except mro.MROError as e:
       ctx.errorlog.mro_error(ctx.vm.frames, name, e.mro_seqs)
       var = ctx.new_unsolvable(node)
@@ -530,11 +515,8 @@ def make_class(node, name_var, bases, class_dict_var, cls_var, new_class_var,
       ctx.errorlog.invalid_annotation(ctx.vm.frames, e.annot, e.error)
       var = ctx.new_unsolvable(node)
     else:
-      if new_class_var:
-        var = new_class_var
-      else:
-        var = ctx.program.NewVariable()
-      var.AddBinding(val, class_dict_var.bindings, node)
+      var = props.new_class_var or ctx.program.NewVariable()
+      var.AddBinding(val, props.class_dict_var.bindings, node)
       node = val.call_metaclass_init(node)
       node = val.call_init_subclass(node)
       if not val.is_abstract:

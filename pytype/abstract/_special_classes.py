@@ -1,7 +1,27 @@
 """Classes that need special handling, typically due to code generation."""
 
+from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.pytd import pytd
+
+
+def build_class(node, props, kwargs, ctx):
+  """Handle classes whose subclasses define their own class constructors."""
+
+  for base in props.bases:
+    base = abstract_utils.get_atomic_value(base, default=None)
+    if not isinstance(base, class_mixin.Class):
+      continue
+    if base.is_enum and ctx.options.use_enum_overlay:
+      enum_base = abstract_utils.get_atomic_value(
+          ctx.vm.loaded_overlays["enum"].members["Enum"])
+      return enum_base.make_class(node, props)
+    elif base.full_name == "typing.NamedTuple":
+      return base.make_class(node, props.bases, props.class_dict_var)
+    elif base.is_typed_dict_class:
+      return base.make_class(
+          node, props.bases, props.class_dict_var, total=kwargs.get("total"))
+  return node, None
 
 
 class _Builder:
