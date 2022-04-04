@@ -339,9 +339,8 @@ class SimpleFunction(SignedFunction):
         ctx=ctx)
 
   def call(self, node, _, args, alias_map=None):
-    # We only simplify args for _map_args, because that simplifies checking.
-    # This allows match_args to typecheck varargs and kwargs.
-    callargs = self._map_args(node, args.simplify(node, self.ctx))
+    args = args.simplify(node, self.ctx)
+    callargs = self._map_args(node, args)
     substs = self.match_args(node, args, alias_map)
     # Substitute type parameters in the signature's annotations.
     annotations = self.ctx.annotation_utils.sub_annotations(

@@ -29,6 +29,20 @@ class NamedtupleTests(test_base.BaseTest):
           return foo.X2(0, 0)
       """)
 
+  def test_namedtuple_inheritance(self):
+    self.Check("""
+      import collections
+      class Base(collections.namedtuple('Base', ['x', 'y'])):
+        pass
+      class Foo(Base):
+        def __new__(cls, **kwargs):
+          return super().__new__(cls, **kwargs)
+      def f(x: Foo):
+        pass
+      def g(x: Foo):
+        return f(x)
+    """)
+
 
 class NamedtupleTestsPy3(test_base.BaseTest):
   """Tests for collections.namedtuple in Python 3."""
