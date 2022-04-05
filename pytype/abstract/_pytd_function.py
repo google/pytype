@@ -490,8 +490,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
             (name, varargs_type.get_formal_type_parameter(abstract_utils.T)))
 
     # named args
+    posonly_names = set(self.signature.posonly_params)
     for name, arg in args.namedargs.items():
-      if name in arg_dict:
+      if name in arg_dict and name not in posonly_names:
         raise function.DuplicateKeyword(self.signature, args, self.ctx, name)
       arg_dict[name] = view[arg]
     kws = set(args.namedargs)
@@ -499,8 +500,12 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     if extra_kwargs and not self.pytd_sig.starstarargs:
       raise function.WrongKeywordArgs(
           self.signature, args, self.ctx, extra_kwargs)
-    posonly_kwargs = kws.intersection(self.signature.posonly_params)
-    if posonly_kwargs:
+    posonly_kwargs = kws & posonly_names
+    # If a function has a **kwargs parameter, then keyword arguments with the
+    # same name as a positional-only argument are allowed, e.g.:
+    #   def f(x, /, **kwargs): ...
+    #   f(0, x=1)  # ok
+    if posonly_kwargs and not self.signature.kwargs_name:
       raise function.WrongKeywordArgs(
           self.signature, args, self.ctx, posonly_kwargs)
     # Extra keyword args are passed via the **kwargs argument.
