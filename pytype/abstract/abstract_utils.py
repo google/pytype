@@ -185,6 +185,8 @@ def get_views(variables, node):
   try:
     combinations = cfg_utils.deep_variable_product(variables)
   except cfg_utils.TooComplexError:
+    log.info("get_views: too many binding combinations to generate accurate "
+             "views, falling back to unsolvable")
     combinations = ((var.AddBinding(node.program.default_data, [], node)
                      for var in variables),)
   seen = []  # the accessed subsets of previously seen views
