@@ -176,8 +176,6 @@ class _Stack:
 
   def _pop_args(self, n):
     """Try to get n args off the stack for a BUILD call."""
-    # TODO(b/175443170): Handle the case of n = 0 - we currently back out of
-    # folding a constant that contains an empty list/map/fstring as an element.
     if len(self.stack) < n:
       # We have started a new block in the middle of constructing a literal
       # (e.g. due to an inline function call). Clear the stack, since the
@@ -197,7 +195,7 @@ class _Stack:
     """Collect the arguments to a build call."""
     ret = _CollectionBuilder()
     args = self._pop_args(n)
-    if not args:
+    if args is None:
       self.push(None)
       return None
 
@@ -210,7 +208,7 @@ class _Stack:
     """Collect the arguments to a BUILD_MAP call."""
     ret = _MapBuilder()
     args = self._pop_args(2 * n)
-    if not args:
+    if args is None:
       self.push(None)
       return None
 
@@ -312,6 +310,37 @@ class _FoldConstants:
             val = dict(zip(keys.value, vals.values))
             elements = dict(zip(keys.value, vals.elements))
             stack.push(_Constant(typ, val, elements, op))
+        elif isinstance(op, opcodes.LIST_APPEND):
+          elements = stack.fold_args(2, op)
+          if elements:
+            lst, element = elements.elements
+            tag, et = lst.typ
+            assert tag == 'list'
+            typ = (tag, et | {element.typ})
+            value = lst.value + [element.value]
+            elements = lst.elements + (element,)
+            stack.push(_Constant(typ, value, elements, op))
+        elif isinstance(op, opcodes.MAP_ADD):
+          elements = stack.fold_args(3, op)
+          if elements:
+            map_, key, val = elements.elements
+            tag, (kt, vt) = map_.typ
+            assert tag == 'map'
+            typ = (tag, (kt | {key.typ}, vt | {val.typ}))
+            value = {**map_.value, **{key.value: val.value}}
+            elements = {**map_.elements, **{key.value: val}}
+            stack.push(_Constant(typ, value, elements, op))
+        elif isinstance(op, opcodes.DICT_UPDATE):
+          elements = stack.fold_args(2, op)
+          if elements:
+            map1, map2 = elements.elements
+            tag1, (kt1, vt1) = map1.typ
+            tag2, (kt2, vt2) = map2.typ
+            assert tag1 == tag2 == 'map'
+            typ = (tag1, (kt1 | kt2, vt1 | vt2))
+            value = {**map1.value, **map2.value}
+            elements = {**map1.elements, **map2.elements}
+            stack.push(_Constant(typ, value, elements, op))
         else:
           # If we hit any other bytecode, we are no longer building a literal
           # constant. Insert a None as a sentinel to the next BUILD op to
