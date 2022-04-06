@@ -387,7 +387,6 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     f_locals = abstract_utils.get_atomic_python_constant(f_locals)
 
-    # retrieve __qualname__ to get the name of class
     name = f_locals["__qualname__"]
     name = abstract_utils.get_atomic_python_constant(name)
     if "." in name:
@@ -435,6 +434,47 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     return node, cls_var
 
+  def make_class_from_pyi(self, cls_name, pytd_cls):
+    """Make a NamedTupleClass from a pyi class."""
+    # NOTE: Returns the abstract class, not a variable.
+    ctx = self.ctx
+    fields = [Field(c.name, ctx.convert.constant_to_value(c.type))
+              for c in pytd_cls.constants]
+    bases = []
+    for x in pytd_cls.bases:
+      b = ctx.convert.constant_to_var(x)
+      if pytd_cls.template:
+        # We need to set the generated class's _template directly here, since we
+        # bypass the normal mechanism to copy a template from a pytd class to a
+        # PyTDClass (see abstract._base._compute_template())
+        tmpl = [ctx.convert.constant_to_value(t.type_param)
+                for t in pytd_cls.template]
+        b.data[0]._template = tmpl  # pylint: disable=protected-access
+      bases.append(b)
+    props = NamedTupleProperties(cls_name, fields, bases)
+    node = ctx.root_node
+    node, cls_var = _build_namedtuple(props, node, ctx)
+    cls = abstract_utils.get_atomic_value(cls_var)
+    locals_ = {f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
+               for f in fields}
+    annots = abstract.AnnotationsDict(locals_, ctx).to_variable(node)
+    cls.members["__annotations__"] = annots
+    cls.update_official_name(cls.name)
+    # Add any methods defined in the class, potentially overwriting the
+    # generated ones
+    for m in pytd_cls.methods:
+      # We need to allow recursive conversion because overriding __new__ adds a
+      # typevar that refers back to the class, and reloading the pyi file
+      # triggers a recursion error in convert.
+      with ctx.allow_recursive_convert():
+        # Create a SimpleFunction from the pytd method; storing a PyTDFunction
+        # as an InterpreterClass method does not behave correctly (see
+        # AttributeHandler._lookup_from_mro)
+        sig = function.Signature.from_pytd(ctx, m.name, m.signatures[0])
+        meth = abstract.SimpleFunction.from_signature(sig, self.ctx)
+        cls.members[m.name] = meth.to_variable(self.ctx.root_node)
+    return cls
+
 
 class _DictBuilder:
   """Construct OrderedDict abstract classes for namedtuple members."""
@@ -452,6 +492,30 @@ class _DictBuilder:
         "K": self.ctx.convert.str_type,
         "V": typ
     }, self.ctx)
+
+
+class NamedTupleClass(abstract.InterpreterClass):
+  """Named tuple classes."""
+
+  def __init__(self, *args):
+    super().__init__(*args)
+    # Store the original properties, to output to pyi files.
+    self.props = None
+    self.generated_members = None
+
+  def instantiate(self, node, container=None):
+    # For all generic typevars T, add a type parameter alias between cls.T and
+    # path.to.module.cls.T
+    inst = super().instantiate(node, container)
+    for ival in inst.data:
+      cls = ival.cls
+      long = cls.full_name
+      for t in cls.template:
+        short = t.module
+        param = t.name
+        ival.instance_type_parameters.add_alias(
+            f"{short}.{param}", f"{long}.{param}", lambda x, y: x or y)
+    return inst
 
 
 def _build_namedtuple(props, node, ctx):
@@ -616,10 +680,10 @@ def _build_namedtuple(props, node, ctx):
   cls_props = class_mixin.ClassBuilderProperties(
       name_var=ctx.convert.build_string(node, props.name),
       bases=final_bases,
-      class_dict_var=cls_dict.to_variable(node))
+      class_dict_var=cls_dict.to_variable(node),
+      class_type=NamedTupleClass,)
   node, cls_var = ctx.make_class(node, cls_props)
   cls = cls_var.data[0]
-
   # Now that the class has been made, we can complete the TypeParameter used
   # by __new__, _make and _replace.
   cls_type_param.bound = cls
@@ -632,6 +696,11 @@ def _build_namedtuple(props, node, ctx):
   new_attr = abstract_utils.get_atomic_value(new_attr)
   node = ctx.attribute_handler.set_attribute(
       node, new_attr, "__defaults__", defaults)
+
+  # Store the original properties
+  cls.props = props
+  cls.generated_members = (
+      set(members.keys()) - set((x.name for x in props.fields)))
 
   ctx.vm.trace_classdef(cls_var)
   return node, cls_var

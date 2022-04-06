@@ -348,7 +348,13 @@ class GeneratorFeatureTest(test_base.BaseTest):
 
   def test_async_with_error(self):
     # pylint: disable=anomalous-backslash-in-string
-    errors = self.CheckWithErrors("""
+    if self.python_version >= (3, 10):
+      e4 = "  # bad-return-type[e4]"
+      e4_pre310 = ""
+    else:
+      e4 = ""
+      e4_pre310 = "  # bad-return-type[e4]"
+    errors = self.CheckWithErrors(f"""
       class AsyncCtx1:
         pass
 
@@ -363,8 +369,8 @@ class GeneratorFeatureTest(test_base.BaseTest):
         ctx1 = AsyncCtx1()
         ctx2 = AsyncCtx2()
         async with ctx1 as var1:  # attribute-error[e1]  # attribute-error[e2]
-          async with ctx2 as var2:  # bad-return-type[e3]
-            pass  # bad-return-type[e4]
+          async with ctx2 as var2:  # bad-return-type[e3]{e4}
+            pass{e4_pre310}
     """)
     self.assertErrorRegexes(errors, {
         "e1": r"No attribute.*__aexit__", "e2": r"No attribute.*__aenter__",

@@ -287,38 +287,13 @@ class NamedTupleTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import NamedTuple
       X = NamedTuple("X", [('a', int), ('b', str)])""")
-    self.assertTypesMatchPytd(ty, (
-        """
-        import collections
-        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
+    self.assertTypesMatchPytd(ty, """
+      from typing import NamedTuple
+      class X(NamedTuple):
+          a: int
+          b: str
+      """)
 
-        _Tnamedtuple_X_a_b = TypeVar('_Tnamedtuple_X_a_b', bound=X)
-
-        class X(Tuple[int, str]):
-            __slots__ = ["a", "b"]
-            __dict__: collections.OrderedDict[str, Union[int, str]]
-            _field_defaults: collections.OrderedDict[str, Union[int, str]]
-            _field_types: collections.OrderedDict[str, type]
-            _fields: Tuple[str, str]
-            a: int
-            b: str
-            def __getnewargs__(self) -> Tuple[int, str]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(
-                cls: Type[_Tnamedtuple_X_a_b], a: int, b: str
-            ) -> _Tnamedtuple_X_a_b: ...
-            def _asdict(
-                self) -> collections.OrderedDict[str, Union[int, str]]: ...
-            @classmethod
-            def _make(
-                cls: Type[_Tnamedtuple_X_a_b],
-                iterable: Iterable[Union[int, str]], new = ...,
-                len: Callable[[Sized], int] = ...) -> _Tnamedtuple_X_a_b: ...
-            def _replace(
-                self: _Tnamedtuple_X_a_b, **kwds: Union[int, str]
-            ) -> _Tnamedtuple_X_a_b: ...
-        """))
 
 if __name__ == "__main__":
   test_base.main()

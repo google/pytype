@@ -3,7 +3,7 @@
 import collections
 import sys
 
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, List
 
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
@@ -21,10 +21,8 @@ else:
 _PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
 
 
-def get_bases(
-    bases: List[pytd.Type]
-) -> Tuple[List[pytd_node.Node], Optional[int]]:
-  """Collect base classes and namedtuple index."""
+def get_bases(bases: List[pytd.Type]) -> List[pytd.Type]:
+  """Collect base classes."""
 
   bases_out = []
   namedtuple_index = None
@@ -46,8 +44,7 @@ def get_bases(
     else:
       msg = f"Unexpected class base: {p}"
       raise ParseError(msg)
-
-  return bases_out, namedtuple_index
+  return bases_out
 
 
 def get_metaclass(keywords: List[ast3.keyword]):

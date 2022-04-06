@@ -13,6 +13,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
 from pytype.overlays import attr_overlay
+from pytype.overlays import named_tuple
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyc import loadmarshal
@@ -271,6 +272,15 @@ class Converter(utils.ContextWeakrefMixin):
   def make_typed_dict(self, name, pytd_cls, ctx):
     """Make a typed dict from a pytd class."""
     builder = typed_dict.TypedDictBuilder(ctx)
+    return builder.make_class_from_pyi(name, pytd_cls)
+
+  def make_namedtuple_builder(self, ctx):
+    """Make a namedtuple builder."""
+    return named_tuple.NamedTupleClassBuilder(ctx)
+
+  def make_namedtuple(self, name, pytd_cls, ctx):
+    """Make a namedtuple class from a pytd class."""
+    builder = named_tuple.NamedTupleClassBuilder(ctx)
     return builder.make_class_from_pyi(name, pytd_cls)
 
   def get_maybe_abstract_instance(self, data):

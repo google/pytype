@@ -76,9 +76,9 @@ def validate_version(python_version):
   elif (3, 0) <= python_version <= (3, 6):
     raise UsageError(
         "Python versions 3.0 - 3.6 are not supported. Use 3.7 and higher.")
-  elif python_version > (3, 9) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
+  elif python_version > (3, 10) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
     # We have an explicit per-minor-version mapping in opcodes.py
-    raise UsageError("Python versions > 3.9 are not yet supported.")
+    raise UsageError("Python versions > 3.10 are not yet supported.")
 
 
 def strip_prefix(string, prefix):

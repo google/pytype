@@ -448,6 +448,9 @@ class ItemsView(MappingView[Tuple[_K, _V]], AbstractSet[Tuple[_K, _V]]):
 NoReturn = nothing
 
 
+# We special-case this internally, we just need the class to exist within typing.
+class NamedTuple: ...
+
 def _NamedTuple(typename: Text, fields: Sequence[Sequence[Union[Text, type]]]) -> Any: ...
 
 # A more precise (but incorrect) fields type for error messages.

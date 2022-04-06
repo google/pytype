@@ -14,6 +14,7 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import named_tuple
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyi import metadata
@@ -783,6 +784,18 @@ class Converter(utils.ContextWeakrefMixin):
         del methods[name]
         constants[name].add_type(pytd.AnythingType())
 
+    if isinstance(v, named_tuple.NamedTupleClass):
+      # Filter out generated members from namedtuples
+      cls_bases = v.props.bases
+      methods = {k: m for k, m in methods.items()
+                 if k not in v.generated_members}
+      constants = {k: c for k, c in constants.items()
+                   if k not in v.generated_members}
+      slots = None
+    else:
+      cls_bases = v.bases()
+      slots = v.slots
+
     constants = [pytd.Constant(name, builder.build())
                  for name, builder in constants.items() if builder]
 
@@ -795,7 +808,8 @@ class Converter(utils.ContextWeakrefMixin):
     # into this class's pytd.
     bases = []
     missing_bases = []
-    for basevar in v.bases():
+
+    for basevar in cls_bases:
       if len(basevar.bindings) == 1:
         b, = basevar.data
         if b.official_name is None and isinstance(b, abstract.InterpreterClass):
@@ -805,6 +819,13 @@ class Converter(utils.ContextWeakrefMixin):
       else:
         bases.append(pytd_utils.JoinTypes(b.get_instance_type(node)
                                           for b in basevar.data))
+
+    # If a namedtuple was constructed via one of the functional forms, it will
+    # not have a base class. Since we uniformly output all namedtuple classes as
+    # subclasses of typing.NamedTuple we need to add it in here.
+    if isinstance(v, named_tuple.NamedTupleClass):
+      if not any(x.name == "typing.NamedTuple" for x in bases):
+        bases.append(pytd.NamedType("typing.NamedTuple"))
 
     # Collect nested classes
     # TODO(mdemello): We cannot put these in the output yet; they fail in
@@ -820,7 +841,7 @@ class Converter(utils.ContextWeakrefMixin):
                      constants=tuple(constants),
                      classes=(),
                      decorators=tuple(decorators),
-                     slots=v.slots,
+                     slots=slots,
                      template=())
     for base in missing_bases:
       base_cls = self.value_to_pytd_def(node, base, base.name)

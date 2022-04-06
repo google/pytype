@@ -400,7 +400,7 @@ class Definitions:
     """
     nt = namedtuple.NamedTuple(base_name, fields, self.generated_classes)
     self.generated_classes[base_name].append(nt.cls)
-    self.type_params.append(nt.type_param)
+    self.add_import("typing", ["NamedTuple"])
     return pytd.NamedType(nt.name)
 
   def new_typed_dict(self, name, items, total):
@@ -644,19 +644,12 @@ class Definitions:
       self, class_name, bases, keywords, decorators, defs
   ) -> pytd.Class:
     """Build a pytd.Class from definitions collected from an ast node."""
-    bases, namedtuple_index = classdef.get_bases(bases)
+    bases = classdef.get_bases(bases)
     metaclass = classdef.get_metaclass(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
     # Make sure we don't have duplicate definitions.
     classdef.check_for_duplicate_defs(methods, constants, aliases)
-
-    # Generate a NamedTuple proxy base class if needed
-    if namedtuple_index is not None:
-      namedtuple_base = self.new_named_tuple(
-          class_name, [(c.name, c.type) for c in constants])
-      bases[namedtuple_index] = namedtuple_base
-      constants = []
 
     if aliases:
       vals_dict = {val.name: val

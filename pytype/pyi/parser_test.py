@@ -676,42 +676,21 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
 
   def test_assign_namedtuple(self):
     self.check("X = NamedTuple('X', [])", """
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import NamedTuple
 
       X = namedtuple_X_0
 
-      _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
-
-      class namedtuple_X_0(Tuple[()]):
-          __slots__ = []
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_X_0]) -> _Tnamedtuple_X_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
+      class namedtuple_X_0(NamedTuple): ...
     """)
 
   def test_subclass_namedtuple(self):
-    self.check("class X(NamedTuple('X', [])): ...", """
-      from typing import Any, Tuple, Type, TypeVar
+    self.check("""
+      from typing import NamedTuple
+      class X(NamedTuple('X', [])): ...
+    """, """
+      from typing import NamedTuple
 
-      _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
-
-      class namedtuple_X_0(Tuple[()]):
-          __slots__ = []
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_X_0]) -> _Tnamedtuple_X_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
+      class namedtuple_X_0(NamedTuple): ...
 
       class X(namedtuple_X_0): ...
     """)
@@ -727,25 +706,13 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
           ],
       )
     """, """
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import NamedTuple
 
       Foo = namedtuple_Foo_0
 
-      _Tnamedtuple_Foo_0 = TypeVar('_Tnamedtuple_Foo_0', bound=namedtuple_Foo_0)
-
-      class namedtuple_Foo_0(Tuple[int, str]):
-          __slots__ = ["a", "b"]
+      class namedtuple_Foo_0(NamedTuple):
           a: int
           b: str
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_Foo_0], a: int, b: str) -> _Tnamedtuple_Foo_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
     """)
 
   def test_collections_trailing_comma(self):
@@ -760,48 +727,24 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
       )
     """, """
       from collections import namedtuple
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import Any, NamedTuple
 
       Foo = namedtuple_Foo_0
 
-      _Tnamedtuple_Foo_0 = TypeVar('_Tnamedtuple_Foo_0', bound=namedtuple_Foo_0)
-
-      class namedtuple_Foo_0(Tuple[Any, Any]):
-          __slots__ = ["a", "b"]
+      class namedtuple_Foo_0(NamedTuple):
           a: Any
           b: Any
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_Foo_0], a, b) -> _Tnamedtuple_Foo_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
     """)
 
   def test_collections_namedtuple(self):
     expected = """
       from collections import namedtuple
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import Any, NamedTuple
 
       X = namedtuple_X_0
 
-      _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
-
-      class namedtuple_X_0(Tuple[Any]):
-          __slots__ = ["y"]
+      class namedtuple_X_0(NamedTuple):
           y: Any
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_X_0], y) -> _Tnamedtuple_X_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
     """
     self.check("""
       from collections import namedtuple
@@ -819,25 +762,11 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
         y: int
         z: str
     """, """
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import NamedTuple
 
-      _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
-
-      class namedtuple_X_0(Tuple[int, str]):
-          __slots__ = ["y", "z"]
+      class X(NamedTuple):
           y: int
           z: str
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_X_0], y: int, z: str) -> _Tnamedtuple_X_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-
-      class X(namedtuple_X_0): ...
     """)
 
   def test_typing_namedtuple_class_with_method(self):
@@ -848,25 +777,11 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
         z: str
         def foo(self) -> None: ...
     """, """
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import NamedTuple
 
-      _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
-
-      class namedtuple_X_0(Tuple[int, str]):
-          __slots__ = ["y", "z"]
+      class X(NamedTuple):
           y: int
           z: str
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_X_0], y: int, z: str) -> _Tnamedtuple_X_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-
-      class X(namedtuple_X_0):
           def foo(self) -> None: ...
     """)
 
@@ -877,25 +792,11 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
         y: int
         z: str
     """, """
-      from typing import Any, Tuple, Type, TypeVar
+      from typing import NamedTuple
 
-      _Tnamedtuple_X_0 = TypeVar('_Tnamedtuple_X_0', bound=namedtuple_X_0)
-
-      class namedtuple_X_0(Tuple[int, str]):
-          __slots__ = ["y", "z"]
+      class X(dict, NamedTuple):
           y: int
           z: str
-          _asdict: Any
-          __dict__: Any
-          _fields: Any
-          __getnewargs__: Any
-          __getstate__: Any
-          _make: Any
-          _replace: Any
-          def __new__(cls: Type[_Tnamedtuple_X_0], y: int, z: str) -> _Tnamedtuple_X_0: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-
-      class X(dict, namedtuple_X_0): ...
     """)
 
   def test_multi_namedtuple_base(self):

@@ -25,28 +25,13 @@ class NamedtupleTests(test_base.BaseTest):
       """, deep=False)
     self.assertTypesMatchPytd(ty, """
       import collections
-      from typing import Any, Callable, Iterable, Sized, Tuple, Type, TypeVar
+      from typing import Any, NamedTuple
 
       a: X
 
-      _Tnamedtuple_X_y_z = TypeVar('_Tnamedtuple_X_y_z', bound=X)
-
-      class X(Tuple[Any, Any]):
-          __slots__ = ["y", "z"]
-          __dict__: collections.OrderedDict[str, Any]
-          _field_defaults: collections.OrderedDict[str, Any]
-          _field_types: collections.OrderedDict[str, type]
-          _fields: Tuple[str, str]
+      class X(NamedTuple):
           y: Any
           z: Any
-          def __getnewargs__(self) -> Tuple[Any, Any]: ...
-          def __getstate__(self) -> None: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-          def __new__(cls: Type[_Tnamedtuple_X_y_z], y, z) -> _Tnamedtuple_X_y_z: ...
-          def _asdict(self) -> collections.OrderedDict[str, Any]: ...
-          @classmethod
-          def _make(cls: Type[_Tnamedtuple_X_y_z], iterable: Iterable, new = ..., len: Callable[[Sized], int] = ...) -> _Tnamedtuple_X_y_z: ...
-          def _replace(self: _Tnamedtuple_X_y_z, **kwds) -> _Tnamedtuple_X_y_z: ...
     """)
 
   def test_no_fields(self):

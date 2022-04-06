@@ -3,6 +3,7 @@
 from pytype import file_utils
 from pytype.pytd import pep484
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypingTest(test_base.BaseTest):
@@ -517,6 +518,28 @@ class TypingTest(test_base.BaseTest):
         errors, {"e1": r"Not a type",
                  "e2": r"typing\.Optional can only contain one type parameter"})
 
+  @test_utils.skipFromPy((3, 10), "RETURN_VALUE line number changes in 3.10")
+  def test_noreturn_possible_return_pre310(self):
+    errors = self.CheckWithErrors("""
+      from typing import NoReturn
+      def func(x) -> NoReturn:
+        if x > 1:
+          raise ValueError()  # bad-return-type[e]
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Expected: NoReturn", "Actually returned: None"]})
+
+  @test_utils.skipBeforePy((3, 10), "RETURN_VALUE line number changes in 3.10")
+  def test_noreturn_possible_return(self):
+    errors = self.CheckWithErrors("""
+      from typing import NoReturn
+      def func(x) -> NoReturn:
+        if x > 1:  # bad-return-type[e]
+          raise ValueError()
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Expected: NoReturn", "Actually returned: None"]})
+
   def test_noreturn_parameters(self):
     errors = self.CheckWithErrors("""
       from typing import NoReturn, List
@@ -527,22 +550,17 @@ class TypingTest(test_base.BaseTest):
       def func1() -> List[NoReturn]:  # invalid-annotation[e1]
         raise ValueError()
 
-      def func2(x) -> NoReturn:
-        if x > 1:
-          raise ValueError()  # bad-return-type[e2]
-
-      def func3(x: NoReturn):  # invalid-annotation[e3]
+      def func2(x: NoReturn):  # invalid-annotation[e2]
         pass
 
-      def func4(x: List[NoReturn]):  # invalid-annotation[e4]
+      def func3(x: List[NoReturn]):  # invalid-annotation[e3]
         pass
 
-      bad = None  # type: NoReturn  # invalid-annotation[e5]
+      bad = None  # type: NoReturn  # invalid-annotation[e4]
     """)
     self.assertErrorRegexes(errors, {
-        "e1": r"NoReturn is not allowed", "e2": r"NoReturn.*None",
-        "e3": r"NoReturn is not allowed", "e4": r"NoReturn is not allowed",
-        "e5": r"NoReturn is not allowed"})
+        "e1": r"NoReturn is not allowed", "e2": r"NoReturn is not allowed",
+        "e3": r"NoReturn is not allowed", "e4": r"NoReturn is not allowed"})
 
   def test_noreturn_in_tuple(self):
     self.Check("""

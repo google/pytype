@@ -17,6 +17,7 @@ disable=
   attribute-defined-outside-init,
   bad-option-value,
   c-extension-no-member,
+  cache-max-size-none,
   comparison-with-callable,
   comparison-with-itself,
   consider-using-enumerate,
