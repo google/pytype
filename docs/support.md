@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-03-31T11:25-07:00 -->
+<!-- Added by: rechen, at: 2022-04-06T14:32-07:00 -->
 
 <!--te-->
 
@@ -34,7 +34,8 @@ Version | Analyzes   | Runs In    | Issue
 3.7     | ✅          | ✅          |
 3.8     | ✅          | ✅          |
 3.9     | ✅          | ✅          |
-3.10    | ❌          | ❌          | [#1022][py310]
+3.10    | ✅          | ✅          |
+3.11    | ❌          | ❌          |
 
 ## Features
 
