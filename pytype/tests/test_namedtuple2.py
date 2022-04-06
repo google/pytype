@@ -43,6 +43,23 @@ class NamedtupleTests(test_base.BaseTest):
         return f(x)
     """)
 
+  @test_base.skip("TODO(b/228241343): view generation bug")
+  def test_namedtuple_inheritance_expensive(self):
+    self.Check("""
+      import collections
+      class Foo(collections.namedtuple('_Foo', ['x', 'y'])):
+        pass
+      def f() -> Foo:
+        x1 = __any_object__ or None
+        x2 = __any_object__ or False
+        x3 = __any_object__ or False
+        x4 = __any_object__ or False
+        y1 = __any_object__ or None
+        y2 = __any_object__ or False
+        y3 = __any_object__ or False
+        return Foo((x1, x2, x3, x4), (y1, y2, y3))
+    """)
+
 
 class NamedtupleTestsPy3(test_base.BaseTest):
   """Tests for collections.namedtuple in Python 3."""

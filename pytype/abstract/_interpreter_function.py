@@ -165,15 +165,20 @@ class SignedFunction(_function_base.Function):
         for name, default in sig.defaults.items()
     }
     positional = dict(zip(sig.param_names, posargs))
-    for key in positional:
+    posonly_names = set(sig.posonly_params)
+    for key in set(positional) - posonly_names:
       if key in kws:
         raise function.DuplicateKeyword(sig, args, self.ctx, key)
     kwnames = set(kws)
     extra_kws = kwnames.difference(sig.param_names + sig.kwonly_params)
     if extra_kws and not sig.kwargs_name:
       raise function.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
-    posonly_kws = kwnames.intersection(sig.posonly_params)
-    if posonly_kws:
+    posonly_kws = kwnames & posonly_names
+    # If a function has a **kwargs parameter, then keyword arguments with the
+    # same name as a positional-only argument are allowed, e.g.:
+    #   def f(x, /, **kwargs): ...
+    #   f(0, x=1)  # ok
+    if posonly_kws and not sig.kwargs_name:
       raise function.WrongKeywordArgs(sig, args, self.ctx, posonly_kws)
     callargs.update(positional)
     callargs.update(kws)

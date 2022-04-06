@@ -785,6 +785,20 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
                                                "Expected: (x, /, y)"]})
 
+  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
+  def test_positional_and_keyword_arguments(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        def f(x, /, **kwargs) -> None: ...
+      """)
+      self.Check("""
+        import foo
+        def f(x, /, **kwargs):
+          pass
+        foo.f(1, x=1)
+        f(1, x=1)
+      """, pythonpath=[d.path])
+
 
 class DisableTest(test_base.BaseTest):
   """Tests for error disabling."""
