@@ -15,11 +15,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-20.04]
-        python-version: ['3.7','3.8', '3.9']
+        python-version: ['3.7','3.8', '3.9', '3.10']
         experimental: [false]
         include:
           - os: ubuntu-20.04
-            python-version: '3.10-dev'
+            python-version: '3.11-dev'
             experimental: true
     steps:
     - name: Cancel previous
@@ -47,9 +47,9 @@ jobs:
       run: pip install -r requirements.txt
 
     - name: Run Tests
-      if: matrix.python-version != '3.10-dev'
+      if: matrix.python-version != '3.11-dev'
       run: python build_scripts/ci_script.py
 
-    - name: Run Tests for python 3.10
-      if: matrix.python-version == '3.10-dev'
+    - name: Run Tests for python 3.11
+      if: matrix.python-version == '3.11-dev'
       run: python build_scripts/ci_script.py || exit 0
