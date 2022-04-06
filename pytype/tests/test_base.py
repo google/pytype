@@ -135,7 +135,6 @@ class BaseTest(unittest.TestCase):
                                          strict_namedtuple_checks=True,
                                          strict_parameter_checks=True,
                                          strict_primitive_comparisons=True,
-                                         trace_all_classes=True,
                                          use_enum_overlay=True)
 
   @property

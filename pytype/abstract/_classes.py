@@ -87,8 +87,7 @@ class BuildClass(_base.BaseValue):
     if not clsvar:
       node, clsvar = self.ctx.make_class(node, props)
 
-    if self.ctx.options.trace_all_classes:
-      self.ctx.vm.trace_classdef(clsvar)
+    self.ctx.vm.trace_classdef(clsvar)
     return node, clsvar
 
 
