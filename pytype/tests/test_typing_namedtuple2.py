@@ -78,38 +78,15 @@ class NamedTupleTestPy3(test_base.BaseTest):
     self.assertTypesMatchPytd(
         ty,
         """
-        import collections
         import typing
-        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar, Union
-        x = ...  # type: X
-        a = ...  # type: int
-        b = ...  # type: str
-        _Tnamedtuple_X_a_b = TypeVar('_Tnamedtuple_X_a_b', bound=X)
-        class X(Tuple[int, str]):
-          __slots__ = ["a", "b"]
-          __dict__: collections.OrderedDict[str, Union[int, str]]
-          _field_defaults: collections.OrderedDict[str, Union[int, str]]
-          _field_types: collections.OrderedDict[str, type]
-          _fields: Tuple[str, str]
+        from typing import NamedTuple
+        a: int
+        b: str
+        x: X
+        class X(NamedTuple):
           a: int
           b: str
-          def __getnewargs__(self) -> Tuple[int, str]: ...
-          def __getstate__(self) -> None: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-          def __new__(
-              cls: Type[_Tnamedtuple_X_a_b], a: int, b: str
-          ) -> _Tnamedtuple_X_a_b: ...
-          def _asdict(self) -> collections.OrderedDict[str,
-            Union[int, str]]: ...
-          @classmethod
-          def _make(
-              cls: Type[_Tnamedtuple_X_a_b],
-              iterable: Iterable[Union[int, str]], new = ...,
-              len: Callable[[Sized], int] = ...) -> _Tnamedtuple_X_a_b: ...
-          def _replace(
-              self: _Tnamedtuple_X_a_b, **kwds: Union[int, str]
-          ) -> _Tnamedtuple_X_a_b: ...
-          """)
+        """)
 
   def test_union_attribute(self):
     ty = self.Infer("""
@@ -213,34 +190,10 @@ class NamedTupleTestPy3(test_base.BaseTest):
     self.assertTypesMatchPytd(
         ty,
         """
-        import collections
-        from typing import Callable, Iterable, Sized, Tuple, Type, TypeVar
+        from typing import NamedTuple
 
-        _Tnamedtuple_SubNamedTuple_a = TypeVar(
-            '_Tnamedtuple_SubNamedTuple_a', bound=SubNamedTuple)
-
-        class SubNamedTuple(baseClass, Tuple[int]):
-            __slots__ = ["a"]
-            __dict__ = ...  # type: collections.OrderedDict[str, int]
-            _field_defaults = ...  # type: collections.OrderedDict[str, int]
-            _field_types = ...  # type: collections.OrderedDict[str, type]
-            _fields = ...  # type: Tuple[str]
-            a = ...  # type: int
-            def __getnewargs__(self) -> Tuple[int]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(
-                cls: Type[_Tnamedtuple_SubNamedTuple_a], a: int
-            ) -> _Tnamedtuple_SubNamedTuple_a: ...
-            def _asdict(self) -> collections.OrderedDict[str, int]: ...
-            @classmethod
-            def _make(
-                cls: Type[_Tnamedtuple_SubNamedTuple_a],
-                iterable: Iterable[int], new = ...,
-                len: Callable[[Sized], int] = ...
-            ) -> _Tnamedtuple_SubNamedTuple_a: ...
-            def _replace(self: _Tnamedtuple_SubNamedTuple_a,
-                         **kwds: int) -> _Tnamedtuple_SubNamedTuple_a: ...
+        class SubNamedTuple(baseClass, NamedTuple):
+            a: int
 
         class baseClass:
             x = ...  # type: int
@@ -405,36 +358,11 @@ class NamedTupleTestPy3(test_base.BaseTest):
       """)
     self.assertTypesMatchPytd(ty, (
         """
-        import collections
-        from typing import (
-            Callable, Iterable, Sized, Tuple, Type, TypeVar, Union)
+        from typing import NamedTuple
 
-        _Tnamedtuple_X_a_b = TypeVar('_Tnamedtuple_X_a_b', bound=X)
-
-        class X(Tuple[int, str]):
-            __slots__ = ["a", "b"]
-            __dict__: collections.OrderedDict[str, Union[int, str]]
-            _field_defaults: collections.OrderedDict[str, Union[int, str]]
-            _field_types: collections.OrderedDict[str, type]
-            _fields: Tuple[str, str]
+        class X(NamedTuple):
             a: int
             b: str
-            def __getnewargs__(self) -> Tuple[int, str]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(
-                cls: Type[_Tnamedtuple_X_a_b], a: int, b: str
-            ) -> _Tnamedtuple_X_a_b: ...
-            def _asdict(
-                self) -> collections.OrderedDict[str, Union[int, str]]: ...
-            @classmethod
-            def _make(
-                cls: Type[_Tnamedtuple_X_a_b],
-                iterable: Iterable[Union[int, str]], new = ...,
-                len: Callable[[Sized], int] = ...) -> _Tnamedtuple_X_a_b: ...
-            def _replace(
-                self: _Tnamedtuple_X_a_b, **kwds: Union[int, str]
-            ) -> _Tnamedtuple_X_a_b: ...
         """))
 
   def test_namedtuple_with_defaults(self):
@@ -466,9 +394,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
     self.assertTypesMatchPytd(
         ty,
         """
-        import collections
-        from typing import (
-            Callable, Iterable, Sized, Tuple, Type, TypeVar, Union)
+        from typing import NamedTuple
 
         X: SubNamedTuple
         a: int
@@ -480,37 +406,11 @@ class NamedTupleTestPy3(test_base.BaseTest):
         b2: str
         c2: int
 
-        _Tnamedtuple_SubNamedTuple_a_b_c = TypeVar(
-            '_Tnamedtuple_SubNamedTuple_a_b_c', bound=SubNamedTuple)
-
-        class SubNamedTuple(Tuple[int, str, int]):
-            __slots__ = ["a", "b", "c"]
-            __dict__: collections.OrderedDict[str, Union[int, str]]
-            _field_defaults: collections.OrderedDict[str, Union[int, str]]
-            _field_types: collections.OrderedDict[str, type]
-            _fields: Tuple[str, str, str]
+        class SubNamedTuple(NamedTuple):
             a: int
             b: str
             c: int
-            def __getnewargs__(self) -> Tuple[int, str, int]: ...
-            def __getstate__(self) -> None: ...
-            def __init__(self, *args, **kwargs) -> None: ...
-            def __new__(
-                cls: Type[_Tnamedtuple_SubNamedTuple_a_b_c], a: int,
-                b: str = ..., c: int = ...
-            ) -> _Tnamedtuple_SubNamedTuple_a_b_c: ...
             def __repr__(self) -> str: ...
-            def _asdict(self) -> collections.OrderedDict[str, Union[int, str]]:
-              ...
-            @classmethod
-            def _make(
-                cls: Type[_Tnamedtuple_SubNamedTuple_a_b_c],
-                iterable: Iterable[Union[int, str]], new = ...,
-                len: Callable[[Sized], int] = ...
-            ) -> _Tnamedtuple_SubNamedTuple_a_b_c: ...
-            def _replace(
-                self: _Tnamedtuple_SubNamedTuple_a_b_c, **kwds: Union[int, str]
-            ) -> _Tnamedtuple_SubNamedTuple_a_b_c: ...
             def func() -> None: ...
 
         def f() -> None: ...
@@ -558,8 +458,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
     self.assertTypesMatchPytd(
         ty,
         """
-        from typing import (Any, Callable, Generic, Iterable, Sized, Tuple,
-                            Type, TypeVar, Union)
+        from typing import Callable, Generic, NamedTuple, TypeVar
 
 
         def _int_identity(x: int) -> int: ...
@@ -572,39 +471,9 @@ class NamedTupleTestPy3(test_base.BaseTest):
         y_call_out = ...  # type: int
         foo_str = ...  # type: Foo[str]
 
-        _Tnamedtuple_Foo_x_y = TypeVar('_Tnamedtuple_Foo_x_y', bound=Foo)
-
-        class Foo(Tuple[T, Callable[[T], T]], Generic[T]):
-          __slots__ = ["x", "y"]
-          # TODO(csyoung): Figure out why these two fields' value types are
-          # being collapsed to Any.
-          # The Union of field types is preserved elsewhere.
-          # This only seems to happen when Generic gets involved;
-          # without Generic, these get typed correctly.
-          __dict__: collections.OrderedDict[str, Any]
-          _field_defaults: collections.OrderedDict[str, Any]
-          _field_types: collections.OrderedDict[str, type]
-          _fields: Tuple[str, str]
+        class Foo(NamedTuple, Generic[T]):
           x: T
           y: Callable[[T], T]
-          def __getnewargs__(self) -> Tuple[T, Callable[[T], T]]: ...
-          def __getstate__(self) -> None: ...
-          def __init__(self, *args, **kwargs) -> None: ...
-          def __new__(
-              cls: Type[_Tnamedtuple_Foo_x_y], x: T, y: Callable[[T], T]
-          ) -> _Tnamedtuple_Foo_x_y: ...
-          def _asdict(
-              self
-          ) -> collections.OrderedDict[str, Union[Callable[[T], T], T]]: ...
-          @classmethod
-          def _make(
-              cls: Type[_Tnamedtuple_Foo_x_y],
-              iterable: Iterable[Union[Callable[[T], T], T]],
-              new = ..., len: Callable[[Sized], int] = ...
-          ) -> _Tnamedtuple_Foo_x_y: ...
-          def _replace(
-              self: _Tnamedtuple_Foo_x_y, **kwds: Union[Callable[[T], T], T]
-          ) -> _Tnamedtuple_Foo_x_y: ...
       """)
 
   def test_bad_typevar(self):
@@ -662,6 +531,24 @@ class NamedTupleTestPy3(test_base.BaseTest):
         def h():
           max(x, y)
     """)
+
+  def test_override_method(self):
+    foo_pyi = """
+      from typing import NamedTuple
+      class Foo(NamedTuple):
+        a: float
+        b: str
+        def __repr__(self) -> str: ...
+    """
+    with self.DepTree([("foo.pyi", foo_pyi)]):
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          def __repr__(self):
+            return super().__repr__()
+        x = Bar(1, '2')
+        y = x.__repr__()
+      """)
 
 
 if __name__ == "__main__":

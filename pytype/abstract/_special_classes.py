@@ -85,7 +85,30 @@ class _TypedDictBuilder(_Builder):
     return self.convert.make_typed_dict(name, pytd_cls, self.ctx)
 
 
-_BUILDERS = (_TypedDictBuilder,)
+class _NamedTupleBuilder(_Builder):
+  """Build a namedtuple."""
+
+  CLASSES = ("typing.NamedTuple",)
+
+  def matches_class(self, c):
+    return c.name in self.CLASSES
+
+  def matches_base(self, c):
+    return any(isinstance(b, pytd.ClassType) and self.matches_class(b)
+               for b in c.bases)
+
+  def matches_mro(self, c):
+    # We only create namedtuples by direct inheritance
+    return False
+
+  def make_base_class(self):
+    return self.convert.make_namedtuple_builder(self.ctx)
+
+  def make_derived_class(self, name, pytd_cls):
+    return self.convert.make_namedtuple(name, pytd_cls, self.ctx)
+
+
+_BUILDERS = (_TypedDictBuilder, _NamedTupleBuilder)
 
 
 def maybe_build_from_pytd(name, pytd_cls, ctx):
