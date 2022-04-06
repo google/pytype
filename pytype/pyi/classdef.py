@@ -23,7 +23,7 @@ _PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
 
 def get_bases(
     bases: List[pytd.Type]
-) -> Tuple[List[pytd_node.Node], Optional[int]]:
+) -> Tuple[List[pytd.Type], Optional[int]]:
   """Collect base classes and namedtuple index."""
 
   bases_out = []

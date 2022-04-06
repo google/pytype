@@ -1,6 +1,7 @@
 """Tests for type comments."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class FunctionCommentTest(test_base.BaseTest):
@@ -169,6 +170,12 @@ class FunctionCommentTest(test_base.BaseTest):
         def __init__(self, **kwargs: int) -> None: ...
     """)
 
+  @test_utils.skipFromPy(
+      (3, 10),
+      "In 3.10+, we can't associate the function type comment to the function "
+      "because the function body opcodes have line number 1 instead of 3. "
+      "Since function type comments are long-deprecated, we don't bother "
+      "trying to make this work.")
   def test_function_without_body(self):
     ty = self.Infer("""
       def foo(x, y):
@@ -262,6 +269,12 @@ class FunctionCommentTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"int.*str.*constant"})
 
+  @test_utils.skipFromPy(
+      (3, 10),
+      "In 3.10+, we can't associate the function type comment to function g "
+      "because the opcodes in the body of g have line number 2 instead of 4. "
+      "Since function type comments are long-deprecated, we don't bother "
+      "trying to make this work.")
   def test_one_line_function(self):
     ty = self.Infer("""
       def f(): return 0
