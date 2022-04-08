@@ -543,6 +543,25 @@ class ParserTest(parser_test_base.ParserTestBase):
       x: typing.NamedTuple("A", []) = ...
     """, 1, e)
 
+  def test_match_args(self):
+    self.check("""
+      from typing import Final
+
+      class A:
+          __match_args__ = ("a", "b")
+
+      class B:
+          __match_args__: Final = ("a", "b")
+    """, """
+      from typing import Any
+
+      class A:
+          __match_args__: tuple
+
+      class B:
+          __match_args__: tuple
+    """)
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 

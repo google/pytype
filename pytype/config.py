@@ -160,8 +160,6 @@ FEATURE_FLAGS = [
      "Enable exhaustive checking of function parameter types."),
     ("--enable-typed-dicts", False,
      "Enable support for TypedDicts."),
-    ("--trace-all-classes", True,
-     "Trace class creation for better type analysis of class bodies."),
     ("--strict-primitive-comparisons", False,
      "Emit errors for comparisons between incompatible primitive types."),
 ]

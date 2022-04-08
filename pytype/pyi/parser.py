@@ -426,7 +426,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     val = self.convert_node(node.value)
     msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
     is_alias = False
-    if typ.name:
+    if name == "__match_args__" and isinstance(val, tuple):
+      typ = pytd.NamedType("tuple")
+      val = pytd.AnythingType()
+    elif typ.name:
       if pytd_utils.MatchesFullName(typ, _FINAL_IDS):
         if isinstance(node.value, types.Pyval):
           # to_pytd_literal raises an exception if the value is a float, but
