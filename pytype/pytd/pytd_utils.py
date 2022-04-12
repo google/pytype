@@ -50,6 +50,13 @@ def UnpackUnion(t):
     return [t]
 
 
+def UnpackGeneric(t, basename):
+  if (isinstance(t, pytd.GenericType) and
+      t.base_type.name == basename):
+    return t.parameters
+  return None
+
+
 def MakeClassOrContainerType(base_type, type_arguments, homogeneous):
   """If we have type params, build a generic type, a normal type otherwise."""
   if not type_arguments and (homogeneous or base_type.name not in _TUPLE_NAMES):
@@ -286,6 +293,12 @@ class TypeBuilder:
       self.tags.update(other.annotations)
       other = other.base_type
     self.union = JoinTypes([self.union, other])
+
+  def wrap(self, base):
+    """Wrap the type in a generic type."""
+    self.union = pytd.GenericType(
+        base_type=pytd.NamedType(base),
+        parameters=(self.union,))
 
   def build(self):
     """Get a union of all the types added so far."""

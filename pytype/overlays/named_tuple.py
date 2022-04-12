@@ -6,6 +6,7 @@ import keyword
 from typing import Any, List, Optional
 
 from pytype import overlay_utils
+from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -14,6 +15,7 @@ from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.pytd import escape
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
 
@@ -438,8 +440,16 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     """Make a NamedTupleClass from a pyi class."""
     # NOTE: Returns the abstract class, not a variable.
     ctx = self.ctx
-    fields = [Field(c.name, ctx.convert.constant_to_value(c.type))
-              for c in pytd_cls.constants]
+    fields = []
+    classvars = []
+    for c in pytd_cls.constants:
+      cv = pytd_utils.UnpackGeneric(c.type, "typing.ClassVar")
+      if cv is not None:
+        typ, = cv
+        classvars.append((c.name, typ))
+      else:
+        fields.append(Field(c.name, ctx.convert.constant_to_value(c.type)))
+
     bases = []
     for x in pytd_cls.bases:
       b = ctx.convert.constant_to_var(x)
@@ -455,11 +465,34 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     node = ctx.root_node
     node, cls_var = _build_namedtuple(props, node, ctx)
     cls = abstract_utils.get_atomic_value(cls_var)
+
+    # Adjust the class after construction
+
+    # Since we might have classvars or methods referring to the class itself,
+    # we need to insert the just-constructed class into the convert cache.
+    ctx.convert._convert_cache[("constant", pytd_cls, type(pytd_cls))] = cls  # pylint: disable=protected-access
+
+    # Set the official class name.
+    cls.update_official_name(cls.name)
+
+    # Convert classvars, which might be recursively typed
+    with ctx.allow_recursive_convert():
+      classvars = [(name, ctx.convert.constant_to_value(typ))
+                   for name, typ in classvars]
+
+    # Add fields and classvars to the annotation dictionary
     locals_ = {f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
                for f in fields}
+    locals_.update({name: abstract_utils.Local(node, None, typ, None, ctx)
+                    for name, typ in classvars})
     annots = abstract.AnnotationsDict(locals_, ctx).to_variable(node)
     cls.members["__annotations__"] = annots
-    cls.update_official_name(cls.name)
+
+    # Add classvars to members
+    for name, typ in classvars:
+      _, var = ctx.vm.init_class(ctx.root_node, typ)
+      cls.members[name] = var
+
     # Add any methods defined in the class, potentially overwriting the
     # generated ones
     for m in pytd_cls.methods:
@@ -471,8 +504,18 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         # as an InterpreterClass method does not behave correctly (see
         # AttributeHandler._lookup_from_mro)
         sig = function.Signature.from_pytd(ctx, m.name, m.signatures[0])
-        meth = abstract.SimpleFunction.from_signature(sig, self.ctx)
-        cls.members[m.name] = meth.to_variable(self.ctx.root_node)
+        meth = abstract.SimpleFunction.from_signature(sig, ctx)
+        m_var = meth.to_variable(ctx.root_node)
+        # Handle classmethods and staticmethods
+        # TODO(mdemello): We really need a better way to do this.
+        # Move to SimpleFunction.from_pyi if we add it to one more overlay.
+        args = function.Args(posargs=(m_var,))
+        if m.kind == pytd.MethodKind.CLASSMETHOD:
+          _, m_var = special_builtins.ClassMethod(ctx).call(node, meth, args)
+        elif m.kind == pytd.MethodKind.STATICMETHOD:
+          _, m_var = special_builtins.StaticMethod(ctx).call(node, meth, args)
+        cls.members[m.name] = m_var
+
     return cls
 
 

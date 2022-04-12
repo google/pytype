@@ -787,17 +787,20 @@ class Converter(utils.ContextWeakrefMixin):
     if isinstance(v, named_tuple.NamedTupleClass):
       # Filter out generated members from namedtuples
       cls_bases = v.props.bases
+      fieldnames = [x.name for x in v.props.fields]
       methods = {k: m for k, m in methods.items()
                  if k not in v.generated_members}
       constants = {k: c for k, c in constants.items()
                    if k not in v.generated_members}
+      for k, c in constants.items():
+        # If we have added class members to a namedtuple, do not emit them as
+        # regular fields.
+        if k not in fieldnames:
+          c.wrap("typing.ClassVar")
       slots = None
     else:
       cls_bases = v.bases()
       slots = v.slots
-
-    constants = [pytd.Constant(name, builder.build())
-                 for name, builder in constants.items() if builder]
 
     metaclass = v.metaclass(node)
     if metaclass is not None:
@@ -827,13 +830,23 @@ class Converter(utils.ContextWeakrefMixin):
       if not any(x.name == "typing.NamedTuple" for x in bases):
         bases.append(pytd.NamedType("typing.NamedTuple"))
 
+    if any(isinstance(x, named_tuple.NamedTupleClass)
+           for x in missing_bases):
+      # If inheriting from an anonymous namedtuple, mark all derived class
+      # constants as ClassVars, otherwise MergeBaseClasses will convert them
+      # into namedtuple fields.
+      for c in constants.values():
+        c.wrap("typing.ClassVar")
+
+    constants = [pytd.Constant(name, builder.build())
+                 for name, builder in constants.items() if builder]
+
     # Collect nested classes
     # TODO(mdemello): We cannot put these in the output yet; they fail in
     # load_dependencies because of the dotted class name (google/pytype#150)
     classes = [self._class_to_def(node, x, x.name)
                for x in v.get_inner_classes()]
     classes = [x.Replace(name=class_name + "." + x.name) for x in classes]
-
     cls = pytd.Class(name=class_name,
                      metaclass=metaclass,
                      bases=tuple(bases),

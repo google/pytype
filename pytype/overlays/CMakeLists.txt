@@ -147,9 +147,9 @@ py_library(
   DEPS
     .classgen
     pytype.overlay_utils
+    pytype.special_builtins
     pytype.utils
     pytype.abstract.abstract
-    pytype.pyi.parser
     pytype.pytd.pytd
 )
 
