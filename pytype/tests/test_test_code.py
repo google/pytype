@@ -80,5 +80,25 @@ class AssertionTest(test_base.BaseTest):
     """)
 
 
+class MockTest(test_base.BaseTest):
+  """Tests for unittest.mock."""
+
+  def test_patch(self):
+    self.Check("""
+      import unittest
+      from unittest import mock
+      foo = __any_object__
+      bar = __any_object__
+      class Foo(unittest.TestCase):
+        def setUp(self):
+          super().setUp()
+          self.some_mock = mock.patch.object(foo, 'foo').start()
+          self.some_mock.return_value = True
+        def test_bar(self):
+          other_mock = mock.patch.object(bar, 'bar').start()
+          other_mock.return_value.__enter__ = lambda x: x
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

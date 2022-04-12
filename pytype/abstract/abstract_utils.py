@@ -499,6 +499,23 @@ class Local:
     self.orig = orig
     self.ctx = ctx
 
+  @classmethod
+  def merge(cls, node, op, local1, local2):
+    """Merges two locals."""
+    ctx = local1.ctx
+    typ_values = set()
+    for typ in [local1.typ, local2.typ]:
+      if typ:
+        typ_values.update(typ.Data(node))
+    typ = ctx.convert.merge_values(typ_values)
+    if local1.orig and local2.orig:
+      orig = ctx.program.NewVariable()
+      orig.PasteVariable(local1.orig, node)
+      orig.PasteVariable(local2.orig, node)
+    else:
+      orig = local1.orig or local2.orig
+    return cls(node, op, typ, orig, ctx)
+
   def __repr__(self):
     return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
 
