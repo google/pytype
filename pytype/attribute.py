@@ -286,28 +286,6 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, compute_function="__getattr__")
-    for base in obj.mro:
-      if not isinstance(base, abstract.InterpreterClass):
-        break
-      annots = abstract_utils.get_annotations_dict(base.members)
-      if annots:
-        typ = annots.get_type(node, name)
-        if not typ:
-          continue
-        if typ.formal and valself:
-          # The attribute contains a class-scoped type parameter, so we need to
-          # reinitialize it with the current instance's parameter values.
-          subst = abstract_utils.get_type_parameter_substitutions(
-              valself.data, self.ctx.annotation_utils.get_type_parameters(typ))
-          typ = self.ctx.annotation_utils.sub_one_annotation(
-              node, typ, [subst], instantiate_unbound=False)
-          _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
-        elif attr is None:
-          # An attribute has been declared but not defined, e.g.,
-          #   class Foo:
-          #     bar: int
-          _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
-        break
     if attr is not None:
       attr = self._filter_var(node, attr)
     return node, attr
@@ -414,50 +392,76 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
                                       function.Args((name_var,)))
     return node, None
 
+  def _lookup_from_mro_flat(self, node, base, name, valself, skip):
+    """Look for an identifier in a single base class from an MRO."""
+    # Potentially skip part of MRO, for super()
+    if base in skip:
+      return None
+    # Check if the attribute is declared via a variable annotation.
+    typ = None
+    if isinstance(base, abstract.InterpreterClass):
+      annots = abstract_utils.get_annotations_dict(base.members)
+      if annots:
+        typ = annots.get_type(node, name)
+        if typ and typ.formal and valself:
+          # The attribute contains a class-scoped type parameter, so we need to
+          # reinitialize it with the current instance's parameter values. In
+          # this case, we use the type from the annotation regardless of whether
+          # the attribute is otherwise defined.
+          subst = abstract_utils.get_type_parameter_substitutions(
+              valself.data, self.ctx.annotation_utils.get_type_parameters(typ))
+          typ = self.ctx.annotation_utils.sub_one_annotation(
+              node, typ, [subst], instantiate_unbound=False)
+          _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
+          return attr
+    # When a special attribute is defined on a class buried in the MRO,
+    # get_attribute (which calls get_special_attribute) is never called on
+    # that class, so we have to call get_special_attribute here as well.
+    var = base.get_special_attribute(node, name, valself)
+    if var is None:
+      node, var = self._get_attribute_flat(node, base, name, valself)
+    if var is None or not var.bindings:
+      # If the attribute is undefined, we use the annotated type, if any.
+      if typ:
+        _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
+        return attr
+      return None
+    ret = self.ctx.program.NewVariable()
+    add_origins = [valself] if valself else []
+    for varval in var.bindings:
+      value = varval.data
+      if valself:
+        # Check if we got a PyTDFunction from an InterpreterClass. If so,
+        # then we must have aliased an imported function inside a class, so
+        # we shouldn't bind the function to the class.
+        if (not isinstance(value, abstract.PyTDFunction) or
+            not isinstance(base, abstract.InterpreterClass)):
+          # See BaseValue.property_get for an explanation of the
+          # parameters we're passing here.
+          value = value.property_get(valself.AssignToNewVariable(node),
+                                     abstract_utils.is_subclass(valself, base))
+        if isinstance(value, abstract.Property):
+          node, value = value.call(node, None, None)
+          final_values = value.data
+        else:
+          final_values = [value]
+      else:
+        final_values = [value]
+      for final_value in final_values:
+        ret.AddBinding(final_value, [varval] + add_origins, node)
+    return ret  # we found a class which has this attribute
+
   def _lookup_from_mro(self, node, cls, name, valself, skip):
     """Find an identifier in the MRO of the class."""
     if isinstance(cls, (abstract.Unknown, abstract.Unsolvable)):
       # We don't know the object's MRO, so it's possible that one of its
       # bases has the attribute.
       return self.ctx.new_unsolvable(node)
-    ret = self.ctx.program.NewVariable()
-    add_origins = [valself] if valself else []
     for base in cls.mro:
-      # Potentially skip part of MRO, for super()
-      if base in skip:
-        continue
-      # When a special attribute is defined on a class buried in the MRO,
-      # get_attribute (which calls get_special_attribute) is never called on
-      # that class, so we have to call get_special_attribute here as well.
-      var = base.get_special_attribute(node, name, valself)
-      if var is None:
-        node, var = self._get_attribute_flat(node, base, name, valself)
-      if var is None or not var.bindings:
-        continue
-      for varval in var.bindings:
-        value = varval.data
-        if valself:
-          # Check if we got a PyTDFunction from an InterpreterClass. If so,
-          # then we must have aliased an imported function inside a class, so
-          # we shouldn't bind the function to the class.
-          if (not isinstance(value, abstract.PyTDFunction) or
-              not isinstance(base, abstract.InterpreterClass)):
-            # See BaseValue.property_get for an explanation of the
-            # parameters we're passing here.
-            value = value.property_get(
-                valself.AssignToNewVariable(node),
-                abstract_utils.is_subclass(valself, cls))
-          if isinstance(value, abstract.Property):
-            node, value = value.call(node, None, None)
-            final_values = value.data
-          else:
-            final_values = [value]
-        else:
-          final_values = [value]
-        for final_value in final_values:
-          ret.AddBinding(final_value, [varval] + add_origins, node)
-      break  # we found a class which has this attribute
-    return ret
+      ret = self._lookup_from_mro_flat(node, base, name, valself, skip)
+      if ret is not None:
+        return ret
+    return self.ctx.program.NewVariable()
 
   def _get_attribute_flat(self, node, cls, name, valself):
     """Flat attribute retrieval (no mro lookup)."""

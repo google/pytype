@@ -287,6 +287,18 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
         def f(self) -> int: ...
     """)
 
+  def test_redeclare_inherited_attribute(self):
+    with self.DepTree([("foo.pyi", """
+        class Foo:
+          x: int
+    """)]):
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          x: str
+        assert_type(Bar.x, str)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
