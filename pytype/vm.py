@@ -23,16 +23,16 @@ from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
 from pytype import directors
-from pytype import overlay_dict
 from pytype import load_pytd
 from pytype import metrics
-from pytype import overlay as overlay_lib
 from pytype import state as frame_state
 from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.overlays import overlay_dict
+from pytype.overlays import overlay as overlay_lib
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc

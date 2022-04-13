@@ -1,7 +1,7 @@
 """Support for the 'subprocess' library."""
 
-from pytype import overlay
 from pytype.abstract import abstract
+from pytype.overlays import overlay
 
 
 class SubprocessOverlay(overlay.Overlay):

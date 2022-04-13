@@ -5,7 +5,6 @@ import types
 
 from pytype import blocks
 from pytype import datatypes
-from pytype import overlay_dict
 from pytype import module_utils
 from pytype import special_builtins
 from pytype import utils
@@ -13,6 +12,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
 from pytype.overlays import attr_overlay
+from pytype.overlays import overlay_dict
 from pytype.overlays import named_tuple
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay

@@ -4,13 +4,13 @@ import enum
 import logging
 from typing import Any, ClassVar, Dict, Optional, Tuple, Union
 
-from pytype import overlay
-from pytype import overlay_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import classgen
+from pytype.overlays import overlay
+from pytype.overlays import overlay_utils
 
 log = logging.getLogger(__name__)
 

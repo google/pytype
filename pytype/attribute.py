@@ -2,13 +2,13 @@
 import logging
 from typing import Optional
 
-from pytype import overlay
 from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.overlays import overlay
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)

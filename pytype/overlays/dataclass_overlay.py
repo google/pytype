@@ -6,11 +6,11 @@
 
 import logging
 
-from pytype import overlay
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
+from pytype.overlays import overlay
 
 log = logging.getLogger(__name__)
 
