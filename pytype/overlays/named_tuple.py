@@ -448,7 +448,9 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         typ, = cv
         classvars.append((c.name, typ))
       else:
-        fields.append(Field(c.name, ctx.convert.constant_to_value(c.type)))
+        # The field types may refer back to the class being built.
+        with ctx.allow_recursive_convert():
+          fields.append(Field(c.name, ctx.convert.constant_to_value(c.type)))
 
     bases = []
     for x in pytd_cls.bases:
@@ -612,14 +614,16 @@ def _build_namedtuple(props, node, ctx):
                                          ctx)
 
   params = [Param(f.name, f.typ) for f in props.fields]
-  members["__new__"] = overlay_utils.make_method(
-      ctx,
-      node,
-      name="__new__",
-      self_param=Param("cls", cls_type),
-      params=params,
-      return_type=cls_type_param,
-  )
+  # The parameter types may refer back to the class being built.
+  with ctx.allow_recursive_convert():
+    members["__new__"] = overlay_utils.make_method(
+        ctx,
+        node,
+        name="__new__",
+        self_param=Param("cls", cls_type),
+        params=params,
+        return_type=cls_type_param,
+    )
 
   # __init__
   members["__init__"] = overlay_utils.make_method(
