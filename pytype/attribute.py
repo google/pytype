@@ -481,9 +481,16 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
   def _get_member(self, node, obj, name, valself):
     """Get a member of an object."""
     if isinstance(obj, mixin.LazyMembers):
-      if valself and isinstance(valself.data, abstract.ParameterizedClass):
+      if not valself:
+        subst = None
+      elif isinstance(valself.data, abstract.ParameterizedClass):
         subst = {f"{valself.data.full_name}.{k}": v.instantiate(node)
                  for k, v in valself.data.formal_type_parameters.items()}
+      elif isinstance(valself.data, abstract.Instance):
+        # We need to rebind the parameter values at the root because that's the
+        # node at which load_lazy_attribute() converts pyvals.
+        subst = {k: self.ctx.program.NewVariable(v.data, [], self.ctx.root_node)
+                 for k, v in valself.data.instance_type_parameters.items()}
       else:
         subst = None
       obj.load_lazy_attribute(name, subst)

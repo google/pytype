@@ -48,6 +48,19 @@ class AnyStrTest(test_base.BaseTest):
         return x
     """)
 
+  def test_generic_inheritance(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import AnyStr, Generic
+      class Foo(Generic[AnyStr]):
+        @property
+        def name(self) -> AnyStr | None: ...
+      def dofoo() -> Foo[str]: ...
+    """)]):
+      self.Check("""
+        import foo
+        assert_type(foo.dofoo().name, 'Optional[str]')
+      """)
+
 
 class AnyStrTestPy3(test_base.BaseTest):
   """Tests for issues related to AnyStr in Python 3."""
