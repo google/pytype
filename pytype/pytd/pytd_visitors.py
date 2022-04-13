@@ -24,11 +24,20 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
                              classes=tuple(sorted(node.classes)),
                              aliases=tuple(sorted(node.aliases)))
 
-  def VisitClass(self, node):
+  def _PreserveConstantsOrdering(self, node):
     # If we have a dataclass-like decorator we need to preserve the order of the
     # class attributes, otherwise inheritance will not work correctly.
     if any(x.name in ("attr.s", "dataclasses.dataclass")
            for x in node.decorators):
+      return True
+    # The order of a namedtuple's fields should always be preserved.
+    if any(base.name in ("collections.namedtuple", "typing.NamedTuple")
+           for base in node.bases):
+      return True
+    return False
+
+  def VisitClass(self, node):
+    if self._PreserveConstantsOrdering(node):
       constants = node.constants
     else:
       constants = sorted(node.constants)

@@ -63,6 +63,18 @@ class NamedTupleTest(test_base.BaseTest):
                               "def foo(x: X) -> Any: ...")
     self.assertErrorRegexes(errors, {"e": r"Union.*x"})
 
+  def test_reingest_functional_form(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      Foo = NamedTuple('Foo', [('name', str)])
+      Bar = NamedTuple('Bar', [('name', str)])
+      Baz = NamedTuple('Baz', [('foos', list[Foo]), ('bars', list[Bar])])
+    """)]):
+      self.Check("""
+        import foo
+        foo.Baz([foo.Foo('')], [foo.Bar('')])
+      """)
+
 
 class NamedTupleTestPy3(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay in Python 3."""
