@@ -1659,14 +1659,14 @@ class VirtualMachine:
         if annotations_dict is None:
           annotations_dict = cur_annotations_dict
         else:
-          new_annotations_dict = {}
           for k, v in cur_annotations_dict.items():
-            if k in annotations_dict:  # pylint: disable=unsupported-membership-test
-              new_annotations_dict[k] = abstract_utils.Local.merge(
-                  node, op, annotations_dict[k], v)  # pylint: disable=unsupported-assignment-operation
+            # pylint: disable=unsupported-assignment-operation,unsupported-membership-test
+            if k in annotations_dict:
+              annotations_dict[k] = abstract_utils.Local.merge(
+                  node, op, annotations_dict[k], v)
             else:
-              new_annotations_dict[k] = v
-          annotations_dict = new_annotations_dict
+              annotations_dict[k] = v
+            # pylint: enable=unsupported-assignment-operation,unsupported-membership-test
     return node, annotations_dict, check_type
 
   def byte_STORE_ATTR(self, state, op):

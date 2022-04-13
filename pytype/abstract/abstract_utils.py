@@ -507,7 +507,7 @@ class Local:
     for typ in [local1.typ, local2.typ]:
       if typ:
         typ_values.update(typ.Data(node))
-    typ = ctx.convert.merge_values(typ_values)
+    typ = ctx.convert.merge_values(typ_values) if typ_values else None
     if local1.orig and local2.orig:
       orig = ctx.program.NewVariable()
       orig.PasteVariable(local1.orig, node)
