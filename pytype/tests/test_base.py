@@ -418,12 +418,11 @@ class BaseTest(unittest.TestCase):
     pytd_tree = pytd_tree.Visit(visitors.LookupLocalTypes())
     pytd_tree = pytd_tree.Visit(
         visitors.ClassTypeToNamedType())
-    pytd_tree = pytd_tree.Visit(
-        visitors.CanonicalOrderingVisitor(sort_signatures=True))
+    pytd_tree = pytd_tree.Visit(visitors.CanonicalOrderingVisitor())
     pytd_tree.Visit(visitors.VerifyVisitor())
     ty = ty.Visit(visitors.ClassTypeToNamedType())
     ty = ty.Visit(visitors.AdjustSelf())
-    ty = ty.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
+    ty = ty.Visit(visitors.CanonicalOrderingVisitor())
     ty.Visit(visitors.VerifyVisitor())
 
     ty_src = pytd_utils.Print(ty) + "\n"

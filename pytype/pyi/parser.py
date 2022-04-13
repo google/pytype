@@ -805,6 +805,6 @@ def canonical_pyi(pyi, multiline_args=False, options=None):
   """Rewrite a pyi in canonical form."""
   ast = parse_string(pyi, options=options)
   ast = ast.Visit(visitors.ClassTypeToNamedType())
-  ast = ast.Visit(visitors.CanonicalOrderingVisitor(sort_signatures=True))
+  ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   ast.Visit(visitors.VerifyVisitor())
   return pytd_utils.Print(ast, multiline_args)

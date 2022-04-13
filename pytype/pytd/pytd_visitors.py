@@ -10,11 +10,11 @@ from pytype.pytd import pytd
 
 
 class CanonicalOrderingVisitor(base_visitor.Visitor):
-  """Visitor for converting ASTs back to canonical (sorted) ordering."""
+  """Visitor for converting ASTs back to canonical (sorted) ordering.
 
-  def __init__(self, sort_signatures=False):
-    super().__init__()
-    self.sort_signatures = sort_signatures
+  Note that this visitor intentionally does *not* sort a function's signatures,
+  as the signature order determines lookup order.
+  """
 
   def VisitTypeDeclUnit(self, node):
     return pytd.TypeDeclUnit(name=node.name,
@@ -51,15 +51,6 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
         classes=tuple(sorted(node.classes)),
         slots=tuple(sorted(node.slots)) if node.slots is not None else None,
         template=node.template)
-
-  def VisitFunction(self, node):
-    # Typically, signatures should *not* be sorted because their order
-    # determines lookup order. But some pytd (e.g., inference output) doesn't
-    # have that property, in which case self.sort_signatures will be True.
-    if self.sort_signatures:
-      return node.Replace(signatures=tuple(sorted(node.signatures)))
-    else:
-      return node
 
   def VisitSignature(self, node):
     return node.Replace(

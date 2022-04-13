@@ -169,10 +169,9 @@ class TypeMatcher:
       return self.default_match(t1, t2, *args, **kwargs)
 
 
-def CanonicalOrdering(n, sort_signatures=False):
+def CanonicalOrdering(n):
   """Convert a PYTD node to a canonical (sorted) ordering."""
-  return n.Visit(
-      pytd_visitors.CanonicalOrderingVisitor(sort_signatures=sort_signatures))
+  return n.Visit(pytd_visitors.CanonicalOrderingVisitor())
 
 
 def GetAllSubClasses(ast):
