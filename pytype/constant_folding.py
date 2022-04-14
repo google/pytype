@@ -497,12 +497,18 @@ def build_folded_type(ctx, state, const):
       return state, ctx.convert.build_list(state.node, vs)
 
   def collect_map(state, params, elements):
-    m = ctx.convert.build_map(state.node)
+    m_var = ctx.convert.build_map(state.node)
+    m = m_var.data[0]
     if elements is not None and len(elements) < MAX_VAR_SIZE:
       for (k, v) in elements.items():
-        k = ctx.convert.constant_to_var(k)
         state, v = build_pyval(state, v)
-        state = ctx.vm.store_subscr(state, m, k, v)
+        node = state.node
+        if isinstance(k, str):
+          m.set_str_item(node, k, v)
+        else:
+          k = ctx.convert.constant_to_var(k)
+          m.setitem(node, k, v)
+          m.merge_instance_type_params(node, k, v)
     else:
       # Treat a too-large dictionary as {Union[keys] : Union[vals]}. We could
       # store a subset of the k/v pairs, as with collect_list, but for
@@ -511,10 +517,12 @@ def build_folded_type(ctx, state, const):
       # store every key in the pyval but reuse the value variables.
       k_types, v_types = params
       state, v = join_types(state, v_types)
+      node = state.node
       for t in k_types:
         state, k = build_folded_type(ctx, state, typeconst(t))
-        state = ctx.vm.store_subscr(state, m, k, v)
-    return state, m
+        m.setitem(node, k, v)
+        m.merge_instance_type_params(node, k, v)
+    return state, m_var
 
   tag, params = const.typ
   if tag == 'prim':

@@ -63,6 +63,18 @@ class NamedTupleTest(test_base.BaseTest):
                               "def foo(x: X) -> Any: ...")
     self.assertErrorRegexes(errors, {"e": r"Union.*x"})
 
+  def test_reingest_functional_form(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      Foo = NamedTuple('Foo', [('name', str)])
+      Bar = NamedTuple('Bar', [('name', str)])
+      Baz = NamedTuple('Baz', [('foos', list[Foo]), ('bars', list[Bar])])
+    """)]):
+      self.Check("""
+        import foo
+        foo.Baz([foo.Foo('')], [foo.Bar('')])
+      """)
+
 
 class NamedTupleTestPy3(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay in Python 3."""
@@ -548,6 +560,41 @@ class NamedTupleTestPy3(test_base.BaseTest):
             return super().__repr__()
         x = Bar(1, '2')
         y = x.__repr__()
+      """)
+
+
+class NamedTupleFunctionSubclassTest(test_base.BaseTest):
+  """Tests for subclassing an anonymous NamedTuple in a different module."""
+
+  def test_class_method(self):
+    foo_py = """
+      from typing import NamedTuple
+
+      class A(NamedTuple("A", [("x", int)])):
+        @classmethod
+        def make(cls, x):
+          return cls(x)
+    """
+    with self.DepTree([("foo.py", foo_py)]):
+      self.Check("""
+        import foo
+        x = foo.A.make(10)
+      """)
+
+  def test_class_constant(self):
+    foo_py = """
+      from typing import NamedTuple
+
+      class A(NamedTuple("A", [("x", int)])):
+        pass
+
+      A.Foo = A(10)
+    """
+    with self.DepTree([("foo.py", foo_py)]):
+      self.Check("""
+        import foo
+        x = foo.A.Foo
+        assert_type(x, foo.A)
       """)
 
 

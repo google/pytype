@@ -474,10 +474,13 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       results.append(ret)
     return node, self.ctx.join_variables(node, results)
 
-  def set_str_item(self, node, name, value_var):
-    self.merge_instance_type_parameter(
-        node, abstract_utils.K, self.ctx.convert.build_string(node, name))
+  def merge_instance_type_params(self, node, name_var, value_var):
+    self.merge_instance_type_parameter(node, abstract_utils.K, name_var)
     self.merge_instance_type_parameter(node, abstract_utils.V, value_var)
+
+  def set_str_item(self, node, name, value_var):
+    name_var = self.ctx.convert.build_string(node, name)
+    self.merge_instance_type_params(node, name_var, value_var)
     if name in self.pyval:
       self.pyval[name].PasteVariable(value_var, node)
     else:

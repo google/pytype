@@ -1,7 +1,7 @@
 """Implementation of special members of the future library."""
 
 from pytype import metaclass
-from pytype import overlay
+from pytype.overlays import overlay
 
 
 class FutureUtilsOverlay(overlay.Overlay):

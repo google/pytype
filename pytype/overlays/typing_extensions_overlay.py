@@ -1,5 +1,6 @@
 """Implementation of special members of typing_extensions."""
-from pytype import overlay
+
+from pytype.overlays import overlay
 from pytype.overlays import typing_overlay
 
 

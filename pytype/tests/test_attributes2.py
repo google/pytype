@@ -136,6 +136,27 @@ class TestAttributes(test_base.BaseTest):
           Foo.nonexistent)  # pytype: disable=attribute-error
     """)
 
+  def test_set_attribute_in_other_class(self):
+    # Regression test for setting an attribute in a class with a mix of
+    # annotated and unannotated instance attributes.
+    self.Check("""
+      from typing import Set
+      class Foo:
+        def __init__(self):
+          self.x: Set = set()
+          self.y = set()
+      class Bar:
+        def __init__(self):
+          self.foo = self.get_foo()
+        def get_foo() -> Foo:
+          if __random__:
+            return Foo()
+          else:
+            return Foo()
+        def fix_foo(self):
+          self.foo.extra = set()
+    """)
+
 
 class TestAttributesPython3FeatureTest(test_base.BaseTest):
   """Tests for attributes over target code using Python 3 features."""
@@ -286,6 +307,18 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
       class Bar(Foo):
         def f(self) -> int: ...
     """)
+
+  def test_redeclare_inherited_attribute(self):
+    with self.DepTree([("foo.pyi", """
+        class Foo:
+          x: int
+    """)]):
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          x: str
+        assert_type(Bar.x, str)
+      """)
 
 
 if __name__ == "__main__":

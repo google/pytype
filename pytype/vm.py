@@ -23,16 +23,16 @@ from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
 from pytype import directors
-from pytype import overlay_dict
 from pytype import load_pytd
 from pytype import metrics
-from pytype import overlay as overlay_lib
 from pytype import state as frame_state
 from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.overlays import overlay_dict
+from pytype.overlays import overlay as overlay_lib
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
@@ -1613,18 +1613,11 @@ class VirtualMachine:
     self.trace_opcode(op, name, (obj, val))
     return state.push(val)
 
-  def byte_STORE_ATTR(self, state, op):
-    """Store an attribute."""
-    name = self.frame.f_code.co_names[op.arg]
-    state, (val, obj) = state.popn(2)
-    # If `obj` is a single class or an instance of one, then grab its
-    # __annotations__ dict so we can type-check the new attribute value.
-    check_attribute_types = True
-    try:
-      obj_val = abstract_utils.get_atomic_value(obj)
-    except abstract_utils.ConversionError:
-      annotations_dict = None
-    else:
+  def _get_type_of_attr_to_store(self, node, op, obj, name):
+    """Grabs the __annotations__ dict, if any, with the attribute type."""
+    check_type = True
+    annotations_dict = None
+    for obj_val in obj.data:
       if isinstance(obj_val, abstract.InterpreterClass):
         maybe_cls = obj_val
       else:
@@ -1634,35 +1627,55 @@ class VirtualMachine:
             op.line in self._director.annotations):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
-          annotations_dict = abstract.AnnotationsDict({}, self.ctx)
-          maybe_cls.members["__annotations__"] = annotations_dict.to_variable(
-              self.ctx.root_node)
-        annotations_dict = abstract_utils.get_annotations_dict(
+          cur_annotations_dict = abstract.AnnotationsDict({}, self.ctx)
+          maybe_cls.members["__annotations__"] = (
+              cur_annotations_dict.to_variable(self.ctx.root_node))
+        cur_annotations_dict = abstract_utils.get_annotations_dict(
             maybe_cls.members)
-        if annotations_dict:
-          annotations_dict = annotations_dict.annotated_locals
+        if cur_annotations_dict:
+          cur_annotations_dict = cur_annotations_dict.annotated_locals
       elif (isinstance(maybe_cls, abstract.PyTDClass) and
             maybe_cls != self.ctx.convert.type_type):
         node, attr = self.ctx.attribute_handler.get_attribute(
-            state.node, obj_val, name)
+            node, obj_val, name)
         if attr:
           typ = self.ctx.convert.merge_classes(attr.data)
-          annotations_dict = {
-              name: abstract_utils.Local(state.node, op, typ, None, self.ctx)
+          cur_annotations_dict = {
+              name: abstract_utils.Local(node, op, typ, None, self.ctx)
           }
-          state = state.change_cfg_node(node)
         else:
-          annotations_dict = None
+          cur_annotations_dict = None
         # In a PyTDClass, we can't distinguish between an inferred type and an
         # annotation. Even though we don't check against the attribute type, we
         # still apply it so that setting an attribute value on an instance of a
         # class doesn't affect the attribute type in other instances.
-        check_attribute_types = False
+        check_type = False
         # We can still check for final members being assigned to.
         if name in maybe_cls.final_members:
           self.ctx.errorlog.assigning_to_final(self.frames, name, local=False)
       else:
-        annotations_dict = None
+        cur_annotations_dict = None
+      if cur_annotations_dict is not None:
+        if annotations_dict is None:
+          annotations_dict = cur_annotations_dict
+        else:
+          for k, v in cur_annotations_dict.items():
+            # pylint: disable=unsupported-assignment-operation,unsupported-membership-test
+            if k in annotations_dict:
+              annotations_dict[k] = abstract_utils.Local.merge(
+                  node, op, annotations_dict[k], v)
+            else:
+              annotations_dict[k] = v
+            # pylint: enable=unsupported-assignment-operation,unsupported-membership-test
+    return node, annotations_dict, check_type
+
+  def byte_STORE_ATTR(self, state, op):
+    """Store an attribute."""
+    name = self.frame.f_code.co_names[op.arg]
+    state, (val, obj) = state.popn(2)
+    node, annotations_dict, check_attribute_types = (
+        self._get_type_of_attr_to_store(state.node, op, obj, name))
+    state = state.change_cfg_node(node)
     val = self._apply_annotation(
         state, op, name, val, annotations_dict, check_attribute_types)
     state = state.forward_cfg_node()

@@ -6,6 +6,7 @@ import io as builtins_io
 import os
 import sys
 import tempfile
+import textwrap
 import traceback
 
 from pytype import config
@@ -84,6 +85,25 @@ class IOTest(unittest.TestCase):
         _, pyi_string, _ = io.generate_pyi(src, options)
     self.assertEqual(pyi_string,
                      "import {mod}\n\ny: int\n".format(mod=pyi_name))
+
+  def test_generate_pyi__overload_order(self):
+    _, pyi_string, _ = io.generate_pyi(textwrap.dedent("""
+      from typing import Any, overload
+      @overload
+      def f(x: None) -> None: ...
+      @overload
+      def f(x: Any) -> int: ...
+      def f(x):
+        return __any_object__
+    """.lstrip("\n")))
+    self.assertMultiLineEqual(pyi_string, textwrap.dedent("""
+      from typing import overload
+
+      @overload
+      def f(x: None) -> None: ...
+      @overload
+      def f(x) -> int: ...
+    """.lstrip("\n")))
 
   def test_check_or_generate_pyi__check(self):
     with self._tmpfile("") as f:

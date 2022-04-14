@@ -86,9 +86,9 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
       def f() -> Any:
         raise IOError()
         raise MemoryError()
-      def f(x: list[tuple[d]]) -> Any: ...
       def f(x: list[a]) -> Any: ...
       def f(x: list[Union[b, c]]) -> Any: ...
+      def f(x: list[tuple[d]]) -> Any: ...
       A = TypeVar("A")
       C = TypeVar("C")
       B = TypeVar("B")
@@ -96,11 +96,9 @@ class PytdVisitorsTest(parser_test_base.ParserTest):
       def f(d: A, c: B, b: C, a: D) -> Any: ...
     """
     tree1 = self.Parse(src1)
-    tree1 = tree1.Visit(
-        pytd_visitors.CanonicalOrderingVisitor(sort_signatures=True))
+    tree1 = tree1.Visit(pytd_visitors.CanonicalOrderingVisitor())
     tree2 = self.Parse(src2)
-    tree2 = tree2.Visit(
-        pytd_visitors.CanonicalOrderingVisitor(sort_signatures=True))
+    tree2 = tree2.Visit(pytd_visitors.CanonicalOrderingVisitor())
     self.AssertSourceEquals(tree1, tree2)
     self.assertEqual(tree1.Lookup("f").signatures[0].template,
                      tree2.Lookup("f").signatures[0].template)

@@ -5,14 +5,14 @@
 
 from typing import Dict as _Dict, Optional as _Optional, Tuple as _Tuple
 
-from pytype import overlay
-from pytype import overlay_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import named_tuple
+from pytype.overlays import overlay
+from pytype.overlays import overlay_utils
 from pytype.overlays import typed_dict
 from pytype.pytd import pep484
 from pytype.pytd import pytd

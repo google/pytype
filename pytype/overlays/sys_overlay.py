@@ -1,7 +1,7 @@
 """Implementation of special members of sys."""
 
-from pytype import overlay
 from pytype.abstract import abstract
+from pytype.overlays import overlay
 
 
 class SysOverlay(overlay.Overlay):

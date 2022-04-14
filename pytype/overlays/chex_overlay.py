@@ -7,11 +7,11 @@ differences between @dataclasses.dataclass and @chex.dataclass are:
 * Chex dataclasses have replace, from_tuple, and to_tuple methods.
 """
 
-from pytype import overlay
-from pytype import overlay_utils
 from pytype.abstract import abstract
 from pytype.overlays import classgen
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import overlay
+from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
 
 

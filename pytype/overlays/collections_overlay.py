@@ -1,7 +1,7 @@
 """Implementation of types from Python 2's collections library."""
 
-from pytype import overlay
 from pytype.overlays import named_tuple
+from pytype.overlays import overlay
 
 
 class CollectionsOverlay(overlay.Overlay):

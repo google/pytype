@@ -37,16 +37,12 @@ py_library(
     .debug
     .directors
     .errors
-    .overlay_dict
     .imports_map_loader
     .io
     .load_pytd
     .matcher
     .metaclass
     .output
-    .overlay
-    .overlay_dict
-    .overlay_utils
     .special_builtins
     .state
     .tracer_vm
@@ -99,9 +95,9 @@ py_library(
     attribute.py
   DEPS
     ._utils
-    .overlay
     .special_builtins
     pytype.abstract.abstract
+    pytype.overlays.overlays
     pytype.typegraph.cfg
 )
 
@@ -158,7 +154,6 @@ py_library(
     ._utils
     .blocks
     .datatypes
-    .overlay_dict
     .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
@@ -339,37 +334,6 @@ py_library(
 
 py_library(
   NAME
-    overlay
-  SRCS
-    overlay.py
-  DEPS
-    .datatypes
-    pytype.abstract.abstract
-    pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    overlay_dict
-  SRCS
-    overlay_dict.py
-  DEPS
-    pytype.overlays.overlays
-)
-
-py_library(
-  NAME
-    overlay_utils
-  SRCS
-    overlay_utils.py
-  DEPS
-    pytype.abstract.abstract
-    pytype.pytd.pytd
-    pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
     pytype_source_utils
   SRCS
     pytype_source_utils.py
@@ -442,13 +406,12 @@ py_library(
     .constant_folding
     .datatypes
     .directors
-    .overlay_dict
     .load_pytd
     .metrics
-    .overlay
     .state
     .vm_utils
     pytype.abstract.abstract
+    pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd

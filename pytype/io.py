@@ -110,7 +110,7 @@ def generate_pyi(src, options=None, loader=None):
                             use_abcs=False,
                             max_union=7,
                             remove_mutable=False)
-    mod = pytd_utils.CanonicalOrdering(mod, sort_signatures=True)
+    mod = pytd_utils.CanonicalOrdering(mod)
     result = pytd_utils.Print(mod)
     log.info("=========== pyi optimized =============")
     log.info("\n%s", result)
