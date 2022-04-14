@@ -60,9 +60,7 @@ def parse_args(argv):
 
 
 def main(argv=None):
-  """Apply FixMergePyi to a source file without using the 2to3 main program.
-
-  This is necessary so we can have our own options.
+  """Merge a source file and a pyi file.
 
   Args:
     argv: Flags and files to process.
@@ -78,8 +76,7 @@ def main(argv=None):
 
   py_src = args.py.read()
   pyi_src = args.pyi.read()
-
-  annotated_src = merge_pyi.annotate_string(args, py_src, pyi_src)
+  annotated_src = merge_pyi.merge_sources(py=py_src, pyi=pyi_src)
   src_changed = annotated_src != py_src
 
   if args.diff:

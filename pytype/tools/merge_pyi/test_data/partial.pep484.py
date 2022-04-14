@@ -10,6 +10,6 @@ def f3(a) -> r3:
 def f4(a: e4, b):
     pass
 
-def f5(a):
+def f5(a: e5) -> r5:
     # type: (Any) -> Any
     pass

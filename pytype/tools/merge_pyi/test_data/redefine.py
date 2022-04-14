@@ -9,6 +9,6 @@ def f2(x,y):
     pass
 
 def f3(x):
-    return 1+x
-def f3(x):
     return 'asd'+x
+def f3(x):
+    return 1+x
