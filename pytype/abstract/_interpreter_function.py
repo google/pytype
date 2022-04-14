@@ -299,9 +299,14 @@ class SimpleFunction(SignedFunction):
   record calls or try to infer types.
   """
 
-  def __init__(self, name, param_names, posonly_count, varargs_name,
-               kwonly_params, kwargs_name, defaults, annotations, ctx):
-    """Create a SimpleFunction.
+  def __init__(self, signature, ctx):
+    super().__init__(signature, ctx)
+    self.bound_class = _function_base.BoundFunction
+
+  @classmethod
+  def build(cls, name, param_names, posonly_count, varargs_name, kwonly_params,
+            kwargs_name, defaults, annotations, ctx):
+    """Returns a SimpleFunction.
 
     Args:
       name: Name of the function as a string
@@ -326,22 +331,7 @@ class SimpleFunction(SignedFunction):
     signature = function.Signature(name, param_names, posonly_count,
                                    varargs_name, kwonly_params, kwargs_name,
                                    defaults, annotations)
-    super().__init__(signature, ctx)
-    self.bound_class = _function_base.BoundFunction
-
-  @classmethod
-  def from_signature(cls, signature, ctx):
-    """Create a SimpleFunction from a function.Signature."""
-    return cls(
-        name=signature.name,
-        param_names=signature.param_names,
-        posonly_count=signature.posonly_count,
-        varargs_name=signature.varargs_name,
-        kwonly_params=signature.kwonly_params,
-        kwargs_name=signature.kwargs_name,
-        defaults=signature.defaults,
-        annotations=signature.annotations,
-        ctx=ctx)
+    return cls(signature, ctx)
 
   def call(self, node, _, args, alias_map=None):
     args = args.simplify(node, self.ctx)

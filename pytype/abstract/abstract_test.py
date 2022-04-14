@@ -717,9 +717,9 @@ class SimpleFunctionTest(AbstractTestBase):
   def _make_func(self, name="_", param_names=None, posonly_count=0,
                  varargs_name=None, kwonly_params=(), kwargs_name=None,
                  defaults=(), annotations=None):
-    return abstract.SimpleFunction(name, param_names or (), posonly_count,
-                                   varargs_name, kwonly_params, kwargs_name,
-                                   defaults, annotations or {}, self._ctx)
+    return abstract.SimpleFunction.build(
+        name, param_names or (), posonly_count, varargs_name, kwonly_params,
+        kwargs_name, defaults, annotations or {}, self._ctx)
 
   def _simple_sig(self, param_types, ret_type=None):
     annots = {("_%d" % i): t for i, t in enumerate(param_types)}

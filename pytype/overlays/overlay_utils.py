@@ -109,7 +109,7 @@ def make_method(ctx,
   varargs_name = varargs.name if varargs else None
   kwargs_name = kwargs.name if kwargs else None
 
-  ret = abstract.SimpleFunction(
+  ret = abstract.SimpleFunction.build(
       name=name,
       param_names=param_names,
       posonly_count=posonly_count,

@@ -443,14 +443,20 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     fields = []
     classvars = []
     for c in pytd_cls.constants:
-      cv = pytd_utils.UnpackGeneric(c.type, "typing.ClassVar")
+      ct = c.type.base_type if isinstance(c.type, pytd.Annotated) else c.type
+      if isinstance(ct, pytd.GenericType):
+        cv = pytd_utils.UnpackGeneric(ct, "typing.ClassVar")
+      elif ct.name == "typing.ClassVar":
+        cv = (pytd.AnythingType(),)
+      else:
+        cv = None
       if cv is not None:
         typ, = cv
         classvars.append((c.name, typ))
       else:
         # The field types may refer back to the class being built.
         with ctx.allow_recursive_convert():
-          fields.append(Field(c.name, ctx.convert.constant_to_value(c.type)))
+          fields.append(Field(c.name, ctx.convert.constant_to_value(ct)))
 
     bases = []
     for x in pytd_cls.bases:
@@ -506,7 +512,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         # as an InterpreterClass method does not behave correctly (see
         # AttributeHandler._lookup_from_mro)
         sig = function.Signature.from_pytd(ctx, m.name, m.signatures[0])
-        meth = abstract.SimpleFunction.from_signature(sig, ctx)
+        meth = abstract.SimpleFunction(sig, ctx)
         m_var = meth.to_variable(ctx.root_node)
         # Handle classmethods and staticmethods
         # TODO(mdemello): We really need a better way to do this.
@@ -586,7 +592,9 @@ def _build_namedtuple(props, node, ctx):
   odict = _DictBuilder(ctx)
   # __dict__ and _field_defaults are both OrderedDicts of
   # { field_name: field_type_instance }
-  field_dict_cls = odict.make(field_types_union)
+  # The field types may refer back to the class being built.
+  with ctx.allow_recursive_convert():
+    field_dict_cls = odict.make(field_types_union)
   members["__dict__"] = field_dict_cls.instantiate(node)
   members["_field_defaults"] = field_dict_cls.instantiate(node)
 

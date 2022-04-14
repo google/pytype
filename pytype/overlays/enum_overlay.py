@@ -115,12 +115,12 @@ class EnumBuilder(abstract.PyTDClass):
     # them based on parameter count.
     lookup_sig, api_sig = sorted([s.signature for s in pytd_new.signatures],
                                  key=lambda s: s.maximum_param_count())
-    lookup_new = abstract.SimpleFunction.from_signature(lookup_sig, self.ctx)
+    lookup_new = abstract.SimpleFunction(lookup_sig, self.ctx)
     try:
       return lookup_new.call(node, None, args, alias_map)
     except function.FailedFunctionCall as e:
       log.info("Called Enum.__new__ as lookup, but failed:\n%s", e)
-    api_new = abstract.SimpleFunction.from_signature(api_sig, self.ctx)
+    api_new = abstract.SimpleFunction(api_sig, self.ctx)
     api_new.call(node, None, args, alias_map)
 
     # At this point, we know this is a functional API call.
@@ -247,7 +247,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
   # used in an if statement; see the bug for examples.
 
   def __init__(self, ctx):
-    super().__init__(
+    sig = function.Signature(
         name="__eq__",
         param_names=("self", "other"),
         posonly_count=0,
@@ -257,8 +257,8 @@ class EnumCmpEQ(abstract.SimpleFunction):
         defaults={},
         annotations={
             "return": ctx.convert.bool_type,
-        },
-        ctx=ctx)
+        })
+    super().__init__(sig, ctx)
 
   def call(self, node, unused_f, args, alias_map=None):
     _, argmap = self.match_and_map_args(node, args, alias_map)
@@ -301,7 +301,7 @@ class EnumMetaInit(abstract.SimpleFunction):
   """
 
   def __init__(self, ctx):
-    super().__init__(
+    sig = function.Signature(
         name="__init__",
         param_names=("cls", "name", "bases", "namespace"),
         posonly_count=0,
@@ -309,8 +309,8 @@ class EnumMetaInit(abstract.SimpleFunction):
         kwonly_params=(),
         kwargs_name=None,
         defaults={},
-        annotations={},
-        ctx=ctx)
+        annotations={})
+    super().__init__(sig, ctx)
     self._str_pytd = ctx.loader.lookup_builtin("builtins.str")
 
   def _get_class_locals(self, node, cls_name, cls_dict):
@@ -707,7 +707,7 @@ class EnumMetaGetItem(abstract.SimpleFunction):
   """Implements the functionality of __getitem__ for enums."""
 
   def __init__(self, ctx):
-    super().__init__(
+    sig = function.Signature(
         name="__getitem__",
         param_names=("cls", "name"),
         posonly_count=0,
@@ -715,8 +715,8 @@ class EnumMetaGetItem(abstract.SimpleFunction):
         kwonly_params=(),
         kwargs_name=None,
         defaults={},
-        annotations={"name": ctx.convert.str_type},
-        ctx=ctx)
+        annotations={"name": ctx.convert.str_type})
+    super().__init__(sig, ctx)
 
   def _get_member_by_name(self, enum, name):
     if isinstance(enum, EnumInstance):

@@ -414,7 +414,11 @@ class Converter(utils.ContextWeakrefMixin):
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.InterpreterClass):
-      if v.official_name is None or name == v.official_name:
+      if v.module:  # alias to an imported type
+        return pytd.Constant(
+            name, pytd.GenericType(pytd.NamedType("builtins.type"),
+                                   (pytd.NamedType(v.full_name),)))
+      elif v.official_name is None or name == v.official_name:
         return self._class_to_def(node, v, name)
       else:
         return pytd.Alias(name, pytd.NamedType(v.official_name))
@@ -690,9 +694,12 @@ class Converter(utils.ContextWeakrefMixin):
           # input type, which pytype struggles to reason about.
           method = cast(pytd.Function,
                         self.value_to_pytd_def(node, value, name))
-          keep = lambda name: not name or name.startswith(v.name)
+          def keep(self_type):
+            maybe_params = pytd_utils.UnpackGeneric(self_type, "builtins.type")
+            name = maybe_params[0].name if maybe_params else self_type.name
+            return not name or name.startswith(v.name)
           signatures = tuple(s for s in method.signatures
-                             if not s.params or keep(s.params[0].type.name))
+                             if not s.params or keep(s.params[0].type))
           if signatures and signatures != method.signatures:
             # Filter out calls made from subclasses unless they are the only
             # ones recorded; when inferring types for ParentClass.__init__, we

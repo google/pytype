@@ -553,8 +553,6 @@ class ParserTest(parser_test_base.ParserTestBase):
       class B:
           __match_args__: Final = ("a", "b")
     """, """
-      from typing import Any
-
       class A:
           __match_args__: tuple
 
@@ -2439,7 +2437,7 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x6: Final = Color.RED
     """, """
       import enum
-      from typing import Any, Literal
+      from typing import Literal
       from typing_extensions import Final
 
       x1: Literal[3]

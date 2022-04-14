@@ -617,7 +617,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         sig.set_annotation("self", sig.annotations[self_name])
         sig.del_annotation(self_name)
         sig.param_names = ("self",) + sig.param_names[1:]
-        new_val = abstract.SimpleFunction.from_signature(sig, self.ctx)
+        new_val = abstract.SimpleFunction(sig, self.ctx)
         var2.AddBinding(new_val, {b}, node)
       var = var2
 

@@ -216,6 +216,9 @@ class PrintVisitor(base_visitor.Visitor):
         return name
       else:
         return node.name
+    # Decrement Any, since the actual value is never printed.
+    if node.value == "Any":
+      self._typing_import_counts["Any"] -= 1
     return f"{node.name}: {node.type}"
 
   def EnterAlias(self, _):
