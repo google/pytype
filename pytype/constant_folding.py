@@ -499,16 +499,22 @@ def build_folded_type(ctx, state, const):
   def collect_map(state, params, elements):
     m_var = ctx.convert.build_map(state.node)
     m = m_var.data[0]
+    # Do not forward the state while creating dict literals.
+    node = state.node
+    # We want a single string type to store in the  Dict.K type param.
+    # Calling set_str_item on every k/v pair will lead to a type param with a
+    # lot of literal strings as bindings, causing potentially severe performance
+    # issues down the line.
+    str_key = ctx.convert.str_type.instantiate(node)
     if elements is not None and len(elements) < MAX_VAR_SIZE:
       for (k, v) in elements.items():
-        state, v = build_pyval(state, v)
-        node = state.node
+        _, v = build_pyval(state, v)
+        k_var = ctx.convert.constant_to_var(k)
+        m.setitem(node, k_var, v)
         if isinstance(k, str):
-          m.set_str_item(node, k, v)
+          m.merge_instance_type_params(node, str_key, v)
         else:
-          k = ctx.convert.constant_to_var(k)
-          m.setitem(node, k, v)
-          m.merge_instance_type_params(node, k, v)
+          m.merge_instance_type_params(node, k_var, v)
     else:
       # Treat a too-large dictionary as {Union[keys] : Union[vals]}. We could
       # store a subset of the k/v pairs, as with collect_list, but for
@@ -516,10 +522,9 @@ def build_folded_type(ctx, state, const):
       # Perhaps we could create one variable per unique value type, and then
       # store every key in the pyval but reuse the value variables.
       k_types, v_types = params
-      state, v = join_types(state, v_types)
-      node = state.node
+      _, v = join_types(state, v_types)
       for t in k_types:
-        state, k = build_folded_type(ctx, state, typeconst(t))
+        _, k = build_folded_type(ctx, state, typeconst(t))
         m.setitem(node, k, v)
         m.merge_instance_type_params(node, k, v)
     return state, m_var
