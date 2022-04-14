@@ -120,7 +120,7 @@ class ParserTest(parser_test_base.ParserTestBase):
 
   def test_constant_pep526(self):
     self.check("x : str", "x: str")
-    self.check("x : str = ...", "x: str")
+    self.check("x : str = ...", "x: str = ...")
 
   def test_alias_or_constant(self):
     self.check("x = True", "x: bool")
@@ -570,7 +570,7 @@ class QuotedTypeTest(parser_test_base.ParserTestBase):
       y: "List[A]" = ...
     """, """
       x: A
-      y: List[A]
+      y: List[A] = ...
 
       class A: ...
     """)
@@ -912,7 +912,7 @@ class FunctionTest(parser_test_base.ParserTestBase):
           bar: str = ...  # type: ignore
     """, """
       class Foo:
-          bar: str
+          bar: str = ...
     """)
     self.check("""
       def f(  # type: ignore
@@ -1108,15 +1108,8 @@ class FunctionTest(parser_test_base.ParserTestBase):
 
       @dataclass
       class Foo:
-        x: int
-        y: str = ...
-    """, """
-    from dataclasses import dataclass
-
-    @dataclass
-    class Foo:
-        x: int
-        y: str
+          x: int
+          y: str = ...
     """)
 
   def test_dataclass_default_error(self):
@@ -2461,7 +2454,7 @@ class LiteralTest(parser_test_base.ParserTestBase):
       from typing_extensions import Final
 
       x: typing_extensions.Final
-      y: typing_extensions.Final
+      y: typing_extensions.Final = ...
     """)
 
   def test_bad_final_literal(self):

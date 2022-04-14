@@ -219,7 +219,10 @@ class PrintVisitor(base_visitor.Visitor):
     # Decrement Any, since the actual value is never printed.
     if node.value == "Any":
       self._typing_import_counts["Any"] -= 1
-    return f"{node.name}: {node.type}"
+    # Whether the constant has a default value is important for fields in
+    # generated classes like namedtuples.
+    suffix = " = ..." if node.value else ""
+    return f"{node.name}: {node.type}{suffix}"
 
   def EnterAlias(self, _):
     self.old_imports = self.imports.copy()

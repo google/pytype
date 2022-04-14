@@ -456,7 +456,12 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
       else:
         # The field types may refer back to the class being built.
         with ctx.allow_recursive_convert():
-          fields.append(Field(c.name, ctx.convert.constant_to_value(ct)))
+          if c.value:
+            default = ctx.new_unsolvable(ctx.root_node)
+          else:
+            default = None
+          fields.append(
+              Field(c.name, ctx.convert.constant_to_value(ct), default))
 
     bases = []
     for x in pytd_cls.bases:

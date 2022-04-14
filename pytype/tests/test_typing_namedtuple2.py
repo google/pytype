@@ -170,6 +170,37 @@ class NamedTupleTest(test_base.BaseTest):
       class Baz(Foo): ...
     """)
 
+  def test_defaults(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: int
+        b: str = ...
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.X()  # missing-parameter
+        foo.X(0)
+        foo.X(0, '1')
+        foo.X(0, '1', 'oops')  # wrong-arg-count
+      """)
+
+  def test_override_defaults(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: int
+        b: str
+      X.__new__.__defaults__ = ('',)
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.X()  # missing-parameter
+        foo.X(0)
+        foo.X(0, '1')
+        foo.X(0, '1', 'oops')  # wrong-arg-count
+      """)
+
 
 class NamedTupleTestPy3(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay in Python 3."""
@@ -515,8 +546,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
 
         class SubNamedTuple(NamedTuple):
             a: int
-            b: str
-            c: int
+            b: str = ...
+            c: int = ...
             def __repr__(self) -> str: ...
             def func() -> None: ...
 

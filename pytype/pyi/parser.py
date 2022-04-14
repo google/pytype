@@ -428,7 +428,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     is_alias = False
     if name == "__match_args__" and isinstance(val, tuple):
       typ = pytd.NamedType("tuple")
-      val = pytd.AnythingType()
+      val = None
     elif typ.name:
       if pytd_utils.MatchesFullName(typ, _FINAL_IDS):
         if isinstance(node.value, types.Pyval):
@@ -439,10 +439,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
                    f"legal Literal parameter, got {val}")
           else:
             typ = node.value.to_pytd_literal()
-            val = pytd.AnythingType()
+            val = None
         elif isinstance(val, pytd.NamedType):
           typ = pytd.Literal(val)
-          val = pytd.AnythingType()
+          val = None
       elif pytd_utils.MatchesFullName(typ, _TYPE_ALIAS_IDS):
         typ = val
         val = None

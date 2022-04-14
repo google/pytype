@@ -162,7 +162,7 @@ class TypingTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import ClassVar
       class A:
-        x: ClassVar[int] = ...
+        x: ClassVar[int]
     """)
 
   def test_pyi_classvar(self):
