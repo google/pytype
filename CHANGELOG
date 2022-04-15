@@ -1,3 +1,19 @@
+Version 2022.04.15:
+
+Updates:
+* Add basic Python 3.10 support.
+* Instantiate pyi namedtuples directly as interpreter classes. This is a large
+  refactoring that also made namedtuple type-checking more precise, exposing a
+  fair number of type errors in user code.
+* Remove the last traces of the no-longer-necessary --trace-all-classes flag.
+
+Bug fixes:
+* Allow __match_args__ in pyi files to be assigned a tuple value.
+* Fix a bug in looking up attributes defined via variable annotation.
+* Handle Unions better in byte_STORE_ATTR.
+* Fix an [unbound-type-param] error.
+* Call abstract.Dict.setitem directly when constructing a folded dict literal.
+
 Version 2022.04.06:
 
 Updates:
