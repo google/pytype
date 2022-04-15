@@ -11,7 +11,7 @@ import unittest
 __all__ = ('TestBuilder', 'load_tests')
 
 
-PY, PYI = 'py', 'pyi'
+PY, PYI, EXPECTED = 'py', 'pyi', 'pep484.py'
 OVERWRITE_EXPECTED = 0  # flip to regenerate expected files
 
 
@@ -25,30 +25,23 @@ class TestBuilder:
 
   def build(self, data_dir):
     """Return a unittest.TestSuite with tests for the files in data_dir."""
-    files_by_base = self._get_files_by_base(data_dir)
-
-    args_list = [
-        Args(as_comments=0),
-        Args(as_comments=1),
-    ]
 
     suite = unittest.TestSuite()
-    for args in args_list:
-      arg_suite = unittest.TestSuite()
-      suite.addTest(arg_suite)
 
-      for base, files_by_ext in sorted(files_by_base.items()):
-        if not (PY in files_by_ext and PYI in files_by_ext):
-          continue
+    files_by_base = self._get_files_by_base(data_dir)
 
-        if not OVERWRITE_EXPECTED and args.expected_ext not in files_by_ext:
-          continue
+    for base, files_by_ext in sorted(files_by_base.items()):
+      if not (PY in files_by_ext and PYI in files_by_ext):
+        continue
 
-        py, pyi = [files_by_ext[x] for x in (PY, PYI)]
-        outfile = os.path.join(data_dir, base + '.' + args.expected_ext)
+      if not OVERWRITE_EXPECTED and EXPECTED not in files_by_ext:
+        continue
 
-        test = build_regression_test(args, py, pyi, outfile)
-        arg_suite.addTest(test)
+      py, pyi = [files_by_ext[x] for x in (PY, PYI)]
+      outfile = os.path.join(data_dir, base + '.' + EXPECTED)
+
+      test = build_regression_test(py, pyi, outfile)
+      suite.addTest(test)
 
     return suite
 
@@ -65,27 +58,11 @@ class TestBuilder:
     return ret
 
 
-class Args:
-
-  def __init__(self, as_comments=False):
-    self.as_comments = as_comments
-
-  @property
-  def expected_ext(self):
-    """Extension of expected filename."""
-    exts = {
-        0: 'pep484',
-        1: 'comment',
-    }
-    return exts[int(self.as_comments)] + '.py'
-
-
-def build_regression_test(args, py, pyi, outfile):
+def build_regression_test(py, pyi, outfile):
 
   def regression_test(test_case):
     py_input, pyi_src = [_read_file(f) for f in (py, pyi)]
-
-    output = merge_pyi.annotate_string(args, py_input, pyi_src)
+    output = merge_pyi.merge_sources(py=py_input, pyi=pyi_src)
 
     if OVERWRITE_EXPECTED:
       with open(outfile, 'w') as f:

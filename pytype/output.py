@@ -414,7 +414,11 @@ class Converter(utils.ContextWeakrefMixin):
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.InterpreterClass):
-      if v.official_name is None or name == v.official_name:
+      if v.module:  # alias to an imported type
+        return pytd.Constant(
+            name, pytd.GenericType(pytd.NamedType("builtins.type"),
+                                   (pytd.NamedType(v.full_name),)))
+      elif v.official_name is None or name == v.official_name:
         return self._class_to_def(node, v, name)
       else:
         return pytd.Alias(name, pytd.NamedType(v.official_name))
@@ -690,9 +694,12 @@ class Converter(utils.ContextWeakrefMixin):
           # input type, which pytype struggles to reason about.
           method = cast(pytd.Function,
                         self.value_to_pytd_def(node, value, name))
-          keep = lambda name: not name or name.startswith(v.name)
+          def keep(self_type):
+            maybe_params = pytd_utils.UnpackGeneric(self_type, "builtins.type")
+            name = maybe_params[0].name if maybe_params else self_type.name
+            return not name or name.startswith(v.name)
           signatures = tuple(s for s in method.signatures
-                             if not s.params or keep(s.params[0].type.name))
+                             if not s.params or keep(s.params[0].type))
           if signatures and signatures != method.signatures:
             # Filter out calls made from subclasses unless they are the only
             # ones recorded; when inferring types for ParentClass.__init__, we
@@ -838,8 +845,26 @@ class Converter(utils.ContextWeakrefMixin):
       for c in constants.values():
         c.wrap("typing.ClassVar")
 
-    constants = [pytd.Constant(name, builder.build())
-                 for name, builder in constants.items() if builder]
+    final_constants = []
+    if isinstance(v, named_tuple.NamedTupleClass):
+      # The most precise way to get defaults is to check v.__new__.__defaults__,
+      # since it's possible for the user to manually set __defaults__. If
+      # retrieving this attribute fails, we fall back to the defaults set when
+      # the class was built.
+      try:
+        new = abstract_utils.get_atomic_value(
+            v.members["__new__"], abstract.SignedFunction)
+      except abstract_utils.ConversionError:
+        fields_with_defaults = {f.name for f in v.props.fields if f.default}
+      else:
+        fields_with_defaults = set(new.signature.defaults)
+    else:
+      fields_with_defaults = set()
+    for name, builder in constants.items():
+      if not builder:
+        continue
+      value = pytd.AnythingType() if name in fields_with_defaults else None
+      final_constants.append(pytd.Constant(name, builder.build(), value))
 
     # Collect nested classes
     # TODO(mdemello): We cannot put these in the output yet; they fail in
@@ -851,7 +876,7 @@ class Converter(utils.ContextWeakrefMixin):
                      metaclass=metaclass,
                      bases=tuple(bases),
                      methods=tuple(methods.values()),
-                     constants=tuple(constants),
+                     constants=tuple(final_constants),
                      classes=(),
                      decorators=tuple(decorators),
                      slots=slots,

@@ -9,6 +9,13 @@ from pytype.pytd import base_visitor
 from pytype.pytd import pytd
 
 
+# TODO(rechen): IsNamedTuple is being used to disable visitors that shouldn't
+# operate on generated classes. Should we do the same for dataclasses and attrs?
+def IsNamedTuple(node: pytd.Class):
+  return any(base.name in ("collections.namedtuple", "typing.NamedTuple")
+             for base in node.bases)
+
+
 class CanonicalOrderingVisitor(base_visitor.Visitor):
   """Visitor for converting ASTs back to canonical (sorted) ordering.
 
@@ -31,10 +38,7 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
            for x in node.decorators):
       return True
     # The order of a namedtuple's fields should always be preserved.
-    if any(base.name in ("collections.namedtuple", "typing.NamedTuple")
-           for base in node.bases):
-      return True
-    return False
+    return IsNamedTuple(node)
 
   def VisitClass(self, node):
     if self._PreserveConstantsOrdering(node):

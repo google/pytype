@@ -512,6 +512,15 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         foo.Foo(0)
       """, pythonpath=[d.path])
 
+  def test_type_subclass(self):
+    self.Check("""
+      class A(type):
+        def __init__(self, name, bases, dct):
+          super().__init__(name, bases, dct)
+      class B(type, metaclass=A):
+        pass
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

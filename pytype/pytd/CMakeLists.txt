@@ -134,6 +134,7 @@ py_library(
     .abc_hierarchy
     .escape
     .pytd_utils
+    .pytd_visitors
     .visitors
     pytype.utils
 )

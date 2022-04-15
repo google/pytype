@@ -426,30 +426,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
         return attr
       return None
-    ret = self.ctx.program.NewVariable()
-    add_origins = [valself] if valself else []
-    for varval in var.bindings:
-      value = varval.data
-      if valself:
-        # Check if we got a PyTDFunction from an InterpreterClass. If so,
-        # then we must have aliased an imported function inside a class, so
-        # we shouldn't bind the function to the class.
-        if (not isinstance(value, abstract.PyTDFunction) or
-            not isinstance(base, abstract.InterpreterClass)):
-          # See BaseValue.property_get for an explanation of the
-          # parameters we're passing here.
-          value = value.property_get(valself.AssignToNewVariable(node),
-                                     abstract_utils.is_subclass(valself, base))
-        if isinstance(value, abstract.Property):
-          node, value = value.call(node, None, None)
-          final_values = value.data
-        else:
-          final_values = [value]
-      else:
-        final_values = [value]
-      for final_value in final_values:
-        ret.AddBinding(final_value, [varval] + add_origins, node)
-    return ret  # we found a class which has this attribute
+    return var
 
   def _lookup_from_mro(self, node, cls, name, valself, skip):
     """Find an identifier in the MRO of the class."""
@@ -457,11 +434,35 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       # We don't know the object's MRO, so it's possible that one of its
       # bases has the attribute.
       return self.ctx.new_unsolvable(node)
+    ret = self.ctx.program.NewVariable()
+    add_origins = [valself] if valself else []
     for base in cls.mro:
-      ret = self._lookup_from_mro_flat(node, base, name, valself, skip)
-      if ret is not None:
-        return ret
-    return self.ctx.program.NewVariable()
+      var = self._lookup_from_mro_flat(node, base, name, valself, skip)
+      if var is None:
+        continue
+      for varval in var.bindings:
+        value = varval.data
+        if valself:
+          # Check if we got a PyTDFunction from an InterpreterClass. If so,
+          # then we must have aliased an imported function inside a class, so
+          # we shouldn't bind the function to the class.
+          if (not isinstance(value, abstract.PyTDFunction) or
+              not isinstance(base, abstract.InterpreterClass)):
+            # See BaseValue.property_get for an explanation of the
+            # parameters we're passing here.
+            value = value.property_get(valself.AssignToNewVariable(node),
+                                       abstract_utils.is_subclass(valself, cls))
+          if isinstance(value, abstract.Property):
+            node, value = value.call(node, None, None)
+            final_values = value.data
+          else:
+            final_values = [value]
+        else:
+          final_values = [value]
+        for final_value in final_values:
+          ret.AddBinding(final_value, [varval] + add_origins, node)
+      break  # we found a class which has this attribute
+    return ret
 
   def _get_attribute_flat(self, node, cls, name, valself):
     """Flat attribute retrieval (no mro lookup)."""
@@ -617,7 +618,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         sig.set_annotation("self", sig.annotations[self_name])
         sig.del_annotation(self_name)
         sig.param_names = ("self",) + sig.param_names[1:]
-        new_val = abstract.SimpleFunction.from_signature(sig, self.ctx)
+        new_val = abstract.SimpleFunction(sig, self.ctx)
         var2.AddBinding(new_val, {b}, node)
       var = var2
 

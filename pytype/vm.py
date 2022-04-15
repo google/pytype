@@ -568,7 +568,14 @@ class VirtualMachine:
     assert isinstance(store, abstract.SimpleValue)
     assert isinstance(store, mixin.LazyMembers)
     store.load_lazy_attribute(name)
-    bindings = store.members[name].Bindings(state.node)
+    member = store.members[name]
+    bindings = member.Bindings(state.node)
+    if (not bindings and self._late_annotations_stack and member.bindings and
+        all(isinstance(v, abstract.Module) for v in member.data)):
+      # Hack: Evaluation of late annotations may create new nodes not within the
+      # normal program flow, causing imports to not be visible, so we pretend
+      # that modules are always visible.
+      bindings = member.bindings
     if not bindings:
       raise KeyError(name)
     ret = self.ctx.program.NewVariable()

@@ -406,7 +406,7 @@ class TypeVarTest(test_base.BaseTest):
       from typing import TypeVar, Union
       T = TypeVar("T", int, float)
       Num = Union[T, complex]
-      x: Union[int, complex] = ...
+      x: Union[int, complex]
     """)
 
   def test_type_of_typevar(self):

@@ -940,6 +940,12 @@ class ErrorLog(ErrorLogBase):
 
   def invalid_function_call(self, stack, error):
     """Log an invalid function call."""
+    # Make sure method names are prefixed with the class name.
+    if (isinstance(error, function.InvalidParameters) and
+        "." not in error.name and error.bad_call.sig.param_names and
+        error.bad_call.sig.param_names[0] in ("self", "cls") and
+        error.bad_call.passed_args):
+      error.name = f"{error.bad_call.passed_args[0][1].full_name}.{error.name}"
     if isinstance(error, function.WrongArgCount):
       self.wrong_arg_count(stack, error.name, error.bad_call)
     elif isinstance(error, function.WrongArgTypes):

@@ -14,6 +14,7 @@ from pytype.pytd import abc_hierarchy
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import pytd_visitors
 from pytype.pytd import visitors
 
 log = logging.getLogger(__name__)
@@ -734,6 +735,10 @@ class PullInMethodClasses(visitors.Visitor):
     new_methods = list(cls.methods)
     adjust_self = visitors.AdjustSelf(force=True)
     adjust_self.class_types.append(visitors.ClassAsType(cls))
+    # We can't do this optimization on namedtuples, as converting fields to
+    # methods would cause us to lose track of them.
+    if pytd_visitors.IsNamedTuple(cls):
+      return cls
     for const in cls.constants:
       c = self._LookupIfSimpleCall(const.type)
       if c:

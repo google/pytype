@@ -75,6 +75,132 @@ class NamedTupleTest(test_base.BaseTest):
         foo.Baz([foo.Foo('')], [foo.Bar('')])
       """)
 
+  def test_kwargs(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      class Foo(NamedTuple):
+        def replace(self, *args, **kwargs):
+          pass
+    """)]):
+      self.Check("""
+        import foo
+        foo.Foo().replace(x=0)
+      """)
+
+  def test_property(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      class Foo(NamedTuple):
+        x: int
+        @property
+        def y(self):
+          return __any_object__
+        @property
+        def z(self) -> int:
+          return self.x + 1
+    """)]):
+      self.Check("""
+        import foo
+        nt = foo.Foo(0)
+        assert_type(nt.y, "Any")
+        assert_type(nt.z, "int")
+      """)
+
+  def test_pyi_error(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import NamedTuple
+      class Foo(NamedTuple):
+        x: int
+    """)]):
+      errors = self.CheckWithErrors("""
+        import foo
+        foo.Foo()  # missing-parameter[e]
+      """)
+      self.assertErrorSequences(errors, {"e": "function foo.Foo.__new__"})
+
+  def test_star_import(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import NamedTuple
+      class Foo(NamedTuple): ...
+      def f(x: Foo): ...
+    """), ("bar.py", """
+      from foo import *
+    """)]):
+      self.Check("""
+        import foo
+        import bar
+        foo.f(bar.Foo())
+      """)
+
+  def test_callback_protocol_as_field(self):
+    ty = self.Infer("""
+      from typing import NamedTuple, Protocol
+      class Foo(Protocol):
+        def __call__(self, x):
+          return x
+      class Bar(NamedTuple):
+        x: Foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, NamedTuple, Protocol
+      class Foo(Protocol):
+        def __call__(self, x) -> Any: ...
+      class Bar(NamedTuple):
+        x: Foo
+    """)
+
+  def test_custom_new_with_subclasses(self):
+    ty = self.Infer("""
+      from typing import NamedTuple
+      class Foo(NamedTuple('Foo', [('x', str)])):
+        def __new__(cls, x: str = ''):
+          return super().__new__(cls, x)
+      class Bar(Foo):
+        pass
+      class Baz(Foo):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NamedTuple, Type, TypeVar
+      _TFoo = TypeVar('_TFoo', bound=Foo)
+      class Foo(NamedTuple):
+        x: str
+        def __new__(cls: Type[_TFoo], x: str = ...) -> _TFoo: ...
+      class Bar(Foo): ...
+      class Baz(Foo): ...
+    """)
+
+  def test_defaults(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: int
+        b: str = ...
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.X()  # missing-parameter
+        foo.X(0)
+        foo.X(0, '1')
+        foo.X(0, '1', 'oops')  # wrong-arg-count
+      """)
+
+  def test_override_defaults(self):
+    with self.DepTree([("foo.py", """
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: int
+        b: str
+      X.__new__.__defaults__ = ('',)
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.X()  # missing-parameter
+        foo.X(0)
+        foo.X(0, '1')
+        foo.X(0, '1', 'oops')  # wrong-arg-count
+      """)
+
 
 class NamedTupleTestPy3(test_base.BaseTest):
   """Tests for the typing.NamedTuple overlay in Python 3."""
@@ -420,8 +546,8 @@ class NamedTupleTestPy3(test_base.BaseTest):
 
         class SubNamedTuple(NamedTuple):
             a: int
-            b: str
-            c: int
+            b: str = ...
+            c: int = ...
             def __repr__(self) -> str: ...
             def func() -> None: ...
 
