@@ -18,16 +18,6 @@ py_library(
     merge_pyi.py
 )
 
-py_test(
-  NAME
-    merge_pyi_test
-  SRCS
-    merge_pyi_test.py
-  DEPS
-    .merge_pyi
-    .test_data
-)
-
 filegroup(
   NAME
     test_data
