@@ -556,6 +556,12 @@ class dict(Dict[_K, _V]):
     def update(self, E, *args, **kwargs) -> None:
         self = dict[Any, Any]
     def values(self) -> dict_values[_V]: ...
+    if sys.version_info >= (3, 9):
+      def __or__(self, other: Mapping[_K2, _V2]) -> Dict[Union[_K, _K2], Union[_V, _V2]]: ...
+      def __ror__(self, other: Mapping[_K2, _V2]) -> Dict[Union[_K, _K2], Union[_V, _V2]]: ...
+      # __ior__ is equivalent to update.
+      def __ior__(self, other: dict[_K2, _V2]) -> Dict[Union[_K, _K2], Union[_V, _V2]]:
+          self = dict[Union[_K, _K2], Union[_V, _V2]]
 
 class listiterator(Iterator[_T]):
     __slots__ = []
