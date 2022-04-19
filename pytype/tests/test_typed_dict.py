@@ -6,10 +6,6 @@ from pytype.tests import test_base
 class TypedDictTest(test_base.BaseTest):
   """Tests for typing.TypedDict."""
 
-  def setUp(self):
-    super().setUp()
-    self.options.tweak(enable_typed_dicts=True)
-
   def test_init(self):
     err = self.CheckWithErrors("""
       from typing_extensions import TypedDict
@@ -288,10 +284,6 @@ _MULTIPLE = """
 
 class PyiTypedDictTest(test_base.BaseTest):
   """Tests for typing.TypedDict in pyi files."""
-
-  def setUp(self):
-    super().setUp()
-    self.options.tweak(enable_typed_dicts=True)
 
   def test_basic(self):
     with self.DepTree([("foo.pyi", _SINGLE)]):
