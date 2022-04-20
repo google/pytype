@@ -35,6 +35,7 @@ disable=
   invalid-name,
   method-hidden,
   missing-docstring,
+  modified-iterating-dict,
   multiple-statements,
   no-else-break,
   no-else-continue,
