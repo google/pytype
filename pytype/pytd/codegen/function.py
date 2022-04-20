@@ -1,6 +1,5 @@
 """Function definitions in pyi files."""
 
-import collections
 import dataclasses
 
 from typing import Any, Dict, Iterable, List, Optional, Tuple
@@ -255,7 +254,7 @@ def merge_method_signatures(
     check_unhandled_decorator: bool = False
 ) -> List[pytd.Function]:
   """Group the signatures by name, turning each group into a function."""
-  functions = collections.OrderedDict()
+  functions = {}
   for fn in name_and_sigs:
     if fn.name not in functions:
       functions[fn.name] = _DecoratedFunction.make(fn)

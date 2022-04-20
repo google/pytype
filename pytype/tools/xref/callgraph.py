@@ -1,6 +1,5 @@
 """Trace function arguments, return values and calls to other functions."""
 
-import collections
 import dataclasses
 
 from typing import Any, List
@@ -74,7 +73,7 @@ def get_function_params(pytd_fn):
   # pytd signature for every tuple of call args. Here we iterate through those
   # signatures and set every param's type to the union of every non-"unknown"
   # call type for that param.
-  params = collections.OrderedDict()
+  params = {}
   for sig in pytd_fn.signatures:
     for p in sig.params:
       if p.name not in params:

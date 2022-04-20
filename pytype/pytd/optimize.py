@@ -158,7 +158,7 @@ class CombineReturnsAndExceptions(visitors.Visitor):
       A dictionary mapping signatures (without return and exceptions) to
       a tuple of return values and exceptions.
     """
-    groups = collections.OrderedDict()  # Signature -> ReturnsAndExceptions
+    groups = {}  # Signature -> ReturnsAndExceptions
     for sig in signatures:
       stripped_signature = sig.Replace(return_type=None, exceptions=None)
 
@@ -332,7 +332,7 @@ class Factorize(visitors.Visitor):
       found to have. signatures that don't have argument i are represented
       as (original, None).
     """
-    groups = collections.OrderedDict()
+    groups = {}
     for sig in signatures:
       if i >= len(sig.params):
         # We can't omit argument i, because this signature has too few

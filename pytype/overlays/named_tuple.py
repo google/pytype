@@ -533,18 +533,16 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
 
 class _DictBuilder:
-  """Construct OrderedDict abstract classes for namedtuple members."""
+  """Construct dict abstract classes for namedtuple members."""
 
   def __init__(self, ctx):
     self.ctx = ctx
-    collections_ast = ctx.loader.import_name("collections")
-    self.ordered_dict_cls = ctx.convert.name_to_value(
-        "collections.OrderedDict", ast=collections_ast)
+    self.dict_cls = ctx.convert.name_to_value("builtins.dict")
 
   def make(self, typ):
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
     # collections.pyi doesn't conform to that standard.
-    return abstract.ParameterizedClass(self.ordered_dict_cls, {
+    return abstract.ParameterizedClass(self.dict_cls, {
         "K": self.ctx.convert.str_type,
         "V": typ
     }, self.ctx)
@@ -595,7 +593,7 @@ def _build_namedtuple(props, node, ctx):
   members["_fields"] = ctx.convert.build_tuple(node, slots)
 
   odict = _DictBuilder(ctx)
-  # __dict__ and _field_defaults are both OrderedDicts of
+  # __dict__ and _field_defaults are both dicts of
   # { field_name: field_type_instance }
   # The field types may refer back to the class being built.
   with ctx.allow_recursive_convert():
@@ -603,7 +601,7 @@ def _build_namedtuple(props, node, ctx):
   members["__dict__"] = field_dict_cls.instantiate(node)
   members["_field_defaults"] = field_dict_cls.instantiate(node)
 
-  # _field_types and __annotations__ are both OrderedDicts of
+  # _field_types and __annotations__ are both dicts of
   # { field_name: field_type }
   # Note that ctx.make_class will take care of adding the __annotations__
   # member.
