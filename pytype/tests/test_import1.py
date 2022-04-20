@@ -1138,8 +1138,9 @@ class ImportTest(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from foo import bar
+        from typing import Type
         class foo: ...
-        baz = foo
+        baz: Type[foo]
       """)
 
   def test_relative_star_import(self):

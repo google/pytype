@@ -589,8 +589,8 @@ class AssignmentCommentTest(test_base.BaseTest):
       from typing import Type
       class A: pass
       class B:
-        C = ...  # type: Type[A]
-        x = ...  # type: A
+        C: Type[A]
+        x: A
       """)
 
   def test_nested_classes_comments(self):
@@ -600,10 +600,9 @@ class AssignmentCommentTest(test_base.BaseTest):
         x = None  # type: B
       """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any
       class A:
-        B = ...  # type: type
-        x = ...  # type: Any
+        class B: ...
+        x: A.B
       """)
 
   def test_list_comprehension_comments(self):

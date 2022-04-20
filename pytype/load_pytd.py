@@ -286,9 +286,10 @@ class _PathFinder:
 class _Resolver:
   """Resolve symbols in a pytd tree."""
 
-  def __init__(self, builtins_ast):
+  def __init__(self, builtins_ast, enable_nested_classes):
     self.builtins_ast = builtins_ast
     self.allow_singletons = False
+    self._enable_nested_classes = enable_nested_classes
 
   def _lookup(self, visitor, mod_ast, lookup_ast):
     if lookup_ast:
@@ -297,7 +298,9 @@ class _Resolver:
     return mod_ast
 
   def resolve_local_types(self, mod_ast, *, lookup_ast=None):
-    local_lookup = visitors.LookupLocalTypes(self.allow_singletons)
+    local_lookup = visitors.LookupLocalTypes(
+        self.allow_singletons,
+        enable_nested_classes=self._enable_nested_classes)
     return self._lookup(local_lookup, mod_ast, lookup_ast)
 
   def resolve_builtin_types(self, mod_ast, *, lookup_ast=None):
@@ -346,7 +349,11 @@ class _Resolver:
     """Goes over an ast and returns all references module names."""
     deps = visitors.CollectDependencies()
     mod_ast.Visit(deps)
-    return deps.dependencies
+    if isinstance(mod_ast, (pytd.TypeDeclUnit, pytd.Class)):
+      return {k: v for k, v in deps.dependencies.items()
+              if not isinstance(mod_ast.Get(k), pytd.Class)}
+    else:
+      return deps.dependencies
 
 
 class Loader:
@@ -370,7 +377,7 @@ class Loader:
     self._path_finder = _PathFinder(options)
     self._builtin_loader = builtin_stubs.BuiltinLoader(
         parser.PyiOptions.from_toplevel_options(options))
-    self._resolver = _Resolver(self.builtins)
+    self._resolver = _Resolver(self.builtins, options.enable_nested_classes)
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
     self._prefixes = set()

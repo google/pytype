@@ -414,14 +414,15 @@ class Converter(utils.ContextWeakrefMixin):
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.InterpreterClass):
-      if v.module:  # alias to an imported type
-        return pytd.Constant(
-            name, pytd.GenericType(pytd.NamedType("builtins.type"),
-                                   (pytd.NamedType(v.full_name),)))
-      elif v.official_name is None or name == v.official_name:
+      if (v.official_name is None or name == v.official_name) and not v.module:
         return self._class_to_def(node, v, name)
       else:
-        return pytd.Alias(name, pytd.NamedType(v.official_name))
+        # Represent a class alias as X: Type[Y] rather than X = Y so the pytd
+        # printer can distinguish it from a module alias.
+        type_name = v.full_name if v.module else v.official_name
+        return pytd.Constant(
+            name, pytd.GenericType(pytd.NamedType("builtins.type"),
+                                   (pytd.NamedType(type_name),)))
     elif isinstance(v, abstract.TypeParameter):
       return self._typeparam_to_def(node, v, name)
     elif isinstance(v, abstract.Unsolvable):
@@ -670,10 +671,18 @@ class Converter(utils.ContextWeakrefMixin):
                          pytd.MethodFlag.NONE)
       decorators.append(pytd.Alias("final", fn))
 
+    # Collect nested classes
+    classes = [self._class_to_def(node, x, x.name)
+               for x in v.get_inner_classes()]
+    inner_class_names = {x.name for x in classes}
+
     # class-level attributes
     for name, member in v.members.items():
-      if (name in abstract_utils.CLASS_LEVEL_IGNORE or name in annotated_names
-          or (v.is_enum and name in ("__new__", "__eq__"))):
+      if (name in abstract_utils.CLASS_LEVEL_IGNORE or
+          name in annotated_names or
+          (v.is_enum and name in ("__new__", "__eq__")) or
+          (self.ctx.options.enable_nested_classes and
+           name in inner_class_names)):
         continue
       for value in member.FilteredData(self.ctx.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
@@ -694,12 +703,29 @@ class Converter(utils.ContextWeakrefMixin):
           # input type, which pytype struggles to reason about.
           method = cast(pytd.Function,
                         self.value_to_pytd_def(node, value, name))
-          def keep(self_type):
+          def fix(sig):
+            if not sig.params:
+              return sig
+            # Check whether the signature's 'self' type is the current class.
+            self_type = sig.params[0].type
             maybe_params = pytd_utils.UnpackGeneric(self_type, "builtins.type")
-            name = maybe_params[0].name if maybe_params else self_type.name
-            return not name or name.startswith(v.name)
-          signatures = tuple(s for s in method.signatures
-                             if not s.params or keep(s.params[0].type))
+            if maybe_params:
+              self_type_name = maybe_params[0].name
+            else:
+              self_type_name = self_type.name
+            if not self_type_name:
+              return sig
+            full_name = v.official_name or v.name
+            if not self_type_name.startswith(full_name):
+              return None
+            # Remove any outer class prefixes from the type name.
+            if "." in full_name:
+              new_self_type = self_type.Replace(name=v.name)
+              new_first_param = sig.params[0].Replace(type=new_self_type)
+              return sig.Replace(params=(new_first_param,) + sig.params[1:])
+            else:
+              return sig
+          signatures = tuple(filter(None, (fix(s) for s in method.signatures)))
           if signatures and signatures != method.signatures:
             # Filter out calls made from subclasses unless they are the only
             # ones recorded; when inferring types for ParentClass.__init__, we
@@ -865,19 +891,14 @@ class Converter(utils.ContextWeakrefMixin):
         continue
       value = pytd.AnythingType() if name in fields_with_defaults else None
       final_constants.append(pytd.Constant(name, builder.build(), value))
+    classes = tuple(classes) if self.ctx.options.enable_nested_classes else ()
 
-    # Collect nested classes
-    # TODO(mdemello): We cannot put these in the output yet; they fail in
-    # load_dependencies because of the dotted class name (google/pytype#150)
-    classes = [self._class_to_def(node, x, x.name)
-               for x in v.get_inner_classes()]
-    classes = [x.Replace(name=class_name + "." + x.name) for x in classes]
     cls = pytd.Class(name=class_name,
                      metaclass=metaclass,
                      bases=tuple(bases),
                      methods=tuple(methods.values()),
                      constants=tuple(final_constants),
-                     classes=(),
+                     classes=classes,
                      decorators=tuple(decorators),
                      slots=slots,
                      template=())

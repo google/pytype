@@ -251,6 +251,20 @@ class ClassesTest(test_base.BaseTest):
             return self.x(0), self.y(0), self.z(0), foo.Foo().x(0)
       """, pythonpath=[d.path])
 
+  def test_nested_class_init(self):
+    ty = self.Infer("""
+      class Foo:
+        class Bar:
+          def __init__(self):
+            self.x = 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        class Bar:
+          x: int
+          def __init__(self) -> None: ...
+    """)
+
 
 class ClassesTestPython3Feature(test_base.BaseTest):
   """Tests for classes."""
