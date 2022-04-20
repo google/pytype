@@ -1021,7 +1021,17 @@ class ErrorLog(ErrorLogBase):
     if name:
       return f"'{name}: {typ}'"
     elif len(var.data) == 1 and hasattr(val, "pyval"):
-      return f"'{val.pyval!r}: {typ}'"
+      # For PythonConstants, we want to print the underlying Python value.
+      # But for everything else (e.g. Variables) just use "...".
+      # This provides clearer error messages that show the exact values that
+      # are related to the error while preventing implementation details from
+      # leaking into error messages.
+      def _ellipsis_printer(val):
+        if isinstance(val, mixin.PythonConstant):
+          return val.str_of_constant(_ellipsis_printer)
+        return "..."
+      name = _ellipsis_printer(val)
+      return f"'{name}: {typ}'"
     else:
       return f"'{typ}'"
 

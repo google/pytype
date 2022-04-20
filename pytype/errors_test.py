@@ -40,9 +40,9 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
-    self.assertEqual(None, e._filename)
+    self.assertIsNone(e._filename)
     self.assertEqual(0, e._lineno)
-    self.assertEqual(None, e._methodname)
+    self.assertIsNone(e._methodname)
     self.assertEqual("here", e.keyword)
     # Opcode of None.
     op = test_utils.FakeOpcode("foo.py", 123, "foo")

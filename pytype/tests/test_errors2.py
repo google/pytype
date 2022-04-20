@@ -96,7 +96,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {
         "e1": ["(int, str)", "Not a type"],
         "e2": ["instance of Tuple[int, ...]", "Not a type"],
-        "e3": ["{'a': '1'}", "Not a type"],
+        "e3": ["{'a': 1}", "Not a type"],
         "e4": ["instance of Dict[str, int]", "Not a type"]})
 
   def test_move_union_inward(self):
@@ -366,6 +366,25 @@ class ErrorTest(test_base.BaseTest):
         x=[x for x in Foo],  # pytype: disable=missing-parameter
       )
     """)
+
+  def test_variables_not_printed(self):
+    errors = self.CheckWithErrors("""
+      class A:
+        pass
+      {'a': 1, 'b': "hello"} + [1, 2]  # unsupported-operands[e1]
+      {'a': 1, 2: A()} + [A(), 2]  # unsupported-operands[e2]
+    """)
+    self.assertErrorSequences(
+        errors, {
+            "e1": [
+                "{'a': 1, 'b': 'hello'}: Dict[str, Union[int, str]]",
+                "[1, 2]: List[int]",
+            ],
+            "e2": [
+                "{...: ...}: Dict[Union[int, str], Union[A, int]",
+                "[..., 2]: List[Union[A, int]]"
+            ]
+        })
 
 
 class InPlaceOperationsTest(test_base.BaseTest):
