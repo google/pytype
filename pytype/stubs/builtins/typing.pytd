@@ -449,16 +449,13 @@ NoReturn = nothing
 
 
 # We special-case this internally, we just need the class to exist within typing.
-class NamedTuple: ...
+class NamedTuple:
+    __slots__ = []
 
 def _NamedTuple(typename: Text, fields: Sequence[Sequence[Union[Text, type]]]) -> Any: ...
 
 # A more precise (but incorrect) fields type for error messages.
 _NamedTupleFields = List[Tuple[Text, type]]
-
-if sys.version_info >= (3, 6):
-  class _NamedTupleClass(object):
-    __slots__ = []
 
 def NewType(name: str, tp: type) -> type: ...
 

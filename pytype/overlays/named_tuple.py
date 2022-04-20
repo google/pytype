@@ -258,9 +258,9 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
   @classmethod
   def make(cls, ctx):
     typing_ast = ctx.loader.import_name("typing")
-    # Because NamedTuple is a special case for the pyi parser, typing.pytd has
-    # "_NamedTuple" instead. Replace the name of the returned function so that
-    # error messages will correctly display "typing.NamedTuple".
+    # typing.pytd contains a NamedTuple class def and a _NamedTuple func def.
+    # Replace the name of the returned function so that error messages will
+    # correctly display "typing.NamedTuple".
     pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
     self = super().make("NamedTuple", ctx, "typing", pyval)
@@ -348,8 +348,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
   def __init__(self, ctx):
     typing_ast = ctx.loader.import_name("typing")
-    pyval = typing_ast.Lookup("typing._NamedTupleClass")
-    pyval = pyval.Replace(name="typing.NamedTuple")
+    pyval = typing_ast.Lookup("typing.NamedTuple")
     super().__init__("NamedTuple", pyval, ctx)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
