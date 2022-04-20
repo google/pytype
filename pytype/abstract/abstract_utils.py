@@ -767,6 +767,18 @@ def maybe_unwrap_decorated_function(func):
   return func.func
 
 
+def unwrap_final(val):
+  """Unwrap Final[T] -> T."""
+  if _isinstance(val, "FinalAnnotation"):
+    # Final type created via an annotation in the current module
+    return val.annotation
+  elif (_isinstance(val, "Instance") and val.cls.full_name == "typing.Final"):
+    # Final types loaded from a pyi file get converted to abstract.Instance
+    # with cls=typing.Final and instance type parameter T
+    return get_atomic_value(val.get_instance_type_parameter(T))
+  return val
+
+
 # The _isinstance and _make methods should be used only in pytype.abstract
 # submodules that are unable to reference abstract.py classes due to circular
 # dependencies. To prevent accidental misuse, the methods are marked private.
