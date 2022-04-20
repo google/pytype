@@ -359,16 +359,12 @@ class Attrib(classgen.FieldConstructor):
 
     if type_var:
       type_source = TypeSource.TYPE
-      allowed_type_params = (
-          self.ctx.vm.frame.type_params
-          |
-          self.ctx.annotation_utils.get_callable_type_parameter_names(type_var))
       typ = self.ctx.annotation_utils.extract_annotation(
           node,
           type_var,
           "attr.ib",
           self.ctx.vm.simple_stack(),
-          allowed_type_params=allowed_type_params)
+          allowed_type_params=self.ctx.vm.frame.type_params)
     elif default_var:
       type_source = TypeSource.DEFAULT
       typ = get_type_from_default(default_var, self.ctx)

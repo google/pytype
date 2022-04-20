@@ -1708,15 +1708,12 @@ class VirtualMachine:
     except abstract_utils.ConversionError:
       pass
     else:
-      allowed_type_params = (
-          self.frame.type_params
-          | self.ctx.annotation_utils.get_callable_type_parameter_names(val))
       typ = self.ctx.annotation_utils.extract_annotation(
           state.node,
           val,
           name,
           self.simple_stack(),
-          allowed_type_params=allowed_type_params)
+          allowed_type_params=self.frame.type_params)
       self._record_annotation(state.node, op, name, typ)
 
   def byte_STORE_SUBSCR(self, state, op):
@@ -2464,15 +2461,12 @@ class VirtualMachine:
     state, annotations_var = self.load_local(state, "__annotations__")
     name = self.frame.f_code.co_names[op.arg]
     state, value = state.pop()
-    allowed_type_params = (
-        self.frame.type_params
-        | self.ctx.annotation_utils.get_callable_type_parameter_names(value))
     typ = self.ctx.annotation_utils.extract_annotation(
         state.node,
         value,
         name,
         self.simple_stack(),
-        allowed_type_params=allowed_type_params)
+        allowed_type_params=self.frame.type_params)
     self._record_annotation(state.node, op, name, typ)
     key = self.ctx.convert.primitive_class_instances[str]
     state = self.store_subscr(

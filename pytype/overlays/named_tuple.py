@@ -310,14 +310,12 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
       names.append(name_py_constant)
-      allowed_type_params = (
-          self.ctx.annotation_utils.get_callable_type_parameter_names(typ))
       annot = self.ctx.annotation_utils.extract_annotation(
           node,
           typ,
           name_py_constant,
           self.ctx.vm.simple_stack(),
-          allowed_type_params=allowed_type_params)
+          allowed_type_params=set())
       types.append(annot)
 
     return _Args(name=cls_name, field_names=names, field_types=types)
