@@ -611,21 +611,21 @@ class TestDataclass(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import dataclasses
-      from typing import Dict, Type
+      from typing import Dict
       class Foo:
-        Inner: Type[Inner1]
+        @dataclasses.dataclass
+        class Inner:
+          a: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          def __init__(self, a: int) -> None: ...
       class Bar:
-        Inner: Type[Inner2]
-      @dataclasses.dataclass
-      class Inner1:
-        a: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
-        def __init__(self, a: int) -> None: ...
-      @dataclasses.dataclass
-      class Inner2:
-        b: str
-        __dataclass_fields__: Dict[str, dataclasses.Field[str]]
-        def __init__(self, b: str) -> None: ...
+        @dataclasses.dataclass
+        class Inner:
+          b: str
+          __dataclass_fields__: Dict[str, dataclasses.Field[str]]
+          def __init__(self, b: str) -> None: ...
+      Inner1 = Foo.Inner
+      Inner2 = Bar.Inner
     """)
 
   def test_check_field_against_container(self):

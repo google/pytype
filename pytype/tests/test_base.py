@@ -132,6 +132,8 @@ class BaseTest(unittest.TestCase):
     super().setUp()
     self.options = config.Options.create(python_version=self.python_version,
                                          build_dict_literals_from_kwargs=True,
+                                         enable_nested_classes=True,
+                                         enable_typed_dicts=True,
                                          strict_namedtuple_checks=True,
                                          strict_parameter_checks=True,
                                          strict_primitive_comparisons=True,

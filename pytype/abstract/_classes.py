@@ -180,12 +180,18 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
   def get_inner_classes(self):
     """Return the list of top-level nested classes."""
-    values = [
-        abstract_utils.get_atomic_value(
-            mbr, default=self.ctx.convert.unsolvable)
-        for mbr in self.members.values()
-    ]
-    return [x for x in values if isinstance(x, InterpreterClass) and x != self]
+    inner_classes = []
+    for member in self.members.values():
+      try:
+        value = abstract_utils.get_atomic_value(member, InterpreterClass)
+      except abstract_utils.ConversionError:
+        continue
+      if value.official_name is None or (
+          self.official_name and
+          value.official_name.startswith(f"{self.official_name}.")) or (
+              not self.ctx.options.enable_nested_classes and value != self):
+        inner_classes.append(value)
+    return inner_classes
 
   def get_own_attributes(self):
     attributes = set(self.members)
@@ -286,6 +292,11 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       # The lexical comparison is to ensure that, in the case of multiple calls
       # to this method, the official name does not depend on the call order.
       self.official_name = name
+      for member_var in self.members.values():
+        for member in member_var.data:
+          if (isinstance(member, InterpreterClass) and
+              self.ctx.options.enable_nested_classes):
+            member.update_official_name(f"{name}.{member.name}")
 
 
 class PyTDClass(

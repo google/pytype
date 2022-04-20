@@ -330,9 +330,10 @@ class ClassesTest(test_base.BaseTest):
       OtherFoo.x = "bar"
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Type
       class Foo:
-        x = ...  # type: str
-      OtherFoo = Foo
+        x: str
+      OtherFoo: Type[Foo]
     """)
 
   def test_call_class_attr(self):
@@ -686,9 +687,10 @@ class ClassesTest(test_base.BaseTest):
     # We don't care whether the type of x is inferred as A or B, but we want it
     # to always be the same.
     self.assertTypesMatchPytd(ty, """
+      from typing import Type
       class A: ...
-      B = A
-      x = ...  # type: A
+      B: Type[A]
+      x: A
     """)
 
   def test_new(self):
@@ -796,9 +798,9 @@ class ClassesTest(test_base.BaseTest):
       class A:
         x = ...  # type: int
       def f() -> Union[A, str]: ...
-      B = A
-      C = ...  # type: Type[Union[A, str]]
-      D = ...  # type: Type[type]
+      B: Type[A]
+      C: Type[Union[A, str]]
+      D: Type[type]
     """)
 
   def test_type_attribute(self):
@@ -810,11 +812,12 @@ class ClassesTest(test_base.BaseTest):
       mro = B.mro()
     """)
     self.assertTypesMatchPytd(ty, """
+      from typing import Type
       class A:
-        x = ...  # type: int
-      B = A
-      x = ...  # type: int
-      mro = ...  # type: list
+        x: int
+      B: Type[A]
+      x: int
+      mro: list
     """)
 
   def test_type_subclass(self):

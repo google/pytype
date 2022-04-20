@@ -1,6 +1,7 @@
 """Tests for dictionaries."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class DictTest(test_base.BaseTest):
@@ -81,6 +82,22 @@ class DictTest(test_base.BaseTest):
             d[key + '_suffix1']['suffix2'] = d[key + '_suffix2']
           if key + '_suffix3' in d:
             d[key + '_suffix1']['suffix3'] = d[key + '_suffix3']
+    """)
+
+  @test_utils.skipBeforePy((3, 9), "Dict | was added in 3.9.")
+  def test_union(self):
+    ty, _ = self.InferWithErrors("""
+      from typing import Dict
+      a = {'a': 1} | {'b': 2}
+      b = {'a': 1}
+      b |= {1: 'a'}
+      c: Dict[str, int] = {'a': 1} | {1: 'a'}  # annotation-type-mismatch
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Union
+      a: Dict[str, int]
+      b: Dict[Union[str, int], Union[str, int]]
+      c: Dict[str, int]
     """)
 
 

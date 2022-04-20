@@ -4,7 +4,7 @@ import collections
 import itertools
 import logging
 import re
-from typing import Set
+from typing import Set, cast
 
 from pytype import datatypes
 from pytype import module_utils
@@ -424,7 +424,9 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         # We have a class with the same name as a module.
         return t
     module_name, dot, name = t.name.rpartition(".")
-    if not dot or module_name == self.name:
+    if (not dot or module_name == self.name or
+        self._unit and
+        isinstance(self._unit.Get(t.name.split(".", 1)[0]), pytd.Class)):
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
@@ -621,11 +623,13 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
 class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up local identifiers. Must be called on a TypeDeclUnit."""
 
-  def __init__(self, allow_singletons=False, toplevel=True):
+  def __init__(self, allow_singletons=False, toplevel=True,
+               enable_nested_classes=True):
     super().__init__(allow_singletons)
     self._toplevel = toplevel
     self.local_names = set()
     self.class_names = []
+    self._enable_nested_classes = enable_nested_classes
 
   def EnterTypeDeclUnit(self, unit):
     self.unit = unit
@@ -710,6 +714,9 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
           resolved_node = self.to_type(self._LookupItemRecursive(node.name))
         except KeyError:
           resolved_node = node  # lookup failures are handled later
+        else:
+          if isinstance(resolved_node, pytd.ClassType):
+            resolved_node.name = node.name
     else:  # simple reference to a member of the current module
       item = self._LookupLocalName(node)
       if self._toplevel:
@@ -737,6 +744,19 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       visitor.unit = self.unit
       return self._LookupLocalTypes(resolved_node)[0]
     return resolved_node
+
+  def VisitClassType(self, t):
+    if not t.cls and self._enable_nested_classes:
+      if t.name == self.class_names[-1]:
+        full_name = ".".join(self.class_names)
+        lookup_type = pytd.NamedType(full_name)
+      elif "." in t.name and t.name.split(".", 1)[0] in self.unit:
+        lookup_type = t
+      else:
+        lookup_type = None
+      if lookup_type:
+        t.cls = cast(pytd.ClassType, self.VisitNamedType(lookup_type)).cls
+    return t
 
 
 class ReplaceTypes(Visitor):
