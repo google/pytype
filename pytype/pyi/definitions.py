@@ -342,7 +342,7 @@ class Definitions:
     self.module_info = module_info
     self.type_map: Dict[str, Any] = {}
     self.constants = []
-    self.aliases = collections.OrderedDict()
+    self.aliases = {}
     self.type_params = []
     self.param_specs = []
     self.generated_classes = collections.defaultdict(list)

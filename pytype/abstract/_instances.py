@@ -1,6 +1,5 @@
 """Specialized instance representations."""
 
-import collections
 import hashlib
 import logging
 
@@ -433,10 +432,9 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     self.set_slot("setdefault", self.setdefault_slot)
     self.set_slot("update", self.update_slot)
     self.could_contain_anything = False
-    # Use OrderedDict instead of dict, so that it can be compatible with
-    # where needs ordered dict.
+    # Insertion order does matter in some places.
     # For example: f_locals["__annotations__"]
-    mixin.PythonDict.init_mixin(self, collections.OrderedDict())
+    mixin.PythonDict.init_mixin(self, {})
 
   def str_of_constant(self, printer):
     return str({name: " or ".join(_var_map(printer, value))

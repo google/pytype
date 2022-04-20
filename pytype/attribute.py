@@ -36,6 +36,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       A tuple (CFGNode, cfg.Variable). If this attribute doesn't exist,
       the Variable will be None.
     """
+    obj = abstract_utils.unwrap_final(obj)
     # Some objects have special attributes, like "__get__" or "__iter__"
     special_attribute = obj.get_special_attribute(node, name, valself)
     if special_attribute is not None:

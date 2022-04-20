@@ -14,7 +14,6 @@ rather than
   x: 'Union[Foo, Bar]'
 """
 
-import collections
 import enum
 import itertools
 
@@ -517,7 +516,7 @@ def _FlattenTypes(type_list) -> Tuple[Type, ...]:
       t.type_list if isinstance(t, _SetOfTypes) else [t]
       for t in type_list)
   # Remove duplicates, preserving order
-  unique = tuple(collections.OrderedDict.fromkeys(flattened))
+  unique = tuple(dict.fromkeys(flattened))
   return unique
 
 

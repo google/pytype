@@ -214,11 +214,11 @@ def WrapTypeDeclUnit(name, items):
     NameError: For name conflicts.
   """
 
-  functions = collections.OrderedDict()
-  classes = collections.OrderedDict()
+  functions = {}
+  classes = {}
   constants = collections.defaultdict(TypeBuilder)
-  aliases = collections.OrderedDict()
-  typevars = collections.OrderedDict()
+  aliases = {}
+  typevars = {}
   for item in items:
     if isinstance(item, pytd.Function):
       if item.name in functions:
@@ -329,7 +329,7 @@ def NamedTypeWithModule(name, module=None):
     return pytd.NamedType(module + "." + name)
 
 
-class OrderedSet(collections.OrderedDict):
+class OrderedSet(dict):
   """A simple ordered set."""
 
   def __init__(self, iterable=None):

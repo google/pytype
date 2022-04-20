@@ -466,6 +466,20 @@ class TestFinalInPyi(test_base.BaseTest):
     self.assertErrorSequences(
         err, {"e": ["annotation for y", "str", "Final[float]"]})
 
+  def test_attribute_access(self):
+    foo = """
+      from typing import Final, List
+      k: Final[List[str]] = ...
+    """
+    with self.DepTree([("foo.pyi", foo)]):
+      err = self.CheckWithErrors("""
+        from foo import k
+        a = k.count('a')
+        b = k.random()  # attribute-error[e]
+      """)
+    self.assertErrorSequences(
+        err, {"e": ["No attribute", "random", "Final[List[str]]"]})
+
 
 if __name__ == "__main__":
   test_base.main()

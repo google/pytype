@@ -593,7 +593,7 @@ class PrintVisitor(base_visitor.Visitor):
 
   def _FormSetTypeList(self, node):
     """Form list of types within a set type."""
-    type_list = collections.OrderedDict.fromkeys(node.type_list)
+    type_list = dict.fromkeys(node.type_list)
     if self.in_parameter:
       # Parameter's set types are merged after as a follow up to the
       # ExpandCompatibleBuiltins visitor.

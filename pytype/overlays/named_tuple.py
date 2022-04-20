@@ -258,9 +258,9 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
   @classmethod
   def make(cls, ctx):
     typing_ast = ctx.loader.import_name("typing")
-    # Because NamedTuple is a special case for the pyi parser, typing.pytd has
-    # "_NamedTuple" instead. Replace the name of the returned function so that
-    # error messages will correctly display "typing.NamedTuple".
+    # typing.pytd contains a NamedTuple class def and a _NamedTuple func def.
+    # Replace the name of the returned function so that error messages will
+    # correctly display "typing.NamedTuple".
     pyval = typing_ast.Lookup("typing._NamedTuple")
     pyval = pyval.Replace(name="typing.NamedTuple")
     self = super().make("NamedTuple", ctx, "typing", pyval)
@@ -310,14 +310,12 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
       name, typ = field
       name_py_constant = abstract_utils.get_atomic_python_constant(name)
       names.append(name_py_constant)
-      allowed_type_params = (
-          self.ctx.annotation_utils.get_callable_type_parameter_names(typ))
       annot = self.ctx.annotation_utils.extract_annotation(
           node,
           typ,
           name_py_constant,
           self.ctx.vm.simple_stack(),
-          allowed_type_params=allowed_type_params)
+          allowed_type_params=set())
       types.append(annot)
 
     return _Args(name=cls_name, field_names=names, field_types=types)
@@ -348,8 +346,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
   def __init__(self, ctx):
     typing_ast = ctx.loader.import_name("typing")
-    pyval = typing_ast.Lookup("typing._NamedTupleClass")
-    pyval = pyval.Replace(name="typing.NamedTuple")
+    pyval = typing_ast.Lookup("typing.NamedTuple")
     super().__init__("NamedTuple", pyval, ctx)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
@@ -533,18 +530,16 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
 
 class _DictBuilder:
-  """Construct OrderedDict abstract classes for namedtuple members."""
+  """Construct dict abstract classes for namedtuple members."""
 
   def __init__(self, ctx):
     self.ctx = ctx
-    collections_ast = ctx.loader.import_name("collections")
-    self.ordered_dict_cls = ctx.convert.name_to_value(
-        "collections.OrderedDict", ast=collections_ast)
+    self.dict_cls = ctx.convert.name_to_value("builtins.dict")
 
   def make(self, typ):
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
     # collections.pyi doesn't conform to that standard.
-    return abstract.ParameterizedClass(self.ordered_dict_cls, {
+    return abstract.ParameterizedClass(self.dict_cls, {
         "K": self.ctx.convert.str_type,
         "V": typ
     }, self.ctx)
@@ -595,7 +590,7 @@ def _build_namedtuple(props, node, ctx):
   members["_fields"] = ctx.convert.build_tuple(node, slots)
 
   odict = _DictBuilder(ctx)
-  # __dict__ and _field_defaults are both OrderedDicts of
+  # __dict__ and _field_defaults are both dicts of
   # { field_name: field_type_instance }
   # The field types may refer back to the class being built.
   with ctx.allow_recursive_convert():
@@ -603,7 +598,7 @@ def _build_namedtuple(props, node, ctx):
   members["__dict__"] = field_dict_cls.instantiate(node)
   members["_field_defaults"] = field_dict_cls.instantiate(node)
 
-  # _field_types and __annotations__ are both OrderedDicts of
+  # _field_types and __annotations__ are both dicts of
   # { field_name: field_type }
   # Note that ctx.make_class will take care of adding the __annotations__
   # member.

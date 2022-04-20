@@ -576,6 +576,14 @@ class TypeVarTest(test_base.BaseTest):
       h(f())
     """)
 
+  def test_future_annotations(self):
+    self.Check("""
+      from __future__ import annotations
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      x: Callable[[T], T] = lambda x: x
+    """)
+
 
 class GenericTypeAliasTest(test_base.BaseTest):
   """Tests for generic type aliases ("type macros")."""

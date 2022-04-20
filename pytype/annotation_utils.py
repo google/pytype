@@ -4,7 +4,7 @@ import collections
 import dataclasses
 import itertools
 
-from typing import Any
+from typing import AbstractSet, Any, Optional
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -199,11 +199,11 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                   for _, t in annot.get_inner_types()), [])
     return []
 
-  def get_callable_type_parameter_names(self, var):
-    """Gets all TypeParameter names that appear in a Callable in 'var'."""
+  def get_callable_type_parameter_names(self, val: abstract.BaseValue):
+    """Gets all TypeParameter names that appear in a Callable in 'val'."""
     type_params = set()
     seen = set()
-    stack = list(var.data)
+    stack = [val]
     while stack:
       annot = stack.pop()
       if annot in seen:
@@ -303,14 +303,12 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
             abstract_utils.get_type_parameter_substitutions(cls, type_params)
             for cls in defining_classes)
         substs = abstract_utils.combine_substs(substs, self_substs)
-    allowed_type_params = set(
-        itertools.chain(*substs, self.get_callable_type_parameter_names(var)))
     typ = self.extract_annotation(
         node,
         var,
         name,
         self.ctx.vm.simple_stack(),
-        allowed_type_params=allowed_type_params)
+        allowed_type_params=set(itertools.chain(*substs)))
     orig_typ = typ
     if isinstance(typ, abstract.FinalAnnotation):
       typ = typ.annotation
@@ -359,7 +357,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       return AnnotatedValue(typ, annot_val)
 
   def extract_annotation(
-      self, node, var, name, stack, allowed_type_params=None):
+      self, node, var, name, stack,
+      allowed_type_params: Optional[AbstractSet[str]] = None):
     """Returns an annotation extracted from 'var'.
 
     Args:
@@ -368,7 +367,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       name: The annotated name.
       stack: The frame stack.
       allowed_type_params: Type parameters that are allowed to appear in the
-        annotation. 'None' means all are allowed.
+        annotation. 'None' means all are allowed. If non-None, the result of
+        calling get_callable_type_parameter_names on the extracted annotation is
+        also added to the allowed set.
     """
     try:
       typ = abstract_utils.get_atomic_value(var)
@@ -379,6 +380,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if not typ:
       return self.ctx.convert.unsolvable
     if typ.formal and allowed_type_params is not None:
+      allowed_type_params = (allowed_type_params |
+                             self.get_callable_type_parameter_names(typ))
       illegal_params = [x.name for x in self.get_type_parameters(typ)
                         if x.name not in allowed_type_params]
       if illegal_params:

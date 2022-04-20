@@ -442,7 +442,7 @@ class ErrorLogBase:
 
   def unique_sorted_errors(self):
     """Gets the unique errors in this log, sorted on filename and lineno."""
-    unique_errors = collections.OrderedDict()
+    unique_errors = {}
     for error in self._sorted_errors():
       error_without_traceback = str(error.drop_traceback())
       if error_without_traceback not in unique_errors:
