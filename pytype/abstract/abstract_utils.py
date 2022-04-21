@@ -13,6 +13,9 @@ from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 
+# Type aliases
+ArgsDict = Dict[str, cfg.Variable]
+
 # We can't import abstract here due to a circular dep.
 _BaseValue = Any  # abstract.BaseValue
 _TypeParameter = Any  # abstract.TypeParameter
@@ -829,3 +832,12 @@ def is_recursive_annotation(annot):
 def is_ellipsis(val):
   return (val == val.ctx.convert.ellipsis or
           (is_concrete(val) and val.pyval == "..."))
+
+
+def update_args_dict(args: ArgsDict, update: ArgsDict, node: cfg.CFGNode):
+  """Update a {str: Variable} dict by merging bindings."""
+  for k, v in update.items():
+    if k in args:
+      args[k].PasteVariable(v, node)
+    else:
+      args[k] = v

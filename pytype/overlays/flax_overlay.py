@@ -129,7 +129,7 @@ class Module(abstract.PyTDClass):
     cls.additional_init_methods.append("setup")
     dc = ModuleDataclass.make(self.ctx)
     cls_var = cls.to_variable(node)
-    args = function.Args(posargs=(cls_var,), namedargs=abstract.Dict(self.ctx))
+    args = function.Args(posargs=(cls_var,), namedargs={})
     node, _ = dc.call(node, None, args)
     return node
 

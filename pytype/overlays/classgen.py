@@ -138,9 +138,8 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     # update_kwargs on the first invocation, setting _current_args, and skip it
     # on the second.
     # In the second case, we call update_kwargs on the first and only
-    # invocation. (Although namedargs is empty in this case, bool(namedargs) is
-    # True as long as namedargs is an abstract.Dict object.)
-    if args.namedargs and not self._current_args:
+    # invocation.
+    if not self._current_args:
       self.update_kwargs(args)
 
     # NOTE: @dataclass is py3-only and has explicitly kwonly args in its
