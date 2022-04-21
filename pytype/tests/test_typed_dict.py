@@ -128,6 +128,40 @@ class TypedDictTest(test_base.BaseTest):
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
 
+  def test_annotated_global_var(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+      a: A = {'x': 10}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+
+      class A(TypedDict):
+        x: int
+
+      a: A
+    """)
+
+  def test_annotated_local_var(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+      def f():
+        a: A = {'x': 10}
+        return a
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+
+      class A(TypedDict):
+        x: int
+
+      def f() -> A: ...
+    """)
+
   def test_return_type(self):
     err = self.CheckWithErrors("""
       from typing_extensions import TypedDict
