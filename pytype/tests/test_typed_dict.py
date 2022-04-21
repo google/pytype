@@ -365,6 +365,24 @@ class PyiTypedDictTest(test_base.BaseTest):
         b = A(x=1, y=2)  # wrong-arg-types
       """)
 
+  def test_full_name(self):
+    with self.DepTree([("foo.pyi", _SINGLE)]):
+      err = self.CheckWithErrors("""
+        import foo
+        from typing import TypedDict
+        class A(TypedDict):
+          z: int
+        def f(x: A):
+          pass
+        def g() -> foo.A:
+          return {'x': 1, 'y': '2'}
+        a = g()
+        f(a)  # wrong-arg-types[e]
+      """)
+      self.assertErrorSequences(err, {"e": [
+          "Expected", "x: A", "Actual", "x: foo.A"
+      ]})
+
 
 if __name__ == "__main__":
   test_base.main()

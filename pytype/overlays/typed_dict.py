@@ -126,10 +126,11 @@ class TypedDictBuilder(abstract.PyTDClass):
   def make_class_from_pyi(self, cls_name, pytd_cls, total=True):
     """Make a TypedDictClass from a pyi class."""
     # NOTE: Returns the abstract class, not a variable.
+    name = pytd_cls.name or cls_name
     if total is None:
       total = True
     props = TypedDictProperties(
-        name=cls_name, fields={}, required=set(), total=total)
+        name=name, fields={}, required=set(), total=total)
 
     for c in pytd_cls.constants:
       typ = self.ctx.convert.constant_to_var(c.type)
