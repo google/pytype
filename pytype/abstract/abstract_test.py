@@ -813,7 +813,7 @@ class SimpleFunctionTest(AbstractTestBase):
         })
     kwargs = kwargs.to_variable(self._ctx.root_node)
     args = function.Args(
-        posargs=(), namedargs=abstract.Dict(self._ctx), starstarargs=kwargs)
+        posargs=(), namedargs={}, starstarargs=kwargs)
     f.call(self._ctx.root_node, f, args)
 
   def test_call_with_bad_kwargs(self):
@@ -824,7 +824,7 @@ class SimpleFunctionTest(AbstractTestBase):
                   {"_1": self._ctx.convert.build_int(self._ctx.root_node)})
     kwargs = kwargs.to_variable(self._ctx.root_node)
     args = function.Args(
-        posargs=(), namedargs=abstract.Dict(self._ctx), starstarargs=kwargs)
+        posargs=(), namedargs={}, starstarargs=kwargs)
     self.assertRaises(function.WrongArgTypes, f.call, self._ctx.root_node, f,
                       args)
 
@@ -846,7 +846,7 @@ class SimpleFunctionTest(AbstractTestBase):
     kwargs = kwargs.to_variable(self._ctx.root_node)
     args = function.Args(
         posargs=(self._ctx.convert.build_string(self._ctx.root_node, "1"),),
-        namedargs=abstract.Dict(self._ctx),
+        namedargs={},
         starstarargs=kwargs)
     f.call(self._ctx.root_node, f, args)
     kwargs = abstract.Dict(self._ctx)
@@ -857,7 +857,7 @@ class SimpleFunctionTest(AbstractTestBase):
     args = function.Args(
         posargs=(self._ctx.convert.build_string(self._ctx.root_node, "1"),
                  self._ctx.convert.build_int(self._ctx.root_node)),
-        namedargs=abstract.Dict(self._ctx),
+        namedargs={},
         starstarargs=kwargs)
     self.assertRaises(function.MissingParameter, f.call, self._ctx.root_node, f,
                       args)
@@ -879,7 +879,7 @@ class SimpleFunctionTest(AbstractTestBase):
     float_inst = self._ctx.convert.primitive_class_instances[float]
     stararg = self._ctx.convert.build_tuple(
         self._ctx.root_node, (float_inst.to_variable(self._ctx.root_node),))
-    namedargs = abstract.Dict(self._ctx)
+    namedargs = {}
     kwarg = abstract.Dict(self._ctx)
     kwarg.update(
         self._ctx.root_node, {

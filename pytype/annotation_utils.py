@@ -10,7 +10,6 @@ from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
-from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd_utils
 
@@ -345,10 +344,6 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       return AnnotatedValue(None, value, final=True)
     elif isinstance(typ, abstract.FinalAnnotation):
       return AnnotatedValue(typ.annotation, annot_val, final=True)
-    elif isinstance(typ, typed_dict.TypedDictClass):
-      # We do not want to instantiate a TypedDict annotation if we have a
-      # concrete value.
-      return AnnotatedValue(typ, value)
     elif typ.full_name == "typing.TypeAlias":
       # Validate that 'value' is a legal type alias and use it.
       annot = self.extract_annotation(node, value, name, stack)

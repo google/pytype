@@ -437,8 +437,12 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     mixin.PythonDict.init_mixin(self, {})
 
   def str_of_constant(self, printer):
-    return str({name: " or ".join(_var_map(printer, value))
-                for name, value in self.pyval.items()})
+    # self.pyval is only populated for string keys.
+    if self.could_contain_anything:
+      return "{...: ...}"
+    pairs = [f"{name!r}: {' or '.join(_var_map(printer, value))}"
+             for name, value in self.pyval.items()]
+    return "{" + ", ".join(pairs) + "}"
 
   def __repr__(self):
     if not hasattr(self, "could_contain_anything"):

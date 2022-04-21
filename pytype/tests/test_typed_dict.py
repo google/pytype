@@ -128,6 +128,40 @@ class TypedDictTest(test_base.BaseTest):
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
 
+  def test_annotated_global_var(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+      a: A = {'x': 10}
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+
+      class A(TypedDict):
+        x: int
+
+      a: A
+    """)
+
+  def test_annotated_local_var(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+      def f():
+        a: A = {'x': 10}
+        return a
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+
+      class A(TypedDict):
+        x: int
+
+      def f() -> A: ...
+    """)
+
   def test_return_type(self):
     err = self.CheckWithErrors("""
       from typing_extensions import TypedDict
@@ -364,6 +398,24 @@ class PyiTypedDictTest(test_base.BaseTest):
         a = A(x=1, y='2')
         b = A(x=1, y=2)  # wrong-arg-types
       """)
+
+  def test_full_name(self):
+    with self.DepTree([("foo.pyi", _SINGLE)]):
+      err = self.CheckWithErrors("""
+        import foo
+        from typing_extensions import TypedDict
+        class A(TypedDict):
+          z: int
+        def f(x: A):
+          pass
+        def g() -> foo.A:
+          return {'x': 1, 'y': '2'}
+        a = g()
+        f(a)  # wrong-arg-types[e]
+      """)
+      self.assertErrorSequences(err, {"e": [
+          "Expected", "x: A", "Actual", "x: foo.A"
+      ]})
 
 
 if __name__ == "__main__":

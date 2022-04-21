@@ -534,21 +534,19 @@ class VirtualMachine:
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
-    namedargs = abstract.Dict(self.ctx)
+    namedargs = {}
 
     def set_named_arg(node, key, val):
       # If we have no bindings for val, fall back to unsolvable.
       # See test_closures.ClosuresTest.test_undefined_var
-      if val.bindings:
-        namedargs.setitem_slot(node, key, val)
-      else:
-        namedargs.setitem_slot(node, key, self.ctx.new_unsolvable(node))
+      namedargs[key] = val if val.bindings else self.ctx.new_unsolvable(node)
 
     state, args = state.popn(num)
     if starstarargs:
       kwnames = abstract_utils.get_atomic_python_constant(starstarargs, tuple)
       n = len(args) - len(kwnames)
       for key, arg in zip(kwnames, args[n:]):
+        key = self.ctx.convert.value_to_constant(key.data[0], str)
         set_named_arg(state.node, key, arg)
       posargs = args[0:n]
       starstarargs = None
@@ -2319,11 +2317,8 @@ class VirtualMachine:
     state, starargs = state.pop()
     starargs = vm_utils.ensure_unpacked_starargs(state.node, starargs, self.ctx)
     state, fn = state.pop()
-    # TODO(mdemello): fix function.Args() to properly init namedargs,
-    # and remove this.
-    namedargs = abstract.Dict(self.ctx)
     state, ret = self.call_function_with_state(
-        state, fn, (), namedargs=namedargs, starargs=starargs,
+        state, fn, (), namedargs=None, starargs=starargs,
         starstarargs=starstarargs)
     return state.push(ret)
 

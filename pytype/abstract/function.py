@@ -297,7 +297,8 @@ class Signature:
         yield (argname(i), posarg, formal)
       else:
         yield (argname(i), posarg, None)
-    for name, namedarg in sorted(args.namedargs.items()):
+    for name in sorted(args.namedargs):
+      namedarg = args.namedargs[name]
       formal = self.annotations.get(name)
       if formal is None and self.kwargs_name:
         kwargs_type = self.annotations.get(self.kwargs_name)
@@ -389,10 +390,7 @@ class Args(collections.namedtuple(
         starstarargs=starstarargs)
 
   def has_namedargs(self):
-    if isinstance(self.namedargs, dict):
-      return bool(self.namedargs)
-    else:
-      return bool(self.namedargs.pyval)
+    return bool(self.namedargs)
 
   def has_non_namedargs(self):
     return bool(self.posargs or self.starargs or self.starstarargs)
@@ -524,10 +522,9 @@ class Args(collections.namedtuple(
       # Unlike varargs below, we do not adjust starstarargs into namedargs when
       # the function signature has matching param_names because we have not
       # found a benefit in doing so.
-      if self.namedargs is None:
-        namedargs = starstarargs_as_dict
-      else:
-        namedargs.update(node, starstarargs_as_dict)
+      if namedargs is None:
+        namedargs = {}
+      abstract_utils.update_args_dict(namedargs, starstarargs_as_dict, node)
 
       # We have pulled out all the named args from the function call, so we need
       # to delete them from starstarargs. If the original call contained

@@ -32,10 +32,7 @@ class BuildClass(_base.BaseValue):
   def call(self, node, _, args, alias_map=None):
     args = args.simplify(node, self.ctx)
     funcvar, name = args.posargs[0:2]
-    if isinstance(args.namedargs, dict):
-      kwargs = args.namedargs
-    else:
-      kwargs = self.ctx.convert.value_to_constant(args.namedargs, dict)
+    kwargs = args.namedargs
     # TODO(mdemello): Check if there are any changes between python2 and
     # python3 in the final metaclass computation.
     # TODO(b/123450483): Any remaining kwargs need to be passed to the
