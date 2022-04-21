@@ -403,7 +403,7 @@ class PyiTypedDictTest(test_base.BaseTest):
     with self.DepTree([("foo.pyi", _SINGLE)]):
       err = self.CheckWithErrors("""
         import foo
-        from typing import TypedDict
+        from typing_extensions import TypedDict
         class A(TypedDict):
           z: int
         def f(x: A):
