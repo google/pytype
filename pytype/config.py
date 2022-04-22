@@ -160,7 +160,7 @@ FEATURE_FLAGS = [
      "Enable exhaustive checking of function parameter types."),
     ("--enable-nested-classes", False,
      "Enable support for nested classes in .py files."),
-    ("--enable-typed-dicts", False,
+    ("--enable-typed-dicts", True,
      "Enable support for TypedDicts."),
     ("--strict-primitive-comparisons", False,
      "Emit errors for comparisons between incompatible primitive types."),

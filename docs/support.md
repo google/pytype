@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-04-06T14:32-07:00 -->
+<!-- Added by: rechen, at: 2022-04-22T15:56-07:00 -->
 
 <!--te-->
 
@@ -66,7 +66,7 @@ Feature                                                                         
 [PEP 563 -- Postponed Evaluation of Annotations][563]                                   | 3.7     | ✅        |
 [PEP 585 -- Type Hinting Generics in Standard Collections][585]                         | 3.9     | ✅        |
 [PEP 586 -- Literal Types][586]                                                         | 3.8     | ✅        |
-[PEP 589 -- TypedDict][589]                                                             | 3.8     | ✅        | Requires `--enable-typed-dicts` flag externally
+[PEP 589 -- TypedDict][589]                                                             | 3.8     | ✅        |
 [PEP 591 -- Adding a Final Qualifier to Typing][591]                                    | 3.8     | ✅        |
 [PEP 593 -- Flexible Function and Variable Annotations][593]                            | 3.9     | ✅        |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]                                   | 3.10    | ❌        | [#785][union-pipe]
