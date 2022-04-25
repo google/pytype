@@ -178,12 +178,15 @@ class TypedDictClass(abstract.PyTDClass):
       ret.set_str_item(node, k, v)
     return ret
 
-  def instantiate(self, node, container=None):
+  def instantiate_value(self, node, container):
     args = function.Args(())
     for name, typ in self.props.fields.items():
       args.namedargs[name] = self.ctx.join_variables(
           node, [t.instantiate(node) for t in typ.data])
-    return self._new_instance(container, node, args).to_variable(node)
+    return self._new_instance(container, node, args)
+
+  def instantiate(self, node, container=None):
+    return self.instantiate_value(node, container).to_variable(node)
 
   def make_class(self, *args, **kwargs):
     return self._base_cls.make_class(*args, **kwargs)
