@@ -863,13 +863,19 @@ class Converter(utils.ContextWeakrefMixin):
       if not any(x.name == "typing.NamedTuple" for x in bases):
         bases.append(pytd.NamedType("typing.NamedTuple"))
 
-    if any(isinstance(x, named_tuple.NamedTupleClass)
-           for x in missing_bases):
+    has_namedtuple_parent = False
+    parent_field_names = set()
+    for x in missing_bases:
+      if isinstance(x, named_tuple.NamedTupleClass):
+        has_namedtuple_parent = True
+        parent_field_names.update(field.name for field in x.props.fields)
+    if has_namedtuple_parent:
       # If inheriting from an anonymous namedtuple, mark all derived class
       # constants as ClassVars, otherwise MergeBaseClasses will convert them
       # into namedtuple fields.
-      for c in constants.values():
-        c.wrap("typing.ClassVar")
+      for k, c in constants.items():
+        if k not in parent_field_names:
+          c.wrap("typing.ClassVar")
 
     final_constants = []
     if isinstance(v, named_tuple.NamedTupleClass):
