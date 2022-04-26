@@ -824,7 +824,10 @@ class Converter(utils.ContextWeakrefMixin):
             instance = self._create_new_unknown_value("type")
           else:
             mycls = self.constant_to_value(cls, subst, self.ctx.root_node)
-            instance = abstract.Instance(mycls, self.ctx)
+            if isinstance(mycls, typed_dict.TypedDictClass):
+              instance = mycls.instantiate_value(self.ctx.root_node, None)
+            else:
+              instance = abstract.Instance(mycls, self.ctx)
           log.info("New pytd instance for %s: %r", cls.name, instance)
           self._convert_cache[key] = instance
         return self._convert_cache[key]

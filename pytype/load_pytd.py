@@ -312,8 +312,7 @@ class _Resolver:
         visitors.ExpandCompatibleBuiltins(self.builtins_ast))
     return mod_ast
 
-  def resolve_external_types(self, mod_ast, module_map, aliases, *,
-                             mod_name=None):
+  def resolve_external_types(self, mod_ast, module_map, aliases, *, mod_name):
     name = mod_name or mod_ast.name
     try:
       mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
@@ -616,10 +615,15 @@ class Loader:
     if mod_ast:
       try:
         self._resolver.verify(mod_ast)
-      except BadDependencyError:
+      except (BadDependencyError, visitors.ContainerError):
         # In the case of a circular import, an external type may be left
-        # unresolved. As long as the module containing the unresolved type does
-        # not also contain a circular import, an extra lookup should resolve it.
+        # unresolved, so we re-resolve lookups in this module and its direct
+        # dependencies. Technically speaking, we should re-resolve all
+        # transitive imports, but lookups are expensive.
+        dependencies = self._resolver.collect_dependencies(mod_ast)
+        for k in dependencies:
+          self._modules[k].ast = self._resolve_external_types(
+              self._modules[k].ast)
         mod_ast = self._resolve_external_types(mod_ast)
         self._resolver.verify(mod_ast)
     return mod_ast

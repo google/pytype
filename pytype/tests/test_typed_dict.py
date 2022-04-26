@@ -417,6 +417,34 @@ class PyiTypedDictTest(test_base.BaseTest):
           "Expected", "x: A", "Actual", "x: foo.A"
       ]})
 
+  def test_setitem(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypedDict
+      class Foo(TypedDict):
+        x: int
+    """), ("bar.pyi", """
+      import foo
+      def f() -> foo.Foo: ...
+    """)]):
+      self.Check("""
+        import bar
+        foo = bar.f()
+        foo['x'] = 42
+      """)
+
+  def test_match(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypedDict
+      class Foo(TypedDict):
+        x: int
+      def f(x: Foo) -> None: ...
+      def g() -> Foo: ...
+    """)]):
+      self.Check("""
+        import foo
+        foo.f(foo.g())
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -92,6 +92,21 @@ class NamedtupleTestsPy3(test_base.BaseTest):
       X('a', 'b')
     """)
 
+  def test_variable_annotations(self):
+    ty = self.Infer("""
+      import collections
+      class X(collections.namedtuple('X', ['a', 'b'])):
+        a: int
+        b: str
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import collections
+      from typing import NamedTuple
+      class X(NamedTuple):
+        a: int
+        b: str
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
