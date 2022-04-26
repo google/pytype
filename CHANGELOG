@@ -1,3 +1,15 @@
+Version 2022.04.26:
+
+Updates:
+* Enable --enable-typed-dicts by default.
+
+Bug fixes:
+* Preserve the full name of imported TypedDicts.
+* Stop dropping TypedDict annotations from local assignments.
+* Don't mark fields of anonymous namedtuple parents as ClassVars.
+* Instantiate imported TypedDicts to typed_dict.TypedDict, not Instance.
+* Fix more typeshed circular dependency issues.
+
 Version 2022.04.22:
 
 Updates:
