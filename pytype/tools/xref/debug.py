@@ -8,7 +8,7 @@ from pytype.ast import debug
 
 def format_loc(location):
   # location is (line, column)
-  fmt = "%d:%d" % location
+  fmt = "%d:%2d" % location
   return fmt.rjust(8)
 
 
@@ -58,6 +58,38 @@ def show_refs(index):
 def show_calls(index):
   for call in index.calls:
     print(format_call(call))
+
+
+def display_type(data):
+  """Convert a pytype internal type to a display type."""
+  name = "typing.Any"
+  if data and data[0]:
+    d = data[0][0]
+    if d.cls:
+      name = d.cls.full_name
+  if name == "unsolveable":
+    name = "typing.Any"
+  elif name.startswith("z__pytype_partial"):
+    name = "<unknown>"
+  return name
+
+
+def show_types(index):
+  """Show inferred types."""
+  out = []
+  for def_id in index.locs:
+    defn = index.defs[def_id]
+    for loc in index.locs[def_id]:
+      out.append((loc.location, defn.typ, defn.name, display_type(defn.data)))
+  for ref, defn in index.links:
+    out.append((ref.location, defn.typ, ref.name, display_type(ref.data)))
+  # Sort by location
+  for location, category, name, typ in sorted(out, key=lambda x: x[0]):
+    # Filter out some noise
+    if (category in ("FunctionDef", "IsInstance") or
+        typ in ("builtins.module", "__future__._Feature")):
+      continue
+    print("%s  |  %s  %s" % (format_loc(location), name.ljust(35), typ))
 
 
 def show_index(index):
