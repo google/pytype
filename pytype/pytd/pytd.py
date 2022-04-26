@@ -644,10 +644,7 @@ def IsContainer(t):
   for p in t.bases:
     if isinstance(p, GenericType):
       base = p.base_type
-      # We need to check for Generic and Protocol again here because base may
-      # not yet have been resolved to a ClassType.
-      if (base.name in ('typing.Generic', 'typing.Protocol') or
-          isinstance(base, ClassType) and IsContainer(base.cls)):
+      if isinstance(base, ClassType) and IsContainer(base.cls):
         return True
   return False
 

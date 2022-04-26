@@ -1594,16 +1594,7 @@ class VerifyContainers(Visitor):
           raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
     elif not isinstance(node, (pytd.CallableType, pytd.TupleType)):
       actual_param_count = len(node.parameters)
-      if actual_param_count and not base_type.cls.template:
-        # This AdjustTypeParameters() call is needed because we validate nodes
-        # before their type parameters have been adjusted in some circular
-        # import cases. The result of this adjustment is not saved because it
-        # may not be accurate if the container is only partially resolved, but
-        # it's good enough to avoid some spurious container validation errors.
-        cls = base_type.cls.Visit(AdjustTypeParameters())
-      else:
-        cls = base_type.cls
-      max_param_count = len(cls.template)
+      max_param_count = len(base_type.cls.template)
       if actual_param_count > max_param_count:
         raise ContainerError(
             "Too many parameters on %s: expected %s, got %s" % (
