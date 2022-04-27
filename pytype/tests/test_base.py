@@ -130,13 +130,19 @@ class BaseTest(unittest.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.options = config.Options.create(python_version=self.python_version,
-                                         build_dict_literals_from_kwargs=True,
-                                         enable_nested_classes=True,
-                                         strict_namedtuple_checks=True,
-                                         strict_parameter_checks=True,
-                                         strict_primitive_comparisons=True,
-                                         use_enum_overlay=True)
+    self.options = config.Options.create(
+        python_version=self.python_version,
+        build_dict_literals_from_kwargs=True,
+        enable_nested_classes=True,
+        overriding_default_value_checks=True,
+        overriding_parameter_count_checks=True,
+        overriding_parameter_name_checks=True,
+        overriding_parameter_type_checks=True,
+        overriding_return_type_checks=True,
+        strict_namedtuple_checks=True,
+        strict_parameter_checks=True,
+        strict_primitive_comparisons=True,
+        use_enum_overlay=True)
 
   @property
   def loader(self):

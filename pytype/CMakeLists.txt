@@ -334,6 +334,16 @@ py_library(
 
 py_library(
   NAME
+    overriding_checks
+  SRCS
+    overriding_checks.py
+  DEPS
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     pytype_source_utils
   SRCS
     pytype_source_utils.py
@@ -428,6 +438,7 @@ py_library(
     ._utils
     .blocks
     .metaclass
+    .overriding_checks
     .state
     pytype.abstract.abstract
     pytype.pyc.pyc

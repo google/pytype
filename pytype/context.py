@@ -17,6 +17,8 @@ from pytype import tracer_vm
 from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
+from pytype.abstract import function
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -92,6 +94,10 @@ class Context:
     # If set, allow construction of recursive values, setting the
     # self-referential field to Any
     self.recursion_allowed = False
+    # Map from classes to maps from names of the instance methods
+    # of the class to their signatures.
+    self.method_signature_map: Dict[class_mixin.Class,
+                                    Dict[str, function.Signature]] = {}
 
   def matcher(self, node):
     return matcher.AbstractMatcher(node, self)

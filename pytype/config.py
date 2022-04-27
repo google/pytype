@@ -162,6 +162,16 @@ FEATURE_FLAGS = [
      "Enable support for nested classes in .py files."),
     ("--strict-primitive-comparisons", False,
      "Emit errors for comparisons between incompatible primitive types."),
+    ("--overriding-default-value-checks", False,
+     "Enable default value checks for overriding methods."),
+    ("--overriding-parameter-count-checks", False,
+     "Enable parameter count checks for overriding methods."),
+    ("--overriding-parameter-name-checks", False,
+     "Enable parameter name checks for overriding methods."),
+    ("--overriding-parameter-type-checks", False,
+     "Enable parameter type checks for overriding methods."),
+    ("--overriding-return-type-checks", False,
+     "Enable return type checks for overriding methods."),
 ]
 
 
