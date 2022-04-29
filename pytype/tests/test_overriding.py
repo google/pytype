@@ -4,7 +4,7 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
-class OverrdingTest(test_base.BaseTest):
+class OverridingTest(test_base.BaseTest):
   """Tests for overridden and overriding methods signature match."""
 
   # Positional-or-keyword -> positional-or-keyword, same name or underscore.
@@ -777,6 +777,16 @@ class OverrdingTest(test_base.BaseTest):
       class Bar(Foo):
         def f(self, a: int, /) -> None:  # signature-mismatch
           pass
+    """)
+
+  def test_callable_multiple_inheritance(self):
+    self.Check("""
+      from typing import Callable
+      class Foo:
+        def __call__(self, x: int, *, y: str):
+          pass
+      class Bar(Callable, Foo):
+        pass
     """)
 
 

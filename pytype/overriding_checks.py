@@ -273,11 +273,14 @@ def _check_keyword_only_parameters(method_signature, base_signature,
       continue
 
     if method_param_name == method_signature.kwargs_name:
-      # If kwargs are annotated with type T in the function definition,
-      # the annotation in the signature will be Dict[str, T].
-      assert isinstance(method_param_type, abstract.ParameterizedClass)
-      method_param_type = method_param_type.get_formal_type_parameter(
-          abstract_utils.V)
+      if isinstance(method_param_type, abstract.ParameterizedClass):
+        # If kwargs are annotated with type T in the function definition,
+        # the annotation in the signature will be Dict[str, T].
+        method_param_type = method_param_type.get_formal_type_parameter(
+            abstract_utils.V)
+      else:
+        # If the kwargs type is a plain dict, there's nothing to check.
+        continue
 
     # Parameter type of the overridden method must be a subtype of the
     # parameter type of the overriding method.
