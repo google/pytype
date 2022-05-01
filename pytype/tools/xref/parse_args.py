@@ -30,6 +30,10 @@ def make_parser():
   parser.add_argument("--debug", action="store_true",
                       dest="debug", default=None,
                       help="Display debug output.")
+  # For the debug indexer
+  parser.add_argument("--show-types", action="store_true",
+                      dest="show_types", default=None,
+                      help="Display inferred types.")
   # TODO(b/124802213): There should be a cleaner way to do this.
   parser.add_argument(
       "--imports_info", type=str, action="store",

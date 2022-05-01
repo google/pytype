@@ -425,17 +425,6 @@ def build_any(ctx):
   return ctx.convert.unsolvable
 
 
-def build_namedtuple(ctx):
-  return named_tuple.NamedTupleClassBuilder(ctx)
-
-
-def build_typeddict(ctx):
-  if ctx.options.enable_typed_dicts:
-    return typed_dict.TypedDictBuilder(ctx)
-  else:
-    return not_supported_yet("TypedDict", ctx)
-
-
 def build_newtype(ctx):
   return NewType.make("NewType", ctx, "typing")
 
@@ -482,13 +471,13 @@ typing_overlay = {
     "Final": (overlay.build("Final", Final), (3, 8)),
     "Generic": (overlay.build("Generic", Generic), None),
     "Literal": (overlay.build("Literal", Literal), (3, 8)),
-    "NamedTuple": (build_namedtuple, None),
+    "NamedTuple": (named_tuple.NamedTupleClassBuilder, None),
     "NewType": (build_newtype, None),
     "NoReturn": (build_noreturn, None),
     "Optional": (overlay.build("Optional", Optional), None),
     "Tuple": (overlay.build("Tuple", Tuple), None),
     "TypeVar": (build_typevar, None),
-    "TypedDict": (build_typeddict, (3, 8)),
+    "TypedDict": (typed_dict.TypedDictBuilder, (3, 8)),
     "Union": (Union, None),
     "TYPE_CHECKING": (build_typechecking, None),
     "cast": (build_cast, None),

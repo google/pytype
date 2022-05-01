@@ -11,6 +11,7 @@ from typing import Optional, Sequence, Union
 
 from pytype import blocks
 from pytype import metaclass
+from pytype import overriding_checks
 from pytype import state as frame_state
 from pytype import utils
 from pytype.abstract import abstract
@@ -507,6 +508,8 @@ def make_class(node, props, ctx):
       assert issubclass(class_type, abstract.InterpreterClass)
       val = class_type(name, bases, class_dict.pyval, cls, ctx)
       _check_final_members(val, class_dict.pyval, ctx)
+      overriding_checks.check_overriding_members(val, bases, class_dict.pyval,
+                                                 ctx.matcher(node), ctx)
       val.is_decorated = props.is_decorated
     except mro.MROError as e:
       ctx.errorlog.mro_error(ctx.vm.frames, name, e.mro_seqs)

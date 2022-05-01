@@ -1364,6 +1364,27 @@ class ErrorLog(ErrorLogBase):
     self._overriding_final(stack, cls, base, name, details=details,
                            is_method=False)
 
+  def _normalize_signature(self, signature):
+    """If applicable, converts from `f(self: A, ...)` to `A.f(self, ...)`."""
+    self_name = signature.param_names[0]
+    if "." not in signature.name and self_name in signature.annotations:
+      annotations = dict(signature.annotations)
+      self_annot = annotations.pop(self_name)
+      signature = signature._replace(
+          name=f"{self_annot.full_name}.{signature.name}",
+          annotations=annotations)
+    return signature
+
+  @_error_name("signature-mismatch")
+  def overriding_signature_mismatch(self, stack, base_signature,
+                                    class_signature, details=None):
+    base_signature = self._normalize_signature(base_signature)
+    class_signature = self._normalize_signature(class_signature)
+    err_msg = (f"Overriding method signature mismatch.\n"
+               f"Base signature: '{base_signature}'.\n"
+               f"Subclass signature: '{class_signature}'.")
+    self.error(stack, err_msg, details=details)
+
   @_error_name("final-error")
   def assigning_to_final(self, stack, name, local):
     """Attempting to reassign a variable annotated with Final."""

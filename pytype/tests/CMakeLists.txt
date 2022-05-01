@@ -1157,6 +1157,16 @@ py_test(
 
 py_test(
   NAME
+    test_overriding
+  SRCS
+    test_overriding.py
+  DEPS
+    .test_base
+    pytype.api
+)
+
+py_test(
+  NAME
     test_dataclasses
   SRCS
     test_dataclasses.py
