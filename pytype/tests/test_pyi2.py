@@ -112,25 +112,6 @@ class PYITestPython3Feature(test_base.BaseTest):
         x = ...  # type: bytes
       """)
 
-  def test_collections_abc_callable(self):
-    with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
-        from collections.abc import Callable
-        def f() -> Callable[[], float]: ...
-      """)
-      ty, _ = self.InferWithErrors("""
-        import foo
-        func = foo.f()
-        func(0.0)  # wrong-arg-count
-        x = func()
-      """, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
-        import foo
-        from typing import Callable
-        func: Callable[[], float]
-        x: float
-      """)
-
   def test_imported_literal_alias(self):
     with self.DepTree([("foo.pyi", """
       from typing import Literal

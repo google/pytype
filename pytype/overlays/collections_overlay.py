@@ -2,6 +2,7 @@
 
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
+from pytype.overlays import typing_overlay
 
 
 class CollectionsOverlay(overlay.Overlay):
@@ -27,3 +28,10 @@ collections_overlay = {
     "namedtuple": overlay.build(
         "namedtuple", named_tuple.NamedTupleBuilder.make),
 }
+
+
+class ABCOverlay(typing_overlay.Redirect):
+  """A custom overlay for the 'collections.abc' module."""
+
+  def __init__(self, ctx):
+    super().__init__("collections.abc", {}, ctx)

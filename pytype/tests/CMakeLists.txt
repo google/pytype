@@ -501,6 +501,16 @@ py_test(
 
 py_test(
   NAME
+    test_collections_abc
+  SRCS
+    test_collections_abc.py
+  DEPS
+    .test_base
+    pytype.utils
+)
+
+py_test(
+  NAME
     test_containers
   SRCS
     test_containers.py

@@ -532,13 +532,6 @@ class StdlibTestsFeatures(test_base.BaseTest,
       def f(name) -> bytes: ...
     """)
 
-  def test_collections_abc(self):
-    self.Check("""
-      import collections
-      class Foo(collections.abc.Mapping):
-        pass
-    """)
-
   def test_array_frombytes(self):
     self.Check("""
       import array
