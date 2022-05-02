@@ -286,10 +286,9 @@ class _PathFinder:
 class _Resolver:
   """Resolve symbols in a pytd tree."""
 
-  def __init__(self, builtins_ast, enable_nested_classes):
+  def __init__(self, builtins_ast):
     self.builtins_ast = builtins_ast
     self.allow_singletons = False
-    self._enable_nested_classes = enable_nested_classes
 
   def _lookup(self, visitor, mod_ast, lookup_ast):
     if lookup_ast:
@@ -298,9 +297,7 @@ class _Resolver:
     return mod_ast
 
   def resolve_local_types(self, mod_ast, *, lookup_ast=None):
-    local_lookup = visitors.LookupLocalTypes(
-        self.allow_singletons,
-        enable_nested_classes=self._enable_nested_classes)
+    local_lookup = visitors.LookupLocalTypes(self.allow_singletons)
     return self._lookup(local_lookup, mod_ast, lookup_ast)
 
   def resolve_builtin_types(self, mod_ast, *, lookup_ast=None):
@@ -376,7 +373,7 @@ class Loader:
     self._path_finder = _PathFinder(options)
     self._builtin_loader = builtin_stubs.BuiltinLoader(
         parser.PyiOptions.from_toplevel_options(options))
-    self._resolver = _Resolver(self.builtins, options.enable_nested_classes)
+    self._resolver = _Resolver(self.builtins)
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
     self._prefixes = set()
