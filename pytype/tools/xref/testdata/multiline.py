@@ -15,16 +15,16 @@ x = (a +
 
 #- @y defines/binding VarY
 #- @a ref VarA
-y = list(a,
+y = list([a,
 #- @b ref VarB
          b,
 #- @c ref VarC
-         c)
+         c])
 
 #- @x ref VarX
 #- @y ref VarY
 #- @z defines/binding VarZ
-z = (x, y)
+z = [x, y]
 
 #- @z ref VarZ
 z[1] = (1,
