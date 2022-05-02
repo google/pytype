@@ -164,7 +164,7 @@ class Context:
         typ, ("typing.ClassVar", "dataclasses.InitVar"))
     if contained_type:
       typ = contained_type
-    bad = self.matcher(node).bad_matches(value, typ)
+    bad, _ = self.matcher(node).bad_matches(value, typ)
     for view, error_details in bad:
       binding = view[value]
       self.errorlog.annotation_type_mismatch(

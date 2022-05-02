@@ -228,7 +228,7 @@ class TypedDict(abstract.Dict):
     if not self._check_str_key(name):
       return
     typ = abstract_utils.get_atomic_value(self.fields[name])
-    bad = self.ctx.matcher(node).bad_matches(value_var, typ)
+    bad, _ = self.ctx.matcher(node).bad_matches(value_var, typ)
     for view, error_details in bad:
       binding = view[value_var]
       self.ctx.errorlog.annotation_type_mismatch(

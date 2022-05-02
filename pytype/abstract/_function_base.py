@@ -70,6 +70,48 @@ class Function(_instance_base.SimpleValue):
         name = self._get_cell_variable_name(a)
         assert name is not None, "Closure variable lookup failed."
         raise function.UndefinedParameterError(name)
+    # The implementation of match_args is currently rather convoluted because we
+    # have two different implementations:
+    # * Old implementation: `_match_views` matches 'args' against 'self' one
+    #   view at a time, where a view is a mapping of every variable in args to a
+    #   particular binding. This handles generics but scales poorly with the
+    #   number of bindings per variable.
+    # * New implementation: `_match_args_sequentially` matches 'args' one at a
+    #   time. This scales better but cannot yet handle generics.
+    # Subclasses should implement the following:
+    # * _match_view(node, args, view, alias_map): this will be called repeatedly
+    #   by _match_views.
+    # * _match_args_sequentially(node, args, alias_map, match_all_views): A
+    #   sequential matching implementation.
+    # TODO(b/228241343): Get rid of _match_views and simplify match_args once
+    # _match_args_sequentially can handle generics.
+    if self._is_generic_call(args):
+      return self._match_views(node, args, alias_map, match_all_views)
+    return self._match_args_sequentially(node, args, alias_map, match_all_views)
+
+  def _is_generic_call(self, args):
+    for sig in function.get_signatures(self):
+      for t in sig.annotations.values():
+        stack = [t]
+        seen = set()
+        while stack:
+          cur = stack.pop()
+          if cur in seen:
+            continue
+          seen.add(cur)
+          if cur.formal or cur.template:
+            return True
+          if _isinstance(cur, "Union"):
+            stack.extend(cur.options)
+    if self.is_attribute_of_class and args.posargs:
+      for self_val in args.posargs[0].data:
+        for cls in self_val.cls.mro:
+          if cls.template:
+            return True
+    return False
+
+  def _match_views(self, node, args, alias_map, match_all_views):
+    """Matches all views of the given args against this function."""
     error = None
     matched = []
     arg_variables = args.get_variables()
@@ -105,6 +147,9 @@ class Function(_instance_base.SimpleValue):
     return matched
 
   def _match_view(self, node, args, view, alias_map):
+    raise NotImplementedError(self.__class__.__name__)
+
+  def _match_args_sequentially(self, node, args, alias_map, match_all_views):
     raise NotImplementedError(self.__class__.__name__)
 
   def __repr__(self):

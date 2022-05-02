@@ -280,7 +280,7 @@ class AnnotationContainer(AnnotationClass):
                 root_node, container=abstract_utils.DUMMY_CONTAINER)
         else:
           actual = param_value.instantiate(root_node)
-        bad = self.ctx.matcher(root_node).bad_matches(actual, formal_param)
+        bad, _ = self.ctx.matcher(root_node).bad_matches(actual, formal_param)
         if bad:
           if not isinstance(param_value, TypeParameter):
             # If param_value is not a TypeVar, we substitute in TypeVar bounds

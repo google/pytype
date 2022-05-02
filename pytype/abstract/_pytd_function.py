@@ -396,6 +396,9 @@ class PyTDFunction(_function_base.Function):
     if not matched:
       raise error  # pylint: disable=raising-bad-type
 
+  def _match_args_sequentially(self, node, args, alias_map, match_all_views):
+    return self._match_views(node, args, alias_map, match_all_views)
+
   def set_function_defaults(self, unused_node, defaults_var):
     """Attempts to set default arguments for a function's signatures.
 
