@@ -761,6 +761,12 @@ class TypingTestPython3Feature(test_base.BaseTest):
       f(collections.OrderedDict(a=0))
     """)
 
+  def test_instantiate_ordered_dict(self):
+    self.Check("""
+      from typing import OrderedDict
+      OrderedDict()
+    """)
+
   def test_typed_dict(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

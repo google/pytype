@@ -9,6 +9,7 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 
 log = logging.getLogger(__name__)
+_isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
 class SimpleValue(_base.BaseValue):
@@ -99,14 +100,17 @@ class SimpleValue(_base.BaseValue):
     else:
       self.instance_type_parameters[name] = value
 
-  def call(self, node, func, args, alias_map=None):
-    binding = func if self == func.data else self.to_binding(node)
+  def _call_helper(self, node, obj, binding, args):
+    obj_binding = binding if obj == binding.data else obj.to_binding(node)
     node, var = self.ctx.attribute_handler.get_attribute(
-        node, self, "__call__", binding)
+        node, obj, "__call__", obj_binding)
     if var is not None and var.bindings:
       return function.call_function(self.ctx, node, var, args)
     else:
       raise function.NotCallable(self)
+
+  def call(self, node, func, args, alias_map=None):
+    return self._call_helper(node, self, func, args)
 
   def argcount(self, node):
     node, var = self.ctx.attribute_handler.get_attribute(

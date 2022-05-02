@@ -75,6 +75,9 @@ class AnnotationContainer(AnnotationClass):
     super().__init__(name, ctx)
     self.base_cls = base_cls
 
+  def __repr__(self):
+    return "AnnotationContainer(%s)" % self.name
+
   def _sub_annotation(
       self, annot: _base.BaseValue, subst: Mapping[str, _base.BaseValue]
   ) -> _base.BaseValue:
@@ -299,6 +302,9 @@ class AnnotationContainer(AnnotationClass):
     except abstract_utils.GenericTypeError as e:
       self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, e.annot, e.error)
       return self.ctx.convert.unsolvable
+
+  def call(self, node, func, args, alias_map=None):
+    return self._call_helper(node, self.base_cls, func, args)
 
 
 class TypeParameter(_base.BaseValue):
