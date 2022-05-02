@@ -234,6 +234,30 @@ class SignedFunction(_function_base.Function):
           self.signature, args, self.ctx, bad_param=bad_arg)
     return subst
 
+  def _match_args_sequentially(self, node, args, alias_map, match_all_views):
+    def match_succeeded(match_result):
+      bad_matches, any_match = match_result
+      if not bad_matches:
+        return True
+      if match_all_views or self.ctx.options.strict_parameter_checks:
+        return False
+      return any_match
+
+    for name, arg, formal in self.signature.iter_args(args):
+      if formal is None:
+        continue
+      if name in (self.signature.varargs_name, self.signature.kwargs_name):
+        # The annotation is Tuple or Dict, but the passed arg only has to be
+        # Iterable or Mapping.
+        formal = self.ctx.convert.widen_type(formal)
+      match_result = self.ctx.matcher(node).bad_matches(arg, formal)
+      if not match_succeeded(match_result):
+        bad_arg = function.BadParam(
+            name=name, expected=formal, error_details=match_result[0][0][1])
+        raise function.WrongArgTypes(
+            self.signature, args, self.ctx, bad_param=bad_arg)
+    return [{}]
+
   def get_first_opcode(self):
     return None
 

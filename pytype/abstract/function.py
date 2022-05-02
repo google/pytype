@@ -30,7 +30,7 @@ def get_signatures(func):
     return [sig.drop_first_parameter() for sig in sigs]  # drop "self"
   elif _isinstance(func, ("ClassMethod", "StaticMethod")):
     return get_signatures(func.method)
-  elif _isinstance(func, "SimpleFunction"):
+  elif _isinstance(func, "SignedFunction"):
     return [func.signature]
   elif _isinstance(func.cls, "CallableClass"):
     return [Signature.from_callable(func.cls)]

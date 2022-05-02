@@ -175,16 +175,21 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       var: A cfg.Variable, containing instances.
       other_type: An instance of BaseValue.
     Returns:
-      A list of all the views of var that didn't match.
+      A pair of:
+      * A list of all the views of var that didn't match.
+      * Whether at least one view matched.
+      TODO(b/63407497): We should be able to get rid of the second value once we
+      start requiring that all views match.
     """
     bad = []
     if (var.data == [self.ctx.convert.unsolvable] or
         other_type == self.ctx.convert.unsolvable):
       # An unsolvable matches everything. Since bad_matches doesn't need to
       # compute substitutions, we can return immediately.
-      return bad
+      return bad, True
     views = abstract_utils.get_views([var], self._node)
     skip_future = None
+    any_match = False
     while True:
       try:
         view = views.send(skip_future)
@@ -200,7 +205,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         skip_future = False
       else:
         skip_future = True
-    return bad
+        any_match = True
+    return bad, any_match
 
   def match_from_mro(self, left, other_type, allow_compat_builtins=True):
     """Checks a type's MRO for a match for a formal type.
@@ -989,7 +995,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if k not in fields:
         continue
       typ = abstract_utils.get_atomic_value(fields[k])
-      b = self.bad_matches(v, typ)
+      b, _ = self.bad_matches(v, typ)
       if b:
         bad.append((k, v, typ, b))
     if missing or extra or bad:

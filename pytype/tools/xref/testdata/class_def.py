@@ -11,11 +11,15 @@ class A:
 
 
 #- @B defines/binding ClassB
-#- @A ref ClassA
 #- ClassB.node/kind class
-class B(A):
+class B:
   pass
 
+#- @D defines/binding ClassD
+#- @A ref ClassA
+#- ClassD.node/kind class
+class D(A):
+  pass
 
 #- @Foo defines/binding ClassFoo
 #- @A ref ClassA

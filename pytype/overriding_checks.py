@@ -417,7 +417,7 @@ def _check_signature_compatible(method_signature, base_signature,
   def is_subtype(this_type, that_type):
     """Return True iff this_type is a subclass of that_type."""
     this_type_instance = this_type.instantiate(ctx.root_node, None)
-    return not matcher.bad_matches(this_type_instance, that_type)
+    return not matcher.bad_matches(this_type_instance, that_type)[0]
 
   check_result = (
       _check_positional_parameters(method_signature, base_signature, is_subtype)

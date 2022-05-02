@@ -66,10 +66,10 @@ class ErrorTest(test_base.BaseTest):
   def test_wrong_brackets(self):
     _, errors = self.InferWithErrors("""
       from typing import List
-      def f(x: List(str)):  # not-callable[e]
+      def f(x: List(str)):  # invalid-annotation[e]
         pass
     """)
-    self.assertErrorSequences(errors, {"e": ["List"]})
+    self.assertErrorSequences(errors, {"e": ["<instance of list>"]})
 
   def test_interpreter_class_printing(self):
     _, errors = self.InferWithErrors("""

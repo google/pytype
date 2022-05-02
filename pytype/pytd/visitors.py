@@ -623,13 +623,11 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
 class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up local identifiers. Must be called on a TypeDeclUnit."""
 
-  def __init__(self, allow_singletons=False, toplevel=True,
-               enable_nested_classes=True):
+  def __init__(self, allow_singletons=False, toplevel=True):
     super().__init__(allow_singletons)
     self._toplevel = toplevel
     self.local_names = set()
     self.class_names = []
-    self._enable_nested_classes = enable_nested_classes
 
   def EnterTypeDeclUnit(self, unit):
     self.unit = unit
@@ -746,7 +744,7 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     return resolved_node
 
   def VisitClassType(self, t):
-    if not t.cls and self._enable_nested_classes:
+    if not t.cls:
       if t.name == self.class_names[-1]:
         full_name = ".".join(self.class_names)
         lookup_type = pytd.NamedType(full_name)
