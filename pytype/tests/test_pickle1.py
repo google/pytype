@@ -187,6 +187,20 @@ class PickleTest(test_base.BaseTest):
         bar.f(42)
       """, imports_map={"foo": foo, "bar": bar}, module_name="baz")
 
+  def test_class_decorator(self):
+    foo = """
+      from typing import final
+      @final
+      class A:
+        def f(self): ...
+    """
+    with self.DepTree([("foo.py", foo, {"pickle": True})]):
+      self.CheckWithErrors("""
+        import foo
+        class B(foo.A):  # final-error
+          pass
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
