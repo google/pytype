@@ -81,6 +81,18 @@ class Redirect(overlay.Overlay):
     super().__init__(ctx, module_name, member_map, ast)
 
 
+def _build(name):
+  def resolve(ctx):
+    ast = ctx.loader.typing
+    pytd_type = pytd.ToType(ast.Lookup(name), True, True, True)
+    return ctx.convert.constant_to_value(pytd_type)
+  return resolve
+
+
+def _build_not_supported_yet(name, ast):
+  return lambda ctx: not_supported_yet(name, ctx, ast=ast)
+
+
 class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 
@@ -431,14 +443,6 @@ class Literal(TypingContainer):
           self.ctx.vm.frames, self,
           "\n".join("Bad parameter %r at index %d" % e for e in errors))
     return self.ctx.convert.merge_values(values)
-
-
-def _build(name):
-  return lambda ctx: ctx.convert.name_to_value(name)
-
-
-def _build_not_supported_yet(name, ast):
-  return lambda ctx: not_supported_yet(name, ctx, ast=ast)
 
 
 def not_supported_yet(name, ctx, *, ast=None, details=None):

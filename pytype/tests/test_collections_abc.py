@@ -14,6 +14,13 @@ class CollectionsABCTest(test_base.BaseTest):
         pass
     """)
 
+  def test_bytestring(self):
+    """Check that we handle type aliases."""
+    self.Check("""
+      import collections
+      x: collections.abc.ByteString
+    """)
+
   def test_callable(self):
     ty = self.Infer("""
       from collections.abc import Callable
