@@ -189,7 +189,7 @@ class PickleTest(test_base.BaseTest):
 
   def test_class_decorator(self):
     foo = """
-      from typing_extensions import final
+      from typing import final
       @final
       class A:
         def f(self): ...
