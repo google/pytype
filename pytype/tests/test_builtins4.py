@@ -14,7 +14,7 @@ class MapTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator
-      v = ...  # type: Iterator[int]
+      v : Iterator[int]
     """)
 
   def test_lambda(self):
@@ -48,9 +48,9 @@ class MapTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Iterator
-      lst1 = ...  # type: List[nothing]
-      lst2 = ...  # type: List[nothing]
-      lst3 = ...  # type: Iterator[nothing]
+      lst1 : List[nothing]
+      lst2 : List[nothing]
+      lst3 : Iterator[nothing]
     """)
 
   def test_heterogeneous(self):
@@ -181,7 +181,7 @@ class BuiltinTests(test_base.BaseTest):
         def h(x: Any) -> None: ...
         def i(x: type) -> None: ...
         def j(x: Type[super]) -> None: ...
-        v = ...  # type: Type[super]
+        v : Type[super]
       """)
 
   def test_bytearray_slice(self):
@@ -195,7 +195,7 @@ class BuiltinTests(test_base.BaseTest):
   def test_set_length(self):
     self.Check("""
       from typing import Set
-      x = ...  # type: Set[int]
+      x : Set[int]
       len(x)
       len(set())
     """)
@@ -203,14 +203,14 @@ class BuiltinTests(test_base.BaseTest):
   def test_sequence_length(self):
     self.Check("""
       from typing import Sequence
-      x = ...  # type: Sequence
+      x : Sequence
       len(x)
     """)
 
   def test_mapping_length(self):
     self.Check("""
       from typing import Mapping
-      x = ...  # type: Mapping
+      x : Mapping
       len(x)
     """)
 
@@ -295,12 +295,12 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       h = u",".join([u"foo", "bar"])
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      b = ...  # type: str
-      d = ...  # type: str
-      e = ...  # type: str
-      f = ...  # type: str
-      g = ...  # type: str
-      h = ...  # type: str
+      b : str
+      d : str
+      e : str
+      f : str
+      g : str
+      h : str
     """)
 
   @test_utils.skipBeforePy((3, 9), "removeprefix and removesuffix new in 3.9")
@@ -311,9 +311,9 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       c = a.removesuffix("_suffix")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      a = ...  # type: str
-      b = ...  # type: str
-      c = ...  # type: str
+      a : str
+      b : str
+      c : str
     """)
 
   def test_str_is_hashable(self):
@@ -330,8 +330,8 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       x2 = b.join([b"x"])
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      b = ...  # type: bytearray
-      x2 = ...  # type: bytearray
+      b : bytearray
+      x2 : bytearray
     """)
 
   def test_iter1(self):
@@ -342,9 +342,9 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
-      a = ...  # type: int
-      b = ...  # type: int
-      c = ...  # type: Union[int, str]
+      a : int
+      b : int
+      c : Union[int, str]
     """)
 
   def test_dict_keys(self):
@@ -357,11 +357,11 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Set, Union
-      m = ...  # type: Dict[str, None]
-      a = ...  # type: Set[str]
-      b = ...  # type: Set[str]
-      c = ...  # type: Set[Union[int, str]]
-      d = ...  # type: Set[Union[int, str]]
+      m : Dict[str, None]
+      a : Set[str]
+      b : Set[str]
+      c : Set[Union[int, str]]
+      d : Set[Union[int, str]]
     """)
 
   def test_open(self):
@@ -419,12 +419,12 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       import re
       from typing import Iterator
       def f(x: int) -> None: ...
-      x1 = ...  # type: Iterator[int]
-      x2 = ...  # type: Iterator[bool, ...]
-      x3 = ...  # type: Iterator[bool]
-      x4 = ...  # type: Iterator[int]
-      x5 = ...  # type: Iterator[int]
-      x6 = ...  # type: Iterator[str]
+      x1 : Iterator[int]
+      x2 : Iterator[bool, ...]
+      x3 : Iterator[bool]
+      x4 : Iterator[int]
+      x5 : Iterator[int]
+      x6 : Iterator[str]
       """)
 
   def test_filter_types(self):
@@ -447,11 +447,11 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator, Tuple, Union
-      a = ...  # type: Iterator[nothing]
-      b = ...  # type: Iterator[Tuple[Union[int, complex]]]
-      c = ...  # type: Iterator[nothing]
-      d = ...  # type: Iterator[nothing]
-      e = ...  # type: Iterator[Tuple[complex, int]]
+      a : Iterator[nothing]
+      b : Iterator[Tuple[Union[int, complex]]]
+      c : Iterator[nothing]
+      d : Iterator[nothing]
+      e : Iterator[Tuple[complex, int]]
       """)
 
   def test_dict(self):
@@ -482,8 +482,8 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      l3 = ...  # type: List[str]
-      l4 = ...  # type: List[int]
+      l3 : List[str]
+      l4 : List[int]
     """)
 
   def test_tuple_init(self):
@@ -493,8 +493,8 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
-      t3 = ...  # type: Tuple[str, ...]
-      t4 = ...  # type: Tuple[int, ...]
+      t3 : Tuple[str, ...]
+      t4 : Tuple[int, ...]
     """)
 
   def test_items(self):
@@ -503,7 +503,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
-      lst = ...  # type: List[Tuple[str, int]]
+      lst : List[Tuple[str, int]]
     """)
 
   def test_int_init(self):
@@ -540,11 +540,11 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
 
   def test_bytes_constant(self):
     ty = self.Infer("v = b'foo'")
-    self.assertTypesMatchPytd(ty, "v = ...  # type: bytes")
+    self.assertTypesMatchPytd(ty, "v : bytes")
 
   def test_unicode_constant(self):
     ty = self.Infer("v = 'foo\\u00e4'")
-    self.assertTypesMatchPytd(ty, "v = ...  # type: str")
+    self.assertTypesMatchPytd(ty, "v : str")
 
   def test_memoryview(self):
     self.Check("""
@@ -574,10 +574,21 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      v1 = ...  # type: memoryview
-      v2 = ...  # type: bytes
-      v3 = ...  # type: List[int]
-      v4 = ...  # type: str
+      v1: memoryview
+      v2: bytes
+      v3: List[int]
+      v4: str
+    """)
+
+  @test_utils.skipBeforePy((3, 8), "new hex signature added in 3.8.")
+  def test_bytes_hex(self):
+    self.Check("""
+      b = b'abc'
+      b.hex(",", 3)
+      m = memoryview(b)
+      m.hex(",", 4)
+      ba = bytearray([1,2,3])
+      ba.hex(b",", 5)
     """)
 
   def test_memoryview_contextmanager(self):
@@ -586,7 +597,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
         pass
     """)
     self.assertTypesMatchPytd(ty, """
-      v = ...  # type: memoryview
+      v : memoryview
     """)
 
   def test_array_tobytes(self):
@@ -607,8 +618,8 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator, Tuple
-      v1 = ...  # type: Iterator[int]
-      v2 = ...  # type: Iterator[Tuple[int, int]]
+      v1 : Iterator[int]
+      v2 : Iterator[Tuple[int, int]]
     """)
 
   def test_next(self):
@@ -618,9 +629,9 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v2 = next(itr)
     """)
     self.assertTypesMatchPytd(ty, """
-      itr = ...  # type: tupleiterator[int]
-      v1 = ...  # type: int
-      v2 = ...  # type: int
+      itr : tupleiterator[int]
+      v1 : int
+      v2 : int
     """)
 
   def test_aliased_error(self):
@@ -703,10 +714,10 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     # type an optional argument as a typevar.
     self.assertTypesMatchPytd(ty, """
       from typing import Any
-      x1 = ...  # type: int
-      x2 = ...  # type: Any
-      y1 = ...  # type: int
-      y2 = ...  # type: Any
+      x1 : int
+      x2 : Any
+      y1 : int
+      y2 : Any
     """)
 
   def test_str_is_not_int(self):

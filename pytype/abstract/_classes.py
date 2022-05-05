@@ -185,8 +185,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         continue
       if value.official_name is None or (
           self.official_name and
-          value.official_name.startswith(f"{self.official_name}.")) or (
-              not self.ctx.options.enable_nested_classes and value != self):
+          value.official_name.startswith(f"{self.official_name}.")):
         inner_classes.append(value)
     return inner_classes
 

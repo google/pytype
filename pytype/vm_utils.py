@@ -652,7 +652,8 @@ def _overrides(subcls, supercls, attr):
         break
       if isinstance(cls, mixin.LazyMembers):
         cls.load_lazy_attribute(attr)
-      if attr in cls.members and cls.members[attr].bindings:
+      if (isinstance(cls, abstract.SimpleValue) and attr in cls.members and
+          cls.members[attr].bindings):
         return True
   return False
 

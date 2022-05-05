@@ -61,6 +61,38 @@ class TypingOverlay(overlay.Overlay):
     return super()._convert_member(name, builder, subst)
 
 
+class Redirect(overlay.Overlay):
+  """Base class for overlays that redirect to typing."""
+
+  def __init__(self, module_name, aliases, ctx):
+    ast = ctx.loader.import_name(module_name)
+    member_map = {k: _build(v) for k, v in aliases.items()}
+    for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:
+      # Any public members that are not explicitly implemented are unsupported.
+      _, name = pyval.name.rsplit(".", 1)
+      if name.startswith("_"):
+        continue
+      if name in typing_overlay:
+        member_map[name] = typing_overlay[name][0]
+      elif f"typing.{name}" in ctx.loader.typing:
+        member_map[name] = _build(f"typing.{name}")
+      elif name not in member_map:
+        member_map[name] = _build_not_supported_yet(name, ast)
+    super().__init__(ctx, module_name, member_map, ast)
+
+
+def _build(name):
+  def resolve(ctx):
+    ast = ctx.loader.typing
+    pytd_type = pytd.ToType(ast.Lookup(name), True, True, True)
+    return ctx.convert.constant_to_value(pytd_type)
+  return resolve
+
+
+def _build_not_supported_yet(name, ast):
+  return lambda ctx: not_supported_yet(name, ctx, ast=ast)
+
+
 class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 

@@ -250,6 +250,7 @@ class _ToTypeVisitor(Visitor):
     self._in_alias = False
     self._in_literal = 0
     self.allow_singletons = allow_singletons
+    self.allow_functions = False
 
   def EnterAlias(self, _):
     assert not self._in_alias
@@ -267,7 +268,7 @@ class _ToTypeVisitor(Visitor):
 
   def to_type(self, t):
     allow_constants = self._in_alias or self._in_literal
-    allow_functions = self._in_alias
+    allow_functions = self._in_alias or self.allow_functions
     return pytd.ToType(
         t, allow_constants=allow_constants, allow_functions=allow_functions,
         allow_singletons=self.allow_singletons)

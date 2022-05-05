@@ -92,6 +92,7 @@ py_library(
   DEPS
     .named_tuple
     .overlay
+    .typing_overlay
 )
 
 py_library(

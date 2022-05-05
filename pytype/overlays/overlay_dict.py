@@ -32,6 +32,7 @@ overlays = {
     "attr": attr_overlay.AttrOverlay,
     "chex": chex_overlay.ChexOverlay,
     "collections": collections_overlay.CollectionsOverlay,
+    "collections.abc": collections_overlay.ABCOverlay,
     "dataclasses": dataclass_overlay.DataclassOverlay,
     "enum": enum_overlay.EnumOverlay,
     "flax.struct": flax_overlay.DataclassOverlay,

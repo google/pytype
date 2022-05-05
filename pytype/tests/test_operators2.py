@@ -108,6 +108,14 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": [
         "unsupported operand type(s) for +: str and None"]})
 
+  def test_object_and_any(self):
+    self.Check("""
+      from typing import Any
+      foo: object
+      bar: Any
+      print(foo + bar)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
