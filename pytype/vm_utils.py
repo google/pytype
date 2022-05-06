@@ -736,8 +736,6 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
         if ctx.options.report_errors:
           ctx.errorlog.unsupported_operands(ctx.vm.frames, name, x, y)
         result = ctx.new_unsolvable(state.node)
-    elif isinstance(error, function.DictKeyMissing):
-      state, result = error.get_return(state)
     else:
       if ctx.options.report_errors:
         ctx.errorlog.invalid_function_call(ctx.vm.frames, error)

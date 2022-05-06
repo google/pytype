@@ -2,13 +2,20 @@
 
 import dataclasses
 
-from typing import Any, Dict, Set
+from typing import Any, Dict, Optional, Set
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.pytd import pytd
+
+
+class TypedDictKeyMissing(function.DictKeyMissing):
+
+  def __init__(self, typed_dict: "TypedDict", key: Optional[str]):
+    super().__init__(key)
+    self.typed_dict = typed_dict
 
 
 @dataclasses.dataclass
@@ -29,7 +36,7 @@ class TypedDictProperties:
     return self.keys - self.required
 
   def add(self, k, v, total):
-    self.fields[k] = v
+    self.fields[k] = v  # pylint: disable=unsupported-assignment-operation
     if total:
       self.required.add(k)
 
@@ -220,13 +227,10 @@ class TypedDict(abstract.Dict):
 
   def _check_str_key(self, name):
     if name not in self.fields:
-      self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name)
-      return False
-    return True
+      raise TypedDictKeyMissing(self, name)
 
   def _check_str_key_value(self, node, name, value_var):
-    if not self._check_str_key(name):
-      return
+    self._check_str_key(name)
     typ = abstract_utils.get_atomic_value(self.fields[name])
     bad, _ = self.ctx.matcher(node).bad_matches(value_var, typ)
     for view, error_details in bad:
@@ -240,10 +244,9 @@ class TypedDict(abstract.Dict):
     """Check that key is in the typed dict."""
     try:
       name = abstract_utils.get_atomic_python_constant(name_var, str)
-    except abstract_utils.ConversionError:
-      self.ctx.errorlog.typed_dict_error(self.ctx.vm.frames, self, name=None)
-      return False
-    return self._check_str_key(name)
+    except abstract_utils.ConversionError as e:
+      raise TypedDictKeyMissing(self, None) from e
+    self._check_str_key(name)
 
   def _check_value(self, node, name_var, value_var):
     """Check that value has the right type."""
@@ -254,13 +257,12 @@ class TypedDict(abstract.Dict):
   def getitem_slot(self, node, name_var):
     # A typed dict getitem should have a concrete string arg. If we have a var
     # with multiple bindings just fall back to Any.
-    if not self._check_key(name_var):
-      return node, self.ctx.new_unsolvable(node)
+    self._check_key(name_var)
     return super().getitem_slot(node, name_var)
 
   def setitem_slot(self, node, name_var, value_var):
-    if self._check_key(name_var):
-      self._check_value(node, name_var, value_var)
+    self._check_key(name_var)
+    self._check_value(node, name_var, value_var)
     return super().setitem_slot(node, name_var, value_var)
 
   def set_str_item(self, node, name, value_var):

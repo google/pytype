@@ -963,6 +963,11 @@ class ErrorLog(ErrorLogBase):
           stack, error.name, error.bad_call, error.duplicate)
     elif isinstance(error, function.UndefinedParameterError):
       self.name_error(stack, error.name)
+    elif isinstance(error, typed_dict_overlay.TypedDictKeyMissing):
+      self.typed_dict_error(stack, error.typed_dict, error.name)
+    elif isinstance(error, function.DictKeyMissing):
+      # We don't report DictKeyMissing because the false positive rate is high.
+      pass
     else:
       raise AssertionError(error)
 
@@ -1346,7 +1351,8 @@ class ErrorLog(ErrorLogBase):
     if name:
       err_msg = f"TypedDict {obj.class_name} does not contain key {name}"
     else:
-      err_msg = f"TypedDict {obj.class_name} requires all keys to be strings"
+      err_msg = (f"TypedDict {obj.class_name} requires all keys to be constant "
+                 "strings")
     self.error(stack, err_msg)
 
   @_error_name("final-error")
