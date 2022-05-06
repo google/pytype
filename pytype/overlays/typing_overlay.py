@@ -23,6 +23,10 @@ from pytype.typegraph import cfg
 Param = overlay_utils.Param
 
 
+def _is_typing_container(cls: pytd.Class):
+  return pytd.IsContainer(cls) and cls.template
+
+
 class TypingOverlay(overlay.Overlay):
   """A representation of the 'typing' module that allows custom overlays.
 
@@ -39,7 +43,7 @@ class TypingOverlay(overlay.Overlay):
     ast = ctx.loader.typing
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
-      if name not in member_map and pytd.IsContainer(cls) and cls.template:
+      if name not in member_map and _is_typing_container(cls):
         member_map[name] = (overlay.build(name, TypingContainer), None)
     super().__init__(ctx, "typing", member_map, ast)
 
@@ -70,7 +74,7 @@ class Redirect(overlay.Overlay):
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:
       # Any public members that are not explicitly implemented are unsupported.
       _, name = pyval.name.rsplit(".", 1)
-      if name.startswith("_"):
+      if name.startswith("_") or name in member_map:
         continue
       if name in typing_overlay:
         member_map[name] = typing_overlay[name][0]
@@ -84,6 +88,9 @@ class Redirect(overlay.Overlay):
 def _build(name):
   def resolve(ctx):
     ast = ctx.loader.typing
+    pytd_val = ast.Lookup(name)
+    if isinstance(pytd_val, pytd.Class) and _is_typing_container(pytd_val):
+      return TypingContainer(name.rsplit(".", 1)[-1], ctx)
     pytd_type = pytd.ToType(ast.Lookup(name), True, True, True)
     return ctx.convert.constant_to_value(pytd_type)
   return resolve

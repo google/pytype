@@ -53,6 +53,21 @@ class CollectionsABCTest(test_base.BaseTest):
         x: float
       """)
 
+  def test_generator(self):
+    self.Check("""
+      from collections.abc import Generator
+      def f() -> Generator[int, None, None]:
+        yield 0
+    """)
+
+  def test_set(self):
+    # collections.abc.Set is an alias for typing.AbstractSet.
+    self.Check("""
+      from collections.abc import Set
+      def f() -> Set[int]:
+        return frozenset([0])
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
