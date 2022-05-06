@@ -34,4 +34,4 @@ class ABCOverlay(typing_overlay.Redirect):
   """A custom overlay for the 'collections.abc' module."""
 
   def __init__(self, ctx):
-    super().__init__("collections.abc", {}, ctx)
+    super().__init__("collections.abc", {"Set": "typing.AbstractSet"}, ctx)

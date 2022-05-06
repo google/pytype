@@ -818,8 +818,7 @@ def call_function(ctx,
   if (nodes and not ctx.options.strict_parameter_checks) or not error:
     return node, result
   elif fallback_to_unsolvable:
-    if not isinstance(error, DictKeyMissing):
-      ctx.errorlog.invalid_function_call(ctx.vm.stack(func_var.data[0]), error)
+    ctx.errorlog.invalid_function_call(ctx.vm.stack(func_var.data[0]), error)
     return node, result
   else:
     # We were called by something that does its own error handling.

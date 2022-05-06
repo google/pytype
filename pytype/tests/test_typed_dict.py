@@ -297,6 +297,23 @@ class TypedDictTest(test_base.BaseTest):
       f(x)
     """)
 
+  def test_key_existence_check(self):
+    self.Check("""
+      from typing import Union
+      from typing_extensions import TypedDict
+
+      class Foo(TypedDict):
+        a: int
+      class Bar(TypedDict):
+        b: str
+      class Baz(TypedDict):
+        c: Union[Foo, Bar]
+
+      baz: Baz = {'c': {'a': 0}}
+      assert 'a' in baz['c']
+      print(baz['c']['a'])
+    """)
+
 
 _SINGLE = """
   from typing import TypedDict
