@@ -198,6 +198,19 @@ class OverridingTest(test_base.BaseTest):
           return ''
     """)
 
+  def test_return_type_matches_empty(self):
+    with self.DepTree([("foo.py", """
+      class Foo:
+        def f(self):
+          raise NotImplementedError()
+    """)]):
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          def f(self) -> None:
+            pass
+      """)
+
   def test_pytdclass_signature_match(self):
     self.Check("""
       class Foo(list):
