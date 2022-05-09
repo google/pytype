@@ -329,6 +329,18 @@ def MaybeSubstituteParameters(base_type, parameters=None):
   return base_type.Visit(ReplaceTypeParameters(mapping))
 
 
+def _MaybeSubstituteParametersInGenericType(node):
+  if isinstance(node.base_type, (pytd.GenericType, pytd.UnionType)):
+    try:
+      node = MaybeSubstituteParameters(
+          node.base_type, node.parameters) or node
+    except ValueError as e:
+      raise KeyError(str(e)) from e
+  elif isinstance(node.base_type, pytd.AnythingType):
+    return node.base_type
+  return node
+
+
 class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   """Look up NamedType pointers using a symbol table."""
 
@@ -482,13 +494,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       return new_type
 
   def VisitGenericType(self, node):
-    if isinstance(node.base_type, (pytd.GenericType, pytd.UnionType)):
-      try:
-        node = MaybeSubstituteParameters(
-            node.base_type, node.parameters) or node
-      except ValueError as e:
-        raise KeyError(str(e)) from e
-    return node
+    return _MaybeSubstituteParametersInGenericType(node)
 
   def _ModulePrefix(self):
     return self.name + "." if self.name else ""
@@ -756,6 +762,9 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       if lookup_type:
         t.cls = cast(pytd.ClassType, self.VisitNamedType(lookup_type)).cls
     return t
+
+  def VisitGenericType(self, node):
+    return _MaybeSubstituteParametersInGenericType(node)
 
 
 class ReplaceTypes(Visitor):
