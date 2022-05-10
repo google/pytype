@@ -58,7 +58,7 @@ class OverridingTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors, {
             "e": [
-                "Overriding method signature mismatch.",
+                "Overriding method signature mismatch",
                 "Base signature: ",
                 "Subclass signature: ",
                 "Not enough positional parameters in overriding method.",
