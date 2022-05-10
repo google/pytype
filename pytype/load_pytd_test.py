@@ -600,6 +600,18 @@ class ImportTypeMacroTest(_LoaderTest):
         Strings = a.Alias[str, str]
       """)
 
+  def test_parameterize_twice(self):
+    ast = self._import(a="""
+      from typing import AnyStr, Generic
+      class Foo(Generic[AnyStr]): ...
+    """, b="""
+      import a
+      from typing import AnyStr
+      x: Foo[str]
+      Foo = a.Foo[AnyStr]
+    """)
+    self.assertEqual(pytd_utils.Print(ast.Lookup("b.x").type), "a.Foo[str]")
+
 
 _Module = collections.namedtuple("_", ["module_name", "file_name"])
 

@@ -327,10 +327,10 @@ def _check_default_values(method_signature, base_signature):
     base_default = abstract_utils.get_atomic_value(base_default_value)
     method_default = abstract_utils.get_atomic_value(method_default_value)
 
-    # Unsolvable or Unknown matches anything.
-    if isinstance(base_default, (abstract.Unsolvable, abstract.Unknown)):
+    # Unsolvable, Unknown, or Empty matches anything.
+    if isinstance(base_default, abstract.AMBIGUOUS_OR_EMPTY):
       continue
-    if isinstance(method_default, (abstract.Unsolvable, abstract.Unknown)):
+    if isinstance(method_default, abstract.AMBIGUOUS_OR_EMPTY):
       continue
 
     if base_default != method_default:
@@ -349,6 +349,10 @@ def _check_return_types(method_signature, base_signature, is_subtype):
     method_return_type = method_signature.annotations["return"]
   except KeyError:
     # Return type not annotated in either of the two methods.
+    return None
+
+  if (isinstance(base_return_type, abstract.AMBIGUOUS_OR_EMPTY) or
+      isinstance(method_return_type, abstract.AMBIGUOUS_OR_EMPTY)):
     return None
 
   # Return type of the overriding method must be a subtype of the

@@ -4,7 +4,6 @@ import collections
 
 
 #- @A defines/binding ClassA
-#- @object ref vname("module.object", _, _, "pytd:builtins", _)
 #- ClassA.node/kind class
 class A:
   pass
@@ -15,11 +14,13 @@ class A:
 class B:
   pass
 
+
 #- @D defines/binding ClassD
 #- @A ref ClassA
 #- ClassD.node/kind class
 class D(A):
   pass
+
 
 #- @Foo defines/binding ClassFoo
 #- @A ref ClassA
@@ -32,27 +33,24 @@ class Foo(A, B):
 #- @Bar defines/binding ClassBar
 #- ClassBar.node/kind class
 class Bar(
-#- @A ref ClassA
+    #- @A ref ClassA
     A,
-#- @B ref ClassB
-    B
-):
+    #- @B ref ClassB
+    B):
   pass
 
 
 #- @Baz defines/binding ClassBaz
 #- ClassBaz.node/kind class
-class Baz(
-    collections.namedtuple(
-        'Foo',
-        ['bar', 'baz',
-         'quux'])
-): pass
+class Baz(collections.namedtuple('Foo', ['bar', 'baz', 'quux'])):
+  pass
 
 
 #- @Quux defines/binding ClassQuux
 #- ClassQuux.node/kind class
-class Quux: pass
+class Quux:
+  pass
+
 
 def f():
   global Quux

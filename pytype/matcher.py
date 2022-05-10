@@ -89,10 +89,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._node = node
     self._protocol_cache = set()
     self._recursive_annots_cache = set()
+    self._error_subst = None
+    self._reset_errors()
+
+  def _reset_errors(self):
     self._protocol_error = None
     self._noniterable_str_error = None
     self._typed_dict_error = None
-    self._error_subst = None
 
   @contextlib.contextmanager
   def _track_partially_matched_protocols(self):
@@ -143,11 +146,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     subst = datatypes.AliasingDict()
     if alias_map:
       subst.uf = alias_map
-    self._protocol_error = None
-    self._noniterable_str_error = None
     self._error_subst = None
     self_subst = None
     for name, formal in formal_args:
+      self._reset_errors()
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, view)
       if subst is None:
@@ -195,8 +197,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         view = views.send(skip_future)
       except StopIteration:
         break
-      self._protocol_error = None
-      self._noniterable_str_error = None
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
           bad.append((view, self._error_details()))
@@ -250,6 +250,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def match_var_against_type(self, var, other_type, subst, view):
     """Match a variable against a type."""
+    self._reset_errors()
     if var.bindings:
       return self._match_value_against_type(view[var], other_type, subst, view)
     else:  # Empty set of values. The "nothing" type.
@@ -985,7 +986,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _match_dict_against_typed_dict(self, left, other_type):
     assert isinstance(other_type, typed_dict.TypedDictClass)
-    self._typed_dict_error = None
     if not isinstance(left, abstract.Dict):
       return False
     missing, extra = other_type.props.check_keys(left.pyval.keys())
