@@ -60,6 +60,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [recursion-error](#recursion-error)
       * [redundant-function-type-comment](#redundant-function-type-comment)
       * [reveal-type](#reveal-type)
+      * [signature-mismatch](#signature-mismatch)
       * [typed-dict-error](#typed-dict-error)
       * [unbound-type-param](#unbound-type-param)
       * [unsupported-operands](#unsupported-operands)
@@ -67,7 +68,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-05-10T11:20-07:00 -->
 
 <!--te-->
 
@@ -740,6 +741,34 @@ reveal_type(os.path.join("hello", u"world"))  # reveal-type: unicode
 This feature is implemented as an error to ensure that `reveal_type()` calls are
 removed after debugging.
 
+## signature-mismatch
+
+The overriding method signature doesn't match the overridden method:
+
+<!-- bad -->
+```python
+class A:
+  def f(self, x: int) -> None:
+    pass
+
+class B(A):
+  def f(self, x:int, y: int) -> None:  # signature-mismatch
+    pass
+```
+
+<!-- good -->
+```python
+class A:
+  def f(self, x: int) -> None:
+    pass
+
+class B(A):
+  def f(self, x:int, y: int = 0) -> None:
+    pass
+```
+
+See [FAQ][pytype-faq-signature-mismatch] on why it can cause problems.
+
 ## typed-dict-error
 
 A [TypedDict](https://www.python.org/dev/peps/pep-0589/) has been accessed with
@@ -813,7 +842,7 @@ f(42.0)  # wrong-arg-types
 ```
 
 If you are seeing a Non-Iterable String Error, please see
-[FAQ][pytype-faq].
+[FAQ][pytype-faq-noniterable-strings].
 
 If you believe you are seeing this error due to a bug on pytype's end, see
 [this section][pyi-stub-files] for where the type information we use is located.
@@ -836,7 +865,8 @@ If you believe you are seeing this error due to a bug on pytype's end, see
 
 [pyi-stub-files]: user_guide.md#pytypes-pyi-stub-files
 [silencing-errors]: user_guide.md#silencing-errors
-[pytype-faq]: faq.md#noniterable-strings
+[pytype-faq-noniterable-strings]: faq.md#noniterable-strings
+[pytype-faq-signature-mismatch]: faq.md#signature-mismatch
 [pep-591]: https://www.python.org/dev/peps/pep-0591/
 
 <!-- References with different internal and external versions -->
