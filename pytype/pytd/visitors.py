@@ -1197,6 +1197,10 @@ class AddNamePrefix(Visitor):
       # This is an external type; do not prefix it. StripExternalNamePrefix will
       # remove it later.
       return node
+    if node.name.split(".")[0] in self.classes:
+      # We need to check just the first part, in case we have a class constant
+      # like Foo.BAR, or some similarly nested name.
+      return node.Replace(name=self.prefix + node.name)
     if self.cls_stack:
       if node.name == self.cls_stack[-1].name:
         # We're referencing a class from within itself.
@@ -1208,10 +1212,6 @@ class AddNamePrefix(Visitor):
           # ImmediateOuter.Nested, so we need to insert the full class stack.
           name = self.prefix + self._ClassStackString() + "." + base
           return node.Replace(name=name)
-    if node.name.split(".")[0] in self.classes:
-      # We need to check just the first part, in case we have a class constant
-      # like Foo.BAR, or some similarly nested name.
-      return node.Replace(name=self.prefix + node.name)
     return node
 
   def VisitClass(self, node):
