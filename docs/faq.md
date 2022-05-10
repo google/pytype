@@ -18,8 +18,9 @@
       * [Why doesn't str match against string iterables?](#why-doesnt-str-match-against-string-iterables)
       * [How can I automatically generate type annotations for an existing codebase?](#how-can-i-automatically-generate-type-annotations-for-an-existing-codebase)
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
+      * [Why are signature mismatches in subclasses bad? {#signature-mismatch}](#why-are-signature-mismatches-in-subclasses-bad-signature-mismatch)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-05-10T11:20-07:00 -->
 
 <!--te-->
 
@@ -294,6 +295,71 @@ def f(*args: Sequence[int]) -> int:
 
 def g(**kwargs: Mapping[str, int]) -> int:
   return sum(kwargs.values())
+```
+
+## Why are signature mismatches in subclasses bad? {#signature-mismatch}
+
+A mismatch in the signatures of an overridden method in a superclass and an
+overriding method in a subclass can cause the following problems:
+
+*   A valid call to an overridden method can fail on a subclass instance.
+    Example:
+
+<!-- bad -->
+```python
+
+class A:
+  def func(self, x: int) -> int:
+    return x
+
+class B(A):
+  def func(self) -> int:  # signature-mismatch
+    return 0
+
+def f(a: A, x: int) -> int:
+  return a.func(x)
+
+a = B()
+f(a, 0)
+```
+
+Fails with an error:
+
+```
+TypeError: func() missing 1 required positional argument: 'x'
+```
+
+*   A call to an overridden method on a subclass instance can have different
+    results depending on whether the argument is passed by name or by position.
+    Example:
+
+<!-- bad -->
+```python
+
+class A:
+  def func(self, x: int, y: int) -> int:
+    return 0
+
+class B(A):
+  def func(self, y: int, x: int) -> int:  # signature-mismatch
+    return x - y
+
+def f(a: A, x: int, y: int) -> None:
+  print(a.func(x, y))
+  print(a.func(x=x, y=y))
+  print(a.func(x, y=y))
+
+a = B()
+f(a, 2, 1)
+```
+
+Output:
+
+```
+-1
+1
+Traceback (most recent call last):
+TypeError: func() got multiple values for argument 'y'
 ```
 
 <!-- General references -->
