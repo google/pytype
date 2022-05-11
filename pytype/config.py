@@ -172,6 +172,8 @@ FEATURE_FLAGS = [
      "Enable parameter type checks for overriding methods."),
     ("--overriding-return-type-checks", False,
      "Enable return type checks for overriding methods."),
+    ("--enable-bare-annotations", False,
+     "Support variable annotations without assignments."),
 ]
 
 
