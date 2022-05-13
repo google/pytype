@@ -383,15 +383,18 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self._preprocess_function(node)
     return function.NameAndSig.from_function(node, True)
 
+  def _read_str_list(self, name, value):
+    if not (isinstance(value, (ast3.List, ast3.Tuple)) and
+            all(types.Pyval.is_str(x) for x in value.elts)):
+      raise ParseError(f"{name} must be a list of strings")
+    return tuple(x.value for x in value.elts)
+
   def new_alias_or_constant(self, name, value):
     """Build an alias or constant."""
     # This is here rather than in _Definitions because we need to build a
     # constant or alias from a partially converted typed_ast subtree.
     if name == "__slots__":
-      if not (isinstance(value, ast3.List) and
-              all(types.Pyval.is_str(x) for x in value.elts)):
-        raise ParseError("__slots__ must be a list of strings")
-      return types.SlotDecl(tuple(x.value for x in value.elts))
+      return types.SlotDecl(self._read_str_list(name, value))
     elif isinstance(value, types.Pyval):
       return pytd.Constant(name, value.to_pytd())
     elif isinstance(value, types.Ellipsis):
@@ -402,11 +405,15 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     elif isinstance(value, ast3.List):
       if name != "__all__":
         raise ParseError("Only __slots__ and __all__ can be literal lists")
-      return pytd.Constant(name, pytdgen.pytd_list("str"))
+      pyval = self._read_str_list(name, value)
+      return pytd.Constant(name, pytdgen.pytd_list("str"), pyval)
     elif isinstance(value, ast3.Tuple):
+      pyval = None
+      if name == "__all__":
+        pyval = self._read_str_list(name, value)
       # TODO(mdemello): Consistent with the current parser, but should it
       # properly be Tuple[Type]?
-      return pytd.Constant(name, pytd.NamedType("tuple"))
+      return pytd.Constant(name, pytd.NamedType("tuple"), pyval)
     elif isinstance(value, ast3.Name):
       value = self.defs.resolve_type(value.id)
       return pytd.Alias(name, value)

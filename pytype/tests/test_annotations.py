@@ -1372,7 +1372,6 @@ class EllipsisTest(test_base.BaseTest):
         def f(self) -> None: ...
     """)
 
-  @test_utils.skipBeforePy((3, 8), "requires ast features in 3.8+")
   def test_bare_annotations(self):
     ty = self.Infer("""
       class Foo:

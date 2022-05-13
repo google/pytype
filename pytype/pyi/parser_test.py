@@ -530,7 +530,7 @@ class ParserTest(parser_test_base.ParserTestBase):
     """, """
       from typing import List
 
-      __all__: List[str]
+      __all__: List[str] = ...
     """)
 
   def test_invalid_constructor(self):

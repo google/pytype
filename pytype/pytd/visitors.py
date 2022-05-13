@@ -514,10 +514,21 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     getattrs = set()
     ast = self._module_map[module]
     type_param_names = set()
+    if module == "http.client":
+      # NOTE: http.client adds symbols to globals() at runtime, which is not
+      # reflected in its typeshed pyi file. The simplest fix is to ignore
+      # __all__ for star-imports of that file.
+      exports = None
+    else:
+      exports = [x for x in ast.constants if x.name.endswith(".__all__")]
+      if exports:
+        exports = exports[0].value
     for member in sum((ast.constants, ast.type_params, ast.classes,
                        ast.functions, ast.aliases), ()):
       _, _, member_name = member.name.rpartition(".")
-      if member_name == "__all__":
+      if exports and member_name not in exports:
+        # Not considering the edge case `__all__ = []` since that makes no
+        # sense in practice.
         continue
       new_name = self._ModulePrefix() + member_name
       if isinstance(member, pytd.Function) and member_name == "__getattr__":
