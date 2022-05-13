@@ -624,13 +624,17 @@ class Loader:
     if mod_ast:
       try:
         self._resolver.verify(mod_ast)
-      except (BadDependencyError, visitors.ContainerError):
+      except (BadDependencyError, visitors.ContainerError) as e:
         # In the case of a circular import, an external type may be left
         # unresolved, so we re-resolve lookups in this module and its direct
         # dependencies. Technically speaking, we should re-resolve all
         # transitive imports, but lookups are expensive.
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
+          if k not in self._modules:
+            raise (
+                BadDependencyError("Can't find pyi for %r" % k, mod_ast.name)
+            ) from e
           self._modules[k].ast = self._resolve_external_types(
               self._modules[k].ast)
         mod_ast = self._resolve_external_types(mod_ast)
