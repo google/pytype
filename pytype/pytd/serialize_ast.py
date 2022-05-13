@@ -59,7 +59,8 @@ class UndoModuleAliasesVisitor(visitors.Visitor):
 
 
 SerializableTupleClass = collections.namedtuple(
-    "_", ["ast", "dependencies", "late_dependencies", "class_type_nodes"])
+    "_", ["ast", "dependencies", "late_dependencies", "class_type_nodes",
+          "is_package"])
 
 
 class SerializableAst(SerializableTupleClass):
@@ -82,7 +83,7 @@ class SerializableAst(SerializableTupleClass):
   Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
-def StoreAst(ast, filename=None, open_function=open):
+def StoreAst(ast, filename=None, open_function=open, is_package=False):
   """Loads and stores an ast to disk.
 
   Args:
@@ -90,11 +91,13 @@ def StoreAst(ast, filename=None, open_function=open):
     filename: The filename for the pickled output. If this is None, this
       function instead returns the pickled string.
     open_function: A custom file opening function.
+    is_package: Whether the module with the given ast is a package.
 
   Returns:
     The pickled string, if no filename was given. (None otherwise.)
   """
   if ast.name.endswith(".__init__"):
+    assert is_package
     ast = ast.Visit(visitors.RenameModuleVisitor(
         ast.name, ast.name.rsplit(".__init__", 1)[0]))
   ast = ast.Visit(UndoModuleAliasesVisitor())
@@ -111,9 +114,8 @@ def StoreAst(ast, filename=None, open_function=open):
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
   return pytd_utils.SavePickle(
       SerializableAst(
-          ast, sorted(dependencies.items()),
-          sorted(late_dependencies.items()),
-          sorted(indexer.class_type_nodes)),
+          ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
+          sorted(indexer.class_type_nodes), is_package=is_package),
       filename, open_function=open_function)
 
 

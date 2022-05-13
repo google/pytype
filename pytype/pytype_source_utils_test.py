@@ -29,7 +29,7 @@ class PytypeSourceUtilsTest(unittest.TestCase):
   def test_list_pytype_files(self):
     l = list(pytype_source_utils.list_pytype_files("stubs/stdlib"))
     self.assertIn("_ctypes.pytd", l)
-    self.assertIn("collections.pytd", l)
+    self.assertIn("collections/__init__.pytd", l)
 
   def test_get_custom_python_exe37(self):
     exe = pytype_source_utils.get_custom_python_exe((3, 7))

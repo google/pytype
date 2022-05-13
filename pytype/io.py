@@ -247,7 +247,8 @@ def write_pickle(ast, options, loader=None):
     ast2 = ast2.Visit(visitors.ClearClassPointers())
     if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
-  serialize_ast.StoreAst(ast, options.output, options.open_function)
+  serialize_ast.StoreAst(ast, options.output, options.open_function,
+                         is_package=options.module_name.endswith(".__init__"))
 
 
 def print_error_doc_url(errorlog):
