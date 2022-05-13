@@ -1372,6 +1372,26 @@ class EllipsisTest(test_base.BaseTest):
         def f(self) -> None: ...
     """)
 
+  @test_utils.skipBeforePy((3, 8), "requires ast features in 3.8+")
+  def test_bare_annotations(self):
+    ty = self.Infer("""
+      class Foo:
+        a: bool
+        def __init__(self):
+          self.x: int
+          self.y: list[
+                    int]
+          z: str
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      class Foo:
+        a: bool
+        x: int
+        y: List[int]
+        def __init__(self) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

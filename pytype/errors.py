@@ -1384,12 +1384,16 @@ class ErrorLog(ErrorLogBase):
   @_error_name("signature-mismatch")
   def overriding_signature_mismatch(self, stack, base_signature,
                                     class_signature, details=None):
+    """Signature mismatch between overridden and overriding class methods."""
     base_signature = self._normalize_signature(base_signature)
     class_signature = self._normalize_signature(class_signature)
-    err_msg = (f"Overriding method signature mismatch.\n"
-               f"Base signature: '{base_signature}'.\n"
-               f"Subclass signature: '{class_signature}'.")
-    self.error(stack, err_msg, details=details)
+    signatures = (f"Base signature: '{base_signature}'.\n"
+                  f"Subclass signature: '{class_signature}'.")
+    if details:
+      details = signatures + "\n" + details
+    else:
+      details = signatures
+    self.error(stack, "Overriding method signature mismatch", details=details)
 
   @_error_name("final-error")
   def assigning_to_final(self, stack, name, local):

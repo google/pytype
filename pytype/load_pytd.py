@@ -65,6 +65,8 @@ class Module:
     has_unresolved_pointers: Whether all ClassType pointers have been filled in
   """
 
+  _INIT_NAMES = ("__init__.pyi", f"__init__.{pytd_utils.PICKLE_EXT}")
+
   # pylint: disable=redefined-outer-name
   def __init__(self, module_name, filename, ast,
                pickle=None, has_unresolved_pointers=True):
@@ -83,7 +85,7 @@ class Module:
       # imports_map_loader adds os.devnull entries for __init__.py files in
       # intermediate directories.
       return True
-    return self.filename and os.path.basename(self.filename) == "__init__.pyi"
+    return self.filename and os.path.basename(self.filename) in self._INIT_NAMES
 
 
 class BadDependencyError(Exception):
@@ -200,6 +202,13 @@ class _ModuleMap:
         todo.append(self._modules[module_prefix])
       newly_loaded_asts.append(loaded_ast)
       m.ast = loaded_ast.ast
+      if loaded_ast.is_package:
+        init_file = f"__init__.{pytd_utils.PICKLE_EXT}"
+        if m.filename and os.path.basename(m.filename) != init_file:
+          base, _ = os.path.splitext(m.filename)
+          m.filename = os.path.join(base, init_file)
+        else:
+          m.filename = self.PREFIX + os.path.join(m.module_name, init_file)
       m.pickle = None
     module_map = self.get_module_map()
     for loaded_ast in newly_loaded_asts:
@@ -390,10 +399,13 @@ class Loader:
     # We assume that the Loader is in a consistent state here. In particular, we
     # assume that for every module in _modules, all the transitive dependencies
     # have been loaded.
+    # pylint: disable=g-complex-comprehension
     items = tuple(
         (name, serialize_ast.StoreAst(
-            module.ast, open_function=self.options.open_function))
+            module.ast, open_function=self.options.open_function,
+            is_package=module.is_package()))
         for name, module in sorted(self._modules.items()))
+    # pylint: enable=g-complex-comprehension
     # Preparing an ast for pickling clears its class pointers, making it
     # unsuitable for reuse, so we have to discard the builtins cache.
     builtin_stubs.InvalidateCache()

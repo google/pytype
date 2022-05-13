@@ -25,6 +25,7 @@ from pytype import datatypes
 from pytype import directors
 from pytype import load_pytd
 from pytype import metrics
+from pytype import preprocess
 from pytype import state as frame_state
 from pytype import vm_utils
 from pytype.abstract import abstract
@@ -397,6 +398,9 @@ class VirtualMachine:
     """
     self.filename = filename
     self._maximum_depth = maximum_depth
+    if (self.ctx.python_version >= (3, 8) and
+        self.ctx.options.enable_bare_annotations):
+      src = preprocess.augment_annotations(src)
     src_tree = directors.parse_src(src, self.ctx.python_version)
     code = self.compile_src(src, filename=filename)
     # In Python 3.8+, opcodes are consistently at the first line of the

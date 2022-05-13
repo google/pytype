@@ -344,6 +344,13 @@ py_library(
 
 py_library(
   NAME
+    preprocess
+  SRCS
+    preprocess.py
+)
+
+py_library(
+  NAME
     pytype_source_utils
   SRCS
     pytype_source_utils.py
@@ -418,6 +425,7 @@ py_library(
     .directors
     .load_pytd
     .metrics
+    .preprocess
     .state
     .vm_utils
     pytype.abstract.abstract
