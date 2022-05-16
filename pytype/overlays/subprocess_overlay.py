@@ -89,5 +89,6 @@ class PopenNew(abstract.PyTDFunction):
           node, args, view, alias_map):
         yield sig_info
       return
-    arg_dict, subst = sig.substitute_formal_args(node, args, view, alias_map)
+    arg_dict, subst = sig.substitute_formal_args_old(
+        node, args, view, alias_map)
     yield sig, arg_dict, subst

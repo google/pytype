@@ -172,7 +172,8 @@ class SignedFunction(_function_base.Function):
     kwnames = set(kws)
     extra_kws = kwnames.difference(sig.param_names + sig.kwonly_params)
     if extra_kws and not sig.kwargs_name:
-      raise function.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
+      if function.has_visible_namedarg(node, args, extra_kws):
+        raise function.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
     posonly_kws = kwnames & posonly_names
     # If a function has a **kwargs parameter, then keyword arguments with the
     # same name as a positional-only argument are allowed, e.g.:
@@ -235,14 +236,6 @@ class SignedFunction(_function_base.Function):
     return subst
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
-    def match_succeeded(match_result):
-      bad_matches, any_match = match_result
-      if not bad_matches:
-        return True
-      if match_all_views or self.ctx.options.strict_parameter_checks:
-        return False
-      return any_match
-
     for name, arg, formal in self.signature.iter_args(args):
       if formal is None:
         continue
@@ -251,7 +244,7 @@ class SignedFunction(_function_base.Function):
         # Iterable or Mapping.
         formal = self.ctx.convert.widen_type(formal)
       match_result = self.ctx.matcher(node).bad_matches(arg, formal)
-      if not match_succeeded(match_result):
+      if not function.match_succeeded(match_result, match_all_views, self.ctx):
         bad_arg = function.BadParam(
             name=name, expected=formal, error_details=match_result[0][0][1])
         raise function.WrongArgTypes(

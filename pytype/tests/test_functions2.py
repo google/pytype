@@ -443,6 +443,39 @@ class TestFunctions(test_base.BaseTest):
         return g(x, *f())
     """)
 
+  def test_namedargs_split(self):
+    self.Check("""
+      def f(x):
+        pass
+      def g(y):
+        pass
+      def h():
+        kws = {}
+        if __random__:
+          kws['x'] = 0
+          f(**kws)
+        else:
+          kws['y'] = 0
+          g(**kws)
+    """)
+
+  def test_namedargs_split_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      def f(x): ...
+      def g(y): ...
+    """)]):
+      self.Check("""
+        import foo
+        def h():
+          kws = {}
+          if __random__:
+            kws['x'] = 0
+            foo.f(**kws)
+          else:
+            kws['y'] = 0
+            foo.g(**kws)
+      """)
+
 
 class TestFunctionsPython3Feature(test_base.BaseTest):
   """Tests for functions."""
