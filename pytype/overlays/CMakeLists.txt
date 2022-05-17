@@ -183,14 +183,10 @@ py_library(
     .enum_overlay
     .flax_overlay
     .future_overlay
-    .named_tuple
-    .overlay
-    .overlay_utils
     .pytype_extensions_overlay
     .six_overlay
     .subprocess_overlay
     .sys_overlay
-    .typed_dict
     .typing_extensions_overlay
     .typing_overlay
 )
