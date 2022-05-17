@@ -8,6 +8,7 @@ from pytype import datatypes
 from pytype.abstract import abstract_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -250,18 +251,18 @@ class Signature:
     return name in self.param_names or name in self.kwonly_params or (
         name == self.varargs_name or name == self.kwargs_name)
 
-  def insert_varargs_and_kwargs(self, arg_dict):
-    """Insert varargs and kwargs from arg_dict into the signature.
+  def insert_varargs_and_kwargs(self, args):
+    """Insert varargs and kwargs from args into the signature.
 
     Args:
-      arg_dict: A name->binding dictionary of passed args.
+      args: An iterable of passed arg names.
 
     Returns:
       A copy of this signature with the passed varargs and kwargs inserted.
     """
     varargs_names = []
     kwargs_names = []
-    for name in arg_dict:
+    for name in args:
       if self.has_param(name):
         continue
       if pytd_utils.ANON_PARAM.match(name):
@@ -884,3 +885,24 @@ def match_all_args(ctx, node, func, args):
       needs_checking = False
 
   return args, errors
+
+
+def match_succeeded(match_result, match_all_views, ctx):
+  bad_matches, any_match = match_result
+  if not bad_matches:
+    return True
+  if match_all_views or ctx.options.strict_parameter_checks:
+    return False
+  return any_match
+
+
+def has_visible_namedarg(node, args, names):
+  # Note: this method should be called judiciously, as HasCombination is
+  # potentially very expensive.
+  namedargs = {args.namedargs[name] for name in names}
+  variables = [v for v in args.get_variables() if v not in namedargs]
+  for name in names:
+    for view in cfg_utils.variable_product(variables + [args.namedargs[name]]):
+      if node.HasCombination(list(view)):
+        return True
+  return False

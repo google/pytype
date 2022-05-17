@@ -898,6 +898,19 @@ class PYITest(test_base.BaseTest):
         import bad  # pyi-error
       """, pythonpath=[d.path])
 
+  def test_nonexistent_import(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("bad.pyi", """
+        import nonexistent
+        x = nonexistent.x
+      """)
+      err = self.CheckWithErrors("""
+        import bad  # pyi-error[e]
+      """, pythonpath=[d.path])
+      self.assertErrorSequences(err, {
+          "e": ["Couldn't import pyi", "nonexistent", "referenced from", "bad"]
+      })
+
 
 if __name__ == "__main__":
   test_base.main()

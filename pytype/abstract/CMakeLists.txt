@@ -219,6 +219,7 @@ py_library(
     .abstract_utils
     pytype.utils
     pytype.pytd.pytd
+    pytype.typegraph.cfg_utils
 )
 
 py_library(

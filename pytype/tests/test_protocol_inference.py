@@ -134,10 +134,10 @@ class ProtocolInferenceTest(test_base.BaseTest):
         return a & x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Iterable, Set
+      from typing import Set
       a = ...  # type: Set[int]
 
-      def f(x: Iterable) -> Set[int]: ...
+      def f(x) -> Set[int]: ...
     """)
 
   def test_supports_lower(self):

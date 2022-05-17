@@ -29,7 +29,7 @@ _SKIP_FUNCTION_RE = re.compile("<(?!lambda).+>$")
 
 _CallRecord = collections.namedtuple("_CallRecord", [
     "node", "function", "signatures", "positional_arguments",
-    "keyword_arguments", "return_value"
+    "keyword_arguments", "return_value", "variable"
 ])
 
 
@@ -458,22 +458,23 @@ class CallTracer(vm.VirtualMachine):
   def trace_unknown(self, name, unknown_binding):
     self._unknowns[name] = unknown_binding
 
-  def trace_call(self, node, func, sigs, posargs, namedargs, result):
+  def trace_call(self, node, func, sigs, posargs, namedargs, result, variable):
     """Add an entry into the call trace.
 
     Args:
       node: The CFG node right after this function call.
       func: A cfg.Binding of a function that was called.
       sigs: The signatures that the function might have been called with.
-      posargs: The positional arguments, an iterable over cfg.Value.
-      namedargs: The keyword arguments, a dict mapping str to cfg.Value.
+      posargs: The positional arguments, an iterable over cfg.Binding.
+      namedargs: The keyword arguments, a dict mapping str to cfg.Binding.
       result: A Variable of the possible result values.
+      variable: If True, posargs and namedargs are Variables, not Bindings.
     """
     log.debug("Logging call to %r with %d args, return %r",
               func, len(posargs), result)
     args = tuple(posargs)
     kwargs = tuple((namedargs or {}).items())
-    record = _CallRecord(node, func, sigs, args, kwargs, result)
+    record = _CallRecord(node, func, sigs, args, kwargs, result, variable)
     if isinstance(func.data, abstract.BoundPyTDFunction):
       self._method_calls.add(record)
     elif isinstance(func.data, abstract.PyTDFunction):
@@ -556,22 +557,34 @@ class CallTracer(vm.VirtualMachine):
   @staticmethod
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
-    for node, func, sigs, args, kws, retvar in call_traces:
+
+    def to_type(node, arg, variable):
+      if variable:
+        return pytd_utils.JoinTypes(a.to_type(node) for a in arg.data)
+      else:
+        return arg.data.to_type(node)
+
+    for node, func, sigs, args, kws, retvar, variable in call_traces:
       # The lengths may be different in the presence of optional and kw args.
       arg_names = max((sig.get_positional_names() for sig in sigs), key=len)
       for i in range(len(arg_names)):
         if not isinstance(func.data, abstract.BoundFunction) or i > 0:
           arg_names[i] = function.argname(i)
-      arg_types = (a.data.to_type(node) for a in args)
+      arg_types = []
+      for arg in args:
+        arg_types.append(to_type(node, arg, variable))
+      kw_types = []
+      for name, arg in kws:
+        kw_types.append((name, to_type(node, arg, variable)))
       ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
       starargs = None
       starstarargs = None
       funcs[func.data.name].add(pytd.Signature(
           tuple(pytd.Parameter(n, t, pytd.ParameterKind.REGULAR, False, None)
                 for n, t in zip(arg_names, arg_types)) +
-          tuple(pytd.Parameter(name, a.data.to_type(node),
+          tuple(pytd.Parameter(n, t,
                                pytd.ParameterKind.REGULAR, False, None)
-                for name, a in kws),
+                for n, t in kw_types),
           starargs, starstarargs,
           ret, exceptions=(), template=()))
     functions = []
@@ -598,13 +611,24 @@ class CallTracer(vm.VirtualMachine):
     class_to_records = collections.defaultdict(list)
     for call_record in self._method_calls:
       args = call_record.positional_arguments
-      if not any(isinstance(a.data, abstract.Unknown) for a in args):
+      if call_record.variable:
+        unknown = False
+        for arg in args:
+          if any(isinstance(a, abstract.Unknown) for a in arg.data):
+            unknown = True
+      else:
+        unknown = any(isinstance(arg.data, abstract.Unknown) for arg in args)
+      if not unknown:
         # We don't need to record call signatures that don't involve
         # unknowns - there's nothing to solve for.
         continue
-      cls = args[0].data.cls
-      if isinstance(cls, abstract.PyTDClass):
-        class_to_records[cls].append(call_record)
+      if call_record.variable:
+        classes = args[0].data
+      else:
+        classes = [args[0].data]
+      for cls in classes:
+        if isinstance(cls, abstract.PyTDClass):
+          class_to_records[cls].append(call_record)
     classes = []
     for cls, call_records in class_to_records.items():
       full_name = cls.module + "." + cls.name if cls.module else cls.name

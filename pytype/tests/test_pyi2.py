@@ -178,5 +178,33 @@ class PYITestAnnotated(test_base.BaseTest):
       self.assertErrorSequences(err, {"e": ["pytype_metadata"]})
 
 
+class PYITestAll(test_base.BaseTest):
+  """Tests for __all__."""
+
+  def test_star_import(self):
+    with self.DepTree([("foo.pyi", """
+      import datetime
+      __all__ = ['f', 'g']
+      def f(x): ...
+      def h(x): ...
+    """), ("bar.pyi", """
+      from foo import *
+    """)]):
+      self.CheckWithErrors("""
+        import bar
+        a = bar.datetime  # module-attr
+        b = bar.f(1)
+        c = bar.h(1)  # module-attr
+      """)
+
+  def test_http_client(self):
+    """Check that we can get unexported symbols from http.client."""
+    self.Check("""
+      from http import client
+      from six.moves import http_client
+      status = http_client.FOUND or client.FOUND
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()
