@@ -362,7 +362,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     self._alias_name = None
     self._in_generic_type = 0
     self._star_imports = set()
-    self._unit = None
+    self._unit = module_map.get(self_name)
 
   def _ResolveUsingGetattr(self, module_name, module):
     """Try to resolve an identifier using the top level __getattr__ function."""

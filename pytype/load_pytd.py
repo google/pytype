@@ -420,7 +420,7 @@ class Loader:
       lookup_ast = lookup_ast or mod_ast
       self._load_ast_dependencies(dependencies, lookup_ast)
       mod_ast = self._resolve_external_types(
-          mod_ast, lookup_ast and lookup_ast.name)
+          mod_ast, lookup_ast=lookup_ast)
     mod_ast = self._resolver.resolve_local_types(mod_ast, lookup_ast=lookup_ast)
     return mod_ast
 
@@ -520,7 +520,13 @@ class Loader:
             continue
           else:
             self._path_finder.log_module_not_found(name)
-            raise BadDependencyError("Can't find pyi for %r" % name, ast_name)
+            try:
+              pytd.LookupItemRecursive(lookup_ast, name)
+            except KeyError as e:
+              raise BadDependencyError(
+                  "Can't find pyi for %r" % name, ast_name) from e
+            # This is a dotted local reference, not an external reference.
+            continue
       # If `name` is a package, try to load any base names not defined in
       # __init__ as submodules.
       if not self._modules[name].is_package() or "__getattr__" in dep_ast:
@@ -541,8 +547,11 @@ class Loader:
             # result - resolve_external_types will raise a better error.
             self._path_finder.log_module_not_found(full_name)
 
-  def _resolve_external_types(self, mod_ast, mod_name=None):
+  def _resolve_external_types(self, mod_ast, lookup_ast=None):
     module_map = self._modules.get_module_map()
+    mod_name = lookup_ast and lookup_ast.name
+    if mod_name and mod_name not in module_map:
+      module_map[mod_name] = lookup_ast
     mod_ast = self._resolver.resolve_external_types(
         mod_ast, module_map, self._aliases, mod_name=mod_name)
     return mod_ast

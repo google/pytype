@@ -158,7 +158,7 @@ FEATURE_FLAGS = [
       "'typing.Tuple' compatibility.")),
     ("--strict-parameter-checks", False,
      "Enable exhaustive checking of function parameter types."),
-    ("--enable-nested-classes", False,
+    ("--enable-nested-classes", True,
      "Enable support for nested classes in .py files."),
     ("--strict-primitive-comparisons", False,
      "Emit errors for comparisons between incompatible primitive types."),
