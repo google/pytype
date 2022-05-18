@@ -194,6 +194,13 @@ def Print(ast, multiline_args=False):
   return ast.Visit(printer.PrintVisitor(multiline_args))
 
 
+def MakeTypeAnnotation(ast, multiline_args=False):
+  """Returns a type annotation and any added imports."""
+  vis = printer.PrintVisitor(multiline_args)
+  annotation = ast.Visit(vis)
+  return annotation, vis.imports
+
+
 def CreateModule(name="<empty>", **kwargs):
   module = pytd.TypeDeclUnit(
       name, type_params=(), constants=(), classes=(), functions=(), aliases=())
