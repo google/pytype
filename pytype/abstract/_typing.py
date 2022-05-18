@@ -632,7 +632,10 @@ class LateAnnotation:
       mod = self.ctx.loader.import_name("typing")
       for v in self._imports["typing"]:
         if v not in f_globals.members:
-          typ = self.ctx.convert.name_to_value(f"typing.{v}", ast=mod)
+          if v == "Any":
+            typ = self.ctx.convert.unsolvable
+          else:
+            typ = self.ctx.convert.name_to_value(f"typing.{v}", ast=mod)
           f_globals.members[v] = typ.to_variable(node)
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
                                              f_locals, self.expr)
