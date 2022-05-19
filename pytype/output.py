@@ -681,8 +681,7 @@ class Converter(utils.ContextWeakrefMixin):
       if (name in abstract_utils.CLASS_LEVEL_IGNORE or
           name in annotated_names or
           (v.is_enum and name in ("__new__", "__eq__")) or
-          (self.ctx.options.enable_nested_classes and
-           name in inner_class_names)):
+          name in inner_class_names):
         continue
       for value in member.FilteredData(self.ctx.exitpoint, strict=False):
         if isinstance(value, special_builtins.PropertyInstance):
@@ -897,14 +896,13 @@ class Converter(utils.ContextWeakrefMixin):
         continue
       value = pytd.AnythingType() if name in fields_with_defaults else None
       final_constants.append(pytd.Constant(name, builder.build(), value))
-    classes = tuple(classes) if self.ctx.options.enable_nested_classes else ()
 
     cls = pytd.Class(name=class_name,
                      metaclass=metaclass,
                      bases=tuple(bases),
                      methods=tuple(methods.values()),
                      constants=tuple(final_constants),
-                     classes=classes,
+                     classes=tuple(classes),
                      decorators=tuple(decorators),
                      slots=slots,
                      template=())

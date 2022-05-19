@@ -290,8 +290,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       self.official_name = name
       for member_var in self.members.values():
         for member in member_var.data:
-          if (isinstance(member, InterpreterClass) and
-              self.ctx.options.enable_nested_classes):
+          if isinstance(member, InterpreterClass):
             member.update_official_name(f"{name}.{member.name}")
 
 
