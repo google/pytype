@@ -18,8 +18,10 @@ class InplaceTest(test_base.BaseTest,
     self._check_inplace("+", ["x=['']", "y=range(2)"], self.intorstr_list)
     self._check_inplace("+", ["x=[1]", "y=iter(range(2))"], self.int_list)
     self._check_inplace("+", ["x=[1]", "y=(v for v in [2])"], self.int_list)
-    self._check_inplace("+", ["x=(1,)", "y=(2,)"], self.int_tuple)
-    self._check_inplace("+", ["x=(1,)", "y=(2.0,)"], self.intorfloat_tuple)
+    self._check_inplace("+", ["x=(1,)", "y=(2,)"],
+                        self.make_tuple(self.int, self.int))
+    self._check_inplace("+", ["x=(1,)", "y=(2.0,)"],
+                        self.make_tuple(self.int, self.float))
 
   def test_iand(self):
     self._check_inplace("&", ["x=3", "y=5"], self.int)
