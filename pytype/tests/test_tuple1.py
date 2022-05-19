@@ -123,8 +123,17 @@ class TupleTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple, Union
-      a = ...  # type: Tuple[int, ...]
-      b = ...  # type: Tuple[Union[int, str], ...]
+      a = ...  # type: Tuple[int]
+      b = ...  # type: Tuple[int, str]
+    """)
+
+  def test_add(self):
+    self.Check("""
+      from typing import Tuple
+      a = (1, 2)
+      b = ('3', '4')
+      c = a + b
+      assert_type(c, Tuple[int, int, str, str])
     """)
 
   def test_tuple_of_tuple(self):

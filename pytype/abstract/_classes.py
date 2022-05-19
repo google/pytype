@@ -883,6 +883,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
     self.set_slot("__getitem__", self.getitem_slot)
+    self.set_slot("__add__", self.add_slot)
     if isinstance(self._formal_type_parameters,
                   abstract_utils.LazyFormalTypeParameters):
       num_parameters = len(self._formal_type_parameters.template)
@@ -978,3 +979,16 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
         name in self._slots):
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super().get_special_attribute(node, name, valself)
+
+  def add_slot(self, node, other_var):
+    """Implementation of tuple.__add__."""
+    try:
+      other = abstract_utils.get_atomic_value(other_var)
+    except abstract_utils.ConversionError:
+      pass
+    else:
+      if _isinstance(other, "Tuple"):
+        pyval = self._instance.pyval + other.pyval
+        ret = _instances.Tuple(pyval, self.ctx)
+        return node, ret.to_variable(node)
+    return self.call_pytd(node, "__add__", self.instantiate(node), other_var)

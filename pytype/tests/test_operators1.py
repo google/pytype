@@ -35,8 +35,10 @@ class ConcreteTest(test_base.BaseTest,
     # split out from test_add for better sharding
     self.check_expr("x + y", ["x=[]", "y=[]"], self.nothing_list)
     self.check_expr("x + y", ["x=[1]", "y=['abc']"], self.intorstr_list)
-    self.check_expr("x + y", ["x=(1,)", "y=(2,)"], self.int_tuple)
-    self.check_expr("x + y", ["x=(1,)", "y=(2.0,)"], self.intorfloat_tuple)
+    self.check_expr("x + y", ["x=(1,)", "y=(2,)"],
+                    self.make_tuple(self.int, self.int))
+    self.check_expr("x + y", ["x=(1,)", "y=(2.0,)"],
+                    self.make_tuple(self.int, self.float))
 
   def test_and(self):
     self.check_expr("x & y", ["x=3", "y=5"], self.int)

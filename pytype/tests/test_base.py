@@ -127,6 +127,7 @@ class BaseTest(unittest.TestCase):
     cls.str_int_dict = pytd.GenericType(cls.dict, (cls.str, cls.int))
     cls.nothing_nothing_dict = pytd.GenericType(cls.dict,
                                                 (cls.nothing, cls.nothing))
+    cls.make_tuple = lambda self, *args: pytd.TupleType(cls.tuple, tuple(args))
 
   def setUp(self):
     super().setUp()
