@@ -1315,6 +1315,29 @@ class TestStringifiedAnnotations(test_base.BaseTest):
       assert_type(A().c, Optional[B])
     """)
 
+  def test_generic_forward_reference_to_collection(self):
+    # Makes sure that we don't get an error when set[int] is converted to
+    # typing.Set[int] (since typing.Set is not imported).
+    ty = self.Infer("""
+      from __future__ import annotations
+      from typing import Generic, TypeVar
+
+      T = TypeVar("T")
+
+      class A(Generic[T]):
+        def f(self) -> A[set[int]]:
+          return self
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import __future__
+      import typing
+      from typing import Generic, Set, TypeVar
+      annotations: __future__._Feature
+      T = TypeVar('T')
+      class A(Generic[T]):
+        def f(self) -> A[Set[int]]: ...
+   """)
+
 
 class EllipsisTest(test_base.BaseTest):
   """Tests usage of '...' to mean "inferred type".
@@ -1371,6 +1394,10 @@ class EllipsisTest(test_base.BaseTest):
         x: int
         def f(self) -> None: ...
     """)
+
+
+class BareAnnotationTest(test_base.BaseTest):
+  """Tests variable annotations without assignment."""
 
   @test_utils.skipBeforePy((3, 8), "requires ast features in 3.8+")
   def test_bare_annotations(self):

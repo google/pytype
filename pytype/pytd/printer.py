@@ -184,10 +184,13 @@ class PrintVisitor(base_visitor.Visitor):
     # before from-import statements.
     imports = sorted(imports, key=lambda s: (s.startswith("from "), s))
 
+    # Remove deleted constants
+    constants = [c for c in node.constants if "<deleted>" not in c]
+
     sections = [
         imports,
         aliases,
-        node.constants,
+        constants,
         self._FormatTypeParams(self.old_node.type_params),
         node.classes,
         node.functions,
@@ -206,6 +209,20 @@ class PrintVisitor(base_visitor.Visitor):
   def LeaveConstant(self, node):
     self.in_constant = False
 
+  def _DropTypingConstant(self, node):
+    # Hack to account for a corner case in late annotation handling.
+    # If we have a top-level constant of the exact form
+    #   Foo: Type[typing.Foo]
+    # we drop the constant and rewrite it to
+    #   from typing import Foo
+    if self.class_names or node.value:
+      return False
+    if node.type == f"Type[typing.{node.name}]":
+      self._RequireImport("typing", node.name)
+      self._typing_import_counts["Type"] -= 1
+      del self._local_names[node.name]
+      return True
+
   def VisitConstant(self, node):
     """Convert a class-level or module-level constant to a string."""
     if self.in_literal:
@@ -219,6 +236,8 @@ class PrintVisitor(base_visitor.Visitor):
     # Decrement Any, since the actual value is never printed.
     if node.value == "Any":
       self._typing_import_counts["Any"] -= 1
+    if self._DropTypingConstant(node):
+      return "<deleted>"
     # Whether the constant has a default value is important for fields in
     # generated classes like namedtuples.
     suffix = " = ..." if node.value else ""

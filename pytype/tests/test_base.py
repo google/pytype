@@ -133,8 +133,9 @@ class BaseTest(unittest.TestCase):
     self.options = config.Options.create(
         python_version=self.python_version,
         build_dict_literals_from_kwargs=True,
-        enable_nested_classes=True,
         enable_bare_annotations=True,
+        enable_cached_property=True,
+        enable_nested_classes=True,
         overriding_default_value_checks=True,
         overriding_parameter_count_checks=True,
         overriding_parameter_name_checks=True,

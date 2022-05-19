@@ -1,5 +1,6 @@
 """Constructs related to type annotations."""
 
+import collections
 import logging
 import typing
 from typing import Mapping, Tuple, Type, Union as _Union
@@ -232,13 +233,20 @@ class AnnotationContainer(AnnotationClass):
       # class_mixin.Class, and (2) we have to postpone error-checking anyway so
       # we might as well postpone the entire evaluation.
       printed_params = []
+      added_imports = collections.defaultdict(set)
       for i, param in enumerate(inner):
         if i in ellipses:
           printed_params.append("...")
         else:
-          printed_params.append(pytd_utils.Print(param.get_instance_type(node)))
+          typ = param.get_instance_type(node)
+          annot, imports = pytd_utils.MakeTypeAnnotation(typ)
+          printed_params.append(annot)
+          for k, v in imports.items():
+            added_imports[k] |= v
+
       expr = "%s[%s]" % (self.base_cls.expr, ", ".join(printed_params))
-      annot = LateAnnotation(expr, self.base_cls.stack, self.ctx)
+      annot = LateAnnotation(expr, self.base_cls.stack, self.ctx,
+                             imports=added_imports)
       self.ctx.vm.late_annotations[self.base_cls.expr].append(annot)
       return annot
     template, processed_inner, abstract_class = self._get_value_info(
@@ -540,11 +548,13 @@ class LateAnnotation:
 
   _RESOLVING = object()
 
-  def __init__(self, expr, stack, ctx):
+  def __init__(self, expr, stack, ctx, *, imports=None):
     self.expr = expr
     self.stack = stack
     self.ctx = ctx
     self.resolved = False
+    # Any new imports the annotation needs while resolving.
+    self._imports = imports or {}
     self._type = ctx.convert.unsolvable  # the resolved type of `expr`
     self._unresolved_instances = set()
     # _attribute_names needs to be defined last! This contains the names of all
@@ -616,6 +626,17 @@ class LateAnnotation:
     # 'if self.resolved' is True when self is partially resolved, but code that
     # really needs to tell partially and fully resolved apart can do so.
     self.resolved = LateAnnotation._RESOLVING
+    # Add implicit imports for typing, since we can have late annotations like
+    # `set[int]` which get converted to `typing.Set[int]`.
+    if "typing" in self._imports:
+      mod = self.ctx.loader.import_name("typing")
+      for v in self._imports["typing"]:
+        if v not in f_globals.members:
+          if v == "Any":
+            typ = self.ctx.convert.unsolvable
+          else:
+            typ = self.ctx.convert.name_to_value(f"typing.{v}", ast=mod)
+          f_globals.members[v] = typ.to_variable(node)
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
                                              f_locals, self.expr)
     if errorlog:
