@@ -1,3 +1,19 @@
+Version 2022.05.19:
+
+Updates:
+* Default --enable-nested-classes to True. This flag will be removed in an
+  upcoming release.
+* Use argument-by-argument matching for PyTDFunction in simple cases.
+
+Bug fixes:
+* Load symbols from typing when converting parametrised collection classes.
+* Raise an error when referencing a nonexistent pyi file in another pyi file.
+* Take `__all__` into account when importing `*` in pyi files.
+* Support `from x import y` for stdlib modules in pickled pyi files.
+* Preprocess source code to augment bare annotations in functions.
+* Slightly change the format of the [signature-mismatch] error.
+* Switch resolution order for nested and top-level classes in AddNamePrefix.
+
 Version 2022.05.10:
 
 Bug fixes:
