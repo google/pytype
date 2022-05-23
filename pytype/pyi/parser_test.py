@@ -2984,5 +2984,46 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
     """)
 
 
+class AllTest(parser_test_base.ParserTestBase):
+
+  def check(self, src, expected):
+    tree = self.parse(src)
+    all_ = [x for x in tree.constants if x.name == "__all__"]
+    pyval = all_[0].value if all_ else None
+    self.assertEqual(pyval, expected)
+
+  def test_basic(self):
+    self.check("""
+      __all__ = ["f", "g"]
+    """, ("f", "g"))
+
+  def test_tuple(self):
+    self.check("""
+    __all__ = ("f", "g")
+    """, ("f", "g"))
+
+  def test_augment(self):
+    self.check("""
+      __all__ = ["f", "g"]
+      __all__ += ["h"]
+    """, ("f", "g", "h"))
+
+  def test_if(self):
+    self.check("""
+      __all__ = ["f", "g"]
+      if sys.version_info > (3, 6, 0):
+        __all__ += ["h"]
+    """, ("f", "g", "h"))
+
+  def test_else(self):
+    self.check("""
+      __all__ = ["f", "g"]
+      if sys.version_info < (3, 6, 0):
+        __all__ += ["e"]
+      else:
+        __all__ += ["h"]
+    """, ("f", "g", "h"))
+
+
 if __name__ == "__main__":
   unittest.main()

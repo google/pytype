@@ -19,7 +19,6 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
-from pytype.pytd.codegen import pytdgen
 
 # pylint: disable=g-import-not-at-top
 if sys.version_info >= (3, 8):
@@ -402,18 +401,14 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     elif isinstance(value, pytd.NamedType):
       res = self.defs.resolve_type(value.name)
       return pytd.Alias(name, res)
-    elif isinstance(value, ast3.List):
-      if name != "__all__":
-        raise ParseError("Only __slots__ and __all__ can be literal lists")
-      pyval = self._read_str_list(name, value)
-      return pytd.Constant(name, pytdgen.pytd_list("str"), pyval)
-    elif isinstance(value, ast3.Tuple):
-      pyval = None
+    elif isinstance(value, (ast3.List, ast3.Tuple)):
       if name == "__all__":
-        pyval = self._read_str_list(name, value)
-      # TODO(mdemello): Consistent with the current parser, but should it
-      # properly be Tuple[Type]?
-      return pytd.Constant(name, pytd.NamedType("tuple"), pyval)
+        self.defs.all = self._read_str_list(name, value)
+        return Splice([])
+      else:
+        # Silently discard the literal value, just preserve the collection type
+        typ = "list" if isinstance(value, ast3.List) else "tuple"
+        return pytd.Constant(name, pytd.NamedType(typ))
     elif isinstance(value, ast3.Name):
       value = self.defs.resolve_type(value.id)
       return pytd.Alias(name, value)
@@ -465,6 +460,13 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       self.defs.add_alias_or_constant(ret)
     return ret
 
+  def visit_AugAssign(self, node):
+    name = node.target.id
+    if name == "__all__":
+      # Ignore other assignments
+      self.defs.all += self._read_str_list(name, node.value)
+    return Splice([])
+
   def _assign(self, node, target, value):
     name = target.id
 
@@ -488,7 +490,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         raise ParseError("Cannot change the type of __slots__")
       return function.Mutator(name, ret.type)
 
-    if self.level == 0:
+    if self.level == 0 and not isinstance(ret, Splice):
       self.defs.add_alias_or_constant(ret)
     return ret
 

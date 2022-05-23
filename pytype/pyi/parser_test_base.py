@@ -18,6 +18,15 @@ class ParserTestBase(test_base.UnitTest):
     super().setUp()
     self.options = parser.PyiOptions(python_version=self.python_version)
 
+  def parse(self, src, name=None, version=None, platform="linux"):
+    if version:
+      self.options.python_version = version
+    self.options.platform = platform
+    version = version or self.python_version
+    src = textwrap.dedent(src).lstrip()
+    ast = parser.parse_string(src, name=name, options=self.options)
+    return ast
+
   def check(self, src, expected=None, prologue=None, name=None,
             version=None, platform="linux"):
     """Check the parsing of src.
@@ -40,18 +49,12 @@ class ParserTestBase(test_base.UnitTest):
     Returns:
       The parsed pytd.TypeDeclUnit.
     """
-    if version:
-      self.options.python_version = version
-    self.options.platform = platform
-    version = version or self.python_version
-    src = textwrap.dedent(src).lstrip()
-    ast = parser.parse_string(src, name=name, options=self.options)
+    ast = self.parse(src, name, version, platform)
     actual = pytd_utils.Print(ast)
     if expected != IGNORE:
       if expected is None:
         expected = src
-      else:
-        expected = textwrap.dedent(expected).lstrip()
+      expected = textwrap.dedent(expected).lstrip()
       if prologue:
         expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
       # Allow blank lines at the end of `expected` for prettier tests.

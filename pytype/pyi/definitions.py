@@ -345,6 +345,7 @@ class Definitions:
     self.aliases = {}
     self.type_params = []
     self.param_specs = []
+    self.all = ()
     self.generated_classes = collections.defaultdict(list)
     self.module_path_map = {}
 
@@ -715,6 +716,10 @@ class Definitions:
 
     if self.module_info.module_name == "builtins":
       constants.extend(types.builtin_keyword_constants())
+
+    if self.all:
+      constants.append(
+          pytd.Constant("__all__", pytdgen.pytd_list("str"), self.all))
 
     generated_classes = sum(self.generated_classes.values(), [])
 
