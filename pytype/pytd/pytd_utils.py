@@ -38,6 +38,15 @@ ANON_PARAM = re.compile(r"_[0-9]+")
 _TUPLE_NAMES = ("builtins.tuple", "typing.Tuple")
 
 
+class LoadPickleError(Exception):
+  """Errors when loading a pickled pytd file."""
+
+  def __init__(self, filename):
+    self.filename = filename
+    msg = f"Error loading pickle file: {filename}"
+    super().__init__(msg)
+
+
 def IsPickle(filename):
   return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
 
@@ -368,14 +377,21 @@ def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
   return path, pytype_source_utils.load_text_file(path)
 
 
+def _LoadPickle(f, filename):
+  """Load a pickle file, raising a custom exception on failure."""
+  try:
+    return pickle.load(f)
+  except Exception as e:  # pylint: disable=broad-except
+    raise LoadPickleError(filename) from e
+
+
 def LoadPickle(filename, compress=False, open_function=open):
   with open_function(filename, "rb") as fi:
     if compress:
       with gzip.GzipFile(fileobj=fi) as zfi:
-        # TODO(b/173150871): Remove the disable once the typeshed bug is fixed.
-        return pickle.load(zfi)  # pytype: disable=wrong-arg-types
+        return _LoadPickle(zfi, filename)
     else:
-      return pickle.load(fi)
+      return _LoadPickle(fi, filename)
 
 
 def SavePickle(data, filename=None, compress=False, open_function=open):

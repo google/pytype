@@ -321,6 +321,10 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   except directors.SkipFileError as e:
     raise exception_type("Pytype could not analyze file %s: "
                          "'# skip-file' directive found" % filename) from e
+  except pytd_utils.LoadPickleError as e:
+    raise exception_type(
+        "Error analyzing file %s: Could not load serialized dependency %s" % (
+            filename, e.filename)) from e
   except Exception as e:  # pylint: disable=broad-except
     msg = "Pytype error: %s: %s" % (e.__class__.__name__, e.args[0])
     raise exception_type(msg).with_traceback(e.__traceback__)

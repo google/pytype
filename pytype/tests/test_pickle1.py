@@ -5,6 +5,7 @@ import textwrap
 
 from pytype import file_utils
 from pytype.pyi import parser
+from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
 
@@ -200,6 +201,22 @@ class PickleTest(test_base.BaseTest):
         class B(foo.A):  # final-error
           pass
       """)
+
+  def test_exception(self):
+    old = pickle.load
+    def load_with_error(*args, **kwargs):
+      raise ValueError("error!")
+    foo = """
+      class A: pass
+    """
+    pickle.load = load_with_error
+    with self.DepTree([("foo.py", foo, {"pickle": True})]):
+      with self.assertRaises(pytd_utils.LoadPickleError):
+        self.Check("""
+          import foo
+          x = foo.A()
+        """)
+    pickle.load = old
 
 
 if __name__ == "__main__":
