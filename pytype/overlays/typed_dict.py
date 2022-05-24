@@ -55,12 +55,37 @@ class TypedDictBuilder(abstract.PyTDClass):
     pyval = typing_ast.Lookup("typing._TypedDict")
     pyval = pyval.Replace(name="typing.TypedDict")
     super().__init__("TypedDict", pyval, ctx)
+    # Signature for the functional constructor
+    fn = typing_ast.Lookup("typing._TypedDictFunction")
+    fn = fn.Replace(name="typing.TypedDict")
+    sig, = fn.signatures
+    self.fn_sig = function.Signature.from_pytd(
+        self.ctx, "typing.TypedDict", sig)
 
-  def call(self, node, *args):
-    details = ("Use the class definition form of TypedDict instead.")
-    self.ctx.errorlog.not_supported_yet(
-        self.ctx.vm.frames, "TypedDict functional constructor", details)
-    return node, self.ctx.new_unsolvable(node)
+  def call(self, node, _, args):
+    """Call the functional constructor."""
+    props = self._extract_args(args)
+    cls = TypedDictClass(props, self, self.ctx)
+    cls_var = cls.to_variable(node)
+    return node, cls_var
+
+  def _extract_param(self, args, pos, name, pyval_type, typ):
+    var = args.posargs[pos]
+    try:
+      return abstract_utils.get_atomic_python_constant(var, pyval_type)
+    except abstract_utils.ConversionError as e:
+      bad = function.BadParam(name, typ)
+      raise function.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
+
+  def _extract_args(self, args):
+    if len(args.posargs) != 2:
+      raise function.WrongArgCount(self.fn_sig, args, self.ctx)
+    name = self._extract_param(args, 0, "name", str, self.ctx.convert.str_type)
+    fields = self._extract_param(
+        args, 1, "fields", dict, self.ctx.convert.dict_type)
+    props = TypedDictProperties(
+        name=name, fields=fields, required=set(fields.keys()), total=True)
+    return props
 
   def _validate_bases(self, cls_name, bases):
     """Check that all base classes are valid."""

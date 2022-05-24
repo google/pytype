@@ -608,6 +608,10 @@ if sys.version_info >= (3, 6):
 # typing_extensions.TypedDict before 3.8 and typing.TypedDict thereafter.
 class _TypedDict(Mapping[str, object]): ...
 
+# Internal pytd signature for the TypedDict functional constructor.
+def _TypedDictFunction(name: str, fields: Dict[str, Any], *, total: bool = ...): ...
+
+
 TYPE_CHECKING = ...  # type: bool
 
 # This does not exist at runtime; it needs to be here because it's used by
