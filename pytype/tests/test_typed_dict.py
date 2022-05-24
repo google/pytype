@@ -177,13 +177,6 @@ class TypedDictTest(test_base.BaseTest):
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
 
-  def test_functional_constructor(self):
-    err = self.CheckWithErrors("""
-      from typing_extensions import TypedDict
-      A = TypedDict("A", {'x': int, 'y': str})  # not-supported-yet[e]
-    """)
-    self.assertErrorSequences(err, {"e": ["Use the class definition form"]})
-
   def test_total_with_constructor(self):
     self.CheckWithErrors("""
       from typing_extensions import TypedDict
@@ -313,6 +306,45 @@ class TypedDictTest(test_base.BaseTest):
       assert 'a' in baz['c']
       print(baz['c']['a'])
     """)
+
+
+class TypedDictFunctionalTest(test_base.BaseTest):
+  """Tests for typing.TypedDict functional constructor."""
+
+  def test_constructor(self):
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      A = TypedDict("A", {"x": int, "y": str})
+      B = TypedDict("B", "b")  # wrong-arg-types
+      C = TypedDict("C")  # wrong-arg-count
+    """)
+
+  def test_init(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      A = TypedDict("A", {"x": int, "y": str})
+      a = A(x=1, y='2')
+      b = A(x=1, y=2)  # wrong-arg-types[e1]
+      c = A(x=1)  # missing-parameter[e2]
+      d = A(y='1')  # missing-parameter
+      e = A(1, '2')  # missing-parameter
+    """)
+    self.assertErrorSequences(err, {
+        "e1": ["Expected", "(*, x, y: str)", "Actual", "(x, y: int)"],
+        "e2": ["Expected", "(*, x, y)", "Actual", "(x)"]
+    })
+
+  def test_annotation(self):
+    err = self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      A = TypedDict("A", {"x": int, "y": str})
+      a: A = {'x': '10', 'z': 20}  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(err, {"e": [
+        "Annotation: A(TypedDict)",
+        "extra keys", "z",
+        "type errors", "{'x': ...}", "expected int", "got str"
+    ]})
 
 
 _SINGLE = """
