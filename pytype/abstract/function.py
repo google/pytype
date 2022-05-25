@@ -33,6 +33,14 @@ def get_signatures(func):
     return get_signatures(func.method)
   elif _isinstance(func, "SignedFunction"):
     return [func.signature]
+  elif func.__class__.__name__ == "PropertyInstance":
+    # NOTE: We typically do not want to treat a PropertyInstance as a callable.
+    # This check is here due to a crash in the matcher when applying a method
+    # decorator to a property, e.g.
+    #   @abstractmethod
+    #   @property
+    #   def f()...
+    return []
   elif _isinstance(func.cls, "CallableClass"):
     return [Signature.from_callable(func.cls)]
   else:
