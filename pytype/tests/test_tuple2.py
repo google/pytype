@@ -226,7 +226,7 @@ class TupleTestPython3Feature(test_base.BaseTest):
     _, errors = self.InferWithErrors("""
       a, *b, c = (1,)  # bad-unpacking[e]
     """)
-    self.assertErrorRegexes(errors, {"e": r"1 value.*3 variables"})
+    self.assertErrorRegexes(errors, {"e": r"1 value.*2 variables"})
 
   def test_strptime(self):
     ty = self.Infer("""
