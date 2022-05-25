@@ -987,7 +987,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     except abstract_utils.ConversionError:
       pass
     else:
-      if _isinstance(other, "Tuple"):
+      if self._instance and _isinstance(other, "Tuple"):
         pyval = self._instance.pyval + other.pyval
         ret = _instances.Tuple(pyval, self.ctx)
         return node, ret.to_variable(node)
