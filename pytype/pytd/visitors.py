@@ -1867,14 +1867,6 @@ class ExpandCompatibleBuiltins(Visitor):
     assert self.in_type_parameter
     self.in_type_parameter = False
 
-  def EnterLiteral(self, _):
-    assert not self.in_type_parameter
-    self.in_type_parameter = True
-
-  def LeaveLiteral(self, _):
-    assert self.in_type_parameter
-    self.in_type_parameter = False
-
   def VisitClassType(self, node):
     if self.in_parameter and not self.in_type_parameter:
       return self.replacements.get(node.name, node)

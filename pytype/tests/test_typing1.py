@@ -437,7 +437,6 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_missing_enum_member(self):
-    # This should be a pyi-error, but checking happens during conversion.
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import enum
@@ -445,6 +444,17 @@ class LiteralTest(test_base.BaseTest):
         class M(enum.Enum):
           A: int
         x: Literal[M.B]
+      """)
+      self.CheckWithErrors("""
+        import foo  # pyi-error
+      """, pythonpath=[d.path])
+
+  def test_illegal_literal_typevar(self):
+    with file_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from typing import Literal, TypeVar
+        T = TypeVar('T')
+        x: Literal[T]
       """)
       self.CheckWithErrors("""
         import foo  # pyi-error
