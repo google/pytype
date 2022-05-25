@@ -1814,10 +1814,10 @@ class VirtualMachine:
     options = []
     nontuple_seq = self.ctx.program.NewVariable()
     has_slurp = n_after > -1
-    count = n_before + n_after + 1
+    count = n_before + max(n_after, 0)
     for b in abstract_utils.expand_type_parameter_instances(seq.bindings):
       tup = self._get_literal_sequence(b.data)
-      if tup:
+      if tup is not None:
         if has_slurp and len(tup) >= count:
           options.append(self._restructure_tuple(state, tup, n_before, n_after))
           continue
@@ -1835,8 +1835,8 @@ class VirtualMachine:
       # and assign the slurp variable type List[T].
       option = [result for _ in range(count)]
       if has_slurp:
-        option[n_before] = self.ctx.convert.build_list_of_type(
-            state.node, result)
+        slurp = self.ctx.convert.build_list_of_type(state.node, result)
+        option = option[:n_before] + [slurp] + option[n_before:]
       options.append(option)
     values = tuple(
         self.ctx.convert.build_content(value) for value in zip(*options))

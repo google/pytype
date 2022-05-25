@@ -28,6 +28,27 @@ class TestUnpack(test_base.BaseTest):
       e = ...  # type: Tuple[Union[A, str, int], ...]
     """)
 
+  def test_empty(self):
+    ty, err = self.InferWithErrors("""
+      a, *b = []  # bad-unpacking[e]
+      c, *d = [1]
+      *e, f = [2]
+      g, *h, i = [1, 2]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, List
+      a: Any
+      b: List[nothing]
+      c: int
+      d: List[nothing]
+      e: List[nothing]
+      f: int
+      g: int
+      h: List[nothing]
+      i: int
+    """)
+    self.assertErrorSequences(err, {"e": ["0 values", "1 variable"]})
+
   def test_unpack_indefinite_from_pytd(self):
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
