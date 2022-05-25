@@ -164,6 +164,25 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": ["on method Foo.f"]})
 
+  def test_abstract_property(self):
+    # Regression test for a crash when the decorators were applied in the wrong
+    # order.
+    errors = self.CheckWithErrors("""
+      import abc
+      class Foo(abc.ABC):
+        @abc.abstractmethod
+        @property
+        def f(self) -> str:  # wrong-arg-types[e]
+          return 'a'
+
+        @property
+        @abc.abstractmethod
+        def g(self) -> str:
+          return 'a'
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Expected", "Callable", "Actual", "property"]})
+
 
 if __name__ == "__main__":
   test_base.main()
