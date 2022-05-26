@@ -1,18 +1,10 @@
 """Merge .pyi file annotations into a .py file."""
 
 import argparse
-import difflib
 import logging
 import sys
 
 from pytype.tools.merge_pyi import merge_pyi
-
-
-def get_diff(a, b):
-  a, b = a.split('\n'), b.split('\n')
-
-  diff = difflib.Differ().compare(a, b)
-  return '\n'.join(diff)
 
 
 def parse_args(argv):
@@ -20,7 +12,7 @@ def parse_args(argv):
 
   parser = argparse.ArgumentParser(
       description='Populate file.py with type annotations from file.pyi.',
-      epilog='Outputs merged file to stdout.')
+      epilog='Outputs merged file to stdout if no other option is set.')
 
   def check_verbosity(v):
     v = int(v)  # may raise ValueError
@@ -37,26 +29,30 @@ def parse_args(argv):
   group.add_argument(
       '-i', '--in-place', action='store_true', help='overwrite file.py')
 
-  parser.add_argument(
-      '--as-comments',
-      action='store_true',
-      help='insert type annotations as comments')
-
   group.add_argument('--diff', action='store_true', help='print out a diff')
 
   parser.add_argument(
-      'py',
-      type=argparse.FileType('r'),
-      metavar='file.py',
+      '-b', '--backup', type=str,
+      help=('extension to use for a backup file, if --in-place is set. '
+            'e.g. `-i -b orig` will copy file.py to file.py.orig if '
+            'any changes are made.'))
+
+  parser.add_argument(
+      'py', type=str, metavar='file.py',
       help='python file to annotate')
 
   parser.add_argument(
-      'pyi',
-      type=argparse.FileType('r'),
-      metavar='file.pyi',
+      'pyi', type=str, metavar='file.pyi',
       help='PEP484 stub file with annotations for file.py')
 
-  return parser.parse_args(argv[1:])
+  args = parser.parse_args(argv[1:])
+
+  # Validate args
+  if args.backup and not args.in_place:
+    parser.error(
+        'Cannot use argument -b/--backup without argument -i/--in-place')
+
+  return args
 
 
 def main(argv=None):
@@ -74,24 +70,22 @@ def main(argv=None):
   # level >50 prevents anything from being logged.
   logging.basicConfig(level=50-args.verbosity*10)
 
-  py_src = args.py.read()
-  pyi_src = args.pyi.read()
-  annotated_src = merge_pyi.merge_sources(py=py_src, pyi=pyi_src)
-  src_changed = annotated_src != py_src
-
   if args.diff:
-    if src_changed:
-      diff = get_diff(py_src, annotated_src)
-      print(diff)
+    mode = merge_pyi.Mode.DIFF
   elif args.in_place:
-    if src_changed:
-      with open(args.py.name, 'w') as f:
-        f.write(annotated_src)
-      print('Merged types to %s from %s' % (args.py.name, args.pyi.name))
-    else:
-      print('No new types for %s in %s' % (args.py.name, args.pyi.name))
+    mode = merge_pyi.Mode.OVERWRITE
   else:
-    sys.stdout.write(annotated_src)
+    mode = merge_pyi.Mode.PRINT
+
+  backup = args.backup or None
+  changed = merge_pyi.merge_files(
+      py_path=args.py, pyi_path=args.pyi, mode=mode, backup=backup)
+
+  if mode == merge_pyi.Mode.OVERWRITE:
+    if changed:
+      print('Merged types to %s from %s' % (args.py, args.pyi))
+    else:
+      print('No new types for %s in %s' % (args.py, args.pyi))
 
 
 if __name__ == '__main__':
