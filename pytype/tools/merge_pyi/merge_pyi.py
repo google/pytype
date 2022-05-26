@@ -1,4 +1,4 @@
-"""Merges type annotations from pyi files into the corresponding source files."""
+"""Merges type annotations from pyi files into the corresponding py files."""
 
 import difflib
 import enum
@@ -57,7 +57,7 @@ def merge_files(
   annotated_src = merge_sources(py=py_src, pyi=pyi_src)
   changed = annotated_src != py_src
   if mode == Mode.PRINT:
-    # Always print to stdout even if we haven"t changed anything.
+    # Always print to stdout even if we haven't changed anything.
     print(annotated_src)
   elif mode == Mode.DIFF and changed:
     diff = _get_diff(py_src, annotated_src)
