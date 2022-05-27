@@ -1051,8 +1051,17 @@ class Indexer:
   def _lookup_attribute_by_type(self, r, attr_name):
     """Look up an attribute using pytype annotations."""
 
-    lhs, rhs = r.data
     links = []
+    # For unclear reasons, we sometimes do not get two elements in r.data
+    # See b/233390756 for an example. This handles the error gracefully, since
+    # rhs is not used in most of this function.
+    if not r.data:
+      return []
+    elif len(r.data) == 1:
+      lhs, rhs = r.data[0], None
+    else:
+      lhs, rhs = r.data
+
     for l in lhs:
       if self._is_pytype_module(l):
         lookup = [l]
