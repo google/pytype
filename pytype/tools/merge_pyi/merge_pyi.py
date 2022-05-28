@@ -2,16 +2,21 @@
 
 import difflib
 import enum
+import os
 import shutil
 
-from typing import Optional
+from typing import List, Optional, Tuple
 
 import libcst as cst
 from libcst import codemod
 from libcst.codemod import visitors
 
 
-def _merge_trees(*, py_tree, pyi_tree):
+class MergeError(Exception):
+  """Wrap exceptions thrown while merging files."""
+
+
+def _merge_csts(*, py_tree, pyi_tree):
   context = codemod.CodemodContext()
   vis = visitors.ApplyTypeAnnotationsVisitor
   vis.store_stub_in_context(context, pyi_tree)
@@ -23,10 +28,13 @@ def _merge_trees(*, py_tree, pyi_tree):
 
 
 def merge_sources(*, py, pyi):
-  py_cst = cst.parse_module(py)
-  pyi_cst = cst.parse_module(pyi)
-  merged_cst = _merge_trees(py_tree=py_cst, pyi_tree=pyi_cst)
-  return merged_cst.code
+  try:
+    py_cst = cst.parse_module(py)
+    pyi_cst = cst.parse_module(pyi)
+    merged_cst = _merge_csts(py_tree=py_cst, pyi_tree=pyi_cst)
+    return merged_cst.code
+  except Exception as e:  # pylint: disable=broad-except
+    raise MergeError(str(e)) from e
 
 
 class Mode(enum.Enum):
@@ -68,3 +76,40 @@ def merge_files(
     with open(py_path, "w") as f:
       f.write(annotated_src)
   return changed
+
+
+def merge_tree(
+    *,
+    py_path: str,
+    pyi_path: str,
+    backup: Optional[str] = None,
+    verbose: bool = False
+) -> Tuple[List[str], List[Tuple[str, MergeError]]]:
+
+  """Merge .py files in a tree with the corresponding .pyi files."""
+
+  errors = []
+  changed_files = []
+
+  for root, _, files in os.walk(py_path):
+    rel = os.path.relpath(py_path, root)
+    pyi_dir = os.path.normpath(os.path.join(pyi_path, rel))
+    for f in files:
+      if f.endswith(".py"):
+        py = os.path.join(root, f)
+        pyi = os.path.join(pyi_dir, f + "i")
+        if os.path.exists(pyi):
+          if verbose:
+            print("Merging:", py, end=" ")
+          try:
+            changed = merge_files(
+                py_path=py, pyi_path=pyi, mode=Mode.OVERWRITE, backup=backup)
+            if changed:
+              changed_files.append(py)
+            if verbose:
+              print("[OK]")
+          except MergeError as e:
+            errors.append((py, e))
+            if verbose:
+              print("[FAILED]")
+  return changed_files, errors
