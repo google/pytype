@@ -11,6 +11,17 @@ toplevel_py_binary(
     .merge_pyi
 )
 
+toplevel_py_binary(
+  NAME
+    merge-project
+  SRCS
+    merge_project.py
+  MAIN
+    merge_project.py
+  DEPS
+    .merge_pyi
+)
+
 py_library(
   NAME
     merge_pyi
