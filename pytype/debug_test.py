@@ -143,15 +143,6 @@ class DebugTest(unittest.TestCase):
     v2.AddBinding("y", {b}, n)
     assert isinstance(debug.program_to_text(self.prog), str)  # smoke test
 
-  def test_program_to_dot(self):
-    v1 = self.prog.NewVariable()
-    b = v1.AddBinding("x", [], self.current_location)
-    n = self.current_location.ConnectNew()
-    v2 = self.prog.NewVariable()
-    v2.AddBinding("y", {b}, n)
-    # smoke test
-    assert isinstance(debug.program_to_dot(self.prog, ignored=()), str)
-
   def test_root_cause_visible(self):
     v = self.prog.NewVariable()
     b = v.AddBinding("x", [], self.current_location)
