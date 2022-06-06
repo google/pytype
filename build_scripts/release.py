@@ -41,7 +41,7 @@ def parse_args():
            "take a value of %s or %s" % allowed_modes)
   args = parser.parse_args()
   if args.mode not in allowed_modes:
-    sys.exit("Invalid --mode option. Should be one of %s" % allowed_modes)
+    sys.exit("Invalid --mode option. Should be one of %s" % (allowed_modes,))
   return args
 
 
