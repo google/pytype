@@ -7,6 +7,7 @@ importlab>=0.7
 libcst
 ninja>=1.10.0.post2
 pybind11>=2.6.0rc3
+pydot
 pylint
 tabulate
 toml
