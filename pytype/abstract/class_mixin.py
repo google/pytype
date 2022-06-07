@@ -578,7 +578,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Any subclass of a Parameterized dataclass must inherit attributes from
       # its parent's init.
       # See https://github.com/google/pytype/issues/1104
-      if abstract_utils._isinstance(base_cls, "ParameterizedClass"):
+      if _isinstance(base_cls, "ParameterizedClass"):
         type_params = base_cls.formal_type_parameters
         base_cls = base_cls.base_cls
       if metadata_key in base_cls.metadata:
@@ -589,9 +589,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       for a in attrs:
         all_attrs[a.name] = a
 
-    # type_params is only dict if it has been assigned in a dataclass context.
-    if isinstance(type_params, dict):
-        self._recompute_attrs_type_from_mro(all_attrs, type_params)
+    self._recompute_attrs_type_from_mro(all_attrs, type_params)
     return list(all_attrs.values())
 
   def record_attr_ordering(self, own_attrs):
