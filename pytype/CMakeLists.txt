@@ -401,8 +401,6 @@ py_library(
     _utils
   SRCS
     utils.py
-  DEPS
-    .pytype_source_utils
 )
 
 py_library(
@@ -633,12 +631,8 @@ py_test(
   SRCS
     vm_test.py
   DEPS
-    ._utils
-    .blocks
     .context
-    .errors
     .vm
-    pytype.pyc.pyc
     pytype.tests.test_base
 )
 

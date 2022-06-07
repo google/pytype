@@ -12,8 +12,6 @@ import traceback
 from typing import Iterable, List
 import weakref
 
-from pytype import pytype_source_utils
-
 
 # We disable the check that keeps pytype from running on not-yet-supported
 # versions when we detect that a pytype test is executing, in order to be able
@@ -156,11 +154,6 @@ def get_python_exes(python_version) -> Iterable[List[str]]:
   Yields:
     The path to the executable
   """
-  # Use custom interpreters, if provided, in preference to the ones in $PATH
-  custom_python_exe = pytype_source_utils.get_custom_python_exe(python_version)
-  if custom_python_exe:
-    yield [custom_python_exe]
-    return
   for version in (format_version(python_version), "3"):
     if sys.platform == "win32":
       python_exe = ["py", f"-{version}"]
