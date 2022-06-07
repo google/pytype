@@ -111,3 +111,10 @@ py_library(
   SRCS
     multiline.py
 )
+
+py_library(
+  NAME
+    minimal
+  SRCS
+    minimal.py
+)
