@@ -4,11 +4,8 @@
 # This file should be kept under pytype/ so that __file__.dirname is the
 # top-level pytype directory.
 
-import atexit
 import os
 import re
-import sys
-import tempfile
 
 
 class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
@@ -122,43 +119,3 @@ def list_pytype_files(suffix):
         pass
       else:
         yield filename[i + len(directory):]
-
-
-# When our open-source tests run on GitHub Actions, we install a Python 3.7
-# interpreter for vm_test.
-CUSTOM_PY37_EXE = "/opt/hostedtoolcache/Python/3.7.13/x64/bin/python3.7"
-
-
-def get_custom_python_exe(python_version):
-  """Get the path to a custom python interpreter.
-
-  In order to have vm_test target Python 3.7 no matter what the host version is,
-  our open-source tests install a Python 3.7 interpreter when running on GitHub
-  Actions.
-
-  Arguments:
-    python_version: the requested version, e.g. (3, 7)
-  Returns:
-    None if:
-      The host version is (3, 7) (we already have a 3.7 interpreter), or
-      the target version is not (3, 7), or
-      an error occurs while loading the file.
-    Else: the path to the extracted file.
-  """
-  if sys.version_info[:2] == (3, 7) or python_version != (3, 7):
-    return None
-  path = os.path.normpath(get_full_path(CUSTOM_PY37_EXE))
-  if os.path.exists(path):
-    return path
-  try:
-    data = load_binary_file(path)
-  except IOError:
-    return None
-
-  with tempfile.NamedTemporaryFile(delete=False, suffix="python") as fi:
-    fi.write(data)
-    fi.close()
-    exe_file = fi.name
-    os.chmod(exe_file, 0o750)
-    atexit.register(lambda: os.unlink(exe_file))
-  return exe_file
