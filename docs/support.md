@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-04-22T15:56-07:00 -->
+<!-- Added by: rechen, at: 2022-06-06T17:19-07:00 -->
 
 <!--te-->
 
@@ -77,6 +77,7 @@ Feature                                                                         
 [PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ❌        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
+[PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | ❌        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
@@ -113,6 +114,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [655]: https://peps.python.org/pep-0655/
 [673]: https://www.python.org/dev/peps/pep-0673
 [675]: https://peps.python.org/pep-0675/
+[681]: https://peps.python.org/pep-0681/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [generic-aliases]: https://github.com/google/pytype/issues/793
