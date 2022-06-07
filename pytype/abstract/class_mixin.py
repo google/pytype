@@ -6,7 +6,6 @@ from typing import Any, List, Optional, Type
 
 from pytype import datatypes
 from pytype.abstract import abstract_utils
-from pytype.abstract import _classes
 from pytype.abstract import function
 from pytype.abstract import mixin  # pylint: disable=unused-import
 from pytype.pytd import mro
@@ -579,8 +578,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Any subclass of a Parameterized dataclass must inherit attributes from
       # its parent's init.
       # See https://github.com/google/pytype/issues/1104
-      if isinstance(base_cls, _classes.ParameterizedClass):
-        type_params = base_cls._formal_type_parameters
+      if abstract_utils._isinstance(base_cls, "ParameterizedClass"):
+        type_params = base_cls.formal_type_parameters
         base_cls = base_cls.base_cls
       if metadata_key in base_cls.metadata:
         sub_attrs.append([a for a in base_cls.metadata[metadata_key]
