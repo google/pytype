@@ -145,3 +145,5 @@ py_test(
     .parse_args
     pytype.utils
 )
+
+add_subdirectory(testdata)

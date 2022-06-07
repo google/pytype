@@ -73,7 +73,7 @@ py_library(
     .errors
     .metrics
     pytype.abstract.abstract
-    pytype.inspect.graph
+    pytype.inspect.inspect
     pytype.pytd.pytd
 )
 

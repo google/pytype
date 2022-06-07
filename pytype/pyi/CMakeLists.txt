@@ -9,6 +9,7 @@ py_library(
     .conditions
     .definitions
     .function
+    .init
     .metadata
     .modules
     .types
@@ -87,6 +88,13 @@ py_library(
     .types
     pytype.utils
     pytype.pytd.pytd_for_parser
+)
+
+py_library(
+  NAME
+    init
+  SRCS
+    __init__.py
 )
 
 py_library(
