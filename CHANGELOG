@@ -1,3 +1,21 @@
+Version 2022.06.06:
+
+Updates:
+* Remove --enable-nested-classes, which has been a no-op since the last release.
+* Support `__all__ += [...]` in pyi files.
+* Add support for the TypedDict functional constructor.
+* Add a `--backup` option to merge_pyi to copy the source file when overwriting.
+* Add a merge_project binary to recursively merge files in a project.
+
+Bug fixes:
+* Preserve precise element types when adding two fixed-length tuples.
+* Raise a meaningful exception when unpickling a pytd file fails.
+* Don't check Literals when expanding compatible builtins.
+* Fix a crash when applying a method decorator to a property.
+* Fix some off-by-one errors in sequence unpacking.
+* Fix a tuple addition crash.
+* Fix a crash in the indexer.
+
 Version 2022.05.19:
 
 Updates:

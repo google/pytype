@@ -17,7 +17,10 @@ _make = abstract_utils._make  # pylint: disable=protected-access
 
 
 def _var_map(func, var):
-  return (func(v) for v in var.data)
+  if isinstance(var, cfg.Variable):
+    return (func(v) for v in var.data)
+  else:
+    return func(var)
 
 
 class LazyConcreteDict(

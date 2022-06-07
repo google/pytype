@@ -73,6 +73,7 @@ py_library(
     .errors
     .metrics
     pytype.abstract.abstract
+    pytype.inspect.graph
     pytype.pytd.pytd
 )
 
@@ -724,6 +725,7 @@ py_library(
 
 add_subdirectory(abstract)
 add_subdirectory(ast)
+add_subdirectory(inspect)
 add_subdirectory(overlays)
 add_subdirectory(pyc)
 add_subdirectory(pyi)

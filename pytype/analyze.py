@@ -2,7 +2,6 @@
 
 import dataclasses
 import logging
-import subprocess
 
 from typing import Optional
 
@@ -12,6 +11,7 @@ from pytype import debug
 from pytype import errors
 from pytype import metrics
 from pytype.abstract import abstract_utils
+from pytype.inspect import graph
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -141,14 +141,10 @@ def infer_types(src,
 def _maybe_output_debug(options, program):
   """Maybe emit debugging output."""
   if options.output_cfg or options.output_typegraph:
-    dot = debug.program_to_dot(program, set([]), bool(options.output_cfg))
+    tg = graph.TypeGraph(program, set(), bool(options.output_cfg))
     svg_file = options.output_cfg or options.output_typegraph
-    with subprocess.Popen(
-        ["/usr/bin/dot", "-T", "svg", "-o", svg_file],
-        stdin=subprocess.PIPE, universal_newlines=True) as proc:
-      (_, stderr) = proc.communicate(dot)
-    if stderr:
-      log.info("Failed to create %s: %s", svg_file, stderr)
+    graph.write_svg_from_dot(svg_file, tg.to_dot())
+
   if options.output_debug:
     text = debug.program_to_text(program)
     if options.output_debug == "-":
