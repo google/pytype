@@ -41,7 +41,6 @@ jobs:
         sudo apt-get install cmake
         sudo apt-get install bison
         sudo apt-get install flex
-        sudo apt-get install python3.7
 
     - name: Install Dependencies
       run: pip install -r requirements.txt
