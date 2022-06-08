@@ -543,6 +543,21 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
           base_attrs.append(a)
     return base_attrs + cls_attrs
 
+  def _recompute_attrs_type_from_mro(self, all_attrs, type_params):
+    """Traverse the MRO and apply Generic type params to class attributes.
+
+    This IS REQUIRED for dataclass instances that inherits from a Generic.
+
+    Args:
+      all_attrs: All __init__ attributes of a class.
+      type_params: List of ParameterizedClass instances that will override
+        TypeVar attributes in all_attrs.
+    """
+    for typ_name, typ_obj in type_params.items():
+      for attr in all_attrs.values():
+        if typ_name == attr.typ.cls.name:
+          attr.typ = typ_obj
+
   def _get_attrs_from_mro(self, cls_attrs, metadata_key):
     """Traverse the MRO and collect base class attributes for metadata_key."""
 
@@ -552,6 +567,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
     all_attrs = {}
     sub_attrs = []
+    type_params = {}
     attributes_to_ignore = set()
     for base_cls in reversed(self.mro[1:]):
       if not isinstance(base_cls, Class):
@@ -559,6 +575,12 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       # Some third-party dataclass implementations add implicit fields that
       # should not be considered inherited attributes.
       attributes_to_ignore.update(getattr(base_cls, "IMPLICIT_FIELDS", ()))
+      # Any subclass of a Parameterized dataclass must inherit attributes from
+      # its parent's init.
+      # See https://github.com/google/pytype/issues/1104
+      if _isinstance(base_cls, "ParameterizedClass"):
+        type_params = base_cls.formal_type_parameters
+        base_cls = base_cls.base_cls
       if metadata_key in base_cls.metadata:
         sub_attrs.append([a for a in base_cls.metadata[metadata_key]
                           if a.name not in attributes_to_ignore])
@@ -566,6 +588,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     for attrs in sub_attrs:
       for a in attrs:
         all_attrs[a.name] = a
+
+    self._recompute_attrs_type_from_mro(all_attrs, type_params)
     return list(all_attrs.values())
 
   def record_attr_ordering(self, own_attrs):

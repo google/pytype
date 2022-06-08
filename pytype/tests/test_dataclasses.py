@@ -1057,5 +1057,89 @@ class TestPyiDataclass(test_base.BaseTest):
           def __init__(self, x: foo.B, w: int) -> None: ...
       """)
 
+  def test_parameterized_generic(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      import dataclasses
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: str
+        y: T
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Generic, TypeVar, Union
+      import dataclasses
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: str
+        y: T
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[str, T]]]
+        def __init__(self, x: str, y: T) -> None:
+            self = Foo[T]
+    """)
+
+  def test_parameterized_subclass(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      import dataclasses
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: str
+        y: T
+      @dataclasses.dataclass
+      class Bar(Foo[int]):
+        z: float
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Dict, Generic, TypeVar, Union
+      import dataclasses
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: str
+        y: T
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[str, T]]]
+        def __init__(self, x: str, y: T) -> None:
+            self = Foo[T]
+      @dataclasses.dataclass
+      class Bar(Foo[int]):
+        z: float
+        __dataclass_fields__: Dict[str, dataclasses.Field[Union[float, int, str]]]
+        def __init__(self, x: str, y: int, z: float) -> None: ...
+    """)
+
+  def test_parameterized_subclass_error_count(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+      import dataclasses
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: str
+        y: T
+      @dataclasses.dataclass
+      class Bar(Foo[int]):
+        z: float
+      bar = Bar('test', 10, .4, .4)  # wrong-arg-count
+    """)
+
+  def test_parameterized_subclass_error_type(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+      import dataclasses
+      T = TypeVar('T')
+      @dataclasses.dataclass
+      class Foo(Generic[T]):
+        x: str
+        y: T
+      @dataclasses.dataclass
+      class Bar(Foo[int]):
+        z: float
+      bar = Bar('test', .4, .4)  # wrong-arg-types
+    """)
+
 if __name__ == "__main__":
   test_base.main()
