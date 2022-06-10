@@ -941,13 +941,14 @@ class slice(object):
 
 class memoryview(object):
     __slots__ = []
-    format = ...  # type: str
-    itemsize = ...  # type: int
-    shape = ...  # type: Optional[Tuple[int, ...]]
-    strides = ...  # type: Optional[Tuple[int, ...]]
-    suboffsets = ...  # type: Optional[Tuple[int, ...]]
-    readonly = ...  # type: bool
-    ndim = ...  # type: int
+    format: str
+    itemsize: int
+    nbytes: int
+    shape: Optional[Tuple[int, ...]]
+    strides: Optional[Tuple[int, ...]]
+    suboffsets: Optional[Tuple[int, ...]]
+    readonly: bool
+    ndim: int
     def __init__(self, object: bytes) -> NoneType: ...
     def __getitem__(self, index: int) -> int: ...
     def __getitem__(self, index: slice) -> memoryview: ...
