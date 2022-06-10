@@ -30,6 +30,7 @@ overlays = {
     "abc": abc_overlay.ABCOverlay,
     "asyncio": asyncio_types_overlay.AsyncioOverlay,
     "attr": attr_overlay.AttrOverlay,
+    "attrs": attr_overlay.AttrsOverlay,
     "chex": chex_overlay.ChexOverlay,
     "collections": collections_overlay.CollectionsOverlay,
     "collections.abc": collections_overlay.ABCOverlay,

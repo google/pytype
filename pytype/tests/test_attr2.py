@@ -954,6 +954,43 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         def __init__(self, y: str = ...) -> None: ...
     """)
 
+  def test_attrs_namespace(self):
+    ty = self.Infer("""
+      import attrs
+      @attrs.define
+      class Foo:
+        x: int
+      @attrs.mutable
+      class Bar:
+        x: int
+      @attrs.frozen
+      class Baz:
+        x: int
+      @attrs.define
+      class Qux:
+        x: int = attrs.field(init=False)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import attr
+      import attrs
+      @attr.s
+      class Foo:
+        x: int
+        def __init__(self, x: int) -> None: ...
+      @attr.s
+      class Bar:
+        x: int
+        def __init__(self, x: int) -> None: ...
+      @attr.s
+      class Baz:
+        x: int
+        def __init__(self, x: int) -> None: ...
+      @attr.s
+      class Qux:
+        x: int
+        def __init__(self) -> None: ...
+    """)
+
 
 class TestPyiAttrs(test_base.BaseTest):
   """Tests for @attr.s in pyi files."""
