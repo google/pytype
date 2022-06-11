@@ -128,9 +128,6 @@ class FrameState(utils.ContextWeakrefMixin):
       return self
     assert len(self.data_stack) == len(other.data_stack)
     assert len(self.block_stack) == len(other.block_stack)
-    node = other.node
-    if self.node is not node:
-      self.node.ConnectTo(node)
     both = list(zip(self.data_stack, other.data_stack))
     if any(v1 is not v2 for v1, v2 in both):
       for v, o in both:
