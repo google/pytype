@@ -1,3 +1,14 @@
+Version 2022.06.14:
+
+Updates:
+* Add a stub and overlay for the 'attrs' module.
+
+Bug fixes:
+* Fix parameterized attributes for dataclass subclasses.
+* Mark dict views as reversible in Python 3.8+.
+* Add missing memoryview.nbytes attribute.
+* Fix chained attribute traces for python 3.10.
+
 Version 2022.06.06:
 
 Updates:
