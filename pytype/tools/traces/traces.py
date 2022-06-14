@@ -169,8 +169,14 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return match(node)
 
   def match_Attribute(self, node):
+    if hasattr(node, "end_lineno"):
+      n = node.end_lineno - node.lineno + 1
+    else:
+      n = 1
+    trs = self._get_traces(
+        node.lineno, _ATTR_OPS, node.attr, maxmatch=1, num_lines=n)
     return [(self._get_match_location(node, tr.symbol), tr)
-            for tr in self._get_traces(node.lineno, _ATTR_OPS, node.attr, 1)]
+            for tr in trs]
 
   def match_BinOp(self, node):
     if not isinstance(node.op, self._ast.Mod):
