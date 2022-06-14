@@ -1,21 +1,32 @@
 """Source and trace information."""
 
 import collections
+import dataclasses
+from typing import Any, NamedTuple, Tuple
+
+from pytype.pytd import pytd
 
 
-Location = collections.namedtuple("Location", ("line", "column"))
+class Location(NamedTuple):
+  line: int
+  column: int
 
 
-class AbstractTrace(
-    collections.namedtuple("AbstractTrace", ("op", "symbol", "types"))):
+@dataclasses.dataclass(eq=True, frozen=True)
+class AbstractTrace:
+  """Base class for traces."""
+  op: str
+  symbol: Any
+  types: Tuple[pytd.Node, ...]
 
   def __new__(cls, op, symbol, types):
+    del op, symbol, types  # unused
     if cls is AbstractTrace:
       raise TypeError("cannot instantiate AbstractTrace")
-    return super(AbstractTrace, cls).__new__(cls, op, symbol, types)
+    return super().__new__(cls)
 
   def __repr__(self):
-    return "%s : %s <- %s" % self
+    return "%s : %s <- %s" % (self.op, self.symbol, self.types)
 
 
 class Code:

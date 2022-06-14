@@ -1,13 +1,19 @@
 """Representation of Python function headers and calls."""
 
 import collections
+import dataclasses
 import itertools
 import logging
+from typing import Any, Dict, Optional, Sequence, Tuple
+
+import attrs
 
 from pytype import datatypes
+from pytype.abstract import _base
 from pytype.abstract import abstract_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
@@ -373,30 +379,28 @@ class Signature:
     return callargs.get(self.param_names[0]) if self.param_names else None
 
 
-class Args(collections.namedtuple(
-    "Args", ["posargs", "namedargs", "starargs", "starstarargs"])):
-  """Represents the parameters of a function call."""
+def _convert_namedargs(namedargs):
+  return {} if namedargs is None else namedargs
 
-  def __new__(cls, posargs, namedargs=None, starargs=None, starstarargs=None):
-    """Create arguments for a function under analysis.
 
-    Args:
-      posargs: The positional arguments. A tuple of cfg.Variable.
-      namedargs: The keyword arguments. A dictionary, mapping strings to
-        cfg.Variable.
-      starargs: The *args parameter, or None.
-      starstarargs: The **kwargs parameter, or None.
-    Returns:
-      An Args instance.
-    """
-    assert isinstance(posargs, tuple), posargs
-    cls.replace = cls._replace
-    return super().__new__(
-        cls,
-        posargs=posargs,
-        namedargs=namedargs or {},
-        starargs=starargs,
-        starstarargs=starstarargs)
+@attrs.frozen(eq=True)
+class Args:
+  """Represents the parameters of a function call.
+
+  Attributes:
+    posargs: The positional arguments. A tuple of cfg.Variable.
+    namedargs: The keyword arguments. A dictionary, mapping strings to
+      cfg.Variable.
+    starargs: The *args parameter, or None.
+    starstarargs: The **kwargs parameter, or None.
+
+  """
+
+  posargs: Tuple[cfg.Variable, ...]
+  namedargs: Dict[str, cfg.Variable] = attrs.field(converter=_convert_namedargs,
+                                                   default=None)
+  starargs: Optional[cfg.Variable] = None
+  starstarargs: Optional[cfg.Variable] = None
 
   def has_namedargs(self):
     return bool(self.namedargs)
@@ -587,16 +591,19 @@ class Args(collections.namedtuple(
 
   def replace_posarg(self, pos, val):
     new_posargs = self.posargs[:pos] + (val,) + self.posargs[pos + 1:]
-    return self._replace(posargs=new_posargs)
+    return self.replace(posargs=new_posargs)
 
   def replace_namedarg(self, name, val):
     new_namedargs = dict(self.namedargs)
     new_namedargs[name] = val
-    return self._replace(namedargs=new_namedargs)
+    return self.replace(namedargs=new_namedargs)
 
   def delete_namedarg(self, name):
     new_namedargs = {k: v for k, v in self.namedargs.items() if k != name}
-    return self._replace(namedargs=new_namedargs)
+    return self.replace(namedargs=new_namedargs)
+
+  def replace(self, **kwargs):
+    return attrs.evolve(self, **kwargs)
 
 
 class ReturnValueMixin:
@@ -657,14 +664,19 @@ class DictKeyMissing(Exception, ReturnValueMixin):
     return not self.__gt__(other)
 
 
-BadCall = collections.namedtuple("_", ["sig", "passed_args", "bad_param"])
+@dataclasses.dataclass(eq=True, frozen=True)
+class BadParam:
+  name: str
+  expected: _base.BaseValue
+  # Should be matcher.ErrorDetails but can't use due to circular dep.
+  error_details: Optional[Any] = None
 
 
-class BadParam(
-    collections.namedtuple("_", ["name", "expected", "error_details"])):
-
-  def __new__(cls, name, expected, error_details=None):
-    return super().__new__(cls, name, expected, error_details)
+@dataclasses.dataclass(eq=True, frozen=True)
+class BadCall:
+  sig: Signature
+  passed_args: Sequence[Tuple[str, _base.BaseValue]]
+  bad_param: Optional[BadParam]
 
 
 class InvalidParameters(FailedFunctionCall):
@@ -728,7 +740,13 @@ class MissingParameter(InvalidParameters):
 # pylint: enable=g-bad-exception-name
 
 
-class Mutation(collections.namedtuple("_", ["instance", "name", "value"])):
+@dataclasses.dataclass(frozen=True)
+class Mutation:
+  """A type mutation."""
+
+  instance: _base.BaseValue
+  name: str
+  value: cfg.Variable
 
   def __eq__(self, other):
     return (self.instance == other.instance and

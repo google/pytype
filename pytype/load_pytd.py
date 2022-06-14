@@ -1,6 +1,6 @@
 """Load and link .pyi files."""
 
-import collections
+import dataclasses
 import logging
 import os
 import pickle
@@ -44,8 +44,11 @@ def create_loader(options):
     return Loader(options)
 
 
-ResolvedModule = collections.namedtuple(
-    "ResolvedModule", ("module_name", "filename", "ast"))
+@dataclasses.dataclass(eq=True, frozen=True)
+class ResolvedModule:
+  module_name: str
+  filename: str
+  ast: pytd.TypeDeclUnit
 
 
 class Module:

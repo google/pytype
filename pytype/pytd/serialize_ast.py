@@ -5,7 +5,7 @@ serializing it to disk. Further users only need to read the serialized data from
 disk, which is faster to digest than a pyi file.
 """
 
-import collections
+from typing import List, NamedTuple, Optional, Set, Tuple
 
 from pytype import utils
 from pytype.pyi import parser
@@ -58,9 +58,12 @@ class UndoModuleAliasesVisitor(visitors.Visitor):
     return node
 
 
-SerializableTupleClass = collections.namedtuple(
-    "_", ["ast", "dependencies", "late_dependencies", "class_type_nodes",
-          "is_package"])
+class SerializableTupleClass(NamedTuple):
+  ast: pytd.TypeDeclUnit
+  dependencies: List[Tuple[str, Set[str]]]
+  late_dependencies: List[Tuple[str, Set[str]]]
+  class_type_nodes: Optional[List[pytd.ClassType]]
+  is_package: bool
 
 
 class SerializableAst(SerializableTupleClass):
@@ -74,6 +77,7 @@ class SerializableAst(SerializableTupleClass):
       Therefore it might be different from the set found by
       visitors.CollectDependencies in
       load_pytd._load_and_resolve_ast_dependencies.
+    late_dependencies: This AST's late dependencies.
     class_type_nodes: A list of all the ClassType instances in ast or None. If
       this list is provided only the ClassType instances in the list will be
       visited and have their .cls set. If this attribute is None the whole AST

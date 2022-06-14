@@ -192,6 +192,7 @@ py_library(
   DEPS
     pytype.utils
     pytype.pyc.pyc
+    pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
@@ -216,9 +217,11 @@ py_library(
   SRCS
     function.py
   DEPS
+    ._base
     .abstract_utils
     pytype.utils
     pytype.pytd.pytd
+    pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
 

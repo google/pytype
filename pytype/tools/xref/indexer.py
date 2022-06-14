@@ -74,10 +74,10 @@ def match_opcodes(opcode_traces, lineno, op_match_list):
     A list of matching opcodes.
   """
   out = []
-  for op, symbol, data in opcode_traces[lineno]:
+  for trace in opcode_traces[lineno]:
     for match_op, match_symbol in op_match_list:
-      if op == match_op and match_symbol in [None, symbol]:
-        out.append((op, symbol, data))
+      if trace.op == match_op and match_symbol in [None, trace.symbol]:
+        out.append((trace.op, trace.symbol, trace.types))
   return out
 
 
@@ -733,7 +733,10 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     # same location anyways.
     # We use pytype trace data to distinguish between local and global
     # variables.
-    for unused_loc, (op, symbol, data) in self.match(node):
+    for unused_loc, trace in self.match(node):
+      op = trace.op
+      symbol = trace.symbol
+      data = trace.types
       d = _unwrap(data)
       ref = None
       if op == "LOAD_GLOBAL":
@@ -761,8 +764,8 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     # We have replaced Name() in args with the corresponding string
     arg_varnames = [x for x in node.args if isinstance(x, str)]
     seen = set()
-    for _, (_, _, data) in self.match(node):
-      call, return_type = data
+    for _, trace in self.match(node):
+      call, return_type = trace.types
       if call is None:
         continue
       for d in call:
@@ -782,17 +785,17 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     # match() returns the location of the attribute, whereas the indexer needs
     # the location of the value on which the attribute is accessed, in order to
     # link function calls. We'll manually adjust the location later.
-    for unused_loc, (op, unused_symbol, data) in self.match(node):
-      if op in ("LOAD_ATTR", "LOAD_METHOD"):
+    for unused_loc, trace in self.match(node):
+      if trace.op in ("LOAD_ATTR", "LOAD_METHOD"):
         ref = self.add_local_ref(
             node,
             target=node.value,
             name=node_str,
-            data=data)
-        if len(data) == 2:
-          _, rhs = data
+            data=trace.types)
+        if len(trace.types) == 2:
+          _, rhs = trace.types
           self.typemap[ref.id] = rhs
-      elif op == "STORE_ATTR":
+      elif trace.op == "STORE_ATTR":
         defn = self.add_local_def(node)
         if self.current_class:
           # We only support attr definitions within a class definition.
@@ -811,10 +814,13 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
   def process_import(self, node):
     """Common code for Import and ImportFrom."""
 
-    for alias, (loc, (op, symbol, data)) in zip(node.names, self.match(node)):
+    for alias, (loc, trace) in zip(node.names, self.match(node)):
       # If an import is aliased, match() returns only the symbol/loc of
       # the alias, whereas the indexer also needs access to the unaliased
       # name in order to reference the imported module.
+      op = trace.op
+      symbol = trace.symbol
+      data = trace.types
       defn = None  # type: Optional[Definition]
       if alias.asname:
         defn = self.add_local_def(

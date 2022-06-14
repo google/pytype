@@ -41,10 +41,10 @@ class CodeTest(unittest.TestCase):
     self.assertCountEqual(src.traces, [1, 4])
     self.assertEqual(
         src.traces[1],
-        [("op1", "symbol1", (["data1"],)), ("op3", "symbol3", (["data3"],))])
-    self.assertEqual(src.traces[4], [("op2", "symbol2", (["data2"],))])
-    for trace in sum(src.traces.values(), []):
-      self.assertIsInstance(trace, _FakeTrace)
+        [_FakeTrace("op1", "symbol1", (["data1"],)),
+         _FakeTrace("op3", "symbol3", (["data3"],))])
+    self.assertEqual(
+        src.traces[4], [_FakeTrace("op2", "symbol2", (["data2"],))])
 
   def test_get_offset(self):
     src = source.Code("line1\nline2", [], _FakeTrace, "")

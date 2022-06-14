@@ -808,7 +808,9 @@ class ErrorLog(ErrorLogBase):
 
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
-    sig, passed_args, bad_param = bad_call
+    sig = bad_call.sig
+    passed_args = bad_call.passed_args
+    bad_param = bad_call.bad_param
     expected = self._print_args(self._iter_expected(sig, bad_param), bad_param)
     literal = "Literal[" in expected
     actual = self._print_args(
