@@ -1,10 +1,11 @@
 # Python dependencies for building and testing the pytype source code.
 # Make sure you also install the non-Python dependencies described in
 # https://github.com/google/pytype/blob/master/CONTRIBUTING.md#pytype-dependencies.
-attrs>=21.2.0
+attrs>=21.4.0
 dataclasses; python_version < '3.7'
 importlab>=0.7
 libcst
+networkx<2.8.4
 ninja>=1.10.0.post2
 pybind11>=2.6.0rc3
 pydot

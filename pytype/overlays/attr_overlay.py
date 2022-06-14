@@ -2,7 +2,7 @@
 
 import enum
 import logging
-from typing import Any, ClassVar, Dict, Optional, Tuple, Union
+from typing import Any, Callable, ClassVar, Dict, Optional, Tuple, TypeVar, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -18,6 +18,8 @@ log = logging.getLogger(__name__)
 Param = overlay_utils.Param
 Attribute = classgen.Attribute
 
+_TBaseValue = TypeVar("_TBaseValue", bound=abstract.BaseValue)
+
 
 class TypeSource(enum.Enum):
   """Source of an attrib's `typ` property."""
@@ -26,34 +28,61 @@ class TypeSource(enum.Enum):
   CONVERTER = 3
 
 
-class AttrOverlay(overlay.Overlay):
-  """A custom overlay for the 'attr' module."""
+class _AttrOverlayBase(overlay.Overlay):
+  """Base class for the attr and attrs modules, containing common attributes."""
+
+  _MODULE_NAME: str
 
   def __init__(self, ctx):
     member_map = {
-        "attrs": Attrs.make,
-        "attrib": Attrib.make,
-        "s": Attrs.make,
-        "dataclass": Attrs.make_dataclass,
-        "ib": Attrib.make,
-
         # Attr's next-gen APIs
         # See https://www.attrs.org/en/stable/api.html#next-gen
-
-        # They accept (almost) all the same arguments as the previous APIs.
-        # Strictly speaking these only exist in Python 3.6 and up, but
-        # Python 3.6 is the minimum version pytype are supports now, so not
-        # bothering to guard these definitions.
-        "define": AttrsNextGenDefine.make,
+        "define": self._build(AttrsNextGenDefine.make),
         # These (may) have different default arguments than 'define' for the
         # "frozen" arguments, but the overlay doesn't look at that yet.
-        "mutable": AttrsNextGenDefine.make,
-        "frozen": AttrsNextGenDefine.make,
-        "field": Attrib.make,
+        "mutable": self._build(AttrsNextGenDefine.make),
+        "frozen": self._build(AttrsNextGenDefine.make),
+        "field": self._build(Attrib.make),
     }
+    ast = ctx.loader.import_name(self._MODULE_NAME)
+    super().__init__(ctx, self._MODULE_NAME, member_map, ast)
 
-    ast = ctx.loader.import_name("attr")
-    super().__init__(ctx, "attr", member_map, ast)
+  @classmethod
+  def _build(
+      cls, make_fn: Callable[[Any, str], _TBaseValue],
+  ) -> Callable[[Any], _TBaseValue]:
+    return lambda ctx: make_fn(ctx, cls._MODULE_NAME)
+
+
+class AttrOverlay(_AttrOverlayBase):
+  """A custom overlay for the 'attr' module.
+
+  'attr' is the historical namespace for the attrs library, containing both
+  the old APIs (attr.s, attr.ib, etc.) and the next-generation ones
+  (attr.define, attr.field, etc.)
+  """
+
+  _MODULE_NAME = "attr"
+
+  def __init__(self, ctx):
+    super().__init__(ctx)
+    self._member_map.update({
+        "attrs": Attrs.make,
+        "attrib": self._build(Attrib.make),
+        "s": Attrs.make,
+        "dataclass": Attrs.make_dataclass,
+        "ib": self._build(Attrib.make),
+    })
+
+
+class AttrsOverlay(_AttrOverlayBase):
+  """A custom overlay for the 'attrs' module.
+
+  'attrs' is the new namespace for the attrs library's next-generation APIs
+  (attrs.define, attrs.field, etc.)
+  """
+
+  _MODULE_NAME = "attrs"
 
 
 class _NoChange():
@@ -227,9 +256,9 @@ class AttrsNextGenDefine(Attrs):
   }
 
   @classmethod
-  def make(cls, ctx):
+  def make(cls, ctx, module):
     # Bypass Attrs's make; go straight to its superclass.
-    return super(Attrs, cls).make("define", ctx, "attr")  # pylint: disable=bad-super-call
+    return super(Attrs, cls).make("define", ctx, module)  # pylint: disable=bad-super-call
 
   def _handle_auto_attribs(self, auto_attribs, local_ops, cls_name):
     if auto_attribs is not None:
@@ -320,11 +349,11 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
 
 
 class Attrib(classgen.FieldConstructor):
-  """Implements attr.ib."""
+  """Implements attr.ib/attrs.field."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("ib", ctx, "attr")
+  def make(cls, ctx, module):
+    return super().make("ib" if module == "attr" else "field", ctx, module)
 
   def _match_and_discard_args(self, node, funcb, args):
     """Discard invalid args so that we can still construct an attrib."""

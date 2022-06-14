@@ -1,6 +1,6 @@
 """Utilities for abstract.py."""
 
-import collections
+import dataclasses
 import logging
 from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
 
@@ -8,6 +8,7 @@ from pytype import datatypes
 from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+from pytype.pytd import pytd
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -102,8 +103,11 @@ class AsReturnValue(AsInstance):
 
 
 # For lazy evaluation of ParameterizedClass.formal_type_parameters
-LazyFormalTypeParameters = collections.namedtuple(
-    "LazyFormalTypeParameters", ("template", "parameters", "subst"))
+@dataclasses.dataclass(eq=True, frozen=True)
+class LazyFormalTypeParameters:
+  template: Sequence[Any]
+  parameters: Sequence[pytd.Node]
+  subst: Dict[str, cfg.Variable]
 
 
 # Sentinel for get_atomic_value
@@ -241,12 +245,12 @@ def apply_mutations(node, get_mutations):
   """Apply mutations yielded from a get_mutations function."""
   log.info("Applying mutations")
   num_mutations = 0
-  for obj, name, value in get_mutations():
+  for mut in get_mutations():
     if not num_mutations:
       # mutations warrant creating a new CFG node
       node = node.ConnectNew(node.name)
     num_mutations += 1
-    obj.merge_instance_type_parameter(node, name, value)
+    mut.instance.merge_instance_type_parameter(node, mut.name, mut.value)
   log.info("Applied %d mutations", num_mutations)
   return node
 

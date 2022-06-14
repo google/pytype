@@ -5,7 +5,9 @@ and to model path-specific visibility of nested data structures.
 """
 
 import collections
+import dataclasses
 import logging
+from typing import Set
 
 from pytype import metrics
 
@@ -198,7 +200,8 @@ class SourceSet(frozenset):
   __slots__ = ()
 
 
-class Origin(collections.namedtuple("_", "where, source_sets")):
+@dataclasses.dataclass(eq=True, frozen=True)
+class Origin:
   """An "origin" is an explanation of how a binding was constructed.
 
   It consists of a CFG node and a set of sourcesets.
@@ -208,11 +211,9 @@ class Origin(collections.namedtuple("_", "where, source_sets")):
     source_sets: Possible SourceSets used to construct the binding we belong to.
       A set of SourceSet instances.
   """
-  __slots__ = ()
 
-  def __new__(cls, where, source_sets=None):
-    return super(Origin, cls).__new__(
-        cls, where, source_sets or set())
+  where: CFGNode
+  source_sets: Set[SourceSet] = dataclasses.field(default_factory=set)
 
   def AddSourceSet(self, source_set):
     """Add a new possible source set."""

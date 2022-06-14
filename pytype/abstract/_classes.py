@@ -649,8 +649,8 @@ class ParameterizedClass(
   def _raw_formal_type_parameters(self):
     assert isinstance(self._formal_type_parameters,
                       abstract_utils.LazyFormalTypeParameters)
-    template, parameters, _ = self._formal_type_parameters
-    for i, name in enumerate(template):
+    parameters = self._formal_type_parameters.parameters
+    for i, name in enumerate(self._formal_type_parameters.template):
       # TODO(rechen): A missing parameter should be an error.
       yield name, parameters[i] if i < len(parameters) else None
 

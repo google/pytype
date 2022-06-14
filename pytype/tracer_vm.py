@@ -1,9 +1,12 @@
 """Code for checking and inferring types."""
 
 import collections
+import dataclasses
 import logging
 import re
-from typing import Any, Dict, Union
+from typing import Any, Dict, Sequence, Tuple, Union
+
+import attrs
 
 from pytype import special_builtins
 from pytype import state as frame_state
@@ -27,10 +30,15 @@ log = logging.getLogger(__name__)
 _SKIP_FUNCTION_RE = re.compile("<(?!lambda).+>$")
 
 
-_CallRecord = collections.namedtuple("_CallRecord", [
-    "node", "function", "signatures", "positional_arguments",
-    "keyword_arguments", "return_value", "variable"
-])
+@dataclasses.dataclass(eq=True, frozen=True)
+class _CallRecord:
+  node: cfg.CFGNode
+  function: cfg.Binding
+  signatures: Sequence[abstract.PyTDSignature]
+  positional_arguments: Tuple[Union[cfg.Binding, cfg.Variable], ...]
+  keyword_arguments: Tuple[Tuple[str, Union[cfg.Binding, cfg.Variable]], ...]
+  return_value: cfg.Variable
+  variable: bool
 
 
 class _Initializing:
@@ -126,7 +134,8 @@ class CallTracer(vm.VirtualMachine):
     """
     assert isinstance(val.data, abstract.INTERPRETER_FUNCTION_TYPES)
     with val.data.record_calls():
-      new_node, ret = self._call_function_in_frame(node, val, *args)
+      new_node, ret = self._call_function_in_frame(  # pylint: disable=no-value-for-parameter
+          node, val, *attrs.astuple(args, recurse=False))
     return new_node, ret
 
   def _call_function_in_frame(self, node, val, args, kwargs,
@@ -163,7 +172,7 @@ class CallTracer(vm.VirtualMachine):
     if (args.posargs and sig.param_names and
         (sig.param_names[0] not in sig.annotations)):
       # fix "cls" parameter
-      return args._replace(
+      return args.replace(
           posargs=(cls.AssignToNewVariable(node),) + args.posargs[1:])
     else:
       return args
@@ -564,22 +573,24 @@ class CallTracer(vm.VirtualMachine):
       else:
         return arg.data.to_type(node)
 
-    for node, func, sigs, args, kws, retvar, variable in call_traces:
+    for ct in call_traces:
       # The lengths may be different in the presence of optional and kw args.
-      arg_names = max((sig.get_positional_names() for sig in sigs), key=len)
+      arg_names = max((sig.get_positional_names() for sig in ct.signatures),
+                      key=len)
       for i in range(len(arg_names)):
-        if not isinstance(func.data, abstract.BoundFunction) or i > 0:
+        if not isinstance(ct.function.data, abstract.BoundFunction) or i > 0:
           arg_names[i] = function.argname(i)
       arg_types = []
-      for arg in args:
-        arg_types.append(to_type(node, arg, variable))
+      for arg in ct.positional_arguments:
+        arg_types.append(to_type(ct.node, arg, ct.variable))
       kw_types = []
-      for name, arg in kws:
-        kw_types.append((name, to_type(node, arg, variable)))
-      ret = pytd_utils.JoinTypes(t.to_type(node) for t in retvar.data)
+      for name, arg in ct.keyword_arguments:
+        kw_types.append((name, to_type(ct.node, arg, ct.variable)))
+      ret = pytd_utils.JoinTypes(t.to_type(ct.node)
+                                 for t in ct.return_value.data)
       starargs = None
       starstarargs = None
-      funcs[func.data.name].add(pytd.Signature(
+      funcs[ct.function.data.name].add(pytd.Signature(
           tuple(pytd.Parameter(n, t, pytd.ParameterKind.REGULAR, False, None)
                 for n, t in zip(arg_names, arg_types)) +
           tuple(pytd.Parameter(n, t,

@@ -1,7 +1,7 @@
 """Tests for load_pytd.py."""
 
-import collections
 import contextlib
+import dataclasses
 import io
 import os
 import textwrap
@@ -613,7 +613,10 @@ class ImportTypeMacroTest(_LoaderTest):
     self.assertEqual(pytd_utils.Print(ast.Lookup("b.x").type), "a.Foo[str]")
 
 
-_Module = collections.namedtuple("_", ["module_name", "file_name"])
+@dataclasses.dataclass(eq=True, frozen=True)
+class _Module:
+  module_name: str
+  file_name: str
 
 
 class PickledPyiLoaderTest(test_base.UnitTest):

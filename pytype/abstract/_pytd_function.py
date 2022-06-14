@@ -215,7 +215,10 @@ class PyTDFunction(_function_base.Function):
       filtered_mutations = []
       errors = collections.defaultdict(dict)
 
-      for (obj, name, values), view in all_mutations.items():
+      for mutation, view in all_mutations.items():
+        obj = mutation.instance
+        name = mutation.name
+        values = mutation.value
         if obj.from_annotation:
           params = obj.get_instance_type_parameter(name)
           ps = {v for v in params.data if should_check(v)}
@@ -239,12 +242,13 @@ class PyTDFunction(_function_base.Function):
                 new.append(b.data)
             # By updating filtered_mutations only when ps is non-empty, we
             # filter out mutations to parameters with type Any.
-            filtered_mutations.append((obj, name, filtered_values))
+            filtered_mutations.append(
+                function.Mutation(obj, name, filtered_values))
             if new:
               formal = name.split(".")[-1]
               errors[obj][formal] = (params, values, obj.from_annotation)
         else:
-          filtered_mutations.append((obj, name, values))
+          filtered_mutations.append(function.Mutation(obj, name, values))
 
       all_mutations = filtered_mutations
 

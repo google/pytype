@@ -1,11 +1,12 @@
 """Representation of modules."""
 
-import collections
+import dataclasses
 import os
 from typing import Sequence
 
 
-class Module(collections.namedtuple("_", "path target name kind")):
+@dataclasses.dataclass(eq=True, frozen=True)
+class Module:
   """Inferred information about a module.
 
   Attributes:
@@ -17,8 +18,10 @@ class Module(collections.namedtuple("_", "path target name kind")):
     full_path: The full path to the module (path + target).
   """
 
-  def __new__(cls, path, target, name, kind=None):
-    return super(Module, cls).__new__(cls, path, target, name, kind or "Local")
+  path: str
+  target: str
+  name: str
+  kind: str = "Local"
 
   @property
   def full_path(self):

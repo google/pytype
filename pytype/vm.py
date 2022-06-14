@@ -12,6 +12,8 @@ program execution.
 
 import collections
 import contextlib
+import dataclasses
+import enum
 import functools
 import itertools
 import logging
@@ -46,15 +48,22 @@ from pytype.typegraph import cfg_utils
 log = logging.getLogger(__name__)
 
 
-class LocalOp(collections.namedtuple("_LocalOp", ["name", "op"])):
-  ASSIGN = 1
-  ANNOTATE = 2
+@dataclasses.dataclass(eq=True, frozen=True)
+class LocalOp:
+  """An operation local to a VM frame."""
+
+  class Op(enum.Enum):
+    ASSIGN = 1
+    ANNOTATE = 2
+
+  name: str
+  op: "LocalOp.Op"
 
   def is_assign(self):
-    return self.op == self.ASSIGN
+    return self.op == self.Op.ASSIGN
 
   def is_annotate(self):
-    return self.op == self.ANNOTATE
+    return self.op == self.Op.ANNOTATE
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -667,9 +676,9 @@ class VirtualMachine:
           existing Final tag when updating an existing annotation).
     """
     if orig_val:
-      self.current_local_ops.append(LocalOp(name, LocalOp.ASSIGN))
+      self.current_local_ops.append(LocalOp(name, LocalOp.Op.ASSIGN))
     if typ:
-      self.current_local_ops.append(LocalOp(name, LocalOp.ANNOTATE))
+      self.current_local_ops.append(LocalOp(name, LocalOp.Op.ANNOTATE))
     self._update_annotations_dict(
         node, op, name, typ, orig_val, self.current_annotated_locals,
         final=final)
@@ -955,7 +964,7 @@ class VirtualMachine:
         overlay = self.loaded_overlays[name] = None
     return overlay
 
-  @functools.lru_cache(maxsize=None)
+  @functools.lru_cache(maxsize=None)  # pylint: disable=cache-max-size-none
   def _import_module(self, name, level):
     """Import the module and return the module object.
 

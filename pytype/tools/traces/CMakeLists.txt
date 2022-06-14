@@ -51,7 +51,7 @@ py_library(
   SRCS
     source.py
   DEPS
-    pytype.utils
+    pytype.pytd.pytd
 )
 
 py_test(

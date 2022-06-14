@@ -1,6 +1,7 @@
 """Tests for pytype_runner.py."""
 
 import collections
+import dataclasses
 import os
 
 from pytype import config as pytype_config
@@ -20,12 +21,21 @@ Stage = pytype_runner.Stage
 
 
 # named 'Local' to match importlab.resolve.Local
-ImportlabModule = collections.namedtuple('Local', 'path short_path module_name')
+@dataclasses.dataclass(eq=True, frozen=True)
+class Local:
+  path: str
+  short_path: str
+  module_name: str
 
 
-ExpectedBuildStatement = collections.namedtuple(
-    'ExpectedBuildStatement',
-    ('output', 'action', 'input', 'deps', 'imports', 'module'))
+@dataclasses.dataclass(eq=True, frozen=True)
+class ExpectedBuildStatement:
+  output: str
+  action: str
+  input: str
+  deps: str
+  imports: str
+  module: str
 
 
 # number of lines in the build.ninja preamble
@@ -53,13 +63,12 @@ class TestResolvedFileToModule(unittest.TestCase):
   """Test resolved_file_to_module."""
 
   def test_basic(self):
-    resolved_file = ImportlabModule('foo/bar.py', 'bar.py', 'bar')
+    resolved_file = Local('foo/bar.py', 'bar.py', 'bar')
     self.assertEqual(pytype_runner.resolved_file_to_module(resolved_file),
                      Module('foo/', 'bar.py', 'bar', 'Local'))
 
   def test_preserve_init(self):
-    resolved_file = ImportlabModule(
-        'foo/bar/__init__.py', 'bar/__init__.py', 'bar')
+    resolved_file = Local('foo/bar/__init__.py', 'bar/__init__.py', 'bar')
     self.assertEqual(pytype_runner.resolved_file_to_module(resolved_file),
                      Module('foo/', 'bar/__init__.py', 'bar.__init__', 'Local'))
 
@@ -69,9 +78,9 @@ class TestDepsFromImportGraph(unittest.TestCase):
 
   def setUp(self):
     super().setUp()
-    init = ImportlabModule('/foo/bar/__init__.py', 'bar/__init__.py', 'bar')
-    a = ImportlabModule('/foo/bar/a.py', 'bar/a.py', 'bar.a')
-    b = ImportlabModule('/foo/bar/b.py', 'bar/b.py', 'bar.b')
+    init = Local('/foo/bar/__init__.py', 'bar/__init__.py', 'bar')
+    a = Local('/foo/bar/a.py', 'bar/a.py', 'bar.a')
+    b = Local('/foo/bar/b.py', 'bar/b.py', 'bar.b')
     self.sources = [x.path for x in [init, a, b]]
     self.provenance = {x.path: x for x in [init, a, b]}
 
@@ -100,7 +109,7 @@ class TestDepsFromImportGraph(unittest.TestCase):
     self.assertEqual(deps, expected)
 
   def test_pyi_src(self):
-    pyi_mod = ImportlabModule('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    pyi_mod = Local('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
     provenance = {pyi_mod.path: pyi_mod}
     provenance.update(self.provenance)
     graph = FakeImportGraph(self.sources + [pyi_mod.path], provenance,
@@ -114,7 +123,7 @@ class TestDepsFromImportGraph(unittest.TestCase):
     self.assertEqual(deps, expected)
 
   def test_pyi_dep(self):
-    pyi_mod = ImportlabModule('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    pyi_mod = Local('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
     graph = FakeImportGraph(self.sources, self.provenance,
                             collections.defaultdict(lambda: [pyi_mod.path]))
     deps = pytype_runner.deps_from_import_graph(graph)
@@ -367,9 +376,8 @@ class TestYieldSortedModules(TestBase):
     d = self.normalize('foo/')
     external = self.normalize('quux/')
     conf.pythonpath = [d]
-    mod = (external, 'bar/baz.py', 'bar.baz', 'System')
-    dep = Module(*mod)
-    runner = make_runner([], [((dep,), ())], conf)
+    mod = Module(external, 'bar/baz.py', 'bar.baz', 'System')
+    runner = make_runner([], [((mod,), ())], conf)
     self.assert_sorted_modules_equal(
         runner.yield_sorted_modules(),
         [(mod, Action.GENERATE_DEFAULT, (), Stage.SINGLE_PASS)])

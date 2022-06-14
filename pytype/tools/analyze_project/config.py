@@ -1,25 +1,16 @@
 """Config file processing."""
 
-import collections
+import dataclasses
 import logging
 import os
 import sys
 import textwrap
+from typing import Any, Callable, Optional
 
 from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import utils
 from pytype.tools import config
-
-
-# A config item.
-# Args:
-#   default: the default value.
-#   sample: a sample value.
-#   arg_info: information about the corresponding command-line argument.
-#   comment: help text.
-Item = collections.namedtuple(
-    'Item', ['default', 'sample', 'arg_info', 'comment'])
 
 
 # Args:
@@ -30,7 +21,24 @@ Item = collections.namedtuple(
 #     - If a bool, it will determine whether the flag is included.
 #     - Elif it is empty, the flag will be omitted.
 #     - Else, it will be considered the flag's command-line value.
-ArgInfo = collections.namedtuple('ArgInfo', ['flag', 'to_command_line'])
+@dataclasses.dataclass(eq=True, frozen=True)
+class ArgInfo:
+  flag: str
+  to_command_line: Optional[Callable[[Any], Any]]
+
+
+# A config item.
+# Args:
+#   default: the default value.
+#   sample: a sample value.
+#   arg_info: information about the corresponding command-line argument.
+#   comment: help text.
+@dataclasses.dataclass(eq=True, frozen=True)
+class Item:
+  default: Any
+  sample: Any
+  arg_info: Optional[ArgInfo]
+  comment: Optional[str]
 
 
 # Generates both the default config and the sample config file. These items
@@ -211,11 +219,12 @@ def generate_sample_config_or_die(filename, pytype_single_args):
   items = dict(ITEMS)
   assert set(_PYTYPE_SINGLE_ITEMS) == set(pytype_single_args)
   for key, item in _PYTYPE_SINGLE_ITEMS.items():
+    val = pytype_single_args[key]
     if item.comment is None:
-      items[key] = item._replace(default=pytype_single_args[key].default,
-                                 comment=pytype_single_args[key].help)
+      items[key] = dataclasses.replace(
+          item, default=val.default, comment=val.help)
     else:
-      items[key] = item._replace(default=pytype_single_args[key].default)
+      items[key] = dataclasses.replace(item, default=val.default)
 
   # Not using configparser's write method because it doesn't support comments.
 

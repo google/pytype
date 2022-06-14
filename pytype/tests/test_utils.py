@@ -2,6 +2,7 @@
 
 import collections
 import copy
+import dataclasses
 import io
 import re
 import sys
@@ -16,7 +17,10 @@ from pytype.pyc import opcodes
 import unittest
 
 
-FakeCode = collections.namedtuple("FakeCode", "co_filename co_name")
+@dataclasses.dataclass(eq=True, frozen=True)
+class FakeCode:
+  co_filename: str
+  co_name: str
 
 
 class FakeOpcode:

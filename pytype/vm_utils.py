@@ -1,7 +1,8 @@
 """Utilities used in vm.py."""
 
 import abc
-import collections
+import collections.abc
+import dataclasses
 import itertools
 import logging
 import os
@@ -36,7 +37,11 @@ repper = _repr_obj.repr
 
 _FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
 
-_Block = collections.namedtuple("Block", ["type", "level"])
+
+@dataclasses.dataclass(eq=True, frozen=True)
+class _Block:
+  type: str
+  level: int
 
 
 class FindIgnoredTypeComments:

@@ -67,15 +67,15 @@ class TypeGraph:
         color = "white" if val.origins else "red"
         self.add_node(val, label=label, fillcolor=color)
         self.add_edge(variable, val, arrowhead="none")
-        for loc, srcsets in val.origins:
-          if loc == program.entrypoint:
+        for origin in val.origins:
+          if origin.where == program.entrypoint:
             continue
-          for srcs in srcsets:
+          for srcs in origin.source_sets:
             self.add_node(srcs, label="")
             self.add_edge(val, srcs, color="pink", arrowhead="none", weight=40)
-            if loc not in ignored:
-              self.add_edge(
-                  loc, srcs, arrowhead="none", style="dotted", weight=5)
+            if origin.where not in ignored:
+              self.add_edge(origin.where, srcs, arrowhead="none",
+                            style="dotted", weight=5)
             for src in srcs:
               self.add_edge(src, srcs, color="lightblue", weight=2)
 

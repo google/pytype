@@ -108,8 +108,8 @@ class AnnotationsTest(VmTestBase):
     self.assertEqual(
         self.ctx.vm.local_ops, {
             "<module>": [
-                vm.LocalOp(name="v", op=vm.LocalOp.ASSIGN),
-                vm.LocalOp(name="v", op=vm.LocalOp.ANNOTATE)
+                vm.LocalOp(name="v", op=vm.LocalOp.Op.ASSIGN),
+                vm.LocalOp(name="v", op=vm.LocalOp.Op.ANNOTATE)
             ]
         })
 
