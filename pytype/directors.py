@@ -150,11 +150,6 @@ class _StructuredComment:
 
 
 @dataclasses.dataclass(frozen=True)
-class _Attribute(_LineRange):
-  """Tag to identify attribute accesses."""
-
-
-@dataclasses.dataclass(frozen=True)
 class _Call(_LineRange):
   """Tag to identify function calls."""
 
@@ -279,13 +274,13 @@ class _ParseVisitor(libcst.CSTVisitor):
       if (line_range.start_line <= start_line and
           end_line <= line_range.end_line):
         yield (line_range, group)
-      elif (not isinstance(line_range, (_Attribute, _Call)) and
+      elif (not isinstance(line_range, _Call) and
             line_range.end_line < start_line):
         return
 
   def _has_containing_group(self, start_line, end_line=None):
     for line_range, _ in self._get_containing_groups(start_line, end_line):
-      if not isinstance(line_range, (_Attribute, _Call)):
+      if not isinstance(line_range, _Call):
         return True
     return False
 
@@ -336,7 +331,7 @@ class _ParseVisitor(libcst.CSTVisitor):
         continue
       structured_comment = _StructuredComment(line, tool, data, open_ended)
       for line_range, group in self._get_containing_groups(line):
-        if not isinstance(line_range, (_Attribute, _Call)):
+        if not isinstance(line_range, _Call):
           # A structured comment belongs to exactly one logical statement.
           group.append(structured_comment)
           break
@@ -388,9 +383,6 @@ class _ParseVisitor(libcst.CSTVisitor):
 
   def visit_ParenthesizedWhitespace(self, node):
     self._visit_comment_owner(node)
-
-  def visit_Attribute(self, node):
-    self._visit_comment_owner(node, cls=_Attribute)
 
   def visit_Call(self, node):
     self._visit_comment_owner(node, cls=_Call)
@@ -638,9 +630,7 @@ class Director:
             "Disable/enable must specify one or more error names.")
 
       def keep(error_name):
-        if isinstance(line_range, _Attribute):
-          return error_name == "attribute-error"
-        elif isinstance(line_range, _Call):
+        if isinstance(line_range, _Call):
           return error_name in _FUNCTION_CALL_ERRORS
         else:
           return True
