@@ -598,6 +598,25 @@ class Converter(utils.ContextWeakrefMixin):
       value = pyval
     return self.constant_to_value(value, subst, self.ctx.root_node)
 
+  def _special_constant_to_value(self, name):
+    """Special-case construction of some pytd values."""
+    if name == "builtins.super":
+      return self.ctx.special_builtins["super"]
+    elif name == "builtins.object":
+      return self.object_type
+    elif name == "types.ModuleType":
+      return self.module_type
+    elif name == "_importlib_modulespec.ModuleType":
+      # Python 3's typeshed uses a stub file indirection to define ModuleType
+      # even though it is exported via types.pyi.
+      return self.module_type
+    elif name == "types.FunctionType":
+      return self.function_type
+    elif name == "types.NoneType":
+      return self.none_type
+    else:
+      return None
+
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a BaseValue that represents a python constant.
 
@@ -657,18 +676,9 @@ class Converter(utils.ContextWeakrefMixin):
       mod = self.ctx.loader.import_name(pyval.module_name)
       return self._create_module(mod)
     elif isinstance(pyval, pytd.Class):
-      if pyval.name == "builtins.super":
-        return self.ctx.special_builtins["super"]
-      elif pyval.name == "builtins.object":
-        return self.object_type
-      elif pyval.name == "types.ModuleType":
-        return self.module_type
-      elif pyval.name == "_importlib_modulespec.ModuleType":
-        # Python 3's typeshed uses a stub file indirection to define ModuleType
-        # even though it is exported via types.pyi.
-        return self.module_type
-      elif pyval.name == "types.FunctionType":
-        return self.function_type
+      val = self._special_constant_to_value(pyval.name)
+      if val:
+        return val
       else:
         module, dot, base_name = pyval.name.rpartition(".")
         # typing.TypingContainer intentionally loads the underlying pytd types.
