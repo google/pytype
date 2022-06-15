@@ -19,6 +19,7 @@ class TypingMethodsTest(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         m = foo.f()
+        a = m.copy()
         b = "foo" in m
         c = m["foo"]
         d = m.get("foo", 3)
@@ -30,6 +31,7 @@ class TypingMethodsTest(test_base.BaseTest):
         from typing import List, Tuple, Union
         import foo
         m = ...  # type: foo.MyDict[str, int]
+        a = ...  # type: typing.Mapping[str, int]
         b = ...  # type: bool
         c = ...  # type: int
         d = ...  # type: int
