@@ -9,10 +9,10 @@ from typing import Tuple
 
 from pytype import analyze
 from pytype import config
-from pytype import directors
 from pytype import file_utils
 from pytype import load_pytd
 from pytype import module_utils
+from pytype.directors import directors
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd

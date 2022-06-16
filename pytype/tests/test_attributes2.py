@@ -91,51 +91,6 @@ class TestAttributes(test_base.BaseTest):
     self.assertErrorRegexes(
         errors, {"e": r"Annotation: List\[int\].*Assignment: List\[str\]"})
 
-  def test_disable(self):
-    self.Check("""
-      x = [None]
-      y = ''.join(z.oops
-                  for z in x)  # pytype: disable=attribute-error
-    """)
-
-  def test_method_disable(self):
-    self.Check("""
-      x = [None]
-      y = ''.join(z.oops()
-                  for z in x)  # pytype: disable=attribute-error
-    """)
-
-  def test_iter_disable(self):
-    self.Check("""
-      x = [y for y in None
-          ]  # pytype: disable=attribute-error
-    """)
-
-  def test_unpack_disable(self):
-    self.Check("""
-      x, y, z = (
-        None)  # pytype: disable=attribute-error
-    """)
-
-  def test_contextmanager_disable(self):
-    self.Check("""
-      def f():
-        return None
-      with f(
-          ):  # pytype: disable=attribute-error
-        pass
-    """)
-
-  def test_regular_disable(self):
-    self.Check("""
-      class Foo:
-        pass
-      def f(a):
-        pass
-      f(
-          Foo.nonexistent)  # pytype: disable=attribute-error
-    """)
-
   def test_set_attribute_in_other_class(self):
     # Regression test for setting an attribute in a class with a mix of
     # annotated and unannotated instance attributes.

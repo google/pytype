@@ -24,7 +24,6 @@ from pytype import blocks
 from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
-from pytype import directors
 from pytype import load_pytd
 from pytype import metrics
 from pytype import preprocess
@@ -34,6 +33,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.directors import directors
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib
 from pytype.pyc import loadmarshal

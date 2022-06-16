@@ -1,6 +1,7 @@
 """Tests for disabling errors."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class DisableTest(test_base.BaseTest):
@@ -81,6 +82,136 @@ class DisableTest(test_base.BaseTest):
         return ([1,
                  2,
                  3])  # pytype: disable=bad-return-type
+    """)
+
+  def test_silence_variable_mismatch(self):
+    self.Check("""
+      x = [
+          0,
+      ]  # type: None  # pytype: disable=annotation-type-mismatch
+    """)
+
+  def test_disable_location(self):
+    self.Check("""
+      import re
+      re.sub(
+        '', object(), '')  # pytype: disable=wrong-arg-types
+    """)
+
+  def test_skip_file_with_comment(self):
+    self.Check("""
+      # pytype: skip-file  # extra comment here
+      import nonsense
+    """)
+
+  def test_missing_parameter_disable(self):
+    self.Check("""
+      class Foo:
+        def __iter__(self, x, y):
+          pass
+      def f(x):
+        pass
+      f(
+        x=[x for x in Foo],  # pytype: disable=missing-parameter
+      )
+    """)
+
+  def test_silence_parameter_mismatch(self):
+    self.Check("""
+      def f(
+        x: int = 0.0,
+        y: str = '',
+        **kwargs,
+      ):  # pytype: disable=annotation-type-mismatch
+        pass
+    """)
+
+  @test_utils.skipFromPy((3, 8), "MAKE_FUNCTION opcode lineno changes in 3.8")
+  def test_do_not_silence_parameter_mismatch_pre38(self):
+    self.CheckWithErrors("""
+      def f(
+        x: int = 0.0,
+        y: str = '',  # annotation-type-mismatch
+        **kwargs,
+      ):
+        pass  # pytype: disable=annotation-type-mismatch
+    """)
+
+  @test_utils.skipBeforePy((3, 8), "MAKE_FUNCTION opcode lineno changes in 3.8")
+  def test_do_not_silence_parameter_mismatch(self):
+    self.CheckWithErrors("""
+      def f(  # annotation-type-mismatch
+        x: int = 0.0,
+        y: str = '',
+        **kwargs,
+      ):
+        pass  # pytype: disable=annotation-type-mismatch
+    """)
+
+  def test_container_disable(self):
+    self.Check("""
+      x: list[int] = []
+      x.append(
+          ''
+      )  # pytype: disable=container-type-mismatch
+    """)
+
+  def test_multiple_directives(self):
+    """We should support multiple directives on one line."""
+    self.Check("""
+      a = list() # type: list[int, str]  # pytype: disable=invalid-annotation
+      b = list() # pytype: disable=invalid-annotation  # type: list[int, str]
+      def foo(x): pass
+      c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
+    """)
+
+
+class AttributeErrorDisableTest(test_base.BaseTest):
+  """Test attribute-error disabling."""
+
+  def test_disable(self):
+    self.Check("""
+      x = [None]
+      y = ''.join(z.oops
+                  for z in x)  # pytype: disable=attribute-error
+    """)
+
+  def test_method_disable(self):
+    self.Check("""
+      x = [None]
+      y = ''.join(z.oops()
+                  for z in x)  # pytype: disable=attribute-error
+    """)
+
+  def test_iter_disable(self):
+    self.Check("""
+      x = [y for y in None
+          ]  # pytype: disable=attribute-error
+    """)
+
+  def test_unpack_disable(self):
+    self.Check("""
+      x, y, z = (
+        None)  # pytype: disable=attribute-error
+    """)
+
+  def test_contextmanager_disable(self):
+    self.Check("""
+      def f():
+        return None
+      with f(
+          ):  # pytype: disable=attribute-error
+        pass
+    """)
+
+  def test_regular_disable(self):
+    self.Check("""
+      class Foo:
+        pass
+      def f(a):
+        pass
+      f(
+          Foo.nonexistent)  # pytype: disable=attribute-error
     """)
 
 
