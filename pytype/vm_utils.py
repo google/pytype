@@ -711,6 +711,24 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
     return node, None
 
 
+def _get_annotation(node, var, ctx):
+  with ctx.errorlog.checkpoint() as record:
+    annot = ctx.annotation_utils.extract_annotation(
+        node, var, "varname", ctx.vm.simple_stack())
+    if record.errors:
+      return None
+    return annot
+
+
+def _maybe_union(node, x, y, ctx):
+  x_annot = _get_annotation(node, x, ctx)
+  y_annot = _get_annotation(node, y, ctx)
+  if x_annot is None or y_annot is None:
+    return None
+  opts = [x_annot, y_annot]
+  return abstract.Union(opts, ctx).to_variable(node)
+
+
 def call_binary_operator(state, name, x, y, report_errors, ctx):
   """Map a binary operator to "magic methods" (__add__ etc.)."""
   results = []
@@ -728,6 +746,15 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
         if ret:
           nodes.append(node)
           results.append(ret)
+  # Python 3.10 supports writing union types as A | B | ...
+  # Only try this as a fallback otherwise we miss overriding of __or__
+  if ctx.python_version >= (3, 10) and name == "__or__":
+    fail = (error or not results
+            or isinstance(results[0].data[0], abstract.Unsolvable))
+    if fail:
+      ret = _maybe_union(state.node, x, y, ctx)
+      if ret:
+        return state, ret
   if nodes:
     state = state.change_cfg_node(ctx.join_cfg_nodes(nodes))
   result = ctx.join_variables(state.node, results)
