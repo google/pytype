@@ -63,6 +63,26 @@ class DisableTest(test_base.BaseTest):
       name_error
     """)
 
+  def test_implicit_return(self):
+    """Test that the return is attached to the last line of the function."""
+    # In python 3.10+ the bytecode line number for the RETURN None is at the
+    # enclosing control flow statement that falls through to the end. We adjust
+    # it before reporting the error. In 3.9- it is already set to the last line
+    # of the function.
+    self.Check("""
+      class A:
+        def f(self) -> str:
+          if __random__:
+            if __random__:
+              return "a"  # pytype: disable=bad-return-type
+      def g() -> str:
+        pass  # pytype: disable=bad-return-type
+      def h() -> str:
+        return ([1,
+                 2,
+                 3])  # pytype: disable=bad-return-type
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

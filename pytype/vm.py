@@ -421,7 +421,7 @@ class VirtualMachine:
         code if self.ctx.python_version < (3, 8) else None)
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
-    self.ctx.errorlog.set_error_filter(director.should_report_error)
+    self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
     code = blocks.merge_annotations(code, self._director.annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)

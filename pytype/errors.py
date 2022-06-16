@@ -209,11 +209,12 @@ class Error:
                      occurs. e.g. the fully qualified module name that a
                      non-existent function doesn't exist on.
     traceback: Optionally, an error traceback.
+    opcode_name: Optionally, the name of the opcode that raised the error.
   """
 
   def __init__(self, severity, message, filename=None, lineno=0,
                methodname=None, details=None, traceback=None, keyword=None,
-               keyword_context=None, bad_call=None):
+               keyword_context=None, bad_call=None, opcode_name=None):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
                   "with @error_name.")
@@ -231,6 +232,7 @@ class Error:
     self._keyword_context = keyword_context
     self._keyword = keyword
     self._bad_call = bad_call
+    self._opcode_name = opcode_name
 
   @classmethod
   def with_stack(cls, stack, severity, message, **kwargs):
@@ -252,6 +254,7 @@ class Error:
     else:
       return cls(severity, message, filename=opcode.code.co_filename,
                  lineno=opcode.line, methodname=opcode.code.co_name,
+                 opcode_name=opcode.__class__.__name__,
                  traceback=_make_traceback_str(stack), **kwargs)
 
   @classmethod
@@ -271,6 +274,10 @@ class Error:
   @property
   def filename(self):
     return self._filename
+
+  @property
+  def opcode_name(self):
+    return self._opcode_name
 
   @property
   def message(self):
@@ -320,6 +327,9 @@ class Error:
 
   def __str__(self):
     return self.as_string()
+
+  def set_lineno(self, line):
+    self._lineno = line
 
   def as_string(self, *, color=False):
     """Format the error as a friendly string, optionally with shell coloring."""
@@ -381,6 +391,8 @@ class ErrorLogBase:
       filt: A function or callable object that accepts a single argument of
           type Error and returns True if that error should be included in the
           log.  A filter of None will add all errors.
+
+    NOTE: The filter may adjust some properties of the error.
     """
     self._filter = filt
 

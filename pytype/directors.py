@@ -262,6 +262,8 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.variable_annotations = []
     self.decorators = []
     self.defs_start = None
+    self.returns = set()
+    self.function_ranges = []
 
   def _get_containing_groups(self, start_line, end_line=None):
     """Get _StructuredComment groups that fully contain the given line range."""
@@ -416,6 +418,9 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.variable_annotations.append(
         _VariableAnnotation(pos.start.line, pos.end.line, annotation))
 
+  def visit_Return(self, node):
+    self.returns.add(self._get_position(node).start.line)
+
   def _visit_decorators(self, node):
     if not node.decorators:
       return
@@ -443,6 +448,7 @@ class _ParseVisitor(libcst.CSTVisitor):
         self._get_position(node.whitespace_before_colon).end.line)
     self._visit_decorators(node)
     self._visit_def(node)
+    self.function_ranges.append(self._get_position(node))
 
 
 class Director:
@@ -480,6 +486,11 @@ class Director:
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
+    # Store function ranges and return lines to distinguish explicit and
+    # implicit returns (the bytecode has a `RETURN None` for implcit returns).
+    self._return_lines = set()
+    self._function_starts = []
+    self._function_ends = {}
     # Parse the source code for directives.
     self._parse_src_tree(src_tree, code)
 
@@ -525,6 +536,11 @@ class Director:
       opcode_lines = _OpcodeLines.from_code(code)
     else:
       opcode_lines = None
+
+    self._return_lines = visitor.returns
+    self._function_ends = {r.start.line: r.end.line
+                           for r in visitor.function_ranges}
+    self._function_starts = [r.start.line for r in visitor.function_ranges]
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:
@@ -687,7 +703,7 @@ class Director:
     return _adjust_line_number(
         line, allowed_lines, line_range.start_line) or line
 
-  def should_report_error(self, error):
+  def filter_error(self, error):
     """Return whether the error should be logged.
 
     This method is suitable for use as an error filter.
@@ -702,6 +718,16 @@ class Director:
     # number.
     if error.filename != self._filename or error.lineno is None:
       return True
+    if (error.name == "bad-return-type" and
+        error.opcode_name == "RETURN_VALUE" and
+        error.lineno not in self._return_lines):
+      # We have an implicit "return None". Adjust the line number to the last
+      # line of the function.
+      i = bisect.bisect_left(self._function_starts, error.lineno)
+      if i:
+        start = self._function_starts[i - 1]
+        line = self._function_ends[start]
+        error.set_lineno(line)
     # Treat line=0 as below the file, so we can filter it.
     line = error.lineno or sys.maxsize
     # Report the error if it isn't subject to any ignore or disable.

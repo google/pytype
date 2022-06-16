@@ -132,7 +132,7 @@ class DirectorTestCase(unittest.TestCase):
         lineno=lineno)
     self.assertEqual(
         expected,
-        self._director.should_report_error(error))
+        self._director.filter_error(error))
 
 
 class DirectorTest(DirectorTestCase):

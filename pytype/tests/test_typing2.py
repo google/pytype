@@ -518,24 +518,12 @@ class TypingTest(test_base.BaseTest):
         errors, {"e1": r"Not a type",
                  "e2": r"typing\.Optional can only contain one type parameter"})
 
-  @test_utils.skipFromPy((3, 10), "RETURN_VALUE line number changes in 3.10")
-  def test_noreturn_possible_return_pre310(self):
+  def test_noreturn_possible_return(self):
     errors = self.CheckWithErrors("""
       from typing import NoReturn
       def func(x) -> NoReturn:
         if x > 1:
           raise ValueError()  # bad-return-type[e]
-    """)
-    self.assertErrorSequences(
-        errors, {"e": ["Expected: NoReturn", "Actually returned: None"]})
-
-  @test_utils.skipBeforePy((3, 10), "RETURN_VALUE line number changes in 3.10")
-  def test_noreturn_possible_return(self):
-    errors = self.CheckWithErrors("""
-      from typing import NoReturn
-      def func(x) -> NoReturn:
-        if x > 1:  # bad-return-type[e]
-          raise ValueError()
     """)
     self.assertErrorSequences(
         errors, {"e": ["Expected: NoReturn", "Actually returned: None"]})
