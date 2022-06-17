@@ -456,7 +456,12 @@ class Director:
       # line of the function.
       i = bisect.bisect_left(self._function_starts, error.lineno)
       if i:
-        start = self._function_starts[i - 1]
+        if (i < len(self._function_starts) and
+            self._function_starts[i] == error.lineno):
+          # opcode line number is start of function.
+          start = self._function_starts[i]
+        else:
+          start = self._function_starts[i - 1]
         line = self._function_ends[start]
         error.set_lineno(line)
     # Treat line=0 as below the file, so we can filter it.

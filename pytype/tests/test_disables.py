@@ -76,12 +76,24 @@ class DisableTest(test_base.BaseTest):
           if __random__:
             if __random__:
               return "a"  # pytype: disable=bad-return-type
+
       def g() -> str:
         pass  # pytype: disable=bad-return-type
+
       def h() -> str:
         return ([1,
                  2,
                  3])  # pytype: disable=bad-return-type
+    """)
+
+    # Check that we find the start of a function correctly and not the end of
+    # the previous one.
+    self.Check("""
+      def f():
+        pass
+
+      def j() -> str:
+        '''docstring'''  # pytype: disable=bad-return-type
     """)
 
   def test_silence_variable_mismatch(self):
