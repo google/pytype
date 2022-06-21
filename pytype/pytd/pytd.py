@@ -20,7 +20,7 @@ import itertools
 import typing
 from typing import Any, Optional, Tuple, TypeVar, Union
 
-import attr
+import attrs
 
 from pytype.pytd.parse import node
 
@@ -50,7 +50,7 @@ class Type:
   __slots__ = ()
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, eq=False)
+@attrs.frozen(slots=False, eq=False)
 class TypeDeclUnit(Node):
   """Module node. Holds module contents (constants / classes / functions).
 
@@ -120,16 +120,14 @@ class TypeDeclUnit(Node):
     return id(self) != id(other)
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Constant(Node):
   name: str
   type: Type
   value: Any = None
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Alias(Node):
   """An alias (symbolic link) for a class implemented in some other module.
 
@@ -141,8 +139,7 @@ class Alias(Node):
   type: Union[Type, Constant, 'Function', 'Module']
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Module(Node):
   """A module imported into the current module, possibly with an alias."""
   name: str
@@ -153,7 +150,7 @@ class Module(Node):
     return self.name != self.module_name
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, cache_hash=True)
+@attrs.frozen(slots=False, cache_hash=True)
 class Class(Node):
   """Represents a class declaration.
 
@@ -236,8 +233,7 @@ class MethodFlag(enum.Flag):
     return cls.ABSTRACT if is_abstract else cls.NONE
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Function(Node):
   """A function or a method, defined by one or more PyTD signatures.
 
@@ -270,8 +266,7 @@ class Function(Node):
     return self.Replace(flags=new_flags)
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Signature(Node):
   """Represents an individual signature of a function.
 
@@ -309,8 +304,7 @@ class ParameterKind(enum.Enum):
   KWONLY = 'kwonly'
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Parameter(Node):
   """Represents a parameter of a function definition.
 
@@ -329,8 +323,7 @@ class Parameter(Node):
   mutated_type: Optional[Type]
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class TypeParameter(Node, Type):
   """Represents a type parameter.
 
@@ -345,7 +338,7 @@ class TypeParameter(Node, Type):
       bound to. E.g. "mymodule.MyClass.mymethod", or None.
   """
   name: str
-  constraints: Tuple[Type, ...] = attr.ib(factory=tuple)
+  constraints: Tuple[Type, ...] = attrs.field(factory=tuple)
   bound: Optional[Type] = None
   scope: Optional[str] = None
 
@@ -375,8 +368,7 @@ class TypeParameter(Node, Type):
       return AnythingType()
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class TemplateItem(Node):
   """Represents template name for generic types.
 
@@ -420,8 +412,7 @@ class TemplateItem(Node):
 # corresponding AST representations.
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class NamedType(Node, Type):
   """A type specified by name and, optionally, the module it is in."""
   name: str
@@ -430,8 +421,7 @@ class NamedType(Node, Type):
     return self.name
 
 
-@attr.s(auto_attribs=False, init=False, frozen=False, order=False, slots=False,
-        eq=False)
+@attrs.mutable(init=False, slots=False, eq=False)
 class ClassType(Node, Type):
   """A type specified through an existing class node."""
   # This type is different from normal nodes:
@@ -442,7 +432,7 @@ class ClassType(Node, Type):
   #     to classes that are back at the top of the tree, that would generate
   #     cycles.
 
-  name: str = attr.ib()
+  name: str = attrs.field()
 
   # We do not want cls to be a child node, but we do want it to be an optional
   # arg to __init__ and accessible via self.cls
@@ -468,8 +458,7 @@ class ClassType(Node, Type):
         cls='<unresolved>' if self.cls is None else '')
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class LateType(Node, Type):
   """A type we have yet to resolve."""
   name: str
@@ -479,8 +468,7 @@ class LateType(Node, Type):
     return self.name
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class AnythingType(Node, Type):
   """A type we know nothing about yet (? in pytd)."""
 
@@ -492,8 +480,7 @@ class AnythingType(Node, Type):
     return True
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class NothingType(Node, Type):
   """An "impossible" type, with no instances (nothing in pytd).
 
@@ -520,14 +507,14 @@ def _FlattenTypes(type_list) -> Tuple[Type, ...]:
   return unique
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True, eq=False)
+@attrs.frozen(eq=False)
 class _SetOfTypes(Node, Type):
   """Super class for shared behavior of UnionType and IntersectionType."""
   # NOTE: type_list is kept as a tuple, to preserve the original order
   #       even though in most respects it acts like a frozenset.
   #       It also flattens the input, such that printing without
   #       parentheses gives the same result.
-  type_list: Tuple[Type, ...] = attr.ib(converter=_FlattenTypes)
+  type_list: Tuple[Type, ...] = attrs.field(converter=_FlattenTypes)
 
   @property
   def name(self):
@@ -559,8 +546,7 @@ class IntersectionType(_SetOfTypes):
   __slots__ = ()
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class GenericType(Node, Type):
   """Generic type. Takes a base type and type parameters.
 
@@ -611,8 +597,7 @@ class CallableType(GenericType):
     return self.parameters[-1]
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Literal(Node, Type):
   value: Union[int, str, Type, Constant]
 
@@ -621,8 +606,7 @@ class Literal(Node, Type):
     return None
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False, slots=True,
-        cache_hash=True)
+@attrs.frozen(cache_hash=True)
 class Annotated(Node, Type):
   base_type: Type
   annotations: Tuple[str, ...]
