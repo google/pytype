@@ -271,7 +271,9 @@ class Director:
     self._return_lines = visitor.returns
     self._function_ends = {r.start.line: r.end.line
                            for r in visitor.function_ranges}
-    self._function_starts = [r.start.line for r in visitor.function_ranges]
+    self._function_starts = sorted(
+        r.start.line for r in visitor.function_ranges)
+    function_end_to_start = {v: k for k, v in self._function_ends.items()}
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:
@@ -286,6 +288,15 @@ class Director:
           except _DirectiveError as e:
             self._errorlog.invalid_directive(
                 self._filename, comment.line, str(e))
+        # Make sure the function range ends at the last "interesting" line.
+        if line_range.end_line in function_end_to_start:
+          if opcode_lines:
+            end = _adjust_line_number(
+                line_range.end_line, opcode_lines.return_lines,
+                line_range.start_line)
+          else:
+            end = line_range.start_line
+          self._function_ends[function_end_to_start[line_range.end_line]] = end
 
     for annot in visitor.variable_annotations:
       if opcode_lines:
@@ -455,12 +466,17 @@ class Director:
       # We have an implicit "return None". Adjust the line number to the last
       # line of the function.
       i = bisect.bisect_left(self._function_starts, error.lineno)
+      num_functions = len(self._function_starts)
       if i:
-        if (i < len(self._function_starts) and
-            self._function_starts[i] == error.lineno):
+        if i < num_functions and self._function_starts[i] == error.lineno:
           # opcode line number is start of function.
           start = self._function_starts[i]
         else:
+          # Skip functions nested inside the implicitly returning function.
+          while (
+              1 < i <= num_functions and
+              self._function_ends[self._function_starts[i - 1]] < error.lineno):
+            i -= 1
           start = self._function_starts[i - 1]
         line = self._function_ends[start]
         error.set_lineno(line)

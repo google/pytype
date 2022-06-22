@@ -86,6 +86,7 @@ class DisableTest(test_base.BaseTest):
                  3])  # pytype: disable=bad-return-type
     """)
 
+  def test_implicit_return_empty_function(self):
     # Check that we find the start of a function correctly and not the end of
     # the previous one.
     self.Check("""
@@ -94,6 +95,38 @@ class DisableTest(test_base.BaseTest):
 
       def j() -> str:
         '''docstring'''  # pytype: disable=bad-return-type
+    """)
+
+  @test_utils.skipBeforePy((3, 8), "RETURN_VALUE opcode lineno changed in 3.8")
+  def test_implicit_return_not_at_end(self):
+    self.Check("""
+      import logging
+      def f() -> str:
+        try:
+          return ''
+        except KeyError:
+          logging.exception(  # pytype: disable=bad-return-type
+              'oops')
+    """)
+
+  def test_implicit_return_annotated_nested_function(self):
+    self.Check("""
+      import logging
+      def f():
+        def g() -> str:
+          try:
+            return ''
+          except:
+            logging.exception('oops')  # pytype: disable=bad-return-type
+        return g
+    """)
+
+  def test_implicit_return_annotated_outer_function(self):
+    self.Check("""
+      def f() -> str:
+        def g():
+          pass
+        pass  # pytype: disable=bad-return-type
     """)
 
   def test_silence_variable_mismatch(self):
