@@ -1,5 +1,7 @@
 """Tests for type comments."""
 
+import sys
+
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -711,9 +713,21 @@ class AssignmentCommentTest(test_base.BaseTest):
     """)
 
   def test_type_comment_on_class(self):
-    self.CheckWithErrors("""
-      class Foo(
-          int):  # type: str  # ignored-type-comment
+    # What error is reported differs depending on whether directors.py is using
+    # libcst (host 3.8-) or ast (host 3.9+) and the target version. All we care
+    # about is that the type comment is not ignored.
+    if sys.version_info[:2] >= (3, 9):
+      line1_error = ""
+      line2_error = "  # ignored-type-comment"
+    elif self.python_version >= (3, 8):
+      line1_error = "  # annotation-type-mismatch"
+      line2_error = ""
+    else:
+      line1_error = ""
+      line2_error = "  # annotation-type-mismatch"
+    self.CheckWithErrors(f"""
+      class Foo({line1_error}
+          int):  # type: str{line2_error}
         pass
     """)
 

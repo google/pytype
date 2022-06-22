@@ -707,7 +707,10 @@ class DisableDirectivesTest(DirectorTestCase):
          d)  # pytype: disable=wrong-arg-types
       )
     """)
-    self.assertDisables(2, 5, 6)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 5, 6)
+    else:
+      self.assertDisables(6)
 
   def test_iterate(self):
     self._create("""
@@ -905,7 +908,10 @@ class DisableDirectivesTest(DirectorTestCase):
       def f():
         pass
     """)
-    self.assertDisables(2, 3, 4, 5)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, 4, 5)
+    else:
+      self.assertDisables(5)
 
   def test_nested_call_in_class_decorator(self):
     self._create("""
@@ -917,7 +923,10 @@ class DisableDirectivesTest(DirectorTestCase):
       class C:
         pass
     """)
-    self.assertDisables(2, 3, 4, 5)
+    if self.python_version >= (3, 8):
+      self.assertDisables(2, 3, 4, 5)
+    else:
+      self.assertDisables(5)
 
 
 if __name__ == "__main__":
