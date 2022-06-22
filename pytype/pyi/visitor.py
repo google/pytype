@@ -23,7 +23,7 @@ class BaseVisitor(ast_visitor.BaseVisitor):
   """
 
   def __init__(self, *, defs=None, filename=None):
-    super().__init__(ast3)
+    super().__init__(ast3, visit_decorators=False)
     self.defs = defs
     self.filename = filename  # used for error messages
     self.src_code = None  # set in subclass, used for error messages

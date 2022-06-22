@@ -698,6 +698,17 @@ class DisableDirectivesTest(DirectorTestCase):
     """)
     self.assertDisables(5)
 
+  def test_nested_compare(self):
+    self._create("""
+      f(
+        a,
+        b,
+        (c <
+         d)  # pytype: disable=wrong-arg-types
+      )
+    """)
+    self.assertDisables(2, 5, 6)
+
   def test_iterate(self):
     self._create("""
       class Foo:
@@ -883,6 +894,30 @@ class DisableDirectivesTest(DirectorTestCase):
         x: 0  # pytype: disable=invalid-annotation
     """)
     self.assertDisables(3, error_class="invalid-annotation")
+
+  def test_nested_call_in_function_decorator(self):
+    self._create("""
+      @decorate(
+        dict(
+          k1=v(
+            a, b, c),  # pytype: disable=wrong-arg-types
+          k2=v2))
+      def f():
+        pass
+    """)
+    self.assertDisables(2, 3, 4, 5)
+
+  def test_nested_call_in_class_decorator(self):
+    self._create("""
+      @decorate(
+        dict(
+          k1=v(
+            a, b, c),  # pytype: disable=wrong-arg-types
+          k2=v2))
+      class C:
+        pass
+    """)
+    self.assertDisables(2, 3, 4, 5)
 
 
 if __name__ == "__main__":

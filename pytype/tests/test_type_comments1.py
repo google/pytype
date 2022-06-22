@@ -287,6 +287,17 @@ class FunctionCommentTest(test_base.BaseTest):
       def g() -> None: ...
     """)
 
+  def test_comment_after_type_comment(self):
+    ty = self.Infer("""
+      def f(x):
+        # type: (...) -> type
+        # comment comment comment
+        return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> type: ...
+    """)
+
 
 class AssignmentCommentTest(test_base.BaseTest):
   """Tests for type comments applied to assignments."""
@@ -697,6 +708,13 @@ class AssignmentCommentTest(test_base.BaseTest):
       def f() -> None: ...
       x: int
       def g() -> None: ...
+    """)
+
+  def test_type_comment_on_class(self):
+    self.CheckWithErrors("""
+      class Foo(
+          int):  # type: str  # ignored-type-comment
+        pass
     """)
 
 

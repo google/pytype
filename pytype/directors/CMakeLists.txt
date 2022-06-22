@@ -5,6 +5,7 @@ py_library(
     directors
   DEPS
     ._directors
+    .parser
     .parser_libcst
 )
 
@@ -14,8 +15,18 @@ py_library(
   SRCS
     directors.py
   DEPS
+    .parser
     .parser_libcst
     pytype.blocks
+)
+
+py_library(
+  NAME
+    parser
+  SRCS
+    parser.py
+  DEPS
+    pytype.ast.ast
 )
 
 py_library(

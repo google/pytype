@@ -13,8 +13,15 @@ class BaseVisitor:
         typed_ast. The same module must be used to generate the AST to visit.
   """
 
-  def __init__(self, ast):
+  def __init__(self, ast, visit_decorators=True):
     self._ast = ast
+    maybe_decorators = ["decorator_list"] if visit_decorators else []
+    self._node_children = {
+        self._ast.Module: ["body"],
+        self._ast.ClassDef: maybe_decorators + ["bases", "body"],
+        self._ast.FunctionDef: maybe_decorators + ["body", "args", "returns"],
+        self._ast.Assign: ["targets", "value"],
+    }
 
   def visit(self, node):
     """Does a post-order traversal of the AST."""
@@ -36,13 +43,7 @@ class BaseVisitor:
 
   def _children(self, node):
     """Children to recurse over."""
-    node_children = {
-        self._ast.Module: ["body"],
-        self._ast.ClassDef: ["bases", "body"],
-        self._ast.FunctionDef: ["body", "args", "returns"],
-        self._ast.Assign: ["targets", "value"],
-    }
-    ks = node_children.get(node.__class__, None)
+    ks = self._node_children.get(node.__class__)
     if ks:
       return [(k, getattr(node, k)) for k in ks]
     else:

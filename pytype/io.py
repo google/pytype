@@ -154,7 +154,11 @@ def check_or_generate_pyi(options, loader=None):
   except IndentationError as e:
     errorlog.python_compiler_error(options.input, e.lineno, e.msg)
   except libcst.ParserSyntaxError as e:
+    # TODO(rechen): We can get rid of this branch once we delete
+    # directors.parser_libcst.
     errorlog.python_compiler_error(options.input, e.raw_line, e.message)
+  except SyntaxError as e:
+    errorlog.python_compiler_error(options.input, e.lineno, e.msg)
   except directors.SkipFileError:
     result += "# skip-file found, file not analyzed"
   except Exception as e:  # pylint: disable=broad-except
@@ -316,8 +320,13 @@ def wrap_pytype_exceptions(exception_type, filename=""):
     raise exception_type("Error reading file %s at line %s: %s" %
                          (filename, e.lineno, e.error)) from e
   except libcst.ParserSyntaxError as e:
+    # TODO(rechen): We can get rid of this branch once we delete
+    # directors.parser_libcst.
     raise exception_type("Error reading file %s at line %s: %s" %
                          (filename, e.raw_line, e.message)) from e
+  except SyntaxError as e:
+    raise exception_type("Error reading file %s at line %s: %s" %
+                         (filename, e.lineno, e.msg)) from e
   except directors.SkipFileError as e:
     raise exception_type("Pytype could not analyze file %s: "
                          "'# skip-file' directive found" % filename) from e

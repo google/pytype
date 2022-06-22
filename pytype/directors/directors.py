@@ -9,7 +9,13 @@ from typing import AbstractSet, Optional
 
 from pytype import blocks
 
-from pytype.directors import parser_libcst as parser
+# directors.parser uses the stdlib ast library, which is much faster than
+# libcst, but we rely on ast features that are new in Python 3.9.
+# pylint: disable=g-import-not-at-top
+if sys.version_info[:2] >= (3, 9):
+  from pytype.directors import parser
+else:
+  from pytype.directors import parser_libcst as parser
 # pylint: enable=g-import-not-at-top
 
 log = logging.getLogger(__name__)
@@ -261,6 +267,7 @@ class Director:
   def _parse_src_tree(self, src_tree, code):
     """Parse a source file, extracting directives from comments."""
     visitor = parser.visit_src_tree(src_tree)
+    # TODO(rechen): This check can be removed once parser_libcst is gone.
     if not visitor:
       return
     if code:
@@ -269,11 +276,9 @@ class Director:
       opcode_lines = None
 
     self._return_lines = visitor.returns
-    self._function_ends = {r.start.line: r.end.line
-                           for r in visitor.function_ranges}
-    self._function_starts = sorted(
-        r.start.line for r in visitor.function_ranges)
-    function_end_to_start = {v: k for k, v in self._function_ends.items()}
+    self._function_ends = visitor.function_ranges
+    self._function_starts = sorted(visitor.function_ranges)
+    function_end_to_start = {v: k for k, v in visitor.function_ranges.items()}
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:

@@ -81,7 +81,7 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.decorators = []
     self.defs_start = None
     self.returns = set()
-    self.function_ranges = []
+    self.function_ranges = {}
 
   def _get_containing_groups(self, start_line, end_line=None):
     """Get _StructuredComment groups that fully contain the given line range."""
@@ -264,21 +264,19 @@ class _ParseVisitor(libcst.CSTVisitor):
   def visit_FunctionDef(self, node):
     # A function signature's line range starts at the beginning of the signature
     # and ends at the final colon.
+    pos = self._get_position(node)
     self._add_structured_comment_group(
-        self._get_position(node).start.line,
+        pos.start.line,
         self._get_position(node.whitespace_before_colon).end.line)
     self._visit_decorators(node)
     self._visit_def(node)
-    self.function_ranges.append(self._get_position(node))
+    self.function_ranges[pos.start.line] = pos.end.line
 
 
 def parse_src(src, python_version):
   """Parses a string of source code into a LibCST tree."""
+  assert python_version < (3, 9)
   version_str = utils.format_version(python_version)
-  if python_version >= (3, 9):
-    log.warning("LibCST does not support Python %s; parsing with 3.8 instead.",
-                version_str)
-    version_str = "3.8"
   config = libcst.PartialParserConfig(python_version=version_str)
   src_tree = libcst.parse_module(src, config)
   # The docstring for unsafe_skip_copy says:
