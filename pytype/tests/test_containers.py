@@ -635,14 +635,6 @@ class ContainerTest(test_base.BaseTest):
       y = ...  # type: List[List[nothing]]
     """)
 
-  def test_disable(self):
-    self.Check("""
-      x: list[int] = []
-      x.append(
-          ''
-      )  # pytype: disable=container-type-mismatch
-    """)
-
 
 if __name__ == "__main__":
   test_base.main()

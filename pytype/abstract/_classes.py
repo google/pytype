@@ -2,7 +2,7 @@
 
 import logging
 
-import attr
+import attrs
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -398,7 +398,7 @@ class PyTDClass(
     params = []
     for p in init.signatures[0].params[1:]:
       if p.name in protected:
-        params.append(attr.evolve(p, name=protected[p.name]))
+        params.append(attrs.evolve(p, name=protected[p.name]))
       else:
         params.append(p)
     with self.ctx.allow_recursive_convert():
@@ -416,8 +416,8 @@ class PyTDClass(
     if self.has_explicit_init:
       # Do not override an __init__ from the pyi file
       return
-    attrs = self.metadata[key]
-    fields = [x.to_pytd_constant() for x in attrs]
+    attributes = self.metadata[key]
+    fields = [x.to_pytd_constant() for x in attributes]
     self.pytd_cls = decorate.add_init_from_fields(self.pytd_cls, fields)
     init = self.pytd_cls.Lookup("__init__")
     self._member_map["__init__"] = init

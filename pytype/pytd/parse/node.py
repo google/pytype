@@ -14,7 +14,7 @@ For examples of visitors, see pytd/visitors.py
 
 from typing import Any, Dict
 
-import attr
+import attrs
 
 from pytype import metrics
 
@@ -34,13 +34,13 @@ class Node:
         self._name2item[item.name] = item
 
   def __iter__(self):
-    # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
+    # Directly accessing __attrs_attrs__ is faster than calling attrs.fields.
     for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
       yield getattr(self, field.name)
 
   def _ToTuple(self):
     """Returns a tuple of the fields of self as a sort key."""
-    # attr.astuple does a recursive conversion, which is not what we want
+    # attrs.astuple does a recursive conversion, which is not what we want
     return tuple((x.__class__.__name__, str(x)) for x in self)
 
   def __lt__(self, other):
@@ -68,7 +68,7 @@ class Node:
     return self == other or self > other
 
   def IterChildren(self):
-    # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
+    # Directly accessing __attrs_attrs__ is faster than calling attrs.fields.
     for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
       yield field.name, getattr(self, field.name)
 
@@ -99,7 +99,7 @@ class Node:
     return _Visit(self, visitor, *args, **kwargs)
 
   def Replace(self, *args, **kwargs):
-    return attr.evolve(self, *args, **kwargs)
+    return attrs.evolve(self, *args, **kwargs)
 
 
 # The set of visitor names currently being processed.

@@ -17,6 +17,7 @@ py_library(
     .test_utils
     pytype.libvm
     pytype.utils
+    pytype.directors.directors
     pytype.pyi.parser
     pytype.pytd.pytd
 )

@@ -1083,6 +1083,40 @@ class GenericTest(test_base.BaseTest):
           return cls()
     """)
 
+  @test_base.skip("b/169446275: TypeVar currently checks for any common parent")
+  def test_generic_classes_enforce_types(self):
+    # Given two classes C1 and C2 with a common parent class C0, a generic class
+    # which is parameterized with C1 should NOT accept C2 or C0.
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar, Union
+      _T = TypeVar("_T")
+      class Clz(Generic[_T]):
+        def set(self, val: _T): ...
+
+      class Base: ...
+
+      class SubA(Base): ...
+      class SubB(Base): ...
+
+      clz_a: Clz[SubA]
+      # TODO(b/169446275): remove this note and test_base.skip() once fixed.
+      clz_a.set(SubB())  # wrong-arg-types
+      # Safety check (this already works): only common superclass is 'object'.
+      clz_a.set(123)  # wrong-arg-types
+
+      # Regression test: subclasses should be allowed.
+      clz_base: Clz[Base]
+      clz_base.set(SubB())
+      # Regression test: Unions should allow all members.
+      clz_union: Clz[Union[SubA, SubB]]
+      clz_union.set(SubA())
+      clz_union.set(SubB())
+      # But still prevent incorrect types, including parents.
+      clz_union.set(123)  # wrong-arg-types
+      # TODO(b/169446275): remove this note and test_base.skip() once fixed.
+      clz_union.set(Base())  # wrong-arg-types
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

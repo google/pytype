@@ -12,10 +12,10 @@ from pytype import __version__
 from pytype import analyze
 from pytype import config
 from pytype import constant_folding
-from pytype import directors
 from pytype import errors
 from pytype import load_pytd
 from pytype import utils
+from pytype.directors import directors
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import builtin_stubs as pytd_builtins

@@ -569,15 +569,6 @@ class AssignmentCommentTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Multiple"})
 
-  def test_multiple_directives(self):
-    """We should support multiple directives on one line."""
-    self.Check("""
-      a = list() # type: list[int, str]  # pytype: disable=invalid-annotation
-      b = list() # pytype: disable=invalid-annotation  # type: list[int, str]
-      def foo(x): pass
-      c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
-    """)
-
   def test_nested_comment_alias(self):
     ty = self.Infer("""
       class A: pass

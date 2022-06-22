@@ -35,7 +35,6 @@ py_library(
     .convert
     .convert_structural
     .debug
-    .directors
     .errors
     .imports_map_loader
     .io
@@ -47,6 +46,7 @@ py_library(
     .state
     .tracer_vm
     .vm
+    pytype.directors.directors
 )
 
 py_library(
@@ -215,16 +215,6 @@ py_library(
 
 py_library(
   NAME
-    directors
-  SRCS
-    directors.py
-  DEPS
-    ._utils
-    .blocks
-)
-
-py_library(
-  NAME
     errors
   SRCS
     errors.py
@@ -262,9 +252,9 @@ py_library(
     .analyze
     .config
     .constant_folding
-    .directors
     .errors
     .load_pytd
+    pytype.directors.directors
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -421,13 +411,13 @@ py_library(
     .compare
     .constant_folding
     .datatypes
-    .directors
     .load_pytd
     .metrics
     .preprocess
     .state
     .vm_utils
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser
@@ -638,18 +628,6 @@ py_test(
 
 py_test(
   NAME
-    directors_test
-  SRCS
-    directors_test.py
-  DEPS
-    .blocks
-    .directors
-    .errors
-    pytype.pyc.pyc
-)
-
-py_test(
-  NAME
     load_pytd_test
   SRCS
     load_pytd_test.py
@@ -719,6 +697,7 @@ py_library(
 
 add_subdirectory(abstract)
 add_subdirectory(ast)
+add_subdirectory(directors)
 add_subdirectory(inspect)
 add_subdirectory(overlays)
 add_subdirectory(pyc)

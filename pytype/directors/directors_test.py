@@ -5,8 +5,8 @@ import sys
 import textwrap
 
 from pytype import blocks
-from pytype import directors
 from pytype import errors
+from pytype.directors import directors
 from pytype.pyc import pyc
 import unittest
 
@@ -132,7 +132,7 @@ class DirectorTestCase(unittest.TestCase):
         lineno=lineno)
     self.assertEqual(
         expected,
-        self._director.should_report_error(error))
+        self._director.filter_error(error))
 
 
 class DirectorTest(DirectorTestCase):
@@ -374,6 +374,21 @@ class DirectorTest(DirectorTestCase):
       src.append(f"    'string{i}'")
     src.append(")")
     self._create("\n".join(src))
+
+  def test_try(self):
+    self._create("""
+      try:
+        x = None  # type: int
+      except Exception:
+        x = None  # type: str
+      else:
+        x = None  # type: float
+    """)
+    self.assertEqual({
+        3: "int",
+        5: "str",
+        7: "float",
+    }, self._director.type_comments)
 
 
 class VariableAnnotationsTest(DirectorTestCase):
@@ -843,6 +858,31 @@ class DisableDirectivesTest(DirectorTestCase):
       self.assertDisables(2, 3, error_class="attribute-error")
     else:
       self.assertDisables(3, error_class="attribute-error")
+
+  def test_try(self):
+    self._create("""
+      try:
+        pass
+      except NonsenseError:  # pytype: disable=name-error
+        pass
+    """)
+    self.assertDisables(4, error_class="name-error")
+
+  def test_classdef(self):
+    self._create("""
+      import abc
+      class Foo:  # pytype: disable=ignored-abstractmethod
+        @abc.abstractmethod
+        def f(self): ...
+    """)
+    self.assertDisables(3, error_class="ignored-abstractmethod")
+
+  def test_class_attribute(self):
+    self._create("""
+      class Foo:
+        x: 0  # pytype: disable=invalid-annotation
+    """)
+    self.assertDisables(3, error_class="invalid-annotation")
 
 
 if __name__ == "__main__":

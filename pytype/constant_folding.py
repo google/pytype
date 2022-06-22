@@ -25,7 +25,7 @@ input/output.
 
 from typing import Any, Dict, FrozenSet, Tuple
 
-import attr
+import attrs
 
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
@@ -69,7 +69,7 @@ class ConstantError(Exception):
 #  construct 'typ' and 'elements' at the end, that would mean recursively
 #  unfolding a structure that we have just folded; the code is simpler if we
 #  track elements and types at every stage.
-@attr.s(auto_attribs=True)
+@attrs.define
 class _Constant:
   """A folded python constant."""
   typ: Tuple[str, Any]
@@ -82,7 +82,7 @@ class _Constant:
     return self.typ[0]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class _Collection:
   """A linear collection (e.g. list, tuple, set)."""
   types: FrozenSet[Any]
@@ -90,7 +90,7 @@ class _Collection:
   elements: Tuple[Any, ...]
 
 
-@attr.s(auto_attribs=True)
+@attrs.define
 class _Map:
   """A dictionary."""
   key_types: FrozenSet[Any]

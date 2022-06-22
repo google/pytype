@@ -24,7 +24,6 @@ from pytype import blocks
 from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
-from pytype import directors
 from pytype import load_pytd
 from pytype import metrics
 from pytype import preprocess
@@ -34,6 +33,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.directors import directors
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib
 from pytype.pyc import loadmarshal
@@ -421,7 +421,7 @@ class VirtualMachine:
         code if self.ctx.python_version < (3, 8) else None)
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
-    self.ctx.errorlog.set_error_filter(director.should_report_error)
+    self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
     code = blocks.merge_annotations(code, self._director.annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)

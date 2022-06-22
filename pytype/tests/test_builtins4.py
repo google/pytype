@@ -757,5 +757,30 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
 
 
+class TypesNoneTypeTest(test_base.BaseTest):
+  """Tests for types.NoneType."""
+
+  @test_utils.skipBeforePy((3, 10), "types.NoneType is new in 3.10")
+  def test_function_param(self):
+    self.Check("""
+      import types
+      def f(x: types.NoneType) -> None:
+        return x
+      f(None)
+    """)
+
+  @test_utils.skipBeforePy((3, 10), "types.NoneType is new in 3.10")
+  def test_if_splitting(self):
+    self.Check("""
+      import types
+      def f(x: types.NoneType) -> int:
+        if x:
+          return 'a'
+        else:
+          return 42
+      a = f(None)
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

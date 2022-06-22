@@ -2,7 +2,7 @@ import itertools
 
 from typing import Any
 
-import attr
+import attrs
 
 from pytype.pytd import visitors
 from pytype.pytd.parse import node
@@ -12,28 +12,28 @@ import unittest
 Node = node.Node
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class Node1(Node):
   """Simple node for equality testing. Not equal to anything else."""
   a: Any
   b: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class Node2(Node):
   """For equality testing. Same attributes as Node3."""
   x: Any
   y: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class Node3(Node):
   """For equality testing. Same attributes as Node2."""
   x: Any
   y: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class Data(Node):
   """'Data' node. Visitor tests use this to store numbers in leafs."""
   d1: Any
@@ -41,34 +41,34 @@ class Data(Node):
   d3: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class V(Node):
   """Inner node 'V', with one child. See testVisitor[...]() below."""
   x: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class X(Node):
   """Inner node 'X', with two children. See testVisitor[...]() below."""
   a: Any
   b: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class Y(Node):
   """Inner node 'Y', with two children. See testVisitor[...]() below."""
   c: Any
   d: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class XY(Node):
   """Inner node 'XY', with two children. See testVisitor[...]() below."""
   x: Any
   y: Any
 
 
-@attr.s(auto_attribs=True, frozen=True, order=False)
+@attrs.frozen
 class NodeWithVisit(Node):
   """A node with its own VisitNode function."""
   x: Any
