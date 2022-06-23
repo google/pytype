@@ -320,7 +320,7 @@ def _process_comment(line, lineno, col):
 def parse_src(src: str, python_version: Tuple[int, int]):
   """Parses a string of source code into an ast."""
   return _SourceTree(
-      ast.parse(src, feature_version=python_version[1]), _process_comments(src))
+      ast.parse(src, feature_version=python_version[1]), _process_comments(src))  # pylint: disable=unexpected-keyword-arg
 
 
 def visit_src_tree(src_tree):
