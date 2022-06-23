@@ -5,7 +5,6 @@ py_library(
     directors
   DEPS
     ._directors
-    .init
     .parser
     .parser_libcst
 )
@@ -19,13 +18,6 @@ py_library(
     .parser
     .parser_libcst
     pytype.blocks
-)
-
-py_library(
-  NAME
-    init
-  SRCS
-    __init__.py
 )
 
 py_library(

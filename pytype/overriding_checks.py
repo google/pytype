@@ -324,13 +324,13 @@ def _check_default_values(method_signature, base_signature):
           SignatureErrorType.DEFAULT_PARAMETER_MISMATCH,
           f"Parameter '{method_param_name}' must have a default value.")
 
-    base_default = abstract_utils.get_atomic_value(base_default_value)
-    method_default = abstract_utils.get_atomic_value(method_default_value)
-
-    # Unsolvable, Unknown, or Empty matches anything.
-    if isinstance(base_default, abstract.AMBIGUOUS_OR_EMPTY):
-      continue
-    if isinstance(method_default, abstract.AMBIGUOUS_OR_EMPTY):
+    # Only concrete values can be compared for an exact match.
+    try:
+      base_default = abstract_utils.get_atomic_python_constant(
+          base_default_value)
+      method_default = abstract_utils.get_atomic_python_constant(
+          method_default_value)
+    except abstract_utils.ConversionError:
       continue
 
     if base_default != method_default:

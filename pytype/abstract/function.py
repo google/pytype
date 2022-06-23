@@ -363,9 +363,9 @@ class Signature:
     if name in self.defaults:
       values = self.defaults[name].data
       if len(values) > 1:
-        return "Union[%s]" % ", ".join(_print(v) for v in values)
+        return "..."
       else:
-        return _print(values[0])
+        return abstract_utils.show_constant(values[0])
     else:
       return None
 

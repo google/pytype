@@ -142,17 +142,31 @@ class OverridingTest(test_base.BaseTest):
           pass
     """)
 
-  # Default or missing -> default with the same value
+  # Default or missing -> default with a different value
   def test_keyword_default_value_mismatch(self):
-    self.CheckWithErrors("""
+    errors = self.CheckWithErrors("""
       class Foo:
         def f(self, *, t: int = 0) -> None:
           pass
 
       class Bar(Foo):
-        def f(self, *, t: int = 1) -> None:  # signature-mismatch
+        def f(self, *, t: int = 1) -> None:  # signature-mismatch[e]
           pass
-  """)
+    """)
+    self.assertErrorSequences(errors, {"e": ["t: int = 0", "t: int = 1"]})
+
+  def test_default_value_imported_class(self):
+    with self.DepTree([("foo.py", """
+      class Foo:
+        def f(self, x: int = 0):
+          pass
+    """)]):
+      self.Check("""
+        import foo
+        class Bar(foo.Foo):
+          def f(self, x: int = 0):
+            pass
+      """)
 
   def test_partial_annotations(self):
     self.Check("""

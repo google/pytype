@@ -451,7 +451,7 @@ class FunctionTest(AbstractTestBase):
         varargs_name=None,
         kwonly_params=(),
         kwargs_name=None,
-        defaults={"y": self._ctx.convert.none_type.to_variable(self._node)},
+        defaults={"y": self._ctx.convert.none.to_variable(self._node)},
         annotations={},
     )
     self.assertEqual(repr(sig), "def f(x, y = None) -> Any")
@@ -499,7 +499,7 @@ class FunctionTest(AbstractTestBase):
         varargs_name=None,
         kwonly_params=("y",),
         kwargs_name=None,
-        defaults={"y": self._ctx.convert.none_type.to_variable(self._node)},
+        defaults={"y": self._ctx.convert.none.to_variable(self._node)},
         annotations={},
     )
     self.assertEqual(repr(sig), "def f(*, y = None) -> Any")
