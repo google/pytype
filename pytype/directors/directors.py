@@ -127,6 +127,45 @@ class _LineSet:
     return None
 
 
+class _BlockRanges:
+  """A collection of possibly nested start..end ranges from AST nodes."""
+
+  def __init__(self, start_to_end_mapping):
+    self._starts = sorted(start_to_end_mapping)
+    self._start_to_end = start_to_end_mapping
+    self._end_to_start = {v: k for k, v in start_to_end_mapping.items()}
+
+  def has_start(self, line):
+    return line in self._start_to_end
+
+  def has_end(self, line):
+    return line in self._end_to_start
+
+  def find_outermost(self, line):
+    """Find the outermost interval containing line."""
+    i = bisect.bisect_left(self._starts, line)
+    num_intervals = len(self._starts)
+    if i:
+      if i < num_intervals and self._starts[i] == line:
+        # line number is start of interval.
+        start = self._starts[i]
+      else:
+        # Skip nested intervals
+        while (
+            1 < i <= num_intervals and
+            self._start_to_end[self._starts[i - 1]] < line):
+          i -= 1
+        start = self._starts[i - 1]
+      return start, self._start_to_end[start]
+    return None, None
+
+  def adjust_end(self, old_end, new_end):
+    start = self._end_to_start[old_end]
+    self._start_to_end[start] = new_end
+    del self._end_to_start[old_end]
+    self._end_to_start[new_end] = start
+
+
 def _collect_bytecode(ordered_code):
   bytecode_blocks = []
   stack = [ordered_code]
@@ -241,8 +280,7 @@ class Director:
     # Store function ranges and return lines to distinguish explicit and
     # implicit returns (the bytecode has a `RETURN None` for implcit returns).
     self._return_lines = set()
-    self._function_starts = []
-    self._function_ends = {}
+    self._function_ranges = _BlockRanges({})
     # Parse the source code for directives.
     self._parse_src_tree(src_tree, code)
 
@@ -276,9 +314,7 @@ class Director:
       opcode_lines = None
 
     self._return_lines = visitor.returns
-    self._function_ends = visitor.function_ranges
-    self._function_starts = sorted(visitor.function_ranges)
-    function_end_to_start = {v: k for k, v in visitor.function_ranges.items()}
+    self._function_ranges = _BlockRanges(visitor.function_ranges)
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:
@@ -295,14 +331,14 @@ class Director:
                 self._filename, comment.line, str(e))
         # Make sure the function range ends at the last "interesting" line.
         if (not isinstance(line_range, parser.Call) and
-            line_range.end_line in function_end_to_start):
+            self._function_ranges.has_end(line_range.end_line)):
           if opcode_lines:
             end = _adjust_line_number(
                 line_range.end_line, opcode_lines.return_lines,
                 line_range.start_line)
           else:
             end = line_range.start_line
-          self._function_ends[function_end_to_start[line_range.end_line]] = end
+          self._function_ranges.adjust_end(line_range.end_line, end)
 
     for annot in visitor.variable_annotations:
       if opcode_lines:
@@ -471,21 +507,9 @@ class Director:
         error.lineno not in self._return_lines):
       # We have an implicit "return None". Adjust the line number to the last
       # line of the function.
-      i = bisect.bisect_left(self._function_starts, error.lineno)
-      num_functions = len(self._function_starts)
-      if i:
-        if i < num_functions and self._function_starts[i] == error.lineno:
-          # opcode line number is start of function.
-          start = self._function_starts[i]
-        else:
-          # Skip functions nested inside the implicitly returning function.
-          while (
-              1 < i <= num_functions and
-              self._function_ends[self._function_starts[i - 1]] < error.lineno):
-            i -= 1
-          start = self._function_starts[i - 1]
-        line = self._function_ends[start]
-        error.set_lineno(line)
+      _, end = self._function_ranges.find_outermost(error.lineno)
+      if end:
+        error.set_lineno(end)
     # Treat line=0 as below the file, so we can filter it.
     line = error.lineno or sys.maxsize
     # Report the error if it isn't subject to any ignore or disable.
