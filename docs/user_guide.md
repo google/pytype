@@ -1,3 +1,5 @@
+<!--* freshness: { owner: 'rechen' reviewed: '2022-06-22' } *-->
+
 # User guide
 
 <!--ts-->
@@ -10,7 +12,7 @@
       * [Pyi stub files](#pyi-stub-files)
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
 
 <!--te-->
 

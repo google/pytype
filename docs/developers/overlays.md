@@ -9,7 +9,7 @@
       * [Mechanics](#mechanics)
       * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
 
 <!--te-->
 
@@ -69,7 +69,7 @@ abstract.BaseValue instance.
     `foo` with the module name):
 
     ```python
-    from pytype import overlay
+    from pytype.overlays import overlay
 
     class FooOverlay(overlay.Overlay):
 

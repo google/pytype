@@ -1,3 +1,5 @@
+<!--* freshness: { owner: 'rechen' reviewed: '2022-06-22' } *-->
+
 # Error classes
 
 pytype has the following classes of errors, which can be disabled with a
@@ -68,7 +70,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2022-05-10T11:20-07:00 -->
+<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
 
 <!--te-->
 
