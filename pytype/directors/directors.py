@@ -294,7 +294,8 @@ class Director:
             self._errorlog.invalid_directive(
                 self._filename, comment.line, str(e))
         # Make sure the function range ends at the last "interesting" line.
-        if line_range.end_line in function_end_to_start:
+        if (not isinstance(line_range, parser.Call) and
+            line_range.end_line in function_end_to_start):
           if opcode_lines:
             end = _adjust_line_number(
                 line_range.end_line, opcode_lines.return_lines,
