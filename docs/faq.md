@@ -1,3 +1,5 @@
+<!--* freshness: { owner: 'rechen' reviewed: '2022-06-22' } *-->
+
 # FAQ
 
 <!--ts-->
@@ -20,7 +22,7 @@
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
       * [Why are signature mismatches in subclasses bad? {#signature-mismatch}](#why-are-signature-mismatches-in-subclasses-bad-signature-mismatch)
 
-<!-- Added by: rechen, at: 2022-05-10T11:20-07:00 -->
+<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
 
 <!--te-->
 

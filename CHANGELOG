@@ -1,3 +1,16 @@
+Version 2022.06.23:
+
+Updates:
+* Support `T1 | T2 | ...` syntax for union types in python 3.10+ (PEP604).
+* Replace libcst with ast in directors.py in Python 3.9+. This makes source code
+  parsing much faster.
+
+Bug fixes:
+* Python 3.10 fixes:
+  * Convert `types.NoneType` to `builtins.NoneType`.
+  * Adjust the error line number for an implicit `return None`.
+  * Add `ParamSpecArgs` and `ParamSpecKwargs` to `typing.pytd`.
+
 Version 2022.06.14:
 
 Updates:
