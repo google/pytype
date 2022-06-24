@@ -319,6 +319,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):
 
   def str_of_constant(self, printer):
     return "[%s]" % ", ".join(" or ".join(_var_map(printer, val))
+                              for val in self.pyval)
 
   def __repr__(self):
     if self.could_contain_anything:
