@@ -916,4 +916,5 @@ class Converter(utils.ContextWeakrefMixin):
           for i, item in enumerate(pyval)
       ])
     else:
-      raise NotImplementedError(f"Can't convert constant {type(pyval)} {pyval!r}")
+      raise NotImplementedError("Can't convert constant "
+                                f"{type(pyval)} {pyval!r}")

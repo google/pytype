@@ -239,7 +239,8 @@ def WrapTypeDeclUnit(name, items):
     if isinstance(item, pytd.Function):
       if item.name in functions:
         if item.kind != functions[item.name].kind:
-          raise ValueError(f"Can't combine {item.kind} and {functions[item.name].kind}")
+          raise ValueError(f"Can't combine {item.kind} and "
+                           f"{functions[item.name].kind}")
         functions[item.name] = pytd.Function(
             item.name, functions[item.name].signatures + item.signatures,
             item.kind)

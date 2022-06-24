@@ -318,7 +318,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):
     self.set_slot("__getslice__", self.getslice_slot)
 
   def str_of_constant(self, printer):
-    return f"[{', '.join(' or '.join(_var_map(printer, val)) for val in self.pyval)}]"
+    return "[%s]" % ", ".join(" or ".join(_var_map(printer, val))
 
   def __repr__(self):
     if self.could_contain_anything:

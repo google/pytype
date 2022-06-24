@@ -901,7 +901,8 @@ def match_all_args(ctx, node, func, args):
           break
         else:
           raise AssertionError(
-              f"Mismatched parameter {arg_name} not found in passed_args") from e
+              f"Mismatched parameter {arg_name} not found in passed_args"
+            ) from e
       else:
         # This is not an InvalidParameters error.
         raise

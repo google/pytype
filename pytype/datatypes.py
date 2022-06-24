@@ -244,7 +244,7 @@ class AliasingDict(dict):
     return super().__getitem__(self.uf.find_by_name(name))
 
   def __repr__(self):
-    return (f"{super().__repr__()!r}, _alias={repr(self.uf)!r}")
+    return f"{super().__repr__()!r}, _alias={repr(self.uf)!r}"
 
   def __hash__(self):
     return hash(frozenset(self.items()))

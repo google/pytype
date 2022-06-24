@@ -1,7 +1,6 @@
 """Tests for pytype_extensions."""
 
 import os
-from typing import Text
 
 from pytype import errors
 from pytype import file_utils

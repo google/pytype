@@ -277,7 +277,9 @@ class ErrorMatcher:
           code, mark = errs[0]
           exp = _format_error(error.lineno, code, mark)
           actual = _format_error(error.lineno, error.name)
-          self._fail(f"Error does not match:\nExpected: {exp}\nActual: {actual}")
+          self._fail(
+            f"Error does not match:\nExpected: {exp}\nActual: {actual}"
+          )
         else:
           self._fail(f"Unexpected error:\n{error}")
     leftover_errors = []

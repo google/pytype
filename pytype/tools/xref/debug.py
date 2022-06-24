@@ -13,15 +13,16 @@ def format_loc(location):
 
 
 def format_def_with_location(defn, loc):
-  return (f"{format_loc(loc)}  | {defn.typ.ljust(15)} {defn.format()}")
+  return f"{format_loc(loc)}  | {defn.typ.ljust(15)} {defn.format()}"
 
 
 def format_ref(ref):
-  return (f"{format_loc(ref.location)}  | {ref.typ.ljust(15)}  {ref.scope}.{ref.name}")
+  return (f"{format_loc(ref.location)}  | {ref.typ.ljust(15)}  "
+          f"{ref.scope}.{ref.name}")
 
 
 def format_call(call):
-  return (f"{format_loc(call.location)}  | {'Call'.ljust(15)}  {call.func}")
+  return f"{format_loc(call.location)}  | {'Call'.ljust(15)}  {call.func}"
 
 
 def typename(node):

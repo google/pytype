@@ -872,7 +872,8 @@ class ErrorLog(ErrorLogBase):
       operator_name = _function_name(operator, capitalize=True)
       expected_right_operand = self._print_as_expected_type(
           bad_call.bad_param.expected)
-      details = f"{operator_name} on {left_operand} expects {expected_right_operand}"
+      details = (f"{operator_name} on {left_operand} expects "
+                 f"{expected_right_operand}")
       self._unsupported_operands(
           stack, operator, left_operand, right_operand, details=details)
     else:
@@ -1085,7 +1086,9 @@ class ErrorLog(ErrorLogBase):
     if isinstance(param_or_params, abstract.BaseValue):
       return self._print_as_expected_type(param_or_params)
     else:
-      return f"[{', '.join(self._print_params_helper(p) for p in param_or_params)}]"
+      return (
+        f"[{', '.join(self._print_params_helper(p) for p in param_or_params)}]"
+      )
 
   def wrong_annotation_parameter_count(
       self, stack, annot: abstract.BaseValue,
@@ -1289,7 +1292,8 @@ class ErrorLog(ErrorLogBase):
       print_types = {self._print_as_actual_type(v, literal=literal)
                         for v in binding.variable.data}
       if len(print_types) > 1:
-        details += f"\nIn assignment of type: {self._join_printed_types(print_types)}"
+        details += ("\nIn assignment of type: "
+                    f"{self._join_printed_types(print_types)}")
     if typed_dict is not None:
       suffix = f" for key {name} in TypedDict {typed_dict.class_name}"
     elif name is not None:

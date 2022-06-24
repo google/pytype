@@ -429,7 +429,8 @@ class Definitions:
   def add_type_var(self, name, typevar):
     """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
     if name != typevar.name:
-      raise ParseError(f"TypeVar name needs to be {typevar.name!r} (not {name!r})")
+      raise ParseError(f"TypeVar name needs to be {typevar.name!r} "
+                       f"(not {name!r})")
     bound = typevar.bound
     if isinstance(bound, str):
       bound = pytd.NamedType(bound)
@@ -439,7 +440,8 @@ class Definitions:
 
   def add_param_spec(self, name, paramspec):
     if name != paramspec.name:
-      raise ParseError(f"ParamSpec name needs to be {paramspec.name!r} (not {name!r})")
+      raise ParseError(f"ParamSpec name needs to be {paramspec.name!r} "
+                       f"(not {name!r})")
     # ParamSpec should probably be represented with its own pytd class, like
     # TypeVar. This is just a quick, hacky way for us to keep track of which
     # names refer to ParamSpecs so we can replace them with Any in

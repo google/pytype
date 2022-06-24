@@ -359,7 +359,8 @@ class TypeMatch(pytd_utils.TypeMatcher):
     elif isinstance(t1, pytd.Literal) and isinstance(t2, pytd.Literal):
       return booleq.TRUE if t1.value == t2.value else booleq.FALSE
     else:
-      raise AssertionError(f"Don't know how to match {type(t1)} against {type(t2)}")
+      raise AssertionError(f"Don't know how to match {type(t1)} against "
+                           f"{type(t2)}")
 
   # pylint: disable=invalid-name
   def match_Signature_against_Signature(self, sig1, sig2, subst,

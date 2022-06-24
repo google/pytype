@@ -62,7 +62,8 @@ class StatsCollector:
     self.unexpected_success_count += len(test_result.unexpectedSuccesses)
 
   def report(self):
-    msg = f"\nRan {self.method_count} methods from {self.class_count} classes.\n"
+    msg = (f"\nRan {self.method_count} methods from {self.class_count} "
+           "classes.\n")
     msg += "Found %d errors\n" % self.error_count
     msg += "Found %d failures\n" % self.fail_count
     msg += f"Found {self.unexpected_success_count} unexpected successes\n"

@@ -1098,7 +1098,8 @@ class VerifyVisitor(Visitor):
       for a1, a2 in itertools.combinations(attrs, 2):
         both = attr_to_set[a1] & attr_to_set[a2]
         if both:
-          raise AssertionError(f"Duplicate name(s) {list(both)} in both {a1} and {a2}")
+          raise AssertionError(f"Duplicate name(s) {list(both)} in both {a1} "
+                               f"and {a2}")
 
   def EnterTypeDeclUnit(self, node):
     self._AssertNoDuplicates(node, ["constants", "type_params", "classes",
@@ -1430,8 +1431,8 @@ class AdjustTypeParameters(Visitor):
           # to be replaced by typing.Generic by the time this visitor is called?
           self._CheckDuplicateNames(params, node.name)
           if generic_template:
-            raise ContainerError(
-                f"Cannot inherit from Generic[...] multiple times in class {node.name}")
+            raise ContainerError("Cannot inherit from Generic[...] "
+                                 f"multiple times in class {node.name}")
           else:
             generic_template = params
         else:

@@ -365,8 +365,8 @@ class TypeParameter(_base.BaseValue):
                  self.contravariant))
 
   def __repr__(self):
-    return "TypeParameter({!r}, constraints={!r}, bound={!r}, module={!r})".format(
-        self.name, self.constraints, self.bound, self.module)
+    return ("TypeParameter({!r}, constraints={!r}, bound={!r}, module={!r})"
+            .format(self.name, self.constraints, self.bound, self.module))
 
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
@@ -385,7 +385,8 @@ class TypeParameter(_base.BaseValue):
 
   def update_official_name(self, name):
     if self.name != name:
-      message = f"TypeVar({self.name!r}) must be stored as {self.name!r}, not {name!r}"
+      message = (f"TypeVar({self.name!r}) must be stored as {self.name!r}, "
+                 f"not {name!r}")
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, message)
 
   def call(self, node, func, args, alias_map=None):

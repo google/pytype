@@ -312,7 +312,8 @@ class BaseTest(unittest.TestCase):
 
   def assertTypeEquals(self, t1, t2):
     self.assertEqual(t1, t2,
-                     f"Type {pytd_utils.Print(t1)!r} != {pytd_utils.Print(t2)!r}")
+                     f"Type {pytd_utils.Print(t1)!r} != "
+                     f"{pytd_utils.Print(t2)!r}")
 
   def assertOnlyHasReturnType(self, func, t):
     """Test that a given return type is the only one."""
@@ -328,8 +329,8 @@ class BaseTest(unittest.TestCase):
                                for sig in func.signatures)
     if isinstance(ret, pytd.UnionType):
       self.assertIn(t, ret.type_list,
-                    "Return type {!r} not found in {!r}".format(pytd_utils.Print(t),
-                                                        pytd_utils.Print(ret)))
+                    "Return type {!r} not found in {!r}".format(
+                      pytd_utils.Print(t), pytd_utils.Print(ret)))
     else:
       self.assertEqual(t, ret,
                        "Return type {!r} != {!r}".format(pytd_utils.Print(ret),
