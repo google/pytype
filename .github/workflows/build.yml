@@ -24,13 +24,13 @@ jobs:
           - manylinux2014_aarch64
         pyver: ['cp37-cp37m', 'cp38-cp38', 'cp39-cp39', 'cp310-cp310']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up QEMU
         if: matrix.platform == 'manylinux2014_aarch64'
         id: qemu
-        uses: docker/setup-qemu-action@v1
+        uses: docker/setup-qemu-action@v2
       - name: Pull Docker image
         run: |
           DOCKER_IMAGE="quay.io/pypa/${{ matrix.platform }}"
@@ -45,7 +45,7 @@ jobs:
             -v "$(pwd):/io" \
             "$DOCKER_IMAGE" \
             /io/build_scripts/wheels/manylinux.sh
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist
@@ -60,16 +60,16 @@ jobs:
       matrix:
         python_version: ['3.7', '3.8', '3.9', '3.10']
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python_version }}
       - name: Build MacOS wheels
         run: './build_scripts/wheels/macos.sh'
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: dist
           path: dist
