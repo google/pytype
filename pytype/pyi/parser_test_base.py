@@ -56,7 +56,7 @@ class ParserTestBase(test_base.UnitTest):
         expected = src
       expected = textwrap.dedent(expected).lstrip()
       if prologue:
-        expected = "%s\n\n%s" % (textwrap.dedent(prologue), expected)
+        expected = f"{textwrap.dedent(prologue)}\n\n{expected}"
       # Allow blank lines at the end of `expected` for prettier tests.
       self.assertMultiLineEqual(expected.rstrip(), actual)
     return ast

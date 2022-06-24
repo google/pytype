@@ -37,7 +37,7 @@ class TestBuilder:
       if not OVERWRITE_EXPECTED and EXPECTED not in files_by_ext:
         continue
 
-      py, pyi = [files_by_ext[x] for x in (PY, PYI)]
+      py, pyi = (files_by_ext[x] for x in (PY, PYI))
       outfile = os.path.join(data_dir, base + '.' + EXPECTED)
 
       test = build_regression_test(py, pyi, outfile)
@@ -61,7 +61,7 @@ class TestBuilder:
 def build_regression_test(py, pyi, outfile):
 
   def regression_test(test_case):
-    py_input, pyi_src = [_read_file(f) for f in (py, pyi)]
+    py_input, pyi_src = (_read_file(f) for f in (py, pyi))
     output = merge_pyi.merge_sources(py=py_input, pyi=pyi_src)
 
     if OVERWRITE_EXPECTED:
@@ -72,7 +72,7 @@ def build_regression_test(py, pyi, outfile):
       test_case.assertEqual(expected, output, _get_diff(expected, output))
 
   name = os.path.splitext(os.path.basename(outfile))[0].replace('.', '_')
-  test = 'test_%s' % name
+  test = f'test_{name}'
   case = type('RegressionTest', (unittest.TestCase,), {test: regression_test})
   return case(test)
 

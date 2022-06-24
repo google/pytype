@@ -91,7 +91,7 @@ def _GetAncestorMap():
           # This means we have a child type that is unknown. If it is a node
           # then make sure _FindNodeClasses() can discover it. If it is not a
           # node, then add the typename to _IGNORED_TYPES.
-          raise AssertionError("Unknown child type: %s" % allowed)
+          raise AssertionError(f"Unknown child type: {allowed}")
 
     predecessors = cfg_utils.compute_predecessors(node_classes.values())
     # Convert predecessors keys and values to use names instead of info objects.
@@ -184,7 +184,7 @@ class Visitor:
             # own pytd nodes directly in a top-level python file.
             visit_all = True
           else:
-            raise AssertionError("Unknown node type: %s %r" % (node, cls))
+            raise AssertionError(f"Unknown node type: {node} {cls!r}")
       if visit_all:
         visit_class_names = ALL_NODE_NAMES
       Visitor._visitor_functions_cache[cls] = (

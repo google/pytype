@@ -12,15 +12,15 @@ class TypingMethodsTest(test_base.BaseTest):
   def _check_call(self, t, expr):  # pylint: disable=invalid-name
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
-        from typing import %(type)s
-        def f() -> %(type)s: ...
-      """ % {"type": t})
+        from typing import {type}
+        def f() -> {type}: ...
+      """.format(type=t))
       indented_expr = textwrap.dedent(expr).replace("\n", "\n" + " "*8)
-      self.Check("""
+      self.Check(f"""
         import foo
         x = foo.f()
-        %(expr)s
-      """ % {"expr": indented_expr}, pythonpath=[d.path])
+        {indented_expr}
+      """, pythonpath=[d.path])
 
   def test_text(self):
     self._check_call("Text", "x.upper()")

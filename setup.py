@@ -98,7 +98,7 @@ def get_data_files():
 
 def get_long_description():
   # Read the long-description from a file.
-  with io.open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
+  with open(os.path.join(here, 'README.md'), encoding='utf-8') as f:
     desc = '\n' + f.read()
   # Fix relative links to the pytype docs.
   return re.sub(

@@ -22,7 +22,7 @@ class TestExec(test_base.BaseTest):
         "re",
         "signal"
     ]:
-      ty = self.Infer("import %s" % module)
+      ty = self.Infer(f"import {module}")
       self.assertTypesMatchPytd(ty, f"import {module}")
 
   def test_cleanup(self):

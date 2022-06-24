@@ -306,7 +306,7 @@ def _merge_type(t0, t1, name, cls):
   # t1 is a base of t0
   if t1 in t0.mro:
     return t0
-  raise GenericTypeError(cls, "Conflicting value for TypeVar %s" % name)
+  raise GenericTypeError(cls, f"Conflicting value for TypeVar {name}")
 
 
 def parse_formal_type_parameters(

@@ -821,7 +821,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       return None
     else:
       raise NotImplementedError(
-          "Can't match %r against %r" % (left, other_type))
+          f"Can't match {left!r} against {other_type!r}")
 
   def _match_instance(self, left, instance, other_type, subst, view):
     """Used by _match_instance_against_type. Matches one MRO entry.

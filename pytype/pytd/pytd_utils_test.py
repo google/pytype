@@ -87,7 +87,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def test_join_types(self):
     """Test that JoinTypes() does recursive flattening."""
-    n1, n2, n3, n4, n5, n6 = [pytd.NamedType("n%d" % i) for i in range(6)]
+    n1, n2, n3, n4, n5, n6 = (pytd.NamedType("n%d" % i) for i in range(6))
     # n1 or (n2 or (n3))
     nested1 = pytd.UnionType((n1, pytd.UnionType((n2, pytd.UnionType((n3,))))))
     # ((n4) or n5) or n6
@@ -406,7 +406,7 @@ class TestDataFiles(parser_test_base.ParserTest):
     subdir = "builtins"
     _, import_contents = pytd_utils.GetPredefinedFile(subdir, "builtins")
     with open(os.path.join(os.path.dirname(file_utils.__file__), "stubs",
-                           subdir, "builtins.pytd"), "r") as fi:
+                           subdir, "builtins.pytd")) as fi:
       file_contents = fi.read()
     self.assertMultiLineEqual(import_contents, file_contents)
 

@@ -33,7 +33,7 @@ def parse_args():
     else:
       target_name = target
     if not (target_name.startswith("test_") or target_name.endswith("_test")):
-      sys.exit("The name '%s' is not a valid test target name." % target)
+      sys.exit(f"The name '{target}' is not a valid test target name.")
   return args
 
 

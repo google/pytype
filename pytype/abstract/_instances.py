@@ -269,7 +269,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
                         for val in self.pyval)
     if self.tuple_length == 1:
       content += ","
-    return "(%s)" % content
+    return f"({content})"
 
   def _unique_parameters(self):
     parameters = super()._unique_parameters()
@@ -318,8 +318,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):
     self.set_slot("__getslice__", self.getslice_slot)
 
   def str_of_constant(self, printer):
-    return "[%s]" % ", ".join(" or ".join(_var_map(printer, val))
-                              for val in self.pyval)
+    return f"[{', '.join(' or '.join(_var_map(printer, val)) for val in self.pyval)}]"
 
   def __repr__(self):
     if self.could_contain_anything:

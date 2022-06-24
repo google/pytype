@@ -270,7 +270,7 @@ class PrintVisitor(base_visitor.Visitor):
     """Entering a class - record class name for children's use."""
     n = node.name
     if node.template:
-      n += "[{}]".format(", ".join(self.Print(t) for t in node.template))
+      n += f"[{', '.join(self.Print(t) for t in node.template)}]"
     for member in node.methods + node.constants:
       self._class_members.add(member.name)
     self.class_names.append(n)
@@ -417,22 +417,19 @@ class PrintVisitor(base_visitor.Visitor):
                       if p.mutated_type is not None]
     # pylint: enable=no-member
     for name, new_type in mutable_params:
-      body.append("\n{indent}{name} = {new_type}".format(
-          indent=self.INDENT, name=name, new_type=self.Print(new_type)))
+      body.append(f"\n{self.INDENT}{name} = {self.Print(new_type)}")
     for exc in node.exceptions:
-      body.append("\n{indent}raise {exc}()".format(indent=self.INDENT, exc=exc))
+      body.append(f"\n{self.INDENT}raise {exc}()")
     if not body:
       body.append(" ...")
 
     if self.multiline_args:
       indent = "\n" + self.INDENT
       params = ",".join([indent + p for p in params])
-      return "({params}\n){ret}:{body}".format(
-          params=params, ret=ret, body="".join(body))
+      return f"({params}\n){ret}:{''.join(body)}"
     else:
       params = ", ".join(params)
-      return "({params}){ret}:{body}".format(
-          params=params, ret=ret, body="".join(body))
+      return f"({params}){ret}:{''.join(body)}"
 
   def EnterParameter(self, unused_node):
     assert not self.in_parameter
@@ -460,7 +457,7 @@ class PrintVisitor(base_visitor.Visitor):
             self._typing_import_counts[k] -= 1
       return node.name + suffix
     elif node.name == "cls" and self.class_names and (
-        node.type == "Type[%s]" % self.class_names[-1]):
+        node.type == f"Type[{self.class_names[-1]}]"):
       self._typing_import_counts["Type"] -= 1
       return node.name + suffix
     elif node.type is None:
@@ -643,7 +640,7 @@ class PrintVisitor(base_visitor.Visitor):
       else:
         new_type_list.append(t)
     if literals:
-      new_type_list.append("Literal[%s]" % ", ".join(literals))
+      new_type_list.append(f"Literal[{', '.join(literals)}]")
     if len(new_type_list) == 1:
       return new_type_list[0]
     elif "None" in new_type_list:

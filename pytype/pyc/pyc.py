@@ -91,7 +91,7 @@ def compile_src_string_to_pyc_string(
     code = bytecode[1:]  # type: bytes
     raise CompileError(utils.native_str(code))
   else:
-    raise IOError("_compile.py produced invalid result")
+    raise OSError("_compile.py produced invalid result")
 
 
 def parse_pyc_stream(fi):
@@ -110,7 +110,7 @@ def parse_pyc_stream(fi):
   python_version = magic.magic_word_to_version(magic_word)
   crlf = fi.read(2)  # cr, lf
   if crlf != b"\r\n":
-    raise IOError("Malformed pyc file")
+    raise OSError("Malformed pyc file")
   fi.read(4)  # timestamp
   fi.read(4)  # raw size
   return loadmarshal.loads(fi.read(), python_version)

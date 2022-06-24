@@ -19,7 +19,7 @@ class ParserTest(test_base.UnitTest):
 
   @classmethod
   def setUpClass(cls):
-    super(ParserTest, cls).setUpClass()
+    super().setUpClass()
     cls.loader = load_pytd.Loader(
         config.Options.create(python_version=cls.python_version))
 

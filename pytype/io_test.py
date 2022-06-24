@@ -1,4 +1,3 @@
-# coding=utf8
 """Tests for io.py."""
 
 import contextlib
@@ -79,12 +78,12 @@ class IOTest(unittest.TestCase):
     with self._tmpfile("x: int") as pyi:
       pyi_name, _ = os.path.splitext(os.path.basename(pyi.name))
       with self._tmpfile(
-          "{mod} {path}".format(mod=pyi_name, path=pyi.name)) as imports_map:
+          f"{pyi_name} {pyi.name}") as imports_map:
         src = "import {mod}; y = {mod}.x".format(mod=pyi_name)
         options = config.Options.create(imports_map=imports_map.name)
         _, pyi_string, _ = io.generate_pyi(src, options)
     self.assertEqual(pyi_string,
-                     "import {mod}\n\ny: int\n".format(mod=pyi_name))
+                     f"import {pyi_name}\n\ny: int\n")
 
   def test_generate_pyi__overload_order(self):
     _, pyi_string, _ = io.generate_pyi(textwrap.dedent("""

@@ -239,8 +239,7 @@ def WrapTypeDeclUnit(name, items):
     if isinstance(item, pytd.Function):
       if item.name in functions:
         if item.kind != functions[item.name].kind:
-          raise ValueError("Can't combine %s and %s" % (
-              item.kind, functions[item.name].kind))
+          raise ValueError(f"Can't combine {item.kind} and {functions[item.name].kind}")
         functions[item.name] = pytd.Function(
             item.name, functions[item.name].signatures + item.signatures,
             item.kind)
@@ -248,20 +247,20 @@ def WrapTypeDeclUnit(name, items):
         functions[item.name] = item
     elif isinstance(item, pytd.Class):
       if item.name in classes:
-        raise NameError("Duplicate top level class: %r" % item.name)
+        raise NameError(f"Duplicate top level class: {item.name!r}")
       classes[item.name] = item
     elif isinstance(item, pytd.Constant):
       constants[item.name].add_type(item.type)
     elif isinstance(item, pytd.Alias):
       if item.name in aliases:
-        raise NameError("Duplicate top level alias or import: %r" % item.name)
+        raise NameError(f"Duplicate top level alias or import: {item.name!r}")
       aliases[item.name] = item
     elif isinstance(item, pytd.TypeParameter):
       if item.name in typevars:
-        raise NameError("Duplicate top level type parameter: %r" % item.name)
+        raise NameError(f"Duplicate top level type parameter: {item.name!r}")
       typevars[item.name] = item
     else:
-      raise ValueError("Invalid top level pytd item: %r" % type(item))
+      raise ValueError(f"Invalid top level pytd item: {type(item)!r}")
 
   categories = {"function": functions, "class": classes, "constant": constants,
                 "alias": aliases, "typevar": typevars}
@@ -437,11 +436,11 @@ def DiffNamedPickles(named_pickles1, named_pickles2):
   diff = []
   for (name1, pickle1), (name2, pickle2) in zip(named_pickles1, named_pickles2):
     if name1 != name2:
-      diff.append("different ordering of pyi files: %s, %s" % (name1, name2))
+      diff.append(f"different ordering of pyi files: {name1}, {name2}")
     elif pickle1 != pickle2:
       ast1, ast2 = pickle.loads(pickle1), pickle.loads(pickle2)
       if ASTeq(ast1.ast, ast2.ast):
-        diff.append("asts match but pickles differ: %s" % name1)
+        diff.append(f"asts match but pickles differ: {name1}")
         p1 = io.StringIO()
         p2 = io.StringIO()
         pickletools.dis(pickle1, out=p1)
@@ -450,7 +449,7 @@ def DiffNamedPickles(named_pickles1, named_pickles2):
             p1.getvalue().splitlines(),
             p2.getvalue().splitlines()))
       else:
-        diff.append("asts differ: %s" % name1)
+        diff.append(f"asts differ: {name1}")
         diff.append("-" * 50)
         diff.extend(ASTdiff(ast1.ast, ast2.ast))
         diff.append("-" * 50)

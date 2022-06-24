@@ -87,7 +87,7 @@ def _GetClass(t, lookup_ast):
     return t.cls
   if lookup_ast:
     return lookup_ast.Lookup(t.name)
-  raise AttributeError("Class not found: %s" % t.name)
+  raise AttributeError(f"Class not found: {t.name}")
 
 
 def _Degenerify(types):

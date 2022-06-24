@@ -215,7 +215,7 @@ def add_pop_block_targets(bytecode, python_version):
       todo.append((op.target, block_stack))
       block_stack += (op,)
     elif op.pushes_block():
-      assert op.target, "%s without target" % op.name
+      assert op.target, f"{op.name} without target"
       # We push the entire opcode onto the block stack, for better debugging.
       block_stack += (op,)
     elif op.does_jump() and op.target:

@@ -456,6 +456,6 @@ def _compute_template(val: Any):
       template.extend(mro.MergeSequences(seqs))
     except ValueError as e:
       raise abstract_utils.GenericTypeError(
-          val, "Illegal type parameter order in class %s" % val.name) from e
+          val, f"Illegal type parameter order in class {val.name}") from e
 
   return template

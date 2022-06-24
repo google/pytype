@@ -51,7 +51,7 @@ class TraceTest(unittest.TestCase):
   def test_external_type(self):
     with file_utils.Tempdir() as d:
       pyi_path = d.create_file("foo.pyi", "class Foo: ...")
-      imports_info = d.create_file("imports_info", "foo %s" % pyi_path)
+      imports_info = d.create_file("imports_info", f"foo {pyi_path}")
       src = traces.trace(
           "import foo\nx = foo.Foo()",
           config.Options.create(imports_map=imports_info))

@@ -113,7 +113,7 @@ class EnumBuilder(abstract.PyTDClass):
     # for looking up values, and the other is for the functional API.
     # I don't think we have a guarantee of ordering for signatures, so choose
     # them based on parameter count.
-    lookup_sig, api_sig = sorted([s.signature for s in pytd_new.signatures],
+    lookup_sig, api_sig = sorted((s.signature for s in pytd_new.signatures),
                                  key=lambda s: s.maximum_param_count())
     lookup_new = abstract.SimpleFunction(lookup_sig, self.ctx)
     try:

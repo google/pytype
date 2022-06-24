@@ -45,7 +45,7 @@ class TestParser(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(TestParser, cls).setUpClass()
+    super().setUpClass()
     cls.parser = make_parser()
 
   def test_verbosity(self):
