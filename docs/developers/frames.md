@@ -1,4 +1,3 @@
----
 # Stack Frames
 
 <!--*

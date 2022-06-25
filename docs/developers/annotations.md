@@ -1,4 +1,3 @@
----
 # Type Annotations
 
 <!--*

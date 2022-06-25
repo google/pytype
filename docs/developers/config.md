@@ -1,4 +1,3 @@
----
 # Configuring pytype
 
 <!--*

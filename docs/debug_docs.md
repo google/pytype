@@ -1,5 +1,3 @@
----
-
 # How to setup environment for previewing changes to documentation
 
 The pytype documentation is in markdown format.
