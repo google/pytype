@@ -1,5 +1,4 @@
 ---
----
 # Directives and annotations
 
 <!--*

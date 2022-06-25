@@ -1,5 +1,4 @@
 ---
----
 <!--* freshness: { owner: 'rechen' reviewed: '2022-06-22' } *-->
 
 # User guide

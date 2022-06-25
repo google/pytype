@@ -1,5 +1,4 @@
 ---
----
 
 # How to setup environment for previewing changes to documentation
 

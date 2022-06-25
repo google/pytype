@@ -1,5 +1,4 @@
 ---
----
 # Pytype's Type System
 
 <!--*

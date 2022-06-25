@@ -1,5 +1,4 @@
 ---
----
 # Supporting new typing features
 
 <!--* freshness: { owner: 'rechen' reviewed: '2021-12-09' } *-->
