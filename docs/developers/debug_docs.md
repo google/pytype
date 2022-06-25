@@ -6,7 +6,7 @@ github uses [jekyll](https://jekyllrb.com/docs/) to render these pages.
 
 ## Prerequisites
 
-#.  Install/update ruby and bundler
+Install/update ruby and bundler
 
 ```shell
 ruby -v # should be greater than 3.0.0
@@ -35,7 +35,7 @@ gem update jekyll
 bundle install
 ```
 
-#.  Start jekyll locally
+## Start jekyll locally
 
 ```shell
 cd docs # you'll need to be in the pytype/docs directory
