@@ -35,6 +35,7 @@ Install packages required for jekyll
 ```shell
 gem install jekyll bundler webrick
 gem update jekyll
+bundle install
 ```
 
 #.  Start jekyll locally
