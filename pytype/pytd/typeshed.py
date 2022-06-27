@@ -46,7 +46,7 @@ class Typeshed:
     self._env_home = home = os.getenv("TYPESHED_HOME")
     if home:
       if not os.path.isdir(home):
-        raise IOError("Could not find a typeshed installation in "
+        raise OSError("Could not find a typeshed installation in "
                       "$TYPESHED_HOME directory %s" % home)
       self._root = home
     else:
@@ -58,7 +58,7 @@ class Typeshed:
   def _load_file(self, path):
     if self._env_home:
       filename = os.path.join(self._env_home, path)
-      with open(filename, "r") as f:
+      with open(filename) as f:
         return filename, f.read()
     else:
       filepath = os.path.join(self._root, path)
@@ -229,9 +229,9 @@ class Typeshed:
         try:
           name, src = self._load_file(path)
           return name, src
-        except IOError:
+        except OSError:
           pass
-    raise IOError("Couldn't find %s" % module)
+    raise OSError(f"Couldn't find {module}")
 
   def _lookup_stdlib_version(self, module_parts: Sequence[str]):
     """Looks up the prefix chain until we find the module in stdlib/VERSIONS."""
@@ -343,11 +343,11 @@ def _get_typeshed():
   if _typeshed is None:
     try:
       _typeshed = Typeshed()
-    except IOError as e:
+    except OSError as e:
       # This happens if typeshed is not available. Which is a setup error
       # and should be propagated to the user. The IOError is caught further up
       # in the stack.
-      raise utils.UsageError("Couldn't initialize typeshed:\n %s" % str(e))
+      raise utils.UsageError(f"Couldn't initialize typeshed:\n {str(e)}")
   return _typeshed
 
 
@@ -367,7 +367,7 @@ def parse_type_definition(pyi_subdir, module, options):
   try:
     filename, src = typeshed.get_module_file(
         pyi_subdir, module, options.python_version)
-  except IOError:
+  except OSError:
     return None
 
   ast = parser.parse_string(src, filename=filename, name=module,

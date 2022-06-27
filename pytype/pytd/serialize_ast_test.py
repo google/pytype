@@ -283,7 +283,7 @@ class SerializeAstTest(test_base.UnitTest):
       module_map = self._store_ast(d, "foo", foo, ast=self._get_ast(d, "foo"))
       p = pytd_utils.LoadPickle(foo)
       ast = serialize_ast.ProcessAst(p, module_map)
-      f, = [a for a in ast.aliases if a.name == "foo.f"]
+      f, = (a for a in ast.aliases if a.name == "foo.f")
       signature, = f.type.signatures
       self.assertIsNotNone(signature.return_type.cls)
 

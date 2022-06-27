@@ -20,7 +20,7 @@ def main():
   args, options = arg_parser.add_pytype_and_parse(parser, sys.argv[1:])
 
   filename = args.inputs[0]
-  with open(filename, 'r') as f:
+  with open(filename) as f:
     src = f.read()
   module = annotate_ast.annotate_source(src, ast3, options)
   print(debug.dump(module, ast3))

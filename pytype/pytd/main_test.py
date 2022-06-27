@@ -74,7 +74,7 @@ class TestPytdTool(unittest.TestCase):
       outpath = os.path.join(d.path, "out.pytd")
       sys.argv = ["main.py", inpath, outpath]
       pytd_tool.main()
-      with open(outpath, "r") as f:
+      with open(outpath) as f:
         self.assertMultiLineEqual(f.read(), src)
 
   def test_optimize(self):
@@ -90,7 +90,7 @@ class TestPytdTool(unittest.TestCase):
       outpath = os.path.join(d.path, "out.pytd")
       sys.argv = ["main.py", "--optimize", inpath, outpath]
       pytd_tool.main()
-      with open(outpath, "r") as f:
+      with open(outpath) as f:
         self.assertMultiLineEqual(f.read(), textwrap.dedent("""
           from typing import Union
 

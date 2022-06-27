@@ -118,7 +118,7 @@ class TestGenerateConfig(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(TestGenerateConfig, cls).setUpClass()
+    super().setUpClass()
     cls.parser = parse_args.make_parser()
 
   def test_bad_location(self):

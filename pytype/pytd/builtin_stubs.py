@@ -84,7 +84,7 @@ class BuiltinLoader:
     try:
       filename, src = pytd_utils.GetPredefinedFile(
           pytd_subdir, module, as_package=as_package)
-    except IOError:
+    except OSError:
       return None
     ast = parser.parse_string(
         src, filename=filename, name=module, options=self.options)

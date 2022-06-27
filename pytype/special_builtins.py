@@ -341,10 +341,10 @@ class BuiltinClass(abstract.PyTDClass):
 
   def __init__(self, ctx, name, module="builtins"):
     if module == "builtins":
-      pytd_cls = ctx.loader.lookup_builtin("builtins.%s" % name)
+      pytd_cls = ctx.loader.lookup_builtin(f"builtins.{name}")
     else:
       ast = ctx.loader.import_name(module)
-      pytd_cls = ast.Lookup("%s.%s" % (module, name))
+      pytd_cls = ast.Lookup(f"{module}.{name}")
     super().__init__(name, pytd_cls, ctx)
     self.module = module
 

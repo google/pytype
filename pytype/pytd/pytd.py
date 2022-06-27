@@ -694,7 +694,7 @@ def ToType(item, allow_constants=False, allow_functions=False,
       return item
   elif isinstance(item, Alias):
     return item.type
-  raise NotImplementedError("Can't convert %s: %s" % (type(item), item))
+  raise NotImplementedError(f"Can't convert {type(item)}: {item}")
 
 
 def AliasMethod(func, from_constant):

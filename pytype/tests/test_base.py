@@ -192,7 +192,7 @@ class BaseTest(unittest.TestCase):
       errorlog = None
     if report_errors and errorlog:
       errorlog.print_to_stderr()
-      self.fail("Checker found {} errors:\n{}".format(len(errorlog), errorlog))
+      self.fail(f"Checker found {len(errorlog)} errors:\n{errorlog}")
 
   def assertNoCrash(self, method, code, **kwargs):
     method(code, report_errors=False, **kwargs)
@@ -238,7 +238,7 @@ class BaseTest(unittest.TestCase):
 
   def InferFromFile(self, filename, pythonpath):
     """Runs inference on the contents of a file."""
-    with open(filename, "r") as fi:
+    with open(filename) as fi:
       code = fi.read()
       if test_utils.ErrorMatcher(code).expected:
         self.fail(
@@ -280,7 +280,7 @@ class BaseTest(unittest.TestCase):
 
   @classmethod
   def PrintSignature(cls, parameter_types, return_type):
-    return "(%s) -> %s" % (
+    return "({}) -> {}".format(
         ", ".join(pytd_utils.Print(t) for t in parameter_types),
         pytd_utils.Print(return_type))
 
@@ -312,16 +312,16 @@ class BaseTest(unittest.TestCase):
 
   def assertTypeEquals(self, t1, t2):
     self.assertEqual(t1, t2,
-                     "Type %r != %r" % (pytd_utils.Print(t1),
-                                        pytd_utils.Print(t2)))
+                     f"Type {pytd_utils.Print(t1)!r} != "
+                     f"{pytd_utils.Print(t2)!r}")
 
   def assertOnlyHasReturnType(self, func, t):
     """Test that a given return type is the only one."""
     ret = pytd_utils.JoinTypes(sig.return_type
                                for sig in func.signatures)
     self.assertEqual(t, ret,
-                     "Return type %r != %r" % (pytd_utils.Print(t),
-                                               pytd_utils.Print(ret)))
+                     "Return type {!r} != {!r}".format(pytd_utils.Print(t),
+                                                       pytd_utils.Print(ret)))
 
   def assertHasReturnType(self, func, t):
     """Test that a given return type is present. Ignore extras."""
@@ -329,12 +329,12 @@ class BaseTest(unittest.TestCase):
                                for sig in func.signatures)
     if isinstance(ret, pytd.UnionType):
       self.assertIn(t, ret.type_list,
-                    "Return type %r not found in %r" % (pytd_utils.Print(t),
-                                                        pytd_utils.Print(ret)))
+                    "Return type {!r} not found in {!r}".format(
+                        pytd_utils.Print(t), pytd_utils.Print(ret)))
     else:
       self.assertEqual(t, ret,
-                       "Return type %r != %r" % (pytd_utils.Print(ret),
-                                                 pytd_utils.Print(t)))
+                       "Return type {!r} != {!r}".format(pytd_utils.Print(ret),
+                                                         pytd_utils.Print(t)))
 
   def assertHasAllReturnTypes(self, func, types):
     """Test that all given return types are present. Ignore extras."""
@@ -348,7 +348,7 @@ class BaseTest(unittest.TestCase):
       self.assertEqual(len(sig.params), 1)
       param1, = sig.params
       self.assertEqual(param1.type, sig.return_type,
-                       "Not identity: %r" % pytd_utils.Print(func))
+                       f"Not identity: {pytd_utils.Print(func)!r}")
 
   def assertErrorRegexes(self, matcher, expected_errors):
     matcher.assert_error_regexes(expected_errors)
@@ -414,7 +414,7 @@ class BaseTest(unittest.TestCase):
     if report_errors and errorlog:
       errorlog.print_to_stderr()
       self.fail(
-          "Inferencer found {} errors:\n{}".format(len(errorlog), errorlog))
+          f"Inferencer found {len(errorlog)} errors:\n{errorlog}")
     return unit, ret.builtins
 
   def assertTypesMatchPytd(self, ty, pytd_src):

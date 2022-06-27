@@ -10,7 +10,7 @@ from pytype.pytd import pytd_utils
 
 if __name__ == '__main__':
   filename = sys.argv[1]
-  with open(filename, 'r') as f:
+  with open(filename) as f:
     src = f.read()
 
   module_name = module_utils.path_to_module_name(filename)

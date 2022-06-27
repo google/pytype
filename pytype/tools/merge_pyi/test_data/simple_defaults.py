@@ -4,10 +4,10 @@ def f1(x=12):
 def f2(x=-12):
     pass
 
-def f3(x=12L):
+def f3(x=12):
     pass
 
-def f4(x=-12L):
+def f4(x=-12):
     pass
 
 def f5(x=12.3):
@@ -19,7 +19,7 @@ def f6(x=-12.3):
 def f7(x="asd"):
     pass
 
-def f8(x=u"asd"):
+def f8(x="asd"):
     pass
 
 def f9(x=r"asd"):

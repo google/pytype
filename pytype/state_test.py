@@ -13,7 +13,7 @@ def source_summary(binding, **varnames):
   name_map = {b.variable: name for name, b in varnames.items()}
   for origin in binding.origins:
     for sources in origin.source_sets:
-      bindings = ["%s=%s" % (name_map[b.variable], b.data) for b in sources]
+      bindings = [f"{name_map[b.variable]}={b.data}" for b in sources]
       clauses.append(" ".join(sorted(bindings)))
   return " | ".join(sorted(clauses))
 

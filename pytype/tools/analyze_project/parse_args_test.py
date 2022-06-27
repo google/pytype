@@ -15,7 +15,7 @@ class TestParser(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(TestParser, cls).setUpClass()
+    super().setUpClass()
     cls.parser = parse_args.make_parser()
 
   def test_parse_filenames(self):
@@ -94,7 +94,7 @@ class TestParser(unittest.TestCase):
 
   def test_python_version_default(self):
     self.assertEqual(self.parser.config_from_defaults().python_version,
-                     '%s.%s' % (sys.version_info.major, sys.version_info.minor))
+                     f'{sys.version_info.major}.{sys.version_info.minor}')
 
   def test_output(self):
     self.assertEqual(self.parser.parse_args(

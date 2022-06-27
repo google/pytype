@@ -17,7 +17,7 @@ class MetricsTest(test_base.BaseTest):
 
   def assertNotEmpty(self, container, msg=None):
     if not container:
-      msg = msg or "{!r} has length of 0.".format(container)
+      msg = msg or f"{container!r} has length of 0."
       self.fail(msg=msg)
 
   def test_basics(self):

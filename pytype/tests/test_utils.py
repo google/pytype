@@ -54,18 +54,18 @@ class OperatorsTestMixin:
 
     # Join the assignments with ";" to avoid figuring out the exact indentation:
     assignments = "; ".join(assignments)
-    src = """
+    src = f"""
       def f():
         {assignments}
         return {expr}
       f()
-    """.format(expr=expr, assignments=assignments)
+    """
     ty = self.Infer(src, deep=False)
     self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
 
   def check_binary(self, function_name, op):
     """Check the binary operator."""
-    ty = self.Infer("""
+    ty = self.Infer(f"""
       class Foo:
         def {function_name}(self, unused_x):
           return 3j
@@ -74,21 +74,21 @@ class OperatorsTestMixin:
       def f():
         return Foo() {op} Bar()
       f()
-    """.format(function_name=function_name, op=op),
+    """,
                     deep=False,
                     show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
 
   def check_unary(self, function_name, op, ret=None):
     """Check the unary operator."""
-    ty = self.Infer("""
+    ty = self.Infer(f"""
       class Foo:
         def {function_name}(self):
           return 3j
       def f():
         return {op} Foo()
       f()
-    """.format(function_name=function_name, op=op),
+    """,
                     deep=False,
                     show_library_calls=True)
     self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
@@ -121,7 +121,7 @@ class OperatorsTestMixin:
 
   def check_inplace(self, function_name, op):
     """Check the inplace operator."""
-    ty = self.Infer("""
+    ty = self.Infer(f"""
       class Foo:
         def __{function_name}__(self, x):
           return 3j
@@ -130,7 +130,7 @@ class OperatorsTestMixin:
         x {op} None
         return x
       f()
-    """.format(op=op, function_name=function_name),
+    """,
                     deep=False,
                     show_library_calls=True)
     self.assertHasReturnType(ty.Lookup("f"), self.complex)
@@ -144,13 +144,13 @@ class InplaceTestMixin:
   def _check_inplace(self, op, assignments, expected_return):
     """Check the inplace operator."""
     assignments = "; ".join(assignments)
-    src = """
+    src = f"""
       def f(x, y):
         {assignments}
         x {op}= y
         return x
       a = f(1, 2)
-    """.format(assignments=assignments, op=op)
+    """
     ty = self.Infer(src, deep=False)
     self.assertTypeEquals(ty.Lookup("a").type, expected_return)
 
@@ -161,12 +161,12 @@ class TestCollectionsMixin:
   _HAS_DYNAMIC_ATTRIBUTES = True
 
   def _testCollectionsObject(self, obj, good_arg, bad_arg, error):  # pylint: disable=invalid-name
-    result = self.CheckWithErrors("""
+    result = self.CheckWithErrors(f"""
       import collections
       def f(x: collections.{obj}): ...
       f({good_arg})
       f({bad_arg})  # wrong-arg-types[e]
-    """.format(obj=obj, good_arg=good_arg, bad_arg=bad_arg))
+    """)
     self.assertErrorRegexes(result, {"e": error})
 
 
@@ -257,7 +257,7 @@ class ErrorMatcher:
     def _format_error(line, code, mark=None):
       formatted = "Line %d: %s" % (line, code)
       if mark:
-        formatted += "[%s]" % mark
+        formatted += f"[{mark}]"
       return formatted
 
     self.errorlog = errorlog
@@ -277,10 +277,11 @@ class ErrorMatcher:
           code, mark = errs[0]
           exp = _format_error(error.lineno, code, mark)
           actual = _format_error(error.lineno, error.name)
-          self._fail("Error does not match:\nExpected: %s\nActual: %s" %
-                     (exp, actual))
+          self._fail(
+              f"Error does not match:\nExpected: {exp}\nActual: {actual}"
+          )
         else:
-          self._fail("Unexpected error:\n%s" % error)
+          self._fail(f"Unexpected error:\n{error}")
     leftover_errors = []
     for line in sorted(expected):
       leftover_errors.extend(_format_error(line, code, mark)
@@ -295,12 +296,12 @@ class ErrorMatcher:
       try:
         matcher = matchers.pop(mark)
       except KeyError:
-        self._fail("No matcher for mark %s" % mark)
+        self._fail(f"No matcher for mark {mark}")
       if not matcher.match(error.message):
         self._fail("Bad error message for mark %s: expected %r, got %r" %
                    (mark, matcher, error.message))
     if matchers:
-      self._fail("Marks not found in code: %s" % ", ".join(matchers))
+      self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
   def assert_error_regexes(self, expected_regexes):
     matchers = {k: RegexMatcher(v) for k, v in expected_regexes.items()}
@@ -325,7 +326,7 @@ class ErrorMatcher:
           mark = match.group("mark")
           if mark:
             if mark in used_marks:
-              self._fail("Mark %s already used" % mark)
+              self._fail(f"Mark {mark} already used")
             used_marks.add(mark)
           expected[line].append((match.group("code"), mark))
     return expected

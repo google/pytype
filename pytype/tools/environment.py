@@ -23,7 +23,7 @@ def check_python_version(exe: List[str], required):
     _, out, err = runner.BinaryRun(exe + ["--version"]).communicate()  # pylint: disable=unpacking-non-sequence
     version = out or err
     version = version.decode("utf-8")
-    if version.startswith("Python %s" % required):
+    if version.startswith(f"Python {required}"):
       return True, None
     else:
       return False, version.rstrip()
@@ -35,9 +35,9 @@ def check_python_exe_or_die(required) -> List[str]:
   """Check if a python executable with the required version is in path."""
   error = []
   if sys.platform == "win32":
-    possible_exes = (["py", "-%s" % required], ["py3"], ["py"])
+    possible_exes = (["py", f"-{required}"], ["py3"], ["py"])
   else:
-    possible_exes = (["python%s" % required], ["python3"], ["python"])
+    possible_exes = ([f"python{required}"], ["python3"], ["python"])
   for exe in possible_exes:
     valid, out = check_python_version(exe, required)
     if valid:
@@ -58,7 +58,7 @@ def initialize_typeshed_or_die():
   """
   try:
     return typeshed.Typeshed()
-  except IOError as e:
+  except OSError as e:
     logging.critical(str(e))
     sys.exit(1)
 

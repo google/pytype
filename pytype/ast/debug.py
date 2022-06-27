@@ -43,8 +43,8 @@ def dump(node, ast, annotate_fields=True,
           ")"])
     elif isinstance(node, list):
       lines = ["["]
-      lines.extend((indent * (level + 2) + _format(x, level + 2) + ","
-                    for x in node))
+      lines.extend(indent * (level + 2) + _format(x, level + 2) + ","
+                   for x in node)
       if len(lines) > 1:
         lines.append(indent * (level + 1) + "]")
       else:
@@ -53,5 +53,5 @@ def dump(node, ast, annotate_fields=True,
     return repr(node)
 
   if not isinstance(node, ast.AST):
-    raise TypeError("expected AST, got %r" % node.__class__)
+    raise TypeError(f"expected AST, got {node.__class__!r}")
   return _format(node)

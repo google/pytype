@@ -204,9 +204,9 @@ class VirtualMachine:
     if log.isEnabledFor(logging.INFO):
       vm_utils.log_opcode(op, state, self.frame, len(self.frames))
     # dispatch
-    bytecode_fn = getattr(self, "byte_%s" % op.name, None)
+    bytecode_fn = getattr(self, f"byte_{op.name}", None)
     if bytecode_fn is None:
-      raise VirtualMachineError("Unknown opcode: %s" % op.name)
+      raise VirtualMachineError(f"Unknown opcode: {op.name}")
     state = bytecode_fn(state, op)
     if state.why in ("reraise", "NoReturn"):
       state = state.set_why("exception")
@@ -1442,7 +1442,7 @@ class VirtualMachine:
           ret.AddBinding(self.ctx.convert.bool_values[val], {b1, b2},
                          state.node)
     if leftover_x.bindings:
-      op = "__%s__" % op_name.lower()
+      op = f"__{op_name.lower()}__"
       # If we do not already have a return value, raise any errors caught by the
       # overloaded comparison method.
       report_errors = op_not_eq and not bool(ret.bindings) and not reported
@@ -1532,7 +1532,7 @@ class VirtualMachine:
         if not isinstance(e, abstract.AMBIGUOUS_OR_EMPTY):
           if isinstance(e, abstract.Class):
             mro_seqs = [e.mro] if isinstance(e, abstract.Class) else []
-            msg = "%s does not inherit from BaseException" % e.name
+            msg = f"{e.name} does not inherit from BaseException"
           else:
             mro_seqs = []
             msg = "Not a class"
@@ -1876,7 +1876,7 @@ class VirtualMachine:
       state, (x, y, z) = state.popn(3)
       return state.push(self.ctx.convert.build_slice(state.node, x, y, z))
     else:       # pragma: no cover
-      raise VirtualMachineError("Strange BUILD_SLICE count: %r" % op.arg)
+      raise VirtualMachineError(f"Strange BUILD_SLICE count: {op.arg!r}")
 
   def byte_LIST_APPEND(self, state, op):
     # Used by the compiler e.g. for [x for x in ...]

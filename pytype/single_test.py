@@ -150,10 +150,10 @@ class PytypeTest(test_base.UnitTest):
         if len(value) > 50:
           value = value[:47] + "..."
         self.assertFalse(
-            output_value, "Unexpected output to %s: %r" % (output_type, value))
+            output_value, f"Unexpected output to {output_type}: {value!r}")
 
   def assertHasErrors(self, *expected_errors):
-    with open(self.errors_csv, "r") as f:
+    with open(self.errors_csv) as f:
       errors = list(csv.reader(f, delimiter=","))
     num, expected_num = len(errors), len(expected_errors)
     try:
@@ -161,7 +161,7 @@ class PytypeTest(test_base.UnitTest):
                        "Expected %d errors, got %d" % (expected_num, num))
       for error, expected_error in zip(errors, expected_errors):
         self.assertEqual(expected_error, error[2],
-                         "Expected %r, got %r" % (expected_error, error[2]))
+                         f"Expected {expected_error!r}, got {error[2]!r}")
     except:
       print("\n".join(" | ".join(error) for error in errors), file=sys.stderr)
       raise
@@ -188,7 +188,7 @@ class PytypeTest(test_base.UnitTest):
   def assertInferredPyiEquals(self, expected_pyi=None, filename=None):
     assert bool(expected_pyi) != bool(filename)
     if filename:
-      with open(self._data_path(filename), "r") as f:
+      with open(self._data_path(filename)) as f:
         expected_pyi = f.read()
     message = ("\n==Expected pyi==\n" + expected_pyi +
                "\n==Actual pyi==\n" + self.stdout)
@@ -434,9 +434,9 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--output"] = pyi_file
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-    with open(pyi_file, "r") as f:
+    with open(pyi_file) as f:
       pyi = f.read()
-    with open(self._data_path("simple.pyi"), "r") as f:
+    with open(self._data_path("simple.pyi")) as f:
       expected_pyi = f.read()
     self.assertTrue(pytd_utils.ASTeq(self._parse_string(pyi),
                                      self._parse_string(expected_pyi)))
@@ -508,7 +508,7 @@ class PytypeTest(test_base.UnitTest):
     self.assertTrue(os.path.isfile(filename))
     # input files
     canary = "import pytypecanary" if typeshed.Typeshed.MISSING_FILE else ""
-    src = self._make_py_file("""
+    src = self._make_py_file(f"""
       import __future__
       import asyncio
       import sys
@@ -518,11 +518,11 @@ class PytypeTest(test_base.UnitTest):
       import csv
       import ctypes
       import xml.etree.ElementTree as ElementTree
-      %s
+      {canary}
       x = foo.x
       y = csv.writer
       z = asyncio.coroutine
-    """ % canary)
+    """)
     pyi = self._make_file("""
       import datetime
       x = ...  # type: datetime.tzinfo
@@ -531,10 +531,10 @@ class PytypeTest(test_base.UnitTest):
     self._reset_pytype_args()
     self._setup_checking(src)
     self.pytype_args["--precompiled-builtins"] = filename
-    self.pytype_args["--imports_info"] = self._make_file("""
+    self.pytype_args["--imports_info"] = self._make_file(f"""
       typing /dev/null
-      foo %s
-    """ % pyi, extension="")
+      foo {pyi}
+    """, extension="")
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 

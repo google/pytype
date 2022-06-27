@@ -392,7 +392,7 @@ class TestNinjaPreamble(TestBase):
       conf.output = d.path
       runner = make_runner([], [], conf)
       runner.write_ninja_preamble()
-      with open(runner.ninja_file, 'r') as f:
+      with open(runner.ninja_file) as f:
         preamble = f.read().splitlines()
     self.assertEqual(len(preamble), _PREAMBLE_LENGTH)
     # The preamble consists of triples of lines of the format:
@@ -420,7 +420,7 @@ class TestNinjaBuildStatement(TestBase):
       conf.output = d.path
       runner = make_runner([], [], conf)
       output = runner.write_build_statement(*args, **kwargs)
-      with open(runner.ninja_file, 'r') as f:
+      with open(runner.ninja_file) as f:
         return runner, output, f.read().splitlines()
 
   def assertOutputMatches(self, module, expected_output):
@@ -431,12 +431,12 @@ class TestNinjaBuildStatement(TestBase):
   def test_check(self):
     _, output, build_statement = self.write_build_statement(
         Module('', 'foo.py', 'foo'), Action.CHECK, set(), 'imports', '')
-    self.assertEqual(build_statement[0], 'build %s: check foo.py' % output)
+    self.assertEqual(build_statement[0], f'build {output}: check foo.py')
 
   def test_infer(self):
     _, output, build_statement = self.write_build_statement(
         Module('', 'foo.py', 'foo'), Action.INFER, set(), 'imports', '')
-    self.assertEqual(build_statement[0], 'build %s: infer foo.py' % output)
+    self.assertEqual(build_statement[0], f'build {output}: infer foo.py')
 
   def test_deps(self):
     _, output, _ = self.write_build_statement(
@@ -495,8 +495,8 @@ class TestNinjaBody(TestBase):
                          input=expected.input,
                          deps=expected.deps))
     self.assertEqual(set(build_statement[1:]),
-                     {'  imports = %s' % expected.imports,
-                      '  module = %s' % expected.module})
+                     {f'  imports = {expected.imports}',
+                      f'  module = {expected.module}'})
 
   def test_basic(self):
     src = Module('', 'foo.py', 'foo')
@@ -506,7 +506,7 @@ class TestNinjaBody(TestBase):
       runner = make_runner(
           [src], [((dep,), ()), ((src,), (dep,))], self.conf)
       runner.setup_build()
-      with open(runner.ninja_file, 'r') as f:
+      with open(runner.ninja_file) as f:
         body = f.read().splitlines()[_PREAMBLE_LENGTH:]
     self.assertBuildStatementMatches(body[0:3], ExpectedBuildStatement(
         output=os.path.join(runner.pyi_dir, 'bar.pyi'),
@@ -531,9 +531,9 @@ class TestNinjaBody(TestBase):
       runner = make_runner(
           [src], [((dep,), ()), ((src,), (dep,))], self.conf)
       runner.setup_build()
-      with open(runner.ninja_file, 'r') as f:
+      with open(runner.ninja_file) as f:
         body = f.read().splitlines()[_PREAMBLE_LENGTH:]
-      with open(os.path.join(runner.imports_dir, 'foo.imports'), 'r') as f:
+      with open(os.path.join(runner.imports_dir, 'foo.imports')) as f:
         imports_info, = f.read().splitlines()
     self.assertBuildStatementMatches(body, ExpectedBuildStatement(
         output=os.path.join(runner.pyi_dir, 'foo.pyi'),
@@ -554,7 +554,7 @@ class TestNinjaBody(TestBase):
       runner = make_runner(
           [src], [((dep, src), ())], self.conf)
       runner.setup_build()
-      with open(runner.ninja_file, 'r') as f:
+      with open(runner.ninja_file) as f:
         body = f.read().splitlines()[_PREAMBLE_LENGTH:]
     self.assertBuildStatementMatches(body[:3], ExpectedBuildStatement(
         output=os.path.join(runner.pyi_dir, 'bar.pyi-1'),
@@ -574,16 +574,16 @@ class TestNinjaBody(TestBase):
         output=os.path.join(runner.pyi_dir, 'bar.pyi'),
         action=Action.INFER,
         input='bar.py',
-        deps=' | %s %s' % (os.path.join(runner.pyi_dir, 'bar.pyi-1'),
-                           os.path.join(runner.pyi_dir, 'foo.pyi-1')),
+        deps=' | {} {}'.format(os.path.join(runner.pyi_dir, 'bar.pyi-1'),
+                               os.path.join(runner.pyi_dir, 'foo.pyi-1')),
         imports=os.path.join(runner.imports_dir, 'bar.imports'),
         module='bar'))
     self.assertBuildStatementMatches(body[9:], ExpectedBuildStatement(
         output=os.path.join(runner.pyi_dir, 'foo.pyi'),
         action=Action.CHECK,
         input='foo.py',
-        deps=' | %s %s' % (os.path.join(runner.pyi_dir, 'bar.pyi'),
-                           os.path.join(runner.pyi_dir, 'foo.pyi-1')),
+        deps=' | {} {}'.format(os.path.join(runner.pyi_dir, 'bar.pyi'),
+                               os.path.join(runner.pyi_dir, 'foo.pyi-1')),
         imports=os.path.join(runner.imports_dir, 'foo.imports'),
         module='foo'))
 
@@ -596,7 +596,7 @@ class TestNinjaBody(TestBase):
       # should be skipped.
       runner = make_runner([src], [((src, dep), ())], self.conf)
       runner.setup_build()
-      with open(runner.ninja_file, 'r') as f:
+      with open(runner.ninja_file) as f:
         body = f.read().splitlines()[_PREAMBLE_LENGTH:]
     self.assertBuildStatementMatches(body[:3], ExpectedBuildStatement(
         output=os.path.join(runner.pyi_dir, 'foo.pyi-1'),
@@ -616,8 +616,8 @@ class TestNinjaBody(TestBase):
         output=os.path.join(runner.pyi_dir, 'foo.pyi'),
         action=Action.CHECK,
         input='foo.py',
-        deps=' | %s %s' % (os.path.join(runner.pyi_dir, 'foo.pyi-1'),
-                           os.path.join(runner.pyi_dir, 'bar.pyi-1')),
+        deps=' | {} {}'.format(os.path.join(runner.pyi_dir, 'foo.pyi-1'),
+                               os.path.join(runner.pyi_dir, 'bar.pyi-1')),
         imports=os.path.join(runner.imports_dir, 'foo.imports'),
         module='foo'))
 
@@ -636,7 +636,7 @@ class TestImports(TestBase):
       self.assertTrue(runner.make_imports_dir())
       output = runner.write_default_pyi()
       self.assertEqual(output, os.path.join(runner.imports_dir, 'default.pyi'))
-      with open(output, 'r') as f:
+      with open(output) as f:
         self.assertEqual(f.read(), pytype_runner.DEFAULT_PYI)
 
   def test_write_imports(self):
@@ -646,7 +646,7 @@ class TestImports(TestBase):
       self.assertTrue(runner.make_imports_dir())
       output = runner.write_imports('mod', {'a': 'b'}, '')
       self.assertEqual(os.path.join(runner.imports_dir, 'mod.imports'), output)
-      with open(output, 'r') as f:
+      with open(output) as f:
         self.assertEqual(f.read(), 'a b\n')
 
   def test_get_imports_map(self):

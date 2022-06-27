@@ -44,7 +44,7 @@ class FileUtilsTest(unittest.TestCase):
                                  (filename3, "data3"),
                                  (filename4, "data4.1\ndata4.2"),  # dedented
                                 ]:
-        with open(filename, "r") as fi:
+        with open(filename) as fi:
           self.assertEqual(fi.read(), contents)
     self.assertFalse(os.path.isdir(d.path))
     self.assertFalse(os.path.isfile(filename1))
@@ -179,7 +179,7 @@ class TestExpandHiddenFiles(unittest.TestCase):
 class TestExpandPythonpath(unittest.TestCase):
 
   def test_expand(self):
-    self.assertEqual(file_utils.expand_pythonpath("a/b%sc/d" % os.pathsep),
+    self.assertEqual(file_utils.expand_pythonpath(f"a/b{os.pathsep}c/d"),
                      [os.path.join(os.getcwd(), "a", "b"),
                       os.path.join(os.getcwd(), "c", "d")])
 
@@ -187,13 +187,13 @@ class TestExpandPythonpath(unittest.TestCase):
     self.assertEqual(file_utils.expand_pythonpath(""), [])
 
   def test_expand_current_directory(self):
-    self.assertEqual(file_utils.expand_pythonpath("%sa" % os.pathsep),
+    self.assertEqual(file_utils.expand_pythonpath(f"{os.pathsep}a"),
                      [os.getcwd(), os.path.join(os.getcwd(), "a")])
 
   def test_expand_with_cwd(self):
     with file_utils.Tempdir() as d:
       self.assertEqual(
-          file_utils.expand_pythonpath("a/b%sc/d" % os.pathsep, cwd=d.path),
+          file_utils.expand_pythonpath(f"a/b{os.pathsep}c/d", cwd=d.path),
           [os.path.join(d.path, "a", "b"), os.path.join(d.path, "c", "d")])
 
   def test_strip_whitespace(self):

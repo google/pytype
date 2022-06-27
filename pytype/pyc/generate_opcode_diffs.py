@@ -142,7 +142,7 @@ def generate_diffs(argv):
     name = diff[-1]
     if name in moved:
       continue
-    stubs.append(['def byte_{}(self, state, op):'.format(name),
+    stubs.append([f'def byte_{name}(self, state, op):',
                   '  del op',
                   '  return state'])
 

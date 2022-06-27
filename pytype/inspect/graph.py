@@ -63,7 +63,7 @@ class TypeGraph:
           variable, label=f"v{variable.id}", shape="polygon", sides=4,
           distortion=.1)
       for val in variable.bindings:
-        label = "%s@0x%x" % (obj_repr(val), id(val.data))
+        label = f"{obj_repr(val)}@0x{id(val.data):x}"
         color = "white" if val.origins else "red"
         self.add_node(val, label=label, fillcolor=color)
         self.add_edge(variable, val, arrowhead="none")

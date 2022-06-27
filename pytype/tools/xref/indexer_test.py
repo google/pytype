@@ -43,7 +43,7 @@ class IndexerTestMixin:
     alias = index.aliases[fqname]
     self.assertIsInstance(alias, indexer.Remote)
     self.assertEqual(
-        "{module}.{name}".format(module=alias.module, name=alias.name), target)
+        f"{alias.module}.{alias.name}", target)
 
   def assertDef(self, index, fqname, name, typ):
     self.assertIn(fqname, index.defs)

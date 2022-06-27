@@ -34,7 +34,7 @@ def write_pyc(f, codeobject, source_size=0, timestamp=0):
 
 def compile_to_pyc(data_file, filename, output, mode):
   """Compile the source code to byte code."""
-  with open(data_file, "r", encoding="utf-8") as fi:
+  with open(data_file, encoding="utf-8") as fi:
     src = fi.read()
   compile_src_to_pyc(src, filename, output, mode)
 
