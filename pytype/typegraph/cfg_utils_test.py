@@ -37,7 +37,7 @@ class CFGUtilTest(unittest.TestCase):
     w.AddBinding(3, source_set=[], where=n1)
     vw = cfg_utils.merge_variables(p, n2, [v, w])
     self.assertCountEqual(vw.data, [1, 2, 3])
-    val1, = [v for v in vw.bindings if v.data == 1]
+    val1, = (v for v in vw.bindings if v.data == 1)
     self.assertTrue(val1.HasSource(u1))
 
   def test_merge_bindings(self):
@@ -98,7 +98,7 @@ class VariableProductTest(unittest.TestCase):
     ])
 
   def test_deep_variable_product_raises(self):
-    x1, x2 = [DummyValue(i + 1) for i in range(2)]
+    x1, x2 = (DummyValue(i + 1) for i in range(2))
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v3 = self.prog.NewVariable([x1, x2], [], self.current_location)
@@ -113,7 +113,7 @@ class VariableProductTest(unittest.TestCase):
                       256)
 
   def test_deep_variable_product_raises2(self):
-    x1, x2, x3, x4 = [DummyValue(i + 1) for i in range(4)]
+    x1, x2, x3, x4 = (DummyValue(i + 1) for i in range(4))
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v3 = self.prog.NewVariable([x3, x4], [], self.current_location)
@@ -134,7 +134,7 @@ class VariableProductTest(unittest.TestCase):
                       cfg_utils.variable_product_dict, variabledict, 4)
 
   def test_deep_variable_product(self):
-    x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
+    x1, x2, x3, x4, x5, x6 = (DummyValue(i + 1) for i in range(6))
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x3], [], self.current_location)
     v3 = self.prog.NewVariable([x4, x5], [], self.current_location)
@@ -169,7 +169,7 @@ class VariableProductTest(unittest.TestCase):
     self.assertCountEqual(rows, [{x1}])
 
   def test_deep_variable_product_with_cycle(self):
-    x1, x2, x3, x4, x5, x6 = [DummyValue(i + 1) for i in range(6)]
+    x1, x2, x3, x4, x5, x6 = (DummyValue(i + 1) for i in range(6))
     v1 = self.prog.NewVariable([x1, x2], [], self.current_location)
     v2 = self.prog.NewVariable([x3], [], self.current_location)
     v3 = self.prog.NewVariable([x4, x5], [], self.current_location)
@@ -214,7 +214,7 @@ class Node:
     other_node.incoming.append(self)
 
   def __repr__(self):
-    return "Node(%s)" % self.name
+    return f"Node({self.name})"
 
 
 class GraphUtilTest(unittest.TestCase):

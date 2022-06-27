@@ -23,7 +23,7 @@ class Node:
     other_node.incoming.append(self)
 
   def __repr__(self):
-    return "Node(%s)" % self.name
+    return f"Node({self.name})"
 
 
 class DebugTest(unittest.TestCase):

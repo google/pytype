@@ -65,9 +65,9 @@ class BuiltinTests3(test_base.BaseTest):
     """)
 
   def test_implicit_typevar_import(self):
-    ty, _ = self.InferWithErrors("""
-      v = %s  # name-error
-    """ % abstract_utils.T)
+    ty, _ = self.InferWithErrors(f"""
+      v = {abstract_utils.T}  # name-error
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       v = ...  # type: Any

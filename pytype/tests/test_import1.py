@@ -1249,7 +1249,7 @@ class ImportTest(test_base.BaseTest):
       empty = d.create_file("empty.pyi")
       imports_info = d.create_file(
           "imports_info",
-          "email/_header_value_parser {}".format(empty))
+          f"email/_header_value_parser {empty}")
       imports_map = imports_map_loader.build_imports_map(imports_info)
       self.Check("""
         from email import message_from_bytes

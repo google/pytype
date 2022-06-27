@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests for traces.source."""
 
 from pytype.tools.traces import source

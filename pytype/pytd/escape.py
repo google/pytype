@@ -54,7 +54,7 @@ def preprocess_pytd(text: str) -> str:
 
 def pack_namedtuple(name: str, fields: List[str]) -> str:
   """Generate a name for a namedtuple proxy class."""
-  return "namedtuple_%s_%s" % (name, "_".join(fields))
+  return f"namedtuple_{name}_{'_'.join(fields)}"
 
 
 def pack_namedtuple_base_class(name: str, index: int) -> str:

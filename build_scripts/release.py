@@ -36,12 +36,12 @@ def parse_args():
   allowed_modes = (TEST_MODE, RELEASE_MODE)
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      "-m", "--mode", type=str, default="%s" % TEST_MODE,
+      "-m", "--mode", type=str, default=f"{TEST_MODE}",
       help="Specify if the release should be uploaded to pypi or testpyi. Can "
            "take a value of %s or %s" % allowed_modes)
   args = parser.parse_args()
   if args.mode not in allowed_modes:
-    sys.exit("Invalid --mode option. Should be one of %s" % (allowed_modes,))
+    sys.exit(f"Invalid --mode option. Should be one of {allowed_modes}")
   return args
 
 
@@ -75,21 +75,21 @@ def upload_package(package_path, test=False):
   if test:
     twine_cmd.extend(["--repository", "testpypi"])
   twine_cmd.append(os.path.join(package_path, "*"))
-  print("Uploading: %s" % twine_cmd)
+  print(f"Uploading: {twine_cmd}")
   returncode, stdout = build_utils.run_cmd(twine_cmd)
   if returncode != 0:
-    raise ReleaseError("Package upload failed:\n%s" % stdout)
+    raise ReleaseError(f"Package upload failed:\n{stdout}")
 
 
-class DistributionPackage(object):
+class DistributionPackage:
   """Context manager to build the pytype distribution package."""
 
   def __enter__(self):
     sdist_cmd = ["python", "setup.py", "sdist"]
-    print("Creating distribution package: %s\n" % sdist_cmd)
+    print(f"Creating distribution package: {sdist_cmd}\n")
     returncode, stdout = build_utils.run_cmd(sdist_cmd)
     if returncode != 0:
-      raise ReleaseError("Running %s failed:\n%s" % (sdist_cmd, stdout))
+      raise ReleaseError(f"Running {sdist_cmd} failed:\n{stdout}")
     # The sdist command creates the distribution package in a directory
     # named "dist"
     self.dist_path = os.path.join(build_utils.PYTYPE_SRC_ROOT, "dist")
@@ -114,7 +114,7 @@ def main():
     with DistributionPackage() as pkg_path:
       upload_package(pkg_path, args.mode == TEST_MODE)
   except ReleaseError as error:
-    sys.exit(">>> Release Failed <<<\n%s" % error.msg)
+    sys.exit(f">>> Release Failed <<<\n{error.msg}")
   print("!!! Release Successful !!!\n")
 
 

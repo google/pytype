@@ -1,4 +1,3 @@
-# coding=utf8
 """Tests for directors.py."""
 
 import sys
@@ -106,7 +105,7 @@ class DirectorTestCase(unittest.TestCase):
 
   @classmethod
   def setUpClass(cls):
-    super(DirectorTestCase, cls).setUpClass()
+    super().setUpClass()
     # Invoking the _error_name decorator will register the name as a valid
     # error name.
     for name in ["test-error", "test-other-error"]:

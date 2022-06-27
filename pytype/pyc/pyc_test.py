@@ -1,4 +1,3 @@
-# coding=utf8
 """Tests for pyc.py."""
 
 from pytype.pyc import opcodes

@@ -41,7 +41,7 @@ def print_messages(options, stdout_msg, output_file_msg):
     options.output_file.write(output_file_msg + "\n")
 
 
-class StatsCollector(object):
+class StatsCollector:
   """A class which collects stats while running tests."""
 
   def __init__(self, options):
@@ -62,15 +62,15 @@ class StatsCollector(object):
     self.unexpected_success_count += len(test_result.unexpectedSuccesses)
 
   def report(self):
-    msg = "\nRan %s methods from %s classes.\n" % (
-        self.method_count, self.class_count)
+    msg = (f"\nRan {self.method_count} methods from {self.class_count} "
+           "classes.\n")
     msg += "Found %d errors\n" % self.error_count
     msg += "Found %d failures\n" % self.fail_count
-    msg += "Found %s unexpected successes\n" % self.unexpected_success_count
+    msg += f"Found {self.unexpected_success_count} unexpected successes\n"
     print_messages(self._options, msg, msg)
 
 
-class ResultReporter(object):
+class ResultReporter:
   """A class which reports results of test runs."""
 
   def __init__(self, options, stats_collector):
@@ -78,8 +78,8 @@ class ResultReporter(object):
     self._stats_collector = stats_collector
 
   def _method_info(self, prefix, fq_method_name, group):
-    common_msg = "%s: %s" % (prefix, fq_method_name)
-    log_message = "%s\n%s" % (common_msg, group[0][1])
+    common_msg = f"{prefix}: {fq_method_name}"
+    log_message = f"{common_msg}\n{group[0][1]}"
     stdout_message = log_message if self._options.print_st else common_msg
     return log_message, stdout_message
 
@@ -100,7 +100,7 @@ class ResultReporter(object):
         # object is used for each method.
         break
     if ret_val == 0:
-      log_msg = "PASS: %s" % fq_method_name
+      log_msg = f"PASS: {fq_method_name}"
       stdout_msg = log_msg if self._options.print_passes else None
     self._print_messages(stdout_msg, log_msg)
     return ret_val
@@ -112,7 +112,7 @@ class ResultReporter(object):
     self._print_messages(msg, msg)
 
   def report_module(self):
-    msg = "\nRunning tests in module %s ..." % self._options.fq_mod_name
+    msg = f"\nRunning tests in module {self._options.fq_mod_name} ..."
     self._print_messages(msg, msg)
 
 
@@ -176,7 +176,7 @@ def run_tests_in_module(options, reporter):
       options.pytype_path,
       options.fq_mod_name.replace(".", os.path.sep) + ".py")
   if not os.path.exists(mod_abs_path):
-    msg = "ERROR: Module not found: %s." % options.fq_mod_name
+    msg = f"ERROR: Module not found: {options.fq_mod_name}."
     if options.output_file:
       options.output_file.write(msg + "\n")
       return 1

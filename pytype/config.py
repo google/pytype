@@ -80,7 +80,7 @@ class Options:
     unknown_options = (set(kwargs) - set(argument_parser.actions) -
                        set(_LIBRARY_ONLY_OPTIONS))
     if unknown_options:
-      raise ValueError("Unrecognized options: %s" % ", ".join(unknown_options))
+      raise ValueError(f"Unrecognized options: {', '.join(unknown_options)}")
     options = argument_parser.parse_args(
         [input_filename or "dummpy_input_file"])
     for k, v in kwargs.items():
@@ -93,7 +93,7 @@ class Options:
       setattr(self, k, v)
 
   def __repr__(self):
-    return "\n".join(["%s: %r" % (k, v)
+    return "\n".join([f"{k}: {v!r}"
                       for k, v in sorted(self.__dict__.items())
                       if not k.startswith("_")])
 
@@ -454,7 +454,7 @@ class Postprocessor:
 
   def error(self, message, key=None):
     if key:
-      message = "argument --%s: %s" % (key, message)
+      message = f"argument --{key}: {message}"
     raise PostprocessingError(message)
 
   @uses(["output"])
@@ -472,7 +472,7 @@ class Postprocessor:
       if self.output_options.output is None:
         self.error("Can't use without --output", "pickle-output")
       elif not pytd_utils.IsPickle(self.output_options.output):
-        self.error("Must specify %s file for --output" % pytd_utils.PICKLE_EXT,
+        self.error(f"Must specify {pytd_utils.PICKLE_EXT} file for --output",
                    "pickle-output")
     self.output_options.pickle_output = pickle_output
 
@@ -516,7 +516,7 @@ class Postprocessor:
   def _store_verbosity(self, verbosity):
     """Configure logging."""
     if not -1 <= verbosity < len(LOG_LEVELS):
-      self.error("invalid --verbosity: %s" % verbosity)
+      self.error(f"invalid --verbosity: {verbosity}")
     self.output_options.verbosity = verbosity
 
   def _store_pythonpath(self, pythonpath):
@@ -535,7 +535,7 @@ class Postprocessor:
       version = sys.version_info[:2]
     if len(version) != 2:
       self.error(
-          "--python_version must be <major>.<minor>: %r" % python_version)
+          f"--python_version must be <major>.<minor>: {python_version!r}")
     # Check that we have a version supported by pytype.
     utils.validate_version(version)
     self.output_options.python_version = version

@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests for compilation to bytecode."""
 
 from pytype.tests import test_base

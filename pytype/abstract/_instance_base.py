@@ -123,7 +123,7 @@ class SimpleValue(_base.BaseValue):
       return 0
 
   def __repr__(self):
-    return "<%s [%r]>" % (self.name, self.cls)
+    return f"<{self.name} [{self.cls!r}]>"
 
   def _get_class(self):
     return self.ctx.convert.unsolvable

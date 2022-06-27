@@ -86,7 +86,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
           self._current_args[k] = abstract_utils.get_atomic_python_constant(v)
         except abstract_utils.ConversionError:
           self.ctx.errorlog.not_supported_yet(
-              self.ctx.vm.frames, "Non-constant argument to decorator: %r" % k)
+              self.ctx.vm.frames, f"Non-constant argument to decorator: {k!r}")
 
   def set_current_args(self, kwargs):
     """Set current_args when constructing a class directly."""

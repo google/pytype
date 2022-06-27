@@ -58,9 +58,9 @@ def merge_files(
 ) -> bool:
   """Merges a .py and a .pyi file."""
 
-  with open(py_path, "r") as f:
+  with open(py_path) as f:
     py_src = f.read()
-  with open(pyi_path, "r") as f:
+  with open(pyi_path) as f:
     pyi_src = f.read()
   annotated_src = merge_sources(py=py_src, pyi=pyi_src)
   changed = annotated_src != py_src

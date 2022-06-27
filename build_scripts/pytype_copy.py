@@ -35,9 +35,9 @@ def copy_file(src_dir, dst_dir, filename):
 def main():
   args = parse_args()
   if not os.path.exists(args.src_dir):
-    sys.exit("Source directory '%s' does not exist." % args.src_dir)
+    sys.exit(f"Source directory '{args.src_dir}' does not exist.")
   if not os.path.exists(args.dst_dir):
-    sys.exit("Destination directory '%s' does not exist" % args.dst_dir)
+    sys.exit(f"Destination directory '{args.dst_dir}' does not exist")
   for filename in args.file_list:
     copy_file(args.src_dir, args.dst_dir, filename)
 

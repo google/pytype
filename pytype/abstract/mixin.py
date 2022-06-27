@@ -18,7 +18,7 @@ class MixinMeta(type):
   _HAS_DYNAMIC_ATTRIBUTES = True
 
   def __init__(cls, name, superclasses, *args, **kwargs):
-    super(MixinMeta, cls).__init__(name, superclasses, *args, **kwargs)
+    super().__init__(name, superclasses, *args, **kwargs)
     for sup in superclasses:
       if hasattr(sup, "overloads"):
         for method in sup.overloads:
@@ -97,7 +97,7 @@ class PythonConstant(metaclass=MixinMeta):
       self._printing = True
       const = self.str_of_constant(str)
       self._printing = False
-    return "<%s %r>" % (self.name, const)
+    return f"<{self.name} {const!r}>"
 
 
 class HasSlots(metaclass=MixinMeta):
@@ -122,7 +122,7 @@ class HasSlots(metaclass=MixinMeta):
 
   def set_slot(self, name, method):
     """Add a new slot to this value."""
-    assert name not in self._slots, "slot %s already occupied" % name
+    assert name not in self._slots, f"slot {name} already occupied"
     # For getting a slot value, we don't need a ParameterizedClass's type
     # parameters, and evaluating them in the middle of constructing the class
     # can trigger a recursion error, so use only the base class.

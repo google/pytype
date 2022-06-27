@@ -11,8 +11,8 @@ class TestPytd(unittest.TestCase):
     for operator in ("add", "and", "div", "divmod", "floordiv",
                      "lshift", "matmul", "mod", "mul", "or",
                      "pow", "rshift", "sub", "truediv", "xor"):
-      normal = "__%s__" % operator
-      reverse = "__r%s__" % operator
+      normal = f"__{operator}__"
+      reverse = f"__r{operator}__"
       self.assertEqual(slots.REVERSE_NAME_MAPPING[normal], reverse)
 
   def test_symbol_mapping(self):

@@ -1,7 +1,6 @@
 """Tests for pytype_extensions."""
 
 import os
-from typing import Text
 
 from pytype import errors
 from pytype import file_utils
@@ -10,14 +9,14 @@ from pytype.tests import test_base
 
 
 def InitContents():
-  with open(os.path.join(os.path.dirname(__file__), '__init__.py'), 'r') as f:
+  with open(os.path.join(os.path.dirname(__file__), '__init__.py')) as f:
     lines = f.readlines()
   return ''.join(lines)
 
 
 class CodeTest(test_base.BaseTest):
 
-  def CheckWithErrors(self, code: Text) -> errors.ErrorLog:
+  def CheckWithErrors(self, code: str) -> errors.ErrorLog:
     extensions_pyi = pytd_utils.Print(self.Infer(InitContents()))
     with file_utils.Tempdir() as d:
       d.create_file('pytype_extensions.pyi', extensions_pyi)

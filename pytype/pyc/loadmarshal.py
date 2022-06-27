@@ -153,7 +153,7 @@ class _LoadMarshal:
         result = _LoadMarshal.dispatch[c](self)
       return result
     except KeyError as e:
-      raise ValueError('bad marshal code: %r (%02x)' % (chr(c), c)) from e
+      raise ValueError(f'bad marshal code: {chr(c)!r} ({c:02x})') from e
     except IndexError as e:
       raise EOFError() from e
 

@@ -417,7 +417,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     node, method = self.ctx.attribute_handler.get_attribute(
         node, value.data, method_name, value)
     if method:
-      call_repr = "%s.%s(..._)" % (self.name, method_name)
+      call_repr = f"{self.name}.{method_name}(..._)"
       log.debug("calling %s", call_repr)
       node, ret = function.call_function(self.ctx, node, method, args)
       log.debug("%s returned %r", call_repr, ret)

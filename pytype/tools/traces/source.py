@@ -26,7 +26,7 @@ class AbstractTrace:
     return super().__new__(cls)
 
   def __repr__(self):
-    return "%s : %s <- %s" % (self.op, self.symbol, self.types)
+    return f"{self.op} : {self.symbol} <- {self.types}"
 
 
 class Code:
@@ -103,7 +103,7 @@ class Code:
     for line in sorted(self.traces):
       print("%d %s" % (line, self.line(line)))
       for trace in self.traces[line]:
-        print("  %s" % (trace,))
+        print(f"  {trace}")
       print("-------------------")
 
   def get_attr_location(self, name, location):

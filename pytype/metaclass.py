@@ -24,7 +24,7 @@ class AddMetaclassInstance(abstract.BaseValue):
   def call(self, node, unused, args):
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
-          "%s.add_metaclass" % self.module_name, ("cls",))
+          f"{self.module_name}.add_metaclass", ("cls",))
       raise function.WrongArgCount(sig, args, self.ctx)
     cls_var = args.posargs[0]
     for b in cls_var.bindings:

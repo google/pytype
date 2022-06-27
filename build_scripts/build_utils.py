@@ -31,7 +31,7 @@ def build_script(base_name):
   return os.path.join(PYTYPE_SRC_ROOT, "build_scripts", base_name)
 
 
-class BuildConfig(object):
+class BuildConfig:
   """Utility class to create and manage the build config cache."""
 
   BUILD_CONFIG_CACHE = os.path.join(OUT_DIR, ".build_config.json")
@@ -63,7 +63,7 @@ class BuildConfig(object):
   @classmethod
   def read_cached_config(cls):
     if os.path.exists(cls.BUILD_CONFIG_CACHE):
-      with open(cls.BUILD_CONFIG_CACHE, "r") as f:
+      with open(cls.BUILD_CONFIG_CACHE) as f:
         return BuildConfig(**json.load(f))
     else:
       # There is no python version cache file during the very first run.
@@ -151,7 +151,7 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
 
   print("Running CMake ...\n")
   cmd = ["cmake", PYTYPE_SRC_ROOT, "-G", "Ninja",
-         "-DPython_ADDITIONAL_VERSIONS=%s" % current_config.py_version]
+         f"-DPython_ADDITIONAL_VERSIONS={current_config.py_version}"]
   if debug_build:
     cmd.append("-DCMAKE_BUILD_TYPE=Debug")
   returncode, stdout = run_cmd(cmd, cwd=OUT_DIR)
@@ -163,16 +163,16 @@ def run_cmake(force_clean=False, log_output=False, debug_build=False):
     with open(CMAKE_LOG, "w") as cmake_log:
       cmake_log.write(stdout)
   if returncode != 0:
-    print(">>> FAILED: CMake command '%s'" % " ".join(cmd))
+    print(f">>> FAILED: CMake command '{' '.join(cmd)}'")
     if log_output:
-      print(">>>         Full CMake output is available in '%s'." % CMAKE_LOG)
+      print(f">>>         Full CMake output is available in '{CMAKE_LOG}'.")
     return False
   # Cache the config for which the build files have been generated.
   current_config.save_to_cache_file()
   return True
 
 
-class FailCollector(object):
+class FailCollector:
   """A class to collect failures."""
 
   def __init__(self):
@@ -187,12 +187,12 @@ class FailCollector(object):
       return
     print("\n%d test module(s) failed: \n" % num_failures)
     for mod_name, log_file in self._failures:
-      msg = "** %s" % mod_name
+      msg = f"** {mod_name}"
       if log_file:
-        msg += " - %s" % log_file
+        msg += f" - {log_file}"
       print(msg)
       if log_file and verbose:
-        with open(log_file.strip(), 'r') as f:
+        with open(log_file.strip()) as f:
           print(f.read(), file=sys.stderr)
 
 
@@ -248,7 +248,7 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
         print("\n" + summary_hdr)
         ninja_log.write("\n" + summary_hdr + "\n")
         for t in failed_targets:
-          target = "    - %s" % t
+          target = f"    - {t}"
           print(target)
           ninja_log.write(target + "\n")
     process.wait()
@@ -257,8 +257,8 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
     else:
       # Ninja output can be a lot. Printing it here will clutter the output of
       # this script. So, just tell the user how to repro the error.
-      print(">>> FAILED: Ninja command '%s'." % " ".join(cmd))
+      print(f">>> FAILED: Ninja command '{' '.join(cmd)}'.")
       print(">>>         Run it in the 'out' directory to reproduce.")
-      print(">>>         Full Ninja output is available in '%s'." % NINJA_LOG)
+      print(f">>>         Full Ninja output is available in '{NINJA_LOG}'.")
       print(">>>         Failing test modules (if any) will be reported below.")
       return False

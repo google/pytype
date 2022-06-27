@@ -444,7 +444,7 @@ class PyTDFunction(_function_base.Function):
         if e > error:
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):
-            e.name = "%s.%s" % (self.parent.name, e.name)
+            e.name = f"{self.parent.name}.{e.name}"
           error = e
       else:
         matched_signatures.append((sig, arg_dict, subst))
@@ -729,8 +729,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         not isinstance(mutated_type, pytd.GenericType) or
         typ.base_type != mutated_type.base_type or
         not isinstance(typ.base_type, pytd.ClassType)):
-      raise ValueError("Unsupported mutation:\n%r ->\n%r" %
-                       (typ, mutated_type))
+      raise ValueError(f"Unsupported mutation:\n{typ!r} ->\n{mutated_type!r}")
     return [zip(mutated_type.base_type.cls.template, mutated_type.parameters)]
 
   def _get_mutation(self, node, arg_dict, subst, retvar, variable):

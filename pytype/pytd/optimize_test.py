@@ -25,7 +25,7 @@ class TestOptimize(parser_test_base.ParserTest):
 
   @classmethod
   def setUpClass(cls):
-    super(TestOptimize, cls).setUpClass()
+    super().setUpClass()
     cls.loader = load_pytd.Loader(
         config.Options.create(python_version=cls.python_version))
     cls.builtins = cls.loader.builtins

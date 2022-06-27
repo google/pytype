@@ -96,7 +96,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
   def default_match(self, t1, t2, *unused_args, **unused_kwargs):
     # Don't allow pytd_utils.TypeMatcher to do default matching.
     raise AssertionError(
-        "Can't compare %s and %s" % (type(t1).__name__, type(t2).__name__))
+        f"Can't compare {type(t1).__name__} and {type(t2).__name__}")
 
   def get_superclasses(self, t):
     """Get all base classes of this type.
@@ -130,7 +130,7 @@ class TypeMatch(pytd_utils.TypeMatcher):
       return sum((self.get_subclasses(pytd.ClassType(c.name, c))
                   for c in subclasses), [t])
     else:
-      raise NotImplementedError("Can't extract subclasses from %s" % type(t))
+      raise NotImplementedError(f"Can't extract subclasses from {type(t)}")
 
   def type_parameter(self, unknown, base_class, item):
     """This generates the type parameter when matching against a generic type.
@@ -359,8 +359,8 @@ class TypeMatch(pytd_utils.TypeMatcher):
     elif isinstance(t1, pytd.Literal) and isinstance(t2, pytd.Literal):
       return booleq.TRUE if t1.value == t2.value else booleq.FALSE
     else:
-      raise AssertionError("Don't know how to match %s against %s" % (
-          type(t1), type(t2)))
+      raise AssertionError(f"Don't know how to match {type(t1)} against "
+                           f"{type(t2)}")
 
   # pylint: disable=invalid-name
   def match_Signature_against_Signature(self, sig1, sig2, subst,

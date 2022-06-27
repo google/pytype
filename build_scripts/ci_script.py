@@ -13,18 +13,18 @@ STEP = collections.namedtuple("STEP", ["name", "command"])
 
 def _begin_step(s):
   print("")
-  print("BEGIN_STEP: %s" % s.name)
-  print("STEP_COMMAND: %s" % ' '.join(s.command))
+  print(f"BEGIN_STEP: {s.name}")
+  print(f"STEP_COMMAND: {' '.join(s.command)}")
   print("")
 
 
 def _end_step(s):
-  print("\nEND_STEP: %s\n" % s.name)
+  print(f"\nEND_STEP: {s.name}\n")
 
 
 def _report_failure(s):
   print("")
-  print(">>> STEP_FAILED: %s" % s.name)
+  print(f">>> STEP_FAILED: {s.name}")
   print("")
 
 
