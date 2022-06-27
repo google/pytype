@@ -11,4 +11,3 @@ defaults:
       path: developers
     values:
       layout: dev_guide
-

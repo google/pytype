@@ -48,7 +48,3 @@ reload the server if it detects any changes.
 
 You can view your webpages by navigating to [http://localhost:4000](http://localhost:4000) like
 [http://localhost:4000/developers/index.html](http://localhost:4000/developers/index.html)
-
-
-
-
