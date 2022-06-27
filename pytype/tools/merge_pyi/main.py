@@ -83,9 +83,9 @@ def main(argv=None):
 
   if mode == merge_pyi.Mode.OVERWRITE:
     if changed:
-      print(f'Merged types to {args.py} from {args.pyi}')
+      print('Merged types to %s from %s' % (args.py, args.pyi))
     else:
-      print(f'No new types for {args.py} in {args.pyi}')
+      print('No new types for %s in %s' % (args.py, args.pyi))
 
 
 if __name__ == '__main__':

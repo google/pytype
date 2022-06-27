@@ -64,7 +64,7 @@ ITEMS = {
         'Platform (e.g., "linux", "win32") that the target code runs on.'),
     'pythonpath': Item(
         '', '.', None,
-        f'Paths to source code directories, separated by {os.pathsep!r}.'),
+        'Paths to source code directories, separated by %r.' % os.pathsep),
     'python_version': Item(
         '', '{}.{}'.format(*sys.version_info[:2]),
         None, 'Python version (major.minor) of the target code.'),
@@ -137,8 +137,8 @@ def _make_spaced_path_formatter(name):
   """Formatter for space-separated paths."""
   def format_spaced_path(p):
     out = []
-    out.append(f'{name} =')
-    out.extend(f'    {entry}' for entry in p.split())
+    out.append('%s =' % name)
+    out.extend('    %s' % entry for entry in p.split())
     return out
   return format_spaced_path
 
@@ -147,10 +147,10 @@ def _make_separated_path_formatter(name, sep):
   """Formatter for paths separated by a non-space token."""
   def format_separated_path(p):
     out = []
-    out.append(f'{name} =')
+    out.append('%s =' % name)
     # Breaks the path after each instance of sep.
     for entry in p.replace(sep, sep + '\n').split('\n'):
-      out.append(f'    {entry}')
+      out.append('    %s' % entry)
     return out
   return format_separated_path
 
@@ -186,7 +186,7 @@ def Config(*extra_variables):  # pylint: disable=invalid-name
 
     def __str__(self):
       return '\n'.join(
-          f'{k} = {getattr(self, k, None)!r}' for k in self.__slots__)
+          '%s = %r' % (k, getattr(self, k, None)) for k in self.__slots__)
 
   return Config()
 
@@ -241,12 +241,12 @@ def generate_sample_config_or_die(filename, pytype_single_args):
     if key in formatters:
       conf.extend(formatters[key](item.sample))
     else:
-      conf.append(f'{key} = {item.sample}')
+      conf.append('%s = %s' % (key, item.sample))
     conf.append('')
   try:
     with open(filename, 'w') as f:
       f.write('\n'.join(conf))
-  except OSError as e:
+  except IOError as e:
     logging.critical('Cannot write to %s:\n%s', filename, str(e))
     sys.exit(1)
 

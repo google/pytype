@@ -424,7 +424,7 @@ class Director:
       elif command == "enable":
         disable = False
       else:
-        raise _DirectiveError(f"Unknown pytype directive: '{command}'")
+        raise _DirectiveError("Unknown pytype directive: '%s'" % command)
       if not values:
         raise _DirectiveError(
             "Disable/enable must specify one or more error names.")
@@ -457,7 +457,7 @@ class Director:
             lines.set_line(final_line, disable)
         else:
           self._errorlog.invalid_directive(
-              self._filename, line, f"Invalid error name: '{error_name}'")
+              self._filename, line, "Invalid error name: '%s'" % error_name)
 
   def _adjust_line_number_for_pytype_directive(
       self, line: int, error_class: str, line_range: parser.LineRange,

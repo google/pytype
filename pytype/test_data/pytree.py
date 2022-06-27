@@ -237,7 +237,8 @@ class Base:
 
     def leaves(self):
         for child in self.children:
-            yield from child.leaves()
+            for x in child.leaves():
+                yield x
 
     def depth(self):
         if self.parent is None:
@@ -251,7 +252,7 @@ class Base:
         """
         next_sib = self.next_sibling
         if next_sib is None:
-            return ""
+            return u""
         return next_sib.prefix
 
     if sys.version_info < (3, 0):
@@ -336,7 +337,8 @@ class Node(Base):
 
     def __repr__(self):
         """Return a canonical string representation."""
-        return f"{self.__class__.__name__}({self.type_repr}, {self.children!r})"
+        return "%s(%s, %r)" % (self.__class__.__name__,
+                               self.type_repr, self.children)
 
     def __unicode__(self):
         """
@@ -344,9 +346,10 @@ class Node(Base):
 
         This reproduces the input source exactly.
         """
-        return "".join(map(str, self.children))
+        return u"".join(map(str, self.children))
 
-    __str__ = __unicode__
+    if sys.version_info > (3, 0):
+        __str__ = __unicode__
 
     def _eq(self, other):
         """Compare two nodes for equality (using type, children) -
@@ -367,14 +370,16 @@ class Node(Base):
     def post_order(self):
         """Post-order iterator for the tree."""
         for child in self.children:
-            yield from child.post_order()
+            for node in child.post_order():
+                yield node
         yield self
 
     def pre_order(self):
         """Pre-order iterator for the tree."""
         yield self
         for child in self.children:
-            yield from child.pre_order()
+            for node in child.pre_order():
+                yield node
 
     def _prefix_getter(self):
         """
@@ -460,7 +465,8 @@ class Leaf(Base):
 
     def __repr__(self):
         """Return a canonical string representation."""
-        return f"{self.__class__.__name__}({self.type_repr}, {self.value!r})"
+        return "%s(%s, %r)" % (self.__class__.__name__,
+                               self.type_repr, self.value)
 
     def __unicode__(self):
         """
@@ -470,7 +476,8 @@ class Leaf(Base):
         """
         return self.prefix + str(self.value)
 
-    __str__ = __unicode__
+    if sys.version_info > (3, 0):
+        __str__ = __unicode__
 
     def _eq(self, other):
         """Compare two nodes for equality (type and value)."""
@@ -561,7 +568,7 @@ class BasePattern:
         args = [self.type_repr, self.content, self.name]
         while args and args[-1] is None:
             del args[-1]
-        return f"{self.__class__.__name__}({', '.join(map(repr, args))})"
+        return "%s(%s)" % (self.__class__.__name__, ", ".join(map(repr, args)))
 
     @property
     def type_repr(self):

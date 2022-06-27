@@ -72,7 +72,7 @@ def main():
   try:
     utils.validate_version(python_version)
   except utils.UsageError as e:
-    sys.stderr.write(f"Usage error: {utils.message(e)}\n")
+    sys.stderr.write("Usage error: %s\n" % utils.message(e))
     sys.exit(1)
 
   options = parser.PyiOptions(python_version=python_version)

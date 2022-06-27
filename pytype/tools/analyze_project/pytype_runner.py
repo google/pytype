@@ -361,7 +361,7 @@ class PytypeRunner:
     if logging.getLogger().isEnabledFor(logging.INFO):
       command.append('-v')
     ret = subprocess.call(command)
-    print(f'Leaving directory {c!r}')
+    print('Leaving directory %r' % c)
     return ret
 
   def run(self):

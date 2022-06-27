@@ -73,8 +73,8 @@ def build_imports_map(options_info_path, open_function=open):
 
   errors = _validate_imports_map(imports_multimap)
   if errors:
-    msg = f"Invalid imports_map: {options_info_path}\nBad entries:\n"
-    msg += "\n".join(f"  {k} -> {v}" for k, v in errors)
+    msg = "Invalid imports_map: %s\nBad entries:\n" % options_info_path
+    msg += "\n".join("  %s -> %s" % (k, v) for k, v in errors)
     raise ValueError(msg)
 
   # Add the potential directory nodes for adding "__init__", because some build

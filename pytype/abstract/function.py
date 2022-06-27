@@ -372,7 +372,8 @@ class Signature:
   def __repr__(self):
     args = ", ".join(self._yield_arguments())
     ret = self._print_annot("return")
-    return f"def {self.name}({args}) -> {ret if ret else 'Any'}"
+    return "def {name}({args}) -> {ret}".format(
+        name=self.name, args=args, ret=ret if ret else "Any")
 
   def get_first_arg(self, callargs):
     return callargs.get(self.param_names[0]) if self.param_names else None
@@ -901,8 +902,8 @@ def match_all_args(ctx, node, func, args):
           break
         else:
           raise AssertionError(
-              f"Mismatched parameter {arg_name} not found in passed_args"
-            ) from e
+              "Mismatched parameter %s not found in passed_args" %
+              arg_name) from e
       else:
         # This is not an InvalidParameters error.
         raise

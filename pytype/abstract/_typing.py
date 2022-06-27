@@ -63,7 +63,7 @@ class AnnotationClass(_instance_base.SimpleValue, mixin.HasSlots):
     raise NotImplementedError(self.__class__.__name__)
 
   def __repr__(self):
-    return f"AnnotationClass({self.name})"
+    return "AnnotationClass(%s)" % self.name
 
   def _get_class(self):
     return self.ctx.convert.type_type
@@ -77,7 +77,7 @@ class AnnotationContainer(AnnotationClass):
     self.base_cls = base_cls
 
   def __repr__(self):
-    return f"AnnotationContainer({self.name})"
+    return "AnnotationContainer(%s)" % self.name
 
   def _sub_annotation(
       self, annot: _base.BaseValue, subst: Mapping[str, _base.BaseValue]
@@ -244,7 +244,7 @@ class AnnotationContainer(AnnotationClass):
           for k, v in imports.items():
             added_imports[k] |= v
 
-      expr = f"{self.base_cls.expr}[{', '.join(printed_params)}]"
+      expr = "%s[%s]" % (self.base_cls.expr, ", ".join(printed_params))
       annot = LateAnnotation(expr, self.base_cls.stack, self.ctx,
                              imports=added_imports)
       self.ctx.vm.late_annotations[self.base_cls.expr].append(annot)
@@ -365,8 +365,8 @@ class TypeParameter(_base.BaseValue):
                  self.contravariant))
 
   def __repr__(self):
-    return ("TypeParameter({!r}, constraints={!r}, bound={!r}, module={!r})"
-            .format(self.name, self.constraints, self.bound, self.module))
+    return "TypeParameter(%r, constraints=%r, bound=%r, module=%r)" % (
+        self.name, self.constraints, self.bound, self.module)
 
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
@@ -385,8 +385,8 @@ class TypeParameter(_base.BaseValue):
 
   def update_official_name(self, name):
     if self.name != name:
-      message = (f"TypeVar({self.name!r}) must be stored as {self.name!r}, "
-                 f"not {name!r}")
+      message = "TypeVar(%r) must be stored as %r, not %r" % (
+          self.name, self.name, name)
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, message)
 
   def call(self, node, func, args, alias_map=None):
@@ -410,7 +410,7 @@ class TypeParameterInstance(_base.BaseValue):
       return node, self.ctx.convert.empty.to_variable(self.ctx.root_node)
 
   def __repr__(self):
-    return f"TypeParameterInstance({self.name!r})"
+    return "TypeParameterInstance(%r)" % self.name
 
   def __eq__(self, other):
     if isinstance(other, type(self)):
@@ -448,7 +448,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
       self._printing = True
       printed_contents = ", ".join(repr(o) for o in self.options)
       self._printing = False
-    return f"{self.name}[{printed_contents}]"
+    return "%s[%s]" % (self.name, printed_contents)
 
   def __eq__(self, other):
     if isinstance(other, type(self)):
@@ -596,7 +596,7 @@ class LateAnnotation:
     return self.expr
 
   def __repr__(self):
-    return "LateAnnotation({!r}, resolved={!r})".format(
+    return "LateAnnotation(%r, resolved=%r)" % (
         self.expr, self._type if self.resolved else None)
 
   # __hash__ and __eq__ need to be explicitly defined for Python to use them in

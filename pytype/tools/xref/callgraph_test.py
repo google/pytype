@@ -36,7 +36,7 @@ class CallgraphTest(test_base.BaseTest):
 
   def assertHasFunctions(self, fns, expected):
     actual = fns.keys()
-    expected = ["module"] + [f"module.{x}" for x in expected]
+    expected = ["module"] + ["module.%s" % x for x in expected]
     self.assertCountEqual(actual, expected)
 
   def test_basic(self):
@@ -153,7 +153,7 @@ class CallgraphTest(test_base.BaseTest):
         ("A.foo", [("self", "A"), ("x", "builtins.str")])
     ]
     for fn, params in expected:
-      f = fns[f"module.{fn}"]
+      f = fns["module.%s" % fn]
       self.assertParamsEqual(f.params, params)
 
   def test_toplevel_calls(self):

@@ -108,7 +108,8 @@ def list_pytype_files(suffix):
     filenames = loader.get_zipfile().namelist()  # pytype: disable=attribute-error
   except AttributeError:
     # List directory using the file system
-    yield from list_files(get_full_path(suffix))
+    for f in list_files(get_full_path(suffix)):
+      yield f
   else:
     for filename in filenames:
       directory = "pytype/" + suffix + "/"

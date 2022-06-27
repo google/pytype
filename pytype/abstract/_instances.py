@@ -269,7 +269,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
                         for val in self.pyval)
     if self.tuple_length == 1:
       content += ","
-    return f"({content})"
+    return "(%s)" % content
 
   def _unique_parameters(self):
     parameters = super()._unique_parameters()

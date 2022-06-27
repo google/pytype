@@ -262,7 +262,7 @@ class _VerifyMutators(visitors.Visitor):
       extra = params - self.type_params_in_scope[-1]
       if extra:
         fn = pytd_utils.Print(self.current_function)
-        msg = "Type parameter(s) {{{}}} not in scope in\n\n{}".format(
+        msg = "Type parameter(s) {%s} not in scope in\n\n%s" % (
             ", ".join(sorted(extra)), fn)
         raise ParseError(msg)
 
@@ -429,8 +429,8 @@ class Definitions:
   def add_type_var(self, name, typevar):
     """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
     if name != typevar.name:
-      raise ParseError(f"TypeVar name needs to be {typevar.name!r} "
-                       f"(not {name!r})")
+      raise ParseError("TypeVar name needs to be %r (not %r)" % (
+          typevar.name, name))
     bound = typevar.bound
     if isinstance(bound, str):
       bound = pytd.NamedType(bound)
@@ -440,8 +440,8 @@ class Definitions:
 
   def add_param_spec(self, name, paramspec):
     if name != paramspec.name:
-      raise ParseError(f"ParamSpec name needs to be {paramspec.name!r} "
-                       f"(not {name!r})")
+      raise ParseError("ParamSpec name needs to be %r (not %r)" % (
+          paramspec.name, name))
     # ParamSpec should probably be represented with its own pytd class, like
     # TypeVar. This is just a quick, hacky way for us to keep track of which
     # names refer to ParamSpecs so we can replace them with Any in
@@ -526,7 +526,7 @@ class Definitions:
           p.repr_str() if isinstance(p, types.Pyval) else "_"
           for p in parameters)
       raise error_cls(
-          f"{pytd_utils.Print(base_type)}[{parameters}] not supported")
+          "%s[%s] not supported" % (pytd_utils.Print(base_type), parameters))
     elif pytdgen.is_any(base_type):
       return pytd.AnythingType()
     elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
@@ -633,12 +633,12 @@ class Definitions:
     if parameters is not None:
       if (len(parameters) > 1 and isinstance(base_type, pytd.NamedType) and
           base_type.name == "typing.Optional"):
-        raise ParseError(f"Too many options to {base_type.name}")
+        raise ParseError("Too many options to %s" % base_type.name)
       return self._parameterized_type(base_type, parameters)
     else:
       if (isinstance(base_type, pytd.NamedType) and
           base_type.name in _TYPING_SETS):
-        raise ParseError(f"Missing options to {base_type.name}")
+        raise ParseError("Missing options to %s" % base_type.name)
       return base_type
 
   def build_class(

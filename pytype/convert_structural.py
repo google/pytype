@@ -85,7 +85,7 @@ class TypeSolver:
     subst = {p.type_param: pytd.AnythingType() for p in complete.template}
     formula = matcher.match_Class_against_Class(partial, complete, subst)
     if formula is booleq.FALSE:
-      raise FlawedQuery(f"{partial.name} can never be {complete.name}")
+      raise FlawedQuery("%s can never be %s" % (partial.name, complete.name))
     solver.always_true(formula)
 
   def match_call_record(self, matcher, solver, call_record, complete):
@@ -104,7 +104,7 @@ class TypeSolver:
           break
       else:
         faulty_signature = ""
-      raise FlawedQuery("Bad call\n{}{}\nagainst:\n{}".format(
+      raise FlawedQuery("Bad call\n%s%s\nagainst:\n%s" % (
           escape.unpack_partial(call_record.name),
           faulty_signature, pytd_utils.Print(complete)))
     solver.always_true(formula)

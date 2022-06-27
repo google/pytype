@@ -225,14 +225,14 @@ class VerifyLookup(Visitor):
 
   def EnterLateType(self, node):
     if not self.ignore_late_types:
-      raise ValueError(f"Unresolved LateType: {node.name!r}")
+      raise ValueError("Unresolved LateType: %r" % node.name)
 
   def EnterNamedType(self, node):
-    raise ValueError(f"Unreplaced NamedType: {node.name!r}")
+    raise ValueError("Unreplaced NamedType: %r" % node.name)
 
   def EnterClassType(self, node):
     if node.cls is None:
-      raise ValueError(f"Unresolved class: {node.name!r}")
+      raise ValueError("Unresolved class: %r" % node.name)
 
 
 class _ToTypeVisitor(Visitor):
@@ -416,7 +416,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     if module_name in self._module_map:
       return self._module_map[module_name], cls_prefix
     else:
-      raise KeyError(f"Unknown module {name}")
+      raise KeyError("Unknown module %s" % name)
 
   def VisitNamedType(self, t):
     """Try to look up a NamedType.
@@ -470,7 +470,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         # we need to manually resolve it here.
         item = self._ResolveUsingStarImport(module, name)
         if item is None:
-          raise KeyError(f"No {name} in module {module_name}") from e
+          raise KeyError("No %s in module %s" % (name, module_name)) from e
     if not self._in_generic_type and isinstance(item, pytd.Alias):
       # If `item` contains type parameters and is not inside a GenericType, then
       # we replace the parameters with Any.
@@ -589,7 +589,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       existing = name_to_alias[a.name]
       if existing == a or SameModuleName(existing, a):
         continue
-      raise KeyError("Duplicate top level items: {!r}, {!r}".format(
+      raise KeyError("Duplicate top level items: %r, %r" % (
           existing.type.name, a.type.name))
     return out
 
@@ -754,7 +754,7 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
       try:
         resolved_node = self.to_type(item)
       except NotImplementedError as e:
-        raise SymbolLookupError(f"{item} is not a type") from e
+        raise SymbolLookupError("%s is not a type" % item) from e
     if isinstance(resolved_node, (pytd.Constant, pytd.Function)):
       visitor = LookupLocalTypes()
       visitor.unit = self.unit
@@ -1038,7 +1038,7 @@ class CreateTypeParametersForSignatures(Visitor):
       safe_class_name = pytd_utils.Print(pytd.NamedType(self.class_name))
       return (pytd_utils.Print(sig.return_type) == safe_class_name and
               pytd_utils.Print(sig.params[0].type) in (
-                  f"Type[{safe_class_name}]", safe_class_name))
+                  "Type[%s]" % safe_class_name, safe_class_name))
     return False
 
   def VisitSignature(self, sig):
@@ -1098,8 +1098,8 @@ class VerifyVisitor(Visitor):
       for a1, a2 in itertools.combinations(attrs, 2):
         both = attr_to_set[a1] & attr_to_set[a2]
         if both:
-          raise AssertionError(f"Duplicate name(s) {list(both)} in both {a1} "
-                               f"and {a2}")
+          raise AssertionError("Duplicate name(s) %s in both %s and %s" % (
+              list(both), a1, a2))
 
   def EnterTypeDeclUnit(self, node):
     self._AssertNoDuplicates(node, ["constants", "type_params", "classes",
@@ -1431,8 +1431,9 @@ class AdjustTypeParameters(Visitor):
           # to be replaced by typing.Generic by the time this visitor is called?
           self._CheckDuplicateNames(params, node.name)
           if generic_template:
-            raise ContainerError("Cannot inherit from Generic[...] "
-                                 f"multiple times in class {node.name}")
+            raise ContainerError(
+                "Cannot inherit from Generic[...] multiple times in class %s"
+                % node.name)
           else:
             generic_template = params
         else:
@@ -1450,7 +1451,7 @@ class AdjustTypeParameters(Visitor):
       template = mro.MergeSequences(templates)
     except ValueError as e:
       raise ContainerError(
-          f"Illegal type parameter order in class {node.name}") from e
+          "Illegal type parameter order in class %s" % node.name) from e
 
     self.class_template.append(template)
 
@@ -1569,7 +1570,7 @@ class AdjustTypeParameters(Visitor):
   def VisitTypeParameter(self, node):
     """Add scopes to type parameters, track unbound params."""
     if self.constant_name and not self._IsBoundTypeParam(node):
-      raise ContainerError("Unbound type parameter {} in {}".format(
+      raise ContainerError("Unbound type parameter %s in %s" % (
           node.name, self._GetFullName(self.constant_name)))
     scope = self._GetScope(node.name)
     if scope:
@@ -1605,17 +1606,17 @@ class VerifyContainers(Visitor):
     if isinstance(base_type, pytd.LateType):
       return  # We can't verify this yet
     if not pytd.IsContainer(base_type.cls):
-      raise ContainerError(f"Class {base_type.name} is not a container")
+      raise ContainerError("Class %s is not a container" % base_type.name)
     elif base_type.name in ("typing.Generic", "typing.Protocol"):
       for t in node.parameters:
         if not isinstance(t, pytd.TypeParameter):
-          raise ContainerError(f"Name {t.name} must be defined as a TypeVar")
+          raise ContainerError("Name %s must be defined as a TypeVar" % t.name)
     elif not isinstance(node, (pytd.CallableType, pytd.TupleType)):
       actual_param_count = len(node.parameters)
       max_param_count = len(base_type.cls.template)
       if actual_param_count > max_param_count:
         raise ContainerError(
-            "Too many parameters on {}: expected {}, got {}".format(
+            "Too many parameters on %s: expected %s, got %s" % (
                 base_type.name, max_param_count, actual_param_count))
 
   def EnterCallableType(self, node):
@@ -1732,13 +1733,14 @@ class VerifyContainers(Visitor):
         continue
       elif len(values) > 1 and not self._TypeCompatibilityCheck(values):
         raise ContainerError(
-            "Conflicting values for TypeVar {}: {}".format(
+            "Conflicting values for TypeVar %s: %s" % (
                 param_name, ", ".join(str(v) for v in values)))
     for t in node.template:
       if t.type_param.full_name in param_to_values:
         value, = param_to_values[t.type_param.full_name]
         raise ContainerError(
-            f"Conflicting value {value} for TypeVar {t.type_param.full_name}")
+            "Conflicting value %s for TypeVar %s" % (value,
+                                                     t.type_param.full_name))
 
 
 class VerifyLiterals(Visitor):
@@ -1836,7 +1838,7 @@ class ExpandCompatibleBuiltins(Visitor):
     # type and compat is the less generalized one. (eg: name = float, compat =
     # int)
     compat_list = itertools.chain(
-        {(v, v) for _, v in pep484.COMPAT_ITEMS}, pep484.COMPAT_ITEMS)
+        set((v, v) for _, v in pep484.COMPAT_ITEMS), pep484.COMPAT_ITEMS)
 
     for compat, name in compat_list:
       prefix = builtins.name + "."

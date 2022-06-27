@@ -73,7 +73,7 @@ class ParseError(Exception):
       # Output a pointer below the error column, adjusting for stripped spaces.
       pos = indent + (self._column - 1) - (len(self._text) - len(stripped))
       lines.append("%*s^" % (pos, ""))
-    lines.append(f"{type(self).__name__}: {utils.message(self)}")
+    lines.append("%s: %s" % (type(self).__name__, utils.message(self)))
     return "\n".join(lines)
 
 

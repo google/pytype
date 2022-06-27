@@ -144,7 +144,7 @@ class Converter(utils.ContextWeakrefMixin):
     if constant_type is None:
       return "constant"
     elif isinstance(constant_type, tuple):
-      return f"({', '.join(self.constant_name(c) for c in constant_type)})"
+      return "(%s)" % ", ".join(self.constant_name(c) for c in constant_type)
     else:
       return constant_type.__name__
 
@@ -169,7 +169,7 @@ class Converter(utils.ContextWeakrefMixin):
         isinstance(val.pyval, constant_type or object)):
       return val.pyval
     name = self.constant_name(constant_type)
-    raise abstract_utils.ConversionError(f"{val} is not of type {name}")
+    raise abstract_utils.ConversionError("%s is not of type %s" % (val, name))
 
   def name_to_value(self, name, subst=None, ast=None):
     if ast is None:
@@ -197,7 +197,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif value is False:
       return self.false.to_variable(node)
     else:
-      raise ValueError(f"Invalid bool value: {value!r}")
+      raise ValueError("Invalid bool value: %r" % value)
 
   def build_int(self, node):
     i = self.primitive_class_instances[int]
@@ -453,7 +453,7 @@ class Converter(utils.ContextWeakrefMixin):
                                                     discard_concrete_values)
                                for i, v in enumerate(pyval)))
     raise ValueError(
-        f"Cannot convert {pyval.__class__} to an abstract value")
+        "Cannot convert {} to an abstract value".format(pyval.__class__))
 
   def constant_to_value(self, pyval, subst=None, node=None):
     """Like constant_to_var, but convert to an abstract.BaseValue.
@@ -916,5 +916,5 @@ class Converter(utils.ContextWeakrefMixin):
           for i, item in enumerate(pyval)
       ])
     else:
-      raise NotImplementedError("Can't convert constant "
-                                f"{type(pyval)} {pyval!r}")
+      raise NotImplementedError("Can't convert constant %s %r" %
+                                (type(pyval), pyval))

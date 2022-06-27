@@ -180,7 +180,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def match_BinOp(self, node):
     if not isinstance(node.op, self._ast.Mod):
-      raise NotImplementedError(f"match_Binop:{node.op.__class__.__name__}")
+      raise NotImplementedError("match_Binop:%s" % node.op.__class__.__name__)
     op = "BINARY_MODULO"
     symbol = "__mod__"
     # The node's lineno is the first line of the operation, but the opcode's
@@ -293,7 +293,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
 
   def _get_node_name(self, node):
     if isinstance(node, self._ast.Attribute):
-      return f"{self._get_node_name(node.value)}.{node.attr}"
+      return "{}.{}".format(self._get_node_name(node.value), node.attr)
     elif isinstance(node, self._ast.Call):
       return self._get_node_name(node.func)
     elif isinstance(node, self._ast.Lambda):

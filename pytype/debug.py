@@ -67,7 +67,7 @@ def prettyprint_binding(binding, indent_level=0):
 def prettyprint_binding_set(binding_set, indent_level=0, label=""):
   """Pretty print a set of bindings, with optional label."""
   indent = " " * indent_level
-  start = f"{indent}{label}: {{"
+  start = "%s%s: {" % (indent, label)
   if not binding_set:
     return start + " }"
   return "\n".join(
@@ -81,22 +81,22 @@ def prettyprint_binding_nested(binding, indent_level=0):
   indent = " " * indent_level
   if indent_level > 32:
     return indent + "-[ max recursion depth exceeded ]-\n"
-  s = f"{indent}binding v{binding.variable.id}={binding.data!r}\n"
+  s = "%sbinding v%s=%r\n" % (indent, binding.variable.id, binding.data)
   other = ""
   for v in binding.variable.bindings:
     if v is not binding:
-      other += f"{v.data!r} {[o.where for o in v.origins]} "
+      other += "%r %s " % (v.data, [o.where for o in v.origins])
   if other:
-    s += f"{indent}(other assignments: {other})\n"
+    s += "%s(other assignments: %s)\n" % (indent, other)
   for origin in binding.origins:
-    s += f"{indent}  at {origin.where}\n"
+    s += "%s  at %s\n" % (indent, origin.where)
     for i, source_set in enumerate(origin.source_sets):
       for j, source in enumerate(source_set):
         s += prettyprint_binding_nested(source, indent_level + 4)
         if j < len(source_set)-1:
-          s += f"{indent}    AND\n"
+          s += "%s    AND\n" % indent
       if i < len(origin.source_sets)-1:
-        s += f"{indent}  OR\n"
+        s += "%s  OR\n" % indent
   return s
 
 
@@ -112,7 +112,7 @@ def prettyprint_cfg_node(node, decorate_after_node=0, full=False):
     A prettyprinted node.
   """
   if node.id <= decorate_after_node:
-    return repr(node) + f" [{len(node.bindings)} bindings]"
+    return repr(node) + " [%d bindings]" % len(node.bindings)
   if full:
     name = lambda x: getattr(x, "name", str(x))
   else:
@@ -161,7 +161,7 @@ def _pretty_variable(var):
 
   for value in var.bindings:
     data = utils.maybe_truncate(value.data)
-    binding = f"{var_prefix} {data}"
+    binding = "%s %s" % (var_prefix, data)
 
     if len(value.origins) == 1:
       # Single origin.  Use the binding as a prefix when writing the origin.
@@ -196,11 +196,11 @@ def program_to_text(program):
   seen = set()
   for node in cfg_utils.order_nodes(program.cfg_nodes):
     seen.add(node)
-    s.write(f"{label(node)}\n")
-    s.write(f"  From: {', '.join(label(n) for n in node.incoming)}\n")
-    s.write(f"  To: {', '.join(label(n) for n in node.outgoing)}\n")
+    s.write("%s\n" % label(node))
+    s.write("  From: %s\n" % ", ".join(label(n) for n in node.incoming))
+    s.write("  To: %s\n" % ", ".join(label(n) for n in node.outgoing))
     s.write("\n")
-    variables = {value.variable for value in node.bindings}
+    variables = set(value.variable for value in node.bindings)
     for var in sorted(variables, key=lambda v: v.id):
       # If a variable is bound in more than one node then it will be listed
       # redundantly multiple times.  One alternative would be to only list the

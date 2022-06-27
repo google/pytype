@@ -11,7 +11,7 @@ class OverloadedDecoratorError(Exception):
   """Inconsistent decorators on an overloaded function."""
 
   def __init__(self, name, typ):
-    msg = "Overloaded signatures for {} disagree on {}decorators".format(
+    msg = "Overloaded signatures for %s disagree on %sdecorators" % (
         name, (typ + " " if typ else ""))
     super().__init__(msg)
 
@@ -280,7 +280,7 @@ def merge_method_signatures(
         sig = fn.properties.setter or fn.properties.deleter
         fn.sigs = [sig.Replace(return_type=pytd.AnythingType())]
     elif fn.decorator and check_unhandled_decorator:
-      raise ValueError(f"Unhandled decorator: {fn.decorator}")
+      raise ValueError("Unhandled decorator: %s" % fn.decorator)
     else:
       # Other decorators do not affect the kind
       kind = pytd.MethodKind.METHOD

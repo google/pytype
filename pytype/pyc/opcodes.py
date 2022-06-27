@@ -51,7 +51,7 @@ class Opcode:
 
   def __str__(self):
     if self.annotation:
-      return f"{self.basic_str()}  # type: {self.annotation}"
+      return "%s  # type: %s" % (self.basic_str(), self.annotation)
     else:
       return self.basic_str()
 
@@ -142,9 +142,9 @@ class OpcodeWithArg(Opcode):
     self.pretty_arg = pretty_arg
 
   def __str__(self):
-    out = f"{self.basic_str()} {self.pretty_arg}"
+    out = "%s %s" % (self.basic_str(), self.pretty_arg)
     if self.annotation:
-      return f"{out}  # type: {self.annotation}"
+      return "%s  # type: %s" % (out, self.annotation)
     else:
       return out
 
@@ -846,7 +846,7 @@ class MATCH_CLASS(OpcodeWithArg):
 def _overlay_mapping(mapping, new_entries):
   ret = mapping.copy()
   ret.update(new_entries)
-  return {k: v for k, v in ret.items() if v is not None}
+  return dict((k, v) for k, v in ret.items() if v is not None)
 
 
 python_3_7_mapping = {

@@ -14,7 +14,7 @@ class UtilsTest(test_base.UnitTest):
 
   @classmethod
   def setUpClass(cls):
-    super().setUpClass()
+    super(UtilsTest, cls).setUpClass()
     cls.builtins = pytd_utils.Concat(*builtin_stubs.GetBuiltinsAndTyping(
         parser.PyiOptions(python_version=cls.python_version)))
 

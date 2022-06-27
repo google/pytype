@@ -52,7 +52,7 @@ def pytd_callable(
   if isinstance(parameters[0], list):
     if len(parameters) > 2:
       raise TypeError(
-          f"Expected 2 parameters to Callable, got {len(parameters)}")
+          "Expected 2 parameters to Callable, got %d" % len(parameters))
     if len(parameters) == 1:
       # We're usually happy to treat omitted parameters as "Any", but we
       # need a return type for CallableType, or we wouldn't know whether the

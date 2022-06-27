@@ -154,10 +154,10 @@ class _Eq(BooleanTerm):
     self.right = right
 
   def __repr__(self):
-    return f"Eq({self.left!r}, {self.right!r})"
+    return "Eq(%r, %r)" % (self.left, self.right)
 
   def __str__(self):
-    return f"{self.left} == {self.right}"
+    return "%s == %s" % (self.left, self.right)
 
   def __hash__(self):
     return hash((self.left, self.right))
@@ -233,7 +233,7 @@ class _And(BooleanTerm):
     return not self == other
 
   def __repr__(self):
-    return f"And({list(self.exprs)!r})"
+    return "And(%r)" % list(self.exprs)
 
   def __str__(self):
     return "(" + " & ".join(str(t) for t in self.exprs) + ")"
@@ -284,7 +284,7 @@ class _Or(BooleanTerm):
     return not self == other
 
   def __repr__(self):
-    return f"Or({list(self.exprs)!r})"
+    return "Or(%r)" % list(self.exprs)
 
   def __str__(self):
     return "(" + " | ".join(str(t) for t in self.exprs) + ")"
@@ -404,7 +404,7 @@ class Solver:
     lines = []
     count_false, count_true = 0, 0
     if self.ground_truth is not TRUE:
-      lines.append(f"always: {self.ground_truth}")
+      lines.append("always: %s" % (self.ground_truth,))
     for var, value, implication in self._iter_implications():
       # only print the "interesting" lines
       if implication is FALSE:
@@ -412,18 +412,18 @@ class Solver:
       elif implication is TRUE:
         count_true += 1
       else:
-        lines.append(f"if {_Eq(var, value)} then {implication}")
+        lines.append("if %s then %s" % (_Eq(var, value), implication))
     return "%s\n(not shown: %d always FALSE, %d always TRUE)\n" % (
         "\n".join(lines), count_false, count_true)
 
   def __repr__(self):
     lines = []
     for var in self.variables:
-      lines.append(f"solver.register_variable({var!r})")
+      lines.append("solver.register_variable(%r)" % var)
     if self.ground_truth is not TRUE:
-      lines.append(f"solver.always_true({self.ground_truth!r})")
+      lines.append("solver.always_true(%r)" % (self.ground_truth,))
     for var, value, implication in self._iter_implications():
-      lines.append(f"solver.implies({_Eq(var, value)!r}, {implication!r})")
+      lines.append("solver.implies(%r, %r)" % (_Eq(var, value), implication))
     return "\n" + "".join(line + "\n" for line in lines)
 
   def register_variable(self, variable):
@@ -453,8 +453,8 @@ class Solver:
         yield (var, value, implication)
 
   def _get_nonfalse_values(self, var):
-    return {value for value, implication in self.implications[var].items()
-               if implication is not FALSE}
+    return set(value for value, implication in self.implications[var].items()
+               if implication is not FALSE)
 
   def _get_first_approximation(self):
     """Get all (variable, value) combinations to consider.

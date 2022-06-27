@@ -37,7 +37,7 @@ class _RegistryMeta(type):
   """Metaclass that registers subclasses in _METRIC_TYPES."""
 
   def __new__(cls, name, bases, class_dict):
-    subcls = super().__new__(cls, name, bases, class_dict)
+    subcls = super(_RegistryMeta, cls).__new__(cls, name, bases, class_dict)
     _METRIC_TYPES[subcls.__name__] = subcls
     return subcls
 
@@ -45,7 +45,7 @@ class _RegistryMeta(type):
 def _deserialize(typ, payload):
   """Construct a Metric from a typename and payload loaded from json."""
   if typ not in _METRIC_TYPES:
-    raise TypeError(f"Could not decode class {typ}")
+    raise TypeError("Could not decode class %s" % typ)
   cls = _METRIC_TYPES[typ]
   out = cls(None)
   out.__dict__.update(payload)
@@ -76,7 +76,7 @@ _enabled = False  # True iff metrics should be collected.
 
 def _validate_metric_name(name):
   if _METRIC_NAME_RE.match(name) is None:
-    raise ValueError(f"Illegal metric name: {name}")
+    raise ValueError("Illegal metric name: %s" % name)
 
 
 def _prepare_for_test(enabled=True):
@@ -143,7 +143,7 @@ class Metric(metaclass=_RegistryMeta):
       return
     _validate_metric_name(name)
     if name in _registered_metrics:
-      raise ValueError(f"Metric {name} has already been defined.")
+      raise ValueError("Metric %s has already been defined." % name)
     self._name = name
     _registered_metrics[name] = self
 
@@ -160,7 +160,7 @@ class Metric(metaclass=_RegistryMeta):
     raise NotImplementedError
 
   def __str__(self):
-    return f"{self._name}: {self._summary()}"
+    return "%s: %s" % (self._name, self._summary())
 
 
 class Counter(Metric):
@@ -197,7 +197,7 @@ class StopWatch(Metric):
     del self._start_time
 
   def _summary(self):
-    return f"{self._total:f} seconds"
+    return "%f seconds" % self._total
 
   def _merge(self, other):
     # pylint: disable=protected-access
@@ -227,7 +227,7 @@ class ReentrantStopWatch(Metric):
     self._time += other._time  # pylint: disable=protected-access
 
   def _summary(self):
-    return f"time spend below this StopWatch: {self._time}"
+    return "time spend below this StopWatch: %s" % self._time
 
 
 class MapCounter(Metric):
@@ -370,7 +370,7 @@ class Snapshot(Metric):
     # doesn't take None into account during comparisons, and json will compare
     # it to None when trying to process it, causing an error. So, store it as a
     # string instead.
-    self.snapshots.append("{}:\n{}".format(where, "\n".join(
+    self.snapshots.append("%s:\n%s" % (where, "\n".join(
         map(str, snap.statistics(self.groupby)[:self.count]))))
 
   def __enter__(self):

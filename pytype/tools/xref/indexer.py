@@ -114,7 +114,8 @@ class PytypeValue:
     self.id = self.module + "." + self.name
 
   def format(self):
-    return f"{self.id} {{ {self.module}.{self.typ} : {self.name} }}"
+    return "%s { %s.%s : %s }" % (
+        self.id, self.module, self.typ, self.name)
 
   @classmethod
   def _from_data(cls, data):
@@ -469,7 +470,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     elif c == self._ast.Module:
       return self.module_name
     else:
-      raise Exception(f"Unexpected scope: {node!r}")
+      raise Exception("Unexpected scope: %r" % node)
 
   def iprint(self, x):
     """Print messages indented by scope level, for debugging."""
@@ -556,11 +557,11 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       # between the start of the AST node and the start of the body. Handles the
       # offset for decorated functions/classes.
       body_start = node.body[0].lineno
-      text = f"class {args['name']}"
+      text = "class %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
     elif isinstance(node, self._ast.FunctionDef):
       body_start = node.body[0].lineno
-      text = f"def {args['name']}"
+      text = "def %s" % args["name"]
       loc = self.source.find_first_text(node.lineno, body_start, text)
 
     if loc is None:
@@ -1231,7 +1232,7 @@ class VmTrace(source.AbstractTrace):
     types_repr = tuple(
         t and [node_utils.typename(x) for x in t]
         for t in self.types)
-    return f"{super().__repr__()} {types_repr}"
+    return "%s %s" % (super().__repr__(), types_repr)
 
 
 def process_file(options, source_text=None, generate_callgraphs=False,

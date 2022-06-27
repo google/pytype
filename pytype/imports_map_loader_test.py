@@ -38,14 +38,14 @@ class ImportMapLoaderTest(unittest.TestCase):
   def test_do_not_filter(self):
     with file_utils.Tempdir() as d:
       d.create_file("a/b/c.pyi")
-      imports_info = f"a/b/c.pyi {d['a/b/c.pyi']}\n"
+      imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
       d.create_file("imports_info", imports_info)
       imports_map = imports_map_loader.build_imports_map(d["imports_info"])
       self.assertEqual(imports_map["a/b/c"], d["a/b/c.pyi"])
 
   def test_invalid_map_entry(self):
     with file_utils.Tempdir() as d:
-      imports_info = f"a/b/c.pyi {d['a/b/c.pyi']}\n"
+      imports_info = "%s %s\n" % ("a/b/c.pyi", d["a/b/c.pyi"])
       d.create_file("imports_info", imports_info)
       with self.assertRaises(ValueError):
         imports_map_loader.build_imports_map(d["imports_info"])

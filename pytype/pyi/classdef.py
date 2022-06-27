@@ -86,7 +86,7 @@ def get_decorators(decorators: List[str], type_map: Dict[str, pytd_node.Node]):
 
 def check_for_duplicate_defs(methods, constants, aliases) -> None:
   """Check a class's list of definitions for duplicates."""
-  all_names = (list({f.name for f in methods}) +
+  all_names = (list(set(f.name for f in methods)) +
                [c.name for c in constants] +
                [a.name for a in aliases])
   duplicates = [name

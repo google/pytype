@@ -1679,16 +1679,16 @@ class ConditionTest(parser_test_base.ParserTestBase):
     out = "x: int" if expected else ""
     if "version" not in kwargs:
       kwargs["version"] = (3, 6, 5)
-    self.check(f"""
-      if {condition}:
+    self.check("""
+      if %s:
         x = ...  # type: int
-      """, out, **kwargs)
+      """ % condition, out, **kwargs)
 
   def check_cond_error(self, condition, message):
-    self.check_error(f"""
-      if {condition}:
+    self.check_error("""
+      if %s:
         x = ...  # type: int
-      """, 1, message)
+      """ % condition, 1, message)
 
   def test_version_eq(self):
     self.check_cond("sys.version_info == (3, 6, 4)", False)

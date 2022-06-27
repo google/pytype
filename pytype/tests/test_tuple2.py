@@ -74,10 +74,10 @@ class TupleTest(test_base.BaseTest):
     tuple_ints = r"Tuple\[int, \.\.\.\]"
     tuple_str_str = r"Tuple\[str, str\]"
     self.assertErrorRegexes(errors, {
-        "e1": fr"{x}.*{tuple_int}",
-        "e2": fr"{x}.*{tuple_ints}",
-        "e3": fr"{y}.*{tuple_int}",
-        "e4": fr"{y}.*{tuple_str_str}"})
+        "e1": r"%s.*%s" % (x, tuple_int),
+        "e2": r"%s.*%s" % (x, tuple_ints),
+        "e3": r"%s.*%s" % (y, tuple_int),
+        "e4": r"%s.*%s" % (y, tuple_str_str)})
 
   def test_inline_tuple(self):
     with file_utils.Tempdir() as d:
@@ -117,8 +117,8 @@ class TupleTest(test_base.BaseTest):
       expected = r"Tuple\[int, str\]"
       actual = r"Tuple\[str, int\]"
       self.assertErrorRegexes(errors, {
-          "e1": fr"Type\[{expected}\].*Type\[{actual}\]",
-          "e2": fr"{expected}.*{actual}",
+          "e1": r"Type\[%s\].*Type\[%s\]" % (expected, actual),
+          "e2": r"%s.*%s" % (expected, actual),
           "e3": r"%s.*foo\.A" % expected})
 
   def test_tuple_combination_explosion(self):

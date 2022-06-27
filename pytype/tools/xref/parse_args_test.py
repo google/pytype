@@ -31,7 +31,7 @@ class TestParseArgs(unittest.TestCase):
     # need to provide a syntactically valid one as a file.
     with file_utils.Tempdir() as d:
       pyi_file = d.create_file("baz.pyi")
-      imports_info = d.create_file("foo", f"bar {pyi_file}")
+      imports_info = d.create_file("foo", "bar %s" % pyi_file)
       args, _, opts = parse_args.parse_args(
           ["a.py", "--imports_info", imports_info])
       self.assertEqual(args.imports_info, imports_info)

@@ -35,9 +35,9 @@ def augment_annotations(src):
   if visitor.annotation_lines:
     lines = src.split("\n")
     for i in visitor.annotation_lines:
-      # No need to preserve comments, users should never see the transformed
-      # source code.
-      line, *_ = lines[i].split("#", 1)
-      lines[i] = line + " = ..."
+      # Preserve comments, as they may be pytype directives. We don't bother to
+      # keep the formatting, since users never see the transformed source code.
+      line, mark, comment = lines[i].partition("#")
+      lines[i] = line + " = ..." + mark + comment
     src = "\n".join(lines)
   return src

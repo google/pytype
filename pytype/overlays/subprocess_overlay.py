@@ -85,8 +85,9 @@ class PopenNew(abstract.PyTDFunction):
     if sig is None:
       sig = self._match_bytes_mode(args, view)
     if sig is None:
-      yield from super()._yield_matching_signatures(
-          node, args, view, alias_map)
+      for sig_info in super()._yield_matching_signatures(
+          node, args, view, alias_map):
+        yield sig_info
       return
     arg_dict, subst = sig.substitute_formal_args_old(
         node, args, view, alias_map)

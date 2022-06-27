@@ -39,8 +39,8 @@ def _convert(node):
   elif isinstance(node, ast3.Set):
     return set(map(_convert, node.elts))
   elif isinstance(node, ast3.Dict):
-    return {_convert(k): _convert(v)
-                for k, v in zip(node.keys, node.values)}
+    return dict((_convert(k), _convert(v))
+                for k, v in zip(node.keys, node.values))
   elif isinstance(node, ast3.NameConstant):
     return node.value
   elif isinstance(node, ast3.Name):

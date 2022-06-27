@@ -358,14 +358,14 @@ class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""
 
   def _testOp(self, op, symbol):
-    errors = self.CheckWithErrors(f"""
+    errors = self.CheckWithErrors("""
       class A:
-        def __{op}__(self, x: "A"):
+        def __%s__(self, x: "A"):
           return None
       def f():
         v = A()
-        v {symbol} 3  # unsupported-operands[e]
-    """)
+        v %s 3  # unsupported-operands[e]
+    """ % (op, symbol))
     self.assertErrorSequences(errors, {
         "e": [symbol, "A", "int", f"__{op}__ on A", "A"]
     })

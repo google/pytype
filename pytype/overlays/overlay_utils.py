@@ -36,7 +36,7 @@ class Param:
     return self
 
   def __repr__(self):
-    return f"Param({self.name}, {self.typ!r}, {self.default!r})"
+    return "Param(%s, %r, %r)" % (self.name, self.typ, self.default)
 
 
 def make_method(ctx,

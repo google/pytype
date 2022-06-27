@@ -95,7 +95,7 @@ class BadDependencyError(Exception):
   """If we can't resolve a module referenced by the one we're trying to load."""
 
   def __init__(self, module_error, src=None):
-    referenced = f", referenced from {src!r}" if src else ""
+    referenced = ", referenced from %r" % src if src else ""
     super().__init__(module_error + referenced)
 
   def __str__(self):
@@ -288,7 +288,7 @@ class _PathFinder:
   def log_module_not_found(self, module_name):
     log.warning("Couldn't import module %s %r in (path=%r) imports_map: %s",
                 module_name, module_name, self.options.pythonpath,
-                f"{len(self.options.imports_map)} items" if
+                "%d items" % len(self.options.imports_map) if
                 self.options.imports_map is not None else "none")
     if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
       for module, path in self.options.imports_map.items():
@@ -527,7 +527,7 @@ class Loader:
               pytd.LookupItemRecursive(lookup_ast, name)
             except KeyError as e:
               raise BadDependencyError(
-                  f"Can't find pyi for {name!r}", ast_name) from e
+                  "Can't find pyi for %r" % name, ast_name) from e
             # This is a dotted local reference, not an external reference.
             continue
       # If `name` is a package, try to load any base names not defined in
@@ -537,7 +537,7 @@ class Loader:
       for base_name in dependencies[dep_name]:
         if base_name == "*":
           continue
-        full_name = f"{name}.{base_name}"
+        full_name = "%s.%s" % (name, base_name)
         # Check whether full_name is a submodule based on whether it is
         # defined in the __init__ file.
         attr = dep_ast.Get(full_name)
@@ -645,7 +645,7 @@ class Loader:
         for k in dependencies:
           if k not in self._modules:
             raise (
-                BadDependencyError(f"Can't find pyi for {k!r}", mod_ast.name)
+                BadDependencyError("Can't find pyi for %r" % k, mod_ast.name)
             ) from e
           self._modules[k].ast = self._resolve_external_types(
               self._modules[k].ast)

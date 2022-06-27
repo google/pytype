@@ -755,7 +755,7 @@ def _build_namedtuple(props, node, ctx):
   # Store the original properties
   cls.props = props
   cls.generated_members = (
-      set(members.keys()) - {x.name for x in props.fields})
+      set(members.keys()) - set((x.name for x in props.fields)))
 
   ctx.vm.trace_classdef(cls_var)
   return node, cls_var

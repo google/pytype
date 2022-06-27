@@ -134,7 +134,7 @@ class Function(_instance_base.SimpleValue):
         else:
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):
-            e.name = f"{self.parent.name}.{e.name}"
+            e.name = "%s.%s" % (self.parent.name, e.name)
           if match_all_views or self.ctx.options.strict_parameter_checks:
             raise e
           error = e
@@ -344,7 +344,7 @@ class BoundFunction(_base.BaseValue):
           # match_args will try to prepend the parent's name to the error name.
           # Overwrite it with _callself instead, which may be more exact.
           _, _, e.name = e.name.rpartition(".")
-        e.name = f"{self._callself.data[0].name}.{e.name}"
+        e.name = "%s.%s" % (self._callself.data[0].name, e.name)
       raise
     finally:
       if abstract_utils.func_name_is_class_init(self.name):
@@ -505,4 +505,4 @@ class Splat(_base.BaseValue):
     self.iterable = iterable
 
   def __repr__(self):
-    return f"splat({self.iterable.data!r})"
+    return "splat(%r)" % self.iterable.data

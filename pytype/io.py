@@ -36,8 +36,9 @@ def read_source_file(input_filename, open_function=open):
   try:
     with open_function(input_filename, "r", encoding="utf8") as fi:
       return fi.read()
-  except OSError as e:
-    raise utils.UsageError(f"Could not load input file {input_filename}") from e
+  except IOError as e:
+    raise utils.UsageError("Could not load input file %s" %
+                           input_filename) from e
 
 
 def _set_verbosity_from(posarg):
@@ -169,7 +170,7 @@ def check_or_generate_pyi(options, loader=None):
             + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
     else:
       e.args = (
-          str(utils.message(e)) + f"\nFile: {options.input}",) + e.args[1:]
+          str(utils.message(e)) + "\nFile: %s" % options.input,) + e.args[1:]
       raise
 
   return (errorlog, None, None) if options.check else (errorlog, result, ast)
@@ -257,7 +258,7 @@ def write_pickle(ast, options, loader=None):
 def print_error_doc_url(errorlog):
   names = {e.name for e in errorlog}
   if names:
-    doclink = f"\nFor more details, see {ERROR_DOC_URL}"
+    doclink = "\nFor more details, see %s" % ERROR_DOC_URL
     if len(names) == 1:
       doclink += "#" + names.pop()
     print(doclink, file=sys.stderr)
@@ -286,7 +287,7 @@ def parse_pyi(options):
   ast = loader.load_file(options.module_name, options.input)
   ast = loader.finish_and_verify_ast(ast)
   if options.output:
-    result = "# Internal AST parsed and postprocessed from {}\n\n{}".format(
+    result = "# Internal AST parsed and postprocessed from %s\n\n%s" % (
         options.input, pytd_utils.Print(ast))
     _write_pyi_output(options, result, options.output)
   return ast
@@ -314,7 +315,7 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   try:
     yield
   except utils.UsageError as e:
-    raise exception_type(f"Pytype usage error: {utils.message(e)}") from e
+    raise exception_type("Pytype usage error: %s" % utils.message(e)) from e
   except pyc.CompileError as e:
     raise exception_type("Error reading file %s at line %s: %s" %
                          (filename, e.lineno, e.error)) from e
@@ -330,8 +331,9 @@ def wrap_pytype_exceptions(exception_type, filename=""):
     raise exception_type("Pytype could not analyze file %s: "
                          "'# skip-file' directive found" % filename) from e
   except pytd_utils.LoadPickleError as e:
-    raise exception_type(f"Error analyzing file {filename}: Could not load "
-                         f"serialized dependency {e.filename}") from e
+    raise exception_type(
+        "Error analyzing file %s: Could not load serialized dependency %s" % (
+            filename, e.filename)) from e
   except Exception as e:  # pylint: disable=broad-except
-    msg = f"Pytype error: {e.__class__.__name__}: {e.args[0]}"
+    msg = "Pytype error: %s: %s" % (e.__class__.__name__, e.args[0])
     raise exception_type(msg).with_traceback(e.__traceback__)

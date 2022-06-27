@@ -160,7 +160,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     for t in self.template:
       if t.full_name in self.all_formal_type_parameters:
         raise abstract_utils.GenericTypeError(
-            self, f"Conflicting value for TypeVar {t.full_name}")
+            self, "Conflicting value for TypeVar %s" % t.full_name)
 
   def collect_inner_cls_types(self, max_depth=5):
     """Collect all the type parameters from nested classes."""
@@ -242,7 +242,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     for s in names:
       if not isinstance(s, str):
         self.ctx.errorlog.bad_slots(self.ctx.vm.frames,
-                                    f"Invalid __slot__ entry: {str(s)!r}")
+                                    "Invalid __slot__ entry: %r" % str(s))
         return None
     return tuple(self._mangle(s) for s in names)
 
@@ -272,7 +272,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       return super().instantiate(node, container)
 
   def __repr__(self):
-    return f"InterpreterClass({self.name})"
+    return "InterpreterClass(%s)" % self.name
 
   def __contains__(self, name):
     if name in self.members:
@@ -459,7 +459,7 @@ class PyTDClass(
     elif isinstance(member, pytd.Class):
       return self.ctx.convert.constant_to_var(member, subst=subst, node=node)
     else:
-      raise AssertionError(f"Invalid class member {pytd_utils.Print(member)}")
+      raise AssertionError("Invalid class member %s" % pytd_utils.Print(member))
 
   def _new_instance(self, container, node, args):
     if self.full_name == "builtins.tuple" and args.is_empty():
@@ -478,7 +478,7 @@ class PyTDClass(
         abstract_utils.AsInstance(self.pytd_cls), {}, node)
 
   def __repr__(self):
-    return f"PyTDClass({self.name})"
+    return "PyTDClass(%s)" % self.name
 
   def __contains__(self, name):
     return name in self._member_map
@@ -593,7 +593,7 @@ class ParameterizedClass(
     self.type_param_check()
 
   def __repr__(self):
-    return "ParameterizedClass(cls={!r} params={})".format(
+    return "ParameterizedClass(cls=%r params=%s)" % (
         self.base_cls,
         self._formal_type_parameters)
 
@@ -787,7 +787,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):
     self.num_args = len(self.formal_type_parameters) - 2
 
   def __repr__(self):
-    return f"CallableClass({self.formal_type_parameters})"
+    return "CallableClass(%s)" % self.formal_type_parameters
 
   def get_formal_type_parameters(self):
     return {
@@ -848,7 +848,7 @@ class LiteralClass(ParameterizedClass):
     self._instance = instance
 
   def __repr__(self):
-    return f"LiteralClass({self._instance})"
+    return "LiteralClass(%s)" % self._instance
 
   def __eq__(self, other):
     if isinstance(other, LiteralClass):
@@ -895,7 +895,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):
     self.slots = ()  # tuples don't have any writable attributes
 
   def __repr__(self):
-    return f"TupleClass({self.formal_type_parameters})"
+    return "TupleClass(%s)" % self.formal_type_parameters
 
   def compute_mro(self):
     # ParameterizedClass removes the base PyTDClass(tuple) from the mro; add it

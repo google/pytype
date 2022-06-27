@@ -114,7 +114,7 @@ class UnionFind:
             used.add(y)
             comp.append(y)
         comps.append(comp)
-    return f"{comps!r}"
+    return "%r" % comps
 
 
 class AccessTrackingDict(dict):
@@ -156,7 +156,7 @@ class MonitorDict(dict):
 
   @property
   def changestamp(self):
-    return len(self) + sum(len(var.bindings) for var in self.values())
+    return len(self) + sum((len(var.bindings) for var in self.values()))
 
   @property
   def data(self):
@@ -244,7 +244,8 @@ class AliasingDict(dict):
     return super().__getitem__(self.uf.find_by_name(name))
 
   def __repr__(self):
-    return f"{super().__repr__()!r}, _alias={repr(self.uf)!r}"
+    return ("%r, _alias=%r" %
+            (super().__repr__(), repr(self.uf)))
 
   def __hash__(self):
     return hash(frozenset(self.items()))
