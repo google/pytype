@@ -1,6 +1,12 @@
 theme: jekyll-theme-minimal
 
+google_analytics: G-G896Q7VERJ
+
 defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
   - scope:
       path: developers
     values:

@@ -321,7 +321,7 @@ class BaseTest(unittest.TestCase):
                                for sig in func.signatures)
     self.assertEqual(t, ret,
                      "Return type {!r} != {!r}".format(pytd_utils.Print(t),
-                                               pytd_utils.Print(ret)))
+                                                       pytd_utils.Print(ret)))
 
   def assertHasReturnType(self, func, t):
     """Test that a given return type is present. Ignore extras."""
@@ -330,11 +330,11 @@ class BaseTest(unittest.TestCase):
     if isinstance(ret, pytd.UnionType):
       self.assertIn(t, ret.type_list,
                     "Return type {!r} not found in {!r}".format(
-                      pytd_utils.Print(t), pytd_utils.Print(ret)))
+                        pytd_utils.Print(t), pytd_utils.Print(ret)))
     else:
       self.assertEqual(t, ret,
                        "Return type {!r} != {!r}".format(pytd_utils.Print(ret),
-                                                 pytd_utils.Print(t)))
+                                                         pytd_utils.Print(t)))
 
   def assertHasAllReturnTypes(self, func, types):
     """Test that all given return types are present. Ignore extras."""

@@ -575,7 +575,7 @@ class TestNinjaBody(TestBase):
         action=Action.INFER,
         input='bar.py',
         deps=' | {} {}'.format(os.path.join(runner.pyi_dir, 'bar.pyi-1'),
-                           os.path.join(runner.pyi_dir, 'foo.pyi-1')),
+                               os.path.join(runner.pyi_dir, 'foo.pyi-1')),
         imports=os.path.join(runner.imports_dir, 'bar.imports'),
         module='bar'))
     self.assertBuildStatementMatches(body[9:], ExpectedBuildStatement(
@@ -583,7 +583,7 @@ class TestNinjaBody(TestBase):
         action=Action.CHECK,
         input='foo.py',
         deps=' | {} {}'.format(os.path.join(runner.pyi_dir, 'bar.pyi'),
-                           os.path.join(runner.pyi_dir, 'foo.pyi-1')),
+                               os.path.join(runner.pyi_dir, 'foo.pyi-1')),
         imports=os.path.join(runner.imports_dir, 'foo.imports'),
         module='foo'))
 
@@ -617,7 +617,7 @@ class TestNinjaBody(TestBase):
         action=Action.CHECK,
         input='foo.py',
         deps=' | {} {}'.format(os.path.join(runner.pyi_dir, 'foo.pyi-1'),
-                           os.path.join(runner.pyi_dir, 'bar.pyi-1')),
+                               os.path.join(runner.pyi_dir, 'bar.pyi-1')),
         imports=os.path.join(runner.imports_dir, 'foo.imports'),
         module='foo'))
 

@@ -210,6 +210,13 @@ class DisableTest(test_base.BaseTest):
       c = foo(a, b.i) # pytype: disable=attribute-error  # pytype: disable=wrong-arg-count
     """)
 
+  def test_bare_annotation(self):
+    self.Check("""
+      from typing import AnyStr
+      def f():
+        x: AnyStr  # pytype: disable=invalid-annotation
+    """)
+
 
 class AttributeErrorDisableTest(test_base.BaseTest):
   """Test attribute-error disabling."""

@@ -44,7 +44,7 @@ def dump(node, ast, annotate_fields=True,
     elif isinstance(node, list):
       lines = ["["]
       lines.extend(indent * (level + 2) + _format(x, level + 2) + ","
-                    for x in node)
+                   for x in node)
       if len(lines) > 1:
         lines.append(indent * (level + 1) + "]")
       else:

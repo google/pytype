@@ -278,7 +278,7 @@ class ErrorMatcher:
           exp = _format_error(error.lineno, code, mark)
           actual = _format_error(error.lineno, error.name)
           self._fail(
-            f"Error does not match:\nExpected: {exp}\nActual: {actual}"
+              f"Error does not match:\nExpected: {exp}\nActual: {actual}"
           )
         else:
           self._fail(f"Unexpected error:\n{error}")

@@ -454,7 +454,7 @@ class Solver:
 
   def _get_nonfalse_values(self, var):
     return {value for value, implication in self.implications[var].items()
-               if implication is not FALSE}
+            if implication is not FALSE}
 
   def _get_first_approximation(self):
     """Get all (variable, value) combinations to consider.

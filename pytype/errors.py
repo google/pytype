@@ -1086,9 +1086,8 @@ class ErrorLog(ErrorLogBase):
     if isinstance(param_or_params, abstract.BaseValue):
       return self._print_as_expected_type(param_or_params)
     else:
-      return (
-        f"[{', '.join(self._print_params_helper(p) for p in param_or_params)}]"
-      )
+      return "[{}]".format(
+          ", ".join(self._print_params_helper(p) for p in param_or_params))
 
   def wrong_annotation_parameter_count(
       self, stack, annot: abstract.BaseValue,
@@ -1290,7 +1289,7 @@ class ErrorLog(ErrorLogBase):
       # ensures that we print all of the options when 'Any' is among them.
       # We don't need to print this if there is only 1 unique type.
       print_types = {self._print_as_actual_type(v, literal=literal)
-                        for v in binding.variable.data}
+                     for v in binding.variable.data}
       if len(print_types) > 1:
         details += ("\nIn assignment of type: "
                     f"{self._join_printed_types(print_types)}")
