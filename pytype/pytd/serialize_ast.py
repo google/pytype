@@ -63,7 +63,9 @@ class SerializableTupleClass(NamedTuple):
   dependencies: List[Tuple[str, Set[str]]]
   late_dependencies: List[Tuple[str, Set[str]]]
   class_type_nodes: Optional[List[pytd.ClassType]]
-  is_package: bool
+  is_package: bool  # TODO(rechen): remove this, can be computed from src_path
+  src_path: Optional[str]
+  metadata: List[str]
 
 
 class SerializableAst(SerializableTupleClass):
@@ -83,11 +85,15 @@ class SerializableAst(SerializableTupleClass):
       visited and have their .cls set. If this attribute is None the whole AST
       will be visited and all found ClassType instances will have their .cls
       set.
+    is_package: True if the original source file was a package __init__.
+    src_path: Optionally, the filepath of the original source file.
+    metadata: A list of arbitrary string-encoded metadata.
   """
   Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
-def StoreAst(ast, filename=None, open_function=open, is_package=False):
+def StoreAst(ast, filename=None, open_function=open, is_package=False,
+             src_path=None, metadata=None):
   """Loads and stores an ast to disk.
 
   Args:
@@ -96,6 +102,8 @@ def StoreAst(ast, filename=None, open_function=open, is_package=False):
       function instead returns the pickled string.
     open_function: A custom file opening function.
     is_package: Whether the module with the given ast is a package.
+    src_path: Optionally, the filepath of the original source file.
+    metadata: A list of arbitrary string-encoded metadata.
 
   Returns:
     The pickled string, if no filename was given. (None otherwise.)
@@ -116,10 +124,15 @@ def StoreAst(ast, filename=None, open_function=open, is_package=False):
   indexer = FindClassTypesVisitor()
   ast.Visit(indexer)
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
+
+  metadata = metadata or []
+
   return pytd_utils.SavePickle(
       SerializableAst(
           ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
-          sorted(indexer.class_type_nodes), is_package=is_package),
+          sorted(indexer.class_type_nodes), is_package=is_package,
+          src_path=src_path, metadata=metadata,
+      ),
       filename, open_function=open_function)
 
 
