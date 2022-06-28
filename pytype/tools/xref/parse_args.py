@@ -34,6 +34,9 @@ def make_parser():
   parser.add_argument("--show-types", action="store_true",
                       dest="show_types", default=None,
                       help="Display inferred types.")
+  parser.add_argument("--show-kythe", action="store_true",
+                      dest="show_kythe", default=None,
+                      help="Display kythe facts.")
   # TODO(b/124802213): There should be a cleaner way to do this.
   parser.add_argument(
       "--imports_info", type=str, action="store",
