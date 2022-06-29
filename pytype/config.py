@@ -241,6 +241,11 @@ def add_pickle_options(o):
       "--precompiled-builtins", action="store",
       dest="precompiled_builtins", default=None,
       help="Use the supplied file as precompiled builtins pyi.")
+  o.add_argument(
+      "--pickle-metadata", type=str, action="store",
+      dest="pickle_metadata", default=None,
+      help=("Comma separated list of metadata strings to be saved in the "
+            "pickled file."))
 
 
 def add_infrastructure_options(o):
@@ -644,6 +649,12 @@ class Postprocessor:
     else:
       self.error("Argument %r is not a pair of non-empty file names "
                  "separated by %r" % (item, os.pathsep))
+
+  def _store_pickle_metadata(self, pickle_metadata):
+    if pickle_metadata:
+      self.output_options.pickle_metadata = pickle_metadata.split(",")
+    else:
+      self.output_options.pickle_metadata = []
 
 
 def _set_verbosity(verbosity, timestamp_logs, debug_logs):
