@@ -1,3 +1,14 @@
+Version 2022.06.30:
+
+Updates:
+* Add the option to show kythe facts in the debug indexer.
+* Add a command-line argument `pickle-metadata` to pass metadata to pytype to
+  store during serialization to a pickle file.
+
+Bug fixes:
+* Make slight improvements to --overriding-default-value-checks.
+* Preserve comments when preprocessing source code.
+
 Version 2022.06.23:
 
 Updates:

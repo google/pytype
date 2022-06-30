@@ -230,6 +230,11 @@ class PostprocessorTest(unittest.TestCase):
     options = config.Options.create(open_function=open_function)
     self.assertIs(options.open_function, open_function)
 
+  def test_pickle_metadata(self):
+    input_options = types.SimpleNamespace(pickle_metadata="meta,data",)
+    config.Postprocessor({"pickle_metadata"}, input_options).process()
+    self.assertSequenceEqual(input_options.pickle_metadata, ["meta", "data"])
+
 
 if __name__ == "__main__":
   unittest.main()

@@ -16,10 +16,14 @@ class SerializeAstTest(test_base.UnitTest):
 
   def _store_ast(
       self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None,
-      is_package=False):
+      is_package=False, metadata=None):
     if not (ast and loader):
       ast, loader = self._get_ast(temp_dir=temp_dir, module_name=module_name)
-    serialize_ast.StoreAst(ast, pickled_ast_filename, is_package=is_package)
+    serialize_ast.StoreAst(
+        ast,
+        pickled_ast_filename,
+        is_package=is_package,
+        metadata=metadata)
     module_map = {name: module.ast
                   for name, module in loader._modules.items()}
 
@@ -287,6 +291,14 @@ class SerializeAstTest(test_base.UnitTest):
       signature, = f.type.signatures
       self.assertIsNotNone(signature.return_type.cls)
 
+  def test_pickle_metadata(self):
+    with file_utils.Tempdir() as d:
+      module_name = "module1"
+      pickled_ast_filename = os.path.join(d.path, "module1.pyi.pickled")
+      self._store_ast(
+          d, module_name, pickled_ast_filename, metadata=["meta", "data"])
+      serialized_ast = pytd_utils.LoadPickle(pickled_ast_filename)
+      self.assertSequenceEqual(serialized_ast.metadata, ["meta", "data"])
 
 if __name__ == "__main__":
   unittest.main()
