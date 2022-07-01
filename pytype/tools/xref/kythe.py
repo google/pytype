@@ -90,12 +90,12 @@ class Kythe:
     self._seen_entries.add(entry)
     self.entries.append(entry)
 
-  def vname(self, signature, filepath=None):
+  def vname(self, signature, filepath=None, root=None):
     return VName(
         signature=signature,
         path=filepath or self.path,
         language="python",
-        root=self.root,
+        root=root or self.root,
         corpus=self.corpus)
 
   def stdlib_vname(self, signature, filepath=None):
@@ -202,6 +202,7 @@ def _make_defn_vname(kythe, index, defn):
   if isinstance(defn, indexer.Remote):
     remote = defn.module
     if remote in index.resolved_modules:
+      is_generated = "generated" in index.resolved_modules[remote].metadata
       if remote in index.imports:
         # The canonical path from the imports_map is the best bet for
         # module->filepath translation.
@@ -218,6 +219,8 @@ def _make_defn_vname(kythe, index, defn):
       if path.startswith("pytd:"):
         return kythe.stdlib_vname(
             sig, "pytd:" + index.resolved_modules[remote].module_name)
+      elif is_generated:
+        return kythe.vname(sig, path, root="generated")
       else:
         return kythe.vname(sig, path)
     else:

@@ -5,7 +5,7 @@ import logging
 import os
 import pickle
 
-from typing import Dict, Iterable, Optional, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 from pytype import module_utils
 from pytype import utils
@@ -49,6 +49,7 @@ class ResolvedModule:
   module_name: str
   filename: str
   ast: pytd.TypeDeclUnit
+  metadata: List[str]
 
 
 class Module:
@@ -66,18 +67,20 @@ class Module:
     pickle: The AST as a pickled string. As long as this field is not None, the
       ast will be None.
     has_unresolved_pointers: Whether all ClassType pointers have been filled in
+    metadata: The metadata extracted from the picked file.
   """
 
   _INIT_NAMES = ("__init__.pyi", f"__init__.{pytd_utils.PICKLE_EXT}")
 
   # pylint: disable=redefined-outer-name
-  def __init__(self, module_name, filename, ast,
-               pickle=None, has_unresolved_pointers=True):
+  def __init__(self, module_name, filename, ast, metadata=None, pickle=None,
+               has_unresolved_pointers=True):
     self.module_name = module_name
     self.filename = filename
     self.ast = ast
     self.pickle = pickle
     self.has_unresolved_pointers = has_unresolved_pointers
+    self.metadata = metadata or []
   # pylint: enable=redefined-outer-name
 
   def needs_unpickling(self):
@@ -160,7 +163,7 @@ class _ModuleMap:
     for name, mod in self._modules.items():
       if not mod.has_unresolved_pointers:
         resolved_modules[name] = ResolvedModule(
-            mod.module_name, mod.filename, mod.ast)
+            mod.module_name, mod.filename, mod.ast, mod.metadata)
     return resolved_modules
 
   def _base_modules(self):
@@ -800,7 +803,8 @@ class PickledPyiLoader(Loader):
     dependencies = {d: names for d, names in loaded_ast.dependencies
                     if d != loaded_ast.ast.name}
     loaded_ast = serialize_ast.EnsureAstName(loaded_ast, module_name, fix=True)
-    self._modules[module_name] = Module(module_name, filename, loaded_ast.ast)
+    self._modules[module_name] = Module(
+        module_name, filename, loaded_ast.ast, metadata=loaded_ast.metadata)
     self._load_ast_dependencies(dependencies, lookup_ast=mod_ast,
                                 lookup_ast_name=module_name)
     try:
