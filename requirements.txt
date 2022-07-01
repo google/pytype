@@ -2,14 +2,13 @@
 # Make sure you also install the non-Python dependencies described in
 # https://github.com/google/pytype/blob/master/CONTRIBUTING.md#pytype-dependencies.
 attrs>=21.4.0
-dataclasses; python_version < '3.7'
 importlab>=0.7
-libcst
+libcst>=0.4.5
 networkx<2.8.4
 ninja>=1.10.0.post2
-pybind11>=2.6.0rc3
-pydot
-pylint
-tabulate
-toml
+pybind11>=2.9.2
+pydot>=1.4.2
+pylint>=2.14.4
+tabulate>=0.8.10
+toml>=0.10.2
 typed_ast>=1.5.0; python_version < '3.8'
