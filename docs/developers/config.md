@@ -184,7 +184,7 @@ copies options from the raw `input_options` to a final `output_options`. The
 3. Populate some options that do not correspond to inputs. For example
    `_store_python_version` sets both `output_options.python_version` and
    `output_options.python_exe`. The latter is derived from the python version
-   and cached in `options.python_exe`, but it can not be set indepedently.
+   and cached in `options.python_exe`, but it can not be set independently.
 
 
 ## Adding a new option
