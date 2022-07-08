@@ -15,6 +15,7 @@ class Args:
   root: str
   corpus: str
   path: str
+  skip_stdlib: bool = False
 
 
 # Kythe nodes
@@ -52,10 +53,12 @@ class Kythe:
       self.root = args.root
       self.corpus = args.corpus
       self.path = args.path or source.filename
+      self.skip_stdlib = args.skip_stdlib
     else:
       self.root = ""
       self.corpus = ""
       self.path = source.filename
+      self.skip_stdlib = False
     self.entries = []
     self._seen_entries = set()
     self.file_vname = self._add_file(source.text)
@@ -166,8 +169,9 @@ def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
         pass
       else:
         alias_vname = _make_defn_vname(kythe, index, alias)
-        kythe.add_edge(
-            source=defn_vname, target=alias_vname, edge_name="aliases")
+        if alias_vname:
+          kythe.add_edge(
+              source=defn_vname, target=alias_vname, edge_name="aliases")
 
       # Emit a docstring if we have one.
       doc = defn.doc
@@ -217,6 +221,10 @@ def _make_defn_vname(kythe, index, defn):
       else:
         sig = "module." + defn.name
       if path.startswith("pytd:"):
+        if kythe.skip_stdlib:
+          # Skip builtin and stdlib imports since we don't have a filepath.
+          # TODO(mdemello): Link to the typeshed definition
+          return None
         return kythe.stdlib_vname(
             sig, "pytd:" + index.resolved_modules[remote].module_name)
       elif is_generated:

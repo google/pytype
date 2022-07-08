@@ -42,6 +42,10 @@ def make_parser():
       "--imports_info", type=str, action="store",
       dest="imports_info", default=None,
       help="Information for mapping import .pyi to files. ")
+  # Don't index builtins and stdlib.
+  parser.add_argument("--skip-stdlib", action="store_true",
+                      dest="skip_stdlib", default=None,
+                      help="Display inferred types.")
   # Add options from pytype-single.
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
@@ -76,5 +80,7 @@ def parse_args(argv):
   pytype_options = pytype_config.Options(cli_args, command_line=True)
   pytype_options.tweak(**parser.get_pytype_kwargs(args))
   kythe_args = kythe.Args(
-      corpus=args.kythe_corpus, root=args.kythe_root, path=args.kythe_path)
+      corpus=args.kythe_corpus, root=args.kythe_root, path=args.kythe_path,
+      skip_stdlib=args.skip_stdlib
+  )
   return (args, kythe_args, pytype_options)

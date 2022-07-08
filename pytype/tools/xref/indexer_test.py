@@ -25,13 +25,15 @@ class IndexerTestMixin:
       options.tweak(**args)
       return indexer.process_file(options, preserve_pytype_vm=True)
 
-  def generate_kythe(self, code):
+  def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
-      kythe_args = kythe.Args(corpus="corpus", root="root", path="path")
+      k_args = {k: k for k in ["corpus", "root", "path"]}
+      k_args.update(kwargs)
+      kythe_args = kythe.Args(**k_args)
       ix = indexer.process_file(options)
       kg = kythe.generate_graph(ix, kythe_args)
       # Collect all the references from the kythe graph.
@@ -195,6 +197,19 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
     # Other nodes should have language="python"
     node = kythe_index[3]
     self.assertEqual(node["source"]["language"], "python")
+
+  def test_kythe_skip_stdlib(self):
+    code = textwrap.dedent("""
+      import os
+    """)
+    kythe_index = self.generate_kythe(code)
+    imp = [x for x in kythe_index
+           if x.get("edge_kind") == "/kythe/edge/ref/imports"]
+    self.assertEqual(len(imp), 1)
+    kythe_index = self.generate_kythe(code, skip_stdlib=True)
+    imp = [x for x in kythe_index
+           if x.get("edge_kind") == "/kythe/edge/ref/imports"]
+    self.assertEmpty(imp)
 
   def test_multiline_attr(self):
     # Test that lookahead doesn't crash.
