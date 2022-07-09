@@ -2,10 +2,10 @@
 
 import io
 import math
-import tempfile
 import time
 
 from pytype import metrics
+from pytype.tools import tempfile as compatible_tempfile
 
 import unittest
 
@@ -296,7 +296,7 @@ class MetricsContextTest(unittest.TestCase):
     self._counter = metrics.Counter("foo")
 
   def test_enabled(self):
-    with tempfile.NamedTemporaryFile() as out:
+    with compatible_tempfile.NamedTemporaryFile() as out:
       out.close()
       with metrics.MetricsContext(out.name):
         self._counter.inc()

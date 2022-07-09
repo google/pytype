@@ -1,12 +1,11 @@
 """Tests for pytd_tool (pytd/main.py)."""
 
-import os
 import sys
 import textwrap
 from pytype import file_utils
 from pytype.pytd import main as pytd_tool
 import unittest
-
+from pytype.tools import path_tools
 
 class TestPytdTool(unittest.TestCase):
   """Test pytd/main.py."""
@@ -71,7 +70,7 @@ class TestPytdTool(unittest.TestCase):
         def f(x: str) -> str: ...
       """).strip()
       inpath = d.create_file("in.pytd", src)
-      outpath = os.path.join(d.path, "out.pytd")
+      outpath = path_tools.join(d.path, "out.pytd")
       sys.argv = ["main.py", inpath, outpath]
       pytd_tool.main()
       with open(outpath) as f:
@@ -87,7 +86,7 @@ class TestPytdTool(unittest.TestCase):
         @overload
         def f(x: str) -> str: ...
       """)
-      outpath = os.path.join(d.path, "out.pytd")
+      outpath = path_tools.join(d.path, "out.pytd")
       sys.argv = ["main.py", "--optimize", inpath, outpath]
       pytd_tool.main()
       with open(outpath) as f:

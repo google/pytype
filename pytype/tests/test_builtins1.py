@@ -326,7 +326,7 @@ class BuiltinTests(test_base.BaseTest):
     ty = self.Infer("""
       import signal
       def f():
-        signal.signal(signal.SIGALRM, 0)
+        signal.signal(signal.SIGTERM, 0)
     """)
     self.assertTypesMatchPytd(ty, """
       import signal

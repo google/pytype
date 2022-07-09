@@ -363,6 +363,10 @@ def skipFromPy(version, reason):
   return unittest.skipUnless(sys.version_info[:2] < version, reason)
 
 
+def skipOnWin32(reason):
+  return unittest.skipIf(sys.platform == 'win32', reason)
+
+
 def make_context(options):
   """Create a minimal context for tests."""
   return context.Context(options=options, loader=load_pytd.Loader(options))

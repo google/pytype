@@ -2,7 +2,6 @@
 
 import contextlib
 import logging
-import os.path
 import sys
 import textwrap
 from typing import Tuple
@@ -20,6 +19,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_utils
+from pytype.tools import path_tools
 
 import unittest
 
@@ -461,7 +461,7 @@ class BaseTest(unittest.TestCase):
           else:
             path, contents = dep
             opts = {}
-          base, ext = os.path.splitext(path)
+          base, ext = path_tools.splitext(path)
           if ext == ".pyi":
             filepath = d.create_file(path, contents)
           elif ext == ".py":

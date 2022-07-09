@@ -76,7 +76,8 @@ def main():
     with options.open_function(options.exec_log, "w") as f:
       f.write(" ".join(sys.argv))
 
-  if options.timeout is not None:
+  # TODO: timeout is temporarily unavailable
+  if options.timeout is not None and sys.platform != 'win32':
     signal.alarm(options.timeout)
 
   with _ProfileContext(options.profile):

@@ -11,6 +11,7 @@ from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import utils
 from pytype.tools import config
+from pytype.tools import path_tools
 
 
 # Args:
@@ -200,7 +201,7 @@ class FileConfig:
     cfg = config.ConfigSection.create_from_file(filepath, 'pytype')
     if not cfg:
       return None
-    converters = make_converters(cwd=os.path.dirname(filepath))
+    converters = make_converters(cwd=path_tools.dirname(filepath))
     for k, v in cfg.items():
       if k in converters:
         v = converters[k](v)
@@ -211,7 +212,7 @@ class FileConfig:
 def generate_sample_config_or_die(filename, pytype_single_args):
   """Write out a sample config file."""
 
-  if os.path.exists(filename):
+  if path_tools.exists(filename):
     logging.critical('Not overwriting existing file: %s', filename)
     sys.exit(1)
 
@@ -263,7 +264,7 @@ def read_config_file_or_die(filepath):
       sys.exit(1)
   else:
     # Try reading from setup.cfg.
-    filepath = config.find_config_file(os.getcwd())
+    filepath = config.find_config_file(path_tools.getcwd())
     if filepath and ret.read_from_file(filepath):
       logging.info('Reading config from: %s', filepath)
     else:

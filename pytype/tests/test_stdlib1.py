@@ -1,7 +1,7 @@
 """Tests of selected stdlib functions."""
 
 from pytype import file_utils
-from pytype.tests import test_base
+from pytype.tests import test_base, test_utils
 
 
 class StdlibTests(test_base.BaseTest):
@@ -67,6 +67,7 @@ class StdlibTests(test_base.BaseTest):
       import warnings
     """)
 
+  @test_utils.skipOnWin32("os.pathconf is not supported on Windows")
   def test_path_conf(self):
     self.Check("""
       import os

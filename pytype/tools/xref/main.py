@@ -20,7 +20,7 @@ def main():
     print(str(e), file=sys.stderr)
     sys.exit(1)
 
-  if options.timeout is not None:
+  if options.timeout is not None and sys.platform != 'win32':
     signal.alarm(options.timeout)
 
   try:

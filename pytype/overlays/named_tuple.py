@@ -480,7 +480,8 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     # Since we might have classvars or methods referring to the class itself,
     # we need to insert the just-constructed class into the convert cache.
-    ctx.convert._convert_cache[("constant", pytd_cls, type(pytd_cls))] = cls  # pylint: disable=protected-access
+    ctx.convert._convert_cache[("constant", pytd_cls, type(
+      pytd_cls))] = cls  # pylint: disable=protected-access
 
     # Set the official class name.
     cls.update_official_name(cls.name)

@@ -1,6 +1,6 @@
 """Tests for control flow (with statements, loops, exceptions, etc.)."""
 
-from pytype.tests import test_base
+from pytype.tests import test_base, test_utils
 
 
 class FlowTest(test_base.BaseTest):
@@ -327,6 +327,7 @@ class FlowTest(test_base.BaseTest):
       def bar() -> complex: ...
     """)
 
+  @test_utils.skipOnWin32("os.getgroups() is not supported on Windows")
   def test_loop_over_list_of_lists(self):
     ty = self.Infer("""
       import os

@@ -3,7 +3,6 @@
 import collections
 import csv
 import io
-import os
 import textwrap
 from unittest import mock
 
@@ -11,6 +10,7 @@ from pytype import errors
 from pytype import file_utils
 from pytype import state as frame_state
 from pytype.tests import test_utils
+from pytype.tools import path_tools
 
 import unittest
 
@@ -290,7 +290,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
 
 class ErrorDocTest(unittest.TestCase):
-  ERROR_FILE_PATH = os.path.join(os.path.dirname(errors.__file__),
+  ERROR_FILE_PATH = path_tools.join(path_tools.dirname(errors.__file__),
                                  "../docs/errors.md")
 
   def _check_and_get_documented_errors(self):

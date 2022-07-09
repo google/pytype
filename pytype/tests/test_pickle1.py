@@ -7,7 +7,7 @@ from pytype import file_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
-from pytype.tests import test_base
+from pytype.tests import test_base, test_utils
 
 
 class PickleTest(test_base.BaseTest):
@@ -48,6 +48,8 @@ class PickleTest(test_base.BaseTest):
         r = ...  # type: Type[type]
       """)
 
+  @test_utils.skipOnWin32("asyncore.file_dispatcher is not supported \
+    on Windows")
   def test_copy_class_into_output(self):
     pickled_foo = self.Infer("""
       import asyncore

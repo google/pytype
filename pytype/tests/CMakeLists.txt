@@ -20,6 +20,7 @@ py_library(
     pytype.directors.directors
     pytype.pyi.parser
     pytype.pytd.pytd
+    pytype.tools.path_tools
 )
 
 py_library(
@@ -390,6 +391,7 @@ py_test(
     .test_base
     pytype.overlays.overlays
     pytype.pytd.pytd
+    pytype.tools.path_tools
 )
 
 py_test(
@@ -421,6 +423,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
+    pytype.tools.path_tools
 )
 
 py_test(
@@ -1124,6 +1127,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
+    pytype.tools.path_tools
 )
 
 py_test(

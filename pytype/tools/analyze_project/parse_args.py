@@ -14,7 +14,7 @@ _ARG_PREFIX = '--'
 
 def _auto_detect_cpus():
   try:
-    return len(os.sched_getaffinity(0))
+    return len(os.sched_getaffinity(0)) # pytype: disable=module-attr
   except AttributeError:
     return os.cpu_count()
 

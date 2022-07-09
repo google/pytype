@@ -1,12 +1,11 @@
 """Initializes and checks the environment needed to run pytype."""
 
 import logging
-import os
 import sys
 from typing import List
 
 from pytype.pytd import typeshed
-from pytype.tools import runner
+from pytype.tools import runner, path_tools
 
 
 def check_pytype_or_die():
@@ -20,7 +19,8 @@ def check_python_version(exe: List[str], required):
   """Check if exe is a python executable with the required version."""
   try:
     # python --version outputs to stderr for earlier versions
-    _, out, err = runner.BinaryRun(exe + ["--version"]).communicate()  # pylint: disable=unpacking-non-sequence
+    _, out, err = runner.BinaryRun(
+      exe + ["--version"]).communicate()  # pylint: disable=unpacking-non-sequence
     version = out or err
     version = version.decode("utf-8")
     if version.startswith(f"Python {required}"):
@@ -67,14 +67,14 @@ def compute_pythonpath(filenames):
   """Compute a list of dependency paths."""
   paths = set()
   for f in filenames:
-    containing_dir = os.path.dirname(f)
-    if os.path.exists(os.path.join(containing_dir, "__init__.py")):
+    containing_dir = path_tools.dirname(f)
+    if path_tools.exists(path_tools.join(containing_dir, "__init__.py")):
       # If the file's containing directory has an __init__.py, we assume that
       # the file is in a (sub)package. Add the containing directory of the
       # top-level package so that 'from package import module' works.
-      package_parent = os.path.dirname(containing_dir)
-      while os.path.exists(os.path.join(package_parent, "__init__.py")):
-        package_parent = os.path.dirname(package_parent)
+      package_parent = path_tools.dirname(containing_dir)
+      while path_tools.exists(path_tools.join(package_parent, "__init__.py")):
+        package_parent = path_tools.dirname(package_parent)
       p = package_parent
     else:
       # Otherwise, the file is a standalone script. Add its containing directory

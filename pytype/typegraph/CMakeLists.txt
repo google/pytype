@@ -24,13 +24,23 @@ pybind11_add_module(
 
 # pybind11_add_module changes the name of the output library, which makes
 # pytype unable to discover it.
-set_target_properties(
+if (WIN32) 
+  set_target_properties(
+    pytype.typegraph.cfg
+    PROPERTIES
+    PREFIX ""
+    OUTPUT_NAME cfg
+  )
+else()
+  set_target_properties(
     pytype.typegraph.cfg
     PROPERTIES
     PREFIX ""
     SUFFIX ".so"
     OUTPUT_NAME cfg
-)
+  )
+endif()
+
 
 py_library(
   NAME

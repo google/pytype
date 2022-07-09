@@ -23,6 +23,7 @@ import math
 import re
 import time
 import tracemalloc
+import os
 
 
 # Metric serialization/deserialization code, taking advantage of the fact that
@@ -86,9 +87,11 @@ def _prepare_for_test(enabled=True):
   _enabled = enabled
 
 
+_platform_timer = time.time if os.name == 'nt' else time.process_time
+
 def get_cpu_clock():
   """Returns CPU clock to keep compatibility with various Python versions."""
-  return time.process_time()
+  return _platform_timer()
 
 
 def get_metric(name, constructor, *args, **kwargs):

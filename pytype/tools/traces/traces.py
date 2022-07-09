@@ -270,10 +270,12 @@ class MatchAstVisitor(visitor.BaseVisitor):
         self.source.traces[line] for line in range(lineno, lineno + num_lines)):
       if maxmatch == 0:
         break
-      if (id(tr) not in self._matched and tr.op in ops and
+      m_matched = self._matched
+      assert m_matched is not None
+      if (id(tr) not in m_matched and tr.op in ops and
           symbol.match(tr.symbol)):
         maxmatch -= 1
-        self._matched.add(id(tr))
+        m_matched.add(id(tr))
         yield tr
 
   def _get_match_location(self, node, name=None):

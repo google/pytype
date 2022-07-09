@@ -53,6 +53,7 @@ py_library(
     utils.py
   DEPS
     pytype.utils
+    pytype.tools.path_tools
 )
 
 py_library(

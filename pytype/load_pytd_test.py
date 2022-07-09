@@ -5,6 +5,7 @@ import dataclasses
 import io
 import os
 import textwrap
+import sys
 
 from pytype import config
 from pytype import file_utils
@@ -15,6 +16,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_base
+from pytype.tools import path_tools
 
 import unittest
 
@@ -56,6 +58,15 @@ class ImportPathsTest(_LoaderTest):
         ("../../foo.py", ["../.."], "foo"),
         ("../../foo.py", [".."], None)
     ]
+    replaced_test_cased = []
+    for a, b, c in test_cases:
+      replaced_test_cased.append((
+        file_utils.replace_seperator(a),
+        list(map(file_utils.replace_seperator, b)),
+        c
+      ))
+    test_cases = replaced_test_cased
+
     for filename, pythonpath, expected in test_cases:
       module = module_utils.get_module_name(filename, pythonpath)
       self.assertEqual(module, expected)
@@ -68,7 +79,8 @@ class ImportPathsTest(_LoaderTest):
 
   def test_basic(self):
     with file_utils.Tempdir() as d:
-      d.create_file("path/to/some/module.pyi", "def foo(x:int) -> str: ...")
+      d.create_file(file_utils.replace_seperator(
+        "path/to/some/module.pyi"), "def foo(x:int) -> str: ...")
       loader = load_pytd.Loader(config.Options.create(
           module_name="base", python_version=self.python_version,
           pythonpath=d.path))
@@ -78,11 +90,13 @@ class ImportPathsTest(_LoaderTest):
   def test_path(self):
     with file_utils.Tempdir() as d1:
       with file_utils.Tempdir() as d2:
-        d1.create_file("dir1/module1.pyi", "def foo1() -> str: ...")
-        d2.create_file("dir2/module2.pyi", "def foo2() -> str: ...")
+        d1.create_file(file_utils.replace_seperator(
+          "dir1/module1.pyi"), "def foo1() -> str: ...")
+        d2.create_file(file_utils.replace_seperator(
+          "dir2/module2.pyi"), "def foo2() -> str: ...")
         loader = load_pytd.Loader(config.Options.create(
             module_name="base", python_version=self.python_version,
-            pythonpath=f"{d1.path}:{d2.path}"))
+            pythonpath=f"{d1.path}{os.pathsep}{d2.path}"))
         module1 = loader.import_name("dir1.module1")
         module2 = loader.import_name("dir2.module2")
         self.assertTrue(module1.Lookup("dir1.module1.foo1"))
@@ -90,7 +104,8 @@ class ImportPathsTest(_LoaderTest):
 
   def test_init(self):
     with file_utils.Tempdir() as d1:
-      d1.create_file("baz/__init__.pyi", "x = ... # type: int")
+      d1.create_file(file_utils.replace_seperator(
+        "baz/__init__.pyi"), "x = ... # type: int")
       loader = load_pytd.Loader(config.Options.create(
           module_name="base", python_version=self.python_version,
           pythonpath=d1.path))
@@ -117,12 +132,12 @@ class ImportPathsTest(_LoaderTest):
   def test_no_init_imports_map(self):
     with file_utils.Tempdir() as d:
       d.create_directory("baz")
-      os.chdir(d.path)
-      loader = load_pytd.Loader(config.Options.create(
-          module_name="base", python_version=self.python_version,
-          pythonpath=""))
-      loader.options.tweak(imports_map={})
-      self.assertFalse(loader.import_name("baz"))
+      with file_utils.cd(d.path):
+        loader = load_pytd.Loader(config.Options.create(
+            module_name="base", python_version=self.python_version,
+            pythonpath=""))
+        loader.options.tweak(imports_map={})
+        self.assertFalse(loader.import_name("baz"))
 
   def test_stdlib(self):
     loader = load_pytd.Loader(config.Options.create(
@@ -189,16 +204,19 @@ class ImportPathsTest(_LoaderTest):
       AnyPath = PathLike[str]
     """) as loader:
       loader.finish_and_verify_ast(
-          loader.load_file("target", os.path.join(
+          loader.load_file("target", path_tools.join(
               loader.options.pythonpath[0], "target.pyi")))
 
   def test_relative(self):
     with file_utils.Tempdir() as d:
       d.create_file("__init__.pyi", "base = ...  # type: str")
-      d.create_file("path/__init__.pyi", "path = ...  # type: str")
-      d.create_file("path/to/__init__.pyi", "to = ...  # type: str")
-      d.create_file("path/to/some/__init__.pyi", "some = ...  # type: str")
-      d.create_file("path/to/some/module.pyi", "")
+      d.create_file(file_utils.replace_seperator(
+        "path/__init__.pyi"), "path = ...  # type: str")
+      d.create_file(file_utils.replace_seperator(
+        "path/to/__init__.pyi"), "to = ...  # type: str")
+      d.create_file(file_utils.replace_seperator(
+        "path/to/some/__init__.pyi"), "some = ...  # type: str")
+      d.create_file(file_utils.replace_seperator("path/to/some/module.pyi"), "")
       loader = load_pytd.Loader(config.Options.create(
           module_name="path.to.some.module", python_version=self.python_version,
           pythonpath=d.path))
@@ -218,8 +236,10 @@ class ImportPathsTest(_LoaderTest):
   def test_prefer_typeshed(self):
     with file_utils.Tempdir() as d:
       # Override two modules from typeshed
-      d.create_file("typing_extensions/__init__.pyi", "foo: str = ...")
-      d.create_file("crypt/__init__.pyi", "foo: str = ...")
+      d.create_file(file_utils.replace_seperator(
+        "typing_extensions/__init__.pyi"), "foo: str = ...")
+      d.create_file(file_utils.replace_seperator(
+        "crypt/__init__.pyi"), "foo: str = ...")
       loader = load_pytd.Loader(config.Options.create(
           module_name="x", python_version=self.python_version,
           pythonpath=d.path))
@@ -254,12 +274,13 @@ class ImportPathsTest(_LoaderTest):
       foo_path = d.create_file("foo.pyi", "class X: ...")
       bar_path = d.create_file("bar.pyi", "X = ...  # type: another.foo.X")
       # Map the same pyi file under two module paths.
+      null_device = "/dev/null" if sys.platform != "win32" else "NUL"
       imports_map = {
           "foo": foo_path,
-          "another/foo": foo_path,
+          file_utils.replace_seperator("another/foo"): foo_path,
           "bar": bar_path,
-          "empty1": "/dev/null",
-          "empty2": "/dev/null",
+          "empty1": null_device,
+          "empty2": null_device,
       }
       loader = load_pytd.Loader(config.Options.create(
           module_name="base", python_version=self.python_version,
@@ -286,8 +307,8 @@ class ImportPathsTest(_LoaderTest):
 
   def test_package_relative_import(self):
     with file_utils.Tempdir() as d:
-      d.create_file("pkg/foo.pyi", "class X: ...")
-      d.create_file("pkg/bar.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/foo.pyi"), "class X: ...")
+      d.create_file(file_utils.replace_seperator("pkg/bar.pyi"), """
           from .foo import X
           y = ...  # type: X""")
       loader = load_pytd.Loader(config.Options.create(
@@ -299,12 +320,12 @@ class ImportPathsTest(_LoaderTest):
 
   def test_directory_import(self):
     with file_utils.Tempdir() as d:
-      d.create_file("pkg/sub/__init__.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/__init__.pyi"), """
           from .foo import *
           from .bar import *""")
-      d.create_file("pkg/sub/foo.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/foo.pyi"), """
           class X: pass""")
-      d.create_file("pkg/sub/bar.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/bar.pyi"), """
           from .foo import X
           y = ...  # type: X""")
       loader = load_pytd.Loader(config.Options.create(
@@ -316,14 +337,14 @@ class ImportPathsTest(_LoaderTest):
   def test_diamond_import(self):
     """Should not fail on importing a module via two paths."""
     with file_utils.Tempdir() as d:
-      d.create_file("pkg/sub/__init__.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/__init__.pyi"), """
           from .foo import *
           from .bar import *""")
-      d.create_file("pkg/sub/foo.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/foo.pyi"), """
           from .baz import X""")
-      d.create_file("pkg/sub/bar.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/bar.pyi"), """
           from .baz import X""")
-      d.create_file("pkg/sub/baz.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/sub/baz.pyi"), """
           class X: ...""")
       loader = load_pytd.Loader(config.Options.create(
           module_name="pkg", python_version=self.python_version,
@@ -333,7 +354,8 @@ class ImportPathsTest(_LoaderTest):
 
   def test_get_resolved_modules(self):
     with file_utils.Tempdir() as d:
-      filename = d.create_file("dir/module.pyi", "def foo() -> str: ...")
+      filename = d.create_file(file_utils.replace_seperator(
+        "dir/module.pyi"), "def foo() -> str: ...")
       loader = load_pytd.Loader(config.Options.create(
           python_version=self.python_version, pythonpath=d.path))
       ast = loader.import_name("dir.module")
@@ -346,13 +368,13 @@ class ImportPathsTest(_LoaderTest):
 
   def test_circular_import(self):
     with file_utils.Tempdir() as d:
-      d.create_file("os2/__init__.pyi", """
+      d.create_file(file_utils.replace_seperator("os2/__init__.pyi"), """
         from . import path as path
         _PathType = path._PathType
         def utime(path: _PathType) -> None: ...
         class stat_result: ...
       """)
-      d.create_file("os2/path.pyi", """
+      d.create_file(file_utils.replace_seperator("os2/path.pyi"), """
         import os2
         _PathType = bytes
         def samestat(stat1: os2.stat_result) -> bool: ...
@@ -365,13 +387,13 @@ class ImportPathsTest(_LoaderTest):
 
   def test_circular_import_with_external_type(self):
     with file_utils.Tempdir() as d:
-      d.create_file("os2/__init__.pyi", """
+      d.create_file(file_utils.replace_seperator("os2/__init__.pyi"), """
         from posix2 import stat_result as stat_result
         from . import path as path
         _PathType = path._PathType
         def utime(path: _PathType) -> None: ...
       """)
-      d.create_file("os2/path.pyi", """
+      d.create_file(file_utils.replace_seperator("os2/path.pyi"), """
         import os2
         _PathType = bytes
         def samestate(stat1: os2.stat_result) -> bool: ...
@@ -431,8 +453,8 @@ class ImportPathsTest(_LoaderTest):
 
   def test_submodule_reexport(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo/bar.pyi", "")
-      d.create_file("foo/__init__.pyi", """
+      d.create_file(file_utils.replace_seperator("foo/bar.pyi"), "")
+      d.create_file(file_utils.replace_seperator("foo/__init__.pyi"), """
         from . import bar as bar
       """)
       loader = load_pytd.Loader(config.Options.create(
@@ -442,8 +464,8 @@ class ImportPathsTest(_LoaderTest):
 
   def test_submodule_rename(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo/bar.pyi", "")
-      d.create_file("foo/__init__.pyi", """
+      d.create_file(file_utils.replace_seperator("foo/bar.pyi"), "")
+      d.create_file(file_utils.replace_seperator("foo/__init__.pyi"), """
         from . import bar as baz
       """)
       loader = load_pytd.Loader(config.Options.create(
@@ -453,10 +475,10 @@ class ImportPathsTest(_LoaderTest):
 
   def test_typing_reexport(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo.pyi", """
+      d.create_file(file_utils.replace_seperator("foo.pyi"), """
         from typing import List as List
       """)
-      d.create_file("bar.pyi", """
+      d.create_file(file_utils.replace_seperator("bar.pyi"), """
         from foo import *
         def f() -> List[int]: ...
       """)
@@ -504,8 +526,9 @@ class ImportPathsTest(_LoaderTest):
 
   def test_import_class_from_parent_module(self):
     with file_utils.Tempdir() as d:
-      d.create_file("foo/__init__.pyi", "class Foo: ...")
-      d.create_file("foo/bar.pyi", """
+      d.create_file(file_utils.replace_seperator(
+        "foo/__init__.pyi"), "class Foo: ...")
+      d.create_file(file_utils.replace_seperator("foo/bar.pyi"), """
         from . import Foo
         class Bar(Foo): ...
       """)
@@ -646,7 +669,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
     """)
 
   def _get_path(self, tempdir, filename):
-    return os.path.join(tempdir.path, filename)
+    return path_tools.join(tempdir.path, filename)
 
   def _load_ast(self, tempdir, module):
     loader = load_pytd.Loader(config.Options.create(
@@ -711,12 +734,14 @@ class PickledPyiLoaderTest(test_base.UnitTest):
 
   def test_package_relative_import(self):
     with file_utils.Tempdir() as d:
-      d.create_file("pkg/foo.pyi", "class X: ...")
-      d.create_file("pkg/bar.pyi", """
+      d.create_file(file_utils.replace_seperator("pkg/foo.pyi"), "class X: ...")
+      d.create_file(file_utils.replace_seperator("pkg/bar.pyi"), """
           from .foo import X
           y = ...  # type: X""")
-      foo = _Module(module_name="pkg.foo", file_name="pkg/foo.pyi")
-      bar = _Module(module_name="pkg.bar", file_name="pkg/bar.pyi")
+      foo = _Module(module_name="pkg.foo",
+                    file_name=file_utils.replace_seperator("pkg/foo.pyi"))
+      bar = _Module(module_name="pkg.bar",
+                    file_name=file_utils.replace_seperator("pkg/bar.pyi"))
       loader, _ = self._load_ast(d, module=bar)
       self._pickle_modules(loader, d, foo, bar)
       loaded_ast = self._load_pickled_module(d, bar)

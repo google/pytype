@@ -1,8 +1,7 @@
 """Utilities for xref."""
 
-import os
-
 from pytype import module_utils
+from pytype.tools import path_tools
 
 
 def get_module_filepath(module_filename):
@@ -10,9 +9,9 @@ def get_module_filepath(module_filename):
 
   def _clean(path):
     """Change extension to .py."""
-    prefix, fname = os.path.split(path)
-    fname, _ = os.path.splitext(fname)
-    path = os.path.join(prefix, fname + ".py")
+    prefix, fname = path_tools.split(path)
+    fname, _ = path_tools.splitext(fname)
+    path = path_tools.join(prefix, fname + ".py")
     return path
 
   return _clean(module_filename)

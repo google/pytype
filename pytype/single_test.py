@@ -6,10 +6,9 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 import textwrap
 
-from pytype import config
+from pytype import config, file_utils
 from pytype import single
 from pytype import utils
 from pytype.pyi import parser
@@ -17,6 +16,8 @@ from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd_utils
 from pytype.pytd import typeshed
 from pytype.tests import test_base
+from pytype.tools import tempfile as compatible_tempfile
+from pytype.tools import path_tools
 
 import unittest
 
@@ -30,13 +31,13 @@ class PytypeTest(test_base.UnitTest):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-    cls.pytype_dir = os.path.dirname(os.path.dirname(parser.__file__))
+    cls.pytype_dir = path_tools.dirname(path_tools.dirname(parser.__file__))
 
   def setUp(self):
     super().setUp()
     self._reset_pytype_args()
-    self.tmp_dir = tempfile.mkdtemp()
-    self.errors_csv = os.path.join(self.tmp_dir, "errors.csv")
+    self.tmp_dir = compatible_tempfile.mkdtemp()
+    self.errors_csv = path_tools.join(self.tmp_dir, "errors.csv")
 
   def tearDown(self):
     super().tearDown()
@@ -50,12 +51,13 @@ class PytypeTest(test_base.UnitTest):
     }
 
   def _data_path(self, filename):
-    if os.path.dirname(filename) == self.tmp_dir:
+    if path_tools.dirname(filename) == self.tmp_dir:
       return filename
-    return os.path.join(self.pytype_dir, "test_data/", filename)
+    return path_tools.join(
+      self.pytype_dir, file_utils.replace_seperator("test_data/"), filename)
 
   def _tmp_path(self, filename):
-    return os.path.join(self.tmp_dir, filename)
+    return path_tools.join(self.tmp_dir, filename)
 
   def _make_py_file(self, contents):
     return self._make_file(contents, extension=".py")
@@ -69,7 +71,7 @@ class PytypeTest(test_base.UnitTest):
     return path
 
   def _create_pytype_subprocess(self, pytype_args_dict):
-    pytype_exe = os.path.join(self.pytype_dir, "pytype")
+    pytype_exe = path_tools.join(self.pytype_dir, "pytype")
     pytype_args = [pytype_exe]
     for arg, value in pytype_args_dict.items():
       if value is not self.INCLUDE:
@@ -196,7 +198,7 @@ class PytypeTest(test_base.UnitTest):
                                      self._parse_string(expected_pyi)), message)
 
   def generate_pickled_simple_file(self, pickle_name, verify_pickle=True):
-    pickled_location = os.path.join(self.tmp_dir, pickle_name)
+    pickled_location = path_tools.join(self.tmp_dir, pickle_name)
     self.pytype_args["--pythonpath"] = self.tmp_dir
     self.pytype_args["--pickle-output"] = self.INCLUDE
     self.pytype_args["--module-name"] = "simple"
@@ -206,7 +208,7 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=0)
-    self.assertTrue(os.path.exists(pickled_location))
+    self.assertTrue(path_tools.exists(pickled_location))
     return pickled_location
 
   def test_run_pytype(self):
@@ -218,7 +220,7 @@ class PytypeTest(test_base.UnitTest):
       f.write("def f(x): pass")
     options = config.Options.create(infile, output=outfile)
     single._run_pytype(options)
-    self.assertTrue(os.path.isfile(outfile))
+    self.assertTrue(path_tools.isfile(outfile))
 
   @test_base.skip("flaky; see b/195678773")
   def test_pickled_file_stableness(self):
@@ -243,7 +245,7 @@ class PytypeTest(test_base.UnitTest):
 
   def test_pickle_bad_output(self):
     self.pytype_args["--pickle-output"] = self.INCLUDE
-    self.pytype_args["--output"] = os.path.join(self.tmp_dir, "simple.pyi")
+    self.pytype_args["--output"] = path_tools.join(self.tmp_dir, "simple.pyi")
     self.pytype_args[self._data_path("simple.py")] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
@@ -275,7 +277,7 @@ class PytypeTest(test_base.UnitTest):
 
   def test_check_infer_conflict2(self):
     self.pytype_args["--check"] = self.INCLUDE
-    self.pytype_args["input.py:output.pyi"] = self.INCLUDE
+    self.pytype_args[f"input.py{os.pathsep}output.pyi"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
@@ -286,7 +288,7 @@ class PytypeTest(test_base.UnitTest):
     self.assertInferredPyiEquals(filename="simple.pyi")
 
   def test_multiple_output(self):
-    self.pytype_args["input.py:output1.pyi"] = self.INCLUDE
+    self.pytype_args[f"input.py{os.pathsep}output1.pyi"] = self.INCLUDE
     self.pytype_args["--output"] = "output2.pyi"
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
@@ -299,7 +301,7 @@ class PytypeTest(test_base.UnitTest):
 
   def test_generate_builtins_pythonpath_conflict(self):
     self.pytype_args["--generate-builtins"] = "builtins.py"
-    self.pytype_args["--pythonpath"] = "foo:bar"
+    self.pytype_args["--pythonpath"] = f"foo{os.pathsep}bar"
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
@@ -321,7 +323,8 @@ class PytypeTest(test_base.UnitTest):
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
   def test_bad_input_format(self):
-    self.pytype_args["input.py:output.pyi:rumpelstiltskin"] = self.INCLUDE
+    self.pytype_args[f"input.py{os.pathsep}output.pyi\
+      {os.pathsep}rumpelstiltskin"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
@@ -484,7 +487,7 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--generate-builtins"] = filename
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-    self.assertTrue(os.path.isfile(filename))
+    self.assertTrue(path_tools.isfile(filename))
     src = self._make_py_file("""
       import __future__
       import sys
@@ -505,7 +508,7 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--generate-builtins"] = filename
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-    self.assertTrue(os.path.isfile(filename))
+    self.assertTrue(path_tools.isfile(filename))
     # input files
     canary = "import pytypecanary" if typeshed.Typeshed.MISSING_FILE else ""
     src = self._make_py_file(f"""
@@ -531,8 +534,9 @@ class PytypeTest(test_base.UnitTest):
     self._reset_pytype_args()
     self._setup_checking(src)
     self.pytype_args["--precompiled-builtins"] = filename
+    null_device = "/dev/null" if sys.platform != "win32" else "NUL"
     self.pytype_args["--imports_info"] = self._make_file(f"""
-      typing /dev/null
+      typing {null_device}
       foo {pyi}
     """, extension="")
     self._run_pytype(self.pytype_args)
@@ -556,7 +560,8 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--timeout"] = 60
     self.pytype_args["--output"] = "-"
     self.pytype_args["--quick"] = self.INCLUDE
-    self.pytype_args[self._data_path("perf/iso.py")] = self.INCLUDE
+    self.pytype_args[self._data_path(
+      file_utils.replace_seperator("perf/iso.py"))] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
 

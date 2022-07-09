@@ -51,6 +51,7 @@ py_library(
     .loadmarshal
     .magic
     pytype.utils
+    pytype.tools.tempfile
 )
 
 py_test(
@@ -96,6 +97,8 @@ py_library(
     generate_opcode_diffs
   SRCS
     generate_opcode_diffs.py
+  DEPS
+    pytype.tools.tempfile
 )
 
 py_test(

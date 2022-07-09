@@ -2,15 +2,15 @@
 
 import contextlib
 import io as builtins_io
-import os
 import sys
-import tempfile
 import textwrap
 import traceback
 
 from pytype import config
 from pytype import io
 from pytype.pytd import pytd
+from pytype.tools import tempfile as compatible_tempfile
+from pytype.tools import path_tools
 
 import unittest
 
@@ -25,7 +25,7 @@ class IOTest(unittest.TestCase):
   @contextlib.contextmanager
   def _tmpfile(self, contents):
     tempfile_options = {"mode": "w", "suffix": ".txt", "encoding": "utf-8"}
-    with tempfile.NamedTemporaryFile(**tempfile_options) as f:
+    with compatible_tempfile.NamedTemporaryFile(**tempfile_options) as f:
       f.write(contents)
       f.flush()
       yield f
@@ -76,7 +76,7 @@ class IOTest(unittest.TestCase):
 
   def test_generate_pyi_with_options(self):
     with self._tmpfile("x: int") as pyi:
-      pyi_name, _ = os.path.splitext(os.path.basename(pyi.name))
+      pyi_name, _ = path_tools.splitext(path_tools.basename(pyi.name))
       with self._tmpfile(
           f"{pyi_name} {pyi.name}") as imports_map:
         src = "import {mod}; y = {mod}.x".format(mod=pyi_name)
@@ -131,7 +131,8 @@ class IOTest(unittest.TestCase):
 
   def test_write_pickle(self):
     ast = pytd.TypeDeclUnit(None, (), (), (), (), ())
-    options = config.Options.create(output="/dev/null")
+    options = config.Options.create(
+      output="/dev/null" if sys.platform != "win32" else "NUL")
     io.write_pickle(ast, options)  # just make sure we don't crash
 
 

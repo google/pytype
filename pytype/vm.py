@@ -178,6 +178,7 @@ class VirtualMachine:
     self.opcode_traces.append(rec)
 
   def remaining_depth(self):
+    assert self._maximum_depth is not None
     return self._maximum_depth - len(self.frames)
 
   def is_at_maximum_depth(self):
@@ -252,7 +253,9 @@ class VirtualMachine:
         # If we raise an exception or return in an except block do not
         # execute any target blocks it has added.
         if finally_tracker.check_early_exit(state):
-          for target in self.frame.targets[block.id]:
+          m_frame = self.frame
+          assert m_frame is not None
+          for target in m_frame.targets[block.id]:
             del frame.states[target]
         # return, raise, or yield. Leave the current frame.
         can_return |= state.why in ("return", "yield")
@@ -695,17 +698,19 @@ class VirtualMachine:
 
   def _store_value(self, state, name, value, local):
     """Store 'value' under 'name'."""
+    m_frame = self.frame
+    assert m_frame is not None
     if local:
-      target = self.frame.f_locals
+      target = m_frame.f_locals
     else:
-      target = self.frame.f_globals
+      target = m_frame.f_globals
     node = self.ctx.attribute_handler.set_attribute(state.node, target, name,
                                                     value)
-    if target is self.frame.f_globals and self.late_annotations:
+    if target is m_frame.f_globals and self.late_annotations:
       # We sort the annotations so that a parameterized class's base class is
       # resolved before the parameterized class itself.
       for annot in sorted(self.late_annotations[name], key=lambda t: t.expr):
-        annot.resolve(node, self.frame.f_globals, self.frame.f_locals)
+        annot.resolve(node, m_frame.f_globals, m_frame.f_locals)
     return state.change_cfg_node(node)
 
   def store_local(self, state, name, value):
@@ -1641,8 +1646,10 @@ class VirtualMachine:
       else:
         maybe_cls = obj_val.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
+        m_director = self._director
+        assert m_director is not None
         if ("__annotations__" not in maybe_cls.members and
-            op.line in self._director.annotations):
+            op.line in m_director.annotations):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
           cur_annotations_dict = abstract.AnnotationsDict({}, self.ctx)
@@ -2040,6 +2047,7 @@ class VirtualMachine:
 
   def store_jump(self, target, state):
     assert target
+    assert self.frame is not None
     self.frame.targets[self.frame.current_block.id].append(target)
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
@@ -2282,6 +2290,7 @@ class VirtualMachine:
     fn = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
         closure=free_vars, opcode=op, ctx=self.ctx)
+    assert self._director is not None
     if op.line in self._director.decorators:
       fn.data[0].is_decorated = True
     vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
@@ -2356,6 +2365,7 @@ class VirtualMachine:
     full_name = self.frame.f_code.co_names[op.arg]
     # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
     state, (level_var, fromlist) = state.popn(2)
+    assert self._director is not None
     if op.line in self._director.ignore:
       # "import name  # type: ignore"
       self.trace_opcode(op, full_name, None)
@@ -2397,6 +2407,7 @@ class VirtualMachine:
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     cls = abstract.BuildClass(self.ctx).to_variable(state.node)
+    assert self._director is not None
     if op.line in self._director.decorators:
       # Will be copied into the abstract.InterpreterClass
       cls.data[0].is_decorated = True
@@ -2461,6 +2472,7 @@ class VirtualMachine:
 
   def _record_annotation(self, node, op, name, typ):
     # Annotations in self._director are handled by _apply_annotation.
+    assert self.frame is not None and self._director is not None
     if self.frame.current_opcode.line not in self._director.annotations:
       self._record_local(node, op, name, typ)
 

@@ -29,8 +29,9 @@ not generate a new stub implementation for vm.py.
 import json
 import subprocess
 import sys
-import tempfile
 import textwrap
+
+from pytype.tools import tempfile as compatible_tempfile
 
 
 def generate_diffs(argv):
@@ -43,7 +44,7 @@ def generate_diffs(argv):
   # opmap is a mapping from opcode name to index, e.g. {'RERAISE': 119}.
   # opname is a sequence of opcode names in which the sequence index corresponds
   # to the opcode index. A name of "<i>" means that i is an unused index.
-  with tempfile.NamedTemporaryFile(mode='w', suffix='.py') as f:
+  with compatible_tempfile.NamedTemporaryFile(mode='w', suffix='.py') as f:
     f.write(textwrap.dedent("""
       import dis
       import json

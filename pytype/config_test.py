@@ -3,6 +3,7 @@
 import logging
 import sys
 import types
+import os
 
 from pytype import config
 from pytype import utils
@@ -18,7 +19,7 @@ class ConfigTest(unittest.TestCase):
         "-V", utils.format_version(version),
         "--use-pickled-files",
         "-o", "out.pyi",
-        "--pythonpath", "foo:bar",
+        "--pythonpath", f"foo{os.pathsep}bar",
         "test.py"
     ]
     opts = config.Options(argv, command_line=True)
@@ -105,7 +106,7 @@ class PostprocessorTest(unittest.TestCase):
     self.assertEqual(self.output_options.input, "test.py")
 
   def test_io_pair(self):
-    input_options = types.SimpleNamespace(input=["in.py:out.pyi"])
+    input_options = types.SimpleNamespace(input=[f"in.py{os.pathsep}out.pyi"])
     config.Postprocessor(
         {"input", "output"}, input_options, self.output_options).process()
     self.assertEqual(self.output_options.input, "in.py")
@@ -114,7 +115,7 @@ class PostprocessorTest(unittest.TestCase):
   def test_io_pair_input(self):
     # The duplicate output is ignored, since we're only processing the input.
     input_options = types.SimpleNamespace(
-        input=["in.py:out.pyi"], output="out2.pyi")
+        input=[f"in.py{os.pathsep}out.pyi"], output="out2.pyi")
     config.Postprocessor(
         {"input"}, input_options, self.output_options).process()
     self.assertEqual(self.output_options.input, "in.py")
@@ -122,7 +123,7 @@ class PostprocessorTest(unittest.TestCase):
       _ = self.output_options.output
 
   def test_io_pair_output(self):
-    input_options = types.SimpleNamespace(input=["in.py:out.pyi"])
+    input_options = types.SimpleNamespace(input=[f"in.py{os.pathsep}out.pyi"])
     config.Postprocessor(
         {"output"}, input_options, self.output_options).process()
     with self.assertRaises(AttributeError):
@@ -131,7 +132,7 @@ class PostprocessorTest(unittest.TestCase):
 
   def test_io_pair_multiple_output(self):
     input_options = types.SimpleNamespace(
-        input=["in.py:out.pyi"], output="out2.pyi")
+        input=[f"in.py{os.pathsep}out.pyi"], output="out2.pyi")
     with self.assertRaises(config.PostprocessingError):
       config.Postprocessor(
           {"output"}, input_options, self.output_options).process()

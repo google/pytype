@@ -15,7 +15,6 @@ import difflib
 import gzip
 import io
 import itertools
-import os
 import pickle
 import pickletools
 import re
@@ -27,6 +26,7 @@ from pytype.pytd import printer
 from pytype.pytd import pytd
 from pytype.pytd import pytd_visitors
 from pytype.pytd.parse import parser_constants
+from pytype.tools import path_tools
 
 
 _PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
@@ -48,7 +48,7 @@ class LoadPickleError(Exception):
 
 
 def IsPickle(filename):
-  return os.path.splitext(filename)[1].startswith(PICKLE_EXT)
+  return path_tools.splitext(filename)[1].startswith(PICKLE_EXT)
 
 
 def UnpackUnion(t):
@@ -372,8 +372,8 @@ def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
   parts = module.split(".")
   if as_package:
     parts.append("__init__")
-  mod_path = os.path.join(*parts) + extension
-  path = os.path.join("stubs", stubs_subdir, mod_path)
+  mod_path = path_tools.join(*parts) + extension
+  path = path_tools.join("stubs", stubs_subdir, mod_path)
   return path, pytype_source_utils.load_text_file(path)
 
 

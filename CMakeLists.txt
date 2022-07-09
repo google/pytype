@@ -3,6 +3,10 @@ project(PyType)
 # be installed on the Travis Trusty VMs with apt-get.
 cmake_minimum_required(VERSION 2.8)
 
+if (WIN32)
+  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+ENDIF()
+
 set(CMAKE_MODULE_PATH
   "${CMAKE_MODULE_PATH}"
   "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules"

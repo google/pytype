@@ -106,6 +106,7 @@ py_library(
     .pytd_utils
     .visitors
     pytype.pyi.parser
+    pytype.tools.path_tools
 )
 
 py_library(
@@ -170,6 +171,7 @@ py_library(
     .pytd_visitors
     pytype.utils
     pytype.pytd.parse.parse
+    pytype.tools.path_tools
 )
 
 py_library(
@@ -249,6 +251,7 @@ py_library(
     .builtin_stubs
     pytype.utils
     pytype.pyi.parser
+    pytype.tools.path_tools
 )
 
 py_library(
@@ -419,6 +422,7 @@ py_test(
     pytype.utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
+    pytype.tools.path_tools
 )
 
 py_test(
@@ -444,6 +448,7 @@ py_test(
     pytype.libvm
     pytype.utils
     pytype.tests.test_base
+    pytype.tools.path_tools
 )
 
 py_test(
@@ -457,6 +462,7 @@ py_test(
     pytype.utils
     pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
+    pytype.tools.path_tools
 )
 
 add_subdirectory(codegen)
