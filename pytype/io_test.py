@@ -9,8 +9,8 @@ import traceback
 from pytype import config
 from pytype import io
 from pytype.pytd import pytd
-from pytype.tools import tempfile as compatible_tempfile
-from pytype.tools import path_tools
+from pytype.platform_utils import tempfile as compatible_tempfile
+from pytype.platform_utils import path_utils
 
 import unittest
 
@@ -76,7 +76,7 @@ class IOTest(unittest.TestCase):
 
   def test_generate_pyi_with_options(self):
     with self._tmpfile("x: int") as pyi:
-      pyi_name, _ = path_tools.splitext(path_tools.basename(pyi.name))
+      pyi_name, _ = path_utils.splitext(path_utils.basename(pyi.name))
       with self._tmpfile(
           f"{pyi_name} {pyi.name}") as imports_map:
         src = "import {mod}; y = {mod}.x".format(mod=pyi_name)

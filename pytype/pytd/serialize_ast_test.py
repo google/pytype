@@ -7,7 +7,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_base
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 
 import unittest
 
@@ -78,7 +78,7 @@ class SerializeAstTest(test_base.UnitTest):
     """
     with file_utils.Tempdir() as d:
       module_name = "module1"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       del module_map[module_name]
       serialized_ast = pytd_utils.LoadPickle(pickled_ast_filename)
@@ -95,7 +95,7 @@ class SerializeAstTest(test_base.UnitTest):
   def test_pickle(self):
     with file_utils.Tempdir() as d:
       ast, _ = self._get_ast(temp_dir=d, module_name="foo.bar.module1")
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
 
       result = serialize_ast.StoreAst(ast, pickled_ast_filename)
 
@@ -158,7 +158,7 @@ class SerializeAstTest(test_base.UnitTest):
 
       ast = ast.Visit(RenameVisitor())
 
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(
           d, "module1", pickled_ast_filename, ast=ast, loader=loader)
       del module_map["module1"]
@@ -176,7 +176,7 @@ class SerializeAstTest(test_base.UnitTest):
     """Tests that a pickled file can be read."""
     with file_utils.Tempdir() as d:
       module_name = "module1"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       original_ast = module_map[module_name]
       del module_map[module_name]
@@ -198,7 +198,7 @@ class SerializeAstTest(test_base.UnitTest):
     """
     with file_utils.Tempdir() as d:
       module_name = "foo.bar.module1"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       original_ast = module_map[module_name]
       del module_map[module_name]
@@ -216,7 +216,7 @@ class SerializeAstTest(test_base.UnitTest):
   def test_unrestorable_dependency_error_with_module_index(self):
     with file_utils.Tempdir() as d:
       module_name = "module1"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       module_map = {}  # Remove module2
 
@@ -228,7 +228,7 @@ class SerializeAstTest(test_base.UnitTest):
   def test_unrestorable_dependency_error_without_module_index(self):
     with file_utils.Tempdir() as d:
       module_name = "module1"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       module_map = {}  # Remove module2
 
@@ -240,7 +240,7 @@ class SerializeAstTest(test_base.UnitTest):
   def test_load_with_different_module_name(self):
     with file_utils.Tempdir() as d:
       original_module_name = "module1"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(
           d, original_module_name, pickled_ast_filename)
       original_ast = module_map[original_module_name]
@@ -263,7 +263,7 @@ class SerializeAstTest(test_base.UnitTest):
   def test_store_removes_init(self):
     with file_utils.Tempdir() as d:
       original_module_name = "module1.__init__"
-      pickled_ast_filename = path_tools.join(d.path, "module1.pyi.pickled")
+      pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
 
       module_map = self._store_ast(
           d, original_module_name, pickled_ast_filename, is_package=True)

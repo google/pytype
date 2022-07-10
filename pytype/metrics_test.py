@@ -5,7 +5,7 @@ import math
 import time
 
 from pytype import metrics
-from pytype.tools import tempfile as compatible_tempfile
+from pytype.platform_utils import tempfile as compatible_tempfile
 
 import unittest
 

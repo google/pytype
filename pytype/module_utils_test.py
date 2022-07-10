@@ -2,7 +2,7 @@
 
 from pytype import file_utils
 from pytype import module_utils
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 
 import unittest
 
@@ -44,8 +44,8 @@ class TestInferModule(unittest.TestCase):
   """Test module_utils.infer_module."""
 
   def assert_module_equal(self, module, path, target, name, kind="Local"):
-    self.assertEqual(module.path.rstrip(path_tools.sep),
-                     path.rstrip(path_tools.sep))
+    self.assertEqual(module.path.rstrip(path_utils.sep),
+                     path.rstrip(path_utils.sep))
     self.assertEqual(module.target, target)
     self.assertEqual(module.name, name)
     self.assertEqual(module.kind, kind)
@@ -76,8 +76,8 @@ class TestInferModule(unittest.TestCase):
     mod = module_utils.infer_module(
       expand(file_utils.replace_seperator("bar/baz.py")), ["foo"])
     expected_target = expand(file_utils.replace_seperator("bar/baz.py"))
-    expected_name, _ = path_tools.splitext(
-      expected_target.replace(path_tools.sep, "."))
+    expected_name, _ = path_utils.splitext(
+      expected_target.replace(path_utils.sep, "."))
     self.assert_module_equal(mod, "", expected_target, expected_name)
 
 

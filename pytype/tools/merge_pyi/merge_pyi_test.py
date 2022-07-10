@@ -1,4 +1,4 @@
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 import collections
 import difflib
 import logging
@@ -17,7 +17,7 @@ OVERWRITE_EXPECTED = 0  # flip to regenerate expected files
 
 
 def load_tests(unused_loader, standard_tests, unused_pattern):
-  root = path_tools.join(path_tools.dirname(__file__), 'test_data')
+  root = path_utils.join(path_utils.dirname(__file__), 'test_data')
   standard_tests.addTests(TestBuilder().build(root))
   return standard_tests
 
@@ -39,7 +39,7 @@ class TestBuilder:
         continue
 
       py, pyi = (files_by_ext[x] for x in (PY, PYI))
-      outfile = path_tools.join(data_dir, base + '.' + EXPECTED)
+      outfile = path_utils.join(data_dir, base + '.' + EXPECTED)
 
       test = build_regression_test(py, pyi, outfile)
       suite.addTest(test)
@@ -54,7 +54,7 @@ class TestBuilder:
     ret = collections.defaultdict(dict)
     for m in matches:
       base, ext, filename = m.group('base'), m.group('ext'), m.group('filename')
-      ret[base][ext] = path_tools.join(data_dir, filename)
+      ret[base][ext] = path_utils.join(data_dir, filename)
 
     return ret
 
@@ -72,7 +72,7 @@ def build_regression_test(py, pyi, outfile):
       expected = _read_file(outfile)
       test_case.assertEqual(expected, output, _get_diff(expected, output))
 
-  name = path_tools.splitext(path_tools.basename(outfile))[0].replace('.', '_')
+  name = path_utils.splitext(path_utils.basename(outfile))[0].replace('.', '_')
   test = f'test_{name}'
   case = type('RegressionTest', (unittest.TestCase,), {test: regression_test})
   return case(test)

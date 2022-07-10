@@ -15,8 +15,8 @@ from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import environment as analyze_project_env
 from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
-from pytype.tools import path_tools
-from pytype.tools import tempfile as compatible_tempfile
+from pytype.platform_utils import path_utils
+from pytype.platform_utils import tempfile as compatible_tempfile
 
 def main():
   parser = parse_args.make_parser()
@@ -74,7 +74,7 @@ def main():
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
-  with open(path_tools.join(conf.output, '.gitignore'), 'w') as f:
+  with open(path_utils.join(conf.output, '.gitignore'), 'w') as f:
     f.write('# Automatically created by pytype\n*')
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)

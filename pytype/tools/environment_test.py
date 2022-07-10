@@ -1,6 +1,6 @@
 """Tests for environment.py."""
 
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 from pytype import file_utils
 from pytype.tools import environment
 import unittest
@@ -19,7 +19,7 @@ class TestComputePythonPath(unittest.TestCase):
       d.create_file('__init__.py')
       f = d.create_file('foo.py')
       self.assertSequenceEqual(environment.compute_pythonpath([f]),
-                               [path_tools.dirname(d.path)])
+                               [path_utils.dirname(d.path)])
 
   def test_subpackage(self):
     with file_utils.Tempdir() as d:
@@ -27,7 +27,7 @@ class TestComputePythonPath(unittest.TestCase):
       d.create_file(file_utils.replace_seperator('d/__init__.py'))
       f = d.create_file(file_utils.replace_seperator('d/foo.py'))
       self.assertSequenceEqual(environment.compute_pythonpath([f]),
-                               [path_tools.dirname(d.path)])
+                               [path_utils.dirname(d.path)])
 
   def test_multiple_paths(self):
     with file_utils.Tempdir() as d:
@@ -35,16 +35,16 @@ class TestComputePythonPath(unittest.TestCase):
       f2 = d.create_file(file_utils.replace_seperator('d2/foo.py'))
       self.assertSequenceEqual(
           environment.compute_pythonpath([f1, f2]),
-          [path_tools.join(d.path, 'd2'), path_tools.join(d.path, 'd1')])
+          [path_utils.join(d.path, 'd2'), path_utils.join(d.path, 'd1')])
 
   def test_sort(self):
     with file_utils.Tempdir() as d:
       f1 = d.create_file(file_utils.replace_seperator('d1/foo.py'))
       f2 = d.create_file(file_utils.replace_seperator('d1/d2/foo.py'))
       f3 = d.create_file(file_utils.replace_seperator('d1/d2/d3/foo.py'))
-      path = [path_tools.join(d.path, 'd1', 'd2', 'd3'),
-              path_tools.join(d.path, 'd1', 'd2'),
-              path_tools.join(d.path, 'd1')]
+      path = [path_utils.join(d.path, 'd1', 'd2', 'd3'),
+              path_utils.join(d.path, 'd1', 'd2'),
+              path_utils.join(d.path, 'd1')]
       self.assertSequenceEqual(
           environment.compute_pythonpath([f1, f2, f3]), path)
       self.assertSequenceEqual(

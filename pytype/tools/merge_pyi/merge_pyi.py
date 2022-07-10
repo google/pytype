@@ -10,7 +10,7 @@ from typing import List, Optional, Tuple
 import libcst as cst
 from libcst import codemod
 from libcst.codemod import visitors
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 
 
 class MergeError(Exception):
@@ -93,13 +93,13 @@ def merge_tree(
   changed_files = []
 
   for root, _, files in os.walk(py_path):
-    rel = path_tools.relpath(py_path, root)
-    pyi_dir = path_tools.normpath(path_tools.join(pyi_path, rel))
+    rel = path_utils.relpath(py_path, root)
+    pyi_dir = path_utils.normpath(path_utils.join(pyi_path, rel))
     for f in files:
       if f.endswith(".py"):
-        py = path_tools.join(root, f)
-        pyi = path_tools.join(pyi_dir, f + "i")
-        if path_tools.exists(pyi):
+        py = path_utils.join(root, f)
+        pyi = path_utils.join(pyi_dir, f + "i")
+        if path_utils.exists(pyi):
           if verbose:
             print("Merging:", py, end=" ")
           try:

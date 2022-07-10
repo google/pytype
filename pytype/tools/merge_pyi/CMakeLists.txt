@@ -28,7 +28,7 @@ py_library(
   SRCS
     merge_pyi.py
   DEPS
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 filegroup(

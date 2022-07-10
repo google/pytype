@@ -22,7 +22,7 @@ from pytype.pyc import opcodes
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import slots
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -315,7 +315,7 @@ def get_name_error_details(
 def _module_name(frame):
   if frame.f_code.co_filename:
     return ".".join(re.sub(
-        r"\.py$", "", frame.f_code.co_filename).split(path_tools.sep)[-2:])
+        r"\.py$", "", frame.f_code.co_filename).split(path_utils.sep)[-2:])
   else:
     return ""
 

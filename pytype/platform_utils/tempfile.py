@@ -1,7 +1,7 @@
 import tempfile
 import sys
 import os
-from . import path_tools
+from . import path_utils
 
 
 # Windows Cannot open a temp file twice without delete=False"""
@@ -43,7 +43,7 @@ if sys.platform == 'win32':
       return self._tempfile.name
 
   def mkdtemp(*args, **kwargs):
-    return path_tools.standardize_return_path(
+    return path_utils.standardize_return_path(
       tempfile.mkdtemp(*args, **kwargs))
 else:
   NamedTemporaryFile = tempfile.NamedTemporaryFile

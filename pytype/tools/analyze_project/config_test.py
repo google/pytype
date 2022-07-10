@@ -7,7 +7,7 @@ import types
 from pytype import file_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import parse_args
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 import unittest
 
 
@@ -44,7 +44,7 @@ class TestBase(unittest.TestCase):
         path,
         f"{'C:' if sys.platform == 'win32' else ''}" + \
           file_utils.replace_seperator("/foo/bar"),
-        path_tools.join(path, file_utils.replace_seperator('baz/quux'))
+        path_utils.join(path, file_utils.replace_seperator('baz/quux'))
     ])
     self.assertEqual(conf.python_version, '3.7')
     self.assertEqual(conf.disable, 'import-error,module-attr')
@@ -139,14 +139,14 @@ class TestGenerateConfig(unittest.TestCase):
   def test_generate(self):
     conf = config.FileConfig()
     with file_utils.Tempdir() as d:
-      f = path_tools.join(d.path, 'sample.cfg')
+      f = path_utils.join(d.path, 'sample.cfg')
       config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
       # Test that we've generated a valid config and spot-check a pytype-all
       # and a pytype-single argument.
       conf.read_from_file(f)
       with file_utils.cd(d.path):
         expected_pythonpath = [
-            path_tools.realpath(p)
+            path_utils.realpath(p)
             for p in config.ITEMS['pythonpath'].sample.split(os.pathsep)]
       expected_protocols = config._PYTYPE_SINGLE_ITEMS['protocols'].sample
       self.assertEqual(conf.pythonpath, expected_pythonpath)
@@ -156,7 +156,7 @@ class TestGenerateConfig(unittest.TestCase):
 
   def test_read(self):
     with file_utils.Tempdir() as d:
-      f = path_tools.join(d.path, 'test.cfg')
+      f = path_utils.join(d.path, 'test.cfg')
       config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
       conf = config.read_config_file_or_die(f)
     # Smoke test for postprocessing and spot-check of a result.
@@ -166,7 +166,7 @@ class TestGenerateConfig(unittest.TestCase):
   def test_keep_going_file_default(self):
     conf = config.FileConfig()
     with file_utils.Tempdir() as d:
-      f = path_tools.join(d.path, 'sample.cfg')
+      f = path_utils.join(d.path, 'sample.cfg')
       config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
       conf.read_from_file(f)
     self.assertIsInstance(conf.keep_going, bool)

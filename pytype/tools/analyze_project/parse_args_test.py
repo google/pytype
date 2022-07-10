@@ -7,7 +7,7 @@ import os
 from pytype import file_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import parse_args
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 import unittest
 
 
@@ -22,7 +22,7 @@ class TestParser(unittest.TestCase):
   def test_parse_filenames(self):
     filenames = ['a.py', 'b.py']
     args = self.parser.parse_args(filenames)
-    self.assertEqual(args.inputs, {path_tools.realpath(f) for f in filenames})
+    self.assertEqual(args.inputs, {path_utils.realpath(f) for f in filenames})
 
   def test_parse_no_filename(self):
     args = self.parser.parse_args([])
@@ -39,7 +39,7 @@ class TestParser(unittest.TestCase):
   def test_parse_exclude(self):
     filenames = ['a.py', 'b.py']
     args = self.parser.parse_args(['--exclude'] + filenames)
-    self.assertEqual(args.exclude, {path_tools.realpath(f) for f in filenames})
+    self.assertEqual(args.exclude, {path_utils.realpath(f) for f in filenames})
 
   def test_parse_single_exclude(self):
     filenames = ['a.py', 'b/c.py']
@@ -49,7 +49,7 @@ class TestParser(unittest.TestCase):
       with file_utils.cd(d.path):
         args = self.parser.parse_args(['--exclude=**/*.py'])
         self.assertEqual(args.exclude,
-          {path_tools.realpath(f) for f in filenames})
+          {path_utils.realpath(f) for f in filenames})
 
   def test_parse_exclude_dir(self):
     filenames = ['foo/f1.py', 'foo/f2.py']
@@ -59,7 +59,7 @@ class TestParser(unittest.TestCase):
       with file_utils.cd(d.path):
         args = self.parser.parse_args(['--exclude=foo/'])
         self.assertEqual(args.exclude,
-          {path_tools.realpath(f) for f in filenames})
+          {path_utils.realpath(f) for f in filenames})
 
   def test_parse_bad_exclude(self):
     args = self.parser.parse_args(['-x', 'this_file_should_not_exist'])
@@ -101,10 +101,10 @@ class TestParser(unittest.TestCase):
 
   def test_output(self):
     self.assertEqual(self.parser.parse_args(
-        ['-o', 'pyi']).output, path_tools.join(path_tools.getcwd(), 'pyi'))
+        ['-o', 'pyi']).output, path_utils.join(path_utils.getcwd(), 'pyi'))
     self.assertEqual(self.parser.parse_args(
         ['--output', 'pyi']).output,
-        path_tools.join(path_tools.getcwd(), 'pyi'))
+        path_utils.join(path_utils.getcwd(), 'pyi'))
 
   def test_no_cache(self):
     self.assertFalse(self.parser.parse_args([]).no_cache)
@@ -114,12 +114,12 @@ class TestParser(unittest.TestCase):
       self.parser.parse_args(['--output', 'pyi', '--no-cache'])
 
   def test_pythonpath(self):
-    d = path_tools.getcwd()
+    d = path_utils.getcwd()
     self.assertSequenceEqual(self.parser.parse_args(
-        ['-P', f'{os.pathsep}foo']).pythonpath, [d, path_tools.join(d, 'foo')])
+        ['-P', f'{os.pathsep}foo']).pythonpath, [d, path_utils.join(d, 'foo')])
     self.assertSequenceEqual(self.parser.parse_args(
         ['--pythonpath', f'{os.pathsep}foo']).pythonpath,
-        [d, path_tools.join(d, 'foo')])
+        [d, path_utils.join(d, 'foo')])
 
   def test_keep_going(self):
     self.assertTrue(self.parser.parse_args(['-k']).keep_going)
@@ -140,7 +140,7 @@ class TestParser(unittest.TestCase):
     conf = self.parser.config_from_defaults()
     # Spot check a pytype-all arg.
     self.assertEqual(conf.output,
-      path_tools.join(path_tools.getcwd(), '.pytype'))
+      path_utils.join(path_utils.getcwd(), '.pytype'))
     # And a pytype-single arg.
     self.assertIsInstance(conf.disable, list)
     self.assertFalse(conf.disable)

@@ -233,8 +233,7 @@ py_library(
   SRCS
     file_utils.py
   DEPS
-    pytype.tools.path_tools
-    pytype.tools.tempfile
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -243,7 +242,7 @@ py_library(
   SRCS
     imports_map_loader.py
   DEPS
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -275,7 +274,7 @@ py_library(
     .module_utils
     pytype.pyi.parser
     pytype.pytd.pytd
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -314,7 +313,7 @@ py_library(
   SRCS
     module_utils.py
   DEPS
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -355,7 +354,7 @@ py_library(
     pytype_source_utils.py
   DEPS
     pytype.stubs.stubs
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -401,7 +400,7 @@ py_library(
   SRCS
     utils.py
   DEPS
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -452,7 +451,7 @@ py_library(
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.typegraph.cfg
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -497,8 +496,7 @@ py_test(
     .config
     .io
     pytype.pytd.pytd
-    pytype.tools.tempfile
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -508,7 +506,7 @@ py_test(
     file_utils_test.py
   DEPS
     .file_utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -519,7 +517,7 @@ py_test(
   DEPS
     .file_utils
     .module_utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -529,7 +527,7 @@ py_test(
     pytype_source_utils_test.py
   DEPS
     .pytype_source_utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -656,7 +654,7 @@ py_test(
     pytype.pytd.pytd
     pytype.stubs.stubs
     pytype.tests.test_base
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -668,7 +666,7 @@ py_test(
     .file_utils
     .imports_map_loader
     pytype.stubs.stubs
-    pytype.tools.tempfile
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -678,7 +676,7 @@ py_test(
     metrics_test.py
   DEPS
     .metrics
-    pytype.tools.tempfile
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -720,6 +718,7 @@ add_subdirectory(ast)
 add_subdirectory(directors)
 add_subdirectory(inspect)
 add_subdirectory(overlays)
+add_subdirectory(platform_utils)
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)

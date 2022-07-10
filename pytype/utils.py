@@ -11,14 +11,14 @@ import traceback
 from typing import Iterable, List
 import weakref
 
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 
 # We disable the check that keeps pytype from running on not-yet-supported
 # versions when we detect that a pytype test is executing, in order to be able
 # to test upcoming versions.
 def _validate_python_version_upper_bound():
   for frame_summary in traceback.extract_stack():
-    head, tail = path_tools.split(frame_summary.filename)
+    head, tail = path_utils.split(frame_summary.filename)
     if "/pytype/" in head + "/" and (
         tail.startswith("test_") or tail.endswith("_test.py")):
       return False

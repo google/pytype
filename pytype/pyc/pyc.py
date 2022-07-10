@@ -12,7 +12,7 @@ from pytype import utils
 from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
-from pytype.tools import tempfile as compatible_tempfile
+from pytype.platform_utils import tempfile as compatible_tempfile
 
 COMPILE_SCRIPT = "pyc/compile_bytecode.py"
 COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")

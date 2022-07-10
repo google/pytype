@@ -4,7 +4,7 @@ import textwrap
 
 from pytype import file_utils
 from pytype import imports_map_loader
-from pytype.tools import tempfile as compatible_tempfile
+from pytype.platform_utils import tempfile as compatible_tempfile
 
 import unittest
 

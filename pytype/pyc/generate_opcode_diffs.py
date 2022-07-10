@@ -31,7 +31,7 @@ import subprocess
 import sys
 import textwrap
 
-from pytype.tools import tempfile as compatible_tempfile
+from pytype.platform_utils import tempfile as compatible_tempfile
 
 
 def generate_diffs(argv):

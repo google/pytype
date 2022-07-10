@@ -3,7 +3,8 @@
 import sys
 
 from pytype import file_utils
-from pytype.tools import tool_utils, path_tools
+from pytype.tools import tool_utils
+from pytype.platform_utils import path_utils
 import unittest
 
 
@@ -31,9 +32,9 @@ class TestMakeDirsOrDie(unittest.TestCase):
 
   def test_make(self):
     with file_utils.Tempdir() as d:
-      subdir = path_tools.join(d.path, 'some/path')
+      subdir = path_utils.join(d.path, 'some/path')
       tool_utils.makedirs_or_die(subdir, '')
-      self.assertTrue(path_tools.isdir(subdir))
+      self.assertTrue(path_utils.isdir(subdir))
 
   def test_die(self):
     with self.assertRaises(SystemExit):

@@ -8,7 +8,7 @@ from typing import Iterable, Sequence, Tuple
 from pytype import file_utils
 from pytype import module_utils
 from pytype.tools.analyze_project import config
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 
 # Generate a default pyi for builtin and system dependencies.
 DEFAULT_PYI = """
@@ -35,13 +35,13 @@ FIRST_PASS_SUFFIX = '-1'
 def _get_executable(binary, module=None):
   """Get the path to the executable with the given name."""
   if binary == 'pytype-single':
-    custom_bin = path_tools.join('out', 'bin', 'pytype')
+    custom_bin = path_utils.join('out', 'bin', 'pytype')
     if sys.argv[0] == custom_bin:
       # The Travis type-check step uses custom binaries in pytype/out/bin/.
       return (([] if sys.platform != 'win32' else [sys.executable]) +
-        [path_tools.join(
-          path_tools.abspath(
-            path_tools.dirname(custom_bin)), 'pytype-single')])
+        [path_utils.join(
+          path_utils.abspath(
+            path_utils.dirname(custom_bin)), 'pytype-single')])
   if sys.executable is not None:
     return [sys.executable, '-m', module or binary]
   else:
@@ -56,7 +56,7 @@ def resolved_file_to_module(f):
   path = full_path[:-len(target)]
   name = f.module_name
   # We want to preserve __init__ in the module_name for pytype.
-  if path_tools.basename(full_path) == '__init__.py':
+  if path_utils.basename(full_path) == '__init__.py':
     name += '.__init__'
   return module_utils.Module(
       path=path, target=target, name=name, kind=f.__class__.__name__)
@@ -102,14 +102,14 @@ def deps_from_import_graph(import_graph):
 
 
 def _is_type_stub(f):
-  _, ext = path_tools.splitext(f)
+  _, ext = path_utils.splitext(f)
   return ext in ('.pyi', '.pytd')
 
 
 def _module_to_output_path(mod):
   """Convert a module to an output path."""
-  path, _ = path_tools.splitext(mod.target)
-  if path.replace(path_tools.sep, '.').endswith(mod.name):
+  path, _ = path_utils.splitext(mod.target)
+  if path.replace(path_utils.sep, '.').endswith(mod.name):
     # Preferentially use the short path.
     return path[-len(mod.name):]
   else:
@@ -118,7 +118,7 @@ def _module_to_output_path(mod):
     # python packages anyway, we preserve any leading '.' in order to not
     # create a file directly in / (which would likely cause a crash with a
     # permission error) and let the rest of the path be mangled.
-    return mod.name[0] + mod.name[1:].replace('.', path_tools.sep)
+    return mod.name[0] + mod.name[1:].replace('.', path_utils.sep)
 
 
 def escape_ninja_path(path: str):
@@ -156,9 +156,9 @@ class PytypeRunner:
     self.sorted_sources = sorted_sources
     self.python_version = conf.python_version
     self.platform = conf.platform
-    self.pyi_dir = path_tools.join(conf.output, 'pyi')
-    self.imports_dir = path_tools.join(conf.output, 'imports')
-    self.ninja_file = path_tools.join(conf.output, 'build.ninja')
+    self.pyi_dir = path_utils.join(conf.output, 'pyi')
+    self.imports_dir = path_utils.join(conf.output, 'imports')
+    self.ninja_file = path_utils.join(conf.output, 'build.ninja')
     self.custom_options = [
         (k, getattr(conf, k)) for k in set(conf.__slots__) - set(config.ITEMS)]
     self.keep_going = conf.keep_going
@@ -214,14 +214,14 @@ class PytypeRunner:
 
   def write_default_pyi(self):
     """Write a default pyi file."""
-    output = path_tools.join(self.imports_dir, 'default.pyi')
+    output = path_utils.join(self.imports_dir, 'default.pyi')
     with open(output, 'w') as f:
       f.write(DEFAULT_PYI)
     return output
 
   def write_imports(self, module_name, imports_map, suffix):
     """Write a .imports file."""
-    output = path_tools.join(
+    output = path_utils.join(
       self.imports_dir, module_name + '.imports' + suffix)
     with open(output, 'w') as f:
       for item in imports_map.items():
@@ -309,7 +309,7 @@ class PytypeRunner:
     Returns:
       The expected output of the build statement.
     """
-    output = path_tools.join(self.pyi_dir,
+    output = path_utils.join(self.pyi_dir,
                           _module_to_output_path(module) + '.pyi' + suffix)
     logging.info('%s %s\n  imports: %s\n  deps: %s\n  output: %s',
                  action, module.name, imports, deps, output)
@@ -374,7 +374,7 @@ class PytypeRunner:
     k = '0' if self.keep_going else '1'
     # relpath() prevents possibly sensitive directory info from appearing in
     # ninja's "Entering directory" message.
-    c = path_tools.relpath(path_tools.dirname(self.ninja_file))
+    c = path_utils.relpath(path_utils.dirname(self.ninja_file))
     command = _get_executable('ninja') + [
         '-k', k, '-C', c, '-j', str(self.jobs)]
     if logging.getLogger().isEnabledFor(logging.INFO):

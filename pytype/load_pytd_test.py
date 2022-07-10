@@ -16,7 +16,7 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.tests import test_base
-from pytype.tools import path_tools
+from pytype.platform_utils import path_utils
 
 import unittest
 
@@ -204,7 +204,7 @@ class ImportPathsTest(_LoaderTest):
       AnyPath = PathLike[str]
     """) as loader:
       loader.finish_and_verify_ast(
-          loader.load_file("target", path_tools.join(
+          loader.load_file("target", path_utils.join(
               loader.options.pythonpath[0], "target.pyi")))
 
   def test_relative(self):
@@ -669,7 +669,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
     """)
 
   def _get_path(self, tempdir, filename):
-    return path_tools.join(tempdir.path, filename)
+    return path_utils.join(tempdir.path, filename)
 
   def _load_ast(self, tempdir, module):
     loader = load_pytd.Loader(config.Options.create(

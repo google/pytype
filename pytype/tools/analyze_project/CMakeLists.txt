@@ -50,7 +50,7 @@ py_library(
   DEPS
     .config
     pytype.utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -61,7 +61,7 @@ py_test(
   DEPS
     .analyze_project
     pytype.utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -72,7 +72,7 @@ py_test(
   DEPS
     .analyze_project
     pytype.utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -84,7 +84,7 @@ py_test(
     .analyze_project
     pytype.libvm
     pytype.utils
-    pytype.tools.path_tools
+    pytype.platform_utils.platform_utils
 )
 
 toplevel_py_binary(
@@ -98,5 +98,5 @@ toplevel_py_binary(
     .analyze_project
     pytype.libvm
     pytype.tools.tools
-    pytype.tools.tempfile
+    pytype.platform_utils.platform_utils
 )
