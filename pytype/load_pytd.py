@@ -651,6 +651,7 @@ class Loader:
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
           if k not in self._modules:
+            assert mod_ast
             raise (
                 BadDependencyError(f"Can't find pyi for {k!r}", mod_ast.name)
             ) from e
