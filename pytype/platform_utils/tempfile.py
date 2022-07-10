@@ -1,10 +1,12 @@
+""" Platform-independent functions for creating temp files & directories """
+
 import tempfile
 import sys
 import os
 from . import path_utils
 
 
-# Windows Cannot open a temp file twice without delete=False"""
+# a process on windows cannot open a temp file twice without delete=False"""
 if sys.platform == 'win32':
   class NamedTemporaryFile:
     # pylint: disable=W0622

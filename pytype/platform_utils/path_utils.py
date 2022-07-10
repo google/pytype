@@ -1,3 +1,8 @@
+""" 
+Wraps some path-related functions in `os`, `os.path` and `glob`.
+Standardize return path in Windows. Do nothing in Linux.
+"""
+
 import sys
 import functools
 import os
