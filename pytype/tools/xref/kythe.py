@@ -228,7 +228,7 @@ def _make_defn_vname(kythe, index, defn):
         return kythe.stdlib_vname(
             sig, "pytd:" + index.resolved_modules[remote].module_name)
       elif is_generated:
-        return kythe.vname(sig, path, root="generated")
+        return kythe.vname(sig, path, root="root/genfiles")
       else:
         return kythe.vname(sig, path)
     else:

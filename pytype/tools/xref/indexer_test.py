@@ -209,7 +209,7 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
     kythe_index = self.generate_kythe(code, skip_stdlib=True)
     imp = [x for x in kythe_index
            if x.get("edge_kind") == "/kythe/edge/ref/imports"]
-    self.assertEmpty(imp)
+    self.assertFalse(imp)
 
   def test_multiline_attr(self):
     # Test that lookahead doesn't crash.
