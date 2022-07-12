@@ -2,6 +2,7 @@
 
 import logging
 import types
+from typing import Any, Dict
 
 from pytype import blocks
 from pytype import datatypes
@@ -65,7 +66,7 @@ class Converter(utils.ContextWeakrefMixin):
     super().__init__(ctx)
     ctx.convert = self  # to make constant_to_value calls below work
 
-    self._convert_cache = {}
+    self._convert_cache: Dict[Any, Any] = {}
     self._resolved_late_types = {}  # performance cache
 
     # Initialize primitive_classes to empty to allow constant_to_value to run.
@@ -303,7 +304,7 @@ class Converter(utils.ContextWeakrefMixin):
         return self.primitive_class_instances[data_type]
     return data
 
-  def _create_new_unknown_value(self, action):
+  def _create_new_unknown_value(self, action) -> abstract.Unknown:
     if not action or not self.ctx.vm.frame:
       return abstract.Unknown(self.ctx)
     # We allow only one Unknown at each point in the program, regardless of

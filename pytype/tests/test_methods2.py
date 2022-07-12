@@ -115,6 +115,16 @@ class TestMethods(test_base.BaseTest):
           return x()
     """)
 
+  def test_lookup_on_dynamic_class(self):
+    self.Check("""
+      class Foo:
+        _HAS_DYNAMIC_ATTRIBUTES = True
+        def f(self) -> str:
+          return ''
+        def g(self):
+          assert_type(self.f(), str)
+    """)
+
 
 class TestMethodsPy3(test_base.BaseTest):
   """Test python3-specific method features."""
