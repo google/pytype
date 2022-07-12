@@ -17,7 +17,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
       * [Adding a new option](#adding-a-new-option)
       * [Config files](#config-files)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-07-11T17:31-07:00 -->
 
 <!--te-->
 
@@ -151,41 +151,40 @@ postprocessing step. This invokes the `config.Postprocessor` class, which
 copies options from the raw `input_options` to a final `output_options`. The
 `Postprocessor` class does several things:
 
-1. Define `_store_*()` methods, corresponding to some of the options. If
-   `Postprocessor._store_foo()` exists, it will be called with `options.foo` as
-   an argument; i.e.
+1.  Define `_store_*()` methods, corresponding to some of the options. If
+    `Postprocessor._store_foo()` exists, it will be called with `options.foo` as
+    an argument; i.e.
 
-   ```
-   if hasattr(postprocessor, '_store_foo'):
-     output_options.foo = postprocessor._store_foo(input_options.foo)
-   else:
-     output_options.foo = input_options.foo
-   ```
+    ```
+    if hasattr(postprocessor, '_store_foo'):
+      output_options.foo = postprocessor._store_foo(input_options.foo)
+    else:
+      output_options.foo = input_options.foo
+    ```
 
-2. Arrange the options into a dependency graph, so that some options can use the
-   *postprocessed* values of other options in their own postprocessing step. For
-   example, `options.module_name` is postprocessed via
+2.  Arrange the options into a dependency graph, so that some options can use
+    the *postprocessed* values of other options in their own postprocessing
+    step. For example, `options.module_name` is postprocessed via
 
-   ```
-   @uses(["input", "pythonpath"])
-   def _store_module_name(self, module_name):
-     if module_name is None:
-       module_name = module_utils.get_module_name(
-           self.output_options.input, self.output_options.pythonpath)
-       self.output_options.module_name = module_name
-   ```
+    ```
+    @uses(["input", "pythonpath"])
+    def _store_module_name(self, module_name):
+      if module_name is None:
+        module_name = module_utils.get_module_name(
+            self.output_options.input, self.output_options.pythonpath)
+        self.output_options.module_name = module_name
+    ```
 
-   where `self.output_options.pythonpath` is used to construct
-   `self.output_options.module_name`. The postprocessor uses the
-   `@uses["pythonpath"]` decorator to make sure that `_store_pythonpath()` is
-   run before `_store_module_name`, so that `output_options.pythonpath` has the
-   correct value when we read it.
+    where `self.output_options.pythonpath` is used to construct
+    `self.output_options.module_name`. The postprocessor uses the
+    `@uses["pythonpath"]` decorator to make sure that `_store_pythonpath()` is
+    run before `_store_module_name`, so that `output_options.pythonpath` has the
+    correct value when we read it.
 
-3. Populate some options that do not correspond to inputs. For example
-   `_store_python_version` sets both `output_options.python_version` and
-   `output_options.python_exe`. The latter is derived from the python version
-   and cached in `options.python_exe`, but it can not be set indepedently.
-
+3.  Populate some options that do not correspond to inputs. For example
+    `_store_python_version` sets both `output_options.python_version` and
+    `output_options.python_exe`. The latter is derived from the python version
+    and cached in `options.python_exe`, but it can not be set independently.
 
 ## Adding a new option
 

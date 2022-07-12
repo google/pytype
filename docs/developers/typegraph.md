@@ -22,7 +22,7 @@ freshness: { owner: 'tsudol' reviewed: '2020-11-20' }
          * [A More Complex Example](#a-more-complex-example)
          * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2022-07-11T17:31-07:00 -->
 
 <!--te-->
 
@@ -225,7 +225,7 @@ When a `PyObject*` value is added to a Binding, it's transformed into a
 `BindingData` pointer with a cleanup function that decrements the reference
 count. This approach ensures that each `PyObject*` has a correct reference
 count, that no data objects will be deleted before the Binding is cleaned up,
-and that deleting a Binding (or a whole Program) will correctly decrememnt the
+and that deleting a Binding (or a whole Program) will correctly decrement the
 reference count. This avoids potential memory leaks caused by `PyObject`s not
 being cleaned up.
 
