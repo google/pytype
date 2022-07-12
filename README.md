@@ -102,7 +102,7 @@ Platform support:
 * Windows is currently not supported unless you use [WSL][wsl].
 
 <sub>\*
-On Alpine Linux, installing may fail due to issues with upstream
+On Alpine Linux, installation may fail due to issues with upstream
 dependencies.  See the details of [this issue][scikit-build-issue] for a
 possible fix.
 <br />
@@ -166,7 +166,7 @@ Common options:
   Defaults to the version that pytype is running under.
 * `-o, --output`: The directory into which all pytype output goes, including
   generated .pyi files. Defaults to `.pytype`.
-* `-d, --disable`. Comma or space separated list of error names to ignore.
+* `-d, --disable`. Comma or space-separated list of error names to ignore.
   Detailed explanations of pytype's error names are in
   [this doc][error-classes]. Defaults to empty.
 
@@ -231,7 +231,7 @@ pythonpath =
     .:
     ~/repo2
 
-# Comma or space separated list of error names to ignore.
+# Comma or space-separated list of error names to ignore.
 disable =
     attribute-error
 ```
@@ -257,7 +257,7 @@ Python file.
 * `pytype-single`, a debugging tool for pytype developers, which analyzes a
 single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
-* `pyxref`, a cross references generator.
+* `pyxref`, a cross-references generator.
 
 ## 2022 Roadmap
 
