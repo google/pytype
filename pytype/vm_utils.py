@@ -127,6 +127,7 @@ class _NameInOuterClassErrorDetails(_NameErrorDetails):
   """Name error details for a name defined in an outer class."""
 
   def __init__(self, attr, prefix, class_name):
+    super().__init__()
     self._attr = attr
     self._prefix = prefix
     self._class_name = class_name
@@ -142,8 +143,10 @@ class _NameInOuterClassErrorDetails(_NameErrorDetails):
 
 
 class _NameInOuterFunctionErrorDetails(_NameErrorDetails):
+  """Name error details for a name defined in an outer function."""
 
   def __init__(self, attr, outer_scope, inner_scope):
+    super().__init__()
     self._attr = attr
     self._outer_scope = outer_scope
     self._inner_scope = inner_scope
