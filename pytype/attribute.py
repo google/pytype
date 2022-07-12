@@ -274,19 +274,25 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             node, obj, name, valself, skip=())
       else:
         node, attr = self._get_member(node, obj, name, valself)
-    if attr is None and obj.maybe_missing_members:
-      # The VM hit maximum depth while initializing this instance, so it may
-      # have attributes that we don't know about. These attributes take
-      # precedence over class attributes and __getattr__, so we set `attr` to
-      # Any immediately.
-      attr = self.ctx.new_unsolvable(node)
+    # If the VM hit maximum depth while initializing this instance, it may have
+    # attributes that we don't know about.
+    is_unknown_instance_attribute = attr is None and obj.maybe_missing_members
     if attr is None and cls:
       # Check for the attribute on the class.
       node, attr = self.get_attribute(node, cls, name, valself)
-      if attr is None:
+      if attr:
+        # If the attribute is a method, then we allow it to take precedence over
+        # the possible unknown instance attribute, since otherwise method lookup
+        # on classes with _HAS_DYNAMIC_ATTRIBUTES would always return Any.
+        if (is_unknown_instance_attribute and
+            any(isinstance(v, abstract.FUNCTION_TYPES) for v in attr.data)):
+          is_unknown_instance_attribute = False
+      elif not is_unknown_instance_attribute:
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(
             node, cls, name, valself, compute_function="__getattr__")
+    if is_unknown_instance_attribute:
+      attr = self.ctx.new_unsolvable(node)
     if attr is not None:
       attr = self._filter_var(node, attr)
     return node, attr
