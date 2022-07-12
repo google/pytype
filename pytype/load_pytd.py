@@ -70,8 +70,6 @@ class Module:
     metadata: The metadata extracted from the picked file.
   """
 
-  _INIT_NAMES = ("__init__.pyi", f"__init__.{pytd_utils.PICKLE_EXT}")
-
   # pylint: disable=redefined-outer-name
   def __init__(self, module_name, filename, ast, metadata=None, pickle=None,
                has_unresolved_pointers=True):
@@ -91,7 +89,10 @@ class Module:
       # imports_map_loader adds os.devnull entries for __init__.py files in
       # intermediate directories.
       return True
-    return self.filename and os.path.basename(self.filename) in self._INIT_NAMES
+    if self.filename:
+      base, _ = os.path.splitext(os.path.basename(self.filename))
+      return base == "__init__"
+    return False
 
 
 class BadDependencyError(Exception):
@@ -209,7 +210,7 @@ class _ModuleMap:
       newly_loaded_asts.append(loaded_ast)
       m.ast = loaded_ast.ast
       if loaded_ast.is_package:
-        init_file = f"__init__.{pytd_utils.PICKLE_EXT}"
+        init_file = f"__init__{pytd_utils.PICKLE_EXT}"
         if m.filename and os.path.basename(m.filename) != init_file:
           base, _ = os.path.splitext(m.filename)
           m.filename = os.path.join(base, init_file)
