@@ -99,6 +99,15 @@ class StdLibTestsBasic(test_base.BaseTest,
       def foo() -> MyClass: ...
   """)
 
+  def test_codetype(self):
+    self.Check("""
+      import types
+      class Foo:
+        x: types.CodeType
+        def set_x(self):
+          self.x = compile('', '', '')
+    """)
+
 
 class StdlibTestsFeatures(test_base.BaseTest,
                           test_utils.TestCollectionsMixin):

@@ -1011,8 +1011,200 @@ class PyCapsule(object):
     pass
 
 # types.CodeType, a.k.a., [type 'code']
+# Definition copied from
+# https://github.com/python/typeshed/blob/master/stdlib/types.pyi
 class code(object):
-    pass
+    @property
+    def co_argcount(self) -> int: ...
+    if sys.version_info >= (3, 8):
+        @property
+        def co_posonlyargcount(self) -> int: ...
+
+    @property
+    def co_kwonlyargcount(self) -> int: ...
+    @property
+    def co_nlocals(self) -> int: ...
+    @property
+    def co_stacksize(self) -> int: ...
+    @property
+    def co_flags(self) -> int: ...
+    @property
+    def co_code(self) -> bytes: ...
+    @property
+    def co_consts(self) -> tuple[Any, ...]: ...
+    @property
+    def co_names(self) -> tuple[str, ...]: ...
+    @property
+    def co_varnames(self) -> tuple[str, ...]: ...
+    @property
+    def co_filename(self) -> str: ...
+    @property
+    def co_name(self) -> str: ...
+    @property
+    def co_firstlineno(self) -> int: ...
+    @property
+    def co_lnotab(self) -> bytes: ...
+    @property
+    def co_freevars(self) -> tuple[str, ...]: ...
+    @property
+    def co_cellvars(self) -> tuple[str, ...]: ...
+    if sys.version_info >= (3, 10):
+        @property
+        def co_linetable(self) -> bytes: ...
+        def co_lines(self) -> Iterator[tuple[int, int, int | None]]: ...
+    if sys.version_info >= (3, 11):
+        @property
+        def co_exceptiontable(self) -> bytes: ...
+        @property
+        def co_qualname(self) -> str: ...
+        def co_positions(self) -> Iterable[tuple[int | None, int | None, int | None, int | None]]: ...
+
+    if sys.version_info >= (3, 11):
+        def __init__(
+            self,
+            __argcount: int,
+            __posonlyargcount: int,
+            __kwonlyargcount: int,
+            __nlocals: int,
+            __stacksize: int,
+            __flags: int,
+            __codestring: bytes,
+            __constants: tuple[object, ...],
+            __names: tuple[str, ...],
+            __varnames: tuple[str, ...],
+            __filename: str,
+            __name: str,
+            __qualname: str,
+            __firstlineno: int,
+            __linetable: bytes,
+            __exceptiontable: bytes,
+            __freevars: tuple[str, ...] = ...,
+            __cellvars: tuple[str, ...] = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 10):
+        def __init__(
+            self,
+            __argcount: int,
+            __posonlyargcount: int,
+            __kwonlyargcount: int,
+            __nlocals: int,
+            __stacksize: int,
+            __flags: int,
+            __codestring: bytes,
+            __constants: tuple[object, ...],
+            __names: tuple[str, ...],
+            __varnames: tuple[str, ...],
+            __filename: str,
+            __name: str,
+            __firstlineno: int,
+            __linetable: bytes,
+            __freevars: tuple[str, ...] = ...,
+            __cellvars: tuple[str, ...] = ...,
+        ) -> None: ...
+    elif sys.version_info >= (3, 8):
+        def __init__(
+            self,
+            __argcount: int,
+            __posonlyargcount: int,
+            __kwonlyargcount: int,
+            __nlocals: int,
+            __stacksize: int,
+            __flags: int,
+            __codestring: bytes,
+            __constants: tuple[object, ...],
+            __names: tuple[str, ...],
+            __varnames: tuple[str, ...],
+            __filename: str,
+            __name: str,
+            __firstlineno: int,
+            __lnotab: bytes,
+            __freevars: tuple[str, ...] = ...,
+            __cellvars: tuple[str, ...] = ...,
+        ) -> None: ...
+    else:
+        def __init__(
+            self,
+            __argcount: int,
+            __kwonlyargcount: int,
+            __nlocals: int,
+            __stacksize: int,
+            __flags: int,
+            __codestring: bytes,
+            __constants: tuple[object, ...],
+            __names: tuple[str, ...],
+            __varnames: tuple[str, ...],
+            __filename: str,
+            __name: str,
+            __firstlineno: int,
+            __lnotab: bytes,
+            __freevars: tuple[str, ...] = ...,
+            __cellvars: tuple[str, ...] = ...,
+        ) -> None: ...
+    if sys.version_info >= (3, 11):
+        def replace(
+            self,
+            *,
+            co_argcount: int = ...,
+            co_posonlyargcount: int = ...,
+            co_kwonlyargcount: int = ...,
+            co_nlocals: int = ...,
+            co_stacksize: int = ...,
+            co_flags: int = ...,
+            co_firstlineno: int = ...,
+            co_code: bytes = ...,
+            co_consts: tuple[object, ...] = ...,
+            co_names: tuple[str, ...] = ...,
+            co_varnames: tuple[str, ...] = ...,
+            co_freevars: tuple[str, ...] = ...,
+            co_cellvars: tuple[str, ...] = ...,
+            co_filename: str = ...,
+            co_name: str = ...,
+            co_qualname: str = ...,
+            co_linetable: bytes = ...,
+            co_exceptiontable: bytes = ...,
+        ) -> code: ...
+    elif sys.version_info >= (3, 10):
+        def replace(
+            self,
+            *,
+            co_argcount: int = ...,
+            co_posonlyargcount: int = ...,
+            co_kwonlyargcount: int = ...,
+            co_nlocals: int = ...,
+            co_stacksize: int = ...,
+            co_flags: int = ...,
+            co_firstlineno: int = ...,
+            co_code: bytes = ...,
+            co_consts: tuple[object, ...] = ...,
+            co_names: tuple[str, ...] = ...,
+            co_varnames: tuple[str, ...] = ...,
+            co_freevars: tuple[str, ...] = ...,
+            co_cellvars: tuple[str, ...] = ...,
+            co_filename: str = ...,
+            co_name: str = ...,
+            co_linetable: bytes = ...,
+        ) -> code: ...
+    elif sys.version_info >= (3, 8):
+        def replace(
+            self,
+            *,
+            co_argcount: int = ...,
+            co_posonlyargcount: int = ...,
+            co_kwonlyargcount: int = ...,
+            co_nlocals: int = ...,
+            co_stacksize: int = ...,
+            co_flags: int = ...,
+            co_firstlineno: int = ...,
+            co_code: bytes = ...,
+            co_consts: tuple[object, ...] = ...,
+            co_names: tuple[str, ...] = ...,
+            co_varnames: tuple[str, ...] = ...,
+            co_freevars: tuple[str, ...] = ...,
+            co_cellvars: tuple[str, ...] = ...,
+            co_filename: str = ...,
+            co_name: str = ...,
+            co_lnotab: bytes = ...,
+        ) -> code: ...
 
 class ArithmeticError(StandardError):
     pass
