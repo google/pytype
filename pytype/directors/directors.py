@@ -280,6 +280,7 @@ class Director:
     # Store function ranges and return lines to distinguish explicit and
     # implicit returns (the bytecode has a `RETURN None` for implcit returns).
     self._return_lines = set()
+    self.block_returns = None
     self._function_ranges = _BlockRanges({})
     # Parse the source code for directives.
     self._parse_src_tree(src_tree, code)
@@ -313,7 +314,8 @@ class Director:
     else:
       opcode_lines = None
 
-    self._return_lines = visitor.returns
+    self.block_returns = visitor.block_returns
+    self._return_lines = visitor.block_returns.all_returns()
     self._function_ranges = _BlockRanges(visitor.function_ranges)
 
     for line_range, group in visitor.structured_comment_groups.items():

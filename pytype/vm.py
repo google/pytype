@@ -230,6 +230,7 @@ class VirtualMachine:
     can_return = False
     return_nodes = []
     finally_tracker = vm_utils.FinallyStateTracker()
+    vm_utils.adjust_block_returns(frame.f_code, self._director.block_returns)
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
@@ -430,6 +431,7 @@ class VirtualMachine:
       self.ctx.errorlog.ignored_type_comment(self.filename, line,
                                              self._director.type_comments[line])
     code = constant_folding.optimize(code)
+    vm_utils.adjust_block_returns(code, self._director.block_returns)
 
     node = self.ctx.root_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)

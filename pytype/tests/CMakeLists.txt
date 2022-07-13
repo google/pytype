@@ -669,6 +669,15 @@ py_test(
 
 py_test(
   NAME
+    test_returns
+  SRCS
+    test_returns.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_list1
   SRCS
     test_list1.py
