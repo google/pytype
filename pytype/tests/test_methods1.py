@@ -57,6 +57,7 @@ class MethodsTest(test_base.BaseTest):
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
     self.assertHasSignature(ty.Lookup("f"), (self.float,), self.float)
 
+  @test_base.skip("b/238794928: Function inference will be removed.")
   def test_add_float(self):
     ty = self.Infer("""
       def f(x):
@@ -473,6 +474,7 @@ class MethodsTest(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     self.assertHasSignature(ty.Lookup("f"), (self.int,), self.int)
 
+  @test_base.skip("b/238794928: Function inference will be removed.")
   def test_ambiguous_starstar(self):
     ty = self.Infer("""
       def f(x):

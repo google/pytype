@@ -307,93 +307,6 @@ class CombineContainers(visitors.Visitor):
     return result
 
 
-class Factorize(visitors.Visitor):
-  """Opposite of ExpandSignatures. Factorizes cartesian products of functions.
-
-  For example, this transforms
-    def f(x: int, y: int)
-    def f(x: int, y: float)
-    def f(x: float, y: int)
-    def f(x: float, y: float)
-  to
-    def f(x: Union[int, float], y: Union[int, float])
-  """
-
-  def _GroupByOmittedArg(self, signatures, i):
-    """Group functions that are identical if you ignore one of the arguments.
-
-    Arguments:
-      signatures: A list of function signatures
-      i: The index of the argument to ignore during comparison.
-
-    Returns:
-      A list of tuples (signature, types). "signature" is a signature with
-      argument i omitted, "types" is the list of types that argument was
-      found to have. signatures that don't have argument i are represented
-      as (original, None).
-    """
-    groups = {}
-    for sig in signatures:
-      if i >= len(sig.params):
-        # We can't omit argument i, because this signature has too few
-        # arguments. Represent this signature as (original, None).
-        groups[sig] = None
-        continue
-      if sig.params[i].mutated_type is not None:
-        # We can't group mutable parameters. Leave this signature alone.
-        groups[sig] = None
-        continue
-
-      # Set type of parameter i to None
-      params = list(sig.params)
-      param_i = params[i]
-      params[i] = param_i.Replace(type=None)
-
-      stripped_signature = sig.Replace(params=tuple(params))
-      existing = groups.get(stripped_signature)
-      if existing:
-        existing.append(param_i.type)
-      else:
-        groups[stripped_signature] = [param_i.type]
-    return groups.items()
-
-  def VisitFunction(self, f):
-    """Shrink a function, by factorizing cartesian products of arguments.
-
-    Greedily groups signatures, looking at the arguments from left to right.
-    This algorithm is *not* optimal. But it does the right thing for the
-    typical cases.
-
-    Arguments:
-      f: An instance of pytd.Function. If this function has more
-          than one signature, we will try to combine some of these signatures by
-          introducing union types.
-
-    Returns:
-      A new, potentially optimized, instance of pytd.Function.
-
-    """
-    max_argument_count = max(len(s.params) for s in f.signatures)
-    signatures = f.signatures
-
-    for i in range(max_argument_count):
-      new_sigs = []
-      for sig, types in self._GroupByOmittedArg(signatures, i):
-        if types:
-          # One or more options for argument <i>:
-          new_params = list(sig.params)
-          new_params[i] = sig.params[i].Replace(
-              type=pytd_utils.JoinTypes(types))
-          sig = sig.Replace(params=tuple(new_params))
-          new_sigs.append(sig)
-        else:
-          # Signature doesn't have argument <i>, so we store the original:
-          new_sigs.append(sig)
-      signatures = new_sigs
-
-    return f.Replace(signatures=tuple(signatures))
-
-
 class SuperClassHierarchy:
   """Utility class for optimizations working with superclasses."""
 
@@ -962,7 +875,6 @@ def Optimize(node,
   node = node.Visit(RemoveDuplicates())
   node = node.Visit(SimplifyUnions())
   node = node.Visit(CombineReturnsAndExceptions())
-  node = node.Visit(Factorize())
   node = node.Visit(CombineContainers())
   node = node.Visit(SimplifyContainers())
   if builtins:
