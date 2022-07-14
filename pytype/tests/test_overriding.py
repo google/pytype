@@ -816,6 +816,28 @@ class OverridingTest(test_base.BaseTest):
         pass
     """)
 
+  def test_async(self):
+    with self.DepTree([("foo.py", """
+      class Foo:
+        async def f(self) -> int:
+          return 0
+        def g(self) -> int:
+          return 0
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        class Good(foo.Foo):
+          async def f(self) -> int:
+            return 0
+        class Bad(foo.Foo):
+          async def f(self) -> str:  # signature-mismatch
+            return ''
+          # Test that we catch the non-async/async mismatch even without a
+          # return annotation.
+          async def g(self):  # signature-mismatch
+            return 0
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

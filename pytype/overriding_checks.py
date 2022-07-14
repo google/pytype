@@ -484,10 +484,21 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
     assert member_name not in class_method_map
     class_method_map[member_name] = method
 
-  class_signature_map = {
-      method_name: method.signature
-      for method_name, method in class_method_map.items()
-  }
+  class_signature_map = {}
+  for method_name, method in class_method_map.items():
+    if method.is_coroutine():
+      annotations = dict(method.signature.annotations)
+      coroutine_params = {
+          abstract_utils.T: ctx.convert.unsolvable,
+          abstract_utils.T2: ctx.convert.unsolvable,
+          abstract_utils.V: annotations.get("return", ctx.convert.unsolvable),
+      }
+      annotations["return"] = abstract.ParameterizedClass(
+          ctx.convert.coroutine_type, coroutine_params, ctx)
+      signature = method.signature._replace(annotations=annotations)
+    else:
+      signature = method.signature
+    class_signature_map[method_name] = signature
   for base in bases:
     try:
       base_class = abstract_utils.get_atomic_value(base)
