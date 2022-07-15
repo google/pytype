@@ -642,7 +642,12 @@ class InterpreterFunction(SignedFunction):
         not abstract_utils.func_name_is_class_init(self.name)):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
-      return node, self.ctx.new_unsolvable(node)
+      if self.signature.annotations.get("return") == self.ctx.convert.no_return:
+        # TODO(b/147230757): Use all return annotations, not just NoReturn.
+        ret = self.signature.annotations["return"]
+      else:
+        ret = self.ctx.convert.unsolvable
+      return node, ret.to_variable(node)
     args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
     args = args.simplify(node, self.ctx, self.signature)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
