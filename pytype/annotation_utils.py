@@ -54,6 +54,14 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     return self.ctx.convert.merge_classes(vals)
 
   def sub_one_annotation(self, node, annot, substs, instantiate_unbound=True):
+
+    def get_type_parameter_subst(annotation):
+      return self._get_type_parameter_subst(node, annotation, substs,
+                                            instantiate_unbound)
+
+    return self._do_sub_one_annotation(node, annot, get_type_parameter_subst)
+
+  def _do_sub_one_annotation(self, node, annot, get_type_parameter_subst_fn):
     """Apply type parameter substitutions to an annotation."""
     # We push annotations onto 'stack' and move them to the 'done' stack as they
     # are processed. For each annotation, we also track an 'inner_type_keys'
@@ -77,8 +85,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           if cur not in late_annotations:
             param_strings = []
             for t in utils.unique_list(self.get_type_parameters(cur)):
-              s = pytd_utils.Print(self._get_type_parameter_subst(
-                  node, t, substs, instantiate_unbound).get_instance_type(node))
+              s = pytd_utils.Print(
+                  get_type_parameter_subst_fn(t).get_instance_type(node))
               param_strings.append(s)
             expr = f"{cur.expr}[{', '.join(param_strings)}]"
             late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)
@@ -107,10 +115,52 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                     late_annot.expr.split("[", 1)[0]].append(late_annot)
           done.append(done_annot)
       else:
-        done.append(self._get_type_parameter_subst(
-            node, cur, substs, instantiate_unbound))
+        done.append(get_type_parameter_subst_fn(cur))
     assert len(done) == 1
     return done[0]
+
+  def sub_annotations_for_parameterized_class(self, cls, annotations):
+    """Apply type parameter substitutions to a dictionary of annotations.
+
+    Args:
+      cls: ParameterizedClass that defines type parameter substitutions.
+      annotations: A dictionary of annotations to which type parameter
+        substition should be applied.
+
+    Returns:
+      Annotations with type parameters substituted.
+    """
+    assert isinstance(cls, abstract.ParameterizedClass)
+    formal_type_parameters = cls.get_formal_type_parameters()
+
+    def get_type_parameter_subst(annotation):
+      assert isinstance(annotation, abstract.TypeParameter)
+      # Normally the type parameter module is set correctly at this point.
+      # Except for the case when a method that references this type parameter
+      # is inherited in a subclass that does not specialize this parameter:
+      #   class A(Generic[T]):
+      #     def f(self, t: T): ...
+      #
+      #   class B(Generic[T], A[T]):
+      #     pass
+      #
+      #   class C(B[int]): ...
+      # In this case t in A[T].f will be annotated with T with no module set,
+      # since we don't know the correct module until T is specialized in
+      # B[int].
+      annotation = annotation.with_module(cls.full_name)
+      # Method parameter can be annotated with a typevar that doesn't
+      # belong to the class template:
+      #   class A(Generic[T]):
+      #     def f(self, t: U): ...
+      # In this case we return it as is.
+      return formal_type_parameters.get(annotation.full_name, annotation)
+
+    return {
+        name: self._do_sub_one_annotation(self.ctx.root_node, annot,
+                                          get_type_parameter_subst)
+        for name, annot in annotations.items()
+    }
 
   def get_late_annotations(self, annot):
     if annot.is_late_annotation() and not annot.resolved:
