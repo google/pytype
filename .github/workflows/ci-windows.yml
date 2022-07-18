@@ -13,7 +13,7 @@ jobs:
       matrix:
         os: [windows-latest]
         python-url: ['https://www.python.org/ftp/python/3.10.5/python-3.10.5-amd64.exe']
-        experimental: [false]
+        experimental: [true]
         
     runs-on: ${{ matrix.os }}
 
