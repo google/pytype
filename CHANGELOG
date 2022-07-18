@@ -1,3 +1,14 @@
+Version 2022.07.18:
+
+Bug fixes:
+* Look up methods properly on classes with _HAS_DYNAMIC_ATTRIBUTES.
+* Handle .pyi-1 files in load_pytd.Module.is_package().
+* Adjust opcode line numbers for return statements in python 3.10+.
+* Remove optimize.Factorize, which unnecessarily flattens overloaded functions.
+* Fix coroutine signatures in overriding_checks.
+* Handle generic types correctly in signature compatibility checks.
+* Respect NoReturn annotations even when maximum depth is reached.
+
 Version 2022.06.30:
 
 Updates:
