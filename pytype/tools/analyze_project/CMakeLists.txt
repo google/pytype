@@ -18,6 +18,7 @@ py_library(
   DEPS
     pytype.api
     pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.tools.tools
 )
 
@@ -50,6 +51,7 @@ py_library(
   DEPS
     .config
     pytype.utils
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -60,6 +62,7 @@ py_test(
   DEPS
     .analyze_project
     pytype.utils
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -70,6 +73,7 @@ py_test(
   DEPS
     .analyze_project
     pytype.utils
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -81,6 +85,7 @@ py_test(
     .analyze_project
     pytype.libvm
     pytype.utils
+    pytype.platform_utils.platform_utils
 )
 
 toplevel_py_binary(
@@ -93,5 +98,6 @@ toplevel_py_binary(
   DEPS
     .analyze_project
     pytype.libvm
+    pytype.platform_utils.platform_utils
     pytype.tools.tools
 )

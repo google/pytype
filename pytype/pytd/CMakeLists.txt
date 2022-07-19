@@ -105,6 +105,7 @@ py_library(
   DEPS
     .pytd_utils
     .visitors
+    pytype.platform_utils.platform_utils
     pytype.pyi.parser
 )
 
@@ -169,6 +170,7 @@ py_library(
     .printer
     .pytd_visitors
     pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.pytd.parse.parse
 )
 
@@ -248,6 +250,7 @@ py_library(
   DEPS
     .builtin_stubs
     pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.pyi.parser
 )
 
@@ -417,6 +420,7 @@ py_test(
     .serialize_ast
     .visitors
     pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
@@ -443,6 +447,7 @@ py_test(
     .visitors
     pytype.libvm
     pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.tests.test_base
 )
 
@@ -455,6 +460,7 @@ py_test(
     .builtin_stubs
     .typeshed
     pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )

@@ -50,29 +50,29 @@ class PickleTest(test_base.BaseTest):
 
   def test_copy_class_into_output(self):
     pickled_foo = self.Infer("""
-      import asyncore
+      import datetime
       a = 42
-      file_dispatcher = asyncore.file_dispatcher  # copy class
+      timedelta = datetime.timedelta  # copy class
     """, deep=False, pickle=True, module_name="foo")
-    self._verifyDeps(pickled_foo, ["builtins"], ["asyncore"])
+    self._verifyDeps(pickled_foo, ["builtins"], ["datetime"])
     with file_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       pickled_bar = self.Infer("""
         import foo
-        file_dispatcher = foo.file_dispatcher  # copy class
+        timedelta = foo.timedelta  # copy class
       """, pickle=True, pythonpath=[""],
                                imports_map={"foo": foo}, module_name="bar")
-      self._verifyDeps(pickled_bar, ["builtins"], ["asyncore"])
+      self._verifyDeps(pickled_bar, ["builtins"], ["datetime"])
       bar = d.create_file("bar.pickled", pickled_bar)
       ty = self.Infer("""
         import bar
-        r = bar.file_dispatcher(0)
+        r = bar.timedelta(0)
       """, deep=False, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
-      self._verifyDeps(ty, ["asyncore"], [])
+      self._verifyDeps(ty, ["datetime"], [])
       self.assertTypesMatchPytd(ty, """
-        import asyncore
+        import datetime
         import bar
-        r = ...  # type: asyncore.file_dispatcher
+        r = ...  # type: datetime.timedelta
       """)
 
   def test_optimize_on_late_types(self):

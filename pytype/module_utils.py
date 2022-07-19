@@ -4,6 +4,8 @@ import dataclasses
 import os
 from typing import Sequence
 
+from pytype.platform_utils import path_utils
+
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class Module:
@@ -25,7 +27,7 @@ class Module:
 
   @property
   def full_path(self):
-    return os.path.join(self.path, self.target)
+    return path_utils.join(self.path, self.target)
 
 
 def infer_module(filename, pythonpath):
@@ -44,8 +46,8 @@ def infer_module(filename, pythonpath):
   """
   # We want '' in our lookup path, but we don't want it for prefix tests.
   for path in filter(bool, pythonpath):
-    if not path.endswith(os.sep):
-      path += os.sep
+    if not path.endswith(path_utils.sep):
+      path += path_utils.sep
     if filename.startswith(path):
       filename = filename[len(path):]
       break
@@ -58,24 +60,24 @@ def infer_module(filename, pythonpath):
 def get_module_name(filename, pythonpath):
   """Get the module name, or None if we can't determine it."""
   if filename:
-    filename = os.path.normpath(filename)
+    filename = path_utils.normpath(filename)
     # Keep path '' as is; infer_module will handle it.
-    pythonpath = [path and os.path.normpath(path) for path in pythonpath]
+    pythonpath = [path and path_utils.normpath(path) for path in pythonpath]
     return infer_module(filename, pythonpath).name
 
 
 def path_to_module_name(filename):
   """Converts a filename into a dotted module name."""
-  if os.path.dirname(filename).startswith(os.pardir):
+  if path_utils.dirname(filename).startswith(os.pardir):
     # Don't try to infer a module name for filenames starting with ../
     return None
-  filename, ext = os.path.splitext(filename)
+  filename, ext = path_utils.splitext(filename)
   if ext and not ext.startswith(".py"):
     # If there is no extension, convert "foo/bar" to "foo.bar", since we use
     # that in our imports_info map. If there is an extension, it needs to be
     # a python source or stub file, so ".py*" should cover all the cases.
     return None
-  module_name = filename.replace(os.path.sep, ".")
+  module_name = filename.replace(path_utils.sep, ".").replace("/", ".")
   # strip __init__ suffix
   module_name, _, _ = module_name.partition(".__init__")
   return module_name

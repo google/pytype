@@ -25,8 +25,6 @@ py_library(
   SRCS
     namedtuple.py
   DEPS
-    .function
-    .pytdgen
     pytype.pytd.pytd_for_codegen
 )
 
@@ -47,5 +45,4 @@ py_library(
   DEPS
     .function
     pytype.pytd.pytd_for_codegen
-    pytype.pytd.parse.parse
 )

@@ -99,10 +99,10 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
     with file_utils.Tempdir() as d:
       d.create_file("t.py", code)
       d.create_file("f.pyi", stub)
-      d.create_file("x/y.pyi", stub)
-      d.create_file("a/b.pyi", stub)
-      d.create_file("p/q.pyi", stub)
-      d.create_file("u/v.pyi", stub)
+      d.create_file(file_utils.replace_separator("x/y.pyi"), stub)
+      d.create_file(file_utils.replace_separator("a/b.pyi"), stub)
+      d.create_file(file_utils.replace_separator("p/q.pyi"), stub)
+      d.create_file(file_utils.replace_separator("u/v.pyi"), stub)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
       ix = indexer.process_file(options)
@@ -156,6 +156,9 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
           ("y", ":module:", "x/y.py"),
       }
 
+      f = file_utils.replace_separator
+      expected = set((x[0], x[1], f(x[2])) for x in expected)
+
       # Resolve filepaths within the tempdir.
       expected = [(ref, target, d[path]) for (ref, target, path) in expected]
       self.assertEqual(set(out), set(expected))
@@ -166,7 +169,8 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
         def f(x):
           return 42
     """)
-    options = config.Options.create("/path/to/nonexistent/file.py")
+    options = config.Options.create(
+        file_utils.replace_separator("/path/to/nonexistent/file.py"))
     options.tweak(version=self.python_version)
     ix = indexer.process_file(options, source_text=code)
     self.assertDef(ix, "module.f", "f", "FunctionDef")

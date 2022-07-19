@@ -1,11 +1,9 @@
 """Utilities for parsing pytd files for builtins."""
 
-import os
-
+from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
-
 
 # TODO(rechen): It would be nice to get rid of GetBuiltinsAndTyping, and let the
 # loader call BuiltinsAndTyping.load directly, but the cache currently prevents
@@ -101,7 +99,7 @@ class BuiltinLoader:
       filename = module_name
     else:
       mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
-      filename = os.path.join(module_name, "__init__.pyi")
+      filename = path_utils.join(module_name, "__init__.pyi")
     return filename, mod
 
 # pylint: enable=invalid-name

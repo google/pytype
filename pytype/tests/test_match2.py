@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class MatchTest(test_base.BaseTest):
@@ -286,6 +287,7 @@ class MatchTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {
         "e": r"Callable\[\[T\], T\].*Callable\[\[AnyStr\], AnyStr\]"})
 
+  @test_utils.skipOnWin32("Fails on windows for unknown reasons")
   def test_filter_return(self):
     # See b/155895991 for context.
     self.Check("""

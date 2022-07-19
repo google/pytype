@@ -9,6 +9,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 
 from pytype import module_utils
 from pytype import utils
+from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd
@@ -90,7 +91,7 @@ class Module:
       # intermediate directories.
       return True
     if self.filename:
-      base, _ = os.path.splitext(os.path.basename(self.filename))
+      base, _ = os.path.splitext(path_utils.basename(self.filename))
       return base == "__init__"
     return False
 
@@ -211,11 +212,11 @@ class _ModuleMap:
       m.ast = loaded_ast.ast
       if loaded_ast.is_package:
         init_file = f"__init__{pytd_utils.PICKLE_EXT}"
-        if m.filename and os.path.basename(m.filename) != init_file:
-          base, _ = os.path.splitext(m.filename)
-          m.filename = os.path.join(base, init_file)
+        if m.filename and path_utils.basename(m.filename) != init_file:
+          base, _ = path_utils.splitext(m.filename)
+          m.filename = path_utils.join(base, init_file)
         else:
-          m.filename = self.PREFIX + os.path.join(m.module_name, init_file)
+          m.filename = self.PREFIX + path_utils.join(m.module_name, init_file)
       m.pickle = None
     module_map = self.get_module_map()
     for loaded_ast in newly_loaded_asts:
@@ -250,20 +251,20 @@ class _PathFinder:
     """
     module_name_split = module_name.split(".")
     for searchdir in self.options.pythonpath:
-      path = os.path.join(searchdir, *module_name_split)
+      path = path_utils.join(searchdir, *module_name_split)
       # See if this is a directory with a "__init__.py" defined.
       # (These also get automatically created in imports_map_loader.py)
-      init_path = os.path.join(path, "__init__")
+      init_path = path_utils.join(path, "__init__")
       full_path = self.get_pyi_path(init_path)
       if full_path is not None:
         log.debug("Found module %r with path %r", module_name, init_path)
         return full_path, True
-      elif self.options.imports_map is None and os.path.isdir(path):
+      elif self.options.imports_map is None and path_utils.isdir(path):
         # We allow directories to not have an __init__ file.
         # The module's empty, but you can still load submodules.
         log.debug("Created empty module %r with path %r",
                   module_name, init_path)
-        full_path = os.path.join(path, "__init__.pyi")
+        full_path = path_utils.join(path, "__init__.pyi")
         return full_path, False
       else:  # Not a directory
         full_path = self.get_pyi_path(path)
@@ -282,9 +283,9 @@ class _PathFinder:
     else:
       full_path = path + ".pyi"
 
-    # We have /dev/null entries in the import_map - os.path.isfile() returns
+    # We have /dev/null entries in the import_map - path_utils.isfile() returns
     # False for those. However, we *do* want to load them. Hence exists / isdir.
-    if os.path.exists(full_path) and not os.path.isdir(full_path):
+    if path_utils.exists(full_path) and not path_utils.isdir(full_path):
       return full_path
     else:
       return None
@@ -544,6 +545,7 @@ class Loader:
         full_name = f"{name}.{base_name}"
         # Check whether full_name is a submodule based on whether it is
         # defined in the __init__ file.
+        assert isinstance(dep_ast, _AST)
         attr = dep_ast.Get(full_name)
         # 'from . import submodule as submodule' produces
         # Alias(submodule, NamedType(submodule)).
@@ -597,7 +599,9 @@ class Loader:
       raise ValueError("Attempting relative import in non-package.")
     path = self.options.module_name.split(".")[:-1]
     path.append(name)
-    return self.import_name(".".join(path))
+    name = self.import_name(".".join(path))
+    assert isinstance(name, _AST)
+    return name
 
   def import_relative(self, level: int) -> _AST:
     """Import a module relative to our base module.
@@ -622,9 +626,11 @@ class Loader:
       raise ValueError("Attempting relative import in non-package.")
     components = self.options.module_name.split(".")
     sub_module = ".".join(components[0:-level])
-    return self.import_name(sub_module)
+    name = self.import_name(sub_module)
+    assert isinstance(name, _AST)
+    return name
 
-  def import_name(self, module_name: str) -> _AST:
+  def import_name(self, module_name: str):
     if module_name in self._import_name_cache:
       return self._import_name_cache[module_name]
     mod_ast = self._import_module_by_name(module_name)
@@ -648,6 +654,7 @@ class Loader:
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
           if k not in self._modules:
+            assert mod_ast
             raise (
                 BadDependencyError(f"Can't find pyi for {k!r}", mod_ast.name)
             ) from e
@@ -687,7 +694,7 @@ class Loader:
                             module_name=module_name, mod_ast=mod_ast)
     return None
 
-  def _import_module_by_name(self, module_name):
+  def _import_module_by_name(self, module_name) -> Optional[_AST]:
     """Load a name like 'sys' or 'foo.bar.baz'.
 
     Args:
@@ -701,7 +708,7 @@ class Loader:
     if existing:
       return existing
 
-    assert os.sep not in module_name, (os.sep, module_name)
+    assert path_utils.sep not in module_name, (path_utils.sep, module_name)
     log.debug("Trying to import %r", module_name)
     # Builtin modules (but not standard library modules!) take precedence
     # over modules in PYTHONPATH.

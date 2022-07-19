@@ -329,12 +329,10 @@ class FlowTest(test_base.BaseTest):
 
   def test_loop_over_list_of_lists(self):
     ty = self.Infer("""
-      import os
-      for seq in [os.getgroups()]:  # os.getgroups() returns a List[int]
+    for seq in [[1, 2, 3]]:
         seq.append("foo")
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
-      import os
       from typing import List, Union
       seq = ...  # type: List[Union[int, str]]
     """)

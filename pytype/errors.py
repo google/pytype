@@ -432,7 +432,7 @@ class ErrorLogBase:
   def print_to_csv_file(self, filename, open_function=open):
     """Print the errorlog to a csv file."""
     with open_function(filename, "w") as f:
-      csv_file = csv.writer(f, delimiter=",")
+      csv_file = csv.writer(f, delimiter=",", lineterminator="\n")
       for error in self.unique_sorted_errors():
         # pylint: disable=protected-access
         if error._details and error._traceback:
