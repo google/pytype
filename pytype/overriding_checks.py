@@ -464,6 +464,32 @@ def _get_pytd_class_signature_map(cls, ctx):
   return method_signature_map
 
 
+def _get_parameterized_class_signature_map(cls, ctx):
+  """Returns a map from method names to signatures for a ParameterizedClass."""
+  assert isinstance(cls, abstract.ParameterizedClass)
+  if cls in ctx.method_signature_map:
+    return ctx.method_signature_map[cls]
+
+  base_class = cls.base_cls
+
+  if isinstance(base_class, abstract.InterpreterClass):
+    base_signature_map = ctx.method_signature_map[base_class]
+  else:
+    assert isinstance(base_class, abstract.PyTDClass)
+    base_signature_map = _get_pytd_class_signature_map(base_class, ctx)
+
+  method_signature_map = {}
+  for base_method_name, base_method_signature in base_signature_map.items():
+    # Replace formal type parameters with their values.
+    annotations = ctx.annotation_utils.sub_annotations_for_parameterized_class(
+        cls, base_method_signature.annotations)
+    method_signature_map[base_method_name] = base_method_signature._replace(
+        annotations=annotations)
+
+  ctx.method_signature_map[cls] = method_signature_map
+  return method_signature_map
+
+
 def check_overriding_members(cls, bases, members, matcher, ctx):
   """Check that the method signatures of the new class match base classes."""
 
@@ -484,19 +510,31 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
     assert member_name not in class_method_map
     class_method_map[member_name] = method
 
-  class_signature_map = {
-      method_name: method.signature
-      for method_name, method in class_method_map.items()
-  }
+  class_signature_map = {}
+  for method_name, method in class_method_map.items():
+    if method.is_coroutine():
+      annotations = dict(method.signature.annotations)
+      coroutine_params = {
+          abstract_utils.T: ctx.convert.unsolvable,
+          abstract_utils.T2: ctx.convert.unsolvable,
+          abstract_utils.V: annotations.get("return", ctx.convert.unsolvable),
+      }
+      annotations["return"] = abstract.ParameterizedClass(
+          ctx.convert.coroutine_type, coroutine_params, ctx)
+      signature = method.signature._replace(annotations=annotations)
+    else:
+      signature = method.signature
+    class_signature_map[method_name] = signature
   for base in bases:
     try:
       base_class = abstract_utils.get_atomic_value(base)
     except abstract_utils.ConversionError:
       continue
-    if isinstance(base_class, abstract.ParameterizedClass):
-      base_class = base_class.base_cls
     if isinstance(base_class, abstract.InterpreterClass):
       base_signature_map = ctx.method_signature_map[base_class]
+    elif isinstance(base_class, abstract.ParameterizedClass):
+      base_signature_map = _get_parameterized_class_signature_map(
+          base_class, ctx)
     elif isinstance(base_class, abstract.PyTDClass):
       base_signature_map = _get_pytd_class_signature_map(base_class, ctx)
     else:

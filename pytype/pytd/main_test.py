@@ -77,26 +77,6 @@ class TestPytdTool(unittest.TestCase):
       with open(outpath) as f:
         self.assertMultiLineEqual(f.read(), src)
 
-  def test_optimize(self):
-    with file_utils.Tempdir() as d:
-      inpath = d.create_file("in.pytd", """
-        from typing import overload
-
-        @overload
-        def f(x: int) -> str: ...
-        @overload
-        def f(x: str) -> str: ...
-      """)
-      outpath = os.path.join(d.path, "out.pytd")
-      sys.argv = ["main.py", "--optimize", inpath, outpath]
-      pytd_tool.main()
-      with open(outpath) as f:
-        self.assertMultiLineEqual(f.read(), textwrap.dedent("""
-          from typing import Union
-
-          def f(x: Union[int, str]) -> str: ...
-        """).strip())
-
 
 if __name__ == "__main__":
   unittest.main()

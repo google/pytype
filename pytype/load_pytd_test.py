@@ -19,6 +19,20 @@ from pytype.tests import test_base
 import unittest
 
 
+class ModuleTest(test_base.UnitTest):
+  """Tests for load_pytd.Module."""
+
+  def test_is_package(self):
+    for filename, is_package in [("foo/bar.pyi", False),
+                                 ("foo/__init__.pyi", True),
+                                 ("foo/__init__.pyi-1", True),
+                                 ("foo/__init__.pickled", True),
+                                 (os.devnull, True)]:
+      with self.subTest(filename=filename):
+        mod = load_pytd.Module(module_name=None, filename=filename, ast=None)
+        self.assertEqual(mod.is_package(), is_package)
+
+
 class _LoaderTest(test_base.UnitTest):
 
   @contextlib.contextmanager

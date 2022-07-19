@@ -22,7 +22,7 @@
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
       * [Why are signature mismatches in subclasses bad? {#signature-mismatch}](#why-are-signature-mismatches-in-subclasses-bad-signature-mismatch)
 
-<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
+<!-- Added by: mdemello, at: 2022-07-13T17:03-07:00 -->
 
 <!--te-->
 
@@ -371,7 +371,6 @@ TypeError: func() got multiple values for argument 'y'
 [pep-561-issue]: https://github.com/google/pytype/issues/151
 [typeshed]: https://github.com/python/typeshed
 [typing-faq]: typing_faq.md
-[why-is-pytype-taking-so-long]: #why-is-pytype-taking-so-long
 
 <!-- References with different internal and external versions -->
 

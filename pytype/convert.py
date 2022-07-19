@@ -615,6 +615,8 @@ class Converter(utils.ContextWeakrefMixin):
       return self.function_type
     elif name == "types.NoneType":
       return self.none_type
+    elif name == "types.CodeType":
+      return self.primitive_classes[types.CodeType]
     else:
       return None
 

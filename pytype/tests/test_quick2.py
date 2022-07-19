@@ -41,6 +41,26 @@ class QuickTest(test_base.BaseTest):
           return 42
       """, pythonpath=[d.path], quick=True)
 
+  def test_noreturn(self):
+    self.Check("""
+      from typing import NoReturn
+
+      class A:
+        pass
+
+      class B:
+        def _raise_notimplemented(self) -> NoReturn:
+          raise NotImplementedError()
+        def f(self, x):
+          if __random__:
+            outputs = 42
+          else:
+            self._raise_notimplemented()
+          return outputs
+        def g(self):
+          outputs = self.f(A())
+    """, quick=True)
+
 
 if __name__ == "__main__":
   test_base.main()

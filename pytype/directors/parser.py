@@ -32,6 +32,9 @@ class LineRange:
   def from_node(cls, node):
     return cls(node.lineno, node.end_lineno)
 
+  def __contains__(self, line):
+    return self.start_line <= line <= self.end_line
+
 
 @dataclasses.dataclass(frozen=True)
 class Call(LineRange):
@@ -66,6 +69,44 @@ class _SourceTree:
   structured_comments: Mapping[int, Sequence[_StructuredComment]]
 
 
+class BlockReturns:
+  """Tracks return statements in with/try blocks."""
+
+  def __init__(self):
+    self._block_ranges = []
+    self._returns = []
+    self._block_returns = {}
+    self._final = False
+
+  def add_block(self, node):
+    line_range = LineRange.from_node(node)
+    self._block_ranges.append(line_range)
+
+  def add_return(self, node):
+    self._returns.append(node.lineno)
+
+  def finalize(self):
+    for br in self._block_ranges:
+      self._block_returns[br.start_line] = sorted(
+          r for r in self._returns if r in br
+      )
+    self._final = True
+
+  def all_returns(self):
+    return set(self._returns)
+
+  def __iter__(self):
+    assert self._final
+    return iter(self._block_returns.items())
+
+  def __repr__(self):
+    return f"""
+      Blocks: {self._block_ranges}
+      Returns: {self._returns}
+      {self._block_returns}
+    """
+
+
 class _ParseVisitor(visitor.BaseVisitor):
   """Visitor for parsing a source tree.
 
@@ -97,8 +138,9 @@ class _ParseVisitor(visitor.BaseVisitor):
     self.variable_annotations = []
     self.decorators = []
     self.defs_start = None
-    self.returns = set()
     self.function_ranges = {}
+    self.block_returns = BlockReturns()
+    self.block_depth = 0
 
   def _add_structured_comment_group(self, start_line, end_line, cls=LineRange):
     """Adds an empty _StructuredComment group with the given line range."""
@@ -171,6 +213,9 @@ class _ParseVisitor(visitor.BaseVisitor):
       if cls is not LineRange:
         group.extend(c for c in structured_comments if should_add(c, group))
 
+  def leave_Module(self, node):
+    self.block_returns.finalize()
+
   def visit_Call(self, node):
     self._process_structured_comments(LineRange.from_node(node), cls=Call)
 
@@ -200,7 +245,21 @@ class _ParseVisitor(visitor.BaseVisitor):
   def _visit_with(self, node):
     item = node.items[-1]
     end_lineno = (item.optional_vars or item.context_expr).end_lineno
+    if self.block_depth == 1:
+      self.block_returns.add_block(node)
     self._process_structured_comments(LineRange(node.lineno, end_lineno))
+
+  def enter_With(self, node):
+    self.block_depth += 1
+
+  def leave_With(self, node):
+    self.block_depth -= 1
+
+  def enter_AsyncWith(self, node):
+    self.block_depth += 1
+
+  def leave_AsyncWith(self, node):
+    self.block_depth -= 1
 
   def visit_With(self, node):
     self._visit_with(node)
@@ -226,8 +285,8 @@ class _ParseVisitor(visitor.BaseVisitor):
       self._process_structured_comments(LineRange.from_node(node))
 
   def visit_Return(self, node):
+    self.block_returns.add_return(node)
     self._process_structured_comments(LineRange.from_node(node))
-    self.returns.add(node.lineno)
 
   def _visit_decorators(self, node):
     if not node.decorator_list:

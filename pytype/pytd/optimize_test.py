@@ -225,46 +225,6 @@ class TestOptimize(parser_test_base.ParserTest):
         self.ApplyVisitorToString(src, optimize.SimplifyUnions()),
         new_src)
 
-  def test_factorize(self):
-    src = pytd_src("""
-        def foo(a: int) -> file: ...
-        def foo(a: int, x: complex) -> file: ...
-        def foo(a: int, x: str) -> file: ...
-        def foo(a: float, x: complex) -> file: ...
-        def foo(a: float, x: str) -> file: ...
-        def foo(a: int, x: file, *args) -> file: ...
-    """)
-    new_src = pytd_src("""
-        def foo(a: int) -> file: ...
-        def foo(a: float, x: Union[complex, str]) -> file: ...
-        def foo(a: int, x: file, *args) -> file: ...
-    """)
-    self.AssertSourceEquals(
-        self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
-
-  def test_factorize_mutable(self):
-    src = pytd_src("""
-        def foo(a: list[bool], b: X) -> file:
-            a = list[int]
-        def foo(a: list[bool], b: Y) -> file:
-            a = list[int]
-        # not groupable:
-        def bar(a: int, b: list[int]) -> file:
-            b = list[complex]
-        def bar(a: int, b: list[float]) -> file:
-            b = list[str]
-    """)
-    new_src = pytd_src("""
-        def foo(a: list[bool], b: Union[X, Y]) -> file:
-            a = list[int]
-        def bar(a: int, b: list[int]) -> file:
-            b = list[complex]
-        def bar(a: int, b: list[float]) -> file:
-            b = list[str]
-    """)
-    self.AssertSourceEquals(
-        self.ApplyVisitorToString(src, optimize.Factorize()), new_src)
-
   def test_builtin_superclasses(self):
     src = pytd_src("""
         def f(x: Union[list, object], y: Union[complex, memoryview]) -> Union[int, bool]: ...
@@ -632,6 +592,19 @@ class TestOptimize(parser_test_base.ParserTest):
     tree = self.Parse(src)
     new_tree = tree.Visit(optimize.MergeTypeParameters())
     self.AssertSourceEquals(new_tree, expected)
+
+  def test_overloads_not_flattened(self):
+    # This test checks that @overloaded functions are not flattened into a
+    # single signature.
+    src = pytd_src("""
+      from typing import overload
+      @overload
+      def f(x: int) -> str: ...
+      @overload
+      def f(x: str) -> str: ...
+    """)
+    self.AssertOptimizeEquals(src, src)
+
 
 if __name__ == "__main__":
   unittest.main()

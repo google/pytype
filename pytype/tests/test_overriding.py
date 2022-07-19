@@ -576,8 +576,7 @@ class OverridingTest(test_base.BaseTest):
           return [A()]
     """)
 
-  def test_subclass_of_generic_type_mismatch(self):
-    # Note: we don't detect mismatch in type parameters yet.
+  def test_subclass_of_generic_for_builtin_types(self):
     self.CheckWithErrors("""
       from typing import Generic, TypeVar
 
@@ -591,11 +590,305 @@ class OverridingTest(test_base.BaseTest):
           pass
 
       class B(A[int]):
-        def f(self, t: str) -> None:
+        def f(self, t: str) -> None:  # signature-mismatch
           pass
 
         def g(self, t: str) -> None:  # signature-mismatch
           pass
+
+      class C(A[list]):
+        def f(self, t: list) -> None:
+          pass
+
+        def g(self, t: int) -> None:
+          pass
+    """)
+
+  def test_subclass_of_generic_for_simple_types(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T, U]):
+        def f(self, t: T) -> U:
+          pass
+
+      class Y:
+        pass
+
+      class X(Y):
+        pass
+
+      class B(A[X, Y]):
+        def f(self, t: X) -> Y:
+          return Y()
+
+      class C(A[X, Y]):
+        def f(self, t: Y) -> X:
+          return X()
+
+      class D(A[Y, X]):
+        def f(self, t: X) -> X:  # signature-mismatch
+          return X()
+
+      class E(A[Y, X]):
+        def f(self, t: Y) -> Y:  # signature-mismatch
+          return Y()
+    """)
+
+  def test_subclass_of_generic_for_bound_types(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+
+      class X:
+        pass
+
+      T = TypeVar('T', bound=X)
+
+      class A(Generic[T]):
+        def f(self, t: T) -> T:
+          return T()
+
+      class Y(X):
+        pass
+
+      class B(A[Y]):
+        def f(self, t: Y) -> Y:
+          return Y()
+
+      class C(A[Y]):
+        def f(self, t: X) -> Y:
+          return Y()
+
+      class D(A[Y]):
+        def f(self, t: Y) -> X:  # signature-mismatch
+          return X()
+    """)
+
+  def test_subclass_of_generic_match_for_generic_types(self):
+    self.Check("""
+      from typing import Generic, List, Sequence, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T, U]):
+        def f(self, t: List[T]) -> Sequence[U]:
+          return []
+
+      class X:
+        pass
+
+      class Y:
+        pass
+
+      class B(A[X, Y]):
+        def f(self, t: Sequence[X]) -> List[Y]:
+          return []
+
+      class Z(X):
+        pass
+
+      class C(A[Z, X]):
+        def f(self, t: List[X]) -> Sequence[Z]:
+          return []
+    """)
+
+  def test_subclass_of_generic_mismatch_for_generic_types(self):
+    self.CheckWithErrors("""
+      from typing import Generic, List, Sequence, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T, U]):
+        def f(self, t: Sequence[T]) -> List[U]:
+          return []
+
+      class X:
+        pass
+
+      class Y:
+        pass
+
+      class B(A[X, Y]):
+        def f(self, t: List[X]) -> List[Y]:  # signature-mismatch
+          return []
+
+      class C(A[X, Y]):
+        def f(self, t: Sequence[X]) -> Sequence[Y]:  # signature-mismatch
+          return []
+
+      class Z(X):
+        pass
+
+      class D(A[X, Z]):
+        def f(self, t: Sequence[Z]) -> List[Z]:  # signature-mismatch
+          return []
+
+      class E(A[X, Z]):
+        def f(self, t: Sequence[X]) -> List[X]:  # signature-mismatch
+          return []
+    """)
+
+  def test_nested_generic_types(self):
+    self.CheckWithErrors("""
+      from typing import Callable, Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+      V = TypeVar('V')
+
+      class A(Generic[T, U]):
+        def f(self, t: Callable[[T], U]) -> None:
+          pass
+
+      class Super:
+        pass
+
+      class Sub(Super):
+        pass
+
+      class B(A[Sub, Super]):
+        def f(self, t: Callable[[Sub], Super]) -> None:
+          pass
+
+      class C(A[Sub, Super]):
+        def f(self, t: Callable[[Super], Super]) -> None:  # signature-mismatch
+          pass
+
+      class D(A[Sub, Super]):
+        def f(self, t: Callable[[Sub], Sub]) -> None:  # signature-mismatch
+          pass
+    """)
+
+  def test_nested_generic_types2(self):
+    self.CheckWithErrors("""
+      from typing import Callable, Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+      V = TypeVar('V')  # not in the class template
+
+      class A(Generic[T, U]):
+        def f(self, t: Callable[[T, Callable[[T], V]], U]) -> None:
+          pass
+
+      class Super:
+        pass
+
+      class Sub(Super):
+        pass
+
+      class B(Generic[T], A[Sub, T]):
+        pass
+
+      class C(B[Super]):
+        def f(self, t: Callable[[Sub, Callable[[Sub], V]], Super]) -> None:
+          pass
+
+      class D(B[Super]):
+        def f(self, t: Callable[[Sub, Callable[[Super], Sub]], Super]) -> None:
+          pass
+
+      class E(B[Super]):
+        def f(self, t: Callable[[Super, Callable[[Sub], V]], Super]) -> None:  # signature-mismatch
+          pass
+
+      class F(Generic[T], B[T]):
+        def f(self, t: Callable[[Sub, Callable[[Sub], V]], T]) -> None:
+          pass
+
+      class G(Generic[T], B[T]):
+        def f(self, t: Callable[[Sub, Callable[[Super], Super]], T]) -> None:
+          pass
+
+      class H(Generic[T], B[T]):
+        def f(self, t: Callable[[Super, Callable[[Sub], V]], T]) -> None:  # signature-mismatch
+          pass
+    """)
+
+  def test_subclass_of_generic_for_renamed_type_parameters(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T]):
+        def f(self, t: T) -> None:
+          pass
+
+      class B(Generic[U], A[U]):
+        pass
+
+      class X:
+        pass
+
+      class C(B[X]):
+        def f(self, t: X) -> None:
+          pass
+    """)
+
+  def test_subclass_of_generic_for_renamed_type_parameters2(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T, U]):
+        def f(self, t: T) -> U:
+          return U()
+
+      class X:
+        pass
+
+      class B(Generic[T], A[X, T]):
+        pass
+
+      class Y:
+        pass
+
+      class C(B[Y]):
+        def f(self, t: X) -> Y:
+          return Y()
+
+      class D(B[Y]):
+        def f(self, t: X) -> X:  # signature-mismatch
+          return X()
+    """)
+
+  def test_subclass_of_generic_for_generic_method(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+      U = TypeVar('U')
+
+      class A(Generic[T]):
+        def f(self, t: T, u: U) -> U:
+          return U()
+
+      class Y:
+        pass
+
+      class X(Y):
+        pass
+
+      class B(A[X]):
+        def f(self, t: X, u: U) -> U:
+          return U()
+
+      class C(A[X]):
+        def f(self, t: Y, u: U) -> U:
+          return U()
+
+      class D(A[Y]):
+        def f(self, t: X, u: U) -> U:  # signature-mismatch
+          return U()
     """)
 
   def test_varargs_match(self):
@@ -815,6 +1108,28 @@ class OverridingTest(test_base.BaseTest):
       class Bar(Callable, Foo):
         pass
     """)
+
+  def test_async(self):
+    with self.DepTree([("foo.py", """
+      class Foo:
+        async def f(self) -> int:
+          return 0
+        def g(self) -> int:
+          return 0
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        class Good(foo.Foo):
+          async def f(self) -> int:
+            return 0
+        class Bad(foo.Foo):
+          async def f(self) -> str:  # signature-mismatch
+            return ''
+          # Test that we catch the non-async/async mismatch even without a
+          # return annotation.
+          async def g(self):  # signature-mismatch
+            return 0
+      """)
 
 
 if __name__ == "__main__":
