@@ -593,17 +593,15 @@ class Loader:
         self._resolve_classtype_pointers(module.ast)
         module.has_unresolved_pointers = False
 
-  def import_relative_name(self, name: str) -> _AST:
+  def import_relative_name(self, name: str) -> Optional[_AST]:
     """IMPORT_NAME with level=-1. A name relative to the current directory."""
     if self.options.module_name is None:
       raise ValueError("Attempting relative import in non-package.")
     path = self.options.module_name.split(".")[:-1]
     path.append(name)
-    name = self.import_name(".".join(path))
-    assert isinstance(name, _AST)
-    return name
+    return self.import_name(".".join(path))
 
-  def import_relative(self, level: int) -> _AST:
+  def import_relative(self, level: int) -> Optional[_AST]:
     """Import a module relative to our base module.
 
     Args:
@@ -626,9 +624,7 @@ class Loader:
       raise ValueError("Attempting relative import in non-package.")
     components = self.options.module_name.split(".")
     sub_module = ".".join(components[0:-level])
-    name = self.import_name(sub_module)
-    assert isinstance(name, _AST)
-    return name
+    return self.import_name(sub_module)
 
   def import_name(self, module_name: str):
     if module_name in self._import_name_cache:
