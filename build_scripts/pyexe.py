@@ -29,6 +29,16 @@ EXE_TEMPLATE = """#! /usr/bin/env python
 import os
 import sys
 
+def add_paths(paths: str):
+    sys.path = paths + sys.path
+
+    python_path_key = 'PYTHONPATH'
+    old_value = os.environ.get(python_path_key, '')
+    paths_string = os.pathsep.join(paths)
+    new_value = paths_string if not old_value else paths_string + os.pathsep + old_value
+    os.environ[python_path_key] = new_value
+
+
 {path_adjustment}
 
 {env_adjustment}
@@ -62,8 +72,8 @@ def parse_args():
 def main():
   options = parse_args()
 
-  path_adjustment = "sys.path = [%s] + sys.path" % ",".join([
-      "'%s'" % path for path in options.path])
+  path_adjustment = "add_paths([%s])" % ",".join([
+        "'%s'" % path for path in options.path])
 
   env_adjustment = ""
   for env in options.env:

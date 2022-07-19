@@ -5,6 +5,7 @@ import os
 import shutil
 import subprocess
 import sys
+import locale
 
 PYTYPE_SRC_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT_DIR = os.path.join(PYTYPE_SRC_ROOT, "out")
@@ -123,7 +124,7 @@ def run_cmd(cmd, cwd=None, pipe=True):
     stdout, _ = process.communicate()
     if pipe:
       # Popen.communicate returns a bytes object always.
-      stdout = stdout.decode("utf-8")
+      stdout = stdout.decode(locale.getpreferredencoding())
     return process.returncode, stdout
 
 
@@ -226,7 +227,7 @@ def run_ninja(targets, fail_collector=None, fail_fast=False, verbose=False):
         if not line:
           break
         # process.stdout.readline() always returns a 'bytes' object.
-        line = line.decode("utf-8")
+        line = line.decode(locale.getpreferredencoding())
         ninja_log.write(line)
         msg_type, modname, logfile = parse_ninja_output_line(line)
         if msg_type == _NINJA_FAILURE_MSG:
