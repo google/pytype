@@ -232,6 +232,8 @@ py_library(
     file_utils
   SRCS
     file_utils.py
+  DEPS
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -239,6 +241,8 @@ py_library(
     imports_map_loader
   SRCS
     imports_map_loader.py
+  DEPS
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -268,6 +272,7 @@ py_library(
   DEPS
     ._utils
     .module_utils
+    pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
 )
@@ -307,6 +312,8 @@ py_library(
     module_utils
   SRCS
     module_utils.py
+  DEPS
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -346,6 +353,7 @@ py_library(
   SRCS
     pytype_source_utils.py
   DEPS
+    pytype.platform_utils.platform_utils
     pytype.stubs.stubs
 )
 
@@ -391,6 +399,8 @@ py_library(
     _utils
   SRCS
     utils.py
+  DEPS
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -438,6 +448,7 @@ py_library(
     .overriding_checks
     .state
     pytype.abstract.abstract
+    pytype.platform_utils.platform_utils
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.typegraph.cfg
@@ -484,6 +495,7 @@ py_test(
   DEPS
     .config
     .io
+    pytype.platform_utils.platform_utils
     pytype.pytd.pytd
 )
 
@@ -494,6 +506,7 @@ py_test(
     file_utils_test.py
   DEPS
     .file_utils
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -504,6 +517,7 @@ py_test(
   DEPS
     .file_utils
     .module_utils
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -513,6 +527,7 @@ py_test(
     pytype_source_utils_test.py
   DEPS
     .pytype_source_utils
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -636,6 +651,7 @@ py_test(
     .file_utils
     .load_pytd
     .module_utils
+    pytype.platform_utils.platform_utils
     pytype.pytd.pytd
     pytype.stubs.stubs
     pytype.tests.test_base
@@ -649,6 +665,7 @@ py_test(
   DEPS
     .file_utils
     .imports_map_loader
+    pytype.platform_utils.platform_utils
     pytype.stubs.stubs
 )
 
@@ -659,6 +676,7 @@ py_test(
     metrics_test.py
   DEPS
     .metrics
+    pytype.platform_utils.platform_utils
 )
 
 py_test(
@@ -700,6 +718,7 @@ add_subdirectory(ast)
 add_subdirectory(directors)
 add_subdirectory(inspect)
 add_subdirectory(overlays)
+add_subdirectory(platform_utils)
 add_subdirectory(pyc)
 add_subdirectory(pyi)
 add_subdirectory(pytd)

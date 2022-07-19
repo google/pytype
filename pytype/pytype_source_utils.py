@@ -7,6 +7,8 @@
 import os
 import re
 
+from pytype.platform_utils import path_utils
+
 
 class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
   pass
@@ -14,10 +16,10 @@ class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
 
 def pytype_source_dir():
   """The base directory of the pytype source tree."""
-  res = os.path.dirname(__file__)
-  if os.path.basename(res) == "__pycache__":
+  res = path_utils.dirname(__file__)
+  if path_utils.basename(res) == "__pycache__":
     # For source-less par files __file__ points at __pycache__ subdirectory...
-    res = os.path.dirname(res)
+    res = path_utils.dirname(res)
   return res
 
 
@@ -31,8 +33,10 @@ def get_full_path(path):
     path for absolute paths.
     full path resolved relative to pytype/ for relative paths.
   """
-  # TODO(mdemello): Insist on relative paths here.
-  return os.path.join(pytype_source_dir(), path)
+  if path_utils.isabs(path):
+    return path
+  else:
+    return path_utils.join(pytype_source_dir(), path)
 
 
 def load_text_file(filename):
@@ -54,7 +58,7 @@ def _load_data_file(filename, text):
   Raises:
     IOError: if file not found
   """
-  path = filename if os.path.isabs(filename) else  get_full_path(filename)
+  path = filename if path_utils.isabs(filename) else get_full_path(filename)
   # Check for a ResourceLoader (see comment under list_pytype_files).
   loader = globals().get("__loader__", None)
   if loader:
@@ -73,16 +77,16 @@ def _load_data_file(filename, text):
 
 def list_files(basedir):
   """List files in the directory rooted at |basedir|."""
-  if not os.path.isdir(basedir):
+  if not path_utils.isdir(basedir):
     raise NoSuchDirectory(basedir)
   directories = [""]
   while directories:
     d = directories.pop()
-    for basename in os.listdir(os.path.join(basedir, d)):
-      filename = os.path.join(d, basename)
-      if os.path.isdir(os.path.join(basedir, filename)):
+    for basename in os.listdir(path_utils.join(basedir, d)):
+      filename = path_utils.join(d, basename)
+      if path_utils.isdir(path_utils.join(basedir, filename)):
         directories.append(filename)
-      elif os.path.exists(os.path.join(basedir, filename)):
+      elif path_utils.exists(path_utils.join(basedir, filename)):
         yield filename
 
 

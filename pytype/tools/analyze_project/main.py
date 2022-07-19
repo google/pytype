@@ -1,9 +1,7 @@
 """Analyze an entire project using pytype."""
 
 import logging
-import os
 import sys
-import tempfile
 
 import importlab.environment
 import importlab.fs
@@ -11,6 +9,8 @@ import importlab.graph
 import importlab.output
 
 from pytype import io
+from pytype.platform_utils import path_utils
+from pytype.platform_utils import tempfile as compatible_tempfile
 from pytype.tools import environment
 from pytype.tools import tool_utils
 from pytype.tools.analyze_project import config
@@ -43,7 +43,7 @@ def main():
   conf.populate_from(args)
   conf.inputs -= conf.exclude
   if args.no_cache:
-    conf.output = tempfile.mkdtemp()
+    conf.output = compatible_tempfile.mkdtemp()
   if not conf.pythonpath:
     conf.pythonpath = environment.compute_pythonpath(conf.inputs)
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
@@ -75,7 +75,7 @@ def main():
   logging.info('Source tree:\n%s',
                importlab.output.formatted_deps_list(import_graph))
   tool_utils.makedirs_or_die(conf.output, 'Could not create output directory')
-  with open(os.path.join(conf.output, '.gitignore'), 'w') as f:
+  with open(path_utils.join(conf.output, '.gitignore'), 'w') as f:
     f.write('# Automatically created by pytype\n*')
   deps = pytype_runner.deps_from_import_graph(import_graph)
   runner = pytype_runner.PytypeRunner(conf, deps)

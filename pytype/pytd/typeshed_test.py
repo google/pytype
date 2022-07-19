@@ -3,6 +3,7 @@
 import os
 
 from pytype import file_utils
+from pytype.platform_utils import path_utils
 from pytype.pytd import builtin_stubs
 from pytype.pytd import typeshed
 from pytype.pytd.parse import parser_test_base
@@ -19,25 +20,25 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_get_typeshed_file(self):
     filename, data = self.ts.get_module_file(
         "stdlib", "errno", self.python_version)
-    self.assertEqual("errno.pyi", os.path.basename(filename))
+    self.assertEqual("errno.pyi", path_utils.basename(filename))
     self.assertIn("errorcode", data)
 
   def test_get_typeshed_dir(self):
     filename, data = self.ts.get_module_file(
         "stdlib", "logging", self.python_version)
-    self.assertEqual("__init__.pyi", os.path.basename(filename))
+    self.assertEqual("__init__.pyi", path_utils.basename(filename))
     self.assertIn("LogRecord", data)
 
   def test_parse_type_definition(self):
     filename, ast = typeshed.parse_type_definition(
         "stdlib", "_random", self.options)
-    self.assertEqual(os.path.basename(filename), "_random.pyi")
+    self.assertEqual(path_utils.basename(filename), "_random.pyi")
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
 
   def test_get_typeshed_missing(self):
     if not self.ts.missing:
       return  # nothing to test
-    self.assertIn(os.path.join("stdlib", "pytypecanary"), self.ts.missing)
+    self.assertIn(path_utils.join("stdlib", "pytypecanary"), self.ts.missing)
     _, data = self.ts.get_module_file(
         "stdlib", "pytypecanary", self.python_version)
     self.assertEqual(data, builtin_stubs.DEFAULT_SRC)
@@ -62,8 +63,15 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       # Check that get_pytd_paths() works with a typeshed installation that
       # reads from TYPESHED_HOME.
 
-      paths = {p.rsplit("pytype/", 1)[-1] for p in self.ts.get_pytd_paths()}
-      self.assertSetEqual(paths, {"stubs/builtins", "stubs/stdlib"})
+      paths = {
+          p.rsplit(file_utils.replace_separator("pytype/"), 1)[-1]
+          for p in self.ts.get_pytd_paths()
+      }
+      self.assertSetEqual(
+          paths, {
+              file_utils.replace_separator("stubs/builtins"),
+              file_utils.replace_separator("stubs/stdlib")
+          })
     finally:
       os.environ = old_env
 
@@ -81,7 +89,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.ts._env_home = None
     self.ts._stdlib_versions["foo"] = ((3, 8), None)
     with file_utils.Tempdir() as d:
-      d.create_file("stdlib/foo.pyi", b"x: int\r\n")
+      d.create_file(
+          file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
       self.ts._root = d.path
       _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
     self.assertEqual(src, "x: int\n")
@@ -89,7 +98,8 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_carriage_return_custom_root(self):
     self.ts._stdlib_versions["foo"] = ((3, 8), None)
     with file_utils.Tempdir() as d:
-      d.create_file("stdlib/foo.pyi", b"x: int\r\n")
+      d.create_file(
+          file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
       self.ts._env_home = d.path
       _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
     self.assertEqual(src, "x: int\n")

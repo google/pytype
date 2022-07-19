@@ -5,15 +5,14 @@ import io
 import os
 import re
 import subprocess
-import tempfile
 from typing import List
 
 from pytype import pytype_source_utils
 from pytype import utils
+from pytype.platform_utils import tempfile as compatible_tempfile
 from pytype.pyc import compile_bytecode
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
-
 
 COMPILE_SCRIPT = "pyc/compile_bytecode.py"
 COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")
@@ -66,7 +65,7 @@ def compile_src_string_to_pyc_string(
   else:
     tempfile_options = {"mode": "w", "suffix": ".py", "delete": False}
     tempfile_options.update({"encoding": "utf-8"})
-    fi = tempfile.NamedTemporaryFile(**tempfile_options)  # pylint: disable=consider-using-with
+    fi = compatible_tempfile.NamedTemporaryFile(**tempfile_options)  # pylint: disable=consider-using-with
     try:
       fi.write(src)
       fi.close()

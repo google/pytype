@@ -1,10 +1,10 @@
 """Initializes and checks the environment needed to run pytype."""
 
 import logging
-import os
 import sys
 from typing import List
 
+from pytype.platform_utils import path_utils
 from pytype.pytd import typeshed
 from pytype.tools import runner
 
@@ -67,14 +67,14 @@ def compute_pythonpath(filenames):
   """Compute a list of dependency paths."""
   paths = set()
   for f in filenames:
-    containing_dir = os.path.dirname(f)
-    if os.path.exists(os.path.join(containing_dir, "__init__.py")):
+    containing_dir = path_utils.dirname(f)
+    if path_utils.exists(path_utils.join(containing_dir, "__init__.py")):
       # If the file's containing directory has an __init__.py, we assume that
       # the file is in a (sub)package. Add the containing directory of the
       # top-level package so that 'from package import module' works.
-      package_parent = os.path.dirname(containing_dir)
-      while os.path.exists(os.path.join(package_parent, "__init__.py")):
-        package_parent = os.path.dirname(package_parent)
+      package_parent = path_utils.dirname(containing_dir)
+      while path_utils.exists(path_utils.join(package_parent, "__init__.py")):
+        package_parent = path_utils.dirname(package_parent)
       p = package_parent
     else:
       # Otherwise, the file is a standalone script. Add its containing directory

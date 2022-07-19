@@ -949,6 +949,7 @@ class Indexer:
   def get_def_offsets(self, defloc):
     """Get the byte offsets for a definition."""
 
+    assert self.defs is not None
     defn = self.defs[defloc.def_id]
     typ = defn.typ
     if typ == "Attribute":
@@ -991,6 +992,7 @@ class Indexer:
 
   def _lookup_remote_symbol(self, defn, attr_name):
     """Try to look up a definition in an imported module."""
+    assert self.modules is not None
     if defn.id in self.modules:
       return Remote(self.modules[defn.id], name=attr_name, resolved=True)
 
@@ -1015,6 +1017,7 @@ class Indexer:
   def _lookup_class_attr(self, name, attrib):
     """Look up a class attribute in the environment."""
 
+    assert self.envs is not None
     env = self.envs["module"]
     if name not in env.env:
       return None
@@ -1029,6 +1032,7 @@ class Indexer:
     if isinstance(obj, abstract.Module):
       return Module(obj.name)
     elif isinstance(obj, abstract.InterpreterClass):
+      assert self.classmap is not None
       return self.classmap.get(obj)
     elif isinstance(obj, abstract.PyTDClass):
       if obj.module:
@@ -1076,6 +1080,7 @@ class Indexer:
         cls = self._get_attribute_class(pytype_cls)
         if cls:
           if isinstance(cls, Definition):
+            assert self.envs is not None
             env = self.envs[cls.id]
             _, attr_value = env.lookup(attr_name)
             if not attr_value and isinstance(l, abstract.Instance):
@@ -1106,6 +1111,7 @@ class Indexer:
 
     links = []
 
+    assert self.refs is not None
     for r in self.refs:
       if r.typ == "Attribute":
         attr_name = r.name.rsplit(".", 1)[-1]
@@ -1114,6 +1120,7 @@ class Indexer:
           links.extend(defs)
           continue
         else:
+          assert self.envs is not None
           env = self.envs[r.scope]
           env, defn = env.lookup(r.target)
           if defn:
@@ -1158,6 +1165,7 @@ class Indexer:
         links.append((r, Remote(module, name=name, resolved=True)))
       else:
         try:
+          assert self.envs is not None
           env, defn = self.envs[r.scope].lookup(r.name)
         except KeyError:
           env, defn = None, None
@@ -1190,12 +1198,14 @@ class Indexer:
       r.target = None
       r.data = None
 
+    assert self.defs is not None
     for d in self.defs.values():
       d.data = None
 
     for call in self.calls:
       call.return_type = None
 
+    assert self.aliases is not None
     for a in self.aliases.values():
       a.data = None
 

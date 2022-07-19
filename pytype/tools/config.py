@@ -1,24 +1,24 @@
 """Utilities for dealing with project configuration."""
 
 import configparser
-import os
+from pytype.platform_utils import path_utils
 
 
 def find_config_file(path, filename='setup.cfg'):
   """Finds the first instance of filename in a prefix of path."""
 
   # Make sure path is a directory
-  if not os.path.isdir(path):
-    path = os.path.dirname(path)
+  if not path_utils.isdir(path):
+    path = path_utils.dirname(path)
 
   # Guard against symlink loops and /
   seen = set()
   while path and path not in seen:
     seen.add(path)
-    f = os.path.join(path, filename)
-    if os.path.exists(f) and os.path.isfile(f):
+    f = path_utils.join(path, filename)
+    if path_utils.exists(f) and path_utils.isfile(f):
       return f
-    path = os.path.dirname(path)
+    path = path_utils.dirname(path)
 
   return None
 

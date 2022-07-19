@@ -18,6 +18,7 @@ py_library(
     pytype.libvm
     pytype.utils
     pytype.directors.directors
+    pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
 )
@@ -388,8 +389,6 @@ py_test(
     test_builtins1.py
   DEPS
     .test_base
-    pytype.overlays.overlays
-    pytype.pytd.pytd
 )
 
 py_test(

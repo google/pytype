@@ -2,7 +2,6 @@
 
 import contextlib
 import logging
-import os.path
 import sys
 import textwrap
 from typing import Tuple
@@ -13,6 +12,7 @@ from pytype import file_utils
 from pytype import load_pytd
 from pytype import module_utils
 from pytype.directors import directors
+from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
 from pytype.pytd import pytd
@@ -461,7 +461,7 @@ class BaseTest(unittest.TestCase):
           else:
             path, contents = dep
             opts = {}
-          base, ext = os.path.splitext(path)
+          base, ext = path_utils.splitext(path)
           if ext == ".pyi":
             filepath = d.create_file(path, contents)
           elif ext == ".py":
