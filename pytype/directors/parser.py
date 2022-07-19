@@ -69,7 +69,7 @@ class _SourceTree:
   structured_comments: Mapping[int, Sequence[_StructuredComment]]
 
 
-class BlockReturns:
+class _BlockReturns:
   """Tracks return statements in with/try blocks."""
 
   def __init__(self):
@@ -139,7 +139,7 @@ class _ParseVisitor(visitor.BaseVisitor):
     self.decorators = []
     self.defs_start = None
     self.function_ranges = {}
-    self.block_returns = BlockReturns()
+    self.block_returns = _BlockReturns()
     self.block_depth = 0
 
   def _add_structured_comment_group(self, start_line, end_line, cls=LineRange):

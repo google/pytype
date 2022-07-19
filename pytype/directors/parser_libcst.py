@@ -56,7 +56,7 @@ class _VariableAnnotation(LineRange):
   annotation: str
 
 
-class BlockReturns:
+class _BlockReturns:
   """Tracks return statements in with/try blocks."""
 
   def __init__(self):
@@ -109,7 +109,7 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.decorators = []
     self.defs_start = None
     self.function_ranges = {}
-    self.block_returns = BlockReturns()
+    self.block_returns = _BlockReturns()
 
   def _get_containing_groups(self, start_line, end_line=None):
     """Get _StructuredComment groups that fully contain the given line range."""
