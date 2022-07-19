@@ -25,6 +25,9 @@ class LineRange:
   start_line: int
   end_line: int
 
+  def __contains__(self, line):
+    return self.start_line <= line <= self.end_line
+
 
 @dataclasses.dataclass(frozen=True)
 class Call(LineRange):
@@ -51,6 +54,31 @@ class _StructuredComment:
 @dataclasses.dataclass(frozen=True)
 class _VariableAnnotation(LineRange):
   annotation: str
+
+
+class BlockReturns:
+  """Tracks return statements in with/try blocks."""
+
+  def __init__(self):
+    self._block_ranges = []
+    self._returns = []
+    self._block_returns = {}
+
+  def add_return(self, pos):
+    self._returns.append(pos.start.line)
+
+  def all_returns(self):
+    return set(self._returns)
+
+  def __iter__(self):
+    return iter(self._block_returns.items())
+
+  def __repr__(self):
+    return f"""
+      Blocks: {self._block_ranges}
+      Returns: {self._returns}
+      {self._block_returns}
+    """
 
 
 class _ParseVisitor(libcst.CSTVisitor):
@@ -80,8 +108,8 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.variable_annotations = []
     self.decorators = []
     self.defs_start = None
-    self.returns = set()
     self.function_ranges = {}
+    self.block_returns = BlockReturns()
 
   def _get_containing_groups(self, start_line, end_line=None):
     """Get _StructuredComment groups that fully contain the given line range."""
@@ -240,7 +268,7 @@ class _ParseVisitor(libcst.CSTVisitor):
         _VariableAnnotation(pos.start.line, pos.end.line, annotation))
 
   def visit_Return(self, node):
-    self.returns.add(self._get_position(node).start.line)
+    self.block_returns.add_return(self._get_position(node))
 
   def _visit_decorators(self, node):
     if not node.decorators:
