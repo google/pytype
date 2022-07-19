@@ -51,7 +51,8 @@ def main():
             command=["python", "-m",
                      "pytype_extensions.test_pytype_extensions"])
   s5 = STEP(name="Type Check",
-            command=[os.path.join("out", "bin", "pytype"), "-j", "auto"])
+            command=(['python'] if sys.platform == 'win32' else []) +
+               [os.path.join("out", "bin", "pytype"), "-j", "auto"])
   _run_steps([s1, s2, s3, s4, s5])
   print("\n*** All build steps completed successfully! ***\n")
 
