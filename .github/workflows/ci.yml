@@ -11,7 +11,6 @@ jobs:
   build:
 
     runs-on: ${{ matrix.os }}
-    continue-on-error: ${{ matrix.experimental }}
     strategy:
       matrix:
         os: [ubuntu-20.04]
@@ -45,10 +44,16 @@ jobs:
     - name: Install Dependencies
       run: pip install -r requirements.txt
 
+    # We have to put continue-on-error at the step level rather than the job
+    # level because the UI is broken:
+    # https://github.com/github-community/community/discussions/15452.
+
     - name: Run Tests
       if: matrix.python-version != '3.11-dev'
       run: python build_scripts/ci_script.py
+      continue-on-error: ${{ matrix.experimental }}
 
     - name: Run Tests for python 3.11
       if: matrix.python-version == '3.11-dev'
-      run: python build_scripts/ci_script.py || exit 0
+      run: python build_scripts/ci_script.py
+      continue-on-error: ${{ matrix.experimental }}

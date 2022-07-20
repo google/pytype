@@ -110,6 +110,121 @@ class LazyFormalTypeParameters:
   subst: Dict[str, cfg.Variable]
 
 
+class Local:
+  """A possibly annotated local variable."""
+
+  def __init__(self, node, op: Optional[opcodes.Opcode],
+               typ: Optional[_BaseValue], orig: Optional[cfg.Variable], ctx):
+    self._ops = [op]
+    self.final = False
+    if typ:
+      self.typ = ctx.program.NewVariable([typ], [], node)
+    else:
+      # Creating too many variables bloats the typegraph, hurting performance,
+      # so we use None instead of an empty variable.
+      self.typ = None
+    self.orig = orig
+    self.ctx = ctx
+
+  @classmethod
+  def merge(cls, node, op, local1, local2):
+    """Merges two locals."""
+    ctx = local1.ctx
+    typ_values = set()
+    for typ in [local1.typ, local2.typ]:
+      if typ:
+        typ_values.update(typ.Data(node))
+    typ = ctx.convert.merge_values(typ_values) if typ_values else None
+    if local1.orig and local2.orig:
+      orig = ctx.program.NewVariable()
+      orig.PasteVariable(local1.orig, node)
+      orig.PasteVariable(local2.orig, node)
+    else:
+      orig = local1.orig or local2.orig
+    return cls(node, op, typ, orig, ctx)
+
+  def __repr__(self):
+    return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
+
+  @property
+  def stack(self):
+    return self.ctx.vm.simple_stack(self._ops[-1])
+
+  @property
+  def last_update_op(self):
+    return self._ops[-1]
+
+  def update(self, node, op, typ, orig, final=False):
+    """Update this variable's annotation and/or value."""
+    if op in self._ops:
+      return
+    self._ops.append(op)
+    self.final = final
+    if typ:
+      if self.typ:
+        self.typ.AddBinding(typ, [], node)
+      else:
+        self.typ = self.ctx.program.NewVariable([typ], [], node)
+    if orig:
+      self.orig = orig
+
+  def get_type(self, node, name):
+    """Gets the variable's annotation."""
+    if not self.typ:
+      return None
+    values = self.typ.Data(node)
+    if len(values) > 1:
+      self.ctx.errorlog.ambiguous_annotation(self.stack, values, name)
+      return self.ctx.convert.unsolvable
+    elif values:
+      return values[0]
+    else:
+      return None
+
+
+# The _isinstance and _make methods should be used only in pytype.abstract
+# submodules that are unable to reference abstract.py classes due to circular
+# dependencies. To prevent accidental misuse, the methods are marked private.
+# Callers are expected to alias them like so:
+#   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+
+def _isinstance(obj, name_or_names):
+  """Do an isinstance() call for a class defined in pytype.abstract.
+
+  Args:
+    obj: An instance.
+    name_or_names: A name or tuple of names of classes in pytype.abstract.
+
+  Returns:
+    Whether obj is an instance of name_or_names.
+  """
+  if not obj.__class__.__module__.startswith("pytype."):
+    return False
+  if isinstance(name_or_names, tuple):
+    names = name_or_names
+  elif name_or_names == "AMBIGUOUS_OR_EMPTY":
+    names = ("Unknown", "Unsolvable", "Empty")
+  else:
+    names = (name_or_names,)
+  obj_cls = obj.__class__
+  if obj_cls.__module__.startswith("pytype.abstract.") and obj_cls in names:
+    # Do a simple check first to avoid expensive recursive calls and mro lookup
+    # when possible.
+    return True
+  if len(names) > 1:
+    return any(_isinstance(obj, name) for name in names)
+  name = names[0]
+  return any(cls.__module__.startswith("pytype.abstract.") and
+             cls.__name__ == name for cls in obj.__class__.mro())
+
+
+def _make(cls_name, *args, **kwargs):
+  """Make an instance of cls_name with the given arguments."""
+  from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+  return getattr(abstract, cls_name)(*args, **kwargs)
+
+
 # Sentinel for get_atomic_value
 class _None:
   pass
@@ -490,78 +605,6 @@ def get_annotations_dict(members):
   return annots if _isinstance(annots, "AnnotationsDict") else None
 
 
-class Local:
-  """A possibly annotated local variable."""
-
-  def __init__(self, node, op: Optional[opcodes.Opcode],
-               typ: Optional[_BaseValue], orig: Optional[cfg.Variable], ctx):
-    self._ops = [op]
-    self.final = False
-    if typ:
-      self.typ = ctx.program.NewVariable([typ], [], node)
-    else:
-      # Creating too many variables bloats the typegraph, hurting performance,
-      # so we use None instead of an empty variable.
-      self.typ = None
-    self.orig = orig
-    self.ctx = ctx
-
-  @classmethod
-  def merge(cls, node, op, local1, local2):
-    """Merges two locals."""
-    ctx = local1.ctx
-    typ_values = set()
-    for typ in [local1.typ, local2.typ]:
-      if typ:
-        typ_values.update(typ.Data(node))
-    typ = ctx.convert.merge_values(typ_values) if typ_values else None
-    if local1.orig and local2.orig:
-      orig = ctx.program.NewVariable()
-      orig.PasteVariable(local1.orig, node)
-      orig.PasteVariable(local2.orig, node)
-    else:
-      orig = local1.orig or local2.orig
-    return cls(node, op, typ, orig, ctx)
-
-  def __repr__(self):
-    return f"Local(typ={self.typ}, orig={self.orig}, final={self.final})"
-
-  @property
-  def stack(self):
-    return self.ctx.vm.simple_stack(self._ops[-1])
-
-  @property
-  def last_update_op(self):
-    return self._ops[-1]
-
-  def update(self, node, op, typ, orig, final=False):
-    """Update this variable's annotation and/or value."""
-    if op in self._ops:
-      return
-    self._ops.append(op)
-    self.final = final
-    if typ:
-      if self.typ:
-        self.typ.AddBinding(typ, [], node)
-      else:
-        self.typ = self.ctx.program.NewVariable([typ], [], node)
-    if orig:
-      self.orig = orig
-
-  def get_type(self, node, name):
-    """Gets the variable's annotation."""
-    if not self.typ:
-      return None
-    values = self.typ.Data(node)
-    if len(values) > 1:
-      self.ctx.errorlog.ambiguous_annotation(self.stack, values, name)
-      return self.ctx.convert.unsolvable
-    elif values:
-      return values[0]
-    else:
-      return None
-
-
 def is_concrete_dict(val: _BaseValue):
   return _isinstance(val, "Dict") and not val.could_contain_anything
 
@@ -784,49 +827,6 @@ def unwrap_final(val):
     # with cls=typing.Final and instance type parameter T
     return get_atomic_value(val.get_instance_type_parameter(T))
   return val
-
-
-# The _isinstance and _make methods should be used only in pytype.abstract
-# submodules that are unable to reference abstract.py classes due to circular
-# dependencies. To prevent accidental misuse, the methods are marked private.
-# Callers are expected to alias them like so:
-#   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
-
-
-def _isinstance(obj, name_or_names):
-  """Do an isinstance() call for a class defined in pytype.abstract.
-
-  Args:
-    obj: An instance.
-    name_or_names: A name or tuple of names of classes in pytype.abstract.
-
-  Returns:
-    Whether obj is an instance of name_or_names.
-  """
-  if not obj.__class__.__module__.startswith("pytype."):
-    return False
-  if isinstance(name_or_names, tuple):
-    names = name_or_names
-  elif name_or_names == "AMBIGUOUS_OR_EMPTY":
-    names = ("Unknown", "Unsolvable", "Empty")
-  else:
-    names = (name_or_names,)
-  obj_cls = obj.__class__
-  if obj_cls.__module__.startswith("pytype.abstract.") and obj_cls in names:
-    # Do a simple check first to avoid expensive recursive calls and mro lookup
-    # when possible.
-    return True
-  if len(names) > 1:
-    return any(_isinstance(obj, name) for name in names)
-  name = names[0]
-  return any(cls.__module__.startswith("pytype.abstract.") and
-             cls.__name__ == name for cls in obj.__class__.mro())
-
-
-def _make(cls_name, *args, **kwargs):
-  """Make an instance of cls_name with the given arguments."""
-  from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
-  return getattr(abstract, cls_name)(*args, **kwargs)
 
 
 def is_recursive_annotation(annot):

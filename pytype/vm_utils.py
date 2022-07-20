@@ -115,6 +115,7 @@ class _NameErrorDetails(abc.ABC):
 class _NameInInnerClassErrorDetails(_NameErrorDetails):
 
   def __init__(self, attr, class_name):
+    super().__init__()
     self._attr = attr
     self._class_name = class_name
 
