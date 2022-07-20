@@ -411,8 +411,7 @@ class VirtualMachine:
     """
     self.filename = filename
     self._maximum_depth = maximum_depth
-    if (self.ctx.python_version >= (3, 8) and
-        self.ctx.options.enable_bare_annotations):
+    if self.ctx.python_version >= (3, 8):
       src = preprocess.augment_annotations(src)
     src_tree = directors.parse_src(src, self.ctx.python_version)
     code = self.compile_src(src, filename=filename)
