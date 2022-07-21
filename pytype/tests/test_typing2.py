@@ -3,7 +3,6 @@
 from pytype import file_utils
 from pytype.pytd import pep484
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class TypingTest(test_base.BaseTest):
@@ -1050,70 +1049,6 @@ class TypeAliasTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       X: Type[int]
-    """)
-
-
-@test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
-class UnionOrTest(test_base.BaseTest):
-  """Tests for the A | B | ... type union syntax."""
-
-  def test_basic(self):
-    ty = self.Infer("""
-      x: int | str
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Union
-      x: Union[int, str]
-    """)
-
-  def test_chained(self):
-    ty = self.Infer("""
-      class A: pass
-      class B: pass
-      x: int | str | A | B
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Union
-      x: Union[int, str, A, B]
-      class A: ...
-      class B: ...
-    """)
-
-  def test_none(self):
-    ty = self.Infer("""
-      x: int | str | None
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Optional, Union
-      x: Optional[Union[int, str]]
-    """)
-
-  def test_mixed(self):
-    ty = self.Infer("""
-      from typing import Union
-      class A: pass
-      class B: pass
-      x: int | str | Union[A, B]
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Union
-      x: Union[int, str, A, B]
-      class A: ...
-      class B: ...
-    """)
-
-  def test_forward_ref(self):
-    ty = self.Infer("""
-      from typing import Union
-      class A: pass
-      x: 'int | str | A | B'
-      class B: pass
-    """)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Union
-      x: Union[int, str, A, B]
-      class A: ...
-      class B: ...
     """)
 
 
