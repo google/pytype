@@ -5,6 +5,8 @@ from typing import Any, Dict, Type
 
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -221,10 +223,18 @@ class LazyMembers(metaclass=MixinMeta):
 
   def load_lazy_attribute(self, name, subst=None):
     """Load the named attribute into self.members."""
-    if name not in self.members and name in self._member_map:
-      variable = self._convert_member(name, self._member_map[name], subst)
-      assert isinstance(variable, cfg.Variable)
+    if name in self.members or name not in self._member_map:
+      return self.members.get(name)
+    member = self._member_map[name]
+    variable = self._convert_member(name, member, subst)
+    assert isinstance(variable, cfg.Variable)
+    # 'subst' can vary between attribute accesses, so it's not safe to store the
+    # attribute value in 'members' if it uses any of the subst keys.
+    if not (isinstance(member, pytd.Node) and subst and
+            any(t.full_name in subst
+                for t in pytd_utils.GetTypeParameters(member))):
       self.members[name] = variable
+    return variable
 
 
 class PythonDict(PythonConstant):

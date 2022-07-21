@@ -856,6 +856,99 @@ class GenericBasicTest(test_base.BaseTest):
           return Box(f(self.x))
     """)
 
+  def test_property(self):
+    self.Check("""
+      from typing import Generic, TypeVar, Union
+      T = TypeVar('T', bound=Union[int, str])
+      class Foo(Generic[T]):
+        @property
+        def foo(self) -> T:
+          return __any_object__
+      x: Foo[int]
+      assert_type(x.foo, int)
+    """)
+
+  def test_property_with_init_parameter(self):
+    self.Check("""
+      from typing import Generic, TypeVar, Union
+      T = TypeVar('T', bound=Union[int, str])
+      class Foo(Generic[T]):
+        def __init__(self, foo: T):
+          self._foo = foo
+        @property
+        def foo(self) -> T:
+          return self._foo
+      x = Foo(0)
+      assert_type(x.foo, int)
+    """)
+
+  def test_property_with_inheritance(self):
+    self.Check("""
+      from typing import Generic, TypeVar, Union
+      T = TypeVar('T', bound=Union[int, str])
+      class Foo(Generic[T]):
+        def __init__(self, foo: T):
+          self._foo = foo
+        @property
+        def foo(self) -> T:
+          return self._foo
+      class Bar(Foo[int]):
+        pass
+      x: Bar
+      assert_type(x.foo, int)
+    """)
+
+  def test_pyi_property(self):
+    with self.DepTree([("foo.py", """
+        from typing import Generic, TypeVar, Union
+        T = TypeVar('T', bound=Union[int, str])
+        class Foo(Generic[T]):
+          @property
+          def foo(self) -> T:
+            return __any_object__
+    """)]):
+      self.Check("""
+        import foo
+        x: foo.Foo[int]
+        assert_type(x.foo, int)
+      """)
+
+  def test_pyi_property_with_inheritance(self):
+    with self.DepTree([("foo.py", """
+      from typing import Generic, Type, TypeVar
+      T = TypeVar('T')
+      class Base(Generic[T]):
+        @property
+        def x(self) -> Type[T]:
+          return __any_object__
+      class Foo(Base[T]):
+        pass
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: foo.Foo):
+          return x.x
+      """)
+
+  def test_pyi_property_setter(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Annotated, Any, Callable, Generic, TypeVar
+      ValueType = TypeVar('ValueType')
+      class Data(Generic[ValueType]):
+        value: Annotated[ValueType, 'property']
+      class Manager:
+        def get_data(
+            self, x: Callable[[ValueType], Any], y: Data[ValueType]
+        ) -> Data[ValueType]: ...
+    """)]):
+      self.Check("""
+        import foo
+        class Bar:
+          def __init__(self, x: foo.Manager):
+            self.data = x.get_data(__any_object__, __any_object__)
+            self.data.value = None
+      """)
+
 
 class GenericFeatureTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""

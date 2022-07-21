@@ -1663,7 +1663,7 @@ class VirtualMachine:
       elif (isinstance(maybe_cls, abstract.PyTDClass) and
             maybe_cls != self.ctx.convert.type_type):
         node, attr = self.ctx.attribute_handler.get_attribute(
-            node, obj_val, name)
+            node, obj_val, name, obj_val.to_binding(node))
         if attr:
           typ = self.ctx.convert.merge_classes(attr.data)
           cur_annotations_dict = {

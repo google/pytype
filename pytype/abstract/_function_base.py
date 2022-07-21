@@ -13,7 +13,6 @@ from pytype.abstract import _instances
 from pytype.abstract import _singletons
 from pytype.abstract import _typing
 from pytype.abstract import abstract_utils
-from pytype.abstract import class_mixin
 from pytype.abstract import function
 
 log = logging.getLogger(__name__)
@@ -275,42 +274,14 @@ class BoundFunction(_base.BaseValue):
     self.replace_self_annot = None
     inst = abstract_utils.get_atomic_value(
         self._callself, default=self.ctx.convert.unsolvable)
-    if self._should_replace_self_annot():
-      if (isinstance(inst.cls, class_mixin.Class) and
-          inst.cls.full_name != "builtins.type"):
-        for cls in inst.cls.mro:
-          if isinstance(cls, _classes.ParameterizedClass):
-            base_cls = cls.base_cls
-          else:
-            base_cls = cls
-          if isinstance(base_cls, class_mixin.Class) and base_cls.template:
-            self.replace_self_annot = (
-                _classes.ParameterizedClass.get_generic_instance_type(base_cls))
-            break
+    if self.underlying.should_replace_self_annot():
+      self.replace_self_annot = abstract_utils.get_generic_type(inst)
     if isinstance(inst, _instance_base.SimpleValue):
       self.alias_map = inst.instance_type_parameters.uf
     elif isinstance(inst, _typing.TypeParameterInstance):
       self.alias_map = inst.instance.instance_type_parameters.uf
     else:
       self.alias_map = None
-
-  def _should_replace_self_annot(self):
-    # To do argument matching for custom generic classes, the 'self' annotation
-    # needs to be replaced with a generic type.
-    f = self.underlying
-    if not _isinstance(f, "SignedFunction") or not f.signature.param_names:
-      # no 'self' to replace
-      return False
-    if _isinstance(f, "InterpreterFunction"):
-      # always replace for user-defined methods
-      return True
-    # SimpleFunctions are methods we construct internally for generated classes
-    # like namedtuples.
-    if not _isinstance(f, "SimpleFunction"):
-      return False
-    # We don't want to clobber our own generic annotations.
-    return (f.signature.param_names[0] not in f.signature.annotations or
-            not f.signature.annotations[f.signature.param_names[0]].formal)
 
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self

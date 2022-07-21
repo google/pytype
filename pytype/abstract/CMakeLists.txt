@@ -233,6 +233,7 @@ py_library(
   DEPS
     .abstract_utils
     .function
+    pytype.pytd.pytd
     pytype.typegraph.cfg
 )
 

@@ -362,6 +362,30 @@ class BaseValue(utils.ContextWeakrefMixin):
   def is_late_annotation(self):
     return False
 
+  def should_replace_self_annot(self):
+    # To do argument matching for custom generic classes, the 'self' annotation
+    # needs to be replaced with a generic type.
+
+    # We need to disable attribute-error because pytype doesn't understand our
+    # special _isinstance function.
+    # pytype: disable=attribute-error
+    if (not _isinstance(self, "SignedFunction") or
+        not self.signature.param_names):
+      # no 'self' to replace
+      return False
+    if _isinstance(self, "InterpreterFunction"):
+      # always replace for user-defined methods
+      return True
+    # SimpleFunctions are methods we construct internally for generated classes
+    # like namedtuples.
+    if not _isinstance(self, "SimpleFunction"):
+      return False
+    # We don't want to clobber our own generic annotations.
+    return (
+        self.signature.param_names[0] not in self.signature.annotations or
+        not self.signature.annotations[self.signature.param_names[0]].formal)
+    # pytype: enable=attribute-error
+
 
 def _get_template(val: Any):
   """Get the value's class template."""
