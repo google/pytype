@@ -304,13 +304,24 @@ class ClosuresTest(test_base.BaseTest):
       foo()
     """)
 
-  def test_error(self):
+  def test_attribute_error(self):
     errors = self.CheckWithErrors("""
       def f(x: int):
         def g():
           return x.upper()  # attribute-error[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"upper.*int"})
+
+  def test_name_error(self):
+    self.CheckWithErrors("""
+      def f(x):
+        try:
+          return [g() for y in x]  # name-error
+        except:
+          return []
+        def g():
+          pass
+    """)
 
 
 class ClosuresTestPy3(test_base.BaseTest):

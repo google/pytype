@@ -845,6 +845,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
   # See test_closures.ClosuresTest.test_undefined_var
   if check_bindings and not cell.bindings:
     ctx.errorlog.name_error(ctx.vm.frames, op.pretty_arg)
+    cell = ctx.new_unsolvable(state.node)
   visible_bindings = cell.Filter(state.node, strict=False)
   if len(visible_bindings) != len(cell.bindings):
     # We need to filter here because the closure will be analyzed outside of
