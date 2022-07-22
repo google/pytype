@@ -513,7 +513,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         subst.uf = valself.data.instance_type_parameters.uf
       else:
         subst = None
-      member = obj.load_lazy_attribute(name, subst)
+      # If 'subst' is computed from 'obj' itself, then it is always safe to
+      # store the result of this load call in obj.members.
+      member = obj.load_lazy_attribute(
+          name, subst, always_store=not valself or obj is valself.data)
       if member:
         return node, member
 

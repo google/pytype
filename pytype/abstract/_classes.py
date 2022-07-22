@@ -437,7 +437,7 @@ class PyTDClass(
         for base in self.pytd_cls.bases
     ]
 
-  def load_lazy_attribute(self, name, subst=None):
+  def load_lazy_attribute(self, name, subst=None, always_store=True):
     try:
       return super().load_lazy_attribute(name, subst)
     except self.ctx.convert.TypeParameterError as e:
