@@ -335,7 +335,11 @@ class _ParseVisitor(visitor.BaseVisitor):
         end_lineno = body_lineno - 1
     self._process_structured_comments(LineRange(start_lineno, end_lineno))
     self._visit_def(node)
-    self.function_ranges[node.lineno] = node.end_lineno
+    # The function range starts at the start of the first decorator (we use it
+    # to see if a line is within a function).
+    if node.decorator_list:
+      start_lineno = min(d.lineno for d in node.decorator_list)
+    self.function_ranges[start_lineno] = node.end_lineno
 
   def visit_FunctionDef(self, node):
     self._visit_function_def(node)

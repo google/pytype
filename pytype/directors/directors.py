@@ -145,7 +145,7 @@ class _BlockRanges:
     """Find the outermost interval containing line."""
     i = bisect.bisect_left(self._starts, line)
     num_intervals = len(self._starts)
-    if i:
+    if i or line == self._starts[0]:
       if i < num_intervals and self._starts[i] == line:
         # line number is start of interval.
         start = self._starts[i]
@@ -156,7 +156,9 @@ class _BlockRanges:
             self._start_to_end[self._starts[i - 1]] < line):
           i -= 1
         start = self._starts[i - 1]
-      return start, self._start_to_end[start]
+      end = self._start_to_end[start]
+      if line in range(start, end):
+        return start, end
     return None, None
 
   def adjust_end(self, old_end, new_end):
