@@ -14,8 +14,9 @@ class TestReturns(test_base.BaseTest):
 
   def test_implicit_none_with_decorator(self):
     self.CheckWithErrors("""
-      import functools
-      @functools.cache
+      def decorator(f):
+        return f
+      @decorator
       def f(x) -> int:
         '''docstring'''  # bad-return-type
     """)
