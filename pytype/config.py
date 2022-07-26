@@ -170,8 +170,6 @@ FEATURE_FLAGS = [
      "Enable parameter type checks for overriding methods."),
     ("--overriding-return-type-checks", False,
      "Enable return type checks for overriding methods."),
-    ("--enable-bare-annotations", True,
-     "Support variable annotations without assignments."),
     ("--enable-cached-property", False,
      "Support pyglib's @cached.property."),
 ]

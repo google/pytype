@@ -2,6 +2,7 @@
 import logging
 from typing import Optional
 
+from pytype import datatypes
 from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
@@ -497,11 +498,24 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       elif isinstance(valself.data, abstract.Instance):
         # We need to rebind the parameter values at the root because that's the
         # node at which load_lazy_attribute() converts pyvals.
-        subst = {k: self.ctx.program.NewVariable(v.data, [], self.ctx.root_node)
-                 for k, v in valself.data.instance_type_parameters.items()}
+        subst = datatypes.AliasingDict()
+        for k, v in valself.data.instance_type_parameters.items():
+          if v.bindings:
+            subst[k] = self.ctx.program.NewVariable(
+                v.data, [], self.ctx.root_node)
+          else:
+            # An empty instance parameter means that the instance's class
+            # inherits from a generic class without filling in parameter values:
+            #   class Base(Generic[T]): ...
+            #   class Child(Base): ...  # equivalent to `class Child(Base[Any])`
+            # When this happens, parameter values are implicitly set to Any.
+            subst[k] = self.ctx.new_unsolvable(self.ctx.root_node)
+        subst.uf = valself.data.instance_type_parameters.uf
       else:
         subst = None
-      obj.load_lazy_attribute(name, subst)
+      member = obj.load_lazy_attribute(name, subst)
+      if member:
+        return node, member
 
     # If we are looking up a member that we can determine is an instance
     # rather than a class attribute, add it to the instance's members.

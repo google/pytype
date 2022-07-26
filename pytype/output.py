@@ -583,7 +583,7 @@ class Converter(utils.ContextWeakrefMixin):
         template=())
     return pytd.Function(name, (pytd_sig,), pytd.MethodKind.METHOD)
 
-  def _function_to_return_types(self, node, fvar):
+  def _function_to_return_types(self, node, fvar, allowed_type_params=()):
     """Convert a function variable to a list of PyTD return types."""
     options = fvar.FilteredData(self.ctx.exitpoint, strict=False)
     if not all(isinstance(o, abstract.Function) for o in options):
@@ -599,11 +599,12 @@ class Converter(utils.ContextWeakrefMixin):
         types.extend(sig.pytd_sig.return_type for sig in val.signatures)
       else:
         types.append(pytd.AnythingType())
-    safe_types = []  # types without type parameters
+    safe_types = []  # types with illegal type parameters removed
     for t in types:
       params = pytd_utils.GetTypeParameters(t)
       t = t.Visit(visitors.ReplaceTypeParameters(
-          {p: p.upper_value for p in params}))
+          {p: p if p.name in allowed_type_params else p.upper_value
+           for p in params}))
       safe_types.append(t)
     return safe_types
 
@@ -676,6 +677,8 @@ class Converter(utils.ContextWeakrefMixin):
                for x in v.get_inner_classes()]
     inner_class_names = {x.name for x in classes}
 
+    class_type_params = {t.name for t in v.template}
+
     # class-level attributes
     for name, member in v.members.items():
       if (name in abstract_utils.CLASS_LEVEL_IGNORE or
@@ -688,7 +691,8 @@ class Converter(utils.ContextWeakrefMixin):
           # For simplicity, output properties as constants, since our parser
           # turns them into constants anyway.
           if value.fget:
-            for typ in self._function_to_return_types(node, value.fget):
+            for typ in self._function_to_return_types(
+                node, value.fget, allowed_type_params=class_type_params):
               constants[name].add_type(pytd.Annotated(typ, ("'property'",)))
           else:
             constants[name].add_type(

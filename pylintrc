@@ -62,6 +62,7 @@ disable=
   too-many-return-statements,
   too-many-statements,
   unbalanced-tuple-unpacking,
+  unnecessary-dunder-call,
   unnecessary-lambda-assignment,
   unspecified-encoding,
   unsubscriptable-object,

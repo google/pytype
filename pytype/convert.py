@@ -375,7 +375,9 @@ class Converter(utils.ContextWeakrefMixin):
       An abstract.BaseValue created by merging the instances' classes.
     """
     classes = {v.cls for v in instances if v.cls != self.empty}
-    return self.merge_values(classes)
+    # Sort the classes so that the same instances always generate the same
+    # merged class type.
+    return self.merge_values(sorted(classes, key=lambda cls: cls.full_name))
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):
@@ -432,8 +434,14 @@ class Converter(utils.ContextWeakrefMixin):
         elif isinstance(t, pytd.NothingType):
           pass
         else:
-          value = self.constant_to_value(
-              abstract_utils.AsInstance(t), subst, node)
+          if isinstance(t, pytd.Annotated):
+            value = self._apply_metadata_annotations(
+                self.constant_to_value(
+                    abstract_utils.AsInstance(t.base_type), subst, node),
+                t.annotations)
+          else:
+            value = self.constant_to_value(
+                abstract_utils.AsInstance(t), subst, node)
           for source_set in source_sets:
             var.AddBinding(value, source_set, node)
       return var
@@ -619,6 +627,25 @@ class Converter(utils.ContextWeakrefMixin):
       return self.primitive_classes[types.CodeType]
     else:
       return None
+
+  def _apply_metadata_annotations(self, typ, annotations):
+    if annotations[0] == "'pytype_metadata'":
+      try:
+        md = metadata.from_string(annotations[1])
+        if md["tag"] == "attr.ib":
+          ret = attr_overlay.AttribInstance.from_metadata(
+              self.ctx, self.ctx.root_node, typ, md)
+          return ret
+        elif md["tag"] == "attr.s":
+          ret = attr_overlay.Attrs.from_metadata(self.ctx, md)
+          return ret
+      except (IndexError, ValueError, TypeError, KeyError):
+        details = "Wrong format for pytype_metadata."
+        self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames,
+                                             annotations[1], details)
+        return typ
+    else:
+      return typ
 
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a BaseValue that represents a python constant.
@@ -896,23 +923,7 @@ class Converter(utils.ContextWeakrefMixin):
       return abstract.LiteralClass(value, self.ctx)
     elif isinstance(pyval, pytd.Annotated):
       typ = self.constant_to_value(pyval.base_type, subst, self.ctx.root_node)
-      if pyval.annotations[0] == "'pytype_metadata'":
-        try:
-          md = metadata.from_string(pyval.annotations[1])
-          if md["tag"] == "attr.ib":
-            ret = attr_overlay.AttribInstance.from_metadata(
-                self.ctx, self.ctx.root_node, typ, md)
-            return ret
-          elif md["tag"] == "attr.s":
-            ret = attr_overlay.Attrs.from_metadata(self.ctx, md)
-            return ret
-        except (IndexError, ValueError, TypeError, KeyError):
-          details = "Wrong format for pytype_metadata."
-          self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames,
-                                               pyval.annotations[1], details)
-          return typ
-      else:
-        return typ
+      return self._apply_metadata_annotations(typ, pyval.annotations)
     elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
       return self.tuple_to_value([
           self.constant_to_var(item, subst, self.ctx.root_node)

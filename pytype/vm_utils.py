@@ -726,11 +726,16 @@ def _get_annotation(node, var, ctx):
 
 
 def _maybe_union(node, x, y, ctx):
+  """Attempt to evaluate a '|' operation as a typing.Union."""
   x_annot = _get_annotation(node, x, ctx)
   y_annot = _get_annotation(node, y, ctx)
-  if x_annot is None or y_annot is None:
-    return None
   opts = [x_annot, y_annot]
+  if any(o is None for o in opts):
+    return None
+  if all(isinstance(o, abstract.AMBIGUOUS) for o in opts):
+    # It is ambiguous whether this is a typing.Union or a regular __or__
+    # operation. Returning unsolvable is safe either way.
+    return ctx.new_unsolvable(node)
   return abstract.Union(opts, ctx).to_variable(node)
 
 
@@ -840,6 +845,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
   # See test_closures.ClosuresTest.test_undefined_var
   if check_bindings and not cell.bindings:
     ctx.errorlog.name_error(ctx.vm.frames, op.pretty_arg)
+    cell = ctx.new_unsolvable(state.node)
   visible_bindings = cell.Filter(state.node, strict=False)
   if len(visible_bindings) != len(cell.bindings):
     # We need to filter here because the closure will be analyzed outside of

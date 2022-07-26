@@ -439,11 +439,13 @@ class PyTDClass(
 
   def load_lazy_attribute(self, name, subst=None):
     try:
-      super().load_lazy_attribute(name, subst)
+      return super().load_lazy_attribute(name, subst)
     except self.ctx.convert.TypeParameterError as e:
       self.ctx.errorlog.unbound_type_param(self.ctx.vm.frames, self, name,
                                            e.type_param_name)
-      self.members[name] = self.ctx.new_unsolvable(self.ctx.root_node)
+      member = self.ctx.new_unsolvable(self.ctx.root_node)
+      self.members[name] = member
+      return member
 
   def _convert_member(self, name, member, subst=None):
     """Convert a member as a variable. For lazy lookup."""
@@ -556,15 +558,6 @@ class ParameterizedClass(
     formal_type_parameters: An iterable of BaseValue, one for each type
       parameter.
   """
-
-  @classmethod
-  def get_generic_instance_type(cls, base_cls):
-    """This is used to annotate the `self` in a class."""
-    assert base_cls.template
-    formal_type_parameters = {}
-    for item in base_cls.template:
-      formal_type_parameters[item.name] = item
-    return cls(base_cls, formal_type_parameters, base_cls.ctx)
 
   def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose

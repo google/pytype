@@ -96,6 +96,7 @@ py_library(
     attribute.py
   DEPS
     ._utils
+    .datatypes
     .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays

@@ -411,8 +411,7 @@ class VirtualMachine:
     """
     self.filename = filename
     self._maximum_depth = maximum_depth
-    if (self.ctx.python_version >= (3, 8) and
-        self.ctx.options.enable_bare_annotations):
+    if self.ctx.python_version >= (3, 8):
       src = preprocess.augment_annotations(src)
     src_tree = directors.parse_src(src, self.ctx.python_version)
     code = self.compile_src(src, filename=filename)
@@ -1664,7 +1663,7 @@ class VirtualMachine:
       elif (isinstance(maybe_cls, abstract.PyTDClass) and
             maybe_cls != self.ctx.convert.type_type):
         node, attr = self.ctx.attribute_handler.get_attribute(
-            node, obj_val, name)
+            node, obj_val, name, obj_val.to_binding(node))
         if attr:
           typ = self.ctx.convert.merge_classes(attr.data)
           cur_annotations_dict = {

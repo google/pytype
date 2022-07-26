@@ -1,5 +1,7 @@
 """Custom implementations of builtin types."""
 
+import sys
+
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
@@ -596,8 +598,31 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     self.bound_class = abstract.BoundFunction
 
   def fget_slot(self, node, obj, objtype):
-    return function.call_function(self.ctx, node, self.fget,
-                                  function.Args((obj,)))
+    obj_val = abstract_utils.get_atomic_value(
+        obj, default=self.ctx.convert.unsolvable)
+    set_self_annot_managers = []
+    t = abstract_utils.get_generic_type(obj_val)
+    if t and any(self in member.data for member in t.members.values()):
+      # This property is defined on a generic class. We need to annotate self
+      # with a parameterized type for the property return type to be computed
+      # properly, e.g.:
+      #   @property
+      #   def x(self) -> T: ...
+      # is changed to:
+      #   @property
+      #   def x(self: Foo[T]) -> T: ...
+      for f in self.fget.data:
+        if f.should_replace_self_annot():
+          set_self_annot_managers.append(f.set_self_annot(t))
+    for manager in set_self_annot_managers:
+      manager.__enter__()
+    try:
+      return function.call_function(self.ctx, node, self.fget,
+                                    function.Args((obj,)))
+    finally:
+      exc_info = sys.exc_info()
+      for manager in set_self_annot_managers:
+        manager.__exit__(*exc_info)
 
   def fset_slot(self, node, obj, value):
     return function.call_function(self.ctx, node, self.fset,

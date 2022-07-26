@@ -19,6 +19,7 @@ ArgsDict = Dict[str, cfg.Variable]
 
 # We can't import abstract here due to a circular dep.
 _BaseValue = Any  # abstract.BaseValue
+_ParameterizedClass = Any
 _TypeParameter = Any  # abstract.TypeParameter
 
 # Type parameter names matching the ones in builtins.pytd and typing.pytd.
@@ -866,3 +867,26 @@ def show_constant(val: _BaseValue) -> str:
       return v.str_of_constant(_ellipsis_printer)
     return "..."
   return _ellipsis_printer(val)
+
+
+def get_generic_type(val: _BaseValue) -> Optional[_ParameterizedClass]:
+  """Gets the generic type of an abstract value.
+
+  Args:
+    val: The abstract value.
+
+  Returns:
+    The type of the value, with concrete type parameters replaced by TypeVars.
+    For example, the generic type of `[0]` is `List[T]`.
+  """
+  if not _isinstance(val.cls, "Class") or val.cls.full_name == "builtins.type":
+    return None
+  for cls in val.cls.mro:
+    if _isinstance(cls, "ParameterizedClass"):
+      base_cls = cls.base_cls
+    else:
+      base_cls = cls
+    if _isinstance(base_cls, "Class") and base_cls.template:
+      params = {item.name: item for item in base_cls.template}
+      return _make("ParameterizedClass", base_cls, params, base_cls.ctx)
+  return None

@@ -1,3 +1,16 @@
+Version 2022.07.26:
+
+Updates:
+* Remove the --enable-bare-annotations flag. Its behavior is now the default.
+* Support generic properties.
+
+Bug fixes:
+* Python 3.10:
+  * Don't assume Any | Any is a type annotation.
+  * Calculate starts of decorated functions correctly.
+* Don't crash on a nested function referenced in a closure before definition.
+* Sort classes by name in convert.merge_classes.
+
 Version 2022.07.18:
 
 Bug fixes:

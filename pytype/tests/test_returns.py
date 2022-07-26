@@ -12,6 +12,15 @@ class TestReturns(test_base.BaseTest):
         pass  # bad-return-type
     """)
 
+  def test_implicit_none_with_decorator(self):
+    self.CheckWithErrors("""
+      def decorator(f):
+        return f
+      @decorator
+      def f(x) -> int:
+        '''docstring'''  # bad-return-type
+    """)
+
   def test_if(self):
     # NOTE(b/233047104): The implict `return None` gets reported at the end of
     # the function even though there is also a correct return on that line.
