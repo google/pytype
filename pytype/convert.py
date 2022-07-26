@@ -375,7 +375,9 @@ class Converter(utils.ContextWeakrefMixin):
       An abstract.BaseValue created by merging the instances' classes.
     """
     classes = {v.cls for v in instances if v.cls != self.empty}
-    return self.merge_values(classes)
+    # Sort the classes so that the same instances always generate the same
+    # merged class type.
+    return self.merge_values(sorted(classes, key=lambda cls: cls.full_name))
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):
