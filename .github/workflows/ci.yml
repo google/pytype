@@ -49,11 +49,5 @@ jobs:
     # https://github.com/github-community/community/discussions/15452.
 
     - name: Run Tests
-      if: matrix.python-version != '3.11-dev'
-      run: python build_scripts/ci_script.py
-      continue-on-error: ${{ matrix.experimental }}
-
-    - name: Run Tests for python 3.11
-      if: matrix.python-version == '3.11-dev'
       run: python build_scripts/ci_script.py
       continue-on-error: ${{ matrix.experimental }}
