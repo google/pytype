@@ -1,16 +1,20 @@
 """Generic functions."""
 
+import atexit
 import collections
 import contextlib
 import itertools
+import os
 import re
 import subprocess
 import sys
+import tempfile
 import threading
 import traceback
 from typing import Iterable, List
 import weakref
 
+from pytype import pytype_source_utils
 from pytype.platform_utils import path_utils
 
 
@@ -147,6 +151,43 @@ def native_str(s, errors="strict"):
     return s.decode("utf-8", errors)
 
 
+def _load_data_file(path):
+  """Get the contents of a data file."""
+  loader = globals().get("__loader__", None)
+  if loader:
+    # For an explanation of the args to loader.get_data, see
+    # https://www.python.org/dev/peps/pep-0302/#optional-extensions-to-the-importer-protocol
+    # https://docs.python.org/3/library/importlib.html#importlib.abc.ResourceLoader.get_data
+    return loader.get_data(path)
+  with open(path, "rb") as fi:
+    return fi.read()
+
+
+def _path_to_custom_exe(relative_path):
+  """Get the full path to a custom python exe in the pytype/ src directory."""
+  path = pytype_source_utils.get_full_path(relative_path)
+  if os.path.exists(path):
+    return path
+  data = _load_data_file(path)
+  with tempfile.NamedTemporaryFile(delete=False, suffix="python") as fi:
+    fi.write(data)
+    fi.close()
+    exe_file = fi.name
+    os.chmod(exe_file, 0o750)
+    atexit.register(lambda: os.unlink(exe_file))
+  return exe_file
+
+
+# To aid with testing a pytype against a new Python version, you can build a
+# *hermetic* Python runtime executable and drop it in the pytype/ src directory,
+# then add an entry for it here, like:
+#     (3, 10): "python3.10",
+# This would mean that when -V3.10 is passed to pytype, it will use the exe at
+# pytype/python3.10 to compile the code under analysis. Remember to add the new
+# file to the pytype_main_deps target!
+_CUSTOM_PYTHON_EXES = {}
+
+
 def get_python_exes(python_version) -> Iterable[List[str]]:
   """Find possible python executables to use.
 
@@ -155,6 +196,9 @@ def get_python_exes(python_version) -> Iterable[List[str]]:
   Yields:
     The path to the executable
   """
+  if python_version in _CUSTOM_PYTHON_EXES:
+    yield [_path_to_custom_exe(_CUSTOM_PYTHON_EXES[python_version])]
+    return
   for version in (format_version(python_version), "3"):
     if sys.platform == "win32":
       python_exe = ["py", f"-{version}"]
