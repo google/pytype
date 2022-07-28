@@ -1,4 +1,5 @@
 """Tests for utils.py."""
+import os
 
 from pytype import utils
 
@@ -91,6 +92,16 @@ class UtilsTest(unittest.TestCase):
     version = utils.get_python_exe_version(["python"])
     self.assertIsInstance(version, tuple)
     self.assertEqual(len(version), 2)
+
+  def test_custom_python_exe(self):
+    temp = utils._CUSTOM_PYTHON_EXES
+    # Since the logic for getting a custom exe checks for the file's existence
+    # in the pytype/ src directory, we pick an existing file to pretend to be a
+    # Python exe.
+    utils._CUSTOM_PYTHON_EXES = {(3, 10): "utils.py"}
+    (exe,), = utils.get_python_exes((3, 10))
+    self.assertEqual(os.path.basename(exe), "utils.py")
+    utils._CUSTOM_PYTHON_EXES = temp
 
 
 def _make_tuple(x):

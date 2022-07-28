@@ -342,10 +342,14 @@ class _Resolver:
     if lookup_ast is None:
       return name
     ast_name = lookup_ast_name or lookup_ast.name
-    key = f"{ast_name}.{name}"
-    for alias, value in lookup_ast.aliases:
-      if alias == key and isinstance(value, pytd.Module):
-        return value.module_name
+    aliases = dict(lookup_ast.aliases)
+    cur_name = name
+    while cur_name:
+      key = f"{ast_name}.{cur_name}"
+      value = aliases.get(key)
+      if isinstance(value, pytd.Module):
+        return value.module_name + name[len(cur_name):]
+      cur_name, _, _ = cur_name.rpartition(".")
     return name
 
   def verify(self, mod_ast, *, mod_name=None):

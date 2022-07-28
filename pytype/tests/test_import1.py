@@ -1365,6 +1365,26 @@ class ImportTest(test_base.BaseTest):
         from foo import baz  # import-error
       """, imports_map=imports_map)
 
+  def test_module_prefix_alias(self):
+    with file_utils.Tempdir() as d:
+      foo_bar = d.create_file(
+          file_utils.replace_separator("foo/bar.pyi"), """
+            import foo as _foo
+            x: _foo.baz.X
+          """)
+      foo_baz = d.create_file(
+          file_utils.replace_separator("foo/baz.pyi"),
+          "class X: ...")
+      imports_info = d.create_file(
+          file_utils.replace_separator("imports_info"), f"""
+            {file_utils.replace_separator('foo/bar')} {foo_bar}
+            {file_utils.replace_separator('foo/baz')} {foo_baz}
+          """)
+      imports_map = imports_map_loader.build_imports_map(imports_info)
+      self.Check("""
+        from foo import bar
+      """, imports_map=imports_map)
+
 
 if __name__ == "__main__":
   test_base.main()
