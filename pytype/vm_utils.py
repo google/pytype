@@ -717,6 +717,14 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
 
 
 def _get_annotation(node, var, ctx):
+  """Extract an annotation from terms in `a | b | ...`."""
+  # Python does not support late annotations in | expressions
+  try:
+    abstract_utils.get_atomic_python_constant(var, str)
+  except abstract_utils.ConversionError:
+    pass
+  else:
+    return None
   with ctx.errorlog.checkpoint() as record:
     annot = ctx.annotation_utils.extract_annotation(
         node, var, "varname", ctx.vm.simple_stack())

@@ -135,6 +135,24 @@ class UnionOrTest(test_base.BaseTest):
         pass
     """)
 
+  def test_unsupported_late_annotation(self):
+    """Don't allow partial late annotations."""
+    # TODO(b/240617766): missing-parameter is the wrong error.
+    self.CheckWithErrors("""
+      a: int | 'str' = 0  # invalid-annotation  # missing-parameter
+      b: 'Bar' | int = 0  # invalid-annotation  # unsupported-operands
+      c: 'Foo' | 'Bar' = 0  # invalid-annotation  # unsupported-operands
+    """)
+
+  def test_unsupported_operands(self):
+    """Don't treat assignments to | expressions as annotations."""
+    # TODO(b/240617766): missing-parameter is the wrong error.
+    self.CheckWithErrors("""
+      a = int | 'str'  # missing-parameter
+      b = 'Bar' | int  # unsupported-operands
+      c = 'Foo' | 'Bar'  # unsupported-operands
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
