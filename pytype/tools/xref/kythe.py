@@ -137,7 +137,6 @@ class Kythe:
     self.add_fact(vname, "node/kind", "anchor")
     self.add_fact(vname, "loc/start", str(start))
     self.add_fact(vname, "loc/end", str(end))
-    self.add_edge(vname, "childof", self.file_vname)
     return vname
 
 

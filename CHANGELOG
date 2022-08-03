@@ -1,3 +1,10 @@
+Version 2022.08.03:
+
+Bug fixes:
+* Support aliases of module name prefixes in load_pytd.
+* Don't allow partial late annotations in | union types.
+* Fully resolve pytd aliases in LookupExternalType's duplicate aliases check.
+
 Version 2022.07.26:
 
 Updates:
