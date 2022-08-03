@@ -544,6 +544,9 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     self.classmap = {}
     self.calls = []
     self.function_params = []
+    # Record childof relationships for nested functions/classes
+    self.childof = []
+    self.scope_defn = {}
 
   def _get_location(self, node, args):
     """Get a more accurate node location."""
@@ -669,6 +672,12 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
         return True
     return False
 
+  def _record_childof(self, node, defn):
+    """Record a childof relationship for nested definitions."""
+    parent = self.scope_defn.get(self.scope_id())
+    if parent:
+      self.childof.append((defn, parent))
+
   def enter_ClassDef(self, node):
     class_name = node_utils.get_name(node, self._ast)
     last_line = max(node.lineno, node.body[0].lineno - 1)
@@ -696,8 +705,10 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
         class_name, node.lineno)
     defn = self.add_local_def(node, data=data,
                               doc=DocString.from_node(self._ast, node))
+    self._record_childof(node, defn)
     self.classmap[d[0]] = defn
     super().enter_ClassDef(node)
+    self.scope_defn[self.scope_id()] = defn
 
   def enter_FunctionDef(self, node):
     last_line = max(node.lineno, node.body[0].lineno - 1)
@@ -713,7 +724,9 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       data = None
     fn_def = self.add_local_def(node, data=data,
                                 doc=DocString.from_node(self._ast, node))
+    self._record_childof(node, fn_def)
     env = self.add_scope(node)
+    self.scope_defn[self.scope_id()] = fn_def
     # TODO(mdemello): Get pytype data for params
     params = [self.add_local_def(v) for v in node.args.args]
     for i, param in enumerate(params):
@@ -926,6 +939,7 @@ class Indexer:
     self.links = []
     self.function_params = None
     self.function_map = None
+    self.childof = []
 
     # Optionally preserve the pytype vm so we can access the types later
     self.vm = None
@@ -945,6 +959,7 @@ class Indexer:
     self.classmap = v.classmap
     self.calls = v.calls
     self.function_params = v.function_params
+    self.childof = v.childof
 
   def get_def_offsets(self, defloc):
     """Get the byte offsets for a definition."""
