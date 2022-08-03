@@ -556,6 +556,31 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         new_members.append(m)
     return new_members
 
+  def _ResolveAlias(self, alias):
+    if not isinstance(alias.type, pytd.NamedType):
+      return alias.type
+    try:
+      module, _ = self._LookupModuleRecursive(alias.type.name)
+    except KeyError:
+      return alias.type
+    try:
+      value = module.Lookup(alias.type.name)
+    except KeyError:
+      return alias.type
+    if isinstance(value, pytd.Alias):
+      return self._ResolveAlias(value)
+    else:
+      return value
+
+  def _EquivalentAliases(self, alias1, alias2) -> bool:
+    if alias1 == alias2:
+      return True
+    if (isinstance(alias1.type, pytd.Module) and
+        isinstance(alias2.type, pytd.Module) and
+        alias1.type.module_name == alias2.type.module_name):
+      return True
+    return self._ResolveAlias(alias1) == self._ResolveAlias(alias2)
+
   def _HandleDuplicates(self, new_aliases):
     """Handle duplicate module-level aliases.
 
@@ -572,13 +597,6 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     Raises:
       KeyError: If there is a name clash.
     """
-    def SameModuleName(a, b):
-      return (
-          isinstance(a.type, pytd.Module) and
-          isinstance(b.type, pytd.Module) and
-          a.type.module_name == b.type.module_name
-      )
-
     name_to_alias = {}
     out = []
     for a in new_aliases:
@@ -587,10 +605,12 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         out.append(a)
         continue
       existing = name_to_alias[a.name]
-      if existing == a or SameModuleName(existing, a):
+      if self._EquivalentAliases(existing, a):
         continue
+      existing_name = existing.type.name or existing.type.__class__.__name__
+      a_name = a.type.name or a.type.__class__.__name__
       raise KeyError("Duplicate top level items: {!r}, {!r}".format(
-          existing.type.name, a.type.name))
+          existing_name, a_name))
     return out
 
   def EnterTypeDeclUnit(self, node):
