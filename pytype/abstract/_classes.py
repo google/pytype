@@ -515,19 +515,6 @@ class PyTDClass(
                   self.ctx.root_node, container=instance)
         return self._convert_member(name, c, subst)
 
-  def generate_ast(self):
-    """Generate this class's AST, including updated members."""
-    return pytd.Class(
-        name=self.name,
-        metaclass=self.pytd_cls.metaclass,
-        bases=self.pytd_cls.bases,
-        methods=tuple(self._member_map[m.name] for m in self.pytd_cls.methods),
-        constants=self.pytd_cls.constants,
-        classes=self.pytd_cls.classes,
-        decorators=self.pytd_cls.decorators,
-        slots=self.pytd_cls.slots,
-        template=self.pytd_cls.template)
-
 
 class FunctionPyTDClass(PyTDClass):
   """PyTDClass(Callable) subclass to support annotating higher-order functions.
