@@ -243,12 +243,10 @@ class SignedFunction(_function_base.Function):
         # The annotation is Tuple or Dict, but the passed arg only has to be
         # Iterable or Mapping.
         formal = self.ctx.convert.widen_type(formal)
-      match_result = self.ctx.matcher(node).bad_matches(arg, formal)
+      match_result = self.ctx.matcher(node).bad_matches(arg, formal, name)
       if not function.match_succeeded(match_result, match_all_views, self.ctx):
-        bad_arg = function.BadParam(
-            name=name, expected=formal, error_details=match_result[0][0][1])
-        raise function.WrongArgTypes(
-            self.signature, args, self.ctx, bad_param=bad_arg)
+        raise function.WrongArgTypes(self.signature, args, self.ctx,
+                                     bad_param=match_result[0][0].expected)
     return [{}]
 
   def get_first_opcode(self):

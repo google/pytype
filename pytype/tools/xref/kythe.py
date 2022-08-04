@@ -256,6 +256,15 @@ def _process_links(kythe: Kythe, index: indexer.Indexer):
     kythe.add_edge(source=vname, target=target, edge_name=edge_name)
 
 
+def _process_childof(kythe: Kythe, index: indexer.Indexer):
+  """Generate kythe edges for childof relationships."""
+
+  for child, parent in index.childof:
+    source = _make_defn_vname(kythe, index, child)
+    target = _make_defn_vname(kythe, index, parent)
+    kythe.add_edge(source=source, target=target, edge_name="childof")
+
+
 def _process_calls(kythe, index):
   """Generate kythe edges for function calls."""
 
@@ -300,5 +309,6 @@ def generate_graph(index, kythe_args):
   _process_deflocs(kythe, index)
   _process_params(kythe, index)
   _process_links(kythe, index)
+  _process_childof(kythe, index)
   _process_calls(kythe, index)
   return kythe

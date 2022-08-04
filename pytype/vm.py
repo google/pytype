@@ -508,9 +508,6 @@ class VirtualMachine:
   def trace_classdef(self, *args):
     return NotImplemented
 
-  def trace_namedtuple(self, *args):
-    return NotImplemented
-
   def call_init(self, node, unused_instance):
     # This dummy implementation is overwritten in tracer_vm.py.
     return node

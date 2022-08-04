@@ -290,6 +290,7 @@ py_library(
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(

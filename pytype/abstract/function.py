@@ -4,7 +4,7 @@ import collections
 import dataclasses
 import itertools
 import logging
-from typing import Any, Dict, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence, Tuple
 
 import attrs
 
@@ -664,18 +664,10 @@ class DictKeyMissing(Exception, ReturnValueMixin):
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
-class BadParam:
-  name: str
-  expected: _base.BaseValue
-  # Should be matcher.ErrorDetails but can't use due to circular dep.
-  error_details: Optional[Any] = None
-
-
-@dataclasses.dataclass(eq=True, frozen=True)
 class BadCall:
   sig: Signature
   passed_args: Sequence[Tuple[str, _base.BaseValue]]
-  bad_param: Optional[BadParam]
+  bad_param: Optional[abstract_utils.BadType]
 
 
 class InvalidParameters(FailedFunctionCall):

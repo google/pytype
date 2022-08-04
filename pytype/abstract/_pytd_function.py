@@ -454,7 +454,7 @@ class PyTDFunction(_function_base.Function):
       raise error
     return [(variable_view, matched_signatures)]
 
-  def set_function_defaults(self, unused_node, defaults_var):
+  def set_function_defaults(self, node, defaults_var):
     """Attempts to set default arguments for a function's signatures.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
@@ -465,7 +465,7 @@ class PyTDFunction(_function_base.Function):
     updated so the change is stored.
 
     Args:
-      unused_node: the node that defaults are being set at. Not used here.
+      node: the node that defaults are being set at.
       defaults_var: a Variable with a single binding to a tuple of default
                     values.
     """
@@ -485,14 +485,7 @@ class PyTDFunction(_function_base.Function):
     # Update our parent's AST too, if we have a parent.
     # 'parent' is set by PyTDClass._convert_member
     if hasattr(self, "parent"):
-      self.parent._member_map[self.name] = self.generate_ast()  # pylint: disable=protected-access
-
-  def generate_ast(self):
-    return pytd.Function(
-        name=self.name,
-        signatures=tuple(s.pytd_sig for s in self.signatures),
-        kind=self.kind,
-        flags=pytd.MethodFlag.abstract_flag(self.is_abstract))
+      self.parent._member_map[self.name] = self.to_pytd_def(node, self.name)  # pylint: disable=protected-access
 
 
 class PyTDSignature(utils.ContextWeakrefMixin):
@@ -634,11 +627,11 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     formal_args, arg_dict = self._map_args(node, args, variable_view)
     self._fill_in_missing_parameters(node, args, arg_dict, True)
     for name, formal in formal_args:
-      match_result = self.ctx.matcher(node).bad_matches(arg_dict[name], formal)
+      match_result = self.ctx.matcher(node).bad_matches(
+          arg_dict[name], formal, name)
       if function.match_succeeded(match_result, match_all_views, self.ctx):
         continue
-      bad_arg = function.BadParam(
-          name=name, expected=formal, error_details=match_result[0][0][1])
+      bad_arg = match_result[0][0].expected
       if self.signature.has_param(bad_arg.name):
         signature = self.signature
       else:

@@ -136,7 +136,7 @@ class TypeVarTest(test_base.BaseTest):
       f4("hello", "world", "domination")  # ok
     """)
     self.assertErrorRegexes(errors, {
-        "e1": r"List\[S\].*set", "e2": r"str.*int", "e3": r"bool.*int",
+        "e1": r"list.*set", "e2": r"str.*int", "e3": r"bool.*int",
         "e4": r"List\[bool\].*List\[Union\[float, int\]\]"})
 
   def test_use_constraints(self):
@@ -327,7 +327,7 @@ class TypeVarTest(test_base.BaseTest):
       def f() -> Optional[T]:
         return 42 if __random__ else None  # bad-return-type[e]
     """, deep=True)
-    self.assertErrorRegexes(errors, {"e": r"Optional\[T\].*int"})
+    self.assertErrorRegexes(errors, {"e": r"Optional\[str\].*int"})
 
   def test_unicode_literals(self):
     ty = self.Infer("""

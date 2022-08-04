@@ -440,7 +440,7 @@ class Super(BuiltinClass):
     for cls in cls_var.bindings:
       if not isinstance(cls.data, (abstract.Class,
                                    abstract.AMBIGUOUS_OR_EMPTY)):
-        bad = function.BadParam(name="cls", expected=self.ctx.convert.type_type)
+        bad = abstract_utils.BadType(name="cls", typ=self.ctx.convert.type_type)
         raise function.WrongArgTypes(
             self._SIGNATURE, args, self.ctx, bad_param=bad)
       for obj in super_objects:

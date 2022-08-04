@@ -64,7 +64,6 @@ class CallTracer(vm.VirtualMachine):
     self._interpreter_classes = []
     self._analyzed_functions = set()
     self._analyzed_classes = set()
-    self._generated_classes = {}
 
   def create_varargs(self, node):
     value = abstract.Instance(self.ctx.convert.tuple_type, self.ctx)
@@ -159,7 +158,7 @@ class CallTracer(vm.VirtualMachine):
     # stack (i.e. we haven't started analysing the actual function yet)
     frame.skip_in_tracebacks = True
     self.push_frame(frame)
-    log.info("Analyzing %r", fn.name)
+    log.info("Analyzing function: %r", fn.name)
     state = frame_state.FrameState.init(node, self.ctx)
     state, ret = self.call_function_with_state(
         state, val.AssignToNewVariable(node), args, kwargs, starargs,
@@ -236,7 +235,7 @@ class CallTracer(vm.VirtualMachine):
     return node, self.ctx.new_unsolvable(node)
 
   def analyze_method_var(self, node0, name, var, cls=None):
-    log.info("Analyzing %s", name)
+    log.info("Analyzing method: %r", name)
     node1 = node0.ConnectNew(name)
     for val in var.bindings:
       node2 = self.maybe_analyze_method(node1, val, cls)
@@ -380,6 +379,7 @@ class CallTracer(vm.VirtualMachine):
       self._call_init_on_binding(node, instance.to_binding(node))
 
   def analyze_class(self, node, val):
+    log.info("Analyzing class: %r", val.data.full_name)
     self._analyzed_classes.add(val.data)
     node, instance = self.init_class(node, val.data)
     good_instances = [b for b in instance.bindings if val.data == b.data.cls]
@@ -495,14 +495,10 @@ class CallTracer(vm.VirtualMachine):
   def trace_classdef(self, c):
     self._interpreter_classes.append(c)
 
-  def trace_namedtuple(self, nt):
-    # All namedtuple instances with the same name are equal, so it's fine to
-    # overwrite previous instances.
-    self._generated_classes[nt.name] = nt
-
   def pytd_classes_for_unknowns(self):
     classes = []
     for name, val in self._unknowns.items():
+      log.info("Generating structural definition for unknown: %r", name)
       if val in val.variable.Filter(self.ctx.exitpoint, strict=False):
         classes.append(val.data.to_structural_def(self.ctx.exitpoint, name))
     return classes
@@ -520,6 +516,7 @@ class CallTracer(vm.VirtualMachine):
       if (name in abstract_utils.TOP_LEVEL_IGNORE or name in annotated_names or
           self._is_typing_member(name, var)):
         continue
+      log.info("Generating pytd type for top-level definition: %r", name)
       options = var.FilteredData(self.ctx.exitpoint, strict=False)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
@@ -574,6 +571,8 @@ class CallTracer(vm.VirtualMachine):
         return arg.data.to_type(node)
 
     for ct in call_traces:
+      log.info("Generating pytd function for call trace: %r",
+               ct.function.data.name)
       # The lengths may be different in the presence of optional and kw args.
       arg_names = max((sig.get_positional_names() for sig in ct.signatures),
                       key=len)
@@ -638,11 +637,12 @@ class CallTracer(vm.VirtualMachine):
       else:
         classes = [args[0].data]
       for cls in classes:
-        if isinstance(cls, abstract.PyTDClass):
+        if isinstance(cls.cls, abstract.PyTDClass):
           class_to_records[cls].append(call_record)
     classes = []
     for cls, call_records in class_to_records.items():
       full_name = cls.module + "." + cls.name if cls.module else cls.name
+      log.info("Generating pytd class for call trace: %r", full_name)
       classes.append(pytd.Class(
           name=escape.pack_partial(full_name),
           metaclass=None,
@@ -656,13 +656,9 @@ class CallTracer(vm.VirtualMachine):
       ))
     return classes
 
-  def pytd_classes_for_namedtuple_instances(self):
-    return tuple(v.generate_ast() for v in self._generated_classes.values())
-
   def compute_types(self, defs):
     classes = (tuple(self.pytd_classes_for_unknowns()) +
-               tuple(self.pytd_classes_for_call_traces()) +
-               self.pytd_classes_for_namedtuple_instances())
+               tuple(self.pytd_classes_for_call_traces()))
     functions = tuple(self.pytd_functions_for_call_traces())
     aliases = ()  # aliases are instead recorded as constants
     ty = pytd_utils.Concat(
@@ -681,5 +677,5 @@ class CallTracer(vm.VirtualMachine):
       return True
     bad, _ = self.ctx.matcher(node).bad_matches(actual, formal)
     if bad:
-      self.ctx.errorlog.bad_return_type(self.frames, node, formal, actual, bad)
+      self.ctx.errorlog.bad_return_type(self.frames, node, bad)
     return not bad

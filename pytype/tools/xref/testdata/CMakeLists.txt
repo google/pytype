@@ -72,9 +72,9 @@ py_library(
 
 py_library(
   NAME
-    classdef_in_function
+    nested_definitions
   SRCS
-    classdef_in_function.py
+    nested_definitions.py
 )
 
 py_library(
