@@ -120,17 +120,30 @@ def get_python_version(v):
   return v or utils.format_version(sys.version_info[:2])
 
 
+def parse_jobs(s):
+  """Parse the --jobs option."""
+  if s == 'auto':
+    try:
+      n = len(os.sched_getaffinity(0))  # pytype: disable=module-attr
+    except AttributeError:
+      n = os.cpu_count()
+    return n or 1
+  else:
+    return int(s)
+
+
 def make_converters(cwd=None):
   """For items that need coaxing into their internal representations."""
   return {
+      'disable': concat_disabled_rules,
       'exclude': lambda v: file_utils.expand_source_files(v, cwd),
-      'keep_going': string_to_bool,
       'inputs': lambda v: file_utils.expand_source_files(v, cwd),
+      'jobs': parse_jobs,
+      'keep_going': string_to_bool,
       'output': lambda v: file_utils.expand_path(v, cwd),
       'platform': get_platform,
       'python_version': get_python_version,
       'pythonpath': lambda v: file_utils.expand_pythonpath(v, cwd),
-      'disable': concat_disabled_rules,
   }
 
 
