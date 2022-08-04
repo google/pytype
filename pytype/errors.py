@@ -558,8 +558,9 @@ class ErrorLog(ErrorLogBase):
         t.ctx.pytd_convert.OutputMode.DETAILED):
       return self._pytd_print(generic)
 
-  def _print_as_return_types(self, node, formal, actual, bad):
+  def _print_as_return_types(self, node, bad):
     """Print the actual and expected values for a return type."""
+    formal = bad[0].expected.typ
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       expected = self._pytd_print(formal.get_instance_type(node))
@@ -571,7 +572,9 @@ class ErrorLog(ErrorLogBase):
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
       bad_actual = self._pytd_print(pytd_utils.JoinTypes(
-          view[actual].data.to_type(node, view=view) for view, _ in bad))
+          match.actual_binding.data.to_type(node, view=match.view)
+          for match in bad))
+      actual = bad[0].actual
       if len(actual.bindings) > len(bad):
         full_actual = self._pytd_print(pytd_utils.JoinTypes(
             v.to_type(node) for v in actual.data))
@@ -636,10 +639,10 @@ class ErrorLog(ErrorLogBase):
       ret += "\nTypedDict extra keys: " + ", ".join(error.extra)
     if error.bad:
       ret += "\nTypedDict type errors: "
-      for k, v, typ, bad in error.bad:
-        for view, _ in bad:
-          actual = self._print_as_actual_type(view[v].data)
-          expected = self._print_as_expected_type(typ)
+      for k, bad in error.bad:
+        for match in bad:
+          actual = self._print_as_actual_type(match.actual_binding.data)
+          expected = self._print_as_expected_type(match.expected.typ)
           ret += f"\n  {{'{k}': ...}}: expected {expected}, got {actual}"
     return ret
 
@@ -654,8 +657,8 @@ class ErrorLog(ErrorLogBase):
   def _prepare_errorlog_details(self, bad):
     """Prepare printable annotation matching errors."""
     details = collections.defaultdict(set)
-    for _, err in bad:
-      d = self._print_error_details(err)
+    for match in bad:
+      d = self._print_error_details(match.error_details)
       for i, detail in enumerate(d):
         if detail:
           details[i].add(detail)
@@ -715,7 +718,7 @@ class ErrorLog(ErrorLogBase):
     for prefix, name in self._iter_sig(sig):
       suffix = " = ..." if name in sig.defaults else ""
       if bad_param and name == bad_param.name:
-        type_str = self._print_as_expected_type(bad_param.expected)
+        type_str = self._print_as_expected_type(bad_param.typ)
         suffix = ": " + type_str + suffix
       yield prefix, name, suffix
 
@@ -871,7 +874,7 @@ class ErrorLog(ErrorLogBase):
       operator, left_operand, right_operand = operation
       operator_name = _function_name(operator, capitalize=True)
       expected_right_operand = self._print_as_expected_type(
-          bad_call.bad_param.expected)
+          bad_call.bad_param.typ)
       details = (f"{operator_name} on {left_operand} expects "
                  f"{expected_right_operand}")
       self._unsupported_operands(
@@ -993,10 +996,10 @@ class ErrorLog(ErrorLogBase):
                details=details, keyword=base_cls)
 
   @_error_name("bad-return-type")
-  def bad_return_type(self, stack, node, formal, actual, bad):
+  def bad_return_type(self, stack, node, bad):
     """Logs a [bad-return-type] error."""
     expected, bad_actual, full_actual, error_details = (
-        self._print_as_return_types(node, formal, actual, bad))
+        self._print_as_return_types(node, bad))
     if full_actual == bad_actual:
       message = "bad return type"
     else:
@@ -1018,9 +1021,8 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, message, details)
 
   @_error_name("bad-concrete-type")
-  def bad_concrete_type(self, stack, node, formal, actual, bad, details=None):
-    expected, actual, _, error_details = (
-        self._print_as_return_types(node, formal, actual, bad))
+  def bad_concrete_type(self, stack, node, bad, details=None):
+    expected, actual, _, error_details = self._print_as_return_types(node, bad)
     full_details = ["       Expected: ", expected, "\n",
                     "Actually passed: ", actual]
     if details:

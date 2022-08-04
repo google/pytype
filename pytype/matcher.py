@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Optional
+from typing import Dict, Optional
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -16,6 +16,7 @@ from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd_utils
+from pytype.typegraph import cfg
 
 
 log = logging.getLogger(__name__)
@@ -81,6 +82,23 @@ class ErrorDetails:
   typed_dict: Optional[TypedDictError] = None
 
 
+@dataclasses.dataclass(eq=True, frozen=True)
+class BadMatch:
+  """An expected type/actual value mismatch."""
+
+  view: Dict[cfg.Variable, cfg.Binding]
+  expected: abstract_utils.BadType
+  actual: cfg.Variable
+
+  @property
+  def actual_binding(self):
+    return self.view[self.actual]
+
+  @property
+  def error_details(self):
+    return self.expected.error_details
+
+
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -121,6 +139,15 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         typed_dict=self._typed_dict_error
     )
 
+  def _get_bad_type(
+      self, name: Optional[str], expected: abstract.BaseValue
+  ) -> abstract_utils.BadType:
+    return abstract_utils.BadType(
+        name=name,
+        typ=self.ctx.annotation_utils.sub_one_annotation(
+            self._node, expected, [self._error_subst or {}]),
+        error_details=self._error_details())
+
   def compute_subst(self, formal_args, arg_dict, view, alias_map=None):
     """Compute information about type parameters using one-way unification.
 
@@ -153,11 +180,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       actual = arg_dict[name]
       subst = self._match_value_against_type(actual, formal, subst, view)
       if subst is None:
-        formal = self.ctx.annotation_utils.sub_one_annotation(
-            self._node, formal, [self._error_subst or {}])
-
-        return None, function.BadParam(
-            name=name, expected=formal, error_details=self._error_details())
+        return None, self._get_bad_type(name, formal)
       if name == "self":
         self_subst = subst
     if self_subst:
@@ -170,12 +193,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = value
     return datatypes.HashableDict(subst), None
 
-  def bad_matches(self, var, other_type):
+  def bad_matches(self, var, other_type, name=None):
     """Match a Variable against a type. Return views that don't match.
 
     Args:
       var: A cfg.Variable, containing instances.
       other_type: An instance of BaseValue.
+      name: Optionally, the variable name.
     Returns:
       A pair of:
       * A list of all the views of var that didn't match.
@@ -199,7 +223,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         break
       if self.match_var_against_type(var, other_type, {}, view) is None:
         if self._node.HasCombination(list(view.values())):
-          bad.append((view, self._error_details()))
+          bad.append(BadMatch(
+              view=view,
+              expected=self._get_bad_type(name, other_type),
+              actual=var))
         # To get complete error messages, we need to collect all bad views, so
         # we can't skip any.
         skip_future = False
@@ -997,7 +1024,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       typ = abstract_utils.get_atomic_value(fields[k])
       b, _ = self.bad_matches(v, typ)
       if b:
-        bad.append((k, v, typ, b))
+        bad.append((k, b))
     if missing or extra or bad:
       self._typed_dict_error = TypedDictError(bad, extra, missing)
       return False

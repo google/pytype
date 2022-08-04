@@ -253,7 +253,7 @@ class NamedTupleBuilder(NamedTupleBuilderBase):
 class NamedTupleFuncBuilder(NamedTupleBuilderBase):
   """Factory for creating typing.NamedTuples via the function constructor."""
 
-  _fields_param: function.BadParam
+  _fields_param: abstract_utils.BadType
 
   @classmethod
   def make(cls, ctx):
@@ -271,7 +271,7 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
     fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
     fields_type = ctx.convert.constant_to_value(fields_pyval, {}, ctx.root_node)
     # pylint: disable=protected-access
-    self._fields_param = function.BadParam(name="fields", expected=fields_type)
+    self._fields_param = abstract_utils.BadType(name="fields", typ=fields_type)
     return self
 
   def _is_str_instance(self, val):

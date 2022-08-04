@@ -634,11 +634,11 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     formal_args, arg_dict = self._map_args(node, args, variable_view)
     self._fill_in_missing_parameters(node, args, arg_dict, True)
     for name, formal in formal_args:
-      match_result = self.ctx.matcher(node).bad_matches(arg_dict[name], formal)
+      match_result = self.ctx.matcher(node).bad_matches(
+          arg_dict[name], formal, name)
       if function.match_succeeded(match_result, match_all_views, self.ctx):
         continue
-      bad_arg = function.BadParam(
-          name=name, expected=formal, error_details=match_result[0][0][1])
+      bad_arg = match_result[0][0].expected
       if self.signature.has_param(bad_arg.name):
         signature = self.signature
       else:

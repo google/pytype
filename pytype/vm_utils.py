@@ -553,7 +553,7 @@ def _check_defaults(node, method, ctx):
                          e.__class__.__name__) from e
   for e, arg_name, value in errors:
     bad_param = e.bad_call.bad_param
-    expected_type = bad_param.expected
+    expected_type = bad_param.typ
     if value == ctx.convert.ellipsis:
       # `...` should be a valid default parameter value for overloads.
       # Unfortunately, the is_overload attribute is not yet set when

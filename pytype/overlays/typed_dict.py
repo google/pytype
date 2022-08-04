@@ -74,7 +74,7 @@ class TypedDictBuilder(abstract.PyTDClass):
     try:
       return abstract_utils.get_atomic_python_constant(var, pyval_type)
     except abstract_utils.ConversionError as e:
-      bad = function.BadParam(name, typ)
+      bad = abstract_utils.BadType(name, typ)
       raise function.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
 
   def _extract_args(self, args):
@@ -258,11 +258,10 @@ class TypedDict(abstract.Dict):
     self._check_str_key(name)
     typ = abstract_utils.get_atomic_value(self.fields[name])
     bad, _ = self.ctx.matcher(node).bad_matches(value_var, typ)
-    for view, error_details in bad:
-      binding = view[value_var]
+    for match in bad:
       self.ctx.errorlog.annotation_type_mismatch(
-          self.ctx.vm.frames, typ, binding, name, error_details,
-          typed_dict=self
+          self.ctx.vm.frames, match.expected.typ, match.actual_binding, name,
+          match.error_details, typed_dict=self
       )
 
   def _check_key(self, name_var):
