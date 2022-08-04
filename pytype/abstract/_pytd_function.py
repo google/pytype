@@ -454,7 +454,7 @@ class PyTDFunction(_function_base.Function):
       raise error
     return [(variable_view, matched_signatures)]
 
-  def set_function_defaults(self, unused_node, defaults_var):
+  def set_function_defaults(self, node, defaults_var):
     """Attempts to set default arguments for a function's signatures.
 
     If defaults_var is not an unambiguous tuple (i.e. one that can be processed
@@ -465,7 +465,7 @@ class PyTDFunction(_function_base.Function):
     updated so the change is stored.
 
     Args:
-      unused_node: the node that defaults are being set at. Not used here.
+      node: the node that defaults are being set at.
       defaults_var: a Variable with a single binding to a tuple of default
                     values.
     """
@@ -485,14 +485,7 @@ class PyTDFunction(_function_base.Function):
     # Update our parent's AST too, if we have a parent.
     # 'parent' is set by PyTDClass._convert_member
     if hasattr(self, "parent"):
-      self.parent._member_map[self.name] = self.generate_ast()  # pylint: disable=protected-access
-
-  def generate_ast(self):
-    return pytd.Function(
-        name=self.name,
-        signatures=tuple(s.pytd_sig for s in self.signatures),
-        kind=self.kind,
-        flags=pytd.MethodFlag.abstract_flag(self.is_abstract))
+      self.parent._member_map[self.name] = self.to_pytd_def(node, self.name)  # pylint: disable=protected-access
 
 
 class PyTDSignature(utils.ContextWeakrefMixin):
