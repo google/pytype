@@ -170,10 +170,10 @@ class PyTDFunction(_function_base.Function):
         ret = self._call_with_signatures(
             node, func, args, view, signatures, variable)
       else:
-        (sig, arg_dict, subst), = signatures
+        (sig, arg_dict, substs), = signatures
         variable = uses_variables(arg_dict)
         ret = sig.call_with_args(
-            node, func, arg_dict, subst, ret_map, alias_map, variable)
+            node, func, arg_dict, substs, ret_map, variable)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
       for mutation in mutations:
@@ -413,7 +413,7 @@ class PyTDFunction(_function_base.Function):
              for name in literal_matches):
         continue
       try:
-        arg_dict, subst = sig.substitute_formal_args_old(
+        arg_dict, substs = sig.substitute_formal_args_old(
             node, args, view, alias_map)
       except function.FailedFunctionCall as e:
         if e > error:
@@ -424,7 +424,7 @@ class PyTDFunction(_function_base.Function):
           if (isinstance(binding.data, mixin.PythonConstant) and
               _is_literal(sig.signature.annotations.get(name))):
             literal_matches.add(name)
-        yield sig, arg_dict, subst
+        yield sig, arg_dict, substs
     if not matched:
       raise error  # pylint: disable=raising-bad-type
 
@@ -438,7 +438,7 @@ class PyTDFunction(_function_base.Function):
     can_match_multiple = self._can_match_multiple(args, variable_view, True)
     for sig in self.signatures:
       try:
-        arg_dict, subst = sig.substitute_formal_args(
+        arg_dict, substs = sig.substitute_formal_args(
             node, args, variable_view, match_all_views)
       except function.FailedFunctionCall as e:
         if e > error:
@@ -447,7 +447,7 @@ class PyTDFunction(_function_base.Function):
             e.name = f"{self.parent.name}.{e.name}"
           error = e
       else:
-        matched_signatures.append((sig, arg_dict, subst))
+        matched_signatures.append((sig, arg_dict, substs))
         if not can_match_multiple:
           break
     if not matched_signatures:
@@ -620,16 +620,20 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     for name, var in sorted(subst.items()):
       log.debug("Using %s=%r %r", name, var, var.data)
 
-    return arg_dict, subst
+    return arg_dict, [subst]
 
   def substitute_formal_args(self, node, args, variable_view, match_all_views):
     """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(node, args, variable_view)
     self._fill_in_missing_parameters(node, args, arg_dict, True)
+    substs = None
     for name, formal in formal_args:
       match_result = self.ctx.matcher(node).bad_matches(
           arg_dict[name], formal, name)
       if function.match_succeeded(match_result, match_all_views, self.ctx):
+        if any(match_result[1]):
+          assert substs is None
+          substs = match_result[1]
         continue
       bad_arg = match_result[0][0].expected
       if self.signature.has_param(bad_arg.name):
@@ -642,10 +646,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
                 pytd_utils.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
-    subst = datatypes.AliasingDict()
-    for name, var in sorted(subst.items()):
-      log.debug("Using %s=%r %r", name, var, var.data)
-    return arg_dict, subst
+    if not substs:
+      substs = [datatypes.HashableDict()]
+    return arg_dict, substs
 
   def instantiate_return(self, node, subst, sources):
     return_type = self.pytd_sig.return_type
@@ -678,10 +681,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       ret.AddBinding(self.ctx.convert.empty, [], node)
     return node, ret
 
-  def call_with_args(
-      self, node, func, arg_dict, subst, ret_map, alias_map, variable):
+  def call_with_args(self, node, func, arg_dict, substs, ret_map, variable):
     """Call this signature. Used by PyTDFunction."""
-    t = (self.pytd_sig.return_type, subst)
+    t = (self.pytd_sig.return_type, tuple(substs))
     sources = [func]
     if variable:
       # It does not appear to matter which binding we add to the sources, as
@@ -690,15 +692,18 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     else:
       sources.extend(arg_dict.values())
     visible = node.CanHaveCombination(sources)
-    if visible and t in ret_map:
-      # add the new sources
-      for data in ret_map[t].data:
-        ret_map[t].AddBinding(data, sources, node)
-    elif visible:
-      node, ret_map[t] = self.instantiate_return(node, subst, sources)
-    elif t not in ret_map:
-      ret_map[t] = self.ctx.program.NewVariable()
-    mutations = self._get_mutation(node, arg_dict, subst, ret_map[t], variable)
+    mutations = []
+    for subst in substs:
+      if visible and t in ret_map:
+        # add the new sources
+        for data in ret_map[t].data:
+          ret_map[t].AddBinding(data, sources, node)
+      elif visible:
+        node, ret_map[t] = self.instantiate_return(node, subst, sources)
+      elif t not in ret_map:
+        ret_map[t] = self.ctx.program.NewVariable()
+      mutations.extend(self._get_mutation(
+          node, arg_dict, subst, ret_map[t], variable))
     self.ctx.vm.trace_call(
         node, func, (self,),
         tuple(arg_dict[p.name] for p in self.pytd_sig.params), {}, ret_map[t],

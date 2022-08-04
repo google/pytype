@@ -905,12 +905,12 @@ def match_all_args(ctx, node, func, args):
 
 
 def match_succeeded(match_result, match_all_views, ctx):
-  bad_matches, any_match = match_result
+  bad_matches, substs = match_result
   if not bad_matches:
     return True
   if match_all_views or ctx.options.strict_parameter_checks:
     return False
-  return any_match
+  return bool(substs)
 
 
 def has_visible_namedarg(node, args, names):

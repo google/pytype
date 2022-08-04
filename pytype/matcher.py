@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -193,7 +193,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = value
     return datatypes.HashableDict(subst), None
 
-  def bad_matches(self, var, other_type, name=None):
+  def bad_matches(
+      self, var, other_type, name=None
+  ) -> Tuple[List[BadMatch], List[Dict[str, cfg.Variable]]]:
     """Match a Variable against a type. Return views that don't match.
 
     Args:
@@ -202,26 +204,20 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       name: Optionally, the variable name.
     Returns:
       A pair of:
-      * A list of all the views of var that didn't match.
-      * Whether at least one view matched.
-      TODO(b/63407497): We should be able to get rid of the second value once we
-      start requiring that all views match.
+      * A list of all bad matches.
+      * Substitution dictionaries for good matches.
     """
     bad = []
-    if (var.data == [self.ctx.convert.unsolvable] or
-        other_type == self.ctx.convert.unsolvable):
-      # An unsolvable matches everything. Since bad_matches doesn't need to
-      # compute substitutions, we can return immediately.
-      return bad, True
+    substs = []
     views = abstract_utils.get_views([var], self._node)
     skip_future = None
-    any_match = False
     while True:
       try:
         view = views.send(skip_future)
       except StopIteration:
         break
-      if self.match_var_against_type(var, other_type, {}, view) is None:
+      subst = self.match_var_against_type(var, other_type, {}, view)
+      if subst is None:
         if self._node.HasCombination(list(view.values())):
           bad.append(BadMatch(
               view=view,
@@ -232,8 +228,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         skip_future = False
       else:
         skip_future = True
-        any_match = True
-    return bad, any_match
+        substs.append(datatypes.HashableDict(subst))
+    return bad, substs
 
   def match_from_mro(self, left, other_type, allow_compat_builtins=True):
     """Checks a type's MRO for a match for a formal type.
