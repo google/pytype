@@ -278,7 +278,7 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
           '''
     """)
     d = ix.defs["module.f"]
-    self.assertEqual(d.doc.text, "Multiline docstring\n\nfoo\n  bar\n")
+    self.assertEqual(d.doc.text, "Multiline docstring\n\nfoo\n  bar")
     self.assertGreater(d.doc.length, len(d.doc.text))
 
 

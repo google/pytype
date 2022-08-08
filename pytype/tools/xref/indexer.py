@@ -197,7 +197,7 @@ class DocString:
       # strip indentation from multiline docstrings
       if "\n" in doc:
         first, rest = doc.split("\n", 1)
-        doc = first + "\n" + textwrap.dedent(rest)
+        doc = first + "\n" + textwrap.dedent(rest).rstrip()
       return cls(doc, get_location(doc_node), length)
     return None
 
