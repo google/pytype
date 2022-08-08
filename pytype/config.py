@@ -9,6 +9,7 @@ import contextlib
 import logging
 import os
 import sys
+from typing import List, overload
 
 from pytype import datatypes
 from pytype import errors
@@ -17,6 +18,8 @@ from pytype import module_utils
 from pytype import utils
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
+
+from typing_extensions import Literal
 
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
@@ -34,6 +37,14 @@ class Options:
   """Encapsulation of the configuration options."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
+
+  @overload
+  def __init__(
+      self, argv_or_options: List[str], command_line: Literal[True]): ...
+
+  @overload
+  def __init__(self, argv_or_options: argparse.Namespace,
+               command_line: Literal[False] = ...): ...
 
   def __init__(self, argv_or_options, command_line=False):
     """Parse and encapsulate the configuration options.
@@ -53,6 +64,8 @@ class Options:
       sys.exit(2): bad option or input filenames.
     """
     argument_parser = make_parser()
+    # Since `config` is part of our public API, we do runtime type checks to
+    # catch errors by users not using a static type checker.
     if command_line:
       assert isinstance(argv_or_options, list)
       options = argument_parser.parse_args(argv_or_options)

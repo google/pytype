@@ -1,6 +1,7 @@
 """Abstract class representations."""
 
 import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import attrs
 
@@ -16,9 +17,14 @@ from pytype.abstract import mixin
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.codegen import decorate
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+# These classes can't be imported due to circular deps.
+_ContextType = Any  # context.Context
+_TypeParamType = Any  # typing.TypeParameter
 
 
 class BuildClass(_base.BaseValue):
@@ -95,10 +101,9 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   program.
   """
 
-  def __init__(self, name, bases, members, cls, ctx):
-    assert isinstance(name, str)
-    assert isinstance(bases, list)
-    assert isinstance(members, dict)
+  def __init__(self, name: str, bases: List[cfg.Variable],
+               members: Dict[str, cfg.Variable], cls: _base.BaseValue,
+               ctx: _ContextType):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
@@ -280,8 +285,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     annotations_dict = abstract_utils.get_annotations_dict(self.members)
     return annotations_dict and name in annotations_dict.annotated_locals
 
-  def update_official_name(self, name):
-    assert isinstance(name, str)
+  def update_official_name(self, name: str) -> None:
     if (self.official_name is None or
         name == self.name or
         (self.official_name != self.name and name < self.official_name)):
@@ -541,15 +545,18 @@ class ParameterizedClass(
   E.g. a container.
 
   Attributes:
-    cls: A PyTDClass representing the base type.
+    base_cls: The base type.
     formal_type_parameters: An iterable of BaseValue, one for each type
       parameter.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
+  def __init__(
+      self, base_cls: Union[PyTDClass, InterpreterClass],
+      formal_type_parameters: Union[abstract_utils.LazyFormalTypeParameters,
+                                    Dict[str, _base.BaseValue]],
+      ctx: _ContextType, template: Optional[Tuple[_TypeParamType, ...]] = None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
-    assert isinstance(base_cls, (PyTDClass, InterpreterClass))
     self.base_cls = base_cls
     super().__init__(base_cls.name, ctx)
     self._cls = None  # lazily loaded 'cls' attribute

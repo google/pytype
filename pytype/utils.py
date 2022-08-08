@@ -11,7 +11,7 @@ import sys
 import tempfile
 import threading
 import traceback
-from typing import Iterable, List
+from typing import Iterable, List, Union
 import weakref
 
 from pytype import pytype_source_utils
@@ -142,12 +142,11 @@ def concat_tuples(tuples):
   return tuple(itertools.chain.from_iterable(tuples))
 
 
-def native_str(s, errors="strict"):
+def native_str(s: Union[str, bytes], errors: str = "strict") -> str:
   """Convert a bytes object to the native str type."""
   if isinstance(s, str):
     return s
   else:
-    assert isinstance(s, bytes)
     return s.decode("utf-8", errors)
 
 

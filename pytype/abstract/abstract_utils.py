@@ -15,12 +15,13 @@ from pytype.typegraph import cfg_utils
 log = logging.getLogger(__name__)
 
 # Type aliases
-ArgsDict = Dict[str, cfg.Variable]
+_ArgsDictType = Dict[str, cfg.Variable]
 
-# We can't import abstract here due to a circular dep.
-_BaseValue = Any  # abstract.BaseValue
-_ParameterizedClass = Any
-_TypeParameter = Any  # abstract.TypeParameter
+# We can't import some modules here due to circular deps.
+_ContextType = Any  # context.Context
+_BaseValueType = Any  # abstract.BaseValue
+_ParameterizedClassType = Any  # abstract.ParameterizedClass
+_TypeParamType = Any  # abstract.TypeParameter
 
 # Type parameter names matching the ones in builtins.pytd and typing.pytd.
 T = "_T"
@@ -114,8 +115,10 @@ class LazyFormalTypeParameters:
 class Local:
   """A possibly annotated local variable."""
 
-  def __init__(self, node, op: Optional[opcodes.Opcode],
-               typ: Optional[_BaseValue], orig: Optional[cfg.Variable], ctx):
+  def __init__(
+      self, node: cfg.CFGNode, op: Optional[opcodes.Opcode],
+      typ: Optional[_BaseValueType], orig: Optional[cfg.Variable],
+      ctx: _ContextType):
     self._ops = [op]
     self.final = False
     if typ:
@@ -186,7 +189,7 @@ class Local:
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadType:
   name: Optional[str]
-  typ: _BaseValue
+  typ: _BaseValueType
   # Should be matcher.ErrorDetails but can't use due to circular dep.
   error_details: Optional[Any] = None
 
@@ -614,20 +617,20 @@ def get_annotations_dict(members):
   return annots if _isinstance(annots, "AnnotationsDict") else None
 
 
-def is_concrete_dict(val: _BaseValue):
+def is_concrete_dict(val: _BaseValueType) -> bool:
   return _isinstance(val, "Dict") and not val.could_contain_anything
 
 
-def is_concrete_list(val: _BaseValue):
+def is_concrete_list(val: _BaseValueType) -> bool:
   return _isinstance(val, "List") and not val.could_contain_anything
 
 
-def is_concrete(val: _BaseValue):
+def is_concrete(val: _BaseValueType) -> bool:
   return (_isinstance(val, "PythonConstant") and
           not getattr(val, "could_contain_anything", False))
 
 
-def is_indefinite_iterable(val: _BaseValue):
+def is_indefinite_iterable(val: _BaseValueType) -> bool:
   """True if val is a non-concrete instance of typing.Iterable."""
   instance = _isinstance(val, "Instance")
   concrete = is_concrete(val)
@@ -673,7 +676,7 @@ def unwrap_splat(var):
   return var.data[0].iterable
 
 
-def is_callable(value: _BaseValue):
+def is_callable(value: _BaseValueType) -> bool:
   """Returns whether 'value' is a callable."""
   if _isinstance(
       value, ("Function", "BoundFunction", "ClassMethod", "StaticMethod")):
@@ -698,7 +701,7 @@ def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
 
 
 def get_type_parameter_substitutions(
-    val: _BaseValue, type_params: Iterable[_TypeParameter]
+    val: _BaseValueType, type_params: Iterable[_TypeParamType]
 ) -> Mapping[str, cfg.Variable]:
   """Get values for type_params from val's type parameters."""
   subst = {}
@@ -713,8 +716,8 @@ def get_type_parameter_substitutions(
 
 
 def build_generic_template(
-    type_params: Sequence[_BaseValue], base_type: _BaseValue
-) -> Tuple[Sequence[str], Sequence[_TypeParameter]]:
+    type_params: Sequence[_BaseValueType], base_type: _BaseValueType
+) -> Tuple[Sequence[str], Sequence[_TypeParamType]]:
   """Build a typing.Generic template from a sequence of type parameters."""
   if not all(_isinstance(item, "TypeParameter") for item in type_params):
     base_type.ctx.errorlog.invalid_annotation(
@@ -733,7 +736,7 @@ def build_generic_template(
   return template, type_params
 
 
-def is_generic_protocol(val: _BaseValue) -> bool:
+def is_generic_protocol(val: _BaseValueType) -> bool:
   return (_isinstance(val, "ParameterizedClass") and
           val.full_name == "typing.Protocol")
 
@@ -847,7 +850,8 @@ def is_ellipsis(val):
           (is_concrete(val) and val.pyval == "..."))
 
 
-def update_args_dict(args: ArgsDict, update: ArgsDict, node: cfg.CFGNode):
+def update_args_dict(
+    args: _ArgsDictType, update: _ArgsDictType, node: cfg.CFGNode) -> None:
   """Update a {str: Variable} dict by merging bindings."""
   for k, v in update.items():
     if k in args:
@@ -856,7 +860,7 @@ def update_args_dict(args: ArgsDict, update: ArgsDict, node: cfg.CFGNode):
       args[k] = v
 
 
-def show_constant(val: _BaseValue) -> str:
+def show_constant(val: _BaseValueType) -> str:
   """Pretty-print a value if it is a constant.
 
   Recurses into a constant, printing the underlying Python value for constants
@@ -877,7 +881,7 @@ def show_constant(val: _BaseValue) -> str:
   return _ellipsis_printer(val)
 
 
-def get_generic_type(val: _BaseValue) -> Optional[_ParameterizedClass]:
+def get_generic_type(val: _BaseValueType) -> Optional[_ParameterizedClassType]:
   """Gets the generic type of an abstract value.
 
   Args:

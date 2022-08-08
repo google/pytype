@@ -1,6 +1,7 @@
 """Process conditional blocks in pyi files."""
 
 import sys
+from typing import Optional, Tuple, Union
 
 from pytype import utils
 from pytype.ast import visitor as ast_visitor
@@ -30,14 +31,15 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     }
     self._options = options
 
-  def _eval_comparison(self, ident, op, value) -> bool:
+  def _eval_comparison(
+      self, ident: Tuple[str, Optional[Union[int, slice]]], op: str,
+      value: Union[str, int, Tuple[int, ...]]) -> bool:
     """Evaluate a comparison and return a bool.
 
     Args:
-      ident: A tuple of a dotted name string and an optional __getitem__ key
-        (int or slice).
+      ident: A tuple of a dotted name string and an optional __getitem__ key.
       op: One of the comparison operator strings in cmp_slots.COMPARES.
-      value: Either a string, an integer, or a tuple of integers.
+      value: The value to be compared against.
 
     Returns:
       The boolean result of the comparison.
@@ -49,7 +51,6 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     if name == "sys.version_info":
       if key is None:
         key = slice(None, None, None)
-      assert isinstance(key, (int, slice))
       if isinstance(key, int) and not isinstance(value, int):
         raise ParseError(
             "an element of sys.version_info must be compared to an integer")

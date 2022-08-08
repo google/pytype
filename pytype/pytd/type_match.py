@@ -11,6 +11,7 @@ signatures against new inference results.
 """
 
 import logging
+from typing import Dict, Optional, Union
 
 import attrs
 
@@ -26,6 +27,10 @@ log = logging.getLogger(__name__)
 
 
 is_complete = escape.is_complete
+
+_SubstType = Dict[pytd.TypeParameter, Optional[pytd.Type]]
+# This should be kept in sync with is_unknown below.
+_UnknownType = Union[pytd.ClassType, pytd.NamedType, pytd.Class, "StrictType"]
 
 
 # Might not be needed anymore once pytd has builtin support for ~unknown.
@@ -132,7 +137,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
     else:
       raise NotImplementedError(f"Can't extract subclasses from {type(t)}")
 
-  def type_parameter(self, unknown, base_class, item):
+  def type_parameter(
+      self, unknown: _UnknownType, base_class: pytd.Class,
+      item: pytd.TemplateItem) -> StrictType:
     """This generates the type parameter when matching against a generic type.
 
     For example, when we match ~unknown1 against list[T], we need an additional
@@ -141,16 +148,14 @@ class TypeMatch(pytd_utils.TypeMatcher):
 
     Args:
       unknown: An unknown type. This is the type that's matched against
-        base_class[T]
+        base_class[T].
       base_class: The base class of the generic we're matching the unknown
         against. E.g. "list".
-      item: The pytd.TemplateItem, i.e., the actual type parameter. ("T" in
-        the examples above)
+      item: The actual type parameter. ("T" in the examples above).
     Returns:
       A type (pytd.Node) to represent this type parameter.
     """
     assert is_unknown(unknown)
-    assert isinstance(base_class, pytd.Class)
     name = unknown.name + "." + base_class.name + "." + item.type_param.name
     # We do *not* consider subclasses or superclasses when matching type
     # parameters.
@@ -197,7 +202,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
       t2_parameters = t2.parameters + (pytd.AnythingType(),) * num_extra_params
       return t1.parameters, t2_parameters
 
-  def match_Generic_against_Generic(self, t1, t2, subst):  # pylint: disable=invalid-name
+  def match_Generic_against_Generic(
+      self, t1: pytd.GenericType, t2: pytd.GenericType, subst: _SubstType,
+  ) -> booleq.BooleanTerm:  # pylint: disable=invalid-name
     """Match a pytd.GenericType against another pytd.GenericType."""
     assert isinstance(t1.base_type, pytd.ClassType), type(t1.base_type)
     assert isinstance(t2.base_type, pytd.ClassType), type(t2.base_type)
@@ -215,7 +222,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
                  for p1, p2 in zip(t1_parameters, t2_parameters)]
     return booleq.And([base_type_cmp] + param_cmp)
 
-  def match_Unknown_against_Generic(self, t1, t2, subst):  # pylint: disable=invalid-name
+  def match_Unknown_against_Generic(
+      self, t1: _UnknownType, t2: pytd.GenericType, subst: _SubstType
+  ) -> booleq.BooleanTerm:  # pylint: disable=invalid-name
     assert isinstance(t2.base_type, pytd.ClassType)
     # No inheritance for base classes - you can only inherit from an
     # instantiated template, but not from a template itself.

@@ -9,7 +9,7 @@ _STRING_TYPES = ("str", "bytes", "unicode")
 
 
 # Type aliases
-Parameters = Tuple[pytd.Type, ...]
+_ParametersType = Tuple[pytd.Type, ...]
 
 
 def pytd_list(typ: str) -> pytd.Type:
@@ -35,7 +35,7 @@ def is_none(t) -> bool:
 
 def heterogeneous_tuple(
     base_type: pytd.NamedType,
-    parameters: Parameters
+    parameters: _ParametersType
 ) -> pytd.Type:
   return pytd.TupleType(base_type=base_type, parameters=parameters)
 
@@ -46,7 +46,7 @@ def pytd_type(value: pytd.Type) -> pytd.Type:
 
 def pytd_callable(
     base_type: pytd.NamedType,
-    parameters: Parameters
+    parameters: _ParametersType
 ) -> pytd.Type:
   """Create a pytd.CallableType."""
   if isinstance(parameters[0], list):

@@ -1,6 +1,8 @@
 """Opcode definitions."""
 
 import abc
+from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type
+from typing_extensions import Literal
 
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
@@ -1115,7 +1117,9 @@ def _prettyprint_arg(cls, oparg, co_consts, co_names,
     return oparg
 
 
-def _wordcode_reader(data, mapping):
+def _wordcode_reader(
+    data: bytes, mapping: Mapping[int, Type[Opcode]]
+) -> Iterable[Tuple[int, int, Any, Optional[int]]]:
   """Reads binary data from pyc files as wordcode.
 
   Works with Python3.6 and above. Based on
@@ -1127,8 +1131,10 @@ def _wordcode_reader(data, mapping):
 
   Yields:
     (start position, end position, opcode class, oparg)
+    The opcode class should really have type `Type[Opcode]`, but using this type
+    is more trouble than it's worth, since we would end up having to do a lot of
+    asserts/casts to distinguish between Opcode and its subclass OpcodeWithArg.
   """
-  assert isinstance(data, bytes)
   extended_arg = 0
   start = 0
   for pos in range(0, len(data), 2):
@@ -1200,10 +1206,11 @@ def _dis(data, python_version, mapping,
   return code
 
 
-def dis(data, python_version, *args, **kwargs):
+def dis(
+    data: bytes, python_version: Tuple[Literal[3], int], *args, **kwargs
+) -> List[Opcode]:
   """Set up version-specific arguments and call _dis()."""
   major, minor = python_version[0], python_version[1]
-  assert major == 3
   mapping = {
       (3, 7): python_3_7_mapping,
       (3, 8): python_3_8_mapping,

@@ -11,6 +11,7 @@ Details of the format may change between Python versions.
 
 import struct
 import sys
+from typing import List, Sequence, Tuple, Union
 
 from pytype import utils
 
@@ -94,13 +95,12 @@ class CodeType:
   CO_FUTURE_PRINT_FUNCTION = 0x10000
   CO_FUTURE_UNICODE_LITERALS = 0x20000
 
-  def __init__(self, argcount, posonlyargcount, kwonlyargcount, nlocals,
-               stacksize, flags, code, consts, names, varnames, filename,
-               name, firstlineno, lnotab, freevars, cellvars, python_version):
-    assert isinstance(nlocals, int)
-    assert isinstance(stacksize, int)
-    assert isinstance(flags, int)
-    assert isinstance(filename, (bytes, str))
+  def __init__(self, argcount: int, posonlyargcount: int, kwonlyargcount: int,
+               nlocals: int, stacksize: int, flags: int, code: bytes,
+               consts: List[object], names: List[str], varnames: List[str],
+               filename: Union[bytes, str], name: str, firstlineno: int,
+               lnotab: Sequence[int], freevars: List[str], cellvars: List[str],
+               python_version: Tuple[int, int]):
     self.co_argcount = argcount
     self.co_posonlyargcount = posonlyargcount
     self.co_kwonlyargcount = kwonlyargcount

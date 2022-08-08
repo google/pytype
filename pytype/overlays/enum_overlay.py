@@ -26,6 +26,7 @@ into a proper enum.
 import collections
 import contextlib
 import logging
+from typing import Optional, Union
 
 from pytype import special_builtins
 from pytype.abstract import abstract
@@ -38,6 +39,7 @@ from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 
@@ -718,11 +720,12 @@ class EnumMetaGetItem(abstract.SimpleFunction):
         annotations={"name": ctx.convert.str_type})
     super().__init__(sig, ctx)
 
-  def _get_member_by_name(self, enum, name):
+  def _get_member_by_name(
+      self, enum: Union[EnumInstance, abstract.PyTDClass], name: str
+  ) -> Optional[cfg.Variable]:
     if isinstance(enum, EnumInstance):
       return enum.members.get(name)
     else:
-      assert isinstance(enum, abstract.PyTDClass)
       if name in enum:
         enum.load_lazy_attribute(name)
         return enum.members[name]

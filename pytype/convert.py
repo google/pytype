@@ -339,14 +339,15 @@ class Converter(utils.ContextWeakrefMixin):
       assert arg_type.base_cls is self.tuple_type
       return arg_type.get_formal_type_parameter(abstract_utils.T)
 
-  def _copy_type_parameters(self, old_container, new_container_name):
+  def _copy_type_parameters(
+      self, old_container: abstract.Class, new_container_name: str
+  ) -> abstract.BaseValue:
     new_container = self.name_to_value(new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):
       return abstract.ParameterizedClass(new_container,
                                          old_container.formal_type_parameters,
                                          self.ctx)
     else:
-      assert isinstance(old_container, abstract.Class)
       return new_container
 
   def widen_type(self, container):

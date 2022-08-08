@@ -84,9 +84,11 @@ py_library(
     annotation_utils.py
   DEPS
     ._utils
+    .state
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(
@@ -375,6 +377,7 @@ py_library(
     state.py
   DEPS
     ._utils
+    .blocks
     .compare
     .metrics
     pytype.abstract.abstract

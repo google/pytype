@@ -41,21 +41,18 @@ class PrintVisitor(base_visitor.Visitor):
   def Print(self, node):
     return node.Visit(copy.deepcopy(self))
 
-  def _IsEmptyTuple(self, t):
+  def _IsEmptyTuple(self, t: pytd.GenericType) -> bool:
     """Check if it is an empty tuple."""
-    assert isinstance(t, pytd.GenericType)
     return isinstance(t, pytd.TupleType) and not t.parameters
 
-  def _NeedsTupleEllipsis(self, t):
+  def _NeedsTupleEllipsis(self, t: pytd.GenericType) -> bool:
     """Do we need to use Tuple[x, ...] instead of Tuple[x]?"""
-    assert isinstance(t, pytd.GenericType)
     if isinstance(t, pytd.TupleType):
       return False  # TupleType is always heterogeneous.
     return t.base_type == "tuple"
 
-  def _NeedsCallableEllipsis(self, t):
+  def _NeedsCallableEllipsis(self, t: pytd.GenericType) -> bool:
     """Check if it is typing.Callable type."""
-    assert isinstance(t, pytd.GenericType)
     return t.name == "typing.Callable"
 
   def _RequireImport(self, module, name=None):
@@ -349,9 +346,8 @@ class PrintVisitor(base_visitor.Visitor):
                            for sig in node.signatures)
     return signatures
 
-  def _FormatContainerContents(self, node):
+  def _FormatContainerContents(self, node: pytd.Parameter) -> str:
     """Print out the last type parameter of a container. Used for *args/**kw."""
-    assert isinstance(node, pytd.Parameter)
     if isinstance(node.type, pytd.GenericType):
       container_name = node.type.name.rpartition(".")[2]
       assert container_name in ("tuple", "dict")

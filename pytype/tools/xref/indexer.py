@@ -5,8 +5,8 @@ import dataclasses
 import re
 import sys
 import textwrap
-
-from typing import Any, List, Optional
+import types
+from typing import Any, List, Optional, Type, TypeVar
 
 from pytype import analyze
 from pytype import config
@@ -48,6 +48,8 @@ IMPORT_FILE_MARKER = "<__FILE__>"
 
 # Marker to capture a pending return value while traversing an AST
 _RETURNING_NAME = "RETURNING NAME"
+
+_T = TypeVar("_T")
 
 
 def qualified_method(data):
@@ -181,7 +183,7 @@ class DocString:
   length: int
 
   @classmethod
-  def from_node(cls, ast, node):
+  def from_node(cls: Type[_T], ast: types.ModuleType, node) -> Optional[_T]:
     """If the first element in node.body is a string, create a docstring."""
 
     # This should only be called on ClassDef and FunctionDef

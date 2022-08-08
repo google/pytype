@@ -118,6 +118,7 @@ py_library(
     pytype.special_builtins
     pytype.abstract.abstract
     pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(

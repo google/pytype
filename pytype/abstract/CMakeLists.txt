@@ -58,6 +58,7 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.pytd.codegen.codegen
+    pytype.typegraph.cfg
 )
 
 py_library(

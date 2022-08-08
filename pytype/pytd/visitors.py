@@ -4,7 +4,7 @@ import collections
 import itertools
 import logging
 import re
-from typing import Set, cast
+from typing import List, Set, cast
 
 from pytype import datatypes
 from pytype import module_utils
@@ -1902,9 +1902,8 @@ class ClearClassPointers(Visitor):
 class ReplaceModulesWithAny(_RemoveTypeParametersFromGenericAny):
   """Replace all references to modules in a list with AnythingType."""
 
-  def __init__(self, module_list):
+  def __init__(self, module_list: List[str]):
     super().__init__()
-    assert isinstance(module_list, list)
     self._any_modules = module_list
 
   def VisitNamedType(self, n):

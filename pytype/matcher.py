@@ -27,6 +27,8 @@ _COMPATIBLE_BUILTINS = [
     for compatible_builtin, builtin in pep484.COMPAT_ITEMS
 ]
 
+_SubstType = Dict[str, cfg.Variable]
+
 
 def _is_callback_protocol(typ):
   return (isinstance(typ, abstract.Class) and typ.is_protocol and
@@ -319,7 +321,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           return None  # a constraint option isn't allowed by the bound
     return subst
 
-  def _match_value_against_type(self, value, other_type, subst, view):
+  def _match_value_against_type(
+      self, value: cfg.Binding, other_type: abstract.BaseValue,
+      subst: _SubstType, view: Dict[cfg.Variable, cfg.Binding]
+  ) -> Optional[_SubstType]:
     """One-way unify value into pytd type given a substitution.
 
     Args:
@@ -332,8 +337,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       succeeded, None otherwise.
     """
     left = value.data
-    assert isinstance(left, abstract.BaseValue), left
-    assert isinstance(other_type, abstract.BaseValue), other_type
 
     # Unwrap Final[T] here
     left = abstract_utils.unwrap_final(left)
@@ -1007,8 +1010,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return None
     return subst
 
-  def _match_dict_against_typed_dict(self, left, other_type):
-    assert isinstance(other_type, typed_dict.TypedDictClass)
+  def _match_dict_against_typed_dict(
+      self, left: abstract.BaseValue, other_type: typed_dict.TypedDictClass
+  ) -> bool:
     if not isinstance(left, abstract.Dict):
       return False
     missing, extra = other_type.props.check_keys(left.pyval.keys())
