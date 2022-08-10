@@ -12,12 +12,12 @@ from pytype import config
 from pytype import file_utils
 from pytype import single
 from pytype import utils
+from pytype.imports import builtin_stubs
+from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
 from pytype.pyi import parser
-from pytype.pytd import builtin_stubs
 from pytype.pytd import pytd_utils
-from pytype.pytd import typeshed
 from pytype.tests import test_base
 
 import unittest

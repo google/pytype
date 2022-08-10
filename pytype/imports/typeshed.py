@@ -8,9 +8,9 @@ from typing import Sequence
 from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
+from pytype.imports import builtin_stubs
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
-from pytype.pytd import builtin_stubs
 
 import toml
 

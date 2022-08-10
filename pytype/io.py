@@ -16,9 +16,9 @@ from pytype import errors
 from pytype import load_pytd
 from pytype import utils
 from pytype.directors import directors
+from pytype.imports import builtin_stubs as pytd_builtins
 from pytype.pyc import pyc
 from pytype.pyi import parser
-from pytype.pytd import builtin_stubs as pytd_builtins
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast

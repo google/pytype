@@ -13,8 +13,8 @@ import argparse
 import sys
 
 from pytype import utils
+from pytype.imports import builtin_stubs
 from pytype.pyi import parser
-from pytype.pytd import builtin_stubs
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 

@@ -16,7 +16,7 @@ from pytype import io
 from pytype import load_pytd
 from pytype import metrics
 from pytype import utils
-from pytype.pytd import typeshed
+from pytype.imports import typeshed
 
 
 log = logging.getLogger(__name__)

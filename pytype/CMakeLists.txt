@@ -262,6 +262,7 @@ py_library(
     .errors
     .load_pytd
     pytype.directors.directors
+    pytype.imports.imports
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -717,6 +718,7 @@ py_library(
     .io
     .load_pytd
     .metrics
+    pytype.imports.imports
     pytype.pytd.pytd
     pytype.pytd.parse.parse
 )

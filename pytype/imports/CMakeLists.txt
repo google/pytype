@@ -5,8 +5,10 @@ py_library(
     imports
   DEPS
     .base
+    .builtin_stubs
     .init
     .module_loader
+    .typeshed
 )
 
 py_library(
@@ -36,4 +38,54 @@ py_library(
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    builtin_stubs
+  SRCS
+    builtin_stubs.py
+  DEPS
+    pytype.platform_utils.platform_utils
+    pytype.pyi.parser
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    typeshed
+  SRCS
+    typeshed.py
+  DEPS
+    .builtin_stubs
+    pytype.utils
+    pytype.platform_utils.platform_utils
+    pytype.pyi.parser
+    pytype.pytd.pytd
+)
+
+py_test(
+  NAME
+    builtin_stubs_test
+  SRCS
+    builtin_stubs_test.py
+  DEPS
+    .builtin_stubs
+    pytype.pyi.parser
+    pytype.pytd.pytd
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    typeshed_test
+  SRCS
+    typeshed_test.py
+  DEPS
+    .builtin_stubs
+    .typeshed
+    pytype.utils
+    pytype.platform_utils.platform_utils
+    pytype.pytd.parse.parser_test_base
+    pytype.tests.test_base
 )
