@@ -275,6 +275,7 @@ py_library(
   DEPS
     ._utils
     .module_utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -657,6 +658,7 @@ py_test(
     .file_utils
     .load_pytd
     .module_utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pytd.pytd
     pytype.stubs.stubs
@@ -722,6 +724,7 @@ py_library(
 add_subdirectory(abstract)
 add_subdirectory(ast)
 add_subdirectory(directors)
+add_subdirectory(imports)
 add_subdirectory(inspect)
 add_subdirectory(overlays)
 add_subdirectory(platform_utils)
