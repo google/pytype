@@ -46,6 +46,7 @@ py_library(
   SRCS
     builtin_stubs.py
   DEPS
+    pytype.utils
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -71,6 +72,8 @@ py_test(
     builtin_stubs_test.py
   DEPS
     .builtin_stubs
+    pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
     pytype.tests.test_base

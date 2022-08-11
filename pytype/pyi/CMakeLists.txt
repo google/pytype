@@ -184,7 +184,7 @@ py_test(
     entire_file_parser_test.py
   DEPS
     .parser_test_base
-    pytype.pytd.pytd
+    pytype.imports.imports
 )
 
 py_test(

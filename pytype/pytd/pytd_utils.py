@@ -20,7 +20,6 @@ import pickletools
 import re
 import sys
 
-from pytype import pytype_source_utils
 from pytype import utils
 from pytype.platform_utils import path_utils
 from pytype.pytd import printer
@@ -353,28 +352,6 @@ class OrderedSet(dict):
 
   def add(self, item):
     self[item] = None
-
-
-def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
-                      as_package=False):
-  """Get the contents of a predefined PyTD, typically with a file name *.pytd.
-
-  Arguments:
-    stubs_subdir: the directory, typically "builtins" or "stdlib"
-    module: module name (e.g., "sys" or "__builtins__")
-    extension: either ".pytd" or ".py"
-    as_package: try the module as a directory with an __init__ file
-  Returns:
-    The contents of the file
-  Raises:
-    IOError: if file not found
-  """
-  parts = module.split(".")
-  if as_package:
-    parts.append("__init__")
-  mod_path = path_utils.join(*parts) + extension
-  path = path_utils.join("stubs", stubs_subdir, mod_path)
-  return path, pytype_source_utils.load_text_file(path)
 
 
 def _LoadPickle(f, filename):
