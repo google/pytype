@@ -192,20 +192,20 @@ else:
 # None: NoneType = ...
 # __debug__: bool = ...
 
-NotImplemented = ...  # type: _NotImplementedType
-Ellipsis = ...  # type: ellipsis
+NotImplemented: _NotImplementedType
+Ellipsis: ellipsis
 
 class object():
     __slots__ = []  # if used as base class
-    __bases__ = ...  # type: Tuple[Any, ...]
-    __dict__ = ...  # type: Dict[str, Any]
-    __doc__ = ...  # type: str
-    __mro__ = ...  # type: list[Any]
-    __name__ = ...  # type: str
-    __subclasses__ = ...  # type: Any
-    __subclasshook__ = ...  # type: Any
+    __bases__: Tuple[Any, ...]
+    __dict__: Dict[str, Any]
+    __doc__: str
+    __mro__: list[Any]
+    __name__: str
+    __subclasses__: Any
+    __subclasshook__: Any
     # InterpreterClass will contain this, too:
-    __module__ = ...  # type: str
+    __module__: str
     def __init__(self) -> NoneType: ...
     # Used by special_builtins.Object to handle super.__init__.
     def __init__extra_args(self, *args, **kwargs) -> NoneType: ...
@@ -235,10 +235,10 @@ class object():
 # old style class. classobj is in fact a subclass of object in Python.
 class classobj(object):
     __slots__ = []
-    __bases__ = ...  # type: Tuple[Any, ...]
-    __dict__ = ...  # type: Dict[str, Any]
-    __doc__ = ...  # type: str
-    __name__ = ...  # type: str
+    __bases__: Tuple[Any, ...]
+    __dict__: Dict[str, Any]
+    __doc__: str
+    __name__: str
     def __init__(self) -> NoneType: ...
     def __repr__(self) -> str: ...
     def __cmp__(self, y) -> bool: ...
@@ -750,7 +750,7 @@ class _SupportsTrunc(Protocol):
 
 class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     __slots__ = []
-    denominator = ...  # type: int
+    denominator: int
     numerator = ... # type: int
     real = ... # type: int
     imag = ... # type: int
@@ -920,22 +920,22 @@ class instancemethod(object):
     def __init__(self, function: Union[Callable, instancemethod], instance, cls) -> NoneType: ...
     def __get__(self, obj, *args, **kwargs) -> instancemethod: ...
 
-__path__ = ...  # type: List[str]  # only sometimes present
+__path__: List[str]  # only sometimes present
 
 class module(object):
-    __doc__ = ...  # type: str
-    __file__ = ...  # type: str
-    __name__ = ...  # type: str
-    __package__ = ...  # type: Optional[str]
-    __path__ = ...  # type: Iterable[str]  # only sometimes present
+    __doc__: str
+    __file__: str
+    __name__: str
+    __package__: Optional[str]
+    __path__: Iterable[str]  # only sometimes present
     def __init__(self, name: Union[str, bytearray], doc = ...) -> NoneType: ...
     def __getattr__(self, name) -> Any: ...  # modules can contain anything
 
 class slice(object):
     __slots__ = []  # slices are readonly
-    start = ...  # type: Optional[int]
-    stop = ...  # type: Optional[int]
-    step = ...  # type: Optional[int]
+    start: Optional[int]
+    stop: Optional[int]
+    step: Optional[int]
     def __init__(self, stop, *args, **kwargs) -> NoneType: ...
     def indices(self, len: int) -> tuple[int, int, int]: ...
 
@@ -966,12 +966,12 @@ class memoryview(object):
         def hex(self) -> str: ...
 
 class type(Callable, Type[_T]):
-    __name__ = ...  # type: str
-    __module__ = ...  # type: str
-    __bases__ = ...  # type: Tuple[type, ...]
-    __base__ = ...  # type: Optional[type]
-    __dictoffset__ = ...  # type: int
-    __itemsize__ = ...  # type: int
+    __name__: str
+    __module__: str
+    __bases__: Tuple[type, ...]
+    __base__: Optional[type]
+    __dictoffset__: int
+    __itemsize__: int
     def __new__(cls: Type[type], object: _T) -> Type[_T]: ...
     # The return type in the below two definitions is used only when abstract.py
     # isn't able to build a class from the arguments.
@@ -1213,7 +1213,9 @@ class AssertionError(StandardError):
     pass
 
 class AttributeError(StandardError):
-    pass
+    if sys.version_info >= (3, 10):
+        name: str
+        obj: Any
 
 # Note: __traceback__ and with_traceback should use types.TracebackType, but
 # builtins can't depend on other modules.
@@ -1258,8 +1260,8 @@ IOError = OSError
 
 class ImportError(StandardError):
     if sys.version_info >= (3, 3):
-        name = ...  # type: str
-        path = ...  # type: str
+        name: str
+        path: str
 
 class ImportWarning(Warning):
     pass
@@ -1283,7 +1285,8 @@ class MemoryError(StandardError):
     pass
 
 class NameError(StandardError):
-    pass
+    if sys.version_info >= (3, 10):
+        name: str
 
 class NotImplementedError(RuntimeError):
     pass
@@ -1313,15 +1316,18 @@ class StandardError(Exception):
     pass
 
 class StopIteration(Exception):
-    pass
+    value: Any
 
 class SyntaxError(StandardError):
-    filename = ...  # type: str
-    lineno = ...  # type: int
-    msg = ...  # type: str
-    offset = ...  # type: int
-    print_file_and_line = ...  # type: Optional[str]
-    text = ...  # type: str
+    filename: str
+    lineno: int
+    msg: str
+    offset: int
+    print_file_and_line: Optional[str]
+    text: str
+    if sys.version_info >= (3, 10):
+        end_lineno: int
+        end_offset: int
 
 class SyntaxWarning(Warning):
     pass
@@ -1330,7 +1336,7 @@ class SystemError(StandardError):
     pass
 
 class SystemExit(BaseException):
-    code = ...  # type: int
+    code: int
 
 class TabError(IndentationError):
     pass
@@ -1345,27 +1351,27 @@ class UnicodeError(ValueError):
     pass
 
 class UnicodeDecodeError(UnicodeError):
-    encoding = ...  # type: str
-    object = ...  # type: str
-    start = ...  # type: int
-    end = ...  # type: int
-    reason = ...  # type: str
+    encoding: str
+    object: str
+    start: int
+    end: int
+    reason: str
     def __init__(self, encoding: str, object: bytes, start: int, end: int, reason: str) -> None: ...
 
 class UnicodeEncodeError(UnicodeError):
-    encoding = ...  # type: str
-    object = ...  # type: str
-    start = ...  # type: int
-    end = ...  # type: int
-    reason = ...  # type: str
+    encoding: str
+    object: str
+    start: int
+    end: int
+    reason: str
     def __init__(self, encoding: str, object: str, start: int, end: int, reason: str) -> None: ...
 
 class UnicodeTranslateError(UnicodeError):
-    encoding = ...  # type: str
-    object = ...  # type: str
-    start = ...  # type: int
-    end = ...  # type: int
-    reason = ...  # type: str
+    encoding: str
+    object: str
+    start: int
+    end: int
+    reason: str
     def __init__(self, object: str, start: int, end: int, reason: str) -> None: ...
 
 class UnicodeWarning(Warning):
@@ -1387,7 +1393,7 @@ class ZeroDivisionError(ArithmeticError):
 # Everything below this is new in python3
 
 class BlockingIOError(OSError):
-    characters_written = ...  # type: int
+    characters_written: int
 class ChildProcessError(OSError): ...
 class FileExistsError(OSError): ...
 class FileNotFoundError(OSError): ...
@@ -1409,7 +1415,7 @@ class ConnectionResetError(ConnectionError): ...
 
 if sys.version_info >= (3, 5):
     class StopAsyncIteration(Exception):
-        value = ...  # type: Any
+        value: Any
     class RecursionError(RuntimeError): ...
 
 if sys.version_info >= (3, 6):
