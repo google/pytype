@@ -908,14 +908,14 @@ class ErrorLog(ErrorLogBase):
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("not-callable")
-  def not_callable(self, stack, func):
+  def not_callable(self, stack, func, details=None):
     """Calling an object that isn't callable."""
     if isinstance(func, abstract.InterpreterFunction) and func.is_overload:
       prefix = "@typing.overload-decorated "
     else:
       prefix = ""
     message = f"{prefix}{func.name!r} object is not callable"
-    self.error(stack, message, keyword=func.name)
+    self.error(stack, message, keyword=func.name, details=details)
 
   @_error_name("not-indexable")
   def not_indexable(self, stack, name, generic_warning=False):

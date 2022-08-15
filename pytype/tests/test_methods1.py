@@ -688,6 +688,25 @@ class MethodsTest(test_base.BaseTest):
     """, deep=False, show_library_calls=True)
     ty.Lookup("A")
 
+  def test_invalid_classmethod(self):
+    ty, err = self.InferWithErrors("""
+      def f(x):
+        return 42
+      class A:
+        @classmethod
+        @f
+        def myclassmethod(*args):  # not-callable[e]
+          return 3
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f(x) -> int: ...
+      class A:
+        myclassmethod: Any
+    """)
+    self.assertErrorSequences(err, {
+        "e": ["int", "not callable", "@classmethod applied", "not a function"]})
+
   def test_staticmethod_smoke(self):
     ty = self.Infer("""
       class A:

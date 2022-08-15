@@ -663,6 +663,23 @@ class Property(PropertyTemplate):
                                   **property_args).to_variable(node)
 
 
+def _check_method_decorator_arg(fn_var, name, ctx):
+  """Check that @classmethod or @staticmethod are applied to a function."""
+  for d in fn_var.data:
+    try:
+      _ = function.get_signatures(d)
+    except NotImplementedError:
+      # We are wrapping something that is not a function in a method decorator.
+      # TODO(mdemello): `Any` should be rewritten to `def f(self, ...) -> Any`
+      # rather than failing here.
+      # TODO(mdemello): The error line is the function definition rather than
+      # the line with `@classmethod` or `@staticmethod`
+      details = f"@{name} applied to something that is not a function."
+      ctx.errorlog.not_callable(ctx.vm.frames, d, details)
+      return False
+  return True
+
+
 class StaticMethodInstance(abstract.Function, mixin.HasSlots):
   """StaticMethod instance (constructed by StaticMethod.call())."""
 
@@ -693,6 +710,8 @@ class StaticMethod(BuiltinClass):
     if len(args.posargs) != 1:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
+    if not _check_method_decorator_arg(arg, "staticmethod", self.ctx):
+      return node, self.ctx.new_unsolvable(node)
     return node, StaticMethodInstance(self.ctx, self, arg).to_variable(node)
 
 
@@ -730,6 +749,8 @@ class ClassMethod(BuiltinClass):
     if len(args.posargs) != 1:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
+    if not _check_method_decorator_arg(arg, "classmethod", self.ctx):
+      return node, self.ctx.new_unsolvable(node)
     for d in arg.data:
       d.is_classmethod = True
       d.is_attribute_of_class = True

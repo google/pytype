@@ -254,7 +254,7 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate
-        def bar(cls):  # wrong-arg-count[e]
+        def bar(cls):  # wrong-arg-count[e]  # not-callable
           pass
       Foo.bar()
     """)
@@ -268,7 +268,7 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]
-        def bar(cls):
+        def bar(cls):  # not-callable
           pass
       Foo.bar()  # not-callable[e2]
     """)
@@ -283,12 +283,12 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate
-        def bar(cls):  # wrong-arg-count[e1]
+        def bar(cls):  # wrong-arg-count[e1]  # not-callable
           pass
-      Foo.bar()  # not-callable[e2]
+      Foo.bar()
     """)
     self.assertErrorRegexes(
-        errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
+        errors, {"e1": r"Decorate.*1.*2"})
 
   def test_instance_method_with_annotated_decorator(self):
     ty = self.Infer("""
