@@ -689,13 +689,19 @@ class MethodsTest(test_base.BaseTest):
     ty.Lookup("A")
 
   def test_invalid_classmethod(self):
-    ty, err = self.InferWithErrors("""
+    if self.options.python_version >= (3, 8):
+      error_pre_38 = ""
+      error = "  # not-callable[e]"
+    else:
+      error_pre_38 = "  # not-callable[e]"
+      error = ""
+    ty, err = self.InferWithErrors(f"""
       def f(x):
         return 42
       class A:
         @classmethod
-        @f
-        def myclassmethod(*args):  # not-callable[e]
+        @f{error_pre_38}
+        def myclassmethod(*args):{error}
           return 3
     """)
     self.assertTypesMatchPytd(ty, """
