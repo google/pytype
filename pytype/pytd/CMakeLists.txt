@@ -377,9 +377,9 @@ py_test(
   DEPS
     ._pytd
     .pytd_utils
-    .serialize_ast
     .visitors
     pytype.utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
@@ -407,6 +407,7 @@ py_test(
     .visitors
     pytype.libvm
     pytype.utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.tests.test_base
 )

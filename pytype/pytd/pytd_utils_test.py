@@ -1,11 +1,11 @@
 import textwrap
 
 from pytype import file_utils
+from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
 
@@ -250,27 +250,11 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEqual("def foo(x, y) -> Any: ...",
                      pytd_utils.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
-  def test_load_pickle_from_file(self):
-    d1 = {1, 2j, "3"}
-    with file_utils.Tempdir() as d:
-      filename = d.create_file("foo.pickle")
-      pytd_utils.SavePickle(d1, filename)
-      d2 = pytd_utils.LoadPickle(filename)
-    self.assertEqual(d1, d2)
-
-  def test_load_pickle_from_compressed_file(self):
-    d1 = {1, 2j, "3"}
-    with file_utils.Tempdir() as d:
-      filename = d.create_file("foo.pickle.gz")
-      pytd_utils.SavePickle(d1, filename, compress=True)
-      d2 = pytd_utils.LoadPickle(filename, compress=True)
-    self.assertEqual(d1, d2)
-
   def test_diff_same_pickle(self):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     with file_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
-      serialize_ast.StoreAst(ast, filename)
+      pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
         data = fi.read()
     named_pickles = [("foo", data)]
@@ -280,7 +264,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     with file_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
-      serialize_ast.StoreAst(ast, filename)
+      pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
         data = fi.read()
     named_pickles1 = [("foo", data)]
@@ -294,7 +278,7 @@ class TestUtils(parser_test_base.ParserTest):
       data = []
       for ast in (ast1, ast2):
         filename = path_utils.join(d.path, "foo.pickled")
-        serialize_ast.StoreAst(ast, filename)
+        pickle_utils.StoreAst(ast, filename)
         with open(filename, "rb") as fi:
           data.append(fi.read())
     named_pickles1 = [("foo", data[0])]
@@ -305,7 +289,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     with file_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
-      serialize_ast.StoreAst(ast, filename)
+      pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
         data = fi.read()
     named_pickles1 = []

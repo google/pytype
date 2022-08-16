@@ -134,9 +134,9 @@ py_library(
     ._utils
     .datatypes
     .errors
+    .file_utils
     .imports_map_loader
     .module_utils
-    pytype.pytd.pytd
     pytype.typegraph.cfg_utils
 )
 
@@ -275,6 +275,7 @@ py_library(
     load_pytd.py
   DEPS
     ._utils
+    .file_utils
     .module_utils
     pytype.imports.imports
     pytype.platform_utils.platform_utils

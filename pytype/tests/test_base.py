@@ -12,6 +12,7 @@ from pytype import file_utils
 from pytype import load_pytd
 from pytype import module_utils
 from pytype.directors import directors
+from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
@@ -358,7 +359,7 @@ class BaseTest(unittest.TestCase):
   def _Pickle(self, ast, module_name):
     assert module_name
     ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
-    return serialize_ast.StoreAst(ast)
+    return pickle_utils.StoreAst(ast)
 
   def Infer(self, srccode, pythonpath=(), deep=True,
             report_errors=True, analyze_annotated=True, pickle=False,

@@ -7,11 +7,13 @@ import pickle
 
 from typing import Dict, Iterable, List, Optional
 
+from pytype import file_utils
 from pytype import module_utils
 from pytype import utils
 from pytype.imports import base as imports_base
 from pytype.imports import builtin_stubs
 from pytype.imports import module_loader
+from pytype.imports import pickle_utils
 from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
@@ -206,7 +208,7 @@ class _ModuleMap:
       newly_loaded_asts.append(loaded_ast)
       m.ast = loaded_ast.ast
       if loaded_ast.is_package:
-        init_file = f"__init__{pytd_utils.PICKLE_EXT}"
+        init_file = f"__init__{file_utils.PICKLE_EXT}"
         if m.filename and path_utils.basename(m.filename) != init_file:
           base, _ = path_utils.splitext(m.filename)
           m.filename = path_utils.join(base, init_file)
@@ -339,7 +341,7 @@ class Loader:
     # have been loaded.
     # pylint: disable=g-complex-comprehension
     items = tuple(
-        (name, serialize_ast.StoreAst(
+        (name, pickle_utils.StoreAst(
             module.ast, open_function=self.options.open_function,
             is_package=module.is_package()))
         for name, module in sorted(self._modules.items()))
@@ -349,8 +351,8 @@ class Loader:
     builtin_stubs.InvalidateCache()
     # Now pickle the pickles. We keep the "inner" modules as pickles as a
     # performance optimization - unpickling is slow.
-    pytd_utils.SavePickle(items, filename, compress=True,
-                          open_function=self.options.open_function)
+    pickle_utils.SavePickle(items, filename, compress=True,
+                            open_function=self.options.open_function)
 
   def _resolve_external_and_local_types(self, mod_ast, lookup_ast=None):
     dependencies = self._resolver.collect_dependencies(mod_ast)
@@ -704,8 +706,8 @@ class PickledPyiLoader(Loader):
   @classmethod
   def load_from_pickle(cls, filename, options):
     """Load a pytd module from a pickle file."""
-    items = pytd_utils.LoadPickle(filename, compress=True,
-                                  open_function=options.open_function)
+    items = pickle_utils.LoadPickle(filename, compress=True,
+                                    open_function=options.open_function)
     modules = {
         name: Module(name, filename=None, ast=None, pickle=pickle,
                      has_unresolved_pointers=False)
@@ -715,7 +717,7 @@ class PickledPyiLoader(Loader):
 
   def load_module(self, mod_info, mod_ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""
-    if not (mod_info.filename and pytd_utils.IsPickle(mod_info.filename)):
+    if not (mod_info.filename and file_utils.is_pickle(mod_info.filename)):
       return super().load_module(mod_info, mod_ast)
     existing = self._modules.get_existing_ast(mod_info.module_name)
     if existing:

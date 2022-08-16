@@ -18,6 +18,7 @@ py_library(
     pytype.libvm
     pytype.utils
     pytype.directors.directors
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -623,6 +624,7 @@ py_test(
   DEPS
     .test_base
     pytype.utils
+    pytype.imports.imports
     pytype.pyi.parser
     pytype.pytd.pytd
 )

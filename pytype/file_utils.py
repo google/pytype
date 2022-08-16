@@ -11,6 +11,9 @@ from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
 
 
+PICKLE_EXT = ".pickled"
+
+
 def recursive_glob(path):
   """Call recursive glob iff ** is in the pattern."""
   if "*" not in path:
@@ -112,6 +115,11 @@ def is_pyi_directory_init(filename):
   if filename is None:
     return False
   return path_utils.splitext(path_utils.basename(filename))[0] == "__init__"
+
+
+def is_pickle(filename):
+  """Checks if the filename is a pickle file."""
+  return path_utils.splitext(filename)[1].startswith(PICKLE_EXT)
 
 
 def expand_path(path, cwd=None):

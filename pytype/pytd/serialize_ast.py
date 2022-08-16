@@ -92,21 +92,17 @@ class SerializableAst(SerializableTupleClass):
   Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
-def StoreAst(ast, filename=None, open_function=open, is_package=False,
-             src_path=None, metadata=None):
+def SerializeAst(ast, is_package=False, src_path=None, metadata=None):
   """Loads and stores an ast to disk.
 
   Args:
     ast: The pytd.TypeDeclUnit to save to disk.
-    filename: The filename for the pickled output. If this is None, this
-      function instead returns the pickled string.
-    open_function: A custom file opening function.
     is_package: Whether the module with the given ast is a package.
     src_path: Optionally, the filepath of the original source file.
     metadata: A list of arbitrary string-encoded metadata.
 
   Returns:
-    The pickled string, if no filename was given. (None otherwise.)
+    The SerializableAst derived from `ast`.
   """
   if ast.name.endswith(".__init__"):
     assert is_package
@@ -127,13 +123,11 @@ def StoreAst(ast, filename=None, open_function=open, is_package=False,
 
   metadata = metadata or []
 
-  return pytd_utils.SavePickle(
-      SerializableAst(
-          ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
-          sorted(indexer.class_type_nodes), is_package=is_package,
-          src_path=src_path, metadata=metadata,
-      ),
-      filename, open_function=open_function)
+  return SerializableAst(
+      ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
+      sorted(indexer.class_type_nodes), is_package=is_package,
+      src_path=src_path, metadata=metadata,
+  )
 
 
 def EnsureAstName(ast, module_name, fix=False):

@@ -5,10 +5,11 @@ import logging
 from typing import Optional, Tuple
 
 from pytype import config
+from pytype import file_utils
 from pytype.imports import base
+from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
-from pytype.pytd import pytd_utils
 
 
 log = logging.getLogger(__name__)
@@ -101,11 +102,11 @@ class ModuleLoader(base.ModuleLoader):
 
   def _load_pickle(self, mod_info: base.ModuleInfo):
     """Load and unpickle a serialized pytd AST."""
-    return pytd_utils.LoadPickle(
+    return pickle_utils.LoadPickle(
         mod_info.filename, open_function=self.options.open_function)
 
   def load_ast(self, mod_info: base.ModuleInfo):
-    if pytd_utils.IsPickle(mod_info.filename):
+    if file_utils.is_pickle(mod_info.filename):
       return self._load_pickle(mod_info)
     else:
       return self._load_pyi(mod_info)
