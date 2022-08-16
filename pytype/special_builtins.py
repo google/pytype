@@ -666,12 +666,13 @@ class Property(PropertyTemplate):
 def _check_method_decorator_arg(fn_var, name, ctx):
   """Check that @classmethod or @staticmethod are applied to a function."""
   for d in fn_var.data:
+    if isinstance(d, abstract.Unsolvable):
+      # Any could be Callable
+      continue
     try:
       _ = function.get_signatures(d)
     except NotImplementedError:
       # We are wrapping something that is not a function in a method decorator.
-      # TODO(mdemello): `Any` should be rewritten to `def f(self, ...) -> Any`
-      # rather than failing here.
       # TODO(mdemello): The error line is the function definition rather than
       # the line with `@classmethod` or `@staticmethod`
       details = f"@{name} applied to something that is not a function."

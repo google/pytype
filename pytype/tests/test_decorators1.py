@@ -277,11 +277,11 @@ class DecoratorsTest(test_base.BaseTest):
       """)
 
   def test_unknown_decorator(self):
-    self.CheckWithErrors("""
+    self.Check("""
       class Foo:
         @classmethod
         @__any_object__
-        def bar(cls):  # not-callable
+        def bar(cls):
           pass
       Foo.bar()
     """)
