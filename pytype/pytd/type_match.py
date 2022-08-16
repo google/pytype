@@ -202,9 +202,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
       t2_parameters = t2.parameters + (pytd.AnythingType(),) * num_extra_params
       return t1.parameters, t2_parameters
 
-  def match_Generic_against_Generic(
+  def match_Generic_against_Generic(  # pylint: disable=invalid-name
       self, t1: pytd.GenericType, t2: pytd.GenericType, subst: _SubstType,
-  ) -> booleq.BooleanTerm:  # pylint: disable=invalid-name
+  ) -> booleq.BooleanTerm:
     """Match a pytd.GenericType against another pytd.GenericType."""
     assert isinstance(t1.base_type, pytd.ClassType), type(t1.base_type)
     assert isinstance(t2.base_type, pytd.ClassType), type(t2.base_type)
@@ -222,9 +222,9 @@ class TypeMatch(pytd_utils.TypeMatcher):
                  for p1, p2 in zip(t1_parameters, t2_parameters)]
     return booleq.And([base_type_cmp] + param_cmp)
 
-  def match_Unknown_against_Generic(
+  def match_Unknown_against_Generic(  # pylint: disable=invalid-name
       self, t1: _UnknownType, t2: pytd.GenericType, subst: _SubstType
-  ) -> booleq.BooleanTerm:  # pylint: disable=invalid-name
+  ) -> booleq.BooleanTerm:
     assert isinstance(t2.base_type, pytd.ClassType)
     # No inheritance for base classes - you can only inherit from an
     # instantiated template, but not from a template itself.
