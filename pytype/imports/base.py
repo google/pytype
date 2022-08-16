@@ -46,7 +46,8 @@ class ModuleInfo:
 
   def is_default_pyi(self):
     return (self.filename == os.devnull or
-            self.filename.endswith(DEFAULT_PYI_PATH_SUFFIX))
+            (DEFAULT_PYI_PATH_SUFFIX and
+             self.filename.endswith(DEFAULT_PYI_PATH_SUFFIX)))
 
 
 class ModuleLoader(abc.ABC):
