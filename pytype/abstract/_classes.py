@@ -185,8 +185,11 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     inner_classes = []
     for member in self.members.values():
       try:
-        value = abstract_utils.get_atomic_value(member, InterpreterClass)
+        value = abstract_utils.get_atomic_value(member)
       except abstract_utils.ConversionError:
+        continue
+      if not isinstance(value, class_mixin.Class) or value.module:
+        # Skip non-classes and imported classes.
         continue
       if value.official_name is None or (
           self.official_name and
@@ -285,18 +288,6 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     annotations_dict = abstract_utils.get_annotations_dict(self.members)
     return annotations_dict and name in annotations_dict.annotated_locals
 
-  def update_official_name(self, name: str) -> None:
-    if (self.official_name is None or
-        name == self.name or
-        (self.official_name != self.name and name < self.official_name)):
-      # The lexical comparison is to ensure that, in the case of multiple calls
-      # to this method, the official name does not depend on the call order.
-      self.official_name = name
-      for member_var in self.members.values():
-        for member in member_var.data:
-          if isinstance(member, InterpreterClass):
-            member.update_official_name(f"{name}.{member.name}")
-
 
 class PyTDClass(
     _instance_base.SimpleValue, class_mixin.Class, mixin.LazyMembers):
@@ -344,7 +335,6 @@ class PyTDClass(
           pytd_cls.metaclass,
           subst=datatypes.AliasingDict(),
           node=self.ctx.root_node)
-    self.official_name = self.name
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
@@ -566,7 +556,6 @@ class ParameterizedClass(
     self._formal_type_parameters = formal_type_parameters
     self._formal_type_parameters_loaded = False
     self._hash = None  # memoized due to expensive computation
-    self.official_name = self.base_cls.official_name
     if template is None:
       self._template = self.base_cls.template
     else:
@@ -706,6 +695,14 @@ class ParameterizedClass(
 
   def set_class(self, node, var):
     self.base_cls.set_class(node, var)
+
+  @property
+  def official_name(self):
+    return self.base_cls.official_name
+
+  @official_name.setter
+  def official_name(self, official_name):
+    self.base_cls.official_name = official_name
 
   def _is_callable(self):
     if not isinstance(self.base_cls, (InterpreterClass, PyTDClass)):

@@ -38,8 +38,8 @@ class BaseValue(utils.ContextWeakrefMixin):
     self.cls = self
     self.name = name
     self.mro = self.compute_mro()
-    self.module = None
-    self.official_name = None
+    self._module = None
+    self._official_name = None
     self.slots = None  # writable attributes (or None if everything is writable)
     # true for functions and classes that have decorators applied to them.
     self.is_decorated = False
@@ -57,6 +57,23 @@ class BaseValue(utils.ContextWeakrefMixin):
     #   x: str = "hello"
     # would create an instance of str with from_annotation = 'x'
     self.from_annotation = None
+
+  @property
+  def module(self):
+    return self._module
+
+  @module.setter
+  def module(self, module):
+    self._module = module
+    self.update_official_name(self.name)
+
+  @property
+  def official_name(self):
+    return self._official_name
+
+  @official_name.setter
+  def official_name(self, official_name):
+    self._official_name = official_name
 
   @property
   def all_template_names(self):
