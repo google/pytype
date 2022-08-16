@@ -39,7 +39,7 @@ def get_signatures(func):
     return get_signatures(func.method)
   elif _isinstance(func, "SignedFunction"):
     return [func.signature]
-  elif _isinstance(func, "Unsolvable"):
+  elif _isinstance(func, "AMBIGUOUS_OR_EMPTY"):
     return [Signature.from_any()]
   elif func.__class__.__name__ == "PropertyInstance":
     # NOTE: We typically do not want to treat a PropertyInstance as a callable.

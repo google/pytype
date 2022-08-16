@@ -666,9 +666,6 @@ class Property(PropertyTemplate):
 def _check_method_decorator_arg(fn_var, name, ctx):
   """Check that @classmethod or @staticmethod are applied to a function."""
   for d in fn_var.data:
-    if isinstance(d, abstract.Unsolvable):
-      # Any could be Callable
-      continue
     try:
       _ = function.get_signatures(d)
     except NotImplementedError:
