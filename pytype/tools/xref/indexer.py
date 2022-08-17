@@ -67,7 +67,14 @@ def get_location(node):
 
 
 def get_end_location(node):
-  return source.Location(node.end_lineno, node.end_col_offset)
+  # These attributes are new in Python 3.8.
+  if sys.version_info[:2] >= (3, 8):
+    end_lineno = node.end_lineno
+    end_col_offset = node.end_col_offset
+  else:
+    end_lineno = node.lineno
+    end_col_offset = node.col_offset
+  return source.Location(end_lineno, end_col_offset)
 
 
 def match_opcodes(opcode_traces, lineno, op_match_list):
