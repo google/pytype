@@ -496,7 +496,7 @@ class PyiTypedDictTest(test_base.BaseTest):
 
   def test_nested(self):
     with self.DepTree([("foo.py", """
-      from typing import TypedDict
+      from typing_extensions import TypedDict
       class Foo:
         class Bar(TypedDict):
           x: str
@@ -509,7 +509,7 @@ class PyiTypedDictTest(test_base.BaseTest):
 
   def test_imported_and_nested(self):
     with self.DepTree([("foo.py", """
-      from typing import TypedDict
+      from typing_extensions import TypedDict
       class Foo(TypedDict):
         x: str
     """)]):
@@ -526,7 +526,7 @@ class PyiTypedDictTest(test_base.BaseTest):
 
   def test_nested_alias(self):
     ty = self.Infer("""
-      from typing import TypedDict
+      from typing_extensions import TypedDict
       class Foo(TypedDict):
         x: str
       class Bar:
