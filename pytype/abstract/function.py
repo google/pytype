@@ -39,6 +39,8 @@ def get_signatures(func):
     return get_signatures(func.method)
   elif _isinstance(func, "SignedFunction"):
     return [func.signature]
+  elif _isinstance(func, "AMBIGUOUS_OR_EMPTY"):
+    return [Signature.from_any()]
   elif func.__class__.__name__ == "PropertyInstance":
     # NOTE: We typically do not want to treat a PropertyInstance as a callable.
     # This check is here due to a crash in the matcher when applying a method
@@ -257,6 +259,20 @@ class Signature:
         varargs_name=None,
         kwonly_params=kwonly_params,
         kwargs_name=None,
+        defaults={},
+        annotations={},
+    )
+
+  @classmethod
+  def from_any(cls):
+    """Treat `Any` as `f(...) -> Any`."""
+    return cls(
+        name="<callable>",
+        param_names=(),
+        posonly_count=0,
+        varargs_name="args",
+        kwonly_params=(),
+        kwargs_name="kwargs",
         defaults={},
         annotations={},
     )
@@ -905,12 +921,12 @@ def match_all_args(ctx, node, func, args):
 
 
 def match_succeeded(match_result, match_all_views, ctx):
-  bad_matches, any_match = match_result
+  bad_matches, substs = match_result
   if not bad_matches:
     return True
   if match_all_views or ctx.options.strict_parameter_checks:
     return False
-  return any_match
+  return bool(substs)
 
 
 def has_visible_namedarg(node, args, names):

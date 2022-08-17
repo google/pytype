@@ -126,7 +126,6 @@ py_library(
   DEPS
     pytype.utils
     pytype.pytd.pytd_for_parser
-    pytype.pytd.parse.parse
 )
 
 py_library(
@@ -185,7 +184,7 @@ py_test(
     entire_file_parser_test.py
   DEPS
     .parser_test_base
-    pytype.pytd.pytd
+    pytype.imports.imports
 )
 
 py_test(

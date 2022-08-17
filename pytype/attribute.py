@@ -1,6 +1,6 @@
 """Abstract attribute handling."""
 import logging
-from typing import Optional
+from typing import Optional, Tuple, Union
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -13,6 +13,8 @@ from pytype.overlays import overlay
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
+
+_NodeAndMaybeVarType = Tuple[cfg.CFGNode, Optional[cfg.Variable]]
 
 
 class AbstractAttributeHandler(utils.ContextWeakrefMixin):
@@ -106,7 +108,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     else:
       return node, None
 
-  def set_attribute(self, node, obj, name, value):
+  def set_attribute(
+      self, node: cfg.CFGNode, obj: abstract.BaseValue, name: str,
+      value: cfg.Variable) -> cfg.CFGNode:
     """Set an attribute on an object.
 
     The attribute might already have a Variable in it and in that case we cannot
@@ -128,7 +132,6 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       # We ignore the write of an attribute that's not in __slots__, since it
       # wouldn't happen in the Python interpreter, either.
       return node
-    assert isinstance(value, cfg.Variable)
     if self.ctx.vm.frame is not None and obj is self.ctx.vm.frame.f_globals:
       for v in value.data:
         v.update_official_name(name)
@@ -205,10 +208,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     # Otherwise, local variables in __init__.py take precedence over submodules.
     return False
 
-  def _get_module_attribute(self, node, module, name, valself=None):
+  def _get_module_attribute(
+      self, node: cfg.CFGNode, module: abstract.Module, name: str,
+      valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
     """Get an attribute from a module."""
-    assert isinstance(module, abstract.Module)
-
     try:
       node, var = self._get_instance_attribute(node, module, name, valself)
     except abstract_utils.ModuleLoadError:
@@ -221,9 +224,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     # may be a submodule that appears only in __init__.
     return node, module.get_submodule(node, name) or var
 
-  def _get_class_attribute(self, node, cls, name, valself=None):
+  def _get_class_attribute(
+      self, node: cfg.CFGNode, cls: abstract.Class, name: str,
+      valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
     """Get an attribute from a class."""
-    assert isinstance(cls, abstract.Class)
     if (not valself or not abstract_utils.equivalent_to(valself, cls) or
         cls == self.ctx.convert.type_type):
       # Since type(type) == type, the type_type check prevents an infinite loop.
@@ -237,9 +241,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       meta = cls.cls
     return self._get_attribute(node, cls, meta, name, valself)
 
-  def _get_instance_attribute(self, node, obj, name, valself=None):
+  def _get_instance_attribute(
+      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str,
+      valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
     """Get an attribute from an instance."""
-    assert isinstance(obj, abstract.SimpleValue)
     cls = None if obj.cls.full_name == "builtins.type" else obj.cls
     return self._get_attribute(node, obj, cls, name, valself)
 
@@ -382,10 +387,11 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
   def _computable(self, name):
     return not (name.startswith("__") and name.endswith("__"))
 
-  def _get_attribute_computed(self, node, cls, name, valself, compute_function):
+  def _get_attribute_computed(
+      self, node: cfg.CFGNode,
+      cls: Union[abstract.Class, abstract.AmbiguousOrEmptyType], name: str,
+      valself: cfg.Binding, compute_function: str) -> _NodeAndMaybeVarType:
     """Call compute_function (if defined) to compute an attribute."""
-    assert isinstance(
-        cls, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)), cls
     if (valself and not isinstance(valself.data, abstract.Module) and
         self._computable(name)):
       attr_var = self._lookup_from_mro(
@@ -576,8 +582,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     else:
       return None
 
-  def _maybe_load_as_instance_attribute(self, node, obj, name):
-    assert isinstance(obj, abstract.SimpleValue)
+  def _maybe_load_as_instance_attribute(
+      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str) -> None:
     if not isinstance(obj.cls, abstract.Class):
       return
     for base in obj.cls.mro:
@@ -592,10 +598,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             obj.members[name] = var
           return
 
-  def _set_member(self, node, obj, name, var):
+  def _set_member(
+      self, node: cfg.CFGNode, obj: abstract.SimpleValue, name: str,
+      var: cfg.Variable) -> cfg.CFGNode:
     """Set a member on an object."""
-    assert isinstance(var, cfg.Variable)
-
     if isinstance(obj, mixin.LazyMembers):
       obj.load_lazy_attribute(name)
 

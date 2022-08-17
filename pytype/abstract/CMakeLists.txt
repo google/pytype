@@ -58,6 +58,7 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.pytd.codegen.codegen
+    pytype.typegraph.cfg
 )
 
 py_library(
@@ -122,6 +123,7 @@ py_library(
     .abstract_utils
     .class_mixin
     .function
+    pytype.utils
     pytype.pytd.pytd
     pytype.typegraph.cfg_utils
 )

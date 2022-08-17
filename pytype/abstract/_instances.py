@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+from typing import Dict as _Dict, Tuple as _Tuple, Union
 
 from pytype.abstract import _base
 from pytype.abstract import _instance_base
@@ -492,9 +493,9 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       self.pyval[name] = value_var
     return node
 
-  def setitem(self, node, name_var, value_var):
-    assert isinstance(name_var, cfg.Variable)
-    assert isinstance(value_var, cfg.Variable)
+  def setitem(
+      self, node: cfg.CFGNode, name_var: cfg.Variable, value_var: cfg.Variable
+  ) -> None:
     for val in name_var.bindings:
       try:
         name = self.ctx.convert.value_to_constant(val.data, str)
@@ -570,7 +571,10 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     else:
       return node, self.ctx.convert.none.to_variable(node)
 
-  def update(self, node, other_dict, omit=()):
+  def update(
+      self, node: cfg.CFGNode,
+      other_dict: Union["Dict", _Dict[str, cfg.Variable], _base.BaseValue],
+      omit: _Tuple[str, ...] = ()) -> None:
     if isinstance(other_dict, (Dict, dict)):
       for key, value in other_dict.items():
         if key not in omit:
@@ -582,7 +586,6 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
         self.merge_instance_type_parameter(node, abstract_utils.V, v)
         self.could_contain_anything |= other_dict.could_contain_anything
     else:
-      assert isinstance(other_dict, _base.BaseValue)
       if (isinstance(other_dict, _instance_base.Instance) and
           other_dict.full_name == "builtins.dict"):
         k = other_dict.get_instance_type_parameter(abstract_utils.K, node)

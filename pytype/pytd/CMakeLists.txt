@@ -17,7 +17,6 @@ py_library(
     .abc_hierarchy
     .base_visitor
     .booleq
-    .builtin_stubs
     .escape
     .mro
     .optimize
@@ -28,7 +27,6 @@ py_library(
     .slots
     .transforms
     .type_match
-    .typeshed
     .visitors
 )
 
@@ -62,10 +60,10 @@ toplevel_py_binary(
   MAIN
     main.py
   DEPS
-    .builtin_stubs
     .optimize
     .pytd_utils
     pytype.utils
+    pytype.imports.imports
     pytype.pyi.parser
 )
 
@@ -95,18 +93,6 @@ py_library(
     booleq.py
   DEPS
     .pytd_utils
-)
-
-py_library(
-  NAME
-    builtin_stubs
-  SRCS
-    builtin_stubs.py
-  DEPS
-    .pytd_utils
-    .visitors
-    pytype.platform_utils.platform_utils
-    pytype.pyi.parser
 )
 
 py_library(
@@ -244,18 +230,6 @@ py_library(
 
 py_library(
   NAME
-    typeshed
-  SRCS
-    typeshed.py
-  DEPS
-    .builtin_stubs
-    pytype.utils
-    pytype.platform_utils.platform_utils
-    pytype.pyi.parser
-)
-
-py_library(
-  NAME
     visitors
   SRCS
     visitors.py
@@ -297,20 +271,6 @@ py_test(
     booleq_test.py
   DEPS
     .booleq
-)
-
-py_test(
-  NAME
-    builtin_stubs_test
-  SRCS
-    builtin_stubs_test.py
-  DEPS
-    ._pytd
-    .builtin_stubs
-    .pytd_utils
-    .visitors
-    pytype.pyi.parser
-    pytype.tests.test_base
 )
 
 py_test(
@@ -417,9 +377,9 @@ py_test(
   DEPS
     ._pytd
     .pytd_utils
-    .serialize_ast
     .visitors
     pytype.utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
@@ -447,21 +407,8 @@ py_test(
     .visitors
     pytype.libvm
     pytype.utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
-    typeshed_test
-  SRCS
-    typeshed_test.py
-  DEPS
-    .builtin_stubs
-    .typeshed
-    pytype.utils
-    pytype.platform_utils.platform_utils
-    pytype.pytd.parse.parser_test_base
     pytype.tests.test_base
 )
 

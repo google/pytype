@@ -620,9 +620,8 @@ class Annotated(Node, Type):
 GENERIC_BASE_TYPE = (NamedType, ClassType)
 
 
-def IsContainer(t):
+def IsContainer(t: Class) -> bool:
   """Checks whether class t is a container."""
-  assert isinstance(t, Class)
   if t.name in ('typing.Generic', 'typing.Protocol'):
     return True
   for p in t.bases:

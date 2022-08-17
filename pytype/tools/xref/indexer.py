@@ -4,7 +4,9 @@ import collections
 import dataclasses
 import re
 import sys
-from typing import Any, List, Optional
+import textwrap
+import types
+from typing import Any, List, Optional, Type, TypeVar
 
 from pytype import analyze
 from pytype import config
@@ -46,6 +48,8 @@ IMPORT_FILE_MARKER = "<__FILE__>"
 
 # Marker to capture a pending return value while traversing an AST
 _RETURNING_NAME = "RETURNING NAME"
+
+_T = TypeVar("_T")
 
 
 def qualified_method(data):
@@ -179,7 +183,7 @@ class DocString:
   length: int
 
   @classmethod
-  def from_node(cls, ast, node):
+  def from_node(cls: Type[_T], ast: types.ModuleType, node) -> Optional[_T]:
     """If the first element in node.body is a string, create a docstring."""
 
     # This should only be called on ClassDef and FunctionDef
@@ -190,6 +194,10 @@ class DocString:
       doc_node = node.body[0]
       doc = doc_node.value.s
       length = len(doc)  # we want to preserve the byte length
+      # strip indentation from multiline docstrings
+      if "\n" in doc:
+        first, rest = doc.split("\n", 1)
+        doc = first + "\n" + textwrap.dedent(rest).rstrip()
       return cls(doc, get_location(doc_node), length)
     return None
 

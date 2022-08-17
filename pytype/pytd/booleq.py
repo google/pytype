@@ -312,7 +312,7 @@ class _Or(BooleanTerm):
     return tuple(chain(expr.extract_equalities() for expr in self.exprs))
 
 
-def Eq(left, right):  # pylint: disable=invalid-name
+def Eq(left: str, right: str) -> BooleanTerm:  # pylint: disable=invalid-name
   """Create an equality or its simplified equivalent.
 
   This will ensure that left > right. (For left == right, it'll just return
@@ -327,14 +327,12 @@ def Eq(left, right):  # pylint: disable=invalid-name
   Returns:
     A BooleanTerm.
   """
-  assert isinstance(left, str)
-  assert isinstance(right, str)
   if left == right:
     return TRUE
   elif left > right:
     return _Eq(left, right)
   else:
-    return _Eq(right, left)
+    return _Eq(right, left)  # pylint: disable=arguments-out-of-order
 
 
 def And(exprs):  # pylint: disable=invalid-name
@@ -384,12 +382,12 @@ class Solver:
   Attributes:
     ANY_VALUE: A special value assigned to variables with no constraints.
     variables: A list of all variables.
-    values: A list of all values.
     implications: A nested dictionary mapping variable names to values to
       BooleanTerm instances. This is used to specify rules like "if x is 1,
       then ..."
-    ground_truths: An equation that needs to always be TRUE. If this is FALSE,
+    ground_truth: An equation that needs to always be TRUE. If this is FALSE,
       or can be reduced to FALSE, the system is unsolvable.
+    assignments: The solutions, a mapping of variables to values.
   """
 
   ANY_VALUE = "?"
@@ -435,7 +433,7 @@ class Solver:
     assert formula is not FALSE
     self.ground_truth = And([self.ground_truth, formula])
 
-  def implies(self, e, implication):
+  def implies(self, e: BooleanTerm, implication: BooleanTerm) -> None:
     """Register an implication. Call before calling solve()."""
     # COV_NF_START
     if e is FALSE or e is TRUE:
@@ -563,8 +561,8 @@ class Solver:
           length_after = len(assignments[pivot])
           something_changed |= (length_before != length_after)
 
-    self.register_variable = pytd_utils.disabled_function
-    self.implies = pytd_utils.disabled_function
+    self.register_variable = pytd_utils.disabled_function  # pylint: disable=g-missing-from-attributes
+    self.implies = pytd_utils.disabled_function  # pylint: disable=g-missing-from-attributes
 
     self.assignments = assignments
     return assignments

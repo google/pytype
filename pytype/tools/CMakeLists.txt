@@ -37,8 +37,8 @@ py_library(
     environment.py
   DEPS
     .runner
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
-    pytype.pytd.pytd
 )
 
 py_library(

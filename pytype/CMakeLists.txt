@@ -84,9 +84,11 @@ py_library(
     annotation_utils.py
   DEPS
     ._utils
+    .state
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 py_library(
@@ -132,9 +134,9 @@ py_library(
     ._utils
     .datatypes
     .errors
+    .file_utils
     .imports_map_loader
     .module_utils
-    pytype.pytd.pytd
     pytype.typegraph.cfg_utils
 )
 
@@ -260,6 +262,7 @@ py_library(
     .errors
     .load_pytd
     pytype.directors.directors
+    pytype.imports.imports
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -272,7 +275,9 @@ py_library(
     load_pytd.py
   DEPS
     ._utils
+    .file_utils
     .module_utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -375,6 +380,7 @@ py_library(
     state.py
   DEPS
     ._utils
+    .blocks
     .compare
     .metrics
     pytype.abstract.abstract
@@ -654,6 +660,7 @@ py_test(
     .file_utils
     .load_pytd
     .module_utils
+    pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pytd.pytd
     pytype.stubs.stubs
@@ -712,6 +719,7 @@ py_library(
     .io
     .load_pytd
     .metrics
+    pytype.imports.imports
     pytype.pytd.pytd
     pytype.pytd.parse.parse
 )
@@ -719,6 +727,7 @@ py_library(
 add_subdirectory(abstract)
 add_subdirectory(ast)
 add_subdirectory(directors)
+add_subdirectory(imports)
 add_subdirectory(inspect)
 add_subdirectory(overlays)
 add_subdirectory(platform_utils)

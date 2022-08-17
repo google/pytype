@@ -1,8 +1,8 @@
 """Utilities for parsing pytd files for builtins."""
 
+from pytype import pytype_source_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
-from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 
 # TODO(rechen): It would be nice to get rid of GetBuiltinsAndTyping, and let the
@@ -43,7 +43,7 @@ class BuiltinsAndTyping:
   """The builtins and typing modules, which need to be treated specially."""
 
   def _parse_predefined(self, name, options):
-    _, src = pytd_utils.GetPredefinedFile("builtins", name, ".pytd")
+    _, src = GetPredefinedFile("builtins", name, ".pytd")
     mod = parser.parse_string(src, name=name, options=options)
     return mod
 
@@ -71,6 +71,28 @@ class BuiltinsAndTyping:
     return b, t
 
 
+def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
+                      as_package=False):
+  """Get the contents of a predefined PyTD, typically with a file name *.pytd.
+
+  Arguments:
+    stubs_subdir: the directory, typically "builtins" or "stdlib"
+    module: module name (e.g., "sys" or "__builtins__")
+    extension: either ".pytd" or ".py"
+    as_package: try the module as a directory with an __init__ file
+  Returns:
+    The contents of the file
+  Raises:
+    IOError: if file not found
+  """
+  parts = module.split(".")
+  if as_package:
+    parts.append("__init__")
+  mod_path = path_utils.join(*parts) + extension
+  path = path_utils.join("stubs", stubs_subdir, mod_path)
+  return path, pytype_source_utils.load_text_file(path)
+
+
 class BuiltinLoader:
   """Load builtins from the pytype source tree."""
 
@@ -80,7 +102,7 @@ class BuiltinLoader:
   def _parse_predefined(self, pytd_subdir, module, as_package=False):
     """Parse a pyi/pytd file in the pytype source tree."""
     try:
-      filename, src = pytd_utils.GetPredefinedFile(
+      filename, src = GetPredefinedFile(
           pytd_subdir, module, as_package=as_package)
     except OSError:
       return None

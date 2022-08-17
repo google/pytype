@@ -4,8 +4,8 @@ import pickle
 import textwrap
 
 from pytype import file_utils
+from pytype.imports import pickle_utils
 from pytype.pyi import parser
-from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
 
@@ -211,7 +211,7 @@ class PickleTest(test_base.BaseTest):
     """
     pickle.load = load_with_error
     with self.DepTree([("foo.py", foo, {"pickle": True})]):
-      with self.assertRaises(pytd_utils.LoadPickleError):
+      with self.assertRaises(pickle_utils.LoadPickleError):
         self.Check("""
           import foo
           x = foo.A()

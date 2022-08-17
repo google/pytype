@@ -45,10 +45,10 @@ class DecoratorsTest(test_base.BaseTest):
     """)
 
   def test_bad_staticmethod(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       class Foo:
         bar = 42
-        bar = staticmethod(bar)
+        bar = staticmethod(bar)  # not-callable
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
@@ -70,16 +70,18 @@ class DecoratorsTest(test_base.BaseTest):
     """)
 
   def test_bad_classmethod(self):
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       class Foo:
         bar = 42
-        bar = classmethod(bar)
+        bar = classmethod(bar)  # not-callable[e]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo:
         bar = ...  # type: Any
     """)
+    self.assertErrorSequences(err, {
+        "e": ["int", "not callable", "@classmethod applied", "not a function"]})
 
   def test_bad_keyword(self):
     _, errors = self.InferWithErrors("""

@@ -184,18 +184,18 @@ class VirtualMachine:
   def is_at_maximum_depth(self):
     return len(self.frames) > self._maximum_depth
 
-  def run_instruction(self, op, state):
+  def run_instruction(
+      self, op: opcodes.Opcode, state: frame_state.FrameState
+  ) -> frame_state.FrameState:
     """Run a single bytecode instruction.
 
     Args:
-      op: An opcode, instance of pyc.opcodes.Opcode
-      state: An instance of state.FrameState, the state just before running
-        this instruction.
+      op: An opcode.
+      state: The state just before running this instruction.
     Returns:
-      A tuple (why, state). "why" is the reason (if any) that this opcode aborts
-      this function (e.g. through a 'raise'), or None otherwise. "state" is the
-      FrameState right after this instruction that should roll over to the
-      subsequent instruction.
+      The state right after this instruction that should roll over to the
+      subsequent instruction. If this opcode aborts this function (e.g. through
+      a 'raise'), then the state's "why" attribute is set to the abort reason.
     Raises:
       VirtualMachineError: if a fatal error occurs.
     """
@@ -575,10 +575,11 @@ class VirtualMachine:
     """Get a real python dict of the globals."""
     return self.frame.f_globals
 
-  def load_from(self, state, store, name, discard_concrete_values=False):
+  def load_from(
+      self, state: frame_state.FrameState, store: abstract.LazyConcreteDict,
+      name: str, discard_concrete_values: bool = False
+  ) -> Tuple[frame_state.FrameState, cfg.Variable]:
     """Load an item out of locals, globals, or builtins."""
-    assert isinstance(store, abstract.SimpleValue)
-    assert isinstance(store, mixin.LazyMembers)
     store.load_lazy_attribute(name)
     member = store.members[name]
     bindings = member.Bindings(state.node)
@@ -782,9 +783,10 @@ class VirtualMachine:
     self.trace_opcode(op, name, value)
     return state.forward_cfg_node()
 
-  def _retrieve_attr(self, node, obj, attr):
+  def _retrieve_attr(
+      self, node: cfg.CFGNode, obj: cfg.Variable, attr: str
+  ) -> Tuple[cfg.CFGNode, Optional[cfg.Variable], List[cfg.Binding]]:
     """Load an attribute from an object."""
-    assert isinstance(obj, cfg.Variable), obj
     if (attr == "__class__" and self.ctx.callself_stack and
         obj.data == self.ctx.callself_stack[-1].data):
       return node, self.ctx.new_unsolvable(node), []
@@ -809,13 +811,12 @@ class VirtualMachine:
     else:
       return node, None, values_without_attribute
 
-  def _data_is_none(self, x):
-    assert isinstance(x, abstract.BaseValue)
+  def _data_is_none(self, x: abstract.BaseValue) -> bool:
     return x.cls == self.ctx.convert.none_type
 
-  def _var_is_none(self, v):
-    assert isinstance(v, cfg.Variable)
-    return v.bindings and all(self._data_is_none(b.data) for b in v.bindings)
+  def _var_is_none(self, v: cfg.Variable) -> bool:
+    return (bool(v.bindings) and
+            all(self._data_is_none(b.data) for b in v.bindings))
 
   def _delete_item(self, state, obj, arg):
     state, _ = self._call(state, obj, "__delitem__", (arg,))
@@ -897,10 +898,10 @@ class VirtualMachine:
     node, result, _ = self._retrieve_attr(state.node, obj, attr)
     return state.change_cfg_node(node), result
 
-  def store_attr(self, state, obj, attr, value):
+  def store_attr(
+      self, state: frame_state.FrameState, obj: cfg.Variable, attr: str,
+      value: cfg.Variable) -> frame_state.FrameState:
     """Set an attribute on an object."""
-    assert isinstance(obj, cfg.Variable)
-    assert isinstance(attr, str)
     if not obj.bindings:
       log.info("Ignoring setattr on %r", obj)
       return state

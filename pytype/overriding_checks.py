@@ -3,6 +3,7 @@
 import dataclasses
 import enum
 import logging
+from typing import Any, Mapping
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -10,6 +11,10 @@ from pytype.abstract import function
 from pytype.pytd import pytd
 
 log = logging.getLogger(__name__)
+
+# This should be context.Context, which can't be imported due to a circular dep.
+_ContextType = Any
+_SignatureMapType = Mapping[str, function.Signature]
 
 
 @enum.unique
@@ -439,9 +444,9 @@ def _check_signature_compatible(method_signature, base_signature,
       log.warning(check_result.message)
 
 
-def _get_pytd_class_signature_map(cls, ctx):
+def _get_pytd_class_signature_map(
+    cls: abstract.PyTDClass, ctx: _ContextType) -> _SignatureMapType:
   """Returns a map from method names to their signatures for a PyTDClass."""
-  assert isinstance(cls, abstract.PyTDClass)
   if cls in ctx.method_signature_map:
     return ctx.method_signature_map[cls]
 
@@ -464,9 +469,9 @@ def _get_pytd_class_signature_map(cls, ctx):
   return method_signature_map
 
 
-def _get_parameterized_class_signature_map(cls, ctx):
+def _get_parameterized_class_signature_map(
+    cls: abstract.ParameterizedClass, ctx: _ContextType) -> _SignatureMapType:
   """Returns a map from method names to signatures for a ParameterizedClass."""
-  assert isinstance(cls, abstract.ParameterizedClass)
   if cls in ctx.method_signature_map:
     return ctx.method_signature_map[cls]
 

@@ -1,6 +1,7 @@
 """Abstract class representations."""
 
 import logging
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import attrs
 
@@ -16,9 +17,14 @@ from pytype.abstract import mixin
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.codegen import decorate
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+# These classes can't be imported due to circular deps.
+_ContextType = Any  # context.Context
+_TypeParamType = Any  # typing.TypeParameter
 
 
 class BuildClass(_base.BaseValue):
@@ -95,10 +101,9 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   program.
   """
 
-  def __init__(self, name, bases, members, cls, ctx):
-    assert isinstance(name, str)
-    assert isinstance(bases, list)
-    assert isinstance(members, dict)
+  def __init__(self, name: str, bases: List[cfg.Variable],
+               members: Dict[str, cfg.Variable], cls: _base.BaseValue,
+               ctx: _ContextType):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
@@ -180,8 +185,11 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     inner_classes = []
     for member in self.members.values():
       try:
-        value = abstract_utils.get_atomic_value(member, InterpreterClass)
+        value = abstract_utils.get_atomic_value(member)
       except abstract_utils.ConversionError:
+        continue
+      if not isinstance(value, class_mixin.Class) or value.module:
+        # Skip non-classes and imported classes.
         continue
       if value.official_name is None or (
           self.official_name and
@@ -280,19 +288,6 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     annotations_dict = abstract_utils.get_annotations_dict(self.members)
     return annotations_dict and name in annotations_dict.annotated_locals
 
-  def update_official_name(self, name):
-    assert isinstance(name, str)
-    if (self.official_name is None or
-        name == self.name or
-        (self.official_name != self.name and name < self.official_name)):
-      # The lexical comparison is to ensure that, in the case of multiple calls
-      # to this method, the official name does not depend on the call order.
-      self.official_name = name
-      for member_var in self.members.values():
-        for member in member_var.data:
-          if isinstance(member, InterpreterClass):
-            member.update_official_name(f"{name}.{member.name}")
-
 
 class PyTDClass(
     _instance_base.SimpleValue, class_mixin.Class, mixin.LazyMembers):
@@ -340,7 +335,6 @@ class PyTDClass(
           pytd_cls.metaclass,
           subst=datatypes.AliasingDict(),
           node=self.ctx.root_node)
-    self.official_name = self.name
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
@@ -541,15 +535,18 @@ class ParameterizedClass(
   E.g. a container.
 
   Attributes:
-    cls: A PyTDClass representing the base type.
+    base_cls: The base type.
     formal_type_parameters: An iterable of BaseValue, one for each type
       parameter.
   """
 
-  def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
+  def __init__(
+      self, base_cls: Union[PyTDClass, InterpreterClass],
+      formal_type_parameters: Union[abstract_utils.LazyFormalTypeParameters,
+                                    Dict[str, _base.BaseValue]],
+      ctx: _ContextType, template: Optional[Tuple[_TypeParamType, ...]] = None):
     # A ParameterizedClass is created by converting a pytd.GenericType, whose
     # base type is restricted to NamedType and ClassType.
-    assert isinstance(base_cls, (PyTDClass, InterpreterClass))
     self.base_cls = base_cls
     super().__init__(base_cls.name, ctx)
     self._cls = None  # lazily loaded 'cls' attribute
@@ -559,7 +556,6 @@ class ParameterizedClass(
     self._formal_type_parameters = formal_type_parameters
     self._formal_type_parameters_loaded = False
     self._hash = None  # memoized due to expensive computation
-    self.official_name = self.base_cls.official_name
     if template is None:
       self._template = self.base_cls.template
     else:
@@ -699,6 +695,14 @@ class ParameterizedClass(
 
   def set_class(self, node, var):
     self.base_cls.set_class(node, var)
+
+  @property
+  def official_name(self):
+    return self.base_cls.official_name
+
+  @official_name.setter
+  def official_name(self, official_name):
+    self.base_cls.official_name = official_name
 
   def _is_callable(self):
     if not isinstance(self.base_cls, (InterpreterClass, PyTDClass)):

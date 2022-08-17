@@ -6,6 +6,7 @@ import hashlib
 import itertools
 import logging
 
+from pytype import datatypes
 from pytype.abstract import _classes
 from pytype.abstract import _function_base
 from pytype.abstract import _instance_base
@@ -236,6 +237,7 @@ class SignedFunction(_function_base.Function):
     return subst
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
+    substs = None
     for name, arg, formal in self.signature.iter_args(args):
       if formal is None:
         continue
@@ -247,7 +249,12 @@ class SignedFunction(_function_base.Function):
       if not function.match_succeeded(match_result, match_all_views, self.ctx):
         raise function.WrongArgTypes(self.signature, args, self.ctx,
                                      bad_param=match_result[0][0].expected)
-    return [{}]
+      if any(match_result[1]):
+        assert substs is None
+        substs = match_result[1]
+    if not substs:
+      substs = [datatypes.HashableDict()]
+    return substs
 
   def get_first_opcode(self):
     return None

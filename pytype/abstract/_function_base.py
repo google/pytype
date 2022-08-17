@@ -73,24 +73,32 @@ class Function(_instance_base.SimpleValue):
     # have two different implementations:
     # * Old implementation: `_match_views` matches 'args' against 'self' one
     #   view at a time, where a view is a mapping of every variable in args to a
-    #   particular binding. This handles generics but scales poorly with the
-    #   number of bindings per variable.
+    #   particular binding. This handles complex generics but scales poorly with
+    #   the number of bindings per variable.
     # * New implementation: `_match_args_sequentially` matches 'args' one at a
-    #   time. This scales better but cannot yet handle generics.
+    #   time. This scales better but cannot yet handle complex generics.
     # Subclasses should implement the following:
     # * _match_view(node, args, view, alias_map): this will be called repeatedly
     #   by _match_views.
     # * _match_args_sequentially(node, args, alias_map, match_all_views): A
     #   sequential matching implementation.
     # TODO(b/228241343): Get rid of _match_views and simplify match_args once
-    # _match_args_sequentially can handle generics.
-    if self._is_generic_call(args):
+    # _match_args_sequentially can handle all generics.
+    if self._is_complex_generic_call(args):
       return self._match_views(node, args, alias_map, match_all_views)
     return self._match_args_sequentially(node, args, alias_map, match_all_views)
 
-  def _is_generic_call(self, args):
-    for sig in function.get_signatures(self):
-      for t in sig.annotations.values():
+  def _is_complex_generic_call(self, args):
+    signatures = function.get_signatures(self)
+    # pytype: disable=attribute-error
+    if _isinstance(self, "SignedFunction") and self.signature not in signatures:
+      # This happens for overloads. While overloads are not callable, we do call
+      # match_args on them to catch bad defaults.
+      signatures.append(self.signature)
+    # pytype: enable=attribute-error
+    for sig in signatures:
+      parameter_typevar_count = 0
+      for name, t in sig.annotations.items():
         stack = [t]
         seen = set()
         while stack:
@@ -98,10 +106,13 @@ class Function(_instance_base.SimpleValue):
           if cur in seen:
             continue
           seen.add(cur)
-          if cur.formal or cur.template:
+          if cur.template:
             return True
+          parameter_typevar_count += (name != "return" and cur.formal)
           if _isinstance(cur, "Union"):
             stack.extend(cur.options)
+      if parameter_typevar_count > 1:
+        return True
     if self.is_attribute_of_class and args.posargs:
       for self_val in args.posargs[0].data:
         for cls in self_val.cls.mro:

@@ -4,14 +4,16 @@ import collections
 import dataclasses
 import itertools
 
-from typing import AbstractSet, Any, Optional
+from typing import AbstractSet, Any, Dict, Optional, Sequence, Tuple
 
+from pytype import state
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd_utils
+from pytype.typegraph import cfg
 
 
 @dataclasses.dataclass
@@ -32,9 +34,11 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
               for name, annot in annotations.items()}
     return annotations
 
-  def _get_type_parameter_subst(self, node, annot, substs, instantiate_unbound):
+  def _get_type_parameter_subst(
+      self, node: cfg.CFGNode, annot: abstract.TypeParameter,
+      substs: Sequence[Dict[str, cfg.Variable]], instantiate_unbound: bool
+  ) -> abstract.BaseValue:
     """Helper for sub_one_annotation."""
-    assert isinstance(annot, abstract.TypeParameter)
     # We use the given substitutions to bind the annotation if
     # (1) every subst provides at least one binding, and
     # (2) none of the bindings are ambiguous, and
@@ -119,7 +123,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     assert len(done) == 1
     return done[0]
 
-  def sub_annotations_for_parameterized_class(self, cls, annotations):
+  def sub_annotations_for_parameterized_class(
+      self, cls: abstract.ParameterizedClass,
+      annotations: Dict[str, abstract.BaseValue]
+  ) -> Dict[str, abstract.BaseValue]:
     """Apply type parameter substitutions to a dictionary of annotations.
 
     Args:
@@ -130,11 +137,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     Returns:
       Annotations with type parameters substituted.
     """
-    assert isinstance(cls, abstract.ParameterizedClass)
     formal_type_parameters = cls.get_formal_type_parameters()
 
-    def get_type_parameter_subst(annotation):
-      assert isinstance(annotation, abstract.TypeParameter)
+    def get_type_parameter_subst(
+        annotation: abstract.TypeParameter) -> Optional[abstract.BaseValue]:
       # Normally the type parameter module is set correctly at this point.
       # Except for the case when a method that references this type parameter
       # is inherited in a subclass that does not specialize this parameter:
@@ -479,13 +485,15 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       if resolved is not None:
         func.signature.set_annotation(name, resolved)
 
-  def _process_one_annotation(self, node, annotation, name, stack):
+  def _process_one_annotation(
+      self, node: cfg.CFGNode, annotation: abstract.BaseValue,
+      # We require `stack` to be a tuple to make sure we pass in a frozen
+      # snapshot of the frame stack, rather than the actual stack, since late
+      # annotations need to snapshot the stack at time of creation in order to
+      # get the right line information for error messages.
+      name: Optional[str], stack: Tuple[state.FrameType, ...]
+  ) -> Optional[abstract.BaseValue]:
     """Change annotation / record errors where required."""
-    # Make sure we pass in a frozen snapshot of the frame stack, rather than the
-    # actual stack, since late annotations need to snapshot the stack at time of
-    # creation in order to get the right line information for error messages.
-    assert isinstance(stack, tuple), "stack must be an immutable sequence"
-
     if isinstance(annotation, abstract.AnnotationContainer):
       annotation = annotation.base_cls
 

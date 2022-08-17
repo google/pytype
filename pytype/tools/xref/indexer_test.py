@@ -268,6 +268,19 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
     for r in ix.refs:
       self.assertIsNone(r.data)
 
+  def test_docstring(self):
+    ix = self.index_code("""
+        def f():
+          '''Multiline docstring
+
+          foo
+            bar
+          '''
+    """)
+    d = ix.defs["module.f"]
+    self.assertEqual(d.doc.text, "Multiline docstring\n\nfoo\n  bar")
+    self.assertGreater(d.doc.length, len(d.doc.text))
+
 
 class IndexerTestPy3(test_base.BaseTest, IndexerTestMixin):
 

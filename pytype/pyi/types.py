@@ -7,7 +7,6 @@ from typing import Any, Tuple
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd.codegen import pytdgen
-from pytype.pytd.parse import node as pytd_node
 
 # pylint: disable=g-import-not-at-top
 if sys.version_info >= (3, 8):
@@ -75,10 +74,6 @@ class ParseError(Exception):
       lines.append("%*s^" % (pos, ""))
     lines.append(f"{type(self).__name__}: {utils.message(self)}")
     return "\n".join(lines)
-
-
-# Type aliases
-Parameters = Tuple[pytd_node.Node, ...]
 
 
 class Ellipsis:  # pylint: disable=redefined-builtin

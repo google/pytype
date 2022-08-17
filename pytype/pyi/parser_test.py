@@ -1259,13 +1259,9 @@ class ClassTest(parser_test_base.ParserTestBase):
     self.check_error("""
       class Foo(badkeyword=Meta): ...
       """, 1, "Unexpected classdef kwarg 'badkeyword'")
-    if sys.version_info[:2] >= (3, 10):
-      expected_msg = "expected ':'"
-    else:
-      expected_msg = "positional argument follows keyword argument"
     self.check_error("""
       class Foo(metaclass=Meta, Bar): ...
-      """, 1, expected_msg)
+      """, 1, "positional argument follows keyword argument")
 
   def test_shadow_pep484(self):
     self.check("""

@@ -585,16 +585,15 @@ class ErrorLog(ErrorLogBase):
     error_details = self._prepare_errorlog_details(bad)
     return (fmt(expected), fmt(bad_actual), fmt(full_actual), error_details)
 
-  def _print_as_function_def(self, fn):
-    assert isinstance(fn, abstract.Function)
+  def _print_as_function_def(self, fn: abstract.Function) -> str:
     convert = fn.ctx.pytd_convert
     name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       pytd_def = convert.value_to_pytd_def(fn.ctx.root_node, fn, name)
     return pytd_utils.Print(pytd_def)
 
-  def _print_protocol_error(self, error):
-    """Pretty-print the matcher.ProtocolError instance."""
+  def _print_protocol_error(self, error: matcher.ProtocolError) -> str:
+    """Pretty-print the protocol error."""
     convert = error.left_type.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       left = self._pytd_print(error.left_type.get_instance_type())
@@ -909,14 +908,14 @@ class ErrorLog(ErrorLogBase):
     self._invalid_parameters(stack, message, bad_call)
 
   @_error_name("not-callable")
-  def not_callable(self, stack, func):
+  def not_callable(self, stack, func, details=None):
     """Calling an object that isn't callable."""
     if isinstance(func, abstract.InterpreterFunction) and func.is_overload:
       prefix = "@typing.overload-decorated "
     else:
       prefix = ""
     message = f"{prefix}{func.name!r} object is not callable"
-    self.error(stack, message, keyword=func.name)
+    self.error(stack, message, keyword=func.name, details=details)
 
   @_error_name("not-indexable")
   def not_indexable(self, stack, name, generic_warning=False):

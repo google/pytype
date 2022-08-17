@@ -3,9 +3,9 @@
 import os
 
 from pytype import file_utils
+from pytype.imports import builtin_stubs
+from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
-from pytype.pytd import builtin_stubs
-from pytype.pytd import typeshed
 from pytype.pytd.parse import parser_test_base
 from pytype.tests import test_base
 

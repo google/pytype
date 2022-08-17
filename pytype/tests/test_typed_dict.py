@@ -494,6 +494,52 @@ class PyiTypedDictTest(test_base.BaseTest):
         foo.f(foo.g())
       """)
 
+  def test_nested(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import TypedDict
+      class Foo:
+        class Bar(TypedDict):
+          x: str
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.Foo.Bar(x='')  # ok
+        foo.Foo.Bar(x=0)  # wrong-arg-types
+      """)
+
+  def test_imported_and_nested(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import TypedDict
+      class Foo(TypedDict):
+        x: str
+    """)]):
+      ty = self.Infer("""
+        import foo
+        class Bar:
+          Foo = foo.Foo
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import foo
+      class Bar:
+        Foo: type[foo.Foo]
+    """)
+
+  def test_nested_alias(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      class Foo(TypedDict):
+        x: str
+      class Bar:
+        Foo = Foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class Foo(TypedDict):
+        x: str
+      class Bar:
+        Foo: type[Foo]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -20,7 +20,6 @@ def pack_partial(name: str) -> str:
 
 def unpack_partial(name: str) -> str:
   """Convert e.g. "~int" to "int"."""
-  assert isinstance(name, str)
   assert name.startswith(PARTIAL)
   return name[len(PARTIAL):].replace(PARTIAL, ".")
 

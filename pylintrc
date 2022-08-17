@@ -11,6 +11,7 @@ ignore=test_data
 # multiple time (only on the command line, not in the configuration file where
 disable=
   abstract-method,
+  access-member-before-definition,
   arguments-differ,
   arguments-out-of-order,
   assigning-non-slot,

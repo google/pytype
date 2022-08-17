@@ -1076,6 +1076,27 @@ class GenericFeatureTest(test_base.BaseTest):
         x2: str
       """)
 
+  def test_inherit_from_nested_generic(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo:
+        class Bar(Generic[T]):
+          pass
+        class Baz(Bar[T]):
+          pass
+      class Qux(Foo.Bar[T]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Foo:
+        class Bar(Generic[T]): ...
+        class Baz(Foo.Bar[T]): ...
+      class Qux(Foo.Bar[T]): ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

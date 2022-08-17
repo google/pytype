@@ -461,8 +461,7 @@ class CollapseLongUnions(visitors.Visitor):
       more types than this, it is shortened.
   """
 
-  def __init__(self, max_length=7):
-    assert isinstance(max_length, int)
+  def __init__(self, max_length: int = 7):
     super().__init__()
     self.generic_type = pytd.AnythingType()
     self.max_length = max_length

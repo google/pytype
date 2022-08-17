@@ -143,6 +143,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       "compute_mro",
       "get_own_new",
       "get_special_attribute",
+      "update_official_name",
   )
 
   def __new__(cls, *unused_args, **unused_kwds):
@@ -613,3 +614,16 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # Stash attributes in class metadata for subclasses.
     self.metadata[key] = attrs
     return attrs
+
+  def update_official_name(self, name: str) -> None:
+    """Update the official name."""
+    if (self._official_name is None or
+        name == self.name or
+        (self._official_name != self.name and name < self._official_name)):
+      # The lexical comparison is to ensure that, in the case of multiple calls
+      # to this method, the official name does not depend on the call order.
+      self._official_name = name
+      for member_var in self.members.values():
+        for member in member_var.data:
+          if isinstance(member, Class):
+            member.update_official_name(f"{name}.{member.name}")

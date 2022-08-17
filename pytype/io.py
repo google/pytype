@@ -16,9 +16,10 @@ from pytype import errors
 from pytype import load_pytd
 from pytype import utils
 from pytype.directors import directors
+from pytype.imports import builtin_stubs as pytd_builtins
+from pytype.imports import pickle_utils
 from pytype.pyc import pyc
 from pytype.pyi import parser
-from pytype.pytd import builtin_stubs as pytd_builtins
 from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
@@ -250,9 +251,9 @@ def write_pickle(ast, options, loader=None):
     ast2 = ast2.Visit(visitors.ClearClassPointers())
     if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
-  serialize_ast.StoreAst(ast, options.output, options.open_function,
-                         is_package=options.module_name.endswith(".__init__"),
-                         metadata=options.pickle_metadata)
+  pickle_utils.StoreAst(ast, options.output, options.open_function,
+                        is_package=options.module_name.endswith(".__init__"),
+                        metadata=options.pickle_metadata)
 
 
 def print_error_doc_url(errorlog):
@@ -330,7 +331,7 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   except directors.SkipFileError as e:
     raise exception_type("Pytype could not analyze file %s: "
                          "'# skip-file' directive found" % filename) from e
-  except pytd_utils.LoadPickleError as e:
+  except pickle_utils.LoadPickleError as e:
     raise exception_type(f"Error analyzing file {filename}: Could not load "
                          f"serialized dependency {e.filename}") from e
   except Exception as e:  # pylint: disable=broad-except

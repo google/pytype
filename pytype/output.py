@@ -414,7 +414,8 @@ class Converter(utils.ContextWeakrefMixin):
       assert name != v.name
       return pytd.Alias(name, pytd.NamedType(v.name))
     elif isinstance(v, abstract.InterpreterClass):
-      if (v.official_name is None or name == v.official_name) and not v.module:
+      if ((v.official_name is None or name == v.official_name or
+           v.official_name.endswith(f".{name}")) and not v.module):
         return self._class_to_def(node, v, name)
       else:
         # Represent a class alias as X: Type[Y] rather than X = Y so the pytd
@@ -673,7 +674,7 @@ class Converter(utils.ContextWeakrefMixin):
       decorators.append(pytd.Alias("final", fn))
 
     # Collect nested classes
-    classes = [self._class_to_def(node, x, x.name)
+    classes = [self.value_to_pytd_def(node, x, x.name)
                for x in v.get_inner_classes()]
     inner_class_names = {x.name for x in classes}
 

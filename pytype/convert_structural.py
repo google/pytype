@@ -2,6 +2,7 @@
 
 import itertools
 import logging
+from typing import AbstractSet, Dict
 
 from pytype.pytd import booleq
 from pytype.pytd import escape
@@ -288,13 +289,12 @@ def convert_pytd(ast, builtins_pytd, protocols_pytd):
   return result
 
 
-def log_info_mapping(mapping):
+def log_info_mapping(mapping: Dict[str, AbstractSet[str]]) -> None:
   """Print a raw type mapping. For debugging."""
   if log.isEnabledFor(logging.DEBUG):
     cutoff = 12
     log.debug("=========== (possible types) ===========")
     for unknown, possible_types in sorted(mapping.items()):
-      assert isinstance(possible_types, (set, frozenset))
       if len(possible_types) > cutoff:
         log.debug("%s can be   %s, ... (total: %d)", unknown,
                   ", ".join(sorted(possible_types)[0:cutoff]),

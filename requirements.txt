@@ -12,3 +12,4 @@ pylint>=2.14.4
 tabulate>=0.8.10
 toml>=0.10.2
 typed_ast>=1.5.0; python_version < '3.8'
+typing-extensions>=4.3.0

@@ -1,11 +1,11 @@
 import textwrap
 
 from pytype import file_utils
+from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
 
@@ -250,27 +250,11 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEqual("def foo(x, y) -> Any: ...",
                      pytd_utils.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
-  def test_load_pickle_from_file(self):
-    d1 = {1, 2j, "3"}
-    with file_utils.Tempdir() as d:
-      filename = d.create_file("foo.pickle")
-      pytd_utils.SavePickle(d1, filename)
-      d2 = pytd_utils.LoadPickle(filename)
-    self.assertEqual(d1, d2)
-
-  def test_load_pickle_from_compressed_file(self):
-    d1 = {1, 2j, "3"}
-    with file_utils.Tempdir() as d:
-      filename = d.create_file("foo.pickle.gz")
-      pytd_utils.SavePickle(d1, filename, compress=True)
-      d2 = pytd_utils.LoadPickle(filename, compress=True)
-    self.assertEqual(d1, d2)
-
   def test_diff_same_pickle(self):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     with file_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
-      serialize_ast.StoreAst(ast, filename)
+      pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
         data = fi.read()
     named_pickles = [("foo", data)]
@@ -280,7 +264,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     with file_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
-      serialize_ast.StoreAst(ast, filename)
+      pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
         data = fi.read()
     named_pickles1 = [("foo", data)]
@@ -294,7 +278,7 @@ class TestUtils(parser_test_base.ParserTest):
       data = []
       for ast in (ast1, ast2):
         filename = path_utils.join(d.path, "foo.pickled")
-        serialize_ast.StoreAst(ast, filename)
+        pickle_utils.StoreAst(ast, filename)
         with open(filename, "rb") as fi:
           data.append(fi.read())
     named_pickles1 = [("foo", data[0])]
@@ -305,7 +289,7 @@ class TestUtils(parser_test_base.ParserTest):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     with file_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
-      serialize_ast.StoreAst(ast, filename)
+      pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
         data = fi.read()
     named_pickles1 = []
@@ -380,44 +364,6 @@ class TestUtils(parser_test_base.ParserTest):
     diff_pattern = r"(?s)- b.*\+ b"
     self.assertRegex(normalize(pytd_utils.ASTdiff(tree1, tree2)), diff_pattern)
     self.assertRegex(normalize(pytd_utils.ASTdiff(tree2, tree1)), diff_pattern)
-
-
-class TestDataFiles(parser_test_base.ParserTest):
-  """Test pytd_utils.GetPredefinedFile()."""
-
-  BUILTINS = "builtins"
-
-  def test_get_predefined_file_basic(self):
-    # smoke test, only checks that it doesn't throw, the filepath is correct,
-    # and the result is a string
-    path, src = pytd_utils.GetPredefinedFile(self.BUILTINS, "builtins")
-    self.assertEqual(
-        path, file_utils.replace_separator("stubs/builtins/builtins.pytd"))
-    self.assertIsInstance(src, str)
-
-  def test_get_predefined_file_throws(self):
-    # smoke test, only checks that it does throw
-    with self.assertRaisesRegex(
-        IOError,
-        r"File not found|Resource not found|No such file or directory"):
-      pytd_utils.GetPredefinedFile(self.BUILTINS, "-this-file-does-not-exist")
-
-  def test_pytd_builtin3(self):
-    """Verify 'import sys' for python3."""
-    subdir = "builtins"
-    _, import_contents = pytd_utils.GetPredefinedFile(subdir, "builtins")
-    with open(
-        path_utils.join(
-            path_utils.dirname(file_utils.__file__), "stubs", subdir,
-            "builtins.pytd")) as fi:
-      file_contents = fi.read()
-    self.assertMultiLineEqual(import_contents, file_contents)
-
-  def test_pytd_builtin_is_package(self):
-    subdir = "builtins"
-    path, _ = pytd_utils.GetPredefinedFile(subdir, "attr", as_package=True)
-    self.assertEqual(
-        path, file_utils.replace_separator("stubs/builtins/attr/__init__.pytd"))
 
   def test_type_builder(self):
     t = pytd_utils.TypeBuilder()

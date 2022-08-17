@@ -238,7 +238,7 @@ class DecoratorsTest(test_base.BaseTest):
           return func
       class Foo:
         @classmethod
-        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]
+        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]  # not-callable
         def bar(cls):
           pass
       Foo.bar()
@@ -254,7 +254,7 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate
-        def bar(cls):  # wrong-arg-count[e]
+        def bar(cls):  # wrong-arg-count[e]  # not-callable
           pass
       Foo.bar()
     """)
@@ -267,13 +267,12 @@ class DecoratorsTest(test_base.BaseTest):
         pass  # forgot to define __call__
       class Foo:
         @classmethod
-        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]
+        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]  # not-callable
         def bar(cls):
           pass
-      Foo.bar()  # not-callable[e2]
+      Foo.bar()
     """)
-    self.assertErrorRegexes(
-        errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
+    self.assertErrorRegexes(errors, {"e1": r"Decorate.*1.*2"})
 
   @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_uncallable_instance_as_decorator(self):
@@ -283,12 +282,11 @@ class DecoratorsTest(test_base.BaseTest):
       class Foo:
         @classmethod
         @Decorate  # forgot to instantiate Decorate
-        def bar(cls):  # wrong-arg-count[e1]
+        def bar(cls):  # wrong-arg-count[e1]  # not-callable
           pass
-      Foo.bar()  # not-callable[e2]
+      Foo.bar()
     """)
-    self.assertErrorRegexes(
-        errors, {"e1": r"Decorate.*1.*2", "e2": r"Decorate"})
+    self.assertErrorRegexes(errors, {"e1": r"Decorate.*1.*2"})
 
   def test_instance_method_with_annotated_decorator(self):
     ty = self.Infer("""

@@ -9,14 +9,17 @@ import contextlib
 import logging
 import os
 import sys
+from typing import List, overload
 
 from pytype import datatypes
 from pytype import errors
+from pytype import file_utils
 from pytype import imports_map_loader
 from pytype import module_utils
 from pytype import utils
-from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
+
+from typing_extensions import Literal
 
 
 LOG_LEVELS = [logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO,
@@ -34,6 +37,14 @@ class Options:
   """Encapsulation of the configuration options."""
 
   _HAS_DYNAMIC_ATTRIBUTES = True
+
+  @overload
+  def __init__(
+      self, argv_or_options: List[str], command_line: Literal[True]): ...
+
+  @overload
+  def __init__(self, argv_or_options: argparse.Namespace,
+               command_line: Literal[False] = ...): ...
 
   def __init__(self, argv_or_options, command_line=False):
     """Parse and encapsulate the configuration options.
@@ -53,6 +64,8 @@ class Options:
       sys.exit(2): bad option or input filenames.
     """
     argument_parser = make_parser()
+    # Since `config` is part of our public API, we do runtime type checks to
+    # catch errors by users not using a static type checker.
     if command_line:
       assert isinstance(argv_or_options, list)
       options = argument_parser.parse_args(argv_or_options)
@@ -474,8 +487,8 @@ class Postprocessor:
     if pickle_output:
       if self.output_options.output is None:
         self.error("Can't use without --output", "pickle-output")
-      elif not pytd_utils.IsPickle(self.output_options.output):
-        self.error(f"Must specify {pytd_utils.PICKLE_EXT} file for --output",
+      elif not file_utils.is_pickle(self.output_options.output):
+        self.error(f"Must specify {file_utils.PICKLE_EXT} file for --output",
                    "pickle-output")
     self.output_options.pickle_output = pickle_output
 
@@ -487,7 +500,7 @@ class Postprocessor:
       self.error("Can't use without --pickle-output", "verify-pickle")
     else:
       self.output_options.verify_pickle = self.output_options.output.replace(
-          pytd_utils.PICKLE_EXT, ".pyi")
+          file_utils.PICKLE_EXT, ".pyi")
 
   @uses(["input", "show_config", "pythonpath", "version"])
   def _store_generate_builtins(self, generate_builtins):

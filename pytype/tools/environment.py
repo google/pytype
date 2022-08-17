@@ -4,8 +4,8 @@ import logging
 import sys
 from typing import List
 
+from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
-from pytype.pytd import typeshed
 from pytype.tools import runner
 
 
