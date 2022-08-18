@@ -154,6 +154,12 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
           # x.y as references to remote files
           ("x", ":module:", "x/__init__.py"),
           ("y", ":module:", "x/y.py"),
+          # calls
+          ("X()", "module.X", "p/q.py"),
+          ("X()", "module.X", "f.py"),
+          ("X()", "module.X", "a/b.py"),
+          ("X()", "module.X", "x/y.py"),
+          ("X()", "module.X", "u/v.py"),
       }
 
       f = file_utils.replace_separator

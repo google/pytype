@@ -14,14 +14,14 @@ def test(x):
 #- FnFoo.node/kind function
 #- FnFoo param.0 ArgFooX
 def foo(x):
-  #- @test ref/call FnTest
-  #- @test childof FnFoo
+  #- @"test(x)" ref/call FnTest
+  #- @"test(x)" childof FnFoo
   return test(x)
 
 
 #- @y defines/binding VarY
 #- @test ref FnTest
-#- @test ref/call FnTest
+#- @"test(2)" ref/call FnTest
 #- VarY.node/kind variable
 y = test(2)
 

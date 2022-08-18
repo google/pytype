@@ -107,14 +107,14 @@ py_library(
 
 py_library(
   NAME
-    multiline_as_pytype
+    minimal
   SRCS
-    multiline.py
+    minimal.py
 )
 
 py_library(
   NAME
-    minimal
+    call
   SRCS
-    minimal.py
+    call.py
 )

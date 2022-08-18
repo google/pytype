@@ -287,8 +287,9 @@ def _process_calls(kythe, index):
     if call_defn:
       target = _make_defn_vname(kythe, index, call_defn)
       if target:
-        start, end = index.get_ref_bounds(call_ref)
-        anchor_vname = kythe.anchor_vname(start, end)
+        start, _ = index.get_ref_bounds(call_ref)
+        end = index.source.get_offset(call.end_location)
+        anchor_vname = kythe.add_anchor(start, end)
         kythe.add_edge(source=anchor_vname, target=target, edge_name="ref/call")
         # The call is a child of the enclosing function/class (this lets us
         # generate call graphs).

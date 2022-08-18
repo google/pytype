@@ -17,9 +17,9 @@ class A:
 #- FnBar.node/kind function
 def bar():
   #- @A ref ClassA
-  #- @A ref/call ClassA
-  #- @A childof FnBar
+  #- @"A()" ref/call ClassA
+  #- @"A()" childof FnBar
   #- @foo ref FnFoo
-  #- @foo ref/call FnFoo
-  #- @foo childof FnBar
+  #- @"foo(10)" ref/call FnFoo
+  #- @"foo(10)" childof FnBar
   A().foo(10)

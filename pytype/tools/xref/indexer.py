@@ -66,6 +66,17 @@ def get_location(node):
   return source.Location(node.lineno, node.col_offset)
 
 
+def get_end_location(node):
+  # These attributes are new in Python 3.8.
+  if sys.version_info[:2] >= (3, 8):
+    end_lineno = node.end_lineno
+    end_col_offset = node.end_col_offset
+  else:
+    end_lineno = node.lineno
+    end_col_offset = node.col_offset
+  return source.Location(end_lineno, end_col_offset)
+
+
 def match_opcodes(opcode_traces, lineno, op_match_list):
   """Get all opcodes matching op_match_list on a given line.
 
@@ -369,6 +380,7 @@ class Funcall:
   scope: str
   func: str
   location: source.Location
+  end_location: source.Location
   args: List[Any]
   return_type: str
 
@@ -663,8 +675,10 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     return self.add_local_ref(node, **kwargs)
 
   def add_call(self, node, name, func, arg_varnames, return_type):
+    start = get_location(node)
+    end = get_end_location(node)
     self.calls.append(
-        Funcall(name, self.scope_id(), func, get_location(node), arg_varnames,
+        Funcall(name, self.scope_id(), func, start, end, arg_varnames,
                 return_type))
 
   def add_attr(self, node):

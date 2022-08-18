@@ -26,13 +26,13 @@ class C(B):
   #- FnBaz param.0 ArgSelf
   def baz(self):
     #- @self ref ArgSelf
-    #- @foo ref/call FnFoo
+    #- @"foo(10)" ref/call FnFoo
     return self.foo(10)
 
 
 #- @foo ref FnFoo
-#- @foo ref/call FnFoo
+#- @"foo(10)" ref/call FnFoo
 x = B().foo(10)
 #- @bar ref FnBar
-#- @bar ref/call FnBar
+#- @"bar()" ref/call FnBar
 y = C.bar()
