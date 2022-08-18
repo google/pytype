@@ -581,7 +581,10 @@ class VirtualMachine:
   ) -> Tuple[frame_state.FrameState, cfg.Variable]:
     """Load an item out of locals, globals, or builtins."""
     store.load_lazy_attribute(name)
-    member = store.members[name]
+    try:
+      member = store.members[name]
+    except KeyError:
+      return state, self._load_annotation(state.node, name, store)
     bindings = member.Bindings(state.node)
     if (not bindings and self._late_annotations_stack and member.bindings and
         all(isinstance(v, abstract.Module) for v in member.data)):
@@ -590,7 +593,7 @@ class VirtualMachine:
       # that modules are always visible.
       bindings = member.bindings
     if not bindings:
-      raise KeyError(name)
+      return state, self._load_annotation(state.node, name, store)
     ret = self.ctx.program.NewVariable()
     self._filter_none_and_paste_bindings(
         state.node, bindings, ret,
@@ -610,12 +613,7 @@ class VirtualMachine:
     Returns:
       A tuple of the state and the value (cfg.Variable)
     """
-    try:
-      return self.load_from(state, self.frame.f_locals, name)
-    except KeyError:
-      # A variable has been declared but not defined, e.g.,
-      #   constant: str
-      return state, self._load_annotation(state.node, name)
+    return self.load_from(state, self.frame.f_locals, name)
 
   def load_global(self, state, name):
     # The concrete value of typing.TYPE_CHECKING should be preserved; otherwise,
@@ -648,8 +646,8 @@ class VirtualMachine:
     self.trace_opcode(op, raw_const, const)
     return state.push(const)
 
-  def _load_annotation(self, node, name):
-    annots = abstract_utils.get_annotations_dict(self.frame.f_locals.members)
+  def _load_annotation(self, node, name, store):
+    annots = abstract_utils.get_annotations_dict(store.members)
     if annots:
       typ = annots.get_type(node, name)
       if typ:
