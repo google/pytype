@@ -1376,7 +1376,7 @@ class ClassTest(parser_test_base.ParserTestBase):
 
       T = TypeVar('T')
 
-      class Foo(Protocol, Generic[T]): ...
+      class Foo(Generic[T], Protocol): ...
     """)
 
   def test_typing_extensions_parameterized_protocol(self):
@@ -1394,7 +1394,7 @@ class ClassTest(parser_test_base.ParserTestBase):
 
       T = TypeVar('T')
 
-      class Foo(typing.Protocol, Generic[T]): ...
+      class Foo(Generic[T], typing.Protocol): ...
     """)
 
   def test_bad_typevar_in_mutation(self):

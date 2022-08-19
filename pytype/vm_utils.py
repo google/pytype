@@ -422,8 +422,8 @@ def _expand_generic_protocols(node, bases, ctx):
                                           ctx, b.data.template), {b}, node)
         else:
           protocol_base.PasteBinding(b)
-      expanded_bases.append(protocol_base)
       expanded_bases.append(generic_base)
+      expanded_bases.append(protocol_base)
     else:
       expanded_bases.append(base)
   return expanded_bases

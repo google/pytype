@@ -28,12 +28,12 @@ def get_bases(bases: List[pytd.Type]) -> List[pytd.Type]:
   namedtuple_index = None
   for i, p in enumerate(bases):
     if p.name and pytd_utils.MatchesFullName(p, _PROTOCOL_ALIASES):
-      bases_out.append(pytd.NamedType("typing.Protocol"))
       if isinstance(p, pytd.GenericType):
         # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
         # `Protocol, Generic[T, S, ...]`."
         # https://www.python.org/dev/peps/pep-0544/#generic-protocols
         bases_out.append(p.Replace(base_type=pytd.NamedType("typing.Generic")))
+      bases_out.append(pytd.NamedType("typing.Protocol"))
     elif isinstance(p, pytd.NamedType) and p.name == "typing.NamedTuple":
       if namedtuple_index is not None:
         raise ParseError("cannot inherit from bare NamedTuple more than once")
