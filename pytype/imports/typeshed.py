@@ -8,6 +8,7 @@ from typing import Sequence
 from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
+from pytype.imports import base
 from pytype.imports import builtin_stubs
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
@@ -185,11 +186,11 @@ class Typeshed:
     """
     return self._root
 
-  def get_module_file(self, toplevel, module, version):
+  def get_module_file(self, namespace, module, version):
     """Get the contents of a typeshed .pyi file.
 
     Arguments:
-      toplevel: the top-level directory within typeshed/
+      namespace: selects a top-level directory within typeshed/
         Allowed values are "stdlib" and "third_party".
         "third_party" corresponds to the the typeshed/stubs/ directory.
       module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
@@ -205,15 +206,15 @@ class Typeshed:
     module_parts = module.split(".")
     module_path = path_utils.join(*module_parts)
     paths = []
-    if toplevel == "stdlib":
+    if namespace == "stdlib":
       # Stubs for the stdlib 'foo' module are located in stdlib/foo.
       # The VERSIONS file tells us whether stdlib/foo exists and what versions
       # it targets.
-      path = path_utils.join(toplevel, module_path)
+      path = path_utils.join(namespace, module_path)
       if (self._is_module_in_typeshed(module_parts, version) or
           path in self.missing):
         paths.append(path)
-    elif toplevel == "third_party":
+    elif namespace == "third_party":
       # For third-party modules, we grab the alphabetically first package that
       # provides a module with the specified name in the right version.
       # TODO(rechen): It would be more correct to check what packages are
@@ -357,7 +358,7 @@ def _get_typeshed():
   return _typeshed
 
 
-class TypeshedLoader:
+class TypeshedLoader(base.BuiltinLoader):
   """Load modules from typeshed."""
 
   def __init__(self, options):
@@ -365,11 +366,11 @@ class TypeshedLoader:
     self.typeshed = _get_typeshed()
     assert self.typeshed is not None
 
-  def load_module(self, pyi_subdir, module_name):
+  def load_module(self, namespace, module_name):
     """Load and parse a *.pyi from typeshed.
 
     Args:
-      pyi_subdir: the directory where the module should be found.
+      namespace: one of "stdlib" or "third_party"
       module_name: the module name (without any file extension or
           "__init__" suffix).
 
@@ -379,7 +380,7 @@ class TypeshedLoader:
     """
     try:
       filename, src = self.typeshed.get_module_file(
-          pyi_subdir, module_name, self.options.python_version)
+          namespace, module_name, self.options.python_version)
     except OSError:
       return None, None
 

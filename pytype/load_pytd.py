@@ -600,16 +600,16 @@ class Loader:
   def has_module_prefix(self, prefix):
     return prefix in self._prefixes
 
-  def _load_builtin(self, subdir, module_name):
+  def _load_builtin(self, namespace, module_name):
     """Load a pytd/pyi that ships with pytype or typeshed."""
     loaders = []
     # Try our own type definitions first, then typeshed's.
-    if subdir in ("builtins", "stdlib"):
+    if namespace in ("builtins", "stdlib"):
       loaders.append(self._builtin_loader)
-    if self.options.typeshed and subdir in ("stdlib", "third_party"):
+    if self.options.typeshed and namespace in ("stdlib", "third_party"):
       loaders.append(self._typeshed_loader)
     for loader in loaders:
-      filename, mod_ast = loader.load_module(subdir, module_name)
+      filename, mod_ast = loader.load_module(namespace, module_name)
       if mod_ast:
         mod = ModuleInfo.internal_stub(module_name, filename)
         return self.load_module(mod, mod_ast=mod_ast)

@@ -1,6 +1,7 @@
 """Utilities for parsing pytd files for builtins."""
 
 from pytype import pytype_source_utils
+from pytype.imports import base
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import visitors
@@ -93,7 +94,7 @@ def GetPredefinedFile(stubs_subdir, module, extension=".pytd",
   return path, pytype_source_utils.load_text_file(path)
 
 
-class BuiltinLoader:
+class BuiltinLoader(base.BuiltinLoader):
   """Load builtins from the pytype source tree."""
 
   def __init__(self, options):
@@ -111,16 +112,16 @@ class BuiltinLoader:
     assert ast.name == module
     return ast
 
-  def load_module(self, builtin_dir, module_name):
+  def load_module(self, namespace, module_name):
     """Load a stub that ships with pytype."""
-    mod = self._parse_predefined(builtin_dir, module_name)
+    mod = self._parse_predefined(namespace, module_name)
     # For stubs in pytype's stubs/ directory, we use the module name prefixed
     # with "pytd:" for the filename. Package filenames need an "/__init__.pyi"
     # suffix for Module.is_package to recognize them.
     if mod:
       filename = module_name
     else:
-      mod = self._parse_predefined(builtin_dir, module_name, as_package=True)
+      mod = self._parse_predefined(namespace, module_name, as_package=True)
       filename = path_utils.join(module_name, "__init__.pyi")
     return filename, mod
 
