@@ -111,7 +111,7 @@ class BuiltinLoader:
     assert ast.name == module
     return ast
 
-  def get_builtin(self, builtin_dir, module_name):
+  def load_module(self, builtin_dir, module_name):
     """Load a stub that ships with pytype."""
     mod = self._parse_predefined(builtin_dir, module_name)
     # For stubs in pytype's stubs/ directory, we use the module name prefixed

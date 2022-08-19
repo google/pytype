@@ -189,10 +189,9 @@ class Typeshed:
     """Get the contents of a typeshed .pyi file.
 
     Arguments:
-      toplevel: the top-level directory within typeshed/, "builtins", "stdlib",
-        or "third_party". "builtins" doesn't exist but is requested because
-        there exists a pytype pyi directory with this name, and "third_party"
-        corresponds to the the typeshed/stubs/ directory.
+      toplevel: the top-level directory within typeshed/
+        Allowed values are "stdlib" and "third_party".
+        "third_party" corresponds to the the typeshed/stubs/ directory.
       module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
         it's a submodule. Package names should omit the "__init__" suffix (e.g.,
         pass in "os", not "os.__init__").
@@ -358,28 +357,32 @@ def _get_typeshed():
   return _typeshed
 
 
-def parse_type_definition(pyi_subdir, module, options):
-  """Load and parse a *.pyi from typeshed.
+class TypeshedLoader:
+  """Load modules from typeshed."""
 
-  Args:
-    pyi_subdir: the directory where the module should be found.
-    module: the module name (without any file extension or "__init__" suffix).
-    options: the parsing options.
+  def __init__(self, options):
+    self.options = options
+    self.typeshed = _get_typeshed()
+    assert self.typeshed is not None
 
-  Returns:
-    None if the module doesn't have a definition.
-    Else a tuple of the filename and the AST of the module.
-  """
-  typeshed = _get_typeshed()
+  def load_module(self, pyi_subdir, module_name):
+    """Load and parse a *.pyi from typeshed.
 
-  assert typeshed is not None
+    Args:
+      pyi_subdir: the directory where the module should be found.
+      module_name: the module name (without any file extension or
+          "__init__" suffix).
 
-  try:
-    filename, src = typeshed.get_module_file(
-        pyi_subdir, module, options.python_version)
-  except OSError:
-    return None
+    Returns:
+      (None, None) if the module doesn't have a definition.
+      Else a tuple of the filename and the AST of the module.
+    """
+    try:
+      filename, src = self.typeshed.get_module_file(
+          pyi_subdir, module_name, self.options.python_version)
+    except OSError:
+      return None, None
 
-  ast = parser.parse_string(src, filename=filename, name=module,
-                            options=options)
-  return filename, ast
+    ast = parser.parse_string(src, filename=filename, name=module_name,
+                              options=self.options)
+    return filename, ast
