@@ -12,8 +12,23 @@ def __getattr__(name) -> Any: ...
 """
 
 
+class FakeOptions:
+  """Fake options."""
+
+  def __init__(self):
+    self.open_function = open
+
+
 class ImportTest(test_base.BaseTest):
   """Tests for import."""
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls.builder = imports_map_loader.ImportsMapBuilder(FakeOptions())
+
+  def build_imports_map(self, path):
+    return self.builder.build_from_file(path)
 
   def test_basic_import(self):
     ty = self.Infer("""
@@ -748,8 +763,7 @@ class ImportTest(test_base.BaseTest):
       imports_map_filename = d.create_file("imports_map.txt", """
           foo %s
       """ % foo_filename)
-      imports_map = imports_map_loader.build_imports_map(
-          imports_map_filename)
+      imports_map = self.build_imports_map(imports_map_filename)
       ty = self.Infer("""
         from foo import bar
       """, deep=False, imports_map=imports_map,
@@ -965,7 +979,7 @@ class ImportTest(test_base.BaseTest):
         {file_utils.replace_separator('mod/__init__')} {init_path}
         {file_utils.replace_separator('mod/submod')} {submod_path}
       """)
-      imports_map = imports_map_loader.build_imports_map(imports_info)
+      imports_map = self.build_imports_map(imports_info)
       init_pyi = self.Infer(
           init_py % "", imports_map=imports_map, module_name="mod.__init__")
     self.assertTypesMatchPytd(init_pyi, """
@@ -1011,7 +1025,7 @@ class ImportTest(test_base.BaseTest):
         {file_utils.replace_separator('mod/submod')} {submod_path}
         {file_utils.replace_separator('mod/__init__')} {init_path}
       """)
-      imports_map = imports_map_loader.build_imports_map(imports_info)
+      imports_map = self.build_imports_map(imports_info)
       submod_pyi = self.Infer(submod_py % "", imports_map=imports_map,
                               module_name="mod.submod")
       with open(submod_path, "w") as f:
@@ -1325,7 +1339,7 @@ class ImportTest(test_base.BaseTest):
       imports_info = d.create_file(
           "imports_info",
           f"email/_header_value_parser {empty}")
-      imports_map = imports_map_loader.build_imports_map(imports_info)
+      imports_map = self.build_imports_map(imports_info)
       self.Check("""
         from email import message_from_bytes
       """, imports_map=imports_map)
@@ -1340,7 +1354,7 @@ class ImportTest(test_base.BaseTest):
         foo {foo}
         {file_utils.replace_separator('foo/bar')} {foo_bar}
       """)
-      imports_map = imports_map_loader.build_imports_map(imports_info)
+      imports_map = self.build_imports_map(imports_info)
       # When both foo.py and a foo/ package exist, the latter shadows the
       # former, so `import foo` gets you the (empty) foo/__init__.py.
       self.CheckWithErrors("""
@@ -1360,7 +1374,7 @@ class ImportTest(test_base.BaseTest):
         foo {foo}
         {file_utils.replace_separator('foo/bar')} {foo_bar}
       """)
-      imports_map = imports_map_loader.build_imports_map(imports_info)
+      imports_map = self.build_imports_map(imports_info)
       self.CheckWithErrors("""
         from foo import baz  # import-error
       """, imports_map=imports_map)
@@ -1380,7 +1394,7 @@ class ImportTest(test_base.BaseTest):
             {file_utils.replace_separator('foo/bar')} {foo_bar}
             {file_utils.replace_separator('foo/baz')} {foo_baz}
           """)
-      imports_map = imports_map_loader.build_imports_map(imports_info)
+      imports_map = self.build_imports_map(imports_info)
       self.Check("""
         from foo import bar
       """, imports_map=imports_map)

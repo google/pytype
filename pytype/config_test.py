@@ -231,6 +231,17 @@ class PostprocessorTest(unittest.TestCase):
     options = config.Options.create(open_function=open_function)
     self.assertIs(options.open_function, open_function)
 
+  def test_imports_map_items(self):
+    items = [("foo", "/dev/null"), ("bar", "/dev/null")]
+    expected = {"foo": "/dev/null", "bar": "/dev/null"}
+    options = config.Options.create(imports_map_items=items)
+    self.assertCountEqual(options.imports_map, expected)
+
+  def test_imports_map_conflict(self):
+    with self.assertRaises(config.PostprocessingError):
+      config.Options.create(imports_map="/foo/bar",
+                            imports_map_items=[("foo", "/dev/null")])
+
   def test_pickle_metadata(self):
     input_options = types.SimpleNamespace(pickle_metadata="meta,data",)
     config.Postprocessor({"pickle_metadata"}, input_options).process()
