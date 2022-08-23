@@ -71,7 +71,8 @@ class Parser:
         names.add(k)
         if from_strings:
           setattr(args, k, convert_string(getattr(args, k)))
-    pytype_config.Postprocessor(names, args).process()
+    opt_map = {k: f"--{k.replace('_', '-')}" for k in names}
+    pytype_config.Postprocessor(names, opt_map, args).process()
 
   def get_pytype_kwargs(self, args):
     """Return a set of kwargs to pass to pytype.config.Options.

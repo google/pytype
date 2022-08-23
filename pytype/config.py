@@ -80,8 +80,11 @@ class Options:
       if not hasattr(options, name):
         setattr(options, name, default)
     names = set(vars(options))
+    opt_map = {k: v.option_strings[-1]
+               for k, v in argument_parser.actions.items()
+               if v.option_strings}
     try:
-      Postprocessor(names, options, self).process()
+      Postprocessor(names, opt_map, options, self).process()
     except PostprocessingError as e:
       if command_line:
         argument_parser.error(utils.message(e))
@@ -422,8 +425,9 @@ class PostprocessingError(Exception):
 class Postprocessor:
   """Postprocesses configuration options."""
 
-  def __init__(self, names, input_options, output_options=None):
+  def __init__(self, names, opt_map, input_options, output_options=None):
     self.names = names
+    self.opt_map = opt_map
     self.input_options = input_options
     # If output not specified, process in-place.
     self.output_options = output_options or input_options
@@ -460,12 +464,18 @@ class Postprocessor:
         dependencies = uses.lookup.get(f.processor.__name__)
         if dependencies:
           # that method has a @uses decorator
-          f.incoming = tuple(nodes[use] for use in dependencies)
+          f.incoming = tuple(nodes[use.lstrip("+-")] for use in dependencies)
 
     # process the option list in the right order:
     for node in cfg_utils.topological_sort(nodes.values()):
       value = getattr(self.input_options, node.name)
       if node.processor is not None:
+        dependencies = uses.lookup.get(node.processor.__name__, [])
+        for d in dependencies:
+          if d.startswith("-"):
+            self._check_exclusive(node.name, value, d.lstrip("-"))
+          elif d.startswith("+"):
+            self._check_required(node.name, value, d.lstrip("+"))
         node.processor(value)
       else:
         setattr(self.output_options, node.name, value)
@@ -475,43 +485,65 @@ class Postprocessor:
       message = f"argument --{key}: {message}"
     raise PostprocessingError(message)
 
-  @uses(["output"])
+  def _display_opt(self, opt):
+    if opt in ("input", "output"):
+      return f"an {opt} file"
+    elif opt in _LIBRARY_ONLY_OPTIONS:
+      return f"library option {opt}"
+    else:
+      return self.opt_map[opt]
+
+  def _check_exclusive(self, name, value, existing):
+    """Check for argument conflicts."""
+    if existing in _LIBRARY_ONLY_OPTIONS:
+      # Library-only options are often used as an alternate way of setting a
+      # flag option, so they are part of the @uses dependencies of _store_option
+      # So we need to check them in the input, not the output - they are
+      # typically being written to the option they are being checked against.
+      existing_val = getattr(self.input_options, existing, None)
+    else:
+      existing_val = getattr(self.output_options, existing, None)
+    if existing == "pythonpath":
+      is_set = existing_val not in (None, "", [], [""])
+    else:
+      is_set = bool(existing_val)
+    if value and is_set:
+      opt = self._display_opt(existing)
+      self.error(f"Not allowed with {opt}", name)
+
+  def _check_required(self, name, value, existing):
+    """Check for required args."""
+    if value and not getattr(self.output_options, existing, None):
+      opt = self._display_opt(existing)
+      self.error(f"Can't use without {opt}", name)
+
+  @uses(["-output"])
   def _store_check(self, check):
     if check is None:
       self.output_options.check = not self.output_options.output
-    elif self.output_options.output:
-      self.error("Not allowed with an output file", "check")
     else:
       self.output_options.check = check
 
-  @uses(["output"])
+  @uses(["+output"])
   def _store_pickle_output(self, pickle_output):
     if pickle_output:
-      if self.output_options.output is None:
-        self.error("Can't use without --output", "pickle-output")
-      elif not file_utils.is_pickle(self.output_options.output):
+      if not file_utils.is_pickle(self.output_options.output):
         self.error(f"Must specify {file_utils.PICKLE_EXT} file for --output",
                    "pickle-output")
     self.output_options.pickle_output = pickle_output
 
-  @uses(["output", "pickle_output"])
+  @uses(["output", "+pickle_output"])
   def _store_verify_pickle(self, verify_pickle):
     if not verify_pickle:
       self.output_options.verify_pickle = None
-    elif not self.output_options.pickle_output:
-      self.error("Can't use without --pickle-output", "verify-pickle")
     else:
       self.output_options.verify_pickle = self.output_options.output.replace(
           file_utils.PICKLE_EXT, ".pyi")
 
-  @uses(["input", "show_config", "pythonpath", "version"])
+  @uses(["-input", "show_config", "-pythonpath", "version"])
   def _store_generate_builtins(self, generate_builtins):
     """Store the generate-builtins option."""
     if generate_builtins:
-      if self.output_options.input:
-        self.error("Not allowed with an input file", "generate-builtins")
-      if self.output_options.pythonpath != [""]:
-        self.error("Not allowed with --pythonpath", "generate-builtins")
       # Set the default pythonpath to [] rather than [""]
       self.output_options.pythonpath = []
     elif (not self.output_options.input and
@@ -579,12 +611,10 @@ class Postprocessor:
     else:
       self.output_options.disable = []
 
-  @uses(["disable"])
+  @uses(["-disable"])
   def _store_enable_only(self, enable_only):
     """Process the 'enable-only' option."""
     if enable_only:
-      if self.output_options.disable:
-        self.error("Only one of 'disable' or 'enable-only' can be specified.")
       self.output_options.disable = list(
           errors.get_error_names_set() - set(enable_only.split(",")))
     else:
@@ -592,29 +622,20 @@ class Postprocessor:
       # expect a list.
       self.output_options.enable_only = []
 
-  @uses(["pythonpath", "output", "verbosity", "open_function",
-         "imports_map_items"
+  @uses(["-pythonpath", "output", "verbosity", "open_function",
+         "-imports_map_items"
          ])
   def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
     if imports_map:
-      if self.output_options.pythonpath not in ([], [""]):
-        self.error("Not allowed with --pythonpath", "imports_info")
-      if self.output_options.imports_map:
-        # We have already set the imports map from imports_map_items
-        self.error("Not allowed with imports_map_items", "imports_info")
-
       with verbosity_from(self.output_options):
         builder = imports_map_loader.ImportsMapBuilder(self.output_options)
         self.output_options.imports_map = builder.build_from_file(imports_map)
 
-  @uses(["pythonpath", "output", "verbosity", "open_function"])
+  @uses(["-pythonpath", "output", "verbosity", "open_function"])
   def _store_imports_map_items(self, imports_map_items):
     """Postprocess imports_maps_items."""
     if imports_map_items:
-      if self.output_options.pythonpath not in ([], [""]):
-        self.error("Not allowed with --pythonpath", "imports_map_items")
-
       with verbosity_from(self.output_options):
         builder = imports_map_loader.ImportsMapBuilder(self.output_options)
         self.output_options.imports_map = builder.build_from_items(
@@ -623,11 +644,8 @@ class Postprocessor:
       # This option sets imports_map first, before _store_imports_map.
       self.output_options.imports_map = None
 
-  @uses(["output_cfg"])
+  @uses(["-output_cfg"])
   def _store_output_typegraph(self, output_typegraph):
-    if self.output_options.output_cfg and output_typegraph:
-      self.error(
-          "Can output CFG or typegraph, but not both", "output-typegraph")
     self.output_options.output_typegraph = output_typegraph
 
   @uses(["report_errors"])
