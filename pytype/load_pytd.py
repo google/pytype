@@ -480,6 +480,16 @@ class Loader:
         # defined in the __init__ file.
         assert isinstance(dep_ast, _AST)
         attr = dep_ast.Get(full_name)
+        if attr is None:
+          # This hack is needed to support circular imports like the one here:
+          # https://github.com/python/typeshed/blob/875f0ca7fcc68e7bd6c9b807cdceeff8a6f734c8/stdlib/sqlite3/dbapi2.pyi#L258
+          # sqlite3.__init__ does a star import from sqlite3.dbapi2, and
+          # sqlite3.dbapi2 imports local names from the sqlite3 namespace to
+          # avoid name collisions.
+          maybe_star_import = dep_ast.Get(f"{name}.{ast_name}.*")
+          if (isinstance(maybe_star_import, pytd.Alias) and
+              maybe_star_import.type.name == f"{ast_name}.*"):
+            attr = lookup_ast.Get(f"{ast_name}.{base_name}")
         # 'from . import submodule as submodule' produces
         # Alias(submodule, NamedType(submodule)).
         if attr is None or (
