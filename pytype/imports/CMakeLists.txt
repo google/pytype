@@ -48,6 +48,7 @@ py_library(
   SRCS
     builtin_stubs.py
   DEPS
+    .base
     pytype.utils
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
@@ -60,11 +61,11 @@ py_library(
   SRCS
     typeshed.py
   DEPS
+    .base
     .builtin_stubs
     pytype.utils
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
-    pytype.pytd.pytd
 )
 
 py_library(

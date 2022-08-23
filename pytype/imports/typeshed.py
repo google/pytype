@@ -8,6 +8,7 @@ from typing import Sequence
 from pytype import module_utils
 from pytype import pytype_source_utils
 from pytype import utils
+from pytype.imports import base
 from pytype.imports import builtin_stubs
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
@@ -185,14 +186,13 @@ class Typeshed:
     """
     return self._root
 
-  def get_module_file(self, toplevel, module, version):
+  def get_module_file(self, namespace, module, version):
     """Get the contents of a typeshed .pyi file.
 
     Arguments:
-      toplevel: the top-level directory within typeshed/, "builtins", "stdlib",
-        or "third_party". "builtins" doesn't exist but is requested because
-        there exists a pytype pyi directory with this name, and "third_party"
-        corresponds to the the typeshed/stubs/ directory.
+      namespace: selects a top-level directory within typeshed/
+        Allowed values are "stdlib" and "third_party".
+        "third_party" corresponds to the the typeshed/stubs/ directory.
       module: module name (e.g., "sys" or "__builtins__"). Can contain dots, if
         it's a submodule. Package names should omit the "__init__" suffix (e.g.,
         pass in "os", not "os.__init__").
@@ -206,15 +206,15 @@ class Typeshed:
     module_parts = module.split(".")
     module_path = path_utils.join(*module_parts)
     paths = []
-    if toplevel == "stdlib":
+    if namespace == "stdlib":
       # Stubs for the stdlib 'foo' module are located in stdlib/foo.
       # The VERSIONS file tells us whether stdlib/foo exists and what versions
       # it targets.
-      path = path_utils.join(toplevel, module_path)
+      path = path_utils.join(namespace, module_path)
       if (self._is_module_in_typeshed(module_parts, version) or
           path in self.missing):
         paths.append(path)
-    elif toplevel == "third_party":
+    elif namespace == "third_party":
       # For third-party modules, we grab the alphabetically first package that
       # provides a module with the specified name in the right version.
       # TODO(rechen): It would be more correct to check what packages are
@@ -358,28 +358,32 @@ def _get_typeshed():
   return _typeshed
 
 
-def parse_type_definition(pyi_subdir, module, options):
-  """Load and parse a *.pyi from typeshed.
+class TypeshedLoader(base.BuiltinLoader):
+  """Load modules from typeshed."""
 
-  Args:
-    pyi_subdir: the directory where the module should be found.
-    module: the module name (without any file extension or "__init__" suffix).
-    options: the parsing options.
+  def __init__(self, options):
+    self.options = options
+    self.typeshed = _get_typeshed()
+    assert self.typeshed is not None
 
-  Returns:
-    None if the module doesn't have a definition.
-    Else a tuple of the filename and the AST of the module.
-  """
-  typeshed = _get_typeshed()
+  def load_module(self, namespace, module_name):
+    """Load and parse a *.pyi from typeshed.
 
-  assert typeshed is not None
+    Args:
+      namespace: one of "stdlib" or "third_party"
+      module_name: the module name (without any file extension or
+          "__init__" suffix).
 
-  try:
-    filename, src = typeshed.get_module_file(
-        pyi_subdir, module, options.python_version)
-  except OSError:
-    return None
+    Returns:
+      (None, None) if the module doesn't have a definition.
+      Else a tuple of the filename and the AST of the module.
+    """
+    try:
+      filename, src = self.typeshed.get_module_file(
+          namespace, module_name, self.options.python_version)
+    except OSError:
+      return None, None
 
-  ast = parser.parse_string(src, filename=filename, name=module,
-                            options=options)
-  return filename, ast
+    ast = parser.parse_string(src, filename=filename, name=module_name,
+                              options=self.options)
+    return filename, ast

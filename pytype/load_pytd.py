@@ -320,8 +320,9 @@ class Loader:
     self.builtins = self._modules["builtins"].ast
     self.typing = self._modules["typing"].ast
     self._module_loader = module_loader.ModuleLoader(options)
-    self._builtin_loader = builtin_stubs.BuiltinLoader(
-        parser.PyiOptions.from_toplevel_options(options))
+    pyi_options = parser.PyiOptions.from_toplevel_options(options)
+    self._builtin_loader = builtin_stubs.BuiltinLoader(pyi_options)
+    self._typeshed_loader = typeshed.TypeshedLoader(pyi_options)
     self._resolver = _Resolver(self.builtins)
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
@@ -479,6 +480,16 @@ class Loader:
         # defined in the __init__ file.
         assert isinstance(dep_ast, _AST)
         attr = dep_ast.Get(full_name)
+        if attr is None:
+          # This hack is needed to support circular imports like the one here:
+          # https://github.com/python/typeshed/blob/875f0ca7fcc68e7bd6c9b807cdceeff8a6f734c8/stdlib/sqlite3/dbapi2.pyi#L258
+          # sqlite3.__init__ does a star import from sqlite3.dbapi2, and
+          # sqlite3.dbapi2 imports local names from the sqlite3 namespace to
+          # avoid name collisions.
+          maybe_star_import = dep_ast.Get(f"{name}.{ast_name}.*")
+          if (isinstance(maybe_star_import, pytd.Alias) and
+              maybe_star_import.type.name == f"{ast_name}.*"):
+            attr = lookup_ast.Get(f"{ast_name}.{base_name}")
         # 'from . import submodule as submodule' produces
         # Alias(submodule, NamedType(submodule)).
         if attr is None or (
@@ -599,29 +610,19 @@ class Loader:
   def has_module_prefix(self, prefix):
     return prefix in self._prefixes
 
-  def _load_builtin(self, subdir, module_name, third_party_only=False):
+  def _load_builtin(self, namespace, module_name):
     """Load a pytd/pyi that ships with pytype or typeshed."""
-    # Try our own type definitions first.
-    if not third_party_only:
-      filename, mod_ast = self._builtin_loader.get_builtin(subdir, module_name)
+    loaders = []
+    # Try our own type definitions first, then typeshed's.
+    if namespace in ("builtins", "stdlib"):
+      loaders.append(self._builtin_loader)
+    if self.options.typeshed and namespace in ("stdlib", "third_party"):
+      loaders.append(self._typeshed_loader)
+    for loader in loaders:
+      filename, mod_ast = loader.load_module(namespace, module_name)
       if mod_ast:
-        return self.load_module(
-            ModuleInfo.internal_stub(module_name, filename),
-            mod_ast=mod_ast)
-    if self.options.typeshed:
-      return self._load_typeshed_builtin(subdir, module_name)
-    return None
-
-  def _load_typeshed_builtin(self, subdir, module_name):
-    """Load a pyi from typeshed."""
-    loaded = typeshed.parse_type_definition(
-        subdir, module_name,
-        parser.PyiOptions.from_toplevel_options(self.options))
-    if loaded:
-      filename, mod_ast = loaded
-      return self.load_module(
-          ModuleInfo.internal_stub(module_name, filename),
-          mod_ast=mod_ast)
+        mod = ModuleInfo.internal_stub(module_name, filename)
+        return self.load_module(mod, mod_ast=mod_ast)
     return None
 
   def _import_module_by_name(self, module_name) -> Optional[_AST]:
@@ -676,7 +677,7 @@ class Loader:
       return mod
 
     # Third party modules from typeshed (typically site-packages) come last.
-    mod = self._load_builtin("third_party", module_name, third_party_only=True)
+    mod = self._load_builtin("third_party", module_name)
     if mod:
       return mod
 

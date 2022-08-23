@@ -64,3 +64,11 @@ class ModuleLoader(abc.ABC):
   @abc.abstractmethod
   def log_module_not_found(self, module_name: str):
     raise NotImplementedError()
+
+
+class BuiltinLoader(abc.ABC):
+  """Base class for predefined stub loaders (builtins/stdlib/typeshed)."""
+
+  @abc.abstractmethod
+  def load_module(self, namespace: str, module_name: str) -> pytd.TypeDeclUnit:
+    raise NotImplementedError()

@@ -29,7 +29,9 @@ uses = utils.AnnotatingDecorator()  # model relationship between options
 
 _LIBRARY_ONLY_OPTIONS = {
     # a custom file opening function that will be used in place of builtins.open
-    "open_function": open
+    "open_function": open,
+    # Imports map as a list of tuples.
+    "imports_map_items": None,
 }
 
 
@@ -590,17 +592,35 @@ class Postprocessor:
       # expect a list.
       self.output_options.enable_only = []
 
-  @uses(["pythonpath", "output", "verbosity", "open_function"])
+  @uses(["pythonpath", "output", "verbosity", "open_function",
+         "imports_map_items"
+         ])
   def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
     if imports_map:
       if self.output_options.pythonpath not in ([], [""]):
         self.error("Not allowed with --pythonpath", "imports_info")
+      if self.output_options.imports_map:
+        # We have already set the imports map from imports_map_items
+        self.error("Not allowed with imports_map_items", "imports_info")
 
       with verbosity_from(self.output_options):
-        self.output_options.imports_map = imports_map_loader.build_imports_map(
-            imports_map, self.output_options.open_function)
+        builder = imports_map_loader.ImportsMapBuilder(self.output_options)
+        self.output_options.imports_map = builder.build_from_file(imports_map)
+
+  @uses(["pythonpath", "output", "verbosity", "open_function"])
+  def _store_imports_map_items(self, imports_map_items):
+    """Postprocess imports_maps_items."""
+    if imports_map_items:
+      if self.output_options.pythonpath not in ([], [""]):
+        self.error("Not allowed with --pythonpath", "imports_map_items")
+
+      with verbosity_from(self.output_options):
+        builder = imports_map_loader.ImportsMapBuilder(self.output_options)
+        self.output_options.imports_map = builder.build_from_items(
+            imports_map_items)
     else:
+      # This option sets imports_map first, before _store_imports_map.
       self.output_options.imports_map = None
 
   @uses(["output_cfg"])

@@ -105,13 +105,21 @@ class FillInLocalPointers(Visitor):
       attribute. Call VerifyLookup() on your tree if you want to be sure that
       all of the cls pointers have been filled in.
     """
-    for prefix, cls in self._Lookup(node):
-      if isinstance(cls, pytd.Class):
-        node.cls = cls
-        return
-      else:
-        logging.warning("Couldn't resolve %s: Not a class: %s",
-                        prefix + node.name, type(cls))
+    nodes = [node]
+    while nodes:
+      cur_node = nodes.pop(0)
+      for prefix, cls in self._Lookup(cur_node):
+        if isinstance(cls, pytd.Alias) and isinstance(cls.type, pytd.ClassType):
+          if cls.type.cls:
+            cls = cls.type.cls
+          else:
+            nodes.append(cls.type)
+        if isinstance(cls, pytd.Class):
+          node.cls = cls
+          return
+        else:
+          logging.warning("Couldn't resolve %s: Not a class: %s",
+                          prefix + node.name, type(cls))
 
 
 class _RemoveTypeParametersFromGenericAny(Visitor):

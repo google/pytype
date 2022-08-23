@@ -46,7 +46,7 @@ class ProtocolTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Generic, Protocol, TypeVar
       T = TypeVar("T")
-      class Foo(Protocol, Generic[T]): ...
+      class Foo(Generic[T], Protocol): ...
     """)
 
   def test_generic_alias(self):
@@ -62,7 +62,7 @@ class ProtocolTest(test_base.BaseTest):
       from typing import Generic, Protocol, TypeVar
       T = TypeVar("T")
       Foo = Protocol[T]
-      class Bar(Protocol, Generic[T]): ...
+      class Bar(Generic[T], Protocol): ...
     """)
     with file_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
@@ -77,7 +77,7 @@ class ProtocolTest(test_base.BaseTest):
       import foo
       from typing import Generic, Protocol, TypeVar
       T = TypeVar('T')
-      class Baz(Protocol, Generic[T]): ...
+      class Baz(Generic[T], Protocol): ...
     """)
 
   def test_self_referential_protocol(self):

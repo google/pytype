@@ -1419,6 +1419,13 @@ class BareAnnotationTest(test_base.BaseTest):
         def __init__(self) -> None: ...
     """)
 
+  def test_global(self):
+    self.Check("""
+      x: int
+      def f() -> int:
+        return x
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
