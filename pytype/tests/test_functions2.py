@@ -367,6 +367,17 @@ class TestFunctions(test_base.BaseTest):
             foo.g(**kws)
       """)
 
+  def test_filter_none(self):
+    self.Check("""
+      import copy
+      from typing import Dict, Optional, Union
+      X = {'a': 1}
+      def f(x: Optional[Dict[str, bytes]] = None):
+        y = x or X
+        z = copy.copy(y)
+        assert_type(z, Union[Dict[str, int], Dict[str, bytes]])
+    """)
+
 
 class TestFunctionsPython3Feature(test_base.BaseTest):
   """Tests for functions."""

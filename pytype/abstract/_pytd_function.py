@@ -683,17 +683,21 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
   def call_with_args(self, node, func, arg_dict, substs, ret_map, variable):
     """Call this signature. Used by PyTDFunction."""
-    t = (self.pytd_sig.return_type, tuple(substs))
-    sources = [func]
-    if variable:
-      # It does not appear to matter which binding we add to the sources, as
-      # long as we add one from every variable.
-      sources.extend(v.bindings[0] for v in arg_dict.values())
-    else:
-      sources.extend(arg_dict.values())
-    visible = node.CanHaveCombination(sources)
+    ret = self.ctx.program.NewVariable()
     mutations = []
-    for subst in substs:
+    for i, subst in enumerate(substs):
+      t = (self.pytd_sig.return_type, subst)
+      sources = [func]
+      if variable:
+        for v in arg_dict.values():
+          # For the argument that 'subst' was generated from, we need to add the
+          # corresponding binding. For the rest, it does not appear to matter
+          # which binding we add to the sources, as long as we add one from
+          # every variable.
+          sources.append(v.bindings[i if len(v.bindings) > i else 0])
+      else:
+        sources.extend(arg_dict.values())
+      visible = node.CanHaveCombination(sources)
       if visible and t in ret_map:
         # add the new sources
         for data in ret_map[t].data:
@@ -702,13 +706,14 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         node, ret_map[t] = self.instantiate_return(node, subst, sources)
       elif t not in ret_map:
         ret_map[t] = self.ctx.program.NewVariable()
+      ret.PasteVariable(ret_map[t])
       mutations.extend(self._get_mutation(
           node, arg_dict, subst, ret_map[t], variable))
     self.ctx.vm.trace_call(
         node, func, (self,),
-        tuple(arg_dict[p.name] for p in self.pytd_sig.params), {}, ret_map[t],
+        tuple(arg_dict[p.name] for p in self.pytd_sig.params), {}, ret,
         variable)
-    return node, ret_map[t], mutations
+    return node, ret, mutations
 
   @classmethod
   def _collect_mutated_parameters(cls, typ, mutated_type):
