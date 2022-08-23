@@ -45,6 +45,7 @@ _ALL_ADJUSTABLE_ERRORS = _FUNCTION_CALL_ERRORS.union((
     "bad-yield-annotation",
     "container-type-mismatch",
     "not-supported-yet",
+    "signature-mismatch",
 ))
 
 

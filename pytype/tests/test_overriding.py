@@ -1131,6 +1131,26 @@ class OverridingTest(test_base.BaseTest):
             return 0
       """)
 
+  def test_disable(self):
+    self.Check("""
+      class Foo:
+        def f(self, x) -> int:
+          return 0
+      class Bar(Foo):
+        def f(  # pytype: disable=signature-mismatch
+            self, x) -> str:
+          return "0"
+      class Baz(Foo):
+        def f(
+            self, x) -> str:  # pytype: disable=signature-mismatch
+          return "0"
+      class Qux(Foo):
+        def f(
+            self,  # pytype: disable=signature-mismatch
+            x) -> str:
+          return "0"
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
