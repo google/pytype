@@ -96,8 +96,8 @@ class ImportsMapBuilder:
     # See also load_pytd._import_file which also checks for an empty directory
     # and acts as if an empty __init__.py is there.
     dir_paths = {}
-    for short_path, path in sorted(imports_map.items()):
-      dir_paths[short_path] = path
+    for short_path, full_path in sorted(imports_map.items()):
+      dir_paths[short_path] = full_path
       short_path_pieces = short_path.split(path_utils.sep)
       # If we have a mapping file foo/bar/quux.py', then the pieces are
       # ["foo", "bar", "quux"] and we want to add foo/__init__.py and
