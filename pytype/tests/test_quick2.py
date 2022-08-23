@@ -1,14 +1,14 @@
 """Tests for --quick."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class QuickTest(test_base.BaseTest):
   """Tests for --quick."""
 
   def test_multiple_returns(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def add(x: int, y: int) -> int: ...
         def add(x: int,  y: float) -> float: ...
@@ -24,7 +24,7 @@ class QuickTest(test_base.BaseTest):
       """, pythonpath=[d.path], quick=True)
 
   def test_multiple_returns_container(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         def concat(x: int, y: int) -> Tuple[int, int]: ...

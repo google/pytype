@@ -1,6 +1,5 @@
 import textwrap
 
-from pytype import file_utils
 from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
@@ -8,6 +7,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
+from pytype.tests import test_utils
 
 import unittest
 
@@ -252,7 +252,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def test_diff_same_pickle(self):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
       pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
@@ -262,7 +262,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def test_diff_pickle_name(self):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
       pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:
@@ -274,7 +274,7 @@ class TestUtils(parser_test_base.ParserTest):
   def test_diff_pickle_ast(self):
     ast1 = pytd.TypeDeclUnit("foo", (), (), (), (), ())
     ast2 = ast1.Replace(type_params=(pytd.TypeParameter("T", (), None, None),))
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       data = []
       for ast in (ast1, ast2):
         filename = path_utils.join(d.path, "foo.pickled")
@@ -287,7 +287,7 @@ class TestUtils(parser_test_base.ParserTest):
 
   def test_diff_pickle_length(self):
     ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = path_utils.join(d.path, "foo.pickled")
       pickle_utils.StoreAst(ast, filename)
       with open(filename, "rb") as fi:

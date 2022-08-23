@@ -1,7 +1,6 @@
 """Tests for convert.py."""
 
 from pytype import config
-from pytype import file_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.pytd import pytd
@@ -20,7 +19,7 @@ class ConvertTest(test_base.UnitTest):
     self._ctx = test_utils.make_context(options)
 
   def _load_ast(self, name, src):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(name + ".pyi", src)
       self._ctx.options.tweak(pythonpath=[d.path])  # monkeypatch
       return self._ctx.loader.import_name(name)

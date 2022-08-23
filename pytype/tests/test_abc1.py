@@ -1,14 +1,14 @@
 """Tests for @abc.abstractmethod in abc_overlay.py."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class AbstractMethodTests(test_base.BaseTest):
   """Tests for @abc.abstractmethod."""
 
   def test_instantiate_pyi_abstract_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class Example(metaclass=abc.ABCMeta):
@@ -32,7 +32,7 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"foo.*Example"})
 
   def test_multiple_inheritance_implementation_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class Interface(metaclass=abc.ABCMeta):
@@ -49,7 +49,7 @@ class AbstractMethodTests(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_multiple_inheritance_error_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class X: ...
@@ -65,7 +65,7 @@ class AbstractMethodTests(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"foo\.Foo.*foo"})
 
   def test_abc_metaclass_from_decorator(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("six.pyi", """
         from typing import TypeVar, Callable
         T = TypeVar('T')
@@ -82,7 +82,7 @@ class AbstractMethodTests(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_abc_child_metaclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("six.pyi", """
         from typing import TypeVar, Callable
         T = TypeVar('T')

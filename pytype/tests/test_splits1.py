@@ -1,7 +1,7 @@
 """Tests for if-splitting."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class SplitTest(test_base.BaseTest):
@@ -723,7 +723,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def test_cmp_is_class_name_collision(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X: ...
       """)
@@ -752,7 +752,7 @@ class SplitTest(test_base.BaseTest):
     """)
 
   def test_primitive(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Value(int):
             pass

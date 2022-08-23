@@ -19,7 +19,7 @@ class IndexerTestMixin:
     """Generate references from a code string."""
     args = {"version": self.python_version}
     args.update(kwargs)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
@@ -27,7 +27,7 @@ class IndexerTestMixin:
 
   def generate_kythe(self, code, **kwargs):
     """Generate a kythe index from a code string."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(pythonpath=[d.path], version=self.python_version)
@@ -96,7 +96,7 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
         Y.__name__
     """
     stub = "class X: pass"
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("t.py", code)
       d.create_file("f.pyi", stub)
       d.create_file(file_utils.replace_separator("x/y.pyi"), stub)

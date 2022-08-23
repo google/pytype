@@ -3,7 +3,6 @@
 import os
 
 from pytype import errors
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -134,7 +133,7 @@ class ErrorLogTest(test_base.BaseTest):
     self.assertIn("Cannot assert errors", str(ctx.exception))
 
   def test_bad_infer_from_file(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("some_file.py", "name_error  # name-error")
       with self.assertRaises(AssertionError) as ctx:
         self.InferFromFile(filename=d["some_file.py"], pythonpath=[])

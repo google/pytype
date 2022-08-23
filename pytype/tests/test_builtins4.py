@@ -1,6 +1,5 @@
 """Tests of builtins (in stubs/builtins/{version}/__builtins__.pytd)."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -150,7 +149,7 @@ class BuiltinTests(test_base.BaseTest):
       """, filename="foobar.py")
 
   def test_super(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Type
         def f(x: type): ...

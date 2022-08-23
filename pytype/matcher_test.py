@@ -3,7 +3,6 @@
 import textwrap
 
 from pytype import config
-from pytype import file_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.tests import test_base
@@ -44,7 +43,7 @@ class MatcherTest(MatcherTestBase):
   def _parse_and_lookup(self, src, objname, filename=None):
     if filename is None:
       filename = str(hash(src))
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(filename + ".pyi", src)
       self.ctx.options.tweak(pythonpath=[d.path])  # monkeypatch
       ast = self.ctx.loader.import_name(filename)

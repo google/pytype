@@ -1,7 +1,7 @@
 """Tests for PEP-593 typing.Annotated types."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class AnnotatedTest(test_base.BaseTest):
@@ -63,7 +63,7 @@ class AnnotatedTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"err": r"must have at least 1 annotation"})
 
   def test_annotated_in_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Annotated
         class A:
@@ -79,7 +79,7 @@ class AnnotatedTest(test_base.BaseTest):
       """)
 
   def test_annotated_type_in_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Annotated
         class Foo:
@@ -97,7 +97,7 @@ class AnnotatedTest(test_base.BaseTest):
       """)
 
   def test_subclass_annotated_in_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Annotated
         class A:

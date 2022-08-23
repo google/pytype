@@ -1,7 +1,7 @@
 """Tests of special builtins (special_builtins.py)."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class SpecialBuiltinsTest(test_base.BaseTest):
@@ -53,7 +53,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
     """)
 
   def test_property_from_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
           def get_foo(self) -> int: ...
@@ -82,7 +82,7 @@ class SpecialBuiltinsTest(test_base.BaseTest):
     """)
 
   def test_property_from_pyi_with_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Union
         class Foo:

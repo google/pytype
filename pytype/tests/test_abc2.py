@@ -1,7 +1,7 @@
 """Tests for @abc.abstractmethod in abc_overlay.py."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class AbstractMethodTests(test_base.BaseTest):
@@ -108,7 +108,7 @@ class AbstractMethodTests(test_base.BaseTest):
     # When a function parameter is annotated as `Type[A]`, where A is abstract,
     # presumably the intent is for callers to pass in concrete subclasses of A,
     # so we should not raise an error if A is instantiated in the body.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         class A(metaclass=abc.ABCMeta):

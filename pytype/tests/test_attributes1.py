@@ -1,8 +1,8 @@
 """Test instance and class attributes."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestStrictNone(test_base.BaseTest):
@@ -61,7 +61,7 @@ class TestStrictNone(test_base.BaseTest):
     """)
 
   def test_pyi_constant(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: None
       """)
@@ -72,7 +72,7 @@ class TestStrictNone(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pyi_attribute(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
           x = ...  # type: None
@@ -103,7 +103,7 @@ class TestStrictNone(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def test_pyi_return_value(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> None: ...")
       errors = self.CheckWithErrors("""
         import foo
@@ -603,7 +603,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def test_has_dynamic_attributes_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Foo:
           has_dynamic_attributes = True
@@ -614,7 +614,7 @@ class TestAttributes(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_has_dynamic_attributes_metaclass_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Metaclass(type):
           _HAS_DYNAMIC_ATTRIBUTES: bool
@@ -712,7 +712,7 @@ class TestAttributes(test_base.BaseTest):
         def name(self):
           return ''
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       self.Check("import foo", pythonpath=[d.path])
 
@@ -749,7 +749,7 @@ class TestAttributes(test_base.BaseTest):
         errors, {"e": r"'in'.*'.*Union\[Foo, int\]' and 'int'"})
 
   def test_subclass_shadowing(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
           b = ...  # type: int
@@ -765,7 +765,7 @@ class TestAttributes(test_base.BaseTest):
         """, pythonpath=[d.path])
 
   def test_generic_property(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, Optional, TypeVar
         T = TypeVar("T")
@@ -863,7 +863,7 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def test_separate_instances(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
         _T = TypeVar('_T')
@@ -884,7 +884,7 @@ class TestAttributes(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_typevar(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, Type, TypeVar
         T = TypeVar('T')

@@ -1,6 +1,6 @@
 """Tests for parse_args.py."""
 
-from pytype import file_utils
+from pytype.tests import test_utils
 from pytype.tools.xref import parse_args
 import unittest
 
@@ -29,7 +29,7 @@ class TestParseArgs(unittest.TestCase):
   def test_imports_info(self):
     # The code reads and validates an import map within pytype's setup, so we
     # need to provide a syntactically valid one as a file.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       pyi_file = d.create_file("baz.pyi")
       imports_info = d.create_file("foo", f"bar {pyi_file}")
       args, _, opts = parse_args.parse_args(

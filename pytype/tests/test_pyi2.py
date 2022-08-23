@@ -1,7 +1,7 @@
 """Tests for handling PYI code."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class PYITest(test_base.BaseTest):
@@ -20,7 +20,7 @@ class PYITest(test_base.BaseTest):
         """)
 
   def test_static_method_from_pyi_as_callable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           @staticmethod
@@ -35,7 +35,7 @@ class PYITest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_class_method_from_pyi_as_callable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           @classmethod
@@ -50,7 +50,7 @@ class PYITest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_ellipsis(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: Ellipsis) -> None: ...
       """)
@@ -61,7 +61,7 @@ class PYITest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_resolve_nested_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("meta.pyi", """
         class Meta(type): ...
       """)
@@ -77,7 +77,7 @@ class PYITest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_partial_forward_reference(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         X1 = list['Y']
@@ -99,7 +99,7 @@ class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""
 
   def test_bytes(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f() -> bytes: ...
       """)
@@ -166,7 +166,7 @@ class PYITestAnnotated(test_base.BaseTest):
     """)
 
   def test_invalid_pytype_metadata(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Annotated
         x: Annotated[int, "pytype_metadata", 2]

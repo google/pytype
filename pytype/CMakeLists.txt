@@ -516,6 +516,7 @@ py_test(
   DEPS
     .file_utils
     pytype.platform_utils.platform_utils
+    pytype.tests.test_base
 )
 
 py_test(
@@ -571,10 +572,6 @@ py_test(
     matcher_test.py
   DEPS
     .config
-    .context
-    .errors
-    .file_utils
-    .load_pytd
     pytype.abstract.abstract
     pytype.tests.test_base
 )
@@ -586,10 +583,6 @@ py_test(
     convert_test.py
   DEPS
     .config
-    .context
-    .errors
-    .file_utils
-    .load_pytd
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.tests.test_base
@@ -677,6 +670,7 @@ py_test(
     .imports_map_loader
     pytype.platform_utils.platform_utils
     pytype.stubs.stubs
+    pytype.tests.test_base
 )
 
 py_test(

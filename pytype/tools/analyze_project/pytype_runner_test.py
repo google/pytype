@@ -9,6 +9,7 @@ from pytype import config as pytype_config
 from pytype import file_utils
 from pytype import module_utils
 from pytype.platform_utils import path_utils
+from pytype.tests import test_utils
 from pytype.tools.analyze_project import parse_args
 from pytype.tools.analyze_project import pytype_runner
 
@@ -404,7 +405,7 @@ class TestNinjaPreamble(TestBase):
 
   def test_write(self):
     conf = self.parser.config_from_defaults()
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       conf.output = d.path
       runner = make_runner([], [], conf)
       runner.write_ninja_preamble()
@@ -432,7 +433,7 @@ class TestNinjaBuildStatement(TestBase):
 
   def write_build_statement(self, *args, **kwargs):
     conf = self.parser.config_from_defaults()
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       conf.output = d.path
       runner = make_runner([], [], conf)
       output = runner.write_build_statement(*args, **kwargs)
@@ -532,7 +533,7 @@ class TestNinjaBody(TestBase):
   def test_basic(self):
     src = Module('', 'foo.py', 'foo')
     dep = Module('', 'bar.py', 'bar')
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.conf.output = d.path
       runner = make_runner(
           [src], [((dep,), ()), ((src,), (dep,))], self.conf)
@@ -561,7 +562,7 @@ class TestNinjaBody(TestBase):
   def test_generate_default(self):
     src = Module('', 'foo.py', 'foo')
     dep = Module('', 'bar.py', 'bar', 'System')
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.conf.output = d.path
       runner = make_runner(
           [src], [((dep,), ()), ((src,), (dep,))], self.conf)
@@ -587,7 +588,7 @@ class TestNinjaBody(TestBase):
   def test_cycle(self):
     src = Module('', 'foo.py', 'foo')
     dep = Module('', 'bar.py', 'bar')
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.conf.output = d.path
       runner = make_runner(
           [src], [((dep, src), ())], self.conf)
@@ -638,7 +639,7 @@ class TestNinjaBody(TestBase):
   def test_cycle_with_extra_action(self):
     src = Module('', 'foo.py', 'foo')
     dep = Module('', 'bar.py', 'bar')
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.conf.output = d.path
       # When `src` is analyzed before `dep`, the second infer action on `dep`
       # should be skipped.
@@ -685,7 +686,7 @@ class TestImports(TestBase):
     self.conf = self.parser.config_from_defaults()
 
   def test_write_default_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.conf.output = d.path
       runner = make_runner([], [], self.conf)
       self.assertTrue(runner.make_imports_dir())
@@ -696,7 +697,7 @@ class TestImports(TestBase):
         self.assertEqual(f.read(), pytype_runner.DEFAULT_PYI)
 
   def test_write_imports(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.conf.output = d.path
       runner = make_runner([], [], self.conf)
       self.assertTrue(runner.make_imports_dir())

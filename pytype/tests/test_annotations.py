@@ -1,6 +1,5 @@
 """Tests for inline annotations."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -443,7 +442,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Expected: FooBar"})
 
   def test_unknown_argument(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def factory() -> type: ...
       """)
@@ -971,7 +970,7 @@ class AnnotationTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Ellipsis.*Dict"})
 
   def test_custom_container(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic
         T = TypeVar("T")
@@ -1112,7 +1111,7 @@ class AnnotationTest(test_base.BaseTest):
     """)
 
   def test_nested_forward_ref_to_import(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo: ...
       """)
@@ -1256,7 +1255,7 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
     """)
 
   def test_imported_container_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Dict, List, Union
         MyDict = Dict[str, int]

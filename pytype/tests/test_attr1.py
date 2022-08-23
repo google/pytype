@@ -1,8 +1,8 @@
 """Tests for attrs library in attr_overlay.py."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestAttrib(test_base.BaseTest):
@@ -865,7 +865,7 @@ class TestInheritedAttrib(test_base.BaseTest):
       def attrib_wrapper(*args, **kwargs):
         return attr.ib(*args, **kwargs)
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import attr
@@ -886,7 +886,7 @@ class TestInheritedAttrib(test_base.BaseTest):
       def kw_attrib(typ):
         return attr.ib(typ, kw_only=True)
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import attr
@@ -904,7 +904,7 @@ class TestInheritedAttrib(test_base.BaseTest):
       def int_attrib():
         return attr.ib(type=int)
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import attr
@@ -920,7 +920,7 @@ class TestInheritedAttrib(test_base.BaseTest):
       def default_attrib(typ):
         return attr.ib(type=typ, default=None)
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.Check("""
         import attr
@@ -939,7 +939,7 @@ class TestInheritedAttrib(test_base.BaseTest):
       class A:
         _x = attr.ib(type=str)
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import attr

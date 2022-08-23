@@ -1,14 +1,14 @@
 """Tests for handling GenericType."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class GenericTest(test_base.BaseTest):
   """Tests for GenericType."""
 
   def test_basic(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -26,7 +26,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_binop(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -44,7 +44,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_specialized(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, TypeVar
         K = TypeVar("K")
@@ -67,8 +67,8 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_specialized_mutation(self):
-    with file_utils.Tempdir() as d1:
-      with file_utils.Tempdir() as d2:
+    with test_utils.Tempdir() as d1:
+      with test_utils.Tempdir() as d2:
         d1.create_file("a.pyi", """
           from typing import List, TypeVar
           T = TypeVar("T")
@@ -95,7 +95,7 @@ class GenericTest(test_base.BaseTest):
         """)
 
   def test_specialized_partial(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, TypeVar
         V = TypeVar("V")
@@ -123,7 +123,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -142,7 +142,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_renaming(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         U = TypeVar("U")
@@ -169,7 +169,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_renaming_chain(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, Set, TypeVar, Union
         A = TypeVar("A")
@@ -196,7 +196,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_renaming_conflict1(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Tuple, TypeVar
         T1 = TypeVar("T1")
@@ -226,7 +226,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_renaming_conflict2(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T1 = TypeVar("T1")
@@ -252,7 +252,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_change_multiply_renamed_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T1 = TypeVar("T1")
@@ -281,7 +281,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_deep(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         U = TypeVar("U")
@@ -302,11 +302,11 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_import(self):
-    with file_utils.Tempdir() as d1:
+    with test_utils.Tempdir() as d1:
       d1.create_file("a.pyi", """
         T = TypeVar("T")
       """)
-      with file_utils.Tempdir() as d2:
+      with test_utils.Tempdir() as d2:
         d2.create_file("b.pyi", """
           from typing import Generic, Union
           from a import T
@@ -330,7 +330,7 @@ class GenericTest(test_base.BaseTest):
         """)
 
   def test_type_parameter_conflict(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -351,7 +351,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_ambiguous(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List
         T = TypeVar("T")
@@ -371,7 +371,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_duplicated(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Dict
         T = TypeVar("T")
@@ -392,7 +392,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_union(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, Union
         class A(List[Union[int, str]]): pass
@@ -412,7 +412,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_multiple_templates(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List, TypeVar
         K = TypeVar("K")
@@ -433,7 +433,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_multiple_templates_flipped(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, Generic, TypeVar
         K = TypeVar("K")
@@ -462,7 +462,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_empty(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List, TypeVar
         T = TypeVar("T")
@@ -482,7 +482,7 @@ class GenericTest(test_base.BaseTest):
 
   @test_base.skip("Needs better GenericType support")
   def test_type_parameter_limits(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import AnyStr, Generic
         class A(Generic[AnyStr]):
@@ -500,7 +500,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_prevent_infinite_loop_on_type_param_collision(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -516,7 +516,7 @@ class GenericTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_template_construction(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, Generic, List, TypeVar
         T = TypeVar("T")
@@ -548,7 +548,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_aliasing_dict_conflict_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, Generic, List, TypeVar
         T = TypeVar("T")
@@ -566,7 +566,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_recursive_container(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List
         class A(List[A]): pass
@@ -585,7 +585,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_pytd_subclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -609,7 +609,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_interpreter_subclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -634,7 +634,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict, TypeVar
         T1 = TypeVar("T1", int, float)
@@ -660,7 +660,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute_visible(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -686,7 +686,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute_change(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -725,7 +725,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute_inherited(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T", int, float)
@@ -753,7 +753,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute_set(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -774,7 +774,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute_conditional(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -803,7 +803,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_instance_attribute_method(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -821,7 +821,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_inherited_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -842,7 +842,7 @@ class GenericTest(test_base.BaseTest):
 
   def test_attribute_on_anything_type_parameter(self):
     """Test that we can access an attribute on "Any"."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any, List
         class A(List[Any]): pass
@@ -860,7 +860,7 @@ class GenericTest(test_base.BaseTest):
 
   def test_match_anything_type_parameter(self):
     """Test that we can match "Any" against a formal function argument."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any, List
         class A(List[Any]): pass
@@ -875,7 +875,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_renamed_type_parameter_match(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Iterable, TypeVar
         Q = TypeVar("Q")
@@ -891,7 +891,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_type_parameter_union(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar, Union
         K = TypeVar("K")
@@ -912,7 +912,7 @@ class GenericTest(test_base.BaseTest):
 
   def test_type_parameter_subclass(self):
     """Test subclassing A[T] with T undefined and a type that depends on T."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List
         T = TypeVar("T")
@@ -934,7 +934,7 @@ class GenericTest(test_base.BaseTest):
 
   def test_constrained_type_parameter_subclass(self):
     """Test subclassing A[T] with T undefined and a type that depends on T."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List
         T = TypeVar("T", int, str)
@@ -957,7 +957,7 @@ class GenericTest(test_base.BaseTest):
 
   def test_bounded_type_parameter_subclass(self):
     """Test subclassing A[T] with T undefined and a type that depends on T."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, List
         T = TypeVar("T", bound=complex)
@@ -979,7 +979,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_constrained_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T", int, float)
@@ -998,7 +998,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_bounded_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T", bound=float)
@@ -1016,7 +1016,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_mutate_call(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         _T = TypeVar("_T")
@@ -1038,7 +1038,7 @@ class GenericTest(test_base.BaseTest):
       """)
 
   def test_override_inherited_method(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")

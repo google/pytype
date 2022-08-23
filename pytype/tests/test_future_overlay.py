@@ -1,14 +1,14 @@
 """Tests for methods in six_overlay.py."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class FutureUtilsTest(test_base.BaseTest):
   """Tests for future.utils and future_overlay."""
 
   def test_with_metaclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(
           "future/utils.pyi",
           "def with_metaclass(meta: type, *bases: type) -> type: ...")

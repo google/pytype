@@ -1,7 +1,7 @@
 """Tests for collections.abc."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class CollectionsABCTest(test_base.BaseTest):
@@ -35,7 +35,7 @@ class CollectionsABCTest(test_base.BaseTest):
     """)
 
   def test_pyi_callable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from collections.abc import Callable
         def f() -> Callable[[], float]: ...

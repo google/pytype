@@ -31,6 +31,8 @@ py_library(
     test_utils.py
   DEPS
     pytype.libvm
+    pytype.utils
+    pytype.platform_utils.platform_utils
     pytype.pyc.pyc
 )
 
@@ -43,7 +45,6 @@ py_test(
     ._test_base
     .test_utils
     pytype.libvm
-    pytype.utils
 )
 
 py_test(
@@ -71,7 +72,6 @@ py_test(
     test_anystr1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -81,7 +81,6 @@ py_test(
     test_anystr2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -91,7 +90,6 @@ py_test(
     test_match1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -101,7 +99,6 @@ py_test(
     test_match2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -111,7 +108,6 @@ py_test(
     test_decorators1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -121,7 +117,6 @@ py_test(
     test_decorators2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -132,7 +127,6 @@ py_test(
     test_dict1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -152,7 +146,6 @@ py_test(
     test_exceptions1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -180,7 +173,6 @@ py_test(
     test_functions1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -190,7 +182,6 @@ py_test(
     test_functions2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -209,7 +200,6 @@ py_test(
     test_generators2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -229,7 +219,6 @@ py_test(
     test_quick2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -275,7 +264,6 @@ py_test(
     test_splits1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -294,7 +282,6 @@ py_test(
     test_super1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -304,7 +291,6 @@ py_test(
     test_super2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -323,7 +309,6 @@ py_test(
     test_tuple2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -370,7 +355,6 @@ py_test(
     test_attributes1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -399,7 +383,6 @@ py_test(
     test_builtins2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -409,7 +392,6 @@ py_test(
     test_builtins3.py
   DEPS
     .test_base
-    pytype.utils
     pytype.abstract.abstract
 )
 
@@ -420,7 +402,6 @@ py_test(
     test_builtins4.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -430,7 +411,6 @@ py_test(
     test_special_builtins1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -449,7 +429,6 @@ py_test(
     test_stdlib1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -468,7 +447,6 @@ py_test(
     test_classes1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -479,7 +457,6 @@ py_test(
     test_classes2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -507,7 +484,6 @@ py_test(
     test_collections_abc.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -517,7 +493,6 @@ py_test(
     test_containers.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -546,7 +521,6 @@ py_test(
     test_methods1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -557,7 +531,6 @@ py_test(
     test_methods2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -585,7 +558,6 @@ py_test(
     test_errors1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -595,7 +567,6 @@ py_test(
     test_errors2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -623,7 +594,6 @@ py_test(
     test_pickle1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.imports.imports
     pytype.pyi.parser
     pytype.pytd.pytd
@@ -636,7 +606,6 @@ py_test(
     test_pickle2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -655,7 +624,6 @@ py_test(
     test_reingest1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -711,7 +679,6 @@ py_test(
     test_typevar1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -721,7 +688,6 @@ py_test(
     test_typevar2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -741,7 +707,6 @@ py_test(
     test_calls1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -772,7 +737,6 @@ py_test(
     test_import2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -782,7 +746,6 @@ py_test(
     test_pyi1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -792,7 +755,6 @@ py_test(
     test_pyi2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -802,7 +764,6 @@ py_test(
     test_generic1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -812,7 +773,6 @@ py_test(
     test_generic2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -834,7 +794,6 @@ py_test(
   DEPS
     .test_base
     .test_utils
-    pytype.utils
 )
 
 py_test(
@@ -899,7 +858,6 @@ py_test(
     test_solver.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -909,7 +867,6 @@ py_test(
     test_typing1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -919,7 +876,6 @@ py_test(
     test_typing2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -930,7 +886,6 @@ py_test(
     test_typing_methods1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -940,7 +895,6 @@ py_test(
     test_typing_methods2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -950,7 +904,6 @@ py_test(
     test_typing_namedtuple1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -961,7 +914,6 @@ py_test(
     test_typing_namedtuple2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -972,7 +924,6 @@ py_test(
     test_protocols1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -983,7 +934,6 @@ py_test(
     test_protocols2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -994,7 +944,6 @@ py_test(
     test_protocol_inference.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1004,9 +953,6 @@ py_test(
     test_namedtuple1.py
   DEPS
     .test_base
-    pytype.utils
-    pytype.overlays.overlays
-    pytype.pytd.pytd
 )
 
 py_test(
@@ -1025,7 +971,6 @@ py_test(
     test_abc1.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1035,7 +980,6 @@ py_test(
     test_abc2.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1045,7 +989,6 @@ py_test(
     test_attr1.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -1056,7 +999,6 @@ py_test(
     test_attr2.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -1085,7 +1027,6 @@ py_test(
     test_future_overlay.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1104,7 +1045,6 @@ py_test(
     test_typing_annotated.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1114,7 +1054,6 @@ py_test(
     test_annotations.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1133,7 +1072,6 @@ py_test(
     test_unpack.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1143,7 +1081,6 @@ py_test(
     test_variable_annotations.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1153,7 +1090,6 @@ py_test(
     test_coroutine.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1172,7 +1108,6 @@ py_test(
     test_overload.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -1193,7 +1128,6 @@ py_test(
     test_dataclasses.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(
@@ -1203,7 +1137,6 @@ py_test(
     test_chex_overlay.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -1214,7 +1147,6 @@ py_test(
     test_flax_overlay.py
   DEPS
     .test_base
-    pytype.utils
     pytype.pytd.pytd
 )
 
@@ -1225,7 +1157,6 @@ py_test(
     test_enums.py
   DEPS
     .test_base
-    pytype.utils
 )
 
 py_test(

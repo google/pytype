@@ -1,6 +1,5 @@
 """Tests for the analysis phase matcher (match_var_against_type)."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -9,7 +8,7 @@ class MatchTest(test_base.BaseTest):
   """Tests for matching types."""
 
   def test_no_argument_pytd_function_against_callable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar() -> bool: ...
       """)
@@ -27,7 +26,7 @@ class MatchTest(test_base.BaseTest):
           "e": r"\(x: Callable\[\[\], str\]\).*\(x: Callable\[\[\], bool\]\)"})
 
   def test_pytd_function_against_callable_with_type_parameters(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f1(x: int) -> int: ...
         def f2(x: int) -> bool: ...
@@ -102,7 +101,7 @@ class MatchTest(test_base.BaseTest):
                r"Actual.*Callable\[\[Any, int\], bool\]")})
 
   def test_callable_parameters(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Callable, List, TypeVar
         T = TypeVar("T")
@@ -175,7 +174,7 @@ class MatchTest(test_base.BaseTest):
     """)
 
   def test_union_in_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Iterator, List, TypeVar
         T = TypeVar("T")
@@ -227,7 +226,7 @@ class MatchTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Expected.*T2.*Actual.*T1"})
 
   def test_callable_base_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable, Union, Type
         def f() -> Union[Callable[[], ...], Type[Exception]]: ...
@@ -406,7 +405,7 @@ class MatchTestPy3(test_base.BaseTest):
     """)
 
   def test_callable_against_generic(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar, Callable, Generic, Iterable, Iterator
         A = TypeVar("A")

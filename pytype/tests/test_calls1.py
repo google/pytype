@@ -1,14 +1,14 @@
 """Tests for calling other functions, and the corresponding checks."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class CallsTest(test_base.BaseTest):
   """Tests for checking function calls."""
 
   def test_optional(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x: int, y: int = ..., z: int = ...) -> int: ...
       """)
@@ -20,7 +20,7 @@ class CallsTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_missing(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int: ...
       """)
@@ -30,7 +30,7 @@ class CallsTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_extraneous(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int: ...
       """)
@@ -40,7 +40,7 @@ class CallsTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_missing_kwonly(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y, *, z) -> int: ...
       """)
@@ -51,7 +51,7 @@ class CallsTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"\bz\b"})
 
   def test_extra_keyword(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(x, y) -> int: ...
       """)
@@ -61,7 +61,7 @@ class CallsTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_varargs_with_kwonly(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(*args: int, z: int) -> int: ...
       """)
@@ -72,7 +72,7 @@ class CallsTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_varargs_with_missing_kwonly(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         def foo(*args: int, z: int) -> int: ...
       """)

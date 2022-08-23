@@ -3,9 +3,9 @@
 Based on PEP 544 https://www.python.org/dev/peps/pep-0544/.
 """
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ProtocolTest(test_base.BaseTest):
@@ -227,7 +227,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_pyi_iterable_getitem(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         class Foo:
@@ -242,7 +242,7 @@ class ProtocolTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pyi_iterable_iter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
         class Foo:
@@ -353,7 +353,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_generic_callable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -430,7 +430,7 @@ class ProtocolTest(test_base.BaseTest):
         def append(self) -> None:
           pass
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
         import foo
@@ -450,7 +450,7 @@ class ProtocolTest(test_base.BaseTest):
         def append(self) -> None:
           pass
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""
         import foo
@@ -475,7 +475,7 @@ class ProtocolTest(test_base.BaseTest):
         def remove(self):
           pass
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""
         from foo import Mutable
@@ -502,7 +502,7 @@ class ProtocolTest(test_base.BaseTest):
         def remove(self):
           pass
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
         from foo import Removable
@@ -557,7 +557,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_callback_protocol_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Protocol
         class Foo(Protocol):
@@ -592,7 +592,7 @@ class ProtocolTest(test_base.BaseTest):
     """)
 
   def test_class_matches_callback_protocol_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Protocol
         class Foo(Protocol):
@@ -828,7 +828,7 @@ class ProtocolsTestPython3Feature(test_base.BaseTest):
       def f() -> str:
         return 'hello world'
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       errors = self.CheckWithErrors("""
         import foo
@@ -898,7 +898,7 @@ class ProtocolAttributesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Foo.*Bar.*x"})
 
   def test_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Protocol
         class Foo(Protocol):
@@ -917,7 +917,7 @@ class ProtocolAttributesTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pyi_inheritance(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
           x: int
@@ -984,7 +984,7 @@ class ProtocolAttributesTest(test_base.BaseTest):
         @property
         def x(self) -> int: ...
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import foo
@@ -1009,7 +1009,7 @@ class ProtocolAttributesTest(test_base.BaseTest):
         def x(self):
           return 0
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.CheckWithErrors("""
         import foo
@@ -1082,7 +1082,7 @@ class ProtocolAttributesTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"expected int, got str"})
 
   def test_generic_from_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Protocol, TypeVar
         T = TypeVar('T')
@@ -1108,7 +1108,7 @@ class ProtocolAttributesTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"expected int, got str"})
 
   def test_generic_used_in_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("protocol.pyi", """
         from typing import Dict, List, Protocol, TypeVar
         T = TypeVar('T')

@@ -4,7 +4,6 @@ import ast
 import collections
 import textwrap
 from pytype import config
-from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_utils
@@ -49,7 +48,7 @@ class TraceTest(unittest.TestCase):
     self.assertEqual(src.filename, "rumpelstiltskin")
 
   def test_external_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       pyi_path = d.create_file("foo.pyi", "class Foo: ...")
       imports_info = d.create_file("imports_info", f"foo {pyi_path}")
       src = traces.trace(

@@ -1,8 +1,8 @@
 """Tests for attrs library in attr_overlay.py."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestAttrib(test_base.BaseTest):
@@ -315,7 +315,7 @@ class TestAttribPy3(test_base.BaseTest):
 
   def test_cannot_decorate(self):
     # Tests the attr.s decorator being passed an object it can't process.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Type
         class Foo: ...
@@ -996,7 +996,7 @@ class TestPyiAttrs(test_base.BaseTest):
   """Tests for @attr.s in pyi files."""
 
   def test_basic(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import attr
         @attr.s
@@ -1010,7 +1010,7 @@ class TestPyiAttrs(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_docstring(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import attr
         @attr.s
@@ -1025,7 +1025,7 @@ class TestPyiAttrs(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_type_mismatch(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import attr
         @attr.s
@@ -1039,7 +1039,7 @@ class TestPyiAttrs(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_subclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import attr
         @attr.s
@@ -1064,7 +1064,7 @@ class TestPyiAttrs(test_base.BaseTest):
       """)
 
   def test_subclass_from_same_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import attr
         @attr.s
@@ -1093,7 +1093,7 @@ class TestPyiAttrs(test_base.BaseTest):
       """)
 
   def test_subclass_from_different_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("bar.pyi", """
         import attr
         @attr.s
@@ -1125,7 +1125,7 @@ class TestPyiAttrs(test_base.BaseTest):
       """)
 
   def test_subclass_with_kwonly(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import attr
         @attr.s
@@ -1159,7 +1159,7 @@ class TestPyiAttrsWrapper(test_base.BaseTest):
       import attr
       wrapper = attr.s(kw_only=True, auto_attribs=True)
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       ty = self.Infer("""
         import foo

@@ -1,7 +1,7 @@
 """Tests for TypeVar."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypeVarTest(test_base.BaseTest):
@@ -18,7 +18,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def test_import_typevar(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """T = TypeVar("T")""")
       ty = self.Infer("""
         from a import T
@@ -171,7 +171,7 @@ class TypeVarTest(test_base.BaseTest):
   def test_dont_propagate_pyval(self):
     # in functions like f(x: T) -> T, if T has constraints we should not copy
     # the value of constant types between instances of the typevar.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         AnyInt = TypeVar('AnyInt', int)
@@ -193,7 +193,7 @@ class TypeVarTest(test_base.BaseTest):
   def test_property_type_param(self):
     # We should allow property signatures of the form f(self: T) -> X[T]
     # without complaining about the class not being parametrised over T
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, List
       T = TypeVar('T')
@@ -216,7 +216,7 @@ class TypeVarTest(test_base.BaseTest):
 
   def test_property_type_param2(self):
     # Test for classes inheriting from Generic[X]
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, List, Generic
       T = TypeVar('T')
@@ -244,7 +244,7 @@ class TypeVarTest(test_base.BaseTest):
   @test_base.skip("Type parameter bug")
   def test_property_type_param3(self):
     # Don't mix up the class parameter and the property parameter
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, List, Generic
       T = TypeVar('T')
@@ -265,7 +265,7 @@ class TypeVarTest(test_base.BaseTest):
 
   def test_property_type_param_with_constraints(self):
     # Test setting self to a constrained type
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, List, Generic
       T = TypeVar('T')
@@ -287,7 +287,7 @@ class TypeVarTest(test_base.BaseTest):
       """)
 
   def test_classmethod_type_param(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, List, Type
       T = TypeVar('T')
@@ -313,7 +313,7 @@ class TypeVarTest(test_base.BaseTest):
       """)
 
   def test_metaclass_property_type_param(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
       from typing import TypeVar, Type, List
       T = TypeVar('T')
@@ -474,7 +474,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def test_typevar_starargs(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar, Union
         T = TypeVar('T')

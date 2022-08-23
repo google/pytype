@@ -1,8 +1,8 @@
 """Tests for dictionaries."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class DictTest(test_base.BaseTest):
@@ -79,7 +79,7 @@ class DictTest(test_base.BaseTest):
     """)
 
   def test_update_any_subclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
         T = TypeVar("T")

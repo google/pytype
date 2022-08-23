@@ -75,7 +75,7 @@ py_test(
     config_test.py
   DEPS
     .tools
-    pytype.utils
+    pytype.tests.test_base
 )
 
 py_test(
@@ -87,6 +87,7 @@ py_test(
     .tools
     pytype.utils
     pytype.platform_utils.platform_utils
+    pytype.tests.test_base
 )
 
 py_test(
@@ -96,8 +97,8 @@ py_test(
     tool_utils_test.py
   DEPS
     .tools
-    pytype.utils
     pytype.platform_utils.platform_utils
+    pytype.tests.test_base
 )
 
 add_subdirectory(analyze_project)

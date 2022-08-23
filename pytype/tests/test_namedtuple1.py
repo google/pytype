@@ -1,7 +1,7 @@
 """Tests for the collections.namedtuple implementation."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class NamedtupleTests(test_base.BaseTest):
@@ -236,7 +236,7 @@ class NamedtupleTests(test_base.BaseTest):
     """)
 
   def test_instantiate_pyi_namedtuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(NamedTuple('X', [('y', str), ('z', int)])): ...
       """)
@@ -252,7 +252,7 @@ class NamedtupleTests(test_base.BaseTest):
           errors, {"e1": r"y", "e2": r"str.*int", "e3": r"str.*int"})
 
   def test_use_pyi_namedtuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [])): ...
       """)
@@ -264,7 +264,7 @@ class NamedtupleTests(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"nonsense.*X"})
 
   def test_subclass_pyi_namedtuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X(NamedTuple("X", [("y", int)])): ...
       """)

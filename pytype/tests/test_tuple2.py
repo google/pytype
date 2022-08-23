@@ -1,8 +1,8 @@
 """Tests of builtins.tuple."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TupleTest(test_base.BaseTest):
@@ -80,7 +80,7 @@ class TupleTest(test_base.BaseTest):
         "e4": fr"{y}.*{tuple_str_str}"})
 
   def test_inline_tuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         class A(Tuple[int, str]): ...
@@ -98,7 +98,7 @@ class TupleTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_inline_tuple_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         class A(Tuple[str, int]): ...
@@ -142,7 +142,7 @@ class TupleTest(test_base.BaseTest):
     """)
 
   def test_mismatched_pyi_tuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("bar.pyi", """
         class Bar(tuple): ...
       """)
@@ -174,7 +174,7 @@ class TupleTest(test_base.BaseTest):
       def f(x: Tuple[()]):
         pass
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       self.CheckWithErrors("""
         from typing import Any
@@ -183,7 +183,7 @@ class TupleTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_match_nothing(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         def integrate() -> Tuple[nothing, nothing]: ...

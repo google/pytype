@@ -1,6 +1,5 @@
 """Tests for the typing.NamedTuple overlay."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -362,7 +361,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
       """)
 
   def test_unpacking(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         class X(NamedTuple):
@@ -384,7 +383,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
       """)
 
   def test_bad_unpacking(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         class X(NamedTuple):
@@ -640,7 +639,7 @@ class NamedTupleTestPy3(test_base.BaseTest):
       class Bar(NamedTuple):
         x: Callable[[T], T]
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       self.Check("""
         import foo

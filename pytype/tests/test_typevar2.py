@@ -1,8 +1,8 @@
 """Tests for TypeVar."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypeVarTest(test_base.BaseTest):
@@ -63,7 +63,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
 
   def test_import_typevar_name_change(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -638,7 +638,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       X = List[T1]
       def f(x: List[T2]) -> T2: ...
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       ty = self.Infer("""
         import foo
@@ -668,7 +668,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       X = List[T]
       def f(x: List[int]) -> int: ...
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo_ty))
       ty = self.Infer("""
         import foo
@@ -718,7 +718,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       from typing import TypeVar
       T = TypeVar('T')
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       bar = self.Infer("""
         import foo
@@ -852,7 +852,7 @@ class GenericTypeAliasTest(test_base.BaseTest):
       T = TypeVar('T')
       X = Optional[T]
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       ty = self.Infer("""
         import foo
@@ -913,7 +913,7 @@ class TypeVarTestPy3(test_base.BaseTest):
   """Tests for TypeVar in Python 3."""
 
   def test_use_constraints_from_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import AnyStr, TypeVar
         T = TypeVar("T", int, float)
