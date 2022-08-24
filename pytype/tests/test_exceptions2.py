@@ -114,6 +114,15 @@ class TestExceptionsPy3(test_base.BaseTest):
         yield None
     """)
 
+  def test_raise_exc_info(self):
+    self.Check("""
+      import sys
+      exception = sys.exc_info()
+      exception_type = exception[0]
+      if exception_type:
+        raise exception_type()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
