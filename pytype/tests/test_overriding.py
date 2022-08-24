@@ -1131,6 +1131,7 @@ class OverridingTest(test_base.BaseTest):
             return 0
       """)
 
+  @test_utils.skipBeforePy((3, 8), "Error line numbers changed in 3.8.")
   def test_disable(self):
     self.Check("""
       class Foo:
