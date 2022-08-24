@@ -137,6 +137,7 @@ py_library(
     .file_utils
     .imports_map_loader
     .module_utils
+    pytype.pyc.pyc
     pytype.typegraph.cfg_utils
 )
 

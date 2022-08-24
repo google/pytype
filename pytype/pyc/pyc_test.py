@@ -1,5 +1,6 @@
 """Tests for pyc.py."""
 
+from pytype.pyc import compiler
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.tests import test_base
@@ -26,7 +27,7 @@ class TestPyc(test_base.UnitTest):
 
   def _compile(self, src, mode="exec"):
     exe = (["python" + ".".join(map(str, self.python_version))], [])
-    pyc_data = pyc.compile_src_string_to_pyc_string(
+    pyc_data = compiler.compile_src_string_to_pyc_string(
         src, filename="test_input.py", python_version=self.python_version,
         python_exe=exe, mode=mode)
     return pyc.parse_pyc_string(pyc_data)

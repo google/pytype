@@ -272,7 +272,8 @@ def handle_errors(errorlog, options):
     return 0
 
   if options.output_errors_csv:
-    errorlog.print_to_csv_file(options.output_errors_csv, options.open_function)
+    with options.open_function(options.output_errors_csv, "w") as f:
+      errorlog.print_to_csv_file(f)
     return 0  # Command is successful regardless of errors.
 
   errorlog.print_to_stderr(color=options.color)

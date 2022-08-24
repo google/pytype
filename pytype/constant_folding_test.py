@@ -7,6 +7,7 @@ from pytype import config
 from pytype import constant_folding
 from pytype import state as frame_state
 from pytype.abstract import abstract
+from pytype.pyc import compiler
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd_utils
@@ -39,7 +40,7 @@ class TestFolding(test_base.UnitTest):
 
   def _compile(self, src, mode="exec"):
     exe = (["python" + ".".join(map(str, self.python_version))], [])
-    pyc_data = pyc.compile_src_string_to_pyc_string(
+    pyc_data = compiler.compile_src_string_to_pyc_string(
         src, filename="test_input.py", python_version=self.python_version,
         python_exe=exe, mode=mode)
     code = pyc.parse_pyc_string(pyc_data)

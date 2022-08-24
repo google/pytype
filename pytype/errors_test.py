@@ -117,7 +117,8 @@ class ErrorTest(unittest.TestCase):
     errorlog.error(op.to_stack(), message, details + "1")
     with test_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
-      errorlog.print_to_csv_file(filename)
+      with open(filename, "w") as fi:
+        errorlog.print_to_csv_file(fi)
       with open(filename) as fi:
         rows = list(csv.reader(fi, delimiter=","))
         self.assertEqual(len(rows), 2)
@@ -136,7 +137,8 @@ class ErrorTest(unittest.TestCase):
     errorlog.error(stack, "", "some\ndetails")
     with test_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
-      errorlog.print_to_csv_file(filename)
+      with open(filename, "w") as fi:
+        errorlog.print_to_csv_file(fi)
       with open(filename) as fi:
         (_, _, _, _, actual_details), = list(csv.reader(fi, delimiter=","))
         self.assertMultiLineEqual(actual_details, textwrap.dedent("""

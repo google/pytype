@@ -8,7 +8,7 @@ import logging
 import re
 import sys
 import typing
-from typing import Callable, Iterable, Optional, Sequence, TypeVar, Union
+from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
 from pytype import matcher
@@ -429,26 +429,25 @@ class ErrorLogBase:
     _log.info("Restored errorlog to checkpoint: %d errors reverted",
               len(checkpoint.errors))
 
-  def print_to_csv_file(self, filename, open_function=open):
+  def print_to_csv_file(self, fi: IO[str]):
     """Print the errorlog to a csv file."""
-    with open_function(filename, "w") as f:
-      csv_file = csv.writer(f, delimiter=",", lineterminator="\n")
-      for error in self.unique_sorted_errors():
-        # pylint: disable=protected-access
-        if error._details and error._traceback:
-          details = error._details + "\n\n" + error._traceback
-        elif error._traceback:
-          details = error._traceback
-        else:
-          details = error._details
-        csv_file.writerow(
-            [error._filename,
-             error._lineno,
-             error._name,
-             error._message,
-             details])
+    csv_file = csv.writer(fi, delimiter=",", lineterminator="\n")
+    for error in self.unique_sorted_errors():
+      # pylint: disable=protected-access
+      if error._details and error._traceback:
+        details = error._details + "\n\n" + error._traceback
+      elif error._traceback:
+        details = error._traceback
+      else:
+        details = error._details
+      csv_file.writerow(
+          [error._filename,
+           error._lineno,
+           error._name,
+           error._message,
+           details])
 
-  def print_to_file(self, fi, *, color=False):
+  def print_to_file(self, fi: IO[str], *, color: bool = False):
     for error in self.unique_sorted_errors():
       print(error.as_string(color=color), file=fi)
 

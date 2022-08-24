@@ -17,6 +17,7 @@ from pytype import file_utils
 from pytype import imports_map_loader
 from pytype import module_utils
 from pytype import utils
+from pytype.pyc import compiler
 from pytype.typegraph import cfg_utils
 
 from typing_extensions import Literal
@@ -590,20 +591,10 @@ class Postprocessor:
     utils.validate_version(version)
     self.output_options.python_version = version
 
-    if utils.can_compile_bytecode_natively(self.output_options.python_version):
-      # pytype does not need an exe for bytecode compilation. Abort early to
-      # avoid extracting a large unused exe into /tmp.
-      self.output_options.python_exe = None
-      return
-
-    for exe in utils.get_python_exes(self.output_options.python_version):
-      exe_version = utils.get_python_exe_version(exe)
-      if exe_version == self.output_options.python_version:
-        self.output_options.python_exe = exe
-        break
-    else:
-      self.error("Need a valid python%d.%d executable in $PATH" %
-                 self.output_options.python_version)
+    try:
+      self.output_options.python_exe = compiler.get_python_executable(version)
+    except compiler.PythonNotFoundError:
+      self.error("Need a valid python%d.%d executable in $PATH" % version)
 
   def _store_disable(self, disable):
     if disable:

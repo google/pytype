@@ -6,6 +6,7 @@ py_library(
   DEPS
     ._pyc
     .compile_bytecode
+    .compiler
     .loadmarshal
     .magic
     .opcodes
@@ -16,6 +17,17 @@ py_library(
     compile_bytecode
   SRCS
     compile_bytecode.py
+)
+
+py_library(
+  NAME
+    compiler
+  SRCS
+    compiler.py
+  DEPS
+    .compile_bytecode
+    pytype.utils
+    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -47,11 +59,19 @@ py_library(
   SRCS
     pyc.py
   DEPS
-    .compile_bytecode
+    .compiler
     .loadmarshal
     .magic
     pytype.utils
-    pytype.platform_utils.platform_utils
+)
+
+py_test(
+  NAME
+    compiler_test
+  SRCS
+    compiler_test.py
+  DEPS
+    .compiler
 )
 
 py_test(
@@ -79,6 +99,7 @@ py_test(
     pyc_test.py
   DEPS
     ._pyc
+    .compiler
     .opcodes
     pytype.tests.test_base
 )
