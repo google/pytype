@@ -818,6 +818,11 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
       if isinstance(v, self._ast.Attribute):
         self.add_attr(v)
 
+  def visit_AnnAssign(self, node):
+    parent = self.scope_defn.get(self.scope_id())
+    if parent and parent.typ == "ClassDef":
+      self.add_local_def(node, name=node.target)
+
   def visit_Attribute(self, node):
     node_str = self._get_node_name(node)
     # match() returns the location of the attribute, whereas the indexer needs
