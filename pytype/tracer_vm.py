@@ -27,7 +27,7 @@ log = logging.getLogger(__name__)
 # Most interpreter functions (including lambdas) need to be analyzed as
 # stand-alone functions. The exceptions are comprehensions and generators, which
 # have names like "<listcomp>" and "<genexpr>".
-_SKIP_FUNCTION_RE = re.compile("<(?!lambda).+>$")
+_SKIP_FUNCTION_RE = re.compile(r"<(?!lambda)\w+>$")
 
 
 @dataclasses.dataclass(eq=True, frozen=True)

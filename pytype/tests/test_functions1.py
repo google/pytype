@@ -636,6 +636,13 @@ class TestFunctions(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
+  def test_lambda(self):
+    # Inspired by b/243664545
+    self.CheckWithErrors("""
+      def f():
+        a = lambda: 1 + ""  # unsupported-operands
+    """)
+
   def test_nested_lambda(self):
     # Inspired by b/37869955
     self.Check("""
