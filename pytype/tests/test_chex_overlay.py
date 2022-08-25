@@ -2,9 +2,9 @@
 
 import contextlib
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestDataclass(test_base.BaseTest):
@@ -12,7 +12,7 @@ class TestDataclass(test_base.BaseTest):
 
   @contextlib.contextmanager
   def _add_chex(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(
           "chex.pyi", """
         from typing import Any
@@ -181,7 +181,7 @@ class TestDataclass(test_base.BaseTest):
       class B:
         x: str
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       self.Check("""
         import foo
@@ -197,7 +197,7 @@ class TestDataclass(test_base.BaseTest):
       class A(Generic[T]):
         x: T
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       self.Check("""
         import foo

@@ -1,6 +1,5 @@
 """Tests for displaying errors."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -77,7 +76,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"function list\.append"})
 
   def test_pytd_function_name_in_msg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "class A(list): pass")
       errors = self.CheckWithErrors("""
         import foo
@@ -114,7 +113,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Function B.f"})
 
   def test_pretty_print_wrong_args(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(a: int, b: int, c: int, d: int, e: int): ...
       """)
@@ -132,7 +131,7 @@ class ErrorTest(test_base.BaseTest):
     """)
 
   def test_invalid_iterator_from_import(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         class Codec:
             def __init__(self) -> None: ...
@@ -165,7 +164,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"__iter__.*module 'sys'"})
 
   def test_inherit_from_generic(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -180,7 +179,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"int.*mod\.Bar"})
 
   def test_wrong_keyword_arg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("mycgi.pyi", """
         from typing import Union
         def escape(x: Union[str, int]) -> Union[str, int]: ...
@@ -193,7 +192,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"quote.*mycgi\.escape"})
 
   def test_missing_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar(xray, yankee, zulu) -> str: ...
       """)
@@ -214,7 +213,7 @@ class ErrorTest(test_base.BaseTest):
     """)
 
   def test_bad_call(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("other.pyi", """
         def foo(x: int, y: str) -> str: ...
       """)
@@ -239,7 +238,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"2.*3"})
 
   def test_attribute_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("modfoo.pyi", "")
       errors = self.CheckWithErrors("""
         class Foo:
@@ -290,7 +289,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"foo"})
 
   def test_pyi_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: list[int]) -> int: ...
       """)
@@ -325,7 +324,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"f.*x"})
 
   def test_bad_import(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f() -> int: ...
         class f: ...
@@ -335,7 +334,7 @@ class ErrorTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_bad_import_dependency(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from b import X
         class Y(X): ...
@@ -345,7 +344,7 @@ class ErrorTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_bad_import_from(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", """
         def f() -> int: ...
         class f: ...
@@ -357,7 +356,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"foo\.a"})
 
   def test_bad_import_from_dependency(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo/a.pyi", """
           from a import X
           class Y(X): ...
@@ -369,7 +368,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"foo\.a"})
 
   def test_bad_container(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import SupportsInt
         class A(SupportsInt[int]): pass
@@ -380,7 +379,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"SupportsInt is not a container"})
 
   def test_bad_type_parameter_order(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         K = TypeVar("K")
@@ -395,7 +394,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"Illegal.*order.*a\.C"})
 
   def test_duplicate_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -407,7 +406,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"T"})
 
   def test_duplicate_generic_base_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -420,7 +419,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"inherit.*Generic"})
 
   def test_type_parameter_in_module_constant(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -432,7 +431,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"a.*T.*a\.x"})
 
   def test_type_parameter_in_class_attribute(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -447,7 +446,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"x.*A.*T"})
 
   def test_unbound_type_parameter_in_instance_attribute(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -460,7 +459,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"a.*T.*a\.A\.x"})
 
   def test_print_union_arg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Union
         def f(x: Union[int, str]) -> None: ...
@@ -508,7 +507,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"y.*int"})
 
   def test_invalid_parameters_on_method(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A:
           def __init__(self, x: int) -> None: ...
@@ -526,7 +525,7 @@ class ErrorTest(test_base.BaseTest):
           errors, {"e1": a, "e2": a, "e3": a, "e4": a, "e5": a})
 
   def test_duplicate_keywords(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x, *args, y) -> None: ...
       """)
@@ -578,7 +577,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["Type[B]", "Type[A]"]})
 
   def test_bad_name_import(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         import typing
         x = ...  # type: typing.Rumpelstiltskin
@@ -590,7 +589,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": "Rumpelstiltskin"})
 
   def test_bad_name_import_from(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Rumpelstiltskin
         x = ...  # type: Rumpelstiltskin
@@ -602,7 +601,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": "Rumpelstiltskin"})
 
   def test_match_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
         class A: ...
@@ -627,7 +626,7 @@ class ErrorTest(test_base.BaseTest):
       """)
 
   def test_match_parameterized_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Type, TypeVar
         T = TypeVar("T")
@@ -643,7 +642,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorSequences(errors, {"e": expected_error})
 
   def test_mro_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A: ...
         class B: ...
@@ -658,7 +657,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"E"})
 
   def test_bad_mro(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(BaseException, ValueError): ...
       """)
@@ -670,7 +669,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"A"})
 
   def test_unsolvable_as_metaclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any: ...
@@ -709,7 +708,7 @@ class ErrorTest(test_base.BaseTest):
     """)
 
   def test_failed_function_call(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def f(x: str, y: int) -> bool: ...
         def f(x: str) -> bool: ...
@@ -720,7 +719,7 @@ class ErrorTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_noncomputable_method(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         T = TypeVar("T")
         def copy(x: T) -> T: ...
@@ -760,7 +759,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["Actual", "Dict[int, int]"]})
 
   def test_recursion(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(B): ...
         class B(A): ...
@@ -779,7 +778,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"a\.A"})
 
   def test_empty_union_or_optional(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("f1.pyi", """
         def f(x: Union): ...
       """)
@@ -801,7 +800,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["a", "Dict[str, int]"]})
 
   def test_bad_pyi_dict(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Dict
         x = ...  # type: Dict[str, int, float]
@@ -858,7 +857,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"List.*int"})
 
   def test_kwarg_order(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*args, y, x, z: int): ...
         def g(x): ...
@@ -902,7 +901,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": [typ, typ]})
 
   def test_clean_pyi_namedtuple_names(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         X = NamedTuple("X", [])

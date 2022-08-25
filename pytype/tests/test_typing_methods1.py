@@ -2,15 +2,15 @@
 
 import textwrap
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypingMethodsTest(test_base.BaseTest):
   """Tests for typing.py."""
 
   def _check_call(self, t, expr):  # pylint: disable=invalid-name
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import {type}
         def f() -> {type}: ...
@@ -59,7 +59,7 @@ class TypingMethodsTest(test_base.BaseTest):
     self._check_call("Container", "42 in x")
 
   def test_io(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import IO
         def f() -> IO[str]: ...
@@ -114,7 +114,7 @@ class TypingMethodsTest(test_base.BaseTest):
     self._check_call("TextIO", "x.read(10).upper()")
 
   def test_sequence_and_tuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Sequence, Tuple
         def seq() -> Sequence[str]: ...
@@ -147,7 +147,7 @@ class TypingMethodsTest(test_base.BaseTest):
     # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
     # wrong-arg-types error on line 10.
     self.options.tweak(strict_parameter_checks=False)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, MutableSequence
         def seq() -> MutableSequence[str]: ...
@@ -182,7 +182,7 @@ class TypingMethodsTest(test_base.BaseTest):
       """)
 
   def test_deque(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Deque
         def deq() -> Deque[int]: ...
@@ -214,7 +214,7 @@ class TypingMethodsTest(test_base.BaseTest):
       """)
 
   def test_mutablemapping(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import MutableMapping, TypeVar
         K = TypeVar("K")
@@ -249,7 +249,7 @@ class TypingMethodsTest(test_base.BaseTest):
     self._check_call("Dict", "x[42j]")
 
   def test_abstractset(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import AbstractSet
         def f() -> AbstractSet[str]: ...
@@ -284,7 +284,7 @@ class TypingMethodsTest(test_base.BaseTest):
     # TODO(b/63407497): Enabling --strict-parameter-checks leads to a
     # wrong-arg-types error on line 8.
     self.options.tweak(strict_parameter_checks=False)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import MutableSet
         def f() -> MutableSet[str]: ...
@@ -330,7 +330,7 @@ class TypingMethodsTest(test_base.BaseTest):
 
   def test_pattern_and_match(self):
     # Basic pattern sanity check.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Pattern
         def f() -> Pattern[str]: ...

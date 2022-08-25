@@ -378,11 +378,11 @@ py_test(
     ._pytd
     .pytd_utils
     .visitors
-    pytype.utils
     pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
+    pytype.tests.test_base
 )
 
 py_test(
@@ -406,7 +406,6 @@ py_test(
     .serialize_ast
     .visitors
     pytype.libvm
-    pytype.utils
     pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.tests.test_base

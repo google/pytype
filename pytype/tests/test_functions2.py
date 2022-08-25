@@ -1,6 +1,5 @@
 """Test functions."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -270,7 +269,7 @@ class TestFunctions(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e1": r"str.*int", "e2": r"str.*int"})
 
   def test_varargs_in_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: int, *args): ...
       """)
@@ -281,7 +280,7 @@ class TestFunctions(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_varargs_in_pyi_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: int, *args): ...
       """)
@@ -705,7 +704,7 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
 
   @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_positional_only_parameter_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x, /, y) -> None: ...
       """)
@@ -722,7 +721,7 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
 
   @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_positional_and_keyword_arguments(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x, /, **kwargs) -> None: ...
       """)

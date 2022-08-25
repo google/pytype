@@ -1,7 +1,7 @@
 from pytype import config
-from pytype import file_utils
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 from pytype.tools.xref import indexer
 
 
@@ -13,7 +13,7 @@ class CallgraphTest(test_base.BaseTest):
     """Generate references from a code string."""
     args = {"version": self.python_version}
     args.update(kwargs)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("t.py", code)
       options = config.Options.create(d["t.py"])
       options.tweak(**args)
@@ -89,7 +89,7 @@ class CallgraphTest(test_base.BaseTest):
         def __init__(a: str, b: int) -> None: ...
         def bar() -> int: ...
     """
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("t.py", code)
       d.create_file("foo.pyi", stub)
       options = config.Options.create(d["t.py"], pythonpath=d.path,

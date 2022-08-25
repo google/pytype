@@ -116,7 +116,7 @@ if typing.TYPE_CHECKING:
       ...  # pytype: disable=bad-return-type
 
 else:
-  # At runtime, Decorator is a simple identify function that returns its input.
+  # At runtime, Decorator is a simple identity function that returns its input.
   Decorator = lambda d: d
 
 

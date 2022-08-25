@@ -2,95 +2,15 @@
 
 import copy
 import io
-import os
-import re
-import subprocess
-from typing import List
 
-from pytype import pytype_source_utils
 from pytype import utils
-from pytype.platform_utils import tempfile as compatible_tempfile
-from pytype.pyc import compile_bytecode
+from pytype.pyc import compiler
 from pytype.pyc import loadmarshal
 from pytype.pyc import magic
 
-COMPILE_SCRIPT = "pyc/compile_bytecode.py"
-COMPILE_ERROR_RE = re.compile(r"^(.*) \((.*), line (\d+)\)$")
 
-
-class CompileError(Exception):
-  """A compilation error."""
-
-  def __init__(self, msg):
-    super().__init__(msg)
-    match = COMPILE_ERROR_RE.match(msg)
-    if match:
-      self.error = match.group(1)
-      self.filename = match.group(2)
-      self.lineno = int(match.group(3))
-    else:
-      self.error = msg
-      self.filename = None
-      self.lineno = 1
-
-
-def compile_src_string_to_pyc_string(
-    src, filename, python_version, python_exe: List[str], mode="exec"):
-  """Compile Python source code to pyc data.
-
-  This may use py_compile if the src is for the same version as we're running,
-  or else it spawns an external process to produce a .pyc file. The generated
-  bytecode (.pyc file) is read and both it and any temporary files are deleted.
-
-  Args:
-    src: Python sourcecode
-    filename: Name of the source file. For error messages.
-    python_version: Python version, (major, minor).
-    python_exe: A path to a Python interpreter.
-    mode: Same as builtins.compile: "exec" if source consists of a
-      sequence of statements, "eval" if it consists of a single expression,
-      or "single" if it consists of a single interactive statement.
-
-  Returns:
-    The compiled pyc file as a binary string.
-  Raises:
-    CompileError: If we find a syntax error in the file.
-    IOError: If our compile script failed.
-  """
-
-  if utils.can_compile_bytecode_natively(python_version):
-    output = io.BytesIO()
-    compile_bytecode.compile_src_to_pyc(src, filename or "<>", output, mode)
-    bytecode = output.getvalue()
-  else:
-    tempfile_options = {"mode": "w", "suffix": ".py", "delete": False}
-    tempfile_options.update({"encoding": "utf-8"})
-    fi = compatible_tempfile.NamedTemporaryFile(**tempfile_options)  # pylint: disable=consider-using-with
-    try:
-      fi.write(src)
-      fi.close()
-      # In order to be able to compile pyc files for a different Python version
-      # from the one we're running under, we spawn an external process.
-      # We pass -E to ignore the environment so that PYTHONPATH and
-      # sitecustomize on some people's systems don't mess with the interpreter.
-      cmd = python_exe + ["-E", "-", fi.name, filename or fi.name, mode]
-
-      compile_script_src = pytype_source_utils.load_binary_file(COMPILE_SCRIPT)
-
-      with subprocess.Popen(
-          cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE) as p:
-        bytecode, _ = p.communicate(compile_script_src)
-        assert p.poll() == 0, "Child process failed"
-    finally:
-      os.unlink(fi.name)
-  first_byte = bytecode[0]
-  if first_byte == 0:  # compile OK
-    return bytecode[1:]
-  elif first_byte == 1:  # compile error
-    code = bytecode[1:]  # type: bytes
-    raise CompileError(utils.native_str(code))
-  else:
-    raise OSError("_compile.py produced invalid result")
+# Reexport since we have exposed this error publicly as pyc.CompileError
+CompileError = compiler.CompileError
 
 
 def parse_pyc_stream(fi):
@@ -154,7 +74,7 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
   Raises:
     UsageError: If python_exe and python_version are mismatched.
   """
-  pyc_data = compile_src_string_to_pyc_string(
+  pyc_data = compiler.compile_src_string_to_pyc_string(
       src, filename, python_version, python_exe, mode)
   code = parse_pyc_string(pyc_data)
   if code.python_version != python_version:

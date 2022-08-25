@@ -622,7 +622,10 @@ class Converter(utils.ContextWeakrefMixin):
       return self.module_type
     elif name == "types.FunctionType":
       return self.function_type
-    elif name == "types.NoneType":
+    elif name in ("types.NoneType", "_typeshed.NoneType"):
+      # Since types.NoneType is new in 3.10, _typeshed defines its own
+      # equivalent for 3.9 and below:
+      # https://github.com/python/typeshed/blob/3ab3711f427231fe31e856e238bcbc58172ef983/stdlib/_typeshed/__init__.pyi#L240-L247
       return self.none_type
     elif name == "types.CodeType":
       return self.primitive_classes[types.CodeType]

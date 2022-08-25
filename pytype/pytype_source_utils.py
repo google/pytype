@@ -14,7 +14,7 @@ class NoSuchDirectory(Exception):  # pylint: disable=g-bad-exception-name
   pass
 
 
-def pytype_source_dir():
+def _pytype_source_dir():
   """The base directory of the pytype source tree."""
   res = path_utils.dirname(__file__)
   if path_utils.basename(res) == "__pycache__":
@@ -36,7 +36,7 @@ def get_full_path(path):
   if path_utils.isabs(path):
     return path
   else:
-    return path_utils.join(pytype_source_dir(), path)
+    return path_utils.join(_pytype_source_dir(), path)
 
 
 def load_text_file(filename):

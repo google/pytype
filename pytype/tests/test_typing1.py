@@ -1,6 +1,5 @@
 """Tests for typing.py."""
 
-from pytype import file_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -96,7 +95,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_recursive_tuple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple
         class Foo(Tuple[Foo]): ...
@@ -166,7 +165,7 @@ class TypingTest(test_base.BaseTest):
     """)
 
   def test_pyi_classvar(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import ClassVar
         class X:
@@ -178,7 +177,7 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pyi_classvar_argcount(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import ClassVar
         class X:
@@ -214,7 +213,7 @@ class LiteralTest(test_base.BaseTest):
   """Tests for typing.Literal."""
 
   def test_pyi_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         def f(x: Literal[True]) -> int: ...
@@ -237,7 +236,7 @@ class LiteralTest(test_base.BaseTest):
       """)
 
   def test_pyi_return(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         def okay() -> Literal[True]: ...
@@ -250,7 +249,7 @@ class LiteralTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, "import foo")
 
   def test_pyi_variable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         OKAY: Literal[True]
@@ -263,7 +262,7 @@ class LiteralTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, "import foo")
 
   def test_pyi_typing_extensions(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing_extensions import Literal
         OKAY: Literal[True]
@@ -276,7 +275,7 @@ class LiteralTest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, "import foo")
 
   def test_pyi_value(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import enum
         from typing import Literal
@@ -304,7 +303,7 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pyi_multiple(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         def f(x: Literal[False, None]) -> int: ...
@@ -324,7 +323,7 @@ class LiteralTest(test_base.BaseTest):
       """)
 
   def test_reexport(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         x: Literal[True]
@@ -343,7 +342,7 @@ class LiteralTest(test_base.BaseTest):
       """)
 
   def test_string(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import IO, Literal
         def open(f: str, mode: Literal["r", "rt"]) -> str: ...
@@ -366,7 +365,7 @@ class LiteralTest(test_base.BaseTest):
       """)
 
   def test_unknown(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         def f(x: Literal[True]) -> int: ...
@@ -385,7 +384,7 @@ class LiteralTest(test_base.BaseTest):
       """)
 
   def test_literal_constant(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal, overload
         x: Literal["x"]
@@ -410,7 +409,7 @@ class LiteralTest(test_base.BaseTest):
 
   def test_illegal_literal_class(self):
     # This should be a pyi-error, but checking happens during conversion.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal
         class NotEnum:
@@ -422,7 +421,7 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_illegal_literal_class_indirect(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class NotEnum:
           A: int
@@ -437,7 +436,7 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_missing_enum_member(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import enum
         from typing import Literal
@@ -450,7 +449,7 @@ class LiteralTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_illegal_literal_typevar(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Literal, TypeVar
         T = TypeVar('T')

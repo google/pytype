@@ -3,8 +3,8 @@
 File 2/3. Split into parts to enable better test parallelism.
 """
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class BuiltinTests2(test_base.BaseTest):
@@ -174,7 +174,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def test_module(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: module
       """)
@@ -192,7 +192,7 @@ class BuiltinTests2(test_base.BaseTest):
       """)
 
   def test_classmethod(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           x = ...  # type: classmethod
@@ -210,7 +210,7 @@ class BuiltinTests2(test_base.BaseTest):
       """)
 
   def test_staticmethod(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           x = ...  # type: staticmethod
@@ -665,7 +665,7 @@ class BuiltinTests2(test_base.BaseTest):
     """)
 
   def test_exec(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = exec
       """)

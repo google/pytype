@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype.platform_utils import path_utils
+from pytype.tests import test_utils
 from pytype.tools import environment
 
 import unittest
@@ -11,19 +12,19 @@ class TestComputePythonPath(unittest.TestCase):
   """Tests for environment.compute_pythonpath."""
 
   def test_script_path(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       f = d.create_file('foo.py')
       self.assertSequenceEqual(environment.compute_pythonpath([f]), [d.path])
 
   def test_module_path(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file('__init__.py')
       f = d.create_file('foo.py')
       self.assertSequenceEqual(
           environment.compute_pythonpath([f]), [path_utils.dirname(d.path)])
 
   def test_subpackage(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file('__init__.py')
       d.create_file(file_utils.replace_separator('d/__init__.py'))
       f = d.create_file(file_utils.replace_separator('d/foo.py'))
@@ -31,7 +32,7 @@ class TestComputePythonPath(unittest.TestCase):
           environment.compute_pythonpath([f]), [path_utils.dirname(d.path)])
 
   def test_multiple_paths(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       f1 = d.create_file(file_utils.replace_separator('d1/foo.py'))
       f2 = d.create_file(file_utils.replace_separator('d2/foo.py'))
       self.assertSequenceEqual(
@@ -40,7 +41,7 @@ class TestComputePythonPath(unittest.TestCase):
            path_utils.join(d.path, 'd1')])
 
   def test_sort(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       f1 = d.create_file(file_utils.replace_separator('d1/foo.py'))
       f2 = d.create_file(file_utils.replace_separator('d1/d2/foo.py'))
       f3 = d.create_file(file_utils.replace_separator('d1/d2/d3/foo.py'))

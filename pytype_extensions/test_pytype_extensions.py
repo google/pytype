@@ -3,9 +3,9 @@
 import os
 
 from pytype import errors
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 def InitContents():
@@ -18,7 +18,7 @@ class CodeTest(test_base.BaseTest):
 
   def CheckWithErrors(self, code: str) -> errors.ErrorLog:
     extensions_pyi = pytd_utils.Print(self.Infer(InitContents()))
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file('pytype_extensions.pyi', extensions_pyi)
       return super().CheckWithErrors(code, pythonpath=[d.path])
 

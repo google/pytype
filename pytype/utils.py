@@ -1,20 +1,14 @@
 """Generic functions."""
 
-import atexit
 import collections
 import contextlib
 import itertools
-import os
 import re
-import subprocess
-import sys
-import tempfile
 import threading
 import traceback
-from typing import Iterable, List, Union
+from typing import Union
 import weakref
 
-from pytype import pytype_source_utils
 from pytype.platform_utils import path_utils
 
 
@@ -148,103 +142,6 @@ def native_str(s: Union[str, bytes], errors: str = "strict") -> str:
     return s
   else:
     return s.decode("utf-8", errors)
-
-
-def _load_data_file(path):
-  """Get the contents of a data file."""
-  loader = globals().get("__loader__", None)
-  if loader:
-    # For an explanation of the args to loader.get_data, see
-    # https://www.python.org/dev/peps/pep-0302/#optional-extensions-to-the-importer-protocol
-    # https://docs.python.org/3/library/importlib.html#importlib.abc.ResourceLoader.get_data
-    return loader.get_data(path)
-  with open(path, "rb") as fi:
-    return fi.read()
-
-
-def _path_to_custom_exe(relative_path):
-  """Get the full path to a custom python exe in the pytype/ src directory."""
-  path = pytype_source_utils.get_full_path(relative_path)
-  if os.path.exists(path):
-    return path
-  data = _load_data_file(path)
-  with tempfile.NamedTemporaryFile(delete=False, suffix="python") as fi:
-    fi.write(data)
-    fi.close()
-    exe_file = fi.name
-    os.chmod(exe_file, 0o750)
-    atexit.register(lambda: os.unlink(exe_file))
-  return exe_file
-
-
-# To aid with testing a pytype against a new Python version, you can build a
-# *hermetic* Python runtime executable and drop it in the pytype/ src directory,
-# then add an entry for it here, like:
-#     (3, 10): "python3.10",
-# This would mean that when -V3.10 is passed to pytype, it will use the exe at
-# pytype/python3.10 to compile the code under analysis. Remember to add the new
-# file to the pytype_main_deps target!
-_CUSTOM_PYTHON_EXES = {}
-
-
-def get_python_exes(python_version) -> Iterable[List[str]]:
-  """Find possible python executables to use.
-
-  Arguments:
-    python_version: the version tuple (e.g. (3, 7))
-  Yields:
-    The path to the executable
-  """
-  if python_version in _CUSTOM_PYTHON_EXES:
-    yield [_path_to_custom_exe(_CUSTOM_PYTHON_EXES[python_version])]
-    return
-  for version in (format_version(python_version), "3"):
-    if sys.platform == "win32":
-      python_exe = ["py", f"-{version}"]
-    else:
-      python_exe = [f"python{version}"]
-    yield python_exe
-
-
-def get_python_exe_version(python_exe: List[str]):
-  """Determine the major and minor version of given Python executable.
-
-  Arguments:
-    python_exe: absolute path to the Python executable
-  Returns:
-    Version as (major, minor) tuple.
-  """
-  try:
-    python_exe_version = subprocess.check_output(
-        python_exe + ["-V"], stderr=subprocess.STDOUT).decode()
-  except (subprocess.CalledProcessError, FileNotFoundError):
-    return None
-
-  return parse_exe_version_string(python_exe_version)
-
-
-def parse_exe_version_string(version_str):
-  """Parse the version string of a Python executable.
-
-  Arguments:
-    version_str: Version string as emitted by running `PYTHON_EXE -V`
-  Returns:
-    Version as (major, minor) tuple.
-  """
-  # match the major.minor part of the version string, ignore the micro part
-  matcher = re.search(r"Python (\d+\.\d+)\.\d+", version_str)
-
-  if matcher:
-    return version_from_string(matcher.group(1))
-  else:
-    return None
-
-
-def can_compile_bytecode_natively(python_version):
-  # Optimization: calling compile_bytecode directly is faster than spawning a
-  # subprocess and lets us avoid extracting a large Python executable into /tmp.
-  # We can do this only when the host and target versions match.
-  return python_version == sys.version_info[:2]
 
 
 def list_startswith(l, prefix):

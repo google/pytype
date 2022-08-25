@@ -1,14 +1,14 @@
 """Tests for PEP526 variable annotations."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class VariableAnnotationsBasicTest(test_base.BaseTest):
   """Tests for PEP526 variable annotations."""
 
   def test_pyi_annotations(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List
         x: int

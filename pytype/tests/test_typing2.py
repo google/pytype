@@ -1,8 +1,8 @@
 """Tests for typing.py."""
 
-from pytype import file_utils
 from pytype.pytd import pep484
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypingTest(test_base.BaseTest):
@@ -95,7 +95,7 @@ class TypingTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"bar.*int"})
 
   def test_use_type_alias(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List
         MyType = List[str]
@@ -108,7 +108,7 @@ class TypingTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_callable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
         def f() -> Callable: ...
@@ -203,7 +203,7 @@ class TypingTest(test_base.BaseTest):
     })
 
   def test_generics(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Dict
         K = TypeVar("K")
@@ -665,7 +665,7 @@ class TypingTestPython3Feature(test_base.BaseTest):
   """Typing tests (Python 3)."""
 
   def test_namedtuple_item(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
         def f() -> NamedTuple("ret", [("x", int), ("y", str)]): ...
@@ -726,7 +726,7 @@ class TypingTestPython3Feature(test_base.BaseTest):
     """)
 
   def test_pyi_classvar_of_union(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import ClassVar, Optional
         class Foo:
@@ -755,7 +755,7 @@ class TypingTestPython3Feature(test_base.BaseTest):
     """)
 
   def test_typed_dict(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing_extensions import TypedDict
         X = TypedDict('X', {'a': int})
@@ -1031,7 +1031,7 @@ class TypeAliasTest(test_base.BaseTest):
     for suffix in ("", "_extensions"):
       typing_module = f"typing{suffix}"
       with self.subTest(typing_module=typing_module):
-        with file_utils.Tempdir() as d:
+        with test_utils.Tempdir() as d:
           d.create_file("foo.pyi", f"""
             from {typing_module} import TypeAlias
             X: TypeAlias = int

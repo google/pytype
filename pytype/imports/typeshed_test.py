@@ -8,6 +8,7 @@ from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
 from pytype.pytd.parse import parser_test_base
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestTypeshedLoading(parser_test_base.ParserTest):
@@ -88,7 +89,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     # _env_home is used in preference to _root, so make sure it's unset.
     self.ts._env_home = None
     self.ts._stdlib_versions["foo"] = ((3, 8), None)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(
           file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
       self.ts._root = d.path
@@ -97,7 +98,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
 
   def test_carriage_return_custom_root(self):
     self.ts._stdlib_versions["foo"] = ((3, 8), None)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(
           file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
       self.ts._env_home = d.path

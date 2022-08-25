@@ -1,8 +1,8 @@
 """Tests for pickle_utils.py."""
 
-from pytype import file_utils
 from pytype.imports import pickle_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestPickle(test_base.UnitTest):
@@ -10,7 +10,7 @@ class TestPickle(test_base.UnitTest):
 
   def test_load_pickle_from_file(self):
     d1 = {1, 2j, "3"}
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = d.create_file("foo.pickle")
       pickle_utils.SavePickle(d1, filename)
       d2 = pickle_utils.LoadPickle(filename)
@@ -18,7 +18,7 @@ class TestPickle(test_base.UnitTest):
 
   def test_load_pickle_from_compressed_file(self):
     d1 = {1, 2j, "3"}
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = d.create_file("foo.pickle.gz")
       pickle_utils.SavePickle(d1, filename, compress=True)
       d2 = pickle_utils.LoadPickle(filename, compress=True)

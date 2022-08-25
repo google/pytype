@@ -1,8 +1,8 @@
 """Tests for typing.overload."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class OverloadTest(test_base.BaseTest):
@@ -126,7 +126,7 @@ class OverloadTest(test_base.BaseTest):
       def f(x: str) -> str: ...
       def g() -> Callable: ...
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       errors = self.CheckWithErrors("""
         import foo
@@ -204,7 +204,7 @@ class OverloadTest(test_base.BaseTest):
     """)
 
   def test_varargs_and_kwargs(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import overload
         @overload

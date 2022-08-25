@@ -4,17 +4,66 @@ import collections
 import copy
 import dataclasses
 import io
+import os
 import re
+import shutil
 import sys
+import textwrap
 import tokenize
 
 from pytype import context
 from pytype import load_pytd
 from pytype import state as frame_state
+from pytype.file_utils import makedirs
+from pytype.platform_utils import path_utils
+from pytype.platform_utils import tempfile as compatible_tempfile
 from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 
 import unittest
+
+
+class Tempdir:
+  """Context handler for creating temporary directories."""
+
+  def __enter__(self):
+    self.path = compatible_tempfile.mkdtemp()
+    return self
+
+  def create_directory(self, filename):
+    """Create a subdirectory in the temporary directory."""
+    path = path_utils.join(self.path, filename)
+    makedirs(path)
+    return path
+
+  def create_file(self, filename, indented_data=None):
+    """Create a file in the temporary directory. Dedents the data if needed."""
+    filedir, filename = path_utils.split(filename)
+    if filedir:
+      self.create_directory(filedir)
+    path = path_utils.join(self.path, filedir, filename)
+    if isinstance(indented_data, bytes):
+      # This is binary data rather than text.
+      mode = "wb"
+      data = indented_data
+    else:
+      mode = "w"
+      data = textwrap.dedent(indented_data) if indented_data else indented_data
+    with open(path, mode) as fi:
+      if data:
+        fi.write(data)
+    return path
+
+  def delete_file(self, filename):
+    os.unlink(path_utils.join(self.path, filename))
+
+  def __exit__(self, error_type, value, tb):
+    shutil.rmtree(path=self.path)
+    return False  # reraise any exceptions
+
+  def __getitem__(self, filename):
+    """Get the full path for an entry in this directory."""
+    return path_utils.join(self.path, filename)
 
 
 @dataclasses.dataclass(eq=True, frozen=True)

@@ -2,6 +2,7 @@
 
 from pytype import file_utils
 from pytype.platform_utils import path_utils
+from pytype.tests import test_utils
 
 import unittest
 
@@ -21,7 +22,7 @@ class FileUtilsTest(unittest.TestCase):
     self.assertEqual("xyz.bar", file_utils.replace_extension("xyz", "bar"))
 
   def test_tempdir(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename1 = d.create_file("foo.txt")
       filename2 = d.create_file("bar.txt", "\tdata2")
       filename3 = d.create_file("baz.txt", "data3")
@@ -60,7 +61,7 @@ class FileUtilsTest(unittest.TestCase):
     self.assertFalse(path_utils.isdir(filename5))
 
   def test_cd(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_directory("foo")
       d1 = path_utils.getcwd()
       with file_utils.cd(d.path):
@@ -90,7 +91,7 @@ class TestPathExpansion(unittest.TestCase):
                      [full_path1, full_path2])
 
   def test_expand_with_cwd(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       f = d.create_file("foo.py")
       self.assertEqual(file_utils.expand_path("foo.py", d.path), f)
 
@@ -107,7 +108,7 @@ class TestExpandSourceFiles(unittest.TestCase):
   ]
 
   def _test_expand(self, string):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       pyfiles = [f for f in fs if f.endswith(".py")]
       self.assertCountEqual(
@@ -120,7 +121,7 @@ class TestExpandSourceFiles(unittest.TestCase):
     self._test_expand(file_utils.replace_separator("a.py foo/b.py foo foo/bar"))
 
   def test_cwd(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       pyfiles = [f for f in fs if f.endswith(".py")]
       # cd to d.path and run with just "." as an argument
@@ -133,7 +134,7 @@ class TestExpandSourceFiles(unittest.TestCase):
 
   def test_magic(self):
     filenames = ["a.py", file_utils.replace_separator("b/c.py")]
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       with file_utils.cd(d.path):
@@ -144,7 +145,7 @@ class TestExpandSourceFiles(unittest.TestCase):
 
   def test_magic_with_cwd(self):
     filenames = ["a.py", file_utils.replace_separator("b/c.py")]
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       self.assertEqual(
@@ -154,7 +155,7 @@ class TestExpandSourceFiles(unittest.TestCase):
 
   def test_multiple_magic(self):
     filenames = ["a.py", file_utils.replace_separator("b/c.py")]
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       self.assertEqual(
@@ -166,26 +167,26 @@ class TestExpandSourceFiles(unittest.TestCase):
 class TestExpandHiddenFiles(unittest.TestCase):
 
   def test_ignore_file(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(".ignore.py")
       self.assertEqual(file_utils.expand_source_files(".", cwd=d.path), set())
 
   def test_find_file(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(".find.py")
       self.assertEqual(
           file_utils.expand_source_files(".*", cwd=d.path),
           {path_utils.join(d.path, ".find.py")})
 
   def test_ignore_dir(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(file_utils.replace_separator("d1/.d2/ignore.py"))
       self.assertEqual(
           file_utils.expand_source_files(
               file_utils.replace_separator("d1/**/*"), cwd=d.path), set())
 
   def test_find_dir(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(file_utils.replace_separator(".d/find.py"))
       self.assertEqual(
           file_utils.expand_source_files(
@@ -212,7 +213,7 @@ class TestExpandPythonpath(unittest.TestCase):
          path_utils.join(path_utils.getcwd(), "a")])
 
   def test_expand_with_cwd(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self.assertEqual(
           file_utils.expand_pythonpath(
               file_utils.replace_separator("a/b:c/d"), cwd=d.path), [
@@ -239,7 +240,7 @@ class TestExpandGlobpaths(unittest.TestCase):
 
   def test_expand(self):
     filenames = ["a.py", file_utils.replace_separator("b/c.py")]
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       with file_utils.cd(d.path):
@@ -250,7 +251,7 @@ class TestExpandGlobpaths(unittest.TestCase):
 
   def test_expand_with_cwd(self):
     filenames = ["a.py", file_utils.replace_separator("b/c.py")]
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       self.assertEqual(

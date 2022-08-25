@@ -3,11 +3,11 @@
 import pickle
 import textwrap
 
-from pytype import file_utils
 from pytype.imports import pickle_utils
 from pytype.pyi import parser
 from pytype.pytd import visitors
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class PickleTest(test_base.BaseTest):
@@ -36,7 +36,7 @@ class PickleTest(test_base.BaseTest):
     pickled = self.Infer("""
       x = type
     """, deep=False, pickle=True, module_name="foo")
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       u = d.create_file("u.pickled", pickled)
       ty = self.Infer("""
         import u
@@ -55,7 +55,7 @@ class PickleTest(test_base.BaseTest):
       timedelta = datetime.timedelta  # copy class
     """, deep=False, pickle=True, module_name="foo")
     self._verifyDeps(pickled_foo, ["builtins"], ["datetime"])
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       pickled_bar = self.Infer("""
         import foo
@@ -76,7 +76,7 @@ class PickleTest(test_base.BaseTest):
       """)
 
   def test_optimize_on_late_types(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       pickled_foo = self.Infer("""
         class X: pass
       """, deep=False, pickle=True, module_name="foo")
@@ -97,7 +97,7 @@ class PickleTest(test_base.BaseTest):
       """, deep=False, imports_map={"foo": foo, "bar": bar})
 
   def test_file_change(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       pickled_xy = self.Infer("""
         class X: pass
         class Y: pass
@@ -130,7 +130,7 @@ class PickleTest(test_base.BaseTest):
       """, deep=False, imports_map={"foo": foo, "bar": bar})
 
   def test_file_rename(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       pickled_other_foo = self.Infer("""
         class Foo: pass
       """, deep=False, pickle=True, module_name="bar")
@@ -150,7 +150,7 @@ class PickleTest(test_base.BaseTest):
                  module_name="baz")
 
   def test_optimize(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       pickled_foo = self.PicklePyi("""
         import UserDict
         class Foo: ...
@@ -176,7 +176,7 @@ class PickleTest(test_base.BaseTest):
         import UserDict
         def f(x: UserDict.UserDict) -> None: ...
       """, module_name="foo")
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
       self.options.tweak(imports_map={"foo": foo})
       pickled_bar = self.PicklePyi("""

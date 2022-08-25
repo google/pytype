@@ -1,8 +1,8 @@
 """Tests for handling GenericType."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class GenericBasicTest(test_base.BaseTest):
@@ -100,7 +100,7 @@ class GenericBasicTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Cannot inherit.*plain Generic"})
 
   def test_generic_with_dup_type_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
 
@@ -113,7 +113,7 @@ class GenericBasicTest(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"Duplicate.*T.*a.A"})
 
   def test_multi_generic_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
 
@@ -128,7 +128,7 @@ class GenericBasicTest(test_base.BaseTest):
           errors, {"e": r"Cannot inherit.*Generic.*multiple times"})
 
   def test_generic_with_type_miss_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar, Dict
 
@@ -291,7 +291,7 @@ class GenericBasicTest(test_base.BaseTest):
         errors, {"e": r"V.*appears only once in the function signature"})
 
   def test_type_parameter_without_substitution(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("base.pyi", """
         from typing import Generic, Type, TypeVar
 
@@ -310,7 +310,7 @@ class GenericBasicTest(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pytd_class_instantiation(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -360,7 +360,7 @@ class GenericBasicTest(test_base.BaseTest):
         errors, {"e1": r"int.*str", "e2": r"int.*str", "e3": r"int.*str"})
 
   def test_func_match_for_pytd_class_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import TypeVar, Generic
 
@@ -480,7 +480,7 @@ class GenericBasicTest(test_base.BaseTest):
 
   def test_self_type_parameter(self):
     # The purpose is to verify there is no infinite recursion
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Sequence, Typing, Generic
 
@@ -765,7 +765,7 @@ class GenericBasicTest(test_base.BaseTest):
 
   def test_generic_substitution(self):
     # Tests a complicated use of generics distilled from real user code.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Dict, Generic, List, Optional, Protocol, TypeVar
 
@@ -954,7 +954,7 @@ class GenericFeatureTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""
 
   def test_type_parameter_duplicated(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, Dict
         T = TypeVar("T")
@@ -1063,7 +1063,7 @@ class GenericFeatureTest(test_base.BaseTest):
         def __init__(self, x: T):
           self.x = x
     """)
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       ty = self.Infer("""
         import foo

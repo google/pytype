@@ -2,8 +2,8 @@
 
 import sys
 
-from pytype import file_utils
 from pytype.platform_utils import path_utils
+from pytype.tests import test_utils
 from pytype.tools import tool_utils
 
 import unittest
@@ -32,7 +32,7 @@ class TestMakeDirsOrDie(unittest.TestCase):
   """Tests for tool_utils.makedirs_or_die()."""
 
   def test_make(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       subdir = path_utils.join(d.path, 'some/path')
       tool_utils.makedirs_or_die(subdir, '')
       self.assertTrue(path_utils.isdir(subdir))

@@ -1,8 +1,8 @@
 """Test list, dict, etc."""
 
-from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ContainerTest(test_base.BaseTest):
@@ -602,7 +602,7 @@ class ContainerTest(test_base.BaseTest):
     """)
 
   def test_recursive_definition_and_conflict(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")

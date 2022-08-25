@@ -2,8 +2,8 @@
 
 import pickle
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class PickleTest(test_base.BaseTest):
@@ -17,7 +17,7 @@ class PickleTest(test_base.BaseTest):
       def g() -> json.JSONDecoder:
         return json.JSONDecoder()
     """, pickle=True, module_name="foo")
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       u = d.create_file("u.pickled", pickled)
       ty = self.Infer("""
         import u

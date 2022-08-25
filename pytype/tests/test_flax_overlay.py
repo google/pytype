@@ -1,8 +1,8 @@
 """Tests for the flax overlay."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestStructDataclass(test_base.BaseTest):
@@ -15,7 +15,7 @@ class TestStructDataclass(test_base.BaseTest):
     """)
 
   def test_basic(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_struct_pyi(d)
       ty = self.Infer("""
         import flax
@@ -56,7 +56,7 @@ class TestStructDataclass(test_base.BaseTest):
     """)
 
   def test_replace(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_struct_pyi(d)
       self.Check("""
         import flax
@@ -83,7 +83,7 @@ class TestLinenModule(test_base.BaseTest):
     """)
 
   def test_constructor(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       ty = self.Infer("""
         from flax import linen as nn
@@ -105,7 +105,7 @@ class TestLinenModule(test_base.BaseTest):
       """)
 
   def test_unexported_constructor(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       ty = self.Infer("""
         from flax.linen import module
@@ -127,7 +127,7 @@ class TestLinenModule(test_base.BaseTest):
       """)
 
   def test_relative_import_from_package_module(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       ty = self.Infer("""
         from .module import Module
@@ -150,7 +150,7 @@ class TestLinenModule(test_base.BaseTest):
       """)
 
   def test_parent_import_from_package_module(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       ty = self.Infer("""
         from .. import linen
@@ -173,7 +173,7 @@ class TestLinenModule(test_base.BaseTest):
 
   def test_self_type(self):
     """Match self: f.l.module.Module even if imported as f.l.Module."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       self.Check("""
         from flax import linen
@@ -184,7 +184,7 @@ class TestLinenModule(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_invalid_field(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       errors = self.CheckWithErrors("""
         from flax import linen as nn
@@ -195,7 +195,7 @@ class TestLinenModule(test_base.BaseTest):
       self.assertErrorRegexes(errors, {"e": r"name.*implicitly"})
 
   def test_setup(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       self.Check("""
         from flax import linen
@@ -208,7 +208,7 @@ class TestLinenModule(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_reingest(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       foo_ty = self.Infer("""
         from flax import linen
@@ -237,7 +237,7 @@ class TestLinenModule(test_base.BaseTest):
     """)
 
   def test_reingest_and_subclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       self._setup_linen_pyi(d)
       foo_ty = self.Infer("""
         from flax import linen

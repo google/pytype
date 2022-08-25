@@ -99,7 +99,6 @@ py_test(
     pickle_utils_test.py
   DEPS
     .pickle_utils
-    pytype.utils
     pytype.tests.test_base
 )
 

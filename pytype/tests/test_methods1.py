@@ -1,8 +1,8 @@
 """Tests for methods."""
-from pytype import file_utils
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class MethodsTest(test_base.BaseTest):
@@ -594,7 +594,7 @@ class MethodsTest(test_base.BaseTest):
     """)
 
   def test_builtin_starargs(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
@@ -611,7 +611,7 @@ class MethodsTest(test_base.BaseTest):
       """)
 
   def test_builtin_starstarargs(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...
@@ -628,7 +628,7 @@ class MethodsTest(test_base.BaseTest):
       """)
 
   def test_builtin_keyword(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("myjson.pyi", """
         from typing import Any
         def loads(s: str, encoding: Any = ...) -> Any: ...

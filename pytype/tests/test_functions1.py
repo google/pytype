@@ -1,7 +1,7 @@
 """Test functions."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestGenerators(test_base.BaseTest):
@@ -100,7 +100,7 @@ class PreciseReturnTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
   def test_param_return(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import TypeVar
         T = TypeVar("T")
@@ -262,7 +262,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_wraps(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("myfunctools.pyi", """
         from typing import Any, Callable, Sequence
         from typing import Any
@@ -349,7 +349,7 @@ class TestFunctions(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"foo.*max"})
 
   def test_multiple_signatures_with_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -368,7 +368,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_multiple_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, Tuple, TypeVar
         T = TypeVar("T")
@@ -388,7 +388,7 @@ class TestFunctions(test_base.BaseTest):
 
   def test_unknown_single_signature(self):
     # Test that the right signature is picked in the presence of an unknown
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -407,7 +407,7 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_unknown_with_solved_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -426,7 +426,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_unknown_with_extra_information(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -453,7 +453,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_type_parameter_in_return(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -473,7 +473,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_multiple_signatures(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> float: ...
         def f(x: int, y: bool) -> int: ...
@@ -488,7 +488,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_unknown(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(arg1: str) -> float: ...
         def f(arg2: int) -> bool: ...
@@ -505,7 +505,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> int: ...
         def f(*args) -> float: ...
@@ -522,7 +522,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_kwarg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*, y: int) -> bool: ...
         def f(y: str) -> float: ...
@@ -574,7 +574,7 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_function_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f() -> None: ...
       """)
@@ -597,7 +597,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_type_parameter_visibility(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Tuple, TypeVar, Union
         T = TypeVar("T")
@@ -615,7 +615,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_pytd_function_in_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def bar(): ...
       """)
@@ -666,7 +666,7 @@ class TestFunctions(test_base.BaseTest):
       """)
 
   def test_set_defaults_non_new(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         def b(x: int, y: int, z: int): ...
         """)
@@ -773,7 +773,7 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_pyi_starargs(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str, *args) -> None: ...
       """)
@@ -783,7 +783,7 @@ class TestFunctions(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_starargs_matching_pyi_posargs(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: int, y: int, z: int) -> None: ...
       """)
@@ -796,7 +796,7 @@ class TestFunctions(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_starargs_forwarding(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: int) -> None: ...
       """)
@@ -827,7 +827,7 @@ class TestFunctions(test_base.BaseTest):
     """)
 
   def test_preserve_return_union(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Union
         def f(x: int) -> Union[int, str]: ...

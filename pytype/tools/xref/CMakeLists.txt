@@ -117,7 +117,6 @@ py_test(
   DEPS
     ._indexer
     pytype.libvm
-    pytype.utils
     pytype.tests.test_base
 )
 
@@ -143,7 +142,7 @@ py_test(
     parse_args_test.py
   DEPS
     .parse_args
-    pytype.utils
+    pytype.tests.test_base
 )
 
 add_subdirectory(testdata)

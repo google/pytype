@@ -1,7 +1,7 @@
 """Tests for classes."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ClassesTest(test_base.BaseTest):
@@ -149,7 +149,7 @@ class ClassesTest(test_base.BaseTest):
 
   def test_generic_reinstantiated(self):
     """Makes sure the result of foo.f() isn't used by both a() and b()."""
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", "def f() -> list: ...")
       self.Check("""
         import foo
@@ -233,7 +233,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_callable_attribute(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Callable
         class Foo:
@@ -335,7 +335,7 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
 
   def test_ambiguous_base_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any
         class Foo(Any): ...
@@ -446,7 +446,7 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
 
   def test_metaclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         T = TypeVar("T")
         class MyMeta(type):
@@ -516,7 +516,7 @@ class ClassesTestPython3Feature(test_base.BaseTest):
     """)
 
   def test_new_pyi_no_bases(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
           def __new__(cls, x) -> Foo: ...

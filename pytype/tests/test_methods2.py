@@ -1,7 +1,7 @@
 """Test methods."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestMethods(test_base.BaseTest):
@@ -55,7 +55,7 @@ class TestMethods(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"int.*self"})
 
   def test_use_abstract_classmethod(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
 

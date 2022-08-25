@@ -15,8 +15,8 @@ class PytypeSourceUtilsTest(unittest.TestCase):
     super().setUp()
     self.root = path_utils.dirname(__file__)
 
-  def test_pytype_source_dir(self):
-    self.assertEqual(self.root, pytype_source_utils.pytype_source_dir())
+  def test__pytype_source_dir(self):
+    self.assertEqual(self.root, pytype_source_utils._pytype_source_dir())
 
   def test_get_full_path(self):
     self.assertEqual(

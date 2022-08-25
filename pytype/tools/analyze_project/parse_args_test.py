@@ -6,6 +6,7 @@ import types
 
 from pytype import file_utils
 from pytype.platform_utils import path_utils
+from pytype.tests import test_utils
 from pytype.tools.analyze_project import config
 from pytype.tools.analyze_project import parse_args
 
@@ -44,7 +45,7 @@ class TestParser(unittest.TestCase):
 
   def test_parse_single_exclude(self):
     filenames = ['a.py', 'b/c.py']
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       with file_utils.cd(d.path):
@@ -54,7 +55,7 @@ class TestParser(unittest.TestCase):
 
   def test_parse_exclude_dir(self):
     filenames = ['foo/f1.py', 'foo/f2.py']
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       for f in filenames:
         d.create_file(f)
       with file_utils.cd(d.path):

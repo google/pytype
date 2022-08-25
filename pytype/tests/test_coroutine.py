@@ -1,7 +1,7 @@
 """Tests for coroutines."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class GeneratorFeatureTest(test_base.BaseTest):
@@ -377,7 +377,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
         "e3": r"Awaitable.*AsyncCtx2", "e4": r"Awaitable.*str"})
 
   def test_load_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Any, Coroutine, Awaitable, TypeVar
 
@@ -522,7 +522,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
     """)
 
   def test_pyi_async_def(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         async def f() -> int: ...
       """)

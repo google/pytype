@@ -1,7 +1,7 @@
 """Tests for generators."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class GeneratorBasicTest(test_base.BaseTest):
@@ -133,7 +133,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
 
   def test_empty_yield_from(self):
     # Regression test for https://github.com/google/pytype/issues/978.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import abc
         from typing import Any, AsyncContextManager, Coroutine

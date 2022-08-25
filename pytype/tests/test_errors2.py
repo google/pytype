@@ -1,7 +1,7 @@
 """Tests for displaying errors."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ErrorTest(test_base.BaseTest):
@@ -177,7 +177,7 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["int", "Foo"]})
 
   def test_nested_proto_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo_bar.pyi", """
         from typing import Type
         class _Foo_DOT_Bar: ...
@@ -192,7 +192,7 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorSequences(errors, {"e": ["foo_bar.Foo.Bar"]})
 
   def test_staticmethod_in_error(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class A:
           @staticmethod
@@ -272,7 +272,7 @@ class ErrorTest(test_base.BaseTest):
     })
 
   def test_assert_type_import(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("pytype_extensions.pyi", """
         def assert_type(*args): ...
       """)

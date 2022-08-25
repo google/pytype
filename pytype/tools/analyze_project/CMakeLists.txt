@@ -63,6 +63,7 @@ py_test(
     .analyze_project
     pytype.utils
     pytype.platform_utils.platform_utils
+    pytype.tests.test_base
 )
 
 py_test(
@@ -74,6 +75,7 @@ py_test(
     .analyze_project
     pytype.utils
     pytype.platform_utils.platform_utils
+    pytype.tests.test_base
 )
 
 py_test(
@@ -86,6 +88,7 @@ py_test(
     pytype.libvm
     pytype.utils
     pytype.platform_utils.platform_utils
+    pytype.tests.test_base
 )
 
 toplevel_py_binary(

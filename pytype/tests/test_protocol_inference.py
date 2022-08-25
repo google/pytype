@@ -1,7 +1,7 @@
 """Tests for inferring protocols."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ProtocolInferenceTest(test_base.BaseTest):
@@ -12,7 +12,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
     self.options.tweak(protocols=True)
 
   def test_multiple_signatures_with_type_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -32,7 +32,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   def test_unknown_single_signature(self):
     # Test that the right signature is picked in the presence of an unknown
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import List, TypeVar
         T = TypeVar("T")
@@ -51,7 +51,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_unknown(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(arg1: str) -> float: ...
         def f(arg2: int) -> bool: ...
@@ -68,7 +68,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_optional_arg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(x: str) -> int: ...
         def f(x = ...) -> float: ...
@@ -85,7 +85,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_multiple_signatures_with_kwarg(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         def f(*, y: int) -> bool: ...
         def f(y: str) -> float: ...
@@ -294,7 +294,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
     """)
 
   def test_protocol_needs_parameter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Sized, SupportsAbs
         def f(x: SupportsAbs[Sized]) -> None: ...
@@ -311,7 +311,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
       """)
 
   def test_protocol_needs_parameter_builtin(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import SupportsAbs
         def f(x: SupportsAbs[int]) -> None: ...

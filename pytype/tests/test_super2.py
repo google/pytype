@@ -1,7 +1,7 @@
 """Tests for super()."""
 
-from pytype import file_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TestSuperPython3Feature(test_base.BaseTest):
@@ -112,7 +112,7 @@ class TestSuperPython3Feature(test_base.BaseTest):
     """)
 
   def test_metaclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Meta(type): ...
         class Foo(metaclass=Meta):

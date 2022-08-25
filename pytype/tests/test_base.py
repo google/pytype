@@ -8,7 +8,6 @@ from typing import Tuple
 
 from pytype import analyze
 from pytype import config
-from pytype import file_utils
 from pytype import load_pytd
 from pytype import module_utils
 from pytype.directors import directors
@@ -453,7 +452,7 @@ class BaseTest(unittest.TestCase):
     old_pythonpath = self.options.pythonpath
     old_imports_map = self.options.imports_map
     try:
-      with file_utils.Tempdir() as d:
+      with test_utils.Tempdir() as d:
         self.ConfigureOptions(pythonpath=[""], imports_map={})
         for dep in deps:
           if len(dep) == 3:

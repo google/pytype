@@ -7,7 +7,6 @@ import textwrap
 from unittest import mock
 
 from pytype import errors
-from pytype import file_utils
 from pytype import state as frame_state
 from pytype.platform_utils import path_utils
 from pytype.tests import test_utils
@@ -116,9 +115,10 @@ class ErrorTest(unittest.TestCase):
     message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
     errorlog.error(op.to_stack(), message, details + "0")
     errorlog.error(op.to_stack(), message, details + "1")
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
-      errorlog.print_to_csv_file(filename)
+      with open(filename, "w") as fi:
+        errorlog.print_to_csv_file(fi)
       with open(filename) as fi:
         rows = list(csv.reader(fi, delimiter=","))
         self.assertEqual(len(rows), 2)
@@ -135,9 +135,10 @@ class ErrorTest(unittest.TestCase):
     errorlog = errors.ErrorLog()
     stack = test_utils.fake_stack(2)
     errorlog.error(stack, "", "some\ndetails")
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       filename = d.create_file("errors.csv")
-      errorlog.print_to_csv_file(filename)
+      with open(filename, "w") as fi:
+        errorlog.print_to_csv_file(fi)
       with open(filename) as fi:
         (_, _, _, _, actual_details), = list(csv.reader(fi, delimiter=","))
         self.assertMultiLineEqual(actual_details, textwrap.dedent("""

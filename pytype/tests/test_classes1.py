@@ -1,8 +1,8 @@
 """Tests for classes."""
 
-from pytype import file_utils
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class ClassesTest(test_base.BaseTest):
@@ -127,7 +127,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_inherit_from_unsolvable(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any: ...
@@ -540,7 +540,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_getattr_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
           def __getattr__(self, name) -> str: ...
@@ -569,7 +569,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_getattribute_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A:
           def __getattribute__(self, name) -> int: ...
@@ -584,7 +584,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_inherit_from_classobj(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A():
           pass
@@ -603,7 +603,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_metaclass_getattribute(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("menum.pyi", """
         from typing import Any
         class EnumMeta(type):
@@ -636,7 +636,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_return_class_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type, Union
         class A:
@@ -662,7 +662,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_call_class_type(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Type
         class A: ...
@@ -694,7 +694,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_new(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A:
           def __new__(cls, x: int) -> B: ...
@@ -758,7 +758,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_new_and_init_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -855,7 +855,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_metaclass_pyi(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         class A(type):
           def f(self) -> float: ...
@@ -871,7 +871,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_unsolvable_metaclass(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("a.pyi", """
         from typing import Any
         def __getattr__(name) -> Any: ...
@@ -956,7 +956,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_bad_mro_parameterized_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import Generic, TypeVar
         T = TypeVar("T")
@@ -1086,7 +1086,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_super_init_extra_arg2(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
           def __new__(cls, a, b) -> Foo: ...
@@ -1172,7 +1172,7 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_module_in_class_definition_scope(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Bar: ...
       """)
@@ -1355,7 +1355,7 @@ class ClassesTest(test_base.BaseTest):
   def test_pyi_nested_class(self):
     # Test that pytype can look up a pyi nested class in a py file and reconsume
     # the inferred pyi.
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
           class Y: ...
@@ -1381,7 +1381,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_pyi_nested_class_alias(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
           class Y: ...
@@ -1398,7 +1398,7 @@ class ClassesTest(test_base.BaseTest):
       """)
 
   def test_pyi_deeply_nested_class(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class X:
           class Y:

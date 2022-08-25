@@ -5,6 +5,7 @@ import textwrap
 from pytype import file_utils
 from pytype import imports_map_loader
 from pytype.platform_utils import tempfile as compatible_tempfile
+from pytype.tests import test_utils
 
 import unittest
 
@@ -77,7 +78,7 @@ class ImportMapLoaderTest(unittest.TestCase):
     self.assertCountEqual(actual, expected)
 
   def test_do_not_filter(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       d.create_file(file_utils.replace_separator("a/b/c.pyi"))
       imports_info = (f"{file_utils.replace_separator('a/b/c.pyi')} " +
                       f"{d[file_utils.replace_separator('a/b/c.pyi')]}\n")
@@ -87,7 +88,7 @@ class ImportMapLoaderTest(unittest.TestCase):
                        d[file_utils.replace_separator("a/b/c.pyi")])
 
   def test_invalid_map_entry(self):
-    with file_utils.Tempdir() as d:
+    with test_utils.Tempdir() as d:
       imports_info = (f"{file_utils.replace_separator('a/b/c.pyi')}"
                       f"{d[file_utils.replace_separator('a/b/c.pyi')]}\n")
       d.create_file("imports_info", imports_info)
