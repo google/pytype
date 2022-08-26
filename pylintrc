@@ -67,6 +67,7 @@ disable=
   unnecessary-lambda-assignment,
   unspecified-encoding,
   unsubscriptable-object,
+  unsupported-binary-operation,
   unused-argument,
   useless-import-alias,
   useless-object-inheritance,
