@@ -56,9 +56,13 @@ def pack_namedtuple(name: str, fields: List[str]) -> str:
   return f"namedtuple_{name}_{'_'.join(fields)}"
 
 
+def _pack_base_class(typename: str, basename: str, index: int) -> str:
+  return f"{typename}_{basename}_{index}"
+
+
 def pack_namedtuple_base_class(name: str, index: int) -> str:
   """Generate a name for a namedtuple proxy base class."""
-  return "namedtuple_%s_%d" % (name, index)
+  return _pack_base_class("namedtuple", name, index)
 
 
 def unpack_namedtuple(name: str) -> str:
@@ -68,4 +72,9 @@ def unpack_namedtuple(name: str) -> str:
 
 def pack_newtype_base_class(name: str, index: int) -> str:
   """Generate a name for a NewType proxy base class."""
-  return "newtype_%s_%d" % (name, index)
+  return _pack_base_class("newtype", name, index)
+
+
+def pack_typeddict_base_class(name: str, index: int) -> str:
+  """Generate a name for a TypedDict proxy base class."""
+  return _pack_base_class("typeddict", name, index)
