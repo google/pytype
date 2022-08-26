@@ -632,6 +632,9 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
     self.check_error(
         "import typing\n\nx = ...  # type: typing.Callable[[], bool, bool]", 3,
         "Expected 2 parameters to Callable, got 3")
+    self.check_error(
+        "import typing\n\nx = ...  # type: typing.Callable[[...], bool]", 3,
+        "did you mean Callable[..., bool]?")
 
   def test_ellipsis(self):
     # B[T, ...] becomes B[T].
