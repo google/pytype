@@ -617,12 +617,17 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     name_value = name.s
     fields_value = {}
     for k, v in zip(fields.keys, fields.values):
-      if not (isinstance(k, ast3.Constant) and isinstance(k.value, str)):
+      if (hasattr(ast3, "Constant") and isinstance(k, ast3.Constant) and
+          isinstance(k.value, str)):  # Python 3.8+
+        k_value = k.value
+      elif isinstance(k, ast3.Str):  # Python 3.7
+        k_value = k.s
+      else:
         raise ParseError(msg)
       v_pytd = self.convert_node(v)
       if not isinstance(v_pytd, pytd.Type):
         raise ParseError(msg)
-      fields_value[k.value] = v_pytd
+      fields_value[k_value] = v_pytd
     node.args = [name_value, fields_value]
 
   def enter_Call(self, node):

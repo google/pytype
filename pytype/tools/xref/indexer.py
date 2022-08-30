@@ -751,9 +751,10 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     self.scope_defn[self.scope_id()] = fn_def
     # TODO(mdemello): Get pytype data for params
     args = node.args
+    posonlyargs = getattr(args, "posonlyargs", [])
     vararg = [args.vararg] if getattr(args, "vararg", None) else []
     kwarg = [args.kwarg] if getattr(args, "kwarg", None) else []
-    all_args = args.posonlyargs + args.args + vararg + args.kwonlyargs + kwarg
+    all_args = posonlyargs + args.args + vararg + args.kwonlyargs + kwarg
     params = [self.add_local_def(v) for v in all_args]
     for i, param in enumerate(params):
       self.function_params.append(FunctionParam(
