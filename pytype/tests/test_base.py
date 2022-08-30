@@ -140,7 +140,6 @@ class BaseTest(unittest.TestCase):
         overriding_parameter_name_checks=True,
         overriding_parameter_type_checks=True,
         overriding_return_type_checks=True,
-        strict_namedtuple_checks=True,
         strict_parameter_checks=True,
         strict_primitive_comparisons=True,
         use_enum_overlay=True)

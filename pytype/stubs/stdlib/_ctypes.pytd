@@ -1,4 +1,8 @@
-# This module does not exist in typeshed.
+# TODO(b/243194846): This module now exists in typeshed, so delete our copy once
+# we update to a version of typeshed that contains it.
+
+RTLD_GLOBAL: int
+RTLD_LOCAL: int
 
 class PyCArrayType(object):
   pass

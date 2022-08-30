@@ -1,3 +1,25 @@
+Version 2022.08.30:
+
+Updates:
+* Update typeshed pin to commit 7de1ed9 from Jun 14.
+* Specify option conflicts and required dependencies in @uses decorator in
+  config.Postprocessor.
+* Remove the --strict_namedtuple_checks flag. Its behavior is now enabled by
+  default.
+* Support TypedDict construction via function call in pyi files, and use
+  TypedDict functional form if a keyword is used as a field name.
+
+Bug fixes:
+* Allow [signature-mismatch] disable to be put on any line of a function
+  signature.
+* Teach pytype that _typeshed.NoneType is the same as type(None).
+* Fix a check that was wrongly filtering out lambdas in function bodies.
+* Check for misuse of ellipses in Callable.
+* Add missing constants to _ctypes.
+* xref:
+  * Fix function param indexing.
+  * Index class attributes defined as classvars.
+
 Version 2022.08.23:
 
 Bug fixes:

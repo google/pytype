@@ -47,10 +47,11 @@ class TypingOverlay(overlay.Overlay):
         member_map[name] = (overlay.build(name, TypingContainer), None)
     super().__init__(ctx, "typing", member_map, ast)
 
-  def _convert_member(
-      self, name: str, member: _Tuple[overlay.BuilderType, _Tuple[int, int]],
-      subst: _Optional[_Dict[str, cfg.Variable]] = None
-  ) -> cfg.Variable:
+  def _convert_member(  # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
+      self,
+      name: str,
+      member: _Tuple[overlay.BuilderType, _Tuple[int, int]],
+      subst: _Optional[_Dict[str, cfg.Variable]] = None) -> cfg.Variable:
     builder, lowest_supported_version = member
     if (lowest_supported_version and
         self.ctx.python_version < lowest_supported_version and
