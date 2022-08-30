@@ -172,9 +172,6 @@ FEATURE_FLAGS = [
      "Use the enum overlay for more precise enum checking."),
     ("--build-dict-literals-from-kwargs", False,
      "Build dict literals from dict(k=v, ...) calls."),
-    ("--strict_namedtuple_checks", True,
-     ("Enable stricter namedtuple checks, such as unpacking and "
-      "'typing.Tuple' compatibility.")),
     ("--strict-parameter-checks", False,
      "Enable exhaustive checking of function parameter types."),
     ("--strict-primitive-comparisons", False,

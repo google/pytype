@@ -710,11 +710,8 @@ def _build_namedtuple(props, node, ctx):
   cls_dict = abstract.Dict(ctx)
   cls_dict.update(node, members)
 
-  if ctx.options.strict_namedtuple_checks:
-    # Enforces type checking like Tuple[...]
-    superclass_of_new_type = heterogeneous_tuple_type.to_variable(node)
-  else:
-    superclass_of_new_type = ctx.convert.tuple_type.to_variable(node)
+  # Enforces type checking like Tuple[...]
+  superclass_of_new_type = heterogeneous_tuple_type.to_variable(node)
   if props.bases:
     final_bases = []
     for base in props.bases:
