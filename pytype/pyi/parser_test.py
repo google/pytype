@@ -632,6 +632,9 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
     self.check_error(
         "import typing\n\nx = ...  # type: typing.Callable[[], bool, bool]", 3,
         "Expected 2 parameters to Callable, got 3")
+    self.check_error(
+        "import typing\n\nx = ...  # type: typing.Callable[[...], bool]", 3,
+        "did you mean Callable[..., bool]?")
 
   def test_ellipsis(self):
     # B[T, ...] becomes B[T].
@@ -2469,10 +2472,12 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       from typing_extensions import TypedDict
       X = TypedDict('X', {})
     """, """
-      from typing import Any, Dict
+      import typing
       from typing_extensions import TypedDict
 
-      X = Dict[str, Any]
+      X = typeddict_X_0
+
+      class typeddict_X_0(typing.TypedDict): ...
     """)
 
   def test_assign_with_items(self):
@@ -2480,10 +2485,14 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       from typing_extensions import TypedDict
       X = TypedDict('X', {'a': int, 'b': str})
     """, """
-      from typing import Any, Dict
+      import typing
       from typing_extensions import TypedDict
 
-      X = Dict[str, Any]
+      X = typeddict_X_0
+
+      class typeddict_X_0(typing.TypedDict):
+          a: int
+          b: str
     """)
 
   def test_assign_with_kwarg(self):
@@ -2491,10 +2500,12 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       from typing_extensions import TypedDict
       X = TypedDict('X', {}, total=False)
     """, """
-      from typing import Any, Dict
+      import typing
       from typing_extensions import TypedDict
 
-      X = Dict[str, Any]
+      X = typeddict_X_0
+
+      class typeddict_X_0(typing.TypedDict): ...
     """)
 
   def test_trailing_comma(self):
@@ -2505,10 +2516,14 @@ class TypedDictTest(parser_test_base.ParserTestBase):
           'b': str,
       },)
     """, """
-      from typing import Any, Dict
+      import typing
       from typing_extensions import TypedDict
 
-      X = Dict[str, Any]
+      X = typeddict_X_0
+
+      class typeddict_X_0(typing.TypedDict):
+          a: int
+          b: str
     """)
 
   def test_kwarg(self):

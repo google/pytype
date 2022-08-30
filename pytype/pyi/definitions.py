@@ -420,11 +420,23 @@ class Definitions:
       total: A tuple of a single kwarg, e.g., ("total", NamedType("False")), or
         None when no kwarg is passed.
     """
-    # TODO(b/157603915): Add real support for TypedDict.
-    del name, items, total  # unused
-    return pytd.GenericType(
-        pytd.NamedType("typing.Dict"),
-        (pytd.NamedType("str"), pytd.NamedType("typing.Any")))
+    # TODO(rechen): support total (https://github.com/google/pytype/issues/1195)
+    del total  # unused
+    cls_name = escape.pack_typeddict_base_class(
+        name, len(self.generated_classes[name]))
+    constants = tuple(pytd.Constant(k, v) for k, v in items.items())
+    cls = pytd.Class(name=cls_name,
+                     metaclass=None,
+                     bases=(pytd.NamedType("typing.TypedDict"),),
+                     methods=(),
+                     constants=constants,
+                     decorators=(),
+                     classes=(),
+                     slots=None,
+                     template=())
+    self.generated_classes[name].append(cls)
+    self.add_import("typing", ["TypedDict"])
+    return pytd.NamedType(cls_name)
 
   def add_type_var(self, name, typevar):
     """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""

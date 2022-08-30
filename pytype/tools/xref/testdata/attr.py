@@ -43,3 +43,17 @@ class B:
      init_bar()
      #- @bar ref AttrBar
      .bar)
+
+
+#- @C defines/binding ClassC
+#- ClassC.node/kind class
+class C:
+  #- @x defines/binding AttrX
+  x: int
+
+  def f(self):
+    #- @x ref AttrX
+    return self.x
+
+#- @x ref AttrX
+y = C().x

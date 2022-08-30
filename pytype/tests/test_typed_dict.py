@@ -346,6 +346,17 @@ class TypedDictFunctionalTest(test_base.BaseTest):
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
 
+  def test_keyword_field_name(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import TypedDict
+      A = TypedDict("A", {"in": int})
+    """)]):
+      self.Check("""
+        import foo
+        a: foo.A
+        assert_type(a["in"], int)
+      """)
+
 
 _SINGLE = """
   from typing import TypedDict
