@@ -150,6 +150,19 @@ class PYITestPython3Feature(test_base.BaseTest):
           baz: bar.Bar
       """)
 
+  def test_literal_quotes(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import Literal
+      def f(x: Literal['"', "'"]):
+        pass
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.f('"')
+        foo.f("'")
+        foo.f('oops')  # wrong-arg-types
+      """)
+
 
 class PYITestAnnotated(test_base.BaseTest):
   """Tests for typing.Annotated."""
