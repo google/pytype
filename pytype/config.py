@@ -610,9 +610,7 @@ class Postprocessor:
       # expect a list.
       self.output_options.enable_only = []
 
-  @uses(["-pythonpath", "output", "verbosity", "open_function",
-         "-imports_map_items"
-         ])
+  @uses(["-pythonpath", "verbosity", "open_function", "-imports_map_items"])
   def _store_imports_map(self, imports_map):
     """Postprocess --imports_info."""
     if imports_map:
@@ -620,7 +618,7 @@ class Postprocessor:
         builder = imports_map_loader.ImportsMapBuilder(self.output_options)
         self.output_options.imports_map = builder.build_from_file(imports_map)
 
-  @uses(["-pythonpath", "output", "verbosity", "open_function"])
+  @uses(["-pythonpath", "verbosity"])
   def _store_imports_map_items(self, imports_map_items):
     """Postprocess imports_maps_items."""
     if imports_map_items:
