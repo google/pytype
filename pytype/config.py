@@ -170,7 +170,7 @@ def add_basic_options(o):
 FEATURE_FLAGS = [
     ("--use-enum-overlay", False,
      "Use the enum overlay for more precise enum checking."),
-    ("--build-dict-literals-from-kwargs", False,
+    ("--build-dict-literals-from-kwargs", True,
      "Build dict literals from dict(k=v, ...) calls."),
     ("--strict-parameter-checks", False,
      "Enable exhaustive checking of function parameter types."),
