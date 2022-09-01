@@ -1288,6 +1288,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
     for param in self.ctx.annotation_utils.get_type_parameters(typ):
-      if param.name not in subst:
-        subst[param.name] = self.ctx.convert.empty.to_variable(self._node)
+      if param.full_name not in subst:
+        subst[param.full_name] = self.ctx.convert.empty.to_variable(self._node)
     return subst
