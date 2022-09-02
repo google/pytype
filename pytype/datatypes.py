@@ -1,6 +1,7 @@
 """Generic data structures and collection classes."""
 
 import argparse
+import contextlib
 import itertools
 
 
@@ -397,14 +398,42 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
       self._copy_item(name, root)
 
 
+class Box:
+  """A mutable shared value."""
+
+  def __init__(self, value=None):
+    self._value = value
+
+  def __get__(self, unused_obj, unused_objname):
+    return self._value
+
+  def __set__(self, unused_obj, value):
+    self._value = value
+
+
 class ParserWrapper:
   """Wrapper that adds arguments to a parser while recording them."""
+
+  # This needs to be a classvar so that it is shared by subgroups
+  _only = Box(None)
 
   def __init__(self, parser, actions=None):
     self.parser = parser
     self.actions = {} if actions is None else actions
 
+  @contextlib.contextmanager
+  def only_add(self, args):
+    """Constrain the parser to only add certain arguments."""
+    only = self._only
+    self._only = args
+    try:
+      yield
+    finally:
+      self._only = only
+
   def add_argument(self, *args, **kwargs):
+    if self._only and not any(arg in self._only for arg in args):
+      return
     try:
       action = self.parser.add_argument(*args, **kwargs)
     except argparse.ArgumentError:

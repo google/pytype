@@ -262,6 +262,20 @@ class ParserWrapperTest(unittest.TestCase):
     subgroup.add_argument("--baz", dest="baz")
     self.assertSetEqual(set(wrapper.actions), {"foo", "bar", "baz"})
 
+  def test_only(self):
+    parser = argparse.ArgumentParser()
+    wrapper = datatypes.ParserWrapper(parser)
+    with wrapper.only_add({"--foo", "--bar", "--baz", "--unused"}):
+      wrapper.add_argument("--foo", dest="foo")
+      wrapper.add_argument("--quux", dest="quux")
+      group = wrapper.add_argument_group("test1")
+      group.add_argument("-b", "--bar", dest="bar")
+      group.add_argument("--hello", dest="hello")
+      subgroup = group.add_argument_group("test2")
+      subgroup.add_argument("--baz", dest="baz")
+      subgroup.add_argument("--world", dest="world")
+    self.assertSetEqual(set(wrapper.actions), {"foo", "bar", "baz"})
+
 
 if __name__ == "__main__":
   unittest.main()
