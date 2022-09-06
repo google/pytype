@@ -502,19 +502,19 @@ class TypeVarTest(MatcherTestBase):
     self.assertIsNone(subst)
     self.assertEqual(bad_param.name, "x")
 
-  def test_bad_matches(self):
-    self.assertFalse(
-        self.matcher.bad_matches(
-            abstract.TypeParameter("T",
-                                   self.ctx).to_variable(self.ctx.root_node),
-            self.ctx.convert.unsolvable)[0])
-
-  def test_bad_matches_no_match(self):
+  def test_compute_matches(self):
     self.assertTrue(
-        self.matcher.bad_matches(
+        self.matcher.compute_matches(
             abstract.TypeParameter("T",
                                    self.ctx).to_variable(self.ctx.root_node),
-            self.ctx.convert.int_type)[0])
+            self.ctx.convert.unsolvable).success)
+
+  def test_compute_matches_no_match(self):
+    self.assertFalse(
+        self.matcher.compute_matches(
+            abstract.TypeParameter("T",
+                                   self.ctx).to_variable(self.ctx.root_node),
+            self.ctx.convert.int_type).success)
 
   def test_any(self):
     self.assertMatch(

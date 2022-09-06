@@ -170,10 +170,10 @@ class PyTDFunction(_function_base.Function):
         ret = self._call_with_signatures(
             node, func, args, view, signatures, variable)
       else:
-        (sig, arg_dict, substs), = signatures
+        (sig, arg_dict, substs_or_matches), = signatures
         variable = uses_variables(arg_dict)
         ret = sig.call_with_args(
-            node, func, arg_dict, substs, ret_map, variable)
+            node, func, arg_dict, substs_or_matches, ret_map, variable)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
       for mutation in mutations:
@@ -438,7 +438,7 @@ class PyTDFunction(_function_base.Function):
     can_match_multiple = self._can_match_multiple(args, variable_view, True)
     for sig in self.signatures:
       try:
-        arg_dict, substs = sig.substitute_formal_args(
+        arg_dict, matches = sig.substitute_formal_args(
             node, args, variable_view, match_all_views)
       except function.FailedFunctionCall as e:
         if e > error:
@@ -447,7 +447,7 @@ class PyTDFunction(_function_base.Function):
             e.name = f"{self.parent.name}.{e.name}"
           error = e
       else:
-        matched_signatures.append((sig, arg_dict, substs))
+        matched_signatures.append((sig, arg_dict, matches))
         if not can_match_multiple:
           break
     if not matched_signatures:
@@ -626,16 +626,17 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(node, args, variable_view)
     self._fill_in_missing_parameters(node, args, arg_dict, True)
-    substs = None
+    matcher = self.ctx.matcher(node)
+    matches = None
     for name, formal in formal_args:
-      match_result = self.ctx.matcher(node).bad_matches(
-          arg_dict[name], formal, name)
-      if function.match_succeeded(match_result, match_all_views, self.ctx):
-        if any(match_result[1]):
-          assert substs is None
-          substs = match_result[1]
+      match_result = matcher.compute_matches(
+          arg_dict[name], formal, name, match_all_views)
+      if match_result.success:
+        if any(m.subst for m in match_result.good_matches):
+          assert matches is None
+          matches = match_result.good_matches
         continue
-      bad_arg = match_result[0][0].expected
+      bad_arg = match_result.bad_matches[0].expected
       if self.signature.has_param(bad_arg.name):
         signature = self.signature
       else:
@@ -646,9 +647,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
                 pytd_utils.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
-    if not substs:
-      substs = [datatypes.HashableDict()]
-    return arg_dict, substs
+    if not matches:
+      matches = [matcher.default_match()]
+    return arg_dict, matches
 
   def instantiate_return(self, node, subst, sources):
     return_type = self.pytd_sig.return_type
@@ -681,11 +682,13 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       ret.AddBinding(self.ctx.convert.empty, [], node)
     return node, ret
 
-  def call_with_args(self, node, func, arg_dict, substs, ret_map, variable):
+  def call_with_args(
+      self, node, func, arg_dict, substs_or_matches, ret_map, variable):
     """Call this signature. Used by PyTDFunction."""
     ret = self.ctx.program.NewVariable()
     mutations = []
-    for i, subst in enumerate(substs):
+    for subst_or_match in substs_or_matches:
+      subst = getattr(subst_or_match, "subst", subst_or_match)
       t = (self.pytd_sig.return_type, subst)
       sources = [func]
       if variable:
@@ -694,7 +697,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           # corresponding binding. For the rest, it does not appear to matter
           # which binding we add to the sources, as long as we add one from
           # every variable.
-          sources.append(v.bindings[i if len(v.bindings) > i else 0])
+          sources.append(subst_or_match.view.get(v, v.bindings[0]))
       else:
         sources.extend(arg_dict.values())
       visible = node.CanHaveCombination(sources)

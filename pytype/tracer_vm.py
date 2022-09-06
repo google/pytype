@@ -675,7 +675,8 @@ class CallTracer(vm.VirtualMachine):
   def _check_return(self, node, actual, formal):
     if not self.ctx.options.report_errors:
       return True
-    bad, _ = self.ctx.matcher(node).bad_matches(actual, formal)
-    if bad:
-      self.ctx.errorlog.bad_return_type(self.frames, node, bad)
-    return not bad
+    match_result = self.ctx.matcher(node).compute_matches(actual, formal)
+    if not match_result.success:
+      self.ctx.errorlog.bad_return_type(
+          self.frames, node, match_result.bad_matches)
+    return match_result.success
