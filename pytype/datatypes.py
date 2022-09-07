@@ -276,13 +276,13 @@ class AliasingDict(dict):
   def itervalues(self):
     raise NotImplementedError()
 
-  def pop(self):
+  def pop(self, k):
     raise NotImplementedError()
 
   def popitem(self):
     raise NotImplementedError()
 
-  def setdefault(self):
+  def setdefault(self, k):
     raise NotImplementedError()
 
   def update(self):
@@ -320,22 +320,20 @@ class HashableDict(AliasingDict):
   def clear(self):
     raise TypeError()
 
-  def pop(self):
+  def pop(self, k):
     raise TypeError()
 
   def popitem(self):
     raise TypeError()
 
-  def setdefault(self):
+  def setdefault(self, k):
     raise TypeError()
 
-  # pylint: disable=unexpected-special-method-signature
-  def __setitem__(self):
+  def __setitem__(self, name, var):
     raise TypeError()
 
-  def __delitem__(self):
+  def __delitem__(self, y):
     raise TypeError()
-  # pylint: enable=unexpected-special-method-signature
 
   def __hash__(self):
     return self._hash
@@ -381,7 +379,7 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
     self[tgt] = dict.__getitem__(self, src)
     dict.__delitem__(self, src)
 
-  def add_alias(self, alias, name, op):
+  def add_alias(self, alias, name, op=None):
     alias = self.uf.find_by_name(alias)
     name = self.uf.find_by_name(name)
     if alias == name:

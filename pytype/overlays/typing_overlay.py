@@ -154,7 +154,7 @@ class TypingContainer(abstract.AnnotationContainer):
 class Tuple(TypingContainer):
   """Implementation of typing.Tuple."""
 
-  def _get_value_info(self, inner, ellipses):
+  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
     if ellipses:
       # An ellipsis may appear at the end of the parameter list as long as it is
       # not the only parameter.
@@ -189,7 +189,7 @@ class Callable(TypingContainer):
     value = self._build_value(node, tuple(inner), ellipses)
     return node, value.to_variable(node)
 
-  def _get_value_info(self, inner, ellipses):
+  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
     if isinstance(inner[0], list):
       template = (list(range(len(inner[0]))) +
                   [t.name for t in self.base_cls.template])
@@ -278,7 +278,7 @@ class TypeVar(abstract.PyTDFunction):
         covariant=covariant,
         contravariant=contravariant)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     """Call typing.TypeVar()."""
     try:
       param = self._get_typeparam(node, args)
@@ -292,7 +292,7 @@ class TypeVar(abstract.PyTDFunction):
 class Cast(abstract.PyTDFunction):
   """Implements typing.cast."""
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, alias_map=None):
     if args.posargs:
       _, value = self.ctx.annotation_utils.extract_and_init_annotation(
           node, "typing.cast", args.posargs[0])
@@ -327,7 +327,7 @@ class NewType(abstract.PyTDFunction):
     self._internal_name_counter += 1
     return val
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, alias_map=None):
     args = args.simplify(node, self.ctx)
     self.match_args(node, args, match_all_views=True)
     # As long as the types match we do not really care about the actual
@@ -404,7 +404,7 @@ class FinalDecorator(abstract.PyTDFunction):
 class Generic(TypingContainer):
   """Implementation of typing.Generic."""
 
-  def _get_value_info(self, inner, ellipses):
+  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
     template, inner = abstract_utils.build_generic_template(inner, self)
     return template, inner, abstract.ParameterizedClass
 

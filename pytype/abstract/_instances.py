@@ -304,7 +304,7 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
     return self._hash
 
 
-class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):
+class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # pytype: disable=signature-mismatch
   """Representation of Python 'list' objects."""
 
   def __init__(self, content, ctx):

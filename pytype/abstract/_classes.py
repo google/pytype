@@ -528,7 +528,7 @@ class FunctionPyTDClass(PyTDClass):
     return self.func.to_variable(node)
 
 
-class ParameterizedClass(
+class ParameterizedClass(  # pytype: disable=signature-mismatch
     _base.BaseValue, class_mixin.Class, mixin.NestedAnnotation):
   """A class that contains additional parameters.
 
@@ -751,7 +751,7 @@ class ParameterizedClass(
     return typ(self.base_cls, inner_types, self.ctx, self.template)
 
 
-class CallableClass(ParameterizedClass, mixin.HasSlots):
+class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signature-mismatch
   """A Callable with a list of argument types.
 
   The formal_type_parameters attribute stores the types of the individual
@@ -851,7 +851,7 @@ class LiteralClass(ParameterizedClass):
     return self._instance.to_variable(node)
 
 
-class TupleClass(ParameterizedClass, mixin.HasSlots):
+class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signature-mismatch
   """The class of a heterogeneous tuple.
 
   The formal_type_parameters attribute stores the types of the individual tuple
