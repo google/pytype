@@ -147,24 +147,40 @@ def make_parser():
   return o
 
 
-def add_basic_options(o):
-  """Add basic options to the given parser."""
-  o.add_argument(
-      "-d", "--disable", action="store",
-      dest="disable", default=None,
-      help="Comma separated list of error names to ignore.")
-  o.add_argument(
-      "--no-report-errors", action="store_false",
-      dest="report_errors", default=True,
-      help="Don't report errors.")
-  o.add_argument(
-      "-V", "--python_version", type=str, action="store",
-      dest="python_version", default=None,
-      help='Python version to emulate ("major.minor", e.g. "3.7")')
-  o.add_argument(
-      "--platform", type=str, action="store", dest="platform",
-      default=sys.platform,
-      help='Platform to emulate (e.g., "linux", "win32").')
+class _Arg:
+  """Hold args for argparse.ArgumentParser.add_argument."""
+
+  def __init__(self, *args, **kwargs):
+    self.args = args
+    self.kwargs = kwargs
+
+  def add_to(self, parser):
+    parser.add_argument(*self.args, **self.kwargs)
+
+
+def add_options(o, arglist):
+  for arg in arglist:
+    arg.add_to(o)
+
+
+BASIC_OPTIONS = [
+    _Arg(
+        "-d", "--disable", action="store",
+        dest="disable", default=None,
+        help="Comma separated list of error names to ignore."),
+    _Arg(
+        "--no-report-errors", action="store_false",
+        dest="report_errors", default=True,
+        help="Don't report errors."),
+    _Arg(
+        "-V", "--python_version", type=str, action="store",
+        dest="python_version", default=None,
+        help='Python version to emulate ("major.minor", e.g. "3.7")'),
+    _Arg(
+        "--platform", type=str, action="store", dest="platform",
+        default=sys.platform,
+        help='Platform to emulate (e.g., "linux", "win32").'),
+]
 
 
 FEATURE_FLAGS = [
@@ -199,6 +215,202 @@ EXPERIMENTAL_FLAGS = [
 ]
 
 
+SUBTOOLS = [
+    _Arg(
+        "--generate-builtins", action="store",
+        dest="generate_builtins", default=None,
+        help="Precompile builtins pyi and write to the given file."),
+    _Arg(
+        "--parse-pyi", action="store_true",
+        dest="parse_pyi", default=False,
+        help="Try parsing a PYI file. For testing of typeshed."),
+]
+
+
+PICKLE_OPTIONS = [
+    _Arg(
+        "--pickle-output", action="store_true", default=False,
+        dest="pickle_output",
+        help=("Save the ast representation of the inferred pyi as a pickled "
+              "file to the destination filename in the --output parameter.")),
+    _Arg(
+        "--use-pickled-files", action="store_true", default=False,
+        dest="use_pickled_files",
+        help=("Use pickled pyi files instead of pyi files. This will check "
+              "if a file 'foo.bar.pyi.pickled' is present next to "
+              "'foo.bar.pyi' and load it instead. This will load the pickled "
+              "file without further verification. Allowing untrusted pickled "
+              "files into the code tree can lead to arbitrary code "
+              "execution!")),
+    _Arg(
+        "--precompiled-builtins", action="store",
+        dest="precompiled_builtins", default=None,
+        help="Use the supplied file as precompiled builtins pyi."),
+    _Arg(
+        "--pickle-metadata", type=str, action="store",
+        dest="pickle_metadata", default=None,
+        help=("Comma separated list of metadata strings to be saved in the "
+              "pickled file.")),
+]
+
+
+INFRASTRUCTURE_OPTIONS = [
+    _Arg(
+        "--imports_info", type=str, action="store",
+        dest="imports_map", default=None,
+        help=("Information for mapping import .pyi to files. "
+              "This options is incompatible with --pythonpath.")),
+    _Arg(
+        "-M", "--module-name", action="store",
+        dest="module_name", default=None,
+        help=("Name of the module we're analyzing. For __init__.py files the "
+              "package should be suffixed with '.__init__'. "
+              "E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'")),
+    # TODO(b/68306233): Get rid of nofail.
+    _Arg(
+        "--nofail", action="store_true",
+        dest="nofail", default=False,
+        help=("Don't allow pytype to fail.")),
+    _Arg(
+        "--return-success", action="store_true",
+        dest="return_success", default=False,
+        help="Report all errors but exit with a success code."),
+    _Arg(
+        "--output-errors-csv", type=str, action="store",
+        dest="output_errors_csv", default=None,
+        help=("Outputs the error contents to a csv file")),
+    _Arg(
+        "-P", "--pythonpath", type=str, action="store",
+        dest="pythonpath", default="",
+        help=("Directories for reading dependencies - a list of paths "
+              "separated by '%s'. The files must have been generated "
+              "by running pytype on dependencies of the file(s) "
+              "being analyzed. That is, if an input .py file has an "
+              "'import path.to.foo', and pytype has already been run "
+              "with 'pytype path.to.foo.py -o "
+              "$OUTDIR/path/to/foo.pyi', "
+              "then pytype should be invoked with $OUTDIR in "
+              "--pythonpath. This option is incompatible with "
+              "--imports_info and --generate_builtins.") % os.pathsep),
+    _Arg(
+        "--touch", type=str, action="store",
+        dest="touch", default=None,
+        help="Output file to touch when exit status is ok."),
+    _Arg(
+        "-e", "--enable-only", action="store",
+        dest="enable_only", default=None,
+        help="Comma separated list of error names to enable checking for."),
+    # TODO(rechen): --analyze-annotated and --quick would make more sense as
+    # basic options but are currently used by pytype-all in a way that isn't
+    # easily configurable.
+    _Arg(
+        "--analyze-annotated", action="store_true",
+        dest="analyze_annotated", default=None,
+        help=("Analyze methods with return annotations. By default, "
+              "on for checking and off for inference.")),
+    _Arg(
+        "-Z", "--quick", action="store_true",
+        dest="quick", default=None,
+        help=("Only do an approximation.")),
+    _Arg(
+        "--color", action="store", choices=["always", "auto", "never"],
+        default="auto",
+        help="Choose never to disable color in the shell output."),
+]
+
+
+DEBUG_OPTIONS = [
+    _Arg(
+        "--check_preconditions", action="store_true",
+        dest="check_preconditions", default=False,
+        help=("Enable checking of preconditions.")),
+    _Arg(
+        "-m", "--main", action="store_true",
+        dest="main_only", default=False,
+        help=("Only analyze the main method and everything called from it")),
+    _Arg(
+        "--metrics", type=str, action="store",
+        dest="metrics", default=None,
+        help="Write a metrics report to the specified file."),
+    _Arg(
+        "--no-skip-calls", action="store_false",
+        dest="skip_repeat_calls", default=True,
+        help=("Don't reuse the results of previous function calls.")),
+    _Arg(
+        "-T", "--no-typeshed", action="store_false",
+        dest="typeshed", default=None,
+        help=("Do not use typeshed to look up types in the Python stdlib. "
+              "For testing.")),
+    _Arg(
+        "--output-cfg", type=str, action="store",
+        dest="output_cfg", default=None,
+        help="Output control flow graph as SVG."),
+    _Arg(
+        "--output-debug", type=str, action="store",
+        dest="output_debug", default=None,
+        help="Output debugging data (use - to add this output to the log)."),
+    _Arg(
+        "--output-typegraph", type=str, action="store",
+        dest="output_typegraph", default=None,
+        help="Output typegraph as SVG."),
+    _Arg(
+        "--profile", type=str, action="store",
+        dest="profile", default=None,
+        help="Profile pytype and output the stats to the specified file."),
+    _Arg(
+        "-v", "--verbosity", type=int, action="store",
+        dest="verbosity", default=1,
+        help=("Set logging verbosity: "
+              "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug")),
+    _Arg(
+        "-S", "--timestamp-logs", action="store_true",
+        dest="timestamp_logs", default=None,
+        help=("Add timestamps to the logs")),
+    _Arg(
+        "--debug-logs", action="store_true",
+        dest="debug_logs", default=None,
+        help=("Add debugging information to the logs")),
+    _Arg(
+        "--exec-log", type=str, action="store",
+        dest="exec_log", default=None,
+        help=("Write pytype execution details to the specified file.")),
+    _Arg(
+        "--verify-pickle", action="store_true", default=False,
+        dest="verify_pickle",
+        help=("Loads the generated PYI file and compares it with the abstract "
+              "syntax tree written as pickled output. This will raise an "
+              "uncaught AssertionError if the two ASTs are not the same. The "
+              "option is intended for debugging.")),
+    _Arg(
+        "--memory-snapshots", action="store_true", default=False,
+        dest="memory_snapshots",
+        help=("Enable tracemalloc snapshot metrics. Currently requires "
+              "a version of Python with tracemalloc patched in.")),
+    _Arg(
+        "--show-config", action="store_true",
+        dest="show_config", default=None,
+        help=("Display all config variables and exit.")),
+    _Arg(
+        "--version", action="store_true",
+        dest="version", default=None,
+        help=("Display pytype version and exit.")),
+    # Timing out kills pytype with an error code. Useful for determining whether
+    # pytype is fast enough to be enabled for a particular target.
+    _Arg(
+        "--timeout", type=int, action="store", dest="timeout", default=None,
+        help="In seconds. Abort after the given time has elapsed."),
+    _Arg(
+        "--debug", action="store_true",
+        dest="debug", default=None,
+        help=("Flag used internally by some of pytype's subtools")),
+]
+
+
+def add_basic_options(o):
+  """Add basic options to the given parser."""
+  add_options(o, BASIC_OPTIONS)
+
+
 def add_feature_flags(o):
   """Add flags for experimental and temporarily gated features."""
   def flag(opt, default, help_text, temporary):
@@ -223,195 +435,25 @@ def add_subtools(o):
   """Add subtools to the given parser."""
   # TODO(rechen): These should be standalone tools.
   o = o.add_argument_group("subtools")
-  o.add_argument(
-      "--generate-builtins", action="store",
-      dest="generate_builtins", default=None,
-      help="Precompile builtins pyi and write to the given file.")
-  o.add_argument(
-      "--parse-pyi", action="store_true",
-      dest="parse_pyi", default=False,
-      help="Try parsing a PYI file. For testing of typeshed.")
+  add_options(o, SUBTOOLS)
 
 
 def add_pickle_options(o):
   """Add options for using pickled pyi files to the given parser."""
   o = o.add_argument_group("pickle arguments")
-  o.add_argument(
-      "--pickle-output", action="store_true", default=False,
-      dest="pickle_output",
-      help=("Save the ast representation of the inferred pyi as a pickled "
-            "file to the destination filename in the --output parameter."))
-  o.add_argument(
-      "--use-pickled-files", action="store_true", default=False,
-      dest="use_pickled_files",
-      help=("Use pickled pyi files instead of pyi files. This will check "
-            "if a file 'foo.bar.pyi.pickled' is present next to "
-            "'foo.bar.pyi' and load it instead. This will load the pickled "
-            "file without further verification. Allowing untrusted pickled "
-            "files into the code tree can lead to arbitrary code execution!"))
-  o.add_argument(
-      "--precompiled-builtins", action="store",
-      dest="precompiled_builtins", default=None,
-      help="Use the supplied file as precompiled builtins pyi.")
-  o.add_argument(
-      "--pickle-metadata", type=str, action="store",
-      dest="pickle_metadata", default=None,
-      help=("Comma separated list of metadata strings to be saved in the "
-            "pickled file."))
+  add_options(o, PICKLE_OPTIONS)
 
 
 def add_infrastructure_options(o):
   """Add infrastructure options to the given parser."""
   o = o.add_argument_group("infrastructure arguments")
-  o.add_argument(
-      "--imports_info", type=str, action="store",
-      dest="imports_map", default=None,
-      help=("Information for mapping import .pyi to files. "
-            "This options is incompatible with --pythonpath."))
-  o.add_argument(
-      "-M", "--module-name", action="store",
-      dest="module_name", default=None,
-      help=("Name of the module we're analyzing. For __init__.py files the "
-            "package should be suffixed with '.__init__'. "
-            "E.g. 'foo.bar.mymodule' and 'foo.bar.__init__'"))
-  # TODO(b/68306233): Get rid of nofail.
-  o.add_argument(
-      "--nofail", action="store_true",
-      dest="nofail", default=False,
-      help=("Don't allow pytype to fail."))
-  o.add_argument(
-      "--return-success", action="store_true",
-      dest="return_success", default=False,
-      help="Report all errors but exit with a success code.")
-  o.add_argument(
-      "--output-errors-csv", type=str, action="store",
-      dest="output_errors_csv", default=None,
-      help=("Outputs the error contents to a csv file"))
-  o.add_argument(
-      "-P", "--pythonpath", type=str, action="store",
-      dest="pythonpath", default="",
-      help=("Directories for reading dependencies - a list of paths "
-            "separated by '%s'. The files must have been generated "
-            "by running pytype on dependencies of the file(s) "
-            "being analyzed. That is, if an input .py file has an "
-            "'import path.to.foo', and pytype has already been run "
-            "with 'pytype path.to.foo.py -o "
-            "$OUTDIR/path/to/foo.pyi', "
-            "then pytype should be invoked with $OUTDIR in "
-            "--pythonpath. This option is incompatible with "
-            "--imports_info and --generate_builtins.") % os.pathsep)
-  o.add_argument(
-      "--touch", type=str, action="store",
-      dest="touch", default=None,
-      help="Output file to touch when exit status is ok.")
-  o.add_argument(
-      "-e", "--enable-only", action="store",
-      dest="enable_only", default=None,
-      help="Comma separated list of error names to enable checking for.")
-  # TODO(rechen): --analyze-annotated and --quick would make more sense as
-  # basic options but are currently used by pytype-all in a way that isn't
-  # easily configurable.
-  o.add_argument(
-      "--analyze-annotated", action="store_true",
-      dest="analyze_annotated", default=None,
-      help=("Analyze methods with return annotations. By default, "
-            "on for checking and off for inference."))
-  o.add_argument(
-      "-Z", "--quick", action="store_true",
-      dest="quick", default=None,
-      help=("Only do an approximation."))
-  o.add_argument(
-      "--color", action="store", choices=["always", "auto", "never"],
-      default="auto",
-      help="Choose never to disable color in the shell output.")
+  add_options(o, INFRASTRUCTURE_OPTIONS)
 
 
 def add_debug_options(o):
   """Add debug options to the given parser."""
   o = o.add_argument_group("debug arguments")
-  o.add_argument(
-      "--check_preconditions", action="store_true",
-      dest="check_preconditions", default=False,
-      help=("Enable checking of preconditions."))
-  o.add_argument(
-      "-m", "--main", action="store_true",
-      dest="main_only", default=False,
-      help=("Only analyze the main method and everything called from it"))
-  o.add_argument(
-      "--metrics", type=str, action="store",
-      dest="metrics", default=None,
-      help="Write a metrics report to the specified file.")
-  o.add_argument(
-      "--no-skip-calls", action="store_false",
-      dest="skip_repeat_calls", default=True,
-      help=("Don't reuse the results of previous function calls."))
-  o.add_argument(
-      "-T", "--no-typeshed", action="store_false",
-      dest="typeshed", default=None,
-      help=("Do not use typeshed to look up types in the Python stdlib. "
-            "For testing."))
-  o.add_argument(
-      "--output-cfg", type=str, action="store",
-      dest="output_cfg", default=None,
-      help="Output control flow graph as SVG.")
-  o.add_argument(
-      "--output-debug", type=str, action="store",
-      dest="output_debug", default=None,
-      help="Output debugging data (use - to add this output to the log).")
-  o.add_argument(
-      "--output-typegraph", type=str, action="store",
-      dest="output_typegraph", default=None,
-      help="Output typegraph as SVG.")
-  o.add_argument(
-      "--profile", type=str, action="store",
-      dest="profile", default=None,
-      help="Profile pytype and output the stats to the specified file.")
-  o.add_argument(
-      "-v", "--verbosity", type=int, action="store",
-      dest="verbosity", default=1,
-      help=("Set logging verbosity: "
-            "-1=quiet, 0=fatal, 1=error (default), 2=warn, 3=info, 4=debug"))
-  o.add_argument(
-      "-S", "--timestamp-logs", action="store_true",
-      dest="timestamp_logs", default=None,
-      help=("Add timestamps to the logs"))
-  o.add_argument(
-      "--debug-logs", action="store_true",
-      dest="debug_logs", default=None,
-      help=("Add debugging information to the logs"))
-  o.add_argument(
-      "--exec-log", type=str, action="store",
-      dest="exec_log", default=None,
-      help=("Write pytype execution details to the specified file."))
-  o.add_argument(
-      "--verify-pickle", action="store_true", default=False,
-      dest="verify_pickle",
-      help=("Loads the generated PYI file and compares it with the abstract "
-            "syntax tree written as pickled output. This will raise an "
-            "uncaught AssertionError if the two ASTs are not the same. The "
-            "option is intended for debugging."))
-  o.add_argument(
-      "--memory-snapshots", action="store_true", default=False,
-      dest="memory_snapshots",
-      help=("Enable tracemalloc snapshot metrics. Currently requires "
-            "a version of Python with tracemalloc patched in."))
-  o.add_argument(
-      "--show-config", action="store_true",
-      dest="show_config", default=None,
-      help=("Display all config variables and exit."))
-  o.add_argument(
-      "--version", action="store_true",
-      dest="version", default=None,
-      help=("Display pytype version and exit."))
-  # Timing out kills pytype with an error code. Useful for determining whether
-  # pytype is fast enough to be enabled for a particular target.
-  o.add_argument(
-      "--timeout", type=int, action="store", dest="timeout", default=None,
-      help="In seconds. Abort after the given time has elapsed.")
-  o.add_argument(
-      "--debug", action="store_true",
-      dest="debug", default=None,
-      help=("Flag used internally by some of pytype's subtools"))
+  add_options(o, DEBUG_OPTIONS)
 
 
 class PostprocessingError(Exception):
