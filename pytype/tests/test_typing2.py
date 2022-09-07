@@ -746,6 +746,8 @@ class TypingTestPython3Feature(test_base.BaseTest):
       from typing import OrderedDict
       def f(x: OrderedDict[str, int]): ...
       f(collections.OrderedDict(a=0))
+      def g(x: collections.OrderedDict[str, int]): ...
+      g(OrderedDict(a=0))
     """)
 
   def test_instantiate_ordered_dict(self):

@@ -718,7 +718,8 @@ class ImportTest(test_base.BaseTest):
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
-        d = ...  # type: collections.OrderedDict[nothing, nothing]
+        from typing import OrderedDict
+        d = ...  # type: OrderedDict[nothing, nothing]
       """)
 
   def test_import_function(self):

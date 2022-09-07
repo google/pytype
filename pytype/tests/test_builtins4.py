@@ -224,11 +224,11 @@ class BuiltinTests(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import collections
-      from typing import Dict
+      from typing import Dict, OrderedDict
       def f1(x: Dict[int, str]) -> Dict[int, str]: ...
       def f2(
-          x: collections.OrderedDict[int, str]
-      ) -> collections.OrderedDict[int, str]: ...
+          x: OrderedDict[int, str]
+      ) -> OrderedDict[int, str]: ...
     """)
 
 
