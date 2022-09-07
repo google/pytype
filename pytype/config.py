@@ -157,6 +157,15 @@ class _Arg:
   def add_to(self, parser):
     parser.add_argument(*self.args, **self.kwargs)
 
+  def get(self, k):
+    return self.kwargs.get(k)
+
+
+def _flag(opt, default, help_text):
+  dest = opt.lstrip("-").replace("-", "_")
+  return _Arg(opt, dest=dest, default=default, help=help_text,
+              action="store_true")
+
 
 def add_options(o, arglist):
   for arg in arglist:
@@ -184,34 +193,34 @@ BASIC_OPTIONS = [
 
 
 FEATURE_FLAGS = [
-    ("--use-enum-overlay", False,
-     "Use the enum overlay for more precise enum checking."),
-    ("--strict-parameter-checks", False,
-     "Enable exhaustive checking of function parameter types."),
-    ("--strict-primitive-comparisons", False,
-     "Emit errors for comparisons between incompatible primitive types."),
-    ("--overriding-default-value-checks", False,
-     "Enable default value checks for overriding methods."),
-    ("--overriding-parameter-count-checks", False,
-     "Enable parameter count checks for overriding methods."),
-    ("--overriding-parameter-name-checks", False,
-     "Enable parameter name checks for overriding methods."),
-    ("--overriding-parameter-type-checks", False,
-     "Enable parameter type checks for overriding methods."),
-    ("--overriding-return-type-checks", False,
-     "Enable return type checks for overriding methods."),
-    ("--enable-cached-property", False,
-     "Support pyglib's @cached.property."),
+    _flag("--use-enum-overlay", False,
+          "Use the enum overlay for more precise enum checking."),
+    _flag("--strict-parameter-checks", False,
+          "Enable exhaustive checking of function parameter types."),
+    _flag("--strict-primitive-comparisons", False,
+          "Emit errors for comparisons between incompatible primitive types."),
+    _flag("--overriding-default-value-checks", False,
+          "Enable default value checks for overriding methods."),
+    _flag("--overriding-parameter-count-checks", False,
+          "Enable parameter count checks for overriding methods."),
+    _flag("--overriding-parameter-name-checks", False,
+          "Enable parameter name checks for overriding methods."),
+    _flag("--overriding-parameter-type-checks", False,
+          "Enable parameter type checks for overriding methods."),
+    _flag("--overriding-return-type-checks", False,
+          "Enable return type checks for overriding methods."),
+    _flag("--enable-cached-property", False,
+          "Support pyglib's @cached.property."),
 ]
 
 
 EXPERIMENTAL_FLAGS = [
-    ("--protocols", False,
-     "Solve unknown types to label with structural types."),
-    ("--strict-import", False,
-     "Only load submodules that are explicitly imported."),
-    ("--precise-return", False,
-     "Infer precise return types even for invalid function calls."),
+    _flag("--protocols", False,
+          "Solve unknown types to label with structural types."),
+    _flag("--strict-import", False,
+          "Only load submodules that are explicitly imported."),
+    _flag("--precise-return", False,
+          "Infer precise return types even for invalid function calls."),
 ]
 
 
@@ -406,6 +415,11 @@ DEBUG_OPTIONS = [
 ]
 
 
+ALL_OPTIONS = (BASIC_OPTIONS + SUBTOOLS + PICKLE_OPTIONS +
+               INFRASTRUCTURE_OPTIONS + DEBUG_OPTIONS +
+               FEATURE_FLAGS + EXPERIMENTAL_FLAGS)
+
+
 def add_basic_options(o):
   """Add basic options to the given parser."""
   add_options(o, BASIC_OPTIONS)
@@ -413,22 +427,23 @@ def add_basic_options(o):
 
 def add_feature_flags(o):
   """Add flags for experimental and temporarily gated features."""
-  def flag(opt, default, help_text, temporary):
-    temporary = ("This flag is temporary and will be removed once this "
-                 "behavior is enabled by default.")
-    dest = opt.lstrip("-").replace("-", "_")
+  def flag(arg, temporary):
+    temp = ("This flag is temporary and will be removed once this "
+            "behavior is enabled by default.")
+    help_text = arg.get("help")
     if temporary:
-      help_text = f"{help_text} {temporary}"
+      help_text = f"{help_text} {temp}"
     else:
       help_text = f"Experimental: {help_text}"
-    o.add_argument(
-        opt, action="store_true", dest=dest, help=help_text, default=default)
+    a = _Arg(*arg.args, **arg.kwargs)
+    a.kwargs["help"] = help_text
+    a.add_to(o)
 
-  for opt, default, help_text in FEATURE_FLAGS:
-    flag(opt, default, help_text, True)
+  for arg in FEATURE_FLAGS:
+    flag(arg, True)
 
-  for opt, default, help_text in EXPERIMENTAL_FLAGS:
-    flag(opt, default, help_text, False)
+  for arg in EXPERIMENTAL_FLAGS:
+    flag(arg, False)
 
 
 def add_subtools(o):
