@@ -1,5 +1,6 @@
 """Config file processing."""
 
+import argparse
 import dataclasses
 import logging
 import os
@@ -206,7 +207,7 @@ def Config(*extra_variables):  # pylint: disable=invalid-name
   return Config()
 
 
-class FileConfig:
+class FileConfig(argparse.Namespace):
   """Configuration variables from a file."""
 
   def read_from_file(self, filepath):

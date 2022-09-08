@@ -67,7 +67,8 @@ class TestParser(unittest.TestCase):
 
   def test_postprocess_from_strings(self):
     args = types.SimpleNamespace(report_errors='False', protocols='True')
-    self.parser.postprocess(args, from_strings=True)
+    self.parser.convert_strings(args)
+    self.parser.postprocess(args)
     self.assertFalse(args.report_errors)
     self.assertTrue(args.protocols)
 

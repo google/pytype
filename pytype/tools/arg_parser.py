@@ -2,9 +2,15 @@
 
 import argparse
 
+from typing import Any, Dict
+
 from pytype import config as pytype_config
 from pytype import datatypes
 from pytype import utils as pytype_utils
+
+
+# Type alias
+_ArgDict = Dict[str, Any]
 
 
 def string_to_bool(s):
@@ -31,6 +37,7 @@ class Parser:
     """
     self.parser = parser
     self.pytype_single_args = pytype_single_args
+    self.pytype_args = {x.get("dest"): x for x in pytype_config.ALL_OPTIONS}
 
   def create_initial_args(self, keys):
     """Creates the initial set of args.
@@ -57,24 +64,25 @@ class Parser:
     self.postprocess(args)
     return args
 
-  def postprocess(self, args, from_strings=False):
+  def convert_strings(self, args: argparse.Namespace):
+    """Converts strings in an args namespace to values."""
+    for k in self.pytype_single_args:
+      if hasattr(args, k):
+        v = getattr(args, k)
+        assert isinstance(v, str)
+        setattr(args, k, convert_string(v))
+
+  def postprocess(self, args: argparse.Namespace):
     """Postprocesses the subset of pytype_single_args that appear in args.
 
     Args:
       args: an argparse.Namespace.
-      from_strings: Whether the args are all strings. If so, we'll do our best
-        to convert them to the right types.
     """
-    names = set()
-    for k in self.pytype_single_args:
-      if hasattr(args, k):
-        names.add(k)
-        if from_strings:
-          setattr(args, k, convert_string(getattr(args, k)))
-    opt_map = {k: f"--{k.replace('_', '-')}" for k in names}
+    names = {k for k in self.pytype_single_args if hasattr(args, k)}
+    opt_map = {k: self.pytype_args[k].long_opt for k in names}
     pytype_config.Postprocessor(names, opt_map, args).process()
 
-  def get_pytype_kwargs(self, args):
+  def get_pytype_kwargs(self, args: argparse.Namespace) -> _ArgDict:
     """Return a set of kwargs to pass to pytype.config.Options.
 
     Args:

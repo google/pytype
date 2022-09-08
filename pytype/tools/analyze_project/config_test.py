@@ -163,8 +163,9 @@ class TestGenerateConfig(unittest.TestCase):
       f = path_utils.join(d.path, 'test.cfg')
       config.generate_sample_config_or_die(f, self.parser.pytype_single_args)
       conf = config.read_config_file_or_die(f)
-    # Smoke test for postprocessing and spot-check of a result.
-    self.parser.postprocess(conf, from_strings=True)
+    # Smoke test and spot check for string conversion and postprocessing
+    self.parser.convert_strings(conf)
+    self.parser.postprocess(conf)
     self.assertIsInstance(conf.report_errors, bool)
 
   def test_keep_going_file_default(self):

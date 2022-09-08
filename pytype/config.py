@@ -160,6 +160,10 @@ class _Arg:
   def get(self, k):
     return self.kwargs.get(k)
 
+  @property
+  def long_opt(self):
+    return self.args[-1]
+
 
 def _flag(opt, default, help_text):
   dest = opt.lstrip("-").replace("-", "_")

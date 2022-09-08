@@ -37,7 +37,8 @@ def main():
   conf = parser.config_from_defaults()
   # File options overwrite defaults.
   file_config = config.read_config_file_or_die(args.config)
-  parser.postprocess(file_config, from_strings=True)
+  parser.convert_strings(file_config)
+  parser.postprocess(file_config)
   conf.populate_from(file_config)
   # Command line arguments overwrite file options.
   conf.populate_from(args)
