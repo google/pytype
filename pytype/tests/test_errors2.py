@@ -353,6 +353,19 @@ class ErrorTest(test_base.BaseTest):
             ]
         })
 
+  def test_wrong_self_type(self):
+    errors = self.CheckWithErrors("""
+      from typing import MutableMapping
+      import unittest
+      def f(self: int) -> None:
+        foo: MutableMapping[str, str] = {}  # wrong-arg-types[e]
+      class C(unittest.TestCase):
+        f = f
+    """)
+    e, = errors.errorlog
+    self.assertEqual(e.filename, "<inline>")
+    self.assertEqual(e.methodname, "f")
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""

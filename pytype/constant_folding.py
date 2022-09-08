@@ -362,6 +362,7 @@ class _FoldConstants:
           o.next = op.next
           o.target = op.target
           o.block_target = op.block_target
+          o.code = op.code
           op.folded = o
           folds.add(op)
           out.append(o)
