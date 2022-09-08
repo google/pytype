@@ -920,15 +920,6 @@ def match_all_args(ctx, node, func, args):
   return args, errors
 
 
-def match_succeeded(match_result, match_all_views, ctx):
-  bad_matches, substs = match_result
-  if not bad_matches:
-    return True
-  if match_all_views or ctx.options.strict_parameter_checks:
-    return False
-  return bool(substs)
-
-
 def has_visible_namedarg(node, args, names):
   # Note: this method should be called judiciously, as HasCombination is
   # potentially very expensive.

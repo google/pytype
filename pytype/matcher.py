@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -85,6 +85,14 @@ class ErrorDetails:
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
+class GoodMatch:
+  """A correct type/actual value match."""
+
+  view: Dict[cfg.Variable, cfg.Binding]
+  subst: Dict[str, cfg.Variable]
+
+
+@dataclasses.dataclass(eq=True, frozen=True)
 class BadMatch:
   """An expected type/actual value mismatch."""
 
@@ -99,6 +107,15 @@ class BadMatch:
   @property
   def error_details(self):
     return self.expected.error_details
+
+
+@dataclasses.dataclass(eq=True, frozen=True)
+class MatchResult:
+  """The result of a compute_match call."""
+
+  success: bool
+  good_matches: List[GoodMatch]
+  bad_matches: List[BadMatch]
 
 
 class AbstractMatcher(utils.ContextWeakrefMixin):
@@ -195,22 +212,28 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = value
     return datatypes.HashableDict(subst), None
 
-  def bad_matches(
-      self, var, other_type, name=None
-  ) -> Tuple[List[BadMatch], List[Dict[str, cfg.Variable]]]:
-    """Match a Variable against a type. Return views that don't match.
+  # This is a staticmethod rather than a module-level function because
+  # matcher.py can't be imported in many of the places that the matcher is used.
+  @staticmethod
+  def default_match() -> GoodMatch:
+    return GoodMatch({}, datatypes.HashableDict())
+
+  def compute_matches(
+      self, var, other_type, name=None, match_all_views=True) -> MatchResult:
+    """Match a Variable against a type.
 
     Args:
       var: A cfg.Variable, containing instances.
       other_type: An instance of BaseValue.
       name: Optionally, the variable name.
+      match_all_views: If True, every possible match must succeed for the
+        overall match to be considered a success. Otherwise, the overall match
+        succeeds as long as at least one possible match succeeds.
     Returns:
-      A pair of:
-      * A list of all bad matches.
-      * Substitution dictionaries for good matches.
+      The match result.
     """
-    bad = []
-    substs = []
+    bad_matches = []
+    good_matches = []
     views = abstract_utils.get_views([var], self._node)
     skip_future = None
     while True:
@@ -221,7 +244,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       subst = self.match_var_against_type(var, other_type, {}, view)
       if subst is None:
         if self._node.HasCombination(list(view.values())):
-          bad.append(BadMatch(
+          bad_matches.append(BadMatch(
               view=view,
               expected=self._get_bad_type(name, other_type),
               actual=var))
@@ -230,8 +253,15 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         skip_future = False
       else:
         skip_future = True
-        substs.append(datatypes.HashableDict(subst))
-    return bad, substs
+        good_matches.append(GoodMatch(view, datatypes.HashableDict(subst)))
+    if not bad_matches:
+      success = True
+    elif match_all_views or self.ctx.options.strict_parameter_checks:
+      success = False
+    else:
+      success = bool(good_matches)
+    return MatchResult(
+        success=success, good_matches=good_matches, bad_matches=bad_matches)
 
   def match_from_mro(self, left, other_type, allow_compat_builtins=True):
     """Checks a type's MRO for a match for a formal type.
@@ -1022,9 +1052,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if k not in fields:
         continue
       typ = abstract_utils.get_atomic_value(fields[k])
-      b, _ = self.bad_matches(v, typ)
-      if b:
-        bad.append((k, b))
+      match_result = self.compute_matches(v, typ)
+      if not match_result.success:
+        bad.append((k, match_result.bad_matches))
     if missing or extra or bad:
       self._typed_dict_error = TypedDictError(bad, extra, missing)
       return False
@@ -1288,6 +1318,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
     for param in self.ctx.annotation_utils.get_type_parameters(typ):
-      if param.name not in subst:
-        subst[param.name] = self.ctx.convert.empty.to_variable(self._node)
+      if param.full_name not in subst:
+        subst[param.full_name] = self.ctx.convert.empty.to_variable(self._node)
     return subst

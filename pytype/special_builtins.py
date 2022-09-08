@@ -12,7 +12,7 @@ from pytype.abstract import mixin
 class TypeNew(abstract.PyTDFunction):
   """Implements type.__new__."""
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, alias_map=None):
     if len(args.posargs) == 4:
       self.match_args(node, args)  # May raise FailedFunctionCall.
       cls, name_var, bases_var, class_dict_var = args.posargs
@@ -106,7 +106,7 @@ class Abs(BuiltinFunction):
 
   name = "abs"
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     self.match_args(node, args)
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
@@ -131,7 +131,7 @@ class Next(BuiltinFunction):
       default = self.ctx.program.NewVariable()
     return arg, default
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     self.match_args(node, args)
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, "__next__")
@@ -163,7 +163,7 @@ class ObjectPredicate(BuiltinFunction):
   def run(self, node, args, result):
     raise NotImplementedError(self.__class__.__name__)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     try:
       self.match_args(node, args)
       node = node.ConnectNew(self.name)
@@ -388,7 +388,7 @@ class SuperInstance(abstract.BaseValue):
     else:
       return super().get_special_attribute(node, name, valself)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     self.ctx.errorlog.not_callable(self.ctx.vm.frames, self)
     return node, self.ctx.new_unsolvable(node)
 
@@ -518,7 +518,7 @@ class RevealType(abstract.BaseValue):
   def __init__(self, ctx):
     super().__init__("reveal_type", ctx)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     for a in args.posargs:
       self.ctx.errorlog.reveal_type(self.ctx.vm.frames, node, a)
     return node, self.ctx.convert.build_none(node)
@@ -533,7 +533,7 @@ class AssertType(BuiltinFunction):
 
   name = "assert_type"
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     if len(args.posargs) == 1:
       a, = args.posargs
       t = None
@@ -762,11 +762,7 @@ class Dict(BuiltinClass):
     super().__init__(ctx, "dict")
 
   def call(self, node, funcb, args):
-    if self.ctx.options.build_dict_literals_from_kwargs:
-      build_literal = not args.has_non_namedargs()
-    else:
-      build_literal = args.is_empty()
-    if build_literal:
+    if not args.has_non_namedargs():
       # special-case a dict constructor with explicit k=v args
       d = abstract.Dict(self.ctx)
       for (k, v) in args.namedargs.items():

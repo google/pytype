@@ -289,21 +289,25 @@ class AnnotationContainer(AnnotationClass):
                 root_node, container=abstract_utils.DUMMY_CONTAINER)
         else:
           actual = param_value.instantiate(root_node)
-        bad, _ = self.ctx.matcher(root_node).bad_matches(actual, formal_param)
-        if bad:
+        match_result = self.ctx.matcher(root_node).compute_matches(
+            actual, formal_param)
+        if not match_result.success:
           if isinstance(param_value, TypeParameter):
             # bad_matches replaces type parameters in the expected type with
             # their concrete values, which is usually what we want. But when the
             # actual type is a type parameter, then it's more helpful to show
             # the expected type as a type parameter as well.
-            bad = [dataclasses.replace(match, expected=dataclasses.replace(
-                match.expected, typ=formal_param)) for match in bad]
+            bad = []
+            for match in match_result.bad_matches:
+              expected = dataclasses.replace(match.expected, typ=formal_param)
+              bad.append(dataclasses.replace(match, expected=expected))
             if isinstance(formal_param, TypeParameter):
               details = (f"TypeVars {formal_param.name} and {param_value.name} "
                          "have incompatible bounds or constraints.")
             else:
               details = None
           else:
+            bad = match_result.bad_matches
             details = None
           self.ctx.errorlog.bad_concrete_type(
               self.ctx.vm.frames, root_node, bad, details)

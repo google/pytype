@@ -125,14 +125,9 @@ class Pyval(ast3.AST):
 
   def repr_str(self):
     """String representation with prefixes."""
-    if self.type == "str":
-      val = f"'{self.value}'"
-    elif self.type == "unicode":
-      val = f"u'{self.value}'"
-    elif self.type == "bytes":
-      val = repr(self.value)
+    if self.type == "unicode":
+      val = f"u{self.value!r}"
     else:
-      # For non-strings
       val = repr(self.value)
     return val
 

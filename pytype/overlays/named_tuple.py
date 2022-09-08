@@ -238,7 +238,7 @@ class NamedTupleBuilder(NamedTupleBuilderBase):
     return _Args(
         name=name, field_names=field_names, defaults=defaults, rename=rename)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     """Creates a namedtuple class definition."""
     # If we can't extract the arguments, we take the easy way out and return Any
     try:
@@ -320,7 +320,7 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
 
     return _Args(name=cls_name, field_names=names, field_types=types)
 
-  def call(self, node, _, args):
+  def call(self, node, _, args, alias_map=None):
     try:
       args, props = self.process_args(node, args)
     except _ArgsError:

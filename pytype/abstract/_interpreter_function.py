@@ -6,7 +6,6 @@ import hashlib
 import itertools
 import logging
 
-from pytype import datatypes
 from pytype.abstract import _classes
 from pytype.abstract import _function_base
 from pytype.abstract import _instance_base
@@ -237,6 +236,7 @@ class SignedFunction(_function_base.Function):
     return subst
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
+    matcher = self.ctx.matcher(node)
     substs = None
     for name, arg, formal in self.signature.iter_args(args):
       if formal is None:
@@ -245,15 +245,18 @@ class SignedFunction(_function_base.Function):
         # The annotation is Tuple or Dict, but the passed arg only has to be
         # Iterable or Mapping.
         formal = self.ctx.convert.widen_type(formal)
-      match_result = self.ctx.matcher(node).bad_matches(arg, formal, name)
-      if not function.match_succeeded(match_result, match_all_views, self.ctx):
-        raise function.WrongArgTypes(self.signature, args, self.ctx,
-                                     bad_param=match_result[0][0].expected)
-      if any(match_result[1]):
+      match_result = matcher.compute_matches(
+          arg, formal, name, match_all_views)
+      if not match_result.success:
+        raise function.WrongArgTypes(
+            self.signature, args, self.ctx,
+            bad_param=match_result.bad_matches[0].expected)
+      cur_substs = [m.subst for m in match_result.good_matches]
+      if any(cur_substs):
         assert substs is None
-        substs = match_result[1]
+        substs = cur_substs
     if not substs:
-      substs = [datatypes.HashableDict()]
+      substs = [matcher.default_match().subst]
     return substs
 
   def get_first_opcode(self):

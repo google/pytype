@@ -1,5 +1,6 @@
 """Config file processing."""
 
+import argparse
 import dataclasses
 import logging
 import os
@@ -86,9 +87,10 @@ def _pytype_single_items():
   """Args to pass through to pytype_single."""
   out = {}
   flags = pytype_config.FEATURE_FLAGS + pytype_config.EXPERIMENTAL_FLAGS
-  for opt, default, _ in flags:
-    dest = opt.lstrip('-').replace('-', '_')
-    default = str(default)
+  for arg in flags:
+    opt = arg.args[0]
+    dest = arg.get('dest')
+    default = str(arg.get('default'))
     out[dest] = Item(None, default, ArgInfo(opt, None), None)
   out.update(REPORT_ERRORS_ITEMS)
   return out
@@ -205,7 +207,7 @@ def Config(*extra_variables):  # pylint: disable=invalid-name
   return Config()
 
 
-class FileConfig:
+class FileConfig(argparse.Namespace):
   """Configuration variables from a file."""
 
   def read_from_file(self, filepath):

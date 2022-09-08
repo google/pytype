@@ -1,6 +1,7 @@
 """Generic data structures and collection classes."""
 
 import argparse
+import contextlib
 import itertools
 
 
@@ -275,13 +276,13 @@ class AliasingDict(dict):
   def itervalues(self):
     raise NotImplementedError()
 
-  def pop(self):
+  def pop(self, k):
     raise NotImplementedError()
 
   def popitem(self):
     raise NotImplementedError()
 
-  def setdefault(self):
+  def setdefault(self, k):
     raise NotImplementedError()
 
   def update(self):
@@ -319,22 +320,20 @@ class HashableDict(AliasingDict):
   def clear(self):
     raise TypeError()
 
-  def pop(self):
+  def pop(self, k):
     raise TypeError()
 
   def popitem(self):
     raise TypeError()
 
-  def setdefault(self):
+  def setdefault(self, k):
     raise TypeError()
 
-  # pylint: disable=unexpected-special-method-signature
-  def __setitem__(self):
+  def __setitem__(self, name, var):
     raise TypeError()
 
-  def __delitem__(self):
+  def __delitem__(self, y):
     raise TypeError()
-  # pylint: enable=unexpected-special-method-signature
 
   def __hash__(self):
     return self._hash
@@ -380,7 +379,7 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
     self[tgt] = dict.__getitem__(self, src)
     dict.__delitem__(self, src)
 
-  def add_alias(self, alias, name, op):
+  def add_alias(self, alias, name, op=None):
     alias = self.uf.find_by_name(alias)
     name = self.uf.find_by_name(name)
     if alias == name:
@@ -397,14 +396,42 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
       self._copy_item(name, root)
 
 
+class Box:
+  """A mutable shared value."""
+
+  def __init__(self, value=None):
+    self._value = value
+
+  def __get__(self, unused_obj, unused_objname):
+    return self._value
+
+  def __set__(self, unused_obj, value):
+    self._value = value
+
+
 class ParserWrapper:
   """Wrapper that adds arguments to a parser while recording them."""
+
+  # This needs to be a classvar so that it is shared by subgroups
+  _only = Box(None)
 
   def __init__(self, parser, actions=None):
     self.parser = parser
     self.actions = {} if actions is None else actions
 
+  @contextlib.contextmanager
+  def only_add(self, args):
+    """Constrain the parser to only add certain arguments."""
+    only = self._only
+    self._only = args
+    try:
+      yield
+    finally:
+      self._only = only
+
   def add_argument(self, *args, **kwargs):
+    if self._only and not any(arg in self._only for arg in args):
+      return
     try:
       action = self.parser.add_argument(*args, **kwargs)
     except argparse.ArgumentError:

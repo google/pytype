@@ -24,9 +24,9 @@ class PickleTest(test_base.BaseTest):
         r = u.f()
       """, deep=False, pythonpath=[""], imports_map={"u": u})
       self.assertTypesMatchPytd(ty, """
-        import collections
+        from typing import OrderedDict
         import u
-        r = ...  # type: collections.OrderedDict[int, int]
+        r = ...  # type: OrderedDict[int, int]
       """)
 
   def test_nested_class_name_clash(self):
