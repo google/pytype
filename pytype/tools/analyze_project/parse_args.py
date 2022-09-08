@@ -4,18 +4,44 @@ import argparse
 
 from pytype import config as pytype_config
 from pytype import datatypes
-from pytype.tools import arg_parser
 from pytype.tools.analyze_project import config
 
 
 _ARG_PREFIX = '--'
 
 
-class Parser(arg_parser.Parser):
-  """Subclasses Parser to add a config file processor."""
+def string_to_bool(s):
+  return s == 'True' if s in ('True', 'False') else s
+
+
+def convert_string(s):
+  s = s.replace('\n', '')
+  try:
+    return int(s)
+  except ValueError:
+    return string_to_bool(s)
+
+
+class Parser:
+  """Parser with additional functions for config file processing."""
+
+  def __init__(self, parser, pytype_single_args):
+    """Initialize a parser.
+
+    Args:
+      parser: An argparse.ArgumentParser or compatible object
+      pytype_single_args: Iterable of args that will be passed to pytype_single
+    """
+    self._parser = parser
+    self.pytype_single_args = pytype_single_args
+    self._pytype_arg_map = pytype_config.args_map()
+
+  def create_initial_args(self, keys):
+    """Creates the initial set of args."""
+    return argparse.Namespace(**{k: None for k in keys})
 
   def config_from_defaults(self):
-    defaults = self.parser.parse_args([])
+    defaults = self._parser.parse_args([])
     self.postprocess(defaults)
     conf = config.Config(*self.pytype_single_args)
     conf.populate_from(defaults)
@@ -49,10 +75,31 @@ class Parser(arg_parser.Parser):
     """
     file_config_names = set(config.ITEMS) | set(self.pytype_single_args)
     args = self.create_initial_args(file_config_names)
-    self.parser.parse_args(argv, args)
+    self._parser.parse_args(argv, args)
     self.clean_args(args, file_config_names)
     self.postprocess(args)
     return args
+
+  def convert_strings(self, args: argparse.Namespace):
+    """Converts strings in an args namespace to values."""
+    for k in self.pytype_single_args:
+      if hasattr(args, k):
+        v = getattr(args, k)
+        assert isinstance(v, str)
+        setattr(args, k, convert_string(v))
+
+  def postprocess(self, args: argparse.Namespace):
+    """Postprocesses the subset of pytype_single_args that appear in args.
+
+    Args:
+      args: an argparse.Namespace.
+    """
+    names = {k for k in self.pytype_single_args if hasattr(args, k)}
+    opt_map = {k: self._pytype_arg_map[k].long_opt for k in names}
+    pytype_config.Postprocessor(names, opt_map, args).process()
+
+  def error(self, message):
+    self._parser.error(message)
 
 
 def make_parser():
@@ -110,7 +157,7 @@ def make_parser():
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_basic_options(wrapper)
   pytype_config.add_feature_flags(wrapper)
-  return Parser(parser, wrapper.actions)
+  return Parser(parser, pytype_single_args=wrapper.actions)
 
 
 class _FlattenAction(argparse.Action):

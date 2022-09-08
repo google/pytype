@@ -17,12 +17,12 @@ else:
 
 def main():
   parser = argparse.ArgumentParser(usage='%(prog)s [options] input')
-  args, options = arg_parser.add_pytype_and_parse(parser, sys.argv[1:])
+  args = arg_parser.Parser(parser).parse_args(sys.argv[1:])
 
-  filename = args.inputs[0]
+  filename = args.pytype_opts.input
   with open(filename) as f:
     src = f.read()
-  module = annotate_ast.annotate_source(src, ast3, options)
+  module = annotate_ast.annotate_source(src, ast3, args.pytype_opts)
   print(debug.dump(module, ast3))
 
 

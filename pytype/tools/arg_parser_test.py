@@ -1,7 +1,7 @@
 """Tests for arg_parser."""
 
 import argparse
-import types
+import sys
 
 from pytype import config as pytype_config
 from pytype import datatypes
@@ -10,34 +10,22 @@ from pytype.tools import arg_parser
 import unittest
 
 
-class TestConvertString(unittest.TestCase):
-  """Test arg_parser.convert_string."""
-
-  def test_int(self):
-    self.assertEqual(arg_parser.convert_string('3'), 3)
-
-  def test_bool(self):
-    self.assertIs(arg_parser.convert_string('True'), True)
-    self.assertIs(arg_parser.convert_string('False'), False)
-
-  def test_whitespace(self):
-    self.assertEqual(arg_parser.convert_string('err1,\nerr2'), 'err1,err2')
-
-
 def make_parser():
   """Construct a parser to run tests against."""
 
   parser = argparse.ArgumentParser()
   parser.add_argument(
-      '-v', '--verbosity', dest='verbosity', type=int, action='store',
-      default=1)
-  parser.add_argument(
       '--config', dest='config', type=str, action='store', default='')
-
   # Add options from pytype-single.
   wrapper = datatypes.ParserWrapper(parser)
+  wrapper.add_argument('input', nargs='*')
+  wrapper.add_argument(
+      '-v', '--verbosity', dest='verbosity', type=int,
+      action='store', default=1)
   pytype_config.add_basic_options(wrapper)
-  return arg_parser.Parser(parser, wrapper.actions)
+
+  return arg_parser.Parser(
+      parser, pytype_single_args=wrapper.actions)
 
 
 class TestParser(unittest.TestCase):
@@ -49,28 +37,47 @@ class TestParser(unittest.TestCase):
     cls.parser = make_parser()
 
   def test_verbosity(self):
-    self.assertEqual(self.parser.parse_args(['--verbosity', '0']).verbosity, 0)
-    self.assertEqual(self.parser.parse_args(['-v1']).verbosity, 1)
+    args = self.parser.parse_args(['--verbosity', '0'])
+    self.assertEqual(args.pytype_opts.verbosity, 0)
+    args = self.parser.parse_args(['-v1'])
+    self.assertEqual(args.pytype_opts.verbosity, 1)
 
-  def test_config(self):
-    args = self.parser.parse_args(['--config=test.cfg'])
-    self.assertEqual(args.config, 'test.cfg')
+  def test_tool_and_ptype_args(self):
+    args = self.parser.parse_args(['--config=test.cfg', '-v1'])
+    self.assertEqual(args.tool_args.config, 'test.cfg')
+    args = self.parser.parse_args(['-v1'])
+    self.assertEqual(args.pytype_opts.verbosity, 1)
 
   def test_pytype_single_args(self):
     args = self.parser.parse_args(['--disable=import-error'])
-    self.assertSequenceEqual(args.disable, ['import-error'])
+    self.assertSequenceEqual(args.pytype_opts.disable, ['import-error'])
 
-  def test_postprocess(self):
-    args = types.SimpleNamespace(disable='import-error')
-    self.parser.postprocess(args)
-    self.assertSequenceEqual(args.disable, ['import-error'])
+  def test_input_file(self):
+    args = self.parser.parse_args(['-v1', 'foo.py'])
+    self.assertEqual(args.pytype_opts.verbosity, 1)
+    self.assertEqual(args.pytype_opts.input, 'foo.py')
 
-  def test_postprocess_from_strings(self):
-    args = types.SimpleNamespace(report_errors='False', protocols='True')
-    self.parser.convert_strings(args)
-    self.parser.postprocess(args)
-    self.assertFalse(args.report_errors)
-    self.assertTrue(args.protocols)
+  def test_process_parsed_args(self):
+    incoming_args = argparse.Namespace()
+    incoming_args.config = 'test.cfg'
+    incoming_args.verbosity = 1
+    args = self.parser.process_parsed_args(incoming_args)
+    self.assertEqual(args.tool_args.config, 'test.cfg')
+    self.assertEqual(args.pytype_opts.verbosity, 1)
+
+  def test_override(self):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '--config', dest='config', type=str, action='store', default='')
+    # Add option from pytype-single.
+    wrapper = datatypes.ParserWrapper(parser)
+    pytype_config.add_basic_options(wrapper)
+    parser = arg_parser.Parser(
+        parser, pytype_single_args=wrapper.actions, overrides=['platform'])
+    args = parser.parse_args(['--platform', 'plan9', '--disable', 'foo,bar'])
+    self.assertEqual(args.tool_args.platform, 'plan9')
+    self.assertEqual(args.pytype_opts.platform, sys.platform)
+    self.assertEqual(args.pytype_opts.disable, ['foo', 'bar'])
 
 
 if __name__ == '__main__':

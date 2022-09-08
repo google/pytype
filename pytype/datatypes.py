@@ -420,7 +420,7 @@ class ParserWrapper:
     self.actions = {} if actions is None else actions
 
   @contextlib.contextmanager
-  def only_add(self, args):
+  def add_only(self, args):
     """Constrain the parser to only add certain arguments."""
     only = self._only
     self._only = args
@@ -447,6 +447,9 @@ class ParserWrapper:
 
   def parse_args(self, *args, **kwargs):
     return self.parser.parse_args(*args, **kwargs)
+
+  def parse_known_args(self, *args, **kwargs):
+    return self.parser.parse_known_args(*args, **kwargs)
 
   def error(self, *args, **kwargs):
     return self.parser.error(*args, **kwargs)

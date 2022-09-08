@@ -1,86 +1,62 @@
 """Argument parsing for tools that pass args on to pytype_single."""
 
 import argparse
+import dataclasses
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 from pytype import config as pytype_config
-from pytype import datatypes
-from pytype import utils as pytype_utils
 
 
 # Type alias
 _ArgDict = Dict[str, Any]
+Namespace = argparse.Namespace
 
 
-def string_to_bool(s):
-  return s == "True" if s in ("True", "False") else s
+@dataclasses.dataclass
+class ParsedArgs:
+  """Parsed and processed args for the tool and pytype."""
 
+  tool_args: Namespace
+  pytype_opts: pytype_config.Options
+  all_args: Namespace
 
-def convert_string(s):
-  s = s.replace("\n", "")
-  try:
-    return int(s)
-  except ValueError:
-    return string_to_bool(s)
+  def __init__(self, tool_args: Namespace, pytype_opts: pytype_config.Options):
+    self.tool_args = tool_args
+    self.pytype_opts = pytype_opts
+    # Add a namespace with both sets of args merged.
+    args = dict(vars(tool_args))
+    args.update(self.pytype_opts.as_dict())
+    self.all_args = argparse.Namespace(**args)
 
 
 class Parser:
   """Parser that integrates tool and pytype-single args."""
 
-  def __init__(self, parser, pytype_single_args):
+  def __init__(self, parser, *, pytype_single_args=None, overrides=None):
     """Initialize a parser.
 
     Args:
       parser: An argparse.ArgumentParser or compatible object
-      pytype_single_args: Iterable of args that will be passed to pytype_single
+      pytype_single_args: Args passed to pytype
+      overrides: Pytype args that the tool overrides (will be put into the tool
+          args, with the corresponding pytype opts getting their default values)
     """
-    self.parser = parser
-    self.pytype_single_args = pytype_single_args
-    self.pytype_args = {x.get("dest"): x for x in pytype_config.ALL_OPTIONS}
+    self._parser = parser
+    self._overrides = overrides or []
+    self.pytype_single_args = pytype_single_args or {}
 
-  def create_initial_args(self, keys):
-    """Creates the initial set of args.
-
-    Args:
-      keys: A list of keys to create args from
-
-    Returns:
-      An argparse.Namespace.
-    """
-    return argparse.Namespace(**{k: None for k in keys})
-
-  def parse_args(self, argv):
+  def parse_args(self, argv: List[str]) -> ParsedArgs:
     """Parses argv.
 
     Args:
       argv: sys.argv[1:]
 
     Returns:
-      An argparse.Namespace.
+      A ParsedArgs object
     """
-    args = self.create_initial_args(self.pytype_single_args)
-    self.parser.parse_args(argv, args)
-    self.postprocess(args)
-    return args
-
-  def convert_strings(self, args: argparse.Namespace):
-    """Converts strings in an args namespace to values."""
-    for k in self.pytype_single_args:
-      if hasattr(args, k):
-        v = getattr(args, k)
-        assert isinstance(v, str)
-        setattr(args, k, convert_string(v))
-
-  def postprocess(self, args: argparse.Namespace):
-    """Postprocesses the subset of pytype_single_args that appear in args.
-
-    Args:
-      args: an argparse.Namespace.
-    """
-    names = {k for k in self.pytype_single_args if hasattr(args, k)}
-    opt_map = {k: self.pytype_args[k].long_opt for k in names}
-    pytype_config.Postprocessor(names, opt_map, args).process()
+    tool_args = self._parser.parse_args(argv)
+    return self.process_parsed_args(tool_args)
 
   def get_pytype_kwargs(self, args: argparse.Namespace) -> _ArgDict:
     """Return a set of kwargs to pass to pytype.config.Options.
@@ -93,49 +69,38 @@ class Parser:
     """
     return {k: getattr(args, k) for k in self.pytype_single_args}
 
+  def process_parsed_args(self, tool_args: Namespace) -> ParsedArgs:
+    """Process args from a namespace."""
+    pytype_args = pytype_config.make_parser().parse_args([])
+    pytype_dict = vars(pytype_args)
+    tool_dict = {}
+    for k, v in vars(tool_args).items():
+      if (k in self.pytype_single_args and
+          k not in self._overrides and
+          k in pytype_dict):
+        pytype_dict[k] = v
+      else:
+        tool_dict[k] = v
+    tool_args = Namespace(**tool_dict)
+    self.process(tool_args, pytype_args)
+    self._ensure_valid_pytype_args(pytype_args)
+    pytype_opts = pytype_config.Options(pytype_args)
+    return ParsedArgs(tool_args, pytype_opts)
 
-def add_pytype_and_parse(parser, argv):
-  """Add basic pytype options and parse args.
+  def process(self, tool_args, pytype_args):
+    """Process raw pytype args before passing to config.Options."""
+    # Override in subclasses
 
-  Useful to generate a quick CLI for a library.
+  def _ensure_valid_pytype_args(self, pytype_args: argparse.Namespace):
+    """Final adjustment of raw pytype args before constructing Options."""
+    # If we do not have an input file add a dummy one here; tools often need to
+    # construct a config.Options without having an input file.
+    if not getattr(pytype_args, "input", None):
+      pytype_args.input = ["<dummy_file>"]
 
-  Args:
-    parser: An argparse.ArgumentParser
-    argv: Raw command line args, typically sys.argv[1:]
+    if isinstance(pytype_args.input, str):
+      pytype_args.input = [pytype_args.input]
 
-  Returns:
-    A tuple of (
-      parsed_args: argparse.Namespace,
-      pytype_options: pytype.config.Options)
-  """
-  # Add default --debug and input arguments.
-  parser.add_argument("--debug", action="store_true",
-                      dest="debug", default=None,
-                      help="Display debug output.")
-  parser.add_argument("inputs", metavar="input", nargs=1,
-                      help="A .py file to index")
-
-  # Add options from pytype-single.
-  wrapper = datatypes.ParserWrapper(parser)
-  pytype_config.add_basic_options(wrapper)
-  pytype_config.add_feature_flags(wrapper)
-  parser = Parser(parser, wrapper.actions)
-
-  # Parse argv
-  args = parser.parse_args(argv)
-  cli_args = args.inputs.copy()
-
-  # Make sure we have a valid set of CLI options to pytype
-
-  ## If we are passed an imports map we should look for pickled files as well.
-  if getattr(args, "imports_info", None):
-    cli_args += ["--imports_info", args.imports_info,
-                 "--use-pickled-files"]
-
-  ## We need to set this when creating Options (b/128032570)
-  if args.python_version:
-    cli_args += ["-V", pytype_utils.format_version(args.python_version)]
-
-  pytype_options = pytype_config.Options(cli_args, command_line=True)
-  pytype_options.tweak(**parser.get_pytype_kwargs(args))
-  return (args, pytype_options)
+    # If we are passed an imports map we should look for pickled files as well.
+    if getattr(pytype_args, "imports_map", None):
+      pytype_args.use_pickled_files = True
