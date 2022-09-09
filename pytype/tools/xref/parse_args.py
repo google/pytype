@@ -24,8 +24,6 @@ def make_parser():
   add_kythe_field(parser, "kythe_corpus")
   add_kythe_field(parser, "kythe_root")
   add_kythe_field(parser, "kythe_path")
-  parser.add_argument("inputs", metavar="input", nargs=1,
-                      help="A .py file to index")
   # For the debug indexer
   parser.add_argument("--show-types", action="store_true",
                       dest="show_types", default=None,
@@ -43,6 +41,8 @@ def make_parser():
   with wrapper.add_only(["--imports_info", "--debug"]):
     pytype_config.add_infrastructure_options(wrapper)
     pytype_config.add_debug_options(wrapper)
+  wrapper.add_argument("input", metavar="input", nargs=1,
+                       help="A .py file to index")
   return arg_parser.Parser(parser, pytype_single_args=wrapper.actions)
 
 

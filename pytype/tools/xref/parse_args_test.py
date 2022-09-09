@@ -9,8 +9,8 @@ class TestParseArgs(unittest.TestCase):
   """Test parse_args.parse_args."""
 
   def test_parse_filename(self):
-    args, _, _ = parse_args.parse_args(["a.py"])
-    self.assertEqual(args.inputs, ["a.py"])
+    _, _, pytype_opts = parse_args.parse_args(["a.py"])
+    self.assertEqual(pytype_opts.input, "a.py")
 
   def test_parse_no_filename(self):
     with self.assertRaises(SystemExit):
