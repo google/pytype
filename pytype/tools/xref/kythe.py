@@ -81,10 +81,11 @@ class Kythe:
 
   def _add_file_anchor(self):
     # Add a special anchor for the first byte of a file, so we can link to it.
-    anchor_vname = self.add_anchor(0, 1)
+    anchor_vname = self.add_anchor(0, 0)
     mod_vname = self.vname(FILE_ANCHOR_SIGNATURE)
-    self.add_fact(mod_vname, "node/kind", "record")
+    self.add_fact(mod_vname, "node/kind", "package")
     self.add_edge(anchor_vname, "defines/binding", mod_vname)
+    self.add_edge(self.file_vname, "childof", mod_vname)
 
   def _add_entry(self, entry):
     """Make sure we don't have duplicate entries."""
