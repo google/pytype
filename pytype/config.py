@@ -372,17 +372,9 @@ DEBUG_OPTIONS = [
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing.")),
     _Arg(
-        "--output-cfg", type=str, action="store",
-        dest="output_cfg", default=None,
-        help="Output control flow graph as SVG."),
-    _Arg(
         "--output-debug", type=str, action="store",
         dest="output_debug", default=None,
         help="Output debugging data (use - to add this output to the log)."),
-    _Arg(
-        "--output-typegraph", type=str, action="store",
-        dest="output_typegraph", default=None,
-        help="Output typegraph as SVG."),
     _Arg(
         "--profile", type=str, action="store",
         dest="profile", default=None,
@@ -715,10 +707,6 @@ class Postprocessor:
     else:
       # This option sets imports_map first, before _store_imports_map.
       self.output_options.imports_map = None
-
-  @uses(["-output_cfg"])
-  def _store_output_typegraph(self, output_typegraph):
-    self.output_options.output_typegraph = output_typegraph
 
   @uses(["report_errors"])
   def _store_output_errors_csv(self, output_errors_csv):

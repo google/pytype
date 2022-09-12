@@ -91,6 +91,9 @@ class Parser:
     """Process raw pytype args before passing to config.Options."""
     # Override in subclasses
 
+  def error(self, msg):
+    self._parser.error(msg)
+
   def _ensure_valid_pytype_args(self, pytype_args: argparse.Namespace):
     """Final adjustment of raw pytype args before constructing Options."""
     # If we do not have an input file add a dummy one here; tools often need to

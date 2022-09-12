@@ -81,7 +81,6 @@ class ConfigTest(unittest.TestCase):
     for arg1, arg2 in [
         ("--check", "--output=foo"),
         ("--output-errors-csv=foo", "--no-report-errors"),
-        ("--output-cfg=foo", "--output-typegraph=bar"),
         ("--pythonpath=foo", "--imports_info=bar")
     ]:
       self._test_arg_conflict(arg1, arg2)

@@ -107,16 +107,16 @@ class IOTest(unittest.TestCase):
   def test_check_or_generate_pyi__check(self):
     with self._tmpfile("") as f:
       options = config.Options.create(f.name, check=True)
-      _, pyi_string, pytd_ast = io.check_or_generate_pyi(options)
-    self.assertIsNone(pyi_string)
-    self.assertIsNone(pytd_ast)
+      ret = io.check_or_generate_pyi(options)
+    self.assertIsNone(ret.pyi)
+    self.assertIsNone(ret.ast)
 
   def test_check_or_generate_pyi__generate(self):
     with self._tmpfile("") as f:
       options = config.Options.create(f.name, check=False)
-      _, pyi_string, pytd_ast = io.check_or_generate_pyi(options)
-    self.assertIsNotNone(pyi_string)
-    self.assertIsNotNone(pytd_ast)
+      ret = io.check_or_generate_pyi(options)
+    self.assertIsNotNone(ret.pyi)
+    self.assertIsNotNone(ret.ast)
 
   def test_check_or_generate_pyi__open_function(self):
     def mock_open(filename, *args, **kwargs):
@@ -126,8 +126,8 @@ class IOTest(unittest.TestCase):
         return open(filename, *args, **kwargs)  # pylint: disable=consider-using-with
     options = config.Options.create(
         "my_amazing_file.py", check=False, open_function=mock_open)
-    _, pyi_string, _ = io.check_or_generate_pyi(options)
-    self.assertEqual(pyi_string, "x: float\n")
+    ret = io.check_or_generate_pyi(options)
+    self.assertEqual(ret.pyi, "x: float\n")
 
   def test_write_pickle(self):
     ast = pytd.TypeDeclUnit(None, (), (), (), (), ())

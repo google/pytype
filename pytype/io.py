@@ -1,10 +1,13 @@
 """Public interface to top-level pytype functions."""
 
 import contextlib
+import dataclasses
 import logging
 import os
 import sys
 import traceback
+
+from typing import Optional
 
 import libcst
 
@@ -12,6 +15,7 @@ from pytype import __version__
 from pytype import analyze
 from pytype import config
 from pytype import constant_folding
+from pytype import context
 from pytype import errors
 from pytype import load_pytd
 from pytype import utils
@@ -21,6 +25,7 @@ from pytype.imports import pickle_utils
 from pytype.pyc import pyc
 from pytype.pyi import parser
 from pytype.pytd import optimize
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
@@ -31,6 +36,18 @@ log = logging.getLogger(__name__)
 
 # Webpage explaining the pytype error codes
 ERROR_DOC_URL = "https://google.github.io/pytype/errors.html"
+
+
+@dataclasses.dataclass
+class AnalysisResult:
+  """Preserve all state and results from running pytype."""
+
+  options: config.Options
+  loader: load_pytd.Loader
+  context: context.Context
+  errorlog: errors.ErrorLog
+  pyi: Optional[str]
+  ast: Optional[pytd.TypeDeclUnit]
 
 
 def read_source_file(input_filename, open_function=open):
@@ -63,7 +80,7 @@ def _set_verbosity_from(posarg):
 
 
 @_set_verbosity_from(posarg=2)
-def _call(analyze_types, src, options, loader):
+def _call(analyze_types, src, options, loader, *, ctx=None):
   """Helper function to call analyze.check/infer_types."""
   # 'deep' tells the analyzer whether to analyze functions not called from main.
   deep = not options.main_only
@@ -73,24 +90,26 @@ def _call(analyze_types, src, options, loader):
       filename=options.input,
       options=options,
       loader=loader,
+      ctx=ctx,
       deep=deep)
 
 
-def check_py(src, options=None, loader=None):
+def check_py(src, options=None, loader=None, ctx=None):
   """Check the types of a string of source code."""
   options = options or config.Options.create()
   with config.verbosity_from(options):
-    ret = _call(analyze.check_types, src, options, loader)
+    ret = _call(analyze.check_types, src, options, loader, ctx=ctx)
   return ret.errorlog
 
 
-def generate_pyi(src, options=None, loader=None):
+def generate_pyi(src, options=None, loader=None, ctx=None):
   """Run the inferencer on a string of source code, producing output.
 
   Args:
     src: The source code.
     options: config.Options object.
     loader: A load_pytd.Loader instance.
+    ctx: A context
 
   Returns:
     A tuple, (errors.ErrorLog, PYI Ast as string, TypeDeclUnit).
@@ -101,7 +120,7 @@ def generate_pyi(src, options=None, loader=None):
   """
   options = options or config.Options.create()
   with config.verbosity_from(options):
-    ret = _call(analyze.infer_types, src, options, loader)
+    ret = _call(analyze.infer_types, src, options, loader, ctx=ctx)
     mod = ret.ast
     mod.Visit(visitors.VerifyVisitor())
     mod = optimize.Optimize(mod,
@@ -123,17 +142,20 @@ def generate_pyi(src, options=None, loader=None):
 
 
 @_set_verbosity_from(posarg=0)
-def check_or_generate_pyi(options, loader=None):
-  """Returns generated errors and result pyi or None if it's only check.
+def check_or_generate_pyi(options, loader=None, ctx=None) -> AnalysisResult:
+  """Returns results from running pytype.
 
   Args:
     options: config.Options object.
     loader: load_pytd.Loader object.
+    ctx: A context
 
   Returns:
     A tuple, (errors.ErrorLog, PYI Ast as string or None, AST or None).
   """
-
+  deep = not options.main_only
+  loader = loader or load_pytd.create_loader(options)
+  ctx = ctx or analyze.make_context(options, loader, deep)
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(
@@ -141,10 +163,11 @@ def check_or_generate_pyi(options, loader=None):
   try:
     src = read_source_file(options.input, options.open_function)
     if options.check:
-      return check_py(src=src, options=options, loader=loader), None, None
+      errorlog = check_py(src=src, options=options, loader=loader, ctx=ctx)
+      result, ast = None, None
     else:
       errorlog, result, ast = generate_pyi(
-          src=src, options=options, loader=loader)
+          src=src, options=options, loader=loader, ctx=ctx)
   except utils.UsageError:
     raise
   except pyc.CompileError as e:
@@ -173,7 +196,7 @@ def check_or_generate_pyi(options, loader=None):
           str(utils.message(e)) + f"\nFile: {options.input}",) + e.args[1:]
       raise
 
-  return (errorlog, None, None) if options.check else (errorlog, result, ast)
+  return AnalysisResult(options, loader, ctx, errorlog, result, ast)
 
 
 def _write_pyi_output(options, contents, filename):
@@ -200,7 +223,7 @@ def process_one_file(options):
   log.info("Process %s => %s", options.input, options.output)
   loader = load_pytd.create_loader(options)
   try:
-    errorlog, result, ast = check_or_generate_pyi(options, loader)
+    ret = check_or_generate_pyi(options, loader)
   except utils.UsageError as e:
     logging.error("Usage error: %s\n", utils.message(e))
     return 1
@@ -212,12 +235,12 @@ def process_one_file(options):
       pyi_output = options.output
     # Write out the pyi file.
     if pyi_output:
-      _write_pyi_output(options, result, pyi_output)
+      _write_pyi_output(options, ret.pyi, pyi_output)
     # Write out the pickle file.
     if options.pickle_output:
       log.info("write pickle %r => %r", options.input, options.output)
-      write_pickle(ast, options, loader)
-  exit_status = handle_errors(errorlog, options)
+      write_pickle(ret.ast, options, loader)
+  exit_status = handle_errors(ret.errorlog, options)
 
   # If we have set return_success, set exit_status to 0 after the regular error
   # handler has been called.
