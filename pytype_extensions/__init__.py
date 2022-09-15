@@ -120,9 +120,24 @@ else:
   Decorator = lambda d: d
 
 
-def assert_type(*unused_args):
+def assert_type(__x, __t) -> None:  # pylint: disable=invalid-name
   """Prevent runtime errors from assert_type statements.
 
-  assert_type is handled internally by pytype at type checking time; it should
+  assert_type is handled internally by pytype at type-checking time; it should
   do nothing at runtime.
+
+  Usage example:
+
+  ```
+  import pytype_extensinos
+  assert_type = pytype_extensions.assert_type
+
+  x = 3
+  assert_type(x, int)
+  ```
+
+  Args:
+    __x: The object to make the type assertion about.
+    __t: The type we want to assert.
   """
+  del __x, __t  # Unused.
