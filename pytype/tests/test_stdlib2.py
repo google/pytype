@@ -108,6 +108,15 @@ class StdLibTestsBasic(test_base.BaseTest,
           self.x = compile('', '', '')
     """)
 
+  def test_os_path_basename(self):
+    self.options.tweak(strict_parameter_checks=False)
+    self.Check("""
+      import os
+      from typing import Optional
+      x: Optional[str]
+      assert_type(os.path.basename(x), str)
+    """)
+
 
 class StdlibTestsFeatures(test_base.BaseTest,
                           test_utils.TestCollectionsMixin):

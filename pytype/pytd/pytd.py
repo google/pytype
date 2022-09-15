@@ -676,13 +676,6 @@ def ToType(item, allow_constants=False, allow_functions=False,
         return item.type.parameters[0]
       else:
         return AnythingType()
-    elif item.type.name == 'typing_extensions._SpecialForm':
-      # We convert known special forms to their corresponding types and
-      # otherwise treat them as unknown types.
-      if item.name == 'typing_extensions.Protocol':
-        return NamedType('typing.Protocol')
-      else:
-        return AnythingType()
     elif (isinstance(item.type, AnythingType) or
           item.name == 'typing_extensions.TypedDict'):
       # A constant with type Any may be a type, and TypedDict is a class that

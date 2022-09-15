@@ -449,6 +449,19 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         typ = val
         val = None
         is_alias = True
+      elif (self.module_name == "typing_extensions" and
+            typ.name == "_SpecialForm"):
+        def type_of(n):
+          return pytd.GenericType(
+              pytd.NamedType("builtins.type"), (pytd.NamedType(n),))
+        # We convert known special forms to their corresponding types and
+        # otherwise treat them as unknown types.
+        if name == "Protocol":
+          typ = type_of("typing.Protocol")
+        elif name == "LiteralString":
+          typ = type_of("builtins.str")
+        else:
+          typ = pytd.AnythingType()
     if val and not types.is_any(val):
       raise ParseError(msg)
     if is_alias:
