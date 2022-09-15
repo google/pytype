@@ -54,7 +54,7 @@ def main():
   args = parser.parse_args(sys.argv[1:])
   validate_args(parser, args.tool_args)
   result = io.check_or_generate_pyi(args.pytype_opts)
-  output_graphs(args.tool_args, result.ctx.program)
+  output_graphs(args.tool_args, result.context.program)
 
 
 if __name__ == "__main__":

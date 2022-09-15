@@ -232,6 +232,8 @@ FEATURE_FLAGS = [
           "Enable return type checks for overriding methods."),
     _flag("--enable-cached-property", False,
           "Support pyglib's @cached.property."),
+    _flag("--always-use-return-annotations", False,
+          "Always use function return type annotations."),
 ]
 
 
