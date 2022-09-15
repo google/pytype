@@ -226,7 +226,7 @@ FEATURE_FLAGS = [
           "Enable parameter count checks for overriding methods."),
     _flag("--overriding-parameter-name-checks", False,
           "Enable parameter name checks for overriding methods."),
-    _flag("--overriding-parameter-type-checks", False,
+    _flag("--overriding-parameter-type-checks", True,
           "Enable parameter type checks for overriding methods."),
     _flag("--overriding-return-type-checks", False,
           "Enable return type checks for overriding methods."),
