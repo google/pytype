@@ -133,6 +133,7 @@ class BaseTest(unittest.TestCase):
     super().setUp()
     self.options = config.Options.create(
         python_version=self.python_version,
+        always_use_return_annotations=True,
         enable_cached_property=True,
         overriding_default_value_checks=True,
         overriding_parameter_count_checks=True,

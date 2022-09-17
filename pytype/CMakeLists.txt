@@ -73,7 +73,6 @@ py_library(
     .errors
     .metrics
     pytype.abstract.abstract
-    pytype.inspect.inspect
     pytype.pytd.pytd
 )
 
@@ -260,6 +259,7 @@ py_library(
     .analyze
     .config
     .constant_folding
+    .context
     .errors
     .load_pytd
     pytype.directors.directors

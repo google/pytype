@@ -11,7 +11,6 @@ from pytype import debug
 from pytype import errors
 from pytype import metrics
 from pytype.abstract import abstract_utils
-from pytype.inspect import graph
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -32,15 +31,21 @@ class Analysis:
   errorlog: errors.ErrorLog
 
 
-def check_types(src, filename, options, loader, deep=True,
-                init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                maximum_depth=None, **kwargs):
-  """Verify the Python code."""
-  ctx = context.Context(
+def _make_check_context(options, loader, deep, **kwargs):
+  del deep  # unused
+  return context.Context(
       options=options,
       generate_unknowns=False,
       loader=loader,
       **kwargs)
+
+
+def check_types(src, filename, options, loader, deep=True,
+                init_maximum_depth=INIT_MAXIMUM_DEPTH,
+                maximum_depth=None, ctx=None, **kwargs):
+  """Verify the Python code."""
+  if not ctx:
+    ctx = _make_check_context(options, loader, deep, **kwargs)
   loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
@@ -52,6 +57,15 @@ def check_types(src, filename, options, loader, deep=True,
   snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, ctx.program)
   return Analysis(None, None, ctx.errorlog)
+
+
+def _make_infer_context(options, loader, deep, **kwargs):
+  return context.Context(
+      options=options,
+      generate_unknowns=options.protocols,
+      store_all_calls=not deep,
+      loader=loader,
+      **kwargs)
 
 
 def infer_types(src,
@@ -85,12 +99,7 @@ def infer_types(src,
     AssertionError: In case of a bad parameter combination.
   """
   if not ctx:
-    ctx = context.Context(
-        options=options,
-        generate_unknowns=options.protocols,
-        store_all_calls=not deep,
-        loader=loader,
-        **kwargs)
+    ctx = _make_infer_context(options, loader, deep, **kwargs)
   loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
@@ -140,11 +149,6 @@ def infer_types(src,
 
 def _maybe_output_debug(options, program):
   """Maybe emit debugging output."""
-  if options.output_cfg or options.output_typegraph:
-    tg = graph.TypeGraph(program, set(), bool(options.output_cfg))
-    svg_file = options.output_cfg or options.output_typegraph
-    graph.write_svg_from_dot(svg_file, tg.to_dot())
-
   if options.output_debug:
     text = debug.program_to_text(program)
     if options.output_debug == "-":
@@ -152,3 +156,9 @@ def _maybe_output_debug(options, program):
     else:
       with options.open_function(options.output_debug, "w") as fi:
         fi.write(text)
+
+
+def make_context(options, loader, deep, **kwargs):
+  """Create a context to pass to infer_types or check_types."""
+  factory = _make_check_context if options.check else _make_infer_context
+  return factory(options, loader, deep, **kwargs)

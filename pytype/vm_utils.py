@@ -728,9 +728,9 @@ def _get_annotation(node, var, ctx):
   with ctx.errorlog.checkpoint() as record:
     annot = ctx.annotation_utils.extract_annotation(
         node, var, "varname", ctx.vm.simple_stack())
-    if record.errors:
-      return None
-    return annot
+  if record.errors:
+    return None
+  return annot
 
 
 def _maybe_union(node, x, y, ctx):

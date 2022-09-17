@@ -55,5 +55,13 @@ class C:
     #- @x ref AttrX
     return self.x
 
+  def g(notself):
+    #- @y defines/binding _
+    notself.y = 10
+
+
 #- @x ref AttrX
 y = C().x
+c = C()
+#- @x ref AttrX
+c.x = 1

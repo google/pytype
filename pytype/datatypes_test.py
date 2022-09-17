@@ -265,7 +265,7 @@ class ParserWrapperTest(unittest.TestCase):
   def test_only(self):
     parser = argparse.ArgumentParser()
     wrapper = datatypes.ParserWrapper(parser)
-    with wrapper.only_add({"--foo", "--bar", "--baz", "--unused"}):
+    with wrapper.add_only({"--foo", "--bar", "--baz", "--unused"}):
       wrapper.add_argument("--foo", dest="foo")
       wrapper.add_argument("--quux", dest="quux")
       group = wrapper.add_argument_group("test1")

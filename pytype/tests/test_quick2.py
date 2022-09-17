@@ -61,6 +61,31 @@ class QuickTest(test_base.BaseTest):
           outputs = self.f(A())
     """, quick=True)
 
+  def test_use_return_annotation(self):
+    self.Check("""
+      class Foo:
+        def __init__(self):
+          self.f()
+        def f(self):
+          assert_type(self.g(), int)
+        def g(self) -> int:
+          return 0
+    """, quick=True)
+
+  def test_use_return_annotation_with_typevar(self):
+    self.Check("""
+      from typing import List, TypeVar
+      T = TypeVar('T')
+      class Foo:
+        def __init__(self):
+          x = self.f()
+          assert_type(x, list)
+        def f(self):
+          return self.g(0)
+        def g(self, x: T) -> List[T]:
+          return [x]
+    """, quick=True)
+
 
 if __name__ == "__main__":
   test_base.main()

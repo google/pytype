@@ -9,8 +9,8 @@ class TestParseArgs(unittest.TestCase):
   """Test parse_args.parse_args."""
 
   def test_parse_filename(self):
-    args, _, _ = parse_args.parse_args(["a.py"])
-    self.assertEqual(args.inputs, ["a.py"])
+    _, _, pytype_opts = parse_args.parse_args(["a.py"])
+    self.assertEqual(pytype_opts.input, "a.py")
 
   def test_parse_no_filename(self):
     with self.assertRaises(SystemExit):
@@ -32,9 +32,8 @@ class TestParseArgs(unittest.TestCase):
     with test_utils.Tempdir() as d:
       pyi_file = d.create_file("baz.pyi")
       imports_info = d.create_file("foo", f"bar {pyi_file}")
-      args, _, opts = parse_args.parse_args(
+      _, _, opts = parse_args.parse_args(
           ["a.py", "--imports_info", imports_info])
-      self.assertEqual(args.imports_info, imports_info)
       self.assertEqual(opts.imports_map, {"bar": pyi_file})
       self.assertTrue(opts.use_pickled_files)
 

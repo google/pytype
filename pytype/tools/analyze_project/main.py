@@ -50,7 +50,7 @@ def main():
   logging.info('\n  '.join(['Configuration:'] + str(conf).split('\n')))
 
   if not conf.inputs:
-    parser.parser.error('Need an input.')
+    parser.error('Need an input.')
 
   # Importlab needs the python exe, so we check it as early as possible.
   environment.check_python_exe_or_die(conf.python_version)

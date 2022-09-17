@@ -111,31 +111,37 @@ class Options:
       assert hasattr(self, k)  # Don't allow adding arbitrary junk
       setattr(self, k, v)
 
+  def as_dict(self):
+    return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
+
   def __repr__(self):
-    return "\n".join([f"{k}: {v!r}"
-                      for k, v in sorted(self.__dict__.items())
-                      if not k.startswith("_")])
+    return "\n".join(
+        [f"{k}: {v!r}" for k, v in sorted(self.as_dict().items())])
 
 
 def make_parser():
   """Use argparse to make a parser for configuration options."""
-  o = datatypes.ParserWrapper(argparse.ArgumentParser(
-      usage="%(prog)s [options] input",
-      description="Infer/check types in a Python module"))
+  o = base_parser()
+  add_all_pytype_options(o)
+  return o
 
+
+def base_parser():
+  """Use argparse to make a parser for configuration options."""
+  parser = argparse.ArgumentParser(
+      usage="%(prog)s [options] input",
+      description="Infer/check types in a Python module")
+  return datatypes.ParserWrapper(parser)
+
+
+def add_all_pytype_options(o):
+  """Add all pytype options to the given parser."""
   # Input files
   o.add_argument(
       "input", nargs="*", help="File to process")
 
   # Modes
-  o.add_argument(
-      "-C", "--check", action="store_true",
-      dest="check", default=None,
-      help=("Don't do type inference. Only check for type errors."))
-  o.add_argument(
-      "-o", "--output", type=str, action="store",
-      dest="output", default=None,
-      help=("Output file. Use '-' for stdout."))
+  add_modes(o)
 
   # Options
   add_basic_options(o)
@@ -144,7 +150,6 @@ def make_parser():
   add_pickle_options(o)
   add_infrastructure_options(o)
   add_debug_options(o)
-  return o
 
 
 class _Arg:
@@ -174,6 +179,18 @@ def _flag(opt, default, help_text):
 def add_options(o, arglist):
   for arg in arglist:
     arg.add_to(o)
+
+
+MODES = [
+    _Arg(
+        "-C", "--check", action="store_true",
+        dest="check", default=None,
+        help=("Don't do type inference. Only check for type errors.")),
+    _Arg(
+        "-o", "--output", type=str, action="store",
+        dest="output", default=None,
+        help=("Output file. Use '-' for stdout.")),
+]
 
 
 BASIC_OPTIONS = [
@@ -209,12 +226,14 @@ FEATURE_FLAGS = [
           "Enable parameter count checks for overriding methods."),
     _flag("--overriding-parameter-name-checks", False,
           "Enable parameter name checks for overriding methods."),
-    _flag("--overriding-parameter-type-checks", False,
+    _flag("--overriding-parameter-type-checks", True,
           "Enable parameter type checks for overriding methods."),
     _flag("--overriding-return-type-checks", False,
           "Enable return type checks for overriding methods."),
     _flag("--enable-cached-property", False,
           "Support pyglib's @cached.property."),
+    _flag("--always-use-return-annotations", False,
+          "Always use function return type annotations."),
 ]
 
 
@@ -355,17 +374,9 @@ DEBUG_OPTIONS = [
         help=("Do not use typeshed to look up types in the Python stdlib. "
               "For testing.")),
     _Arg(
-        "--output-cfg", type=str, action="store",
-        dest="output_cfg", default=None,
-        help="Output control flow graph as SVG."),
-    _Arg(
         "--output-debug", type=str, action="store",
         dest="output_debug", default=None,
         help="Output debugging data (use - to add this output to the log)."),
-    _Arg(
-        "--output-typegraph", type=str, action="store",
-        dest="output_typegraph", default=None,
-        help="Output typegraph as SVG."),
     _Arg(
         "--profile", type=str, action="store",
         dest="profile", default=None,
@@ -419,9 +430,19 @@ DEBUG_OPTIONS = [
 ]
 
 
-ALL_OPTIONS = (BASIC_OPTIONS + SUBTOOLS + PICKLE_OPTIONS +
+ALL_OPTIONS = (MODES + BASIC_OPTIONS + SUBTOOLS + PICKLE_OPTIONS +
                INFRASTRUCTURE_OPTIONS + DEBUG_OPTIONS +
                FEATURE_FLAGS + EXPERIMENTAL_FLAGS)
+
+
+def args_map():
+  """Return a map of {destination: _Arg} for all config options."""
+  return {x.get("dest"): x for x in ALL_OPTIONS}
+
+
+def add_modes(o):
+  """Add operation modes to the given parser."""
+  add_options(o, MODES)
 
 
 def add_basic_options(o):
@@ -688,10 +709,6 @@ class Postprocessor:
     else:
       # This option sets imports_map first, before _store_imports_map.
       self.output_options.imports_map = None
-
-  @uses(["-output_cfg"])
-  def _store_output_typegraph(self, output_typegraph):
-    self.output_options.output_typegraph = output_typegraph
 
   @uses(["report_errors"])
   def _store_output_errors_csv(self, output_errors_csv):

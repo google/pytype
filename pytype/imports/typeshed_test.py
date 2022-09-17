@@ -11,6 +11,17 @@ from pytype.tests import test_base
 from pytype.tests import test_utils
 
 
+class TypeshedTestFs(typeshed.ExternalTypeshedFs):
+  """Filestore with configurable root dir."""
+
+  def __init__(self, root):
+    self._test_root = root
+    super().__init__()
+
+  def get_root(self):
+    return self._test_root
+
+
 class TestTypeshedLoading(parser_test_base.ParserTest):
   """Test the code for loading files from typeshed."""
 
@@ -59,7 +70,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
   def test_get_pytd_paths(self):
     # Set TYPESHED_HOME to pytype's internal typeshed copy.
     old_env = os.environ.copy()
-    os.environ["TYPESHED_HOME"] = self.ts.root
+    os.environ["TYPESHED_HOME"] = self.ts._store._root
     try:
       # Check that get_pytd_paths() works with a typeshed installation that
       # reads from TYPESHED_HOME.
@@ -86,22 +97,11 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
       self.assertNotIn("/", module_name)
 
   def test_carriage_return(self):
-    # _env_home is used in preference to _root, so make sure it's unset.
-    self.ts._env_home = None
     self.ts._stdlib_versions["foo"] = ((3, 8), None)
     with test_utils.Tempdir() as d:
       d.create_file(
           file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
-      self.ts._root = d.path
-      _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
-    self.assertEqual(src, "x: int\n")
-
-  def test_carriage_return_custom_root(self):
-    self.ts._stdlib_versions["foo"] = ((3, 8), None)
-    with test_utils.Tempdir() as d:
-      d.create_file(
-          file_utils.replace_separator("stdlib/foo.pyi"), b"x: int\r\n")
-      self.ts._env_home = d.path
+      self.ts._store = TypeshedTestFs(d.path)
       _, src = self.ts.get_module_file("stdlib", "foo", (3, 8))
     self.assertEqual(src, "x: int\n")
 

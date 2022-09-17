@@ -429,11 +429,13 @@ class Env:
     self.env[symbol] = value
 
   def is_self_attr(self, node):
-    return (
-        self.self_var and
-        isinstance(node, self.ast.Attribute) and
-        isinstance(node.value, self.ast.Name) and
-        node.value.id == self.self_var.name)
+    if not self.self_var or not isinstance(node, self.ast.Attribute):
+      return False
+    if isinstance(node.value, self.ast.Name):
+      name = node.value.id
+    else:
+      name = node.value
+    return name == self.self_var.name
 
   def getattr(self, attrib):
     if self.attrs is not None and attrib in self.attrs:
@@ -824,6 +826,16 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     if parent and parent.typ == "ClassDef":
       self.add_local_def(node, name=node.target)
 
+  def _add_attr_ref(self, node, node_str, trace):
+    ref = self.add_local_ref(
+        node,
+        target=node.value,
+        name=node_str,
+        data=trace.types)
+    if len(trace.types) == 2:
+      _, rhs = trace.types
+      self.typemap[ref.id] = rhs
+
   def visit_Attribute(self, node):
     node_str = self._get_node_name(node)
     # match() returns the location of the attribute, whereas the indexer needs
@@ -831,19 +843,18 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     # link function calls. We'll manually adjust the location later.
     for unused_loc, trace in self.match(node):
       if trace.op in ("LOAD_ATTR", "LOAD_METHOD"):
-        ref = self.add_local_ref(
-            node,
-            target=node.value,
-            name=node_str,
-            data=trace.types)
-        if len(trace.types) == 2:
-          _, rhs = trace.types
-          self.typemap[ref.id] = rhs
+        self._add_attr_ref(node, node_str, trace)
       elif trace.op == "STORE_ATTR":
-        defn = self.add_local_def(node)
-        if self.current_class:
-          # We only support attr definitions within a class definition.
-          self.current_env.setattr(node.attr, defn)
+        env = self.envs[self.scope_id()]
+        if env.is_self_attr(node):
+          # Add a new definition for `self.x = ...`
+          defn = self.add_local_def(node)
+          if self.current_class:
+            # We only support attr definitions within a class definition.
+            self.current_env.setattr(node.attr, defn)
+        else:
+          # Otherwise just add a reference
+          self._add_attr_ref(node, node_str, trace)
     return node_str
 
   def visit_Subscript(self, node):

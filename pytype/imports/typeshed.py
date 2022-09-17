@@ -1,9 +1,10 @@
 """Utilities for parsing typeshed files."""
 
+import abc
 import collections
 import os
 import re
-from typing import Sequence
+from typing import List, Sequence, Tuple
 
 from pytype import module_utils
 from pytype import pytype_source_utils
@@ -29,47 +30,96 @@ def _get_module_names_in_path(lister, path, python_version):
   return names
 
 
-class Typeshed:
-  """A typeshed installation.
+class TypeshedStore(metaclass=abc.ABCMeta):
+  """Underlying datastore for typeshed."""
 
-  The location is either retrieved from the environment variable
-  "TYPESHED_HOME" (if set) or otherwise assumed to be directly under
-  pytype (i.e., /{some_path}/pytype/typeshed).
-  """
+  @abc.abstractmethod
+  def load_missing(self) -> List[str]:
+    """List of modules that are known to be missing in typeshed."""
+    raise NotImplementedError()
 
-  # Text file of typeshed entries that will not be loaded.
-  # The path is relative to typeshed's root directory, e.g. if you set this to
-  # "missing.txt" you need to create $TYPESHED_HOME/missing.txt or
-  # pytype/typeshed/missing.txt
-  # For testing, this file must contain the entry 'stdlib/3/pytypecanary'.
-  MISSING_FILE = None
+  @abc.abstractmethod
+  def load_pytype_blocklist(self) -> List[str]:
+    """List of modules that we maintain our own versions of."""
+    raise NotImplementedError()
 
-  def __init__(self):
-    self._env_home = home = os.getenv("TYPESHED_HOME")
-    if home:
-      if not path_utils.isdir(home):
-        raise OSError("Could not find a typeshed installation in "
-                      "$TYPESHED_HOME directory %s" % home)
-      self._root = home
-    else:
-      self._root = pytype_source_utils.get_full_path("typeshed")
-    self._missing = frozenset(self._load_missing())
-    self._stdlib_versions = self._load_stdlib_versions()
-    self._third_party_packages = self._load_third_party_packages()
+  @abc.abstractmethod
+  def load_stdlib_versions(self) -> List[str]:
+    raise NotImplementedError()
 
-  def _load_file(self, path):
-    if self._env_home:
-      filename = path_utils.join(self._env_home, path)
-      with open(filename) as f:
-        return filename, f.read()
-    else:
-      filepath = path_utils.join(self._root, path)
-      return filepath, pytype_source_utils.load_text_file(filepath)
+  @abc.abstractmethod
+  def filepath(self, relpath) -> str:
+    """Absolute path to a typeshed file."""
+    raise NotImplementedError()
 
-  def _file_exists(self, relpath):
-    """Checks whether the given path, relative to the typeshed root, exists."""
-    if self._env_home:
-      return path_utils.exists(path_utils.join(self._root, relpath))
+  @abc.abstractmethod
+  def file_exists(self, relpath) -> bool:
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def list_files(self, relpath) -> List[str]:
+    raise NotImplementedError()
+
+  @abc.abstractmethod
+  def load_file(self, relpath) -> Tuple[str, str]:
+    raise NotImplementedError()
+
+
+class TypeshedFs(TypeshedStore):
+  """Filesystem-based typeshed store."""
+
+  def __init__(self, *, missing_file=None, open_function=open):
+    self._root = self.get_root()
+    self._open_function = open_function
+    self._missing_file = missing_file
+
+  @abc.abstractmethod
+  def get_root(self):
+    raise NotImplementedError
+
+  def filepath(self, relpath):
+    return path_utils.join(self._root, relpath)
+
+  def load_file(self, relpath) -> Tuple[str, str]:
+    filename = self.filepath(relpath)
+    with self._open_function(filename) as f:
+      return filename, f.read()
+
+  def _readlines(self, unix_relpath):
+    relpath = path_utils.join(*unix_relpath.split("/"))
+    _, data = self.load_file(relpath)
+    return data.splitlines()
+
+  def load_missing(self) -> List[str]:
+    """List of modules that are known to be missing in typeshed."""
+    if not self._missing_file:
+      return []
+    return self._readlines(self._missing_file)
+
+  def load_pytype_blocklist(self) -> List[str]:
+    """List of modules that we maintain our own versions of."""
+    return self._readlines("tests/pytype_exclude_list.txt")
+
+  def load_stdlib_versions(self) -> List[str]:
+    return self._readlines("stdlib/VERSIONS")
+
+
+class InternalTypeshedFs(TypeshedFs):
+  """Typeshed installation that ships with pytype."""
+
+  def get_root(self):
+    return pytype_source_utils.get_full_path("typeshed")
+
+  def _list_files(self, relpath):
+    """Lists files recursively in a basedir relative to typeshed root."""
+    fs = pytype_source_utils.list_pytype_files(
+        path_utils.join("typeshed", relpath))
+    return (f for f in fs if "@python2" not in f)
+
+  def list_files(self, relpath):
+    return list(self._list_files(relpath))
+
+  def file_exists(self, relpath):
     try:
       # For a non-par pytype installation, load_text_file will either succeed,
       # raise FileNotFoundError, or raise IsADirectoryError.
@@ -89,21 +139,61 @@ class Typeshed:
       return True
     return True
 
-  def _list_files(self, basedir):
+  def load_file(self, relpath) -> Tuple[str, str]:
+    filepath = self.filepath(relpath)
+    return filepath, pytype_source_utils.load_text_file(filepath)
+
+
+class ExternalTypeshedFs(TypeshedFs):
+  """Typeshed installation pointed to by TYPESHED_HOME."""
+
+  def get_root(self):
+    home = os.getenv("TYPESHED_HOME")
+    if not home or not path_utils.isdir(home):
+      raise OSError("Could not find a typeshed installation in "
+                    "$TYPESHED_HOME directory %s" % home)
+    return home
+
+  def _list_files(self, relpath):
     """Lists files recursively in a basedir relative to typeshed root."""
-    if self._env_home:
-      fs = pytype_source_utils.list_files(path_utils.join(self._root, basedir))
+    fs = pytype_source_utils.list_files(self.filepath(relpath))
+    return (f for f in fs if "@python2" not in f)
+
+  def list_files(self, relpath):
+    return list(self._list_files(relpath))
+
+  def file_exists(self, relpath):
+    return path_utils.exists(self.filepath(relpath))
+
+
+class Typeshed:
+  """A typeshed installation.
+
+  The location is either retrieved from the environment variable
+  "TYPESHED_HOME" (if set) or otherwise assumed to be directly under
+  pytype (i.e., /{some_path}/pytype/typeshed).
+  """
+
+  # Text file of typeshed entries that will not be loaded.
+  # The path is relative to typeshed's root directory, e.g. if you set this to
+  # "missing.txt" you need to create $TYPESHED_HOME/missing.txt or
+  # pytype/typeshed/missing.txt
+  # For testing, this file must contain the entry 'stdlib/3/pytypecanary'.
+  MISSING_FILE = None
+
+  def __init__(self):
+    if os.getenv("TYPESHED_HOME"):
+      self._store = ExternalTypeshedFs(missing_file=self.MISSING_FILE)
     else:
-      fs = pytype_source_utils.list_pytype_files(
-          path_utils.join("typeshed", basedir))
-    return [f for f in fs if "@python2" not in f]
+      self._store = InternalTypeshedFs(missing_file=self.MISSING_FILE)
+    self._missing = self._load_missing()
+    self._stdlib_versions = self._load_stdlib_versions()
+    self._third_party_packages = self._load_third_party_packages()
 
   def _load_missing(self):
-    if not self.MISSING_FILE:
-      return set()
-    _, text = self._load_file(self.MISSING_FILE)
-    return {line.strip() for line in text.split("\n")
-            if line and "@python2" not in line}
+    lines = self._store.load_missing()
+    return frozenset({line.strip() for line in lines
+                      if line and "@python2" not in line})
 
   def _load_stdlib_versions(self):
     """Loads the contents of typeshed/stdlib/VERSIONS.
@@ -117,9 +207,9 @@ class Typeshed:
         {name: ((min_major, min_minor), (max_major, max_minor))}
       The max tuple can be `None`.
     """
-    _, text = self._load_file(path_utils.join("stdlib", "VERSIONS"))
+    lines = self._store.load_stdlib_versions()
     versions = {}
-    for line in text.splitlines():
+    for line in lines:
       line2 = line.split("#")[0].strip()
       if not line2:
         continue
@@ -151,15 +241,17 @@ class Typeshed:
     modules = collections.defaultdict(set)
     top_level_stubs = set()  # packages with stub files outside @python2
     no_py3_meta = set()  # packages with `python3 = false` metadata entry
-    for third_party_file in self._list_files("stubs"):
+    for third_party_file in self._store.list_files("stubs"):
       parts = third_party_file.split(path_utils.sep)
-      if parts[-1] == "METADATA.toml":  # {package}/METADATA.toml
-        _, md_file = self._load_file(path_utils.join("stubs", third_party_file))
+      filename = parts[-1]
+      if filename == "METADATA.toml":  # {package}/METADATA.toml
+        _, md_file = self._store.load_file(
+            path_utils.join("stubs", third_party_file))
         metadata = toml.loads(md_file)
         if not metadata.get("python3", True):
           no_py3_meta.add(parts[0])
       elif parts[1] != "@tests":  # {package}/{module}[/{submodule}]
-        if parts[-1].endswith(".pyi"):
+        if filename.endswith(".pyi"):
           top_level_stubs.add(parts[0])
         name, _ = path_utils.splitext(parts[1])
         modules[parts[0]].add(name)
@@ -175,16 +267,6 @@ class Typeshed:
   def missing(self):
     """Set of known-missing typeshed modules, as strings of paths."""
     return self._missing
-
-  @property
-  def root(self):
-    """Path of typeshed's root directory.
-
-    Returns:
-      Base of filenames returned by get_module_file(). Not guaranteed to exist
-      if typeshed is bundled with pytype.
-    """
-    return self._root
 
   def get_module_file(self, namespace, module, version):
     """Get the contents of a typeshed .pyi file.
@@ -224,13 +306,13 @@ class Typeshed:
     for path_rel in paths:
       # Give precedence to MISSING_FILE
       if path_rel in self.missing:
-        return (path_utils.join(self._root, "nonexistent",
-                                path_rel + ".pyi"), builtin_stubs.DEFAULT_SRC)
+        relpath = path_utils.join("nonexistent", path_rel + ".pyi")
+        return self._store.filepath(relpath), builtin_stubs.DEFAULT_SRC
       for path in [
           path_utils.join(path_rel, "__init__.pyi"), path_rel + ".pyi"
       ]:
         try:
-          name, src = self._load_file(path)
+          name, src = self._store.load_file(path)
           return name, src
         except OSError:
           pass
@@ -261,7 +343,7 @@ class Typeshed:
     for packages in self._third_party_packages.values():
       for package in packages:
         typeshed_subdirs.append(path_utils.join("stubs", package))
-    return [path_utils.join(self._root, d) for d in typeshed_subdirs]
+    return [self._store.filepath(d) for d in typeshed_subdirs]
 
   def get_pytd_paths(self):
     """Gets the paths to pytype's version-specific pytd files."""
@@ -272,7 +354,7 @@ class Typeshed:
 
   def _list_modules(self, path, python_version):
     """Lists modules for _get_module_names_in_path."""
-    for filename in self._list_files(path):
+    for filename in self._store.list_files(path):
       if filename in ("VERSIONS", "METADATA.toml"):
         # stdlib/VERSIONS, stubs/{package}/METADATA.toml are metadata files.
         continue
@@ -318,9 +400,8 @@ class Typeshed:
 
   def read_blacklist(self):
     """Read the typeshed blacklist."""
-    _, text = self._load_file(
-        path_utils.join("tests", "pytype_exclude_list.txt"))
-    for line in text.splitlines():
+    lines = self._store.load_pytype_blocklist()
+    for line in lines:
       if "#" in line:
         line = line[:line.index("#")]
       line = line.strip()
@@ -365,6 +446,7 @@ class TypeshedLoader(base.BuiltinLoader):
     self.options = options
     self.typeshed = _get_typeshed()
     assert self.typeshed is not None
+    # TODO(mdemello): Inject options.open_function into self.typeshed
 
   def load_module(self, namespace, module_name):
     """Load and parse a *.pyi from typeshed.
