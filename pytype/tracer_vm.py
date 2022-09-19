@@ -254,14 +254,37 @@ class CallTracer(vm.VirtualMachine):
       bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 
+  def _maybe_instantiate_binding_directly(self, node0, cls, container):
+    node1, new = cls.data.get_own_new(node0, cls)
+    instantiate = lambda: cls.data.instantiate(node0, container=container)
+    if new:
+      for f in new.data:
+        if not isinstance(f, abstract.InterpreterFunction):
+          # This assumes that any inherited __new__ method defined in a pyi file
+          # returns an instance of the current class.
+          instance = instantiate()
+          break
+        if (f.signature.has_return_annotation and
+            f.signature.annotations["return"].full_name == cls.data.full_name):
+          # If cls's __new__ method is annotated as returning cls, calling it
+          # would send us into infinite recursion, so we have to instantiate
+          # cls directly. Since we didn't analyze __new__, there may be
+          # attributes we don't know about.
+          instance = instantiate()
+          self._mark_maybe_missing_members(instance.data)
+          break
+      else:
+        instance = None
+    else:
+      instance = instantiate()
+    return node1, new, instance
+
   def _instantiate_binding(self, node0, cls, container):
     """Instantiate a class binding."""
-    node1, new = cls.data.get_own_new(node0, cls)
-    if not new or (
-        any(not isinstance(f, abstract.InterpreterFunction) for f in new.data)):
-      # This assumes that any inherited __new__ method defined in a pyi file
-      # returns an instance of the current class.
-      return node0, cls.data.instantiate(node0, container=container)
+    node1, new, maybe_instance = self._maybe_instantiate_binding_directly(
+        node0, cls, container)
+    if maybe_instance:
+      return node0, maybe_instance
     instance = self.ctx.program.NewVariable()
     nodes = []
     for b in new.bindings:
