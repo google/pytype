@@ -1,3 +1,20 @@
+Version 2022.09.19:
+
+Updates:
+* Rework arg parsing to make using pytype as a library in tools easier.
+* Move typegraph and cfg graph visualisation to a separate frontend binary.
+* Add a feature flag, --always-use-return-annotations, to always use return type
+  annotations when analyzing function calls.
+* Default --overriding-parameter-type-checks to True. This flag will be removed
+  in an upcoming release.
+
+Bug fixes:
+* Add an OrderedCode object to LOAD_FOLDED_CONST.
+* Treat LiteralString as str in pyi files.
+* xref:
+  * Replace `record` into `package` kind and add `childof` edge from `file`.
+  * Do not add a defines/binding edge for `a.x = ...` if `a` is not `self`.
+
 Version 2022.09.08:
 
 Updates:
