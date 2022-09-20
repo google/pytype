@@ -41,14 +41,10 @@ SIGNATURE_ERROR_TYPE_TO_OPTION_NAME = {
         "overriding_parameter_count_checks",
     SignatureErrorType.KWONLY_PARAMETER_NAME_MISMATCH:
         "overriding_parameter_name_checks",
-    SignatureErrorType.KWONLY_PARAMETER_TYPE_MISMATCH:
-        "overriding_parameter_type_checks",
     SignatureErrorType.POSITIONAL_PARAMETER_COUNT_MISMATCH:
         "overriding_parameter_count_checks",
     SignatureErrorType.POSITIONAL_PARAMETER_NAME_MISMATCH:
         "overriding_parameter_name_checks",
-    SignatureErrorType.POSITIONAL_PARAMETER_TYPE_MISMATCH:
-        "overriding_parameter_type_checks",
     SignatureErrorType.RETURN_TYPE_MISMATCH:
         "overriding_return_type_checks",
 }
@@ -436,12 +432,14 @@ def _check_signature_compatible(method_signature, base_signature,
       _check_return_types(method_signature, base_signature, is_subtype))
 
   if check_result:
-    option_name = SIGNATURE_ERROR_TYPE_TO_OPTION_NAME[check_result.error_code]
-    if getattr(ctx.options, option_name):
-      ctx.errorlog.overriding_signature_mismatch(
-          stack, base_signature, method_signature, details=check_result.message)
-    else:
-      log.warning(check_result.message)
+    if check_result.error_code in SIGNATURE_ERROR_TYPE_TO_OPTION_NAME:
+      # Check if the error is disabled by an option.
+      option_name = SIGNATURE_ERROR_TYPE_TO_OPTION_NAME[check_result.error_code]
+      if not getattr(ctx.options, option_name):
+        log.warning(check_result.message)
+        return
+    ctx.errorlog.overriding_signature_mismatch(
+        stack, base_signature, method_signature, details=check_result.message)
 
 
 def _get_pytd_class_signature_map(

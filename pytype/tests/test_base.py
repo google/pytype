@@ -138,7 +138,6 @@ class BaseTest(unittest.TestCase):
         overriding_default_value_checks=True,
         overriding_parameter_count_checks=True,
         overriding_parameter_name_checks=True,
-        overriding_parameter_type_checks=True,
         overriding_return_type_checks=True,
         strict_parameter_checks=True,
         strict_primitive_comparisons=True,
