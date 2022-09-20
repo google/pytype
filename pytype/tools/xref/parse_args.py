@@ -8,6 +8,14 @@ from pytype.tools import arg_parser
 from pytype.tools.xref import kythe
 
 
+class XrefParser(arg_parser.Parser):
+  """Subclass the tool parser to retain the raw input field."""
+
+  def process(self, tool_args, pytype_args):
+    # Needed for the debug indexer
+    tool_args.raw_input = pytype_args.input[0]
+
+
 def make_parser():
   """Make parser for command line args.
 
@@ -43,7 +51,7 @@ def make_parser():
     pytype_config.add_debug_options(wrapper)
   wrapper.add_argument("input", metavar="input", nargs=1,
                        help="A .py file to index")
-  return arg_parser.Parser(parser, pytype_single_args=wrapper.actions)
+  return XrefParser(parser, pytype_single_args=wrapper.actions)
 
 
 def parse_args(argv):
