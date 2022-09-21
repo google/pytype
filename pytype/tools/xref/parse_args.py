@@ -39,6 +39,9 @@ def make_parser():
   parser.add_argument("--show-kythe", action="store_true",
                       dest="show_kythe", default=None,
                       help="Display kythe facts.")
+  parser.add_argument("--show-spans", action="store_true",
+                      dest="show_spans", default=None,
+                      help="Display kythe spans.")
   # Don't index builtins and stdlib.
   parser.add_argument("--skip-stdlib", action="store_true",
                       dest="skip_stdlib", default=None,

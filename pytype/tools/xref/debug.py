@@ -1,5 +1,8 @@
 """Debug utils for working with the indexer and the AST."""
 
+import base64
+import re
+
 from pytype.ast import debug
 
 # pylint: disable=protected-access
@@ -109,6 +112,26 @@ def show_map(name, mapping):
   for k, v in mapping.items():
     print("  ", k, v)
   print("}")
+
+
+def show_kythe_spans(kythe_graph, src):
+  """Show kythe spans."""
+
+  for entry in kythe_graph.entries:
+    if entry.fact_name in ("/kythe/text", "/kythe/loc/start", "kythe/loc/end"):
+      continue
+    sig = entry.source.signature
+    if m := re.fullmatch(r"@(\d+):(\d+)", sig):
+      start, end = int(m.group(1)), int(m.group(2))
+      text = src[start:end]
+    else:
+      start, end = 0, 0
+      text = ""
+    value = ""
+    if hasattr(entry, "fact_value"):
+      value = base64.b64decode(entry.fact_value.encode("utf-8")).decode("utf-8")
+    if start:
+      print(f"({start}, {end}): {value}: {text}")
 
 
 # reexport AST dumper
