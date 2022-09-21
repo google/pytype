@@ -234,9 +234,13 @@ class CallTracer(vm.VirtualMachine):
     log.info("Unable to generate fake arguments for %s", funcv)
     return node, self.ctx.new_unsolvable(node)
 
-  def analyze_method_var(self, node0, name, var, cls=None):
-    log.info("Analyzing method: %r", name)
-    node1 = node0.ConnectNew(name)
+  def analyze_method_var(self, node0, name, var, cls):
+    full_name = f"{cls.data.full_name}.{name}"
+    if log.isEnabledFor(logging.INFO):
+      if any(isinstance(v, abstract.INTERPRETER_FUNCTION_TYPES)
+             for v in var.data):
+        log.info("Analyzing method: %r", full_name)
+    node1 = node0.ConnectNew(full_name)
     for val in var.bindings:
       node2 = self.maybe_analyze_method(node1, val, cls)
       node2.ConnectTo(node0)
@@ -373,7 +377,8 @@ class CallTracer(vm.VirtualMachine):
     if method:
       bound_method = self.bind_method(
           node, method, binding.AssignToNewVariable())
-      node = self.analyze_method_var(node, method_name, bound_method)
+      node = self.analyze_method_var(
+          node, method_name, bound_method, binding.data.cls.to_binding(node))
     return node
 
   def _call_init_on_binding(self, node, b):
