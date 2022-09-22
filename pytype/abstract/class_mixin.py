@@ -201,17 +201,10 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     raise NotImplementedError(self.__class__.__name__)
 
   def has_protocol_base(self):
-    """Whether this class inherits directly from typing.Protocol."""
-    if _isinstance(self, "PyTDClass"):
-      for base in self.pytd_cls.bases:
-        if base.name == "typing.Protocol":
-          return True
-    elif _isinstance(self, "InterpreterClass"):
-      for base_var in self._bases:
-        for base in base_var.data:
-          if (_isinstance(base, "PyTDClass") and
-              base.full_name == "typing.Protocol"):
-            return True
+    """Returns whether this class inherits directly from typing.Protocol.
+
+    Subclasses that may inherit from Protocol should override this method.
+    """
     return False
 
   def _init_protocol_attributes(self):
