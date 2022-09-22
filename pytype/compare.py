@@ -184,6 +184,24 @@ def _compare_class(op, left, right):
   raise CmpTypeError()
 
 
+def _compare_sequence_length(
+    op, left: abstract.SequenceLength, right: abstract.ConcreteValue):
+  """Compare sequence lengths for pattern matching."""
+  assert isinstance(right, abstract.ConcreteValue)
+  if op == slots.EQ:
+    if left.splat:
+      return None if left.length <= right.pyval else False
+    else:
+      return left.length == right.pyval
+  elif op == slots.GE:
+    if left.splat:
+      return True if left.length >= right.pyval else None
+    else:
+      return left.length >= right.pyval
+  else:
+    assert False, op
+
+
 def cmp_rel(ctx, op, left, right):
   """Compare two variables."""
   if _is_primitive_constant(ctx, left):
@@ -196,6 +214,8 @@ def cmp_rel(ctx, op, left, right):
     return _compare_dict(op, left, right)
   elif isinstance(left, abstract.Class):
     return _compare_class(op, left, right)
+  elif isinstance(left, abstract.SequenceLength):
+    return _compare_sequence_length(op, left, right)
   else:
     return None
 

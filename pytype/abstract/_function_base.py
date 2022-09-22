@@ -469,22 +469,3 @@ class Property(_base.BaseValue):
     func = func or self.to_binding(node)
     args = args or function.Args(posargs=(self._callself,))
     return self.method.call(node, func, args.replace(posargs=(self._callself,)))
-
-
-class Splat(_base.BaseValue):
-  """Representation of unpacked iterables."""
-
-  def __init__(self, ctx, iterable):
-    super().__init__("splat", ctx)
-    # When building a tuple for a function call, we preserve splats as elements
-    # in a concrete tuple (e.g. f(x, *ys, z) gets called with the concrete tuple
-    # (x, *ys, z) in starargs) and let the arg matcher in function.py unpack
-    # them. Constructing the tuple accesses its class as a side effect; ideally
-    # we would specialise abstract.Tuple for function calls and not bother
-    # constructing an associated TupleClass for a function call tuple, but for
-    # now we just set the class to Any here.
-    self.cls = ctx.convert.unsolvable
-    self.iterable = iterable
-
-  def __repr__(self):
-    return f"splat({self.iterable.data!r})"

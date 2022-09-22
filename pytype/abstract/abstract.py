@@ -43,7 +43,6 @@ BoundPyTDFunction = _function_base.BoundPyTDFunction
 ClassMethod = _function_base.ClassMethod
 StaticMethod = _function_base.StaticMethod
 Property = _function_base.Property
-Splat = _function_base.Splat
 
 SimpleValue = _instance_base.SimpleValue
 Instance = _instance_base.Instance
@@ -60,6 +59,8 @@ Tuple = _instances.Tuple
 List = _instances.List
 Dict = _instances.Dict
 AnnotationsDict = _instances.AnnotationsDict
+Splat = _instances.Splat
+SequenceLength = _instances.SequenceLength
 
 SignedFunction = _interpreter_function.SignedFunction
 SimpleFunction = _interpreter_function.SimpleFunction

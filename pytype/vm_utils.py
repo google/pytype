@@ -983,6 +983,25 @@ def _merge_tuple_bindings(var, ctx):
   return seq
 
 
+# Helper functions for match_sequence and unpack_iterable
+def _var_is_fixed_length_tuple(var):
+  return (all(isinstance(d, abstract.Tuple) for d in var.data) and
+          all(d.tuple_length == var.data[0].tuple_length for d in var.data))
+
+
+def _var_maybe_unknown_iterable(var):
+  return (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
+          all(isinstance(x, abstract.Unknown) for x in var.data))
+
+
+def match_sequence(var):
+  """See if var is a sequence for pattern matching."""
+  return (abstract_utils.match_atomic_value(var, collections.abc.Iterable) or
+          abstract_utils.is_var_indefinite_iterable(var) or
+          _var_is_fixed_length_tuple(var) or
+          _var_maybe_unknown_iterable(var))
+
+
 def unpack_iterable(node, var, ctx):
   """Unpack an iterable."""
   elements = []
@@ -992,14 +1011,12 @@ def unpack_iterable(node, var, ctx):
   except abstract_utils.ConversionError:
     if abstract_utils.is_var_indefinite_iterable(var):
       elements.append(abstract.Splat(ctx, var).to_variable(node))
-    elif (all(isinstance(d, abstract.Tuple) for d in var.data) and
-          all(d.tuple_length == var.data[0].tuple_length for d in var.data)):
+    elif _var_is_fixed_length_tuple(var):
       # If we have a set of bindings to tuples all of the same length, treat
       # them as a definite tuple with union-typed fields.
       vs = _merge_tuple_bindings(var, ctx)
       elements.extend(vs)
-    elif (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
-          all(isinstance(x, abstract.Unknown) for x in var.data)):
+    elif _var_maybe_unknown_iterable(var):
       # If we have an unsolvable or unknown we are unpacking as an iterable,
       # make sure it is treated as a tuple and not a single value.
       v = ctx.convert.tuple_type.instantiate(node)

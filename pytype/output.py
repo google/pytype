@@ -328,6 +328,10 @@ class Converter(utils.ContextWeakrefMixin):
       param = self.value_to_pytd_type(node, v.annotation, seen, view)
       return pytd.GenericType(base_type=pytd.NamedType("typing.Final"),
                               parameters=(param,))
+    elif isinstance(v, abstract.SequenceLength):
+      # For debugging purposes, while developing the feature.
+      return pytd.Annotated(base_type=pytd.NamedType("SequenceLength"),
+                            annotations=(str(v.length), str(v.splat)))
     else:
       raise NotImplementedError(v.__class__.__name__)
 

@@ -617,3 +617,48 @@ class AnnotationsDict(Dict):
 
   def __repr__(self):
     return repr(self.annotated_locals)
+
+
+# TODO(mdemello): These classes should probably go into their own submodule
+
+
+class Splat(_base.BaseValue):
+  """Representation of unpacked iterables."""
+
+  def __init__(self, ctx, iterable):
+    super().__init__("splat", ctx)
+    # When building a tuple for a function call, we preserve splats as elements
+    # in a concrete tuple (e.g. f(x, *ys, z) gets called with the concrete tuple
+    # (x, *ys, z) in starargs) and let the arg matcher in function.py unpack
+    # them. Constructing the tuple accesses its class as a side effect; ideally
+    # we would specialise abstract.Tuple for function calls and not bother
+    # constructing an associated TupleClass for a function call tuple, but for
+    # now we just set the class to Any here.
+    self.cls = ctx.convert.unsolvable
+    self.iterable = iterable
+
+  def __repr__(self):
+    return f"splat({self.iterable.data!r})"
+
+
+class SequenceLength(_base.BaseValue):
+  """Sequence length for match statements."""
+
+  def __init__(self, sequence, ctx):
+    super().__init__("SequenceLength", ctx)
+    length = 0
+    splat = False
+    for var in sequence:
+      if any(isinstance(x, Splat) for x in var.data):
+        splat = True
+      else:
+        length += 1
+    self.length = length
+    self.splat = splat
+
+  def __repr__(self):
+    splat = "+" if self.splat else ""
+    return f"SequenceLength[{self.length}{splat}]"
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
