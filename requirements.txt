@@ -2,7 +2,7 @@
 # Make sure you also install the non-Python dependencies described in
 # https://github.com/google/pytype/blob/master/CONTRIBUTING.md#pytype-dependencies.
 attrs>=21.4.0
-importlab>=0.7
+importlab>=0.8
 libcst>=0.4.5
 networkx<2.8.4
 ninja>=1.10.0.post2
