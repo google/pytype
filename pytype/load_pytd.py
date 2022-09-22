@@ -592,6 +592,10 @@ class Loader:
         # transitive imports, but lookups are expensive.
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
+          while k not in self._modules:
+            if "." not in k:
+              break
+            k, _ = k.rsplit(".", 1)
           if k not in self._modules:
             assert mod_ast
             raise (
