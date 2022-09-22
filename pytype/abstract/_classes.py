@@ -836,8 +836,11 @@ class LiteralClass(ParameterizedClass):
 
   def __eq__(self, other):
     if isinstance(other, LiteralClass):
-      if self.value and other.value:
+      if (isinstance(self.value, mixin.PythonConstant) and
+          isinstance(other.value, mixin.PythonConstant)):
         return self.value.pyval == other.value.pyval
+      else:
+        return self.value == other.value
     return super().__eq__(other)
 
   def __hash__(self):

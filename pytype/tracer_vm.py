@@ -2,6 +2,7 @@
 
 import collections
 import dataclasses
+import enum
 import logging
 import re
 from typing import Any, Dict, Sequence, Tuple, Union
@@ -29,6 +30,9 @@ log = logging.getLogger(__name__)
 # have names like "<listcomp>" and "<genexpr>".
 _SKIP_FUNCTION_RE = re.compile(r"<(?!lambda)\w+>$")
 
+_InstanceCacheType = Dict[abstract.InterpreterClass,
+                          Dict[Any, Union["_InitClassState", cfg.Variable]]]
+
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class _CallRecord:
@@ -41,8 +45,9 @@ class _CallRecord:
   variable: bool
 
 
-class _Initializing:
-  pass
+class _InitClassState(enum.Enum):
+  INSTANTIATING = enum.auto()
+  INITIALIZING = enum.auto()
 
 
 class CallTracer(vm.VirtualMachine):
@@ -56,7 +61,7 @@ class CallTracer(vm.VirtualMachine):
     self._calls = set()
     self._method_calls = set()
     # Used by init_class.
-    self._instance_cache: Dict[Any, Union[_Initializing, cfg.Variable]] = {}
+    self._instance_cache: _InstanceCacheType = collections.defaultdict(dict)
     # Used by call_init. Can differ from _instance_cache because we also call
     # __init__ on classes not initialized via init_class.
     self._initialized_instances = set()
@@ -258,35 +263,26 @@ class CallTracer(vm.VirtualMachine):
       bound.AddBinding(m.property_get(instance_var, is_cls), [], node)
     return bound
 
-  def _maybe_instantiate_binding_directly(self, node0, cls, container):
+  def _maybe_instantiate_binding_directly(self, node0, cls, container,
+                                          instantiate_directly):
     node1, new = cls.data.get_own_new(node0, cls)
-    instantiate = lambda: cls.data.instantiate(node0, container=container)
-    if new:
-      for f in new.data:
-        if not isinstance(f, abstract.InterpreterFunction):
-          # This assumes that any inherited __new__ method defined in a pyi file
-          # returns an instance of the current class.
-          instance = instantiate()
-          break
-        if (f.signature.has_return_annotation and
-            f.signature.annotations["return"].full_name == cls.data.full_name):
-          # If cls's __new__ method is annotated as returning cls, calling it
-          # would send us into infinite recursion, so we have to instantiate
-          # cls directly. Since we didn't analyze __new__, there may be
-          # attributes we don't know about.
-          instance = instantiate()
-          self._mark_maybe_missing_members(instance.data)
-          break
-      else:
-        instance = None
+    if not new:
+      instantiate_directly = True
+    elif not instantiate_directly:
+      # This assumes that any inherited __new__ method defined in a pyi file
+      # returns an instance of the current class.
+      instantiate_directly = any(not isinstance(f, abstract.InterpreterFunction)
+                                 for f in new.data)
+    if instantiate_directly:
+      instance = cls.data.instantiate(node0, container=container)
     else:
-      instance = instantiate()
+      instance = None
     return node1, new, instance
 
-  def _instantiate_binding(self, node0, cls, container):
+  def _instantiate_binding(self, node0, cls, container, instantiate_directly):
     """Instantiate a class binding."""
     node1, new, maybe_instance = self._maybe_instantiate_binding_directly(
-        node0, cls, container)
+        node0, cls, container, instantiate_directly)
     if maybe_instance:
       return node0, maybe_instance
     instance = self.ctx.program.NewVariable()
@@ -301,11 +297,12 @@ class CallTracer(vm.VirtualMachine):
       nodes.append(node4)
     return self.ctx.join_cfg_nodes(nodes), instance
 
-  def _instantiate_var(self, node, clsv, container):
+  def _instantiate_var(self, node, clsv, container, instantiate_directly):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.ctx.program.NewVariable()
     for cls in clsv.Bindings(node, strict=False):
-      node, var = self._instantiate_binding(node, cls, container)
+      node, var = self._instantiate_binding(
+          node, cls, container, instantiate_directly)
       n.PasteVariable(var)
     return node, n
 
@@ -348,27 +345,38 @@ class CallTracer(vm.VirtualMachine):
     Returns:
       A tuple of node and instance variable.
     """
-    key = (self.frame and self.frame.current_opcode, extra_key, cls)
-    instance = self._instance_cache.get(key)
-    if not instance or isinstance(instance, _Initializing):
+    cache = self._instance_cache[cls]
+    key = (self.frame and self.frame.current_opcode, extra_key)
+    status = instance = cache.get(key)
+    if not instance or isinstance(instance, _InitClassState):
       clsvar = cls.to_variable(node)
-      node, instance = self._instantiate_var(node, clsvar, container)
-      if key in self._instance_cache:
-        # We've encountered a recursive pattern such as
-        # class A:
-        #   def __init__(self, x: "A"): ...
-        # Calling __init__ again would lead to an infinite loop, so
-        # we instead create an incomplete instance that will be
-        # overwritten later. Note that we have to create a new
-        # instance rather than using the one that we're already in
-        # the process of initializing - otherwise, setting
-        # maybe_missing_members to True would cause pytype to ignore
-        # all attribute errors on self in __init__.
+      # For some reason, checking only `status` leads to attributes set in
+      # __init__ not being visible later, so we have to check every instance of
+      # this class, ignoring `key`.
+      instantiate_directly = any(v is _InitClassState.INSTANTIATING
+                                 for v in cache.values())
+      cache[key] = _InitClassState.INSTANTIATING
+      node, instance = self._instantiate_var(
+          node, clsvar, container, instantiate_directly)
+      if (instantiate_directly or
+          status is _InitClassState.INITIALIZING):
+        # We've encountered a recursive pattern in such as
+        #   class A:
+        #     def __new__(cls) -> "A": ...
+        # or
+        #   class B:
+        #     def __init__(self, x: "B"): ...
+        # Calling __new__/__init__ again would lead to an infinite loop, so we
+        # instead create an incomplete instance that will be overwritten later.
+        # Note that we have to create a new instance rather than using the one
+        # that we're already in the process of initializing - otherwise, setting
+        # maybe_missing_members to True would cause pytype to ignore all
+        # attribute errors on self in __init__.
         self._mark_maybe_missing_members(instance.data)
       else:
-        self._instance_cache[key] = _Initializing()
+        cache[key] = _InitClassState.INITIALIZING
         node = self.call_init(node, instance)
-      self._instance_cache[key] = instance
+      cache[key] = instance
     return node, instance
 
   def _call_method(self, node, binding, method_name):
