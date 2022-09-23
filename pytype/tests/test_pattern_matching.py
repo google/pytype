@@ -134,6 +134,47 @@ class MatchTest(test_base.BaseTest):
       def f(x: tuple[int, str]) -> str: ...
     """)
 
+  def test_map1(self):
+    ty = self.Infer("""
+      def f(x):
+        match x:
+          case {'x': a}:
+            return 0
+          case {'y': b}:
+            return '1'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> int | str | None : ...
+    """)
+
+  def test_map2(self):
+    ty = self.Infer("""
+      def f(x):
+        match x:
+          case {'x': a}:
+            return a
+          case {'y': b}:
+            return b
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f(x) -> Any: ...
+    """)
+
+  def test_map3(self):
+    ty = self.Infer("""
+      def f():
+        x = {'x': 1, 'y': '2'}
+        match x:
+          case {'x': a}:
+            return a
+          case {'y': b}:
+            return b
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

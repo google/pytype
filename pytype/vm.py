@@ -2749,7 +2749,7 @@ class VirtualMachine:
 
   def byte_GET_LEN(self, state, op):
     del op
-    var = state.peek(1)
+    var = state.top()
     elts = vm_utils.unpack_iterable(state.node, var, self.ctx)
     length = abstract.SequenceLength(elts, self.ctx)
     log.debug("get_len: %r", length)
@@ -2757,17 +2757,31 @@ class VirtualMachine:
 
   def byte_MATCH_MAPPING(self, state, op):
     del op
-    return state
+    var = state.top()
+    is_map = vm_utils.match_mapping(var)
+    ret = self.ctx.convert.bool_values[is_map]
+    log.debug("match_mapping: %r", ret)
+    return state.push(ret.to_variable(state.node))
 
   def byte_MATCH_SEQUENCE(self, state, op):
-    var = state.peek(1)
-    seq = vm_utils.match_sequence(var)
-    ret = self.ctx.convert.bool_values[seq]
+    del op
+    var = state.top()
+    is_seq = vm_utils.match_sequence(var)
+    ret = self.ctx.convert.bool_values[is_seq]
     log.debug("match_sequence: %r", ret)
     return state.push(ret.to_variable(state.node))
 
   def byte_MATCH_KEYS(self, state, op):
+    """Implementation of the MATCH_KEYS opcode."""
     del op
+    var, keys_var = state.topn(2)
+    vals = vm_utils.match_keys(state.node, var, keys_var, self.ctx)
+    if vals:
+      state = state.push(vals,
+                         self.ctx.convert.true.to_variable(state.node))
+    else:
+      state = state.push(self.ctx.convert.none.to_variable(state.node),
+                         self.ctx.convert.false.to_variable(state.node))
     return state
 
   def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):

@@ -288,6 +288,14 @@ def get_atomic_python_constant(variable, constant_type=None):
   return atomic.ctx.convert.value_to_constant(atomic, constant_type)
 
 
+def match_atomic_python_constant(variable, typ=None):
+  try:
+    get_atomic_python_constant(variable, typ)
+  except ConversionError:
+    return False
+  return True
+
+
 def get_views(variables, node):
   """Get all possible views of the given variables at a particular node.
 
