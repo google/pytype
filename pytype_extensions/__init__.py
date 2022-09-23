@@ -61,7 +61,7 @@ class Attrs(Protocol[T]):
   https://github.com/python-attrs/attrs/blob/main/src/attr/_funcs.py#L290
   """
 
-  __attrs_attrs__: tuple[attr.Attribute[T], ...]
+  __attrs_attrs__: tuple['attr.Attribute[T]', ...]
 
 
 class Dataclass(Protocol[T]):
