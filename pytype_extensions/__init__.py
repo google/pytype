@@ -3,6 +3,8 @@ import dataclasses
 import typing
 from typing import Any, Callable, Dict, Generic, Text, Type, TypeVar
 
+import attr
+
 # pylint: disable=g-import-not-at-top
 try:
   from typing import Protocol
@@ -14,10 +16,59 @@ except ImportError:
 T = TypeVar('T')
 
 
+class Attrs(Protocol[T]):
+  """Protocol that matches any `attrs` class (or instance thereof).
+
+  Can be used to match any `attrs` class. Example:
+
+  @attrs.define
+  class Foo:
+    x: str
+    y: int
+
+  @attrs.define
+  class Bar:
+    x: str
+    y: str
+
+  class Baz:
+    x: str
+    y: int
+
+  def foo(item: Attr):
+    pass
+
+  def bar(item: Attr[str]):
+    pass
+
+  def baz(item: Attr[Union[int, str]]):
+    pass
+
+  foo(Foo(x='yes', y=1))     # ok
+  foo(Bar(x='yes', y='no'))  # ok
+  foo(Baz(x='yes', y=1))     # error, not a `attrs` class
+
+  bar(Foo(x='yes', y=1))     # error, has a non-str field
+  bar(Bar(x='yes', y='no'))  # ok
+  bar(Baz(x='yes', y=1))     # error, not a `attrs` class
+
+  baz(Foo(x='yes', y=1))     # ok
+  baz(Bar(x='yes', y='no'))  # ok
+  baz(Baz(x='yes', y=1))     # error, not a `attrs` class
+
+  The only way to identify an `attrs` class is to test for the presence of the
+  `__attrs_attrs__` member; that is what attrs.has uses:
+  https://github.com/python-attrs/attrs/blob/main/src/attr/_funcs.py#L290
+  """
+
+  __attrs_attrs__: tuple[attr.Attribute[T], ...]
+
+
 class Dataclass(Protocol[T]):
   """Protocol that matches any dataclass (or instance thereof).
 
   Can be used to match any dataclass. Example (modulo pytype bugs):
+
   @dataclasses.dataclass
   class Foo:
     x: str
@@ -54,7 +105,7 @@ class Dataclass(Protocol[T]):
   baz(Baz(x='yes', y=1))     # error, not a dataclass
 
   The only way to identify a dataclass is to test for the presence of the
-  __dataclass_fields__ member; that is what dataclasses.is_dataclass uses:
+  `__dataclass_fields__` member; that is what `dataclasses.is_dataclass` uses:
   https://github.com/python/cpython/blob/3.7/Lib/dataclasses.py#L1036.
   """
 
