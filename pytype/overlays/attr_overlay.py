@@ -213,6 +213,23 @@ class Attrs(classgen.Decorator):
     init_method = self.make_init(node, cls, attrs, init_method_name)
     cls.members[init_method_name] = init_method
 
+    # Add the __attrs_attrs__ attribute, the presence of which `attr.has` uses
+    # to determine if an object has `attrs` attributes.
+    attr_types = self.ctx.convert.merge_values({attr.typ for attr in attrs})
+    attr_ast = self.ctx.loader.import_name("attr")
+    generic_attribute = abstract.ParameterizedClass(
+        self.ctx.convert.name_to_value("attr.Attribute", ast=attr_ast),
+        {abstract_utils.T: attr_types}, self.ctx)
+    attr_attribute_params = {abstract_utils.T: generic_attribute}
+    attr_attribute_type = abstract.ParameterizedClass(
+        self.ctx.convert.tuple_type, attr_attribute_params, self.ctx)
+    classgen.add_member(node, cls, "__attrs_attrs__", attr_attribute_type)
+
+    annotations_dict = classgen.get_or_create_annotations_dict(
+        cls.members, self.ctx)
+    annotations_dict.annotated_locals["__attrs_attrs__"] = (
+        abstract_utils.Local(node, None, attr_attribute_type, None, self.ctx))
+
     if isinstance(cls, abstract.InterpreterClass):
       cls.decorators.append("attr.s")
       # Fix up type parameters in methods added by the decorator.
