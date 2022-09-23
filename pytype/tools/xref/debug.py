@@ -121,7 +121,8 @@ def show_kythe_spans(kythe_graph, src):
     if entry.fact_name in ("/kythe/text", "/kythe/loc/start", "kythe/loc/end"):
       continue
     sig = entry.source.signature
-    if m := re.fullmatch(r"@(\d+):(\d+)", sig):
+    m = re.fullmatch(r"@(\d+):(\d+)", sig)
+    if m:
       start, end = int(m.group(1)), int(m.group(2))
       text = src[start:end]
     else:
