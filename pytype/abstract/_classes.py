@@ -288,6 +288,13 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     annotations_dict = abstract_utils.get_annotations_dict(self.members)
     return annotations_dict and name in annotations_dict.annotated_locals
 
+  def has_protocol_base(self):
+    for base_var in self._bases:
+      for base in base_var.data:
+        if isinstance(base, PyTDClass) and base.full_name == "typing.Protocol":
+          return True
+    return False
+
 
 class PyTDClass(
     _instance_base.SimpleValue, class_mixin.Class, mixin.LazyMembers):
@@ -508,6 +515,12 @@ class PyTDClass(
               itm.type_param, {}).instantiate(
                   self.ctx.root_node, container=instance)
         return self._convert_member(name, c, subst)
+
+  def has_protocol_base(self):
+    for base in self.pytd_cls.bases:
+      if base.name == "typing.Protocol":
+        return True
+    return False
 
 
 class FunctionPyTDClass(PyTDClass):
@@ -750,6 +763,9 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
       typ = self.__class__
     return typ(self.base_cls, inner_types, self.ctx, self.template)
 
+  def has_protocol_base(self):
+    return self.base_cls.has_protocol_base()
+
 
 class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signature-mismatch
   """A Callable with a list of argument types.
@@ -836,8 +852,11 @@ class LiteralClass(ParameterizedClass):
 
   def __eq__(self, other):
     if isinstance(other, LiteralClass):
-      if self.value and other.value:
+      if (isinstance(self.value, mixin.PythonConstant) and
+          isinstance(other.value, mixin.PythonConstant)):
         return self.value.pyval == other.value.pyval
+      else:
+        return self.value == other.value
     return super().__eq__(other)
 
   def __hash__(self):

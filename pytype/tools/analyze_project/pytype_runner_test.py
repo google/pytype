@@ -158,7 +158,7 @@ class TestCustomOptions(TestBase):
   def assertFlags(self, flags, expected_flags):
     # Add temporary flags that are set to true by default here, so that they are
     # filtered out of tests.
-    temporary_flags = {'--overriding-parameter-type-checks'}
+    temporary_flags = set()
     self.assertEqual(flags - temporary_flags, expected_flags)
 
   # --disable tests a flag with a string value.

@@ -65,11 +65,14 @@ class QuickTest(test_base.BaseTest):
     self.Check("""
       class Foo:
         def __init__(self):
+          self.x = 3
+      class Bar:
+        def __init__(self):
           self.f()
         def f(self):
-          assert_type(self.g(), int)
-        def g(self) -> int:
-          return 0
+          assert_type(self.g().x, int)
+        def g(self) -> Foo:
+          return Foo()
     """, quick=True)
 
   def test_use_return_annotation_with_typevar(self):
@@ -84,6 +87,21 @@ class QuickTest(test_base.BaseTest):
           return self.g(0)
         def g(self, x: T) -> List[T]:
           return [x]
+    """, quick=True)
+
+  def test_use_return_annotation_on_new(self):
+    self.Check("""
+      class Foo:
+        def __new__(cls) -> "Foo":
+          self = cls()
+          self.x = __any_object__
+          return self
+        def __init__(self):
+          self.y = 0
+      def f():
+        foo = Foo()
+        assert_type(foo.x, "Any")
+        assert_type(foo.y, "int")
     """, quick=True)
 
 

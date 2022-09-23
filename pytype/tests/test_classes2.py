@@ -265,6 +265,22 @@ class ClassesTest(test_base.BaseTest):
           def __init__(self) -> None: ...
     """)
 
+  def test_new_and_subclass(self):
+    ty = self.Infer("""
+      class Foo:
+        def __new__(cls) -> 'Foo':
+          return cls()
+      class Bar(Foo):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      _TFoo = TypeVar('_TFoo', bound=Foo)
+      class Foo:
+        def __new__(cls: type[_TFoo]) -> _TFoo: ...
+      class Bar(Foo): ...
+    """)
+
 
 class ClassesTestPython3Feature(test_base.BaseTest):
   """Tests for classes."""

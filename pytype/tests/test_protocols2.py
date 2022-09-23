@@ -714,6 +714,19 @@ class ProtocolTest(test_base.BaseTest):
       f(Bar())
     """)
 
+  def test_empty_and_generic(self):
+    self.Check("""
+      from typing import Protocol, TypeVar
+      T = TypeVar('T')
+      class Foo(Protocol[T]):
+        pass
+      class Bar:
+        pass
+      def f(foo: Foo[int]):
+        pass
+      f(Bar())
+    """)
+
   def test_deduplicate_error_message(self):
     # Tests that the 'Attributes not implemented' line appears only once in the
     # error message.
