@@ -983,6 +983,53 @@ def _merge_tuple_bindings(var, ctx):
   return seq
 
 
+# Helper functions for match_sequence and unpack_iterable
+def _var_is_fixed_length_tuple(var: cfg.Variable) -> bool:
+  return (all(isinstance(d, abstract.Tuple) for d in var.data) and
+          all(d.tuple_length == var.data[0].tuple_length for d in var.data))
+
+
+def _var_maybe_unknown(var: cfg.Variable) -> bool:
+  return (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
+          all(isinstance(x, abstract.Unknown) for x in var.data))
+
+
+def match_sequence(var: cfg.Variable) -> bool:
+  """See if var is a sequence for pattern matching."""
+  return (
+      abstract_utils.match_atomic_python_constant(
+          var, collections.abc.Iterable) or
+      abstract_utils.is_var_indefinite_iterable(var) or
+      _var_is_fixed_length_tuple(var) or
+      _var_maybe_unknown(var))
+
+
+def match_mapping(var: cfg.Variable) -> bool:
+  """See if var is a map for pattern matching."""
+  return (
+      abstract_utils.match_atomic_python_constant(
+          var, collections.abc.Mapping) or
+      _var_maybe_unknown(var))
+
+
+def match_keys(
+    node, map_var: cfg.Variable, keys_var: cfg.Variable, ctx
+) -> Optional[cfg.Variable]:
+  """Pick values out of a mapping for pattern matching."""
+  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
+  keys = list(map(abstract_utils.get_atomic_python_constant, keys))
+  if _var_maybe_unknown(map_var):
+    return ctx.convert.build_tuple(
+        node, [ctx.new_unsolvable(node) for _ in keys])
+  mapping = abstract_utils.get_atomic_python_constant(
+      map_var, collections.abc.Mapping)
+  try:
+    ret = [mapping[k] for k in keys]
+  except KeyError:
+    return None
+  return ctx.convert.build_tuple(node, ret)
+
+
 def unpack_iterable(node, var, ctx):
   """Unpack an iterable."""
   elements = []
@@ -992,14 +1039,12 @@ def unpack_iterable(node, var, ctx):
   except abstract_utils.ConversionError:
     if abstract_utils.is_var_indefinite_iterable(var):
       elements.append(abstract.Splat(ctx, var).to_variable(node))
-    elif (all(isinstance(d, abstract.Tuple) for d in var.data) and
-          all(d.tuple_length == var.data[0].tuple_length for d in var.data)):
+    elif _var_is_fixed_length_tuple(var):
       # If we have a set of bindings to tuples all of the same length, treat
       # them as a definite tuple with union-typed fields.
       vs = _merge_tuple_bindings(var, ctx)
       elements.extend(vs)
-    elif (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
-          all(isinstance(x, abstract.Unknown) for x in var.data)):
+    elif _var_maybe_unknown(var):
       # If we have an unsolvable or unknown we are unpacking as an iterable,
       # make sure it is treated as a tuple and not a single value.
       v = ctx.convert.tuple_type.instantiate(node)

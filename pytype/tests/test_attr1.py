@@ -25,6 +25,7 @@ class TestAttrib(test_base.BaseTest):
         x: Any
         y: int
         z: str
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __init__(self, x, y: int, z: str) -> None: ...
     """)
 
@@ -42,6 +43,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: A
+        __attrs_attrs__: tuple[attr.Attribute[A], ...]
         def __init__(self, x: A) -> None: ...
     """)
 
@@ -59,6 +61,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: List[int]
+        __attrs_attrs__: tuple[attr.Attribute[List[int]], ...]
         def __init__(self, x: List[int]) -> None: ...
     """)
 
@@ -76,6 +79,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: Union[str, int]
+        __attrs_attrs__: tuple[attr.Attribute[Union[str, int]], ...]
         def __init__(self, x: Union[str, int]) -> None: ...
     """)
 
@@ -95,6 +99,7 @@ class TestAttrib(test_base.BaseTest):
       class Foo:
         x: Union[str, int]
         y: str
+        __attrs_attrs__: tuple[attr.Attribute[Union[str, int]], ...]
         def __init__(self, x: Union[str, int], y: str) -> None: ...
     """)
 
@@ -108,10 +113,12 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class Foo:
         x: Foo
         y: str
+        __attrs_attrs__: tuple[attr.Attribute[Union[Foo, str]], ...]
         def __init__(self, x: Foo, y: str) -> None: ...
     """)
 
@@ -127,6 +134,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: Foo
+        __attrs_attrs__: tuple[attr.Attribute[Foo], ...]
         def __init__(self, x: Foo) -> None: ...
     """)
 
@@ -141,10 +149,12 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class Foo:
         x: int
         y: str
+        __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
         z: int
         def __init__(self, x: int, y: str) -> None: ...
     """)
@@ -186,6 +196,7 @@ class TestAttrib(test_base.BaseTest):
         _x: int
         _Foo__y: int
         _Foo___z: int
+        __attrs_attrs__: tuple[attr.Attribute[int], ...]
         def __init__(self, x: int, Foo__y: int, Foo___z: int) -> None: ...
     """)
 
@@ -201,12 +212,14 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class Foo:
         x: int
         y: int
         z: str
         a: str
+        __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
         def __init__(self, x: int = ..., y: int = ..., z: str = ...,
                      a: str = ...) -> None: ...
     """)
@@ -223,10 +236,12 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class Foo:
         x: int
         y: str
+        __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
         def __init__(self, x: int = ..., y: str = ...) -> None: ...
     """)
     self.assertErrorRegexes(err, {"e": "annotation for y"})
@@ -243,12 +258,13 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
-      from typing import List
+      from typing import Union
       class CustomClass: ...
       @attr.s
       class Foo:
         x: list
         y: CustomClass
+        __attrs_attrs__: tuple[attr.Attribute[Union[list, CustomClass]], ...]
         def __init__(self, x: list = ..., y: CustomClass = ...) -> None: ...
     """)
 
@@ -266,13 +282,14 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
-      from typing import Any, Dict
+      from typing import Any, Dict, Union
       class CustomClass: ...
       def unannotated_func() -> CustomClass: ...
       @attr.s
       class Foo:
         x: Dict[str, Any]
         y: Any  # b/64832148: the return type isn't inferred early enough
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __init__(self, x: Dict[str, object] = ..., y = ...) -> None: ...
     """)
 
@@ -285,10 +302,11 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
-      from typing import List
+      from typing import Union
       @attr.s
       class Foo:
         x: list
+        __attrs_attrs__: tuple[attr.Attribute[list], ...]
         def __init__(self, x: list = ...) -> None: ...
     """)
 
@@ -324,6 +342,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: int
+        __attrs_attrs__: tuple[attr.Attribute[int], ...]
         def __init__(self, x: int = ...) -> None: ...
     """)
 
@@ -340,6 +359,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: Any
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __init__(self, x: Any = ...) -> None: ...
     """)
 
@@ -357,6 +377,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: list
+        __attrs_attrs__: tuple[attr.Attribute[list], ...]
         def __init__(self, x: list) -> None: ...
       x: list
     """)
@@ -400,10 +421,12 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class Foo:
         x: str
         y: int
+        __attrs_attrs__: tuple[attr.Attribute[Union[str, int]], ...]
         def __init__(self, y: int) -> None: ...
     """)
 
@@ -464,17 +487,21 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class A:
         a: int
+        __attrs_attrs__: tuple[attr.Attribute[int], ...]
         def __init__(self, a: int) -> None: ...
       @attr.s
       class B:
         b: str
+        __attrs_attrs__: tuple[attr.Attribute[str], ...]
         def __init__(self, b: str) -> None: ...
       @attr.s
       class C(A, B):
         c: int
+        __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
         def __init__(self, a: int, b: str, c: int) -> None: ...
     """)
 
@@ -494,18 +521,22 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class A:
         a: int
+        __attrs_attrs__: tuple[attr.Attribute[int], ...]
         def __init__(self, a: int) -> None: ...
       @attr.s
       class B:
         b: str
+        __attrs_attrs__: tuple[attr.Attribute[str], ...]
         def __init__(self, b: str) -> None: ...
       @attr.s
       class C(A, B):
         a: str
         c: int
+        __attrs_attrs__: tuple[attr.Attribute[Union[str, int]], ...]
         def __init__(self, b: str, a: str, c: int) -> None: ...
     """)
 
@@ -524,17 +555,21 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
+      from typing import Union
       @attr.s
       class A:
         a: int
+        __attrs_attrs__: tuple[attr.Attribute[int], ...]
         def __init__(self) -> None: ...
       @attr.s
       class B:
         b: str
+        __attrs_attrs__: tuple[attr.Attribute[str], ...]
         def __init__(self, b: str) -> None: ...
       @attr.s
       class C(A, B):
         c: int
+        __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
         def __init__(self, b: str, c: int) -> None: ...
     """)
 
@@ -551,6 +586,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo(Any):
         a: int
+        __attrs_attrs__: tuple[attr.Attribute[int], ...]
         def __init__(self, a: int) -> None: ...
     """)
 
@@ -583,12 +619,13 @@ class TestAttrib(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import attr
-      from typing import Any
+      from typing import Any, Union
       @attr.s
       class Foo:
         a: int
         b: int
         c: str
+        __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
         def __init__(self, a: int = ..., b: int = ..., c: str = ...) -> None: ...
         def default_a(self) -> int: ...
         def default_b(self) -> int: ...
@@ -628,6 +665,7 @@ class TestAttrib(test_base.BaseTest):
         a: int
         b: Any
         c: str
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __init__(self, a: int = ..., b = ..., c: str = ...) -> None: ...
         def default_b(self) -> int: ...
         def default_c(self) -> Any: ...
@@ -676,6 +714,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: Any
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __init__(self, x = ...) -> None: ...
     """)
 
@@ -691,6 +730,7 @@ class TestAttrib(test_base.BaseTest):
       @attr.s
       class Foo:
         x: tuple
+        __attrs_attrs__: tuple[attr.Attribute[tuple], ...]
         def __init__(self, x: tuple = ...) -> None: ...
     """)
 
@@ -796,6 +836,7 @@ class TestAttrs(test_base.BaseTest):
         x: Any
         y: int
         z: str
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __init__(self, x, y: int, z: str) -> None: ...
     """)
 
@@ -816,6 +857,7 @@ class TestAttrs(test_base.BaseTest):
         x: Any
         y: int
         z: str
+        __attrs_attrs__: tuple[attr.Attribute, ...]
         def __attrs_init__(self, x, y: int, z: str) -> None: ...
     """)
 

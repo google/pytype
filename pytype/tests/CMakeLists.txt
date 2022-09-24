@@ -204,6 +204,16 @@ py_test(
 
 py_test(
   NAME
+    test_pattern_matching
+  SRCS
+    test_pattern_matching.py
+  DEPS
+    .test_base
+    .test_utils
+)
+
+py_test(
+  NAME
     test_quick1
   SRCS
     test_quick1.py
