@@ -26,7 +26,7 @@ class CodeTest(test_base.BaseTest):
 class DecoratorTest(CodeTest):
   """Tests for pytype_extensions.Decorator."""
 
-  def testPlainDecorator(self):
+  def test_plain_decorator(self):
     errorlog = self.CheckWithErrors("""
         import pytype_extensions
 
@@ -55,7 +55,7 @@ class DecoratorTest(CodeTest):
         'e1': r'MyClz', 'e2': r'.*Callable\[\[int\], float\].*', 'e3': r'float',
         'e4': r'Callable\[\[Any, int\], float\]'})
 
-  def testDecoratorFactory(self):
+  def test_decorator_factory(self):
     errorlog = self.CheckWithErrors("""
         import pytype_extensions
 
@@ -92,6 +92,94 @@ class DecoratorTest(CodeTest):
         'e2': r'Expected.*int.*Actual.*str', 'e3': r'MyClz',
         'e4': r'.*Callable\[\[int\], float\].*', 'e5': r'float',
         'e6': r'Callable\[\[Any, int\], float\]'})
+
+
+class DataclassTest(CodeTest):
+
+  def test_basic(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      import pytype_extensions
+
+      @dataclasses.dataclass
+      class Foo:
+        x: str
+        y: str
+
+      @dataclasses.dataclass
+      class Bar:
+        x: str
+        y: int
+
+      class Baz:
+        x: str
+        y: int
+
+      def f(x: pytype_extensions.Dataclass[str]):
+        pass
+
+      f(Foo(x='yes', y='1'))  # ok
+      f(Bar(x='no', y=1))  # wrong-arg-types
+      f(Baz())  # wrong-arg-types
+    """)
+
+
+class AttrsTest(CodeTest):
+  """Test pytype_extensions.Attrs."""
+
+  def test_attr_namespace(self):
+    self.CheckWithErrors("""
+      import attr
+      import pytype_extensions
+
+      @attr.s
+      class Foo:
+        x: int = attr.ib()
+        y: int = attr.ib()
+
+      @attr.s
+      class Bar:
+        x: int = attr.ib()
+        y: str = attr.ib()
+
+      class Baz:
+        x: int
+        y: str
+
+      def f(x: pytype_extensions.Attrs[int]):
+        pass
+
+      f(Foo(x=0, y=1))  # ok
+      f(Bar(x=0, y='no'))  # wrong-arg-types
+      f(Baz())  # wrong-arg-types
+    """)
+
+  def test_attrs_namespace(self):
+    self.CheckWithErrors("""
+      import attrs
+      import pytype_extensions
+
+      @attrs.define
+      class Foo:
+        x: int
+        y: int
+
+      @attrs.define
+      class Bar:
+        x: int
+        y: str
+
+      class Baz:
+        x: int
+        y: str
+
+      def f(x: pytype_extensions.Attrs[int]):
+        pass
+
+      f(Foo(x=0, y=1))  # ok
+      f(Bar(x=0, y='no'))  # wrong-arg-types
+      f(Baz())  # wrong-arg-types
+    """)
 
 
 if __name__ == '__main__':

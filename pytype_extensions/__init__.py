@@ -1,7 +1,7 @@
 """Type system extensions for use with pytype."""
 import dataclasses
 import typing
-from typing import Any, Callable, Dict, Generic, Text, Type, TypeVar
+from typing import Any, Callable, Dict, Generic, Text, Tuple, Type, TypeVar
 
 import attr
 
@@ -61,7 +61,7 @@ class Attrs(Protocol[T]):
   https://github.com/python-attrs/attrs/blob/main/src/attr/_funcs.py#L290
   """
 
-  __attrs_attrs__: tuple['attr.Attribute[T]', ...]
+  __attrs_attrs__: Tuple['attr.Attribute[T]', ...]
 
 
 class Dataclass(Protocol[T]):
