@@ -48,10 +48,13 @@ class FrameState(utils.ContextWeakrefMixin):
     return FrameState(self.data_stack, self.block_stack, self.node, self.ctx,
                       self.exception, why)
 
+  def set_stack(self, new_stack):
+    return FrameState(new_stack, self.block_stack, self.node, self.ctx,
+                      self.exception, self.why)
+
   def push(self, *values):
     """Push value(s) onto the value stack."""
-    return FrameState(self.data_stack + tuple(values), self.block_stack,
-                      self.node, self.ctx, self.exception, self.why)
+    return self.set_stack(self.data_stack + tuple(values))
 
   def peek(self, n):
     """Get a value `n` entries down in the stack, without changing the stack."""
@@ -68,14 +71,14 @@ class FrameState(utils.ContextWeakrefMixin):
 
   def pop(self):
     """Pop a value from the value stack."""
+    if not self.data_stack:
+      raise IndexError("Trying to pop from an empty stack")
     value = self.data_stack[-1]
-    return FrameState(self.data_stack[:-1], self.block_stack, self.node,
-                      self.ctx, self.exception, self.why), value
+    return self.set_stack(self.data_stack[:-1]), value
 
   def pop_and_discard(self):
     """Pop a value from the value stack and discard it."""
-    return FrameState(self.data_stack[:-1], self.block_stack, self.node,
-                      self.ctx, self.exception, self.why)
+    return self.set_stack(self.data_stack[:-1])
 
   def popn(self, n):
     """Return n values, ordered oldest-to-newest."""
@@ -86,8 +89,15 @@ class FrameState(utils.ContextWeakrefMixin):
       raise IndexError("Trying to pop %d values from stack of size %d" %
                        (n, len(self.data_stack)))
     values = self.data_stack[-n:]
-    return FrameState(self.data_stack[:-n], self.block_stack, self.node,
-                      self.ctx, self.exception, self.why), values
+    return self.set_stack(self.data_stack[:-n]), values
+
+  def set_top(self, value):
+    """Replace top of data stack with value."""
+    return self.set_stack(self.data_stack[:-1] + (value,))
+
+  def set_second(self, value):
+    """Replace second element of data stack with value."""
+    return self.set_stack(self.data_stack[:-2] + (value, self.data_stack[-1]))
 
   def push_block(self, block):
     """Push a block on to the block stack."""

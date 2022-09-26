@@ -983,7 +983,7 @@ def _merge_tuple_bindings(var, ctx):
   return seq
 
 
-# Helper functions for match_sequence and unpack_iterable
+# Helper functions for match_* and unpack_iterable
 def _var_is_fixed_length_tuple(var: cfg.Variable) -> bool:
   return (all(isinstance(d, abstract.Tuple) for d in var.data) and
           all(d.tuple_length == var.data[0].tuple_length for d in var.data))
@@ -994,40 +994,78 @@ def _var_maybe_unknown(var: cfg.Variable) -> bool:
           all(isinstance(x, abstract.Unknown) for x in var.data))
 
 
-def match_sequence(var: cfg.Variable) -> bool:
+def match_sequence(obj_var: cfg.Variable) -> bool:
   """See if var is a sequence for pattern matching."""
   return (
       abstract_utils.match_atomic_python_constant(
-          var, collections.abc.Iterable) or
-      abstract_utils.is_var_indefinite_iterable(var) or
-      _var_is_fixed_length_tuple(var) or
-      _var_maybe_unknown(var))
+          obj_var, collections.abc.Iterable) or
+      abstract_utils.is_var_indefinite_iterable(obj_var) or
+      _var_is_fixed_length_tuple(obj_var) or
+      _var_maybe_unknown(obj_var))
 
 
-def match_mapping(var: cfg.Variable) -> bool:
+def match_mapping(obj_var: cfg.Variable) -> bool:
   """See if var is a map for pattern matching."""
   return (
       abstract_utils.match_atomic_python_constant(
-          var, collections.abc.Mapping) or
-      _var_maybe_unknown(var))
+          obj_var, collections.abc.Mapping) or
+      _var_maybe_unknown(obj_var))
 
 
 def match_keys(
-    node, map_var: cfg.Variable, keys_var: cfg.Variable, ctx
+    node, obj_var: cfg.Variable, keys_var: cfg.Variable, ctx
 ) -> Optional[cfg.Variable]:
   """Pick values out of a mapping for pattern matching."""
   keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
   keys = list(map(abstract_utils.get_atomic_python_constant, keys))
-  if _var_maybe_unknown(map_var):
+  if _var_maybe_unknown(obj_var):
     return ctx.convert.build_tuple(
         node, [ctx.new_unsolvable(node) for _ in keys])
   mapping = abstract_utils.get_atomic_python_constant(
-      map_var, collections.abc.Mapping)
+      obj_var, collections.abc.Mapping)
   try:
     ret = [mapping[k] for k in keys]
   except KeyError:
     return None
   return ctx.convert.build_tuple(node, ret)
+
+
+@dataclasses.dataclass
+class ClassMatch:
+  success: Optional[bool]  # tri-state boolean for if-splitting
+  values: Optional[cfg.Variable]
+
+
+def match_class(
+    node,
+    obj_var: cfg.Variable,
+    cls_var: cfg.Variable,
+    keys_var: cfg.Variable,
+    posarg_count: int,
+    ctx
+) -> ClassMatch:
+  """Pick values out of a mapping for pattern matching."""
+  del posarg_count  # not supported yet
+  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
+  keys = list(map(abstract_utils.get_atomic_python_constant, keys))
+  cls = abstract_utils.get_atomic_value(cls_var, abstract.Class)
+  if _var_maybe_unknown(obj_var):
+    _, instance_var = ctx.vm.init_class(node, cls)
+    success = None
+  elif ctx.matcher(node).compute_matches(obj_var, cls).success:
+    instance_var = obj_var
+    success = True
+  else:
+    return ClassMatch(False, None)
+  ret = [ctx.program.NewVariable() for _ in keys]
+  for i, k in enumerate(keys):
+    for b in instance_var.bindings:
+      _, v = ctx.attribute_handler.get_attribute(node, b.data, k, b)
+      if not v:
+        # We are missing a key
+        return ClassMatch(False, None)
+      ret[i].PasteVariable(v)
+  return ClassMatch(success, ctx.convert.build_tuple(node, ret))
 
 
 def unpack_iterable(node, var, ctx):
