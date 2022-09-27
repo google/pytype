@@ -1431,6 +1431,12 @@ class ErrorLog(ErrorLogBase):
                "or variable annotations.")
     self.error(stack, msg, details=details)
 
+  @_error_name("match-error")
+  def match_posargs_count(self, stack, cls, posargs, match_args, details=None):
+    msg = (f"{cls.name}() accepts {match_args} positional sub-patterns"
+           f" ({posargs} given)")
+    self.error(stack, msg, details=details)
+
 
 def get_error_names_set():
   return _ERROR_NAMES

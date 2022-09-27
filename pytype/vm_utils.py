@@ -1045,9 +1045,8 @@ def match_class(
     ctx
 ) -> ClassMatch:
   """Pick values out of a mapping for pattern matching."""
-  del posarg_count  # not supported yet
   keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
-  keys = list(map(abstract_utils.get_atomic_python_constant, keys))
+  keys = tuple(map(abstract_utils.get_atomic_python_constant, keys))
   cls = abstract_utils.get_atomic_value(cls_var, abstract.Class)
   if _var_maybe_unknown(obj_var):
     _, instance_var = ctx.vm.init_class(node, cls)
@@ -1057,6 +1056,12 @@ def match_class(
     success = True
   else:
     return ClassMatch(False, None)
+  if posarg_count:
+    if posarg_count > len(cls.match_args):
+      ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count,
+                                       len(cls.match_args))
+      return ClassMatch(False, None)
+    keys = cls.match_args[:posarg_count] + keys
   ret = [ctx.program.NewVariable() for _ in keys]
   for i, k in enumerate(keys):
     for b in instance_var.bindings:
