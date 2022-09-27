@@ -13,16 +13,17 @@ else:
 
 _ShapeType = TypeVar("_ShapeType", bound=Any)
 _DType_co = TypeVar("_DType_co", covariant=True, bound=dtype[Any])
+_ArraySelf = TypeVar("_ArraySelf", bound=ndarray)
 
 class ndarray(Generic[_ShapeType, _DType_co]):
   # https://docs.scipy.org/doc/numpy/reference/generated/numpy.ndarray.html
-  def __init__(self,
-               shape,
-               dtype=...,
-               buffer=...,
-               offset=...,
-               strides=...,
-               order=...) -> None: ...
+  def __new__(cls: type[_ArraySelf],
+              shape,
+              dtype=...,
+              buffer=...,
+              offset=...,
+              strides=...,
+              order=...) -> _ArraySelf: ...
 
   def __getattr__(self, name) -> Any: ...
 
