@@ -48,6 +48,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [invalid-super-call](#invalid-super-call)
       * [invalid-typevar](#invalid-typevar)
       * [late-directive](#late-directive)
+      * [match-error](#match-error)
       * [missing-parameter](#missing-parameter)
       * [module-attr](#module-attr)
       * [mro-error](#mro-error)
@@ -569,6 +570,12 @@ def f() -> bool:
   return 42
 # pytype: enable=bad-return-type
 ```
+
+## match-error
+
+An invalid pattern matching construct was used (e.g. too many positional
+parameters)
+
 
 ## missing-parameter
 

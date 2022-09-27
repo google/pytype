@@ -88,7 +88,8 @@ class TypingMethodsTest(test_base.BaseTest):
         x.writelines(["foo", "bar"])
         x.close()
       """, deep=False, pythonpath=[d.path])
-      self.assertTypesMatchPytd(ty, """
+      self.assertTypesMatchPytd(
+          ty, """
         import foo
         from typing import IO, List
         fi = ...  # type: IO[str]
@@ -99,8 +100,8 @@ class TypingMethodsTest(test_base.BaseTest):
         e = ...  # type: bool
         f = ...  # type: str
         g = ...  # type: List[str]
-        h = ...  # type: None
-        i = ...  # type: None
+        h = ...  # type: int
+        i = ...  # type: int
         j = ...  # type: bool
         k = ...  # type: int
         m = ...  # type: bool

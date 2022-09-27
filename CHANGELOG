@@ -1,3 +1,18 @@
+Version 2022.09.27:
+
+Updates:
+* Slightly improve pytype's numpy stub.
+* Remove --overriding-parameter-type-checks flag that is now enabled by default.
+* Add partial support for pattern matching.
+* Add `Attrs` protocol and `__attrs_attrs__` member to attr overlay.
+
+Bug fixes:
+* Fix infinite recursion caused by annotated __new__ methods.
+* Take nested classes into account when re-resolving dependencies in load_pytd.
+* Support empty generic protocols.
+* Correct type annotations for IO objects: `seek` and `truncate`.
+* Define __new__ instead of __init__ for np.ndarray.
+
 Version 2022.09.19:
 
 Updates:

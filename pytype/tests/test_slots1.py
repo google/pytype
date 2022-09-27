@@ -70,7 +70,7 @@ class SlotsTest(test_base.BaseTest):
       class Foo:  # bad-slots[e]
         __slots__ = (1, 2, 3)
     """)
-    self.assertErrorRegexes(errors, {"e": r"Invalid __slot__ entry: '1'"})
+    self.assertErrorRegexes(errors, {"e": r"Invalid __slots__ entry: '1'"})
 
   def test_set_slot(self):
     self.Check("""

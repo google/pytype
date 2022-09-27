@@ -983,7 +983,7 @@ def _merge_tuple_bindings(var, ctx):
   return seq
 
 
-# Helper functions for match_sequence and unpack_iterable
+# Helper functions for match_* and unpack_iterable
 def _var_is_fixed_length_tuple(var: cfg.Variable) -> bool:
   return (all(isinstance(d, abstract.Tuple) for d in var.data) and
           all(d.tuple_length == var.data[0].tuple_length for d in var.data))
@@ -994,40 +994,123 @@ def _var_maybe_unknown(var: cfg.Variable) -> bool:
           all(isinstance(x, abstract.Unknown) for x in var.data))
 
 
-def match_sequence(var: cfg.Variable) -> bool:
+def _convert_keys(keys_var: cfg.Variable):
+  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
+  return tuple(map(abstract_utils.get_atomic_python_constant, keys))
+
+
+def match_sequence(obj_var: cfg.Variable) -> bool:
   """See if var is a sequence for pattern matching."""
   return (
       abstract_utils.match_atomic_python_constant(
-          var, collections.abc.Iterable) or
-      abstract_utils.is_var_indefinite_iterable(var) or
-      _var_is_fixed_length_tuple(var) or
-      _var_maybe_unknown(var))
+          obj_var, collections.abc.Iterable) or
+      abstract_utils.is_var_indefinite_iterable(obj_var) or
+      _var_is_fixed_length_tuple(obj_var) or
+      _var_maybe_unknown(obj_var))
 
 
-def match_mapping(var: cfg.Variable) -> bool:
+def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
   """See if var is a map for pattern matching."""
+  mapping = ctx.convert.name_to_value("typing.Mapping")
   return (
       abstract_utils.match_atomic_python_constant(
-          var, collections.abc.Mapping) or
-      _var_maybe_unknown(var))
+          obj_var, collections.abc.Mapping) or
+      ctx.matcher(node).compute_matches(obj_var, mapping).success or
+      _var_maybe_unknown(obj_var))
 
 
 def match_keys(
-    node, map_var: cfg.Variable, keys_var: cfg.Variable, ctx
+    node, obj_var: cfg.Variable, keys_var: cfg.Variable, ctx
 ) -> Optional[cfg.Variable]:
   """Pick values out of a mapping for pattern matching."""
-  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
-  keys = list(map(abstract_utils.get_atomic_python_constant, keys))
-  if _var_maybe_unknown(map_var):
+  keys = _convert_keys(keys_var)
+  if _var_maybe_unknown(obj_var):
     return ctx.convert.build_tuple(
         node, [ctx.new_unsolvable(node) for _ in keys])
-  mapping = abstract_utils.get_atomic_python_constant(
-      map_var, collections.abc.Mapping)
   try:
-    ret = [mapping[k] for k in keys]
-  except KeyError:
-    return None
+    mapping = abstract_utils.get_atomic_python_constant(
+        obj_var, collections.abc.Mapping)
+  except abstract_utils.ConversionError:
+    # We have an abstract mapping
+    ret = [ctx.program.NewVariable() for _ in keys]
+    for d in obj_var.data:
+      # TODO(mdemello): Do we need to retrieve and call `__getitem__` on
+      # every binding of `obj_var` instead?
+      v = d.get_instance_type_parameter(abstract_utils.V)
+      for x in ret:
+        x.PasteVariable(v)
+  else:
+    # We have a concrete mapping
+    try:
+      ret = [mapping[k] for k in keys]
+    except KeyError:
+      return None
   return ctx.convert.build_tuple(node, ret)
+
+
+@dataclasses.dataclass
+class ClassMatch:
+  success: Optional[bool]  # tri-state boolean for if-splitting
+  values: Optional[cfg.Variable]
+
+
+def match_class(
+    node,
+    obj_var: cfg.Variable,
+    cls_var: cfg.Variable,
+    keys_var: cfg.Variable,
+    posarg_count: int,
+    ctx
+) -> ClassMatch:
+  """Pick attributes out of a class instance for pattern matching."""
+  keys = _convert_keys(keys_var)
+  cls = abstract_utils.get_atomic_value(cls_var, abstract.Class)
+  if _var_maybe_unknown(obj_var):
+    _, instance_var = ctx.vm.init_class(node, cls)
+    success = None
+  elif ctx.matcher(node).compute_matches(obj_var, cls).success:
+    instance_var = obj_var
+    success = True
+  else:
+    return ClassMatch(False, None)
+  if posarg_count:
+    if posarg_count > len(cls.match_args):
+      ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count,
+                                       len(cls.match_args))
+      return ClassMatch(False, None)
+    keys = cls.match_args[:posarg_count] + keys
+  ret = [ctx.program.NewVariable() for _ in keys]
+  for i, k in enumerate(keys):
+    for b in instance_var.bindings:
+      _, v = ctx.attribute_handler.get_attribute(node, b.data, k, b)
+      if not v:
+        # We are missing a key
+        return ClassMatch(False, None)
+      ret[i].PasteVariable(v)
+  return ClassMatch(success, ctx.convert.build_tuple(node, ret))
+
+
+def copy_dict_without_keys(
+    node, obj_var: cfg.Variable, keys_var: cfg.Variable, ctx
+) -> cfg.Variable:
+  """Create a copy of the input dict with some keys deleted."""
+  # NOTE: This handles the specific case of a dict with a concrete pyval, where
+  # we can track keys and values. Otherwise just return the object with type
+  # unchanged; at worst it will be a superset of the correct type.
+  if not all(isinstance(x, abstract.Dict) for x in obj_var.data):
+    return obj_var
+  if any(x.could_contain_anything for x in obj_var.data):
+    return obj_var
+  keys = _convert_keys(keys_var)
+  ret = abstract.Dict(ctx)
+  for data in obj_var.data:
+    # NOTE: We cannot call `ret.update(data, omit=keys)` because that tries to
+    # preserve the type params from `data` even if some of the types were set by
+    # omitted keys.
+    for k, v in data.items():
+      if k not in keys:
+        ret.set_str_item(node, k, v)
+  return ret.to_variable(node)
 
 
 def unpack_iterable(node, var, ctx):

@@ -1236,16 +1236,16 @@ class VirtualMachine:
     return state.push(a, b, a, b)
 
   def byte_ROT_TWO(self, state, op):
-    state, (a, b) = state.popn(2)
-    return state.push(b, a)
+    return state.rotn(2)
 
   def byte_ROT_THREE(self, state, op):
-    state, (a, b, c) = state.popn(3)
-    return state.push(c, a, b)
+    return state.rotn(3)
 
   def byte_ROT_FOUR(self, state, op):
-    state, (a, b, c, d) = state.popn(4)
-    return state.push(d, a, b, c)
+    return state.rotn(4)
+
+  def byte_ROT_N(self, state, op):
+    return state.rotn(op.arg)
 
   def _is_private(self, name):
     return name.startswith("_") and not name.startswith("__")
@@ -2745,8 +2745,6 @@ class VirtualMachine:
     assertion_error = self.ctx.convert.name_to_value("builtins.AssertionError")
     return state.push(assertion_error.to_variable(state.node))
 
-  # Stub implementations for opcodes new in Python 3.10.
-
   def byte_GET_LEN(self, state, op):
     del op
     var = state.top()
@@ -2757,16 +2755,16 @@ class VirtualMachine:
 
   def byte_MATCH_MAPPING(self, state, op):
     del op
-    var = state.top()
-    is_map = vm_utils.match_mapping(var)
+    obj_var = state.top()
+    is_map = vm_utils.match_mapping(state.node, obj_var, self.ctx)
     ret = self.ctx.convert.bool_values[is_map]
     log.debug("match_mapping: %r", ret)
     return state.push(ret.to_variable(state.node))
 
   def byte_MATCH_SEQUENCE(self, state, op):
     del op
-    var = state.top()
-    is_seq = vm_utils.match_sequence(var)
+    obj_var = state.top()
+    is_seq = vm_utils.match_sequence(obj_var)
     ret = self.ctx.convert.bool_values[is_seq]
     log.debug("match_sequence: %r", ret)
     return state.push(ret.to_variable(state.node))
@@ -2774,8 +2772,8 @@ class VirtualMachine:
   def byte_MATCH_KEYS(self, state, op):
     """Implementation of the MATCH_KEYS opcode."""
     del op
-    var, keys_var = state.topn(2)
-    vals = vm_utils.match_keys(state.node, var, keys_var, self.ctx)
+    obj_var, keys_var = state.topn(2)
+    vals = vm_utils.match_keys(state.node, obj_var, keys_var, self.ctx)
     if vals:
       state = state.push(vals,
                          self.ctx.convert.true.to_variable(state.node))
@@ -2784,18 +2782,28 @@ class VirtualMachine:
                          self.ctx.convert.false.to_variable(state.node))
     return state
 
-  def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
-    del op
+  def byte_MATCH_CLASS(self, state, op):
+    """Implementation of the MATCH_CLASS opcode."""
+    # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
+    posarg_count = op.arg
+    state, keys_var = state.pop()
+    obj_var, cls_var = state.topn(2)
+    ret = vm_utils.match_class(
+        state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx)
+    state = state.set_top(
+        self.ctx.convert.bool_values[ret.success].to_variable(state.node))
+    if ret.values:
+      state = state.set_second(ret.values)
     return state
 
-  def byte_ROT_N(self, state, op):
+  def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
     del op
-    return state
+    state, keys_var = state.pop()
+    obj_var = state.top()
+    ret = vm_utils.copy_dict_without_keys(
+        state.node, obj_var, keys_var, self.ctx)
+    return state.push(ret)
 
   def byte_GEN_START(self, state, op):
     del op
-    return state
-
-  def byte_MATCH_CLASS(self, state, op):
-    del op
-    return state
+    return state.pop_and_discard()

@@ -112,7 +112,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     # instances created by analyze.py for the purpose of analyzing this class,
     # a subset of 'instances'. Filled through register_canonical_instance.
     self.canonical_instances = set()
-    self.slots = self._convert_slots(members.get("__slots__"))
+    self.slots = self._convert_str_tuple(members, "__slots__")
+    self.match_args = self._convert_str_tuple(members, "__match_args__") or ()
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
     self.type_param_check()
@@ -227,14 +228,15 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     else:
       return name
 
-  def _convert_slots(self, slots_var):
-    """Convert __slots__ from a Variable to a tuple."""
-    if slots_var is None:
+  def _convert_str_tuple(self, members, field_name):
+    """Convert __slots__ and similar fields from a Variable to a tuple."""
+    field_var = members.get(field_name)
+    if field_var is None:
       return None
-    if len(slots_var.bindings) != 1:
+    if len(field_var.bindings) != 1:
       # Ambiguous slots
       return None  # Treat "unknown __slots__" and "no __slots__" the same.
-    val = slots_var.data[0]
+    val = field_var.data[0]
     if isinstance(val, mixin.PythonConstant):
       if isinstance(val.pyval, (list, tuple)):
         entries = val.pyval
@@ -250,7 +252,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     for s in names:
       if not isinstance(s, str):
         self.ctx.errorlog.bad_slots(self.ctx.vm.frames,
-                                    f"Invalid __slot__ entry: {str(s)!r}")
+                                    f"Invalid {field_name} entry: {str(s)!r}")
         return None
     return tuple(self._mangle(s) for s in names)
 

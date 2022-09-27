@@ -6,7 +6,7 @@ from pytype.tests import test_utils
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchTest(test_base.BaseTest):
-  """Test match statement."""
+  """Test match statement for builtin datatypes."""
 
   def test_basic(self):
     ty = self.Infer("""
@@ -173,6 +173,235 @@ class MatchTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int: ...
+    """)
+
+  def test_map_starstar(self):
+    ty = self.Infer("""
+      def f():
+        x = {'x': 1, 'y': '2'}
+        match x:
+          case {'x': a, **rest}:
+            return rest
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> dict[str, str]: ...
+    """)
+
+  def test_map_annotation(self):
+    ty = self.Infer("""
+     def f(x: dict[str, int]):
+        match x:
+          case {'x': a}:
+            return a
+          case {'y': b}:
+            return b
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: dict[str, int]) -> int | None: ...
+    """)
+
+
+@test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
+class MatchClassTest(test_base.BaseTest):
+  """Test match statement for classes."""
+
+  def test_unknown(self):
+    ty = self.Infer("""
+      class A:
+        x: int = ...
+        y: str = ...
+      def f(x):
+        match x:
+          case A(x=a, y=b):
+            return b
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
+        y: str
+
+      def f(x) -> int | str: ...
+    """)
+
+  def test_annotated(self):
+    ty = self.Infer("""
+      class A:
+        x: int = ...
+        y: str = ...
+      def f(x: A):
+        match x:
+          case A(x=a, y=b):
+            return b
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
+        y: str
+
+      def f(x: A) -> str: ...
+    """)
+
+  def test_instance1(self):
+    ty = self.Infer("""
+      class A:
+        def __init__(self, x: int, y: str):
+          self.x = x
+          self.y = y
+
+      def f():
+        x = A(1, '2')
+        match x:
+          case A(x=a, y=b):
+            return b
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
+        y: str
+        def __init__(self, x: int, y: str) -> None: ...
+
+      def f() -> str: ...
+    """)
+
+  def test_instance2(self):
+    ty = self.Infer("""
+      class A:
+        def __init__(self, x):
+          self.x = x
+      def f(x):
+        match x:
+          case A(x=a):
+            return a
+          case _:
+            return False
+      a = f(A(10))
+      b = f(A('20'))
+      c = f('foo')
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class A:
+        x: Any
+        def __init__(self, x) -> None: ...
+
+      def f(x) -> Any: ...
+      a: int
+      b: str
+      c: bool
+    """)
+
+  def test_posargs(self):
+    ty = self.Infer("""
+      class A:
+        __match_args__ = ('x', 'y')
+        x: int = ...
+        y: str = ...
+      def f(x: A):
+        match x:
+          case A(x, y):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      class A:
+        __match_args__: tuple[str, str]
+        x: int
+        y: str
+
+      def f(x: A) -> str: ...
+    """)
+
+  def test_posargs_no_match_args(self):
+    ty, err = self.InferWithErrors("""
+      class A:
+        x: int = ...
+        y: str = ...
+      def f(x: A):
+        match x:
+          case A(x, y):  # match-error[e]
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      class A:
+        x: int
+        y: str
+
+      def f(x: A) -> int: ...
+    """)
+    self.assertErrorSequences(err, {"e": ["A()", "accepts 0", "2 given"]})
+
+  def test_posargs_too_many_params(self):
+    err = self.CheckWithErrors("""
+      class A:
+        __match_args__ = ('x', 'y')
+        x: int = ...
+        y: str = ...
+      def f(x: A):
+        match x:
+          case A(x, y, z):  # match-error[e]
+            return y
+          case _:
+            return 42
+    """)
+    self.assertErrorSequences(err, {"e": ["A()", "accepts 2", "3 given"]})
+
+  def test_posargs_invalid_match_args_entry(self):
+    ty = self.Infer("""
+      class A:
+        __match_args__ = ('x', 'a')
+        x: int = ...
+        y: str = ...
+      def f(x: A):
+        match x:
+          case A(x, y):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      class A:
+        __match_args__: tuple[str, str]
+        x: int
+        y: str
+
+      def f(x: A) -> int: ...
+    """)
+
+  def test_posargs_and_kwargs(self):
+    ty = self.Infer("""
+      class A:
+        __match_args__ = ('x', 'y')
+        x: int = ...
+        y: str = ...
+        z: bool = ...
+      def f(x: A):
+        match x:
+          case A(x, y, z=z):
+            return z
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      class A:
+        __match_args__: tuple[str, str]
+        x: int
+        y: str
+        z: bool
+
+      def f(x: A) -> bool: ...
     """)
 
 
