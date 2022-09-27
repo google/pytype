@@ -994,6 +994,11 @@ def _var_maybe_unknown(var: cfg.Variable) -> bool:
           all(isinstance(x, abstract.Unknown) for x in var.data))
 
 
+def _convert_keys(keys_var: cfg.Variable):
+  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
+  return tuple(map(abstract_utils.get_atomic_python_constant, keys))
+
+
 def match_sequence(obj_var: cfg.Variable) -> bool:
   """See if var is a sequence for pattern matching."""
   return (
@@ -1004,11 +1009,13 @@ def match_sequence(obj_var: cfg.Variable) -> bool:
       _var_maybe_unknown(obj_var))
 
 
-def match_mapping(obj_var: cfg.Variable) -> bool:
+def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
   """See if var is a map for pattern matching."""
+  mapping = ctx.convert.name_to_value("typing.Mapping")
   return (
       abstract_utils.match_atomic_python_constant(
           obj_var, collections.abc.Mapping) or
+      ctx.matcher(node).compute_matches(obj_var, mapping).success or
       _var_maybe_unknown(obj_var))
 
 
@@ -1016,17 +1023,28 @@ def match_keys(
     node, obj_var: cfg.Variable, keys_var: cfg.Variable, ctx
 ) -> Optional[cfg.Variable]:
   """Pick values out of a mapping for pattern matching."""
-  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
-  keys = list(map(abstract_utils.get_atomic_python_constant, keys))
+  keys = _convert_keys(keys_var)
   if _var_maybe_unknown(obj_var):
     return ctx.convert.build_tuple(
         node, [ctx.new_unsolvable(node) for _ in keys])
-  mapping = abstract_utils.get_atomic_python_constant(
-      obj_var, collections.abc.Mapping)
   try:
-    ret = [mapping[k] for k in keys]
-  except KeyError:
-    return None
+    mapping = abstract_utils.get_atomic_python_constant(
+        obj_var, collections.abc.Mapping)
+  except abstract_utils.ConversionError:
+    # We have an abstract mapping
+    ret = [ctx.program.NewVariable() for _ in keys]
+    for d in obj_var.data:
+      # TODO(mdemello): Do we need to retrieve and call `__getitem__` on
+      # every binding of `obj_var` instead?
+      v = d.get_instance_type_parameter(abstract_utils.V)
+      for x in ret:
+        x.PasteVariable(v)
+  else:
+    # We have a concrete mapping
+    try:
+      ret = [mapping[k] for k in keys]
+    except KeyError:
+      return None
   return ctx.convert.build_tuple(node, ret)
 
 
@@ -1044,9 +1062,8 @@ def match_class(
     posarg_count: int,
     ctx
 ) -> ClassMatch:
-  """Pick values out of a mapping for pattern matching."""
-  keys = abstract_utils.get_atomic_python_constant(keys_var, tuple)
-  keys = tuple(map(abstract_utils.get_atomic_python_constant, keys))
+  """Pick attributes out of a class instance for pattern matching."""
+  keys = _convert_keys(keys_var)
   cls = abstract_utils.get_atomic_value(cls_var, abstract.Class)
   if _var_maybe_unknown(obj_var):
     _, instance_var = ctx.vm.init_class(node, cls)
@@ -1071,6 +1088,29 @@ def match_class(
         return ClassMatch(False, None)
       ret[i].PasteVariable(v)
   return ClassMatch(success, ctx.convert.build_tuple(node, ret))
+
+
+def copy_dict_without_keys(
+    node, obj_var: cfg.Variable, keys_var: cfg.Variable, ctx
+) -> cfg.Variable:
+  """Create a copy of the input dict with some keys deleted."""
+  # NOTE: This handles the specific case of a dict with a concrete pyval, where
+  # we can track keys and values. Otherwise just return the object with type
+  # unchanged; at worst it will be a superset of the correct type.
+  if not all(isinstance(x, abstract.Dict) for x in obj_var.data):
+    return obj_var
+  if any(x.could_contain_anything for x in obj_var.data):
+    return obj_var
+  keys = _convert_keys(keys_var)
+  ret = abstract.Dict(ctx)
+  for data in obj_var.data:
+    # NOTE: We cannot call `ret.update(data, omit=keys)` because that tries to
+    # preserve the type params from `data` even if some of the types were set by
+    # omitted keys.
+    for k, v in data.items():
+      if k not in keys:
+        ret.set_str_item(node, k, v)
+  return ret.to_variable(node)
 
 
 def unpack_iterable(node, var, ctx):

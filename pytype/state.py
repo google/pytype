@@ -99,6 +99,15 @@ class FrameState(utils.ContextWeakrefMixin):
     """Replace second element of data stack with value."""
     return self.set_stack(self.data_stack[:-2] + (value, self.data_stack[-1]))
 
+  def rotn(self, n):
+    """Rotate the top n values by one."""
+    if len(self.data_stack) < n:
+      raise IndexError("Trying to rotate %d values from stack of size %d" %
+                       (n, len(self.data_stack)))
+    top = self.data_stack[-1]
+    rot = self.data_stack[-n:-1]
+    return self.set_stack(self.data_stack[:-n] + (top,) + rot)
+
   def push_block(self, block):
     """Push a block on to the block stack."""
     return FrameState(self.data_stack, self.block_stack + (block,), self.node,

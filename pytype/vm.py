@@ -1236,16 +1236,16 @@ class VirtualMachine:
     return state.push(a, b, a, b)
 
   def byte_ROT_TWO(self, state, op):
-    state, (a, b) = state.popn(2)
-    return state.push(b, a)
+    return state.rotn(2)
 
   def byte_ROT_THREE(self, state, op):
-    state, (a, b, c) = state.popn(3)
-    return state.push(c, a, b)
+    return state.rotn(3)
 
   def byte_ROT_FOUR(self, state, op):
-    state, (a, b, c, d) = state.popn(4)
-    return state.push(d, a, b, c)
+    return state.rotn(4)
+
+  def byte_ROT_N(self, state, op):
+    return state.rotn(op.arg)
 
   def _is_private(self, name):
     return name.startswith("_") and not name.startswith("__")
@@ -2756,7 +2756,7 @@ class VirtualMachine:
   def byte_MATCH_MAPPING(self, state, op):
     del op
     obj_var = state.top()
-    is_map = vm_utils.match_mapping(obj_var)
+    is_map = vm_utils.match_mapping(state.node, obj_var, self.ctx)
     ret = self.ctx.convert.bool_values[is_map]
     log.debug("match_mapping: %r", ret)
     return state.push(ret.to_variable(state.node))
@@ -2796,16 +2796,14 @@ class VirtualMachine:
       state = state.set_second(ret.values)
     return state
 
-  # Stub implementations for opcodes new in Python 3.10.
-
   def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
     del op
-    return state
-
-  def byte_ROT_N(self, state, op):
-    del op
-    return state
+    state, keys_var = state.pop()
+    obj_var = state.top()
+    ret = vm_utils.copy_dict_without_keys(
+        state.node, obj_var, keys_var, self.ctx)
+    return state.push(ret)
 
   def byte_GEN_START(self, state, op):
     del op
-    return state
+    return state.pop_and_discard()

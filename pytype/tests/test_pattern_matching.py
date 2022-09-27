@@ -175,6 +175,31 @@ class MatchTest(test_base.BaseTest):
       def f() -> int: ...
     """)
 
+  def test_map_starstar(self):
+    ty = self.Infer("""
+      def f():
+        x = {'x': 1, 'y': '2'}
+        match x:
+          case {'x': a, **rest}:
+            return rest
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> dict[str, str]: ...
+    """)
+
+  def test_map_annotation(self):
+    ty = self.Infer("""
+     def f(x: dict[str, int]):
+        match x:
+          case {'x': a}:
+            return a
+          case {'y': b}:
+            return b
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: dict[str, int]) -> int | None: ...
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchClassTest(test_base.BaseTest):
