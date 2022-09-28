@@ -177,16 +177,20 @@ class PytypeTest(test_base.UnitTest):
   def _check_types_and_errors(self, filename, expected_errors):
     self._setup_checking(filename)
     self.pytype_args["--output-errors-csv"] = self.errors_csv
+    self.pytype_args["--return-success"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+    self.assertOutputStateMatches(
+        stdout=False, stderr=bool(expected_errors), returncode=False)
     self.assertHasErrors(*expected_errors)
 
   def _infer_types_and_check_errors(self, filename, expected_errors):
     self.pytype_args[self._data_path(filename)] = self.INCLUDE
     self.pytype_args["--output"] = "-"
     self.pytype_args["--output-errors-csv"] = self.errors_csv
+    self.pytype_args["--return-success"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
+    self.assertOutputStateMatches(
+        stdout=True, stderr=bool(expected_errors), returncode=False)
     self.assertHasErrors(*expected_errors)
 
   def assertInferredPyiEquals(self, expected_pyi=None, filename=None):
@@ -334,7 +338,7 @@ class PytypeTest(test_base.UnitTest):
     self._setup_checking("bad.py")
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._run_pytype(self.pytype_args)
-    self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
+    self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
     self.assertHasErrors("unsupported-operands", "name-error")
 
   def test_pytype_errors_no_report(self):

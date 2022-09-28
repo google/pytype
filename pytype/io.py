@@ -242,11 +242,6 @@ def process_one_file(options):
       write_pickle(ret.ast, options, loader)
   exit_status = handle_errors(ret.errorlog, options)
 
-  # If we have set return_success, set exit_status to 0 after the regular error
-  # handler has been called.
-  if options.return_success:
-    exit_status = 0
-
   # Touch output file upon success.
   if options.touch and not exit_status:
     with options.open_function(options.touch, "a"):
@@ -297,12 +292,12 @@ def handle_errors(errorlog, options):
   if options.output_errors_csv:
     with options.open_function(options.output_errors_csv, "w") as f:
       errorlog.print_to_csv_file(f)
-    return 0  # Command is successful regardless of errors.
 
   errorlog.print_to_stderr(color=options.color)
   print_error_doc_url(errorlog)
 
-  return 1 if errorlog.has_error() else 0  # exit code
+  # exit code
+  return 1 if errorlog.has_error() and not options.return_success else 0
 
 
 @_set_verbosity_from(posarg=0)
