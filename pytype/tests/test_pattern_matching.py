@@ -405,5 +405,57 @@ class MatchClassTest(test_base.BaseTest):
     """)
 
 
+@test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
+class MatchFeaturesTest(test_base.BaseTest):
+  """Test various pattern matching features."""
+
+  def test_or_pattern(self):
+    ty = self.Infer("""
+      def f(x: tuple[int, str]):
+        match x:
+          case [a, 'x'] | [2, a]:
+            return a
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: tuple[int, str]) -> int | str | None: ...
+    """)
+
+  def test_as_pattern(self):
+    ty = self.Infer("""
+      def f(x: list[int | str]):
+        match x:
+          case [('x' | 1) as a]:
+            return a
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: list[int | str]) -> int | str | None: ...
+    """)
+
+  def test_guard_literal(self):
+    ty = self.Infer("""
+      def f():
+        x = 5
+        match x:
+          case a if a > 0:
+            return a
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int: ...
+    """)
+
+  def test_guard_type(self):
+    ty = self.Infer("""
+      def f(x: int | str):
+        match x:
+          case a if isinstance(a, int):
+            return a
+          case _:
+            return 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: int | str) -> int: ...
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()
