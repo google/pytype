@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -125,7 +125,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     super().__init__(ctx)
     self._node = node
     self._protocol_cache = set()
-    self._recursive_annots_cache = set()
+    # Map from (actual value, expected recursive type) pairs to whether matching
+    # the value against the type succeeds.
+    self._recursive_annots_cache: Dict[
+        Tuple[abstract.BaseValue, abstract.BaseValue], bool] = {}
     self._error_subst = None
     self._reset_errors()
 
@@ -373,12 +376,25 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     other_type = abstract_utils.unwrap_final(other_type)
 
     # Make sure we don't recurse infinitely when matching recursive types.
-    if abstract_utils.is_recursive_annotation(other_type):
+    is_recursive = abstract_utils.is_recursive_annotation(other_type)
+    if is_recursive:
       key = (left, other_type)
       if key in self._recursive_annots_cache:
-        return subst
-      self._recursive_annots_cache.add(key)
+        return subst if self._recursive_annots_cache[key] else None
+      self._recursive_annots_cache[key] = True
 
+    subst = self._match_nonfinal_value_against_type(
+        left, value, other_type, subst, view)
+    if is_recursive:
+      self._recursive_annots_cache[key] = subst is not None
+    return subst
+
+  def _match_nonfinal_value_against_type(
+      self, left: abstract.BaseValue, value: cfg.Binding,
+      other_type: abstract.BaseValue, subst: _SubstType,
+      view: Dict[cfg.Variable, cfg.Binding]
+  ) -> Optional[_SubstType]:
+    """Match after unwrapping any `Final` annotations."""
     if left.formal:
       # 'left' contains a TypeParameter. The code under analysis is likely doing
       # some sort of runtime processing of type annotations. We replace all type

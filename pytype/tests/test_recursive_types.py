@@ -176,6 +176,25 @@ class MatchTest(test_base.BaseTest):
       bad2: Set[Any] = x1  # annotation-type-mismatch
     """)
 
+  def test_heterogeneous_namedtuple(self):
+    self.CheckWithErrors("""
+      from typing import NamedTuple, Tuple, TypeVar, Union
+
+      class Ok(NamedTuple):
+        x: int
+        y: str
+
+      class No(NamedTuple):
+        x: float
+        y: str
+
+      T = TypeVar('T')
+      X = Union[tuple['X[T]', ...], T]
+
+      x1: X[Union[int, str]] = Ok(x=0, y='1')
+      x2: X[Union[int, str]] = No(x=0.0, y='1')  # annotation-type-mismatch
+    """)
+
 
 class InferenceTest(test_base.BaseTest):
   """Tests inference of recursive types."""
