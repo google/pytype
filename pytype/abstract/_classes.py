@@ -813,6 +813,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
                    for i in range(self.num_args)]
     substs = [datatypes.AliasingDict()]
     bad_param = None
+    # TODO(b/228241343): Switch to argument-by-argument matching.
     for view in abstract_utils.get_views(args, node):
       arg_dict = {function.argname(i): view[args[i]]
                   for i in range(self.num_args)}

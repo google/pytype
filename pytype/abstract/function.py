@@ -686,6 +686,13 @@ class BadCall:
   bad_param: Optional[abstract_utils.BadType]
 
 
+@dataclasses.dataclass(eq=True, frozen=True)
+class Arg:
+  name: str
+  value: cfg.Variable
+  typ: _base.BaseValue
+
+
 class InvalidParameters(FailedFunctionCall):
   """Exception for functions called with an incorrect parameter combination."""
 

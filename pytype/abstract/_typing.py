@@ -289,7 +289,7 @@ class AnnotationContainer(AnnotationClass):
                 root_node, container=abstract_utils.DUMMY_CONTAINER)
         else:
           actual = param_value.instantiate(root_node)
-        match_result = self.ctx.matcher(root_node).compute_matches(
+        match_result = self.ctx.matcher(root_node).compute_one_match(
             actual, formal_param)
         if not match_result.success:
           if isinstance(param_value, TypeParameter):

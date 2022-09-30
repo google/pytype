@@ -1015,7 +1015,7 @@ def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
   return (
       abstract_utils.match_atomic_python_constant(
           obj_var, collections.abc.Mapping) or
-      ctx.matcher(node).compute_matches(obj_var, mapping).success or
+      ctx.matcher(node).compute_one_match(obj_var, mapping).success or
       _var_maybe_unknown(obj_var))
 
 
@@ -1068,7 +1068,7 @@ def match_class(
   if _var_maybe_unknown(obj_var):
     _, instance_var = ctx.vm.init_class(node, cls)
     success = None
-  elif ctx.matcher(node).compute_matches(obj_var, cls).success:
+  elif ctx.matcher(node).compute_one_match(obj_var, cls).success:
     instance_var = obj_var
     success = True
   else:

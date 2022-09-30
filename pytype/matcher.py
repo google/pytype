@@ -91,6 +91,10 @@ class GoodMatch:
   view: Dict[cfg.Variable, cfg.Binding]
   subst: Dict[str, cfg.Variable]
 
+  @classmethod
+  def default(cls):
+    return cls({}, datatypes.HashableDict())
+
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadMatch:
@@ -111,7 +115,7 @@ class BadMatch:
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class MatchResult:
-  """The result of a compute_match call."""
+  """The result of a compute_one_match call."""
 
   success: bool
   good_matches: List[GoodMatch]
@@ -120,6 +124,14 @@ class MatchResult:
 
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
+
+  # This class is nested inside AbstractMatcher because matcher.py can't be
+  # imported in many of the places that the matcher is used.
+  class MatchError(Exception):
+
+    def __init__(self, bad_type: abstract_utils.BadType, *args, **kwargs):
+      self.bad_type = bad_type
+      super().__init__(bad_type, *args, **kwargs)
 
   def __init__(self, node, ctx):
     super().__init__(ctx)
@@ -170,6 +182,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._node, expected, [self._error_subst or {}]),
         error_details=self._error_details())
 
+  # TODO(b/228241343): Delete this method once all usages have been moved to
+  # compute_matches.
   def compute_subst(self, formal_args, arg_dict, view, alias_map=None):
     """Compute information about type parameters using one-way unification.
 
@@ -215,13 +229,35 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = value
     return datatypes.HashableDict(subst), None
 
-  # This is a staticmethod rather than a module-level function because
-  # matcher.py can't be imported in many of the places that the matcher is used.
-  @staticmethod
-  def default_match() -> GoodMatch:
-    return GoodMatch({}, datatypes.HashableDict())
-
   def compute_matches(
+      self, args: List[function.Arg], match_all_views: bool) -> List[GoodMatch]:
+    """Compute information about type parameters using one-way unification.
+
+    Given the arguments of a function call, try to find substitutions that match
+    them against their expected types.
+
+    Args:
+      args: A sequence of function arguments.
+      match_all_views: If True, every possible match must succeed for the
+        overall match to be considered a success. Otherwise, the overall match
+        succeeds as long as at least one possible match succeeds.
+    Returns:
+      A sequence of GoodMatch results containing the computed substitutions.
+    Raises:
+      MatchError: if any of the arguments does not match its expected type.
+    """
+    matches = None
+    for arg in args:
+      match_result = self.compute_one_match(
+          arg.value, arg.typ, arg.name, match_all_views)
+      if not match_result.success:
+        raise self.MatchError(match_result.bad_matches[0].expected)
+      if any(m.subst for m in match_result.good_matches):
+        assert matches is None
+        matches = match_result.good_matches
+    return matches if matches else [GoodMatch.default()]
+
+  def compute_one_match(
       self, var, other_type, name=None, match_all_views=True) -> MatchResult:
     """Match a Variable against a type.
 
@@ -1068,7 +1104,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if k not in fields:
         continue
       typ = abstract_utils.get_atomic_value(fields[k])
-      match_result = self.compute_matches(v, typ)
+      match_result = self.compute_one_match(v, typ)
       if not match_result.success:
         bad.append((k, match_result.bad_matches))
     if missing or extra or bad:

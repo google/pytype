@@ -236,8 +236,7 @@ class SignedFunction(_function_base.Function):
     return subst
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
-    matcher = self.ctx.matcher(node)
-    substs = None
+    args_to_match = []
     for name, arg, formal in self.signature.iter_args(args):
       if formal is None:
         continue
@@ -245,19 +244,13 @@ class SignedFunction(_function_base.Function):
         # The annotation is Tuple or Dict, but the passed arg only has to be
         # Iterable or Mapping.
         formal = self.ctx.convert.widen_type(formal)
-      match_result = matcher.compute_matches(
-          arg, formal, name, match_all_views)
-      if not match_result.success:
-        raise function.WrongArgTypes(
-            self.signature, args, self.ctx,
-            bad_param=match_result.bad_matches[0].expected)
-      cur_substs = [m.subst for m in match_result.good_matches]
-      if any(cur_substs):
-        assert substs is None
-        substs = cur_substs
-    if not substs:
-      substs = [matcher.default_match().subst]
-    return substs
+      args_to_match.append(function.Arg(name, arg, formal))
+    matcher = self.ctx.matcher(node)
+    try:
+      matches = matcher.compute_matches(args_to_match, match_all_views)
+    except matcher.MatchError as e:
+      raise function.WrongArgTypes(self.signature, args, self.ctx, e.bad_type)
+    return [m.subst for m in matches]
 
   def get_first_opcode(self):
     return None
