@@ -662,10 +662,8 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           source_sets=[sources])
     except self.ctx.convert.TypeParameterError:
       # The return type contains a type parameter without a substitution.
-      subst = subst.copy()
-      for t in pytd_utils.GetTypeParameters(return_type):
-        if t.full_name not in subst:
-          subst[t.full_name] = self.ctx.convert.empty.to_variable(node)
+      subst = abstract_utils.with_empty_substitutions(
+          subst, return_type, node, self.ctx)
       return node, self.ctx.convert.constant_to_var(
           abstract_utils.AsReturnValue(return_type),
           subst,
@@ -758,10 +756,8 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     # and starstarargs have type parameters but are not in the args. Check that
     # subst has an entry for every type parameter, adding any that are missing.
     if any(f.mutated_type for f in self.pytd_sig.params):
-      subst = subst.copy()
-      for t in pytd_utils.GetTypeParameters(self.pytd_sig):
-        if t.full_name not in subst:
-          subst[t.full_name] = self.ctx.convert.empty.to_variable(node)
+      subst = abstract_utils.with_empty_substitutions(
+          subst, self.pytd_sig, node, self.ctx)
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
       arg = actual.data

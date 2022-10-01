@@ -46,28 +46,35 @@ class AccessTrackingDictTest(unittest.TestCase):
     self.assertEqual(v, 3)
 
 
-class DatatypesTest(unittest.TestCase):
-  """Test datatypes."""
+class UnionFindTest(unittest.TestCase):
+
+  def test_merge(self):
+    uf = datatypes.UnionFind()
+    uf.merge("k1", "k2")
+    self.assertEqual(uf.find_by_name("k1"), uf.find_by_name("k2"))
+    self.assertNotEqual(uf.find_by_name("k1"), uf.find_by_name("k3"))
+
+  def test_merge_from(self):
+    uf1 = datatypes.UnionFind()
+    uf1.merge("k1", "k2")
+
+    uf2 = datatypes.UnionFind()
+    uf2.merge("k2", "k3")
+
+    uf1.merge_from(uf2)
+    for k_i in ["k1", "k2", "k3"]:
+      for k_j in ["k1", "k2", "k3"]:
+        self.assertEqual(uf1.find_by_name(k_i), uf1.find_by_name(k_j))
+
+
+class AliasingDictTest(unittest.TestCase):
+  """Test datatypes.AliasingDict."""
 
   def setUp(self):
     super().setUp()
     self.prog = cfg.Program()
 
-  def test_monitor_dict(self):
-    d = datatypes.MonitorDict()
-    changestamp = d.changestamp
-    var = self.prog.NewVariable()
-    d["key"] = var
-    self.assertGreater(d.changestamp, changestamp)
-    changestamp = d.changestamp
-    var.AddBinding("data")
-    self.assertGreater(d.changestamp, changestamp)
-    changestamp = d.changestamp
-    var.AddBinding("data")  # No change because this is duplicate data
-    self.assertEqual(d.changestamp, changestamp)
-    changestamp = d.changestamp
-
-  def test_aliasing_dict(self):
+  def test_aliasing(self):
     d = datatypes.AliasingDict()
     # To avoid surprising behavior, we require desired dict functionality to be
     # explicitly overridden
@@ -90,7 +97,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(var2, d["name"])
     self.assertEqual(d["name"], d["alias"])
 
-  def test_aliasing_dict_realiasing(self):
+  def test_realiasing(self):
     d = datatypes.AliasingDict()
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "name")
@@ -106,7 +113,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(var, d["alias1"])
     self.assertEqual(var, d["alias2"])
 
-  def test_nonempty_aliasing_dict_realiasing(self):
+  def test_nonempty_realiasing(self):
     d = datatypes.AliasingDict()
     d.add_alias("alias", "name")
     d["name"] = "hello"
@@ -119,7 +126,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual("hello world", d["name2"])
     self.assertEqual("hello world", d["alias"])
 
-  def test_aliasing_dict_transitive(self):
+  def test_transitive(self):
     d = datatypes.AliasingDict()
     d.add_alias("alias1", "name")
     d.add_alias("alias2", "alias1")
@@ -128,7 +135,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d["name"], d["alias1"])
     self.assertEqual(d["alias1"], d["alias2"])
 
-  def test_aliasing_dict_value_move(self):
+  def test_value_move(self):
     d = datatypes.AliasingDict()
     v = self.prog.NewVariable()
     d["alias"] = v
@@ -136,7 +143,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d["name"], v)
     self.assertEqual(d["alias"], d["name"])
 
-  def test_aliasing_dict_transitive_value_move(self):
+  def test_transitive_value_move(self):
     d = datatypes.AliasingDict()
     d.add_alias("alias2", "name")
     v = self.prog.NewVariable()
@@ -146,7 +153,7 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d["alias2"], d["name"])
     self.assertEqual(d["alias1"], d["alias2"])
 
-  def test_aliasing_dict_with_union_find(self):
+  def test_with_union_find(self):
     d = datatypes.AliasingDict()
     d["alias1"] = "1"
     d["alias3"] = "2"
@@ -175,7 +182,7 @@ class DatatypesTest(unittest.TestCase):
     for i in range(1, 9):
       self.assertEqual(d["alias" + str(i)], "1234")
 
-  def test_aliasing_dict_get(self):
+  def test_get(self):
     d = datatypes.AliasingDict()
     d["alias1"] = "1"
     d.add_alias("alias1", "alias2")
@@ -183,6 +190,63 @@ class DatatypesTest(unittest.TestCase):
     self.assertEqual(d.get("alias2"), "1")
     self.assertEqual(d.get("alias3", "2"), "2")
     self.assertIsNone(d.get("alias3"))
+
+  def test_cannot_pass_aliases_positionally(self):
+    with self.assertRaises(TypeError):
+      datatypes.AliasingDict(datatypes.UnionFind())
+
+  def test_create_with_aliases(self):
+    aliases = datatypes.UnionFind()
+    aliases.merge("k1", "k2")
+    d = datatypes.AliasingDict(aliases=aliases, k2=0)
+    self.assertEqual(d["k1"], 0)
+
+  def test_create_with_aliasing_dict(self):
+    d1 = datatypes.AliasingDict(k1=0)
+    d1.add_alias("k2", "k3")
+
+    d2 = datatypes.AliasingDict(d1, k3=1)
+    self.assertEqual(d2["k1"], 0)
+    self.assertEqual(d2["k2"], 1)
+
+  def test_copy_with_aliases(self):
+    d1 = datatypes.AliasingDict(k2=0)
+
+    aliases = datatypes.UnionFind()
+    aliases.merge("k1", "k2")
+
+    d2 = d1.copy(aliases=aliases)
+    self.assertEqual(d2["k1"], 0)
+
+  def test_copy_with_aliasing_dict(self):
+    d1 = datatypes.AliasingDict(k1=0)
+    d1.add_alias("k2", "k3")
+
+    d2 = d1.copy(k3=1)
+    self.assertEqual(d2["k1"], 0)
+    self.assertEqual(d2["k2"], 1)
+
+
+class DatatypesTest(unittest.TestCase):
+  """Test datatypes."""
+
+  def setUp(self):
+    super().setUp()
+    self.prog = cfg.Program()
+
+  def test_monitor_dict(self):
+    d = datatypes.MonitorDict()
+    changestamp = d.changestamp
+    var = self.prog.NewVariable()
+    d["key"] = var
+    self.assertGreater(d.changestamp, changestamp)
+    changestamp = d.changestamp
+    var.AddBinding("data")
+    self.assertGreater(d.changestamp, changestamp)
+    changestamp = d.changestamp
+    var.AddBinding("data")  # No change because this is duplicate data
+    self.assertEqual(d.changestamp, changestamp)
+    changestamp = d.changestamp
 
   def test_add_alias_for_aliasing_monitor_dict(self):
     def merge_value(v0, v1, name):

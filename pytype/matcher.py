@@ -205,10 +205,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     if not arg_dict:
       # A call with no arguments always succeeds.
       assert not formal_args
-      return datatypes.AliasingDict(), None
-    subst = datatypes.AliasingDict()
-    if alias_map:
-      subst.uf = alias_map
+      return datatypes.HashableDict(), None
+    subst = datatypes.AliasingDict(aliases=alias_map)
     self._error_subst = None
     self_subst = None
     for name, formal in formal_args:
@@ -1230,10 +1228,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         callable_signature.formal_type_parameters[0] = (
             self.ctx.convert.unsolvable)
       if isinstance(other_type, abstract.ParameterizedClass):
-        annotation_subst = datatypes.AliasingDict()
         if isinstance(other_type.base_cls, abstract.Class):
-          annotation_subst.uf = (
-              other_type.base_cls.all_formal_type_parameters.uf)
+          aliases = other_type.base_cls.all_formal_type_parameters.aliases
+        else:
+          aliases = None
+        annotation_subst = datatypes.AliasingDict(aliases=aliases)
         for (param, value) in other_type.get_formal_type_parameters().items():
           annotation_subst[param] = value.instantiate(
               self._node, abstract_utils.DUMMY_CONTAINER)

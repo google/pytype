@@ -3,6 +3,7 @@
 import argparse
 import contextlib
 import itertools
+from typing import Optional
 
 
 class UnionFind:
@@ -44,15 +45,6 @@ class UnionFind:
     self.rank = []
     self.id2name = []
     self.latest_id = 0
-
-  def copy(self):
-    res = UnionFind()
-    res.name2id = self.name2id.copy()
-    res.parent = list(self.parent)
-    res.rank = list(self.rank)
-    res.id2name = list(self.id2name)
-    res.latest_id = self.latest_id
-    return res
 
   def merge_from(self, uf):
     """Merge a UnionFind into the current one."""
@@ -180,24 +172,21 @@ class AliasingDict(dict):
   supported; supported methods are get(), values(), items(), copy() and keys().
   """
 
-  def __init__(self, *args, **kwargs):
-    self._uf = UnionFind()
+  def __init__(self, *args, aliases: Optional[UnionFind] = None, **kwargs):
+    if aliases is not None:
+      self._aliases = aliases
+    elif args and isinstance(args[0], AliasingDict):
+      self._aliases = args[0].aliases
+    else:
+      self._aliases = UnionFind()
     super().__init__(*args, **kwargs)
 
   @property
-  def uf(self):
-    return self._uf
+  def aliases(self):
+    return self._aliases
 
-  @uf.setter
-  def uf(self, uf):
-    self._uf = uf
-
-  def copy(self):
-    res = AliasingDict()
-    res.uf = self.uf.copy()
-    for k, v in self.items():
-      res[k] = v
-    return res
+  def copy(self, *args, aliases=None, **kwargs):
+    return self.__class__(self, *args, aliases=aliases, **kwargs)
 
   def add_alias(self, alias, name, op=None):
     """Alias 'alias' to 'name'.
@@ -210,8 +199,8 @@ class AliasingDict(dict):
       name: A string.
       op: The function used to merge the values.
     """
-    alias = self.uf.find_by_name(alias)
-    name = self.uf.find_by_name(name)
+    alias = self.aliases.find_by_name(alias)
+    name = self.aliases.find_by_name(name)
     if alias == name:  # Already in one component
       return
     elif alias in self and name in self:
@@ -219,33 +208,33 @@ class AliasingDict(dict):
       val = op(self[alias], self[name]) if op else self[alias]
       del self[alias]
       del self[name]
-      root = self.uf.merge(alias, name)
+      root = self.aliases.merge(alias, name)
       self[root] = val
     elif alias not in self and name not in self:
-      self.uf.merge(alias, name)
+      self.aliases.merge(alias, name)
     elif alias in self:
-      root = self.uf.merge(alias, name)
+      root = self.aliases.merge(alias, name)
       self[root] = dict.__getitem__(self, alias)
       if alias != root: dict.__delitem__(self, alias)
     elif name in self:
-      root = self.uf.merge(alias, name)
+      root = self.aliases.merge(alias, name)
       self[root] = dict.__getitem__(self, name)
       if name != root: dict.__delitem__(self, name)
 
   def same_name(self, name1, name2):
-    return self.uf.find_by_name(name1) == self.uf.find_by_name(name2)
+    return self.aliases.find_by_name(name1) == self.aliases.find_by_name(name2)
 
   def __contains__(self, name):
-    return super().__contains__(self.uf.find_by_name(name))
+    return super().__contains__(self.aliases.find_by_name(name))
 
   def __setitem__(self, name, var):
-    super().__setitem__(self.uf.find_by_name(name), var)
+    super().__setitem__(self.aliases.find_by_name(name), var)
 
   def __getitem__(self, name):
-    return super().__getitem__(self.uf.find_by_name(name))
+    return super().__getitem__(self.aliases.find_by_name(name))
 
   def __repr__(self):
-    return f"{super().__repr__()!r}, _alias={repr(self.uf)!r}"
+    return f"{super().__repr__()!r}, _alias={repr(self.aliases)!r}"
 
   def __hash__(self):
     return hash(frozenset(self.items()))
@@ -305,13 +294,8 @@ class HashableDict(AliasingDict):
   have been overwritten to throw an exception.
   """
 
-  def __init__(self, in_dict=None):
-    if in_dict:
-      super().__init__(in_dict)
-      if isinstance(in_dict, AliasingDict):
-        self.uf = in_dict.uf
-    else:
-      super().__init__()
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
     self._hash = hash(frozenset(self.items()))
 
   def update(self):
@@ -356,20 +340,21 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
       else:
         self[key] = val
     # Merge the aliasing info
-    for cur_id in range(lam_dict.uf.latest_id):
-      parent_id = lam_dict.uf.parent[cur_id]
-      cur_name = lam_dict.uf.id2name[cur_id]
-      parent_name = lam_dict.uf.id2name[parent_id]
-      if self.uf.find_by_name(cur_name) != self.uf.find_by_name(parent_name):
+    for cur_id in range(lam_dict.aliases.latest_id):
+      parent_id = lam_dict.aliases.parent[cur_id]
+      cur_name = lam_dict.aliases.id2name[cur_id]
+      parent_name = lam_dict.aliases.id2name[parent_id]
+      if (self.aliases.find_by_name(cur_name) !=
+          self.aliases.find_by_name(parent_name)):
         self.add_alias(cur_name, parent_name, op)
 
   def _merge(self, name1, name2, op):
-    name1 = self.uf.find_by_name(name1)
-    name2 = self.uf.find_by_name(name2)
+    name1 = self.aliases.find_by_name(name1)
+    name2 = self.aliases.find_by_name(name2)
     assert name1 != name2
     self[name1] = op(self[name1], self[name2], name1)
     dict.__delitem__(self, name2)
-    root = self.uf.merge(name1, name2)
+    root = self.aliases.merge(name1, name2)
     self._copy_item(name1, root)
 
   def _copy_item(self, src, tgt):
@@ -380,19 +365,19 @@ class AliasingMonitorDict(AliasingDict, MonitorDict):
     dict.__delitem__(self, src)
 
   def add_alias(self, alias, name, op=None):
-    alias = self.uf.find_by_name(alias)
-    name = self.uf.find_by_name(name)
+    alias = self.aliases.find_by_name(alias)
+    name = self.aliases.find_by_name(name)
     if alias == name:
       return
     elif alias in self and name in self:
       self._merge(alias, name, op)
     elif alias not in self and name not in self:
-      self.uf.merge(alias, name)
+      self.aliases.merge(alias, name)
     elif alias in self:
-      root = self.uf.merge(alias, name)
+      root = self.aliases.merge(alias, name)
       self._copy_item(alias, root)
     elif name in self:
-      root = self.uf.merge(alias, name)
+      root = self.aliases.merge(alias, name)
       self._copy_item(name, root)
 
 

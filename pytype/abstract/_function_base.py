@@ -288,9 +288,9 @@ class BoundFunction(_base.BaseValue):
     if self.underlying.should_replace_self_annot():
       self.replace_self_annot = abstract_utils.get_generic_type(inst)
     if isinstance(inst, _instance_base.SimpleValue):
-      self.alias_map = inst.instance_type_parameters.uf
+      self.alias_map = inst.instance_type_parameters.aliases
     elif isinstance(inst, _typing.TypeParameterInstance):
-      self.alias_map = inst.instance.instance_type_parameters.uf
+      self.alias_map = inst.instance.instance_type_parameters.aliases
     else:
       self.alias_map = None
 

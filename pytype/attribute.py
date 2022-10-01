@@ -504,7 +504,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       elif isinstance(valself.data, abstract.Instance):
         # We need to rebind the parameter values at the root because that's the
         # node at which load_lazy_attribute() converts pyvals.
-        subst = datatypes.AliasingDict()
+        subst = datatypes.AliasingDict(
+            aliases=valself.data.instance_type_parameters.aliases)
         for k, v in valself.data.instance_type_parameters.items():
           if v.bindings:
             subst[k] = self.ctx.program.NewVariable(
@@ -516,7 +517,6 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             #   class Child(Base): ...  # equivalent to `class Child(Base[Any])`
             # When this happens, parameter values are implicitly set to Any.
             subst[k] = self.ctx.new_unsolvable(self.ctx.root_node)
-        subst.uf = valself.data.instance_type_parameters.uf
       else:
         subst = None
       member = obj.load_lazy_attribute(name, subst)

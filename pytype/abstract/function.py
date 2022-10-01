@@ -845,7 +845,8 @@ def call_function(ctx,
     if _isinstance(func, "BoundFunction"):
       func = func.underlying
     if _isinstance(func, "PyTDFunction"):
-      node, result = func.signatures[0].instantiate_return(node, {}, [funcb])
+      node, result = func.signatures[0].instantiate_return(
+          node, datatypes.HashableDict(), [funcb])
     elif _isinstance(func, "InterpreterFunction"):
       sig = func.signature_functions()[0].signature
       ret = sig.annotations.get("return", ctx.convert.unsolvable)
