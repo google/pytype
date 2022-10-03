@@ -1141,7 +1141,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       return subst
     elif left.cls.is_dynamic:
       return self._subst_with_type_parameters_from(subst, other_type)
-    elif (other_type.full_name == "typing.Sequence" and
+    elif (self.ctx.options.mapping_is_not_sequence and
+          other_type.full_name == "typing.Sequence" and
           any(cls.full_name == "typing.Mapping" for cls in left.cls.mro)):
       # A mapping should not be considered a sequence, even though pytype says
       # that dict[int | slice, str] satisfies the Sequence[str] protocol:
