@@ -109,6 +109,13 @@ class DictTest(test_base.BaseTest):
       print(reversed(x.items()))
     """)
 
+  def test_does_not_match_sequence(self):
+    self.CheckWithErrors("""
+      from typing import Sequence
+      x: Sequence[str] = {1: 'a'}  # annotation-type-mismatch
+      y: Sequence[str] = {'a': 1}  # annotation-type-mismatch
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

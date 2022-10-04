@@ -163,7 +163,7 @@ class Context:
         typ, ("typing.ClassVar", "dataclasses.InitVar"))
     if contained_type:
       typ = contained_type
-    bad = self.matcher(node).compute_matches(value, typ).bad_matches
+    bad = self.matcher(node).compute_one_match(value, typ).bad_matches
     for match in bad:
       self.errorlog.annotation_type_mismatch(
           stack, match.expected.typ, match.actual_binding, name,

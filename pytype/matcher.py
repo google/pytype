@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -27,7 +27,8 @@ _COMPATIBLE_BUILTINS = [
     for compatible_builtin, builtin in pep484.COMPAT_ITEMS
 ]
 
-_SubstType = Dict[str, cfg.Variable]
+_SubstType = datatypes.AliasingDict[str, cfg.Variable]
+_ViewType = Dict[cfg.Variable, cfg.Binding]
 
 
 def _is_callback_protocol(typ):
@@ -88,15 +89,19 @@ class ErrorDetails:
 class GoodMatch:
   """A correct type/actual value match."""
 
-  view: Dict[cfg.Variable, cfg.Binding]
-  subst: Dict[str, cfg.Variable]
+  view: _ViewType
+  subst: _SubstType
+
+  @classmethod
+  def default(cls):
+    return cls({}, datatypes.HashableDict())
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadMatch:
   """An expected type/actual value mismatch."""
 
-  view: Dict[cfg.Variable, cfg.Binding]
+  view: _ViewType
   expected: abstract_utils.BadType
   actual: cfg.Variable
 
@@ -111,7 +116,7 @@ class BadMatch:
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class MatchResult:
-  """The result of a compute_match call."""
+  """The result of a compute_one_match call."""
 
   success: bool
   good_matches: List[GoodMatch]
@@ -121,11 +126,22 @@ class MatchResult:
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
+  # This class is nested inside AbstractMatcher because matcher.py can't be
+  # imported in many of the places that the matcher is used.
+  class MatchError(Exception):
+
+    def __init__(self, bad_type: abstract_utils.BadType, *args, **kwargs):
+      self.bad_type = bad_type
+      super().__init__(bad_type, *args, **kwargs)
+
   def __init__(self, node, ctx):
     super().__init__(ctx)
     self._node = node
     self._protocol_cache = set()
-    self._recursive_annots_cache = set()
+    # Map from (actual value, expected recursive type) pairs to whether matching
+    # the value against the type succeeds.
+    self._recursive_annots_cache: Dict[
+        Tuple[abstract.BaseValue, abstract.BaseValue], bool] = {}
     self._error_subst = None
     self._reset_errors()
 
@@ -167,6 +183,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._node, expected, [self._error_subst or {}]),
         error_details=self._error_details())
 
+  # TODO(b/228241343): Delete this method once all usages have been moved to
+  # compute_matches.
   def compute_subst(self, formal_args, arg_dict, view, alias_map=None):
     """Compute information about type parameters using one-way unification.
 
@@ -188,10 +206,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     if not arg_dict:
       # A call with no arguments always succeeds.
       assert not formal_args
-      return datatypes.AliasingDict(), None
-    subst = datatypes.AliasingDict()
-    if alias_map:
-      subst.uf = alias_map
+      return datatypes.HashableDict(), None
+    subst = datatypes.AliasingDict(aliases=alias_map)
     self._error_subst = None
     self_subst = None
     for name, formal in formal_args:
@@ -212,13 +228,35 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = value
     return datatypes.HashableDict(subst), None
 
-  # This is a staticmethod rather than a module-level function because
-  # matcher.py can't be imported in many of the places that the matcher is used.
-  @staticmethod
-  def default_match() -> GoodMatch:
-    return GoodMatch({}, datatypes.HashableDict())
-
   def compute_matches(
+      self, args: List[function.Arg], match_all_views: bool) -> List[GoodMatch]:
+    """Compute information about type parameters using one-way unification.
+
+    Given the arguments of a function call, try to find substitutions that match
+    them against their expected types.
+
+    Args:
+      args: A sequence of function arguments.
+      match_all_views: If True, every possible match must succeed for the
+        overall match to be considered a success. Otherwise, the overall match
+        succeeds as long as at least one possible match succeeds.
+    Returns:
+      A sequence of GoodMatch results containing the computed substitutions.
+    Raises:
+      MatchError: if any of the arguments does not match its expected type.
+    """
+    matches = None
+    for arg in args:
+      match_result = self.compute_one_match(
+          arg.value, arg.typ, arg.name, match_all_views)
+      if not match_result.success:
+        raise self.MatchError(match_result.bad_matches[0].expected)
+      if any(m.subst for m in match_result.good_matches):
+        assert matches is None
+        matches = match_result.good_matches
+    return matches if matches else [GoodMatch.default()]
+
+  def compute_one_match(
       self, var, other_type, name=None, match_all_views=True) -> MatchResult:
     """Match a Variable against a type.
 
@@ -353,7 +391,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _match_value_against_type(
       self, value: cfg.Binding, other_type: abstract.BaseValue,
-      subst: _SubstType, view: Dict[cfg.Variable, cfg.Binding]
+      subst: _SubstType, view: _ViewType
   ) -> Optional[_SubstType]:
     """One-way unify value into pytd type given a substitution.
 
@@ -373,12 +411,25 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     other_type = abstract_utils.unwrap_final(other_type)
 
     # Make sure we don't recurse infinitely when matching recursive types.
-    if abstract_utils.is_recursive_annotation(other_type):
+    is_recursive = abstract_utils.is_recursive_annotation(other_type)
+    if is_recursive:
       key = (left, other_type)
       if key in self._recursive_annots_cache:
-        return subst
-      self._recursive_annots_cache.add(key)
+        return subst if self._recursive_annots_cache[key] else None
+      self._recursive_annots_cache[key] = True
 
+    subst = self._match_nonfinal_value_against_type(
+        left, value, other_type, subst, view)
+    if is_recursive:
+      self._recursive_annots_cache[key] = subst is not None
+    return subst
+
+  def _match_nonfinal_value_against_type(
+      self, left: abstract.BaseValue, value: cfg.Binding,
+      other_type: abstract.BaseValue, subst: _SubstType,
+      view: _ViewType
+  ) -> Optional[_SubstType]:
+    """Match after unwrapping any `Final` annotations."""
     if left.formal:
       # 'left' contains a TypeParameter. The code under analysis is likely doing
       # some sort of runtime processing of type annotations. We replace all type
@@ -1052,7 +1103,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if k not in fields:
         continue
       typ = abstract_utils.get_atomic_value(fields[k])
-      match_result = self.compute_matches(v, typ)
+      match_result = self.compute_one_match(v, typ)
       if not match_result.success:
         bad.append((k, match_result.bad_matches))
     if missing or extra or bad:
@@ -1091,6 +1142,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       return subst
     elif left.cls.is_dynamic:
       return self._subst_with_type_parameters_from(subst, other_type)
+    elif (self.ctx.options.mapping_is_not_sequence and
+          other_type.full_name == "typing.Sequence" and
+          any(cls.full_name == "typing.Mapping" for cls in left.cls.mro)):
+      # A mapping should not be considered a sequence, even though pytype says
+      # that dict[int | slice, str] satisfies the Sequence[str] protocol:
+      # https://docs.python.org/3/c-api/sequence.html#c.PySequence_Check
+      return None
     left_attributes = self._get_attribute_names(left)
     missing = other_type.protocol_attributes - left_attributes
     if missing:  # not all protocol attributes are implemented by 'left'
@@ -1172,10 +1230,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         callable_signature.formal_type_parameters[0] = (
             self.ctx.convert.unsolvable)
       if isinstance(other_type, abstract.ParameterizedClass):
-        annotation_subst = datatypes.AliasingDict()
         if isinstance(other_type.base_cls, abstract.Class):
-          annotation_subst.uf = (
-              other_type.base_cls.all_formal_type_parameters.uf)
+          aliases = other_type.base_cls.all_formal_type_parameters.aliases
+        else:
+          aliases = None
+        annotation_subst = datatypes.AliasingDict(aliases=aliases)
         for (param, value) in other_type.get_formal_type_parameters().items():
           annotation_subst[param] = value.instantiate(
               self._node, abstract_utils.DUMMY_CONTAINER)

@@ -257,7 +257,7 @@ class TypedDict(abstract.Dict):
   def _check_str_key_value(self, node, name, value_var):
     self._check_str_key(name)
     typ = abstract_utils.get_atomic_value(self.fields[name])
-    bad = self.ctx.matcher(node).compute_matches(value_var, typ).bad_matches
+    bad = self.ctx.matcher(node).compute_one_match(value_var, typ).bad_matches
     for match in bad:
       self.ctx.errorlog.annotation_type_mismatch(
           self.ctx.vm.frames, match.expected.typ, match.actual_binding, name,

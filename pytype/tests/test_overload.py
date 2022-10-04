@@ -266,6 +266,19 @@ class OverloadTest(test_base.BaseTest):
         foo.Foo(0)
       """)
 
+  def test_generic_class(self):
+    self.Check("""
+      from typing import Generic, List, TypeVar, overload
+      T = TypeVar('T')
+      class Foo(Generic[T]):
+        @overload
+        def f(self, x: int) -> T: ...
+        @overload
+        def f(self, x: str) -> List[T]: ...
+        def f(self, x):
+          return __any_object__
+    """)
+
 
 class OverloadTestPy3(test_base.BaseTest):
   """Python 3 tests for typing.overload."""

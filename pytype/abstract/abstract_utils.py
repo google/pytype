@@ -9,6 +9,7 @@ from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
@@ -910,3 +911,10 @@ def get_generic_type(val: _BaseValueType) -> Optional[_ParameterizedClassType]:
       params = {item.name: item for item in base_cls.template}
       return _make("ParameterizedClass", base_cls, params, base_cls.ctx)
   return None
+
+
+def with_empty_substitutions(subst, pytd_type, node, ctx):
+  new_subst = {t.full_name: ctx.convert.empty.to_variable(node)
+               for t in pytd_utils.GetTypeParameters(pytd_type)
+               if t.full_name not in subst}
+  return subst.copy(**new_subst)

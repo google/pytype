@@ -205,7 +205,8 @@ class Instance(SimpleValue):
     all_formal_type_parameters = datatypes.AliasingMonitorDict()
     abstract_utils.parse_formal_type_parameters(
         self.cls, None, all_formal_type_parameters, self._container)
-    self._instance_type_parameters.uf = all_formal_type_parameters.uf
+    self._instance_type_parameters = self._instance_type_parameters.copy(
+        aliases=all_formal_type_parameters.aliases)
     for name, param in all_formal_type_parameters.items():
       if param is None:
         value = self.ctx.program.NewVariable()

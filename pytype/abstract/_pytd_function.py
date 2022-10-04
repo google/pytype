@@ -626,29 +626,22 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(node, args, variable_view)
     self._fill_in_missing_parameters(node, args, arg_dict, True)
+    args_to_match = [function.Arg(name, arg_dict[name], formal)
+                     for name, formal in formal_args]
     matcher = self.ctx.matcher(node)
-    matches = None
-    for name, formal in formal_args:
-      match_result = matcher.compute_matches(
-          arg_dict[name], formal, name, match_all_views)
-      if match_result.success:
-        if any(m.subst for m in match_result.good_matches):
-          assert matches is None
-          matches = match_result.good_matches
-        continue
-      bad_arg = match_result.bad_matches[0].expected
-      if self.signature.has_param(bad_arg.name):
+    try:
+      matches = matcher.compute_matches(args_to_match, match_all_views)
+    except matcher.MatchError as e:
+      if self.signature.has_param(e.bad_type.name):
         signature = self.signature
       else:
         signature = self.signature.insert_varargs_and_kwargs(arg_dict)
-      raise function.WrongArgTypes(signature, args, self.ctx, bad_param=bad_arg)
+      raise function.WrongArgTypes(signature, args, self.ctx, e.bad_type)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s",
                 pytd_utils.Print(self.pytd_sig))
     for nr, p in enumerate(self.pytd_sig.params):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
-    if not matches:
-      matches = [matcher.default_match()]
     return arg_dict, matches
 
   def instantiate_return(self, node, subst, sources):
@@ -669,10 +662,8 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           source_sets=[sources])
     except self.ctx.convert.TypeParameterError:
       # The return type contains a type parameter without a substitution.
-      subst = subst.copy()
-      for t in pytd_utils.GetTypeParameters(return_type):
-        if t.full_name not in subst:
-          subst[t.full_name] = self.ctx.convert.empty.to_variable(node)
+      subst = abstract_utils.with_empty_substitutions(
+          subst, return_type, node, self.ctx)
       return node, self.ctx.convert.constant_to_var(
           abstract_utils.AsReturnValue(return_type),
           subst,
@@ -765,10 +756,8 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     # and starstarargs have type parameters but are not in the args. Check that
     # subst has an entry for every type parameter, adding any that are missing.
     if any(f.mutated_type for f in self.pytd_sig.params):
-      subst = subst.copy()
-      for t in pytd_utils.GetTypeParameters(self.pytd_sig):
-        if t.full_name not in subst:
-          subst[t.full_name] = self.ctx.convert.empty.to_variable(node)
+      subst = abstract_utils.with_empty_substitutions(
+          subst, self.pytd_sig, node, self.ctx)
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
       arg = actual.data

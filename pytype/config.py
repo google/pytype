@@ -232,6 +232,8 @@ FEATURE_FLAGS = [
           "Support pyglib's @cached.property."),
     _flag("--always-use-return-annotations", False,
           "Always use function return type annotations."),
+    _flag("--mapping-is-not-sequence", False,
+          "Do not treat Mapping as satisfying the Sequence protocol"),
 ]
 
 

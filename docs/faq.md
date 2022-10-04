@@ -56,7 +56,7 @@ assert_type` to your module.
 
 To reference a type from within its definition (e.g. when a method's return type
 is an instance of the class to which the method belongs), specify the type as a
-string. This will be resolved later by PyType. For example:
+string. This will be resolved later by pytype. For example:
 
 ```python
 class Person(object):
