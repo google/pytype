@@ -131,21 +131,20 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def update_method_type_params(self):
     if self.template:
       # For function type parameters check
+      prop_updated = False
       for mbr in self.members.values():
-        m = abstract_utils.get_atomic_value(
-            mbr, default=self.ctx.convert.unsolvable)
-        if _isinstance(m, "SignedFunction"):
-          self.update_signature_scope(m)
-        elif mbr.data and all(
-            x.__class__.__name__ == "PropertyInstance" for x in mbr.data):
-          # We generate a new variable every time we add a property slot, so we
-          # take the last one (which contains bindings for all defined slots).
-          prop = mbr.data[-1]
-          for slot in (prop.fget, prop.fset, prop.fdel):
-            if slot:
-              for d in slot.data:
-                if _isinstance(d, "SignedFunction"):
-                  self.update_signature_scope(d)
+        for m in reversed(mbr.data):
+          if _isinstance(m, "SignedFunction"):
+            self.update_signature_scope(m)
+          elif not prop_updated and m.__class__.__name__ == "PropertyInstance":
+            # We generate a new variable every time we add a property slot, so
+            # take the last one (which contains bindings for all defined slots).
+            prop_updated = True
+            for slot in (m.fget, m.fset, m.fdel):
+              if slot:
+                for d in slot.data:
+                  if _isinstance(d, "SignedFunction"):
+                    self.update_signature_scope(d)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
