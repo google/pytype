@@ -247,7 +247,8 @@ class SignedFunction(_function_base.Function):
       args_to_match.append(function.Arg(name, arg, formal))
     matcher = self.ctx.matcher(node)
     try:
-      matches = matcher.compute_matches(args_to_match, match_all_views)
+      matches = matcher.compute_matches(
+          args_to_match, match_all_views, alias_map)
     except matcher.MatchError as e:
       raise function.WrongArgTypes(self.signature, args, self.ctx, e.bad_type)
     return [m.subst for m in matches]
