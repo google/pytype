@@ -27,7 +27,8 @@ _COMPATIBLE_BUILTINS = [
     for compatible_builtin, builtin in pep484.COMPAT_ITEMS
 ]
 
-_SubstType = Dict[str, cfg.Variable]
+_SubstType = datatypes.AliasingDict[str, cfg.Variable]
+_ViewType = Dict[cfg.Variable, cfg.Binding]
 
 
 def _is_callback_protocol(typ):
@@ -88,8 +89,8 @@ class ErrorDetails:
 class GoodMatch:
   """A correct type/actual value match."""
 
-  view: Dict[cfg.Variable, cfg.Binding]
-  subst: Dict[str, cfg.Variable]
+  view: _ViewType
+  subst: _SubstType
 
   @classmethod
   def default(cls):
@@ -100,7 +101,7 @@ class GoodMatch:
 class BadMatch:
   """An expected type/actual value mismatch."""
 
-  view: Dict[cfg.Variable, cfg.Binding]
+  view: _ViewType
   expected: abstract_utils.BadType
   actual: cfg.Variable
 
@@ -390,7 +391,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _match_value_against_type(
       self, value: cfg.Binding, other_type: abstract.BaseValue,
-      subst: _SubstType, view: Dict[cfg.Variable, cfg.Binding]
+      subst: _SubstType, view: _ViewType
   ) -> Optional[_SubstType]:
     """One-way unify value into pytd type given a substitution.
 
@@ -426,7 +427,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _match_nonfinal_value_against_type(
       self, left: abstract.BaseValue, value: cfg.Binding,
       other_type: abstract.BaseValue, subst: _SubstType,
-      view: Dict[cfg.Variable, cfg.Binding]
+      view: _ViewType
   ) -> Optional[_SubstType]:
     """Match after unwrapping any `Final` annotations."""
     if left.formal:

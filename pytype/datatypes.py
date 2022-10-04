@@ -3,7 +3,10 @@
 import argparse
 import contextlib
 import itertools
-from typing import Optional
+from typing import Dict, Optional, TypeVar
+
+_K = TypeVar("_K")
+_V = TypeVar("_V")
 
 
 class UnionFind:
@@ -110,7 +113,7 @@ class UnionFind:
     return f"{comps!r}"
 
 
-class AccessTrackingDict(dict):
+class AccessTrackingDict(Dict[_K, _V]):
   """A dict that tracks access of its original items."""
 
   def __init__(self, d):
@@ -135,7 +138,7 @@ class AccessTrackingDict(dict):
     return super().__delitem__(k)
 
 
-class MonitorDict(dict):
+class MonitorDict(Dict[_K, _V]):
   """A dictionary that monitors changes to its cfg.Variable values.
 
   This dictionary takes arbitrary objects as keys and cfg.Variable objects as
@@ -163,7 +166,7 @@ class AliasingDictConflictError(Exception):
     self.existing_name = existing_name
 
 
-class AliasingDict(dict):
+class AliasingDict(Dict[_K, _V]):
   """A dictionary that supports key aliasing.
 
   This dictionary provides a way to register aliases for a key, which are then
@@ -294,7 +297,7 @@ class AliasingDict(dict):
     raise NotImplementedError()
 
 
-class HashableDict(AliasingDict):
+class HashableDict(AliasingDict[_K, _V]):
   """A AliasingDict subclass that can be hashed.
 
   Instances should not be modified. Methods that would modify the dictionary
@@ -330,7 +333,7 @@ class HashableDict(AliasingDict):
     return self._hash
 
 
-class AliasingMonitorDict(AliasingDict, MonitorDict):
+class AliasingMonitorDict(AliasingDict[_K, _V], MonitorDict[_K, _V]):
   """The dictionary that supports aliasing, lazy dict and monitor."""
 
   def merge_from(self, lam_dict, op):
