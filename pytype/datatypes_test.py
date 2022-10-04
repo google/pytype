@@ -209,6 +209,12 @@ class AliasingDictTest(unittest.TestCase):
     self.assertEqual(d2["k1"], 0)
     self.assertEqual(d2["k2"], 1)
 
+  def test_apply_aliases_on_create(self):
+    aliases = datatypes.UnionFind()
+    aliases.merge("k1", "k2")
+    d = datatypes.AliasingDict(aliases=aliases, k1=0)
+    self.assertEqual(d["k2"], 0)
+
   def test_copy_with_aliases(self):
     d1 = datatypes.AliasingDict(k2=0)
 
@@ -225,6 +231,13 @@ class AliasingDictTest(unittest.TestCase):
     d2 = d1.copy(k3=1)
     self.assertEqual(d2["k1"], 0)
     self.assertEqual(d2["k2"], 1)
+
+  def test_conflicting_values(self):
+    aliases = datatypes.UnionFind()
+    aliases.merge("k1", "k2")
+    d = datatypes.AliasingDict(aliases=aliases, k1=0, k2=1)
+    self.assertEqual(d["k1"], 1)
+    self.assertEqual(d["k2"], 1)
 
 
 class DatatypesTest(unittest.TestCase):

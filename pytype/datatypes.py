@@ -180,6 +180,13 @@ class AliasingDict(dict):
     else:
       self._aliases = UnionFind()
     super().__init__(*args, **kwargs)
+    for k in list(self):
+      root = self._aliases.find_by_name(k)
+      if root == k:
+        continue
+      if root not in self:
+        dict.__setitem__(self, root, dict.__getitem__(self, k))
+      dict.__delitem__(self, k)
 
   @property
   def aliases(self):
