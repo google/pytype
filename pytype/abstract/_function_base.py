@@ -89,14 +89,9 @@ class Function(_instance_base.SimpleValue):
     return self._match_args_sequentially(node, args, alias_map, match_all_views)
 
   def _is_complex_generic_call(self, args):
-    signatures = function.get_signatures(self)
-    # pytype: disable=attribute-error
-    if _isinstance(self, "SignedFunction") and self.signature not in signatures:
-      # This happens for overloads. While overloads are not callable, we do call
-      # match_args on them to catch bad defaults.
-      signatures.append(self.signature)
-    # pytype: enable=attribute-error
-    for sig in signatures:
+    if _isinstance(self, "SignedFunction"):
+      return False
+    for sig in function.get_signatures(self):
       parameter_typevar_count = 0
       for name, t in sig.annotations.items():
         stack = [t]

@@ -131,8 +131,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def update_method_type_params(self):
     if self.template:
       # For function type parameters check
-      prop_updated = False
       for mbr in self.members.values():
+        prop_updated = False
         for m in reversed(mbr.data):
           if _isinstance(m, "SignedFunction"):
             self.update_signature_scope(m)
@@ -808,28 +808,21 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
       raise function.WrongArgCount(
           function.Signature.from_callable(self), function.Args(posargs=args),
           self.ctx)
-    formal_args = [(function.argname(i), self.formal_type_parameters[i])
-                   for i in range(self.num_args)]
-    substs = [datatypes.AliasingDict()]
-    bad_param = None
-    # TODO(b/228241343): Switch to argument-by-argument matching.
-    for view in abstract_utils.get_views(args, node):
-      arg_dict = {function.argname(i): view[args[i]]
-                  for i in range(self.num_args)}
-      subst, bad_param = self.ctx.matcher(node).compute_subst(
-          formal_args, arg_dict, view, None)
-      if subst is not None:
-        substs = [subst]
-        break
-    else:
-      if bad_param:
-        raise function.WrongArgTypes(
-            function.Signature.from_callable(self),
-            function.Args(posargs=args),
-            self.ctx,
-            bad_param=bad_param)
+    match_args = [function.Arg(function.argname(i), args[i],
+                               self.formal_type_parameters[i])
+                  for i in range(self.num_args)]
+    matcher = self.ctx.matcher(node)
+    try:
+      matches = matcher.compute_matches(match_args, match_all_views=False)
+    except matcher.MatchError as e:
+      raise function.WrongArgTypes(
+          function.Signature.from_callable(self),
+          function.Args(posargs=args),
+          self.ctx,
+          bad_param=e.bad_type)
     ret = self.ctx.annotation_utils.sub_one_annotation(
-        node, self.formal_type_parameters[abstract_utils.RET], substs)
+        node, self.formal_type_parameters[abstract_utils.RET],
+        [m.subst for m in matches])
     node, retvar = self.ctx.vm.init_class(node, ret)
     return node, retvar
 

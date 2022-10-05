@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -29,6 +29,7 @@ _COMPATIBLE_BUILTINS = [
 
 _SubstType = datatypes.AliasingDict[str, cfg.Variable]
 _ViewType = Dict[cfg.Variable, cfg.Binding]
+_T = TypeVar("_T")
 
 
 def _is_callback_protocol(typ):
@@ -96,6 +97,11 @@ class GoodMatch:
   def default(cls):
     return cls({}, datatypes.HashableDict())
 
+  @classmethod
+  def merge(cls, old_match, new_match, combined_subst):
+    return cls({**old_match.view, **new_match.view},
+               datatypes.HashableDict(combined_subst))
+
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadMatch:
@@ -123,6 +129,40 @@ class MatchResult:
   bad_matches: List[BadMatch]
 
 
+class _UniqueSubsts(Generic[_T]):
+  """A collection of substs that discards duplicates.
+
+  Each subst has a bit of data associated to it, and calling unique() returns
+  unique substs and associated data.
+  """
+
+  def __init__(self):
+    self._data: List[Tuple[Dict[str, Any], _SubstType, _T]] = []
+
+  def insert(self, subst, data: _T):
+    """Insert a subst with associated data."""
+    subst_key = {k: {v.get_type_key() for v in var.data}
+                 for k, var in subst.items()}
+    data_item = (subst_key, subst, data)
+    for i, (prev_subst_key, *_) in enumerate(self._data):
+      if all(k in prev_subst_key and subst_key[k] <= prev_subst_key[k]
+             for k in subst_key):
+        # A previous substitution is a superset of this one, so we do not need
+        # to keep this one.
+        break
+      if all(k in subst_key and prev_subst_key[k] <= subst_key[k]
+             for k in prev_subst_key):
+        # This substitution is a superset of a previous one, so we replace the
+        # previous subst with this one.
+        self._data[i] = data_item
+        break
+    else:
+      self._data.append(data_item)
+
+  def unique(self) -> List[Tuple[_SubstType, _T]]:
+    return [d[1:] for d in self._data]
+
+
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -143,6 +183,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._recursive_annots_cache: Dict[
         Tuple[abstract.BaseValue, abstract.BaseValue], bool] = {}
     self._error_subst = None
+    self._seen_type_params = set()
     self._reset_errors()
 
   def _reset_errors(self):
@@ -229,7 +270,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return datatypes.HashableDict(subst), None
 
   def compute_matches(
-      self, args: List[function.Arg], match_all_views: bool) -> List[GoodMatch]:
+      self, args: List[function.Arg], match_all_views: bool,
+      alias_map: Optional[datatypes.UnionFind] = None) -> List[GoodMatch]:
     """Compute information about type parameters using one-way unification.
 
     Given the arguments of a function call, try to find substitutions that match
@@ -240,24 +282,50 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       match_all_views: If True, every possible match must succeed for the
         overall match to be considered a success. Otherwise, the overall match
         succeeds as long as at least one possible match succeeds.
+      alias_map: Optionally, a datatypes.UnionFind, which stores all the type
+        renaming information, mapping of type parameter name to its
+        representative.
     Returns:
       A sequence of GoodMatch results containing the computed substitutions.
     Raises:
       MatchError: if any of the arguments does not match its expected type.
     """
     matches = None
+    self_matches = None
     for arg in args:
       match_result = self.compute_one_match(
-          arg.value, arg.typ, arg.name, match_all_views)
+          arg.value, arg.typ, arg.name, match_all_views, alias_map)
       if not match_result.success:
-        raise self.MatchError(match_result.bad_matches[0].expected)
+        if matches:
+          if self._error_subst:
+            self._error_subst = self._merge_substs(
+                matches[0].subst, [self._error_subst])
+          else:
+            self._error_subst = matches[0].subst
+          bad_param = self._get_bad_type(arg.name, arg.typ)
+        else:
+          bad_param = match_result.bad_matches[0].expected
+        raise self.MatchError(bad_param)
       if any(m.subst for m in match_result.good_matches):
-        assert matches is None
-        matches = match_result.good_matches
+        matches = self._merge_matches(
+            arg.name, arg.typ, matches, match_result.good_matches)
+        if arg.name == "self":
+          self_matches = match_result.good_matches
+    if self_matches:
+      new_matches = []
+      for match in matches:
+        for self_match in self_matches:
+          new_subst = datatypes.AliasingDict(match.subst)
+          for name, value in self_match.subst.items():
+            if any(not isinstance(v, abstract.Empty) for v in value.data):
+              new_subst[name] = value
+          new_matches.append(GoodMatch.merge(match, self_match, new_subst))
+      matches = new_matches
     return matches if matches else [GoodMatch.default()]
 
   def compute_one_match(
-      self, var, other_type, name=None, match_all_views=True) -> MatchResult:
+      self, var, other_type, name=None, match_all_views=True, alias_map=None
+  ) -> MatchResult:
     """Match a Variable against a type.
 
     Args:
@@ -267,11 +335,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       match_all_views: If True, every possible match must succeed for the
         overall match to be considered a success. Otherwise, the overall match
         succeeds as long as at least one possible match succeeds.
+      alias_map: Optionally, a datatypes.UnionFind, which stores all the type
+        renaming information, mapping of type parameter name to its
+        representative.
     Returns:
       The match result.
     """
     bad_matches = []
-    good_matches = []
+    good_matches = _UniqueSubsts[_ViewType]()
     views = abstract_utils.get_views([var], self._node)
     skip_future = None
     while True:
@@ -279,7 +350,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         view = views.send(skip_future)
       except StopIteration:
         break
-      subst = self.match_var_against_type(var, other_type, {}, view)
+      subst = datatypes.AliasingDict(aliases=alias_map)
+      subst = self.match_var_against_type(var, other_type, subst, view)
       if subst is None:
         if self._node.HasCombination(list(view.values())):
           bad_matches.append(BadMatch(
@@ -291,7 +363,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         skip_future = False
       else:
         skip_future = True
-        good_matches.append(GoodMatch(view, datatypes.HashableDict(subst)))
+        good_matches.insert(subst, view)
+    good_matches = [GoodMatch(view, datatypes.HashableDict(subst))
+                    for subst, view in good_matches.unique()]
     if not bad_matches:
       success = True
     elif match_all_views or self.ctx.options.strict_parameter_checks:
@@ -355,6 +429,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         right_side_options = [other_type]
       for right in right_side_options:
         if isinstance(right, abstract.TypeParameter):
+          self._seen_type_params.add(right)
           # If we have a union like "K or V" and we match both against
           # nothing, that will fill in both K and V.
           if right.full_name not in subst:
@@ -447,6 +522,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                                    function.Signature)) or
         left.instance is abstract_utils.DUMMY_CONTAINER):
       if isinstance(other_type, abstract.TypeParameter):
+        self._seen_type_params.add(other_type)
         new_subst = self._match_type_param_against_type_param(
             left.param, other_type, subst, view)
         if new_subst is not None:
@@ -475,6 +551,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         # left to its upper bound.
         return self._instantiate_and_match(left.param, other_type, subst, view)
     elif isinstance(other_type, abstract.TypeParameter):
+      self._seen_type_params.add(other_type)
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, view)
         if new_subst is not None:
@@ -492,58 +569,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                            self._node, abstract_utils.DUMMY_CONTAINER)}
           self._error_subst = self._merge_substs(subst, [new_subst])
           return None
-      if other_type.full_name in subst:
-        # Merge the two variables.
-        new_var = subst[other_type.full_name].AssignToNewVariable(self._node)
-        new_var.AddBinding(left, [], self._node)
-      else:
-        new_left = self.ctx.convert.get_maybe_abstract_instance(left)
-        new_var = self.ctx.program.NewVariable()
-        new_var.AddBinding(new_left, {value}, self._node)
-
-      type_key = left.get_type_key()
-      # Every value with this type key produces the same result when matched
-      # against other_type, so they can all be added to this substitution rather
-      # than matched separately.
-      for other_value in value.variable.bindings:
-        if (other_value is not value and
-            other_value.data.get_type_key() == type_key):
-          new_var.AddBinding(other_value.data, {other_value}, self._node)
-      if other_type.constraints:
-        new_values = self._discard_ambiguous_values(new_var.data)
-        has_error = not self._satisfies_single_type(new_values)
-        if not has_error and new_values and len(new_values) < len(new_var.data):
-          # We can filter out ambiguous values because we've already found the
-          # single concrete type allowed for this variable.
-          new_var = self.ctx.program.NewVariable(new_values, [], self._node)
-      else:
-        if other_type.full_name in subst:
-          has_error = False
-          old_values = subst[other_type.full_name].data
-          # If _discard_ambiguous_values does not discard 'left', then it is a
-          # concrete value that we need to match.
-          if old_values and self._discard_ambiguous_values([left]):
-            old_concrete_values = self._discard_ambiguous_values(old_values)
-            # If any of the previous TypeVar values were ambiguous, then we
-            # treat the match as a success. Otherwise, 'left' needs to match at
-            # least one of them.
-            if len(old_values) == len(old_concrete_values):
-              has_error = True
-              for old_value in old_concrete_values:
-                if self._satisfies_common_superclass([left, old_value]):
-                  has_error = False
-                elif old_value.cls.is_protocol:
-                  with self._track_partially_matched_protocols():
-                    new_subst = self._match_against_protocol(
-                        left, old_value.cls, subst, view)
-                    if new_subst is not None:
-                      has_error = False
-                      subst = new_subst
-                if not has_error:
-                  break
-        else:
-          has_error = not self._satisfies_common_superclass(
-              self._discard_ambiguous_values(new_var.data))
+      new_var, has_error = self._check_type_param_consistency(
+          left, value, other_type, subst)
       if has_error:
         self._error_subst = subst
         return None
@@ -603,6 +630,61 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     else:
       log.error("Invalid type: %s", type(other_type))
       return None
+
+  def _check_type_param_consistency(
+      self, new_value: abstract.BaseValue, new_value_binding: cfg.Binding,
+      t: abstract.TypeParameter, subst: _SubstType
+  ) -> Tuple[cfg.Variable, bool]:
+    if t.full_name in subst:
+      # Merge the two variables.
+      new_var = subst[t.full_name].AssignToNewVariable(self._node)
+      new_var.AddBinding(new_value, [], self._node)
+    else:
+      new_var = self.ctx.program.NewVariable()
+      new_var.AddBinding(
+          self.ctx.convert.get_maybe_abstract_instance(new_value),
+          {new_value_binding}, self._node)
+    type_key = new_value.get_type_key()
+    # Every value with this type key produces the same result when matched
+    # against t, so they can all be added to this substitution rather than
+    # matched separately.
+    for other_value in new_value_binding.variable.bindings:
+      if (other_value is not new_value_binding and
+          other_value.data.get_type_key() == type_key):
+        new_var.AddBinding(other_value.data, {other_value}, self._node)
+    if t.constraints:
+      new_values = self._discard_ambiguous_values(new_var.data)
+      has_error = not self._satisfies_single_type(new_values)
+      if not has_error and new_values and len(new_values) < len(new_var.data):
+        # We can filter out ambiguous values because we've already found the
+        # single concrete type allowed for this variable.
+        new_var = self.ctx.program.NewVariable(new_values, [], self._node)
+    else:
+      if t.full_name in subst:
+        has_error = False
+        old_values = subst[t.full_name].data
+        # If _discard_ambiguous_values does not discard 'new_value', then it is
+        # a concrete value that we need to match.
+        if old_values and self._discard_ambiguous_values([new_value]):
+          old_concrete_values = self._discard_ambiguous_values(old_values)
+          # If any of the previous TypeVar values were ambiguous, then we
+          # treat the match as a success. Otherwise, 'new_value' needs to match
+          # at least one of them.
+          if len(old_values) == len(old_concrete_values):
+            has_error = True
+            for old_value in old_concrete_values:
+              if self._satisfies_common_superclass([new_value, old_value]):
+                has_error = False
+              elif old_value.cls.is_protocol:
+                with self._track_partially_matched_protocols():
+                  has_error = self._match_against_protocol(
+                      new_value, old_value.cls, subst, {}) is None
+              if not has_error:
+                break
+      else:
+        has_error = not self._satisfies_common_superclass(
+            self._discard_ambiguous_values(new_var.data))
+    return new_var, has_error
 
   def _match_type_against_type(self, left, other_type, subst, view):
     """Checks whether a type is compatible with a (formal) type.
@@ -750,6 +832,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return self._merge_substs(subst, new_substs)
 
   def _mutate_type_parameters(self, params, value, subst):
+    self._seen_type_params.update(params)
     new_subst = {p.full_name: value.to_variable(self._node) for p in params}
     return self._merge_substs(subst, [new_subst])
 
@@ -791,6 +874,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           not isinstance(right, abstract.TypeParameter) or
           right.constraints or right.bound or callable_param_count[right] != 1):
         return None
+      self._seen_type_params.add(right)
       subst = subst.copy()
       # We don't know what to fill in here, since we have a TypeVar matching a
       # TypeVar, but we have to add *something* to indicate the match succeeded.
@@ -845,6 +929,61 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = var
         elif subst[name] is not var:
           subst[name].PasteVariable(var)
+    return subst
+
+  def _merge_matches(
+      self, name: str, formal: abstract.BaseValue,
+      old_matches: Optional[List[GoodMatch]], new_matches: List[GoodMatch]
+  ) -> List[GoodMatch]:
+    if old_matches is None:
+      return new_matches
+    combined_matches = []
+    for new_match in new_matches:
+      cur_types = datatypes.AliasingDict(
+          {t.full_name: t for t in self._seen_type_params},
+          aliases=new_match.subst.aliases)
+      matched = False
+      bad_param = None
+      for old_match in old_matches:
+        combined_subst = self._match_subst_against_subst(
+            old_match.subst, new_match.subst, cur_types)
+        if combined_subst is None:
+          if not bad_param:
+            self._error_subst = old_match.subst
+            bad_param = self._get_bad_type(name, formal)
+          continue
+        combined_matches.append(
+            GoodMatch.merge(old_match, new_match, combined_subst))
+        matched = True
+      if not matched:
+        raise self.MatchError(bad_param)
+    return combined_matches
+
+  def _match_subst_against_subst(self, old_subst, new_subst, type_param_map):
+    subst = datatypes.AliasingDict(aliases=old_subst.aliases)
+    for t in new_subst:
+      if t not in old_subst or not old_subst[t].bindings:
+        subst[t] = new_subst[t]
+        continue
+      if not new_subst[t].bindings:
+        subst[t] = old_subst[t]
+        continue
+      for b1 in old_subst[t].bindings:
+        for b2 in new_subst[t].bindings:
+          new_var, has_error = self._check_type_param_consistency(
+              b2.data, b2, type_param_map[t],
+              old_subst.copy(t=b1.AssignToNewVariable(self._node)))
+          if has_error:
+            continue
+          if t in subst:
+            subst[t].PasteVariable(new_var, self._node)
+          else:
+            subst[t] = new_var
+      if t not in subst:
+        return None
+    for t in old_subst:
+      if t not in subst:
+        subst[t] = old_subst[t]
     return subst
 
   def _instantiate_and_match(self, left, other_type, subst, view,
@@ -1140,7 +1279,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     """
     if isinstance(left.cls, abstract.AMBIGUOUS_OR_EMPTY):
       return subst
-    elif left.cls.is_dynamic:
+    elif left.cls.is_dynamic:  # pytype: disable=attribute-error
       return self._subst_with_type_parameters_from(subst, other_type)
     elif (self.ctx.options.mapping_is_not_sequence and
           other_type.full_name == "typing.Sequence" and
@@ -1377,6 +1516,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
     for param in self.ctx.annotation_utils.get_type_parameters(typ):
+      self._seen_type_params.add(param)
       if param.full_name not in subst:
         subst[param.full_name] = self.ctx.convert.empty.to_variable(self._node)
     return subst
