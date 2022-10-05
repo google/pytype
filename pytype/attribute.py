@@ -91,6 +91,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       results = []
       nodes = []
       for b in param_var.bindings:
+        if b.data is obj:
+          continue
         node2, ret = self.get_attribute(node, b.data, name, valself)
         if ret is None:
           if b.IsVisible(node):

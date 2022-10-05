@@ -698,10 +698,15 @@ def is_callable(value: _BaseValueType) -> bool:
 
 
 def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
+  """Expands any TypeParameterInstance values in `bindings`."""
   bindings = list(bindings)
+  seen = set()
   while bindings:
     b = bindings.pop(0)
     if _isinstance(b.data, "TypeParameterInstance"):
+      if b.data in seen:
+        continue
+      seen.add(b.data)
       param_value = b.data.instance.get_instance_type_parameter(b.data.name)
       if param_value.bindings:
         bindings = param_value.bindings + bindings
