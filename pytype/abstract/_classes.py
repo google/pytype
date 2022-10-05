@@ -131,8 +131,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def update_method_type_params(self):
     if self.template:
       # For function type parameters check
-      prop_updated = False
       for mbr in self.members.values():
+        prop_updated = False
         for m in reversed(mbr.data):
           if _isinstance(m, "SignedFunction"):
             self.update_signature_scope(m)
