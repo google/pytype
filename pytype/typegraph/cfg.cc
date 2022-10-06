@@ -42,6 +42,7 @@ static PyObject* k_variables;
 static PyObject* k_program;
 static PyObject* k_id;
 static PyObject* k_next_variable_id;
+static PyObject* k_next_binding_id;
 static PyObject* k_condition;
 static PyObject* k_default_data;
 
@@ -281,6 +282,8 @@ static PyObject* ProgramGetAttro(PyObject* self, PyObject* attr) {
     }
   } else if (PyObject_RichCompareBool(attr, k_next_variable_id, Py_EQ) > 0) {
     return PyLong_FromSize_t(program->program->next_variable_id());
+  } else if (PyObject_RichCompareBool(attr, k_next_binding_id, Py_EQ) > 0) {
+    return PyLong_FromSize_t(program->program->next_binding_id());
   } else if (PyObject_RichCompareBool(attr, k_default_data, Py_EQ) > 0) {
     auto data = reinterpret_cast<PyObject*>(
         program->program->default_data().get());
@@ -835,32 +838,36 @@ static void BindingDealloc(PyObject* self) {
 }
 
 static PyObject* BindingRepr(PyObject* self) {
+  // Bindings are represented as:
+  // "<binding of variable {variable.id} to data {id(data)}>"
+  // id() returns the address of its argument, but that's an implementation
+  // detail. So call id() directly instead by fetching it from builtins.
   PyBindingObj* attr = reinterpret_cast<PyBindingObj*>(self);
-  PyObject* py_id = PyObject_GetAttrString(self, "id");
-  std::size_t id;
+  PyObject* builtins = PyEval_GetBuiltins();
+  PyObject* id_fn = PyDict_GetItemString(builtins, "id");
+  PyObject* args = Py_BuildValue("(O)", attr->attr->data().get());
+  PyObject* py_id = PyObject_CallObject(id_fn, args);
+  Py_DECREF(args);
   if (!py_id) {
-    PyErr_Clear();
-    id = reinterpret_cast<std::size_t>(attr->attr->data().get());
-  } else {
-    id = PyLong_AsLong(py_id);
-    if (id == -1 && PyErr_Occurred())
-      return nullptr;
+    return nullptr;
   }
-  return PyUnicode_FromFormat(
-      "<binding of variable %zu to data %zu>",
-      attr->attr->variable()->id(), id);
+  PyObject* ret =  PyUnicode_FromFormat(
+      "<binding of variable %zu to data %S>",
+      attr->attr->variable()->id(), py_id);
+  Py_DECREF(py_id);
+  return ret;
 }
 
 static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
   CHECK(self && Py_TYPE(self) == &PyBinding);
-  PyBindingObj* a = reinterpret_cast<PyBindingObj*>(self);
+  PyBindingObj* binding = reinterpret_cast<PyBindingObj*>(self);
   PyProgramObj* program = get_program(self);
 
   if (PyObject_RichCompareBool(attr, k_variable, Py_EQ) > 0) {
-    return WrapVariable(program, a->attr->variable());
+    return WrapVariable(program, binding->attr->variable());
   } else if (PyObject_RichCompareBool(attr, k_origins, Py_EQ) > 0) {
     PyObject* py_origins = PyList_New(0);
-    for (const auto& origin : a->attr->origins()) {
+    for (const auto& origin : binding->attr->origins()) {
       PyObject* py_origin = PyStructSequence_New(&PyOrigin);
       PyStructSequence_SET_ITEM(py_origin, 0, WrapCFGNode(program,
           origin->where));
@@ -883,9 +890,11 @@ static PyObject* BindingGetAttro(PyObject* self, PyObject* attr) {
     }
     return py_origins;
   } else if (PyObject_RichCompareBool(attr, k_data, Py_EQ) > 0) {
-    PyObject* data = reinterpret_cast<PyObject*>(a->attr->data().get());
+    PyObject* data = reinterpret_cast<PyObject*>(binding->attr->data().get());
     Py_INCREF(data);
     return data;
+  } else if (PyObject_RichCompareBool(attr, k_id, Py_EQ) > 0) {
+    return PyLong_FromLong(binding->attr->id());
   }
   return PyObject_GenericGetAttr(self, attr);
 }
@@ -1483,6 +1492,8 @@ static PyObject* InitModule(PyObject* module) {
   k_id = PyUnicode_FromString("id");
   Py_XDECREF(k_next_variable_id);
   k_next_variable_id = PyUnicode_FromString("next_variable_id");
+  Py_XDECREF(k_next_binding_id);
+  k_next_binding_id = PyUnicode_FromString("next_binding_id");
   Py_XDECREF(k_condition);
   k_condition = PyUnicode_FromString("condition");
   Py_XDECREF(k_default_data);

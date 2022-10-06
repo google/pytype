@@ -38,6 +38,7 @@ class CFGTest(unittest.TestCase):
     self.assertIsNone(v1.data)
     self.assertEqual(v2.data, "data")
     self.assertEqual(v3.data, {1: 2})
+    self.assertEqual(f"<binding of variable 0 to data {id(v2.data)}>", str(v2))
     self.assertEqual(f"<binding of variable 0 to data {id(v3.data)}>", str(v3))
 
   def test_cfg_node_str(self):

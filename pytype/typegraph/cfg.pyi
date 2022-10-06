@@ -7,6 +7,7 @@ class Program:
   variables: list[Variable]
   entrypoint: CFGNode
   next_variable_id: int
+  next_binding_id: int
 
   def NewCFGNode(self, name: Optional[str] = ..., condition: Binding = ...) -> CFGNode: ...
   def NewVariable(self, bindings: Optional[Iterable[BindingData]] = ..., source_set: Optional[Iterable[Binding]] = ..., where: Optional[CFGNode] = ...) -> Variable: ...
