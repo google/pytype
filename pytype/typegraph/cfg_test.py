@@ -919,6 +919,12 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(v.FilteredData(node, strict=False), [b.data])
     self.assertEqual(v.Bindings(node, strict=False), [b])
 
+  def test_binding_id(self):
+    p = cfg.Program()
+    v = p.NewVariable()
+    v.AddBinding("x", [], p.NewCFGNode("root"))
+    self.assertEqual(1, p.next_binding_id)
+
 
 if __name__ == "__main__":
   unittest.main()
