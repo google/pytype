@@ -831,8 +831,7 @@ def call_function(ctx,
       v = ctx.convert.no_return if has_noreturn else ctx.convert.unsolvable
       result.AddBinding(v, [], node)
   elif (isinstance(error, FailedFunctionCall) and
-        all(abstract_utils.func_name_is_class_init(func.name)
-            for func in func_var.data)):
+        all(func.name.endswith(".__init__") for func in func_var.data)):
     # If the function failed with a FailedFunctionCall exception, try calling
     # it again with fake arguments. This allows for calls to __init__ to
     # always succeed, ensuring pytype has a full view of the class and its

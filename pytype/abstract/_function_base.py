@@ -301,7 +301,7 @@ class BoundFunction(_base.BaseValue):
     return self._callself
 
   def call(self, node, func, args, alias_map=None):
-    if abstract_utils.func_name_is_class_init(self.name):
+    if self.name.endswith(".__init__"):
       self.ctx.callself_stack.append(self._callself)
     # The "self" parameter is automatically added to the list of arguments, but
     # only if the function actually takes any arguments.
@@ -324,7 +324,7 @@ class BoundFunction(_base.BaseValue):
         e.name = f"{self._callself.data[0].name}.{e.name}"
       raise
     finally:
-      if abstract_utils.func_name_is_class_init(self.name):
+      if self.name.endswith(".__init__"):
         self.ctx.callself_stack.pop()
     return node, ret
 

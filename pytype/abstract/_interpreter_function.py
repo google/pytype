@@ -641,7 +641,7 @@ class InterpreterFunction(SignedFunction):
     if self.is_overload:
       raise function.NotCallable(self)
     if (self.ctx.vm.is_at_maximum_depth() and
-        not abstract_utils.func_name_is_class_init(self.name)):
+        not self.name.endswith(".__init__")):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
       if (self.signature.has_return_annotation and
@@ -876,8 +876,7 @@ class InterpreterFunction(SignedFunction):
     return self.code.has_varkeywords()
 
   def property_get(self, callself, is_class=False):
-    if (abstract_utils.func_name_is_class_init(self.name) and
-        self.signature.param_names):
+    if self.name.endswith(".__init__") and self.signature.param_names:
       self_name = self.signature.param_names[0]
       # If `_has_self_annot` is True, then we've intentionally temporarily
       # annotated `self`; otherwise, a `self` annotation is illegal.

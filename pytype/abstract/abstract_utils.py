@@ -351,19 +351,6 @@ def get_views(variables, node):
       seen.append(view.accessed_subset.items())
 
 
-def func_name_is_class_init(name):
-  """Return True if |name| is that of a class' __init__ method."""
-  # Python 3's MAKE_FUNCTION byte code takes an explicit fully qualified
-  # function name as an argument and that is used for the function name.
-  # On the other hand, Python 2's MAKE_FUNCTION does not take any name
-  # argument so we pick the name from the code object. This name is not
-  # fully qualified. Hence, constructor names in Python 3 are fully
-  # qualified ending in '.__init__', and constructor names in Python 2
-  # are all '__init__'. So, we identify a constructor by matching its
-  # name with one of these patterns.
-  return name == "__init__" or name.endswith(".__init__")
-
-
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
   return (_isinstance(binding.data, "Class") and
