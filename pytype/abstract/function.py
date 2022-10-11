@@ -330,7 +330,10 @@ class Signature:
         yield (argname(i), posarg, None)
     for name in sorted(args.namedargs):
       namedarg = args.namedargs[name]
-      formal = self.annotations.get(name)
+      if name in self.param_names[:self.posonly_count]:
+        formal = None
+      else:
+        formal = self.annotations.get(name)
       if formal is None and self.kwargs_name:
         kwargs_type = self.annotations.get(self.kwargs_name)
         if kwargs_type:
@@ -386,7 +389,10 @@ class Signature:
       return None
 
   def __repr__(self):
-    args = ", ".join(self._yield_arguments())
+    args = list(self._yield_arguments())
+    if self.posonly_count:
+      args = args[:self.posonly_count] + ["/"] + args[self.posonly_count:]
+    args = ", ".join(args)
     ret = self._print_annot("return")
     return f"def {self.name}({args}) -> {ret if ret else 'Any'}"
 

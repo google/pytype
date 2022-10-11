@@ -733,6 +733,14 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         f(1, x=1)
       """, pythonpath=[d.path])
 
+  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
+  def test_posonly_starstararg_clash(self):
+    self.Check("""
+      def f(arg: int, /, **kwargs: str):
+        pass
+      f(1, arg='text')
+    """)
+
 
 class DisableTest(test_base.BaseTest):
   """Tests for error disabling."""
