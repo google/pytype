@@ -99,7 +99,7 @@ class VirtualMachine:
     self.opcode_traces: List[Tuple[
         Optional[opcodes.Opcode],
         Any,
-        Tuple[Optional[abstract.BaseValue], ...]
+        Tuple[Optional[List[abstract.BaseValue]], ...]
     ]] = []
     # pyformat: enable
     # Track the order of creation of local vars, for attrs and dataclasses.
