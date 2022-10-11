@@ -1,6 +1,5 @@
 """Singleton abstract values."""
 
-import hashlib
 import logging
 
 from pytype import datatypes
@@ -44,17 +43,11 @@ class Unknown(_base.BaseValue):
   def compute_mro(self):
     return self.default_mro()
 
-  def get_fullhash(self):
+  def get_fullhash(self, seen=None):
     # Unknown needs its own implementation of get_fullhash to ensure equivalent
     # Unknowns produce the same hash. "Equivalent" in this case means "has the
     # same members," so member names are used in the hash instead of id().
-    m = hashlib.md5()
-    for name in self.members:
-      m.update(name.encode("utf-8"))
-    return m.digest()
-
-  def get_children_maps(self):
-    return (self.members,)
+    return hash((type(self),) + tuple(sorted(self.members)))
 
   @classmethod
   def _to_pytd(cls, node, v):
@@ -158,7 +151,7 @@ class Singleton(_base.BaseValue):
     # filled by its parent. cls needs to be given its own instance.
     if not cls._instance or type(cls._instance) != cls:  # pylint: disable=unidiomatic-typecheck
       log.debug("Singleton: Making new instance for %s", cls)
-      cls._instance = super().__new__(cls)
+      cls._instance = super().__new__(cls)  # pylint: disable=no-value-for-parameter
     return cls._instance
 
   def get_special_attribute(self, node, name, valself):

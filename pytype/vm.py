@@ -904,7 +904,7 @@ class VirtualMachine:
       log.info("Ignoring setattr on %r", obj)
       return state
     nodes = []
-    for val in obj.Filter(state.node):
+    for val in obj.Filter(state.node, strict=False):
       # TODO(b/172045608): Check whether val.data is a descriptor (i.e. has
       # "__set__")
       nodes.append(

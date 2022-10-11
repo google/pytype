@@ -535,6 +535,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
 
     # Retrieve member
     if name in obj.members and obj.members[name].Bindings(node):
+      # A retrieved attribute may be later mutated; we have no way of tracking
+      # this. Forcibly clear obj's hash and type key caches so that attribute
+      # changes are detected.
+      obj.update_caches(force=True)
       return node, obj.members[name]
     return node, None
 

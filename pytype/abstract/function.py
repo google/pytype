@@ -404,6 +404,21 @@ def _convert_namedargs(namedargs):
   return {} if namedargs is None else namedargs
 
 
+def _simplify_variable(var, node, ctx):
+  """Deduplicates identical data in `var`."""
+  if not var:
+    return var
+  bindings_by_hash = collections.defaultdict(list)
+  for b in var.bindings:
+    bindings_by_hash[b.data.get_fullhash()].append(b)
+  if len(bindings_by_hash) == len(var.bindings):
+    return var
+  new_var = ctx.program.NewVariable()
+  for bindings in bindings_by_hash.values():
+    new_var.AddBinding(bindings[0].data, bindings, node)
+  return new_var
+
+
 @attrs.frozen(eq=True)
 class Args:
   """Represents the parameters of a function call.
@@ -600,7 +615,10 @@ class Args:
         # have a signature to match. Just set all splats to Any.
         posargs = self.posargs + _splats_to_any(starargs_as_tuple, ctx)
         starargs = None
-    return Args(posargs, namedargs, starargs, starstarargs)
+    simplify = lambda var: _simplify_variable(var, node, ctx)
+    return Args(tuple(simplify(posarg) for posarg in posargs),
+                {k: simplify(namedarg) for k, namedarg in namedargs.items()},
+                simplify(starargs), simplify(starstarargs))
 
   def get_variables(self):
     variables = list(self.posargs) + list(self.namedargs.values())

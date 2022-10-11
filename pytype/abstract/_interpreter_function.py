@@ -46,32 +46,12 @@ def _matches_async_generator(type_obj):
   return _matches_generator_helper(type_obj, allowed_types)
 
 
-def _hash_dict(vardict, names):
-  """Hash a dictionary.
-
-  This contains the keys and the full hashes of the data in the values.
-
-  Arguments:
-    vardict: A dictionary mapping str to Variable.
-    names: If this is non-None, the snapshot will include only those
-      dictionary entries whose keys appear in names.
-
-  Returns:
-    A hash of the dictionary.
-  """
-  if names is not None:
-    vardict = {name: vardict[name] for name in names.intersection(vardict)}
-  m = hashlib.md5()
-  for name, var in sorted(vardict.items()):
-    m.update(str(name).encode("utf-8"))
-    for value in var.bindings:
-      m.update(value.data.get_fullhash())
-  return m.digest()
-
-
 def _hash_all_dicts(*hash_args):
   """Convenience method for hashing a sequence of dicts."""
-  return hashlib.md5(b"".join(_hash_dict(*args) for args in hash_args)).digest()
+  components = (abstract_utils.get_dict_fullhash_component(d, names=n)
+                for d, n in hash_args)
+  return hashlib.md5(
+      b"".join(str(hash(c)).encode("utf-8") for c in components)).digest()
 
 
 def _check_classes(var, check):
@@ -636,6 +616,23 @@ class InterpreterFunction(SignedFunction):
         [self.ctx.convert.unsolvable, self.ctx.convert.none], [], node)
     return function.Args(posargs=(args.posargs[0], arg1, arg2, arg3))
 
+  def _hash_call(self, callargs, frame):
+    # Note that we ignore caching in __init__ calls, so that attributes are
+    # set correctly.
+    if (self.ctx.options.skip_repeat_calls and
+        ("self" not in callargs or not self.ctx.callself_stack or
+         callargs["self"].data != self.ctx.callself_stack[-1].data)):
+      callkey = _hash_all_dicts(
+          (callargs, None),
+          (frame.f_globals.members, set(self.code.co_names)),
+          (frame.f_locals.members,
+           set(frame.f_locals.members) - set(self.code.co_varnames)))
+    else:
+      # Make the callkey the number of times this function has been called so
+      # that no call has the same key as a previous one.
+      callkey = len(self._call_cache)
+    return callkey
+
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
@@ -735,18 +732,9 @@ class InterpreterFunction(SignedFunction):
       frame.allowed_returns = annotations.get("return",
                                               self.ctx.convert.unsolvable)
       frame.check_return = check_return
-    if self.ctx.options.skip_repeat_calls:
-      callkey = _hash_all_dicts(
-          (callargs, None),
-          (frame.f_globals.members, set(self.code.co_names)),
-          (frame.f_locals.members,
-           set(frame.f_locals.members) - set(self.code.co_varnames)))
-    else:
-      # Make the callkey the number of times this function has been called so
-      # that no call has the same key as a previous one.
-      callkey = len(self._call_cache)
-    if callkey in self._call_cache:
-      old_ret, old_remaining_depth = self._call_cache[callkey]
+    callkey_pre = self._hash_call(callargs, frame)
+    if callkey_pre in self._call_cache:
+      old_ret, old_remaining_depth = self._call_cache[callkey_pre]
       # Optimization: This function has already been called, with the same
       # environment and arguments, so recycle the old return value.
       # We would want to skip this optimization and reanalyze the call if we can
@@ -802,7 +790,9 @@ class InterpreterFunction(SignedFunction):
         ret = _instances.Coroutine(self.ctx, ret, node2).to_variable(node2)
       node_after_call = node2
     self._inner_cls_check(frame)
-    self._call_cache[callkey] = ret, self.ctx.vm.remaining_depth()
+    # Recompute the calllkey so that side effects are taken into account.
+    callkey_post = self._hash_call(callargs, frame)
+    self._call_cache[callkey_post] = ret, self.ctx.vm.remaining_depth()
     if self._store_call_records or self.ctx.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame

@@ -42,9 +42,13 @@ class SimpleValue(_base.BaseValue):
     self._maybe_missing_members = None
     # The latter caches the result of get_type_key. This is a recursive function
     # that has the potential to generate too many calls for large definitions.
-    self._cached_type_key = (
-        (self.members.changestamp, self._instance_type_parameters.changestamp),
-        None)
+    self._type_key = None
+    self._fullhash = None
+    self._cached_changestamps = self._get_changestamps()
+
+  def _get_changestamps(self):
+    return (self.members.changestamp,
+            self._instance_type_parameters.changestamp)
 
   @property
   def instance_type_parameters(self):
@@ -65,9 +69,6 @@ class SimpleValue(_base.BaseValue):
     """Check if the key is in `instance_type_parameters`."""
     name = abstract_utils.full_type_name(self, name)
     return name in self.instance_type_parameters
-
-  def get_children_maps(self):
-    return (self.instance_type_parameters, self.members)
 
   def get_instance_type_parameter(self, name, node=None):
     name = abstract_utils.full_type_name(self, name)
@@ -155,30 +156,43 @@ class SimpleValue(_base.BaseValue):
         self.cls = self.ctx.convert.unsolvable
     return node
 
+  def update_caches(self, force=False):
+    cur_changestamps = self._get_changestamps()
+    if self._cached_changestamps == cur_changestamps and not force:
+      return
+    self._fullhash = None
+    self._type_key = None
+    self._cached_changestamps = cur_changestamps
+
+  def get_fullhash(self, seen=None):
+    self.update_caches()
+    if not self._fullhash:
+      if seen is None:
+        seen = set()
+      elif id(self) in seen:
+        return self.get_default_fullhash()
+      seen.add(id(self))
+      components = [type(self), self.cls.get_fullhash(seen), self.full_name]
+      for d in (self.members, self._instance_type_parameters):
+        components.append(
+            abstract_utils.get_dict_fullhash_component(d, seen=seen))
+      self._fullhash = hash(tuple(components))
+    return self._fullhash
+
   def get_type_key(self, seen=None):
-    cached_changestamps, saved_key = self._cached_type_key
-    if saved_key and cached_changestamps == (
-        self.members.changestamp,
-        self.instance_type_parameters.changestamp):
-      return saved_key
-    if not seen:
-      seen = set()
-    seen.add(self)
-    key = {self.cls}
-    for name, var in self.instance_type_parameters.items():
-      subkey = frozenset(
-          value.data.get_default_type_key()  # pylint: disable=g-long-ternary
-          if value.data in seen else value.data.get_type_key(seen)
-          for value in var.bindings)
-      key.add((name, subkey))
-    if key:
-      type_key = frozenset(key)
-    else:
-      type_key = super().get_type_key()
-    self._cached_type_key = (
-        (self.members.changestamp, self.instance_type_parameters.changestamp),
-        type_key)
-    return type_key
+    self.update_caches()
+    if not self._type_key:
+      if seen is None:
+        seen = set()
+      elif self in seen:
+        return self.get_default_type_key()
+      seen.add(self)
+      key = {self.cls}
+      for name, var in self.instance_type_parameters.items():
+        subkey = frozenset(value.get_type_key(seen) for value in var.data)
+        key.add((name, subkey))
+      self._type_key = frozenset(key)
+    return self._type_key
 
   def _unique_parameters(self):
     parameters = super()._unique_parameters()

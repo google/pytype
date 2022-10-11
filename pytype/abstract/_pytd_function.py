@@ -226,13 +226,18 @@ class PyTDFunction(_function_base.Function):
             filtered_values = self.ctx.program.NewVariable()
             # check if the container type is being broadened.
             new = []
+            short_name = name.rsplit(".", 1)[-1]
             for b in values.bindings:
               if not should_check(b.data) or b.data in ps:
                 filtered_values.PasteBinding(b)
                 continue
               new_view = {**combined_view, **view, values: b}
               if not compatible_with(values, ps, new_view):
-                if not node.HasCombination([b]):
+                combination = [b]
+                bad_param = b.data.get_instance_type_parameter(short_name)
+                if bad_param in new_view:
+                  combination.append(new_view[bad_param])
+                if not node.HasCombination(combination):
                   # Since HasCombination is expensive, we don't use it to
                   # pre-filter bindings, but once we think we have an error, we
                   # should double-check that the binding is actually visible. We
@@ -245,8 +250,7 @@ class PyTDFunction(_function_base.Function):
             filtered_mutations.append(
                 function.Mutation(obj, name, filtered_values))
             if new:
-              formal = name.split(".")[-1]
-              errors[obj][formal] = (params, values, obj.from_annotation)
+              errors[obj][short_name] = (params, values, obj.from_annotation)
         else:
           filtered_mutations.append(function.Mutation(obj, name, values))
 

@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from pytype import datatypes
 from pytype import utils
@@ -910,3 +910,31 @@ def with_empty_substitutions(subst, pytd_type, node, ctx):
                for t in pytd_utils.GetTypeParameters(pytd_type)
                if t.full_name not in subst}
   return subst.copy(**new_subst)
+
+
+def get_var_fullhash_component(
+    var: cfg.Variable, seen: Optional[Set[_BaseValueType]] = None
+) -> Tuple[Any, ...]:
+  return tuple(sorted(v.get_fullhash(seen) for v in var.data))
+
+
+def get_dict_fullhash_component(
+    vardict: Dict[str, cfg.Variable], *, names: Optional[Set[str]] = None,
+    seen: Optional[Set[_BaseValueType]] = None) -> Tuple[Any, ...]:
+  """Hash a dictionary.
+
+  This contains the keys and the full hashes of the data in the values.
+
+  Arguments:
+    vardict: A dictionary mapping str to Variable.
+    names: If this is non-None, the snapshot will include only those
+      dictionary entries whose keys appear in names.
+    seen: Optionally, a set of seen values for recursion detection.
+
+  Returns:
+    A hashable tuple of the dictionary.
+  """
+  if names is not None:
+    vardict = {name: vardict[name] for name in names.intersection(vardict)}
+  return tuple(sorted((k, get_var_fullhash_component(v, seen))
+                      for k, v in vardict.items()))
