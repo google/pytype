@@ -605,7 +605,6 @@ py_test(
   DEPS
     .test_base
     pytype.imports.imports
-    pytype.pyi.parser
     pytype.pytd.pytd
 )
 
