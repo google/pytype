@@ -38,6 +38,7 @@ class CFGTest(unittest.TestCase):
     self.assertIsNone(v1.data)
     self.assertEqual(v2.data, "data")
     self.assertEqual(v3.data, {1: 2})
+    self.assertEqual(f"<binding of variable 0 to data {id(v2.data)}>", str(v2))
     self.assertEqual(f"<binding of variable 0 to data {id(v3.data)}>", str(v3))
 
   def test_cfg_node_str(self):
@@ -917,6 +918,12 @@ class CFGTest(unittest.TestCase):
     self.assertEqual(v.Filter(node, strict=False), [b])
     self.assertEqual(v.FilteredData(node, strict=False), [b.data])
     self.assertEqual(v.Bindings(node, strict=False), [b])
+
+  def test_binding_id(self):
+    p = cfg.Program()
+    v = p.NewVariable()
+    v.AddBinding("x", [], p.NewCFGNode("root"))
+    self.assertEqual(1, p.next_binding_id)
 
 
 if __name__ == "__main__":

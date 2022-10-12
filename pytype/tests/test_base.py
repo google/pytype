@@ -354,9 +354,14 @@ class BaseTest(unittest.TestCase):
   def assertErrorSequences(self, matcher, expected_errors):
     matcher.assert_error_sequences(expected_errors)
 
-  def _Pickle(self, ast, module_name):
+  def _PickleAst(self, ast, module_name):
     assert module_name
     ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
+    return pickle_utils.StoreAst(ast)
+
+  def _PickleSource(self, src, module_name):
+    ast = serialize_ast.SourceToExportableAst(
+        module_name, textwrap.dedent(src), self.loader)
     return pickle_utils.StoreAst(ast)
 
   def Infer(self, srccode, pythonpath=(), deep=True,
@@ -371,7 +376,7 @@ class BaseTest(unittest.TestCase):
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
     if pickle:
-      return self._Pickle(types, module_name)
+      return self._PickleAst(types, module_name)
     else:
       return types
 
@@ -460,15 +465,17 @@ class BaseTest(unittest.TestCase):
             path, contents = dep
             opts = {}
           base, ext = path_utils.splitext(path)
+          pickle = opts.get("pickle", False)
+          new_path = base + (".pickled" if pickle else ".pyi")
           if ext == ".pyi":
-            filepath = d.create_file(path, contents)
+            if pickle:
+              contents = self._PickleSource(contents, base)
+            filepath = d.create_file(new_path, contents)
           elif ext == ".py":
-            pickle = opts.get("pickle", False)
-            new_ext = ".pickled" if pickle else ".pyi"
             pyi = self.Infer(contents, module_name=base, **opts)
             if not pickle:
               pyi = pytd_utils.Print(pyi)
-            filepath = d.create_file(base + new_ext, pyi)
+            filepath = d.create_file(new_path, pyi)
           else:
             raise ValueError(f"Unrecognised dependency type: {path}")
           self.options.imports_map[base] = filepath

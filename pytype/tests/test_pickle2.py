@@ -41,6 +41,23 @@ class PickleTest(test_base.BaseTest):
     base, = ast.Lookup("foo.Bar").Lookup("foo.Bar.Foo").bases
     self.assertEqual(base.name, "foo.Foo")
 
+  def test_late_type_indirection(self):
+    with self.DepTree([("foo.py", """
+      class Foo:
+        pass
+    """, {"pickle": True}), ("bar.py", """
+      import foo
+      Bar = foo.Foo
+    """, {"pickle": True}), ("baz.pyi", """
+      import bar
+      class Baz:
+        x: bar.Bar
+    """, {"pickle": True})]):
+      self.Check("""
+        import baz
+        assert_type(baz.Baz.x, 'foo.Foo')
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

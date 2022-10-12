@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from pytype import datatypes
 from pytype import utils
@@ -351,19 +351,6 @@ def get_views(variables, node):
       seen.append(view.accessed_subset.items())
 
 
-def func_name_is_class_init(name):
-  """Return True if |name| is that of a class' __init__ method."""
-  # Python 3's MAKE_FUNCTION byte code takes an explicit fully qualified
-  # function name as an argument and that is used for the function name.
-  # On the other hand, Python 2's MAKE_FUNCTION does not take any name
-  # argument so we pick the name from the code object. This name is not
-  # fully qualified. Hence, constructor names in Python 3 are fully
-  # qualified ending in '.__init__', and constructor names in Python 2
-  # are all '__init__'. So, we identify a constructor by matching its
-  # name with one of these patterns.
-  return name == "__init__" or name.endswith(".__init__")
-
-
 def equivalent_to(binding, cls):
   """Whether binding.data is equivalent to cls, modulo parameterization."""
   return (_isinstance(binding.data, "Class") and
@@ -698,10 +685,15 @@ def is_callable(value: _BaseValueType) -> bool:
 
 
 def expand_type_parameter_instances(bindings: Iterable[cfg.Binding]):
+  """Expands any TypeParameterInstance values in `bindings`."""
   bindings = list(bindings)
+  seen = set()
   while bindings:
     b = bindings.pop(0)
     if _isinstance(b.data, "TypeParameterInstance"):
+      if b.data in seen:
+        continue
+      seen.add(b.data)
       param_value = b.data.instance.get_instance_type_parameter(b.data.name)
       if param_value.bindings:
         bindings = param_value.bindings + bindings
@@ -918,3 +910,31 @@ def with_empty_substitutions(subst, pytd_type, node, ctx):
                for t in pytd_utils.GetTypeParameters(pytd_type)
                if t.full_name not in subst}
   return subst.copy(**new_subst)
+
+
+def get_var_fullhash_component(
+    var: cfg.Variable, seen: Optional[Set[_BaseValueType]] = None
+) -> Tuple[Any, ...]:
+  return tuple(sorted(v.get_fullhash(seen) for v in var.data))
+
+
+def get_dict_fullhash_component(
+    vardict: Dict[str, cfg.Variable], *, names: Optional[Set[str]] = None,
+    seen: Optional[Set[_BaseValueType]] = None) -> Tuple[Any, ...]:
+  """Hash a dictionary.
+
+  This contains the keys and the full hashes of the data in the values.
+
+  Arguments:
+    vardict: A dictionary mapping str to Variable.
+    names: If this is non-None, the snapshot will include only those
+      dictionary entries whose keys appear in names.
+    seen: Optionally, a set of seen values for recursion detection.
+
+  Returns:
+    A hashable tuple of the dictionary.
+  """
+  if names is not None:
+    vardict = {name: vardict[name] for name in names.intersection(vardict)}
+  return tuple(sorted((k, get_var_fullhash_component(v, seen))
+                      for k, v in vardict.items()))

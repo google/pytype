@@ -330,7 +330,10 @@ class Signature:
         yield (argname(i), posarg, None)
     for name in sorted(args.namedargs):
       namedarg = args.namedargs[name]
-      formal = self.annotations.get(name)
+      if name in self.param_names[:self.posonly_count]:
+        formal = None
+      else:
+        formal = self.annotations.get(name)
       if formal is None and self.kwargs_name:
         kwargs_type = self.annotations.get(self.kwargs_name)
         if kwargs_type:
@@ -386,7 +389,10 @@ class Signature:
       return None
 
   def __repr__(self):
-    args = ", ".join(self._yield_arguments())
+    args = list(self._yield_arguments())
+    if self.posonly_count:
+      args = args[:self.posonly_count] + ["/"] + args[self.posonly_count:]
+    args = ", ".join(args)
     ret = self._print_annot("return")
     return f"def {self.name}({args}) -> {ret if ret else 'Any'}"
 
@@ -396,6 +402,21 @@ class Signature:
 
 def _convert_namedargs(namedargs):
   return {} if namedargs is None else namedargs
+
+
+def _simplify_variable(var, node, ctx):
+  """Deduplicates identical data in `var`."""
+  if not var:
+    return var
+  bindings_by_hash = collections.defaultdict(list)
+  for b in var.bindings:
+    bindings_by_hash[b.data.get_fullhash()].append(b)
+  if len(bindings_by_hash) == len(var.bindings):
+    return var
+  new_var = ctx.program.NewVariable()
+  for bindings in bindings_by_hash.values():
+    new_var.AddBinding(bindings[0].data, bindings, node)
+  return new_var
 
 
 @attrs.frozen(eq=True)
@@ -594,7 +615,10 @@ class Args:
         # have a signature to match. Just set all splats to Any.
         posargs = self.posargs + _splats_to_any(starargs_as_tuple, ctx)
         starargs = None
-    return Args(posargs, namedargs, starargs, starstarargs)
+    simplify = lambda var: _simplify_variable(var, node, ctx)
+    return Args(tuple(simplify(posarg) for posarg in posargs),
+                {k: simplify(namedarg) for k, namedarg in namedargs.items()},
+                simplify(starargs), simplify(starstarargs))
 
   def get_variables(self):
     variables = list(self.posargs) + list(self.namedargs.values())
@@ -831,8 +855,7 @@ def call_function(ctx,
       v = ctx.convert.no_return if has_noreturn else ctx.convert.unsolvable
       result.AddBinding(v, [], node)
   elif (isinstance(error, FailedFunctionCall) and
-        all(abstract_utils.func_name_is_class_init(func.name)
-            for func in func_var.data)):
+        all(func.name.endswith(".__init__") for func in func_var.data)):
     # If the function failed with a FailedFunctionCall exception, try calling
     # it again with fake arguments. This allows for calls to __init__ to
     # always succeed, ensuring pytype has a full view of the class and its

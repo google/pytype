@@ -153,3 +153,23 @@ cc_test(
   DEPS
     .typegraph
 )
+
+py_library(
+  NAME
+    typegraph_serializer
+  SRCS
+    typegraph_serializer.py
+  DEPS
+    .cfg
+)
+
+py_test(
+  NAME
+    typegraph_serializer_test
+  SRCS
+    typegraph_serializer_test.py
+  DEPS
+    .typegraph_serializer
+    pytype.tests.test_base
+    pytype.tests.test_utils
+)

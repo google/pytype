@@ -1,6 +1,5 @@
 """Specialized instance representations."""
 
-import hashlib
 import logging
 from typing import Dict as _Dict, Tuple as _Tuple, Union
 
@@ -22,6 +21,17 @@ def _var_map(func, var):
     return (func(v) for v in var.data)
   else:
     return func(var)
+
+
+def _get_concrete_sequence_fullhash(seq, seen):
+  if seen is None:
+    seen = set()
+  elif id(seq) in seen:
+    return seq.get_default_fullhash()
+  seen.add(id(seq))
+  return hash((type(seq),) +
+              tuple(abstract_utils.get_var_fullhash_component(var, seen)
+                    for var in seq.pyval))
 
 
 class LazyConcreteDict(
@@ -46,6 +56,9 @@ class ConcreteValue(_instance_base.Instance, mixin.PythonConstant):
   def __init__(self, pyval, cls, ctx):
     super().__init__(cls, ctx)
     mixin.PythonConstant.init_mixin(self, pyval)
+
+  def get_fullhash(self, seen=None):
+    return hash((type(self), id(self.pyval)))
 
 
 class Module(_instance_base.Instance, mixin.LazyMembers):
@@ -123,13 +136,9 @@ class Module(_instance_base.Instance, mixin.LazyMembers):
       self.load_lazy_attribute(name)
     return list(self.members.items())
 
-  def get_fullhash(self):
+  def get_fullhash(self, seen=None):
     """Hash the set of member names."""
-    m = hashlib.md5()
-    m.update(self.full_name.encode("utf-8"))
-    for k in self._member_map:
-      m.update(k.encode("utf-8"))
-    return m.digest()
+    return hash((type(self), self.full_name) + tuple(sorted(self._member_map)))
 
 
 class Coroutine(_instance_base.Instance):
@@ -303,6 +312,9 @@ class Tuple(_instance_base.Instance, mixin.PythonConstant):
                         tuple(approximate_hash(e) for e in self.pyval))
     return self._hash
 
+  def get_fullhash(self, seen=None):
+    return _get_concrete_sequence_fullhash(self, seen)
+
 
 class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # pytype: disable=signature-mismatch
   """Representation of Python 'list' objects."""
@@ -327,6 +339,11 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
       return _instance_base.Instance.__repr__(self)
     else:
       return mixin.PythonConstant.__repr__(self)
+
+  def get_fullhash(self, seen=None):
+    if self.could_contain_anything:
+      return super().get_fullhash(seen)
+    return _get_concrete_sequence_fullhash(self, seen)
 
   def merge_instance_type_parameter(self, node, name, value):
     self.could_contain_anything = True
@@ -455,6 +472,17 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       return _instance_base.Instance.__repr__(self)
     else:
       return mixin.PythonConstant.__repr__(self)
+
+  def get_fullhash(self, seen=None):
+    if self.could_contain_anything:
+      return super().get_fullhash(seen)
+    if seen is None:
+      seen = set()
+    elif id(self) in seen:
+      return self.get_default_fullhash()
+    seen.add(id(self))
+    return hash((type(self),) + abstract_utils.get_dict_fullhash_component(
+        self.pyval, seen=seen))
 
   def getitem_slot(self, node, name_var):
     """Implements the __getitem__ slot."""

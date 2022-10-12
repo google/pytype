@@ -91,6 +91,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       results = []
       nodes = []
       for b in param_var.bindings:
+        if b.data is obj:
+          continue
         node2, ret = self.get_attribute(node, b.data, name, valself)
         if ret is None:
           if b.IsVisible(node):
@@ -533,6 +535,10 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
 
     # Retrieve member
     if name in obj.members and obj.members[name].Bindings(node):
+      # A retrieved attribute may be later mutated; we have no way of tracking
+      # this. Forcibly clear obj's hash and type key caches so that attribute
+      # changes are detected.
+      obj.update_caches(force=True)
       return node, obj.members[name]
     return node, None
 

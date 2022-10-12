@@ -559,6 +559,8 @@ class Converter(utils.ContextWeakrefMixin):
             t = pytd.AnythingType()
           else:
             t = pytd.ToType(cls, allow_functions=True)
+      if isinstance(t, pytd.LateType):
+        t = self._load_late_type(t)
       self._resolved_late_types[late_type.name] = t
     return self._resolved_late_types[late_type.name]
 

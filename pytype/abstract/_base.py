@@ -4,7 +4,6 @@ Unless forced to by a circular dependency, don't import BaseValue directly from
 this module; use the alias in abstract.py instead.
 """
 
-import hashlib
 from typing import Any
 
 from pytype import utils
@@ -104,30 +103,11 @@ class BaseValue(utils.ContextWeakrefMixin):
     # default for objects with unknown MRO
     return [self, self.ctx.convert.object_type]
 
-  def get_fullhash(self):
-    """Hash this value and all of its children."""
-    m = hashlib.md5()
-    seen_data = set()
-    stack = [self]
-    while stack:
-      data = stack.pop()
-      data_hash = hash(data)
-      if data_hash in seen_data:
-        continue
-      seen_data.add(data_hash)
-      m.update(str(data_hash).encode("utf-8"))
-      for mapping in data.get_children_maps():
-        m.update(str(mapping.changestamp).encode("utf-8"))
-        stack.extend(mapping.data)
-    return m.digest()
+  def get_default_fullhash(self):
+    return id(self)
 
-  def get_children_maps(self):
-    """Get this value's dictionaries of children.
-
-    Returns:
-      A sequence of dictionaries from names to child values.
-    """
-    return ()
+  def get_fullhash(self, seen=None):
+    return self.get_default_fullhash()
 
   def get_instance_type_parameter(self, name, node=None):
     """Get a cfg.Variable of the instance's values for the type parameter.

@@ -34,6 +34,8 @@ class Program:
   Attributes:
     entrypoint: Entrypoint of the program, if it has one. (None otherwise)
     cfg_nodes: CFG nodes in use. Will be used for assigning node IDs.
+    next_binding_id: The next id to assign to a Binding. Accessed through
+      NextBindingId().
     next_variable_id: The next id to assign to a variable.
     solver: the active Solver instance.
     default_data: Default value for data.
@@ -47,6 +49,7 @@ class Program:
     self.next_variable_id = 0
     self.solver = None
     self.default_data = None
+    self.next_binding_id = 0
 
   def CreateSolver(self):
     if self.solver is None:
@@ -101,6 +104,10 @@ class Program:
   def is_reachable(self, src, dst):  # pylint: disable=invalid-name
     """Whether a path exists (going forward) from node src to node dst."""
     return _PathFinder().FindAnyPathToNode(dst, src, frozenset())
+
+  def MakeBindingId(self):
+    self.next_binding_id += 1
+    return self.next_binding_id-1
 
 
 class CFGNode:
@@ -233,11 +240,13 @@ class Binding:
   originally retrieved from, before being assigned to something else here.
   Origins contain, through source_sets, "sources", which are other bindings.
   """
-  __slots__ = ("program", "variable", "origins", "data", "_cfgnode_to_origin")
+  __slots__ = ("program", "id", "variable", "origins", "data",
+               "_cfgnode_to_origin")
 
-  def __init__(self, program, variable, data):
+  def __init__(self, program, id_num, variable, data):
     """Initialize a new Binding. Usually called through Variable.AddBinding."""
     self.program = program
+    self.id = id_num
     self.variable = variable
     self.origins = []
     self.data = data
@@ -420,7 +429,7 @@ class Variable:
       binding = self._data_id_to_binding[id(data)]
     except KeyError:
       self.program.InvalidateSolver()
-      binding = Binding(self.program, self, data)
+      binding = Binding(self.program, self.program.MakeBindingId(), self, data)
       self.bindings.append(binding)
       self._data_id_to_binding[id(data)] = binding
       _variable_size_metric.add(len(self.bindings))
