@@ -1,3 +1,19 @@
+Version 2022.10.13:
+
+Updates:
+* Add a flag, --mapping-is-not-sequence, to forbid matching mappings against
+  the Sequence protocol.
+* Add a library for serializing the CFG.
+* Fully support pattern matching in 3.10, aside from exhaustiveness checks.
+* Make some performance improvements around type-checking of function call
+  arguments for functions defined in the same file.
+
+Bug fixes:
+* Store more information in matcher._recursive_annots_cache.
+* Fix "appears only once" TypeVar error on overloads in generic classes.
+* Do not let a kwarg in **args interfere with a posonly arg of the same name.
+* Re-resolve LateType instances that resolve to another LateType.
+
 Version 2022.09.27:
 
 Updates:

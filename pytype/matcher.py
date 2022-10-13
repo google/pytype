@@ -291,7 +291,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       MatchError: if any of the arguments does not match its expected type.
     """
     matches = None
-    self_matches = None
+    has_self = args and args[0].name == "self"
     for arg in args:
       match_result = self.compute_one_match(
           arg.value, arg.typ, arg.name, match_all_views, alias_map)
@@ -308,19 +308,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         raise self.MatchError(bad_param)
       if any(m.subst for m in match_result.good_matches):
         matches = self._merge_matches(
-            arg.name, arg.typ, matches, match_result.good_matches)
-        if arg.name == "self":
-          self_matches = match_result.good_matches
-    if self_matches:
-      new_matches = []
-      for match in matches:
-        for self_match in self_matches:
-          new_subst = datatypes.AliasingDict(match.subst)
-          for name, value in self_match.subst.items():
-            if any(not isinstance(v, abstract.Empty) for v in value.data):
-              new_subst[name] = value
-          new_matches.append(GoodMatch.merge(match, self_match, new_subst))
-      matches = new_matches
+            arg.name, arg.typ, matches, match_result.good_matches, has_self)
     return matches if matches else [GoodMatch.default()]
 
   def compute_one_match(
@@ -933,8 +921,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _merge_matches(
       self, name: str, formal: abstract.BaseValue,
-      old_matches: Optional[List[GoodMatch]], new_matches: List[GoodMatch]
-  ) -> List[GoodMatch]:
+      old_matches: Optional[List[GoodMatch]], new_matches: List[GoodMatch],
+      has_self: bool) -> List[GoodMatch]:
     if old_matches is None:
       return new_matches
     combined_matches = []
@@ -946,7 +934,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       bad_param = None
       for old_match in old_matches:
         combined_subst = self._match_subst_against_subst(
-            old_match.subst, new_match.subst, cur_types)
+            old_match.subst, new_match.subst, cur_types, has_self)
         if combined_subst is None:
           if not bad_param:
             self._error_subst = old_match.subst
@@ -959,7 +947,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         raise self.MatchError(bad_param)
     return combined_matches
 
-  def _match_subst_against_subst(self, old_subst, new_subst, type_param_map):
+  def _match_subst_against_subst(
+      self, old_subst, new_subst, type_param_map, has_self):
     subst = datatypes.AliasingDict(aliases=old_subst.aliases)
     for t in new_subst:
       if t not in old_subst or not old_subst[t].bindings:
@@ -968,6 +957,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if not new_subst[t].bindings:
         subst[t] = old_subst[t]
         continue
+      # Any type parameters in old subst that were matched from a 'self' arg are
+      # class parameters whose values have been declared by the user, e.g.:
+      #   x = Container[int](__any_object__)
+      # We should keep the 'int' value rather than using Union[int, Unknown].
+      # Note that we still need to check that the new values are consistent with
+      # the old ones.
+      keep_old_values = has_self and any(not isinstance(v, abstract.Empty)
+                                         for v in old_subst[t].data)
       for b1 in old_subst[t].bindings:
         for b2 in new_subst[t].bindings:
           new_var, has_error = self._check_type_param_consistency(
@@ -975,10 +972,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
               old_subst.copy(t=b1.AssignToNewVariable(self._node)))
           if has_error:
             continue
-          if t in subst:
+          if t not in subst:
+            subst[t] = old_subst[t] if keep_old_values else new_var
+          elif not keep_old_values:
             subst[t].PasteVariable(new_var, self._node)
-          else:
-            subst[t] = new_var
       if t not in subst:
         return None
     for t in old_subst:
