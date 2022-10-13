@@ -384,6 +384,21 @@ class MatchTest(test_base.BaseTest):
       f(MutableMapping())
     """)
 
+  def test_typevar_and_list_of_typevar(self):
+    self.Check("""
+      from typing import List, TypeVar, Union
+      T = TypeVar('T')
+      KeepFilter = Union[T, List[T]]
+      def filter_values(values: List[T], to_keep: KeepFilter[T]) -> List[T]:
+        return [v for v in values if _should_keep(v, to_keep)]
+      def _should_keep(value: T, to_keep: KeepFilter[T]) -> bool:
+        if isinstance(to_keep, list):
+          return value in to_keep
+        else:
+          return value == to_keep
+      filter_values([.1, .2], .2)
+    """)
+
 
 class MatchTestPy3(test_base.BaseTest):
   """Tests for matching types."""

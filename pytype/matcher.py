@@ -926,12 +926,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     if old_matches is None:
       return new_matches
     combined_matches = []
+    matched = False
+    bad_param = None
     for new_match in new_matches:
       cur_types = datatypes.AliasingDict(
           {t.full_name: t for t in self._seen_type_params},
           aliases=new_match.subst.aliases)
-      matched = False
-      bad_param = None
       for old_match in old_matches:
         combined_subst = self._match_subst_against_subst(
             old_match.subst, new_match.subst, cur_types, has_self)
@@ -943,8 +943,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         combined_matches.append(
             GoodMatch.merge(old_match, new_match, combined_subst))
         matched = True
-      if not matched:
-        raise self.MatchError(bad_param)
+    if not matched:
+      raise self.MatchError(bad_param)
     return combined_matches
 
   def _match_subst_against_subst(
