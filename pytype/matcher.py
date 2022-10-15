@@ -163,6 +163,33 @@ class _UniqueSubsts(Generic[_T]):
     return [d[1:] for d in self._data]
 
 
+class _TypeParams:
+  """Collection of TypeParameter objects encountered during matching."""
+
+  def __init__(self):
+    self.seen = set()
+    self._mutually_exclusive = collections.defaultdict(set)
+
+  def add_mutually_exclusive_groups(self, groups):
+    """Adds groups of mutually exclusive type parameters.
+
+    For example, [{"T1", "T2"}, {"T3", "T4"}] would mean that the following
+    pairs are mutually exclusive: (T1, T3), (T1, T4), (T2, T3), (T2, T4).
+
+    Args:
+      groups: The mutually exclusive groups.
+    """
+    all_params = set.union(*groups)
+    for group in groups:
+      mutually_exclusive = all_params - group
+      for name in group:
+        self._mutually_exclusive[name].update(mutually_exclusive)
+
+  def has_mutually_exclusive(self, name, subst):
+    """Whether 'subst' has a param that is mutually exclusive with 'name'."""
+    return bool(self._mutually_exclusive[name].intersection(subst))
+
+
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
@@ -183,7 +210,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._recursive_annots_cache: Dict[
         Tuple[abstract.BaseValue, abstract.BaseValue], bool] = {}
     self._error_subst = None
-    self._seen_type_params = set()
+    self._type_params = _TypeParams()
     self._reset_errors()
 
   def _reset_errors(self):
@@ -417,7 +444,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         right_side_options = [other_type]
       for right in right_side_options:
         if isinstance(right, abstract.TypeParameter):
-          self._seen_type_params.add(right)
+          self._type_params.seen.add(right)
           # If we have a union like "K or V" and we match both against
           # nothing, that will fill in both K and V.
           if right.full_name not in subst:
@@ -510,7 +537,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                                    function.Signature)) or
         left.instance is abstract_utils.DUMMY_CONTAINER):
       if isinstance(other_type, abstract.TypeParameter):
-        self._seen_type_params.add(other_type)
+        self._type_params.seen.add(other_type)
         new_subst = self._match_type_param_against_type_param(
             left.param, other_type, subst, view)
         if new_subst is not None:
@@ -539,7 +566,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         # left to its upper bound.
         return self._instantiate_and_match(left.param, other_type, subst, view)
     elif isinstance(other_type, abstract.TypeParameter):
-      self._seen_type_params.add(other_type)
+      self._type_params.seen.add(other_type)
       for c in other_type.constraints:
         new_subst = self._match_value_against_type(value, c, subst, view)
         if new_subst is not None:
@@ -591,22 +618,30 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # otherwise preserve the original order.
       options = sorted(enumerate(other_type.options),
                        key=lambda itm: (itm[1].formal, itm[0]))
+      new_substs = []
+      type_param_groups = []
       for _, t in options:
         new_subst = self._match_value_against_type(value, t, subst, view)
         if new_subst is None:
           continue
         matched = True
-        subst = new_subst
         if isinstance(value.data, abstract.AMBIGUOUS_OR_EMPTY) or t.formal:
+          new_substs.append(new_subst)
+          type_param_groups.append(set(new_subst).difference(subst))
           continue
         # Since options without type parameters do not modify subst, we can
         # break after the first match rather than finding all matches. We still
         # need to fill in subst with *something* so that
         # annotation_utils.sub_one_annotation can tell that all annotations have
         # been fully matched.
-        subst = self._subst_with_type_parameters_from(subst, other_type)
+        subst = self._subst_with_type_parameters_from(new_subst, other_type)
         break
-      return subst if matched else None
+      if not matched:
+        return None
+      if not new_substs:
+        return subst
+      self._type_params.add_mutually_exclusive_groups(type_param_groups)
+      return self._merge_substs(subst, new_substs)
     elif (isinstance(other_type, (abstract.Unknown, abstract.Unsolvable)) or
           isinstance(left, (abstract.Unknown, abstract.Unsolvable))):
       # We can match anything against unknown types, and unknown types against
@@ -820,7 +855,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return self._merge_substs(subst, new_substs)
 
   def _mutate_type_parameters(self, params, value, subst):
-    self._seen_type_params.update(params)
+    self._type_params.seen.update(params)
     new_subst = {p.full_name: value.to_variable(self._node) for p in params}
     return self._merge_substs(subst, [new_subst])
 
@@ -862,7 +897,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           not isinstance(right, abstract.TypeParameter) or
           right.constraints or right.bound or callable_param_count[right] != 1):
         return None
-      self._seen_type_params.add(right)
+      self._type_params.seen.add(right)
       subst = subst.copy()
       # We don't know what to fill in here, since we have a TypeVar matching a
       # TypeVar, but we have to add *something* to indicate the match succeeded.
@@ -930,7 +965,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     bad_param = None
     for new_match in new_matches:
       cur_types = datatypes.AliasingDict(
-          {t.full_name: t for t in self._seen_type_params},
+          {t.full_name: t for t in self._type_params.seen},
           aliases=new_match.subst.aliases)
       for old_match in old_matches:
         combined_subst = self._match_subst_against_subst(
@@ -970,11 +1005,16 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           new_var, has_error = self._check_type_param_consistency(
               b2.data, b2, type_param_map[t],
               old_subst.copy(t=b1.AssignToNewVariable(self._node)))
-          if has_error:
+          # If new_subst contains a TypeVar that is mutually exclusive with t,
+          # then we can ignore this error because it is legal for t to not be
+          # present in new_subst.
+          ignore_error = self._type_params.has_mutually_exclusive(t, new_subst)
+          if has_error and not ignore_error:
             continue
+          keep_old = keep_old_values or ignore_error
           if t not in subst:
-            subst[t] = old_subst[t] if keep_old_values else new_var
-          elif not keep_old_values:
+            subst[t] = old_subst[t] if keep_old else new_var
+          elif not keep_old:
             subst[t].PasteVariable(new_var, self._node)
       if t not in subst:
         return None
@@ -1513,7 +1553,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _subst_with_type_parameters_from(self, subst, typ):
     subst = subst.copy()
     for param in self.ctx.annotation_utils.get_type_parameters(typ):
-      self._seen_type_params.add(param)
+      self._type_params.seen.add(param)
       if param.full_name not in subst:
         subst[param.full_name] = self.ctx.convert.empty.to_variable(self._node)
     return subst

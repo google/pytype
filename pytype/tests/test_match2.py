@@ -399,6 +399,16 @@ class MatchTest(test_base.BaseTest):
       filter_values([.1, .2], .2)
     """)
 
+  def test_typevar_union(self):
+    self.Check("""
+      from typing import TypeVar, Union
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      def f(x: T1, y: Union[T1, T2]) -> T2:
+        return __any_object__
+      assert_type(f(0, None), None)
+    """)
+
 
 class MatchTestPy3(test_base.BaseTest):
   """Tests for matching types."""
