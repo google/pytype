@@ -1,7 +1,8 @@
 # pylint: skip-file
 
 #- @A defines/binding ClassA
-#- ClassA.node/kind class
+#- ClassA.node/kind record
+#- ClassA.subkind class
 class A:
   #- @__init__ defines/binding FnInit
   #- @self defines/binding ArgSelf
@@ -20,7 +21,8 @@ class A:
 ## The attr can be initialised somewhere other than __init__
 
 #- @B defines/binding ClassB
-#- ClassB.node/kind class
+#- ClassB.node/kind record
+#- ClassB.subkind class
 class B:
   def f(self, x):
     #- @bar ref AttrBar
@@ -46,7 +48,8 @@ class B:
 
 
 #- @C defines/binding ClassC
-#- ClassC.node/kind class
+#- ClassC.node/kind record
+#- ClassC.subkind class
 class C:
   #- @x defines/binding AttrX
   x: int
