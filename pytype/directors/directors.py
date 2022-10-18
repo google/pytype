@@ -287,6 +287,7 @@ class Director:
     self._function_ranges = _BlockRanges({})
     # Parse the source code for directives.
     self._parse_src_tree(src_tree, code)
+    self._matches = None
 
   @property
   def type_comments(self):
@@ -320,6 +321,7 @@ class Director:
     self.block_returns = visitor.block_returns
     self._return_lines = visitor.block_returns.all_returns()
     self._function_ranges = _BlockRanges(visitor.function_ranges)
+    self.matches = visitor.matches
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:

@@ -457,5 +457,207 @@ class MatchFeaturesTest(test_base.BaseTest):
     """)
 
 
+@test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
+class MatchCoverageTest(test_base.BaseTest):
+  """Test exhaustive coverage of enums."""
+
+  def test_exhaustive(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case (Color.GREEN |
+              Color.BLUE):
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int | str: ...
+    """)
+
+  def test_nonexhaustive(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case Color.GREEN:
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type, Union
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int | str | None: ...
+    """)
+
+  def test_unused_after_exhaustive(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case (Color.GREEN |
+              Color.BLUE):
+            return 20
+          case _:
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int: ...
+    """)
+
+  def test_nested(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color, y: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case (Color.GREEN |
+              Color.BLUE):
+            match y:
+              case Color.RED:
+                return 10
+              case Color.GREEN:
+                return 'a'
+              case _:
+                return None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color, y: Color) -> int | str | None: ...
+    """)
+
+  def test_multiple(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color, y: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case Color.GREEN:
+            return 20
+        match y:
+          case Color.RED:
+            return 'a'
+          case Color.GREEN | Color.BLUE:
+            return 'b'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color, y: Color) -> int | str: ...
+    """)
+
+  def test_enum_with_methods(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+        def red(self):
+          return self.RED
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case (Color.GREEN |
+              Color.BLUE):
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type, TypeVar
+
+      Enum: Type[enum.Enum]
+      _TColor = TypeVar('_TColor', bound=Color)
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+          def red(self: _TColor) -> _TColor: ...
+
+      def f(x: Color) -> int | str: ...
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

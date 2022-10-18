@@ -107,6 +107,26 @@ class _BlockReturns:
     """
 
 
+class _Matches:
+  """Tracks branches of match statements."""
+
+  def __init__(self):
+    self.matches = {}
+    self.match_cases = {}
+
+  def add_match(self, start, end, cases):
+    self.matches[start] = end
+    for case_start, case_end in cases:
+      for i in range(case_start, case_end + 1):
+        self.match_cases[i] = start
+
+  def __repr__(self):
+    return f"""
+      Matches: {sorted(self.matches.items())}
+      Cases: {self.match_cases}
+    """
+
+
 class _ParseVisitor(visitor.BaseVisitor):
   """Visitor for parsing a source tree.
 
@@ -141,6 +161,7 @@ class _ParseVisitor(visitor.BaseVisitor):
     self.function_ranges = {}
     self.block_returns = _BlockReturns()
     self.block_depth = 0
+    self.matches = _Matches()
 
   def _add_structured_comment_group(self, start_line, end_line, cls=LineRange):
     """Adds an empty _StructuredComment group with the given line range."""
@@ -266,6 +287,12 @@ class _ParseVisitor(visitor.BaseVisitor):
 
   def visit_AsyncWith(self, node):
     self._visit_with(node)
+
+  def visit_Match(self, node):
+    start = node.lineno
+    end = node.end_lineno
+    cases = [(c.pattern.lineno, c.pattern.end_lineno) for c in node.cases]
+    self.matches.add_match(start, end, cases)
 
   def generic_visit(self, node):
     if not isinstance(node, ast.stmt):
