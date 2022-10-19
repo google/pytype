@@ -492,7 +492,7 @@ class MatchCoverageTest(test_base.BaseTest):
     """)
 
   def test_nonexhaustive(self):
-    ty = self.Infer("""
+    ty, err = self.InferWithErrors("""
       from enum import Enum
       class Color(Enum):
         RED = 0
@@ -500,7 +500,7 @@ class MatchCoverageTest(test_base.BaseTest):
         BLUE = 2
 
       def f(x: Color):
-        match x:
+        match x:  # incomplete-match[e]
           case Color.RED:
             return 10
           case Color.GREEN:
@@ -519,6 +519,7 @@ class MatchCoverageTest(test_base.BaseTest):
 
       def f(x: Color) -> int | str | None: ...
     """)
+    self.assertErrorSequences(err, {"e": ["missing", "cases", "Color.BLUE"]})
 
   def test_unused_after_exhaustive(self):
     ty = self.Infer("""
@@ -589,7 +590,7 @@ class MatchCoverageTest(test_base.BaseTest):
     """)
 
   def test_multiple(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       from enum import Enum
       class Color(Enum):
         RED = 0
@@ -597,7 +598,7 @@ class MatchCoverageTest(test_base.BaseTest):
         BLUE = 2
 
       def f(x: Color, y: Color):
-        match x:
+        match x:  # incomplete-match
           case Color.RED:
             return 10
           case Color.GREEN:
@@ -657,6 +658,91 @@ class MatchCoverageTest(test_base.BaseTest):
 
       def f(x: Color) -> int | str: ...
     """)
+
+  def test_redundant(self):
+    ty, _ = self.InferWithErrors("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color, y: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case Color.GREEN:
+            return 20
+          case Color.RED:  # redundant-match
+            return '10'
+          case Color.BLUE:
+            return 20
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color, y: Color) -> int: ...
+    """)
+
+  def test_incomplete_and_redundant(self):
+    ty, _ = self.InferWithErrors("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color, y: Color):
+        match x:  # incomplete-match
+          case Color.RED:
+            return 10
+          case Color.GREEN:
+            return 20
+          case Color.RED:  # redundant-match
+            return '10'
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color, y: Color) -> int | None: ...
+    """)
+
+  def test_partially_redundant(self):
+    err = self.CheckWithErrors("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color, y: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case Color.GREEN:
+            return 20
+          case Color.RED | Color.BLUE:  # redundant-match[e]
+            return '10'
+    """)
+    self.assertErrorSequences(err, {"e": ["already been covered", "Color.RED"]})
 
 
 if __name__ == "__main__":

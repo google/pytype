@@ -111,18 +111,20 @@ class _Matches:
   """Tracks branches of match statements."""
 
   def __init__(self):
-    self.matches = {}
+    self.start_to_end = {}
+    self.end_to_starts = collections.defaultdict(list)
     self.match_cases = {}
 
   def add_match(self, start, end, cases):
-    self.matches[start] = end
+    self.start_to_end[start] = end
+    self.end_to_starts[end].append(start)
     for case_start, case_end in cases:
       for i in range(case_start, case_end + 1):
         self.match_cases[i] = start
 
   def __repr__(self):
     return f"""
-      Matches: {sorted(self.matches.items())}
+      Matches: {sorted(self.start_to_end.items())}
       Cases: {self.match_cases}
     """
 

@@ -18,7 +18,7 @@ import functools
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from pytype import blocks
 from pytype import compare
@@ -78,6 +78,9 @@ class _EnumTracker:
     assert enum_case.cls == self.enum_cls
     self.uncovered.discard(enum_case.name)
 
+  def cover_all(self):
+    self.uncovered = set()
+
 
 class _BranchTracker:
   """Track exhaustiveness in pattern matches."""
@@ -85,10 +88,14 @@ class _BranchTracker:
   def __init__(self, director):
     self.matches = director.matches
     self._tracker = {}
+    self._active_ends = set()
 
-  def add_branch(
-      self, op: opcodes.Opcode, match_var: cfg.Variable, case_var: cfg.Variable
-  ):
+  def _add_new_match(self, match_val: abstract.Instance, match_line: int):
+    self._tracker[match_line] = _EnumTracker(match_val.cls)
+    self._active_ends.add(self.matches.start_to_end[match_line])
+
+  def add_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
+                 case_var: cfg.Variable) -> Optional[bool]:
     """Add a match case branch to the tracker."""
     try:
       match_val = abstract_utils.get_atomic_value(match_var)
@@ -105,11 +112,52 @@ class _BranchTracker:
     if match_line is None:
       return None
     if match_line not in self._tracker:
-      self._tracker[match_line] = _EnumTracker(match_val.cls)
+      self._add_new_match(match_val, match_line)
     enum_tracker = self._tracker[match_line]
     assert match_val.cls == enum_tracker.enum_cls
-    enum_tracker.cover(case_val)
-    return not bool(enum_tracker.uncovered)
+    if case_val.name in enum_tracker.uncovered:
+      enum_tracker.cover(case_val)
+      if enum_tracker.uncovered:
+        return None
+      else:
+        # This is the last remaining case, and will always succeed.
+        return True
+    else:
+      # This has already been covered, and will never succeed.
+      return False
+
+  def add_default_branch(self, op: opcodes.Opcode):
+    """Add a default match case branch to the tracker."""
+    assert op.name == "NOP"
+    match_line = self.matches.match_cases.get(op.line)
+    if match_line is None:
+      return None
+    if match_line not in self._tracker:
+      return None
+    self._tracker[match_line].cover_all()
+    return True
+
+  def check_ending(self,
+                   line: int,
+                   implicit_return: bool = False) -> List[Tuple[int, Set[int]]]:
+    """Check if we have ended a match statement with leftover cases."""
+    if implicit_return:
+      done = set()
+      if line in self.matches.match_cases:
+        start = self.matches.match_cases[line]
+        end = self.matches.start_to_end[start]
+        if end in self._active_ends:
+          done.add(end)
+    else:
+      done = {i for i in self._active_ends if line > i}
+    ret = []
+    for i in done:
+      for start in self.matches.end_to_starts[i]:
+        uncovered = self._tracker[start].uncovered
+        if uncovered:
+          ret.append((start, uncovered))
+    self._active_ends -= done
+    return ret
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -258,6 +306,12 @@ class VirtualMachine:
     state = bytecode_fn(state, op)
     if state.why in ("reraise", "NoReturn"):
       state = state.set_why("exception")
+    implicit_return = (
+        op.name == "RETURN_VALUE" and
+        op.line not in self._director.return_lines)
+    chk = self._branch_tracker.check_ending(op.line, implicit_return)
+    for line, cases in chk:
+      self.ctx.errorlog.incomplete_match(self.frames, line, cases)
     self.frame.current_opcode = None
     return state
 
@@ -1134,7 +1188,8 @@ class VirtualMachine:
     return state, itr
 
   def byte_NOP(self, state, op):
-    del op  # unused
+    # In match statements, `case _` compiles to a NOP
+    self._branch_tracker.add_default_branch(op)
     return state
 
   def byte_UNARY_NOT(self, state, op):
@@ -1617,9 +1672,13 @@ class VirtualMachine:
   def _compare_op(self, state, op_arg, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
-    is_complete = self._branch_tracker.add_branch(op, x, y)
-    if is_complete:
-      ret = self.ctx.convert.bool_values[True].to_variable(state.node)
+    match_enum = self._branch_tracker.add_branch(op, x, y)
+    if match_enum is not None:
+      # The match always succeeds/fails.
+      ret = self.ctx.convert.bool_values[match_enum].to_variable(state.node)
+      if match_enum is False:  # pylint: disable=g-bool-id-comparison
+        case_val = abstract_utils.get_atomic_value(y)
+        self.ctx.errorlog.redundant_match(self.frames, case_val.name)
       return state.push(ret)
 
     # Explicit, redundant, switch statement, to make it easier to address the
