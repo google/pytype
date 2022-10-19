@@ -553,7 +553,11 @@ class CallTracer(vm.VirtualMachine):
           self._is_typing_member(name, var)):
         continue
       log.info("Generating pytd type for top-level definition: %r", name)
-      options = var.FilteredData(self.ctx.exitpoint, strict=False)
+      if any(v == self.ctx.convert.unsolvable
+             for v in var.Data(self.ctx.exitpoint)):
+        options = [self.ctx.convert.unsolvable]
+      else:
+        options = var.FilteredData(self.ctx.exitpoint, strict=False)
       if (len(options) > 1 and
           not all(isinstance(o, abstract.FUNCTION_TYPES) for o in options)):
         if all(isinstance(o, abstract.TypeParameter) for o in options):
