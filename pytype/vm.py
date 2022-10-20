@@ -103,7 +103,9 @@ class _BranchTracker:
     except abstract_utils.ConversionError:
       return None
     # We currently only implement exhaustiveness matching for enums.
-    if not (isinstance(match_val, abstract.Instance) and match_val.cls.is_enum):
+    if not (isinstance(match_val, abstract.Instance) and
+            isinstance(match_val.cls, abstract.Class) and
+            match_val.cls.is_enum):
       return None
     if not (isinstance(case_val, abstract.Instance) and
             case_val.cls == match_val.cls):
