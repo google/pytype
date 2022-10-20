@@ -287,7 +287,6 @@ class Director:
     self._function_ranges = _BlockRanges({})
     # Parse the source code for directives.
     self._parse_src_tree(src_tree, code)
-    self._matches = None
 
   @property
   def type_comments(self):

@@ -81,6 +81,28 @@ class _BlockReturns:
     """
 
 
+class _Matches:
+  """Tracks branches of match statements."""
+
+  def __init__(self):
+    self.start_to_end = {}
+    self.end_to_starts = collections.defaultdict(list)
+    self.match_cases = {}
+
+  def add_match(self, start, end, cases):
+    self.start_to_end[start] = end
+    self.end_to_starts[end].append(start)
+    for case_start, case_end in cases:
+      for i in range(case_start, case_end + 1):
+        self.match_cases[i] = start
+
+  def __repr__(self):
+    return f"""
+      Matches: {sorted(self.start_to_end.items())}
+      Cases: {self.match_cases}
+    """
+
+
 class _ParseVisitor(libcst.CSTVisitor):
   """Visitor for parsing a source tree.
 
@@ -110,6 +132,7 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.defs_start = None
     self.function_ranges = {}
     self.block_returns = _BlockReturns()
+    self.matches = _Matches()
 
   def _get_containing_groups(self, start_line, end_line=None):
     """Get _StructuredComment groups that fully contain the given line range."""
