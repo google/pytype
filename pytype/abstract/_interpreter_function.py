@@ -812,6 +812,10 @@ class InterpreterFunction(SignedFunction):
         }
         combinations = [combination]
         ret = self.ctx.new_unsolvable(node_after_call)
+      else:
+        if any(retval == self.ctx.convert.unsolvable
+               for retval in ret.Data(node_after_call)):
+          ret = self.ctx.new_unsolvable(node_after_call)
       for combination in combinations:
         for return_value in ret.bindings:
           values = list(combination.values()) + [return_value]

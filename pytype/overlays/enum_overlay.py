@@ -241,6 +241,14 @@ class EnumInstance(abstract.InterpreterClass):
           return False
     return True
 
+  def get_enum_members(self, qualified=False):
+    ret = {k: v for k, v in self.members.items()
+           if all(d.cls == self for d in v.data)}
+    if qualified:
+      return {f"{self.name}.{k}": v for k, v in ret.items()}
+    else:
+      return ret
+
 
 class EnumCmpEQ(abstract.SimpleFunction):
   """Implements the functionality of __eq__ for an enum."""

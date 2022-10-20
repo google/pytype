@@ -1,7 +1,8 @@
 # pylint: skip-file
 
 #- @A defines/binding ClassA
-#- ClassA.node/kind class
+#- ClassA.node/kind record
+#- ClassA.subkind class
 class A:
   #- @foo defines/binding FnFoo
   #- @self defines/binding ArgSelf

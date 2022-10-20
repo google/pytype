@@ -412,10 +412,13 @@ class ErrorLogBase:
     self._add(Error.with_stack(stack, SEVERITY_WARNING, message % args))
 
   def error(self, stack, message, details=None, keyword=None, bad_call=None,
-            keyword_context=None):
-    self._add(Error.with_stack(stack, SEVERITY_ERROR, message, details=details,
-                               keyword=keyword, bad_call=bad_call,
-                               keyword_context=keyword_context))
+            keyword_context=None, lineno=None):
+    err = Error.with_stack(stack, SEVERITY_ERROR, message, details=details,
+                           keyword=keyword, bad_call=bad_call,
+                           keyword_context=keyword_context)
+    if lineno:
+      err.set_lineno(lineno)
+    self._add(err)
 
   @contextlib.contextmanager
   def checkpoint(self):
@@ -1435,6 +1438,17 @@ class ErrorLog(ErrorLogBase):
   def match_posargs_count(self, stack, cls, posargs, match_args, details=None):
     msg = (f"{cls.name}() accepts {match_args} positional sub-patterns"
            f" ({posargs} given)")
+    self.error(stack, msg, details=details)
+
+  @_error_name("incomplete-match")
+  def incomplete_match(self, stack, line, cases, details=None):
+    cases = ", ".join(cases)
+    msg = f"The enum match is missing the following cases: {cases}"
+    self.error(stack, msg, details=details, lineno=line)
+
+  @_error_name("redundant-match")
+  def redundant_match(self, stack, case, details=None):
+    msg = f"This enum case has already been covered: {case}."
     self.error(stack, msg, details=details)
 
 

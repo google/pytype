@@ -2,7 +2,8 @@
 
 def f():
   #- @A defines/binding ClassA
-  #- ClassA.node/kind class
+  #- ClassA.node/kind record
+  #- ClassA.subkind class
   class A:
     pass
 
@@ -10,7 +11,8 @@ def f():
 #- @g defines/binding G
 def g():
   #- @B defines/binding ClassB
-  #- ClassB.node/kind class
+  #- ClassB.node/kind record
+  #- ClassB.subkind class
   #- ClassB childof G
   class B:
     pass
@@ -21,14 +23,15 @@ def g():
 #- @h defines/binding H
 def h(base):
   #- @C defines/binding ClassC
-  #- ClassC.node/kind class
-  #- ClassC.node/kind class
+  #- ClassC.node/kind record
+  #- ClassC.subkind class
   #- ClassC childof H
   class C(base):
     pass
 
   #- @D defines/binding ClassD
-  #- ClassD.node/kind class
+  #- ClassD.node/kind record
+  #- ClassD.subkind class
   #- ClassD childof H
   class D(C):
     pass

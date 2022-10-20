@@ -282,7 +282,7 @@ class Director:
       self._disables[error_name].start_range(0, True)
     # Store function ranges and return lines to distinguish explicit and
     # implicit returns (the bytecode has a `RETURN None` for implcit returns).
-    self._return_lines = set()
+    self.return_lines = set()
     self.block_returns = None
     self._function_ranges = _BlockRanges({})
     # Parse the source code for directives.
@@ -318,8 +318,9 @@ class Director:
       opcode_lines = None
 
     self.block_returns = visitor.block_returns
-    self._return_lines = visitor.block_returns.all_returns()
+    self.return_lines = visitor.block_returns.all_returns()
     self._function_ranges = _BlockRanges(visitor.function_ranges)
+    self.matches = visitor.matches
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:
@@ -509,7 +510,7 @@ class Director:
       return True
     if (error.name == "bad-return-type" and
         error.opcode_name == "RETURN_VALUE" and
-        error.lineno not in self._return_lines):
+        error.lineno not in self.return_lines):
       # We have an implicit "return None". Adjust the line number to the last
       # line of the function.
       _, end = self._function_ranges.find_outermost(error.lineno)

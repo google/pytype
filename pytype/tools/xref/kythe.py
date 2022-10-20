@@ -155,8 +155,15 @@ def _process_deflocs(kythe: Kythe, index: indexer.Indexer):
       defn_vname = kythe.vname(defn.to_signature())
       start, end = index.get_def_offsets(defloc)
       anchor_vname = kythe.add_anchor(start, end)
-      kythe.add_fact(
-          source=defn_vname, fact_name="node/kind", fact_value=defn.node_kind())
+      node_kind = defn.node_kind()
+      if node_kind == "class":
+        kythe.add_fact(
+            source=defn_vname, fact_name="node/kind", fact_value="record")
+        kythe.add_fact(
+            source=defn_vname, fact_name="subkind", fact_value=node_kind)
+      else:
+        kythe.add_fact(
+            source=defn_vname, fact_name="node/kind", fact_value=node_kind)
       if defn.subkind() is not None:
         kythe.add_fact(
             source=defn_vname, fact_name="subkind", fact_value=defn.subkind())

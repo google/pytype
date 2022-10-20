@@ -18,7 +18,7 @@ import functools
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
 from pytype import blocks
 from pytype import compare
@@ -64,6 +64,102 @@ class LocalOp:
 
   def is_annotate(self):
     return self.op == self.Op.ANNOTATE
+
+
+class _EnumTracker:
+  """Track enum cases for exhaustiveness."""
+
+  def __init__(self, enum_cls):
+    self.enum_cls = enum_cls
+    self.members = list(enum_cls.get_enum_members(qualified=True))
+    self.uncovered = set(self.members)
+
+  def cover(self, enum_case):
+    assert enum_case.cls == self.enum_cls
+    self.uncovered.discard(enum_case.name)
+
+  def cover_all(self):
+    self.uncovered = set()
+
+
+class _BranchTracker:
+  """Track exhaustiveness in pattern matches."""
+
+  def __init__(self, director):
+    self.matches = director.matches
+    self._tracker = {}
+    self._active_ends = set()
+
+  def _add_new_match(self, match_val: abstract.Instance, match_line: int):
+    self._tracker[match_line] = _EnumTracker(match_val.cls)
+    self._active_ends.add(self.matches.start_to_end[match_line])
+
+  def add_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
+                 case_var: cfg.Variable) -> Optional[bool]:
+    """Add a match case branch to the tracker."""
+    try:
+      match_val = abstract_utils.get_atomic_value(match_var)
+      case_val = abstract_utils.get_atomic_value(case_var)
+    except abstract_utils.ConversionError:
+      return None
+    # We currently only implement exhaustiveness matching for enums.
+    if not (isinstance(match_val, abstract.Instance) and
+            isinstance(match_val.cls, abstract.Class) and
+            match_val.cls.is_enum):
+      return None
+    if not (isinstance(case_val, abstract.Instance) and
+            case_val.cls == match_val.cls):
+      return None
+    match_line = self.matches.match_cases.get(op.line)
+    if match_line is None:
+      return None
+    if match_line not in self._tracker:
+      self._add_new_match(match_val, match_line)
+    enum_tracker = self._tracker[match_line]
+    assert match_val.cls == enum_tracker.enum_cls
+    if case_val.name in enum_tracker.uncovered:
+      enum_tracker.cover(case_val)
+      if enum_tracker.uncovered:
+        return None
+      else:
+        # This is the last remaining case, and will always succeed.
+        return True
+    else:
+      # This has already been covered, and will never succeed.
+      return False
+
+  def add_default_branch(self, op: opcodes.Opcode):
+    """Add a default match case branch to the tracker."""
+    assert op.name == "NOP"
+    match_line = self.matches.match_cases.get(op.line)
+    if match_line is None:
+      return None
+    if match_line not in self._tracker:
+      return None
+    self._tracker[match_line].cover_all()
+    return True
+
+  def check_ending(self,
+                   line: int,
+                   implicit_return: bool = False) -> List[Tuple[int, Set[int]]]:
+    """Check if we have ended a match statement with leftover cases."""
+    if implicit_return:
+      done = set()
+      if line in self.matches.match_cases:
+        start = self.matches.match_cases[line]
+        end = self.matches.start_to_end[start]
+        if end in self._active_ends:
+          done.add(end)
+    else:
+      done = {i for i in self._active_ends if line > i}
+    ret = []
+    for i in done:
+      for start in self.matches.end_to_starts[i]:
+        uncovered = self._tracker[start].uncovered
+        if uncovered:
+          ret.append((start, uncovered))
+    self._active_ends -= done
+    return ret
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -124,6 +220,7 @@ class VirtualMachine:
     # Note that we don't need to scope this to the frame because we don't reuse
     # variable ids.
     self._var_names = {}
+    self._branch_tracker = None
 
   @property
   def current_local_ops(self):
@@ -211,6 +308,12 @@ class VirtualMachine:
     state = bytecode_fn(state, op)
     if state.why in ("reraise", "NoReturn"):
       state = state.set_why("exception")
+    implicit_return = (
+        op.name == "RETURN_VALUE" and
+        op.line not in self._director.return_lines)
+    chk = self._branch_tracker.check_ending(op.line, implicit_return)
+    for line, cases in chk:
+      self.ctx.errorlog.incomplete_match(self.frames, line, cases)
     self.frame.current_opcode = None
     return state
 
@@ -426,6 +529,7 @@ class VirtualMachine:
     # but there isn't a better way to wire both pieces together.
     self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
+    self._branch_tracker = _BranchTracker(director)
     code = blocks.merge_annotations(code, self._director.annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
@@ -1086,7 +1190,8 @@ class VirtualMachine:
     return state, itr
 
   def byte_NOP(self, state, op):
-    del op  # unused
+    # In match statements, `case _` compiles to a NOP
+    self._branch_tracker.add_default_branch(op)
     return state
 
   def byte_UNARY_NOT(self, state, op):
@@ -1566,9 +1671,18 @@ class VirtualMachine:
       state = state.push(value, exc_type)
     return state
 
-  def _compare_op(self, state, op_arg):
+  def _compare_op(self, state, op_arg, op):
     """Pops and compares the top two stack values and pushes a boolean."""
     state, (x, y) = state.popn(2)
+    match_enum = self._branch_tracker.add_branch(op, x, y)
+    if match_enum is not None:
+      # The match always succeeds/fails.
+      ret = self.ctx.convert.bool_values[match_enum].to_variable(state.node)
+      if match_enum is False:  # pylint: disable=g-bool-id-comparison
+        case_val = abstract_utils.get_atomic_value(y)
+        self.ctx.errorlog.redundant_match(self.frames, case_val.name)
+      return state.push(ret)
+
     # Explicit, redundant, switch statement, to make it easier to address the
     # behavior of individual compare operations:
     if op_arg == slots.CMP_LT:
@@ -1608,21 +1722,21 @@ class VirtualMachine:
     return state.push(ret)
 
   def byte_COMPARE_OP(self, state, op):
-    return self._compare_op(state, op.arg)
+    return self._compare_op(state, op.arg, op)
 
   def byte_IS_OP(self, state, op):
     if op.arg:
       op_arg = slots.CMP_IS_NOT
     else:
       op_arg = slots.CMP_IS
-    return self._compare_op(state, op_arg)
+    return self._compare_op(state, op_arg, op)
 
   def byte_CONTAINS_OP(self, state, op):
     if op.arg:
       op_arg = slots.CMP_NOT_IN
     else:
       op_arg = slots.CMP_IN
-    return self._compare_op(state, op_arg)
+    return self._compare_op(state, op_arg, op)
 
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""

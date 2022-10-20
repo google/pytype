@@ -40,6 +40,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [ignored-metaclass](#ignored-metaclass)
       * [ignored-type-comment](#ignored-type-comment)
       * [import-error](#import-error)
+      * [incomplete-match](#incomplete-match)
       * [invalid-annotation](#invalid-annotation)
       * [invalid-directive](#invalid-directive)
       * [invalid-function-definition](#invalid-function-definition)
@@ -62,6 +63,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [python-compiler-error](#python-compiler-error)
       * [recursion-error](#recursion-error)
       * [redundant-function-type-comment](#redundant-function-type-comment)
+      * [redundant-match](#redundant-match)
       * [reveal-type](#reveal-type)
       * [signature-mismatch](#signature-mismatch)
       * [typed-dict-error](#typed-dict-error)
@@ -71,7 +73,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
+<!-- Added by: mdemello, at: 2022-10-18T17:09-07:00 -->
 
 <!--te-->
 
@@ -386,6 +388,26 @@ def f():
 
 The module being imported was not found.
 
+## incomplete-match
+
+A pattern match over an enum did not cover all possible cases.
+
+<!-- bad -->
+```python
+from enum import Enum
+class Color(Enum):
+  RED = 0
+  GREEN = 1
+  BLUE = 2
+
+def f(x: Color):
+  match x:  # incomplete-match
+    case Color.RED:
+      return 10
+    case Color.GREEN:
+      return 20
+```
+
 ## invalid-annotation
 
 Something is wrong with this annotation. A common issue is a TypeVar that
@@ -576,7 +598,6 @@ def f() -> bool:
 An invalid pattern matching construct was used (e.g. too many positional
 parameters)
 
-
 ## missing-parameter
 
 The function was called with a parameter missing. Example:
@@ -735,6 +756,28 @@ is not allowed. Example:
 def f() -> None:
   # type: () -> None  # redundant-function-type-comment
   pass
+```
+
+## redundant-match
+
+A pattern match over an enum covered the same case more than once.
+
+<!-- bad -->
+```python
+from enum import Enum
+class Color(Enum):
+  RED = 0
+  GREEN = 1
+  BLUE = 2
+
+def f(x: Color):
+  match x:
+    case Color.RED:
+      return 10
+    case Color.GREEN:
+      return 20
+    case Color.RED | Color.BLUE:  # redundant-match
+      return 20
 ```
 
 ## reveal-type
