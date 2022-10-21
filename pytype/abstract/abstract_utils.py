@@ -1,5 +1,6 @@
 """Utilities for abstract.py."""
 
+import collections
 import dataclasses
 import logging
 from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple, Union
@@ -938,3 +939,18 @@ def get_dict_fullhash_component(
     vardict = {name: vardict[name] for name in names.intersection(vardict)}
   return tuple(sorted((k, get_var_fullhash_component(v, seen))
                       for k, v in vardict.items()))
+
+
+def simplify_variable(var, node, ctx):
+  """Deduplicates identical data in `var`."""
+  if not var:
+    return var
+  bindings_by_hash = collections.defaultdict(list)
+  for b in var.bindings:
+    bindings_by_hash[b.data.get_fullhash()].append(b)
+  if len(bindings_by_hash) == len(var.bindings):
+    return var
+  new_var = ctx.program.NewVariable()
+  for bindings in bindings_by_hash.values():
+    new_var.AddBinding(bindings[0].data, bindings, node)
+  return new_var

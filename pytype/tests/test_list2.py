@@ -122,6 +122,22 @@ class ListTest(test_base.BaseTest):
       p = ...  # type: List[str]
       """)
 
+  def test_appends(self):
+    # Regression test for a crash involving list appends and accesses for a
+    # variable with multiple bindings.
+    self.Check("""
+    from typing import List
+    def f():
+      lst1: List[List[str]] = []
+      lst2: List[List[str]] = []
+      if __random__:
+        x, lst1 = __any_object__
+      else:
+        x = lst2[-1]
+      lst1.append(x)
+      lst2.append(lst1[-1])
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

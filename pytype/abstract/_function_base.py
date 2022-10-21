@@ -89,30 +89,6 @@ class Function(_instance_base.SimpleValue):
     return self._match_args_sequentially(node, args, alias_map, match_all_views)
 
   def _is_complex_generic_call(self, args):
-    if _isinstance(self, "SignedFunction"):
-      return False
-    for sig in function.get_signatures(self):
-      parameter_typevar_count = 0
-      for name, t in sig.annotations.items():
-        stack = [t]
-        seen = set()
-        while stack:
-          cur = stack.pop()
-          if cur in seen:
-            continue
-          seen.add(cur)
-          if cur.template:
-            return True
-          parameter_typevar_count += (name != "return" and cur.formal)
-          if _isinstance(cur, "Union"):
-            stack.extend(cur.options)
-      if parameter_typevar_count > 1:
-        return True
-    if self.is_attribute_of_class and args.posargs:
-      for self_val in args.posargs[0].data:
-        for cls in self_val.cls.mro:
-          if cls.template:
-            return True
     return False
 
   def _match_views(self, node, args, alias_map, match_all_views):

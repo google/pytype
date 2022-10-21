@@ -279,6 +279,23 @@ class OverloadTest(test_base.BaseTest):
           return __any_object__
     """)
 
+  def test_multiple_matches_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import overload
+      @overload
+      def f(x: str) -> str: ...
+      @overload
+      def f(x: bytes) -> bytes: ...
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Tuple
+        def f(arg) -> Tuple[str, str]:
+          x = 'hello world' if __random__ else arg
+          y = arg if __random__ else 'goodbye world'
+          return foo.f(x), foo.f(y)
+      """)
+
 
 class OverloadTestPy3(test_base.BaseTest):
   """Python 3 tests for typing.overload."""

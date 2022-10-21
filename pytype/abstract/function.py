@@ -404,21 +404,6 @@ def _convert_namedargs(namedargs):
   return {} if namedargs is None else namedargs
 
 
-def _simplify_variable(var, node, ctx):
-  """Deduplicates identical data in `var`."""
-  if not var:
-    return var
-  bindings_by_hash = collections.defaultdict(list)
-  for b in var.bindings:
-    bindings_by_hash[b.data.get_fullhash()].append(b)
-  if len(bindings_by_hash) == len(var.bindings):
-    return var
-  new_var = ctx.program.NewVariable()
-  for bindings in bindings_by_hash.values():
-    new_var.AddBinding(bindings[0].data, bindings, node)
-  return new_var
-
-
 @attrs.frozen(eq=True)
 class Args:
   """Represents the parameters of a function call.
@@ -615,7 +600,7 @@ class Args:
         # have a signature to match. Just set all splats to Any.
         posargs = self.posargs + _splats_to_any(starargs_as_tuple, ctx)
         starargs = None
-    simplify = lambda var: _simplify_variable(var, node, ctx)
+    simplify = lambda var: abstract_utils.simplify_variable(var, node, ctx)
     return Args(tuple(simplify(posarg) for posarg in posargs),
                 {k: simplify(namedarg) for k, namedarg in namedargs.items()},
                 simplify(starargs), simplify(starstarargs))
@@ -801,12 +786,9 @@ def _splats_to_any(seq, ctx):
       for v in seq)
 
 
-def call_function(ctx,
-                  node,
-                  func_var,
-                  args,
-                  fallback_to_unsolvable=True,
-                  allow_noreturn=False):
+def call_function(
+    ctx, node, func_var, args, fallback_to_unsolvable=True,
+    allow_noreturn=False, strict_filter=True):
   """Call a function.
 
   Args:
@@ -816,6 +798,7 @@ def call_function(ctx,
     args: The arguments to pass. See function.Args.
     fallback_to_unsolvable: If the function call fails, create an unknown.
     allow_noreturn: Whether typing.NoReturn is allowed in the return type.
+    strict_filter: Whether function bindings should be strictly filtered.
   Returns:
     A tuple (CFGNode, Variable). The Variable is the return value.
   Raises:
@@ -834,7 +817,8 @@ def call_function(ctx,
     try:
       new_node, one_result = func.call(node, funcb, args)
     except (DictKeyMissing, FailedFunctionCall) as e:
-      if e > error and funcb.IsVisible(node):
+      if e > error and ((not strict_filter and len(func_var.bindings) == 1) or
+                        funcb.IsVisible(node)):
         error = e
     else:
       if ctx.convert.no_return in one_result.data:

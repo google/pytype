@@ -51,43 +51,23 @@ class Popen(abstract.PyTDClass):
 class PopenNew(abstract.PyTDFunction):
   """Custom implementation of subprocess.Popen.__new__."""
 
-  def _match_bytes_mode(self, args, view):
-    """Returns the matching signature if bytes mode was definitely requested."""
-    for kw, val in [("encoding", self.ctx.convert.none),
-                    ("errors", self.ctx.convert.none),
-                    ("universal_newlines", self.ctx.convert.false),
-                    ("text", self.ctx.convert.false)]:
-      if kw in args.namedargs and view[args.namedargs[kw]].data != val:
-        return None
-    return self.signatures[-2]
-
-  def _match_text_mode(self, args, view):
-    """Returns the matching signature if text mode was definitely requested."""
-    for i, (kw, typ) in enumerate([("encoding", self.ctx.convert.str_type),
-                                   ("errors", self.ctx.convert.str_type)]):
-      if kw in args.namedargs and view[args.namedargs[kw]].data.cls == typ:
-        return self.signatures[i]
-    for i, (kw,
-            val) in enumerate([("universal_newlines", self.ctx.convert.true),
-                               ("text", self.ctx.convert.true)], 2):
-      if kw in args.namedargs and view[args.namedargs[kw]].data == val:
-        return self.signatures[i]
-    return None
-
-  def _yield_matching_signatures(self, node, args, view, alias_map):
-    # In Python 3, we need to distinguish between Popen[bytes] and Popen[str].
-    # This requires an overlay because:
-    # (1) the stub uses typing.Literal, which pytype doesn't support yet, and
-    # (2) bytes/text can be distinguished definitely based on only a few of
-    #     the parameters, but pytype will fall back to less precise matching
-    #     if any of the parameters has an unknown type.
-    sig = self._match_text_mode(args, view)
-    if sig is None:
-      sig = self._match_bytes_mode(args, view)
-    if sig is None:
-      yield from super()._yield_matching_signatures(
-          node, args, view, alias_map)
-      return
-    arg_dict, subst = sig.substitute_formal_args_old(
-        node, args, view, alias_map)
-    yield sig, arg_dict, subst
+  def _can_match_multiple(self, args):
+    # We need to distinguish between Popen[bytes] and Popen[str]. This requires
+    # an overlay because bytes/str can be distinguished definitely based on only
+    # a few of the parameters, but pytype will fall back to less precise
+    # matching if any of the parameters has an unknown type.
+    found_ambiguous_arg = False
+    for kw, literal in [("encoding", False), ("errors", False),
+                        ("universal_newlines", True), ("text", True)]:
+      if kw not in args.namedargs:
+        continue
+      if literal:
+        ambiguous = any(not isinstance(v, abstract.ConcreteValue)
+                        for v in args.namedargs[kw].data)
+      else:
+        ambiguous = any(isinstance(v, abstract.AMBIGUOUS_OR_EMPTY)
+                        for v in args.namedargs[kw].data)
+      if not ambiguous:
+        return False
+      found_ambiguous_arg = True
+    return super()._can_match_multiple(args) if found_ambiguous_arg else False

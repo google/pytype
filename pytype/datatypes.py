@@ -116,7 +116,7 @@ class UnionFind:
 class AccessTrackingDict(Dict[_K, _V]):
   """A dict that tracks access of its original items."""
 
-  def __init__(self, d):
+  def __init__(self, d=()):
     super().__init__(d)
     self.accessed_subset = {}
 
@@ -136,6 +136,19 @@ class AccessTrackingDict(Dict[_K, _V]):
     if k in self:
       _ = self[k]
     return super().__delitem__(k)
+
+  def update(self, *args, **kwargs):
+    super().update(*args, **kwargs)
+    for d in args:
+      if isinstance(d, AccessTrackingDict):
+        self.accessed_subset.update(d.accessed_subset)
+
+  @classmethod
+  def merge(cls, *dicts):
+    self = cls()
+    for d in dicts:
+      self.update(d)
+    return self
 
 
 class MonitorDict(Dict[_K, _V]):

@@ -1,9 +1,10 @@
 """Abstract representation of a function loaded from a type stub."""
 
 import collections
+import contextlib
 import itertools
 import logging
-from typing import Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from pytype import datatypes
 from pytype import utils
@@ -20,15 +21,65 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
+from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+
+# pytype.matcher.GoodMatch, which can't be imported due to a circular dep
+_GoodMatchType = Any
 
 
 def _is_literal(annot: Optional[_base.BaseValue]):
   if isinstance(annot, _typing.Union):
     return all(_is_literal(o) for o in annot.options)
   return isinstance(annot, _classes.LiteralClass)
+
+
+class _MatchedSignatures:
+  """Function call matches."""
+
+  def __init__(self, args, can_match_multiple):
+    self._args_vars = set(args.get_variables())
+    self._can_match_multiple = can_match_multiple
+    self._data: List[List[
+        Tuple[PyTDSignature, Dict[str, cfg.Variable], _GoodMatchType]]] = []
+    self._sig = self._cur_data = None
+
+  def __bool__(self):
+    return bool(self._data)
+
+  @contextlib.contextmanager
+  def with_signature(self, sig):
+    """Sets the signature that we are collecting matches for."""
+    assert self._sig is self._cur_data is None
+    self._sig = sig
+    # We collect data for the current signature separately and merge it in at
+    # the end so that add() does not wastefully iterate over the new data.
+    self._cur_data = []
+    try:
+      yield
+    finally:
+      self._data.extend(self._cur_data)
+      self._sig = self._cur_data = None
+
+  def add(self, arg_dict, match):
+    """Adds a new match."""
+    for sigs in self._data:
+      if sigs[-1][0] == self._sig:
+        continue
+      new_view = match.view.accessed_subset
+      old_view = sigs[0][2].view.accessed_subset
+      if all(new_view[k] == old_view[k] for k in new_view if k in old_view):
+        if self._can_match_multiple:
+          sigs.append((self._sig, arg_dict, match))
+        break
+    else:
+      self._cur_data.append([(self._sig, arg_dict, match)])
+
+  def get(self):
+    """Gets the matches."""
+    return self._data
 
 
 class PyTDFunction(_function_base.Function):
@@ -151,29 +202,16 @@ class PyTDFunction(_function_base.Function):
     # through the normal matching process. Thus, we create a combined view that
     # is guaranteed to contain an entry for every variable in every view for use
     # by the match_var_against_type() call in 'compatible_with' below.
-    combined_view = {}
-
-    def uses_variables(arg_dict):
-      # TODO(b/228241343): Currently, arg_dict is a name->Binding mapping when
-      # the old matching implementation is used and a name->Variable mapping
-      # when the new one is used.
-      if arg_dict:
-        try:
-          next(iter(arg_dict.values())).bindings
-        except AttributeError:
-          return False
-      return True
-
-    for view, signatures in possible_calls:
+    combined_view = datatypes.AccessTrackingDict()
+    for signatures in possible_calls:
+      view = datatypes.AccessTrackingDict()
+      for _, _, match in signatures:
+        view.update(match.view)
       if len(signatures) > 1:
-        variable = uses_variables(signatures[0][1])
-        ret = self._call_with_signatures(
-            node, func, args, view, signatures, variable)
+        ret = self._call_with_signatures(node, func, args, view, signatures)
       else:
-        (sig, arg_dict, substs_or_matches), = signatures
-        variable = uses_variables(arg_dict)
-        ret = sig.call_with_args(
-            node, func, arg_dict, substs_or_matches, ret_map, variable)
+        (sig, arg_dict, match), = signatures
+        ret = sig.call_with_args(node, func, arg_dict, match, ret_map)
       node, result, mutations = ret
       retvar.PasteVariable(result, node)
       for mutation in mutations:
@@ -231,7 +269,8 @@ class PyTDFunction(_function_base.Function):
               if not should_check(b.data) or b.data in ps:
                 filtered_values.PasteBinding(b)
                 continue
-              new_view = {**combined_view, **view, values: b}
+              new_view = datatypes.AccessTrackingDict.merge(
+                  combined_view, view, {values: b})
               if not compatible_with(values, ps, new_view):
                 combination = [b]
                 bad_param = b.data.get_instance_type_parameter(short_name)
@@ -289,20 +328,15 @@ class PyTDFunction(_function_base.Function):
                       node, action="type_param_" + name)))
     return mutations
 
-  def _can_match_multiple(self, args, view, variable):
+  def _can_match_multiple(self, args):
     # If we're calling an overloaded pytd function with an unknown as a
     # parameter, we can't tell whether it matched or not. Hence, if multiple
     # signatures are possible matches, we don't know which got called. Check
     # if this is the case.
     if len(self.signatures) <= 1:
       return False
-    if variable:
-      for var in view:
-        if any(_isinstance(v, "AMBIGUOUS_OR_EMPTY") for v in var.data):
-          return True
-    else:
-      if any(_isinstance(view[arg].data, "AMBIGUOUS_OR_EMPTY")
-             for arg in args.get_variables()):
+    for var in args.get_variables():
+      if any(_isinstance(v, "AMBIGUOUS_OR_EMPTY") for v in var.data):
         return True
     for arg in (args.starargs, args.starstarargs):
       # An opaque *args or **kwargs behaves like an unknown.
@@ -311,7 +345,7 @@ class PyTDFunction(_function_base.Function):
     return False
 
   def _match_view(self, node, args, view, alias_map=None):
-    if self._can_match_multiple(args, view, False):
+    if self._can_match_multiple(args):
       signatures = tuple(self._yield_matching_signatures(
           node, args, view, alias_map))
     else:
@@ -327,7 +361,7 @@ class PyTDFunction(_function_base.Function):
       signatures = (sig,)
     return (view, signatures)
 
-  def _call_with_signatures(self, node, func, args, view, signatures, variable):
+  def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
     ret_type = self._combine_multiple_returns(signatures)
     if (self.ctx.options.protocols and isinstance(ret_type, pytd.AnythingType)):
@@ -339,11 +373,7 @@ class PyTDFunction(_function_base.Function):
       result = self.ctx.convert.constant_to_var(
           abstract_utils.AsReturnValue(ret_type), {}, node)
     for i, arg in enumerate(args.posargs):
-      if variable:
-        unknown = any(isinstance(v, _singletons.Unknown) for v in arg.data)
-      else:
-        unknown = isinstance(view[arg].data, _singletons.Unknown)
-      if unknown:
+      if arg in view and isinstance(view[arg].data, _singletons.Unknown):
         for sig, _, _ in signatures:
           if (len(sig.param_types) > i and
               isinstance(sig.param_types[i], _typing.TypeParameter)):
@@ -353,24 +383,20 @@ class PyTDFunction(_function_base.Function):
             #  def f(x: T) -> T
             #  def f(x: int) -> T
             # the type of x should be Any, not int.
-            b = arg.AddBinding(self.ctx.convert.unsolvable, [], node)
-            if not variable:
-              view[arg] = b
+            view[arg] = arg.AddBinding(self.ctx.convert.unsolvable, [], node)
             break
     if self._has_mutable:
       # TODO(b/159055015): We only need to whack the type params that appear in
       # a mutable parameter.
-      assert not variable
       mutations = self._get_mutation_to_unknown(
-          node, (view[p].data for p in itertools.chain(
-              args.posargs, args.namedargs.values())))
+          node,
+          (view[p].data if p in view else self.ctx.convert.unsolvable
+           for p in itertools.chain(args.posargs, args.namedargs.values())))
     else:
       mutations = []
     self.ctx.vm.trace_call(
-        node, func, tuple(sig[0] for sig in signatures),
-        [view[arg] for arg in args.posargs],
-        {name: view[arg] for name, arg in args.namedargs.items()}, result,
-        variable)
+        node, func, tuple(sig[0] for sig in signatures), args.posargs,
+        args.namedargs, result)
     return node, result, mutations
 
   def _combine_multiple_returns(self, signatures):
@@ -433,17 +459,25 @@ class PyTDFunction(_function_base.Function):
       raise error  # pylint: disable=raising-bad-type
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
-    arg_variables = args.get_variables()
-    # TODO(b/228241343): The notion of a view will no longer be necessary once
-    # we transition fully to arg-by-arg matching.
-    variable_view = {var: var for var in arg_variables}
     error = None
-    matched_signatures = []
-    can_match_multiple = self._can_match_multiple(args, variable_view, True)
+    matched_signatures = _MatchedSignatures(
+        args, self._can_match_multiple(args))
+    # Once a constant has matched a literal type, it should no longer be able to
+    # match non-literal types. For example, with:
+    #   @overload
+    #   def f(x: Literal['r']): ...
+    #   @overload
+    #   def f(x: str): ...
+    # f('r') should match only the first signature.
+    literal_matches = set()
     for sig in self.signatures:
+      if any(not _is_literal(sig.signature.annotations.get(name))
+             for name in literal_matches):
+        continue
       try:
         arg_dict, matches = sig.substitute_formal_args(
-            node, args, variable_view, match_all_views)
+            node, args, match_all_views,
+            keep_all_views=sig is not self.signatures[-1])
       except function.FailedFunctionCall as e:
         if e > error:
           # Add the name of the caller if possible.
@@ -451,12 +485,16 @@ class PyTDFunction(_function_base.Function):
             e.name = f"{self.parent.name}.{e.name}"
           error = e
       else:
-        matched_signatures.append((sig, arg_dict, matches))
-        if not can_match_multiple:
-          break
+        with matched_signatures.with_signature(sig):
+          for match in matches:
+            matched_signatures.add(arg_dict, match)
+        for name, var in arg_dict.items():
+          if (any(isinstance(v, mixin.PythonConstant) for v in var.data) and
+              _is_literal(sig.signature.annotations.get(name))):
+            literal_matches.add(name)
     if not matched_signatures:
       raise error
-    return [(variable_view, matched_signatures)]
+    return matched_signatures.get()
 
   def set_function_defaults(self, node, defaults_var):
     """Attempts to set default arguments for a function's signatures.
@@ -510,18 +548,17 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     ]
     self.signature = function.Signature.from_pytd(ctx, name, pytd_sig)
 
-  def _map_args(self, node, args, view):
+  def _map_args(self, node, args):
     """Map the passed arguments to a name->binding dictionary.
 
     Args:
       node: The current node.
       args: The passed arguments.
-      view: A variable->binding dictionary.
 
     Returns:
       A tuple of:
         a list of formal arguments, each a (name, abstract value) pair;
-        a name->binding dictionary of the passed arguments.
+        a name->variable dictionary of the passed arguments.
 
     Raises:
       InvalidParameters: If the passed arguments don't match this signature.
@@ -532,7 +569,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
     # positional args
     for name, arg in zip(self.signature.param_names, args.posargs):
-      arg_dict[name] = view[arg]
+      arg_dict[name] = arg
     num_expected_posargs = len(self.signature.param_names)
     if len(args.posargs) > num_expected_posargs and not self.pytd_sig.starargs:
       raise function.WrongArgCount(self.signature, args, self.ctx)
@@ -541,7 +578,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     if isinstance(varargs_type, _classes.ParameterizedClass):
       for (i, vararg) in enumerate(args.posargs[num_expected_posargs:]):
         name = function.argname(num_expected_posargs + i)
-        arg_dict[name] = view[vararg]
+        arg_dict[name] = vararg
         formal_args.append(
             (name, varargs_type.get_formal_type_parameter(abstract_utils.T)))
 
@@ -550,7 +587,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     for name, arg in args.namedargs.items():
       if name in arg_dict and name not in posonly_names:
         raise function.DuplicateKeyword(self.signature, args, self.ctx, name)
-      arg_dict[name] = view[arg]
+      arg_dict[name] = arg
     kws = set(args.namedargs)
     extra_kwargs = kws - {p.name for p in self.pytd_sig.params}
     if extra_kwargs and not self.pytd_sig.starstarargs:
@@ -580,7 +617,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       actual = getattr(args, arg_type)
       pytd_val = getattr(self.pytd_sig, arg_type)
       if actual and pytd_val:
-        arg_dict[name] = view[actual]
+        arg_dict[name] = actual
         # The annotation is Tuple or Dict, but the passed arg only has to be
         # Iterable or Mapping.
         typ = self.ctx.convert.widen_type(self.signature.annotations[name])
@@ -588,7 +625,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
     return formal_args, arg_dict
 
-  def _fill_in_missing_parameters(self, node, args, arg_dict, variable):
+  def _fill_in_missing_parameters(self, node, args, arg_dict):
     for p in self.pytd_sig.params:
       if p.name not in arg_dict:
         if (not p.optional and args.starargs is None and
@@ -596,18 +633,12 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           raise function.MissingParameter(
               self.signature, args, self.ctx, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
-        # Unfortunately, we can't easily use *args or **kwargs to fill in
-        # something more precise, since we need a Value, not a Variable.
-        if variable:
-          param = self.ctx.new_unsolvable(node)
-        else:
-          param = self.ctx.convert.unsolvable.to_binding(node)
-        arg_dict[p.name] = param
+        arg_dict[p.name] = self.ctx.new_unsolvable(node)
 
   def substitute_formal_args_old(self, node, args, view, alias_map):
     """Substitute matching args into this signature. Used by PyTDFunction."""
-    formal_args, arg_dict = self._map_args(node, args, view)
-    self._fill_in_missing_parameters(node, args, arg_dict, False)
+    formal_args, arg_dict = self._map_args(node, args)
+    self._fill_in_missing_parameters(node, args, arg_dict)
     subst, bad_arg = self.ctx.matcher(node).compute_subst(
         formal_args, arg_dict, view, alias_map)
     if subst is None:
@@ -626,15 +657,16 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
     return arg_dict, [subst]
 
-  def substitute_formal_args(self, node, args, variable_view, match_all_views):
+  def substitute_formal_args(self, node, args, match_all_views, keep_all_views):
     """Substitute matching args into this signature. Used by PyTDFunction."""
-    formal_args, arg_dict = self._map_args(node, args, variable_view)
-    self._fill_in_missing_parameters(node, args, arg_dict, True)
+    formal_args, arg_dict = self._map_args(node, args)
+    self._fill_in_missing_parameters(node, args, arg_dict)
     args_to_match = [function.Arg(name, arg_dict[name], formal)
                      for name, formal in formal_args]
     matcher = self.ctx.matcher(node)
     try:
-      matches = matcher.compute_matches(args_to_match, match_all_views)
+      matches = matcher.compute_matches(
+          args_to_match, match_all_views, keep_all_views)
     except matcher.MatchError as e:
       if self.signature.has_param(e.bad_type.name):
         signature = self.signature
@@ -677,41 +709,31 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       ret.AddBinding(self.ctx.convert.empty, [], node)
     return node, ret
 
-  def call_with_args(
-      self, node, func, arg_dict, substs_or_matches, ret_map, variable):
+  def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""
-    ret = self.ctx.program.NewVariable()
-    mutations = []
-    for subst_or_match in substs_or_matches:
-      subst = getattr(subst_or_match, "subst", subst_or_match)
-      t = (self.pytd_sig.return_type, subst)
-      sources = [func]
-      if variable:
-        for v in arg_dict.values():
-          # For the argument that 'subst' was generated from, we need to add the
-          # corresponding binding. For the rest, it does not appear to matter
-          # which binding we add to the sources, as long as we add one from
-          # every variable.
-          sources.append(subst_or_match.view.get(v, v.bindings[0]))
-      else:
-        sources.extend(arg_dict.values())
-      visible = node.CanHaveCombination(sources)
-      if visible and t in ret_map:
-        # add the new sources
-        for data in ret_map[t].data:
-          ret_map[t].AddBinding(data, sources, node)
-      elif visible:
-        node, ret_map[t] = self.instantiate_return(node, subst, sources)
-      elif t not in ret_map:
-        ret_map[t] = self.ctx.program.NewVariable()
-      ret.PasteVariable(ret_map[t])
-      mutations.extend(self._get_mutation(
-          node, arg_dict, subst, ret_map[t], variable))
+    subst = match.subst
+    t = (self.pytd_sig.return_type, subst)
+    sources = [func]
+    for v in arg_dict.values():
+      # For the argument that 'subst' was generated from, we need to add the
+      # corresponding binding. For the rest, it does not appear to matter
+      # which binding we add to the sources, as long as we add one from
+      # every variable.
+      sources.append(match.view.get(v, v.bindings[0]))
+    visible = node.CanHaveCombination(sources)
+    if visible and t in ret_map:
+      # add the new sources
+      for data in ret_map[t].data:
+        ret_map[t].AddBinding(data, sources, node)
+    elif visible:
+      node, ret_map[t] = self.instantiate_return(node, subst, sources)
+    elif t not in ret_map:
+      ret_map[t] = self.ctx.program.NewVariable()
+    mutations = self._get_mutation(node, arg_dict, subst, ret_map[t])
     self.ctx.vm.trace_call(
         node, func, (self,),
-        tuple(arg_dict[p.name] for p in self.pytd_sig.params), {}, ret,
-        variable)
-    return node, ret, mutations
+        tuple(arg_dict[p.name] for p in self.pytd_sig.params), {}, ret_map[t])
+    return node, ret_map[t], mutations
 
   @classmethod
   def _collect_mutated_parameters(cls, typ, mutated_type):
@@ -733,7 +755,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       raise ValueError(f"Unsupported mutation:\n{typ!r} ->\n{mutated_type!r}")
     return [zip(mutated_type.base_type.cls.template, mutated_type.parameters)]
 
-  def _get_mutation(self, node, arg_dict, subst, retvar, variable):
+  def _get_mutation(self, node, arg_dict, subst, retvar):
     """Mutation for changing the type parameters of mutable arguments.
 
     This will adjust the type parameters as needed for pytd functions like:
@@ -744,10 +766,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
     Args:
       node: The current CFG node.
-      arg_dict: A map of strings to cfg.Bindings instances.
+      arg_dict: A map of strings to cfg.Variable instances.
       subst: Current type parameters.
       retvar: A variable of the return value.
-      variable: If True, arg_dict maps to Variables rather than Bindings.
     Returns:
       A list of Mutation instances.
     Raises:
@@ -764,13 +785,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           subst, self.pytd_sig, node, self.ctx)
     for formal in self.pytd_sig.params:
       actual = arg_dict[formal.name]
-      arg = actual.data
       if formal.mutated_type is None:
         continue
-      if variable:
-        args = actual.data
-      else:
-        args = [actual.data]
+      args = actual.data
       for arg in args:
         if isinstance(arg, _instance_base.SimpleValue):
           try:

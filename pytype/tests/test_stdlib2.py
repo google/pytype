@@ -486,6 +486,26 @@ class StdlibTestsFeatures(test_base.BaseTest,
       def run(cmd) -> str: ...
     """)
 
+  def test_popen_ambiguous_universal_newlines(self):
+    ty = self.Infer("""
+      import subprocess
+      from typing import Any
+      def run1(value: bool):
+        proc = subprocess.Popen(['ls'], universal_newlines=value)
+        stdout, _ = proc.communicate()
+        return stdout
+      def run2(value: Any):
+        proc = subprocess.Popen(['ls'], universal_newlines=value)
+        stdout, _ = proc.communicate()
+        return stdout
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import subprocess
+      from typing import Any, Union
+      def run1(value: bool) -> Any: ...
+      def run2(value: Any) -> Union[bytes, str]: ...
+    """)
+
   def test_enum(self):
     self.Check("""
       import enum
