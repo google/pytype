@@ -506,6 +506,17 @@ class StdlibTestsFeatures(test_base.BaseTest,
       def run2(value: Any) -> Union[bytes, str]: ...
     """)
 
+  def test_popen_kwargs(self):
+    self.Check("""
+      import subprocess
+      def popen(cmd: str, **kwargs):
+        kwargs['stdout'] = subprocess.PIPE
+        kwargs['stderr'] = subprocess.PIPE
+        process = subprocess.Popen(cmd, **kwargs)
+        stdout, _ = process.communicate()
+        assert_type(stdout, 'Union[bytes, str]')
+    """)
+
   def test_enum(self):
     self.Check("""
       import enum

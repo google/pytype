@@ -338,11 +338,8 @@ class PyTDFunction(_function_base.Function):
     for var in args.get_variables():
       if any(_isinstance(v, "AMBIGUOUS_OR_EMPTY") for v in var.data):
         return True
-    for arg in (args.starargs, args.starstarargs):
-      # An opaque *args or **kwargs behaves like an unknown.
-      if arg and not isinstance(arg, mixin.PythonConstant):
-        return True
-    return False
+    # An opaque *args or **kwargs behaves like an unknown.
+    return args.has_opaque_starargs_or_starstarargs()
 
   def _match_view(self, node, args, view, alias_map=None):
     if self._can_match_multiple(args):

@@ -70,4 +70,7 @@ class PopenNew(abstract.PyTDFunction):
       if not ambiguous:
         return False
       found_ambiguous_arg = True
-    return super()._can_match_multiple(args) if found_ambiguous_arg else False
+    if found_ambiguous_arg:
+      return super()._can_match_multiple(args)
+    else:
+      return args.has_opaque_starargs_or_starstarargs()

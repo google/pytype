@@ -629,6 +629,10 @@ class Args:
   def replace(self, **kwargs):
     return attrs.evolve(self, **kwargs)
 
+  def has_opaque_starargs_or_starstarargs(self):
+    return any(arg and not _isinstance(arg, "PythonConstant")
+               for arg in (self.starargs, self.starstarargs))
+
 
 class ReturnValueMixin:
   """Mixin for exceptions that hold a return node and variable."""
