@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Any, Dict, Generic, List, Optional, Tuple, TypeVar
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from pytype import datatypes
 from pytype import special_builtins
@@ -28,8 +28,11 @@ _COMPATIBLE_BUILTINS = [
 ]
 
 _SubstType = datatypes.AliasingDict[str, cfg.Variable]
-_ViewType = Dict[cfg.Variable, cfg.Binding]
-_T = TypeVar("_T")
+_ViewType = datatypes.AccessTrackingDict[cfg.Variable, cfg.Binding]
+
+# For _UniqueMatches
+_ViewKeyType = Tuple[Tuple[int, Any], ...]
+_SubstKeyType = Dict[cfg.Variable, Any]
 
 
 def _is_callback_protocol(typ):
@@ -95,12 +98,12 @@ class GoodMatch:
 
   @classmethod
   def default(cls):
-    return cls({}, datatypes.HashableDict())
+    return cls(datatypes.AccessTrackingDict(), datatypes.HashableDict())
 
   @classmethod
   def merge(cls, old_match, new_match, combined_subst):
-    return cls({**old_match.view, **new_match.view},
-               datatypes.HashableDict(combined_subst))
+    view = datatypes.AccessTrackingDict.merge(old_match.view, new_match.view)
+    return cls(view, datatypes.HashableDict(combined_subst))
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -129,38 +132,52 @@ class MatchResult:
   bad_matches: List[BadMatch]
 
 
-class _UniqueSubsts(Generic[_T]):
-  """A collection of substs that discards duplicates.
+class _UniqueMatches:
+  """A collection of matches that discards duplicates."""
 
-  Each subst has a bit of data associated to it, and calling unique() returns
-  unique substs and associated data.
-  """
+  def __init__(self, node, keep_all_views):
+    self._node = node
+    self._keep_all_views = keep_all_views
+    self._data: Dict[
+        _ViewKeyType, List[Tuple[_SubstKeyType, _ViewType, _SubstType]]
+    ] = collections.defaultdict(list)
 
-  def __init__(self):
-    self._data: List[Tuple[Dict[str, Any], _SubstType, _T]] = []
-
-  def insert(self, subst, data: _T):
+  def insert(self, view, subst):
     """Insert a subst with associated data."""
+    if self._keep_all_views:
+      view_key = tuple(sorted((k.id, v.data.get_type_key())
+                              for k, v in view.accessed_subset.items()))
+    else:
+      view_key = ()
     subst_key = {k: {v.get_type_key() for v in var.data}
                  for k, var in subst.items()}
-    data_item = (subst_key, subst, data)
-    for i, (prev_subst_key, *_) in enumerate(self._data):
+    data_item = (subst_key, view, subst)
+    for i, prev_data_item in enumerate(self._data[view_key]):
+      prev_subst_key, prev_view, prev_subst = prev_data_item
       if all(k in prev_subst_key and subst_key[k] <= prev_subst_key[k]
              for k in subst_key):
         # A previous substitution is a superset of this one, so we do not need
-        # to keep this one.
+        # to keep this one. We do copy over the view and origins.
+        prev_view.update(view)
+        for k, v in subst.items():
+          prev_subst[k].PasteVariable(v)
         break
       if all(k in subst_key and prev_subst_key[k] <= subst_key[k]
              for k in prev_subst_key):
         # This substitution is a superset of a previous one, so we replace the
-        # previous subst with this one.
-        self._data[i] = data_item
+        # previous subst with this one. We do copy over the view and origins.
+        self._data[view_key][i] = data_item
+        view.update(prev_view)
+        for k, v in prev_subst.items():
+          subst[k].PasteVariable(v)
         break
     else:
-      self._data.append(data_item)
+      self._data[view_key].append(data_item)
 
-  def unique(self) -> List[Tuple[_SubstType, _T]]:
-    return [d[1:] for d in self._data]
+  def unique(self) -> Iterable[Tuple[_ViewType, _SubstType]]:
+    for values in self._data.values():
+      for _, view, subst in values:
+        yield (view, subst)
 
 
 class _TypeParams:
@@ -296,8 +313,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           subst[name] = value
     return datatypes.HashableDict(subst), None
 
+  # TODO(b/63407497): We were previously enforcing --strict_parameter_checks
+  # in compute_one_match, which didn't play nicely with overloads. Instead,
+  # enforcement should be pushed to callers of compute_matches.
   def compute_matches(
       self, args: List[function.Arg], match_all_views: bool,
+      keep_all_views: bool = False,
       alias_map: Optional[datatypes.UnionFind] = None) -> List[GoodMatch]:
     """Compute information about type parameters using one-way unification.
 
@@ -309,6 +330,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       match_all_views: If True, every possible match must succeed for the
         overall match to be considered a success. Otherwise, the overall match
         succeeds as long as at least one possible match succeeds.
+      keep_all_views: If True, avoid optimizations that discard views.
       alias_map: Optionally, a datatypes.UnionFind, which stores all the type
         renaming information, mapping of type parameter name to its
         representative.
@@ -321,26 +343,23 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     has_self = args and args[0].name == "self"
     for arg in args:
       match_result = self.compute_one_match(
-          arg.value, arg.typ, arg.name, match_all_views, alias_map)
+          arg.value, arg.typ, arg.name, match_all_views,
+          keep_all_views, alias_map)
       if not match_result.success:
         if matches:
-          if self._error_subst:
-            self._error_subst = self._merge_substs(
-                matches[0].subst, [self._error_subst])
-          else:
-            self._error_subst = matches[0].subst
+          self._error_subst = matches[0].subst
           bad_param = self._get_bad_type(arg.name, arg.typ)
         else:
           bad_param = match_result.bad_matches[0].expected
         raise self.MatchError(bad_param)
-      if any(m.subst for m in match_result.good_matches):
+      if keep_all_views or any(m.subst for m in match_result.good_matches):
         matches = self._merge_matches(
             arg.name, arg.typ, matches, match_result.good_matches, has_self)
     return matches if matches else [GoodMatch.default()]
 
   def compute_one_match(
-      self, var, other_type, name=None, match_all_views=True, alias_map=None
-  ) -> MatchResult:
+      self, var, other_type, name=None, match_all_views=True,
+      keep_all_views=False, alias_map=None) -> MatchResult:
     """Match a Variable against a type.
 
     Args:
@@ -350,6 +369,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       match_all_views: If True, every possible match must succeed for the
         overall match to be considered a success. Otherwise, the overall match
         succeeds as long as at least one possible match succeeds.
+      keep_all_views: If True, avoid optimizations that discard views.
       alias_map: Optionally, a datatypes.UnionFind, which stores all the type
         renaming information, mapping of type parameter name to its
         representative.
@@ -357,7 +377,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       The match result.
     """
     bad_matches = []
-    good_matches = _UniqueSubsts[_ViewType]()
+    good_matches = _UniqueMatches(self._node, keep_all_views)
     views = abstract_utils.get_views([var], self._node)
     skip_future = None
     while True:
@@ -368,7 +388,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       subst = datatypes.AliasingDict(aliases=alias_map)
       subst = self.match_var_against_type(var, other_type, subst, view)
       if subst is None:
-        if self._node.HasCombination(list(view.values())):
+        if self._node.CanHaveCombination(list(view.values())):
           bad_matches.append(BadMatch(
               view=view,
               expected=self._get_bad_type(name, other_type),
@@ -378,15 +398,19 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         skip_future = False
       else:
         skip_future = True
-        good_matches.insert(subst, view)
+        good_matches.insert(view, subst)
     good_matches = [GoodMatch(view, datatypes.HashableDict(subst))
-                    for subst, view in good_matches.unique()]
-    if not bad_matches:
+                    for view, subst in good_matches.unique()]
+    if (good_matches and not match_all_views) or not bad_matches:
       success = True
-    elif match_all_views or self.ctx.options.strict_parameter_checks:
-      success = False
+    elif good_matches:
+      # Use HasCombination, which is much more expensive than
+      # CanHaveCombination, to re-filter bad matches.
+      bad_matches = [m for m in bad_matches
+                     if self._node.HasCombination(list(m.view.values()))]
+      success = not bad_matches
     else:
-      success = bool(good_matches)
+      success = False
     return MatchResult(
         success=success, good_matches=good_matches, bad_matches=bad_matches)
 
@@ -700,8 +724,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                 has_error = False
               elif old_value.cls.is_protocol:
                 with self._track_partially_matched_protocols():
+                  protocol_subst = datatypes.AliasingDict(subst)
                   has_error = self._match_against_protocol(
-                      new_value, old_value.cls, subst, {}) is None
+                      new_value, old_value.cls, protocol_subst, {}) is None
               if not has_error:
                 break
       else:
@@ -958,8 +983,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self, name: str, formal: abstract.BaseValue,
       old_matches: Optional[List[GoodMatch]], new_matches: List[GoodMatch],
       has_self: bool) -> List[GoodMatch]:
-    if old_matches is None:
+    if not old_matches:
       return new_matches
+    if not new_matches:
+      return old_matches
     combined_matches = []
     matched = False
     bad_param = None

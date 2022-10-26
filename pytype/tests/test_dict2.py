@@ -16,9 +16,9 @@ class DictTest(test_base.BaseTest):
           return MAP[x]
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, Dict, Union
+      from typing import Dict, Optional, Union
       MAP = ...  # type: Dict[int, str]
-      def foo(x: Union[int, None]) -> Any: ...
+      def foo(x: Union[int, None]) -> Optional[str]: ...
     """)
 
   def test_object_in_dict(self):

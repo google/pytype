@@ -409,6 +409,13 @@ class MatchTest(test_base.BaseTest):
       assert_type(f(0, None), None)
     """)
 
+  def test_append_tuple(self):
+    self.Check("""
+      from typing import List, Tuple
+      x: List[Tuple[str, int]]
+      x.append(('', 0))
+    """)
+
 
 class MatchTestPy3(test_base.BaseTest):
   """Tests for matching types."""
@@ -585,7 +592,7 @@ class NonIterableStringsTest(test_base.BaseTest):
         foo(s)
 
       def baz(os: Optional[str]):
-        foo(os)  # wrong-arg-types
+        foo(os)  # TODO(b/63407497): should be wrong-arg-types
     """)
 
   def test_str_against_plain_collection(self):

@@ -701,7 +701,8 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
       args = function.Args(posargs=(right_val.AssignToNewVariable(),))
       try:
         return function.call_function(
-            ctx, node, attr_var, args, fallback_to_unsolvable=False)
+            ctx, node, attr_var, args, fallback_to_unsolvable=False,
+            strict_filter=len(attr_var.bindings) > 1)
       except (function.DictKeyMissing, function.FailedFunctionCall) as e:
         # It's possible that this call failed because the function returned
         # NotImplemented.  See, e.g.,
@@ -753,12 +754,15 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
   log.debug("Calling binary operator %s", name)
   nodes = []
   error = None
+  x = abstract_utils.simplify_variable(x, state.node, ctx)
+  y = abstract_utils.simplify_variable(y, state.node, ctx)
   for xval in x.bindings:
     for yval in y.bindings:
       try:
         node, ret = _call_binop_on_bindings(state.node, name, xval, yval, ctx)
       except (function.DictKeyMissing, function.FailedFunctionCall) as e:
-        if e > error:
+        if (report_errors and e > error and
+            state.node.HasCombination([xval, yval])):
           error = e
       else:
         if ret:
@@ -779,14 +783,13 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
   log.debug("Result: %r %r", result, result.data)
   log.debug("Error: %r", error)
   log.debug("Report Errors: %r", report_errors)
-  if report_errors and (
-      not result.bindings or ctx.options.strict_parameter_checks):
+  if report_errors:
     if error is None:
       if not result.bindings:
         if ctx.options.report_errors:
           ctx.errorlog.unsupported_operands(ctx.vm.frames, name, x, y)
         result = ctx.new_unsolvable(state.node)
-    else:
+    elif not result.bindings or ctx.options.strict_parameter_checks:
       if ctx.options.report_errors:
         ctx.errorlog.invalid_function_call(ctx.vm.frames, error)
       state, result = error.get_return(state)

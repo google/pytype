@@ -42,7 +42,6 @@ class _CallRecord:
   positional_arguments: Tuple[Union[cfg.Binding, cfg.Variable], ...]
   keyword_arguments: Tuple[Tuple[str, Union[cfg.Binding, cfg.Variable]], ...]
   return_value: cfg.Variable
-  variable: bool
 
 
 class _InitClassState(enum.Enum):
@@ -503,23 +502,22 @@ class CallTracer(vm.VirtualMachine):
   def trace_unknown(self, name, unknown_binding):
     self._unknowns[name] = unknown_binding
 
-  def trace_call(self, node, func, sigs, posargs, namedargs, result, variable):
+  def trace_call(self, node, func, sigs, posargs, namedargs, result):
     """Add an entry into the call trace.
 
     Args:
       node: The CFG node right after this function call.
       func: A cfg.Binding of a function that was called.
       sigs: The signatures that the function might have been called with.
-      posargs: The positional arguments, an iterable over cfg.Binding.
-      namedargs: The keyword arguments, a dict mapping str to cfg.Binding.
+      posargs: The positional arguments, an iterable over cfg.Variable.
+      namedargs: The keyword arguments, a dict mapping str to cfg.Variable.
       result: A Variable of the possible result values.
-      variable: If True, posargs and namedargs are Variables, not Bindings.
     """
     log.debug("Logging call to %r with %d args, return %r",
               func, len(posargs), result)
     args = tuple(posargs)
     kwargs = tuple((namedargs or {}).items())
-    record = _CallRecord(node, func, sigs, args, kwargs, result, variable)
+    record = _CallRecord(node, func, sigs, args, kwargs, result)
     if isinstance(func.data, abstract.BoundPyTDFunction):
       self._method_calls.add(record)
     elif isinstance(func.data, abstract.PyTDFunction):
@@ -604,11 +602,8 @@ class CallTracer(vm.VirtualMachine):
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
 
-    def to_type(node, arg, variable):
-      if variable:
-        return pytd_utils.JoinTypes(a.to_type(node) for a in arg.data)
-      else:
-        return arg.data.to_type(node)
+    def to_type(node, arg):
+      return pytd_utils.JoinTypes(a.to_type(node) for a in arg.data)
 
     for ct in call_traces:
       log.info("Generating pytd function for call trace: %r",
@@ -621,10 +616,10 @@ class CallTracer(vm.VirtualMachine):
           arg_names[i] = function.argname(i)
       arg_types = []
       for arg in ct.positional_arguments:
-        arg_types.append(to_type(ct.node, arg, ct.variable))
+        arg_types.append(to_type(ct.node, arg))
       kw_types = []
       for name, arg in ct.keyword_arguments:
-        kw_types.append((name, to_type(ct.node, arg, ct.variable)))
+        kw_types.append((name, to_type(ct.node, arg)))
       ret = pytd_utils.JoinTypes(t.to_type(ct.node)
                                  for t in ct.return_value.data)
       starargs = None
@@ -661,21 +656,15 @@ class CallTracer(vm.VirtualMachine):
     class_to_records = collections.defaultdict(list)
     for call_record in self._method_calls:
       args = call_record.positional_arguments
-      if call_record.variable:
-        unknown = False
-        for arg in args:
-          if any(isinstance(a, abstract.Unknown) for a in arg.data):
-            unknown = True
-      else:
-        unknown = any(isinstance(arg.data, abstract.Unknown) for arg in args)
+      unknown = False
+      for arg in args:
+        if any(isinstance(a, abstract.Unknown) for a in arg.data):
+          unknown = True
       if not unknown:
         # We don't need to record call signatures that don't involve
         # unknowns - there's nothing to solve for.
         continue
-      if call_record.variable:
-        classes = args[0].data
-      else:
-        classes = [args[0].data]
+      classes = args[0].data
       for cls in classes:
         if isinstance(cls.cls, abstract.PyTDClass):
           class_to_records[cls].append(call_record)

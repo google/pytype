@@ -598,7 +598,7 @@ class ContainerTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       cache = ...  # type: Dict[str, Union[Dict[nothing, nothing], list]]
-      def read(path) -> Any: ...
+      def read(path) -> None: ...
     """)
 
   def test_recursive_definition_and_conflict(self):
