@@ -533,9 +533,12 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     # named args
     posonly_names = set(self.signature.posonly_params)
     for name, arg in args.namedargs.items():
-      if name in arg_dict and name not in posonly_names:
+      if name in posonly_names:
+        continue
+      elif name in arg_dict:
         raise function.DuplicateKeyword(self.signature, args, self.ctx, name)
-      arg_dict[name] = arg
+      else:
+        arg_dict[name] = arg
     kws = set(args.namedargs)
     extra_kwargs = kws - {p.name for p in self.pytd_sig.params}
     if extra_kwargs and not self.pytd_sig.starstarargs:
