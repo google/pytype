@@ -5,6 +5,7 @@ import textwrap
 from pytype import config
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -484,23 +485,19 @@ class TypeVarTest(MatcherTestBase):
         self.matcher.match_from_mro(
             abstract.TypeParameter("T", self.ctx), self.ctx.convert.int_type))
 
-  def test_compute_subst(self):
-    formal_args = [("x", self.ctx.convert.unsolvable)]
+  def test_compute_matches(self):
     x_val = abstract.TypeParameter("T", self.ctx)
-    arg_dict = {"x": x_val.to_binding(self.ctx.root_node)}
-    view = {arg_dict["x"].variable: arg_dict["x"]}
-    subst, bad_param = self.matcher.compute_subst(formal_args, arg_dict, view)
-    self.assertEqual(subst, {})
-    self.assertIsNone(bad_param)
+    args = [function.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
+                         typ=self.ctx.convert.unsolvable)]
+    match, = self.matcher.compute_matches(args, match_all_views=True)
+    self.assertEqual(match.subst, {})
 
-  def test_compute_subst_no_match(self):
-    formal_args = [("x", self.ctx.convert.int_type)]
+  def test_compute_matches_no_match(self):
     x_val = abstract.TypeParameter("T", self.ctx)
-    arg_dict = {"x": x_val.to_binding(self.ctx.root_node)}
-    view = {arg_dict["x"].variable: arg_dict["x"]}
-    subst, bad_param = self.matcher.compute_subst(formal_args, arg_dict, view)
-    self.assertIsNone(subst)
-    self.assertEqual(bad_param.name, "x")
+    args = [function.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
+                         typ=self.ctx.convert.int_type)]
+    with self.assertRaises(self.matcher.MatchError):
+      self.matcher.compute_matches(args, match_all_views=True)
 
   def test_compute_one_match(self):
     self.assertTrue(
