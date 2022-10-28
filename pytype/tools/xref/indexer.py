@@ -249,15 +249,11 @@ class Definition:
     return self.to_signature() + ".__doc__"
 
   def node_kind(self):
-    """Find the appropriate node/kind for definitions."""
     # TODO(mdemello): Add more node types.
     if self.typ == "ClassDef":
       return "class"
     elif self.typ == "FunctionDef":
       return "function"
-    elif isinstance(self.get_data(), abstract.Class):
-      # Class aliases need kind 'talias'
-      return "talias"
     else:
       return "variable"
 
@@ -266,16 +262,15 @@ class Definition:
       return "import"
     return None
 
-  def get_data(self):
-    if self.data and self.data[0]:
-      return self.data[0][0]
-
   @property
   def typename(self):
     """The fully qualified type of the object the definition is bound to."""
-    d = self.get_data()
-    if d and d.cls:
-      return d.cls.full_name
+    if self.data and self.data[0]:
+      d = self.data[0][0]
+      if d.cls:
+        return d.cls.full_name
+      else:
+        return "typing.Any"
     else:
       return "typing.Any"
 
