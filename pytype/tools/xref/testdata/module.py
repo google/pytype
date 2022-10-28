@@ -8,6 +8,6 @@
 #- ModAnchor.node/kind anchor
 #- ModAnchor./kythe/loc/start 0
 #- ModAnchor./kythe/loc/end 0
-#- ModAnchor defines/binding Mod
+#- ModAnchor defines/implicit Mod
 
 X = 42
