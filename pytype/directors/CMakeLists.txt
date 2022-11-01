@@ -19,6 +19,7 @@ py_library(
     .parser
     .parser_libcst
     pytype.blocks
+    pytype.config
 )
 
 py_library(

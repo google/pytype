@@ -529,6 +529,7 @@ class VirtualMachine:
     # but there isn't a better way to wire both pieces together.
     self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
+    self.ctx.options.set_feature_flags(director.features)
     self._branch_tracker = _BranchTracker(director)
     code = blocks.merge_annotations(code, self._director.annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
@@ -2562,6 +2563,9 @@ class VirtualMachine:
                            ret_type.get_formal_type_parameter(abstract_utils.V))
       elif not self.frame.f_code.has_async_generator():
         self._check_return(state.node, var, self.frame.allowed_returns)
+    if (self.ctx.options.no_return_any and
+        any(d == self.ctx.convert.unsolvable for d in var.data)):
+      self.ctx.errorlog.any_return_type(self.frames)
     self._set_frame_return(state.node, self.frame, var)
     return state.set_why("return")
 

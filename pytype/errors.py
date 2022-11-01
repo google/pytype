@@ -1010,6 +1010,14 @@ class ErrorLog(ErrorLogBase):
     details.extend(error_details)
     self.error(stack, message, "".join(details))
 
+  @_error_name("bad-return-type")
+  def any_return_type(self, stack):
+    """Logs a [bad-return-type] error."""
+    message = "Return type may not be Any"
+    details = ["Pytype is running with features=no-return-any, which does " +
+               "not allow Any as a return type."]
+    self.error(stack, message, "".join(details))
+
   @_error_name("bad-yield-annotation")
   def bad_yield_annotation(self, stack, name, annot, is_async):
     func = ("async " if is_async else "") + f"generator function {name}"
