@@ -234,12 +234,10 @@ _OPT_IN_FEATURES = [
 
 
 FEATURE_FLAGS = [
-    _flag("--use-enum-overlay", False,
-          "Use the enum overlay for more precise enum checking."),
-    _flag("--strict-parameter-checks", False,
-          "Enable exhaustive checking of function parameter types."),
-    _flag("--strict-primitive-comparisons", False,
-          "Emit errors for comparisons between incompatible primitive types."),
+    _flag("--always-use-return-annotations", False,
+          "Always use function return type annotations."),
+    _flag("--mapping-is-not-sequence", False,
+          "Do not treat Mapping as satisfying the Sequence protocol."),
     _flag("--overriding-default-value-checks", False,
           "Enable default value checks for overriding methods."),
     _flag("--overriding-parameter-count-checks", False,
@@ -248,22 +246,24 @@ FEATURE_FLAGS = [
           "Enable parameter name checks for overriding methods."),
     _flag("--overriding-return-type-checks", False,
           "Enable return type checks for overriding methods."),
-    _flag("--enable-cached-property", False,
-          "Support pyglib's @cached.property."),
-    _flag("--always-use-return-annotations", False,
-          "Always use function return type annotations."),
-    _flag("--mapping-is-not-sequence", False,
-          "Do not treat Mapping as satisfying the Sequence protocol."),
+    _flag("--use-enum-overlay", False,
+          "Use the enum overlay for more precise enum checking."),
 ] + _OPT_IN_FEATURES
 
 
 EXPERIMENTAL_FLAGS = [
+    _flag("--enable-cached-property", False,
+          "Support pyglib's @cached.property."),
+    _flag("--precise-return", False,
+          "Infer precise return types even for invalid function calls."),
     _flag("--protocols", False,
           "Solve unknown types to label with structural types."),
     _flag("--strict-import", False,
           "Only load submodules that are explicitly imported."),
-    _flag("--precise-return", False,
-          "Infer precise return types even for invalid function calls."),
+    _flag("--strict-parameter-checks", False,
+          "Enable exhaustive checking of function parameter types."),
+    _flag("--strict-primitive-comparisons", False,
+          "Emit errors for comparisons between incompatible primitive types."),
 ]
 
 
