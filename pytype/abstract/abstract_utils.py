@@ -327,7 +327,7 @@ def get_views(variables, node):
     A datatypes.AcessTrackingDict mapping variables to bindings.
   """
   try:
-    combinations = cfg_utils.deep_variable_product(variables)
+    combinations = cfg_utils.deep_variable_product(node, variables)
   except cfg_utils.TooComplexError:
     log.info("get_views: too many binding combinations to generate accurate "
              "views, falling back to unsolvable")

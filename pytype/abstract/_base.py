@@ -318,16 +318,27 @@ class BaseValue(utils.ContextWeakrefMixin):
     """
     return []
 
-  def unique_parameter_values(self):
+  def unique_parameter_values(self, node):
     """Get unique parameter subtypes as bindings.
 
     Like _unique_parameters, but returns bindings instead of variables.
+
+    Arguments:
+      node: A CFG node.
 
     Returns:
       A list of list of bindings.
     """
     def _get_values(parameter):
-      return {b.data.get_type_key(): b for b in parameter.bindings}.values()
+      if len(parameter.bindings) < 2:
+        bindings = parameter.bindings
+      else:
+        bindings = parameter.Bindings(node)
+        if not bindings:
+          # Make sure we always return at least one binding, in order to
+          # generate complete views.
+          bindings = parameter.bindings
+      return {b.data.get_type_key(): b for b in bindings}.values()
     return [_get_values(parameter) for parameter in self._unique_parameters()]
 
   def init_subclass(self, node, cls):

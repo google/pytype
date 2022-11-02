@@ -62,7 +62,7 @@ class DummyValue:
   def set_parameters(self, parameters):
     self._parameters = parameters
 
-  def unique_parameter_values(self):
+  def unique_parameter_values(self, _):
     return [param.bindings for param in self._parameters]
 
   def __repr__(self):
@@ -109,6 +109,7 @@ class VariableProductTest(unittest.TestCase):
     v8 = self.prog.NewVariable([x1, x2], [], self.current_location)
     self.assertRaises(cfg_utils.TooComplexError,
                       cfg_utils.deep_variable_product,
+                      self.current_location,
                       [v1, v2, v3, v4, v5, v6, v7, v8],
                       256)
 
@@ -121,7 +122,8 @@ class VariableProductTest(unittest.TestCase):
     x1.set_parameters([v3])
     x2.set_parameters([v4])
     self.assertRaises(cfg_utils.TooComplexError,
-                      cfg_utils.deep_variable_product, [v1, v2], 4)
+                      cfg_utils.deep_variable_product, self.current_location,
+                      [v1, v2], 4)
 
   def test_variable_product_dict_raises(self):
     values = [DummyValue(i + 1) for i in range(4)]
@@ -140,7 +142,7 @@ class VariableProductTest(unittest.TestCase):
     v3 = self.prog.NewVariable([x4, x5], [], self.current_location)
     v4 = self.prog.NewVariable([x6], [], self.current_location)
     x1.set_parameters([v2, v3])
-    product = cfg_utils.deep_variable_product([v1, v4])
+    product = cfg_utils.deep_variable_product(self.current_location, [v1, v4])
     rows = [{a.data for a in row}
             for row in product]
     self.assertCountEqual(rows, [
@@ -154,7 +156,7 @@ class VariableProductTest(unittest.TestCase):
     v1 = self.prog.NewVariable([x1], [], self.current_location)
     v2 = self.prog.NewVariable([], [], self.current_location)
     x1.set_parameters([v2])
-    product = cfg_utils.deep_variable_product([v1])
+    product = cfg_utils.deep_variable_product(self.current_location, [v1])
     rows = [{a.data for a in row}
             for row in product]
     self.assertCountEqual(rows, [{x1}])
@@ -163,7 +165,7 @@ class VariableProductTest(unittest.TestCase):
     x1 = DummyValue(1)
     v1 = self.prog.NewVariable([x1], [], self.current_location)
     v2 = self.prog.NewVariable([], [], self.current_location)
-    product = cfg_utils.deep_variable_product([v1, v2])
+    product = cfg_utils.deep_variable_product(self.current_location, [v1, v2])
     rows = [{a.data for a in row}
             for row in product]
     self.assertCountEqual(rows, [{x1}])
@@ -176,7 +178,7 @@ class VariableProductTest(unittest.TestCase):
     v4 = self.prog.NewVariable([x6], [], self.current_location)
     x1.set_parameters([v2, v3])
     x5.set_parameters([v1])
-    product = cfg_utils.deep_variable_product([v1, v4])
+    product = cfg_utils.deep_variable_product(self.current_location, [v1, v4])
     rows = [{a.data for a in row}
             for row in product]
     self.assertCountEqual(rows, [

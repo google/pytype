@@ -296,6 +296,20 @@ class SplitTest(test_base.BaseTest):
             yield k, v
     """)
 
+  def test_set_add_in_if(self):
+    self.Check("""
+      from typing import Optional, Set
+      class Foo:
+        def add(self, s: Optional[Set['Foo']], skip: bool) -> Set['Foo']:
+          if s is None:
+            s = set()
+          if __random__:
+            if not skip:
+              s.add(self)
+            return s
+          return s
+    """)
+
 
 class SplitTestPy3(test_base.BaseTest):
   """Tests for if-splitting in Python 3."""

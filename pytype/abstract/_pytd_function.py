@@ -165,7 +165,7 @@ class PyTDFunction(_function_base.Function):
   def argcount(self, _):
     return min(sig.signature.mandatory_param_count() for sig in self.signatures)
 
-  def _log_args(self, arg_values_list, level=0, logged=None):
+  def _log_args(self, node, arg_values_list, level=0, logged=None):
     """Log the argument values."""
     if log.isEnabledFor(logging.DEBUG):
       if logged is None:
@@ -181,8 +181,8 @@ class PyTDFunction(_function_base.Function):
           if value.data not in logged:
             log.debug("%s%s [var %d]", "  " * (level + 1), value.data,
                       value.variable.id)
-            self._log_args(value.data.unique_parameter_values(), level + 2,
-                           logged | {value.data})
+            self._log_args(node, value.data.unique_parameter_values(node),
+                           level + 2, logged | {value.data})
 
   def call(self, node, func, args, alias_map=None):
     # TODO(b/159052609): We should be passing function signatures to simplify.
@@ -190,7 +190,7 @@ class PyTDFunction(_function_base.Function):
       args = args.simplify(node, self.ctx, self.signatures[0].signature)
     else:
       args = args.simplify(node, self.ctx)
-    self._log_args(arg.bindings for arg in args.posargs)
+    self._log_args(node, (arg.bindings for arg in args.posargs))
     ret_map = {}
     retvar = self.ctx.program.NewVariable()
     all_mutations = {}

@@ -71,7 +71,7 @@ class ComplexityLimit:
       raise TooComplexError()
 
 
-def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
+def deep_variable_product(node, variables, limit=DEEP_VARIABLE_LIMIT):
   """Take the deep Cartesian product of a list of Variables.
 
   For example:
@@ -87,6 +87,7 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
        [x2, x6]]
   .
   Args:
+    node: A CFG node.
     variables: A sequence of Variables.
     limit: How many results we allow before aborting.
 
@@ -97,19 +98,18 @@ def deep_variable_product(variables, limit=DEEP_VARIABLE_LIMIT):
   Raises:
     TooComplexError: If we expanded too many values.
   """
-  return _deep_values_list_product([v.bindings for v in variables], set(),
+  return _deep_values_list_product(node, [v.bindings for v in variables], set(),
                                    ComplexityLimit(limit))
 
 
-def _deep_values_list_product(values_list, seen, complexity_limit):
+def _deep_values_list_product(node, values_list, seen, complexity_limit):
   """Take the deep Cartesian product of a list of list of Values."""
   result = []
   for row in itertools.product(*(values for values in values_list if values)):
     extra_params = [value for entry in row if entry not in seen  # pylint: disable=g-complex-comprehension
-                    for value in entry.data.unique_parameter_values()]
-    extra_values = (extra_params and
-                    _deep_values_list_product(extra_params, seen.union(row),
-                                              complexity_limit))
+                    for value in entry.data.unique_parameter_values(node)]
+    extra_values = (extra_params and _deep_values_list_product(
+        node, extra_params, seen.union(row), complexity_limit))
     if extra_values:
       for new_row in extra_values:
         result.append(row + new_row)
