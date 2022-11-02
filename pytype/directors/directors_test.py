@@ -928,5 +928,31 @@ class DisableDirectivesTest(DirectorTestCase):
       self.assertDisables(5)
 
 
+class GlobalDirectivesTest(DirectorTestCase):
+  """Test global directives."""
+
+  def test_skip_file(self):
+    self.assertRaises(
+        directors.SkipFileError,
+        self._create, """
+          # pytype: skip-file
+        """)
+
+  def test_features(self):
+    self._create("""
+      # pytype: features=no-return-any
+    """)
+    self.assertEqual(self._director.features, {"no-return-any"})
+
+  def test_invalid_features(self):
+    self._create("""
+      # pytype: features=foo,no-return-any
+    """)
+    err = self._errorlog.unique_sorted_errors()[0]
+    self.assertEqual(err.name, "invalid-directive")
+    self.assertRegex(err.message, "Unknown pytype features")
+    self.assertRegex(err.message, ".*foo")
+
+
 if __name__ == "__main__":
   unittest.main()

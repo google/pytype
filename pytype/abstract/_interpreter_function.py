@@ -197,24 +197,6 @@ class SignedFunction(_function_base.Function):
         callargs[kwargs_name] = k.to_variable(node)
     return callargs
 
-  def _match_view(self, node, args, view, alias_map=None):
-    arg_dict = {}
-    formal_args = []
-    for name, arg, formal in self.signature.iter_args(args):
-      arg_dict[name] = view[arg]
-      if formal is not None:
-        if name in (self.signature.varargs_name, self.signature.kwargs_name):
-          # The annotation is Tuple or Dict, but the passed arg only has to be
-          # Iterable or Mapping.
-          formal = self.ctx.convert.widen_type(formal)
-        formal_args.append((name, formal))
-    subst, bad_arg = self.ctx.matcher(node).compute_subst(
-        formal_args, arg_dict, view, alias_map)
-    if subst is None:
-      raise function.WrongArgTypes(
-          self.signature, args, self.ctx, bad_param=bad_arg)
-    return subst
-
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
     args_to_match = []
     for name, arg, formal in self.signature.iter_args(args):

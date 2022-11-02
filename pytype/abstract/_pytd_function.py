@@ -341,23 +341,6 @@ class PyTDFunction(_function_base.Function):
     # An opaque *args or **kwargs behaves like an unknown.
     return args.has_opaque_starargs_or_starstarargs()
 
-  def _match_view(self, node, args, view, alias_map=None):
-    if self._can_match_multiple(args):
-      signatures = tuple(self._yield_matching_signatures(
-          node, args, view, alias_map))
-    else:
-      # We take the first signature that matches, and ignore all after it.
-      # This is because in the pytds for the standard library, the last
-      # signature(s) is/are fallback(s) - e.g. list is defined by
-      # def __init__(self: x: list)
-      # def __init__(self, x: iterable)
-      # def __init__(self, x: generator)
-      # def __init__(self, x: object)
-      # with the last signature only being used if none of the others match.
-      sig = next(self._yield_matching_signatures(node, args, view, alias_map))
-      signatures = (sig,)
-    return (view, signatures)
-
   def _call_with_signatures(self, node, func, args, view, signatures):
     """Perform a function call that involves multiple signatures."""
     ret_type = self._combine_multiple_returns(signatures)
@@ -422,38 +405,6 @@ class PyTDFunction(_function_base.Function):
     # precision as possible while avoiding false positives.
     ret_type = optimize.Optimize(pytd_utils.JoinTypes(options))
     return ret_type.Visit(visitors.ReplaceUnionsWithAny())
-
-  def _yield_matching_signatures(self, node, args, view, alias_map):
-    """Try, in order, all pytd signatures, yielding matches."""
-    error = None
-    matched = False
-    # Once a constant has matched a literal type, it should no longer be able to
-    # match non-literal types. For example, with:
-    #   @overload
-    #   def f(x: Literal['r']): ...
-    #   @overload
-    #   def f(x: str): ...
-    # f('r') should match only the first signature.
-    literal_matches = set()
-    for sig in self.signatures:
-      if any(not _is_literal(sig.signature.annotations.get(name))
-             for name in literal_matches):
-        continue
-      try:
-        arg_dict, substs = sig.substitute_formal_args_old(
-            node, args, view, alias_map)
-      except function.FailedFunctionCall as e:
-        if e > error:
-          error = e
-      else:
-        matched = True
-        for name, binding in arg_dict.items():
-          if (isinstance(binding.data, mixin.PythonConstant) and
-              _is_literal(sig.signature.annotations.get(name))):
-            literal_matches.add(name)
-        yield sig, arg_dict, substs
-    if not matched:
-      raise error  # pylint: disable=raising-bad-type
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
     error = None
@@ -582,9 +533,12 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     # named args
     posonly_names = set(self.signature.posonly_params)
     for name, arg in args.namedargs.items():
-      if name in arg_dict and name not in posonly_names:
+      if name in posonly_names:
+        continue
+      elif name in arg_dict:
         raise function.DuplicateKeyword(self.signature, args, self.ctx, name)
-      arg_dict[name] = arg
+      else:
+        arg_dict[name] = arg
     kws = set(args.namedargs)
     extra_kwargs = kws - {p.name for p in self.pytd_sig.params}
     if extra_kwargs and not self.pytd_sig.starstarargs:
@@ -631,28 +585,6 @@ class PyTDSignature(utils.ContextWeakrefMixin):
               self.signature, args, self.ctx, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
         arg_dict[p.name] = self.ctx.new_unsolvable(node)
-
-  def substitute_formal_args_old(self, node, args, view, alias_map):
-    """Substitute matching args into this signature. Used by PyTDFunction."""
-    formal_args, arg_dict = self._map_args(node, args)
-    self._fill_in_missing_parameters(node, args, arg_dict)
-    subst, bad_arg = self.ctx.matcher(node).compute_subst(
-        formal_args, arg_dict, view, alias_map)
-    if subst is None:
-      if self.signature.has_param(bad_arg.name):
-        signature = self.signature
-      else:
-        signature = self.signature.insert_varargs_and_kwargs(arg_dict)
-      raise function.WrongArgTypes(signature, args, self.ctx, bad_param=bad_arg)
-    if log.isEnabledFor(logging.DEBUG):
-      log.debug("Matched arguments against sig%s",
-                pytd_utils.Print(self.pytd_sig))
-    for nr, p in enumerate(self.pytd_sig.params):
-      log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
-    for name, var in sorted(subst.items()):
-      log.debug("Using %s=%r %r", name, var, var.data)
-
-    return arg_dict, [subst]
 
   def substitute_formal_args(self, node, args, match_all_views, keep_all_views):
     """Substitute matching args into this signature. Used by PyTDFunction."""

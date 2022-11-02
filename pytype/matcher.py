@@ -268,51 +268,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._node, expected, [self._error_subst or {}]),
         error_details=self._error_details())
 
-  # TODO(b/228241343): Delete this method once all usages have been moved to
-  # compute_matches.
-  def compute_subst(self, formal_args, arg_dict, view, alias_map=None):
-    """Compute information about type parameters using one-way unification.
-
-    Given the arguments of a function call, try to find a substitution that
-    matches them against the specified formal parameters.
-
-    Args:
-      formal_args: An iterable of (name, value) pairs of formal arguments.
-      arg_dict: A map of strings to pytd.Bindings instances.
-      view: A mapping of Variable to Value.
-      alias_map: Optionally, a datatypes.UnionFind, which stores all the type
-        renaming information, mapping of type parameter name to its
-        representative.
-    Returns:
-      A tuple (subst, name), with "subst" the datatypes.HashableDict if we found
-      a working substitution, None otherwise, and "name" the bad parameter in
-      case subst=None.
-    """
-    if not arg_dict:
-      # A call with no arguments always succeeds.
-      assert not formal_args
-      return datatypes.HashableDict(), None
-    subst = datatypes.AliasingDict(aliases=alias_map)
-    self._error_subst = None
-    self_subst = None
-    for name, formal in formal_args:
-      self._reset_errors()
-      actual = arg_dict[name]
-      subst = self._match_value_against_type(actual, formal, subst, view)
-      if subst is None:
-        return None, self._get_bad_type(name, formal)
-      if name == "self":
-        self_subst = subst
-    if self_subst:
-      # Type parameters matched from a 'self' arg are class parameters whose
-      # values have been declared by the user, e.g.:
-      #   x = Container[int](__any_object__)
-      # We should keep the 'int' value rather than using Union[int, Unknown].
-      for name, value in self_subst.items():
-        if any(not isinstance(v, abstract.Empty) for v in value.data):
-          subst[name] = value
-    return datatypes.HashableDict(subst), None
-
   # TODO(b/63407497): We were previously enforcing --strict_parameter_checks
   # in compute_one_match, which didn't play nicely with overloads. Instead,
   # enforcement should be pushed to callers of compute_matches.

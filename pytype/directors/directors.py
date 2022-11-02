@@ -8,6 +8,7 @@ import sys
 from typing import AbstractSet, Optional
 
 from pytype import blocks
+from pytype import config
 
 # directors.parser uses the stdlib ast library, which is much faster than
 # libcst, but we rely on ast features that are new in Python 3.9.
@@ -24,6 +25,8 @@ SkipFileError = parser.SkipFileError
 parse_src = parser.parse_src
 
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
+
+_ALLOWED_FEATURES = frozenset(x.flag for x in config.FEATURE_FLAGS)
 
 _FUNCTION_CALL_ERRORS = frozenset((
     # A function call may implicitly access a magic method attribute.
@@ -321,6 +324,7 @@ class Director:
     self.return_lines = visitor.block_returns.all_returns()
     self._function_ranges = _BlockRanges(visitor.function_ranges)
     self.matches = visitor.matches
+    self.features = set()
 
     for line_range, group in visitor.structured_comment_groups.items():
       for comment in group:
@@ -424,11 +428,18 @@ class Director:
       except ValueError as e:
         raise _DirectiveError("Invalid directive syntax.") from e
       # Additional commands may be added in the future.  For now, only
-      # "disable" and "enable" are supported.
+      # "disable", "enable", and "features" are supported.
       if command == "disable":
         disable = True
       elif command == "enable":
         disable = False
+      elif command == "features":
+        features = set(values)
+        invalid = features - _ALLOWED_FEATURES
+        if invalid:
+          raise _DirectiveError(f"Unknown pytype features: {','.join(invalid)}")
+        self.features |= features
+        continue
       else:
         raise _DirectiveError(f"Unknown pytype directive: '{command}'")
       if not values:

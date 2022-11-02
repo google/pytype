@@ -84,7 +84,7 @@ class Kythe:
     anchor_vname = self.add_anchor(0, 0)
     mod_vname = self.vname(FILE_ANCHOR_SIGNATURE)
     self.add_fact(mod_vname, "node/kind", "package")
-    self.add_edge(anchor_vname, "defines/binding", mod_vname)
+    self.add_edge(anchor_vname, "defines/implicit", mod_vname)
     self.add_edge(self.file_vname, "childof", mod_vname)
 
   def _add_entry(self, entry):

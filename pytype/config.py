@@ -111,6 +111,10 @@ class Options:
       assert hasattr(self, k)  # Don't allow adding arbitrary junk
       setattr(self, k, v)
 
+  def set_feature_flags(self, flags):
+    updates = {f.dest: True for f in FEATURE_FLAGS if f.flag in flags}
+    self.tweak(**updates)
+
   def as_dict(self):
     return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
@@ -169,6 +173,14 @@ class _Arg:
   def long_opt(self):
     return self.args[-1]
 
+  @property
+  def flag(self):
+    return self.long_opt.lstrip("--")
+
+  @property
+  def dest(self):
+    return self.kwargs["dest"]
+
 
 def _flag(opt, default, help_text):
   dest = opt.lstrip("-").replace("-", "_")
@@ -213,6 +225,14 @@ BASIC_OPTIONS = [
 ]
 
 
+_OPT_IN_FEATURES = [
+    # Feature flags that are not experimental, but are too strict to default
+    # to True and are therefore left as opt-in features for users to enable.
+    _flag("--no-return-any", False,
+          "Do not allow Any as a return type."),
+]
+
+
 FEATURE_FLAGS = [
     _flag("--use-enum-overlay", False,
           "Use the enum overlay for more precise enum checking."),
@@ -233,8 +253,8 @@ FEATURE_FLAGS = [
     _flag("--always-use-return-annotations", False,
           "Always use function return type annotations."),
     _flag("--mapping-is-not-sequence", False,
-          "Do not treat Mapping as satisfying the Sequence protocol"),
-]
+          "Do not treat Mapping as satisfying the Sequence protocol."),
+] + _OPT_IN_FEATURES
 
 
 EXPERIMENTAL_FLAGS = [
@@ -452,23 +472,27 @@ def add_basic_options(o):
 
 def add_feature_flags(o):
   """Add flags for experimental and temporarily gated features."""
-  def flag(arg, temporary):
+  def flag(arg, temporary, experimental):
     temp = ("This flag is temporary and will be removed once this "
             "behavior is enabled by default.")
     help_text = arg.get("help")
     if temporary:
       help_text = f"{help_text} {temp}"
-    else:
+    elif experimental:
       help_text = f"Experimental: {help_text}"
+    else:
+      help_text = f"Opt-in: {help_text}"
     a = _Arg(*arg.args, **arg.kwargs)
     a.kwargs["help"] = help_text
     a.add_to(o)
 
+  modes = {x.long_opt for x in _OPT_IN_FEATURES}
+
   for arg in FEATURE_FLAGS:
-    flag(arg, True)
+    flag(arg, arg.long_opt not in modes, False)
 
   for arg in EXPERIMENTAL_FLAGS:
-    flag(arg, False)
+    flag(arg, False, True)
 
 
 def add_subtools(o):

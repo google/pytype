@@ -67,6 +67,15 @@ class TestReturns(test_base.BaseTest):
                 return 'a'  # bad-return-type  # bad-return-type
     """)
 
+  def test_no_return_any(self):
+    self.options.set_feature_flags({"no-return-any"})
+    self.CheckWithErrors("""
+      from typing import Any
+
+      def f(x: Any):
+        return x  # bad-return-type
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

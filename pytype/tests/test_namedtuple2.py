@@ -43,7 +43,6 @@ class NamedtupleTests(test_base.BaseTest):
         return f(x)
     """)
 
-  @test_base.skip("TODO(b/228241343): view generation bug")
   def test_namedtuple_inheritance_expensive(self):
     self.Check("""
       import collections

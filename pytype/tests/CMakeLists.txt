@@ -1185,3 +1185,12 @@ py_test(
   DEPS
     .test_base
 )
+
+py_test(
+  NAME
+    test_typeguard
+  SRCS
+    test_typeguard.py
+  DEPS
+    .test_base
+)
