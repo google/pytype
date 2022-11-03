@@ -296,6 +296,7 @@ class SplitTest(test_base.BaseTest):
             yield k, v
     """)
 
+  @test_base.skip("b/256934562")
   def test_set_add_in_if(self):
     self.Check("""
       from typing import Optional, Set
