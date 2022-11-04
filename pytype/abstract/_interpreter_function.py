@@ -615,6 +615,57 @@ class InterpreterFunction(SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
+  def _handle_typeguard(self, node, sig, callargs):
+    frame = self.ctx.vm.frame
+    if not hasattr(frame, "f_locals"):
+      return None  # no need to apply TypeGuard if we're in a dummy frame
+    if not sig.has_return_annotation:
+      return None
+    ret = sig.annotations["return"]
+    if ret.full_name != "typing.TypeGuard":
+      return None
+    # TODO(b/217789670): Log an error if the TypeGuard isn't parameterized.
+    new_type = ret.get_formal_type_parameter(abstract_utils.T)
+
+    # Get the argument that the TypeGuard applies to.
+    # TODO(b/217789670): Log an error if the TypeGuard function doesn't accept
+    # enough arguments.
+    if not sig.param_names:
+      return None
+    elif sig.param_names[0] in ("self", "cls"):
+      if len(sig.param_names) < 2:
+        return None
+      first_arg = callargs[sig.param_names[1]]
+    else:
+      first_arg = callargs[sig.param_names[0]]
+
+    # Get the local/global variable that the argument comes from, and add new
+    # bindings for the TypeGuard type.
+    # TODO(b/217789670): This step isn't needed if the TypeGuard type is already
+    # present in first_arg.
+    target_name = self.ctx.vm.get_var_name(first_arg)
+    if not target_name:
+      # TODO(b/217789670): Log a not-supported-yet error if the variable does
+      # not have a name.
+      return None
+    if target_name in frame.f_locals.members:
+      store = frame.f_locals
+    else:
+      store = frame.f_globals
+    target = store.members[target_name]
+    # TODO(b/217789670): Should we use init_annotation? What should be passed in
+    # for 'name' if we do?
+    _, new_instance = self.ctx.vm.init_class(node, new_type)
+    target.PasteVariable(new_instance, node)
+
+    # Create a boolean return variable with True bindings for values that
+    # originate from the TypeGuard type and False for the rest.
+    typeguard_return = self.ctx.program.NewVariable()
+    for b in target.bindings:
+      typeguard_return.AddBinding(
+          self.ctx.convert.bool_values[b.data in new_instance.data], {b}, node)
+    return typeguard_return
+
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
@@ -639,6 +690,7 @@ class InterpreterFunction(SignedFunction):
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
     first_arg = sig.get_first_arg(callargs)
+    typeguard_return = self._handle_typeguard(node, sig, callargs)
     annotation_substs = substs
     # Adds type parameter substitutions from all containing classes. Note that
     # lower frames (ones closer to the end of self.ctx.vm.frames) take
@@ -731,7 +783,7 @@ class InterpreterFunction(SignedFunction):
             "remaining_depth = %d, old_remaining_depth = %d", self.name,
             self.ctx.vm.remaining_depth(), old_remaining_depth)
       else:
-        ret = old_ret.AssignToNewVariable(node)
+        ret = typeguard_return or old_ret.AssignToNewVariable(node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
@@ -778,7 +830,7 @@ class InterpreterFunction(SignedFunction):
     if self._store_call_records or self.ctx.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
-    return node_after_call, ret
+    return node_after_call, typeguard_return or ret
 
   def get_call_combinations(self, node):
     """Get this function's call records."""
