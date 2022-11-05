@@ -329,7 +329,7 @@ class SimpleFunction(SignedFunction):
     if self.name == "__new__":
       self_arg = ret
     else:
-      self_arg = self.signature.get_first_arg(callargs)
+      self_arg = self.signature.get_self_arg(callargs)
     mutations = self._mutations_generator(node, self_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     return node, ret
@@ -615,31 +615,16 @@ class InterpreterFunction(SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
-  def _handle_typeguard(self, node, sig, callargs):
+  def _handle_typeguard(self, node, ret, first_arg):
     frame = self.ctx.vm.frame
     if not hasattr(frame, "f_locals"):
       return None  # no need to apply TypeGuard if we're in a dummy frame
-    if not sig.has_return_annotation:
-      return None
-    ret = sig.annotations["return"]
     if ret.full_name != "typing.TypeGuard":
       return None
     # TODO(b/217789670): Log an error if the TypeGuard isn't parameterized.
     new_type = ret.get_formal_type_parameter(abstract_utils.T)
 
-    # Get the argument that the TypeGuard applies to.
-    # TODO(b/217789670): Log an error if the TypeGuard function doesn't accept
-    # enough arguments.
-    if not sig.param_names:
-      return None
-    elif sig.param_names[0] in ("self", "cls"):
-      if len(sig.param_names) < 2:
-        return None
-      first_arg = callargs[sig.param_names[1]]
-    else:
-      first_arg = callargs[sig.param_names[0]]
-
-    # Get the local/global variable that the argument comes from, and add new
+    # Get the local/global variable that first_arg comes from, and add new
     # bindings for the TypeGuard type.
     # TODO(b/217789670): This step isn't needed if the TypeGuard type is already
     # present in first_arg.
@@ -689,8 +674,7 @@ class InterpreterFunction(SignedFunction):
       # We've matched an overload; remap the callargs using the implementation
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
-    first_arg = sig.get_first_arg(callargs)
-    typeguard_return = self._handle_typeguard(node, sig, callargs)
+    self_arg = sig.get_self_arg(callargs)
     annotation_substs = substs
     # Adds type parameter substitutions from all containing classes. Note that
     # lower frames (ones closer to the end of self.ctx.vm.frames) take
@@ -702,10 +686,19 @@ class InterpreterFunction(SignedFunction):
     # type-checking down the road.
     annotations = self.ctx.annotation_utils.sub_annotations(
         node, sig.annotations, annotation_substs, instantiate_unbound=False)
+
+    # TODO(b/217789670): Log an error if the TypeGuard function doesn't accept
+    # enough arguments.
+    first_arg = sig.get_first_arg(callargs)
+    if first_arg and sig.has_return_annotation:
+      typeguard_return = self._handle_typeguard(
+          node, annotations["return"], first_arg)
+    else:
+      typeguard_return = None
     if sig.has_param_annotations:
-      if first_arg and sig.param_names[0] == "self":
+      if self_arg:
         try:
-          maybe_container = abstract_utils.get_atomic_value(first_arg)
+          maybe_container = abstract_utils.get_atomic_value(self_arg)
         except abstract_utils.ConversionError:
           container = None
         else:
@@ -729,7 +722,7 @@ class InterpreterFunction(SignedFunction):
               annotations[name],
               container=container,
               extra_key=extra_key)
-    mutations = self._mutations_generator(node, first_arg, substs)
+    mutations = self._mutations_generator(node, self_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     if substs:
       frame_substs = tuple(itertools.chain(frame_substs, substs))
@@ -743,7 +736,7 @@ class InterpreterFunction(SignedFunction):
           self.closure,
           new_locals=new_locals,
           func=func,
-          first_arg=first_arg,
+          first_arg=self_arg or first_arg,
           substs=frame_substs)
     except self.ctx.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
@@ -755,8 +748,8 @@ class InterpreterFunction(SignedFunction):
       # as incomplete.
       self._set_callself_maybe_missing_members()
       return node, self.ctx.new_unsolvable(node)
-    caller_is_abstract = _check_classes(first_arg, lambda cls: cls.is_abstract)
-    caller_is_protocol = _check_classes(first_arg, lambda cls: cls.is_protocol)
+    caller_is_abstract = _check_classes(self_arg, lambda cls: cls.is_abstract)
+    caller_is_protocol = _check_classes(self_arg, lambda cls: cls.is_protocol)
     # We should avoid checking the return value against any return annotation
     # when we are analyzing an attribute of a protocol or an abstract class's
     # abstract method.

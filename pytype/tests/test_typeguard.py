@@ -130,10 +130,9 @@ class TypeGuardTest(test_base.BaseTest):
           assert_type(val, int)
     """)
 
-  @test_base.skip("Not supported yet")
   def test_generic(self):
-    self.Check("""
-      from typing import TypeGuard, TypeVar
+    self.CheckWithErrors("""
+      from typing import TypeGuard, TypeVar  # not-supported-yet
 
       _T = TypeVar("_T")
 
