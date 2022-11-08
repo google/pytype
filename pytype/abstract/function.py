@@ -396,8 +396,24 @@ class Signature:
     ret = self._print_annot("return")
     return f"def {self.name}({args}) -> {ret if ret else 'Any'}"
 
+  def get_self_arg(self, callargs):
+    """Returns the 'self' or 'cls' arg, if any."""
+    if self.param_names and self.param_names[0] in ("self", "cls"):
+      return callargs.get(self.param_names[0])
+    else:
+      return None
+
   def get_first_arg(self, callargs):
-    return callargs.get(self.param_names[0]) if self.param_names else None
+    """Returns the first non-self/cls arg, if any."""
+    if not self.param_names:
+      return None
+    elif self.param_names[0] not in ("self", "cls"):
+      name = self.param_names[0]
+    elif len(self.param_names) > 1:
+      name = self.param_names[1]
+    else:
+      return None
+    return callargs.get(name)
 
 
 def _convert_namedargs(namedargs):

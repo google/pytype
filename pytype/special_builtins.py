@@ -150,16 +150,6 @@ class ObjectPredicate(BuiltinFunction):
   (See UnaryPredicate and BinaryPredicate for examples.)
   """
 
-  def __init__(self, name, signatures, kind, ctx):
-    super().__init__(name, signatures, kind, ctx)
-    # Map of True/False/None (where None signals an ambiguous bool) to
-    # vm values.
-    self._vm_values = {
-        True: ctx.convert.true,
-        False: ctx.convert.false,
-        None: ctx.convert.primitive_class_instances[bool],
-    }
-
   def run(self, node, args, result):
     raise NotImplementedError(self.__class__.__name__)
 
@@ -189,7 +179,7 @@ class UnaryPredicate(ObjectPredicate):
   def run(self, node, args, result):
     for obj in args.posargs[0].bindings:
       node, pyval = self._call_predicate(node, obj)
-      result.AddBinding(self._vm_values[pyval],
+      result.AddBinding(self.ctx.convert.bool_values[pyval],
                         source_set=(obj,), where=node)
 
 
@@ -210,7 +200,7 @@ class BinaryPredicate(ObjectPredicate):
       for right in abstract_utils.expand_type_parameter_instances(
           args.posargs[1].bindings):
         node, pyval = self._call_predicate(node, left, right)
-        result.AddBinding(self._vm_values[pyval],
+        result.AddBinding(self.ctx.convert.bool_values[pyval],
                           source_set=(left, right), where=node)
 
 

@@ -329,7 +329,7 @@ class SimpleFunction(SignedFunction):
     if self.name == "__new__":
       self_arg = ret
     else:
-      self_arg = self.signature.get_first_arg(callargs)
+      self_arg = self.signature.get_self_arg(callargs)
     mutations = self._mutations_generator(node, self_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     return node, ret
@@ -615,6 +615,42 @@ class InterpreterFunction(SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
+  def _handle_typeguard(self, node, ret, first_arg):
+    frame = self.ctx.vm.frame
+    if not hasattr(frame, "f_locals"):
+      return None  # no need to apply TypeGuard if we're in a dummy frame
+    if ret.full_name != "typing.TypeGuard":
+      return None
+    # TODO(b/217789670): Log an error if the TypeGuard isn't parameterized.
+    new_type = ret.get_formal_type_parameter(abstract_utils.T)
+
+    # Get the local/global variable that first_arg comes from, and add new
+    # bindings for the TypeGuard type.
+    # TODO(b/217789670): This step isn't needed if the TypeGuard type is already
+    # present in first_arg.
+    target_name = self.ctx.vm.get_var_name(first_arg)
+    if not target_name:
+      # TODO(b/217789670): Log a not-supported-yet error if the variable does
+      # not have a name.
+      return None
+    if target_name in frame.f_locals.members:
+      store = frame.f_locals
+    else:
+      store = frame.f_globals
+    target = store.members[target_name]
+    # TODO(b/217789670): Should we use init_annotation? What should be passed in
+    # for 'name' if we do?
+    _, new_instance = self.ctx.vm.init_class(node, new_type)
+    target.PasteVariable(new_instance, node)
+
+    # Create a boolean return variable with True bindings for values that
+    # originate from the TypeGuard type and False for the rest.
+    typeguard_return = self.ctx.program.NewVariable()
+    for b in target.bindings:
+      typeguard_return.AddBinding(
+          self.ctx.convert.bool_values[b.data in new_instance.data], {b}, node)
+    return typeguard_return
+
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
@@ -638,7 +674,7 @@ class InterpreterFunction(SignedFunction):
       # We've matched an overload; remap the callargs using the implementation
       # so that optional parameters, etc, are correctly defined.
       callargs = self._map_args(node, args)
-    first_arg = sig.get_first_arg(callargs)
+    self_arg = sig.get_self_arg(callargs)
     annotation_substs = substs
     # Adds type parameter substitutions from all containing classes. Note that
     # lower frames (ones closer to the end of self.ctx.vm.frames) take
@@ -650,10 +686,19 @@ class InterpreterFunction(SignedFunction):
     # type-checking down the road.
     annotations = self.ctx.annotation_utils.sub_annotations(
         node, sig.annotations, annotation_substs, instantiate_unbound=False)
+
+    # TODO(b/217789670): Log an error if the TypeGuard function doesn't accept
+    # enough arguments.
+    first_arg = sig.get_first_arg(callargs)
+    if first_arg and sig.has_return_annotation:
+      typeguard_return = self._handle_typeguard(
+          node, annotations["return"], first_arg)
+    else:
+      typeguard_return = None
     if sig.has_param_annotations:
-      if first_arg and sig.param_names[0] == "self":
+      if self_arg:
         try:
-          maybe_container = abstract_utils.get_atomic_value(first_arg)
+          maybe_container = abstract_utils.get_atomic_value(self_arg)
         except abstract_utils.ConversionError:
           container = None
         else:
@@ -677,7 +722,7 @@ class InterpreterFunction(SignedFunction):
               annotations[name],
               container=container,
               extra_key=extra_key)
-    mutations = self._mutations_generator(node, first_arg, substs)
+    mutations = self._mutations_generator(node, self_arg, substs)
     node = abstract_utils.apply_mutations(node, mutations)
     if substs:
       frame_substs = tuple(itertools.chain(frame_substs, substs))
@@ -691,7 +736,7 @@ class InterpreterFunction(SignedFunction):
           self.closure,
           new_locals=new_locals,
           func=func,
-          first_arg=first_arg,
+          first_arg=self_arg or first_arg,
           substs=frame_substs)
     except self.ctx.vm.VirtualMachineRecursionError:
       # If we've encountered recursion in a constructor, then we have another
@@ -703,8 +748,8 @@ class InterpreterFunction(SignedFunction):
       # as incomplete.
       self._set_callself_maybe_missing_members()
       return node, self.ctx.new_unsolvable(node)
-    caller_is_abstract = _check_classes(first_arg, lambda cls: cls.is_abstract)
-    caller_is_protocol = _check_classes(first_arg, lambda cls: cls.is_protocol)
+    caller_is_abstract = _check_classes(self_arg, lambda cls: cls.is_abstract)
+    caller_is_protocol = _check_classes(self_arg, lambda cls: cls.is_protocol)
     # We should avoid checking the return value against any return annotation
     # when we are analyzing an attribute of a protocol or an abstract class's
     # abstract method.
@@ -731,7 +776,7 @@ class InterpreterFunction(SignedFunction):
             "remaining_depth = %d, old_remaining_depth = %d", self.name,
             self.ctx.vm.remaining_depth(), old_remaining_depth)
       else:
-        ret = old_ret.AssignToNewVariable(node)
+        ret = typeguard_return or old_ret.AssignToNewVariable(node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
           self._call_records.append((callargs, ret, node))
@@ -778,7 +823,7 @@ class InterpreterFunction(SignedFunction):
     if self._store_call_records or self.ctx.store_all_calls:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
-    return node_after_call, ret
+    return node_after_call, typeguard_return or ret
 
   def get_call_combinations(self, node):
     """Get this function's call records."""
