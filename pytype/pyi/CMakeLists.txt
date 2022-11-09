@@ -8,6 +8,7 @@ py_library(
     .classdef
     .conditions
     .definitions
+    .evaluator
     .function
     .init
     .metadata
