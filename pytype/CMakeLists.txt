@@ -162,6 +162,7 @@ py_library(
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pyc.pyc
+    pytype.pyi.evaluator
     pytype.pyi.parser
     pytype.pytd.pytd
     pytype.pytd.parse.parse
