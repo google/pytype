@@ -638,17 +638,21 @@ class InterpreterFunction(SignedFunction):
     else:
       store = frame.f_globals
     target = store.members[target_name]
+    old_data = set(target.data)
     # TODO(b/217789670): Should we use init_annotation? What should be passed in
     # for 'name' if we do?
     _, new_instance = self.ctx.vm.init_class(node, new_type)
-    target.PasteVariable(new_instance, node)
+    for b in new_instance.bindings:
+      if b.data not in target.data:
+        target.PasteBinding(b, node)
 
     # Create a boolean return variable with True bindings for values that
     # originate from the TypeGuard type and False for the rest.
     typeguard_return = self.ctx.program.NewVariable()
     for b in target.bindings:
-      typeguard_return.AddBinding(
-          self.ctx.convert.bool_values[b.data in new_instance.data], {b}, node)
+      boolvals = {b.data not in old_data} | {b.data in new_instance.data}
+      for v in boolvals:
+        typeguard_return.AddBinding(self.ctx.convert.bool_values[v], {b}, node)
     return typeguard_return
 
   def call(self, node, func, args, alias_map=None, new_locals=False,

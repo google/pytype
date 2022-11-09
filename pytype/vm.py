@@ -581,10 +581,8 @@ class VirtualMachine:
       for o in b.origins:
         for s in o.source_sets:
           sources |= s
-    if len(sources) == 1:
-      s = next(iter(sources))
-      return self._var_names.get(s.variable.id)
-    return None
+    names = {self._var_names.get(s.variable.id) for s in sources}
+    return next(iter(names)) if len(names) == 1 else None
 
   def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)

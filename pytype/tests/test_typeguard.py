@@ -117,10 +117,9 @@ class TypeGuardTest(test_base.BaseTest):
           assert_type(val, int)
     """)
 
-  @test_base.skip("Not supported yet")
   def test_repeat_calls_same_function(self):
-    self.Check("""
-      from typing import TypeGuard
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
       def is_int(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
       def f(val):
@@ -146,10 +145,9 @@ class TypeGuardTest(test_base.BaseTest):
           assert_type(names, tuple[str, ...])
     """)
 
-  @test_base.skip("Not supported yet")
   def test_union(self):
-    self.Check("""
-      from typing import TypeGuard, TypeVar
+    self.CheckWithErrors("""
+      from typing import TypeGuard, TypeVar  # not-supported-yet
 
       _T = TypeVar("_T")
 
