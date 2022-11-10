@@ -581,10 +581,8 @@ class VirtualMachine:
       for o in b.origins:
         for s in o.source_sets:
           sources |= s
-    if len(sources) == 1:
-      s = next(iter(sources))
-      return self._var_names.get(s.variable.id)
-    return None
+    names = {self._var_names.get(s.variable.id) for s in sources}
+    return next(iter(names)) if len(names) == 1 else None
 
   def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)
@@ -757,6 +755,8 @@ class VirtualMachine:
       typ = annots.get_type(node, name)
       if typ:
         _, ret = self.ctx.annotation_utils.init_annotation(node, name, typ)
+        store.members[name] = ret
+        self._var_names[ret.id] = name
         return ret
     raise KeyError(name)
 

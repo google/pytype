@@ -334,6 +334,26 @@ class ConvertTest(test_base.UnitTest):
     self.assertIsInstance(
         self._ctx.convert.constant_name((int, (str, super))), str)
 
+  def test_literal(self):
+    ast = self._load_ast("a", r"""
+      from typing import Literal
+      one: Literal[1] = ...
+      abc: Literal["abc"] = ...
+      null: Literal["\0"] = ...
+    """)
+    with self.subTest("one"):
+      pyval = ast.Lookup("a.one")
+      literal = self._ctx.convert._get_literal_value(pyval.type, None)
+      self.assertEqual(literal.value.pyval, 1)
+    with self.subTest("abc"):
+      pyval = ast.Lookup("a.abc")
+      literal = self._ctx.convert._get_literal_value(pyval.type, None)
+      self.assertEqual(literal.value.pyval, "abc")
+    with self.subTest("null"):
+      pyval = ast.Lookup("a.null")
+      literal = self._ctx.convert._get_literal_value(pyval.type, None)
+      self.assertEqual(literal.value.pyval, "\0")
+
 
 if __name__ == "__main__":
   unittest.main()

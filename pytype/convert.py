@@ -18,11 +18,11 @@ from pytype.overlays import named_tuple
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyc import loadmarshal
+from pytype.pyi import evaluator
 from pytype.pyi import metadata
 from pytype.pytd import mro
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd.parse import parser_constants
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -602,10 +602,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif pyval == self.ctx.loader.lookup_builtin("builtins.False"):
       value = False
     elif isinstance(pyval, str):
-      prefix, value = parser_constants.STRING_RE.match(pyval).groups()[:2]
-      value = value[1:-1]  # remove quotation marks
-      if "b" in prefix:
-        value = str(value).encode("utf-8")
+      value = evaluator.eval_string_literal(pyval)
     else:
       value = pyval
     return self.constant_to_value(value, subst, self.ctx.root_node)
