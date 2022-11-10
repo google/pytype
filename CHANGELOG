@@ -1,3 +1,16 @@
+Version 2022.11.10:
+
+Updates:
+* Add an optional no-return-any flag to disallow Any as a return type.
+* Add a mechanism to allow per-file opting in to feature flags, via a file-level
+  `features` directive, for example, `# pytype: features=no-return-any`.
+
+Bug fixes:
+* Do not let a kwarg in **args interfere with a posonly arg of the same name,
+  pyi edition.
+* Interpret special characters in serialized (pyi or pickle) Literal[""] type
+  definitions correctly.
+
 Version 2022.10.26:
 
 Updates:
