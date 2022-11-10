@@ -167,10 +167,9 @@ class TypeGuardTest(test_base.BaseTest):
           assert_type(val, tuple[str, str])
     """)
 
-  @test_base.skip("Not supported yet")
   def test_global(self):
-    self.Check("""
-      from typing import TypeGuard
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
 
       x: object
 
@@ -183,10 +182,9 @@ class TypeGuardTest(test_base.BaseTest):
         assert_type(x, object)
     """)
 
-  @test_base.skip("Not supported yet")
   def test_local(self):
-    self.Check("""
-      from typing import TypeGuard
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
       def is_int(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
       def f() -> object:

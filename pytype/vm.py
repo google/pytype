@@ -755,6 +755,8 @@ class VirtualMachine:
       typ = annots.get_type(node, name)
       if typ:
         _, ret = self.ctx.annotation_utils.init_annotation(node, name, typ)
+        store.members[name] = ret
+        self._var_names[ret.id] = name
         return ret
     raise KeyError(name)
 

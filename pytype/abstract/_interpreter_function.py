@@ -638,6 +638,9 @@ class InterpreterFunction(SignedFunction):
     else:
       store = frame.f_globals
     target = store.members[target_name]
+    # Forward all the target's bindings to the current node, so we don't have
+    # visibility problems later.
+    target.PasteVariable(target, node)
     old_data = set(target.data)
     # TODO(b/217789670): Should we use init_annotation? What should be passed in
     # for 'name' if we do?
