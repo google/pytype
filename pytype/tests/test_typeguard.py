@@ -21,6 +21,47 @@ class TypingExtensionsTest(test_base.BaseTest):
 
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
+class MisuseTest(test_base.BaseTest):
+  """Tests for misuse of typing.TypeGuard."""
+
+  @test_base.skip("TODO(b/217789670): Allow TypeGuard as Callable return type")
+  def test_not_bool_subclass(self):
+    self.CheckWithErrors("""
+      from typing import Callable, TypeGuard  # not-supported-yet
+      x: Callable[..., TypeGuard[int]]
+      y: Callable[..., bool] = x  # annotation-type-mismatch
+    """)
+
+  def test_unparameterized(self):
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
+      def f(x) -> TypeGuard:  # invalid-annotation
+        return isinstance(x, int)
+      def g(x):
+        if f(x):
+          assert_type(x, 'Any')
+    """)
+
+  def test_not_toplevel_return(self):
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
+      def f(x: TypeGuard):  # invalid-annotation
+        pass
+      def g() -> list[TypeGuard]:  # invalid-annotation
+        return []
+    """)
+
+  def test_not_enough_parameters(self):
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
+      def f() -> TypeGuard[int]:  # invalid-function-definition
+        return True
+      def f(x=None) -> TypeGuard[int]:  # invalid-function-definition
+        return True
+    """)
+
+
+@test_utils.skipBeforePy((3, 10), "New in 3.10")
 class TypeGuardTest(test_base.BaseTest):
   """Tests for typing.TypeGuard."""
 
@@ -53,13 +94,6 @@ class TypeGuardTest(test_base.BaseTest):
       def f(val: dict):
         if is_person(val):
           assert_type(val, Person)
-    """)
-
-  def test_not_bool_subclass(self):
-    self.CheckWithErrors("""
-      from typing import Callable, TypeGuard  # not-supported-yet
-      x: Callable[..., TypeGuard[int]]
-      y: Callable[..., bool] = x  # annotation-type-mismatch
     """)
 
   def test_multiple_arguments(self):
@@ -195,6 +229,16 @@ class TypeGuardTest(test_base.BaseTest):
           assert_type(x, int)
         else:
           assert_type(x, object)
+    """)
+
+  def test_non_variable(self):
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
+      def f(x) -> TypeGuard[int]:
+        return isinstance(x, int)
+      def g(x: dict[str, object]):
+        if f(x['k']):  # not-supported-yet
+          return x['k']
     """)
 
 

@@ -73,7 +73,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2022-10-18T17:09-07:00 -->
+<!-- Added by: rechen, at: 2022-11-10T15:39-08:00 -->
 
 <!--te-->
 
@@ -490,8 +490,8 @@ x = TypeDefinedAtRuntime  # pytype: disable=nmae-error  # invalid-directive
 
 ## invalid-function-definition
 
-An invalid function was constructed via metaprogramming (typically with a
-decorator such as `@dataclass`). Example:
+An invalid function was constructed, typically with a decorator such as
+`@dataclass`. Example:
 
 <!-- bad -->
 ```python

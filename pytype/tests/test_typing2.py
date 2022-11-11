@@ -546,8 +546,10 @@ class TypingTest(test_base.BaseTest):
       bad = None  # type: NoReturn  # invalid-annotation[e4]
     """)
     self.assertErrorRegexes(errors, {
-        "e1": r"NoReturn is not allowed", "e2": r"NoReturn is not allowed",
-        "e3": r"NoReturn is not allowed", "e4": r"NoReturn is not allowed"})
+        "e1": r"NoReturn is not allowed",
+        "e2": r"NoReturn is only allowed as a return annotation",
+        "e3": r"NoReturn is only allowed as a return annotation",
+        "e4": r"NoReturn is only allowed as a return annotation"})
 
   def test_noreturn_in_tuple(self):
     self.Check("""

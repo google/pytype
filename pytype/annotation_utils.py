@@ -16,6 +16,10 @@ from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
 
+# types that should appear only as function return annotations
+_RETURN_TYPE_ONLY = frozenset(["typing.NoReturn", "typing.TypeGuard"])
+
+
 @dataclasses.dataclass
 class AnnotatedValue:
   typ: Any
@@ -502,9 +506,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                                            name)
       return None
     elif (name is not None and name != "return"
-          and isinstance(annotation, typing_overlay.NoReturn)):
-      self.ctx.errorlog.invalid_annotation(stack, annotation,
-                                           "NoReturn is not allowed", name)
+          and annotation.full_name in _RETURN_TYPE_ONLY):
+      self.ctx.errorlog.invalid_annotation(
+          stack, annotation,
+          f"{annotation.name} is only allowed as a return annotation", name)
       return None
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls == self.ctx.convert.str_type):
@@ -546,9 +551,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         processed = self._process_one_annotation(node, typ, name, stack)
         if processed is None:
           return None
-        elif isinstance(processed, typing_overlay.NoReturn):
+        elif processed.full_name in _RETURN_TYPE_ONLY:
           self.ctx.errorlog.invalid_annotation(
-              stack, typ, "NoReturn is not allowed as inner type", name)
+              stack, typ, f"{processed.name} is not allowed as inner type",
+              name)
           return None
         annotation.update_inner_type(key, processed)
       return annotation

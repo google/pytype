@@ -1352,7 +1352,6 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-function-definition")
   def invalid_function_definition(self, stack, msg):
-    """Invalid function constructed via metaprogramming."""
     self.error(stack, msg)
 
   @_error_name("typed-dict-error")
