@@ -441,7 +441,7 @@ class MatcherTest(MatcherTestBase):
     self.assertMatch(self.ctx.convert.no_return, self.ctx.convert.no_return)
 
   def test_empty_against_no_return(self):
-    self.assertNoMatch(self.ctx.convert.empty, self.ctx.convert.no_return)
+    self.assertMatch(self.ctx.convert.empty, self.ctx.convert.no_return)
 
   def test_no_return_against_class(self):
     right = self._convert_type("int")

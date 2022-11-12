@@ -17,7 +17,7 @@ from pytype.typegraph import cfg
 
 
 # types that should appear only as function return annotations
-_RETURN_TYPE_ONLY = frozenset(["typing.NoReturn", "typing.TypeGuard"])
+_RETURN_TYPE_ONLY = frozenset(["typing.TypeGuard"])
 
 
 @dataclasses.dataclass

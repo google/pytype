@@ -538,7 +538,8 @@ class ErrorLog(ErrorLogBase):
       return re.sub(r"(\\n|\s)+", " ",
                     typing.cast(mixin.PythonConstant, t).str_of_constant(
                         self._print_as_expected_type))
-    elif isinstance(t, abstract.AnnotationClass) or t.cls == t:
+    elif (isinstance(t, (abstract.AnnotationClass, abstract.Singleton)) or
+          t.cls == t):
       return t.name
     else:
       return f"<instance of {self._print_as_expected_type(t.cls, t)}>"

@@ -576,8 +576,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # `NoReturn` can only matches itself, `Any`, or `abstract.TypeParameter`.
       # For the latter case, it will be used in byte code `STORE_ANNOTATION`
       # to store the `NoReturn` annotation in a dict.
-      if (left == other_type or isinstance(other_type, abstract.Unsolvable) or
-          isinstance(left, abstract.Unsolvable)):
+      if (left == other_type or
+          isinstance(other_type, abstract.AMBIGUOUS_OR_EMPTY) or
+          isinstance(left, abstract.AMBIGUOUS_OR_EMPTY)):
         return subst
       else:
         return None

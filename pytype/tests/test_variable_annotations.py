@@ -79,18 +79,21 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
 
       a: "abc" = "1"  # name-error[e1]
       b: 123 = "2"  # invalid-annotation[e2]
-      c: NoReturn = "3"  # invalid-annotation[e3]
-      d: List[int] = []
-      e: List[T] = []  # invalid-annotation[e4]
-      f: int if __random__ else str = 123  # invalid-annotation[e5]
-      h: NoReturn = None  # invalid-annotation[e6]
+      c: List[int] = []
+      d: List[T] = []  # invalid-annotation[e3]
+      e: int if __random__ else str = 123  # invalid-annotation[e4]
     """)
     self.assertErrorRegexes(errors, {
         "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
-        "e3": r"NoReturn is only allowed as a return annotation",
-        "e4": r"'T' not in scope",
-        "e5": r"Must be constant",
-        "e6": r"NoReturn is only allowed as a return annotation"})
+        "e3": r"'T' not in scope", "e4": r"Must be constant"})
+
+  def test_noreturn(self):
+    errors = self.CheckWithErrors("""
+      from typing import NoReturn
+      x: NoReturn = 0  # annotation-type-mismatch[e]
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Annotation: NoReturn", "Assignment: int"]})
 
   def test_uninitialized_class_annotation(self):
     ty = self.Infer("""
