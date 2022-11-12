@@ -16,10 +16,6 @@ from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
 
-# types that should appear only as function return annotations
-_RETURN_TYPE_ONLY = frozenset(["typing.TypeGuard"])
-
-
 @dataclasses.dataclass
 class AnnotatedValue:
   typ: Any
@@ -505,8 +501,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       self.ctx.errorlog.invalid_annotation(stack, annotation, "Needs options",
                                            name)
       return None
-    elif (name is not None and name != "return"
-          and annotation.full_name in _RETURN_TYPE_ONLY):
+    elif (name is not None and name != "return" and
+          annotation.full_name == "typing.TypeGuard"):
       self.ctx.errorlog.invalid_annotation(
           stack, annotation,
           f"{annotation.name} is only allowed as a return annotation", name)
@@ -548,10 +544,15 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         return annotation
       annotation.processed = True
       for key, typ in annotation.get_inner_types():
-        processed = self._process_one_annotation(node, typ, name, stack)
+        if (annotation.full_name == "typing.Callable" and
+            key == abstract_utils.RET):
+          inner_name = "return"
+        else:
+          inner_name = name
+        processed = self._process_one_annotation(node, typ, inner_name, stack)
         if processed is None:
           return None
-        elif processed.full_name in _RETURN_TYPE_ONLY:
+        elif name == inner_name and processed.full_name == "typing.TypeGuard":
           self.ctx.errorlog.invalid_annotation(
               stack, typ, f"{processed.name} is not allowed as inner type",
               name)

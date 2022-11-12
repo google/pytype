@@ -24,7 +24,6 @@ class TypingExtensionsTest(test_base.BaseTest):
 class MisuseTest(test_base.BaseTest):
   """Tests for misuse of typing.TypeGuard."""
 
-  @test_base.skip("TODO(b/217789670): Allow TypeGuard as Callable return type")
   def test_not_bool_subclass(self):
     self.CheckWithErrors("""
       from typing import Callable, TypeGuard  # not-supported-yet
@@ -58,6 +57,37 @@ class MisuseTest(test_base.BaseTest):
         return True
       def f(x=None) -> TypeGuard[int]:  # invalid-function-definition
         return True
+    """)
+
+
+@test_utils.skipBeforePy((3, 10), "New in 3.10")
+class CallableTest(test_base.BaseTest):
+  """Tests for TypeGuard as a Callable return type."""
+
+  def test_callable(self):
+    self.CheckWithErrors("""
+      from typing import Callable, TypeGuard  # not-supported-yet
+      def f(x: Callable[[object], TypeGuard[int]], y: object):
+        if x(y):
+          assert_type(y, int)
+    """)
+
+  def test_generic(self):
+    self.CheckWithErrors("""
+      from typing import Callable, TypeGuard, TypeVar  # not-supported-yet
+      T = TypeVar('T')
+      def f(x: Callable[[T | None], TypeGuard[T]], y: int | None):
+        if x(y):
+          assert_type(y, int)
+    """)
+
+  def test_invalid(self):
+    self.CheckWithErrors("""
+      from typing import Any, Callable, List, TypeGuard  # not-supported-yet
+      x1: Callable[[], TypeGuard[int]]  # invalid-annotation
+      x2: Callable[[TypeGuard[int]], Any]  # invalid-annotation
+      x3: Callable[[object], List[TypeGuard[int]]]  # invalid-annotation
+      x4: Callable[[object], TypeGuard]  # invalid-annotation
     """)
 
 

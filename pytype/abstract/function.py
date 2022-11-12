@@ -965,3 +965,51 @@ def has_visible_namedarg(node, args, names):
       if node.HasCombination(list(view)):
         return True
   return False
+
+
+def handle_typeguard(node, ret, first_arg, ctx):
+  """Returns a variable of the return value of a typeguard function.
+
+  Args:
+    node: The current node.
+    ret: The function's return value.
+    first_arg: The first argument to the function.
+    ctx: The current context.
+  """
+  frame = ctx.vm.frame
+  if not hasattr(frame, "f_locals"):
+    return None  # no need to apply TypeGuard if we're in a dummy frame
+  if ret.full_name != "typing.TypeGuard":
+    return None
+  new_type = ret.get_formal_type_parameter(abstract_utils.T)
+
+  # Get the local/global variable that first_arg comes from, and add new
+  # bindings for the TypeGuard type.
+  target_name = ctx.vm.get_var_name(first_arg)
+  if not target_name:
+    ctx.errorlog.not_supported_yet(
+        ctx.vm.frames, "Using TypeGuard with an arbitrary expression",
+        "Please assign the expression to a local variable.")
+    return None
+  if target_name in frame.f_locals.members:
+    store = frame.f_locals
+  else:
+    store = frame.f_globals
+  target = store.members[target_name]
+  # Forward all the target's bindings to the current node, so we don't have
+  # visibility problems later.
+  target.PasteVariable(target, node)
+  old_data = set(target.data)
+  _, new_instance = ctx.vm.init_class(node, new_type)
+  for b in new_instance.bindings:
+    if b.data not in target.data:
+      target.PasteBinding(b, node)
+
+  # Create a boolean return variable with True bindings for values that
+  # originate from the TypeGuard type and False for the rest.
+  typeguard_return = ctx.program.NewVariable()
+  for b in target.bindings:
+    boolvals = {b.data not in old_data} | {b.data in new_instance.data}
+    for v in boolvals:
+      typeguard_return.AddBinding(ctx.convert.bool_values[v], {b}, node)
+  return typeguard_return

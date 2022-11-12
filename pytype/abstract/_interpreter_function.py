@@ -624,45 +624,6 @@ class InterpreterFunction(SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
-  def _handle_typeguard(self, node, ret, first_arg):
-    frame = self.ctx.vm.frame
-    if not hasattr(frame, "f_locals"):
-      return None  # no need to apply TypeGuard if we're in a dummy frame
-    if ret.full_name != "typing.TypeGuard":
-      return None
-    new_type = ret.get_formal_type_parameter(abstract_utils.T)
-
-    # Get the local/global variable that first_arg comes from, and add new
-    # bindings for the TypeGuard type.
-    target_name = self.ctx.vm.get_var_name(first_arg)
-    if not target_name:
-      self.ctx.errorlog.not_supported_yet(
-          self.ctx.vm.frames, "Using TypeGuard with an arbitrary expression",
-          "Please assign the expression to a local variable.")
-      return None
-    if target_name in frame.f_locals.members:
-      store = frame.f_locals
-    else:
-      store = frame.f_globals
-    target = store.members[target_name]
-    # Forward all the target's bindings to the current node, so we don't have
-    # visibility problems later.
-    target.PasteVariable(target, node)
-    old_data = set(target.data)
-    _, new_instance = self.ctx.vm.init_class(node, new_type)
-    for b in new_instance.bindings:
-      if b.data not in target.data:
-        target.PasteBinding(b, node)
-
-    # Create a boolean return variable with True bindings for values that
-    # originate from the TypeGuard type and False for the rest.
-    typeguard_return = self.ctx.program.NewVariable()
-    for b in target.bindings:
-      boolvals = {b.data not in old_data} | {b.data in new_instance.data}
-      for v in boolvals:
-        typeguard_return.AddBinding(self.ctx.convert.bool_values[v], {b}, node)
-    return typeguard_return
-
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
@@ -701,8 +662,8 @@ class InterpreterFunction(SignedFunction):
 
     first_arg = sig.get_first_arg(callargs)
     if first_arg and sig.has_return_annotation:
-      typeguard_return = self._handle_typeguard(
-          node, annotations["return"], first_arg)
+      typeguard_return = function.handle_typeguard(
+          node, annotations["return"], first_arg, self.ctx)
     else:
       typeguard_return = None
     if sig.has_param_annotations:
