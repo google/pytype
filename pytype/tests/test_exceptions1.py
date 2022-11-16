@@ -304,6 +304,23 @@ class TestExceptions(test_base.BaseTest):
       def f() -> NoReturn: ...
     """)
 
+  def test_callable_noreturn(self):
+    self.Check("""
+      from typing import Callable, NoReturn
+      def f(x: Callable[[], NoReturn]) -> NoReturn:
+        x()
+    """)
+
+  def test_callable_noreturn_branch(self):
+    self.Check("""
+      from typing import Callable, NoReturn
+      def f(x: Callable[[], NoReturn], y: int) -> int:
+        if y % 2:
+          return y
+        else:
+          x()
+    """)
+
   def test_return_or_raise(self):
     ty = self.Infer("""
       def f():

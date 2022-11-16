@@ -13,7 +13,6 @@ from pytype import file_utils
 from pytype import single
 from pytype import utils
 from pytype.imports import builtin_stubs
-from pytype.imports import pickle_utils
 from pytype.imports import typeshed
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
@@ -105,33 +104,6 @@ class PytypeTest(test_base.UnitTest):
     """A wrapper for parser.parse_string that inserts the python version."""
     return parser.parse_string(
         string, options=parser.PyiOptions(python_version=self.python_version))
-
-  def _generate_builtins_twice(self, python_version):
-    os.environ["PYTHONHASHSEED"] = "0"
-    f1 = self._tmp_path("builtins1.pickle")
-    f2 = self._tmp_path("builtins2.pickle")
-    # We store and poll subprocess.Popen instances so that the (slow)
-    # --generate-builtins actions can proceed in parallel. Since we're not using
-    # Popen as a contextmanager, we manually close the stdout and stderr pipes.
-    processes = []
-    for f in (f1, f2):
-      self.pytype_args["--generate-builtins"] = f
-      self.pytype_args["--python_version"] = python_version
-      processes.append(self._create_pytype_subprocess(self.pytype_args))
-    while any(p.poll() is None for p in processes):
-      pass
-    for p in processes:
-      p.stdout.close()
-      p.stderr.close()
-    return f1, f2
-
-  def assertBuiltinsPickleEqual(self, f1, f2):
-    with open(f1, "rb") as pickle1, open(f2, "rb") as pickle2:
-      if pickle1.read() == pickle2.read():
-        return
-    out1 = pickle_utils.LoadPickle(f1, compress=True)
-    out2 = pickle_utils.LoadPickle(f2, compress=True)
-    raise AssertionError("\n".join(pytd_utils.DiffNamedPickles(out1, out2)))
 
   def assertOutputStateMatches(self, **has_output):
     """Check that the output state matches expectations.
@@ -541,11 +513,6 @@ class PytypeTest(test_base.UnitTest):
     """, extension="")
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
-
-  def test_builtins_determinism(self):
-    f1, f2 = self._generate_builtins_twice(
-        utils.format_version(sys.version_info[:2]))
-    self.assertBuiltinsPickleEqual(f1, f2)
 
   def test_timeout(self):
     # Note: At the time of this writing, pickling builtins takes well over one

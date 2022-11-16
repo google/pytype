@@ -73,7 +73,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2022-10-18T17:09-07:00 -->
+<!-- Added by: rechen, at: 2022-11-11T10:00-08:00 -->
 
 <!--te-->
 
@@ -338,7 +338,7 @@ class A(metaclass=abc.ABCMeta):
 
 ## ignored-metaclass
 
-A Python 2-only metaclass declaration was found. Example:
+A Python 2 metaclass declaration was found. Example:
 
 <!-- bad -->
 ```python
@@ -346,30 +346,11 @@ class A(object):
   __metaclass__ = Meta
 ```
 
-For Python 3-only code, the fix is:
+The fix is to switch to a Python 3-style metaclass:
 
 <!-- good -->
 ```python
 class A(metaclass=Meta):
-  ...
-```
-
-For Python 2-and-3 code, two equally good fixes are:
-
-<!-- good -->
-```python
-import six
-@six.add_metaclass(Meta)
-class A(object):
-  ...
-```
-
-or:
-
-<!-- good -->
-```python
-import six
-class A(six.with_metaclass(Meta, object)):
   ...
 ```
 
@@ -490,8 +471,8 @@ x = TypeDefinedAtRuntime  # pytype: disable=nmae-error  # invalid-directive
 
 ## invalid-function-definition
 
-An invalid function was constructed via metaprogramming (typically with a
-decorator such as `@dataclass`). Example:
+An invalid function was constructed, typically with a decorator such as
+`@dataclass`. Example:
 
 <!-- bad -->
 ```python

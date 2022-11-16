@@ -501,10 +501,11 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       self.ctx.errorlog.invalid_annotation(stack, annotation, "Needs options",
                                            name)
       return None
-    elif (name is not None and name != "return"
-          and isinstance(annotation, typing_overlay.NoReturn)):
-      self.ctx.errorlog.invalid_annotation(stack, annotation,
-                                           "NoReturn is not allowed", name)
+    elif (name is not None and name != "return" and
+          annotation.full_name == "typing.TypeGuard"):
+      self.ctx.errorlog.invalid_annotation(
+          stack, annotation,
+          f"{annotation.name} is only allowed as a return annotation", name)
       return None
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls == self.ctx.convert.str_type):
@@ -543,12 +544,18 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         return annotation
       annotation.processed = True
       for key, typ in annotation.get_inner_types():
-        processed = self._process_one_annotation(node, typ, name, stack)
+        if (annotation.full_name == "typing.Callable" and
+            key == abstract_utils.RET):
+          inner_name = "return"
+        else:
+          inner_name = name
+        processed = self._process_one_annotation(node, typ, inner_name, stack)
         if processed is None:
           return None
-        elif isinstance(processed, typing_overlay.NoReturn):
+        elif name == inner_name and processed.full_name == "typing.TypeGuard":
           self.ctx.errorlog.invalid_annotation(
-              stack, typ, "NoReturn is not allowed as inner type", name)
+              stack, typ, f"{processed.name} is not allowed as inner type",
+              name)
           return None
         annotation.update_inner_type(key, processed)
       return annotation

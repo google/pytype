@@ -609,35 +609,6 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     return arg_dict, matches
 
-  def instantiate_return(self, node, subst, sources):
-    return_type = self.pytd_sig.return_type
-    # Type parameter values, which are instantiated by the matcher, will end up
-    # in the return value. Since the matcher does not call __init__, we need to
-    # do that now. The one exception is that Type[X] does not instantiate X, so
-    # we do not call X.__init__.
-    if return_type.name != "builtins.type":
-      for param in pytd_utils.GetTypeParameters(return_type):
-        if param.full_name in subst:
-          node = self.ctx.vm.call_init(node, subst[param.full_name])
-    try:
-      ret = self.ctx.convert.constant_to_var(
-          abstract_utils.AsReturnValue(return_type),
-          subst,
-          node,
-          source_sets=[sources])
-    except self.ctx.convert.TypeParameterError:
-      # The return type contains a type parameter without a substitution.
-      subst = abstract_utils.with_empty_substitutions(
-          subst, return_type, node, self.ctx)
-      return node, self.ctx.convert.constant_to_var(
-          abstract_utils.AsReturnValue(return_type),
-          subst,
-          node,
-          source_sets=[sources])
-    if not ret.bindings and isinstance(return_type, pytd.TypeParameter):
-      ret.AddBinding(self.ctx.convert.empty, [], node)
-    return node, ret
-
   def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""
     subst = match.subst
@@ -655,7 +626,18 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       for data in ret_map[t].data:
         ret_map[t].AddBinding(data, sources, node)
     elif visible:
-      node, ret_map[t] = self.instantiate_return(node, subst, sources)
+      first_arg = self.signature.get_first_arg(arg_dict)
+      ret_type = function.PyTDReturnType(
+          self.pytd_sig.return_type, subst, sources, self.ctx)
+      if first_arg:
+        typeguard_return = function.handle_typeguard(
+            node, ret_type, first_arg, self.ctx, func_name=self.name)
+      else:
+        typeguard_return = None
+      if typeguard_return:
+        ret_map[t] = typeguard_return
+      else:
+        node, ret_map[t] = ret_type.instantiate(node)
     elif t not in ret_map:
       ret_map[t] = self.ctx.program.NewVariable()
     mutations = self._get_mutation(node, arg_dict, subst, ret_map[t])

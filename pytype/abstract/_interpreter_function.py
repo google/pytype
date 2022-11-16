@@ -374,17 +374,6 @@ class InterpreterFunction(SignedFunction):
       An InterpreterFunction.
     """
     annotations = annotations or {}
-    if "return" in annotations:
-      # Check Generator/AsyncGenerator return type
-      ret_type = annotations["return"]
-      if code.has_generator():
-        if not _matches_generator(ret_type):
-          ctx.errorlog.bad_yield_annotation(
-              ctx.vm.frames, name, ret_type, is_async=False)
-      elif code.has_async_generator():
-        if not _matches_async_generator(ret_type):
-          ctx.errorlog.bad_yield_annotation(
-              ctx.vm.frames, name, ret_type, is_async=True)
     overloads = ctx.vm.frame.overloads[name]
     key = (name, code,
            _hash_all_dicts(
@@ -435,7 +424,7 @@ class InterpreterFunction(SignedFunction):
       self.nonstararg_count += self.code.co_kwonlyargcount
     signature = self._build_signature(name, annotations)
     super().__init__(signature, ctx)
-    self._check_annotations(name, annotations)
+    self._check_signature()
     self._update_signature_scope()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
@@ -452,12 +441,32 @@ class InterpreterFunction(SignedFunction):
     yield
     self._store_call_records = old
 
-  def _check_annotations(self, name, annotations):
-    """Validate function annotations."""
-    for ann in annotations.values():
+  def _check_signature(self):
+    """Validate function signature."""
+    for ann in self.signature.annotations.values():
       if isinstance(ann, _typing.FinalAnnotation):
         self.ctx.errorlog.invalid_final_type(
             self.ctx.vm.simple_stack(self.def_opcode))
+    if not self.signature.has_return_annotation:
+      return
+    ret_type = self.signature.annotations["return"]
+    # Check Generator/AsyncGenerator return type
+    if self.code.has_generator():
+      if not _matches_generator(ret_type):
+        self.ctx.errorlog.bad_yield_annotation(
+            self.ctx.vm.frames, self.signature.name, ret_type, is_async=False)
+    elif self.code.has_async_generator():
+      if not _matches_async_generator(ret_type):
+        self.ctx.errorlog.bad_yield_annotation(
+            self.ctx.vm.frames, self.signature.name, ret_type, is_async=True)
+    elif ret_type.full_name == "typing.TypeGuard":
+      if self.signature.mandatory_param_count() < 1:
+        self.ctx.errorlog.invalid_function_definition(
+            self.ctx.vm.frames,
+            "A TypeGuard function must have at least one required parameter")
+      if not isinstance(ret_type, _classes.ParameterizedClass):
+        self.ctx.errorlog.invalid_annotation(
+            self.ctx.vm.frames, ret_type, "Expected 1 parameter, got 0")
 
   def _build_signature(self, name, annotations):
     """Build a function.Signature object representing this function."""
@@ -615,49 +624,6 @@ class InterpreterFunction(SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
-  def _handle_typeguard(self, node, ret, first_arg):
-    frame = self.ctx.vm.frame
-    if not hasattr(frame, "f_locals"):
-      return None  # no need to apply TypeGuard if we're in a dummy frame
-    if ret.full_name != "typing.TypeGuard":
-      return None
-    # TODO(b/217789670): Log an error if the TypeGuard isn't parameterized.
-    new_type = ret.get_formal_type_parameter(abstract_utils.T)
-
-    # Get the local/global variable that first_arg comes from, and add new
-    # bindings for the TypeGuard type.
-    # TODO(b/217789670): This step isn't needed if the TypeGuard type is already
-    # present in first_arg.
-    target_name = self.ctx.vm.get_var_name(first_arg)
-    if not target_name:
-      # TODO(b/217789670): Log a not-supported-yet error if the variable does
-      # not have a name.
-      return None
-    if target_name in frame.f_locals.members:
-      store = frame.f_locals
-    else:
-      store = frame.f_globals
-    target = store.members[target_name]
-    # Forward all the target's bindings to the current node, so we don't have
-    # visibility problems later.
-    target.PasteVariable(target, node)
-    old_data = set(target.data)
-    # TODO(b/217789670): Should we use init_annotation? What should be passed in
-    # for 'name' if we do?
-    _, new_instance = self.ctx.vm.init_class(node, new_type)
-    for b in new_instance.bindings:
-      if b.data not in target.data:
-        target.PasteBinding(b, node)
-
-    # Create a boolean return variable with True bindings for values that
-    # originate from the TypeGuard type and False for the rest.
-    typeguard_return = self.ctx.program.NewVariable()
-    for b in target.bindings:
-      boolvals = {b.data not in old_data} | {b.data in new_instance.data}
-      for v in boolvals:
-        typeguard_return.AddBinding(self.ctx.convert.bool_values[v], {b}, node)
-    return typeguard_return
-
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
@@ -694,12 +660,11 @@ class InterpreterFunction(SignedFunction):
     annotations = self.ctx.annotation_utils.sub_annotations(
         node, sig.annotations, annotation_substs, instantiate_unbound=False)
 
-    # TODO(b/217789670): Log an error if the TypeGuard function doesn't accept
-    # enough arguments.
     first_arg = sig.get_first_arg(callargs)
     if first_arg and sig.has_return_annotation:
-      typeguard_return = self._handle_typeguard(
-          node, annotations["return"], first_arg)
+      typeguard_return = function.handle_typeguard(
+          node, function.AbstractReturnType(annotations["return"], self.ctx),
+          first_arg, self.ctx, func_name=self.name)
     else:
       typeguard_return = None
     if sig.has_param_annotations:

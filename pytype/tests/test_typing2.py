@@ -527,27 +527,47 @@ class TypingTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors, {"e": ["Expected: NoReturn", "Actually returned: None"]})
 
-  def test_noreturn_parameters(self):
+  def test_noreturn(self):
     errors = self.CheckWithErrors("""
-      from typing import NoReturn, List
+      from typing import Any, List, NoReturn
 
       def func0() -> NoReturn:
         raise ValueError()
 
-      def func1() -> List[NoReturn]:  # invalid-annotation[e1]
-        raise ValueError()
+      def func1() -> List[NoReturn]:
+        return [None]  # bad-return-type[e1]
 
-      def func2(x: NoReturn):  # invalid-annotation[e2]
+      def func2(x: NoReturn):
         pass
+      func2(0)  # wrong-arg-types[e2]
 
-      def func3(x: List[NoReturn]):  # invalid-annotation[e3]
+      def func3(x: List[NoReturn]):
         pass
+      func3([0])  # wrong-arg-types[e3]
 
-      bad = None  # type: NoReturn  # invalid-annotation[e4]
+      def func4():
+        x: List[NoReturn] = []
+        x.append(0)  # container-type-mismatch[e4]
     """)
-    self.assertErrorRegexes(errors, {
-        "e1": r"NoReturn is not allowed", "e2": r"NoReturn is not allowed",
-        "e3": r"NoReturn is not allowed", "e4": r"NoReturn is not allowed"})
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected: List[nothing]", "Actually returned: List[None]"],
+        "e2": ["Expected: (x: NoReturn)", "Actually passed: (x: int)"],
+        "e3": ["Expected: (x: List[nothing])",
+               "Actually passed: (x: List[int])"],
+        "e4": ["Allowed", "_T: NoReturn", "New", "_T: int"],
+    })
+
+  def test_noreturn_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import NoReturn
+      def f(x: NoReturn): ...
+    """)]):
+      errors = self.CheckWithErrors("""
+        import foo
+        foo.f(0)  # wrong-arg-types[e]
+      """)
+      self.assertErrorSequences(
+          errors, {"e": ["Expected: (x: empty)", "Actually passed: (x: int)"]})
 
   def test_noreturn_in_tuple(self):
     self.Check("""
