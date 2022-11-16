@@ -30,11 +30,20 @@ class TypingExtensionsTest(test_base.BaseTest):
 class MisuseTest(test_base.BaseTest):
   """Tests for misuse of typing.TypeGuard."""
 
-  def test_not_bool_subclass(self):
+  def test_bool_subclass(self):
+    # While PEP 647 says that TypeGuard is not a subtype of bool
+    # (https://peps.python.org/pep-0647/#typeguard-type), mypy treats it as
+    # such, and typeshed has the same expectation. For example, inspect.pyi has:
+    #   def getmembers(..., predicate: Callable[[Any], bool] | None): ...
+    #   def isclass(object: object) -> TypeGuard[type[Any]]: ...
+    # (https://github.com/python/typeshed/blob/main/stdlib/inspect.pyi), so we
+    # need to treat TypeGuard as a subtype of bool for the common
+    #   getmembers(..., isclass)
+    # idiom to work.
     self.CheckWithErrors("""
       from typing import Callable, TypeGuard  # not-supported-yet
       x: Callable[..., TypeGuard[int]]
-      y: Callable[..., bool] = x  # annotation-type-mismatch
+      y: Callable[..., bool] = x
     """)
 
   def test_unparameterized(self):
