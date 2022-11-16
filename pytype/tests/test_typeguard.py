@@ -130,6 +130,20 @@ class PyiTest(test_base.BaseTest):
             assert_type(x, int)
       """)
 
+  def test_non_variable(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeGuard
+      def f(x) -> TypeGuard[int]: ...
+    """)]):
+      errors = self.CheckWithErrors("""
+        import foo
+        from typing import Dict
+        def f(x: Dict[str, object]):
+          print(foo.f(x['k']))  # not-supported-yet[e]
+      """)
+      self.assertErrorSequences(errors, {
+          "e": ["TypeGuard function 'foo.f' with an arbitrary expression"]})
+
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
 class CallableTest(test_base.BaseTest):
@@ -172,6 +186,16 @@ class CallableTest(test_base.BaseTest):
           if foo.f(x):
             assert_type(x, int)
       """)
+
+  def test_non_variable(self):
+    errors = self.CheckWithErrors("""
+      from typing import Callable, TypeGuard  # not-supported-yet
+      f: Callable[[object], TypeGuard[int]]
+      def g(x: dict[str, object]):
+        print(f(x['k']))  # not-supported-yet[e]
+    """)
+    self.assertErrorSequences(errors, {
+        "e": "TypeGuard with an arbitrary expression"})
 
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
@@ -345,14 +369,16 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_non_variable(self):
-    self.CheckWithErrors("""
+    errors = self.CheckWithErrors("""
       from typing import TypeGuard  # not-supported-yet
       def f(x) -> TypeGuard[int]:
         return isinstance(x, int)
       def g(x: dict[str, object]):
-        if f(x['k']):  # not-supported-yet
+        if f(x['k']):  # not-supported-yet[e]
           return x['k']
     """)
+    self.assertErrorSequences(
+        errors, {"e": ["TypeGuard function 'f' with an arbitrary expression"]})
 
 
 if __name__ == "__main__":

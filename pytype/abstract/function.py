@@ -1046,7 +1046,7 @@ def has_visible_namedarg(node, args, names):
   return False
 
 
-def handle_typeguard(node, ret: _ReturnType, first_arg, ctx):
+def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
   """Returns a variable of the return value of a typeguard function.
 
   Args:
@@ -1054,6 +1054,7 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx):
     ret: The function's return value.
     first_arg: The first argument to the function.
     ctx: The current context.
+    func_name: Optionally, the function name, for better error messages.
   """
   frame = ctx.vm.frame
   if not hasattr(frame, "f_locals"):
@@ -1065,8 +1066,9 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx):
   # bindings for the TypeGuard type.
   target_name = ctx.vm.get_var_name(first_arg)
   if not target_name:
+    desc = f" function {func_name!r}" if func_name else ""
     ctx.errorlog.not_supported_yet(
-        ctx.vm.frames, "Using TypeGuard with an arbitrary expression",
+        ctx.vm.frames, f"Using TypeGuard{desc} with an arbitrary expression",
         "Please assign the expression to a local variable.")
     return None
   if target_name in frame.f_locals.members:

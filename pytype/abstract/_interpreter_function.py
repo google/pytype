@@ -664,7 +664,7 @@ class InterpreterFunction(SignedFunction):
     if first_arg and sig.has_return_annotation:
       typeguard_return = function.handle_typeguard(
           node, function.AbstractReturnType(annotations["return"], self.ctx),
-          first_arg, self.ctx)
+          first_arg, self.ctx, func_name=self.name)
     else:
       typeguard_return = None
     if sig.has_param_annotations:

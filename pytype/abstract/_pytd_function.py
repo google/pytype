@@ -631,7 +631,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           self.pytd_sig.return_type, subst, sources, self.ctx)
       if first_arg:
         typeguard_return = function.handle_typeguard(
-            node, ret_type, first_arg, self.ctx)
+            node, ret_type, first_arg, self.ctx, func_name=self.name)
       else:
         typeguard_return = None
       if typeguard_return:
