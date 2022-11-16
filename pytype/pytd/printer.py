@@ -38,6 +38,7 @@ class PrintVisitor(base_visitor.Visitor):
     self._class_members = set()
     self._typing_import_counts = collections.defaultdict(int)
     self._module_aliases = {}
+    self._alias_imports = collections.defaultdict(set)
 
   def Print(self, node):
     return node.Visit(copy.deepcopy(self))
@@ -73,8 +74,11 @@ class PrintVisitor(base_visitor.Visitor):
       List of strings.
     """
     ret = []
-    for module in sorted(self.imports):
-      names = set(self.imports[module])
+    imports = self.imports.copy()
+    for k in self._alias_imports:
+      imports[k] = imports[k] | self._alias_imports[k]
+    for module in sorted(imports):
+      names = set(imports[module])
       if module == "typing":
         need_typing = False
         for (name, count) in self._typing_import_counts.items():
@@ -125,8 +129,13 @@ class PrintVisitor(base_visitor.Visitor):
       return name
 
   def _ImportTypingExtension(self, name):
+    if self._unit and self._unit.name:
+      full_name = f"{self._unit.name}.{name}"
+    else:
+      full_name = name
     # `name` is a typing construct that is not supported in all Python versions.
-    if self._local_names.get(name) == "alias":
+    if (self._local_names.get(name) == "alias" or
+        self._local_names.get(full_name) == "alias"):
       # A typing_extensions import is parsed as Alias(X, typing_extensions.X).
       # If we see an alias to `name`, assume it's been explicitly imported from
       # typing_extensions due to the current Python version not supporting it.
@@ -172,7 +181,7 @@ class PrintVisitor(base_visitor.Visitor):
 
     aliases = []
     imports = set(self._GenerateImportStrings())
-    for alias in node.aliases:
+    for alias in filter(None, node.aliases):
       if alias.startswith(("from ", "import ")):
         imports.add(alias)
       else:
@@ -245,7 +254,7 @@ class PrintVisitor(base_visitor.Visitor):
     self.old_imports = self.imports.copy()
 
   def VisitAlias(self, node):
-    """Convert an import or alias to a string."""
+    """Convert an import or alias to a string (or None if handled elsewhere)."""
     if (isinstance(self.old_node.type,
                    (pytd.NamedType, pytd.ClassType, pytd.LateType)) and
         not self.in_constant and not self.in_signature):
@@ -257,7 +266,10 @@ class PrintVisitor(base_visitor.Visitor):
         if name not in ("*", alias_name):
           suffix += f" as {alias_name}"
         self.imports = self.old_imports  # undo unnecessary imports change
-        return f"from {module} import {name}{suffix}"
+        self._alias_imports[module].add(f"{name}{suffix}")
+        # Return None here since we do not want to emit the import statement
+        # from both self._alias_imports and unit.aliases
+        return None
     elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):
       return self.Print(self.old_node.type.Replace(name=node.name))
     elif isinstance(self.old_node.type, pytd.Module):
@@ -506,6 +518,8 @@ class PrintVisitor(base_visitor.Visitor):
       node_name = suffix
     elif prefix == "typing":
       node_name = self._FromTyping(suffix)
+    elif prefix == "typing_extensions":
+      node_name = self._ImportTypingExtension(suffix)
     elif "." not in node.name:
       node_name = node.name
     else:

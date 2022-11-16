@@ -277,12 +277,11 @@ class ParserTest(parser_test_base.ParserTestBase):
     self.check("from typing import NamedTuple, TypeVar", "")
     self.check("from foo.bar import *")
     self.check_error("from foo import * as bar", 1, "invalid syntax")
-    self.check("from foo import a, b",
-               "from foo import a\nfrom foo import b")
+    self.check("from foo import a, b")
     self.check("from foo import (a, b)",
-               "from foo import a\nfrom foo import b")
+               "from foo import a, b")
     self.check("from foo import (a, b, )",
-               "from foo import a\nfrom foo import b")
+               "from foo import a, b")
 
   def test_from_import(self):
     ast = self.check("from foo import c\nclass Bar(c.X): ...",
@@ -2449,11 +2448,10 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x: Final
       y: Final = ...
     """, """
-      import typing_extensions
       from typing_extensions import Final
 
-      x: typing_extensions.Final
-      y: typing_extensions.Final = ...
+      x: Final
+      y: Final = ...
     """)
 
   def test_bad_final_literal(self):
@@ -2543,10 +2541,9 @@ class TypedDictTest(parser_test_base.ParserTestBase):
 
       class Foo(TypedDict, total=False): ...
     """, """
-      import typing_extensions
       from typing_extensions import TypedDict
 
-      class Foo(typing_extensions.TypedDict): ...
+      class Foo(TypedDict): ...
     """)
 
   def test_multiple_classdef_kwargs(self):
@@ -2941,8 +2938,7 @@ class ConcatenateTest(parser_test_base.ParserTestBase):
       def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
     """, """
       from typing import Callable, TypeVar
-      from typing_extensions import Concatenate
-      from typing_extensions import ParamSpec
+      from typing_extensions import Concatenate, ParamSpec
 
       R = TypeVar('R')
 
@@ -2977,11 +2973,10 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
 
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """, """
-      import typing_extensions
       from typing import List
       from typing_extensions import TypeGuard
 
-      def f(x: List[object]) -> typing_extensions.TypeGuard[List[str]]: ...
+      def f(x: List[object]) -> TypeGuard[List[str]]: ...
   """)
 
   def test_typing(self):
