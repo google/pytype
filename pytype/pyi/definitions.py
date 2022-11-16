@@ -34,10 +34,8 @@ _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 _ANNOTATED_TYPES = ("typing.Annotated", "typing_extensions.Annotated")
 _CALLABLE_TYPES = ("typing.Callable", "collections.abc.Callable")
 _CONCATENATE_TYPES = ("typing.Concatenate", "typing_extensions.Concatenate")
-_FINAL_TYPES = ("typing.Final", "typing_extensions.Final")
 _LITERAL_TYPES = ("typing.Literal", "typing_extensions.Literal")
 _TUPLE_TYPES = ("tuple", "builtins.tuple", "typing.Tuple")
-_TYPEGUARD_TYPES = ("typing.TypeGuard", "typing_extensions.TypeGuard")
 
 
 class StringParseError(ParseError):
@@ -521,13 +519,6 @@ class Definitions:
       return pytd_literal(parameters, self.aliases)
     elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
       return pytd_annotated(parameters)
-    elif self._matches_named_type(base_type, _FINAL_TYPES):
-      typ, = parameters
-      return pytd.GenericType(pytd.NamedType("typing.Final"), (typ,))
-    elif self._matches_named_type(base_type, _TYPEGUARD_TYPES):
-      # We do not yet support PEP 647, User-Defined Type Guards. To avoid
-      # blocking typeshed, convert type guards to plain bools.
-      return pytd.NamedType("bool")
     elif any(isinstance(p, types.Pyval) for p in parameters):
       if all(not isinstance(p, types.Pyval) or
              p.type == "str" and p.value for p in parameters):

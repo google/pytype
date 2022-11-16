@@ -19,6 +19,12 @@ class TypingExtensionsTest(test_base.BaseTest):
           assert_type(val, list[str])
     """)
 
+  @test_utils.skipFromPy((3, 10), "3.9- must use typing_extensions")
+  def test_unsupported_version(self):
+    self.CheckWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
 class MisuseTest(test_base.BaseTest):
@@ -44,9 +50,9 @@ class MisuseTest(test_base.BaseTest):
   def test_not_toplevel_return(self):
     self.CheckWithErrors("""
       from typing import TypeGuard  # not-supported-yet
-      def f(x: TypeGuard):  # invalid-annotation
+      def f(x: TypeGuard[int]):  # invalid-annotation
         pass
-      def g() -> list[TypeGuard]:  # invalid-annotation
+      def g() -> list[TypeGuard[int]]:  # invalid-annotation
         return []
     """)
 
@@ -58,6 +64,71 @@ class MisuseTest(test_base.BaseTest):
       def f(x=None) -> TypeGuard[int]:  # invalid-function-definition
         return True
     """)
+
+
+class PyiTest(test_base.BaseTest):
+  """Tests for TypeGuard in pyi files."""
+
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
+  def test_infer(self):
+    ty, _ = self.InferWithErrors("""
+      from typing import TypeGuard  # not-supported-yet
+      def f(x: object) -> TypeGuard[int]:
+        return isinstance(x, int)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeGuard
+      def f(x: object) -> TypeGuard[int]: ...
+    """)
+
+  def test_infer_extension(self):
+    ty, _ = self.InferWithErrors("""
+      from typing_extensions import TypeGuard  # not-supported-yet
+      def f(x: object) -> TypeGuard[int]:
+        return isinstance(x, int)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeGuard
+      def f(x: object) -> TypeGuard[int]: ...
+    """)
+
+  def test_import(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeGuard
+      def f(x: object) -> TypeGuard[int]: ...
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: object):
+          if foo.f(x):
+            assert_type(x, int)
+      """)
+
+  def test_import_extension(self):
+    with self.DepTree([("foo.pyi", """
+      from typing_extensions import TypeGuard
+      def f(x: object) -> TypeGuard[int]: ...
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: object):
+          if foo.f(x):
+            assert_type(x, int)
+      """)
+
+  def test_generic(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Optional, TypeGuard, TypeVar
+      T = TypeVar('T')
+      def f(x: Optional[int]) -> TypeGuard[int]: ...
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Optional
+        def f(x: Optional[int]):
+          if foo.f(x):
+            assert_type(x, int)
+      """)
 
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")
@@ -89,6 +160,18 @@ class CallableTest(test_base.BaseTest):
       x3: Callable[[object], List[TypeGuard[int]]]  # invalid-annotation
       x4: Callable[[object], TypeGuard]  # invalid-annotation
     """)
+
+  def test_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Callable, TypeGuard
+      f: Callable[[object], TypeGuard[int]]
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: object):
+          if foo.f(x):
+            assert_type(x, int)
+      """)
 
 
 @test_utils.skipBeforePy((3, 10), "New in 3.10")

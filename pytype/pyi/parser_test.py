@@ -2977,10 +2977,11 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
 
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """, """
+      import typing_extensions
       from typing import List
       from typing_extensions import TypeGuard
 
-      def f(x: List[object]) -> bool: ...
+      def f(x: List[object]) -> typing_extensions.TypeGuard[List[str]]: ...
   """)
 
   def test_typing(self):
@@ -2989,9 +2990,9 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
 
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """, """
-      from typing import List
+      from typing import List, TypeGuard
 
-      def f(x: List[object]) -> bool: ...
+      def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """)
 
 

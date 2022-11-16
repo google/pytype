@@ -1,5 +1,6 @@
 """Representation of Python function headers and calls."""
 
+import abc
 import collections
 import dataclasses
 import itertools
@@ -800,6 +801,83 @@ class Mutation:
     return hash((self.instance, self.name, frozenset(self.value.data)))
 
 
+class _ReturnType(abc.ABC):
+
+  @property
+  @abc.abstractmethod
+  def name(self):
+    ...
+
+  @abc.abstractmethod
+  def instantiate_parameter(self, node, param_name):
+    ...
+
+
+class AbstractReturnType(_ReturnType):
+  """An abstract return type."""
+
+  def __init__(self, t, ctx):
+    self._type = t
+    self._ctx = ctx
+
+  @property
+  def name(self):
+    return self._type.full_name
+
+  def instantiate_parameter(self, node, param_name):
+    param = self._type.get_formal_type_parameter(param_name)
+    _, param_instance = self._ctx.vm.init_class(node, param)
+    return param_instance
+
+
+class PyTDReturnType(_ReturnType):
+  """A PyTD return type."""
+
+  def __init__(self, t, subst, sources, ctx):
+    self._type = t
+    self._subst = subst
+    self._sources = sources
+    self._ctx = ctx
+
+  @property
+  def name(self):
+    return self._type.name
+
+  def instantiate_parameter(self, node, param_name):
+    _, instance_var = self.instantiate(node)
+    instance = abstract_utils.get_atomic_value(instance_var)
+    return instance.get_instance_type_parameter(param_name)
+
+  def instantiate(self, node):
+    """Instantiate the pytd return type."""
+    # Type parameter values, which are instantiated by the matcher, will end up
+    # in the return value. Since the matcher does not call __init__, we need to
+    # do that now. The one exception is that Type[X] does not instantiate X, so
+    # we do not call X.__init__.
+    if self._type.name != "builtins.type":
+      for param in pytd_utils.GetTypeParameters(self._type):
+        if param.full_name in self._subst:
+          node = self._ctx.vm.call_init(node, self._subst[param.full_name])
+    try:
+      ret = self._ctx.convert.constant_to_var(
+          abstract_utils.AsReturnValue(self._type),
+          self._subst,
+          node,
+          source_sets=[self._sources])
+    except self._ctx.convert.TypeParameterError:
+      # The return type contains a type parameter without a substitution.
+      subst = abstract_utils.with_empty_substitutions(
+          self._subst, self._type, node, self._ctx)
+      return node, self._ctx.convert.constant_to_var(
+          abstract_utils.AsReturnValue(self._type),
+          subst,
+          node,
+          source_sets=[self._sources])
+    if not ret.bindings and isinstance(self._type, pytd.TypeParameter):
+      ret.AddBinding(self._ctx.convert.empty, [], node)
+    return node, ret
+
+
 def _splats_to_any(seq, ctx):
   return tuple(
       ctx.new_unsolvable(ctx.root_node) if abstract_utils.is_var_splat(v) else v
@@ -872,8 +950,9 @@ def call_function(
     if _isinstance(func, "BoundFunction"):
       func = func.underlying
     if _isinstance(func, "PyTDFunction"):
-      node, result = func.signatures[0].instantiate_return(
-          node, datatypes.HashableDict(), [funcb])
+      node, result = PyTDReturnType(
+          func.signatures[0].pytd_sig.return_type, datatypes.HashableDict(),
+          [funcb], ctx).instantiate(node)
     elif _isinstance(func, "InterpreterFunction"):
       sig = func.signature_functions()[0].signature
       ret = sig.annotations.get("return", ctx.convert.unsolvable)
@@ -967,7 +1046,7 @@ def has_visible_namedarg(node, args, names):
   return False
 
 
-def handle_typeguard(node, ret, first_arg, ctx):
+def handle_typeguard(node, ret: _ReturnType, first_arg, ctx):
   """Returns a variable of the return value of a typeguard function.
 
   Args:
@@ -979,9 +1058,8 @@ def handle_typeguard(node, ret, first_arg, ctx):
   frame = ctx.vm.frame
   if not hasattr(frame, "f_locals"):
     return None  # no need to apply TypeGuard if we're in a dummy frame
-  if ret.full_name != "typing.TypeGuard":
+  if ret.name != "typing.TypeGuard":
     return None
-  new_type = ret.get_formal_type_parameter(abstract_utils.T)
 
   # Get the local/global variable that first_arg comes from, and add new
   # bindings for the TypeGuard type.
@@ -1000,7 +1078,7 @@ def handle_typeguard(node, ret, first_arg, ctx):
   # visibility problems later.
   target.PasteVariable(target, node)
   old_data = set(target.data)
-  _, new_instance = ctx.vm.init_class(node, new_type)
+  new_instance = ret.instantiate_parameter(node, abstract_utils.T)
   for b in new_instance.bindings:
     if b.data not in target.data:
       target.PasteBinding(b, node)

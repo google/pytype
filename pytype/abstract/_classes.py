@@ -824,7 +824,8 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
         node, self.formal_type_parameters[abstract_utils.RET],
         [m.subst for m in matches])
     if args and ret.full_name == "typing.TypeGuard":
-      typeguard_return = function.handle_typeguard(node, ret, args[0], self.ctx)
+      typeguard_return = function.handle_typeguard(
+          node, function.AbstractReturnType(ret, self.ctx), args[0], self.ctx)
     else:
       typeguard_return = None
     if typeguard_return:

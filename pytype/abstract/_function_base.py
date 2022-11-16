@@ -154,7 +154,8 @@ class NativeFunction(Function):
       # ([self, ]node, ...). The length of "..." tells us how many variables
       # are expected.
       expected_argcount = len(inspect.getfullargspec(self.func).args) - 1
-      if inspect.ismethod(self.func) and self.func.__self__ is not None:
+      func = self.func
+      if inspect.ismethod(func) and func.__self__ is not None:
         expected_argcount -= 1
       actual_argcount = len(posargs) + len(namedargs)
       if (actual_argcount > expected_argcount or
