@@ -313,8 +313,8 @@ class MatcherTest(MatcherTestBase):
     _, var = self.ctx.attribute_handler.get_attribute(self.ctx.root_node,
                                                       instance.cls, "f")
     unbound = var.data[0]
-    callable_no_self = self._convert_type("Callable[[int]]")
-    callable_self = self._convert_type("Callable[[Any, int]]")
+    callable_no_self = self._convert_type("Callable[[int], Any]")
+    callable_self = self._convert_type("Callable[[Any, int], Any]")
     self.assertMatch(bound, callable_no_self)
     self.assertNoMatch(unbound, callable_no_self)
     self.assertNoMatch(bound, callable_self)

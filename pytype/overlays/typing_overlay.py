@@ -145,8 +145,8 @@ class Final(abstract.AnnotationClass):
 class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, ctx):
-    if name in pep484.PEP484_CAPITALIZED:
-      pytd_name = "builtins." + name.lower()
+    if name in pep484.TYPING_TO_BUILTIN:
+      pytd_name = "builtins." + pep484.TYPING_TO_BUILTIN[name]
     else:
       pytd_name = "typing." + name
     base = ctx.convert.name_to_value(pytd_name)

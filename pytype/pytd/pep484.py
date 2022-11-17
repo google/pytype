@@ -4,15 +4,15 @@ from pytype.pytd import base_visitor
 from pytype.pytd import pytd
 
 
-PEP484_NAMES = ["AbstractSet", "AnyStr", "AsyncGenerator", "BinaryIO",
-                "ByteString", "Callable", "Container", "Dict", "FrozenSet",
-                "Generator", "Generic", "Hashable", "IO", "ItemsView",
-                "Iterable", "Iterator", "KeysView", "List", "Mapping",
-                "MappingView", "Match", "MutableMapping", "MutableSequence",
-                "MutableSet", "NamedTuple", "Optional", "Pattern",
-                "Reversible", "Sequence", "Set", "Sized", "SupportsAbs",
-                "SupportsFloat", "SupportsInt", "SupportsRound", "TextIO",
-                "Tuple", "Type", "TypeVar", "Union"]
+ALL_TYPING_NAMES = ["AbstractSet", "AnyStr", "AsyncGenerator", "BinaryIO",
+                    "ByteString", "Callable", "Container", "Dict", "FrozenSet",
+                    "Generator", "Generic", "Hashable", "IO", "ItemsView",
+                    "Iterable", "Iterator", "KeysView", "List", "Mapping",
+                    "MappingView", "Match", "MutableMapping", "MutableSequence",
+                    "MutableSet", "NamedTuple", "Optional", "Pattern",
+                    "Reversible", "Sequence", "Set", "Sized", "SupportsAbs",
+                    "SupportsFloat", "SupportsInt", "SupportsRound", "TextIO",
+                    "Tuple", "Type", "TypeVar", "Union"]
 
 
 # Pairs of a type and a more generalized type.
@@ -28,18 +28,14 @@ COMPAT_ITEMS = [
 ]
 
 
-PEP484_CAPITALIZED = frozenset({
-    # The PEP 484 definition of built-in types.
-    # E.g. "typing.List" is used to represent the "list" type.
+# The PEP 484 definition of built-in types.
+# E.g. "typing.List" is used to represent the "list" type.
+TYPING_TO_BUILTIN = {t: t.lower() for t in [
     "List", "Dict", "Tuple", "Set", "FrozenSet", "Generator", "Type",
-    "Coroutine", "AsyncGenerator"
-})
+    "Coroutine", "AsyncGenerator"]}
 
 
-def PEP484_MaybeCapitalize(name):  # pylint: disable=invalid-name
-  for capitalized in PEP484_CAPITALIZED:
-    if capitalized.lower() == name:
-      return capitalized
+BUILTIN_TO_TYPING = {v: k for k, v in TYPING_TO_BUILTIN.items()}
 
 
 class ConvertTypingToNative(base_visitor.Visitor):
@@ -64,8 +60,9 @@ class ConvertTypingToNative(base_visitor.Visitor):
       # PEP 484 allows "None" as an abbreviation of "NoneType".
       return pytd.NamedType("NoneType")
     elif self._IsTyping(module):
-      if name in PEP484_CAPITALIZED:
-        return pytd.NamedType(name.lower())  # "typing.List" -> "list" etc.
+      if name in TYPING_TO_BUILTIN:
+        # "typing.List" -> "list" etc.
+        return pytd.NamedType(TYPING_TO_BUILTIN[name])
       elif name == "Any":
         return pytd.AnythingType()
       else:

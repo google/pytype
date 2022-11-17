@@ -11,6 +11,7 @@ from pytype.pyi import metadata
 from pytype.pyi import types
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import escape
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
@@ -513,13 +514,9 @@ class Definitions:
   def _is_heterogeneous_tuple(self, t):
     return isinstance(t, pytd.TupleType)
 
-  def _parameterized_type(self, base_type: Any, parameters):
-    """Return a parameterized type."""
-    if self._matches_named_type(base_type, _LITERAL_TYPES):
-      return pytd_literal(parameters, self.aliases)
-    elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
-      return pytd_annotated(parameters)
-    elif any(isinstance(p, types.Pyval) for p in parameters):
+  def _verify_no_literal_parameters(self, base_type, parameters):
+    """Raises an error if 'parameters' contains any literal types."""
+    if any(isinstance(p, types.Pyval) for p in parameters):
       if all(not isinstance(p, types.Pyval) or
              p.type == "str" and p.value for p in parameters):
         error_cls = StringParseError
@@ -530,44 +527,68 @@ class Definitions:
           for p in parameters)
       raise error_cls(
           f"{pytd_utils.Print(base_type)}[{parameters}] not supported")
-    elif pytdgen.is_any(base_type):
-      return pytd.AnythingType()
-    elif len(parameters) == 2 and parameters[-1] is self.ELLIPSIS and (
-        not self._matches_named_type(base_type, _CALLABLE_TYPES)):
-      element_type = parameters[0]
-      if element_type is self.ELLIPSIS:
-        raise ParseError("[..., ...] not supported")
-      return pytd.GenericType(base_type=base_type, parameters=(element_type,))
-    else:
-      processed_parameters = []
-      # We do not yet support PEP 612, Parameter Specification Variables.
-      # To avoid blocking typeshed from adopting this PEP, we convert new
-      # features to approximations that only use supported features.
-      for p in parameters:
-        if p is self.ELLIPSIS:
-          processed = pytd.AnythingType()
-        elif (p in self.param_specs and
-              self._matches_full_name(base_type, "typing.Generic")):
-          # Replacing a ParamSpec with a TypeVar isn't correct, but it'll work
-          # for simple cases in which the filled value is also a ParamSpec.
-          if not any(t.name == p.name for t in self.type_params):
-            self.type_params.append(pytd.TypeParameter(p.name))
-          processed = p
-        elif (p in self.param_specs or
-              (isinstance(p, pytd.GenericType) and
-               self._matches_full_name(p, _CONCATENATE_TYPES))):
-          processed = pytd.AnythingType()
-        else:
-          processed = p
-        processed_parameters.append(processed)
-      parameters = tuple(processed_parameters)
-      if self._matches_named_type(base_type, _TUPLE_TYPES):
-        return pytdgen.heterogeneous_tuple(base_type, parameters)
-      elif self._matches_named_type(base_type, _CALLABLE_TYPES):
-        return pytdgen.pytd_callable(base_type, parameters)
+
+  def _is_builtin_or_typing_member(self, t):
+    if t.name is None:
+      return False
+    module, _, name = t.name.rpartition(".")
+    return (not module and name in pep484.BUILTIN_TO_TYPING or
+            module == "typing" and name in pep484.ALL_TYPING_NAMES)
+
+  def _remove_unsupported_features(self, base_type, parameters):
+    """Returns a copy of 'parameters' with unsupported features removed."""
+    processed_parameters = []
+    # We do not yet support PEP 612, Parameter Specification Variables.
+    # To avoid blocking typeshed from adopting this PEP, we convert new
+    # features to approximations that only use supported features.
+    for p in parameters:
+      if p is self.ELLIPSIS:
+        processed = pytd.AnythingType()
+      elif (p in self.param_specs and
+            self._matches_full_name(base_type, "typing.Generic")):
+        # Replacing a ParamSpec with a TypeVar isn't correct, but it'll work
+        # for simple cases in which the filled value is also a ParamSpec.
+        if not any(t.name == p.name for t in self.type_params):
+          self.type_params.append(pytd.TypeParameter(p.name))
+        processed = p
+      elif (p in self.param_specs or
+            (isinstance(p, pytd.GenericType) and
+             self._matches_full_name(p, _CONCATENATE_TYPES))):
+        processed = pytd.AnythingType()
       else:
-        assert parameters
-        return pytd.GenericType(base_type=base_type, parameters=parameters)
+        processed = p
+      processed_parameters.append(processed)
+    return tuple(processed_parameters)
+
+  def _parameterized_type(self, base_type: Any, parameters):
+    """Return a parameterized type."""
+    if self._matches_named_type(base_type, _LITERAL_TYPES):
+      return pytd_literal(parameters, self.aliases)
+    elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
+      return pytd_annotated(parameters)
+    self._verify_no_literal_parameters(base_type, parameters)
+    if self._matches_named_type(base_type, _TUPLE_TYPES):
+      if len(parameters) == 2 and parameters[1] is self.ELLIPSIS:
+        parameters = parameters[:1]
+        builder = pytd.GenericType
+      else:
+        builder = pytdgen.heterogeneous_tuple
+    elif self._matches_named_type(base_type, _CALLABLE_TYPES):
+      if parameters[0] is self.ELLIPSIS:
+        parameters = (pytd.AnythingType(),) + parameters[1:]
+      builder = pytdgen.pytd_callable
+    elif pytdgen.is_any(base_type):
+      builder = lambda *_: pytd.AnythingType()
+    else:
+      assert parameters
+      builder = pytd.GenericType
+    if (self._is_builtin_or_typing_member(base_type) and
+        any(p is self.ELLIPSIS for p in parameters)):
+      # TODO(b/217789659): We can only check builtin and typing names for now,
+      # since `...` can fill in for a ParamSpec.
+      raise ParseError("Unexpected ellipsis parameter")
+    parameters = self._remove_unsupported_features(base_type, parameters)
+    return builder(base_type, parameters)
 
   def resolve_type(self, name: Union[str, pytd_node.Node]) -> pytd.Type:
     """Return the fully resolved name for an alias.

@@ -223,7 +223,7 @@ class ImportTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       import sys
-      def f() -> List[str, ...]: ...
+      def f() -> List[str]: ...
     """)
 
   def test_from_sys_import(self):
@@ -234,8 +234,8 @@ class ImportTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      path = ...  # type: List[str, ...]
-      def f() -> List[str, ...]: ...
+      path = ...  # type: List[str]
+      def f() -> List[str]: ...
     """)
 
   def test_stdlib(self):

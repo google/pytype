@@ -419,7 +419,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       from typing import Iterator
       def f(x: int) -> None: ...
       x1 : Iterator[int]
-      x2 : Iterator[bool, ...]
+      x2 : Iterator[bool]
       x3 : Iterator[bool]
       x4 : Iterator[int]
       x5 : Iterator[int]

@@ -58,7 +58,7 @@ class PYITest(test_base.BaseTest):
     with test_utils.Tempdir() as d:
       d.create_file("mod.pyi", """
         from typing import Any, IO, List, Optional
-        def split(s: Optional[int]) -> List[str, ...]: ...
+        def split(s: Optional[int]) -> List[str]: ...
       """)
       ty = self.Infer("""
         import mod
@@ -68,7 +68,7 @@ class PYITest(test_base.BaseTest):
       self.assertTypesMatchPytd(ty, """
         import mod
         from typing import List
-        def g(x) -> List[str, ...]: ...
+        def g(x) -> List[str]: ...
       """)
 
   def test_classes(self):

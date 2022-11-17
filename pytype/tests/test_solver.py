@@ -19,7 +19,7 @@ class SolverTests(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
     from typing import List, Tuple, Union
     class Node:
-      children = ...  # type: Union[List[nothing, ...], Tuple[()]]
+      children = ...  # type: Union[List[nothing], Tuple[()]]
       def __init__(self) -> None: ...
     """)
 
@@ -154,7 +154,7 @@ class SolverTests(test_base.BaseTest):
       def f(x: _T0) -> _T0: ...
 
       d = ...  # type: Dict[str, int]
-      l = ...  # type: List[str, ...]
+      l = ...  # type: List[str]
     """)
 
   def test_call_constructor(self):
@@ -203,8 +203,8 @@ class SolverTests(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      foo = ...  # type: List[list[int, ...], ...]
-      bar = ...  # type: List[int, ...]
+      foo = ...  # type: List[list[int]]
+      bar = ...  # type: List[int]
 
       def f() -> NoneType: ...
       def g() -> NoneType: ...
@@ -226,8 +226,8 @@ class SolverTests(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      foo = ...  # type: List[List[List[int, ...], ...], ...]
-      bar = ...  # type: List[int, ...]
+      foo = ...  # type: List[List[List[int]]]
+      bar = ...  # type: List[int]
 
       def f() -> NoneType: ...
       def g() -> NoneType: ...
@@ -254,8 +254,8 @@ class SolverTests(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import List
       class Container:
-        foo = ...  # type: List[List[int, ...], ...]
-        bar = ...  # type: List[int, ...]
+        foo = ...  # type: List[List[int]]
+        bar = ...  # type: List[int]
         def __init__(self) -> None: ...
 
       container = ...  # type: Container

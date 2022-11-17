@@ -49,16 +49,9 @@ def pytd_callable(
     parameters: _ParametersType
 ) -> pytd.Type:
   """Create a pytd.CallableType."""
-  assert parameters
-  if len(parameters) > 2:
+  if len(parameters) != 2:
     raise TypeError(
         f"Expected 2 parameters to Callable, got {len(parameters)}")
-  if len(parameters) == 1:
-    # TODO(mdemello): We should reject this as a type error!
-    # We're usually happy to treat omitted parameters as "Any", but we
-    # need a return type for CallableType, or we wouldn't know whether the
-    # last parameter is an argument or return type.
-    parameters += (pytd.AnythingType(),)
   args, ret = parameters
   if isinstance(args, list):
     if not args or args == [pytd.NothingType()]:

@@ -21,7 +21,7 @@ class GeneratorTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      y = ...  # type: List[int, ...]
+      y = ...  # type: List[int]
     """)
 
   def test_reuse(self):
@@ -31,8 +31,8 @@ class GeneratorTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
-      y = ...  # type: List[int, ...]
-      z = ...  # type: List[int, ...]
+      y = ...  # type: List[int]
+      z = ...  # type: List[int]
     """)
 
   def test_next_with_default(self):
