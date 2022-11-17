@@ -327,13 +327,11 @@ class Frame(utils.ContextWeakrefMixin):
     return set(itertools.chain.from_iterable(self.substs))
 
   def lookup_name(self, target_name):
-    if target_name in self.f_locals.members:
-      return self.f_locals.members[target_name]
-    elif target_name in self.f_globals.members:
-      return self.f_globals.members[target_name]
-    else:
-      i = (self.f_code.co_cellvars + self.f_code.co_freevars).index(target_name)
-      return self.cells[i]
+    for store in (self.f_locals, self.f_globals, self.f_builtins):
+      if target_name in store.members:
+        return store.members[target_name]
+    i = (self.f_code.co_cellvars + self.f_code.co_freevars).index(target_name)
+    return self.cells[i]
 
 
 class Condition:
