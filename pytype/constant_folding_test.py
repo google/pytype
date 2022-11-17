@@ -65,14 +65,12 @@ class TestFolding(test_base.UnitTest):
     actual = self._fold(code)
     return actual
 
-  @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
   def test_basic(self):
     actual = self._process("a = [1, 2, 3]")
     self.assertCountEqual(actual, [
         (1, ("list", int), [1, 2, 3], [int, int, int])
     ])
 
-  @test_utils.skipFromPy((3, 9), "Constant lists get optimised in 3.9")
   def test_union(self):
     actual = self._process("a = [1, 2, '3']")
     self.assertCountEqual(actual, [
@@ -135,8 +133,7 @@ class TestFolding(test_base.UnitTest):
         (4, ("map", k, (y, x, str)), val, elements)
     ])
 
-  # TODO(b/175443170): Change the decorator to skipBeforePy once 3.9 works.
-  @test_utils.skipUnlessPy((3, 8), reason="Constant lists get optimised in 3.9")
+  @test_utils.skipBeforePy((3, 8), "opcode line number changed in 3.8")
   def test_nested(self):
     actual = self._process("""
       a = {
@@ -208,12 +205,12 @@ class TestFolding(test_base.UnitTest):
       a = f'foo{x}{y}'  # Not folded
       b = f'foo{0:08}'  # Folded
       c = f'foo{x:<9}'  # Not folded
-      d = f'foo{x:}'  # Not folded
+      d = f'foo{x:}'  # Internal empty string after : folded
       e = f'foo{x:0{8}x}'  # Internal subsection '0{8}x' folded
       f = f'{x:05}.a'  # Not folded
       g = f'pre.{x:05}.post'  # Not folded
     """)
-    self.assertCountEqual(actual, [(4, str, "", None), (7, str, "", None)])
+    self.assertCountEqual(actual, [(x, str, "", None) for x in (4, 6, 7)])
 
   def test_type_error(self):
     with self.assertRaises(constant_folding.ConstantError):
