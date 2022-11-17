@@ -507,7 +507,6 @@ def build_final_decorator(ctx):
 _unsupported_members = {
     "Concatenate": (3, 10),
     "ParamSpec": (3, 10),
-    "TypeGuard": (3, 10),
     "is_typeddict": (3, 10),
 }
 
@@ -526,6 +525,7 @@ typing_overlay = {
     "NoReturn": (build_noreturn, None),
     "Optional": (overlay.build("Optional", Optional), None),
     "Tuple": (overlay.build("Tuple", Tuple), None),
+    "TypeGuard": (_build("typing.TypeGuard"), (3, 10)),
     "TypeVar": (build_typevar, None),
     "TypedDict": (typed_dict.TypedDictBuilder, (3, 8)),
     "Union": (Union, None),

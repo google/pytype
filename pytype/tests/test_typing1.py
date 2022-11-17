@@ -479,24 +479,24 @@ class NotSupportedYetTest(test_base.BaseTest):
         |
         -> Yes: Do not log any errors.
 
-  These tests currently use TypeGuard (added in 3.10) as the unsupported
+  These tests currently use ParamSpec (added in 3.10) as the unsupported
   construct and Final (added in 3.8) as the supported construct. Replace them as
   needed as pytype's supported features and runtime versions change.
   """
 
   def test_unsupported_extension(self):
     errors = self.CheckWithErrors("""
-      from typing_extensions import TypeGuard  # not-supported-yet[e]
+      from typing_extensions import ParamSpec  # not-supported-yet[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"typing.TypeGuard not supported yet$"})
+        errors, {"e": r"typing.ParamSpec not supported yet$"})
 
   def test_unsupported_construct(self):
     errors = self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet[e]
+      from typing import ParamSpec  # not-supported-yet[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"typing.TypeGuard not supported yet$"})
+        errors, {"e": r"typing.ParamSpec not supported yet$"})
 
   def test_supported_extension(self):
     self.Check("""
