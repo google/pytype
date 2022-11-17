@@ -709,7 +709,7 @@ class TypingTestPython3Feature(test_base.BaseTest):
   def test_import_all(self):
     python = [
         "from typing import *  # pytype: disable=not-supported-yet",
-    ] + pep484.PEP484_NAMES
+    ] + pep484.ALL_TYPING_NAMES
     ty = self.Infer("\n".join(python), deep=False)
     self.assertTypesMatchPytd(ty, "")
 

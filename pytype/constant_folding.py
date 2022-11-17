@@ -182,7 +182,7 @@ class _Stack:
       # literal is not constant.
       self.clear()
       return None
-    elif any(x is None for x in self.stack[-n:]):
+    elif n and any(x is None for x in self.stack[-n:]):
       # We have something other than constants in the arg list. Pop all the args
       # for this op off the stack, preserving constants.
       for _ in range(n):
@@ -319,6 +319,23 @@ class _FoldConstants:
             typ = (tag, et | {element.typ})
             value = lst.value + [element.value]
             elements = lst.elements + (element,)
+            stack.push(_Constant(typ, value, elements, op))
+        elif isinstance(op, opcodes.LIST_EXTEND):
+          elements = stack.fold_args(2, op)
+          if elements:
+            lst, other = elements.elements
+            tag, et = lst.typ
+            assert tag == 'list'
+            other_tag, other_et = other.typ
+            if other_tag == 'tuple':
+              # Deconstruct the tuple built in opcodes.LOAD_CONST above
+              other_elts = tuple(_Constant(('prim', e), v, None, other.op)
+                                 for (_, e), v in zip(other_et, other.value))
+            else:
+              other_elts = other.elements
+            typ = (tag, et | set(other_et))
+            value = lst.value + list(other.value)
+            elements = lst.elements + other_elts
             stack.push(_Constant(typ, value, elements, op))
         elif isinstance(op, opcodes.MAP_ADD):
           elements = stack.fold_args(3, op)

@@ -262,7 +262,6 @@ class Frame(utils.ContextWeakrefMixin):
     # The first argument is used to make Python 3 super calls when super is not
     # passed any arguments.
     self.first_arg = first_arg
-    self.cells = {}
 
     self.allowed_returns = None
     self.check_return = False
@@ -326,6 +325,15 @@ class Frame(utils.ContextWeakrefMixin):
   @property
   def type_params(self):
     return set(itertools.chain.from_iterable(self.substs))
+
+  def lookup_name(self, target_name):
+    if target_name in self.f_locals.members:
+      return self.f_locals.members[target_name]
+    elif target_name in self.f_globals.members:
+      return self.f_globals.members[target_name]
+    else:
+      i = (self.f_code.co_cellvars + self.f_code.co_freevars).index(target_name)
+      return self.cells[i]
 
 
 class Condition:

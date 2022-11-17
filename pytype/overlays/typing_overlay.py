@@ -145,8 +145,8 @@ class Final(abstract.AnnotationClass):
 class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, ctx):
-    if name in pep484.PEP484_CAPITALIZED:
-      pytd_name = "builtins." + name.lower()
+    if name in pep484.TYPING_TO_BUILTIN:
+      pytd_name = "builtins." + pep484.TYPING_TO_BUILTIN[name]
     else:
       pytd_name = "typing." + name
     base = ctx.convert.name_to_value(pytd_name)
@@ -507,7 +507,6 @@ def build_final_decorator(ctx):
 _unsupported_members = {
     "Concatenate": (3, 10),
     "ParamSpec": (3, 10),
-    "TypeGuard": (3, 10),
     "is_typeddict": (3, 10),
 }
 
@@ -526,6 +525,7 @@ typing_overlay = {
     "NoReturn": (build_noreturn, None),
     "Optional": (overlay.build("Optional", Optional), None),
     "Tuple": (overlay.build("Tuple", Tuple), None),
+    "TypeGuard": (_build("typing.TypeGuard"), (3, 10)),
     "TypeVar": (build_typevar, None),
     "TypedDict": (typed_dict.TypedDictBuilder, (3, 8)),
     "Union": (Union, None),

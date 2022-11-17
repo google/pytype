@@ -22,7 +22,7 @@
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
       * [Why are signature mismatches in subclasses bad? {#signature-mismatch}](#why-are-signature-mismatches-in-subclasses-bad-signature-mismatch)
 
-<!-- Added by: mdemello, at: 2022-07-13T17:03-07:00 -->
+<!-- Added by: rechen, at: 2022-11-16T14:59-08:00 -->
 
 <!--te-->
 
@@ -159,8 +159,9 @@ You can use
 # pytype: skip-file
 ```
 
-at the start of the file to disable all checking for a particular file, while
-still checking the rest of the blaze target that includes it.
+at the start of the file to disable all checking for a particular file. Callers
+will also see the APIs from this file having the type `Any`, but the rest of the
+blaze target is still type-checked.
 
 ## How do I disable all pytype checks for a particular import?
 

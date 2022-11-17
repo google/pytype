@@ -591,9 +591,8 @@ class PrintVisitor(base_visitor.Visitor):
 
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
-    capitalized = pep484.PEP484_MaybeCapitalize(name)
-    if capitalized:
-      return self._FromTyping(capitalized)
+    if name in pep484.BUILTIN_TO_TYPING:
+      return self._FromTyping(pep484.BUILTIN_TO_TYPING[name])
     else:
       return name
 

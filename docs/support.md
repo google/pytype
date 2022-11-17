@@ -13,7 +13,7 @@ of pytype.
          * [Typing](#typing)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
+<!-- Added by: rechen, at: 2022-11-16T14:59-08:00 -->
 
 <!--te-->
 
@@ -27,7 +27,7 @@ of pytype.
     (upcoming versions), if applicable
 
 Version | Analyzes   | Runs In    | Issue
-:-----: | :--------: | :--------: | :----------:
+:-----: | :--------: | :--------: | :------------:
 2.7     | 2021.08.03 | 2020.04.01 | [#545][py27]
 3.5     | 2021.09.09 | 2020.10.08 | [#677][py35]
 3.6     | 2022.01.05 | 2022.01.05 |
@@ -35,7 +35,7 @@ Version | Analyzes   | Runs In    | Issue
 3.8     | ✅          | ✅          |
 3.9     | ✅          | ✅          |
 3.10    | ✅          | ✅          |
-3.11    | ❌          | ❌          |
+3.11    | ❌          | ❌          | [#1308][py311]
 
 ## Features
 
@@ -73,7 +73,7 @@ Feature                                                                         
 [PEP 612 -- Parameter Specification Variables][612]                                     | 3.10    | ❌        | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
 [PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        |
-[PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ❌        | [#916][type-guards]
+[PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
 [PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ❌        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
@@ -122,6 +122,5 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [param-spec]: https://github.com/google/pytype/issues/786
 [py27]: https://github.com/google/pytype/issues/545
 [py35]: https://github.com/google/pytype/issues/677
-[py39]: https://github.com/google/pytype/issues/749
-[py310]: https://github.com/google/pytype/issues/1022
+[py311]: https://github.com/google/pytype/issues/1308
 [type-guards]: https://github.com/google/pytype/issues/916

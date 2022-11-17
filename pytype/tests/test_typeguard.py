@@ -8,8 +8,8 @@ class TypingExtensionsTest(test_base.BaseTest):
   """Tests for typing_extensions.TypeGuard."""
 
   def test_typing_extensions(self):
-    self.CheckWithErrors("""
-      from typing_extensions import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing_extensions import TypeGuard
 
       def is_str_list(val: list[object]) -> TypeGuard[list[str]]:
         return all(isinstance(x, str) for x in val)
@@ -40,15 +40,15 @@ class MisuseTest(test_base.BaseTest):
     # need to treat TypeGuard as a subtype of bool for the common
     #   getmembers(..., isclass)
     # idiom to work.
-    self.CheckWithErrors("""
-      from typing import Callable, TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import Callable, TypeGuard
       x: Callable[..., TypeGuard[int]]
       y: Callable[..., bool] = x
     """)
 
   def test_unparameterized(self):
     self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+      from typing import TypeGuard
       def f(x) -> TypeGuard:  # invalid-annotation
         return isinstance(x, int)
       def g(x):
@@ -58,7 +58,7 @@ class MisuseTest(test_base.BaseTest):
 
   def test_not_toplevel_return(self):
     self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+      from typing import TypeGuard
       def f(x: TypeGuard[int]):  # invalid-annotation
         pass
       def g() -> list[TypeGuard[int]]:  # invalid-annotation
@@ -67,7 +67,7 @@ class MisuseTest(test_base.BaseTest):
 
   def test_not_enough_parameters(self):
     self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+      from typing import TypeGuard
       def f() -> TypeGuard[int]:  # invalid-function-definition
         return True
       def f(x=None) -> TypeGuard[int]:  # invalid-function-definition
@@ -81,7 +81,7 @@ class PyiTest(test_base.BaseTest):
   @test_utils.skipBeforePy((3, 10), "New in 3.10")
   def test_infer(self):
     ty, _ = self.InferWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+      from typing import TypeGuard
       def f(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
     """)
@@ -92,7 +92,7 @@ class PyiTest(test_base.BaseTest):
 
   def test_infer_extension(self):
     ty, _ = self.InferWithErrors("""
-      from typing_extensions import TypeGuard  # not-supported-yet
+      from typing_extensions import TypeGuard
       def f(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
     """)
@@ -159,16 +159,16 @@ class CallableTest(test_base.BaseTest):
   """Tests for TypeGuard as a Callable return type."""
 
   def test_callable(self):
-    self.CheckWithErrors("""
-      from typing import Callable, TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import Callable, TypeGuard
       def f(x: Callable[[object], TypeGuard[int]], y: object):
         if x(y):
           assert_type(y, int)
     """)
 
   def test_generic(self):
-    self.CheckWithErrors("""
-      from typing import Callable, TypeGuard, TypeVar  # not-supported-yet
+    self.Check("""
+      from typing import Callable, TypeGuard, TypeVar
       T = TypeVar('T')
       def f(x: Callable[[T | None], TypeGuard[T]], y: int | None):
         if x(y):
@@ -177,7 +177,7 @@ class CallableTest(test_base.BaseTest):
 
   def test_invalid(self):
     self.CheckWithErrors("""
-      from typing import Any, Callable, List, TypeGuard  # not-supported-yet
+      from typing import Any, Callable, List, TypeGuard
       x1: Callable[[], TypeGuard[int]]  # invalid-annotation
       x2: Callable[[TypeGuard[int]], Any]  # invalid-annotation
       x3: Callable[[object], List[TypeGuard[int]]]  # invalid-annotation
@@ -198,7 +198,7 @@ class CallableTest(test_base.BaseTest):
 
   def test_non_variable(self):
     errors = self.CheckWithErrors("""
-      from typing import Callable, TypeGuard  # not-supported-yet
+      from typing import Callable, TypeGuard
       f: Callable[[object], TypeGuard[int]]
       def g(x: dict[str, object]):
         print(f(x['k']))  # not-supported-yet[e]
@@ -212,8 +212,8 @@ class TypeGuardTest(test_base.BaseTest):
   """Tests for typing.TypeGuard."""
 
   def test_basic(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
 
       def is_str_list(val: list[object]) -> TypeGuard[list[str]]:
         return all(isinstance(x, str) for x in val)
@@ -224,8 +224,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_typed_dict(self):
-    self.CheckWithErrors("""
-      from typing import TypedDict, TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypedDict, TypeGuard
 
       class Person(TypedDict):
         name: str
@@ -243,8 +243,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_multiple_arguments(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
 
       def is_str_list(
           val: list[object], allow_empty: bool) -> TypeGuard[list[str]]:
@@ -258,8 +258,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_instance_method(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
 
       class Foo:
         def is_str_list(self, val: list[object]) -> TypeGuard[list[str]]:
@@ -271,8 +271,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_classmethod(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
 
       class Foo:
         @classmethod
@@ -285,8 +285,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_repeat_calls(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
       def is_int(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
       def f(val):
@@ -298,8 +298,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_repeat_calls_same_function(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
       def is_int(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
       def f(val):
@@ -310,8 +310,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_generic(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard, TypeVar  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard, TypeVar
 
       _T = TypeVar("_T")
 
@@ -326,8 +326,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_union(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard, TypeVar  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard, TypeVar
 
       _T = TypeVar("_T")
 
@@ -348,8 +348,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_global(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
 
       x: object
 
@@ -363,8 +363,8 @@ class TypeGuardTest(test_base.BaseTest):
     """)
 
   def test_local(self):
-    self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+    self.Check("""
+      from typing import TypeGuard
       def is_int(x: object) -> TypeGuard[int]:
         return isinstance(x, int)
       def f() -> object:
@@ -379,7 +379,7 @@ class TypeGuardTest(test_base.BaseTest):
 
   def test_non_variable(self):
     errors = self.CheckWithErrors("""
-      from typing import TypeGuard  # not-supported-yet
+      from typing import TypeGuard
       def f(x) -> TypeGuard[int]:
         return isinstance(x, int)
       def g(x: dict[str, object]):
@@ -388,6 +388,30 @@ class TypeGuardTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(
         errors, {"e": ["TypeGuard function 'f' with an arbitrary expression"]})
+
+  def test_cellvar(self):
+    self.Check("""
+      from typing import TypeGuard
+      def f(x) -> TypeGuard[int]:
+        return isinstance(x, int)
+      def g_out(x, y):
+        if f(y):
+          assert_type(y, int)
+        def g_in():
+          print(x, y)  # use `x` and `y` here so they end up in co_cellvars
+    """)
+
+  def test_freevar(self):
+    self.Check("""
+      from typing import TypeGuard
+      def f(x) -> TypeGuard[int]:
+        return isinstance(x, int)
+      def g_out(x, y):
+        def g_in():
+          print(x)  # use `x` here so both `x` and `y` end up in co_freevars
+          if f(y):
+            assert_type(y, int)
+    """)
 
 
 if __name__ == "__main__":

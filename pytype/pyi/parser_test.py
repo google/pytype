@@ -611,22 +611,16 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
       from typing import Callable
 
       x: Callable[[], bool]""")
-    self.check("""
+    self.check_error("""
       from typing import Callable
-
-      x = ...  # type: Callable[[int]]""", """
-      from typing import Any, Callable
-
-      x: Callable[[int], Any]""")
-    self.check("""
+      x = ...  # type: Callable[[int]]
+    """, 2, "Expected 2 parameters to Callable, got 1")
+    self.check_error("""
       from typing import Callable
-
-      x = ...  # type: Callable[[], ...]""", """
-      from typing import Any, Callable
-
-      x: Callable[[], Any]""")
+      x = ...  # type: Callable[[], ...]
+    """, 2, "Unexpected ellipsis parameter")
     self.check_error(
-        "import typing\n\nx = ...  # type: typing.Callable[int]", 3,
+        "import typing\n\nx = ...  # type: typing.Callable[int, int]", 3,
         "First argument to Callable must be a list of argument types")
     self.check_error(
         "import typing\n\nx = ...  # type: typing.Callable[[], bool, bool]", 3,
@@ -636,12 +630,11 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
         "did you mean Callable[..., bool]?")
 
   def test_ellipsis(self):
-    # B[T, ...] becomes B[T].
-    self.check("from typing import List\n\nx = ...  # type: List[int, ...]",
-               "from typing import List\n\nx: List[int]")
-    # Double ellipsis is not allowed.
-    self.check_error("x = ...  # type: List[..., ...]", 1,
-                     "not supported")
+    self.check_error("""
+      from typing import List
+      x: List[int, ...]
+    """, 2, "Unexpected ellipsis parameter")
+    self.check_error("x: list[int, ...]", 1, "Unexpected ellipsis parameter")
     # Tuple[T] and Tuple[T, ...] are distinct.
     self.check("from typing import Tuple\n\nx = ...  # type: Tuple[int]",
                "from typing import Tuple\n\nx: Tuple[int]")
@@ -657,14 +650,10 @@ class HomogeneousTypeTest(parser_test_base.ParserTestBase):
       from typing import Tuple
 
       x: Tuple[int, str]""")
-    self.check("""
+    self.check_error("""
       from typing import Tuple
-
-      x = ...  # type: Tuple[int, str, ...]""",
-               """
-      from typing import Any, Tuple
-
-      x: Tuple[int, str, Any]""")
+      x = ...  # type: Tuple[int, str, ...]
+    """, 2, "Unexpected ellipsis parameter")
 
   def test_empty_tuple(self):
     self.check("""
@@ -2796,6 +2785,8 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
     self.check("""
       from typing import Callable, Generic, ParamSpec, TypeVar
 
+      x: X[int, ...]
+
       P = ParamSpec('P')
       T = TypeVar('T')
 
@@ -2803,7 +2794,9 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
           f: Callable[P, int]
           x: T
     """, """
-      from typing import Callable, Generic, TypeVar
+      from typing import Any, Callable, Generic, TypeVar
+
+      x: X[int, Any]
 
       P = TypeVar('P')
       T = TypeVar('T')
@@ -2989,6 +2982,62 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
 
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """)
+
+  @unittest.skip("Not checked yet")
+  def test_missing_parameter(self):
+    self.check_error("""
+      from typing import TypeGuard
+      def f() -> TypeGuard[int]: ...
+    """, 2, "at least one required parameter")
+
+  @unittest.skip("Not checked yet")
+  def test_callable_missing_parameter(self):
+    self.check_error("""
+      from typing import Callable, TypeGuard
+      x: Callable[[], TypeGuard[int]]
+    """, 2, "at least one required parameter")
+
+  @unittest.skip("Not checked yet")
+  def test_unparameterized(self):
+    self.check_error("""
+      from typing import TypeGuard
+      def f(x) -> TypeGuard: ...
+    """, 2, "expected 1 parameter, got 0")
+
+  @unittest.skip("Not checked yet")
+  def test_unparameterized_callable(self):
+    self.check_error("""
+      from typing import Callable, TypeGuard
+      x: Callable[[object], TypeGuard]
+    """, 2, "expected 1 parameter, got 0")
+
+  @unittest.skip("Not checked yet")
+  def test_not_return(self):
+    self.check_error("""
+      from typing import TypeGuard
+      def f(x: TypeGuard[int]): ...
+    """, 2, "only allowed as a return annotation")
+
+  @unittest.skip("Not checked yet")
+  def test_not_return_callable(self):
+    self.check_error("""
+      from typing import Any, Callable, TypeGuard
+      x: Callable[[TypeGuard[int]], Any]
+    """, 2, "only allowed as a return annotation")
+
+  @unittest.skip("Not checked yet")
+  def test_inner_type(self):
+    self.check_error("""
+      from typing import List, TypeGuard
+      def f(x) -> List[TypeGuard[int]]: ...
+    """, 2, "not allowed as inner type")
+
+  @unittest.skip("Not checked yet")
+  def test_inner_type_callable(self):
+    self.check_error("""
+      from typing import Callable, List, TypeGuard
+      x: Callable[[object], List[TypeGuard[int]]]
+    """, 2, "not allowed as inner type")
 
 
 class AllTest(parser_test_base.ParserTestBase):

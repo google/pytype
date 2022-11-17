@@ -172,7 +172,7 @@ class ContainerTest(test_base.BaseTest):
       from typing import Any, List, Union
       x = ...  # type: Union[int, float]
       y = ...  # type: Any
-      l = ...  # type: List[Union[int, float], ...]
+      l = ...  # type: List[Union[int, float]]
     """)
 
   def test_list_concat_unlike(self):

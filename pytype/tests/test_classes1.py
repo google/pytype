@@ -210,8 +210,8 @@ class ClassesTest(test_base.BaseTest):
     from typing import List
     from typing import Any
     class Foo(Any):
-      x = ...  # type: List[int, ...]
-      y = ...  # type: List[int, ...]
+      x = ...  # type: List[int]
+      y = ...  # type: List[int]
       def f(self) -> NoneType: ...
     """)
 

@@ -197,7 +197,7 @@ class BuiltinTests(test_base.BaseTest):
     """, deep=False)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
-      def t_testListInit3(x: List[Union[int, str], ...], i: int) -> int: ...
+      def t_testListInit3(x: List[Union[int, str]], i: int) -> int: ...
     """)
 
   def test_list_init4(self):

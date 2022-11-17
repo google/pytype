@@ -153,8 +153,8 @@ class ConvertTest(test_base.UnitTest):
 
   def test_callable_no_args(self):
     ast = self._load_ast("a", """
-      from typing import Callable
-      x = ... # type: Callable[[], ...]
+      from typing import Any, Callable
+      x = ... # type: Callable[[], Any]
     """)
     x = ast.Lookup("a.x").type
     cls = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)

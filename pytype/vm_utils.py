@@ -873,6 +873,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
     # variable identity.
     ctx.vm.frame.cells[op.arg] = cell = new_cell
   name = get_closure_var_name(ctx.vm.frame, op.arg)
+  ctx.vm.set_var_name(cell, name)
   check_for_deleted(state, name, cell, ctx)
   ctx.vm.trace_opcode(op, name, cell)
   return state.push(cell)
