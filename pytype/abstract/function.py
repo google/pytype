@@ -1071,11 +1071,7 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
         ctx.vm.frames, f"Using TypeGuard{desc} with an arbitrary expression",
         "Please assign the expression to a local variable.")
     return None
-  if target_name in frame.f_locals.members:
-    store = frame.f_locals
-  else:
-    store = frame.f_globals
-  target = store.members[target_name]
+  target = frame.lookup_name(target_name)
   # Forward all the target's bindings to the current node, so we don't have
   # visibility problems later.
   target.PasteVariable(target, node)

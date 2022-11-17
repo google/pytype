@@ -567,6 +567,9 @@ class VirtualMachine:
       annot.expr = flattened_expr
       f_globals.members[flattened_expr] = annot.to_variable(node)
 
+  def set_var_name(self, var, name):
+    self._var_names[var.id] = name
+
   def get_var_name(self, var):
     """Get the python variable name corresponding to a Variable."""
     # Variables in _var_names correspond to LOAD_* opcodes, which means they
@@ -701,7 +704,7 @@ class VirtualMachine:
     self._filter_none_and_paste_bindings(
         state.node, bindings, ret,
         discard_concrete_values=discard_concrete_values)
-    self._var_names[ret.id] = name
+    self.set_var_name(ret, name)
     return state, ret
 
   def load_local(self, state, name):
@@ -756,7 +759,7 @@ class VirtualMachine:
       if typ:
         _, ret = self.ctx.annotation_utils.init_annotation(node, name, typ)
         store.members[name] = ret
-        self._var_names[ret.id] = name
+        self.set_var_name(ret, name)
         return ret
     raise KeyError(name)
 

@@ -389,6 +389,30 @@ class TypeGuardTest(test_base.BaseTest):
     self.assertErrorSequences(
         errors, {"e": ["TypeGuard function 'f' with an arbitrary expression"]})
 
+  def test_cellvar(self):
+    self.Check("""
+      from typing import TypeGuard
+      def f(x) -> TypeGuard[int]:
+        return isinstance(x, int)
+      def g_out(x, y):
+        if f(y):
+          assert_type(y, int)
+        def g_in():
+          print(x, y)  # use `x` and `y` here so they end up in co_cellvars
+    """)
+
+  def test_freevar(self):
+    self.Check("""
+      from typing import TypeGuard
+      def f(x) -> TypeGuard[int]:
+        return isinstance(x, int)
+      def g_out(x, y):
+        def g_in():
+          print(x)  # use `x` here so both `x` and `y` end up in co_freevars
+          if f(y):
+            assert_type(y, int)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
