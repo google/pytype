@@ -2983,6 +2983,62 @@ class TypeGuardTest(parser_test_base.ParserTestBase):
       def f(x: List[object]) -> TypeGuard[List[str]]: ...
     """)
 
+  @unittest.skip("Not checked yet")
+  def test_missing_parameter(self):
+    self.check_error("""
+      from typing import TypeGuard
+      def f() -> TypeGuard[int]: ...
+    """, 2, "at least one required parameter")
+
+  @unittest.skip("Not checked yet")
+  def test_callable_missing_parameter(self):
+    self.check_error("""
+      from typing import Callable, TypeGuard
+      x: Callable[[], TypeGuard[int]]
+    """, 2, "at least one required parameter")
+
+  @unittest.skip("Not checked yet")
+  def test_unparameterized(self):
+    self.check_error("""
+      from typing import TypeGuard
+      def f(x) -> TypeGuard: ...
+    """, 2, "expected 1 parameter, got 0")
+
+  @unittest.skip("Not checked yet")
+  def test_unparameterized_callable(self):
+    self.check_error("""
+      from typing import Callable, TypeGuard
+      x: Callable[[object], TypeGuard]
+    """, 2, "expected 1 parameter, got 0")
+
+  @unittest.skip("Not checked yet")
+  def test_not_return(self):
+    self.check_error("""
+      from typing import TypeGuard
+      def f(x: TypeGuard[int]): ...
+    """, 2, "only allowed as a return annotation")
+
+  @unittest.skip("Not checked yet")
+  def test_not_return_callable(self):
+    self.check_error("""
+      from typing import Any, Callable, TypeGuard
+      x: Callable[[TypeGuard[int]], Any]
+    """, 2, "only allowed as a return annotation")
+
+  @unittest.skip("Not checked yet")
+  def test_inner_type(self):
+    self.check_error("""
+      from typing import List, TypeGuard
+      def f(x) -> List[TypeGuard[int]]: ...
+    """, 2, "not allowed as inner type")
+
+  @unittest.skip("Not checked yet")
+  def test_inner_type_callable(self):
+    self.check_error("""
+      from typing import Callable, List, TypeGuard
+      x: Callable[[object], List[TypeGuard[int]]]
+    """, 2, "not allowed as inner type")
+
 
 class AllTest(parser_test_base.ParserTestBase):
 
