@@ -331,6 +331,11 @@ class _FoldConstants:
               # Deconstruct the tuple built in opcodes.LOAD_CONST above
               other_elts = tuple(_Constant(('prim', e), v, None, other.op)
                                  for (_, e), v in zip(other_et, other.value))
+            elif other_tag == 'prim':
+              assert other_et == str
+              other_et = {other.typ}
+              other_elts = tuple(_Constant(('prim', str), v, None, other.op)
+                                 for v in other.value)
             else:
               other_elts = other.elements
             typ = (tag, et | set(other_et))
