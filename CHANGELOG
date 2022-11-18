@@ -1,3 +1,15 @@
+Version 2022.11.18:
+
+Updates:
+* Allow NoReturn to appear anywhere.
+* Add basic TypeGuard support.
+
+Bug fixes:
+* Improve imports handling in the pytd printer.
+* Do a better job of catching bad parameterized types in pyi files.
+* Fix constant folding for python-3.9+ literals compiling to LIST_EXTEND.
+* Stop accidentally converting bound to unbound functions.
+
 Version 2022.11.10:
 
 Updates:
