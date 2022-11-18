@@ -413,6 +413,16 @@ class TypeGuardTest(test_base.BaseTest):
             assert_type(y, int)
     """)
 
+  def test_getattr(self):
+    # Contrived example to make sure looking up the name of a builtin works.
+    self.Check("""
+      from typing import Any, Callable, TypeGuard
+      def f(x) -> TypeGuard[Callable[[str], Any]]:
+        return True
+      def g():
+        return f(getattr)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

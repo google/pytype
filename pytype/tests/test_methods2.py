@@ -145,6 +145,19 @@ class TestMethodsPy3(test_base.BaseTest):
         return _REGISTERED_BUILDERS[name]
     """)
 
+  def test_pass_through_typevar(self):
+    self.Check("""
+      from typing import TypeVar
+      F = TypeVar('F')
+      def f(x: F) -> F:
+        return x
+      class A:
+        def f(self, x: float) -> float:
+          return x
+      g = f(A().f)
+      assert_type(g(0), float)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

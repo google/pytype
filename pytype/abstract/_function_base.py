@@ -187,7 +187,7 @@ class BoundFunction(_base.BaseValue):
 
   def __init__(self, callself, underlying):
     super().__init__(underlying.name, underlying.ctx)
-    self.cls = underlying.cls
+    self.cls = _classes.FunctionPyTDClass(self, self.ctx)
     self._callself = callself
     self.underlying = underlying
     self.is_attribute_of_class = False

@@ -508,6 +508,7 @@ _unsupported_members = {
     "Concatenate": (3, 10),
     "ParamSpec": (3, 10),
     "is_typeddict": (3, 10),
+    "Self": (3, 11),
 }
 
 
