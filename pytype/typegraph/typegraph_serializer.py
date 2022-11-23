@@ -20,6 +20,7 @@ import dataclasses
 import json
 from typing import Any, Dict, List, NewType, Optional
 
+from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
 
@@ -115,12 +116,15 @@ class TypegraphEncoder(json.JSONEncoder):
         "bindings": [b.id for b in variable.bindings],
     }
 
+  def _encode_binding_data(self, binding: cfg.Binding) -> str:
+    return pytd_utils.Print(binding.data.to_type())
+
   def _encode_binding(self, binding: cfg.Binding) -> Dict[str, Any]:
     return {
         "_type": "Binding",
         "id": binding.id,
         "variable": binding.variable.id,
-        "data": repr(binding.data),
+        "data": self._encode_binding_data(binding),
         "origins": [self._encode_origin(o) for o in binding.origins],
     }
 
