@@ -94,6 +94,22 @@ class PYITest(test_base.BaseTest):
         assert_type(foo.X3, "Type[Union[foo.Z[int], int]]")
       """, pythonpath=[d.path])
 
+  def test_bare_callable(self):
+    with self.DepTree([("foo.pyi", """
+      import types
+      def f(x) -> types.FunctionType: ...
+    """)]):
+      ty = self.Infer("""
+        import foo
+        def f(x):
+          return foo.f(x)
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import foo
+      from typing import Callable
+      def f(x) -> Callable[..., nothing]: ...
+    """)
+
 
 class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""

@@ -605,7 +605,10 @@ class PrintVisitor(base_visitor.Visitor):
       parameters += ("...",)
     elif self._NeedsCallableEllipsis(self.old_node):
       # Callable[Any, X] is rewritten to Callable[..., X].
-      self._typing_import_counts["Any"] -= 1
+      if isinstance(self.old_node.parameters[0], pytd.AnythingType):
+        self._typing_import_counts["Any"] -= 1
+      else:
+        assert isinstance(self.old_node.parameters[0], pytd.NothingType)
       parameters = ("...",) + parameters[1:]
     return (self.MaybeCapitalize(node.base_type) +
             "[" + ", ".join(parameters) + "]")
