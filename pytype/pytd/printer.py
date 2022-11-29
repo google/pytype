@@ -604,8 +604,12 @@ class PrintVisitor(base_visitor.Visitor):
     elif self._NeedsTupleEllipsis(node):
       parameters += ("...",)
     elif self._NeedsCallableEllipsis(self.old_node):
+      param = self.old_node.parameters[0]
       # Callable[Any, X] is rewritten to Callable[..., X].
-      self._typing_import_counts["Any"] -= 1
+      if isinstance(param, pytd.AnythingType):
+        self._typing_import_counts["Any"] -= 1
+      else:
+        assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
     return (self.MaybeCapitalize(node.base_type) +
             "[" + ", ".join(parameters) + "]")

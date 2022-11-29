@@ -161,6 +161,7 @@ py_library(
     typegraph_serializer.py
   DEPS
     .cfg
+    pytype.pytd.pytd
 )
 
 py_test(
