@@ -236,9 +236,7 @@ _OPT_IN_FEATURES = [
 FEATURE_FLAGS = [
     _flag("--always-use-return-annotations", False,
           "Always use function return type annotations."),
-    _flag("--mapping-is-not-sequence", True,
-          "Do not treat Mapping as satisfying the Sequence protocol."),
-    _flag("--overriding-default-value-checks", False,
+    _flag("--overriding-default-value-checks", True,
           "Enable default value checks for overriding methods."),
     _flag("--overriding-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods."),
