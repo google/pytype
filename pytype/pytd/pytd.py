@@ -369,6 +369,32 @@ class TypeParameter(Node, Type):
 
 
 @attrs.frozen(cache_hash=True)
+class ParamSpec(TypeParameter):
+  """ParamSpec is a specific case of TypeParameter."""
+
+  def Get(self, attr):
+    if attr == 'args':
+      return ParamSpecArgs(self.name)
+    elif attr == 'kwargs':
+      return ParamSpecKwargs(self.name)
+    else:
+      # TODO(b/217789659): This should be an error
+      return None
+
+
+@attrs.frozen(cache_hash=True)
+class ParamSpecArgs(Node):
+  """ParamSpec.args special form."""
+  name: str
+
+
+@attrs.frozen(cache_hash=True)
+class ParamSpecKwargs(Node):
+  """ParamSpec.kwargs special form."""
+  name: str
+
+
+@attrs.frozen(cache_hash=True)
 class TemplateItem(Node):
   """Represents template name for generic types.
 
@@ -596,6 +622,22 @@ class CallableType(GenericType):
   def ret(self):
     return self.parameters[-1]
 
+  def has_paramspec(self):
+    return self.args and isinstance(self.args[0], ParamSpec)
+
+
+class Concatenate(GenericType):
+  """Concatenate params and ParamSpec."""
+  __slots__ = ()
+
+  @property
+  def args(self):
+    return self.parameters[:-1]
+
+  @property
+  def paramspec(self):
+    return self.parameters[-1]
+
 
 @attrs.frozen(cache_hash=True)
 class Literal(Node, Type):
@@ -661,6 +703,8 @@ def ToType(item, allow_constants=False, allow_functions=False,
   if isinstance(item, Type):
     return item
   elif isinstance(item, Module):
+    return item
+  elif isinstance(item, (ParamSpecArgs, ParamSpecKwargs)):
     return item
   elif isinstance(item, Class):
     return ClassType(item.name, item)
@@ -752,7 +796,7 @@ def LookupItemRecursive(module, name):
       if not found:
         raise KeyError(item.type.name)
       item = found
-    elif not isinstance(item, (TypeDeclUnit, Class)):
+    elif not isinstance(item, (TypeDeclUnit, Class, ParamSpec)):
       raise KeyError(name)
     lookup_name = partial_name + '.' + part
 

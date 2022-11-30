@@ -667,10 +667,26 @@ class ReturnValueMixin:
     return state.change_cfg_node(self.return_node), self.return_variable
 
 
+class ParamSpecMatch(_base.BaseValue):
+  """Match a paramspec against a sig."""
+
+  def __init__(self, paramspec, sig, ctx):
+    super().__init__("ParamSpecMatch", ctx)
+    self.paramspec = paramspec
+    self.sig = sig
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
+
+
 # These names are chosen to match pytype error classes.
 # pylint: disable=g-bad-exception-name
 class FailedFunctionCall(Exception, ReturnValueMixin):
   """Exception for failed function calls."""
+
+  def __init__(self):
+    super().__init__()
+    self.name = "<no name>"
 
   def __gt__(self, other):
     return other is None

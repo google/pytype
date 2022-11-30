@@ -2756,11 +2756,12 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
 
       def f(x: Callable[P, R]) -> Callable[P, Awaitable[R]]: ...
     """, """
-      from typing import Awaitable, Callable, TypeVar
+      from typing import Awaitable, Callable, ParamSpec, TypeVar
 
+      P = ParamSpec('P')
       R = TypeVar('R')
 
-      def f(x: Callable[..., R]) -> Callable[..., Awaitable[R]]: ...
+      def f(x: Callable[P, R]) -> Callable[P, Awaitable[R]]: ...
     """)
 
   def test_from_typing_extensions(self):
@@ -2776,9 +2777,10 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       from typing import Awaitable, Callable, TypeVar
       from typing_extensions import ParamSpec
 
+      P = ParamSpec('P')
       R = TypeVar('R')
 
-      def f(x: Callable[..., R]) -> Callable[..., Awaitable[R]]: ...
+      def f(x: Callable[P, R]) -> Callable[P, Awaitable[R]]: ...
     """)
 
   def test_custom_generic(self):
@@ -2794,15 +2796,15 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
           f: Callable[P, int]
           x: T
     """, """
-      from typing import Any, Callable, Generic, TypeVar
+      from typing import Any, Callable, Generic, ParamSpec, TypeVar
 
       x: X[int, Any]
 
-      P = TypeVar('P')
+      P = ParamSpec('P')
       T = TypeVar('T')
 
       class X(Generic[T, P]):
-          f: Callable[..., int]
+          f: Callable[P, int]
           x: T
     """)
 
@@ -2818,15 +2820,15 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
 
       def f(x: Callable[_P, _T]) -> Foo[_P, _T]: ...
     """, """
-      from typing import Any, Callable, Generic, TypeVar
+      from typing import Callable, Generic, TypeVar
       from typing_extensions import ParamSpec
 
-      _P = TypeVar('_P')
+      _P = ParamSpec('_P')
       _T = TypeVar('_T')
 
       class Foo(Generic[_P, _T]): ...
 
-      def f(x: Callable[..., _T]) -> Foo[Any, _T]: ...
+      def f(x: Callable[_P, _T]) -> Foo[_P, _T]: ...
     """)
 
   @test_base.skip("ParamSpec in custom generic classes not supported yet")
@@ -2860,13 +2862,15 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       T = TypeVar('T')
       def f(x: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
     """, """
-      from typing import Callable, TypeVar
+      from typing import Callable, ParamSpec, TypeVar
 
+      P = ParamSpec('P')
       T = TypeVar('T')
 
-      def f(x: Callable[..., T], *args, **kwargs) -> T: ...
+      def f(x: Callable[P, T], *args: P.args, **kwargs: P.kwargs) -> T: ...
     """)
 
+  @test_base.skip("in progress: b/217789659")
   def test_paramspec_args_error(self):
     self.check_error("""
       from typing import Any, Callable
@@ -2886,9 +2890,9 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       class C1(Generic[P]): ...
       class C2(Generic[P]): ...
     """, """
-      from typing import Generic, TypeVar
+      from typing import Generic, ParamSpec
 
-      P = TypeVar('P')
+      P = ParamSpec('P')
 
       class C1(Generic[P]): ...
 
@@ -2909,13 +2913,14 @@ class ConcatenateTest(parser_test_base.ParserTestBase):
 
       def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
     """, """
-      from typing import Callable, TypeVar
+      from typing import Callable, Concatenate, ParamSpec, TypeVar
 
+      P = ParamSpec('P')
       R = TypeVar('R')
 
       class X: ...
 
-      def f(x: Callable[..., R]) -> Callable[..., R]: ...
+      def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
     """)
 
   def test_from_typing_extensions(self):
@@ -2933,11 +2938,12 @@ class ConcatenateTest(parser_test_base.ParserTestBase):
       from typing import Callable, TypeVar
       from typing_extensions import Concatenate, ParamSpec
 
+      P = ParamSpec('P')
       R = TypeVar('R')
 
       class X: ...
 
-      def f(x: Callable[..., R]) -> Callable[..., R]: ...
+      def f(x: Callable[Concatenate[X, P], R]) -> Callable[P, R]: ...
     """)
 
 

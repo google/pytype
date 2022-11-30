@@ -323,10 +323,12 @@ class AnnotationContainer(AnnotationClass):
     return self._call_helper(node, self.base_cls, func, args)
 
 
-class TypeParameter(_base.BaseValue):
+class _TypeVariable(_base.BaseValue):
   """Parameter of a type."""
 
   formal = True
+
+  _INSTANCE_CLASS = None
 
   def __init__(self,
                name,
@@ -337,6 +339,8 @@ class TypeParameter(_base.BaseValue):
                contravariant=False,
                module=None):
     super().__init__(name, ctx)
+    # TODO(b/217789659): PEP-612 does not mention constraints, but ParamSpecs
+    # ignore all the extra parameters anyway..
     self.constraints = constraints
     self.bound = bound
     self.covariant = covariant
@@ -347,8 +351,8 @@ class TypeParameter(_base.BaseValue):
     return not self.constraints and not self.bound
 
   def copy(self):
-    return TypeParameter(self.name, self.ctx, self.constraints, self.bound,
-                         self.covariant, self.contravariant, self.module)
+    return self.__class__(self.name, self.ctx, self.constraints, self.bound,
+                          self.covariant, self.contravariant, self.module)
 
   def with_module(self, module):
     res = self.copy()
@@ -373,14 +377,15 @@ class TypeParameter(_base.BaseValue):
                  self.contravariant))
 
   def __repr__(self):
-    return ("TypeParameter({!r}, constraints={!r}, bound={!r}, module={!r})"
-            .format(self.name, self.constraints, self.bound, self.module))
+    return ("{!s}({!r}, constraints={!r}, bound={!r}, module={!r})"
+            .format(self.__class__.__name__, self.name, self.constraints,
+                    self.bound, self.module))
 
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
     if container and (not isinstance(container, _instance_base.SimpleValue) or
                       self.full_name in container.all_template_names):
-      instance = TypeParameterInstance(self, container, self.ctx)
+      instance = self._INSTANCE_CLASS(self, container, self.ctx)  # pylint: disable=not-callable
       return instance.to_variable(node)
     else:
       for c in self.constraints:
@@ -401,7 +406,7 @@ class TypeParameter(_base.BaseValue):
     return node, self.instantiate(node)
 
 
-class TypeParameterInstance(_base.BaseValue):
+class _TypeVariableInstance(_base.BaseValue):
   """An instance of a type parameter."""
 
   def __init__(self, param, instance, ctx):
@@ -417,9 +422,6 @@ class TypeParameterInstance(_base.BaseValue):
     else:
       return node, self.ctx.convert.empty.to_variable(self.ctx.root_node)
 
-  def __repr__(self):
-    return f"TypeParameterInstance({self.name!r})"
-
   def __eq__(self, other):
     if isinstance(other, type(self)):
       return self.param == other.param and self.instance == other.instance
@@ -427,6 +429,29 @@ class TypeParameterInstance(_base.BaseValue):
 
   def __hash__(self):
     return hash((self.param, self.instance))
+
+  def __repr__(self):
+    return f"{self.__class__.__name__}({self.name!r})"
+
+
+class TypeParameterInstance(_TypeVariableInstance):
+  """An instance of a TypeVar type parameter."""
+
+
+class ParamSpecInstance(_TypeVariableInstance):
+  """An instance of a ParamSpec type parameter."""
+
+
+class TypeParameter(_TypeVariable):
+  """Parameter of a type (typing.TypeVar)."""
+
+  _INSTANCE_CLASS = TypeParameterInstance
+
+
+class ParamSpec(_TypeVariable):
+  """Parameter of a callable type (typing.ParamSpec)."""
+
+  _INSTANCE_CLASS = ParamSpecInstance
 
 
 class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):

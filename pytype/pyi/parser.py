@@ -68,15 +68,15 @@ def _import_from_module(module: Optional[str], level: int) -> str:
 
 
 @dataclasses.dataclass
-class _TypeVar:
-  """Internal representation of typevars."""
+class _TypeVariable:
+  """Internal representation of type variables."""
 
   name: str
   bound: Optional[str]
   constraints: List[Any]
 
   @classmethod
-  def from_call(cls, node: ast3.Call) -> "_TypeVar":
+  def from_call(cls, node: ast3.Call):
     """Construct a _TypeVar from an ast.Call node."""
     name, *constraints = node.args
     bound = None
@@ -95,15 +95,13 @@ class _TypeVar:
 
 
 @dataclasses.dataclass
-class _ParamSpec:
-  """Internal representation of ParamSpecs."""
+class _TypeVar(_TypeVariable):
+  """Internal representation of TypeVar."""
 
-  name: str
 
-  @classmethod
-  def from_call(cls, node: ast3.Call) -> "_ParamSpec":
-    name, = node.args  # pytype: disable=bad-unpacking
-    return cls(name)
+@dataclasses.dataclass
+class _ParamSpec(_TypeVariable):
+  """Internal representation of ParamSpec."""
 
 
 #------------------------------------------------------
@@ -617,8 +615,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           kw.value = self.annotation_visitor.convert_late_annotation(val)
 
   def _convert_paramspec_args(self, node):
-    name, = node.args
-    node.args = [name.s]
+    return self._convert_typevar_args(node)
 
   def _convert_typed_dict_args(self, node: ast3.Call):
     msg = "Wrong args: expected TypedDict(name, {field: type, ...})"

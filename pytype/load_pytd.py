@@ -298,7 +298,7 @@ class _Resolver:
     mod_ast.Visit(deps)
     if isinstance(mod_ast, (pytd.TypeDeclUnit, pytd.Class)):
       return {k: v for k, v in deps.dependencies.items()
-              if not isinstance(mod_ast.Get(k), pytd.Class)}
+              if not isinstance(mod_ast.Get(k), (pytd.Class, pytd.ParamSpec))}
     else:
       return deps.dependencies
 

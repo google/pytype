@@ -609,10 +609,39 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     return arg_dict, matches
 
+  def _handle_paramspec(self, node, key, ret_map):
+    """Construct a new function based on ParamSpec matching."""
+    return_callable, subst = key
+    val = self.ctx.convert.constant_to_value(
+        return_callable.ret, subst=subst, node=node)
+    if _isinstance(val, "ParameterizedClass"):
+      # Make sure the type params from subst get applied to val
+      # TODO(b/217789659): It is not clear why constant_to_value does not
+      # reliably do the type substitution (it retrieves a cached value with
+      # unsubstituted TypeParameters).
+      for k, v in val.formal_type_parameters.items():
+        if _isinstance(v, "TypeParameter") and v.full_name in subst:
+          typ = self.ctx.convert.merge_classes(subst[v.full_name].data)
+          val.update_inner_type(k, typ)
+
+    # Unpack the paramspec substitution we have created in the matcher.
+    pspec = return_callable.args[0]
+    if pspec.full_name in subst:
+      data = abstract_utils.get_atomic_value(
+          subst[pspec.full_name], function.ParamSpecMatch)
+      ann = data.sig.annotations.copy()
+      ann["return"] = val
+      sig = data.sig._replace(annotations=ann)
+      ret = _function_base.SimpleFunction(sig, self.ctx)
+      ret_map[key] = ret.to_variable(node)
+
   def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""
     subst = match.subst
-    t = (self.pytd_sig.return_type, subst)
+    ret = self.pytd_sig.return_type
+    t = (ret, subst)
+    if isinstance(ret, pytd.CallableType) and ret.has_paramspec():
+      self._handle_paramspec(node, t, ret_map)
     sources = [func]
     for v in arg_dict.values():
       # For the argument that 'subst' was generated from, we need to add the
@@ -627,8 +656,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         ret_map[t].AddBinding(data, sources, node)
     elif visible:
       first_arg = self.signature.get_first_arg(arg_dict)
-      ret_type = function.PyTDReturnType(
-          self.pytd_sig.return_type, subst, sources, self.ctx)
+      ret_type = function.PyTDReturnType(ret, subst, sources, self.ctx)
       if first_arg:
         typeguard_return = function.handle_typeguard(
             node, ret_type, first_arg, self.ctx, func_name=self.name)

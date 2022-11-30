@@ -77,6 +77,8 @@ Unsolvable = _singletons.Unsolvable
 
 AnnotationClass = _typing.AnnotationClass
 AnnotationContainer = _typing.AnnotationContainer
+ParamSpec = _typing.ParamSpec
+ParamSpecInstance = _typing.ParamSpecInstance
 TypeParameter = _typing.TypeParameter
 TypeParameterInstance = _typing.TypeParameterInstance
 Union = _typing.Union
@@ -88,5 +90,7 @@ AMBIGUOUS_OR_EMPTY = AMBIGUOUS + (Empty,)
 FUNCTION_TYPES = (BoundFunction, Function)
 INTERPRETER_FUNCTION_TYPES = (BoundInterpreterFunction, InterpreterFunction)
 PYTD_FUNCTION_TYPES = (BoundPyTDFunction, PyTDFunction)
+TYPE_VARIABLE_TYPES = (TypeParameter, ParamSpec)
+TYPE_VARIABLE_INSTANCES = (TypeParameterInstance, ParamSpecInstance)
 
 AmbiguousOrEmptyType = _Union[Unknown, Unsolvable, Empty]

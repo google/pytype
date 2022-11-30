@@ -211,14 +211,37 @@ class Converter(utils.ContextWeakrefMixin):
         homogeneous = len(type_arguments) == 1
       return pytd_utils.MakeClassOrContainerType(
           base, type_arguments, homogeneous)
-    elif isinstance(v, abstract.TypeParameter):
+    elif isinstance(v, abstract.TYPE_VARIABLE_TYPES):
       # We generate the full definition because, if this type parameter is
       # imported, we will need the definition in order to declare it later.
-      return self._typeparam_to_def(node, v, v.name)
+      return self._type_variable_to_def(node, v, v.name)
     elif isinstance(v, typing_overlay.NoReturn):
       return pytd.NothingType()
     else:
       log.info("Using Any for instance of %s", v.name)
+      return pytd.AnythingType()
+
+  def _type_variable_to_pytd_type(self, node, v, seen, view):
+    if (v.module in self._scopes or
+        v.instance is abstract_utils.DUMMY_CONTAINER):
+      if isinstance(v, abstract.TYPE_VARIABLE_INSTANCES):
+        return self._type_variable_to_def(node, v.param, v.param.name)
+      else:
+        assert False, f"Unexpected type variable type: {type(v)}"
+    elif v.instance.get_instance_type_parameter(v.full_name).bindings:
+      # The type parameter was initialized. Set the view to None, since we
+      # don't include v.instance in the view.
+      return pytd_utils.JoinTypes(
+          self.value_to_pytd_type(node, p, seen, None)
+          for p in v.instance.get_instance_type_parameter(v.full_name).data)
+    elif v.param.constraints:
+      return pytd_utils.JoinTypes(
+          self.value_instance_to_pytd_type(node, p, None, seen, view)
+          for p in v.param.constraints)
+    elif v.param.bound:
+      return self.value_instance_to_pytd_type(
+          node, v.param.bound, None, seen, view)
+    else:
       return pytd.AnythingType()
 
   def value_to_pytd_type(self, node, v, seen, view):
@@ -235,26 +258,9 @@ class Converter(utils.ContextWeakrefMixin):
     """
     if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
       return pytd.NothingType()
-    elif isinstance(v, abstract.TypeParameterInstance):
-      if (v.module in self._scopes or
-          v.instance is abstract_utils.DUMMY_CONTAINER):
-        return self._typeparam_to_def(node, v.param, v.param.name)
-      elif v.instance.get_instance_type_parameter(v.full_name).bindings:
-        # The type parameter was initialized. Set the view to None, since we
-        # don't include v.instance in the view.
-        return pytd_utils.JoinTypes(
-            self.value_to_pytd_type(node, p, seen, None)
-            for p in v.instance.get_instance_type_parameter(v.full_name).data)
-      elif v.param.constraints:
-        return pytd_utils.JoinTypes(
-            self.value_instance_to_pytd_type(node, p, None, seen, view)
-            for p in v.param.constraints)
-      elif v.param.bound:
-        return self.value_instance_to_pytd_type(
-            node, v.param.bound, None, seen, view)
-      else:
-        return pytd.AnythingType()
-    elif isinstance(v, typing_overlay.TypeVar):
+    elif isinstance(v, abstract.TYPE_VARIABLE_INSTANCES):
+      return self._type_variable_to_pytd_type(node, v, seen, view)
+    elif isinstance(v, (typing_overlay.TypeVar, typing_overlay.ParamSpec)):
       return pytd.NamedType("builtins.type")
     elif isinstance(v, dataclass_overlay.FieldInstance):
       if not v.default:
@@ -316,6 +322,12 @@ class Converter(utils.ContextWeakrefMixin):
       # unless self._detailed is set.
       if self._detailed:
         return pytd.NamedType("typing.TypeVar")
+      else:
+        return pytd.AnythingType()
+    elif isinstance(v, abstract.ParamSpec):
+      # Follow the same logic as `TypeVar`s
+      if self._detailed:
+        return pytd.NamedType("typing.ParamSpec")
       else:
         return pytd.AnythingType()
     elif isinstance(v, abstract.Unsolvable):
@@ -428,8 +440,8 @@ class Converter(utils.ContextWeakrefMixin):
         return pytd.Constant(
             name, pytd.GenericType(pytd.NamedType("builtins.type"),
                                    (pytd.NamedType(type_name),)))
-    elif isinstance(v, abstract.TypeParameter):
-      return self._typeparam_to_def(node, v, name)
+    elif isinstance(v, abstract.TYPE_VARIABLE_TYPES):
+      return self._type_variable_to_def(node, v, name)
     elif isinstance(v, abstract.Unsolvable):
       return pytd.Constant(name, v.to_type(node))
     else:
@@ -921,10 +933,15 @@ class Converter(utils.ContextWeakrefMixin):
     self._scopes.pop()
     return cls
 
-  def _typeparam_to_def(self, node, v, name):
+  def _type_variable_to_def(self, node, v, name):
     constraints = tuple(c.get_instance_type(node) for c in v.constraints)
     bound = v.bound and v.bound.get_instance_type(node)
-    return pytd.TypeParameter(name, constraints=constraints, bound=bound)
+    if isinstance(v, abstract.TypeParameter):
+      return pytd.TypeParameter(name, constraints=constraints, bound=bound)
+    elif isinstance(v, abstract.ParamSpec):
+      return pytd.ParamSpec(name, constraints=constraints, bound=bound)
+    else:
+      assert False, f"Unexpected type variable type: {type(v)}"
 
   def _typed_dict_to_def(self, node, v, name):
     constants = []

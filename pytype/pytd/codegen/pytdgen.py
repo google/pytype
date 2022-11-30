@@ -46,7 +46,8 @@ def pytd_type(value: pytd.Type) -> pytd.Type:
 
 def pytd_callable(
     base_type: pytd.NamedType,
-    parameters: _ParametersType
+    parameters: _ParametersType,
+    arg_is_paramspec: bool = False
 ) -> pytd.Type:
   """Create a pytd.CallableType."""
   if len(parameters) != 2:
@@ -66,6 +67,8 @@ def pytd_callable(
         raise TypeError(msg)
       # Callable[[x, ...], ret] -> pytd.CallableType(x, ..., ret)
       parameters = tuple(args) + (ret,)
+    return pytd.CallableType(base_type=base_type, parameters=parameters)
+  elif arg_is_paramspec or isinstance(args, pytd.Concatenate):
     return pytd.CallableType(base_type=base_type, parameters=parameters)
   else:
     # Fall back to a generic Callable if first param is Any

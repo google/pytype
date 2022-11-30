@@ -778,19 +778,26 @@ class Converter(utils.ContextWeakrefMixin):
         return abstract.Union(options, self.ctx)
       else:
         return options[0]
-    elif isinstance(pyval, pytd.TypeParameter):
+    elif isinstance(pyval, (pytd.TypeParameter, pytd.ParamSpec)):
       constraints = tuple(
           self.constant_to_value(c, {}, self.ctx.root_node)
           for c in pyval.constraints)
       bound = (
           pyval.bound and
           self.constant_to_value(pyval.bound, {}, self.ctx.root_node))
-      return abstract.TypeParameter(
+      if isinstance(pyval, pytd.ParamSpec):
+        cls = abstract.ParamSpec
+      else:
+        cls = abstract.TypeParameter
+      return cls(
           pyval.name,
           self.ctx,
           constraints=constraints,
           bound=bound,
           module=pyval.scope)
+    elif isinstance(pyval, (pytd.ParamSpecArgs, pytd.ParamSpecKwargs)):
+      # TODO(b/217789659): Support these.
+      return self.unsolvable
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.LateType):
