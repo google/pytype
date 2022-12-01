@@ -95,7 +95,12 @@ class ParamSpecTest(test_base.BaseTest):
       def f(x: Callable[..., int]) -> Callable[..., int]: ...
     """)
 
-  def test_decorator_in_pyi(self):
+
+@test_utils.skipBeforePy((3, 10), "ParamSpec is new in 3.10")
+class PyiParamSpecTest(test_base.BaseTest):
+  """Tests for ParamSpec imported from pyi files."""
+
+  def test_decorator(self):
     with self.DepTree([("foo.pyi", """
       from typing import TypeVar, ParamSpec, Callable, List
 
@@ -159,7 +164,7 @@ class ParamSpecTest(test_base.BaseTest):
         def h(a: A, b: str) -> List[int]: ...
    """)
 
-  def test_imported_paramspec_in_pyi(self):
+  def test_imported_paramspec(self):
     with self.DepTree([("foo.pyi", """
       from typing import TypeVar, ParamSpec, Callable, List
 
@@ -195,6 +200,54 @@ class ParamSpecTest(test_base.BaseTest):
       def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
       def h(a: A, b: str) -> List[int]: ...
    """)
+
+  def test_concatenate(self):
+    # TODO(b/217789659):
+    # - Should change_arg preserve the name of the posarg?
+    # - Should paramspecs in error messages be changed to ...?
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeVar, ParamSpec, Concatenate, Callable
+
+      T = TypeVar("T")
+      P = ParamSpec("P")
+
+      def change_arg(fn: Callable[Concatenate[int, P], T]) -> Callable[Concatenate[str, P], T]: ...
+      def drop_arg(fn: Callable[Concatenate[int, P], T]) -> Callable[P, T]: ...
+      def add_arg(fn: Callable[P, T]) -> Callable[Concatenate[int, P], T]: ...
+      def mismatched(fn: Callable[Concatenate[str, P], T]) -> Callable[Concatenate[str, P], T]: ...
+    """)]):
+      ty, err = self.InferWithErrors("""
+        import foo
+
+        @foo.change_arg
+        def f(a: int, b: str) -> int:
+          return 10
+
+        @foo.drop_arg
+        def g(a: int, b: str) -> int:
+          return 10
+
+        @foo.add_arg
+        def h(a: int, b: str) -> int:
+          return 10
+
+        @foo.mismatched
+        def k(a: int, b: str) -> int:  # wrong-arg-types[e]
+          return 10
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import foo
+      from typing import Any
+
+      k: Any
+
+      def f(_0: str, b: str) -> int: ...
+      def g(b: str) -> int: ...
+      def h(_0: int, /, a: int, b: str) -> int: ...
+   """)
+    self.assertErrorSequences(err, {
+        "e": ["Expected", "fn: Callable[Concatenate[str, P], Any]",
+              "Actual", "fn: Callable[[int, str], int]"]})
 
 
 if __name__ == "__main__":

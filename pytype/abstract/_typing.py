@@ -454,6 +454,34 @@ class ParamSpec(_TypeVariable):
   _INSTANCE_CLASS = ParamSpecInstance
 
 
+class Concatenate(_base.BaseValue):
+  """Concatenation of args and ParamSpec."""
+
+  def __init__(self, params, ctx):
+    super().__init__("Concatenate", ctx)
+    self.args = params[:-1]
+    self.paramspec = params[-1]
+
+  @property
+  def full_name(self):
+    return self.paramspec.full_name
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
+
+  @property
+  def num_args(self):
+    return len(self.args)
+
+  def get_args(self):
+    # Satisfies the same interface as abstract.CallableClass
+    return self.args
+
+  def __repr__(self):
+    args = ", ".join(list(map(repr, self.args)) + [self.paramspec.name])
+    return f"Concatenate[{args}]"
+
+
 class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   """A list of types.
 

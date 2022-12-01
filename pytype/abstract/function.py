@@ -678,6 +678,12 @@ class ParamSpecMatch(_base.BaseValue):
   def instantiate(self, node, container=None):
     return self.to_variable(node)
 
+  def prefix(self):
+    if _isinstance(self.paramspec, "Concatenate"):
+      return self.paramspec.args
+    else:
+      return ()
+
 
 # These names are chosen to match pytype error classes.
 # pylint: disable=g-bad-exception-name

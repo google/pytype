@@ -614,26 +614,53 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     return_callable, subst = key
     val = self.ctx.convert.constant_to_value(
         return_callable.ret, subst=subst, node=node)
+    # Make sure the type params from subst get applied to val
+    # TODO(b/217789659): It is not clear why constant_to_value does not
+    # reliably do the type substitution (it retrieves a cached value with
+    # unsubstituted TypeParameters).
     if _isinstance(val, "ParameterizedClass"):
-      # Make sure the type params from subst get applied to val
-      # TODO(b/217789659): It is not clear why constant_to_value does not
-      # reliably do the type substitution (it retrieves a cached value with
-      # unsubstituted TypeParameters).
       for k, v in val.formal_type_parameters.items():
         if _isinstance(v, "TypeParameter") and v.full_name in subst:
           typ = self.ctx.convert.merge_classes(subst[v.full_name].data)
           val.update_inner_type(k, typ)
+    elif _isinstance(val, "TypeParameter") and val.full_name in subst:
+      val = self.ctx.convert.merge_classes(subst[val.full_name].data)
 
     # Unpack the paramspec substitution we have created in the matcher.
-    pspec = return_callable.args[0]
-    if pspec.full_name in subst:
-      data = abstract_utils.get_atomic_value(
-          subst[pspec.full_name], function.ParamSpecMatch)
-      ann = data.sig.annotations.copy()
-      ann["return"] = val
-      sig = data.sig._replace(annotations=ann)
-      ret = _function_base.SimpleFunction(sig, self.ctx)
-      ret_map[key] = ret.to_variable(node)
+    # We should have two paramspec expressions, lhs and rhs, matching the
+    # higher-order function's args and return value respectively.
+    rhs = return_callable.args[0]
+    if isinstance(rhs, pytd.Concatenate):
+      r_pspec = rhs.paramspec
+      r_args = rhs.args
+    else:
+      r_pspec = rhs
+      r_args = ()
+    if r_pspec.full_name not in subst:
+      # TODO(b/217789659): Should this be an assertion failure?
+      return
+    data = abstract_utils.get_atomic_value(
+        subst[r_pspec.full_name], function.ParamSpecMatch)
+    sig = data.sig
+    ann = sig.annotations.copy()
+    ann["return"] = val
+    ret_posargs = []
+    for i, typ in enumerate(r_args):
+      name = f"_{i}"
+      ret_posargs.append(name)
+      if not _isinstance(typ, "BaseValue"):
+        typ = self.ctx.convert.constant_to_value(typ)
+      ann[name] = typ
+    # We have done prefix type matching in the matcher, so we can safely strip
+    # off the lhs args from the sig by count.
+    lhs = data.paramspec
+    l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
+    param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
+    posonly_count = sig.posonly_count + len(r_args) - l_nargs
+    ret_sig = sig._replace(param_names=param_names, annotations=ann,
+                           posonly_count=posonly_count)
+    ret = _function_base.SimpleFunction(ret_sig, self.ctx)
+    ret_map[key] = ret.to_variable(node)
 
   def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""

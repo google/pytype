@@ -633,6 +633,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     elif isinstance(left, abstract.ParamSpecInstance):
       new_subst = {left.full_name: other_type.instantiate(self._node)}
       return self._merge_substs(subst, [new_subst])
+    elif isinstance(left, abstract.Concatenate):
+      new_subst = {left.full_name: other_type.instantiate(self._node)}
+      return self._merge_substs(subst, [new_subst])
     else:
       log.error("Invalid type: %s", type(other_type))
       return None
@@ -893,6 +896,22 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       return subst
     return match
 
+  def _match_signature_args_against_callable(
+      self, sig, other_type, subst, view, param_match):
+    """Helper function for _match_signature_against_callable."""
+    for name, expected_arg in zip(sig.param_names, other_type.get_args()):
+      actual_arg = sig.annotations.get(name, self.ctx.convert.unsolvable)
+      new_subst = param_match(actual_arg, expected_arg, subst)
+      if new_subst is None:
+        # Flip actual and expected, since argument types are contravariant.
+        subst = self._instantiate_and_match(
+            expected_arg, actual_arg, subst, view, container=other_type)
+        if subst is None:
+          return None
+      else:
+        subst = new_subst
+    return subst
+
   def _match_signature_against_callable(self, sig, other_type, subst, view):
     """Match a function.Signature against a parameterized callable."""
     # a special type param against type param matcher that takes priority over
@@ -912,9 +931,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # other_type does not specify argument types, so any arguments are fine.
       return subst
     # A ParamSpec can stand for any number of args, so handle it before we do
-    # argument matching.
+    # argument count matching.
     if other_type.has_paramspec():
       expected_arg = other_type.formal_type_parameters[0]
+      if isinstance(expected_arg, abstract.Concatenate):
+        subst = self._match_signature_args_against_callable(
+            sig, expected_arg, subst, view, param_match)
+        if subst is None:
+          return None
       actual_arg = function.ParamSpecMatch(expected_arg, sig, self.ctx)
       subst = self._instantiate_and_match(
           expected_arg, actual_arg, subst, view, container=other_type)
@@ -924,19 +948,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       max_argcount = sig.maximum_param_count()
       if max_argcount is not None and max_argcount < other_type.num_args:
         return None
-      for name, expected_arg in zip(sig.param_names,
-                                    (other_type.formal_type_parameters[i]
-                                     for i in range(other_type.num_args))):
-        actual_arg = sig.annotations.get(name, self.ctx.convert.unsolvable)
-        new_subst = param_match(actual_arg, expected_arg, subst)
-        if new_subst is None:
-          # Flip actual and expected, since argument types are contravariant.
-          subst = self._instantiate_and_match(
-              expected_arg, actual_arg, subst, view, container=other_type)
-          if subst is None:
-            return None
-        else:
-          subst = new_subst
+      subst = self._match_signature_args_against_callable(
+          sig, other_type, subst, view, param_match)
     return subst
 
   def _merge_substs(self, subst, new_substs):

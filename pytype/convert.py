@@ -798,6 +798,10 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(pyval, (pytd.ParamSpecArgs, pytd.ParamSpecKwargs)):
       # TODO(b/217789659): Support these.
       return self.unsolvable
+    elif isinstance(pyval, pytd.Concatenate):
+      params = [self.constant_to_value(param, subst, self.ctx.root_node)
+                for param in pyval.parameters]
+      return abstract.Concatenate(params, self.ctx)
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
       if isinstance(cls, pytd.LateType):

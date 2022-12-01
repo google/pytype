@@ -79,6 +79,7 @@ AnnotationClass = _typing.AnnotationClass
 AnnotationContainer = _typing.AnnotationContainer
 ParamSpec = _typing.ParamSpec
 ParamSpecInstance = _typing.ParamSpecInstance
+Concatenate = _typing.Concatenate
 TypeParameter = _typing.TypeParameter
 TypeParameterInstance = _typing.TypeParameterInstance
 Union = _typing.Union

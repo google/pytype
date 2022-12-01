@@ -217,6 +217,12 @@ class Converter(utils.ContextWeakrefMixin):
       return self._type_variable_to_def(node, v, v.name)
     elif isinstance(v, typing_overlay.NoReturn):
       return pytd.NothingType()
+    elif isinstance(v, abstract.Concatenate):
+      params = tuple(
+          self.value_instance_to_pytd_type(node, t, instance, seen, view)
+          for t in v.args + [v.paramspec])
+      return pytd.Concatenate(
+          pytd.NamedType("typing.Concatenate"), parameters=params)
     else:
       log.info("Using Any for instance of %s", v.name)
       return pytd.AnythingType()

@@ -623,7 +623,7 @@ class CallableType(GenericType):
     return self.parameters[-1]
 
   def has_paramspec(self):
-    return self.args and isinstance(self.args[0], ParamSpec)
+    return self.args and isinstance(self.args[0], (ParamSpec, Concatenate))
 
 
 class Concatenate(GenericType):
