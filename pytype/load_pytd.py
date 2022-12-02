@@ -250,8 +250,6 @@ class _Resolver:
         self.builtins_ast, full_names=False,
         allow_singletons=self.allow_singletons)
     mod_ast = self._lookup(bltn_lookup, mod_ast, lookup_ast)
-    mod_ast = mod_ast.Visit(
-        visitors.ExpandCompatibleBuiltins(self.builtins_ast))
     return mod_ast
 
   def resolve_external_types(self, mod_ast, module_map, aliases, *, mod_name):

@@ -1191,12 +1191,12 @@ class TestPyiAttrs(test_base.BaseTest):
       """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import attr
-        from typing import Optional, Union
+        from typing import Union
         import foo
         @attr.s
         class Foo(foo.A):
           z: str
-          __attrs_attrs__: tuple[attr.Attribute[Optional[Union[int, str]]], ...]
+          __attrs_attrs__: tuple[attr.Attribute[Union[int, str]], ...]
           def __init__(self, x: bool, z: str, *, y: int = ...) -> None: ...
       """)
 

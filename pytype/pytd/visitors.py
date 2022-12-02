@@ -12,7 +12,6 @@ from pytype import utils
 from pytype.pytd import base_visitor
 from pytype.pytd import escape
 from pytype.pytd import mro
-from pytype.pytd import pep484
 from pytype.pytd import printer
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -1837,76 +1836,6 @@ class VerifyLiterals(Visitor):
       n = pytd_utils.Print(node)
       msg = f"In {n}: {value.name} is not a member of enum {this_cls.name}"
       raise LiteralValueError(msg)
-
-
-class ExpandCompatibleBuiltins(Visitor):
-  """Ad-hoc inheritance.
-
-  In parameters, replaces
-    ClassType('builtins.float')
-  with
-    Union[ClassType('builtins.float'), ClassType('builtins.int')]
-
-  And similarly for unicode->(unicode, str, bytes) and bool->(bool, None).
-
-  Used to allow a function requiring a float to accept an int without making
-  int inherit from float.
-
-  NOTE: We do not do this for type parameter constraints.
-
-  See https://www.python.org/dev/peps/pep-0484/#the-numeric-tower
-  """
-
-  def __init__(self, builtins):
-    super().__init__()
-    self.in_parameter = False
-    self.in_type_parameter = False
-    self.replacements = self._BuildReplacementMap(builtins)
-
-  @staticmethod
-  def _BuildReplacementMap(builtins):
-    """Dict[str, UnionType[ClassType, ...]] map."""
-    prefix = builtins.name + "."
-    rmap = collections.defaultdict(list)
-
-    # compat_list :: [(compat, name)], where name is the more generalized
-    # type and compat is the less generalized one. (eg: name = float, compat =
-    # int)
-    compat_list = itertools.chain(
-        {(v, v) for _, v in pep484.COMPAT_ITEMS}, pep484.COMPAT_ITEMS)
-
-    for compat, name in compat_list:
-      prefix = builtins.name + "."
-      full_name = prefix + compat
-      t = builtins.Lookup(full_name)
-      if isinstance(t, pytd.Class):
-        # Depending on python version, bytes can be an Alias, if so don't
-        # want it in our union
-        rmap[prefix + name].append(pytd.ClassType(full_name, t))
-
-    return {k: pytd.UnionType(tuple(v)) for k, v in rmap.items()}
-
-  def EnterParameter(self, _):
-    assert not self.in_parameter
-    self.in_parameter = True
-
-  def LeaveParameter(self, _):
-    assert self.in_parameter
-    self.in_parameter = False
-
-  def EnterTypeParameter(self, _):
-    assert not self.in_type_parameter
-    self.in_type_parameter = True
-
-  def LeaveTypeParameter(self, _):
-    assert self.in_type_parameter
-    self.in_type_parameter = False
-
-  def VisitClassType(self, node):
-    if self.in_parameter and not self.in_type_parameter:
-      return self.replacements.get(node.name, node)
-    else:
-      return node
 
 
 class ClearClassPointers(Visitor):

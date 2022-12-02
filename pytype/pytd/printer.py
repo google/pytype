@@ -666,8 +666,6 @@ class PrintVisitor(base_visitor.Visitor):
     """Form list of types within a set type."""
     type_list = dict.fromkeys(node.type_list)
     if self.in_parameter:
-      # Parameter's set types are merged after as a follow up to the
-      # ExpandCompatibleBuiltins visitor.
       for compat, name in pep484.COMPAT_ITEMS:
         # name can replace compat.
         if compat in type_list and name in type_list:
