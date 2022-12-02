@@ -250,10 +250,11 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
           node, var, name, self.ctx.vm.simple_stack())
     if record.errors:
       raise TypeVarError("\n".join(error.message for error in record.errors))
+    if annot.formal:
+      raise TypeVarError(f"{name} cannot contain TypeVars")
     return annot
 
-  def _get_typeparam(self, node, args):
-    args = args.simplify(node, self.ctx)
+  def _get_typeparam_name(self, node, args):
     try:
       self.match_args(node, args)
     except function.InvalidParameters as e:
@@ -262,8 +263,10 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed") from e
-    name = self._get_constant(args.posargs[0], "name", str,
+    return self._get_constant(args.posargs[0], "name", str,
                               arg_type_desc="a constant str")
+
+  def _get_typeparam_args(self, node, args):
     constraints = tuple(
         self._get_annotation(node, c, "constraint") for c in args.posargs[1:])
     if len(constraints) == 1:
@@ -280,21 +283,22 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
       raise TypeVarError("*args must be a constant tuple")
     if args.starstarargs:
       raise TypeVarError("ambiguous **kwargs not allowed")
-    return self._ABSTRACT_CLASS(  # pylint: disable=not-callable
-        name,
-        self.ctx,
-        constraints=constraints,
-        bound=bound,
-        covariant=covariant,
-        contravariant=contravariant)
+    return constraints, bound, covariant, contravariant
 
   def call(self, node, _, args, alias_map=None):
     """Call typing.TypeVar()."""
+    args = args.simplify(node, self.ctx)
     try:
-      param = self._get_typeparam(node, args)
+      name = self._get_typeparam_name(node, args)
     except TypeVarError as e:
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, str(e), e.bad_call)
       return node, self.ctx.new_unsolvable(node)
+    try:
+      typeparam_args = self._get_typeparam_args(node, args)
+    except TypeVarError as e:
+      self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, str(e), e.bad_call)
+      typeparam_args = ()
+    param = self._ABSTRACT_CLASS(name, self.ctx, *typeparam_args)  # pylint: disable=not-callable
     return node, param.to_variable(node)
 
 

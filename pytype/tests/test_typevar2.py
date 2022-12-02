@@ -78,6 +78,18 @@ class TypeVarTest(test_base.BaseTest):
       """, pythonpath=[d.path])
     self.assertErrorRegexes(errors, {"e1": r"T.*T2", "e2": r"X.*Y"})
 
+  def test_typevar_in_typevar(self):
+    self.CheckWithErrors("""
+      from typing import Generic, TypeVar
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      S1 = TypeVar('S1', bound=T1)  # invalid-typevar
+      S2 = TypeVar('S2', T1, T2)  # invalid-typevar
+      # Using the invalid TypeVar should not produce an error.
+      class Foo(Generic[S1]):
+        pass
+    """)
+
   def test_multiple_substitution(self):
     ty = self.Infer("""
       from typing import Dict, Tuple, TypeVar
