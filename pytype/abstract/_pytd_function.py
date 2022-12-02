@@ -612,12 +612,13 @@ class PyTDSignature(utils.ContextWeakrefMixin):
   def _handle_paramspec(self, node, key, ret_map):
     """Construct a new function based on ParamSpec matching."""
     return_callable, subst = key
-    val = self.ctx.convert.constant_to_value(
-        return_callable.ret, subst=subst, node=node)
+    # TODO(b/217789659): We should not need to explicitly skip caching.
+    with self.ctx.convert.skip_cache():
+      val = self.ctx.convert.constant_to_value(
+          return_callable.ret, subst=subst, node=node)
     # Make sure the type params from subst get applied to val
-    # TODO(b/217789659): It is not clear why constant_to_value does not
-    # reliably do the type substitution (it retrieves a cached value with
-    # unsubstituted TypeParameters).
+    # TODO(b/217789659): It is not clear why constant_to_value does not reliably
+    # do the type substitution.
     if _isinstance(val, "ParameterizedClass"):
       for k, v in val.formal_type_parameters.items():
         if _isinstance(v, "TypeParameter") and v.full_name in subst:
@@ -656,6 +657,10 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       lhs = data.paramspec
       l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
       param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
+      # All params need to be in the annotations dict
+      for k in param_names:
+        if k not in ann:
+          ann[k] = self.ctx.convert.unsolvable
       posonly_count = sig.posonly_count + len(r_args) - l_nargs
       ret_sig = sig._replace(param_names=param_names, annotations=ann,
                              posonly_count=posonly_count)

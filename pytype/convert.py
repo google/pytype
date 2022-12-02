@@ -1,5 +1,6 @@
 """Code for translating between type systems."""
 
+import contextlib
 import logging
 import types
 from typing import Any, Dict
@@ -67,6 +68,7 @@ class Converter(utils.ContextWeakrefMixin):
     ctx.convert = self  # to make constant_to_value calls below work
 
     self._convert_cache: Dict[Any, Any] = {}
+    self._skip_cache = False
     self._resolved_late_types = {}  # performance cache
 
     # Initialize primitive_classes to empty to allow constant_to_value to run.
@@ -140,6 +142,15 @@ class Converter(utils.ContextWeakrefMixin):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
+
+  @contextlib.contextmanager
+  def skip_cache(self):
+    old = self._skip_cache
+    self._skip_cache = True
+    try:
+      yield
+    finally:
+      self._skip_cache = old
 
   def constant_name(self, constant_type):
     if constant_type is None:
@@ -490,7 +501,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       type_key = type(pyval)
     key = ("constant", pyval, type_key)
-    if key in self._convert_cache:
+    if not self._skip_cache and key in self._convert_cache:
       if self._convert_cache[key] is None:
         self._convert_cache[key] = self.unsolvable
         # This error is triggered by, e.g., classes inheriting from each other.

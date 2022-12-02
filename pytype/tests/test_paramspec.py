@@ -96,19 +96,22 @@ class ParamSpecTest(test_base.BaseTest):
     """)
 
 
+_DECORATOR_PYI = """
+  from typing import TypeVar, ParamSpec, Callable, List
+
+  T = TypeVar("T")
+  P = ParamSpec("P")
+
+  def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
+"""
+
+
 @test_utils.skipBeforePy((3, 10), "ParamSpec is new in 3.10")
 class PyiParamSpecTest(test_base.BaseTest):
   """Tests for ParamSpec imported from pyi files."""
 
   def test_decorator(self):
-    with self.DepTree([("foo.pyi", """
-      from typing import TypeVar, ParamSpec, Callable, List
-
-      T = TypeVar("T")
-      P = ParamSpec("P")
-
-      def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
-    """)]):
+    with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
       ty, _ = self.InferWithErrors("""
         import foo
 
@@ -135,14 +138,7 @@ class PyiParamSpecTest(test_base.BaseTest):
    """)
 
   def test_method_decoration(self):
-    with self.DepTree([("foo.pyi", """
-      from typing import TypeVar, ParamSpec, Callable, List
-
-      T = TypeVar("T")
-      P = ParamSpec("P")
-
-      def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
-    """)]):
+    with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
       ty, _ = self.InferWithErrors("""
         import foo
 
@@ -164,15 +160,29 @@ class PyiParamSpecTest(test_base.BaseTest):
         def h(a: A, b: str) -> List[int]: ...
    """)
 
+  def test_multiple_decorators(self):
+    """Check that we don't cache the decorator type params."""
+    with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
+      self.Check("""
+        import foo
+
+        @foo.decorator
+        def f(x) -> str:
+          return "a"
+
+        @foo.decorator
+        def g() -> int:
+          return 42
+
+        def h() -> list[str]:
+          return f(10)
+
+        def k() -> list[int]:
+          return g()
+      """)
+
   def test_imported_paramspec(self):
-    with self.DepTree([("foo.pyi", """
-      from typing import TypeVar, ParamSpec, Callable, List
-
-      T = TypeVar("T")
-      P = ParamSpec("P")
-
-      def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
-    """)]):
+    with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
       ty, _ = self.InferWithErrors("""
         from foo import decorator
 
