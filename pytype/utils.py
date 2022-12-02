@@ -27,21 +27,6 @@ def _validate_python_version_upper_bound():
 _VALIDATE_PYTHON_VERSION_UPPER_BOUND = _validate_python_version_upper_bound()
 
 
-def message(error):
-  """A convenience function which extracts a message from an exception.
-
-  Use this to replace exception.message, which is deprecated in python2 and
-  removed in python3.
-
-  Args:
-    error: The exception.
-
-  Returns:
-    A message string.
-  """
-  return error.args[0] if error.args else ""
-
-
 class UsageError(Exception):
   """Raise this for top-level usage errors."""
 

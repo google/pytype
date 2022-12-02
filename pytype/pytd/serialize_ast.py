@@ -225,13 +225,13 @@ def _LookupClassReferences(serializable_ast, module_map, self_name):
         break
     except KeyError as e:
       raise UnrestorableDependencyError(
-          f"Unresolved class: {utils.message(e)!r}.") from e
+          f"Unresolved class: {str(e)!r}.") from e
   if serializable_ast.class_type_nodes is None:
     try:
       raw_ast = raw_ast.Visit(class_lookup)
     except KeyError as e:
       raise UnrestorableDependencyError(
-          f"Unresolved class: {utils.message(e)!r}.") from e
+          f"Unresolved class: {str(e)!r}.") from e
   serializable_ast = serializable_ast.Replace(ast=raw_ast)
   return serializable_ast
 

@@ -182,6 +182,12 @@ class RenameModuleVisitor(base_visitor.Visitor):
       return node.Replace(scope=new_scope)
     return node
 
+  def VisitParamSpec(self, node):
+    new_scope = self._MaybeNewName(node.scope)
+    if new_scope != node.scope:
+      return node.Replace(scope=new_scope)
+    return node
+
   VisitConstant = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitAlias = _ReplaceModuleName  # pylint: disable=invalid-name
   VisitClass = _ReplaceModuleName  # pylint: disable=invalid-name

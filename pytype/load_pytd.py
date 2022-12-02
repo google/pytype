@@ -9,7 +9,6 @@ from typing import Dict, Iterable, List, Optional
 
 from pytype import file_utils
 from pytype import module_utils
-from pytype import utils
 from pytype.imports import base as imports_base
 from pytype.imports import builtin_stubs
 from pytype.imports import module_loader
@@ -107,7 +106,7 @@ class BadDependencyError(Exception):
     super().__init__(module_error + referenced)
 
   def __str__(self):
-    return utils.message(self)
+    return str(self.args[0])
 
 
 class _ModuleMap:
@@ -262,7 +261,7 @@ class _Resolver:
       mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
           module_map, self_name=name, module_alias_map=aliases))
     except KeyError as e:
-      raise BadDependencyError(utils.message(e), name) from e
+      raise BadDependencyError(str(e), name) from e
     return mod_ast
 
   def resolve_module_alias(self, name, *, lookup_ast=None,
@@ -287,7 +286,7 @@ class _Resolver:
       mod_ast.Visit(visitors.VerifyLookup(ignore_late_types=True))
     except ValueError as e:
       name = mod_name or mod_ast.name
-      raise BadDependencyError(utils.message(e), name) from e
+      raise BadDependencyError(str(e), name) from e
     mod_ast.Visit(visitors.VerifyContainers())
     mod_ast.Visit(visitors.VerifyLiterals())
 
@@ -298,7 +297,7 @@ class _Resolver:
     mod_ast.Visit(deps)
     if isinstance(mod_ast, (pytd.TypeDeclUnit, pytd.Class)):
       return {k: v for k, v in deps.dependencies.items()
-              if not isinstance(mod_ast.Get(k), pytd.Class)}
+              if not isinstance(mod_ast.Get(k), (pytd.Class, pytd.ParamSpec))}
     else:
       return deps.dependencies
 
@@ -743,7 +742,7 @@ class PickledPyiLoader(Loader):
       ast = serialize_ast.ProcessAst(loaded_ast, self._modules.get_module_map())
     except serialize_ast.UnrestorableDependencyError as e:
       del self._modules[module_name]
-      raise BadDependencyError(utils.message(e), module_name) from e
+      raise BadDependencyError(str(e), module_name) from e
     # Mark all the module's late dependencies as explicitly imported.
     for d, _ in loaded_ast.late_dependencies:
       if d != loaded_ast.ast.name:

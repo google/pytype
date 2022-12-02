@@ -609,10 +609,71 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     return arg_dict, matches
 
+  def _handle_paramspec(self, node, key, ret_map):
+    """Construct a new function based on ParamSpec matching."""
+    return_callable, subst = key
+    # TODO(b/217789659): We should not need to explicitly skip caching.
+    with self.ctx.convert.skip_cache():
+      val = self.ctx.convert.constant_to_value(
+          return_callable.ret, subst=subst, node=node)
+    # Make sure the type params from subst get applied to val
+    # TODO(b/217789659): It is not clear why constant_to_value does not reliably
+    # do the type substitution.
+    if _isinstance(val, "ParameterizedClass"):
+      for k, v in val.formal_type_parameters.items():
+        if _isinstance(v, "TypeParameter") and v.full_name in subst:
+          typ = self.ctx.convert.merge_classes(subst[v.full_name].data)
+          val.update_inner_type(k, typ)
+    elif _isinstance(val, "TypeParameter") and val.full_name in subst:
+      val = self.ctx.convert.merge_classes(subst[val.full_name].data)
+
+    # Unpack the paramspec substitution we have created in the matcher.
+    # We should have two paramspec expressions, lhs and rhs, matching the
+    # higher-order function's args and return value respectively.
+    rhs = return_callable.args[0]
+    if isinstance(rhs, pytd.Concatenate):
+      r_pspec = rhs.paramspec
+      r_args = rhs.args
+    else:
+      r_pspec = rhs
+      r_args = ()
+    if r_pspec.full_name not in subst:
+      # TODO(b/217789659): Should this be an assertion failure?
+      return
+    ret = self.ctx.program.NewVariable()
+    for data in subst[r_pspec.full_name].data:
+      sig = data.sig
+      ann = sig.annotations.copy()
+      ann["return"] = val
+      ret_posargs = []
+      for i, typ in enumerate(r_args):
+        name = f"_{i}"
+        ret_posargs.append(name)
+        if not _isinstance(typ, "BaseValue"):
+          typ = self.ctx.convert.constant_to_value(typ)
+        ann[name] = typ
+      # We have done prefix type matching in the matcher, so we can safely strip
+      # off the lhs args from the sig by count.
+      lhs = data.paramspec
+      l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
+      param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
+      # All params need to be in the annotations dict
+      for k in param_names:
+        if k not in ann:
+          ann[k] = self.ctx.convert.unsolvable
+      posonly_count = sig.posonly_count + len(r_args) - l_nargs
+      ret_sig = sig._replace(param_names=param_names, annotations=ann,
+                             posonly_count=posonly_count)
+      ret.AddBinding(_function_base.SimpleFunction(ret_sig, self.ctx))
+    ret_map[key] = ret
+
   def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""
     subst = match.subst
-    t = (self.pytd_sig.return_type, subst)
+    ret = self.pytd_sig.return_type
+    t = (ret, subst)
+    if isinstance(ret, pytd.CallableType) and ret.has_paramspec():
+      self._handle_paramspec(node, t, ret_map)
     sources = [func]
     for v in arg_dict.values():
       # For the argument that 'subst' was generated from, we need to add the
@@ -627,8 +688,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         ret_map[t].AddBinding(data, sources, node)
     elif visible:
       first_arg = self.signature.get_first_arg(arg_dict)
-      ret_type = function.PyTDReturnType(
-          self.pytd_sig.return_type, subst, sources, self.ctx)
+      ret_type = function.PyTDReturnType(ret, subst, sources, self.ctx)
       if first_arg:
         typeguard_return = function.handle_typeguard(
             node, ret_type, first_arg, self.ctx, func_name=self.name)

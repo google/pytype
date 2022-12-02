@@ -1,0 +1,203 @@
+{# Context schema:
+  * cytoscape_url: string. The path to the Cytoscape library.
+  * dagre_url: string. The path to the Dagre library.
+  * cytoscape_dagre_url: string. The path to the cytoscape-dagre library.
+  * program: string. The JSON encoding of a pytype.typegraph.cfg.Program. Should
+    be created by typegraph_serializer.encode_program.
+  * var_table: dict[int, str]. A mapping of Variable IDs to names.
+#}
+<!doctype html>
+
+<html>
+
+<head>
+    <title>Pytype CFG Visualizer</title>
+    <script src="{{cytoscape_url}}"></script>
+    <script src="{{dagre_url}}"></script>
+    <script src="{{cytoscape_dagre_url}}"></script>
+</head>
+
+<style>
+    #cy {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 0;
+    }
+
+    #vars-table {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 1;
+    }
+
+    tr.datarow:hover {
+      background-color: lightsteelblue;
+    }
+
+    table, th, td {
+      border: 1px solid;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 2px 4px;
+    }
+</style>
+
+<body>
+    <div id="table-div">
+      <table id="vars-table">
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+        </tr>
+        {%- for (vid, name) in var_table|dictsort %}
+        <tr class=datarow onclick="vis.reveal_var({{vid}})">
+          <td>{{vid}}</td>
+          <td>{{name}}</td>
+        </tr>
+        {%- endfor %}{# var_table #}
+      </table>
+    </div>
+    <div id="cy"></div>
+    <script>
+      const layout_options = {
+        name: 'dagre',
+        nodeDimensionsIncludeLabels: true,
+      };
+      const cy = cytoscape({
+        container: document.getElementById('cy'),
+        data: {
+          layout_options: layout_options,
+        },
+        elements: [],
+        style: [
+          // All graph nodes have their text centered by default. They are
+          // labeled using their name, with black text with a white outline.
+          {
+            selector: 'node',
+            style: {
+              'label': 'data(name)',
+              'text-halign': 'center',
+              'text-valign': 'center',
+              'text-outline-color': '#fff',
+              'text-outline-width': 2,
+            },
+          },
+          {
+            selector: '.cfg_node',
+            style: {
+              'shape': 'ellipse',
+            },
+          },
+          {
+            selector: '.variable_node',
+            style: {
+              'shape': 'rectangle',
+            },
+          },
+          {
+            selector: '.binding_node',
+            style: {
+              'shape': 'diamond',
+            },
+          },
+          {
+            selector: '.sourceset_node',
+            style: {
+              'shape': 'round-octagon',
+            },
+          },
+          // All edges have the 'bezier' curve style, which works for multiple
+          // edges between the two nodes and enables all arrow shapes.
+          {
+            selector: 'edge',
+            style: {
+              'curve-style': 'bezier',
+            },
+          },
+          {
+            selector: '.cfgnode_edge',
+            style: {
+              'line-color': '#000',
+              'width': 4,
+              'target-arrow-color': '#f00',
+              'target-arrow-shape': 'triangle',
+            },
+          },
+          {
+            selector: '.var_bind_edge',
+            style: {
+              'line-color': 'pink',
+              'width': 2,
+              'source-arrow-color': 'red',
+              'source-arrow-shape': 'diamond',
+              'target-arrow-color': 'red',
+              'target-arrow-shape': 'diamond',
+            },
+          },
+          {
+            selector: '.source_cfgnode_edge',
+            style: {
+              'line-color': 'black',
+              'width': 2,
+              'line-style': 'dotted',
+            },
+          },
+          {
+            selector: '.bind_source_edge',
+            style: {
+              'line-color': 'black',
+              'width': 3,
+            },
+          },
+          {
+            selector: '.source_member_edge',
+            style: {
+              'line-color': 'blue',
+              'width': 2,
+              'source-arrow-color': 'blue',
+              'source-arrow-shape': 'square',
+              'target-arrow-color': 'blue',
+              'target-arrow-shape': 'square',
+            },
+          },
+          {
+            selector: '.source_cfgnode_edge',
+            style: {
+              'line-color': 'black',
+              'width': 2,
+              'line-style': 'dotted',
+            },
+          },
+          {
+            selector: '.cfgnode_bind_edge',
+            style: {
+              'width': 2,
+              'source-arrow-shape': 'diamond',
+              'target-arrow-shape': 'diamond',
+            },
+          },
+          // This style is last so that it matches every node with the
+          // "hidden_node" class.
+          {
+            selector: '.hidden_node',
+            style: {
+              'display': 'none',
+            },
+          },
+        ],
+      });
+
+      {% include "visualizer.js" %}
+      const program = {{program}};
+
+      const vis = new Visualizer(cy, program);
+    </script>
+</body>
+</html>
+{# end of template #}

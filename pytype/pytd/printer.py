@@ -39,6 +39,8 @@ class PrintVisitor(base_visitor.Visitor):
     self._typing_import_counts = collections.defaultdict(int)
     self._module_aliases = {}
     self._alias_imports = collections.defaultdict(set)
+    self._paramspec_names = set()
+    self._maybe_from_typing = set()
 
   def Print(self, node):
     return node.Visit(copy.deepcopy(self))
@@ -67,6 +69,21 @@ class PrintVisitor(base_visitor.Visitor):
     """
     self.imports[module].add(name)
 
+  def _ProcessTypingImports(self, imports):
+    # If we have imported something from typing_extensions do not try to also
+    # import it from typing
+    names = imports["typing"]
+    self._maybe_from_typing -= imports["typing_extensions"]
+    names |= self._maybe_from_typing
+    need_typing = False
+    for (name, count) in self._typing_import_counts.items():
+      if count:
+        need_typing = True
+      else:
+        names.discard(name)
+    if not need_typing:
+      names.discard(None)
+
   def _GenerateImportStrings(self):
     """Generate import statements needed by the nodes we've visited so far.
 
@@ -77,21 +94,11 @@ class PrintVisitor(base_visitor.Visitor):
     imports = self.imports.copy()
     for k in self._alias_imports:
       imports[k] = imports[k] | self._alias_imports[k]
-    for module in sorted(imports):
-      names = set(imports[module])
-      if module == "typing":
-        need_typing = False
-        for (name, count) in self._typing_import_counts.items():
-          if count:
-            need_typing = True
-          else:
-            names.discard(name)
-        if not need_typing:
-          names.discard(None)
+    self._ProcessTypingImports(imports)
+    for module, names in sorted(imports.items()):
       if None in names:
         ret.append(f"import {module}")
         names.remove(None)
-
       if names:
         name_str = ", ".join(sorted(names))
         ret.append(f"from {module} import {name_str}")
@@ -108,7 +115,11 @@ class PrintVisitor(base_visitor.Visitor):
       args += [self.Print(c) for c in t.constraints]
       if t.bound:
         args.append(f"bound={self.Print(t.bound)}")
-      formatted_type_params.append(f"{t.name} = TypeVar({', '.join(args)})")
+      if isinstance(t, pytd.ParamSpec):
+        typename = "ParamSpec"
+      else:
+        typename = "TypeVar"
+      formatted_type_params.append(f"{t.name} = {typename}({', '.join(args)})")
     return sorted(formatted_type_params)
 
   def _NameCollision(self, name):
@@ -169,6 +180,8 @@ class PrintVisitor(base_visitor.Visitor):
         continue
       name = self._StripUnitPrefix(alias.name)
       self._module_aliases[module_name] = name
+    self._paramspec_names = {x.name for x in unit.type_params
+                             if isinstance(x, pytd.ParamSpec)}
 
   def LeaveTypeDeclUnit(self, _):
     self._unit = None
@@ -176,8 +189,11 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
-    if node.type_params:
-      self._FromTyping("TypeVar")
+    for t in self.old_node.type_params:
+      if isinstance(t, pytd.ParamSpec):
+        self._maybe_from_typing.add("ParamSpec")
+      else:
+        self._FromTyping("TypeVar")
 
     aliases = []
     imports = set(self._GenerateImportStrings())
@@ -573,6 +589,9 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitTypeParameter(self, node):
     return node.name
 
+  def VisitParamSpec(self, node):
+    return node.name
+
   def VisitModule(self, node):
     if self.in_constant or self.in_signature:
       return "module"
@@ -616,8 +635,19 @@ class PrintVisitor(base_visitor.Visitor):
 
   def VisitCallableType(self, node):
     typ = self.MaybeCapitalize(node.base_type)
-    args = ", ".join(node.args)
-    return f"{typ}[[{args}], {node.ret}]"
+    if len(node.args) == 1 and node.args[0] in self._paramspec_names:
+      return f"{typ}[{node.args[0]}, {node.ret}]"
+    elif node.args and "Concatenate" in node.args[0]:
+      args = ", ".join(node.args)
+      return f"{typ}[{args}, {node.ret}]"
+    else:
+      args = ", ".join(node.args)
+      return f"{typ}[[{args}], {node.ret}]"
+
+  def VisitConcatenate(self, node):
+    base = self._ImportTypingExtension("Concatenate")
+    parameters = ", ".join(node.parameters)
+    return f"{base}[{parameters}]"
 
   def VisitTupleType(self, node):
     return self.VisitGenericType(node)

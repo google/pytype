@@ -6,7 +6,6 @@ import itertools
 import logging
 from typing import Type
 
-from pytype import utils
 from pytype.abstract import _base
 from pytype.abstract import _classes
 from pytype.abstract import _instance_base
@@ -146,7 +145,7 @@ class NativeFunction(Function):
       #   (2) duplicate keyword
       #   (3) unexpected keyword
       # The way we constructed namedargs rules out (2).
-      if "keyword" in utils.message(e):
+      if "keyword" in str(e):
         # Happens for, e.g.,
         #   def f(*args): pass
         #   f(x=42)

@@ -447,7 +447,8 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     module_name, dot, name = t.name.rpartition(".")
     if (not dot or module_name == self.name or
         self._unit and
-        isinstance(self._unit.Get(t.name.split(".", 1)[0]), pytd.Class)):
+        isinstance(self._unit.Get(t.name.split(".", 1)[0]),
+                   (pytd.Class, pytd.ParamSpec))):
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
@@ -1407,7 +1408,7 @@ class AdjustTypeParameters(Visitor):
     self.class_name = None
     self.function_name = None
     self.constant_name = None
-    self.all_typeparams = set()
+    self.all_typevariables = set()
     self.generic_level = 0
 
   def _GetTemplateItems(self, param):
@@ -1427,7 +1428,7 @@ class AdjustTypeParameters(Visitor):
     type_params_to_add = []
     declared_type_params = {n.name for n in node.type_params}
     # Sorting type params helps keep pickling deterministic.
-    for t in sorted(self.all_typeparams):
+    for t in sorted(self.all_typevariables):
       if t.name not in declared_type_params:
         logging.debug("Adding definition for type parameter %r", t.name)
         declared_type_params.add(t.name)
@@ -1610,8 +1611,16 @@ class AdjustTypeParameters(Visitor):
     if (self.function_typeparams is not None and
         node.name not in self.class_typeparams):
       self.function_typeparams.add(pytd.TemplateItem(node))
-    self.all_typeparams.add(node)
+    self.all_typevariables.add(node)
 
+    return node
+
+  def VisitParamSpec(self, node):
+    """Add scopes to paramspecs."""
+    scope = self._GetScope(node.name)
+    if scope:
+      node = node.Replace(scope=scope)
+    self.all_typevariables.add(node)
     return node
 
 

@@ -3,7 +3,6 @@
 import sys
 from typing import Optional, Tuple, Union
 
-from pytype import utils
 from pytype.ast import visitor as ast_visitor
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import slots as cmp_slots
@@ -60,7 +59,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
       try:
         actual = self._options.python_version[key]
       except IndexError as e:
-        raise ParseError(utils.message(e)) from e
+        raise ParseError(str(e)) from e
       if isinstance(key, slice):
         actual = _three_tuple(actual)
         value = _three_tuple(value)

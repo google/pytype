@@ -6,7 +6,6 @@ import logging
 from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from pytype import datatypes
-from pytype import utils
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd
@@ -75,7 +74,7 @@ class EvaluationError(Exception):
 
   @property
   def errors(self):
-    return utils.message(self)
+    return self.args
 
   @property
   def details(self):
@@ -573,7 +572,7 @@ def eval_expr(ctx, node, f_globals, f_locals, expr):
   log.info("Finished evaluating expr: %r", expr)
   if record.errors:
     # Annotations are constants, so tracebacks aren't needed.
-    e = EvaluationError([error.drop_traceback() for error in record.errors])
+    e = EvaluationError(*(error.drop_traceback() for error in record.errors))
   else:
     e = None
   return ret, e

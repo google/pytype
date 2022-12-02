@@ -275,7 +275,6 @@ py_library(
   SRCS
     load_pytd.py
   DEPS
-    ._utils
     .file_utils
     .module_utils
     pytype.imports.imports
@@ -409,7 +408,6 @@ py_library(
   SRCS
     utils.py
   DEPS
-    .pytype_source_utils
     pytype.platform_utils.platform_utils
 )
 

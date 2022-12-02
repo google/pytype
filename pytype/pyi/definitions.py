@@ -343,7 +343,7 @@ class Definitions:
     self.constants = []
     self.aliases = {}
     self.type_params = []
-    self.param_specs = []
+    self.paramspec_names = set()
     self.all = ()
     self.generated_classes = collections.defaultdict(list)
     self.module_path_map = {}
@@ -437,27 +437,24 @@ class Definitions:
     self.add_import("typing", ["TypedDict"])
     return pytd.NamedType(cls_name)
 
-  def add_type_var(self, name, typevar):
-    """Add a type variable, <name> = TypeVar(<name_arg>, <args>)."""
-    if name != typevar.name:
-      raise ParseError(f"TypeVar name needs to be {typevar.name!r} "
+  def _add_type_variable(self, name, tvar, typename, pytd_type):
+    """Add a type variable definition, `name = TypeName(name, args)`."""
+    if name != tvar.name:
+      raise ParseError(f"{typename} name needs to be {tvar.name!r} "
                        f"(not {name!r})")
-    bound = typevar.bound
+    bound = tvar.bound
     if isinstance(bound, str):
       bound = pytd.NamedType(bound)
-    constraints = tuple(typevar.constraints) if typevar.constraints else ()
-    self.type_params.append(pytd.TypeParameter(
+    constraints = tuple(tvar.constraints) if tvar.constraints else ()
+    self.type_params.append(pytd_type(
         name=name, constraints=constraints, bound=bound))
 
-  def add_param_spec(self, name, paramspec):
-    if name != paramspec.name:
-      raise ParseError(f"ParamSpec name needs to be {paramspec.name!r} "
-                       f"(not {name!r})")
-    # ParamSpec should probably be represented with its own pytd class, like
-    # TypeVar. This is just a quick, hacky way for us to keep track of which
-    # names refer to ParamSpecs so we can replace them with Any in
-    # _parameterized_type().
-    self.param_specs.append(pytd.NamedType(name))
+  def add_type_var(self, name, tvar):
+    self._add_type_variable(name, tvar, "TypeVar", pytd.TypeParameter)
+
+  def add_param_spec(self, name, tvar):
+    self._add_type_variable(name, tvar, "ParamSpec", pytd.ParamSpec)
+    self.paramspec_names.add(name)
 
   def add_import(self, from_package, import_list):
     """Add an import.
@@ -535,25 +532,11 @@ class Definitions:
     return (not module and name in pep484.BUILTIN_TO_TYPING or
             module == "typing" and name in pep484.ALL_TYPING_NAMES)
 
-  def _remove_unsupported_features(self, base_type, parameters):
+  def _remove_unsupported_features(self, parameters):
     """Returns a copy of 'parameters' with unsupported features removed."""
     processed_parameters = []
-    # We do not yet support PEP 612, Parameter Specification Variables.
-    # To avoid blocking typeshed from adopting this PEP, we convert new
-    # features to approximations that only use supported features.
     for p in parameters:
       if p is self.ELLIPSIS:
-        processed = pytd.AnythingType()
-      elif (p in self.param_specs and
-            self._matches_full_name(base_type, "typing.Generic")):
-        # Replacing a ParamSpec with a TypeVar isn't correct, but it'll work
-        # for simple cases in which the filled value is also a ParamSpec.
-        if not any(t.name == p.name for t in self.type_params):
-          self.type_params.append(pytd.TypeParameter(p.name))
-        processed = p
-      elif (p in self.param_specs or
-            (isinstance(p, pytd.GenericType) and
-             self._matches_full_name(p, _CONCATENATE_TYPES))):
         processed = pytd.AnythingType()
       else:
         processed = p
@@ -567,15 +550,22 @@ class Definitions:
     elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
       return pytd_annotated(parameters)
     self._verify_no_literal_parameters(base_type, parameters)
+    arg_is_paramspec = False
     if self._matches_named_type(base_type, _TUPLE_TYPES):
       if len(parameters) == 2 and parameters[1] is self.ELLIPSIS:
         parameters = parameters[:1]
         builder = pytd.GenericType
       else:
         builder = pytdgen.heterogeneous_tuple
+    elif self._matches_named_type(base_type, _CONCATENATE_TYPES):
+      assert parameters
+      builder = pytd.Concatenate
     elif self._matches_named_type(base_type, _CALLABLE_TYPES):
       if parameters[0] is self.ELLIPSIS:
         parameters = (pytd.AnythingType(),) + parameters[1:]
+      if parameters and isinstance(parameters[0], pytd.NamedType):
+        if parameters[0].name in self.paramspec_names:
+          arg_is_paramspec = True
       builder = pytdgen.pytd_callable
     elif pytdgen.is_any(base_type):
       builder = lambda *_: pytd.AnythingType()
@@ -587,8 +577,12 @@ class Definitions:
       # TODO(b/217789659): We can only check builtin and typing names for now,
       # since `...` can fill in for a ParamSpec.
       raise ParseError("Unexpected ellipsis parameter")
-    parameters = self._remove_unsupported_features(base_type, parameters)
-    return builder(base_type, parameters)
+    parameters = self._remove_unsupported_features(parameters)
+    if arg_is_paramspec:
+      # Hack - Callable needs an extra arg for paramspecs
+      return builder(base_type, parameters, arg_is_paramspec)
+    else:
+      return builder(base_type, parameters)
 
   def resolve_type(self, name: Union[str, pytd_node.Node]) -> pytd.Type:
     """Return the fully resolved name for an alias.
@@ -632,14 +626,6 @@ class Definitions:
         base_type - e.g., 2 parameters to Optional or no parameters to Union.
     """
     base_type = self.resolve_type(name)
-    for p in self.param_specs:
-      if base_type.name.startswith(f"{p.name}."):
-        _, attr = base_type.name.split(".", 1)
-        if attr not in ("args", "kwargs"):
-          raise ParseError(f"Unrecognized ParamSpec attribute: {attr}")
-        # We do not yet support typing.ParamSpec, so replace references to its
-        # args and kwargs attributes with Any.
-        return pytd.AnythingType()
     if not isinstance(base_type, pytd.NamedType):
       # We assume that all type parameters have been defined. Since pytype
       # orders type parameters to appear before classes and functions, this

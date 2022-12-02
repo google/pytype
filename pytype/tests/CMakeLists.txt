@@ -702,6 +702,15 @@ py_test(
 
 py_test(
   NAME
+    test_paramspec
+  SRCS
+    test_paramspec.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_options
   SRCS
     test_options.py

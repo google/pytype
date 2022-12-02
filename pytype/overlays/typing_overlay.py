@@ -3,6 +3,8 @@
 # pylint's detection of this is error-prone:
 # pylint: disable=unpacking-non-sequence
 
+import abc
+
 from typing import Dict as _Dict, Optional as _Optional, Tuple as _Tuple
 
 from pytype import utils
@@ -179,6 +181,10 @@ class Callable(TypingContainer):
       inner[0], inner_ellipses = self._build_inner(args.pyval)
       self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, inner_ellipses,
                                          args.name)
+    elif isinstance(args, abstract.ParamSpec):
+      # TODO(b/217789659): Implement this
+      inner[0] = self.ctx.convert.unsolvable
+      ellipses.add(0)
     else:
       if args.cls.full_name == "builtins.list":
         self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, [args])
@@ -221,8 +227,14 @@ class TypeVarError(Exception):
     self.bad_call = bad_call
 
 
-class TypeVar(abstract.PyTDFunction):
-  """Representation of typing.TypeVar, as a function."""
+class _TypeVariable(abstract.PyTDFunction, abc.ABC):
+  """Base class for type variables (TypeVar and ParamSpec)."""
+
+  _ABSTRACT_CLASS = None
+
+  @abc.abstractmethod
+  def _get_namedarg(self, node, args, name, default_value):
+    return NotImplemented
 
   def _get_constant(self, var, name, arg_type, arg_type_desc=None):
     try:
@@ -239,18 +251,6 @@ class TypeVar(abstract.PyTDFunction):
     if record.errors:
       raise TypeVarError("\n".join(error.message for error in record.errors))
     return annot
-
-  def _get_namedarg(self, node, args, name, default_value):
-    if name not in args.namedargs:
-      return default_value
-    if name == "bound":
-      return self._get_annotation(node, args.namedargs[name], name)
-    else:
-      ret = self._get_constant(args.namedargs[name], name, bool)
-      # This error is logged only if _get_constant succeeds.
-      self.ctx.errorlog.not_supported_yet(self.ctx.vm.frames,
-                                          f"argument \"{name}\" to TypeVar")
-      return ret
 
   def _get_typeparam(self, node, args):
     args = args.simplify(node, self.ctx)
@@ -280,7 +280,7 @@ class TypeVar(abstract.PyTDFunction):
       raise TypeVarError("*args must be a constant tuple")
     if args.starstarargs:
       raise TypeVarError("ambiguous **kwargs not allowed")
-    return abstract.TypeParameter(
+    return self._ABSTRACT_CLASS(  # pylint: disable=not-callable
         name,
         self.ctx,
         constraints=constraints,
@@ -293,10 +293,41 @@ class TypeVar(abstract.PyTDFunction):
     try:
       param = self._get_typeparam(node, args)
     except TypeVarError as e:
-      self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, utils.message(e),
-                                        e.bad_call)
+      self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, str(e), e.bad_call)
       return node, self.ctx.new_unsolvable(node)
     return node, param.to_variable(node)
+
+
+class TypeVar(_TypeVariable):
+  """Representation of typing.TypeVar, as a function."""
+
+  _ABSTRACT_CLASS = abstract.TypeParameter
+
+  def _get_namedarg(self, node, args, name, default_value):
+    if name not in args.namedargs:
+      return default_value
+    if name == "bound":
+      return self._get_annotation(node, args.namedargs[name], name)
+    else:
+      ret = self._get_constant(args.namedargs[name], name, bool)
+      # This error is logged only if _get_constant succeeds.
+      self.ctx.errorlog.not_supported_yet(self.ctx.vm.frames,
+                                          f"argument \"{name}\" to TypeVar")
+      return ret
+
+
+class ParamSpec(_TypeVariable):
+  """Representation of typing.ParamSpec, as a function."""
+
+  _ABSTRACT_CLASS = abstract.ParamSpec
+
+  def _get_namedarg(self, node, args, name, default_value):
+    if name not in args.namedargs:
+      return default_value
+    if name == "bound":
+      return self._get_annotation(node, args.namedargs[name], name)
+    else:
+      return self._get_constant(args.namedargs[name], name, bool)
 
 
 class Cast(abstract.PyTDFunction):
@@ -463,6 +494,18 @@ class Literal(TypingContainer):
     return self.ctx.convert.merge_values(values)
 
 
+class Concatenate(abstract.AnnotationClass):
+  """Implementation of typing.Concatenate[...]."""
+
+  def __init__(self, ctx):
+    super().__init__("Concatenate", ctx)
+
+  def _build_value(self, node, inner, ellipses):
+    self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
+    # TODO(b/217789659): Implement this
+    return self.ctx.convert.ellipsis
+
+
 def not_supported_yet(name, ctx, *, ast=None, details=None):
   ast = ast or ctx.loader.typing
   full_name = f"{ast.name}.{name}"
@@ -491,6 +534,10 @@ def build_typevar(ctx):
   return TypeVar.make("TypeVar", ctx, "typing", pyval_name="_typevar_new")
 
 
+def build_paramspec(ctx):
+  return ParamSpec.make("ParamSpec", ctx, "typing", pyval_name="_paramspec_new")
+
+
 def build_typechecking(ctx):
   return ctx.convert.true
 
@@ -505,8 +552,6 @@ def build_final_decorator(ctx):
 
 # name -> lowest_supported_version
 _unsupported_members = {
-    "Concatenate": (3, 10),
-    "ParamSpec": (3, 10),
     "is_typeddict": (3, 10),
     "Self": (3, 11),
 }
@@ -517,6 +562,7 @@ typing_overlay = {
     "Annotated": (overlay.build("Annotated", Annotated), (3, 9)),
     "Any": (build_any, None),
     "Callable": (overlay.build("Callable", Callable), None),
+    "Concatenate": (Concatenate, (3, 10)),
     "final": (build_final_decorator, (3, 8)),
     "Final": (overlay.build("Final", Final), (3, 8)),
     "Generic": (overlay.build("Generic", Generic), None),
@@ -525,6 +571,7 @@ typing_overlay = {
     "NewType": (build_newtype, None),
     "NoReturn": (build_noreturn, None),
     "Optional": (overlay.build("Optional", Optional), None),
+    "ParamSpec": (build_paramspec, (3, 10)),
     "Tuple": (overlay.build("Tuple", Tuple), None),
     "TypeGuard": (_build("typing.TypeGuard"), (3, 10)),
     "TypeVar": (build_typevar, None),

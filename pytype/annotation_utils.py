@@ -562,6 +562,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     elif isinstance(annotation, (abstract.Class,
                                  abstract.AMBIGUOUS_OR_EMPTY,
                                  abstract.TypeParameter,
+                                 abstract.ParamSpec,
+                                 abstract.Concatenate,
                                  abstract.FinalAnnotation,
                                  typing_overlay.Final,
                                  typing_overlay.NoReturn)):

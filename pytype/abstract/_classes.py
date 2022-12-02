@@ -840,6 +840,14 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
       return mixin.HasSlots.get_special_attribute(self, node, name, valself)
     return super().get_special_attribute(node, name, valself)
 
+  def get_args(self):
+    """Get the callable's posargs as a list."""
+    return [self.formal_type_parameters[i] for i in range(self.num_args)]
+
+  def has_paramspec(self):
+    return _isinstance(self.formal_type_parameters[abstract_utils.ARGS],
+                       ("ParamSpec", "Concatenate"))
+
 
 class LiteralClass(ParameterizedClass):
   """The class of a typing.Literal."""

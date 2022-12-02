@@ -53,7 +53,6 @@ py_library(
     conditions.py
   DEPS
     .types
-    pytype.utils
     pytype.ast.ast
     pytype.pytd.pytd_for_parser
 )
@@ -87,7 +86,6 @@ py_library(
     function.py
   DEPS
     .types
-    pytype.utils
     pytype.pytd.pytd_for_parser
 )
 
@@ -125,7 +123,6 @@ py_library(
   SRCS
     types.py
   DEPS
-    pytype.utils
     pytype.pytd.pytd_for_parser
 )
 
@@ -160,7 +157,6 @@ py_library(
     parser_test_base.py
   DEPS
     ._ast_parser
-    pytype.utils
     pytype.pytd.pytd
     pytype.tests.test_base
 )

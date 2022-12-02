@@ -152,7 +152,7 @@ max-line-length=80
 # * `# pytype: disable=...`
 # * `from typing import ...`
 # * long URLs in comments or strings
-ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(from\styping\simport\s)|(^\s*#?\s+http)|(^\s*"[^"]*\s+http)
+ignore-long-lines=(^.{1,80}\s\s# pytype:\s)|(from\styping\simport\s)|(^\s*#?\s+http)|(^\s*"[^"]*\s+http)|(^[^"]*"http)
 
 # Maximum number of lines in a module
 max-module-lines=99999
