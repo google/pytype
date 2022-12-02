@@ -19,7 +19,6 @@ py_library(
   NAME
     visualizer
   SRCS
-    __init__.py
     visualizer.py
   DEPS
     pytype.typegraph.cfg
