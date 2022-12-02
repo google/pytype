@@ -639,28 +639,28 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     if r_pspec.full_name not in subst:
       # TODO(b/217789659): Should this be an assertion failure?
       return
-    data = abstract_utils.get_atomic_value(
-        subst[r_pspec.full_name], function.ParamSpecMatch)
-    sig = data.sig
-    ann = sig.annotations.copy()
-    ann["return"] = val
-    ret_posargs = []
-    for i, typ in enumerate(r_args):
-      name = f"_{i}"
-      ret_posargs.append(name)
-      if not _isinstance(typ, "BaseValue"):
-        typ = self.ctx.convert.constant_to_value(typ)
-      ann[name] = typ
-    # We have done prefix type matching in the matcher, so we can safely strip
-    # off the lhs args from the sig by count.
-    lhs = data.paramspec
-    l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
-    param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
-    posonly_count = sig.posonly_count + len(r_args) - l_nargs
-    ret_sig = sig._replace(param_names=param_names, annotations=ann,
-                           posonly_count=posonly_count)
-    ret = _function_base.SimpleFunction(ret_sig, self.ctx)
-    ret_map[key] = ret.to_variable(node)
+    ret = self.ctx.program.NewVariable()
+    for data in subst[r_pspec.full_name].data:
+      sig = data.sig
+      ann = sig.annotations.copy()
+      ann["return"] = val
+      ret_posargs = []
+      for i, typ in enumerate(r_args):
+        name = f"_{i}"
+        ret_posargs.append(name)
+        if not _isinstance(typ, "BaseValue"):
+          typ = self.ctx.convert.constant_to_value(typ)
+        ann[name] = typ
+      # We have done prefix type matching in the matcher, so we can safely strip
+      # off the lhs args from the sig by count.
+      lhs = data.paramspec
+      l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
+      param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
+      posonly_count = sig.posonly_count + len(r_args) - l_nargs
+      ret_sig = sig._replace(param_names=param_names, annotations=ann,
+                             posonly_count=posonly_count)
+      ret.AddBinding(_function_base.SimpleFunction(ret_sig, self.ctx))
+    ret_map[key] = ret
 
   def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""

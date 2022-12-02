@@ -249,6 +249,35 @@ class PyiParamSpecTest(test_base.BaseTest):
         "e": ["Expected", "fn: Callable[Concatenate[str, P], Any]",
               "Actual", "fn: Callable[[int, str], int]"]})
 
+  def test_overloaded_argument(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeVar, ParamSpec, Callable, List
+
+      T = TypeVar("T")
+      P = ParamSpec("P")
+
+      def decorator(fn: Callable[P, T]) -> Callable[P, List[T]]: ...
+
+      @overload
+      def f(x: str) -> int: ...
+      @overload
+      def f(x: str, *, y: int = 0) -> int: ...
+    """)]):
+      ty, _ = self.InferWithErrors("""
+        import foo
+
+        f = foo.decorator(foo.f)
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import foo
+      from typing import List, overload
+
+      @overload
+      def f(x: str) -> List[int]: ...
+      @overload
+      def f(x: str, *, y: int = ...) -> List[int]: ...
+   """)
+
 
 if __name__ == "__main__":
   test_base.main()
