@@ -293,8 +293,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
     try:
       param = self._get_typeparam(node, args)
     except TypeVarError as e:
-      self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, utils.message(e),
-                                        e.bad_call)
+      self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, str(e), e.bad_call)
       return node, self.ctx.new_unsolvable(node)
     return node, param.to_variable(node)
 

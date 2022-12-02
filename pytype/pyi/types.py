@@ -4,7 +4,6 @@ import dataclasses
 import sys
 from typing import Any, Tuple
 
-from pytype import utils
 from pytype.pytd import pytd
 from pytype.pytd.codegen import pytdgen
 
@@ -72,7 +71,7 @@ class ParseError(Exception):
       # Output a pointer below the error column, adjusting for stripped spaces.
       pos = indent + (self._column - 1) - (len(self._text) - len(stripped))
       lines.append("%*s^" % (pos, ""))
-    lines.append(f"{type(self).__name__}: {utils.message(self)}")
+    lines.append(f"{type(self).__name__}: {self.args[0]}")
     return "\n".join(lines)
 
 

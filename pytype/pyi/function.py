@@ -5,7 +5,6 @@ import textwrap
 
 from typing import Any, List, Optional
 
-from pytype import utils
 from pytype.pyi import types
 from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
@@ -129,7 +128,7 @@ class NameAndSig(pytd_function.NameAndSig):
       try:
         sig = sig.Visit(mutator)
       except NotImplementedError as e:
-        raise ParseError(utils.message(e)) from e
+        raise ParseError(str(e)) from e
       if not mutator.successful:
         raise ParseError(f"No parameter named {mutator.name!r}")
 

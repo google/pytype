@@ -192,8 +192,8 @@ def check_or_generate_pyi(options, loader=None, ctx=None) -> AnalysisResult:
             "# Caught error in pytype: " + str(e).replace("\n", "\n#")
             + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
     else:
-      e.args = (
-          str(utils.message(e)) + f"\nFile: {options.input}",) + e.args[1:]
+      prefix = str(e.args[0]) if e.args else ""
+      e.args = (f"{prefix}\nFile: {options.input}",) + e.args[1:]
       raise
 
   return AnalysisResult(options, loader, ctx, errorlog, result, ast)
@@ -224,8 +224,8 @@ def process_one_file(options):
   loader = load_pytd.create_loader(options)
   try:
     ret = check_or_generate_pyi(options, loader)
-  except utils.UsageError as e:
-    logging.error("Usage error: %s\n", utils.message(e))
+  except utils.UsageError:
+    logging.exception("")
     return 1
 
   if not options.check:
@@ -335,7 +335,7 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   try:
     yield
   except utils.UsageError as e:
-    raise exception_type(f"Pytype usage error: {utils.message(e)}") from e
+    raise exception_type(f"Pytype usage error: {e}") from e
   except pyc.CompileError as e:
     raise exception_type("Error reading file %s at line %s: %s" %
                          (filename, e.lineno, e.error)) from e

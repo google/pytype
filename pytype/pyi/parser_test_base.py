@@ -3,7 +3,6 @@
 import re
 import textwrap
 
-from pytype import utils
 from pytype.pyi import parser
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
@@ -65,5 +64,5 @@ class ParserTestBase(test_base.UnitTest):
     """Check that parsing the src raises the expected error."""
     with self.assertRaises(parser.ParseError) as e:
       parser.parse_string(textwrap.dedent(src).lstrip(), options=self.options)
-    self.assertRegex(utils.message(e.exception), re.escape(message))
+    self.assertRegex(str(e.exception), re.escape(message))
     self.assertEqual(expected_line, e.exception.line)

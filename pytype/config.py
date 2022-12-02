@@ -88,7 +88,7 @@ class Options:
       Postprocessor(names, opt_map, options, self).process()
     except PostprocessingError as e:
       if command_line:
-        argument_parser.error(utils.message(e))
+        argument_parser.error(str(e))
       else:
         raise
 

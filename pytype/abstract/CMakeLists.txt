@@ -74,9 +74,7 @@ py_library(
     ._singletons
     ._typing
     .abstract_utils
-    .class_mixin
     .function
-    pytype.utils
 )
 
 py_library(
@@ -118,7 +116,6 @@ py_library(
     ._function_base
     ._instance_base
     ._instances
-    ._singletons
     ._typing
     .abstract_utils
     .class_mixin

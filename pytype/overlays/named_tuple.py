@@ -172,8 +172,7 @@ class NamedTupleBuilderBase(abstract.PyTDFunction):
     try:
       props.validate_and_rename_fields(args.rename)
     except ValueError as e:
-      self.ctx.errorlog.invalid_namedtuple_arg(
-          self.ctx.vm.frames, utils.message(e))
+      self.ctx.errorlog.invalid_namedtuple_arg(self.ctx.vm.frames, str(e))
       raise _ArgsError()  # pylint: disable=raise-missing-from
 
     if args.defaults:
@@ -409,8 +408,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     try:
       props.validate_and_rename_fields(rename=False)
     except ValueError as e:
-      self.ctx.errorlog.invalid_namedtuple_arg(
-          self.ctx.vm.frames, utils.message(e))
+      self.ctx.errorlog.invalid_namedtuple_arg(self.ctx.vm.frames, str(e))
       return node, self.ctx.new_unsolvable(node)
 
     node, cls_var = _build_namedtuple(props, node, self.ctx)
