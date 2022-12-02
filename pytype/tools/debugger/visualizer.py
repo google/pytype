@@ -22,6 +22,7 @@ _CYTOSCAPE_DAGRE_URL = "https://www.gstatic.com/external_hosted/cytoscape-dagre/
 
 def generate(
     program: cfg.Program,
+    var_table: dict[int, str],
     loader: jinja2.BaseLoader,
     cytoscape_url: str = _CYTOSCAPE_URL,
     dagre_url: str = _DAGRE_URL,
@@ -31,6 +32,7 @@ def generate(
 
   Args:
     program: cfg.Program. The instance of the program to visualize.
+    var_table: dict[int, str]. A mapping of cfg.Variable IDs to names.
     loader: jinja2.BaseLoader. The loader needs to be able to load files in this
       file's directory.
     cytoscape_url: str. The location of the Cytoscape library. May be a URL or
@@ -49,4 +51,5 @@ def generate(
       dagre_url=dagre_url,
       cytoscape_dagre_url=cytoscape_dagre_url,
       program=typegraph_serializer.encode_program(program),
+      var_table=var_table,
   )

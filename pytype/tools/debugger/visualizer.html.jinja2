@@ -4,6 +4,7 @@
   * cytoscape_dagre_url: string. The path to the cytoscape-dagre library.
   * program: string. The JSON encoding of a pytype.typegraph.cfg.Program. Should
     be created by typegraph_serializer.encode_program.
+  * var_table: dict[int, str]. A mapping of Variable IDs to names.
 #}
 <!doctype html>
 
@@ -23,10 +24,45 @@
         position: absolute;
         top: 0px;
         left: 0px;
+        z-index: 0;
+    }
+
+    #vars-table {
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 1;
+    }
+
+    tr.datarow:hover {
+      background-color: lightsteelblue;
+    }
+
+    table, th, td {
+      border: 1px solid;
+      border-collapse: collapse;
+    }
+
+    td {
+      padding: 2px 4px;
     }
 </style>
 
 <body>
+    <div id="table-div">
+      <table id="vars-table">
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+        </tr>
+        {%- for (vid, name) in var_table|dictsort %}
+        <tr class=datarow onclick="vis.reveal_var({{vid}})">
+          <td>{{vid}}</td>
+          <td>{{name}}</td>
+        </tr>
+        {%- endfor %}{# var_table #}
+      </table>
+    </div>
     <div id="cy"></div>
     <script>
       const layout_options = {

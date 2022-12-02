@@ -46,8 +46,9 @@ def make_parser():
   return arg_parser.Parser(parser, pytype_single_args=wrapper.actions)
 
 
-def output_graphs(options, program):
+def output_graphs(options, context):
   """Generates the requested debug output."""
+  program = context.program
   if options.output_cfg:
     tg = graph.TypeGraph(program, set(), only_cfg=True)
     svg_file = options.output_cfg
@@ -62,6 +63,7 @@ def output_graphs(options, program):
     loader = jinja2.FileSystemLoader(_TEMPLATE_DIR)
     output = visualizer.generate(
         program=program,
+        var_table=context.vm.get_all_named_vars(),
         loader=loader,
     )
     if options.visualize_typegraph == "-":
@@ -82,7 +84,7 @@ def main():
   args = parser.parse_args(sys.argv[1:])
   validate_args(parser, args.tool_args)
   result = io.check_or_generate_pyi(args.pytype_opts)
-  output_graphs(args.tool_args, result.context.program)
+  output_graphs(args.tool_args, result.context)
 
 
 if __name__ == "__main__":

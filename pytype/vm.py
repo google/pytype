@@ -587,6 +587,10 @@ class VirtualMachine:
     names = {self._var_names.get(s.variable.id) for s in sources}
     return next(iter(names)) if len(names) == 1 else None
 
+  def get_all_named_vars(self):
+    # Make a shallow copy of the dict so callers aren't touching internal data.
+    return dict(self._var_names)
+
   def binary_operator(self, state, name, report_errors=True):
     state, (x, y) = state.popn(2)
     with self._suppress_opcode_tracing():  # don't trace the magic method call
