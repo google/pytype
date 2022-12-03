@@ -237,6 +237,22 @@ class TestSuperPython3Feature(test_base.BaseTest):
             return super().test()
       """)
 
+  def test_type_subclass_with_own_new(self):
+    self.Check("""
+      class A(type):
+        def __new__(cls) -> 'A':
+          return __any_object__
+
+      class B(A):
+        def __new__(cls):
+          C = A.__new__(cls)
+
+          def __init__(self):
+            super(C, self).__init__()
+
+          C.__init__ = __init__
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -428,18 +428,21 @@ class Super(BuiltinClass):
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     for cls in cls_var.bindings:
-      if not isinstance(cls.data, (abstract.Class,
-                                   abstract.AMBIGUOUS_OR_EMPTY)):
+      if isinstance(cls.data, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
+        cls_data = cls.data
+      elif any(base.full_name == "builtins.type" for base in cls.data.cls.mro):
+        cls_data = self.ctx.convert.unsolvable
+      else:
         bad = abstract_utils.BadType(name="cls", typ=self.ctx.convert.type_type)
         raise function.WrongArgTypes(
             self._SIGNATURE, args, self.ctx, bad_param=bad)
       for obj in super_objects:
         if obj:
           result.AddBinding(
-              SuperInstance(cls.data, obj.data, self.ctx), [cls, obj], node)
+              SuperInstance(cls_data, obj.data, self.ctx), [cls, obj], node)
         else:
           result.AddBinding(
-              SuperInstance(cls.data, None, self.ctx), [cls], node)
+              SuperInstance(cls_data, None, self.ctx), [cls], node)
     return node, result
 
 
