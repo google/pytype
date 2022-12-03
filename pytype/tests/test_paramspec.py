@@ -288,6 +288,29 @@ class PyiParamSpecTest(test_base.BaseTest):
       def f(x: str, *, y: int = ...) -> List[int]: ...
    """)
 
+  def test_starargs(self):
+    with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
+      ty = self.Infer("""
+        import foo
+
+        class A:
+          pass
+
+        class B:
+          @foo.decorator
+          def h(a: A, b: str, *args, **kwargs) -> int:
+            return 10
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import foo
+      from typing import List, Any
+
+      class A: ...
+
+      class B:
+        def h(a: A, b: str, *args, **kwargs) -> List[int]: ...
+   """)
+
 
 if __name__ == "__main__":
   test_base.main()
