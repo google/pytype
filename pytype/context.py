@@ -73,12 +73,17 @@ class Context:
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,
-        # builtin classes
-        "property": special_builtins.Property(self),
-        "staticmethod": special_builtins.StaticMethod(self),
-        "classmethod": special_builtins.ClassMethod(self),
-        "dict": special_builtins.Dict(self),
     }
+    # builtin classes
+    for cls in (
+        special_builtins.ClassMethod,
+        special_builtins.Dict,
+        special_builtins.Property,
+        special_builtins.StaticMethod,
+        special_builtins.Type,
+    ):
+      instance = cls(self)
+      self.special_builtins[instance.name] = instance
     # builtin functions
     for cls in (
         special_builtins.Abs,

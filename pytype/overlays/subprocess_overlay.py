@@ -1,5 +1,6 @@
 """Support for the 'subprocess' library."""
 
+from pytype import special_builtins
 from pytype.abstract import abstract
 from pytype.overlays import overlay
 
@@ -13,39 +14,6 @@ class SubprocessOverlay(overlay.Overlay):
     }
     ast = ctx.loader.import_name("subprocess")
     super().__init__(ctx, "subprocess", member_map, ast)
-
-
-class Popen(abstract.PyTDClass):
-  """Custom implementation of subprocess.Popen."""
-
-  class _Unloaded:
-    pass
-
-  def __init__(self, ctx):
-    pyval = ctx.loader.import_name("subprocess").Lookup("subprocess.Popen")
-    super().__init__("Popen", pyval, ctx)
-    # lazily loaded because the signatures refer back to Popen itself
-    self._new = Popen._Unloaded()
-
-  @property
-  def new(self):
-    if isinstance(self._new, Popen._Unloaded):
-      if "__new__" not in self.pytd_cls:
-        self._new = None
-      else:
-        f = self.pytd_cls.Lookup("__new__")
-        sigs = [
-            abstract.PyTDSignature(f.name, sig, self.ctx)
-            for sig in f.signatures
-        ]
-        self._new = PopenNew(f.name, sigs, f.kind, self.ctx)
-    return self._new
-
-  def get_own_new(self, node, value):
-    new = self.new
-    if new:
-      return node, new.to_variable(node)
-    return super().get_own_new(node, value)
 
 
 class PopenNew(abstract.PyTDFunction):
@@ -74,3 +42,13 @@ class PopenNew(abstract.PyTDFunction):
       return super()._can_match_multiple(args)
     else:
       return args.has_opaque_starargs_or_starstarargs()
+
+
+class Popen(special_builtins.PyTDClassWithCustomMethod):
+  """Custom implementation of subprocess.Popen."""
+
+  _METHOD_NAME = "__new__"
+  _METHOD_IMPL = PopenNew
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "Popen", "subprocess")
