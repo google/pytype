@@ -300,6 +300,14 @@ class PyiParamSpecTest(test_base.BaseTest):
           @foo.decorator
           def h(a: A, b: str, *args, **kwargs) -> int:
             return 10
+
+        @foo.decorator
+        def s(*args) -> int:
+          return 10
+
+        @foo.decorator
+        def k(**kwargs) -> int:
+          return 10
       """)
     self.assertTypesMatchPytd(ty, """
       import foo
@@ -309,6 +317,9 @@ class PyiParamSpecTest(test_base.BaseTest):
 
       class B:
         def h(a: A, b: str, *args, **kwargs) -> List[int]: ...
+
+      def s(*args) -> List[int]: ...
+      def k(**kwargs) -> List[int]: ...
    """)
 
 
