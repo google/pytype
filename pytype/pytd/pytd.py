@@ -669,7 +669,10 @@ def IsContainer(t: Class) -> bool:
   for p in t.bases:
     if isinstance(p, GenericType):
       base = p.base_type
-      if isinstance(base, ClassType) and IsContainer(base.cls):
+      # We consider a LateType a container, since we don't have enough
+      # information to determine whether it is one or not.
+      if (isinstance(base, ClassType) and IsContainer(base.cls) or
+          isinstance(base, LateType)):
         return True
   return False
 
