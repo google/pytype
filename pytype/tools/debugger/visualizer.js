@@ -75,6 +75,7 @@ class Visualizer {
       data: {
         id: this.cfgnode_id(cfgnode.id),
         name: cfgnode.name,
+        class: 'cfg_node',
       },
       classes: ['cfg_node'],
     };
@@ -100,6 +101,7 @@ class Visualizer {
       data: {
         id: this.variable_id(variable.id),
         name: `v${variable.id}`,
+        class: 'variable_node',
       },
       classes: ['variable_node'],
     };
@@ -125,6 +127,7 @@ class Visualizer {
       data: {
         id: this.binding_id(binding.id),
         name: binding.data,
+        class: 'binding_node',
       },
       classes: ['binding_node'],
     };
@@ -147,6 +150,7 @@ class Visualizer {
       data: {
         id: `sourceset_${b_id}_${o_id}_${s_id}`,
         name: '',
+        class: 'sourceset_node',
       },
       classes: ['sourceset_node'],
     };
@@ -169,6 +173,7 @@ class Visualizer {
         id: `${kind}_${source}_${target}`,
         source: source,
         target: target,
+        class: kind,
       },
       classes: [kind],
     };
@@ -237,7 +242,10 @@ class Visualizer {
    * - add a node for the Variable.
    * - add an edge from the Variable to each of its Bindings.
    * - call reveal_binding on each Binding.
-   * @param {number} var_id The ID number of the variable to reveal.
+   * If a Cytoscape node for the Variable has already been added, this function
+   * will have no effect, unless (somehow) a new child (Binding, etc.) has
+   * been added. This applies to all children of the Variable.
+   * @param {number} var_id The ID number of the Variable to reveal.
    */
   reveal_var(var_id) {
     const v = this.program.variables.find(v => v.id == var_id);
@@ -250,5 +258,40 @@ class Visualizer {
     }
     this.add_elems(edges);
     this.relayout();
+  }
+
+  /**
+   * Returns the cluster of non-cfg_nodes connected to a Variable.
+   * This is more useful if the Variable has been added by reveal_var already.
+   * @param {number} var_id The ID number of the Variable to reveal.
+   * @return {!Object} A Cytoscape.collection containing the nodes.
+   */
+  get_var_cluster(var_id) {
+    let next = this.cy.$id(this.variable_id(var_id));
+    let nodes = this.cy.collection();
+    // At each step, add all the edges (and their targets) whose source is in
+    // the current set of nodes.
+    // We stop at the boundary of cfg_nodes to prevent this from grabbing the
+    // entire graph.
+    while (!nodes.same(next)) {
+      nodes = next;
+      // union() returns a new collection, so this is safe.
+      next = next.union(next.outgoers('[class != "cfg_node"]'));
+    }
+    return nodes;
+  }
+
+  /**
+   * Adds a Variable and its nodes to the graph, or toggles the visibility of
+   * those nodes if they already exist.
+   * This is intended to be used by the variable table in the visualizer.
+   * @param {number} var_id The ID number of the Variable to reveal.
+   */
+  add_or_hide_var(var_id) {
+    if (this.elem_exists(this.variable_id(var_id))) {
+      this.get_var_cluster(var_id).toggleClass('hidden_node');
+    } else {
+      this.reveal_var(var_id);
+    }
   }
 }
