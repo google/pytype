@@ -299,6 +299,24 @@ class TestUnpack(test_base.BaseTest):
       def foo(x: Dict[Tuple[Key, Value], str]) -> List[Key]: ...
     """)
 
+  def test_unpack_any_subclass_instance(self):
+    # Test for a corner case in b/261564270
+    with self.DepTree([("foo.pyi", """
+      from typing import Any
+
+      Base: Any
+    """)]):
+      self.Check("""
+        import foo
+        class A(foo.Base):
+          @classmethod
+          def make(cls, hello, world):
+            return cls(hello, world)
+
+        a = A.make(1, 2)
+        b = A.make(*a)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
