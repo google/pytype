@@ -138,11 +138,6 @@ class Context:
   def join_bindings(self, node, bindings):
     return cfg_utils.merge_bindings(self.program, node, bindings)
 
-  # TODO(b/202335303): The only reason this method exists is so that
-  # abstract/mixin.py can construct an abstract.NativeFunction.
-  def make_native_function(self, name, method):
-    return abstract.NativeFunction(name, method, self)
-
   def make_class(self, node, props):
     return vm_utils.make_class(node, props, self)
 

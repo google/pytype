@@ -472,16 +472,11 @@ class Args:
       return None
     return kwdict.pyval
 
-  def _expand_typed_star(self, ctx, node, star, count):
+  def _expand_typed_star(self, node, star, count):
     """Convert *xs: Sequence[T] -> [T, T, ...]."""
     if not count:
       return []
     p = abstract_utils.merged_type_parameter(node, star, abstract_utils.T)
-    if not p.bindings:
-      # TODO(b/159052609): This shouldn't happen. For some reason,
-      # namedtuple instances don't have any bindings in T; see
-      # tests/test_unpack:TestUnpack.test_unpack_namedtuple.
-      return [ctx.new_unsolvable(node) for _ in range(count)]
     return [p.AssignToNewVariable(node) for _ in range(count)]
 
   def _unpack_and_match_args(self, node, ctx, match_signature, starargs_tuple):
@@ -517,7 +512,7 @@ class Args:
       else:
         # If we do not have a `*args` in match_signature, just expand the
         # terminal splat to as many args as needed and then drop it.
-        mid = self._expand_typed_star(ctx, node, star, posarg_delta)
+        mid = self._expand_typed_star(node, star, posarg_delta)
         return posargs + tuple(pre + mid), None
     elif posarg_delta <= len(stars):
       # We have too many args; don't do *xs expansion. Go back to matching from
@@ -547,7 +542,7 @@ class Args:
       if len(stars) == 1:
         # Special case (<pre>, *xs) and (*xs, <post>) to fill in the type of xs
         # in every remaining arg.
-        mid = self._expand_typed_star(ctx, node, stars[0], posarg_delta)
+        mid = self._expand_typed_star(node, stars[0], posarg_delta)
       else:
         # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to
         # match, don't try to match the intermediate params to any range, just
