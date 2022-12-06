@@ -322,6 +322,25 @@ class PyiParamSpecTest(test_base.BaseTest):
       def k(**kwargs) -> List[int]: ...
    """)
 
+  def test_callable(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeVar, ParamSpec, Concatenate, Callable
+
+      T = TypeVar("T")
+      P = ParamSpec("P")
+
+      def add_arg(fn: Callable[P, T]) -> Callable[Concatenate[int, P], T]: ...
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Callable, List
+
+        def f(method: Callable[[int, str], bool]):
+          a = foo.add_arg(method)
+          b = a(1, 2, '3')
+          assert_type(b, bool)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
