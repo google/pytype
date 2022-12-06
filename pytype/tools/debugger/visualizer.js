@@ -293,5 +293,32 @@ class Visualizer {
     } else {
       this.reveal_var(var_id);
     }
+    this.get_var_cluster(var_id).flashClass('highlight_node', 1000);
+  }
+
+  /**
+   * Toggles the `highlight_node` Cytoscape style class.
+   * Has no effect if the node for the Variable does not exist.
+   * This is intended to be used by the variable table in the visualizer.
+   * There are two functions for this so it does not interfere with the
+   * highlight from add_or_hide_var.
+   * @param {number} var_id The ID number of the Variable to highlight.
+   */
+  highlight_var(var_id) {
+    if (this.elem_exists(this.variable_id(var_id))) {
+      this.get_var_cluster(var_id).toggleClass('highlight_node', true);
+    }
+  }
+
+  /**
+   * Toggles the `highlight_node` Cytoscape style class.
+   * Has no effect if the node for the Variable does not exist.
+   * This is intended to be used by the variable table in the visualizer.
+   * @param {number} var_id The ID number of the Variable to highlight.
+   */
+  unhighlight_var(var_id) {
+    if (this.elem_exists(this.variable_id(var_id))) {
+      this.get_var_cluster(var_id).toggleClass('highlight_node', false);
+    }
   }
 }

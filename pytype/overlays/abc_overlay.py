@@ -11,7 +11,8 @@ class ABCOverlay(overlay.Overlay):
   def __init__(self, ctx):
     member_map = {
         "abstractmethod": AbstractMethod.make,
-        "abstractproperty": AbstractProperty
+        "abstractproperty": AbstractProperty,
+        "ABCMeta": ABCMeta,
     }
     ast = ctx.loader.import_name("abc")
     super().__init__(ctx, "abc", member_map, ast)
@@ -60,3 +61,9 @@ class AbstractProperty(special_builtins.PropertyTemplate):
           f.is_abstract = True
     return node, special_builtins.PropertyInstance(
         self.ctx, self.name, self, **property_args).to_variable(node)
+
+
+class ABCMeta(special_builtins.TypeTemplate):
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "ABCMeta", "abc")

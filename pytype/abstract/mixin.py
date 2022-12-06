@@ -11,6 +11,7 @@ from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
+_make = abstract_utils._make  # pylint: disable=protected-access
 
 
 class MixinMeta(type):
@@ -119,7 +120,8 @@ class HasSlots(metaclass=MixinMeta):
   def make_native_function(self, name, method):
     key = (name, method)
     if key not in self._function_cache:
-      self._function_cache[key] = self.ctx.make_native_function(name, method)
+      self._function_cache[key] = _make(
+          "NativeFunction", name, method, self.ctx)
     return self._function_cache[key]
 
   def set_slot(self, name, method):

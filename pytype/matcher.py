@@ -1246,6 +1246,24 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             return None
     return subst
 
+  def _match_callable_args_against_callable(self, left, other_type, subst,
+                                            view):
+    # TODO(mdemello): Unify with _match_signature_args_against_callable()
+    param_match = self._get_param_matcher(other_type)
+    for i in range(left.num_args):
+      left_arg = left.formal_type_parameters[i]
+      right_arg = other_type.formal_type_parameters[i]
+      new_subst = param_match(left_arg, right_arg, subst)
+      if new_subst is None:
+        # Flip actual and expected to enforce contravariance of argument types.
+        subst = self._instantiate_and_match(
+            right_arg, left_arg, subst, view, container=other_type)
+      else:
+        subst = new_subst
+      if subst is None:
+        return None
+    return subst
+
   def _match_callable_instance(self, left, instance, other_type, subst, view):
     """Used by _match_instance."""
     if (not isinstance(instance, abstract.SimpleValue) or
@@ -1260,21 +1278,24 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         not isinstance(other_type, abstract.CallableClass)):
       # One of the types doesn't specify arg types, so no need to check them.
       return subst
-    if left.num_args != other_type.num_args:
-      return None
-    param_match = self._get_param_matcher(other_type)
-    for i in range(left.num_args):
-      left_arg = left.formal_type_parameters[i]
-      right_arg = other_type.formal_type_parameters[i]
-      new_subst = param_match(left_arg, right_arg, subst)
-      if new_subst is None:
-        # Flip actual and expected to enforce contravariance of argument types.
-        subst = self._instantiate_and_match(
-            right_arg, left_arg, subst, view, container=other_type)
-      else:
-        subst = new_subst
-      if subst is None:
+    # A ParamSpec can stand for any number of args, so handle it before we do
+    # argument count matching.
+    if other_type.has_paramspec():
+      right_arg = other_type.formal_type_parameters[0]
+      if isinstance(right_arg, abstract.Concatenate):
+        subst = self._match_callable_args_against_callable(
+            left, right_arg, subst, view)
+        if subst is None:
+          return None
+      sig = function.Signature.from_callable(left)
+      left_arg = function.ParamSpecMatch(right_arg, sig, self.ctx)
+      subst = self._instantiate_and_match(
+          right_arg, left_arg, subst, view, container=other_type)
+    else:
+      if left.num_args != other_type.num_args:
         return None
+      subst = self._match_callable_args_against_callable(
+          left, other_type, subst, view)
     return subst
 
   def _match_dict_against_typed_dict(

@@ -501,9 +501,9 @@ class StdlibTestsFeatures(test_base.BaseTest,
     """)
     self.assertTypesMatchPytd(ty, """
       import subprocess
-      from typing import Any, Union
+      from typing import Any
       def run1(value: bool) -> Any: ...
-      def run2(value: Any) -> Union[bytes, str]: ...
+      def run2(value: Any) -> Any: ...
     """)
 
   def test_popen_kwargs(self):
@@ -514,7 +514,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
         kwargs['stderr'] = subprocess.PIPE
         process = subprocess.Popen(cmd, **kwargs)
         stdout, _ = process.communicate()
-        assert_type(stdout, 'Union[bytes, str]')
+        assert_type(stdout, 'Any')
     """)
 
   def test_enum(self):

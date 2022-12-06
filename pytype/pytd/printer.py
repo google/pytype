@@ -592,6 +592,12 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitParamSpec(self, node):
     return node.name
 
+  def VisitParamSpecArgs(self, node):
+    return f"{node.name}.args"
+
+  def VisitParamSpecKwargs(self, node):
+    return f"{node.name}.kwargs"
+
   def VisitModule(self, node):
     if self.in_constant or self.in_signature:
       return "module"
