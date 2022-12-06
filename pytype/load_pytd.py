@@ -197,12 +197,11 @@ class _ModuleMap:
       assert m.module_name in self._modules
       for dependency in deps:
         module_prefix = dependency
-        while module_prefix == dependency or "." in module_prefix:
-          if module_prefix in self._modules:
-            break
-          module_prefix, _, _ = module_prefix.rpartition(".")
-        else:
-          raise KeyError(f"Module not found: {dependency}")
+        while module_prefix not in self._modules:
+          if "." in module_prefix:
+            module_prefix, _, _ = module_prefix.rpartition(".")
+          else:
+            raise KeyError(f"Module not found: {dependency}")
         todo.append(self._modules[module_prefix])
       newly_loaded_asts.append(loaded_ast)
       m.ast = loaded_ast.ast
@@ -251,8 +250,6 @@ class _Resolver:
         self.builtins_ast, full_names=False,
         allow_singletons=self.allow_singletons)
     mod_ast = self._lookup(bltn_lookup, mod_ast, lookup_ast)
-    mod_ast = mod_ast.Visit(
-        visitors.ExpandCompatibleBuiltins(self.builtins_ast))
     return mod_ast
 
   def resolve_external_types(self, mod_ast, module_map, aliases, *, mod_name):

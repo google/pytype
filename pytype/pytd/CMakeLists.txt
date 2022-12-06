@@ -238,7 +238,6 @@ py_library(
     .base_visitor
     .escape
     .mro
-    .pep484
     .printer
     .pytd_utils
     .pytd_visitors

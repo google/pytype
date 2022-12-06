@@ -621,7 +621,7 @@ class Converter(utils.ContextWeakrefMixin):
   def _special_constant_to_value(self, name):
     """Special-case construction of some pytd values."""
     if name == "builtins.super":
-      return self.ctx.special_builtins["super"]
+      return self.super_type
     elif name == "builtins.object":
       return self.object_type
     elif name == "types.ModuleType":
@@ -747,13 +747,7 @@ class Converter(utils.ContextWeakrefMixin):
           abstract.PyTDSignature(pyval.name, sig, self.ctx)
           for sig in pyval.signatures
       ]
-      type_new = self.ctx.loader.lookup_builtin("builtins.type").Lookup(
-          "__new__")
-      if pyval is type_new:
-        f_cls = special_builtins.TypeNew
-      else:
-        f_cls = abstract.PyTDFunction
-      f = f_cls(pyval.name, signatures, pyval.kind, self.ctx)
+      f = abstract.PyTDFunction(pyval.name, signatures, pyval.kind, self.ctx)
       f.is_abstract = pyval.is_abstract
       return f
     elif isinstance(pyval, pytd.ClassType):

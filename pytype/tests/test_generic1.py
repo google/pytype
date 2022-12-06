@@ -273,11 +273,10 @@ class GenericTest(test_base.BaseTest):
         v.g()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Union
         import a
         # T1, T2, and T3 are all set to Any due to T1 being an alias for both
         # T2 and T3.
-        v = ...  # type: a.C[int, Union[float, int]]
+        v: a.C[int, float]
       """)
 
   def test_type_parameter_deep(self):

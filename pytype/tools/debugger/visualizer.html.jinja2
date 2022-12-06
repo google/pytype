@@ -56,7 +56,7 @@
           <th>Name</th>
         </tr>
         {%- for (vid, name) in var_table|dictsort %}
-        <tr class=datarow onclick="vis.reveal_var({{vid}})">
+        <tr class=datarow onclick="vis.add_or_hide_var({{vid}})">
           <td>{{vid}}</td>
           <td>{{name}}</td>
         </tr>
@@ -68,6 +68,7 @@
       const layout_options = {
         name: 'dagre',
         nodeDimensionsIncludeLabels: true,
+        nodeSep: 1,
       };
       const cy = cytoscape({
         container: document.getElementById('cy'),

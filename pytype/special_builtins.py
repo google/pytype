@@ -428,18 +428,21 @@ class Super(BuiltinClass):
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     for cls in cls_var.bindings:
-      if not isinstance(cls.data, (abstract.Class,
-                                   abstract.AMBIGUOUS_OR_EMPTY)):
+      if isinstance(cls.data, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
+        cls_data = cls.data
+      elif any(base.full_name == "builtins.type" for base in cls.data.cls.mro):
+        cls_data = self.ctx.convert.unsolvable
+      else:
         bad = abstract_utils.BadType(name="cls", typ=self.ctx.convert.type_type)
         raise function.WrongArgTypes(
             self._SIGNATURE, args, self.ctx, bad_param=bad)
       for obj in super_objects:
         if obj:
           result.AddBinding(
-              SuperInstance(cls.data, obj.data, self.ctx), [cls, obj], node)
+              SuperInstance(cls_data, obj.data, self.ctx), [cls, obj], node)
         else:
           result.AddBinding(
-              SuperInstance(cls.data, None, self.ctx), [cls], node)
+              SuperInstance(cls_data, None, self.ctx), [cls], node)
     return node, result
 
 
@@ -760,3 +763,44 @@ class Dict(BuiltinClass):
       return node, d.to_variable(node)
     else:
       return super().call(node, funcb, args)
+
+
+# TODO(rechen): Can this be merged with abstract.mixin.HasSlots?
+class PyTDClassWithCustomMethod(BuiltinClass):
+  """A PyTDClass with a single method replaced with a native implementation."""
+
+  _METHOD_NAME: str = None
+  _METHOD_IMPL: abstract.PyTDFunction = None
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self._method = None
+
+  @property
+  def method(self):
+    if not self._method:
+      f = self.pytd_cls.Lookup(self._METHOD_NAME)
+      sigs = [
+          abstract.PyTDSignature(f.name, sig, self.ctx)
+          for sig in f.signatures
+      ]
+      self._init = self._METHOD_IMPL(f.name, sigs, f.kind, self.ctx)  # pylint: disable=not-callable
+    return self._init
+
+  def get_special_attribute(self, node, name, valself):
+    if name != self._METHOD_NAME:
+      return super().get_special_attribute(node, name, valself)
+    if valself:
+      method = self.method.property_get(valself.variable)
+    else:
+      method = self.method
+    return method.to_variable(node)
+
+
+class Type(PyTDClassWithCustomMethod):
+
+  _METHOD_NAME = "__new__"
+  _METHOD_IMPL = TypeNew
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "type")

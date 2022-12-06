@@ -533,47 +533,6 @@ class TestVisitors(parser_test_base.ParserTest):
     t = t.Visit(visitors.ClearClassPointers())
     self.assertIsNone(t.cls)
 
-  def test_expand_compatible_builtins(self):
-    src = textwrap.dedent("""
-        from typing import Tuple, Union, TypeVar
-
-        T = TypeVar('T', float, bool)
-
-        def f1(a: float) -> None: ...
-        def f2() -> float: ...
-
-        def f3(a: bool) -> None: ...
-        def f4() -> bool: ...
-
-        def f5(a: Union[bool, int]) -> None: ...
-        def f6(a: Tuple[bool, int]) -> None: ...
-
-        def f7(x: T) -> T: ...
-    """)
-    expected = textwrap.dedent("""
-        from typing import Tuple, TypeVar, Union
-
-        T = TypeVar('T', float, bool)
-
-        def f1(a: Union[float, int]) -> None: ...
-        def f2() -> float: ...
-
-        def f3(a: Union[bool, None]) -> None: ...
-        def f4() -> bool: ...
-
-        def f5(a: Union[bool, None, int]) -> None: ...
-        def f6(a: Tuple[Union[bool, None], int]) -> None: ...
-
-        def f7(x: T) -> T: ...
-    """)
-
-    src_tree, expected_tree = (
-        self.Parse(s).Visit(visitors.LookupBuiltins(self.loader.builtins))
-        for s in (src, expected))
-    new_tree = src_tree.Visit(visitors.ExpandCompatibleBuiltins(
-        self.loader.builtins))
-    self.AssertSourceEquals(new_tree, expected_tree)
-
   def test_add_name_prefix(self):
     src = textwrap.dedent("""
       from typing import TypeVar

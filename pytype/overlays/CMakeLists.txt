@@ -230,6 +230,7 @@ py_library(
     subprocess_overlay.py
   DEPS
     .overlay
+    pytype.special_builtins
     pytype.abstract.abstract
 )
 

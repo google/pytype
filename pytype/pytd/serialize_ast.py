@@ -284,7 +284,6 @@ def SourceToExportableAst(module_name, src, loader):
       src=src, name=module_name,
       options=parser.PyiOptions.from_toplevel_options(loader.options))
   ast = ast.Visit(visitors.LookupBuiltins(loader.builtins, full_names=False))
-  ast = ast.Visit(visitors.ExpandCompatibleBuiltins(loader.builtins))
   ast = ast.Visit(visitors.LookupLocalTypes())
   ast = ast.Visit(visitors.AdjustTypeParameters())
   ast = ast.Visit(visitors.NamedTypeToClassType())
