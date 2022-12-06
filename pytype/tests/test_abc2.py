@@ -183,6 +183,16 @@ class AbstractMethodTests(test_base.BaseTest):
     self.assertErrorSequences(
         errors, {"e": ["Expected", "Callable", "Actual", "property"]})
 
+  def test_instantiate_abcmeta(self):
+    self.Check("""
+      import abc
+      ABC = abc.ABCMeta('ABC', (object,), {})
+      class Foo(ABC):
+        @abc.abstractmethod
+        def f(self):
+          pass
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

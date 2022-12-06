@@ -543,9 +543,6 @@ class PropertyTemplate(BuiltinClass):
 
   _KEYS = ["fget", "fset", "fdel", "doc"]
 
-  def __init__(self, ctx, name, module="builtins"):  # pylint: disable=useless-super-delegation
-    super().__init__(ctx, name, module)
-
   def signature(self):
     # Minimal signature, only used for constructing exceptions.
     return function.Signature.from_param_names(self.name, tuple(self._KEYS))
@@ -797,10 +794,13 @@ class PyTDClassWithCustomMethod(BuiltinClass):
     return method.to_variable(node)
 
 
-class Type(PyTDClassWithCustomMethod):
+class TypeTemplate(PyTDClassWithCustomMethod):
 
   _METHOD_NAME = "__new__"
   _METHOD_IMPL = TypeNew
+
+
+class Type(TypeTemplate):
 
   def __init__(self, ctx):
     super().__init__(ctx, "type")

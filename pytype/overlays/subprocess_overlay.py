@@ -16,8 +16,8 @@ class SubprocessOverlay(overlay.Overlay):
     super().__init__(ctx, "subprocess", member_map, ast)
 
 
-class PopenNew(abstract.PyTDFunction):
-  """Custom implementation of subprocess.Popen.__new__."""
+class PopenInit(abstract.PyTDFunction):
+  """Custom implementation of subprocess.Popen.__init__."""
 
   def _can_match_multiple(self, args):
     # We need to distinguish between Popen[bytes] and Popen[str]. This requires
@@ -47,8 +47,8 @@ class PopenNew(abstract.PyTDFunction):
 class Popen(special_builtins.PyTDClassWithCustomMethod):
   """Custom implementation of subprocess.Popen."""
 
-  _METHOD_NAME = "__new__"
-  _METHOD_IMPL = PopenNew
+  _METHOD_NAME = "__init__"
+  _METHOD_IMPL = PopenInit
 
   def __init__(self, ctx):
     super().__init__(ctx, "Popen", "subprocess")
