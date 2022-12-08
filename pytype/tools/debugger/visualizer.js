@@ -321,4 +321,50 @@ class Visualizer {
       this.get_var_cluster(var_id).toggleClass('highlight_node', false);
     }
   }
+
+  /**
+   * Generates the Cytoscape elements for the legend.
+   * These should be used in another Cytoscape instance.
+   * @return {!Array<!Object>} List of elements usable by Cytoscape.
+   */
+  gen_legend() {
+    // Need to set manually set names on SourceSets.
+    const num_sourcesets = 3;
+    const sourcesets = [];
+    for (let index = 0; index < num_sourcesets; index++) {
+      let ss = this.gen_sourceset(0, 0, index);
+      ss.data.name = 'SourceSet';
+      sourcesets.push(ss);
+    }
+
+    // Same with variables, but we only have the one.
+    const variable = this.gen_variable({id: 0});
+    variable.data.name = 'Variable';
+
+    return [
+      this.gen_cfgnode({id: 0, name: 'CFGNode'}),
+      this.gen_cfgnode({id: 1, name: 'CFGNode'}),
+      this.gen_edge('cfgnode_edge', this.cfgnode_id(0), this.cfgnode_id(1)),
+
+      variable,
+      this.gen_binding({id: 0, data: 'Binding'}),
+      this.gen_edge('var_bind_edge', this.variable_id(0), this.binding_id(0)),
+
+      sourcesets[0],
+      this.gen_cfgnode({id: 2, name: 'CFGNode'}),
+      this.gen_edge('source_cfgnode_edge', sourcesets[0].data.id, this.cfgnode_id(2)),
+
+      this.gen_binding({id: 1, data: 'Binding'}),
+      sourcesets[1],
+      this.gen_edge('bind_source_edge', this.binding_id(1), sourcesets[1].data.id),
+
+      sourcesets[2],
+      this.gen_binding({id: 2, data: 'Member'}),
+      this.gen_edge('source_member_edge', sourcesets[2].data.id, this.binding_id(2)),
+
+      this.gen_cfgnode({id: 3, name: 'CFGNode'}),
+      this.gen_binding({id: 3, data: 'Binding'}),
+      this.gen_edge('cfgnode_bind_edge', this.cfgnode_id(3), this.binding_id(3)),
+    ];
+  }
 }
