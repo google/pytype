@@ -181,6 +181,9 @@ class NativeFunction(Function):
     code = self.func.func_code
     return list(code.co_varnames[:code.co_argcount])
 
+  def property_get(self, callself, is_class=False):
+    return self
+
 
 class BoundFunction(_base.BaseValue):
   """An function type which has had an argument bound into it."""

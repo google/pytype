@@ -23,8 +23,8 @@ class MixinMeta(type):
   def __init__(cls, name, superclasses, *args, **kwargs):
     super().__init__(name, superclasses, *args, **kwargs)
     for sup in superclasses:
-      if hasattr(sup, "overloads"):
-        for method in sup.overloads:
+      if "overloads" in sup.__dict__:
+        for method in sup.overloads:  # pytype: disable=attribute-error
           if method not in cls.__dict__:
             setattr(cls, method, getattr(sup, method))
             # Record the fact that we have set a method on the class, to do
@@ -115,16 +115,8 @@ class HasSlots(metaclass=MixinMeta):
   def init_mixin(self):
     self._slots = {}
     self._super = {}
-    self._function_cache = {}
 
-  def make_native_function(self, name, method):
-    key = (name, method)
-    if key not in self._function_cache:
-      self._function_cache[key] = _make(
-          "NativeFunction", name, method, self.ctx)
-    return self._function_cache[key]
-
-  def set_slot(self, name, method):
+  def set_slot(self, name, slot):
     """Add a new slot to this value."""
     assert name not in self._slots, f"slot {name} already occupied"
     # For getting a slot value, we don't need a ParameterizedClass's type
@@ -134,8 +126,11 @@ class HasSlots(metaclass=MixinMeta):
     _, attr = self.ctx.attribute_handler.get_attribute(
         self.ctx.root_node, base, name, base.to_binding(self.ctx.root_node))
     self._super[name] = attr
-    f = self.make_native_function(name, method)
-    self._slots[name] = f.to_variable(self.ctx.root_node)
+    self._slots[name] = slot
+
+  def set_native_slot(self, name, method):
+    """Add a new NativeFunction slot to this value."""
+    self.set_slot(name, _make("NativeFunction", name, method, self.ctx))
 
   def call_pytd(self, node, name, *args):
     """Call the (original) pytd version of a method we overwrote."""
@@ -147,12 +142,14 @@ class HasSlots(metaclass=MixinMeta):
         fallback_to_unsolvable=False)
 
   def get_special_attribute(self, node, name, valself):
-    if name in self._slots:
-      attr = self.ctx.program.NewVariable()
-      additional_sources = {valself} if valself else None
-      attr.PasteVariable(self._slots[name], node, additional_sources)
-      return attr
-    return HasSlots.super(self.get_special_attribute)(node, name, valself)
+    if name not in self._slots:
+      return HasSlots.super(self.get_special_attribute)(node, name, valself)
+    if valself:
+      slot = self._slots[name].property_get(valself.variable)
+      attr = self.ctx.program.NewVariable([slot], [valself], node)
+    else:
+      attr = self.ctx.program.NewVariable([self._slots[name]], [], node)
+    return attr
 
 
 class NestedAnnotation(metaclass=MixinMeta):

@@ -24,7 +24,7 @@ class AnnotationClass(_instance_base.SimpleValue, mixin.HasSlots):
   def __init__(self, name, ctx):
     super().__init__(name, ctx)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot("__getitem__", self.getitem_slot)
+    self.set_native_slot("__getitem__", self.getitem_slot)
 
   def getitem_slot(self, node, slice_var):
     """Custom __getitem__ implementation."""
@@ -500,7 +500,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
     self._instance_cache = {}
     mixin.NestedAnnotation.init_mixin(self)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot("__getitem__", self.getitem_slot)
+    self.set_native_slot("__getitem__", self.getitem_slot)
 
   def __repr__(self):
     if self._printing:  # recursion detected

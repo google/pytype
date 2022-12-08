@@ -134,7 +134,7 @@ class PropertyInstance(mixin.HasSlots, ...):
     # sets the InterpreterFunction to call
     self.fget = fget
     # will be invoked when the target bytecode calls the property
-    self.set_slot("__get__", self.fget_slot)
+    self.set_native_slot("__get__", self.fget_slot)
 
   def fget_slot(self, ...):
     return self.ctx.vm.call_function(self.fget, ...)

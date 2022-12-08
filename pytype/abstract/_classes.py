@@ -783,7 +783,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
   def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot("__call__", self.call_slot)
+    self.set_native_slot("__call__", self.call_slot)
     # We subtract two to account for "ARGS" and "RET".
     self.num_args = len(self.formal_type_parameters) - 2
 
@@ -896,8 +896,8 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
   def __init__(self, base_cls, formal_type_parameters, ctx, template=None):
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot("__getitem__", self.getitem_slot)
-    self.set_slot("__add__", self.add_slot)
+    self.set_native_slot("__getitem__", self.getitem_slot)
+    self.set_native_slot("__add__", self.add_slot)
     if isinstance(self._formal_type_parameters,
                   abstract_utils.LazyFormalTypeParameters):
       num_parameters = len(self._formal_type_parameters.template)
