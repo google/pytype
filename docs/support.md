@@ -1,6 +1,6 @@
 # Support
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-01-12' } *-->
+<!--* freshness: { owner: 'rechen' reviewed: '2022-12-08' } *-->
 
 This page lists the Python versions and features supported by the latest version
 of pytype.
@@ -11,9 +11,10 @@ of pytype.
       * [Features](#features)
          * [Core](#core)
          * [Typing](#typing)
+         * [Non-Standard/Experimental](#non-standard-experimental)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-11-16T14:59-08:00 -->
+<!-- Added by: rechen, at: 2022-12-08T14:51-08:00 -->
 
 <!--te-->
 
@@ -82,6 +83,24 @@ Custom Recursive Types                                                          
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
 
+### Non-Standard/Experimental
+
+This section describes notable non-standard and experimental features supported
+by pytype.
+
+Note: This is not and does not endeavor to be an exhaustive list of the ways in
+which pytype differs from other Python type checkers. See the
+[Pytype Typing FAQ][pytype-typing-faq] for more on that topic.
+
+*   Pytype forbids `str` from matching an iterable of `str`s, in order to catch
+    a common accidental string iteration bug
+    ([FAQ entry][faq-noniterable-strings]).
+*   Pytype allows `...` as a top-level annotation. When used this way, `...`
+    means "inferred type" ([feature request and discussion][ellipsis-issue]).
+*   `pytype_extensions`: The `pytype_extensions` namespace contains many useful
+    extensions, mostly user-contributed. The best way to learn about them is to
+    read the [inline documentation][pytype-extensions].
+
 ### Third-Party Libraries
 
 Note: This section does not list all third-party libraries that pytype supports,
@@ -117,10 +136,14 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [681]: https://peps.python.org/pep-0681/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
+[ellipsis-issue]: https://github.com/python/typing/issues/276
+[faq-noniterable-strings]: https://google.github.io/pytype/faq.html#why-doesnt-str-match-against-string-iterables
 [generic-aliases]: https://github.com/google/pytype/issues/793
 [packaging]: https://github.com/google/pytype/issues/151
 [param-spec]: https://github.com/google/pytype/issues/786
 [py27]: https://github.com/google/pytype/issues/545
 [py35]: https://github.com/google/pytype/issues/677
 [py311]: https://github.com/google/pytype/issues/1308
+[pytype-extensions]: https://github.com/google/pytype/tree/main/pytype_extensions/__init__.py
+[pytype-typing-faq]: https://google.github.io/pytype/typing_faq.html
 [type-guards]: https://github.com/google/pytype/issues/916

@@ -1,7 +1,7 @@
 """Support for the 'subprocess' library."""
 
-from pytype import special_builtins
 from pytype.abstract import abstract
+from pytype.abstract import mixin
 from pytype.overlays import overlay
 
 
@@ -44,11 +44,23 @@ class PopenInit(abstract.PyTDFunction):
       return args.has_opaque_starargs_or_starstarargs()
 
 
-class Popen(special_builtins.PyTDClassWithCustomMethod):
+class Popen(abstract.PyTDClass, mixin.HasSlots):
   """Custom implementation of subprocess.Popen."""
 
-  _METHOD_NAME = "__init__"
-  _METHOD_IMPL = PopenInit
-
   def __init__(self, ctx):
-    super().__init__(ctx, "Popen", "subprocess")
+    pytd_cls = ctx.loader.import_name("subprocess").Lookup("subprocess.Popen")
+    super().__init__("Popen", pytd_cls, ctx)
+    mixin.HasSlots.init_mixin(self)
+    self._setting_init = False  # recursion detection
+
+  def get_special_attribute(self, node, name, valself):
+    if name != "__init__" or self._setting_init:
+      return super().get_special_attribute(node, name, valself)
+    # lazily loaded because the signatures refer back to Popen itself
+    if name not in self._slots:
+      slot = self.ctx.convert.convert_pytd_function(
+          self.pytd_cls.Lookup(name), PopenInit)
+      self._setting_init = True
+      self.set_slot(name, slot)
+      self._setting_init = False
+    return mixin.HasSlots.get_special_attribute(self, node, name, valself)

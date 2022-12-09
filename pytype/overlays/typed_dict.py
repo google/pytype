@@ -237,7 +237,7 @@ class TypedDict(abstract.Dict):
   def __init__(self, props, ctx):
     super().__init__(ctx)
     self.props = props
-    self.set_slot("__delitem__", self.delitem_slot)
+    self.set_native_slot("__delitem__", self.delitem_slot)
 
   @property
   def fields(self):

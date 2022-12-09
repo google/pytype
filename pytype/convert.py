@@ -391,6 +391,11 @@ class Converter(utils.ContextWeakrefMixin):
     # merged class type.
     return self.merge_values(sorted(classes, key=lambda cls: cls.full_name))
 
+  def convert_pytd_function(self, pytd_func, factory=abstract.PyTDFunction):
+    sigs = [abstract.PyTDSignature(pytd_func.name, sig, self.ctx)
+            for sig in pytd_func.signatures]
+    return factory(pytd_func.name, sigs, pytd_func.kind, self.ctx)
+
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):
     """Convert a constant to a Variable.
@@ -743,11 +748,7 @@ class Converter(utils.ContextWeakrefMixin):
           cls.call_metaclass_init(get_node())
         return cls
     elif isinstance(pyval, pytd.Function):
-      signatures = [
-          abstract.PyTDSignature(pyval.name, sig, self.ctx)
-          for sig in pyval.signatures
-      ]
-      f = abstract.PyTDFunction(pyval.name, signatures, pyval.kind, self.ctx)
+      f = self.convert_pytd_function(pyval)
       f.is_abstract = pyval.is_abstract
       return f
     elif isinstance(pyval, pytd.ClassType):

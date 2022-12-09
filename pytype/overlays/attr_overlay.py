@@ -307,8 +307,8 @@ class AttribInstance(abstract.SimpleValue, mixin.HasSlots):
     self.default = default
     # TODO(rechen): attr.ib() returns an instance of attr._make._CountingAttr.
     self.cls = ctx.convert.unsolvable
-    self.set_slot("default", self.default_slot)
-    self.set_slot("validator", self.validator_slot)
+    self.set_native_slot("default", self.default_slot)
+    self.set_native_slot("validator", self.validator_slot)
 
   def default_slot(self, node, default):
     # If the default is a method, call it and use its return type.

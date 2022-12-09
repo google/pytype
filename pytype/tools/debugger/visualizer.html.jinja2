@@ -28,10 +28,31 @@
     }
 
     #vars-table {
+        max-width: 10%;
+        max-height: 30%;
         position: absolute;
         top: 0px;
         left: 0px;
         z-index: 1;
+    }
+
+    #legend-cy {
+      width: 550px;
+      height: 225px;
+      position: absolute;
+      left: 0px;
+      bottom: 0px;
+
+      border-style: solid;
+      background: #fff;
+    }
+
+    #legend-title {
+      width: 100%;
+      position: absolute;
+      top: -25;
+      text-align: center;
+      font-size: large;
     }
 
     tr.datarow:hover {
@@ -64,149 +85,169 @@
       </table>
     </div>
     <div id="cy"></div>
+    <div id="legend-cy">
+      <div id="legend-title">Legend</div>
+    </div>
     <script>
       const layout_options = {
         name: 'dagre',
         nodeDimensionsIncludeLabels: true,
         nodeSep: 1,
       };
+      const style = [
+        // All graph nodes have their text centered by default. They are
+        // labeled using their name, with black text with a white outline.
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(name)',
+            'text-halign': 'center',
+            'text-valign': 'center',
+            'text-outline-color': '#fff',
+            'text-outline-width': 2,
+          },
+        },
+        {
+          selector: '.cfg_node',
+          style: {
+            'shape': 'ellipse',
+          },
+        },
+        {
+          selector: '.variable_node',
+          style: {
+            'shape': 'rectangle',
+          },
+        },
+        {
+          selector: '.binding_node',
+          style: {
+            'shape': 'diamond',
+          },
+        },
+        {
+          selector: '.sourceset_node',
+          style: {
+            'shape': 'round-octagon',
+          },
+        },
+        // All edges have the 'bezier' curve style, which works for multiple
+        // edges between the two nodes and enables all arrow shapes.
+        {
+          selector: 'edge',
+          style: {
+            'curve-style': 'bezier',
+          },
+        },
+        {# edge from CFG Node to CFG Node #}
+        {
+          selector: '.cfgnode_edge',
+          style: {
+            'line-color': '#000',
+            'width': 4,
+            'target-arrow-color': '#f00',
+            'target-arrow-shape': 'triangle',
+          },
+        },
+        {# edge from Variable to Binding. #}
+        {
+          selector: '.var_bind_edge',
+          style: {
+            'line-color': 'pink',
+            'width': 3,
+            'source-arrow-color': 'red',
+            'source-arrow-shape': 'diamond',
+            'target-arrow-color': 'red',
+            'target-arrow-shape': 'diamond',
+          },
+        },
+        {# edge from SourceSet to CFG Node #}
+        {
+          selector: '.source_cfgnode_edge',
+          style: {
+            'line-color': 'black',
+            'width': 2,
+            'line-style': 'dotted',
+          },
+        },
+        {# edge from Binding to origin SourceSet #}
+        {
+          selector: '.bind_source_edge',
+          style: {
+            'line-color': 'black',
+            'width': 3,
+          },
+        },
+        {# edge from SourceSet to member Binding #}
+        {
+          selector: '.source_member_edge',
+          style: {
+            'line-color': 'blue',
+            'width': 2,
+            'source-arrow-color': 'blue',
+            'source-arrow-shape': 'square',
+            'target-arrow-color': 'blue',
+            'target-arrow-shape': 'square',
+          },
+        },
+        {# edge from CFGNode to Binding #}
+        {
+          selector: '.cfgnode_bind_edge',
+          style: {
+            'width': 2,
+            'source-arrow-shape': 'diamond',
+            'target-arrow-shape': 'diamond',
+          },
+        },
+        {# Used for animating nodes that appear #}
+        {
+          selector: '.highlight_node',
+          style: {
+            'border-color': 'blue',
+            'border-width': 3,
+            'line-color': 'blue',
+          },
+        },
+        {# This style is last so that it matches every node with the "hidden_node" class. #}
+        {
+          selector: '.hidden_node',
+          style: {
+            'display': 'none',
+          },
+        },
+      ];
       const cy = cytoscape({
         container: document.getElementById('cy'),
         data: {
           layout_options: layout_options,
         },
         elements: [],
-        style: [
-          // All graph nodes have their text centered by default. They are
-          // labeled using their name, with black text with a white outline.
-          {
-            selector: 'node',
-            style: {
-              'label': 'data(name)',
-              'text-halign': 'center',
-              'text-valign': 'center',
-              'text-outline-color': '#fff',
-              'text-outline-width': 2,
-            },
-          },
-          {
-            selector: '.cfg_node',
-            style: {
-              'shape': 'ellipse',
-            },
-          },
-          {
-            selector: '.variable_node',
-            style: {
-              'shape': 'rectangle',
-            },
-          },
-          {
-            selector: '.binding_node',
-            style: {
-              'shape': 'diamond',
-            },
-          },
-          {
-            selector: '.sourceset_node',
-            style: {
-              'shape': 'round-octagon',
-            },
-          },
-          // All edges have the 'bezier' curve style, which works for multiple
-          // edges between the two nodes and enables all arrow shapes.
-          {
-            selector: 'edge',
-            style: {
-              'curve-style': 'bezier',
-            },
-          },
-          {
-            selector: '.cfgnode_edge',
-            style: {
-              'line-color': '#000',
-              'width': 4,
-              'target-arrow-color': '#f00',
-              'target-arrow-shape': 'triangle',
-            },
-          },
-          {
-            selector: '.var_bind_edge',
-            style: {
-              'line-color': 'pink',
-              'width': 2,
-              'source-arrow-color': 'red',
-              'source-arrow-shape': 'diamond',
-              'target-arrow-color': 'red',
-              'target-arrow-shape': 'diamond',
-            },
-          },
-          {
-            selector: '.source_cfgnode_edge',
-            style: {
-              'line-color': 'black',
-              'width': 2,
-              'line-style': 'dotted',
-            },
-          },
-          {
-            selector: '.bind_source_edge',
-            style: {
-              'line-color': 'black',
-              'width': 3,
-            },
-          },
-          {
-            selector: '.source_member_edge',
-            style: {
-              'line-color': 'blue',
-              'width': 2,
-              'source-arrow-color': 'blue',
-              'source-arrow-shape': 'square',
-              'target-arrow-color': 'blue',
-              'target-arrow-shape': 'square',
-            },
-          },
-          {
-            selector: '.source_cfgnode_edge',
-            style: {
-              'line-color': 'black',
-              'width': 2,
-              'line-style': 'dotted',
-            },
-          },
-          {
-            selector: '.cfgnode_bind_edge',
-            style: {
-              'width': 2,
-              'source-arrow-shape': 'diamond',
-              'target-arrow-shape': 'diamond',
-            },
-          },
-          // Used for animating nodes that appear.
-          {
-            selector: '.highlight_node',
-            style: {
-              'border-color': 'blue',
-              'border-width': 3,
-              'line-color': 'blue',
-            },
-          },
-          // This style is last so that it matches every node with the
-          // "hidden_node" class.
-          {
-            selector: '.hidden_node',
-            style: {
-              'display': 'none',
-            },
-          },
-        ],
+        style: style,
       });
 
       {% include "visualizer.js" %}
       const program = {{program}};
 
       const vis = new Visualizer(cy, program);
+
+      const legend_cy = cytoscape({
+        container: document.getElementById('legend-cy'),
+        data: {
+          layout_options: {
+            ...layout_options
+          }
+        },
+        elements: vis.gen_legend(),
+        style: style,
+        {# these options make the legend non-interactive. #}
+        autoLock: true,
+        autoungrabify: true,
+        autounselectify: true,
+        userZoomingEnabled: false,
+        userPanningEnabled: false,
+        boxSelectionEnabled: false,
+      });
+      legend_cy.layout(legend_cy.data('layout_options')).run();
     </script>
 </body>
 </html>

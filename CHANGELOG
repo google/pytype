@@ -1,3 +1,24 @@
+Version 2022.12.09:
+
+Updates:
+* PEP 612: Add support for imported ParamSpec and Concatenate instances.
+* Update typeshed pin to commit 4e0aacc from July 12.
+* Feature flags:
+  * Remove --mapping-is-not-sequence, which has been a no-op since the last
+    release.
+  * Default --overriding-default-value-checks to True.
+  * Default --overriding-parameter-name-checks to True.
+
+Bug fixes:
+* Fix a bug in module resolution in load_pytd.
+* Don't let one TypeVar contain another, and keep invalid TypeVars when
+  possible.
+* Support calling super() with a subclass of builtins.type.
+* Fix annotation of *args and **kwargs when constructing a SimpleFunction.
+* Don't report container errors for late types.
+* --always-use-return-annotations: handle coroutines.
+* Add missing attributes to typing.TextIO.
+
 Version 2022.11.29:
 
 Updates:

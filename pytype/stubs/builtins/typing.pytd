@@ -261,11 +261,12 @@ class IO(Iterator[AnyStr]):
 class BinaryIO(IO[bytes]): ...
 
 
-if sys.version_info >= (3, 0):
-  class TextIO(IO[str]):
-    buffer: BinaryIO
-else:
-  class TextIO(IO[unicode]): ...
+class TextIO(IO[str]):
+  buffer: BinaryIO
+  encoding: str
+  errors: Optional[str]
+  line_buffering: int
+  newlines: Optional[Union[str, Tuple[str, ...]]]
 
 
 class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):

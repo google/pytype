@@ -342,5 +342,35 @@ class PyiParamSpecTest(test_base.BaseTest):
       """)
 
 
+class ContextlibTest(test_base.BaseTest):
+  """Test some more complex uses of contextlib."""
+
+  def test_wrapper(self):
+    self.Check("""
+      import contextlib
+      import functools
+
+      from typing import Callable, ContextManager, Iterator, TypeVar
+
+      T = TypeVar("T")
+
+      class Builder:
+        def __init__(self, exit_stack: contextlib.ExitStack):
+          self._stack = exit_stack
+
+        def _enter_context(self, manager: ContextManager[T]) -> T:
+          return self._stack.enter_context(manager)
+
+      def context_manager(func: Callable[..., Iterator[T]]) -> Callable[..., T]:
+        cm_func = contextlib.contextmanager(func)
+
+        @functools.wraps(cm_func)
+        def _context_manager_wrap(self: Builder, *args, **kwargs):
+          return self._enter_context(cm_func(self, *args, **kwargs))
+
+        return _context_manager_wrap
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()

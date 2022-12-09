@@ -571,6 +571,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       subst = subst.copy()
       subst[other_type.full_name] = new_var
       return subst
+    elif isinstance(other_type, abstract.ParamSpec):
+      # TODO(b/217789659): This is a very basic attempt at handling this case,
+      # and likely needs a lot more work
+      new_subst = {other_type.full_name: left.instantiate(self._node)}
+      return self._merge_substs(subst, [new_subst])
     elif (isinstance(other_type, typing_overlay.NoReturn) or
           isinstance(left, typing_overlay.NoReturn)):
       # `NoReturn` can only matches itself, `Any`, or `abstract.TypeParameter`.

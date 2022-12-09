@@ -377,6 +377,8 @@ class InterpreterFunction(_function_base.SignedFunction):
            self.signature.annotations["return"] == self.ctx.convert.no_return)):
         ret_type = self.signature.annotations["return"]
         node, ret = self.ctx.vm.init_class(node, ret_type)
+        if self.is_coroutine():
+          ret = _instances.Coroutine(self.ctx, ret, node).to_variable(node)
       else:
         ret = self.ctx.new_unsolvable(node)
       return node, ret

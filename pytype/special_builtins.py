@@ -577,12 +577,12 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     self.fdel = fdel
     self.doc = doc
     self.cls = cls
-    self.set_slot("__get__", self.fget_slot)
-    self.set_slot("__set__", self.fset_slot)
-    self.set_slot("__delete__", self.fdelete_slot)
-    self.set_slot("getter", self.getter_slot)
-    self.set_slot("setter", self.setter_slot)
-    self.set_slot("deleter", self.deleter_slot)
+    self.set_native_slot("__get__", self.fget_slot)
+    self.set_native_slot("__set__", self.fset_slot)
+    self.set_native_slot("__delete__", self.fdelete_slot)
+    self.set_native_slot("getter", self.getter_slot)
+    self.set_native_slot("setter", self.setter_slot)
+    self.set_native_slot("deleter", self.deleter_slot)
     self.is_abstract = any(_is_fn_abstract(x) for x in [fget, fset, fdel])
     self.is_method = True
     self.bound_class = abstract.BoundFunction
@@ -676,7 +676,7 @@ class StaticMethodInstance(abstract.Function, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.func = func
     self.cls = cls
-    self.set_slot("__get__", self.func_slot)
+    self.set_native_slot("__get__", self.func_slot)
     self.is_abstract = _is_fn_abstract(func)
     self.is_method = True
     self.bound_class = abstract.BoundFunction
@@ -715,7 +715,7 @@ class ClassMethodInstance(abstract.Function, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.cls = cls
     self.func = func
-    self.set_slot("__get__", self.func_slot)
+    self.set_native_slot("__get__", self.func_slot)
     self.is_abstract = _is_fn_abstract(func)
     self.is_method = True
     self.bound_class = ClassMethodCallable
@@ -762,42 +762,14 @@ class Dict(BuiltinClass):
       return super().call(node, funcb, args)
 
 
-# TODO(rechen): Can this be merged with abstract.mixin.HasSlots?
-class PyTDClassWithCustomMethod(BuiltinClass):
-  """A PyTDClass with a single method replaced with a native implementation."""
-
-  _METHOD_NAME: str = None
-  _METHOD_IMPL: abstract.PyTDFunction = None
+class TypeTemplate(BuiltinClass, mixin.HasSlots):
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self._method = None
-
-  @property
-  def method(self):
-    if not self._method:
-      f = self.pytd_cls.Lookup(self._METHOD_NAME)
-      sigs = [
-          abstract.PyTDSignature(f.name, sig, self.ctx)
-          for sig in f.signatures
-      ]
-      self._init = self._METHOD_IMPL(f.name, sigs, f.kind, self.ctx)  # pylint: disable=not-callable
-    return self._init
-
-  def get_special_attribute(self, node, name, valself):
-    if name != self._METHOD_NAME:
-      return super().get_special_attribute(node, name, valself)
-    if valself:
-      method = self.method.property_get(valself.variable)
-    else:
-      method = self.method
-    return method.to_variable(node)
-
-
-class TypeTemplate(PyTDClassWithCustomMethod):
-
-  _METHOD_NAME = "__new__"
-  _METHOD_IMPL = TypeNew
+    mixin.HasSlots.init_mixin(self)
+    slot = self.ctx.convert.convert_pytd_function(
+        self.pytd_cls.Lookup("__new__"), TypeNew)
+    self.set_slot("__new__", slot)
 
 
 class Type(TypeTemplate):

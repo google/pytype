@@ -172,7 +172,7 @@ class Iterator(_instance_base.Instance, mixin.HasSlots):
   def __init__(self, ctx, return_var):
     super().__init__(ctx.convert.iterator_type, ctx)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot("__next__", self.next_slot)
+    self.set_native_slot("__next__", self.next_slot)
     self._return_var = return_var
 
   def next_slot(self, node):
@@ -327,8 +327,8 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     combined_content = ctx.convert.build_content(content)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
     self.could_contain_anything = False
-    self.set_slot("__getitem__", self.getitem_slot)
-    self.set_slot("__getslice__", self.getslice_slot)
+    self.set_native_slot("__getitem__", self.getitem_slot)
+    self.set_native_slot("__getslice__", self.getslice_slot)
 
   def str_of_constant(self, printer):
     return "[%s]" % ", ".join(" or ".join(_var_map(printer, val))
@@ -446,12 +446,12 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
   def __init__(self, ctx):
     super().__init__(ctx.convert.dict_type, ctx)
     mixin.HasSlots.init_mixin(self)
-    self.set_slot("__contains__", self.contains_slot)
-    self.set_slot("__getitem__", self.getitem_slot)
-    self.set_slot("__setitem__", self.setitem_slot)
-    self.set_slot("pop", self.pop_slot)
-    self.set_slot("setdefault", self.setdefault_slot)
-    self.set_slot("update", self.update_slot)
+    self.set_native_slot("__contains__", self.contains_slot)
+    self.set_native_slot("__getitem__", self.getitem_slot)
+    self.set_native_slot("__setitem__", self.setitem_slot)
+    self.set_native_slot("pop", self.pop_slot)
+    self.set_native_slot("setdefault", self.setdefault_slot)
+    self.set_native_slot("update", self.update_slot)
     self.could_contain_anything = False
     # Insertion order does matter in some places.
     # For example: f_locals["__annotations__"]
