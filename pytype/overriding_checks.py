@@ -35,16 +35,10 @@ class SignatureErrorType(enum.Enum):
 SIGNATURE_ERROR_TYPE_TO_OPTION_NAME = {
     SignatureErrorType.DEFAULT_PARAMETER_MISMATCH:
         "overriding_parameter_count_checks",
-    SignatureErrorType.DEFAULT_VALUE_MISMATCH:
-        "overriding_default_value_checks",
     SignatureErrorType.KWONLY_PARAMETER_COUNT_MISMATCH:
         "overriding_parameter_count_checks",
-    SignatureErrorType.KWONLY_PARAMETER_NAME_MISMATCH:
-        "overriding_parameter_name_checks",
     SignatureErrorType.POSITIONAL_PARAMETER_COUNT_MISMATCH:
         "overriding_parameter_count_checks",
-    SignatureErrorType.POSITIONAL_PARAMETER_NAME_MISMATCH:
-        "overriding_parameter_name_checks",
     SignatureErrorType.RETURN_TYPE_MISMATCH:
         "overriding_return_type_checks",
 }
@@ -186,7 +180,7 @@ def _check_positional_parameters(method_signature, base_signature, is_subtype):
       log.warning("Name mismatch for parameter '%r'.", base_param_name)
       return None
 
-  # Check mappings of remaining positional parameters of the overridding method
+  # Check mappings of remaining positional parameters of the overriding method
   # that don't map to any positional parameters of the overridden method.
   remaining_method_params = (
       method_signature.param_names[len(base_signature.param_names):]

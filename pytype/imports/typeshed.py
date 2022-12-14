@@ -14,8 +14,6 @@ from pytype.imports import builtin_stubs
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 
-import toml
-
 
 def _get_module_names_in_path(lister, path, python_version):
   """Get module names for all .pyi files in the given path."""
@@ -112,9 +110,8 @@ class InternalTypeshedFs(TypeshedFs):
 
   def _list_files(self, relpath):
     """Lists files recursively in a basedir relative to typeshed root."""
-    fs = pytype_source_utils.list_pytype_files(
+    return pytype_source_utils.list_pytype_files(
         path_utils.join("typeshed", relpath))
-    return (f for f in fs if "@python2" not in f)
 
   def list_files(self, relpath):
     return list(self._list_files(relpath))
@@ -156,8 +153,7 @@ class ExternalTypeshedFs(TypeshedFs):
 
   def _list_files(self, relpath):
     """Lists files recursively in a basedir relative to typeshed root."""
-    fs = pytype_source_utils.list_files(self.filepath(relpath))
-    return (f for f in fs if "@python2" not in f)
+    return pytype_source_utils.list_files(self.filepath(relpath))
 
   def list_files(self, relpath):
     return list(self._list_files(relpath))
@@ -192,8 +188,7 @@ class Typeshed:
 
   def _load_missing(self):
     lines = self._store.load_missing()
-    return frozenset({line.strip() for line in lines
-                      if line and "@python2" not in line})
+    return frozenset(line.strip() for line in lines if line)
 
   def _load_stdlib_versions(self):
     """Loads the contents of typeshed/stdlib/VERSIONS.
@@ -228,38 +223,27 @@ class Typeshed:
 
     stubs/ contains type information for third-party packages. Each top-level
     directory corresponds to one PyPI package and contains one or more modules,
-    plus a metadata file (METADATA.toml). If a package supports Python 2,
-    it will either have separate stubs in a @python2 subdirectory or
-    the `python2 = true` flag is set in METADATA.toml. If a package supports
-    Python 3, it will have at least one module or package on the top level
-    and the `python3 = false` flag is not set in METADATA.toml. Finally, the
-    top-level directory may contain a @tests subdirectory for typeshed testing.
+    plus a metadata file (METADATA.toml). The top-level directory may contain a
+    @tests subdirectory for typeshed testing.
 
     Returns:
       A mapping from module name to a set of package names.
     """
     modules = collections.defaultdict(set)
-    top_level_stubs = set()  # packages with stub files outside @python2
-    no_py3_meta = set()  # packages with `python3 = false` metadata entry
+    stubs = set()
     for third_party_file in self._store.list_files("stubs"):
       parts = third_party_file.split(path_utils.sep)
       filename = parts[-1]
-      if filename == "METADATA.toml":  # {package}/METADATA.toml
-        _, md_file = self._store.load_file(
-            path_utils.join("stubs", third_party_file))
-        metadata = toml.loads(md_file)
-        if not metadata.get("python3", True):
-          no_py3_meta.add(parts[0])
-      elif parts[1] != "@tests":  # {package}/{module}[/{submodule}]
-        if filename.endswith(".pyi"):
-          top_level_stubs.add(parts[0])
-        name, _ = path_utils.splitext(parts[1])
-        modules[parts[0]].add(name)
-    py3_stubs = top_level_stubs - no_py3_meta
+      if filename == "METADATA.toml" or parts[1] == "@tests":
+        continue
+      if filename.endswith(".pyi"):
+        stubs.add(parts[0])
+      name, _ = path_utils.splitext(parts[1])
+      modules[parts[0]].add(name)
     packages = collections.defaultdict(set)
     for package, names in modules.items():
       for name in names:
-        if package in py3_stubs:
+        if package in stubs:
           packages[name].add(package)
     return packages
 
@@ -405,7 +389,7 @@ class Typeshed:
       if "#" in line:
         line = line[:line.index("#")]
       line = line.strip()
-      if line and "@python2" not in line:
+      if line:
         yield line
 
   def blacklisted_modules(self):
