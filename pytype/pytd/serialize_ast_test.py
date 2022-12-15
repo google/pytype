@@ -17,13 +17,13 @@ class SerializeAstTest(test_base.UnitTest):
 
   def _store_ast(
       self, temp_dir, module_name, pickled_ast_filename, ast=None, loader=None,
-      is_package=False, metadata=None):
+      src_path=None, metadata=None):
     if not (ast and loader):
       ast, loader = self._get_ast(temp_dir=temp_dir, module_name=module_name)
     pickle_utils.StoreAst(
         ast,
         pickled_ast_filename,
-        is_package=is_package,
+        src_path=src_path,
         metadata=metadata)
     module_map = {name: module.ast
                   for name, module in loader._modules.items()}
@@ -271,7 +271,8 @@ class SerializeAstTest(test_base.UnitTest):
       pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
 
       module_map = self._store_ast(
-          d, original_module_name, pickled_ast_filename, is_package=True)
+          d, original_module_name, pickled_ast_filename,
+          src_path="module1/__init__.py")
       serializable_ast = pickle_utils.LoadPickle(pickled_ast_filename)
 
       expected_name = "module1"

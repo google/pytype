@@ -60,8 +60,8 @@ def SavePickle(data, filename=None, compress=False, open_function=open):
     sys.setrecursionlimit(recursion_limit)
 
 
-def StoreAst(ast, filename=None, open_function=open, is_package=False,
-             src_path=None, metadata=None):
+def StoreAst(
+    ast, filename=None, open_function=open, src_path=None, metadata=None):
   """Loads and stores an ast to disk.
 
   Args:
@@ -69,12 +69,11 @@ def StoreAst(ast, filename=None, open_function=open, is_package=False,
     filename: The filename for the pickled output. If this is None, this
       function instead returns the pickled string.
     open_function: A custom file opening function.
-    is_package: Whether the module with the given ast is a package.
     src_path: Optionally, the filepath of the original source file.
     metadata: A list of arbitrary string-encoded metadata.
 
   Returns:
     The pickled string, if no filename was given. (None otherwise.)
   """
-  out = serialize_ast.SerializeAst(ast, is_package, src_path, metadata)
+  out = serialize_ast.SerializeAst(ast, src_path, metadata)
   return SavePickle(out, filename, open_function=open_function)

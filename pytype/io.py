@@ -270,7 +270,7 @@ def write_pickle(ast, options, loader=None):
     if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
   pickle_utils.StoreAst(ast, options.output, options.open_function,
-                        is_package=options.module_name.endswith(".__init__"),
+                        src_path=options.input,
                         metadata=options.pickle_metadata)
 
 

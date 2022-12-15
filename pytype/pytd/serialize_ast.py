@@ -63,7 +63,6 @@ class SerializableTupleClass(NamedTuple):
   dependencies: List[Tuple[str, Set[str]]]
   late_dependencies: List[Tuple[str, Set[str]]]
   class_type_nodes: Optional[List[pytd.ClassType]]
-  is_package: bool  # TODO(rechen): remove this, can be computed from src_path
   src_path: Optional[str]
   metadata: List[str]
 
@@ -85,19 +84,17 @@ class SerializableAst(SerializableTupleClass):
       visited and have their .cls set. If this attribute is None the whole AST
       will be visited and all found ClassType instances will have their .cls
       set.
-    is_package: True if the original source file was a package __init__.
     src_path: Optionally, the filepath of the original source file.
     metadata: A list of arbitrary string-encoded metadata.
   """
   Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
 
 
-def SerializeAst(ast, is_package=False, src_path=None, metadata=None):
+def SerializeAst(ast, src_path=None, metadata=None):
   """Loads and stores an ast to disk.
 
   Args:
     ast: The pytd.TypeDeclUnit to save to disk.
-    is_package: Whether the module with the given ast is a package.
     src_path: Optionally, the filepath of the original source file.
     metadata: A list of arbitrary string-encoded metadata.
 
@@ -105,7 +102,6 @@ def SerializeAst(ast, is_package=False, src_path=None, metadata=None):
     The SerializableAst derived from `ast`.
   """
   if ast.name.endswith(".__init__"):
-    assert is_package
     ast = ast.Visit(visitors.RenameModuleVisitor(
         ast.name, ast.name.rsplit(".__init__", 1)[0]))
   ast = ast.Visit(UndoModuleAliasesVisitor())
@@ -125,8 +121,7 @@ def SerializeAst(ast, is_package=False, src_path=None, metadata=None):
 
   return SerializableAst(
       ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
-      sorted(indexer.class_type_nodes), is_package=is_package,
-      src_path=src_path, metadata=metadata,
+      sorted(indexer.class_type_nodes), src_path=src_path, metadata=metadata,
   )
 
 
