@@ -296,6 +296,26 @@ class OverloadTest(test_base.BaseTest):
           return foo.f(x), foo.f(y)
       """)
 
+  def test_generic(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import AnyStr, Generic, overload
+      class C(Generic[AnyStr]):
+        @overload
+        def f(self: C[str], x: str) -> str: ...
+        @overload
+        def f(self: C[bytes], x: bytes) -> bytes: ...
+    """)]):
+      ty = self.Infer("""
+        import foo
+        def f(c: foo.C[str]):
+          return filter(c.f, [""])
+      """)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        from typing import Iterator
+        def f(c: foo.C[str]) -> Iterator[str]: ...
+      """)
+
 
 class OverloadTestPy3(test_base.BaseTest):
   """Python 3 tests for typing.overload."""
