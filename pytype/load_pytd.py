@@ -42,6 +42,17 @@ def create_loader(options):
     return Loader(options)
 
 
+def _is_package(filename):
+  if filename == os.devnull:
+    # imports_map_loader adds os.devnull entries for __init__.py files in
+    # intermediate directories.
+    return True
+  if filename:
+    base, _ = os.path.splitext(path_utils.basename(filename))
+    return base == "__init__"
+  return False
+
+
 @dataclasses.dataclass(eq=True, frozen=True)
 class ResolvedModule:
   module_name: str
@@ -83,14 +94,7 @@ class Module:
     return bool(self.pickle)
 
   def is_package(self):
-    if self.filename == os.devnull:
-      # imports_map_loader adds os.devnull entries for __init__.py files in
-      # intermediate directories.
-      return True
-    if self.filename:
-      base, _ = os.path.splitext(path_utils.basename(self.filename))
-      return base == "__init__"
-    return False
+    return _is_package(self.filename)
 
   @classmethod
   def resolved_internal_stub(cls, name, mod_ast):
@@ -205,7 +209,7 @@ class _ModuleMap:
         todo.append(self._modules[module_prefix])
       newly_loaded_asts.append(loaded_ast)
       m.ast = loaded_ast.ast
-      if loaded_ast.is_package:
+      if _is_package(loaded_ast.src_path):
         init_file = f"__init__{file_utils.PICKLE_EXT}"
         if m.filename and path_utils.basename(m.filename) != init_file:
           base, _ = path_utils.splitext(m.filename)
@@ -340,7 +344,7 @@ class Loader:
     items = tuple(
         (name, pickle_utils.StoreAst(
             module.ast, open_function=self.options.open_function,
-            is_package=module.is_package()))
+            src_path=module.filename))
         for name, module in sorted(self._modules.items()))
     # pylint: enable=g-complex-comprehension
     # Preparing an ast for pickling clears its class pointers, making it
