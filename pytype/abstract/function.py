@@ -757,6 +757,12 @@ class InvalidParameters(FailedFunctionCall):
 class WrongArgTypes(InvalidParameters):
   """For functions that were called with the wrong types."""
 
+  def __init__(self, sig, passed_args, ctx, bad_param):
+    if not sig.has_param(bad_param.name):
+      sig = sig.insert_varargs_and_kwargs(
+          name for name, *_ in sig.iter_args(passed_args))
+    super().__init__(sig, passed_args, ctx, bad_param)
+
   def __gt__(self, other):
     if other is None:
       return True

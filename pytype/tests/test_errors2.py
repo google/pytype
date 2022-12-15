@@ -366,6 +366,30 @@ class ErrorTest(test_base.BaseTest):
     self.assertEqual(e.filename, "<inline>")
     self.assertEqual(e.methodname, "f")
 
+  def test_starargs(self):
+    errors = self.CheckWithErrors("""
+      def f(*args: int, **kwargs: str):
+        pass
+      f("")  # wrong-arg-types[e1]
+      f(x=0)  # wrong-arg-types[e2]
+    """)
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected: (_0: int, ...)", "Actual", "(_0: str)"],
+        "e2": ["Expected: (x: str, ...)", "Actual", "(x: int)"]})
+
+  def test_starargs_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      def f(*args: int, **kwargs: str): ...
+    """)]):
+      errors = self.CheckWithErrors("""
+        import foo
+        foo.f("")  # wrong-arg-types[e1]
+        foo.f(x=0)  # wrong-arg-types[e2]
+      """)
+      self.assertErrorSequences(errors, {
+          "e1": ["Expected: (_0: int, ...)", "Actual", "(_0: str)"],
+          "e2": ["Expected: (x: str, ...)", "Actual", "(x: int)"]})
+
 
 class InPlaceOperationsTest(test_base.BaseTest):
   """Test in-place operations."""

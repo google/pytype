@@ -597,11 +597,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       matches = matcher.compute_matches(
           args_to_match, match_all_views, keep_all_views)
     except matcher.MatchError as e:
-      if self.signature.has_param(e.bad_type.name):
-        signature = self.signature
-      else:
-        signature = self.signature.insert_varargs_and_kwargs(arg_dict)
-      raise function.WrongArgTypes(signature, args, self.ctx, e.bad_type)
+      raise function.WrongArgTypes(self.signature, args, self.ctx, e.bad_type)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s",
                 pytd_utils.Print(self.pytd_sig))
