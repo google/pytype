@@ -231,6 +231,11 @@ class BuiltinTests(test_base.BaseTest):
       ) -> OrderedDict[int, str]: ...
     """)
 
+  def test_format_self(self):
+    self.Check("""
+      "{self}".format(self="X")
+    """)
+
 
 class BuiltinPython3FeatureTest(test_base.BaseTest):
   """Tests for builtin methods and classes."""

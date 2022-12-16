@@ -116,6 +116,27 @@ class DictTest(test_base.BaseTest):
       y: Sequence[str] = {'a': 1}  # annotation-type-mismatch
     """)
 
+  def test_bad_update(self):
+    self.CheckWithErrors("""
+      d = {}
+      d.update(1)  # wrong-arg-types
+    """)
+
+  @test_utils.skipBeforePy((3, 9), "Requires new unpacking logic in 3.9.")
+  def test_bad_unpack(self):
+    self.CheckWithErrors("""
+      lst = [3, 4]
+      def f(**kwargs):
+        pass
+      f(**lst)  # wrong-arg-types
+    """)
+
+  def test_update_multiple_types(self):
+    self.Check("""
+      def f(**kwargs):
+        kwargs.update(a=0, b='1')
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

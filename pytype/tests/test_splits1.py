@@ -261,22 +261,33 @@ class SplitTest(test_base.BaseTest):
       def f2() -> int: ...
     """)
 
-  def test_bad_dict_update(self):
-    ty = self.Infer("""
+  def test_dict_update_wrong_count(self):
+    ty, _ = self.InferWithErrors("""
       def f1():
         d = {}
-        d.update({"a": 1}, {"b": 2})
+        d.update({"a": 1}, {"b": 2})  # wrong-arg-count
         return 123 if d else "hello"
 
       def f2():
         d = {}
-        d.update({"a": 1}, {"b": 2}, c=3)
+        d.update({"a": 1}, {"b": 2}, c=3)  # wrong-arg-count
         return 123 if d else "hello"
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def f1() -> Union[str, int]: ...
       def f2() -> Union[str, int]: ...
+    """)
+
+  def test_dict_update_wrong_type(self):
+    ty, _ = self.InferWithErrors("""
+      def f():
+        d = {}
+        d.update(1)  # wrong-arg-types
+        return 123 if d else "hello"
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f() -> int | str: ...
     """)
 
   def test_isinstance(self):

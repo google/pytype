@@ -701,6 +701,22 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._discard_ambiguous_values(new_var.data))
     return new_var, has_error
 
+  def _get_signatures(self, func, subst, view):
+    if not isinstance(func, abstract.BoundFunction):
+      return function.get_signatures(func)
+    underlying_signatures = function.get_signatures(func.underlying)
+    signatures = []
+    for sig in underlying_signatures:
+      if not sig.param_names:
+        signatures.append(sig)
+        continue
+      self_name = sig.param_names[0]
+      if (self_name not in sig.annotations or
+          self._match_all_bindings(func.callself, sig.annotations[self_name],
+                                   subst, view) is not None):
+        signatures.append(sig.drop_first_parameter())
+    return signatures
+
   def _match_type_against_type(self, left, other_type, subst, view):
     """Checks whether a type is compatible with a (formal) type.
 
@@ -767,7 +783,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           # are magic methods like __getitem__ which aren't likely to be passed
           # as function arguments.
           return subst
-        signatures = function.get_signatures(left)
+        signatures = self._get_signatures(left, subst, view)
         new_substs = []
         for sig in signatures:
           new_subst = self._match_signature_against_callable(

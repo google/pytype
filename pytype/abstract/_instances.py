@@ -1,5 +1,6 @@
 """Specialized instance representations."""
 
+import contextlib
 import logging
 from typing import Dict as _Dict, Tuple as _Tuple, Union
 
@@ -583,21 +584,35 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       except KeyError as e:
         raise function.DictKeyMissing(str_key) from e
 
+  def _set_params_to_any(self, node):
+    self.could_contain_anything = True
+    unsolvable = self.ctx.new_unsolvable(node)
+    for p in (abstract_utils.K, abstract_utils.V):
+      self.merge_instance_type_parameter(node, p, unsolvable)
+
+  @contextlib.contextmanager
+  def _set_params_to_any_on_failure(self, node):
+    try:
+      yield
+    except function.FailedFunctionCall:
+      self._set_params_to_any(node)
+      raise
+
   def update_slot(self, node, *args, **kwargs):
-    posargs_handled = False
-    if len(args) == 1:
-      arg_data = args[0].data
-      if len(arg_data) == 1:
-        self.update(node, arg_data[0])
-        posargs_handled = True
-    elif not args:
-      posargs_handled = True
-    self.update(node, kwargs)
-    if not posargs_handled:
+    if len(args) == 1 and len(args[0].data) == 1:
+      with self._set_params_to_any_on_failure(node):
+        for f in self._super["update"].data:
+          f.underlying.match_args(node, function.Args((f.callself,) + args))
+      self.update(node, args[0].data[0])
+      ret = self.ctx.convert.none.to_variable(node)
+    elif args:
       self.could_contain_anything = True
-      return self.call_pytd(node, "update", *args)
+      with self._set_params_to_any_on_failure(node):
+        node, ret = self.call_pytd(node, "update", *args)
     else:
-      return node, self.ctx.convert.none.to_variable(node)
+      ret = self.ctx.convert.none.to_variable(node)
+    self.update(node, kwargs)
+    return node, ret
 
   def update(
       self, node: cfg.CFGNode,
@@ -607,22 +622,15 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       for key, value in other_dict.items():
         if key not in omit:
           self.set_str_item(node, key, value)
-      if isinstance(other_dict, Dict):
-        k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
-        v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
-        self.merge_instance_type_parameter(node, abstract_utils.K, k)
-        self.merge_instance_type_parameter(node, abstract_utils.V, v)
-        self.could_contain_anything |= other_dict.could_contain_anything
-    else:
-      if (isinstance(other_dict, _instance_base.Instance) and
-          other_dict.full_name == "builtins.dict"):
-        k = other_dict.get_instance_type_parameter(abstract_utils.K, node)
-        v = other_dict.get_instance_type_parameter(abstract_utils.V, node)
-      else:
-        k = v = self.ctx.new_unsolvable(node)
-      self.merge_instance_type_parameter(node, abstract_utils.K, k)
-      self.merge_instance_type_parameter(node, abstract_utils.V, v)
-      self.could_contain_anything = True
+    if (isinstance(other_dict, _instance_base.Instance) and
+        other_dict.full_name == "builtins.dict"):
+      self.could_contain_anything |= (
+          getattr(other_dict, "could_contain_anything", True))
+      for param in (abstract_utils.K, abstract_utils.V):
+        param_value = other_dict.get_instance_type_parameter(param, node)
+        self.merge_instance_type_parameter(node, param, param_value)
+    elif isinstance(other_dict, _base.BaseValue):
+      self._set_params_to_any(node)
 
 
 class AnnotationsDict(Dict):
