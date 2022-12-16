@@ -122,6 +122,7 @@ class DictTest(test_base.BaseTest):
       d.update(1)  # wrong-arg-types
     """)
 
+  @test_utils.skipBeforePy((3, 9), "Requires new unpacking logic in 3.9.")
   def test_bad_unpack(self):
     self.CheckWithErrors("""
       lst = [3, 4]
