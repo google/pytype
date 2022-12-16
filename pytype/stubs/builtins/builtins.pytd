@@ -570,7 +570,7 @@ class dict(Dict[_K, _V]):
     def update(self, **kwargs: _V2) -> None:
         self = dict[_K | _K2, _V | _V2]
     @overload
-    def update(self, __m: _SupportsKeysAndGetItem | Iterable[tuple[Any, Any]] = ..., /, **kwargs) -> None:
+    def update(self, __m: _SupportsKeysAndGetItem | Iterable[tuple[Any, Any]] = ..., **kwargs) -> None:
         self = dict[Any, Any]
     def values(self) -> dict_values[_V]: ...
     if sys.version_info >= (3, 9):
