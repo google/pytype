@@ -583,7 +583,8 @@ class CallTracer(vm.VirtualMachine):
           try:
             d = option.to_pytd_def(self.ctx.exitpoint, name)  # Deep definition
           except NotImplementedError:
-            d = option.to_type(self.ctx.exitpoint)  # Type only
+            with self.ctx.pytd_convert.optimize_literals():
+              d = option.to_type(self.ctx.exitpoint)  # Type only
             if isinstance(d, pytd.NothingType):
               if isinstance(option, abstract.Empty):
                 d = pytd.AnythingType()
