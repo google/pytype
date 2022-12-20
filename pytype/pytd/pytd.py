@@ -324,7 +324,7 @@ class Parameter(Node):
 
 
 @attrs.frozen(cache_hash=True)
-class TypeParameter(Node, Type):
+class TypeParameter(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """Represents a type parameter.
 
   A type parameter is a bound variable in the context of a function or class
@@ -439,7 +439,7 @@ class TemplateItem(Node):
 
 
 @attrs.frozen(cache_hash=True)
-class NamedType(Node, Type):
+class NamedType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """A type specified by name and, optionally, the module it is in."""
   name: str
 
@@ -448,7 +448,7 @@ class NamedType(Node, Type):
 
 
 @attrs.mutable(init=False, slots=False, eq=False)
-class ClassType(Node, Type):
+class ClassType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """A type specified through an existing class node."""
   # This type is different from normal nodes:
   # (a) It's mutable, and there are functions
@@ -485,7 +485,7 @@ class ClassType(Node, Type):
 
 
 @attrs.frozen(cache_hash=True)
-class LateType(Node, Type):
+class LateType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """A type we have yet to resolve."""
   name: str
   recursive: bool = False
@@ -495,7 +495,7 @@ class LateType(Node, Type):
 
 
 @attrs.frozen(cache_hash=True)
-class AnythingType(Node, Type):
+class AnythingType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """A type we know nothing about yet (? in pytd)."""
 
   @property
@@ -507,7 +507,7 @@ class AnythingType(Node, Type):
 
 
 @attrs.frozen(cache_hash=True)
-class NothingType(Node, Type):
+class NothingType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """An "impossible" type, with no instances (nothing in pytd).
 
   Also known as the "uninhabited" type, or, in type systems, the "bottom" type.
@@ -534,7 +534,7 @@ def _FlattenTypes(type_list) -> Tuple[Type, ...]:
 
 
 @attrs.frozen(eq=False)
-class _SetOfTypes(Node, Type):
+class _SetOfTypes(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """Super class for shared behavior of UnionType and IntersectionType."""
   # NOTE: type_list is kept as a tuple, to preserve the original order
   #       even though in most respects it acts like a frozenset.
@@ -573,7 +573,7 @@ class IntersectionType(_SetOfTypes):
 
 
 @attrs.frozen(cache_hash=True)
-class GenericType(Node, Type):
+class GenericType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """Generic type. Takes a base type and type parameters.
 
   This is used for homogeneous tuples, lists, dictionaries, user classes, etc.
@@ -640,7 +640,7 @@ class Concatenate(GenericType):
 
 
 @attrs.frozen(cache_hash=True)
-class Literal(Node, Type):
+class Literal(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   value: Union[int, str, Type, Constant]
 
   @property
@@ -649,7 +649,7 @@ class Literal(Node, Type):
 
 
 @attrs.frozen(cache_hash=True)
-class Annotated(Node, Type):
+class Annotated(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   base_type: Type
   annotations: Tuple[str, ...]
 

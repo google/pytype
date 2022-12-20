@@ -59,7 +59,7 @@ class AddMetaclass(abstract.PyTDFunction):
                                       self.module_name).to_variable(node)
 
 
-class WithMetaclassInstance(abstract.BaseValue, abstract.Class):
+class WithMetaclassInstance(abstract.BaseValue, abstract.Class):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
   """Anonymous class created by with_metaclass."""
 
   def __init__(self, ctx, cls, bases):
