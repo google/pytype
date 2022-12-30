@@ -18,7 +18,10 @@ jobs:
         experimental: [false]
         include:
           - os: ubuntu-20.04
-            python-version: '3.11-dev'
+            python-version: '3.11'
+            experimental: true
+          - os: ubuntu-20.04
+            python-version: '3.12-dev'
             experimental: true
     steps:
     - name: Cancel previous
