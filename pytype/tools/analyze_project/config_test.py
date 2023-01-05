@@ -34,6 +34,25 @@ RANDOM_CFG = """
 
 SETUP_CFG = RANDOM_CFG + '\n' + PYTYPE_CFG
 
+PYTYPE_TOML = f"""
+  [tool.pytype]
+  exclude = ['nonexistent.*']
+  pythonpath = \"\"\"
+    .{os.pathsep}
+    {'C:' if sys.platform == 'win32' else ''}{os.path.sep}foo{os.path.sep}bar{os.pathsep}
+    baz{os.path.sep}quux
+  \"\"\"
+  python_version = '3.7'
+  disable = ['import-error', 'module-attr']
+"""
+
+RANDOM_TOML = """
+  [random]
+  random = true
+"""
+
+PYPROJECT_TOML = RANDOM_TOML + '\n' + PYTYPE_TOML
+
 
 class TestBase(unittest.TestCase):
   """Base for config tests."""
@@ -214,6 +233,13 @@ class TestReadConfig(TestBase):
       with file_utils.cd(d.path):
         conf = config.read_config_file_or_die(None)
         self._validate_empty_contents(conf)
+
+  def test_pyproject_toml(self):
+    with test_utils.Tempdir() as d:
+      d.create_file('pyproject.toml', PYPROJECT_TOML)
+      with file_utils.cd(d.path):
+        conf = config.read_config_file_or_die(None)
+        self._validate_file_contents(conf, d.path)
 
 
 if __name__ == '__main__':

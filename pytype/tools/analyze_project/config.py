@@ -14,6 +14,8 @@ from pytype import utils
 from pytype.platform_utils import path_utils
 from pytype.tools import config
 
+_TOML = '.toml'
+
 
 # Args:
 #   flag: the name of the command-line flag.
@@ -76,7 +78,7 @@ ITEMS = {
 REPORT_ERRORS_ITEMS = {
     'disable': Item(
         None, 'pyi-error', ArgInfo('--disable', ','.join),
-        'Comma or space separated list of error names to ignore.'),
+        'Space-separated list of error names to ignore.'),
     'report_errors': Item(
         None, 'True', ArgInfo('--no-report-errors', lambda v: not v), None),
 }
@@ -149,34 +151,29 @@ def make_converters(cwd=None):
   }
 
 
-def _make_spaced_path_formatter(name):
-  """Formatter for space-separated paths."""
-  def format_spaced_path(p):
-    out = []
-    out.append(f'{name} =')
-    out.extend(f'    {entry}' for entry in p.split())
-    return out
-  return format_spaced_path
+def _toml_format(v):
+  try:
+    return str(int(v))
+  except ValueError:
+    return str(v).lower() if v in ('True', 'False') else repr(v)
 
 
-def _make_separated_path_formatter(name, sep):
-  """Formatter for paths separated by a non-space token."""
-  def format_separated_path(p):
-    out = []
-    out.append(f'{name} =')
-    # Breaks the path after each instance of sep.
-    for entry in p.replace(sep, sep + '\n').split('\n'):
-      out.append(f'    {entry}')
-    return out
-  return format_separated_path
+def _make_path_formatter(ext):
+  """Formatter for a string of paths."""
+  def format_path(p):
+    paths = p.split()
+    if ext == _TOML:
+      return ['['] + [f'    {_toml_format(path)},' for path in paths] + [']']
+    else:
+      return [''] + [f'    {path}' for path in paths]
+  return format_path
 
 
-def make_formatters():
+def make_formatters(ext):
   return {
-      'disable': _make_separated_path_formatter('disable', ','),
-      'exclude': _make_spaced_path_formatter('exclude'),
-      'inputs': _make_spaced_path_formatter('inputs'),
-      'pythonpath': _make_separated_path_formatter('pythonpath', os.pathsep),
+      'disable': _make_path_formatter(ext),
+      'exclude': _make_path_formatter(ext),
+      'inputs': _make_path_formatter(ext),
   }
 
 
@@ -211,9 +208,14 @@ class FileConfig(argparse.Namespace):
   """Configuration variables from a file."""
 
   def read_from_file(self, filepath):
-    """Read config from an INI-style file with a [pytype] section."""
+    """Read config from the pytype section of a configuration file."""
 
-    cfg = config.ConfigSection.create_from_file(filepath, 'pytype')
+    _, ext = os.path.splitext(filepath)
+    if ext == _TOML:
+      cfg_factory = config.TomlConfigSection
+    else:
+      cfg_factory = config.IniConfigSection
+    cfg = cfg_factory.create_from_file(filepath, 'pytype')
     if not cfg:
       return None
     converters = make_converters(cwd=path_utils.dirname(filepath))
@@ -242,22 +244,23 @@ def generate_sample_config_or_die(filename, pytype_single_args):
     else:
       items[key] = dataclasses.replace(item, default=val.default)
 
-  # Not using configparser's write method because it doesn't support comments.
-
+  _, ext = os.path.splitext(filename)
   conf = [
       '# NOTE: All relative paths are relative to the location of this file.',
       '',
-      '[pytype]',
+      '[tool.pytype]' if ext == _TOML else '[pytype]',
       '',
   ]
-  formatters = make_formatters()
+  formatters = make_formatters(ext)
   for key, item in items.items():
     conf.extend(textwrap.wrap(
         item.comment, 80, initial_indent='# ', subsequent_indent='# '))
     if key in formatters:
-      conf.extend(formatters[key](item.sample))
+      values = formatters[key](item.sample)
+      conf.extend([' '.join(filter(None, [key, '=', values[0]]))] + values[1:])
     else:
-      conf.append(f'{key} = {item.sample}')
+      value = _toml_format(item.sample) if ext == _TOML else item.sample
+      conf.append(f'{key} = {value}')
     conf.append('')
   try:
     with open(filename, 'w') as f:
@@ -278,11 +281,10 @@ def read_config_file_or_die(filepath):
                        '  pytype --generate-config sample.cfg', filepath)
       sys.exit(1)
   else:
-    # Try reading from setup.cfg.
+    # Try reading from pyproject.toml or setup.cfg.
     filepath = config.find_config_file(path_utils.getcwd())
     if filepath and ret.read_from_file(filepath):
       logging.info('Reading config from: %s', filepath)
     else:
-      logging.info('No config file specified, and no [pytype] section in '
-                   'setup.cfg. Using default configuration.')
+      logging.info('No config file found. Using default configuration.')
   return ret

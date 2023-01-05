@@ -209,7 +209,7 @@ BASIC_OPTIONS = [
     _Arg(
         "-d", "--disable", action="store",
         dest="disable", default=None,
-        help="Comma separated list of error names to ignore."),
+        help="Comma-separated list of error names to ignore."),
     _Arg(
         "--no-report-errors", action="store_false",
         dest="report_errors", default=True,
@@ -295,7 +295,7 @@ PICKLE_OPTIONS = [
     _Arg(
         "--pickle-metadata", type=str, action="store",
         dest="pickle_metadata", default=None,
-        help=("Comma separated list of metadata strings to be saved in the "
+        help=("Comma-separated list of metadata strings to be saved in the "
               "pickled file.")),
 ]
 
@@ -345,7 +345,7 @@ INFRASTRUCTURE_OPTIONS = [
     _Arg(
         "-e", "--enable-only", action="store",
         dest="enable_only", default=None,
-        help="Comma separated list of error names to enable checking for."),
+        help="Comma-separated list of error names to enable checking for."),
     # TODO(rechen): --analyze-annotated and --quick would make more sense as
     # basic options but are currently used by pytype-all in a way that isn't
     # easily configurable.
