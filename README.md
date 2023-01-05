@@ -67,13 +67,13 @@ pip install pytype
 pytype file_or_directory
 ```
 
-To set up pytype on an entire package, add the following to a `setup.cfg` file
-in the directory immediately above the package, replacing `package_name` with
-the package name:
+To set up pytype on an entire package, add the following to a `pyproject.toml`
+file in the directory immediately above the package, replacing `package_name`
+with the package name:
 
-```ini
-[pytype]
-inputs = package_name
+```toml
+[tool.pytype]
+inputs = ['package_name']
 ```
 
 Now you can run the no-argument command `pytype` to type-check the package. It's
@@ -178,14 +178,15 @@ installation instead of its own bundled copy by setting `$TYPESHED_HOME`.
 ### Config File
 
 For convenience, you can save your pytype configuration in a file. The config
-file is an INI-style file with a `[pytype]` section; if an explicit config file
-is not supplied, pytype will look for a `[pytype]` section in the first
+file can be a TOML-style file with a `[tool.pytype]` section (preferred) or an
+INI-style file with a `[pytype]` section. If an explicit config file is not
+supplied, pytype will look for a pytype section in the first `pyproject.toml` or
 `setup.cfg` file found by walking upwards from the current working directory.
 
 Start off by generating a sample config file:
 
 ```shell
-$ pytype --generate-config pytype.cfg
+$ pytype --generate-config pytype.toml
 ```
 
 Now customize the file based on your local setup, keeping only the sections you
@@ -212,35 +213,35 @@ Here is the filled-in config file, which instructs pytype to type-check
 and ignore attribute errors. Notice that the path to a package does not include
 the package itself.
 
-```ini
-$ cat ~/repo1/pytype.cfg
+```toml
+$ cat ~/repo1/pytype.toml
 
 # NOTE: All relative paths are relative to the location of this file.
 
-[pytype]
+[tool.pytype]
 
 # Space-separated list of files or directories to process.
-inputs =
-    foo
+inputs = [
+    'foo',
+]
 
 # Python version (major.minor) of the target code.
-python_version = 3.9
+python_version = '3.9'
 
 # Paths to source code directories, separated by ':'.
-pythonpath =
-    .:
-    ~/repo2
+pythonpath = .:~/repo2
 
-# Comma or space-separated list of error names to ignore.
-disable =
-    attribute-error
+# Space-separated list of error names to ignore.
+disable = [
+    'attribute-error',
+]
 ```
 
 We could've discovered that `~/repo2` needed to be added to the pythonpath by
 running pytype's broken dependency checker:
 
 ```
-$ pytype --config=~/repo1/pytype.cfg ~/repo1/foo/*.py --unresolved
+$ pytype --config=~/repo1/pytype.toml ~/repo1/foo/*.py --unresolved
 
 Unresolved dependencies:
   bar.dependency

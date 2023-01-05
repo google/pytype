@@ -25,6 +25,11 @@ from pytype.pytd import visitors
 log = logging.getLogger(__name__)
 
 
+# A variable with more bindings than this is treated as a large literal constant
+# and special-cased.
+LARGE_LITERAL_SIZE = 15
+
+
 class Converter(utils.ContextWeakrefMixin):
   """Functions for converting abstract classes into PyTD."""
 
@@ -37,6 +42,7 @@ class Converter(utils.ContextWeakrefMixin):
   def __init__(self, ctx):
     super().__init__(ctx)
     self._output_mode = Converter.OutputMode.NORMAL
+    self._optimize_literals = False
     self._scopes = []
 
   @contextlib.contextmanager
@@ -61,6 +67,14 @@ class Converter(utils.ContextWeakrefMixin):
     yield
     self._output_mode = old
 
+  @contextlib.contextmanager
+  def optimize_literals(self):
+    """Optimize output of literal data structures in pyi files."""
+    old = self._optimize_literals
+    self._optimize_literals = True
+    yield
+    self._optimize_literals = old
+
   @property
   def _detailed(self):
     return self._output_mode >= Converter.OutputMode.DETAILED
@@ -68,6 +82,12 @@ class Converter(utils.ContextWeakrefMixin):
   def _get_values(self, node, var, view):
     if var.bindings and view is not None:
       return [view[var].data]
+    elif self._optimize_literals and len(var.bindings) > LARGE_LITERAL_SIZE:
+      # Performance optimisation: If we have so many elements in a container, it
+      # is very likely a literal, and would ideally be constructed at a single
+      # CFG node. Therefore, we do not attempt to filter its bindings (which is
+      # a very expensive operation for large collections).
+      return var.data
     elif node:
       return var.FilteredData(node, strict=False)
     else:

@@ -1,11 +1,19 @@
 """Utilities for dealing with project configuration."""
 
+import abc
 import configparser
+from typing import Iterable, Tuple, Type, TypeVar
+
 from pytype.platform_utils import path_utils
 
+import toml
 
-def find_config_file(path, filename='setup.cfg'):
-  """Finds the first instance of filename in a prefix of path."""
+_CONFIG_FILENAMES = ('pyproject.toml', 'setup.cfg')
+_ConfigSectionT = TypeVar('_ConfigSectionT', bound='ConfigSection')
+
+
+def find_config_file(path):
+  """Finds the first instance of a config file in a prefix of path."""
 
   # Make sure path is a directory
   if not path_utils.isdir(path):
@@ -15,24 +23,60 @@ def find_config_file(path, filename='setup.cfg'):
   seen = set()
   while path and path not in seen:
     seen.add(path)
-    f = path_utils.join(path, filename)
-    if path_utils.exists(f) and path_utils.isfile(f):
-      return f
+    for filename in _CONFIG_FILENAMES:
+      f = path_utils.join(path, filename)
+      if path_utils.exists(f) and path_utils.isfile(f):
+        return f
     path = path_utils.dirname(path)
 
   return None
 
 
-class ConfigSection:
-  """Read a given set of keys from a section of a config file."""
+class ConfigSection(abc.ABC):
+  """A section of a config file."""
 
-  def __init__(self, parser, section):
-    self.parser = parser
-    self.section = section
+  @classmethod
+  @abc.abstractmethod
+  def create_from_file(
+      cls: Type[_ConfigSectionT], filepath: str, section: str
+  ) -> _ConfigSectionT:
+    """Create a ConfigSection if the file at filepath has section."""
+
+  @abc.abstractmethod
+  def items(self) -> Iterable[Tuple[str, str]]:
+    ...
+
+
+class TomlConfigSection(ConfigSection):
+  """A section of a TOML config file."""
+
+  def __init__(self, content):
+    self._content = content
 
   @classmethod
   def create_from_file(cls, filepath, section):
-    """Create a ConfigSection if the file at filepath has section."""
+    try:
+      content = toml.load(filepath)
+    except toml.TomlDecodeError:
+      return None
+    if 'tool' in content and section in content['tool']:
+      return cls(content['tool'][section])
+    return None
+
+  def items(self):
+    for k, v in self._content.items():
+      yield (k, ' '.join(str(e) for e in v) if isinstance(v, list) else str(v))
+
+
+class IniConfigSection(ConfigSection):
+  """A section of an INI config file."""
+
+  def __init__(self, parser, section):
+    self._parser = parser
+    self._section = section
+
+  @classmethod
+  def create_from_file(cls, filepath, section):
     parser = configparser.ConfigParser()
     try:
       parser.read(filepath)
@@ -44,4 +88,4 @@ class ConfigSection:
     return None
 
   def items(self):
-    return self.parser.items(self.section)
+    return self._parser.items(self._section)
