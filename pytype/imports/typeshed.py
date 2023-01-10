@@ -4,7 +4,7 @@ import abc
 import collections
 import os
 import re
-from typing import List, Sequence, Tuple
+from typing import Collection, List, Sequence, Tuple
 
 from pytype import module_utils
 from pytype import pytype_source_utils
@@ -174,15 +174,23 @@ class Typeshed:
   # The path is relative to typeshed's root directory, e.g. if you set this to
   # "missing.txt" you need to create $TYPESHED_HOME/missing.txt or
   # pytype/typeshed/missing.txt
-  # For testing, this file must contain the entry 'stdlib/3/pytypecanary'.
+  # For testing, this file must contain the entry 'stdlib/pytypecanary'.
   MISSING_FILE = None
 
-  def __init__(self):
+  def __init__(self, missing_modules: Collection[str] = ()):
+    """Initializer.
+
+    Args:
+      missing_modules: A collection of modules in the format
+          'stdlib/module_name', which will be combined with the contents of
+          MISSING_FILE to form a set of missing modules for which pytype will
+          not report errors.
+    """
     if os.getenv("TYPESHED_HOME"):
       self._store = ExternalTypeshedFs(missing_file=self.MISSING_FILE)
     else:
       self._store = InternalTypeshedFs(missing_file=self.MISSING_FILE)
-    self._missing = self._load_missing()
+    self._missing = self._load_missing().union(missing_modules)
     self._stdlib_versions = self._load_stdlib_versions()
     self._third_party_packages = self._load_third_party_packages()
 
@@ -406,30 +414,23 @@ class Typeshed:
         yield mod
 
 
-_typeshed = None
-
-
-def _get_typeshed():
-  """Get the global Typeshed instance."""
-  global _typeshed
-  if _typeshed is None:
-    try:
-      _typeshed = Typeshed()
-    except OSError as e:
-      # This happens if typeshed is not available. Which is a setup error
-      # and should be propagated to the user. The IOError is caught further up
-      # in the stack.
-      raise utils.UsageError(f"Couldn't initialize typeshed:\n {str(e)}")
-  return _typeshed
+def _get_typeshed(missing_modules):
+  """Get a Typeshed instance."""
+  try:
+    return Typeshed(missing_modules)
+  except OSError as e:
+    # This happens if typeshed is not available. Which is a setup error
+    # and should be propagated to the user. The IOError is caught further up
+    # in the stack.
+    raise utils.UsageError(f"Couldn't initialize typeshed:\n {str(e)}")
 
 
 class TypeshedLoader(base.BuiltinLoader):
   """Load modules from typeshed."""
 
-  def __init__(self, options):
+  def __init__(self, options, missing_modules):
     self.options = options
-    self.typeshed = _get_typeshed()
-    assert self.typeshed is not None
+    self.typeshed = _get_typeshed(missing_modules)
     # TODO(mdemello): Inject options.open_function into self.typeshed
 
   def load_module(self, namespace, module_name):
