@@ -31,15 +31,15 @@ _AST = pytd.TypeDeclUnit
 ModuleInfo = imports_base.ModuleInfo
 
 
-def create_loader(options):
+def create_loader(options, missing_modules=()):
   """Create a pytd loader."""
   if options.precompiled_builtins:
     return PickledPyiLoader.load_from_pickle(
-        options.precompiled_builtins, options)
+        options.precompiled_builtins, options, missing_modules)
   elif options.use_pickled_files:
-    return PickledPyiLoader(options)
+    return PickledPyiLoader(options, missing_modules=missing_modules)
   else:
-    return Loader(options)
+    return Loader(options, missing_modules=missing_modules)
 
 
 def _is_package(filename):
@@ -314,7 +314,7 @@ class Loader:
     typing: The typing ast.
   """
 
-  def __init__(self, options, modules=None):
+  def __init__(self, options, modules=None, missing_modules=()):
     self.options = options
     self._modules = _ModuleMap(options, modules)
     self.builtins = self._modules["builtins"].ast
@@ -322,7 +322,8 @@ class Loader:
     self._module_loader = module_loader.ModuleLoader(options)
     pyi_options = parser.PyiOptions.from_toplevel_options(options)
     self._builtin_loader = builtin_stubs.BuiltinLoader(pyi_options)
-    self._typeshed_loader = typeshed.TypeshedLoader(pyi_options)
+    self._typeshed_loader = typeshed.TypeshedLoader(
+        pyi_options, missing_modules)
     self._resolver = _Resolver(self.builtins)
     self._import_name_cache = {}  # performance cache
     self._aliases = {}
@@ -709,7 +710,7 @@ class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""
 
   @classmethod
-  def load_from_pickle(cls, filename, options):
+  def load_from_pickle(cls, filename, options, missing_modules=()):
     """Load a pytd module from a pickle file."""
     items = pickle_utils.LoadPickle(filename, compress=True,
                                     open_function=options.open_function)
@@ -718,7 +719,7 @@ class PickledPyiLoader(Loader):
                      has_unresolved_pointers=False)
         for name, pickle in items
     }
-    return cls(options, modules=modules)
+    return cls(options, modules=modules, missing_modules=missing_modules)
 
   def load_module(self, mod_info, mod_ast=None):
     """Load (or retrieve from cache) a module and resolve its dependencies."""

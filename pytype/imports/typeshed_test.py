@@ -42,7 +42,7 @@ class TestTypeshedLoading(parser_test_base.ParserTest):
     self.assertIn("LogRecord", data)
 
   def test_load_module(self):
-    loader = typeshed.TypeshedLoader(self.options)
+    loader = typeshed.TypeshedLoader(self.options, ())
     filename, ast = loader.load_module("stdlib", "_random")
     self.assertEqual(path_utils.basename(filename), "_random.pyi")
     self.assertIn("_random.Random", [cls.name for cls in ast.classes])
