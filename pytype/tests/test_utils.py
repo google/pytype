@@ -12,6 +12,7 @@ import textwrap
 import tokenize
 
 from pytype import context
+from pytype import file_utils
 from pytype import load_pytd
 from pytype import state as frame_state
 from pytype.file_utils import makedirs
@@ -419,5 +420,14 @@ def skipOnWin32(reason):
 def make_context(options):
   """Create a minimal context for tests."""
   return context.Context(options=options, loader=load_pytd.Loader(options))
+
+
+def test_data_file(filename):
+  pytype_dir = path_utils.dirname(path_utils.dirname(path_utils.__file__))
+  code = path_utils.join(
+      pytype_dir, file_utils.replace_separator("test_data/"), filename)
+  with open(code, "r") as f:
+    return f.read()
+
 
 # pylint: enable=invalid-name

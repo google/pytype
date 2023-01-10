@@ -68,10 +68,10 @@ class Converter(utils.ContextWeakrefMixin):
     self._output_mode = old
 
   @contextlib.contextmanager
-  def optimize_literals(self):
+  def optimize_literals(self, val=True):
     """Optimize output of literal data structures in pyi files."""
     old = self._optimize_literals
-    self._optimize_literals = True
+    self._optimize_literals = val
     yield
     self._optimize_literals = old
 
