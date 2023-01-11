@@ -238,7 +238,7 @@ FEATURE_FLAGS = [
           "Always use function return type annotations."),
     _flag("--overriding-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods."),
-    _flag("--overriding-return-type-checks", False,
+    _flag("--overriding-return-type-checks", True,
           "Enable return type checks for overriding methods."),
     _flag("--use-enum-overlay", False,
           "Use the enum overlay for more precise enum checking."),

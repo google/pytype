@@ -581,7 +581,12 @@ class CallTracer(vm.VirtualMachine):
       elif options:
         for option in options:
           try:
-            d = option.to_pytd_def(self.ctx.exitpoint, name)  # Deep definition
+            # TODO(b/260754211): We should have a specific check for large
+            # literals, rather than trying to filter other things out.
+            should_optimize = not isinstance(option, abstract.FUNCTION_TYPES)
+            with self.ctx.pytd_convert.optimize_literals(should_optimize):
+              # Deep definition
+              d = option.to_pytd_def(self.ctx.exitpoint, name)
           except NotImplementedError:
             with self.ctx.pytd_convert.optimize_literals():
               d = option.to_type(self.ctx.exitpoint)  # Type only

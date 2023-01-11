@@ -1203,3 +1203,13 @@ py_test(
   DEPS
     .test_base
 )
+
+py_test(
+  NAME
+    test_complex_function
+  SRCS
+    test_complex_function.py
+  DEPS
+    .test_base
+    pytype.test_data
+)
