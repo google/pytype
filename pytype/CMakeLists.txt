@@ -1,5 +1,29 @@
 add_package()
 
+filegroup(
+  NAME
+    test_data
+  SRCS
+    test_data/__init__.py
+    test_data/bad.py
+    test_data/complex.py
+    test_data/constant.py
+    test_data/imports.py
+    test_data/perf/__init__.py
+    test_data/perf/iso.py
+    test_data/pytree.py
+    test_data/simple.py
+    test_data/syntax.py
+    test_data/tokenerror1.py
+    test_data/tokenerror2.py
+    test_data/tokenize.py
+    test_data/yield_from.py
+    test_data/bad.pyi
+    test_data/complex.pyi
+    test_data/imports.pyi
+    test_data/simple.pyi
+)
+
 py_library(
   NAME
     api

@@ -1211,5 +1211,5 @@ py_test(
     test_complex_function.py
   DEPS
     .test_base
-    pytype.test_data/tokenize.py
+    pytype.test_data
 )
