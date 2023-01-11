@@ -1,29 +1,5 @@
 add_package()
 
-filegroup(
-  NAME
-    test_data
-  SRCS
-    test_data/__init__.py
-    test_data/bad.py
-    test_data/complex.py
-    test_data/constant.py
-    test_data/imports.py
-    test_data/perf/__init__.py
-    test_data/perf/iso.py
-    test_data/pytree.py
-    test_data/simple.py
-    test_data/syntax.py
-    test_data/tokenerror1.py
-    test_data/tokenerror2.py
-    test_data/tokenize.py
-    test_data/yield_from.py
-    test_data/bad.pyi
-    test_data/complex.pyi
-    test_data/imports.pyi
-    test_data/simple.pyi
-)
-
 py_library(
   NAME
     api
@@ -52,7 +28,6 @@ py_library(
     .analyze
     .annotation_utils
     .attribute
-    .blocks
     .compare
     .config
     .context
@@ -64,9 +39,7 @@ py_library(
     .io
     .load_pytd
     .matcher
-    .metaclass
     .output
-    .special_builtins
     .state
     .tracer_vm
     .vm
@@ -83,6 +56,60 @@ py_library(
     .metrics
     .module_utils
     .pytype_source_utils
+)
+
+py_library(
+  NAME
+    config
+  SRCS
+    config.py
+  DEPS
+    ._utils
+    .datatypes
+    .errors
+    .file_utils
+    .imports_map_loader
+    .module_utils
+    pytype.pyc.pyc
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    errors
+  SRCS
+    errors.py
+  DEPS
+    ._utils
+    .debug
+    .matcher
+    pytype.abstract.abstract
+    pytype.overlays.overlays
+    pytype.pytd.pytd
+)
+
+filegroup(
+  NAME
+    test_data
+  SRCS
+    test_data/__init__.py
+    test_data/bad.py
+    test_data/complex.py
+    test_data/constant.py
+    test_data/imports.py
+    test_data/perf/__init__.py
+    test_data/perf/iso.py
+    test_data/pytree.py
+    test_data/simple.py
+    test_data/syntax.py
+    test_data/tokenerror1.py
+    test_data/tokenerror2.py
+    test_data/tokenize.py
+    test_data/yield_from.py
+    test_data/bad.pyi
+    test_data/complex.pyi
+    test_data/imports.pyi
+    test_data/simple.pyi
 )
 
 py_library(
@@ -122,20 +149,9 @@ py_library(
   DEPS
     ._utils
     .datatypes
-    .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    blocks
-  SRCS
-    blocks.py
-  DEPS
-    pytype.pyc.pyc
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -146,22 +162,6 @@ py_library(
   DEPS
     pytype.abstract.abstract
     pytype.pytd.pytd
-)
-
-py_library(
-  NAME
-    config
-  SRCS
-    config.py
-  DEPS
-    ._utils
-    .datatypes
-    .errors
-    .file_utils
-    .imports_map_loader
-    .module_utils
-    pytype.pyc.pyc
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -180,10 +180,9 @@ py_library(
     convert.py
   DEPS
     ._utils
-    .blocks
     .datatypes
-    .special_builtins
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser
@@ -206,10 +205,10 @@ py_library(
     .load_pytd
     .matcher
     .output
-    .special_builtins
     .tracer_vm
     .vm_utils
     pytype.abstract.abstract
+    pytype.overlays.overlays
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
@@ -238,20 +237,6 @@ py_library(
   DEPS
     ._utils
     pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    errors
-  SRCS
-    errors.py
-  DEPS
-    ._utils
-    .debug
-    .matcher
-    pytype.abstract.abstract
-    pytype.overlays.overlays
-    pytype.pytd.pytd
 )
 
 py_library(
@@ -315,20 +300,10 @@ py_library(
   DEPS
     ._utils
     .datatypes
-    .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    metaclass
-  SRCS
-    metaclass.py
-  DEPS
-    pytype.abstract.abstract
 )
 
 py_library(
@@ -354,7 +329,6 @@ py_library(
     output.py
   DEPS
     ._utils
-    .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pyi.parser
@@ -390,24 +364,15 @@ py_library(
 
 py_library(
   NAME
-    special_builtins
-  SRCS
-    special_builtins.py
-  DEPS
-    pytype.abstract.abstract
-)
-
-py_library(
-  NAME
     state
   SRCS
     state.py
   DEPS
     ._utils
-    .blocks
     .compare
     .metrics
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.typegraph.cfg
 )
 
@@ -417,7 +382,6 @@ py_library(
   SRCS
     tracer_vm.py
   DEPS
-    .special_builtins
     .state
     .vm
     pytype.abstract.abstract
@@ -449,7 +413,6 @@ py_library(
     __init__.py
     vm.py
   DEPS
-    .blocks
     .compare
     .constant_folding
     .datatypes
@@ -475,11 +438,11 @@ py_library(
     vm_utils.py
   DEPS
     ._utils
-    .blocks
-    .metaclass
     .overriding_checks
     .state
     pytype.abstract.abstract
+    pytype.directors.directors
+    pytype.overlays.overlays
     pytype.platform_utils.platform_utils
     pytype.pyc.pyc
     pytype.pytd.pytd
@@ -627,22 +590,10 @@ py_test(
 
 py_test(
   NAME
-    blocks_test
-  SRCS
-    blocks_test.py
-  DEPS
-    .blocks
-    pytype.pyc.pyc
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     constant_folding_test
   SRCS
     constant_folding_test.py
   DEPS
-    .blocks
     .config
     .constant_folding
     .context
@@ -650,6 +601,7 @@ py_test(
     .load_pytd
     .state
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.tests.test_base

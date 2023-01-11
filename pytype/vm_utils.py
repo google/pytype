@@ -9,8 +9,6 @@ import re
 import reprlib
 from typing import Optional, Sequence, Union
 
-from pytype import blocks
-from pytype import metaclass
 from pytype import overriding_checks
 from pytype import state as frame_state
 from pytype import utils
@@ -18,6 +16,8 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.directors import blocks
+from pytype.overlays import metaclass
 from pytype.platform_utils import path_utils
 from pytype.pyc import opcodes
 from pytype.pytd import mro

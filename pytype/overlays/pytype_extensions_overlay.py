@@ -1,7 +1,7 @@
 """Implementation of special members of pytype_extensions."""
 
-from pytype import special_builtins
 from pytype.overlays import overlay
+from pytype.overlays import special_builtins
 
 
 class PytypeExtensionsOverlay(overlay.Overlay):

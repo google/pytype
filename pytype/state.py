@@ -5,12 +5,12 @@ import itertools
 import logging
 from typing import Any, Collection, Dict, Optional, Tuple, Union
 
-from pytype import blocks
 from pytype import compare
 from pytype import metrics
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import mixin
+from pytype.directors import blocks
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)

@@ -14,11 +14,13 @@ py_library(
     .flax_overlay
     .future_overlay
     .overlay_dict
+    .metaclass
     .named_tuple
     .overlay
     .overlay_utils
     .pytype_extensions_overlay
     .six_overlay
+    .special_builtins
     .subprocess_overlay
     .sys_overlay
     .typed_dict
@@ -33,7 +35,7 @@ py_library(
     classgen.py
   DEPS
     .overlay_utils
-    pytype.special_builtins
+    .special_builtins
     pytype.abstract.abstract
 )
 
@@ -44,7 +46,7 @@ py_library(
     abc_overlay.py
   DEPS
     .overlay
-    pytype.special_builtins
+    .special_builtins
     pytype.abstract.abstract
 )
 
@@ -115,7 +117,7 @@ py_library(
     .classgen
     .overlay
     .overlay_utils
-    pytype.special_builtins
+    .special_builtins
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg
@@ -140,8 +142,17 @@ py_library(
   SRCS
     future_overlay.py
   DEPS
+    .metaclass
     .overlay
-    pytype.metaclass
+)
+
+py_library(
+  NAME
+    metaclass
+  SRCS
+    metaclass.py
+  DEPS
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -152,7 +163,7 @@ py_library(
   DEPS
     .classgen
     .overlay_utils
-    pytype.special_builtins
+    .special_builtins
     pytype.utils
     pytype.abstract.abstract
     pytype.pytd.pytd
@@ -164,7 +175,7 @@ py_library(
   SRCS
     overlay.py
   DEPS
-    pytype.datatypes
+    pytype.utils
     pytype.abstract.abstract
     pytype.typegraph.cfg
 )
@@ -210,7 +221,7 @@ py_library(
     pytype_extensions_overlay.py
   DEPS
     .overlay
-    pytype.special_builtins
+    .special_builtins
 )
 
 py_library(
@@ -219,8 +230,17 @@ py_library(
   SRCS
     six_overlay.py
   DEPS
+    .metaclass
     .overlay
-    pytype.metaclass
+)
+
+py_library(
+  NAME
+    special_builtins
+  SRCS
+    special_builtins.py
+  DEPS
+    pytype.abstract.abstract
 )
 
 py_library(
@@ -230,7 +250,7 @@ py_library(
     subprocess_overlay.py
   DEPS
     .overlay
-    pytype.special_builtins
+    .special_builtins
     pytype.abstract.abstract
 )
 

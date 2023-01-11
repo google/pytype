@@ -9,12 +9,12 @@ from typing import Any, Dict, Sequence, Tuple, Union
 
 import attrs
 
-from pytype import special_builtins
 from pytype import state as frame_state
 from pytype import vm
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.overlays import special_builtins
 from pytype.overlays import typing_overlay
 from pytype.pytd import escape
 from pytype.pytd import optimize

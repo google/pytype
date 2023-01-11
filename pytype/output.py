@@ -6,7 +6,6 @@ import enum
 import logging
 from typing import cast
 
-from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -15,6 +14,7 @@ from pytype.abstract import function
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import named_tuple
+from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
 from pytype.pyi import metadata

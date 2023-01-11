@@ -12,12 +12,12 @@ from pytype import errors
 from pytype import load_pytd
 from pytype import matcher
 from pytype import output
-from pytype import special_builtins
 from pytype import tracer_vm
 from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 

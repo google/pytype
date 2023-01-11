@@ -3,13 +3,13 @@ import logging
 from typing import Optional, Tuple, Union
 
 from pytype import datatypes
-from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import overlay
+from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)

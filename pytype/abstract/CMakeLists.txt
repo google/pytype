@@ -246,6 +246,7 @@ py_test(
     .abstract_utils
     .function
     pytype.libvm
+    pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.tests.test_base
     pytype.typegraph.cfg

@@ -3,8 +3,8 @@
 import sys
 import textwrap
 
-from pytype import blocks
 from pytype import errors
+from pytype.directors import blocks
 from pytype.directors import directors
 from pytype.pyc import pyc
 import unittest
