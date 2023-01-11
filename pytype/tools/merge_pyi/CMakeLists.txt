@@ -31,6 +31,17 @@ py_library(
     pytype.platform_utils.platform_utils
 )
 
+py_test(
+  NAME
+    merge_pyi_test
+  SRCS
+    merge_pyi_test.py
+  DEPS
+    .merge_pyi
+    .test_data
+    pytype.platform_utils.platform_utils
+)
+
 filegroup(
   NAME
     test_data
