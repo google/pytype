@@ -846,6 +846,13 @@ class FunctionTest(parser_test_base.ParserTestBase):
     self.check("def foo(x: int, y: str, z: bool,) -> int: ...",
                "def foo(x: int, y: str, z: bool) -> int: ...")
 
+  def test_defaults(self):
+    self.check("""
+      def f(x: int = 3, y: str = "y") -> None: ...
+    """, """
+      def f(x: int = ..., y: str = ...) -> None: ...
+    """)
+
   def test_star_params(self):
     self.check("def foo(*, x) -> str: ...")
     self.check("def foo(x: int, *args) -> str: ...")

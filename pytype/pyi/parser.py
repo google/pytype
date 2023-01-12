@@ -161,6 +161,12 @@ class AnnotationVisitor(visitor.BaseVisitor):
     if node.type == "str" and not self.subscripted:
       return self.convert_late_annotation(node.value)
 
+  def visit_arg(self, node):
+    # Visit only the annotation, not the default (which may be a
+    # string but should not be interpreted as a type annotation).
+    if node.annotation is not None:
+      self.visit(node.annotation)
+
   def visit_Tuple(self, node):
     return tuple(node.elts)
 
