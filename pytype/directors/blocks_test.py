@@ -18,7 +18,7 @@ prints:
   0 (<0>)
 """
 
-from pytype import blocks
+from pytype.directors import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.tests import test_utils

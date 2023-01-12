@@ -1,5 +1,108 @@
 add_package()
 
+py_library(
+  NAME
+    api
+  DEPS
+    .config
+    .errors
+    .io
+    .load_pytd
+)
+
+toplevel_py_binary(
+  NAME
+    pytype-single
+  SRCS
+    single.py
+  MAIN
+    single.py
+  DEPS
+    .pytype_main_deps
+)
+
+py_library(
+  NAME
+    utils
+  DEPS
+    ._utils
+    .datatypes
+    .file_utils
+    .metrics
+    .module_utils
+    .pytype_source_utils
+)
+
+py_library(
+  NAME
+    config
+  SRCS
+    config.py
+  DEPS
+    ._utils
+    .datatypes
+    .errors
+    .file_utils
+    .imports_map_loader
+    .module_utils
+    pytype.pyc.pyc
+    pytype.typegraph.cfg_utils
+)
+
+py_library(
+  NAME
+    errors
+  SRCS
+    errors.py
+  DEPS
+    ._utils
+    .debug
+    .matcher
+    pytype.abstract.abstract
+    pytype.overlays.overlays
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    load_pytd
+  SRCS
+    load_pytd.py
+  DEPS
+    .file_utils
+    .module_utils
+    pytype.imports.imports
+    pytype.platform_utils.platform_utils
+    pytype.pyi.parser
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    libvm
+  DEPS
+    .__version__
+    .analyze
+    .annotation_utils
+    .attribute
+    .compare
+    .config
+    .context
+    .convert
+    .convert_structural
+    .debug
+    .errors
+    .imports_map_loader
+    .io
+    .load_pytd
+    .matcher
+    .output
+    .state
+    .tracer_vm
+    .vm
+    pytype.directors.directors
+)
+
 filegroup(
   NAME
     test_data
@@ -22,67 +125,6 @@ filegroup(
     test_data/complex.pyi
     test_data/imports.pyi
     test_data/simple.pyi
-)
-
-py_library(
-  NAME
-    api
-  DEPS
-    .config
-    .errors
-    .io
-)
-
-toplevel_py_binary(
-  NAME
-    pytype-single
-  SRCS
-    single.py
-  MAIN
-    single.py
-  DEPS
-    .pytype_main_deps
-)
-
-py_library(
-  NAME
-    libvm
-  DEPS
-    .__version__
-    .analyze
-    .annotation_utils
-    .attribute
-    .blocks
-    .compare
-    .config
-    .context
-    .convert
-    .convert_structural
-    .debug
-    .errors
-    .imports_map_loader
-    .io
-    .load_pytd
-    .matcher
-    .metaclass
-    .output
-    .special_builtins
-    .state
-    .tracer_vm
-    .vm
-    pytype.directors.directors
-)
-
-py_library(
-  NAME
-    utils
-  DEPS
-    ._utils
-    .datatypes
-    .file_utils
-    .metrics
-    .module_utils
-    .pytype_source_utils
 )
 
 py_library(
@@ -122,20 +164,9 @@ py_library(
   DEPS
     ._utils
     .datatypes
-    .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    blocks
-  SRCS
-    blocks.py
-  DEPS
-    pytype.pyc.pyc
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -146,22 +177,6 @@ py_library(
   DEPS
     pytype.abstract.abstract
     pytype.pytd.pytd
-)
-
-py_library(
-  NAME
-    config
-  SRCS
-    config.py
-  DEPS
-    ._utils
-    .datatypes
-    .errors
-    .file_utils
-    .imports_map_loader
-    .module_utils
-    pytype.pyc.pyc
-    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -180,10 +195,9 @@ py_library(
     convert.py
   DEPS
     ._utils
-    .blocks
     .datatypes
-    .special_builtins
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser
@@ -206,10 +220,10 @@ py_library(
     .load_pytd
     .matcher
     .output
-    .special_builtins
     .tracer_vm
     .vm_utils
     pytype.abstract.abstract
+    pytype.overlays.overlays
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
 )
@@ -238,20 +252,6 @@ py_library(
   DEPS
     ._utils
     pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    errors
-  SRCS
-    errors.py
-  DEPS
-    ._utils
-    .debug
-    .matcher
-    pytype.abstract.abstract
-    pytype.overlays.overlays
-    pytype.pytd.pytd
 )
 
 py_library(
@@ -295,40 +295,16 @@ py_library(
 
 py_library(
   NAME
-    load_pytd
-  SRCS
-    load_pytd.py
-  DEPS
-    .file_utils
-    .module_utils
-    pytype.imports.imports
-    pytype.platform_utils.platform_utils
-    pytype.pyi.parser
-    pytype.pytd.pytd
-)
-
-py_library(
-  NAME
     matcher
   SRCS
     matcher.py
   DEPS
     ._utils
     .datatypes
-    .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    metaclass
-  SRCS
-    metaclass.py
-  DEPS
-    pytype.abstract.abstract
 )
 
 py_library(
@@ -354,7 +330,6 @@ py_library(
     output.py
   DEPS
     ._utils
-    .special_builtins
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pyi.parser
@@ -390,24 +365,15 @@ py_library(
 
 py_library(
   NAME
-    special_builtins
-  SRCS
-    special_builtins.py
-  DEPS
-    pytype.abstract.abstract
-)
-
-py_library(
-  NAME
     state
   SRCS
     state.py
   DEPS
     ._utils
-    .blocks
     .compare
     .metrics
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.typegraph.cfg
 )
 
@@ -417,7 +383,6 @@ py_library(
   SRCS
     tracer_vm.py
   DEPS
-    .special_builtins
     .state
     .vm
     pytype.abstract.abstract
@@ -449,7 +414,6 @@ py_library(
     __init__.py
     vm.py
   DEPS
-    .blocks
     .compare
     .constant_folding
     .datatypes
@@ -475,11 +439,11 @@ py_library(
     vm_utils.py
   DEPS
     ._utils
-    .blocks
-    .metaclass
     .overriding_checks
     .state
     pytype.abstract.abstract
+    pytype.directors.directors
+    pytype.overlays.overlays
     pytype.platform_utils.platform_utils
     pytype.pyc.pyc
     pytype.pytd.pytd
@@ -627,22 +591,10 @@ py_test(
 
 py_test(
   NAME
-    blocks_test
-  SRCS
-    blocks_test.py
-  DEPS
-    .blocks
-    pytype.pyc.pyc
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
     constant_folding_test
   SRCS
     constant_folding_test.py
   DEPS
-    .blocks
     .config
     .constant_folding
     .context
@@ -650,6 +602,7 @@ py_test(
     .load_pytd
     .state
     pytype.abstract.abstract
+    pytype.directors.directors
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.tests.test_base

@@ -1,6 +1,6 @@
 """Implementation of special members of third_party/six."""
 
-from pytype import metaclass
+from pytype.overlays import metaclass
 from pytype.overlays import overlay
 
 

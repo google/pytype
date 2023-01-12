@@ -19,7 +19,7 @@ py_library(
   SRCS
     annotate_ast.py
   DEPS
-    pytype.libvm
+    pytype.api
     pytype.pytd.pytd
     pytype.tools.traces.traces
 )
@@ -31,6 +31,6 @@ py_test(
     annotate_ast_test.py
   DEPS
     .annotate_ast
-    pytype.libvm
+    pytype.config
     pytype.tests.test_base
 )

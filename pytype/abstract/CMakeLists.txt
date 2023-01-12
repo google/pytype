@@ -245,7 +245,8 @@ py_test(
     ._abstract
     .abstract_utils
     .function
-    pytype.libvm
+    pytype.config
+    pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.tests.test_base
     pytype.typegraph.cfg
@@ -258,7 +259,7 @@ py_test(
     abstract_utils_test.py
   DEPS
     .abstract_utils
-    pytype.libvm
+    pytype.config
     pytype.tests.test_base
 )
 

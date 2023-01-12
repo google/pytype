@@ -2,11 +2,11 @@
 
 import textwrap
 
-from pytype import blocks
 from pytype import config
 from pytype import constant_folding
 from pytype import state as frame_state
 from pytype.abstract import abstract
+from pytype.directors import blocks
 from pytype.pyc import compiler
 from pytype.pyc import opcodes
 from pytype.pyc import pyc

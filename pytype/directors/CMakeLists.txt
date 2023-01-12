@@ -5,9 +5,20 @@ py_library(
     directors
   DEPS
     ._directors
+    .blocks
     .init
     .parser
     .parser_libcst
+)
+
+py_library(
+  NAME
+    blocks
+  SRCS
+    blocks.py
+  DEPS
+    pytype.pyc.pyc
+    pytype.typegraph.cfg_utils
 )
 
 py_library(
@@ -16,9 +27,9 @@ py_library(
   SRCS
     directors.py
   DEPS
+    .blocks
     .parser
     .parser_libcst
-    pytype.blocks
     pytype.config
 )
 
@@ -49,12 +60,23 @@ py_library(
 
 py_test(
   NAME
+    blocks_test
+  SRCS
+    blocks_test.py
+  DEPS
+    .blocks
+    pytype.pyc.pyc
+    pytype.tests.test_base
+)
+
+py_test(
+  NAME
     directors_test
   SRCS
     directors_test.py
   DEPS
+    .blocks
     .directors
-    pytype.blocks
     pytype.errors
     pytype.pyc.pyc
 )

@@ -20,7 +20,6 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
 
-from pytype import blocks
 from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
@@ -33,6 +32,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.directors import blocks
 from pytype.directors import directors
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib

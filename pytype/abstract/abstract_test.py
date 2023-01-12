@@ -1,11 +1,10 @@
 """Tests for abstract.py."""
 
 from pytype import config
-from pytype import special_builtins
-from pytype import state as frame_state
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.overlays import special_builtins
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
@@ -105,7 +104,6 @@ class IsInstanceTest(AbstractTestBase):
         }, left, right)
 
   def test_call_wrong_argcount(self):
-    self._ctx.vm.push_frame(frame_state.SimpleFrame())
     node, result = self._is_instance.call(
         self._node, None, function.Args((), self.new_dict(), None, None))
     self.assertEqual(self._node, node)
@@ -114,7 +112,6 @@ class IsInstanceTest(AbstractTestBase):
     self.assertRegex(str(self._ctx.errorlog), "missing-parameter")
 
   def test_call_wrong_keywords(self):
-    self._ctx.vm.push_frame(frame_state.SimpleFrame())
     x = self.new_var(abstract.Unknown(self._ctx))
     node, result = self._is_instance.call(
         self._node, None, function.Args(
@@ -1050,7 +1047,6 @@ class AbstractTest(AbstractTestBase):
 
   def test_type_parameter_official_name(self):
     param = abstract.TypeParameter("T", self._ctx)
-    self._ctx.vm.frame = frame_state.SimpleFrame()  # for error logging
     param.update_official_name("T")
     self.assertFalse(self._ctx.errorlog.has_error())
     param.update_official_name("Q")
@@ -1092,8 +1088,8 @@ class AbstractTest(AbstractTestBase):
     v2 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
     self.assertIsNot(v1, v2)
     # Create one instance per opcode.
-    fake_opcode = object()
-    self._ctx.vm.push_frame(frame_state.SimpleFrame(fake_opcode))
+    frame, = self._ctx.vm.simple_stack(opcode=object())
+    self._ctx.vm.push_frame(frame)
     v3 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
     v4 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
     self.assertIsNot(v1, v3)

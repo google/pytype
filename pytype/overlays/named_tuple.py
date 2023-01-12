@@ -5,7 +5,6 @@ import keyword
 
 from typing import Any, List, Optional
 
-from pytype import special_builtins
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -13,6 +12,7 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import classgen
 from pytype.overlays import overlay_utils
+from pytype.overlays import special_builtins
 from pytype.pytd import escape
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
