@@ -1093,7 +1093,7 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
   if not target_name:
     desc = f" function {func_name!r}" if func_name else ""
     ctx.errorlog.not_supported_yet(
-        ctx.vm.frames, f"Using TypeGuard{desc} with an arbitrary expression",
+        ctx.vm.frames, f"Calling TypeGuard{desc} with an arbitrary expression",
         "Please assign the expression to a local variable.")
     return None
   target = frame.lookup_name(target_name)

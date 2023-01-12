@@ -73,7 +73,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2022-11-11T10:00-08:00 -->
+<!-- Added by: rechen, at: 2023-01-11T17:37-08:00 -->
 
 <!--te-->
 
@@ -689,6 +689,21 @@ A()  # not-instantiable
 ## not-supported-yet
 
 This feature is not yet supported by pytype.
+
+The fix for the error "Calling TypeGuard function 'foo' with an arbitrary
+expression not supported yet" is to refactor the code passing an arbitrary
+expression to `foo` to pass in a local variable instead. For example:
+
+```python
+# Before:
+if foo(eggs[0]):
+  do_something()
+
+# After:
+egg = eggs[0]
+if foo(egg):
+  do_something()
+```
 
 ## not-writable
 
