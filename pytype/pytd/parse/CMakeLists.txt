@@ -14,7 +14,7 @@ py_library(
   SRCS
     parser_test_base.py
   DEPS
-    pytype.libvm
+    pytype.api
     pytype.pyi.parser
     pytype.pytd.pytd
     pytype.tests.test_base

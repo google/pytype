@@ -104,7 +104,7 @@ py_library(
     parse_args.py
   DEPS
     .kythe
-    pytype.libvm
+    pytype.config
     pytype.utils
     pytype.tools.tools
 )
@@ -116,7 +116,7 @@ py_test(
     callgraph_test.py
   DEPS
     ._indexer
-    pytype.libvm
+    pytype.config
     pytype.tests.test_base
 )
 
@@ -129,7 +129,7 @@ py_test(
     ._indexer
     .kythe
     .output
-    pytype.libvm
+    pytype.config
     pytype.utils
     pytype.abstract.abstract
     pytype.tests.test_base

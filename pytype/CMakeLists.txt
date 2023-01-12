@@ -7,6 +7,7 @@ py_library(
     .config
     .errors
     .io
+    .load_pytd
 )
 
 toplevel_py_binary(
@@ -18,32 +19,6 @@ toplevel_py_binary(
     single.py
   DEPS
     .pytype_main_deps
-)
-
-py_library(
-  NAME
-    libvm
-  DEPS
-    .__version__
-    .analyze
-    .annotation_utils
-    .attribute
-    .compare
-    .config
-    .context
-    .convert
-    .convert_structural
-    .debug
-    .errors
-    .imports_map_loader
-    .io
-    .load_pytd
-    .matcher
-    .output
-    .state
-    .tracer_vm
-    .vm
-    pytype.directors.directors
 )
 
 py_library(
@@ -86,6 +61,46 @@ py_library(
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    load_pytd
+  SRCS
+    load_pytd.py
+  DEPS
+    .file_utils
+    .module_utils
+    pytype.imports.imports
+    pytype.platform_utils.platform_utils
+    pytype.pyi.parser
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    libvm
+  DEPS
+    .__version__
+    .analyze
+    .annotation_utils
+    .attribute
+    .compare
+    .config
+    .context
+    .convert
+    .convert_structural
+    .debug
+    .errors
+    .imports_map_loader
+    .io
+    .load_pytd
+    .matcher
+    .output
+    .state
+    .tracer_vm
+    .vm
+    pytype.directors.directors
 )
 
 filegroup(
@@ -274,20 +289,6 @@ py_library(
     pytype.directors.directors
     pytype.imports.imports
     pytype.pyc.pyc
-    pytype.pyi.parser
-    pytype.pytd.pytd
-)
-
-py_library(
-  NAME
-    load_pytd
-  SRCS
-    load_pytd.py
-  DEPS
-    .file_utils
-    .module_utils
-    pytype.imports.imports
-    pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
 )

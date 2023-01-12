@@ -16,7 +16,7 @@ py_library(
   SRCS
     config.py
   DEPS
-    pytype.api
+    pytype.config
     pytype.utils
     pytype.platform_utils.platform_utils
     pytype.tools.tools
@@ -38,7 +38,7 @@ py_library(
     parse_args.py
   DEPS
     .config
-    pytype.libvm
+    pytype.config
     pytype.utils
     pytype.tools.tools
 )
@@ -85,7 +85,7 @@ py_test(
     pytype_runner_test.py
   DEPS
     .analyze_project
-    pytype.libvm
+    pytype.config
     pytype.utils
     pytype.platform_utils.platform_utils
     pytype.tests.test_base
@@ -100,7 +100,7 @@ toplevel_py_binary(
     main.py
   DEPS
     .analyze_project
-    pytype.libvm
+    pytype.api
     pytype.platform_utils.platform_utils
     pytype.tools.tools
 )

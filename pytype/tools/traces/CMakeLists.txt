@@ -9,7 +9,7 @@ toplevel_py_binary(
     run.py
   DEPS
     ._traces
-    pytype.libvm
+    pytype.config
 )
 
 py_library(
@@ -39,7 +39,7 @@ py_test(
     traces_test.py
   DEPS
     ._traces
-    pytype.libvm
+    pytype.config
     pytype.pytd.pytd
     pytype.tests.test_base
 )

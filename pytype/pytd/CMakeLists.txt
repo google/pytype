@@ -280,7 +280,7 @@ py_test(
   DEPS
     .mro
     .visitors
-    pytype.libvm
+    pytype.api
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
 )
@@ -295,7 +295,7 @@ py_test(
     .optimize
     .pytd_utils
     .visitors
-    pytype.libvm
+    pytype.api
     pytype.pytd.parse.parser_test_base
 )
 
@@ -404,7 +404,7 @@ py_test(
     .pytd_utils
     .serialize_ast
     .visitors
-    pytype.libvm
+    pytype.api
     pytype.imports.imports
     pytype.platform_utils.platform_utils
     pytype.tests.test_base

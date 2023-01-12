@@ -9,7 +9,7 @@ toplevel_py_binary(
     main.py
   DEPS
     .visualizer
-    pytype.libvm
+    pytype.api
     pytype.utils
     pytype.inspect.inspect
     pytype.tools.tools
