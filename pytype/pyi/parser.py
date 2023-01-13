@@ -129,6 +129,16 @@ def _attribute_to_name(node: ast3.Attribute) -> ast3.Name:
 class AnnotationVisitor(visitor.BaseVisitor):
   """Converts typed_ast annotations to pytd."""
 
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    # Exclude defaults because they may contain strings
+    # which should not be interpreted as annotations
+    self._node_children[self._ast.arguments] = [
+        field
+        for field in self._ast.arguments._fields
+        if field not in ("kw_defaults", "defaults")
+    ]
+
   def show(self, node):
     print(debug.dump(node, ast3, include_attributes=False))
 
