@@ -576,9 +576,9 @@ class QuotedTypeTest(parser_test_base.ParserTestBase):
 
   def test_def(self):
     self.check("""
-      def f(x: "int") -> "str": ...
+      def f(x: "int", *args: "float", y: "str", **kwargs: "bool") -> "str": ...
     """, """
-      def f(x: int) -> str: ...
+      def f(x: int, *args: float, y: str, **kwargs: bool) -> str: ...
     """)
 
 
@@ -845,6 +845,13 @@ class FunctionTest(parser_test_base.ParserTestBase):
     # Allow but do not preserve a trailing comma in the param list.
     self.check("def foo(x: int, y: str, z: bool,) -> int: ...",
                "def foo(x: int, y: str, z: bool) -> int: ...")
+
+  def test_defaults(self):
+    self.check("""
+      def f(x: int = 3, y: str = " ") -> None: ...
+    """, """
+      def f(x: int = ..., y: str = ...) -> None: ...
+    """)
 
   def test_star_params(self):
     self.check("def foo(*, x) -> str: ...")
