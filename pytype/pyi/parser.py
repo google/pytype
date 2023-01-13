@@ -129,6 +129,16 @@ def _attribute_to_name(node: ast3.Attribute) -> ast3.Name:
 class AnnotationVisitor(visitor.BaseVisitor):
   """Converts typed_ast annotations to pytd."""
 
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    # Exclude defaults because they may contain strings
+    # which should not be interpreted as annotations
+    self._node_children[self._ast.arguments] = [
+      field
+      for field in self._ast.arguments._fields
+      if field not in ("kw_defaults", "defaults")
+    ]
+
   def show(self, node):
     print(debug.dump(node, ast3, include_attributes=False))
 
@@ -160,12 +170,6 @@ class AnnotationVisitor(visitor.BaseVisitor):
     # code simple here and just handle the basic case of a fully quoted type.
     if node.type == "str" and not self.subscripted:
       return self.convert_late_annotation(node.value)
-
-  def visit_arg(self, node):
-    # Visit only the annotation, not the default (which may be a
-    # string but should not be interpreted as a type annotation).
-    if node.annotation is not None:
-      self.visit(node.annotation)
 
   def visit_Tuple(self, node):
     return tuple(node.elts)
