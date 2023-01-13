@@ -2404,8 +2404,11 @@ class VirtualMachine:
 
   def byte_MAKE_FUNCTION(self, state, op):
     """Create a function and push it onto the stack."""
-    state, name_var = state.pop()
-    name = abstract_utils.get_atomic_python_constant(name_var)
+    if self.ctx.python_version >= (3, 11):
+      name = None  # the name will be read from the code object
+    else:
+      state, name_var = state.pop()
+      name = abstract_utils.get_atomic_python_constant(name_var)
     state, code = state.pop()
     state, defaults, kw_defaults, annot, free_vars = (
         self._get_extra_function_args(state, op.arg))
@@ -2417,7 +2420,7 @@ class VirtualMachine:
     if op.line in self._director.decorators:
       fn.data[0].is_decorated = True
     vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
-    self.trace_opcode(op, name, fn)
+    self.trace_opcode(op, fn.data[0].name, fn)
     self.trace_functiondef(fn)
     return state.push(fn)
 
@@ -2932,3 +2935,121 @@ class VirtualMachine:
   def byte_GEN_START(self, state, op):
     del op
     return state.pop_and_discard()
+
+  # TODO(b/265374890): Implement these Python 3.11 opcodes.
+
+  def byte_CACHE(self, state, op):
+    del op
+    return state
+
+  def byte_PUSH_NULL(self, state, op):
+    del op
+    return state
+
+  def byte_PUSH_EXC_INFO(self, state, op):
+    del op
+    return state
+
+  def byte_CHECK_EXC_MATCH(self, state, op):
+    del op
+    return state
+
+  def byte_CHECK_EG_MATCH(self, state, op):
+    del op
+    return state
+
+  def byte_BEFORE_WITH(self, state, op):
+    del op
+    return state
+
+  def byte_RETURN_GENERATOR(self, state, op):
+    del op
+    return state
+
+  def byte_ASYNC_GEN_WRAP(self, state, op):
+    del op
+    return state
+
+  def byte_PREP_RERAISE_STAR(self, state, op):
+    del op
+    return state
+
+  def byte_SWAP(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_FORWARD_IF_FALSE(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_FORWARD_IF_TRUE(self, state, op):
+    del op
+    return state
+
+  def byte_COPY(self, state, op):
+    del op
+    return state
+
+  def byte_BINARY_OP(self, state, op):
+    del op
+    return state
+
+  def byte_SEND(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_FORWARD_IF_NONE(self, state, op):
+    del op
+    return state
+
+  def byte_JUMP_BACKWARD_NO_INTERRUPT(self, state, op):
+    del op
+    return state
+
+  def byte_MAKE_CELL(self, state, op):
+    del op
+    return state
+
+  def byte_JUMP_BACKWARD(self, state, op):
+    del op
+    return state
+
+  def byte_COPY_FREE_VARS(self, state, op):
+    del op
+    return state
+
+  def byte_RESUME(self, state, op):
+    del op
+    return state
+
+  def byte_PRECALL(self, state, op):
+    del op
+    return state
+
+  def byte_CALL(self, state, op):
+    del op
+    return state
+
+  def byte_KW_NAMES(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_BACKWARD_IF_NOT_NONE(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_BACKWARD_IF_NONE(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_BACKWARD_IF_FALSE(self, state, op):
+    del op
+    return state
+
+  def byte_POP_JUMP_BACKWARD_IF_TRUE(self, state, op):
+    del op
+    return state

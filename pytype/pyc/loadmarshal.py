@@ -344,11 +344,11 @@ class _LoadMarshal:
       posonlyargcount = self._read_long()
     else:
       posonlyargcount = -1
-    if self.python_version[0] >= 3:
-      kwonlyargcount = self._read_long()
+    kwonlyargcount = self._read_long()
+    if self.python_version >= (3, 11):
+      nlocals = -1  # TODO(b/265374890): Where has this gone?
     else:
-      kwonlyargcount = -1
-    nlocals = self._read_long()
+      nlocals = self._read_long()
     stacksize = self._read_long()
     flags = self._read_long()
     # The code field is a 'string of raw compiled bytecode'
@@ -357,15 +357,29 @@ class _LoadMarshal:
     consts = self.load()
     names = self.load()
     varnames = self.load()
-    freevars = self.load()
-    cellvars = self.load()
+    if self.python_version >= (3, 11):
+      # TODO(b/265374890): In 3.11, freevars and cellvars seem to have been
+      # replaced by a string?
+      _ = self.load()
+      freevars = cellvars = ()
+    else:
+      freevars = self.load()
+      cellvars = self.load()
     filename = self.load()
     name = self.load()
+    if self.python_version >= (3, 11):
+      qualname = self.load()
+      # TODO(b/265374890): we should replace vm_utils.make_function's use of
+      # CodeType.name with qualname, which contains the fully qualified name.
+      del qualname
     firstlineno = self._read_long()
     # lnotab, from
     # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt:
     # 'an array of unsigned bytes disguised as a Python bytes object'.
     lnotab = self.load()
+    if self.python_version >= (3, 11):
+      exceptiontable = self.load()
+      del exceptiontable  # TODO(b/265374890): What is this for?
     return CodeType(argcount, posonlyargcount, kwonlyargcount, nlocals,
                     stacksize, flags, code, consts, names, varnames, filename,
                     name, firstlineno, lnotab, freevars, cellvars,
