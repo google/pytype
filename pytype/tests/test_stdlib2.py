@@ -541,9 +541,9 @@ class StdlibTestsFeatures(test_base.BaseTest,
     """)
     self.assertTypesMatchPytd(ty, """
       import collections
-      from typing import ChainMap, List, Mapping, Union
+      from typing import ChainMap, List, MutableMapping, Union
       v1: ChainMap[Union[bytes, str], Union[int, str]]
-      v2: List[Mapping[Union[bytes, str], Union[int, str]]]
+      v2: List[MutableMapping[Union[bytes, str], Union[int, str]]]
       v3: ChainMap[Union[bytes, str], Union[int, str]]
       v4: ChainMap[Union[bytes, str], Union[int, str]]
     """)
