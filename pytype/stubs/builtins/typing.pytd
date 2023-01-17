@@ -552,34 +552,34 @@ if sys.version_info >= (3, 0):
     def __anext__(self) -> Awaitable[_T]: ...
 
   class ChainMap(MutableMapping[_K, _V]):
-    maps: List[Mapping[_K, _V]]
+    maps: List[MutableMapping[_K, _V]]
     parents: ChainMap[_K, _V]
     def __init__(self) -> None:
       self = ChainMap[nothing, nothing]
-    def __init__(self, map1: Mapping[_K1, _V1]) -> None:
+    def __init__(self, map1: MutableMapping[_K1, _V1]) -> None:
       self = ChainMap[_K1, _V1]
     def __init__(
         self,
-        map1: Mapping[_K1, _V1],
+        map1: MutableMapping[_K1, _V1],
         map2: Mapping[_K2, _V2]
     ) -> None:
       self = ChainMap[Union[_K1, _K2], Union[_V1, _V2]]
     def __init__(
         self,
-        map1: Mapping[_K1, _V1],
+        map1: MutableMapping[_K1, _V1],
         map2: Mapping[_K2, _V2],
         map3: Mapping[_K3, _V3]
     ) -> None:
       self = ChainMap[Union[_K1, _K2, _K3], Union[_V1, _V2, _V3]]
     def __init__(
         self,
-        map1: Mapping[_K1, _V1],
+        map1: MutableMapping[_K1, _V1],
         map2: Mapping[_K2, _V2],
         map3: Mapping[_K3, _V3],
         map4: Mapping[_K4, _V4]
     ) -> None:
       self = ChainMap[Union[_K1, _K2, _K3, _K4], Union[_V1, _V2, _V3, _V4]]
-    def __init__(self, *maps: Mapping[Any, Any]) -> None:
+    def __init__(self, *maps: MutableMapping[Any, Any]) -> None:
       self = ChainMap[Any, Any]
     def __delitem__(self, k) -> None: ...
     def __getitem__(self, key: _K) -> _V: ...

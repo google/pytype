@@ -352,6 +352,8 @@ class YIELD_FROM(Opcode):
   __slots__ = ()
 
 
+# TODO(b/265374890): GET_AWAITABLE gains an argument in Python 3.11, but
+# unconditionally adding the argument causes tests in earlier versions to fail.
 class GET_AWAITABLE(Opcode):
   __slots__ = ()
 
@@ -845,6 +847,142 @@ class MATCH_CLASS(OpcodeWithArg):
   __slots__ = ()
 
 
+class CACHE(Opcode):
+  __slots__ = ()
+
+
+class PUSH_NULL(Opcode):
+  __slots__ = ()
+
+
+class PUSH_EXC_INFO(Opcode):
+  __slots__ = ()
+
+
+class CHECK_EXC_MATCH(Opcode):
+  __slots__ = ()
+
+
+class CHECK_EG_MATCH(Opcode):
+  __slots__ = ()
+
+
+class BEFORE_WITH(Opcode):
+  __slots__ = ()
+
+
+class RETURN_GENERATOR(Opcode):
+  __slots__ = ()
+
+
+class ASYNC_GEN_WRAP(Opcode):
+  __slots__ = ()
+
+
+class PREP_RERAISE_STAR(Opcode):
+  __slots__ = ()
+
+
+class SWAP(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class POP_JUMP_FORWARD_IF_FALSE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_FORWARD_IF_TRUE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class COPY(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class BINARY_OP(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class SEND(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_FORWARD_IF_NOT_NONE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_FORWARD_IF_NONE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class JUMP_BACKWARD_NO_INTERRUPT(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class MAKE_CELL(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_FREE
+  __slots__ = ()
+
+
+class JUMP_BACKWARD(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class COPY_FREE_VARS(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class RESUME(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class PRECALL(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class CALL(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class KW_NAMES(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_CONST
+  __slots__ = ()
+
+
+class POP_JUMP_BACKWARD_IF_NOT_NONE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_BACKWARD_IF_NONE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_BACKWARD_IF_FALSE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
+  FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
 def _overlay_mapping(mapping, new_entries):
   ret = mapping.copy()
   ret.update(new_entries)
@@ -1022,12 +1160,89 @@ python_3_10_mapping = _overlay_mapping(python_3_9_mapping, {
     152: MATCH_CLASS,
 })
 
+python_3_11_mapping = _overlay_mapping(python_3_10_mapping, {
+    0: CACHE,
+    2: PUSH_NULL,  # was ROT_TWO in 3.10
+    3: None,  # was ROT_THREE in 3.10
+    4: None,  # was DUP_TOP in 3.10
+    5: None,  # was DUP_TOP_TWO in 3.10
+    6: None,  # was ROT_FOUR in 3.10
+    16: None,  # was BINARY_MATRIX_MULTIPLY in 3.10
+    17: None,  # was INPLACE_MATRIX_MULTIPLY in 3.10
+    19: None,  # was BINARY_POWER in 3.10
+    20: None,  # was BINARY_MULTIPLY in 3.10
+    22: None,  # was BINARY_MODULO in 3.10
+    23: None,  # was BINARY_ADD in 3.10
+    24: None,  # was BINARY_SUBTRACT in 3.10
+    26: None,  # was BINARY_FLOOR_DIVIDE in 3.10
+    27: None,  # was BINARY_TRUE_DIVIDE in 3.10
+    28: None,  # was INPLACE_FLOOR_DIVIDE in 3.10
+    29: None,  # was INPLACE_TRUE_DIVIDE in 3.10
+    34: None,  # was COPY_DICT_WITHOUT_KEYS in 3.10
+    35: PUSH_EXC_INFO,
+    36: CHECK_EXC_MATCH,
+    37: CHECK_EG_MATCH,
+    53: BEFORE_WITH,
+    55: None,  # was INPLACE_ADD in 3.10
+    56: None,  # was INPLACE_SUBTRACT in 3.10
+    57: None,  # was INPLACE_MULTIPLY in 3.10
+    59: None,  # was INPLACE_MODULO in 3.10
+    62: None,  # was BINARY_LSHIFT in 3.10
+    63: None,  # was BINARY_RSHIFT in 3.10
+    64: None,  # was BINARY_AND in 3.10
+    65: None,  # was BINARY_XOR in 3.10
+    66: None,  # was BINARY_OR in 3.10
+    67: None,  # was INPLACE_POWER in 3.10
+    72: None,  # was YIELD_FROM in 3.10
+    73: None,  # was GET_AWAITABLE in 3.10
+    75: RETURN_GENERATOR,  # was INPLACE_LSHIFT in 3.10
+    76: None,  # was INPLACE_RSHIFT in 3.10
+    77: None,  # was INPLACE_AND in 3.10
+    78: None,  # was INPLACE_XOR in 3.10
+    79: None,  # was INPLACE_OR in 3.10
+    87: ASYNC_GEN_WRAP,  # was POP_BLOCK in 3.10
+    88: PREP_RERAISE_STAR,
+    99: SWAP,  # was ROT_N in 3.10
+    113: None,  # was JUMP_ABSOLUTE in 3.10
+    114: POP_JUMP_FORWARD_IF_FALSE,  # was POP_JUMP_IF_FALSE in 3.10
+    115: POP_JUMP_FORWARD_IF_TRUE,  # was POP_JUMP_IF_TRUE in 3.10
+    120: COPY,
+    121: None,  # was JUMP_IF_NOT_EXC_MATCH in 3.10
+    122: BINARY_OP,  # was SETUP_FINALLY in 3.10
+    123: SEND,
+    128: POP_JUMP_FORWARD_IF_NOT_NONE,
+    129: POP_JUMP_FORWARD_IF_NONE,  # was GEN_START in 3.10
+    131: GET_AWAITABLE,  # was CALL_FUNCTION in 3.10
+    134: JUMP_BACKWARD_NO_INTERRUPT,
+    135: MAKE_CELL,  # was LOAD_CLOSURE in 3.10
+    136: LOAD_CLOSURE,  # was LOAD_DEREF in 3.10
+    137: LOAD_DEREF,  # was STORE_DEREF in 3.10
+    138: STORE_DEREF,  # was DELETE_DEREF in 3.10
+    139: DELETE_DEREF,
+    140: JUMP_BACKWARD,
+    141: None,  # was CALL_FUNCTION_KW in 3.10
+    143: None,  # was SETUP_WITH in 3.10
+    149: COPY_FREE_VARS,
+    151: RESUME,
+    154: None,  # was SETUP_ASYNC_WITH in 3.10
+    161: None,  # was CALL_METHOD in 3.10
+    166: PRECALL,
+    171: CALL,
+    172: KW_NAMES,
+    173: POP_JUMP_BACKWARD_IF_NOT_NONE,
+    174: POP_JUMP_BACKWARD_IF_NONE,
+    175: POP_JUMP_BACKWARD_IF_FALSE,
+    176: POP_JUMP_BACKWARD_IF_TRUE,
+})
+
 
 class _BaseLineNumberTableParser(abc.ABC):
   """State machine for decoding a Python line number array."""
 
-  def __init__(self, lnotab: bytes, firstlineno: int):
-    assert not len(lnotab) & 1  # lnotab always has an even number of elements
+  def __init__(
+      self, lnotab: bytes, firstlineno: int, python_version: Tuple[int, int]):
+    if python_version < (3, 11):
+      assert not len(lnotab) & 1  # lnotab always has an even number of elements
     self.lnotab = lnotab
     self.lineno = firstlineno
     self.next_addr = self.lnotab[0] if self.lnotab else 0
@@ -1155,6 +1370,10 @@ def _wordcode_reader(
       start = pos + 2
 
 
+def _is_backward_jump(opcls):
+  return "JUMP_BACKWARD" in opcls.__name__
+
+
 def _dis(data, python_version, mapping,
          co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
          co_freevars=None, co_lnotab=None, co_firstlineno=None):
@@ -1163,9 +1382,9 @@ def _dis(data, python_version, mapping,
   if not co_lnotab:
     lp = None
   elif python_version >= (3, 10):
-    lp = _LineNumberTableParser(co_lnotab, co_firstlineno)
+    lp = _LineNumberTableParser(co_lnotab, co_firstlineno, python_version)
   else:
-    lp = _LineNumberTableParserPre310(co_lnotab, co_firstlineno)
+    lp = _LineNumberTableParserPre310(co_lnotab, co_firstlineno, python_version)
   offset_to_index = {}
   if co_cellvars is not None and co_freevars is not None:
     cellvars_freevars = co_cellvars + co_freevars
@@ -1184,7 +1403,8 @@ def _dis(data, python_version, mapping,
         # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
         # changed how oparg is calculated.
         if cls.has_jrel():
-          oparg = oparg * 2 + end_pos
+          signed_oparg = -oparg if _is_backward_jump(cls) else oparg
+          oparg = signed_oparg * 2 + end_pos
         elif cls.has_jabs():
           oparg *= 2
       elif cls.has_jrel():
@@ -1201,8 +1421,9 @@ def _dis(data, python_version, mapping,
     if op.FLAGS & (HAS_JREL | HAS_JABS):
       op.arg = op.pretty_arg = offset_to_index[op.arg]
       op.target = code[op.arg]
-    op.prev = code[i - 1] if i > 0 else None
-    op.next = code[i + 1] if i < len(code) - 1 else None
+    get_code = lambda j: code[j] if 0 <= j < len(code) else None
+    op.prev = get_code(i - 1)
+    op.next = get_code(i +(-1 if _is_backward_jump(op.__class__) else 1))
   return code
 
 
@@ -1216,6 +1437,7 @@ def dis(
       (3, 8): python_3_8_mapping,
       (3, 9): python_3_9_mapping,
       (3, 10): python_3_10_mapping,
+      (3, 11): python_3_11_mapping,
   }[(major, minor)]
   return _dis(data, python_version, mapping, *args, **kwargs)
 

@@ -339,13 +339,14 @@ class CollectAnnotationTargetsVisitor:
   def visit_code(self, code):
     """Find STORE_* and MAKE_FUNCTION opcodes for attaching annotations."""
     # Offset between function code and MAKE_FUNCTION
-    # [LOAD_CONST <code>, LOAD_CONST name, MAKE_FUNCTION]
-    offset = 2
+    # [LOAD_CONST <code>, LOAD_CONST <function name>, MAKE_FUNCTION]
+    # In 3.11, the LOAD_CONST <function name> opcode is removed.
+    offset = 1 if code.python_version >= (3, 11) else 2
     co_code = code.original_co_code
     for i, op in enumerate(co_code):
       if isinstance(op, opcodes.MAKE_FUNCTION):
         code_op = co_code[i - offset]
-        assert isinstance(code_op, CODE_LOADING_OPCODES)
+        assert isinstance(code_op, CODE_LOADING_OPCODES), code_op.__class__
         fn_code = code.co_consts[code_op.arg]
         if not _is_function_def(fn_code):
           continue

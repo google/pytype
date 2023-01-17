@@ -1,3 +1,15 @@
+Version 2023.01.17:
+
+Updates:
+* Default --overriding-return-type-checks to True.
+* Optimise literal output for class variables as well as constants.
+* Do some preliminary work for pytype Python 3.11 support.
+
+Bug fixes:
+* Add missing 3.10 attributes to typing.Counter.
+* Do not parse default values as types.
+* Make `ChainMap` accept `MutableMapping`.
+
 Version 2023.01.10:
 
 Updates:
