@@ -1,6 +1,6 @@
-# Support
-
 <!--* freshness: { owner: 'rechen' reviewed: '2022-12-08' } *-->
+
+# Support
 
 This page lists the Python versions and features supported by the latest version
 of pytype.
@@ -14,7 +14,7 @@ of pytype.
          * [Non-Standard/Experimental](#non-standard-experimental)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2022-12-08T14:51-08:00 -->
+<!-- Added by: rechen, at: 2023-01-17T17:48-08:00 -->
 
 <!--te-->
 
@@ -100,6 +100,10 @@ which pytype differs from other Python type checkers. See the
 *   `pytype_extensions`: The `pytype_extensions` namespace contains many useful
     extensions, mostly user-contributed. The best way to learn about them is to
     read the [inline documentation][pytype-extensions].
+*   Pytype allows type-annotated variables to be assigned to `None` or `...`
+    without including the relevant type in the type annotation. For example, `x:
+    str = None` and `x: str = ...` are allowed. This makes it easier to
+    type-annotate code that uses `None` or `...` to indicate an unset value.
 
 ### Third-Party Libraries
 
