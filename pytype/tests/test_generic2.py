@@ -1097,6 +1097,46 @@ class GenericFeatureTest(test_base.BaseTest):
       class Qux(Foo.Bar[T]): ...
     """)
 
+  def test_mutation_to_unknown(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Generic, TypeVar, overload
+      T1 = TypeVar('T1')
+      T2 = TypeVar('T2')
+      class A(Generic[T1, T2]):
+        @overload
+        def f(self, x: str) -> None:
+          self = A[bytes, T2]
+        @overload
+        def f(self, x: int) -> None:
+          self = A[float, T2]
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Any
+        a = foo.A[int, int]()
+        a.f(__any_object__)
+        assert_type(a, foo.A[Any, int])
+      """)
+
+  def test_class_name_prefix(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Alpha(Generic[T]):
+        def __init__(self, x: T):
+          pass
+      class Alphabet(Alpha[str]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Alpha(Generic[T]):
+        def __init__(self, x: T):
+          self = Alpha[T]
+      class Alphabet(Alpha[str]): ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
