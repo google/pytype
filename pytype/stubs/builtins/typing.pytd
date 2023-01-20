@@ -179,6 +179,13 @@ class Tuple(Sequence[_T]):
 
 class MutableSequence(Sequence[_T], Protocol):
   __slots__ = []
+  @overload
+  @abstractmethod
+  def __getitem__(self, index: int) -> _T: ...
+  @overload
+  @abstractmethod
+  def __getitem__(self, index: slice) -> MutableSequence[_T]: ...
+  @overload
   @abstractmethod
   def __setitem__(self, i: int, v: _T2) -> None:
     self = MutableSequence[Union[_T, _T2]]
@@ -193,6 +200,7 @@ class MutableSequence(Sequence[_T], Protocol):
   def __add__(self, x: Iterable[_T2]) -> MutableSequence[Union[_T, _T2]]: ...
   def append(self, v: _T2) -> None:
     self = MutableSequence[Union[_T, _T2]]
+  def clear(self) -> None: ...
   def extend(self, iterable: Iterable[_T2]) -> None:
     self = MutableSequence[Union[_T, _T2]]
   @abstractmethod

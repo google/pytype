@@ -81,6 +81,27 @@ class ListTest(test_base.BaseTest):
       t = ...  # type: int
       """)
 
+  def test_slice_returntype(self):
+    # each of the superclasses of list should return their own type when sliced.
+    ty, _ = self.InferWithErrors("""
+      from typing import Sequence, MutableSequence
+      a: Sequence[int] = [1]
+      b = a[0:1]
+      c: MutableSequence[int] = [1]
+      d = c[0:1]
+      e = [2]
+      f = e[0:1]
+      """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List, MutableSequence, Sequence
+      a = ...  # type: Sequence[int]
+      b = ...  # type: Sequence[int]
+      c = ...  # type: MutableSequence[int]
+      d = ...  # type: MutableSequence[int]
+      e = ...  # type: List[int]
+      f = ...  # type: List[int]
+      """)
+
   @test_base.skip("Requires more precise slice objects")
   def test_getitem_slice(self):
     # Python 3 uses __getitem__ with slice objects instead of __getslice__.
@@ -136,6 +157,16 @@ class ListTest(test_base.BaseTest):
         x = lst2[-1]
       lst1.append(x)
       lst2.append(lst1[-1])
+    """)
+
+  def test_clear(self):
+    ty = self.Infer("""
+      a = [0]
+      a.clear()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import List
+      a = ...  # type: List[int]
     """)
 
 
