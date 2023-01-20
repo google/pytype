@@ -1188,13 +1188,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         class_param = other_type.get_formal_type_parameter(type_param.name)
         instance_param = instance.get_instance_type_parameter(
             type_param.full_name, self._node)
-        instance_type_param = left.get_formal_type_parameter(type_param.name)
-        if (not instance_param.bindings and isinstance(
-            instance_type_param, abstract.TypeParameter) and
-            instance_type_param.name != type_param.name):
-          # This type parameter was renamed!
-          instance_param = instance.get_instance_type_parameter(
-              type_param.full_name, self._node)
         if instance_param.bindings and instance_param not in view:
           binding, = instance_param.bindings
           assert isinstance(binding.data, abstract.Unsolvable), binding.data
