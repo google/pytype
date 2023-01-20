@@ -50,12 +50,12 @@ class BaseValue(utils.ContextWeakrefMixin):
     self._all_template_names = None
     self._instance = None
     self.final = False
-
     # The variable or function arg name with the type annotation that this
     # instance was created from. For example,
     #   x: str = "hello"
     # would create an instance of str with from_annotation = 'x'
     self.from_annotation = None
+    self.is_concrete = False
 
   @property
   def module(self):

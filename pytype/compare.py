@@ -166,8 +166,7 @@ def _compare_tuple(op, left, right):
 
 def _compare_dict(op, left, right):
   # Determines when dicts are definitely not equal by checking their key sets.
-  if (_is_equality_cmp(op) and
-      not left.could_contain_anything and
+  if (_is_equality_cmp(op) and left.is_concrete and
       abstract_utils.is_concrete_dict(right) and
       set(left.pyval) != set(right.pyval)):
     return op != slots.EQ
@@ -233,9 +232,9 @@ def compatible_with(value, logical_value):
     True: If it is possible for the value to evaluate to the logical_value,
         and any ambiguity cannot be resolved by additional bindings.
   """
-  if isinstance(value, abstract.List) and value.could_contain_anything:
+  if isinstance(value, abstract.List) and not value.is_concrete:
     return True
-  elif isinstance(value, abstract.Dict) and value.could_contain_anything:
+  elif isinstance(value, abstract.Dict) and not value.is_concrete:
     # Always compatible with False. Compatible with True only if type
     # parameters have been established (meaning that the dict can be
     # non-empty).

@@ -534,7 +534,7 @@ class ErrorLog(ErrorLogBase):
     elif isinstance(t, abstract.Union):
       return self._join_printed_types(self._print_as_expected_type(o)
                                       for o in t.options)
-    elif abstract_utils.is_concrete(t):
+    elif t.is_concrete:
       return re.sub(r"(\\n|\s)+", " ",
                     typing.cast(mixin.PythonConstant, t).str_of_constant(
                         self._print_as_expected_type))

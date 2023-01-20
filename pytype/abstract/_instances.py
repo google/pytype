@@ -323,11 +323,10 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
   def __init__(self, content, ctx):
     super().__init__(ctx.convert.list_type, ctx)
     self._instance_cache = {}
-    mixin.PythonConstant.init_mixin(self, content)
-    mixin.HasSlots.init_mixin(self)
     combined_content = ctx.convert.build_content(content)
     self.merge_instance_type_parameter(None, abstract_utils.T, combined_content)
-    self.could_contain_anything = False
+    mixin.PythonConstant.init_mixin(self, content)
+    mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
     self.set_native_slot("__getslice__", self.getslice_slot)
 
@@ -336,18 +335,18 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
                               for val in self.pyval)
 
   def __repr__(self):
-    if self.could_contain_anything:
-      return _instance_base.Instance.__repr__(self)
-    else:
+    if self.is_concrete:
       return mixin.PythonConstant.__repr__(self)
+    else:
+      return _instance_base.Instance.__repr__(self)
 
   def get_fullhash(self, seen=None):
-    if self.could_contain_anything:
-      return super().get_fullhash(seen)
-    return _get_concrete_sequence_fullhash(self, seen)
+    if self.is_concrete:
+      return _get_concrete_sequence_fullhash(self, seen)
+    return super().get_fullhash(seen)
 
   def merge_instance_type_parameter(self, node, name, value):
-    self.could_contain_anything = True
+    self.is_concrete = False
     super().merge_instance_type_parameter(node, name, value)
 
   def getitem_slot(self, node, index_var):
@@ -364,7 +363,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     results = []
     unresolved = False
     node, ret = self.call_pytd(node, "__getitem__", index_var)
-    if not self.could_contain_anything:
+    if self.is_concrete:
       for val in index_var.bindings:
         try:
           index = self.ctx.convert.value_to_constant(val.data, int)
@@ -376,7 +375,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
             results.append(self.pyval[index])
           else:
             unresolved = True
-    if unresolved or self.could_contain_anything:
+    if unresolved or not self.is_concrete:
       results.append(ret)
     return node, self.ctx.join_variables(node, results)
 
@@ -421,7 +420,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
     node, ret = self.call_pytd(node, "__getslice__", start_var, end_var)
     results = []
     unresolved = False
-    if not self.could_contain_anything:
+    if self.is_concrete:
       for start_val, end_val in cfg_utils.variable_product([start_var,
                                                             end_var]):
         try:
@@ -432,7 +431,7 @@ class List(_instance_base.Instance, mixin.HasSlots, mixin.PythonConstant):  # py
         else:
           results.append(
               List(self.pyval[start:end], self.ctx).to_variable(node))
-    if unresolved or self.could_contain_anything:
+    if unresolved or not self.is_concrete:
       results.append(ret)
     return node, self.ctx.join_variables(node, results)
 
@@ -453,29 +452,28 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     self.set_native_slot("pop", self.pop_slot)
     self.set_native_slot("setdefault", self.setdefault_slot)
     self.set_native_slot("update", self.update_slot)
-    self.could_contain_anything = False
     # Insertion order does matter in some places.
     # For example: f_locals["__annotations__"]
     mixin.PythonDict.init_mixin(self, {})
 
   def str_of_constant(self, printer):
     # self.pyval is only populated for string keys.
-    if self.could_contain_anything:
+    if not self.is_concrete:
       return "{...: ...}"
     pairs = [f"{name!r}: {' or '.join(_var_map(printer, value))}"
              for name, value in self.pyval.items()]
     return "{" + ", ".join(pairs) + "}"
 
   def __repr__(self):
-    if not hasattr(self, "could_contain_anything"):
+    if not hasattr(self, "is_concrete"):
       return "Dict (not fully initialized)"
-    elif self.could_contain_anything:
-      return _instance_base.Instance.__repr__(self)
-    else:
+    elif self.is_concrete:
       return mixin.PythonConstant.__repr__(self)
+    else:
+      return _instance_base.Instance.__repr__(self)
 
   def get_fullhash(self, seen=None):
-    if self.could_contain_anything:
+    if not self.is_concrete:
       return super().get_fullhash(seen)
     if seen is None:
       seen = set()
@@ -489,7 +487,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     """Implements the __getitem__ slot."""
     results = []
     unresolved = False
-    if not self.could_contain_anything:
+    if self.is_concrete:
       for val in name_var.bindings:
         try:
           name = self.ctx.convert.value_to_constant(val.data, str)
@@ -502,7 +500,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
             unresolved = True
             raise function.DictKeyMissing(name) from e
     node, ret = self.call_pytd(node, "__getitem__", name_var)
-    if unresolved or self.could_contain_anything:
+    if unresolved or not self.is_concrete:
       # We *do* know the overall type of the values through the "V" type
       # parameter, even if we don't know the exact type of self[name]. So let's
       # just use the (less accurate) value from pytd.
@@ -532,7 +530,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
         # Now the dictionary is abstract: We don't know what it contains
         # anymore. Note that the below is not a variable, so it'll affect
         # all branches.
-        self.could_contain_anything = True
+        self.is_concrete = False
         continue
       if name in self.pyval:
         self.pyval[name].PasteVariable(value_var, node)
@@ -555,23 +553,23 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
     return self.call_pytd(node, "setdefault", name_var, value_var)
 
   def contains_slot(self, node, key_var):
-    if self.could_contain_anything:
-      value = None
-    else:
+    if self.is_concrete:
       try:
         str_key = abstract_utils.get_atomic_python_constant(key_var, str)
       except abstract_utils.ConversionError:
         value = None
       else:
         value = str_key in self.pyval
+    else:
+      value = None
     return node, self.ctx.convert.build_bool(node, value)
 
   def pop_slot(self, node, key_var, default_var=None):
     try:
       str_key = abstract_utils.get_atomic_python_constant(key_var, str)
     except abstract_utils.ConversionError:
-      self.could_contain_anything = True
-    if self.could_contain_anything:
+      self.is_concrete = False
+    if not self.is_concrete:
       if default_var:
         return self.call_pytd(node, "pop", key_var, default_var)
       else:
@@ -585,7 +583,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
         raise function.DictKeyMissing(str_key) from e
 
   def _set_params_to_any(self, node):
-    self.could_contain_anything = True
+    self.is_concrete = False
     unsolvable = self.ctx.new_unsolvable(node)
     for p in (abstract_utils.K, abstract_utils.V):
       self.merge_instance_type_parameter(node, p, unsolvable)
@@ -606,7 +604,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       self.update(node, args[0].data[0])
       ret = self.ctx.convert.none.to_variable(node)
     elif args:
-      self.could_contain_anything = True
+      self.is_concrete = False
       with self._set_params_to_any_on_failure(node):
         node, ret = self.call_pytd(node, "update", *args)
     else:
@@ -624,8 +622,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
           self.set_str_item(node, key, value)
     if (isinstance(other_dict, _instance_base.Instance) and
         other_dict.full_name == "builtins.dict"):
-      self.could_contain_anything |= (
-          getattr(other_dict, "could_contain_anything", True))
+      self.is_concrete &= other_dict.is_concrete
       for param in (abstract_utils.K, abstract_utils.V):
         param_value = other_dict.get_instance_type_parameter(param, node)
         self.merge_instance_type_parameter(node, param, param_value)

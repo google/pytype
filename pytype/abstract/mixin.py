@@ -78,6 +78,7 @@ class PythonConstant(metaclass=MixinMeta):
   def init_mixin(self, pyval):
     """Mix-in equivalent of __init__."""
     self.pyval = pyval
+    self.is_concrete = True
     self._printing = False
 
   def str_of_constant(self, printer):

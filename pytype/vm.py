@@ -2058,7 +2058,7 @@ class VirtualMachine:
           update_param = update_value.get_instance_type_parameter(
               abstract_utils.T, state.node)
           # We use Instance.merge_instance_type_parameter because the List
-          # implementation also sets could_contain_anything to True.
+          # implementation also sets is_concrete to False.
           abstract.Instance.merge_instance_type_parameter(
               target_value, state.node, abstract_utils.T, update_param)
     return state
