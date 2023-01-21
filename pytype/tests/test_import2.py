@@ -72,6 +72,32 @@ class ImportTest(test_base.BaseTest):
         assert_type(foo.datetime(1, 1, 1), "datetime.datetime")
       """)
 
+  def test_cycle(self):
+    # See https://github.com/google/pytype/issues/1028. This can happen when a
+    # file needs to be analyzed twice due to a dependency cycle.
+    with self.DepTree([("components.pyi", """
+      import loaders
+      from typing import Dict, Type
+      Foo: Type[loaders.Foo]
+      class Component:
+        def __init__(self, foos: Dict[int, loaders.Foo]) -> None: ...
+    """), ("loaders.pyi", """
+      from typing import Any, NamedTuple
+      Component: Any
+      class Foo(NamedTuple):
+        foo: int
+      def load() -> Any: ...
+    """)]):
+      self.Infer("""
+        from typing import Dict, NamedTuple
+        from components import Component
+        class Foo(NamedTuple):
+          foo: int
+        def load() -> Component:
+          foos: Dict[int, Foo] = {}
+          return Component(foos=foos)
+      """, module_name="loaders")
+
 
 if __name__ == "__main__":
   test_base.main()
