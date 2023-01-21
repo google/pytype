@@ -4,6 +4,7 @@ import collections
 import contextlib
 import enum
 import logging
+import re
 from typing import cast
 
 from pytype import utils
@@ -762,7 +763,7 @@ class Converter(utils.ContextWeakrefMixin):
             if not self_type_name:
               return sig
             full_name = v.official_name or v.name
-            if not self_type_name.startswith(full_name):
+            if not re.fullmatch(rf"{full_name}(\[.*\])?", self_type_name):
               return None
             # Remove any outer class prefixes from the type name.
             if "." in full_name:

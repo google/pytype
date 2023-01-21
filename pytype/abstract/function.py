@@ -464,7 +464,7 @@ class Args:
   def starstarargs_as_dict(self):
     """Return **args as a python dict."""
     # NOTE: We can't use get_atomic_python_constant here because starstarargs
-    # could have could_contain_anything set.
+    # could have is_concrete=False.
     if not self.starstarargs or len(self.starstarargs.data) != 1:
       return None
     kwdict, = self.starstarargs.data
@@ -576,11 +576,11 @@ class Args:
 
       # We have pulled out all the named args from the function call, so we need
       # to delete them from starstarargs. If the original call contained
-      # **kwargs, starstarargs will have could_contain_anything set to True, so
+      # **kwargs, starstarargs will have is_concrete set to False, so
       # preserve it as an abstract dict. If not, we just had named args packed
       # into starstarargs, so set starstarargs to None.
       kwdict = starstarargs.data[0]
-      if _isinstance(kwdict, "Dict") and kwdict.could_contain_anything:
+      if _isinstance(kwdict, "Dict") and not kwdict.is_concrete:
         cls = kwdict.cls
         if _isinstance(cls, "PyTDClass"):
           # If cls is not already parameterized with the key and value types, we

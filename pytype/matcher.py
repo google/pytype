@@ -387,11 +387,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       else:
         base_cls = base
       if isinstance(base_cls, abstract.Class):
-        if other_type.full_name == base_cls.full_name or (
-            isinstance(other_type, abstract.ParameterizedClass) and
-            other_type.base_cls is base_cls) or (allow_compat_builtins and (
-                (base_cls.full_name,
-                 other_type.full_name) in _COMPATIBLE_BUILTINS)):
+        if self._match_base_class_flat(
+            base_cls, other_type, allow_compat_builtins):
           return base
       elif isinstance(base_cls, abstract.AMBIGUOUS):
         # Note that this is a different logic than in pytd/type_match.py, which
@@ -1188,13 +1185,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         class_param = other_type.get_formal_type_parameter(type_param.name)
         instance_param = instance.get_instance_type_parameter(
             type_param.full_name, self._node)
-        instance_type_param = left.get_formal_type_parameter(type_param.name)
-        if (not instance_param.bindings and isinstance(
-            instance_type_param, abstract.TypeParameter) and
-            instance_type_param.name != type_param.name):
-          # This type parameter was renamed!
-          instance_param = instance.get_instance_type_parameter(
-              type_param.full_name, self._node)
         if instance_param.bindings and instance_param not in view:
           binding, = instance_param.bindings
           assert isinstance(binding.data, abstract.Unsolvable), binding.data
@@ -1608,3 +1598,19 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if param.full_name not in subst:
         subst[param.full_name] = self.ctx.convert.empty.to_variable(self._node)
     return subst
+
+  def _get_full_name(self, cls):
+    if not cls.module and self.ctx.options.module_name:
+      return f"{self.ctx.options.module_name}.{cls.name}"
+    else:
+      return cls.full_name
+
+  def _match_base_class_flat(self, base_cls, other_type, allow_compat_builtins):
+    if isinstance(other_type, abstract.ParameterizedClass):
+      other_type = other_type.base_cls
+    if base_cls is other_type:
+      return True
+    name1 = self._get_full_name(base_cls)
+    name2 = self._get_full_name(other_type)
+    return (name1 == name2 or
+            allow_compat_builtins and (name1, name2) in _COMPATIBLE_BUILTINS)

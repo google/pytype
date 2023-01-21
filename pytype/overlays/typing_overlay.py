@@ -181,11 +181,7 @@ class Callable(TypingContainer):
       inner[0], inner_ellipses = self._build_inner(args.pyval)
       self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, inner_ellipses,
                                          args.name)
-    elif isinstance(args, abstract.ParamSpec):
-      # TODO(b/217789659): Implement this
-      inner[0] = self.ctx.convert.unsolvable
-      ellipses.add(0)
-    else:
+    elif not isinstance(args, (abstract.ParamSpec, abstract.Concatenate)):
       if args.cls.full_name == "builtins.list":
         self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, [args])
       elif 0 not in ellipses or not isinstance(args, abstract.Unsolvable):
@@ -213,6 +209,10 @@ class Callable(TypingContainer):
       inner = tuple(inner[0]) + (combined_args,) + inner[1:]
       self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses,
                                          self.name)
+      return template, inner, abstract.CallableClass
+    elif isinstance(inner[0], (abstract.ParamSpec, abstract.Concatenate)):
+      template = [0] + [t.name for t in self.base_cls.template]
+      inner = (inner[0], inner[0]) + inner[1:]
       return template, inner, abstract.CallableClass
     else:
       # An ellipsis may take the place of the ARGS list.
@@ -506,8 +506,7 @@ class Concatenate(abstract.AnnotationClass):
 
   def _build_value(self, node, inner, ellipses):
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
-    # TODO(b/217789659): Implement this
-    return self.ctx.convert.ellipsis
+    return abstract.Concatenate(list(inner), self.ctx)
 
 
 def not_supported_yet(name, ctx, *, ast=None, details=None):

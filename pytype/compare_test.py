@@ -234,7 +234,7 @@ class DictTest(CompareTestBase):
     ambiguous_dict = abstract.Dict(self._ctx)
     ambiguous_dict.merge_instance_type_parameter(
         self._node, abstract_utils.K, self._ctx.new_unsolvable(self._node))
-    ambiguous_dict.could_contain_anything = True
+    ambiguous_dict.is_concrete = False
     self._d.update(self._node, ambiguous_dict)
     self.assertAmbiguous(self._d)
 

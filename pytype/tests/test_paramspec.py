@@ -77,7 +77,7 @@ class ParamSpecTest(test_base.BaseTest):
       from typing import Callable, ParamSpec
       P = ParamSpec("P")
 
-      def f(x: Callable[..., int]) -> Callable[..., int]: ...
+      def f(x: Callable[P, int]) -> Callable[P, int]: ...
     """)
 
   def test_concatenate_in_def(self):
@@ -89,10 +89,10 @@ class ParamSpecTest(test_base.BaseTest):
         return x
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Callable, ParamSpec
+      from typing import Callable, Concatenate, ParamSpec
       P = ParamSpec("P")
 
-      def f(x: Callable[..., int]) -> Callable[..., int]: ...
+      def f(x: Callable[Concatenate[int, P], int]) -> Callable[P, int]: ...
     """)
 
 

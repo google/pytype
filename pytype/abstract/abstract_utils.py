@@ -614,24 +614,18 @@ def get_annotations_dict(members):
 
 
 def is_concrete_dict(val: _BaseValueType) -> bool:
-  return _isinstance(val, "Dict") and not val.could_contain_anything
+  return val.is_concrete and _isinstance(val, "Dict")
 
 
 def is_concrete_list(val: _BaseValueType) -> bool:
-  return _isinstance(val, "List") and not val.could_contain_anything
-
-
-def is_concrete(val: _BaseValueType) -> bool:
-  return (_isinstance(val, "PythonConstant") and
-          not getattr(val, "could_contain_anything", False))
+  return val.is_concrete and _isinstance(val, "List")
 
 
 def is_indefinite_iterable(val: _BaseValueType) -> bool:
   """True if val is a non-concrete instance of typing.Iterable."""
   instance = _isinstance(val, "Instance")
-  concrete = is_concrete(val)
   cls_instance = _isinstance(val.cls, "Class")
-  if not (instance and cls_instance and not concrete):
+  if not (instance and cls_instance and not val.is_concrete):
     return False
   for cls in val.cls.mro:
     if cls.full_name == "builtins.str":
@@ -848,7 +842,7 @@ def is_recursive_annotation(annot):
 
 def is_ellipsis(val):
   return (val == val.ctx.convert.ellipsis or
-          (is_concrete(val) and val.pyval == "..."))
+          (val.is_concrete and val.pyval == "..."))
 
 
 def update_args_dict(

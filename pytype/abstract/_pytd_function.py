@@ -126,13 +126,13 @@ class PyTDFunction(_function_base.Function):
     self.signatures = signatures
     self._signature_cache = {}
     self._return_types = {sig.pytd_sig.return_type for sig in signatures}
+    self._mutated_type_parameters = set()
     for sig in signatures:
       for param in sig.pytd_sig.params:
-        if param.mutated_type is not None:
-          self._has_mutable = True
-          break
-      else:
-        self._has_mutable = False
+        for params in sig.mutated_type_parameters[param]:
+          for template, value in params:
+            if template.type_param != value:
+              self._mutated_type_parameters.add(template.type_param.full_name)
     for sig in signatures:
       sig.function = self
       sig.name = self.name
@@ -321,11 +321,12 @@ class PyTDFunction(_function_base.Function):
     for v in values:
       if isinstance(v, _instance_base.SimpleValue):
         for name in v.instance_type_parameters:
-          mutations.append(
-              function.Mutation(
-                  v, name,
-                  self.ctx.convert.create_new_unknown(
-                      node, action="type_param_" + name)))
+          if name in self._mutated_type_parameters:
+            mutations.append(
+                function.Mutation(
+                    v, name,
+                    self.ctx.convert.create_new_unknown(
+                        node, action="type_param_" + name)))
     return mutations
 
   def _can_match_multiple(self, args):
@@ -365,9 +366,7 @@ class PyTDFunction(_function_base.Function):
             # the type of x should be Any, not int.
             view[arg] = arg.AddBinding(self.ctx.convert.unsolvable, [], node)
             break
-    if self._has_mutable:
-      # TODO(b/159055015): We only need to whack the type params that appear in
-      # a mutable parameter.
+    if self._mutated_type_parameters:
       mutations = self._get_mutation_to_unknown(
           node,
           (view[p].data if p in view else self.ctx.convert.unsolvable
@@ -495,6 +494,16 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         for p in self.pytd_sig.params
     ]
     self.signature = function.Signature.from_pytd(ctx, name, pytd_sig)
+    self.mutated_type_parameters = {}
+    for p in self.pytd_sig.params:
+      try:
+        self.mutated_type_parameters[p] = self._collect_mutated_parameters(
+            p.type, p.mutated_type)
+      except ValueError as e:
+        log.error("Old: %s", pytd_utils.Print(p.type))
+        log.error("New: %s", pytd_utils.Print(p.mutated_type))
+        raise ValueError("Mutable parameters setting a type to a "
+                         "different base type is not allowed.") from e
 
   def _map_args(self, node, args):
     """Map the passed arguments to a name->binding dictionary.
@@ -708,15 +717,17 @@ class PyTDSignature(utils.ContextWeakrefMixin):
 
   @classmethod
   def _collect_mutated_parameters(cls, typ, mutated_type):
+    if not mutated_type:
+      return []
     if (isinstance(typ, pytd.UnionType) and
         isinstance(mutated_type, pytd.UnionType)):
       if len(typ.type_list) != len(mutated_type.type_list):
         raise ValueError(
             "Type list lengths do not match:\nOld: %s\nNew: %s" %
             (typ.type_list, mutated_type.type_list))
-      return itertools.chain.from_iterable(
+      return list(itertools.chain.from_iterable(
           cls._collect_mutated_parameters(t1, t2)
-          for t1, t2 in zip(typ.type_list, mutated_type.type_list))
+          for t1, t2 in zip(typ.type_list, mutated_type.type_list)))
     if typ == mutated_type and isinstance(typ, pytd.ClassType):
       return []  # no mutation needed
     if (not isinstance(typ, pytd.GenericType) or
@@ -724,7 +735,8 @@ class PyTDSignature(utils.ContextWeakrefMixin):
         typ.base_type != mutated_type.base_type or
         not isinstance(typ.base_type, pytd.ClassType)):
       raise ValueError(f"Unsupported mutation:\n{typ!r} ->\n{mutated_type!r}")
-    return [zip(mutated_type.base_type.cls.template, mutated_type.parameters)]
+    return [list(zip(mutated_type.base_type.cls.template,
+                     mutated_type.parameters))]
 
   def _get_mutation(self, node, arg_dict, subst, retvar):
     """Mutation for changing the type parameters of mutable arguments.
@@ -761,16 +773,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       args = actual.data
       for arg in args:
         if isinstance(arg, _instance_base.SimpleValue):
-          try:
-            all_names_actuals = self._collect_mutated_parameters(
-                formal.type, formal.mutated_type)
-          except ValueError as e:
-            log.error("Old: %s", pytd_utils.Print(formal.type))
-            log.error("New: %s", pytd_utils.Print(formal.mutated_type))
-            log.error("Actual: %r", actual)
-            raise ValueError("Mutable parameters setting a type to a "
-                             "different base type is not allowed.") from e
-          for names_actuals in all_names_actuals:
+          for names_actuals in self.mutated_type_parameters[formal]:
             for tparam, type_actual in names_actuals:
               log.info("Mutating %s to %s",
                        tparam.name,

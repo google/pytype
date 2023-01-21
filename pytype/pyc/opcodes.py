@@ -1399,7 +1399,11 @@ def _dis(data, python_version, mapping,
       # single line programs don't have co_lnotab
       line = co_firstlineno
     if oparg is not None:
-      if python_version >= (3, 10):
+      # 3.11 adds special handling for LOAD_GLOBAL and JUMP_BACKWARD* opcodes:
+      # https://github.com/python/cpython/blob/db65a326a4022fbd43648858b460f52734faf1b5/Lib/dis.py#L461-L474
+      if python_version >= (3, 11) and cls.__name__ == "LOAD_GLOBAL":
+        oparg //= 2
+      elif python_version >= (3, 10):
         # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
         # changed how oparg is calculated.
         if cls.has_jrel():

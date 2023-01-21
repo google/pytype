@@ -177,8 +177,7 @@ class Converter(utils.ContextWeakrefMixin):
       return "builtins." + t.__name__
 
   def value_to_constant(self, val, constant_type):
-    if (abstract_utils.is_concrete(val) and
-        isinstance(val.pyval, constant_type or object)):
+    if val.is_concrete and isinstance(val.pyval, constant_type or object):
       return val.pyval
     name = self.constant_name(constant_type)
     raise abstract_utils.ConversionError(f"{val} is not of type {name}")

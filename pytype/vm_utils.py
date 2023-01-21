@@ -1101,9 +1101,7 @@ def copy_dict_without_keys(
   # NOTE: This handles the specific case of a dict with a concrete pyval, where
   # we can track keys and values. Otherwise just return the object with type
   # unchanged; at worst it will be a superset of the correct type.
-  if not all(isinstance(x, abstract.Dict) for x in obj_var.data):
-    return obj_var
-  if any(x.could_contain_anything for x in obj_var.data):
+  if not all(abstract_utils.is_concrete_dict(x) for x in obj_var.data):
     return obj_var
   keys = _convert_keys(keys_var)
   ret = abstract.Dict(ctx)
