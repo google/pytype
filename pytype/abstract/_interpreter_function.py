@@ -364,10 +364,9 @@ class InterpreterFunction(_function_base.SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
-  def _paramspec_signature(self, annot, substs):
+  def _paramspec_signature(self, callable_type, substs):
     # Unpack the paramspec substitution we have created in the matcher.
-    # TODO(b/217789659): Merge with the equivalent code in pytd_function
-    rhs = annot.formal_type_parameters[0]
+    rhs = callable_type.formal_type_parameters[0]
     if _isinstance(rhs, "Concatenate"):
       r_pspec = rhs.paramspec
       r_args = rhs.args
@@ -379,26 +378,9 @@ class InterpreterFunction(_function_base.SignedFunction):
     if not data:
       return
     pspec_match = abstract_utils.get_atomic_value(data)
-    sig = pspec_match.sig
-    ann = sig.annotations.copy()
-    ann["return"] = annot.formal_type_parameters[abstract_utils.RET]
-    ret_posargs = []
-    for i, typ in enumerate(r_args):
-      name = f"_{i}"
-      ret_posargs.append(name)
-      if not _isinstance(typ, "BaseValue"):
-        typ = self.ctx.convert.constant_to_value(typ)
-      ann[name] = typ
-    # We have done prefix type matching in the matcher, so we can safely strip
-    # off the lhs args from the sig by count.
-    lhs = pspec_match.paramspec
-    l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
-    param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
-    # All params need to be in the annotations dict or output.py crashes
-    sig.populate_annotation_dict(ann, self.ctx, param_names)
-    posonly_count = sig.posonly_count + len(r_args) - l_nargs
-    return sig._replace(param_names=param_names, annotations=ann,
-                        posonly_count=posonly_count)
+    return_value = callable_type.formal_type_parameters[abstract_utils.RET]
+    return function.build_paramspec_signature(
+        pspec_match, r_args, return_value, self.ctx)
 
   def _handle_paramspec(self, sig, annotations, substs, callargs):
     if not sig.has_return_annotation:

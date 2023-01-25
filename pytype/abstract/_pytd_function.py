@@ -614,6 +614,27 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       log.info("param %d) %s: %s <=> %s", nr, p.name, p.type, arg_dict[p.name])
     return arg_dict, matches
 
+  def _paramspec_signature(self, callable_type, return_value, subst):
+    # Unpack the paramspec substitution we have created in the matcher.
+    # We should have two paramspec expressions, lhs and rhs, matching the
+    # higher-order function's args and return value respectively.
+    rhs = callable_type.args[0]
+    if isinstance(rhs, pytd.Concatenate):
+      r_pspec = rhs.paramspec
+      r_args = rhs.args
+    else:
+      r_pspec = rhs
+      r_args = ()
+    if r_pspec.full_name not in subst:
+      # TODO(b/217789659): Should this be an assertion failure?
+      return
+    ret = self.ctx.program.NewVariable()
+    for pspec_match in subst[r_pspec.full_name].data:
+      ret_sig = function.build_paramspec_signature(
+          pspec_match, r_args, return_value, self.ctx)
+      ret.AddBinding(_function_base.SimpleFunction(ret_sig, self.ctx))
+    return ret
+
   def _handle_paramspec(self, node, key, ret_map):
     """Construct a new function based on ParamSpec matching."""
     return_callable, subst = key
@@ -631,44 +652,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
           val.update_inner_type(k, typ)
     elif _isinstance(val, "TypeParameter") and val.full_name in subst:
       val = self.ctx.convert.merge_classes(subst[val.full_name].data)
-
-    # Unpack the paramspec substitution we have created in the matcher.
-    # We should have two paramspec expressions, lhs and rhs, matching the
-    # higher-order function's args and return value respectively.
-    rhs = return_callable.args[0]
-    if isinstance(rhs, pytd.Concatenate):
-      r_pspec = rhs.paramspec
-      r_args = rhs.args
-    else:
-      r_pspec = rhs
-      r_args = ()
-    if r_pspec.full_name not in subst:
-      # TODO(b/217789659): Should this be an assertion failure?
-      return
-    ret = self.ctx.program.NewVariable()
-    for data in subst[r_pspec.full_name].data:
-      sig = data.sig
-      ann = sig.annotations.copy()
-      ann["return"] = val
-      ret_posargs = []
-      for i, typ in enumerate(r_args):
-        name = f"_{i}"
-        ret_posargs.append(name)
-        if not _isinstance(typ, "BaseValue"):
-          typ = self.ctx.convert.constant_to_value(typ)
-        ann[name] = typ
-      # We have done prefix type matching in the matcher, so we can safely strip
-      # off the lhs args from the sig by count.
-      lhs = data.paramspec
-      l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
-      param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
-      # All params need to be in the annotations dict or output.py crashes
-      sig.populate_annotation_dict(ann, self.ctx, param_names)
-      posonly_count = sig.posonly_count + len(r_args) - l_nargs
-      ret_sig = sig._replace(param_names=param_names, annotations=ann,
-                             posonly_count=posonly_count)
-      ret.AddBinding(_function_base.SimpleFunction(ret_sig, self.ctx))
-    ret_map[key] = ret
+    ret = self._paramspec_signature(return_callable, val, subst)
+    if ret:
+      ret_map[key] = ret
 
   def call_with_args(self, node, func, arg_dict, match, ret_map):
     """Call this signature. Used by PyTDFunction."""
