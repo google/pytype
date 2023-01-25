@@ -416,6 +416,18 @@ class Signature:
       return None
     return callargs.get(name)
 
+  def populate_annotation_dict(self, annots, ctx, param_names=None):
+    """Populate annotation dict with default values."""
+    if param_names is None:
+      param_names = self.param_names
+    for k in param_names:
+      if k and k not in annots:
+        annots[k] = ctx.convert.unsolvable
+    if self.varargs_name and self.varargs_name not in annots:
+      annots[self.varargs_name] = ctx.convert.tuple_type
+    if self.kwargs_name and self.kwargs_name not in annots:
+      annots[self.kwargs_name] = ctx.convert.dict_type
+
 
 def _convert_namedargs(namedargs):
   return {} if namedargs is None else namedargs

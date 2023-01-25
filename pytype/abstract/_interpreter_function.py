@@ -364,6 +364,59 @@ class InterpreterFunction(_function_base.SignedFunction):
       callkey = len(self._call_cache)
     return callkey
 
+  def _paramspec_signature(self, annot, substs):
+    # Unpack the paramspec substitution we have created in the matcher.
+    # TODO(b/217789659): Merge with the equivalent code in pytd_function
+    rhs = annot.formal_type_parameters[0]
+    if _isinstance(rhs, "Concatenate"):
+      r_pspec = rhs.paramspec
+      r_args = rhs.args
+    else:
+      r_pspec = rhs
+      r_args = ()
+    # TODO(b/217789659): Handle substs[] with multiple entries
+    data = substs[0].get(r_pspec.name)
+    if not data:
+      return
+    pspec_match = abstract_utils.get_atomic_value(data)
+    sig = pspec_match.sig
+    ann = sig.annotations.copy()
+    ann["return"] = annot.formal_type_parameters[abstract_utils.RET]
+    ret_posargs = []
+    for i, typ in enumerate(r_args):
+      name = f"_{i}"
+      ret_posargs.append(name)
+      if not _isinstance(typ, "BaseValue"):
+        typ = self.ctx.convert.constant_to_value(typ)
+      ann[name] = typ
+    # We have done prefix type matching in the matcher, so we can safely strip
+    # off the lhs args from the sig by count.
+    lhs = pspec_match.paramspec
+    l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
+    param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
+    # All params need to be in the annotations dict or output.py crashes
+    sig.populate_annotation_dict(ann, self.ctx, param_names)
+    posonly_count = sig.posonly_count + len(r_args) - l_nargs
+    return sig._replace(param_names=param_names, annotations=ann,
+                        posonly_count=posonly_count)
+
+  def _handle_paramspec(self, sig, annotations, substs, callargs):
+    if not sig.has_return_annotation:
+      return
+    retval = sig.annotations["return"]
+    if not (_isinstance(retval, "CallableClass") and retval.has_paramspec()):
+      return
+    ret_sig = self._paramspec_signature(retval, substs)
+    if ret_sig:
+      ret_annot = self.ctx.pytd_convert.signature_to_callable(ret_sig)
+      annotations["return"] = ret_annot
+    for name, _, annot in sig.iter_args(callargs):
+      if _isinstance(annot, "CallableClass") and annot.has_paramspec():
+        param_sig = self._paramspec_signature(annot, substs)
+        if param_sig:
+          param_annot = self.ctx.pytd_convert.signature_to_callable(param_sig)
+          annotations[name] = param_annot
+
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
@@ -391,6 +444,9 @@ class InterpreterFunction(_function_base.SignedFunction):
       callargs = self._map_args(node, args)
     self_arg = sig.get_self_arg(callargs)
     annotation_substs = substs
+    annotations = sig.annotations.copy()
+    # Fill in any ParamSpec vars in the annotations
+    self._handle_paramspec(sig, annotations, substs, args)
     # Adds type parameter substitutions from all containing classes. Note that
     # lower frames (ones closer to the end of self.ctx.vm.frames) take
     # precedence over higher ones.
@@ -400,7 +456,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     # Keep type parameters without substitutions, as they may be needed for
     # type-checking down the road.
     annotations = self.ctx.annotation_utils.sub_annotations(
-        node, sig.annotations, annotation_substs, instantiate_unbound=False)
+        node, annotations, annotation_substs, instantiate_unbound=False)
 
     first_arg = sig.get_first_arg(callargs)
     if first_arg and sig.has_return_annotation:

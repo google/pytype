@@ -95,6 +95,78 @@ class ParamSpecTest(test_base.BaseTest):
       def f(x: Callable[Concatenate[int, P], int]) -> Callable[P, int]: ...
     """)
 
+  def test_drop_param(self):
+    self.Check("""
+      from typing import Callable, Concatenate, ParamSpec
+
+      P = ParamSpec("P")
+
+      def f(x: Callable[Concatenate[int, P], int], y: int) -> Callable[P, int]:
+        return lambda k: x(y, k)
+
+      def g(x: int, y: str) -> int:
+        return 42
+
+      a = f(g, 1)
+      assert_type(a, Callable[[str], int])
+    """)
+
+  def test_add_param(self):
+    self.Check("""
+      from typing import Callable, Concatenate, ParamSpec
+
+      P = ParamSpec("P")
+
+      def f(x: Callable[P, int]) -> Callable[Concatenate[int, P], int]:
+        return lambda p, q: x(q)
+
+      def g(x: str) -> int:
+        return 42
+
+      a = f(g)
+      assert_type(a, Callable[[int, str], int])
+    """)
+
+  def test_change_return_type(self):
+    self.Check("""
+      from typing import Callable, Concatenate, ParamSpec
+
+      P = ParamSpec("P")
+
+      def f(x: Callable[P, int]) -> Callable[P, str]:
+        return lambda p: str(x(p))
+
+      def g(x: int) -> int:
+        return 42
+
+      a = f(g)
+      assert_type(a, Callable[[int], str])
+    """)
+
+  def test_typevar(self):
+    self.Check("""
+      from typing import Callable, Concatenate, List, ParamSpec, TypeVar
+
+      P = ParamSpec("P")
+      T = TypeVar('T')
+
+      def f(x: Callable[P, T]) -> Callable[P, List[T]]:
+        def inner(p):
+          return [x(p)]
+        return inner
+
+      def g(x: int) -> int:
+        return 42
+
+      def h(x: bool) -> str:
+        return '42'
+
+      a = f(g)
+      assert_type(a, Callable[[int], List[int]])
+      b = f(h)
+      assert_type(b, Callable[[bool], List[str]])
+    """)
+
 
 _DECORATOR_PYI = """
   from typing import TypeVar, ParamSpec, Callable, List

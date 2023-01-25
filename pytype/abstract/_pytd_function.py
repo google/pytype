@@ -663,13 +663,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
       param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
       # All params need to be in the annotations dict or output.py crashes
-      for k in param_names:
-        if k and k not in ann:
-          ann[k] = self.ctx.convert.unsolvable
-      if sig.varargs_name and sig.varargs_name not in ann:
-        ann[sig.varargs_name] = self.ctx.convert.tuple_type
-      if sig.kwargs_name and sig.kwargs_name not in ann:
-        ann[sig.kwargs_name] = self.ctx.convert.dict_type
+      sig.populate_annotation_dict(ann, self.ctx, param_names)
       posonly_count = sig.posonly_count + len(r_args) - l_nargs
       ret_sig = sig._replace(param_names=param_names, annotations=ann,
                              posonly_count=posonly_count)
