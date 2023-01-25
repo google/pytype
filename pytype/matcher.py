@@ -100,11 +100,6 @@ class GoodMatch:
   def default(cls):
     return cls(datatypes.AccessTrackingDict(), datatypes.HashableDict())
 
-  @classmethod
-  def merge(cls, old_match, new_match, combined_subst):
-    view = datatypes.AccessTrackingDict.merge(old_match.view, new_match.view)
-    return cls(view, datatypes.HashableDict(combined_subst))
-
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadMatch:
@@ -309,7 +304,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         raise self.MatchError(bad_param)
       if keep_all_views or any(m.subst for m in match_result.good_matches):
         matches = self._merge_matches(
-            arg.name, arg.typ, matches, match_result.good_matches, has_self)
+            arg.name, arg.typ, matches, match_result.good_matches,
+            keep_all_views, has_self)
     return matches if matches else [GoodMatch.default()]
 
   def compute_one_match(
@@ -983,12 +979,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _merge_matches(
       self, name: str, formal: abstract.BaseValue,
       old_matches: Optional[List[GoodMatch]], new_matches: List[GoodMatch],
-      has_self: bool) -> List[GoodMatch]:
+      keep_all_views: bool, has_self: bool) -> List[GoodMatch]:
     if not old_matches:
       return new_matches
     if not new_matches:
       return old_matches
-    combined_matches = []
+    combined_matches = _UniqueMatches(self._node, keep_all_views)
     matched = False
     bad_param = None
     for new_match in new_matches:
@@ -1003,12 +999,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._error_subst = old_match.subst
             bad_param = self._get_bad_type(name, formal)
           continue
-        combined_matches.append(
-            GoodMatch.merge(old_match, new_match, combined_subst))
+        combined_view = datatypes.AccessTrackingDict.merge(
+            old_match.view, new_match.view)
+        combined_matches.insert(combined_view, combined_subst)
         matched = True
     if not matched:
       raise self.MatchError(bad_param)
-    return combined_matches
+    return [GoodMatch(view, datatypes.HashableDict(subst))
+            for view, subst in combined_matches.unique()]
 
   def _match_subst_against_subst(
       self, old_subst, new_subst, type_param_map, has_self):
