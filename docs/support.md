@@ -71,7 +71,7 @@ Feature                                                                         
 [PEP 591 -- Adding a Final Qualifier to Typing][591]                                    | 3.8     | ✅        |
 [PEP 593 -- Flexible Function and Variable Annotations][593]                            | 3.9     | ✅        |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]                                   | 3.10    | ✅        |
-[PEP 612 -- Parameter Specification Variables][612]                                     | 3.10    | ❌        | [#786][param-spec]
+[PEP 612 -- Parameter Specification Variables][612]                                     | 3.10    | 🟡        | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
 [PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        |
 [PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
@@ -79,6 +79,7 @@ Feature                                                                         
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ❌        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
 [PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | ❌        |
+[PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ❌        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
@@ -138,6 +139,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [673]: https://www.python.org/dev/peps/pep-0673
 [675]: https://peps.python.org/pep-0675/
 [681]: https://peps.python.org/pep-0681/
+[698]: https://peps.python.org/pep-0698/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [ellipsis-issue]: https://github.com/python/typing/issues/276

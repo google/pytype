@@ -416,6 +416,18 @@ class Signature:
       return None
     return callargs.get(name)
 
+  def populate_annotation_dict(self, annots, ctx, param_names=None):
+    """Populate annotation dict with default values."""
+    if param_names is None:
+      param_names = self.param_names
+    for k in param_names:
+      if k and k not in annots:
+        annots[k] = ctx.convert.unsolvable
+    if self.varargs_name and self.varargs_name not in annots:
+      annots[self.varargs_name] = ctx.convert.tuple_type
+    if self.kwargs_name and self.kwargs_name not in annots:
+      annots[self.kwargs_name] = ctx.convert.dict_type
+
 
 def _convert_namedargs(namedargs):
   return {} if namedargs is None else namedargs
@@ -1114,3 +1126,27 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
     for v in boolvals:
       typeguard_return.AddBinding(ctx.convert.bool_values[v], {b}, node)
   return typeguard_return
+
+
+def build_paramspec_signature(pspec_match, r_args, return_value, ctx):
+  """Build a signature from a ParamSpecMatch and Callable args."""
+  sig = pspec_match.sig
+  ann = sig.annotations.copy()
+  ann["return"] = return_value
+  ret_posargs = []
+  for i, typ in enumerate(r_args):
+    name = f"_{i}"
+    ret_posargs.append(name)
+    if not _isinstance(typ, "BaseValue"):
+      typ = ctx.convert.constant_to_value(typ)
+    ann[name] = typ
+  # We have done prefix type matching in the matcher, so we can safely strip
+  # off the lhs args from the sig by count.
+  lhs = pspec_match.paramspec
+  l_nargs = len(lhs.args) if _isinstance(lhs, "Concatenate") else 0
+  param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
+  # All params need to be in the annotations dict or output.py crashes
+  sig.populate_annotation_dict(ann, ctx, param_names)
+  posonly_count = sig.posonly_count + len(r_args) - l_nargs
+  return sig._replace(param_names=param_names, annotations=ann,
+                      posonly_count=posonly_count)

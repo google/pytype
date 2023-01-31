@@ -454,6 +454,28 @@ class ParamSpec(_TypeVariable):
   _INSTANCE_CLASS = ParamSpecInstance
 
 
+class ParamSpecArgs(_base.BaseValue):
+  """ParamSpec.args."""
+
+  def __init__(self, paramspec, ctx):
+    super().__init__(f"{paramspec.name}.args", ctx)
+    self.paramspec = paramspec
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
+
+
+class ParamSpecKwargs(_base.BaseValue):
+  """ParamSpec.kwargs."""
+
+  def __init__(self, paramspec, ctx):
+    super().__init__(f"{paramspec.name}.kwargs", ctx)
+    self.paramspec = paramspec
+
+  def instantiate(self, node, container=None):
+    return self.to_variable(node)
+
+
 class Concatenate(_base.BaseValue):
   """Concatenation of args and ParamSpec."""
 

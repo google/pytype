@@ -100,11 +100,6 @@ class GoodMatch:
   def default(cls):
     return cls(datatypes.AccessTrackingDict(), datatypes.HashableDict())
 
-  @classmethod
-  def merge(cls, old_match, new_match, combined_subst):
-    view = datatypes.AccessTrackingDict.merge(old_match.view, new_match.view)
-    return cls(view, datatypes.HashableDict(combined_subst))
-
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class BadMatch:
@@ -228,6 +223,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         Tuple[abstract.BaseValue, abstract.BaseValue], bool] = {}
     self._error_subst = None
     self._type_params = _TypeParams()
+    self._paramspecs = {}
     self._reset_errors()
 
   def _reset_errors(self):
@@ -309,7 +305,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         raise self.MatchError(bad_param)
       if keep_all_views or any(m.subst for m in match_result.good_matches):
         matches = self._merge_matches(
-            arg.name, arg.typ, matches, match_result.good_matches, has_self)
+            arg.name, arg.typ, matches, match_result.good_matches,
+            keep_all_views, has_self)
     return matches if matches else [GoodMatch.default()]
 
   def compute_one_match(
@@ -830,7 +827,15 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         if param.bindings and not any(v is left for v in param.data):
           return self._match_all_bindings(param, other_type, subst, view)
       return self._instantiate_and_match(left.param, other_type, subst, view)
-    elif isinstance(left, abstract.ParamSpecInstance):
+    elif isinstance(
+        left,
+        (
+            abstract.ParamSpecInstance,
+            abstract.ParamSpecArgs,
+            abstract.ParamSpecKwargs,
+        ),
+    ):
+      self._paramspecs[left.name] = left
       new_subst = {left.name: other_type.instantiate(self._node)}
       return self._merge_substs(subst, [new_subst])
     else:
@@ -983,12 +988,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _merge_matches(
       self, name: str, formal: abstract.BaseValue,
       old_matches: Optional[List[GoodMatch]], new_matches: List[GoodMatch],
-      has_self: bool) -> List[GoodMatch]:
+      keep_all_views: bool, has_self: bool) -> List[GoodMatch]:
     if not old_matches:
       return new_matches
     if not new_matches:
       return old_matches
-    combined_matches = []
+    combined_matches = _UniqueMatches(self._node, keep_all_views)
     matched = False
     bad_param = None
     for new_match in new_matches:
@@ -1003,12 +1008,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             self._error_subst = old_match.subst
             bad_param = self._get_bad_type(name, formal)
           continue
-        combined_matches.append(
-            GoodMatch.merge(old_match, new_match, combined_subst))
+        combined_view = datatypes.AccessTrackingDict.merge(
+            old_match.view, new_match.view)
+        combined_matches.insert(combined_view, combined_subst)
         matched = True
     if not matched:
       raise self.MatchError(bad_param)
-    return combined_matches
+    return [GoodMatch(view, datatypes.HashableDict(subst))
+            for view, subst in combined_matches.unique()]
 
   def _match_subst_against_subst(
       self, old_subst, new_subst, type_param_map, has_self):
@@ -1030,9 +1037,23 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                                          for v in old_subst[t].data)
       for b1 in old_subst[t].bindings:
         for b2 in new_subst[t].bindings:
-          new_var, has_error = self._check_type_param_consistency(
-              b2.data, b2, type_param_map[t],
-              old_subst.copy(t=b1.AssignToNewVariable(self._node)))
+          if t in type_param_map:
+            new_var, has_error = self._check_type_param_consistency(
+                b2.data,
+                b2,
+                type_param_map[t],
+                old_subst.copy(t=b1.AssignToNewVariable(self._node)),
+            )
+          else:
+            # If t isn't a TypeVar here it should be a ParamSpec
+            assert t in self._paramspecs
+            new_var = self.ctx.program.NewVariable()
+            new_var.AddBinding(
+                self.ctx.convert.get_maybe_abstract_instance(b2.data),
+                {b2},
+                self._node,
+            )
+            has_error = False
           # If new_subst contains a TypeVar that is mutually exclusive with t,
           # then we can ignore this error because it is legal for t to not be
           # present in new_subst.
@@ -1521,9 +1542,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         # protocol_attribute_var.
         bad_left, bad_right = zip(*bad_matches)
         self._protocol_error = ProtocolTypeError(
-            left.cls, other_type, attribute,
+            left.cls,
+            other_type,
+            attribute,
             self.ctx.convert.merge_values(bad_left),
-            self.ctx.convert.merge_values(bad_right))
+            self.ctx.convert.merge_values(bad_right),
+        )
         return None
     return self._merge_substs(subst, new_substs)
 

@@ -371,6 +371,9 @@ class Converter(utils.ContextWeakrefMixin):
       # For debugging purposes, while developing the feature.
       return pytd.Annotated(base_type=pytd.NamedType("SequenceLength"),
                             annotations=(str(v.length), str(v.splat)))
+    elif isinstance(v, abstract.Concatenate):
+      # For debugging purposes, while developing the feature.
+      return pytd.NamedType("typing.Concatenate")
     else:
       raise NotImplementedError(v.__class__.__name__)
 

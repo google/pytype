@@ -10,6 +10,7 @@ from pytype import state
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import typing_overlay
 from pytype.pytd import pytd_utils
@@ -559,14 +560,22 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           return None
         annotation.update_inner_type(key, processed)
       return annotation
-    elif isinstance(annotation, (abstract.Class,
-                                 abstract.AMBIGUOUS_OR_EMPTY,
-                                 abstract.TypeParameter,
-                                 abstract.ParamSpec,
-                                 abstract.Concatenate,
-                                 abstract.FinalAnnotation,
-                                 typing_overlay.Final,
-                                 typing_overlay.NoReturn)):
+    elif isinstance(
+        annotation,
+        (
+            abstract.Class,
+            abstract.AMBIGUOUS_OR_EMPTY,
+            abstract.TypeParameter,
+            abstract.ParamSpec,
+            abstract.ParamSpecArgs,
+            abstract.ParamSpecKwargs,
+            abstract.Concatenate,
+            abstract.FinalAnnotation,
+            function.ParamSpecMatch,
+            typing_overlay.Final,
+            typing_overlay.NoReturn,
+        ),
+    ):
       return annotation
     else:
       self.ctx.errorlog.invalid_annotation(stack, annotation, "Not a type",

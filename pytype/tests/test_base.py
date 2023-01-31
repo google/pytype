@@ -136,7 +136,6 @@ class BaseTest(unittest.TestCase):
         always_use_return_annotations=True,
         enable_cached_property=True,
         overriding_parameter_count_checks=True,
-        overriding_return_type_checks=True,
         strict_parameter_checks=True,
         strict_primitive_comparisons=True,
         use_enum_overlay=True)

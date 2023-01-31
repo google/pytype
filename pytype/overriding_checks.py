@@ -39,8 +39,6 @@ SIGNATURE_ERROR_TYPE_TO_OPTION_NAME = {
         "overriding_parameter_count_checks",
     SignatureErrorType.POSITIONAL_PARAMETER_COUNT_MISMATCH:
         "overriding_parameter_count_checks",
-    SignatureErrorType.RETURN_TYPE_MISMATCH:
-        "overriding_return_type_checks",
 }
 
 
