@@ -1,3 +1,16 @@
+Version 2023.01.31:
+
+Updates:
+* PEP 612:
+  * Add support for ParamSpecs in source files.
+  * Basic support for ParamSpec args and kwargs.
+* Remove --overriding-return-type-checks (now a no-op).
+
+Bug fixes:
+* Fix types of Mapping.keys(), values(), items().
+* Don't unnecessarily mutate type parameter values to Any.
+* Add missing methods from collections.abc.MutableSequence.
+
 Version 2023.01.17:
 
 Updates:
