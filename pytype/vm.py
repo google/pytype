@@ -312,8 +312,11 @@ class VirtualMachine:
         op.name == "RETURN_VALUE" and
         op.line not in self._director.return_lines)
     chk = self._branch_tracker.check_ending(op.line, implicit_return)
-    for line, cases in chk:
-      self.ctx.errorlog.incomplete_match(self.frames, line, cases)
+    if len(self.frames) <= 2:
+      # We do exhaustiveness checking only when doing a top-level analysis of
+      # the match code.
+      for line, cases in chk:
+        self.ctx.errorlog.incomplete_match(self.frames, line, cases)
     self.frame.current_opcode = None
     return state
 

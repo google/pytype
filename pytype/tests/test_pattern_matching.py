@@ -744,6 +744,24 @@ class MatchCoverageTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(err, {"e": ["already been covered", "Color.RED"]})
 
+  def test_complete_match_no_caching(self):
+    self.Check("""
+      import enum
+      @enum.unique
+      class Coin(str, enum.Enum):
+        HEADS: str = 'heads'
+        TAILS: str = 'tails'
+      class Foo:
+        def foo(self, c: Coin) -> None:
+          match c:
+            case Coin.HEADS:
+              self.bar()
+            case Coin.TAILS:
+              pass
+        def bar(self) -> None:
+          pass
+    """, skip_repeat_calls=False)
+
 
 if __name__ == "__main__":
   test_base.main()
