@@ -1459,6 +1459,11 @@ class ErrorLog(ErrorLogBase):
     msg = f"This enum case has already been covered: {case}."
     self.error(stack, msg, details=details)
 
+  @_error_name("paramspec-error")
+  def paramspec_error(self, stack, details=None):
+    msg = "ParamSpec error"
+    self.error(stack, msg, details=details)
+
 
 def get_error_names_set():
   return _ERROR_NAMES

@@ -59,6 +59,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [not-instantiable](#not-instantiable)
       * [not-supported-yet](#not-supported-yet)
       * [not-writable](#not-writable)
+      * [paramspec-error](#paramspec-error)
       * [pyi-error](#pyi-error)
       * [python-compiler-error](#python-compiler-error)
       * [recursion-error](#recursion-error)
@@ -73,7 +74,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2023-01-11T17:37-08:00 -->
+<!-- Added by: mdemello, at: 2023-01-30T13:36-08:00 -->
 
 <!--te-->
 
@@ -718,6 +719,12 @@ class Foo(object):
 Foo().z = 42  # not-writable
 ```
 
+## paramspec-error
+
+A [parameter specification variable][pep-612] was used incorrectly. Examples
+include only having a single ParamSpec in a function signature, and not
+exactly following the limited syntax for `P.args` and `P.kwargs`.
+
 ## pyi-error
 
 The pyi file contains a syntax error.
@@ -916,6 +923,7 @@ If you believe you are seeing this error due to a bug on pytype's end, see
 [pytype-faq-noniterable-strings]: faq.md#noniterable-strings
 [pytype-faq-signature-mismatch]: faq.md#signature-mismatch
 [pep-591]: https://www.python.org/dev/peps/pep-0591/
+[pep-612]: https://www.python.org/dev/peps/pep-0612/
 
 <!-- References with different internal and external versions -->
 [new-bug]: https://github.com/google/pytype/issues/new

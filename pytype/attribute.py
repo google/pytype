@@ -107,6 +107,13 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
         return node, self.ctx.new_unsolvable(node)
     elif isinstance(obj, abstract.Empty):
       return node, None
+    elif isinstance(obj, abstract.ParamSpec):
+      if name == "args":
+        return node, abstract.ParamSpecArgs(obj, self.ctx).to_variable(node)
+      elif name == "kwargs":
+        return node, abstract.ParamSpecKwargs(obj, self.ctx).to_variable(node)
+      else:
+        return node, None
     else:
       return node, None
 

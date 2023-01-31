@@ -167,6 +167,26 @@ class ParamSpecTest(test_base.BaseTest):
       assert_type(b, Callable[[bool], List[str]])
     """)
 
+  def test_args_and_kwargs(self):
+    self.Check("""
+      from typing import ParamSpec, Callable, TypeVar
+
+      P = ParamSpec("P")
+      T = TypeVar("T")
+
+      def decorator(f: Callable[P, T]) -> Callable[P, T]:
+        def foo(*args: P.args, **kwargs: P.kwargs) -> T:
+          return f(*args, **kwargs)
+        return foo
+
+      def g(x: int, y: str) -> bool:
+        return False
+
+      a = decorator(g)
+      b = a(1, '2')
+      assert_type(b, bool)
+    """)
+
 
 _DECORATOR_PYI = """
   from typing import TypeVar, ParamSpec, Callable, List

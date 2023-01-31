@@ -508,8 +508,37 @@ class SignedFunction(Function):
         callargs[kwargs_name] = k.to_variable(node)
     return callargs
 
+  def _check_paramspec_args(self, args):
+    args_pspec, kwargs_pspec = None, None
+    for name, _, formal in self.signature.iter_args(args):
+      if not _isinstance(formal, "ParameterizedClass"):
+        continue
+      params = formal.get_formal_type_parameters()
+      if name == self.signature.varargs_name:
+        for param in params.values():
+          if _isinstance(param, "ParamSpecArgs"):
+            args_pspec = param
+      elif name == self.signature.kwargs_name:
+        for param in params.values():
+          if _isinstance(param, "ParamSpecKwargs"):
+            kwargs_pspec = param
+    if args_pspec or kwargs_pspec:
+      valid = (
+          args_pspec
+          and kwargs_pspec
+          and args_pspec.paramspec == kwargs_pspec.paramspec
+      )
+      if valid:
+        return args_pspec.paramspec
+      else:
+        self.ctx.errorlog.paramspec_error(
+            self.ctx.vm.frames,
+            "ParamSpec.args and ParamSpec.kwargs must be used together",
+        )
+
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
     args_to_match = []
+    self._check_paramspec_args(args)
     for name, arg, formal in self.signature.iter_args(args):
       if formal is None:
         continue
