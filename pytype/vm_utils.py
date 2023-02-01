@@ -431,8 +431,10 @@ def _expand_generic_protocols(node, bases, ctx):
 
 def _check_final_members(cls, class_dict, ctx):
   """Check if the new class overrides a final attribute or method."""
-  methods = class_dict.keys()
+  methods = set(class_dict)
   for base in cls.mro[1:]:
+    if not isinstance(base, abstract.Class):
+      continue
     if isinstance(base, abstract.PyTDClass):
       # TODO(mdemello): Unify this with IntepreterClass
       for m in methods:
@@ -441,7 +443,7 @@ def _check_final_members(cls, class_dict, ctx):
           ctx.errorlog.overriding_final_method(ctx.vm.frames, cls, base, m)
         elif member:
           ctx.errorlog.overriding_final_attribute(ctx.vm.frames, cls, base, m)
-    elif isinstance(base, abstract.Class):
+    else:
       for m in methods:
         if m in base.members:
           if any(x.final for x in base.members[m].data):
@@ -449,6 +451,7 @@ def _check_final_members(cls, class_dict, ctx):
           ann = base.get_annotated_local(m)
           if ann and ann.final:
             ctx.errorlog.overriding_final_attribute(ctx.vm.frames, cls, base, m)
+    methods.update(base.get_own_attributes())
 
 
 def make_class(node, props, ctx):
