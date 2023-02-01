@@ -784,6 +784,14 @@ def flatten(value, classes):
         # recursion.
         ambiguous = True
     return ambiguous
+  elif _isinstance(value, "Union"):
+    # A Union cannot be used in an isinstance call before Python 3.10, but
+    # there's no harm in processing it anyway.
+    ambiguous = False
+    for val in value.options:
+      if flatten(val, classes):
+        ambiguous = True
+    return ambiguous
   else:
     return True
 
