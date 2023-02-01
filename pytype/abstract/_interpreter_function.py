@@ -403,20 +403,6 @@ class InterpreterFunction(_function_base.SignedFunction):
            frame_substs=()):
     if self.is_overload:
       raise function.NotCallable(self)
-    if (self.ctx.vm.is_at_maximum_depth() and
-        not self.name.endswith(".__init__")):
-      log.info("Maximum depth reached. Not analyzing %r", self.name)
-      self._set_callself_maybe_missing_members()
-      if (self.signature.has_return_annotation and
-          (self.ctx.options.always_use_return_annotations or
-           self.signature.annotations["return"] == self.ctx.convert.no_return)):
-        ret_type = self.signature.annotations["return"]
-        node, ret = self.ctx.vm.init_class(node, ret_type)
-        if self.is_coroutine():
-          ret = _instances.Coroutine(self.ctx, ret, node).to_variable(node)
-      else:
-        ret = self.ctx.new_unsolvable(node)
-      return node, ret
     args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
     args = args.simplify(node, self.ctx, self.signature)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)
@@ -439,6 +425,21 @@ class InterpreterFunction(_function_base.SignedFunction):
     # type-checking down the road.
     annotations = self.ctx.annotation_utils.sub_annotations(
         node, annotations, annotation_substs, instantiate_unbound=False)
+
+    if (self.ctx.vm.is_at_maximum_depth() and
+        not self.name.endswith(".__init__")):
+      log.info("Maximum depth reached. Not analyzing %r", self.name)
+      self._set_callself_maybe_missing_members()
+      if ("return" in annotations and
+          (self.ctx.options.always_use_return_annotations or
+           annotations["return"] == self.ctx.convert.no_return)):
+        ret_type = annotations["return"]
+        node, ret = self.ctx.vm.init_class(node, ret_type)
+        if self.is_coroutine():
+          ret = _instances.Coroutine(self.ctx, ret, node).to_variable(node)
+      else:
+        ret = self.ctx.new_unsolvable(node)
+      return node, ret
 
     first_arg = sig.get_first_arg(callargs)
     if first_arg and sig.has_return_annotation:
