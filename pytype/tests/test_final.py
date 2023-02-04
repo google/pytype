@@ -98,7 +98,7 @@ class TestFinalDecorator(test_base.BaseTest):
 
   def test_multiple_inheritance(self):
     self.CheckWithErrors("""
-      from typing import final
+      from typing_extensions import final
       class A:
         @final
         def f(self):
@@ -116,7 +116,7 @@ class TestFinalDecorator(test_base.BaseTest):
         def f(self) -> str: ...
     """)]):
       self.CheckWithErrors("""
-        from typing import final
+        from typing_extensions import final
         import foo
         class A:
           @final
