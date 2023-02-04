@@ -95,7 +95,7 @@ class QuickTest(test_base.BaseTest):
       class Foo:
         def __init__(self):
           x = self.f()
-          assert_type(x, list)
+          assert_type(x, List[int])
         def f(self):
           return self.g(0)
         def g(self, x: T) -> List[T]:
@@ -125,6 +125,35 @@ class QuickTest(test_base.BaseTest):
         await f3()
       async def f3() -> None:
         pass
+    """)
+
+  def test_typevar_return(self):
+    self.Check("""
+      from typing import Sequence, TypeVar
+
+      class TestClass(int):
+        def __init__(self):
+          pass
+
+      _T = TypeVar('_T', bound=int)
+      def transform(t: _T) -> _T:
+        return t
+
+      def last_after_transform(t: Sequence[TestClass]) -> TestClass:
+        arr = [transform(val) for val in t]
+        return arr.pop(0)
+    """)
+
+  def test_type_of_typevar(self):
+    self.Check("""
+      from typing import Type, TypeVar
+      T = TypeVar('T', str, int)
+      def f(x: Type[T]) -> T:
+        return x()
+      def g(x: Type[T]) -> T:
+        return f(x)
+      def h():
+        return g(int)
     """)
 
 

@@ -96,6 +96,36 @@ class TestFinalDecorator(test_base.BaseTest):
           pass
     """)
 
+  def test_multiple_inheritance(self):
+    self.CheckWithErrors("""
+      from typing_extensions import final
+      class A:
+        @final
+        def f(self):
+          return 0
+      class B:
+        def f(self):
+          return ""
+      class C(B, A):  # final-error
+        pass
+    """)
+
+  def test_multiple_inheritance_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      class B:
+        def f(self) -> str: ...
+    """)]):
+      self.CheckWithErrors("""
+        from typing_extensions import final
+        import foo
+        class A:
+          @final
+          def f(self):
+            return "A"
+        class C(foo.B, A):  # final-error
+          pass
+      """)
+
 
 class TestFinalDecoratorValidity(test_base.BaseTest):
   """Test whether @final is applicable in context."""

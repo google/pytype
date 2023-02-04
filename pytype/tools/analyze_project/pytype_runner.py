@@ -1,5 +1,7 @@
 """Use pytype to analyze and infer types for an entire project."""
 
+import collections
+import itertools
 import logging
 import subprocess
 import sys
@@ -7,6 +9,7 @@ from typing import Iterable, Sequence, Tuple
 
 from pytype import file_utils
 from pytype import module_utils
+from pytype import utils
 from pytype.platform_utils import path_utils
 from pytype.tools.analyze_project import config
 
@@ -63,6 +66,14 @@ def resolved_file_to_module(f):
       path=path, target=target, name=name, kind=f.__class__.__name__)
 
 
+def _get_filenames(node):
+  if isinstance(node, str):
+    return (node,)
+  else:
+    # Make the build as deterministic as possible to minimize rebuilds.
+    return tuple(sorted(node.nodes))
+
+
 def deps_from_import_graph(import_graph):
   """Construct PytypeRunner args from an importlab.ImportGraph instance.
 
@@ -75,30 +86,40 @@ def deps_from_import_graph(import_graph):
   Returns:
     List of (tuple of source modules, tuple of direct deps) in dependency order.
   """
-  def get_filenames(node):
-    if isinstance(node, str):
-      return (node,)
-    else:
-      # Make the build as deterministic as possible to minimize rebuilds.
-      return tuple(sorted(node.nodes))
+
   def make_module(filename):
     return resolved_file_to_module(import_graph.provenance[filename])
-  modules = []
+
+  def split_files(filenames):
+    stubs = []
+    sources = []
+    for f in filenames:
+      if _is_type_stub(f):
+        stubs.append(f)
+      else:
+        sources.append(make_module(f))
+    return stubs, sources
+
+  # Map from type stubs to the source (.py) files they depend on.
+  stubs_to_source_deps = collections.defaultdict(list)
+  modules = []  # final output
   for node, deps in reversed(import_graph.deps_list()):
-    files = tuple(
-        make_module(f) for f in get_filenames(node) if not _is_type_stub(f))
+    stubs, sources = split_files(_get_filenames(node))
     # flatten and dedup
-    seen = set()
-    final_deps = []
-    for dep in deps:
-      for d in get_filenames(dep):
-        if d in seen:
-          continue
-        seen.add(d)
-        if not _is_type_stub(d):
-          final_deps.append(make_module(d))
-    if files:
-      modules.append((files, tuple(final_deps)))
+    flat_deps = utils.unique_list(
+        itertools.chain.from_iterable(_get_filenames(d) for d in deps))
+    stub_deps, source_deps = split_files(flat_deps)
+    # Collect each stub's transitive source dependencies.
+    for stub in stubs:
+      stubs_to_source_deps[stub].extend(source_deps)
+      for stub_dep in stub_deps:
+        stubs_to_source_deps[stub].extend(stubs_to_source_deps[stub_dep])
+    if sources:
+      # Typeshed's third-party stubs may have dependencies on external packages.
+      # Any source files that depend on these stubs inherit their dependencies.
+      for stub in stub_deps:
+        source_deps.extend(stubs_to_source_deps[stub])
+      modules.append((tuple(sources), tuple(source_deps)))
   return modules
 
 

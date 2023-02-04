@@ -138,6 +138,80 @@ class TestDepsFromImportGraph(unittest.TestCase):
     ]
     self.assertEqual(deps, expected)
 
+  def test_pyi_with_src_dep(self):
+    # py_mod -> pyi_mod -> py_dep
+    py_mod = Local('/foo/a/b.py', 'a/b.py', 'a.b')
+    pyi_mod = Local('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    py_dep = Local('/foo/a/c.py', 'a/c.py', 'a.c')
+    sources = [py_dep, pyi_mod, py_mod]
+    graph = FakeImportGraph(source_files=[x.path for x in sources],
+                            provenance={x.path: x for x in sources},
+                            source_to_deps={py_mod.path: [pyi_mod.path],
+                                            pyi_mod.path: [py_dep.path],
+                                            py_dep.path: []})
+    deps = pytype_runner.deps_from_import_graph(graph)
+    expected = [
+        ((Module('/foo/', 'a/c.py', 'a.c'),), ()),
+        ((Module('/foo/', 'a/b.py', 'a.b'),), (
+            Module('/foo/', 'a/c.py', 'a.c'),))
+    ]
+    self.assertEqual(deps, expected)
+
+  def test_pyi_with_src_dep_transitive(self):
+    # py_mod -> pyi_mod -> pyi_dep -> py_dep
+    py_mod = Local('/foo/a/b.py', 'a/b.py', 'a.b')
+    pyi_mod = Local('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    pyi_dep = Local('/foo/bar/d.pyi', 'bar/d.pyi', 'bar.d')
+    py_dep = Local('/foo/a/c.py', 'a/c.py', 'a.c')
+    sources = [py_dep, pyi_dep, pyi_mod, py_mod]
+    graph = FakeImportGraph(
+        source_files=[x.path for x in sources],
+        provenance={x.path: x for x in sources},
+        source_to_deps={py_mod.path: [pyi_mod.path],
+                        pyi_mod.path: [pyi_dep.path],
+                        pyi_dep.path: [py_dep.path],
+                        py_dep.path: []})
+    deps = pytype_runner.deps_from_import_graph(graph)
+    expected = [
+        ((Module('/foo/', 'a/c.py', 'a.c'),), ()),
+        ((Module('/foo/', 'a/b.py', 'a.b'),), (
+            Module('/foo/', 'a/c.py', 'a.c'),))
+    ]
+    self.assertEqual(deps, expected)
+
+  def test_pyi_with_src_dep_branching(self):
+    # py_mod -> pyi_mod1 -> py_dep1
+    #      |           |--> py_dep2
+    #      |
+    #      |--> pyi_mod2 -> py_dep3
+    py_mod = Local('/foo/a/b.py', 'a/b.py', 'a.b')
+    pyi_mod1 = Local('/foo/bar/c.pyi', 'bar/c.pyi', 'bar.c')
+    py_dep1 = Local('/foo/a/c.py', 'a/c.py', 'a.c')
+    py_dep2 = Local('/foo/a/d.py', 'a/d.py', 'a.d')
+    pyi_mod2 = Local('/foo/bar/d.pyi', 'bar/d.pyi', 'bar.d')
+    py_dep3 = Local('/foo/a/e.py', 'a/e.py', 'a.e')
+    sources = [py_dep3, pyi_mod2, py_dep2, py_dep1, pyi_mod1, py_mod]
+    graph = FakeImportGraph(
+        source_files=[x.path for x in sources],
+        provenance={x.path: x for x in sources},
+        source_to_deps={py_mod.path: [pyi_mod1.path, pyi_mod2.path],
+                        pyi_mod1.path: [py_dep1.path, py_dep2.path],
+                        py_dep1.path: [],
+                        py_dep2.path: [],
+                        pyi_mod2.path: [py_dep3.path],
+                        py_dep3.path: []})
+    deps = pytype_runner.deps_from_import_graph(graph)
+    expected = [
+        ((Module('/foo/', 'a/e.py', 'a.e'),), ()),
+        ((Module('/foo/', 'a/d.py', 'a.d'),), ()),
+        ((Module('/foo/', 'a/c.py', 'a.c'),), ()),
+        ((Module('/foo/', 'a/b.py', 'a.b'),), (
+            Module('/foo/', 'a/c.py', 'a.c'),
+            Module('/foo/', 'a/d.py', 'a.d'),
+            Module('/foo/', 'a/e.py', 'a.e')))
+    ]
+    self.assertEqual(deps, expected)
+
 
 class TestBase(unittest.TestCase):
   """Base class for tests using a parser."""

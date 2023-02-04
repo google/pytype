@@ -63,6 +63,27 @@ class UnionTest(test_base.BaseTest):
       Z = Union[int, Optional[str]]
     """)
 
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
+  def test_isinstance_union(self):
+    self.Check("""
+      from typing import Union
+      def f(x: Union[int, str, bytes]):
+        if isinstance(x, Union[int, str]):
+          assert_type(x, Union[int, str])
+        else:
+          assert_type(x, bytes)
+    """)
+
+  @test_utils.skipBeforePy((3, 10), "New in 3.10")
+  def test_isinstance_union_new_syntax(self):
+    self.Check("""
+      def f(x: int | str | bytes):
+        if isinstance(x, int | str):
+          assert_type(x, int | str)
+        else:
+          assert_type(x, bytes)
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class UnionOrTest(test_base.BaseTest):
