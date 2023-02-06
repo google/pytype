@@ -11,7 +11,7 @@ freshness: { owner: 'mdemello' reviewed: '2022-06-01' }
       * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
       * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
 
-<!-- Added by: mdemello, at: 2022-06-01T17:44-07:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
 
 <!--te-->
 
@@ -44,7 +44,7 @@ One somewhat surprising behaviour is illustrated by the following snippet:
 xs = [1, 2, 3]
 reveal_type(xs)  # => List[int]
 xs.append('hello')  # no error!
-reveal_type(xs)  # => List[Union[int, str]]
+reveal_type(xs)  # => List[int | str]
 ```
 
 Given that `xs` is correctly inferred as `List[int]` in line 2, it could be
@@ -62,6 +62,10 @@ xs.append('hello')  # ! container-type-mismatch
 ```
 
 ## Why is Optional[Optional[T]] the same as Optional[T]?
+
+Note: Starting in Python 3.10, the preferred way to write the above types is
+`None | None | T` and `None | T`, which makes the equivalence between the two
+types almost obvious by inspection.
 
 Consider the following code:
 

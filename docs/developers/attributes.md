@@ -12,7 +12,7 @@
          * [get_special_attribute](#get_special_attribute)
          * [valself](#valself)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:20-08:00 -->
 
 <!--te-->
 
@@ -41,13 +41,13 @@ two top-level methods:
 
 ![set_attribute diagram](../images/set_attribute.png)
 
-1. `set_attribute` recursively calls itself as needed to unpack the target
-   object. For example, when passed a Union, `set_attribute` iterates through
-   the union's options and calls itself on each one.
-1. `set_attribute` then calls `_set_member`, which first calls
-   `_maybe_load_as_instance_attribute` to make sure the requested attribute has
-   been lazily loaded into the object's `members` dict, then modifies the
-   appropriate `members` entry.
+1.  `set_attribute` recursively calls itself as needed to unpack the target
+    object. For example, when passed a union, `set_attribute` iterates through
+    the union's options and calls itself on each one.
+1.  `set_attribute` then calls `_set_member`, which first calls
+    `_maybe_load_as_instance_attribute` to make sure the requested attribute has
+    been lazily loaded into the object's `members` dict, then modifies the
+    appropriate `members` entry.
 
 ### get_attribute
 

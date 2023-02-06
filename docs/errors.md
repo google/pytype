@@ -74,7 +74,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: mdemello, at: 2023-01-30T13:36-08:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
 
 <!--te-->
 
@@ -281,7 +281,7 @@ Example:
 <!-- bad -->
 ```python
 a: List[int] = [1, 2]
-a.append("hello")  # <-- contained type is now Union[int, str]
+a.append("hello")  # <-- contained type is now `int | str`
 ```
 
 ## duplicate-keyword-argument
@@ -722,8 +722,8 @@ Foo().z = 42  # not-writable
 ## paramspec-error
 
 A [parameter specification variable][pep-612] was used incorrectly. Examples
-include only having a single ParamSpec in a function signature, and not
-exactly following the limited syntax for `P.args` and `P.kwargs`.
+include only having a single ParamSpec in a function signature, and not exactly
+following the limited syntax for `P.args` and `P.kwargs`.
 
 ## pyi-error
 
@@ -858,8 +858,7 @@ directly. So the above example should be rewritten as:
 
 <!-- good -->
 ```python
-from typing import Union
-x = ...  # type: Union[str,  unicode]
+x = ...  # type: str | unicode
 ```
 
 ## unsupported-operands
