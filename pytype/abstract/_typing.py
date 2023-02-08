@@ -737,6 +737,7 @@ class LateAnnotation:
           instance.cls = self.ctx.convert.unsolvable
         else:
           self.ctx.vm.reinitialize_if_initialized(node, instance)
+    self.resolved = True
     log.info("Resolved late annotation %r to %r", self.expr, self._type)
 
   def set_type(self, typ):
