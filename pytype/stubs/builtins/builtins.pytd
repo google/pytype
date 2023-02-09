@@ -260,6 +260,9 @@ class ellipsis(object):
     __slots__ = []
 
 class property(object):
+    fget: Callable[[Any], Any] | None
+    fset: Callable[[Any, Any], None] | None
+    fdel: Callable[[Any], None] | None
     def __init__(self, fget=..., fset=..., fdel=..., doc=...) -> NoneType: ...
     def __get__(self, *args, **kwargs) -> Any: ...
     def __set__(self, *args, **kwargs) -> Any: ...
