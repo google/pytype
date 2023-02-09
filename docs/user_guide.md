@@ -12,7 +12,7 @@
       * [Pyi stub files](#pyi-stub-files)
       * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
 
-<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:20-08:00 -->
 
 <!--te-->
 
@@ -62,28 +62,29 @@ contains many useful definitions that can, for example, be used to declare a
 function that extracts the keys out of a mapping:
 
 ```python
-from typing import Any, Mapping, Sequence, Text
+from collections.abc import Mapping, Sequence
+from typing import Any
 
-def keys(mapping: Mapping[Text, Any]) -> Sequence[Text]:
+def keys(mapping: Mapping[str, Any]) -> Sequence[str]:
   return tuple(mapping)
 ```
 
 or describe callable objects or higher order functions:
 
 ```python
-from typing import Callable
+from collections.abc import Callable
 
 def instantiate(factory: Callable[[], int]) -> int:
   return factory()
 ```
 
-A particularly useful construct is [`Optional`][optional], which can be used to
-specify that a function might return `None`:
+A particularly useful construct is [`Union`][union], expressed with a `|`. It
+can be used to specify that a function might return `None`:
 
 ```python
-from typing import Optional, Sequence, Text
+from collections.abc import Sequence
 
-def find_index_of_name(sequence: Sequence[Any], name: Text) -> Optional[int]:
+def find_index_of_name(sequence: Sequence[Any], name: str) -> int | None:
   try:
     return sequence.index(name)
   except ValueError:
@@ -93,11 +94,13 @@ def find_index_of_name(sequence: Sequence[Any], name: Text) -> Optional[int]:
 or allows a `None` value:
 
 ```python
-from typing import Optional, Text
-
-def greet(name: Optional[Text]) -> Text:
+def greet(name: str | None) -> str:
   return 'Hi John Doe' if name is None else 'Hi ' + name
 ```
+
+Note: The `|` syntax is new in Python 3.10. If you need to support older
+versions, use `typing.Union[X, Y]` rather than `X | Y` and `typing.Optional[X]`
+as a shorthand for `typing.Union[X, None]`.
 
 ## Silencing errors
 
@@ -226,7 +229,7 @@ and [typeshed][typeshed]. If you find a mistake in one of these files, please
 [file a bug][new-bug].
 
 <!-- General references -->
-[optional]: https://docs.python.org/3/library/typing.html#typing.Optional
+
 [pep-3107]: https://www.python.org/dev/peps/pep-3107
 [pep-484]: https://www.python.org/dev/peps/pep-0484
 [pep-484-runtime-or-type-checking]: https://www.python.org/dev/peps/pep-0484/#runtime-or-type-checking
@@ -235,6 +238,7 @@ and [typeshed][typeshed]. If you find a mistake in one of these files, please
 [pep-526]: https://www.python.org/dev/peps/pep-0526/
 [pyi-examples]: https://github.com/python/typeshed/tree/master/stdlib
 [stdtypes]: https://docs.python.org/2/library/stdtypes.html
+[union]: https://docs.python.org/3/library/typing.html#typing.Union
 
 <!-- References with different internal and external versions -->
 

@@ -1,3 +1,15 @@
+Version 2023.02.09:
+
+Updates:
+* Support isinstance(..., Union[...]).
+* analyze_project: take external dependencies of typeshed stubs into account.
+* Add support for the 3.10+ kw_only dataclass field parameter.
+
+Bug fixes:
+* Fix a misfiring of the [incomplete-match] error.
+* Detect mixin override of @final-decorated attribute.
+* Always apply TypeVar substitutions to function return types.
+
 Version 2023.01.31:
 
 Updates:

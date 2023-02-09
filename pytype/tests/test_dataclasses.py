@@ -1141,5 +1141,93 @@ class TestPyiDataclass(test_base.BaseTest):
       bar = Bar('test', .4, .4)  # wrong-arg-types
     """)
 
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_kwonly_constructor(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass(kw_only=True)
+      class A():
+        a1: int
+        a2: int = dataclasses.field(default_factory=lambda: 0)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from typing import Dict
+
+      @dataclasses.dataclass
+      class A:
+          a1: int
+          a2: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          def __init__(self, *, a1: int, a2: int = ...) -> None: ...
+    """)
+
+  @test_base.skip("Doesn't work due to b/268530497")
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_inherited_kwonly_constructor(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass(kw_only=True)
+      class A():
+        a1: int
+        a2: int = dataclasses.field(default_factory=lambda: 0)
+
+      @dataclasses.dataclass
+      class B(A):
+        b1: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from typing import Dict
+
+      @dataclasses.dataclass
+      class A:
+          a1: int
+          a2: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          def __init__(self, *, a1: int, a2: int = ...) -> None: ...
+
+      @dataclasses.dataclass
+      class B(A):
+          b1: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          def __init__(self, b1: int, *, a1: int, a2: int = ...) -> None: ...
+    """)
+
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_kwonly(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A():
+        a1: int
+        a2: int = dataclasses.field(default_factory=lambda: 0, kw_only=True)
+
+      @dataclasses.dataclass
+      class B(A):
+        b1: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from typing import Dict
+
+      @dataclasses.dataclass
+      class A:
+          a1: int
+          a2: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          def __init__(self, a1: int, *, a2: int = ...) -> None: ...
+
+      @dataclasses.dataclass
+      class B(A):
+          b1: int
+          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          def __init__(self, a1: int, b1: int, *, a2: int = ...) -> None: ...
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

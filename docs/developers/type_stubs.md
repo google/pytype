@@ -13,7 +13,7 @@
          * [AST simplification](#ast-simplification)
          * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
 
 <!--te-->
 
@@ -54,7 +54,7 @@ Declaration") or *PyTD*, in which mutations are described by assignment to
 ```python
 class dict(Dict[_K, _V]):
   def update(self, other: dict[_K2, _V2]) -> None:
-    self = dict[Union[_K, _K2], Union[_V, _V2]]
+    self = dict[_K | _K2, _V | _V2]
 ```
 
 In practice, the terms `pyi` and `pytd` are often used interchangeably.
@@ -189,11 +189,11 @@ pytype produces a raw pyi in which `Company.employees` is inferred to be a list
 of both CEOs and employees:
 
 ```python
-from typing import List, Union
+from typing import List
 class Employee: ...
 class CEO(Employee): ...
 class Company:
-  employees: List[Union[CEO, Employee]]
+  employees: List[CEO | Employee]
   def __init__(self) -> None: ...
   def hire(self, employee: Employee) -> None: ...
 ```

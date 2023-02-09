@@ -14,7 +14,7 @@ freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
          * [Conversion to abstract types](#conversion-to-abstract-types)
       * [Tracking local operations](#tracking-local-operations)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:20-08:00 -->
 
 <!--te-->
 
@@ -51,10 +51,6 @@ SETUP_ANNOTATIONS
 LOAD_NAME                0 (A)
 STORE_ANNOTATION         1 (x)
 ```
-
-NOTE: Within a function body, type annotations without an assignment (e.g. `x:
-A` versus `x: A = foo()`) do not generate any bytecode, and are therefore not
-processed by pytype's bytecode VM.
 
 ## Annotations dictionary
 
@@ -126,14 +122,12 @@ that do not correspond directly to a runtime python type.
 
 Some examples:
 
-* Parametrised types, e.g. `List[int]` is the type of lists of integers, and
-  `Dict[K, V]` is the (generic) type of dictionaries whose keys and values have
-  types K and V respectively.
-* Union types, e.g. `Union[int, str]` is the type of variables that could
-  contain either an `int` or a `str` for the purposes of static type analysis.
-  At runtime, they will contain a single concrete type.
-* Optional types are a special subcase of unions; `Optional[T] = Union[T,
-  None]`.
+*   Parametrised types, e.g. `List[int]` is the type of lists of integers, and
+    `Dict[K, V]` is the (generic) type of dictionaries whose keys and values
+    have types K and V respectively.
+*   Union types, e.g. `int | str` is the type of variables that could contain
+    either an `int` or a `str` for the purposes of static type analysis. At
+    runtime, they will contain a single concrete type.
 
 NOTE: Technically, these types *do* correspond to runtime classes defined in
 [typing.py](https://github.com/python/typing/blob/master/src/typing.py), but

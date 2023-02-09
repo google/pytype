@@ -22,7 +22,7 @@
       * [How do I annotate *args and <code>**kwargs</code>?](#how-do-i-annotate-args-and-kwargs)
       * [Why are signature mismatches in subclasses bad? {#signature-mismatch}](#why-are-signature-mismatches-in-subclasses-bad-signature-mismatch)
 
-<!-- Added by: rechen, at: 2022-11-16T14:59-08:00 -->
+<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
 
 <!--te-->
 
@@ -91,8 +91,8 @@ will indeed result in a type error.
 
 ## How do I declare that something can be either byte string or unicode?
 
-Use `str` if it is conceptually a text object and `typing.Union[bytes, str]`
-otherwise. See the [style guide][style-guide-string-types] for more information.
+Use `str` if it is conceptually a text object and `bytes | str` otherwise. See
+the [style guide][style-guide-string-types] for more information.
 
 ## I'm trying to use a mixin, but pytype raises errors about it. What should I do?
 
@@ -247,11 +247,11 @@ If you wish to pass a string `s` into a function that expects a string iterable:
 *   To create a list with `s` as the only element, use `[s]`.
 
 If you are annotating a function parameter that expects both iterating over a
-single string **and** multiple strings, you can use `Union` to explicitly allow
-this. For example,
+single string **and** multiple strings, you can use a union (expressed with `|`)
+to explicitly allow this. For example,
 
 ```py
-def f(x: Union[str, Iterable[str]]): ...
+def f(x: str | Iterable[str]): ...
 
 # Alternatively, if your function expects any kind of Iterable
 def g(x: Iterable[Any]): ...
