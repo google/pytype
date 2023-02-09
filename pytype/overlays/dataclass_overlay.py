@@ -73,13 +73,14 @@ class Dataclass(classgen.Decorator):
     for name, local in cls_locals.items():
       typ, orig = local.get_type(node, name), local.orig
       kind = ""
+      init = True
+      kw_only = False
       assert typ
       if match_classvar(typ):
         continue
       initvar_typ = self._handle_initvar(node, cls, name, typ, orig)
       if initvar_typ:
         typ = initvar_typ
-        init = True
         kind = classgen.AttributeKinds.INITVAR
       else:
         if not orig:
@@ -88,8 +89,8 @@ class Dataclass(classgen.Decorator):
           field = orig.data[0]
           orig = field.default
           init = field.init
-        else:
-          init = True
+          if self.ctx.python_version >= (3, 10):
+            kw_only = field.kw_only
 
       if orig and orig.data == [self.ctx.convert.none]:
         # vm._apply_annotation mostly takes care of checking that the default
@@ -99,7 +100,8 @@ class Dataclass(classgen.Decorator):
             node, name, typ, orig, local.stack, allow_none=False)
 
       attr = classgen.Attribute(
-          name=name, typ=typ, init=init, kw_only=False, default=orig, kind=kind)
+          name=name, typ=typ, init=init, kw_only=kw_only, default=orig,
+          kind=kind)
       own_attrs.append(attr)
 
     cls.record_attr_ordering(own_attrs)
@@ -142,10 +144,11 @@ class Dataclass(classgen.Decorator):
 class FieldInstance(abstract.SimpleValue):
   """Return value of a field() call."""
 
-  def __init__(self, ctx, init, default):
+  def __init__(self, ctx, init, default, kw_only):
     super().__init__("field", ctx)
     self.init = init
     self.default = default
+    self.kw_only = kw_only
     self.cls = ctx.convert.unsolvable
 
 
@@ -162,7 +165,8 @@ class FieldFunction(classgen.FieldConstructor):
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     init = self.get_kwarg(args, "init", True)
-    typ = FieldInstance(self.ctx, init, default_var).to_variable(node)
+    kw_only = self.get_kwarg(args, "kw_only", False)
+    typ = FieldInstance(self.ctx, init, default_var, kw_only).to_variable(node)
     return node, typ
 
   def _get_default_var(self, node, args):
