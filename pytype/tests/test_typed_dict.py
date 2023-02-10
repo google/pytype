@@ -309,7 +309,7 @@ class TypedDictTest(test_base.BaseTest):
 
   def test_get(self):
     self.Check("""
-      from typing import TypedDict
+      from typing_extensions import TypedDict
       class X(TypedDict):
         a: int
         b: str
