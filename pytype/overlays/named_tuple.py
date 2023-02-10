@@ -546,8 +546,8 @@ class _DictBuilder:
 class NamedTupleClass(abstract.InterpreterClass):
   """Named tuple classes."""
 
-  def __init__(self, *args):
-    super().__init__(*args)
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
     # Store the original properties, to output to pyi files.
     self.props = None
     self.generated_members = None

@@ -52,8 +52,9 @@ class ValselfTest(test_base.UnitTest):
 
   def test_class_no_valself(self):
     meta_members = {"x": self.ctx.convert.none.to_variable(self.node)}
-    meta = abstract.InterpreterClass("M", [], meta_members, None, self.ctx)
-    cls = abstract.InterpreterClass("X", [], {}, meta, self.ctx)
+    meta = abstract.InterpreterClass(
+        "M", [], meta_members, None, None, self.ctx)
+    cls = abstract.InterpreterClass("X", [], {}, meta, None, self.ctx)
     _, attr_var = self.attribute_handler.get_attribute(self.node, cls, "x")
     # Since `valself` was not passed to get_attribute, we do not look at the
     # metaclass, so M.x is not returned.
@@ -61,8 +62,9 @@ class ValselfTest(test_base.UnitTest):
 
   def test_class_with_instance_valself(self):
     meta_members = {"x": self.ctx.convert.none.to_variable(self.node)}
-    meta = abstract.InterpreterClass("M", [], meta_members, None, self.ctx)
-    cls = abstract.InterpreterClass("X", [], {}, meta, self.ctx)
+    meta = abstract.InterpreterClass(
+        "M", [], meta_members, None, None, self.ctx)
+    cls = abstract.InterpreterClass("X", [], {}, meta, None, self.ctx)
     valself = abstract.Instance(cls, self.ctx).to_binding(self.node)
     _, attr_var = self.attribute_handler.get_attribute(
         self.node, cls, "x", valself)
@@ -72,8 +74,9 @@ class ValselfTest(test_base.UnitTest):
 
   def test_class_with_class_valself(self):
     meta_members = {"x": self.ctx.convert.none.to_variable(self.node)}
-    meta = abstract.InterpreterClass("M", [], meta_members, None, self.ctx)
-    cls = abstract.InterpreterClass("X", [], {}, meta, self.ctx)
+    meta = abstract.InterpreterClass(
+        "M", [], meta_members, None, None, self.ctx)
+    cls = abstract.InterpreterClass("X", [], {}, meta, None, self.ctx)
     valself = cls.to_binding(self.node)
     _, attr_var = self.attribute_handler.get_attribute(
         self.node, cls, "x", valself)
@@ -81,7 +84,7 @@ class ValselfTest(test_base.UnitTest):
     self.assertEqual(attr_var.data, [self.ctx.convert.none])
 
   def test_getitem_no_valself(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, self.ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, self.ctx)
     _, attr_var = self.attribute_handler.get_attribute(
         self.node, cls, "__getitem__")
     attr, = attr_var.data
@@ -90,7 +93,7 @@ class ValselfTest(test_base.UnitTest):
     self.assertIs(attr.func.__func__, abstract.AnnotationClass.getitem_slot)
 
   def test_getitem_with_instance_valself(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, self.ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, self.ctx)
     valself = abstract.Instance(cls, self.ctx).to_binding(self.node)
     _, attr_var = self.attribute_handler.get_attribute(
         self.node, cls, "__getitem__", valself)
@@ -99,7 +102,7 @@ class ValselfTest(test_base.UnitTest):
     self.assertIsNone(attr_var)
 
   def test_getitem_with_class_valself(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, self.ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, self.ctx)
     valself = cls.to_binding(self.node)
     _, attr_var = self.attribute_handler.get_attribute(
         self.node, cls, "__getitem__", valself)
@@ -159,7 +162,7 @@ class AttributeTest(test_base.UnitTest):
 
   def test_union_set_attribute(self):
     list_instance = abstract.Instance(self._ctx.convert.list_type, self._ctx)
-    cls = abstract.InterpreterClass("obj", [], {}, None, self._ctx)
+    cls = abstract.InterpreterClass("obj", [], {}, None, None, self._ctx)
     cls_instance = abstract.Instance(cls, self._ctx)
     union = abstract.Union([cls_instance, list_instance], self._ctx)
     node = self._ctx.attribute_handler.set_attribute(

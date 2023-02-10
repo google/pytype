@@ -14,6 +14,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.pyc import opcodes
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.codegen import decorate
@@ -103,7 +104,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
   def __init__(self, name: str, bases: List[cfg.Variable],
                members: Dict[str, cfg.Variable], cls: _base.BaseValue,
-               ctx: _ContextType):
+               first_opcode: Optional[opcodes.Opcode], ctx: _ContextType):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
@@ -118,10 +119,14 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     log.info("Created class: %r", self)
     self.type_param_check()
     self.decorators = []
+    self._first_opcode = first_opcode
 
   def _get_class(self):
     return ParameterizedClass(self.ctx.convert.type_type,
                               {abstract_utils.T: self}, self.ctx)
+
+  def get_first_opcode(self):
+    return self._first_opcode
 
   def update_signature_scope(self, method):
     method.signature.excluded_types.update(

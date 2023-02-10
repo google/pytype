@@ -519,7 +519,8 @@ def make_class(node, props, ctx):
     try:
       class_type = props.class_type or abstract.InterpreterClass
       assert issubclass(class_type, abstract.InterpreterClass)
-      val = class_type(name, bases, class_dict.pyval, cls, ctx)
+      val = class_type(
+          name, bases, class_dict.pyval, cls, ctx.vm.frame.current_opcode, ctx)
       _check_final_members(val, class_dict.pyval, ctx)
       overriding_checks.check_overriding_members(val, bases, class_dict.pyval,
                                                  ctx.matcher(node), ctx)
@@ -535,11 +536,6 @@ def make_class(node, props, ctx):
       var.AddBinding(val, props.class_dict_var.bindings, node)
       node = val.call_metaclass_init(node)
       node = val.call_init_subclass(node)
-      if not val.is_abstract:
-        # Since a class decorator could have made the class inherit from
-        # ABCMeta, we have to mark concrete classes now and check for
-        # abstract methods at postprocessing time.
-        ctx.vm.concrete_classes.append((val, ctx.vm.simple_stack()))
   ctx.vm.trace_opcode(None, name, var)
   return node, var
 
