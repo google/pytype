@@ -238,6 +238,7 @@ class TypedDict(abstract.Dict):
     super().__init__(ctx)
     self.props = props
     self.set_native_slot("__delitem__", self.delitem_slot)
+    self.set_native_slot("get", self.get_slot)
 
   @property
   def fields(self):
@@ -253,6 +254,7 @@ class TypedDict(abstract.Dict):
   def _check_str_key(self, name):
     if name not in self.fields:
       raise TypedDictKeyMissing(self, name)
+    return name
 
   def _check_str_key_value(self, node, name, value_var):
     self._check_str_key(name)
@@ -263,6 +265,7 @@ class TypedDict(abstract.Dict):
           self.ctx.vm.frames, match.expected.typ, match.actual_binding, name,
           match.error_details, typed_dict=self
       )
+    return name, value_var
 
   def _check_key(self, name_var):
     """Check that key is in the typed dict."""
@@ -270,13 +273,14 @@ class TypedDict(abstract.Dict):
       name = abstract_utils.get_atomic_python_constant(name_var, str)
     except abstract_utils.ConversionError as e:
       raise TypedDictKeyMissing(self, None) from e
-    self._check_str_key(name)
+    return self._check_str_key(name)
 
   def _check_value(self, node, name_var, value_var):
     """Check that value has the right type."""
     # We have already called check_key so name is in fields
     name = abstract_utils.get_atomic_python_constant(name_var, str)
     self._check_str_key_value(node, name, value_var)
+    return value_var
 
   def getitem_slot(self, node, name_var):
     # A typed dict getitem should have a concrete string arg. If we have a var
@@ -300,3 +304,10 @@ class TypedDict(abstract.Dict):
   def pop_slot(self, node, key_var, default_var=None):
     self._check_key(key_var)
     return super().pop_slot(node, key_var, default_var)
+
+  def get_slot(self, node, key_var, default_var=None):
+    try:
+      str_key = self._check_key(key_var)
+    except TypedDictKeyMissing:
+      return node, default_var or self.ctx.convert.none.to_variable(node)
+    return node, self.pyval.pop(str_key)

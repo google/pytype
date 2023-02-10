@@ -18,7 +18,7 @@ import functools
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from pytype import compare
 from pytype import constant_folding
@@ -203,8 +203,6 @@ class VirtualMachine:
     # Record the annotated and original values of locals.
     self.annotated_locals: Dict[str, Dict[str, abstract_utils.Local]] = {}
     self.filename: str = None
-    self.concrete_classes: List[
-        Tuple[abstract.Class, Sequence[frame_state.SimpleFrame]]] = []
     self.functions_type_params_check: List[
         Tuple[abstract.InterpreterFunction, opcodes.Opcode]] = []
 
@@ -546,14 +544,6 @@ class VirtualMachine:
     node = self.ctx.root_node.ConnectNew("init")
     node, f_globals, f_locals, _ = self.run_bytecode(node, code)
     logging.info("Done running bytecode, postprocessing globals")
-    # Check for abstract methods on non-abstract classes.
-    for val, frames in self.concrete_classes:
-      if not val.is_abstract:
-        for member in sum((var.data for var in val.members.values()), []):
-          if isinstance(member, abstract.Function) and member.is_abstract:
-            unwrapped = abstract_utils.maybe_unwrap_decorated_function(member)
-            name = unwrapped.data[0].name if unwrapped else member.name
-            self.ctx.errorlog.ignored_abstractmethod(frames, val.name, name)
     for annot in itertools.chain.from_iterable(self.late_annotations.values()):
       # If `annot` has already been resolved, this is a no-op. Otherwise, it
       # contains a real name error that will be logged when we resolve it now.

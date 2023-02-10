@@ -164,6 +164,19 @@ class AbstractMethodTests(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": ["on method Foo.f"]})
 
+  def test_bad_abstract_pyi_method(self):
+    with self.DepTree([("foo.pyi", """
+      import abc
+      class Foo(abc.ABC):
+        @abc.abstractmethod
+        def f(self) -> int: ...
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        class Bar:  # ignored-abstractmethod
+          f = foo.Foo.f
+      """)
+
   def test_abstract_property(self):
     # Regression test for a crash when the decorators were applied in the wrong
     # order.
@@ -191,6 +204,16 @@ class AbstractMethodTests(test_base.BaseTest):
         @abc.abstractmethod
         def f(self):
           pass
+    """)
+
+  def test_ignored_abstractmethod_nested(self):
+    self.CheckWithErrors("""
+      import abc
+      def f():
+        class C:  # ignored-abstractmethod
+          @abc.abstractmethod
+          def f(self):
+            pass
     """)
 
 

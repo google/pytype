@@ -414,20 +414,21 @@ class CallTracer(vm.VirtualMachine):
       self._call_init_on_binding(node, instance.to_binding(node))
 
   def analyze_class(self, node, val):
-    log.info("Analyzing class: %r", val.data.full_name)
-    self._analyzed_classes.add(val.data)
-    node, instance = self.init_class(node, val.data)
-    good_instances = [b for b in instance.bindings if val.data == b.data.cls]
+    cls = val.data
+    log.info("Analyzing class: %r", cls.full_name)
+    self._analyzed_classes.add(cls)
+    node, instance = self.init_class(node, cls)
+    good_instances = [b for b in instance.bindings if cls == b.data.cls]
     if not good_instances:
       # __new__ returned something that's not an instance of our class.
-      instance = val.data.instantiate(node)
+      instance = cls.instantiate(node)
       node = self.call_init(node, instance)
     elif len(good_instances) != len(instance.bindings):
       # __new__ returned some extra possibilities we don't need.
       instance = self.ctx.join_bindings(node, good_instances)
     for instance_value in instance.data:
-      val.data.register_canonical_instance(instance_value)
-    methods = sorted(val.data.members.items())
+      cls.register_canonical_instance(instance_value)
+    methods = sorted(cls.members.items())
     while methods:
       name, methodvar = methods.pop(0)
       if name in self._CONSTRUCTORS:
@@ -437,6 +438,12 @@ class CallTracer(vm.VirtualMachine):
           for m in (v.fget, v.fset, v.fdel):
             if m:
               methods.insert(0, (name, m))
+        if (not cls.is_abstract and isinstance(v, abstract.Function) and
+            v.is_abstract):
+          unwrapped = abstract_utils.maybe_unwrap_decorated_function(v)
+          name = unwrapped.data[0].name if unwrapped else v.name
+          self.ctx.errorlog.ignored_abstractmethod(
+              self.ctx.vm.simple_stack(cls.get_first_opcode()), cls.name, name)
       b = self.bind_method(node, methodvar, instance)
       node = self.analyze_method_var(node, name, b, val)
     return node

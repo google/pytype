@@ -193,8 +193,8 @@ class IntEnumBuilder(EnumBuilder):
 class EnumInstance(abstract.InterpreterClass):
   """A wrapper for classes that subclass enum.Enum."""
 
-  def __init__(self, name, bases, members, cls, ctx):
-    super().__init__(name, bases, members, cls, ctx)
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
     # These are set by EnumMetaInit.setup_interpreterclass.
     self.member_type = None
     self.member_attrs = {}

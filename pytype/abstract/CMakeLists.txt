@@ -56,6 +56,7 @@ py_library(
     .function
     .mixin
     pytype.utils
+    pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.pytd.codegen.codegen
     pytype.typegraph.cfg

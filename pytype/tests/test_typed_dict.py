@@ -307,6 +307,18 @@ class TypedDictTest(test_base.BaseTest):
       print(baz['c']['a'])
     """)
 
+  def test_get(self):
+    self.Check("""
+      from typing_extensions import TypedDict
+      class X(TypedDict):
+        a: int
+        b: str
+      def f(x: X):
+        assert_type(x.get('a'), int)
+        assert_type(x.get('c'), None)
+        assert_type(x.get('c', ''), str)
+    """)
+
 
 class TypedDictFunctionalTest(test_base.BaseTest):
   """Tests for typing.TypedDict functional constructor."""

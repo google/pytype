@@ -588,6 +588,15 @@ class StdlibTestsFeatures(test_base.BaseTest,
         return x.frombytes(y)
     """)
 
+  def test_property_attributes(self):
+    self.Check("""
+      class C:
+        @property
+        def x(self):
+          pass
+      print(C.x.fget, C.x.fset, C.x.fdel)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
