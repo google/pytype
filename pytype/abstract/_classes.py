@@ -277,7 +277,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       return None
 
   def instantiate(self, node, container=None):
-    if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
+    if self.ctx.vm.current_opcode:
       return self._new_instance(container, node, None).to_variable(node)
     else:
       # When the analyze_x methods in CallTracer instantiate classes in

@@ -156,7 +156,7 @@ class ObjectPredicate(BuiltinFunction):
   def call(self, node, _, args, alias_map=None):
     try:
       self.match_args(node, args)
-      node = node.ConnectNew(self.name)
+      node = self.ctx.connect_new_cfg_node(node, f"CallPredicate:{self.name}")
       result = self.ctx.program.NewVariable()
       self.run(node, args, result)
     except function.InvalidParameters as ex:

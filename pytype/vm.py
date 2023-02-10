@@ -228,6 +228,14 @@ class VirtualMachine:
   def current_annotated_locals(self):
     return self.annotated_locals[self.frame.f_code.co_name]
 
+  @property
+  def current_opcode(self) -> Optional[opcodes.Opcode]:
+    return self.frame and self.frame.current_opcode
+
+  @property
+  def current_line(self) -> Optional[int]:
+    return self.current_opcode and self.current_opcode.line  # pytype: disable=attribute-error
+
   @contextlib.contextmanager
   def _suppress_opcode_tracing(self):
     old_trace_opcodes = self._trace_opcodes
@@ -368,7 +376,7 @@ class VirtualMachine:
       elif op.carry_on_to_next():
         # We're starting a new block, so start a new CFG node. We don't want
         # nodes to overlap the boundary of blocks.
-        state = state.forward_cfg_node()
+        state = state.forward_cfg_node("NewBlock")
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
     vm_utils.update_excluded_types(node, self.ctx)
     self.pop_frame(frame)
@@ -873,18 +881,18 @@ class VirtualMachine:
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types=True)
     value = self._process_annotations(state.node, name, value)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"Before:Store:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
-    return state.forward_cfg_node()
+    return state.forward_cfg_node(f"After:Store:{name}")
 
   def _del_name(self, op, state, name, local):
     """Called when a local or global is deleted."""
     value = abstract.Deleted(self.ctx).to_variable(state.node)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"Before:Del:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
-    return state.forward_cfg_node()
+    return state.forward_cfg_node(f"After:Del:{name}")
 
   def _retrieve_attr(
       self, node: cfg.CFGNode, obj: cfg.Variable, attr: str
@@ -1476,18 +1484,18 @@ class VirtualMachine:
     name = vm_utils.get_closure_var_name(self.frame, op.arg)
     value = self._apply_annotation(
         state, op, name, value, self.current_annotated_locals, check_types=True)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"Before:StoreDeref:{name}")
     self.frame.cells[op.arg].PasteVariable(value, state.node)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"After:StoreDeref:{name}")
     self.trace_opcode(op, name, value)
     return state
 
   def byte_DELETE_DEREF(self, state, op):
     value = abstract.Deleted(self.ctx).to_variable(state.node)
     name = vm_utils.get_closure_var_name(self.frame, op.arg)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"Before:DelDeref:{name}")
     self.frame.cells[op.arg].PasteVariable(value, state.node)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"After:DelDeref:{name}")
     self.trace_opcode(op, name, value)
     return state
 
@@ -1819,9 +1827,9 @@ class VirtualMachine:
     state = state.change_cfg_node(node)
     val = self._apply_annotation(
         state, op, name, val, annotations_dict, check_attribute_types)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"Before:StoreAttr:{name}")
     state = self.store_attr(state, obj, name, val)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"After:StoreAttr:{name}")
     # We need to trace both the object and the attribute.
     self.trace_opcode(op, name, (obj, val))
     return state
@@ -1853,7 +1861,7 @@ class VirtualMachine:
   def byte_STORE_SUBSCR(self, state, op):
     """Implement obj[subscr] = val."""
     state, (val, obj, subscr) = state.popn(3)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node("StoreSubscr")
     # Check whether obj is the __annotations__ dict.
     if abstract_utils.match_atomic_value(obj, abstract.AnnotationsDict):
       if all(abstract_utils.is_ellipsis(v) for v in val.data):
@@ -1879,7 +1887,7 @@ class VirtualMachine:
     count = op.arg
     state, elts = state.popn(count)
     state = state.push(self.ctx.convert.build_list(state.node, elts))
-    return state.forward_cfg_node()
+    return state.forward_cfg_node("BuildList")
 
   def byte_BUILD_SET(self, state, op):
     count = op.arg
@@ -2132,11 +2140,11 @@ class VirtualMachine:
     return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
 
   def byte_JUMP_FORWARD(self, state, op):
-    self.store_jump(op.target, state.forward_cfg_node())
+    self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
     return state
 
   def byte_JUMP_ABSOLUTE(self, state, op):
-    self.store_jump(op.target, state.forward_cfg_node())
+    self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
     return state
 
   def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
@@ -2795,9 +2803,9 @@ class VirtualMachine:
     # TODO(mdemello): Do we need to create two new nodes for this? Code copied
     # from _pop_and_store, but there might be a reason to create two nodes there
     # that does not apply here.
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"Before:ReplaceLocal:{varname}")
     state = self._store_value(state, varname, new_var, local=True)
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"After:ReplaceLocal:{varname}")
     return state
 
   def _narrow(self, state, var, pred):

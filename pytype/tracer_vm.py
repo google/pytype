@@ -244,7 +244,7 @@ class CallTracer(vm.VirtualMachine):
       if any(isinstance(v, abstract.INTERPRETER_FUNCTION_TYPES)
              for v in var.data):
         log.info("Analyzing method: %r", full_name)
-    node1 = node0.ConnectNew(full_name)
+    node1 = self.ctx.connect_new_cfg_node(node0, f"Method:{full_name}")
     for val in var.bindings:
       node2 = self.maybe_analyze_method(node1, val, cls)
       node2.ConnectTo(node0)
@@ -290,7 +290,8 @@ class CallTracer(vm.VirtualMachine):
       self._analyzed_functions.add(b.data.get_first_opcode())
       node2, args = self.create_method_arguments(node1, b.data)
       args = self._maybe_fix_classmethod_cls_arg(node0, cls, b.data, args)
-      node3 = node2.ConnectNew()
+      node3 = self.ctx.connect_new_cfg_node(
+          node2, f"Call:{cls.data.name}.__new__")
       node4, ret = self.call_function_with_args(node3, b, args)
       instance.PasteVariable(ret)
       nodes.append(node4)
@@ -345,7 +346,7 @@ class CallTracer(vm.VirtualMachine):
       A tuple of node and instance variable.
     """
     cache = self._instance_cache[cls]
-    key = (self.frame and self.frame.current_opcode, extra_key)
+    key = (self.current_opcode, extra_key)
     status = instance = cache.get(key)
     if not instance or isinstance(instance, _InitClassState):
       clsvar = cls.to_variable(node)
@@ -453,7 +454,7 @@ class CallTracer(vm.VirtualMachine):
       # We'll analyze this function as part of a class.
       log.info("Analyze functions: Skipping class method %s", val.data.name)
     else:
-      node1 = node0.ConnectNew(val.data.name)
+      node1 = self.ctx.connect_new_cfg_node(node0, f"Function:{val.data.name}")
       node2 = self.maybe_analyze_method(node1, val)
       node2.ConnectTo(node0)
     return node0

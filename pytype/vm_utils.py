@@ -801,7 +801,7 @@ def call_inplace_operator(state, iname, x, y, ctx):
   if attr is None:
     log.info("No inplace operator %s on %r", iname, x)
     name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
-    state = state.forward_cfg_node()
+    state = state.forward_cfg_node(f"BinOp:{name}")
     state, ret = call_binary_operator(
         state, name, x, y, report_errors=True, ctx=ctx)
   else:
@@ -906,9 +906,10 @@ def jump_if(state, op, ctx, pop=False, jump_if_val=False, or_pop=False):
   if jump is not frame_state.UNSATISFIABLE:
     if jump:
       assert jump.binding
-      else_state = state.forward_cfg_node(jump.binding).forward_cfg_node()
+      else_state = state.forward_cfg_node(
+          "Jump", jump.binding).forward_cfg_node("Jump")
     else:
-      else_state = state.forward_cfg_node()
+      else_state = state.forward_cfg_node("Jump")
     ctx.vm.store_jump(op.target, else_state)
   else:
     else_state = None
@@ -920,7 +921,7 @@ def jump_if(state, op, ctx, pop=False, jump_if_val=False, or_pop=False):
   elif not else_state and not normal:
     return state  # We didn't actually branch.
   else:
-    return state.forward_cfg_node(normal.binding if normal else None)
+    return state.forward_cfg_node("NoJump", normal.binding if normal else None)
 
 
 def process_function_type_comment(node, op, func, ctx):

@@ -129,10 +129,11 @@ class FrameState(utils.ContextWeakrefMixin):
     self.node.ConnectTo(node)
     return self.change_cfg_node(node)
 
-  def forward_cfg_node(self, condition=None):
+  def forward_cfg_node(self, new_name, condition=None):
     """Create a new CFG Node connected to the current cfg node.
 
     Args:
+      new_name: A name for the new node.
       condition: A cfg.Binding representing the condition that needs to be true
         for this node to be reached.
 
@@ -140,9 +141,7 @@ class FrameState(utils.ContextWeakrefMixin):
       A new state which is the same as this state except for the node, which is
       the new one.
     """
-    new_node = self.node.ConnectNew(
-        self.ctx.vm.frame and self.ctx.vm.frame.current_opcode and
-        self.ctx.vm.frame.current_opcode.line, condition)
+    new_node = self.ctx.connect_new_cfg_node(self.node, new_name, condition)
     return self.change_cfg_node(new_node)
 
   def merge_into(self, other):
@@ -164,7 +163,7 @@ class FrameState(utils.ContextWeakrefMixin):
   def set_exception(self):
     return FrameState(
         self.data_stack, self.block_stack,
-        self.node.ConnectNew(self.ctx.vm.frame.current_opcode.line), self.ctx,
+        self.ctx.connect_new_cfg_node(self.node, "SetException"), self.ctx,
         True, self.why)
 
 
