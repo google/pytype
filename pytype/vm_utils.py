@@ -520,7 +520,7 @@ def make_class(node, props, ctx):
       class_type = props.class_type or abstract.InterpreterClass
       assert issubclass(class_type, abstract.InterpreterClass)
       val = class_type(
-          name, bases, class_dict.pyval, cls, ctx.vm.frame.current_opcode, ctx)
+          name, bases, class_dict.pyval, cls, ctx.vm.current_opcode, ctx)
       _check_final_members(val, class_dict.pyval, ctx)
       overriding_checks.check_overriding_members(val, bases, class_dict.pyval,
                                                  ctx.matcher(node), ctx)
