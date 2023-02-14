@@ -1,3 +1,11 @@
+Version 2023.02.14:
+
+Bug fixes:
+* Add fget, fset, fdel attributes to property.
+* Check for ignored abstract methods on nested classes.
+* Add a native TypedDict.get() implementation.
+* Remove some unnecessary CFG nodes.
+
 Version 2023.02.09:
 
 Updates:
