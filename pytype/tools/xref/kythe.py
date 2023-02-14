@@ -295,6 +295,7 @@ def _process_calls(kythe, index):
     if call_defn:
       target = _make_defn_vname(kythe, index, call_defn)
       if target:
+        assert call_ref
         start, _ = index.get_ref_bounds(call_ref)
         end = index.source.get_offset(call.end_location)
         anchor_vname = kythe.add_anchor(start, end)
