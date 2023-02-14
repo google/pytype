@@ -16,6 +16,7 @@ from pytype.overlays import collections_overlay
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import enum_overlay
 from pytype.overlays import flax_overlay
+from pytype.overlays import functools_overlay
 from pytype.overlays import future_overlay
 from pytype.overlays import pytype_extensions_overlay
 from pytype.overlays import six_overlay
@@ -39,6 +40,7 @@ overlays = {
     "flax.struct": flax_overlay.DataclassOverlay,
     "flax.linen": flax_overlay.LinenOverlay,
     "flax.linen.module": flax_overlay.LinenModuleOverlay,
+    "functools": functools_overlay.FunctoolsOverlay,
     "future.utils": future_overlay.FutureUtilsOverlay,
     "pytype_extensions": pytype_extensions_overlay.PytypeExtensionsOverlay,
     "six": six_overlay.SixOverlay,
