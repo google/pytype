@@ -240,11 +240,12 @@ class CallTracer(vm.VirtualMachine):
 
   def analyze_method_var(self, node0, name, var, cls):
     full_name = f"{cls.data.full_name}.{name}"
-    if log.isEnabledFor(logging.INFO):
-      if any(isinstance(v, abstract.INTERPRETER_FUNCTION_TYPES)
-             for v in var.data):
-        log.info("Analyzing method: %r", full_name)
-    node1 = self.ctx.connect_new_cfg_node(node0, f"Method:{full_name}")
+    if any(isinstance(v, abstract.INTERPRETER_FUNCTION_TYPES)
+           for v in var.data):
+      log.info("Analyzing method: %r", full_name)
+      node1 = self.ctx.connect_new_cfg_node(node0, f"Method:{full_name}")
+    else:
+      node1 = node0
     for val in var.bindings:
       node2 = self.maybe_analyze_method(node1, val, cls)
       node2.ConnectTo(node0)

@@ -549,8 +549,7 @@ class VirtualMachine:
     code = constant_folding.optimize(code)
     vm_utils.adjust_block_returns(code, self._director.block_returns)
 
-    node = self.ctx.root_node.ConnectNew("init")
-    node, f_globals, f_locals, _ = self.run_bytecode(node, code)
+    node, f_globals, f_locals, _ = self.run_bytecode(self.ctx.root_node, code)
     logging.info("Done running bytecode, postprocessing globals")
     for annot in itertools.chain.from_iterable(self.late_annotations.values()):
       # If `annot` has already been resolved, this is a no-op. Otherwise, it
@@ -881,18 +880,18 @@ class VirtualMachine:
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types=True)
     value = self._process_annotations(state.node, name, value)
-    state = state.forward_cfg_node(f"Before:Store:{name}")
+    state = state.forward_cfg_node(f"Store:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
-    return state.forward_cfg_node(f"After:Store:{name}")
+    return state
 
   def _del_name(self, op, state, name, local):
     """Called when a local or global is deleted."""
     value = abstract.Deleted(self.ctx).to_variable(state.node)
-    state = state.forward_cfg_node(f"Before:Del:{name}")
+    state = state.forward_cfg_node(f"Del:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
-    return state.forward_cfg_node(f"After:Del:{name}")
+    return state
 
   def _retrieve_attr(
       self, node: cfg.CFGNode, obj: cfg.Variable, attr: str
@@ -1484,18 +1483,16 @@ class VirtualMachine:
     name = vm_utils.get_closure_var_name(self.frame, op.arg)
     value = self._apply_annotation(
         state, op, name, value, self.current_annotated_locals, check_types=True)
-    state = state.forward_cfg_node(f"Before:StoreDeref:{name}")
+    state = state.forward_cfg_node(f"StoreDeref:{name}")
     self.frame.cells[op.arg].PasteVariable(value, state.node)
-    state = state.forward_cfg_node(f"After:StoreDeref:{name}")
     self.trace_opcode(op, name, value)
     return state
 
   def byte_DELETE_DEREF(self, state, op):
     value = abstract.Deleted(self.ctx).to_variable(state.node)
     name = vm_utils.get_closure_var_name(self.frame, op.arg)
-    state = state.forward_cfg_node(f"Before:DelDeref:{name}")
+    state = state.forward_cfg_node(f"DelDeref:{name}")
     self.frame.cells[op.arg].PasteVariable(value, state.node)
-    state = state.forward_cfg_node(f"After:DelDeref:{name}")
     self.trace_opcode(op, name, value)
     return state
 
@@ -1827,9 +1824,8 @@ class VirtualMachine:
     state = state.change_cfg_node(node)
     val = self._apply_annotation(
         state, op, name, val, annotations_dict, check_attribute_types)
-    state = state.forward_cfg_node(f"Before:StoreAttr:{name}")
+    state = state.forward_cfg_node(f"StoreAttr:{name}")
     state = self.store_attr(state, obj, name, val)
-    state = state.forward_cfg_node(f"After:StoreAttr:{name}")
     # We need to trace both the object and the attribute.
     self.trace_opcode(op, name, (obj, val))
     return state
@@ -2800,12 +2796,8 @@ class VirtualMachine:
     if not varname or varname not in self.frame.f_locals.pyval:
       # We cannot store the new value back in locals.
       return state
-    # TODO(mdemello): Do we need to create two new nodes for this? Code copied
-    # from _pop_and_store, but there might be a reason to create two nodes there
-    # that does not apply here.
-    state = state.forward_cfg_node(f"Before:ReplaceLocal:{varname}")
+    state = state.forward_cfg_node(f"ReplaceLocal:{varname}")
     state = self._store_value(state, varname, new_var, local=True)
-    state = state.forward_cfg_node(f"After:ReplaceLocal:{varname}")
     return state
 
   def _narrow(self, state, var, pred):
