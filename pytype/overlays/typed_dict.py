@@ -310,4 +310,4 @@ class TypedDict(abstract.Dict):
       str_key = self._check_key(key_var)
     except TypedDictKeyMissing:
       return node, default_var or self.ctx.convert.none.to_variable(node)
-    return node, self.pyval.pop(str_key)
+    return node, self.pyval[str_key]

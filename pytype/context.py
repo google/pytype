@@ -125,12 +125,18 @@ class Context:
     if len(nodes) == 1:
       return nodes[0]
     else:
-      ret = self.program.NewCFGNode(self.vm.frame and
-                                    self.vm.frame.current_opcode and
-                                    self.vm.frame.current_opcode.line)
+      name = f"Join:{self.vm.current_line}" if self.vm.current_line else "Join"
+      ret = self.program.NewCFGNode(name)
       for node in nodes:
         node.ConnectTo(ret)
       return ret
+
+  def connect_new_cfg_node(self, node, new_name, condition=None):
+    if self.vm.current_line:
+      new_node_name = f"{new_name}:{self.vm.current_line}"
+    else:
+      new_node_name = new_name
+    return node.ConnectNew(new_node_name, condition)
 
   def join_variables(self, node, variables):
     return cfg_utils.merge_variables(self.program, node, variables)

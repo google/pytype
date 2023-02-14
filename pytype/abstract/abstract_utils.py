@@ -371,7 +371,7 @@ def apply_mutations(node, get_mutations):
   for mut in get_mutations():
     if not num_mutations:
       # mutations warrant creating a new CFG node
-      node = node.ConnectNew(node.name)
+      node = node.ConnectNew("ApplyMutations")
     num_mutations += 1
     mut.instance.merge_instance_type_parameter(node, mut.name, mut.value)
   log.info("Applied %d mutations", num_mutations)

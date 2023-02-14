@@ -428,10 +428,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Returns a (possibly cached) instance of 'self'."""
     del args  # unused
     # We allow only one "instance" per code location, regardless of call stack.
-    if self.ctx.vm.frame and self.ctx.vm.frame.current_opcode:
-      key = self.ctx.vm.frame.current_opcode
-    else:
-      key = node
+    key = self.ctx.vm.current_opcode or node
     assert key
     if key not in self._instance_cache:
       self._instance_cache[key] = _make("Instance", self, self.ctx, container)
