@@ -1179,6 +1179,15 @@ py_test(
 
 py_test(
   NAME
+    test_functools
+  SRCS
+    test_functools.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_test_code
   SRCS
     test_test_code.py

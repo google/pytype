@@ -2458,6 +2458,17 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x: Final = 3.14
     """, 2, msg)
 
+  def test_str_literal(self):
+    self.check("""
+      from typing_extensions import Final
+      x: Final = "Happy Valentine's Day"
+    """, """
+      from typing import Literal
+      from typing_extensions import Final
+
+      x: Literal["Happy Valentine's Day"]
+    """)
+
 
 class TypedDictTest(parser_test_base.ParserTestBase):
 

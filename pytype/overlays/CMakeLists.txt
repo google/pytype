@@ -12,6 +12,7 @@ py_library(
     .dataclass_overlay
     .enum_overlay
     .flax_overlay
+    .functools_overlay
     .future_overlay
     .overlay_dict
     .metaclass
@@ -138,6 +139,16 @@ py_library(
 
 py_library(
   NAME
+    functools_overlay
+  SRCS
+    functools_overlay.py
+  DEPS
+    .overlay
+    .special_builtins
+)
+
+py_library(
+  NAME
     future_overlay
   SRCS
     future_overlay.py
@@ -194,6 +205,7 @@ py_library(
     .dataclass_overlay
     .enum_overlay
     .flax_overlay
+    .functools_overlay
     .future_overlay
     .pytype_extensions_overlay
     .six_overlay

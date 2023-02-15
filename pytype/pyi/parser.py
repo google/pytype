@@ -433,7 +433,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.convert_node_annotations(node)
     name = node.target.id
     typ = node.annotation
-    val = self.convert_node(node.value)
+    if isinstance(node.value, types.Pyval):
+      val = node.value
+    else:
+      val = self.convert_node(node.value)
     msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
     is_alias = False
     if name == "__match_args__" and isinstance(val, tuple):
