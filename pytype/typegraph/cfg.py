@@ -149,6 +149,8 @@ class CFGNode:
 
   def ConnectTo(self, cfg_node):
     """Connect this node to an existing node."""
+    if self == cfg_node:
+      return
     self.program.InvalidateSolver()
     self.outgoing.add(cfg_node)
     cfg_node.incoming.add(self)

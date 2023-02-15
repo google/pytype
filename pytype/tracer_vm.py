@@ -482,8 +482,7 @@ class CallTracer(vm.VirtualMachine):
             new_node = self.analyze_function(node, value)
           else:
             continue
-          if new_node is not node:
-            new_node.ConnectTo(node)
+          new_node.ConnectTo(node)
     # Now go through all functions and classes we haven't analyzed yet.
     # These are typically hidden under a decorator.
     # Go through classes first so that the `is_attribute_of_class` will
