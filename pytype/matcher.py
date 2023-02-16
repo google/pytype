@@ -40,6 +40,24 @@ def _is_callback_protocol(typ):
           "__call__" in typ.protocol_attributes)
 
 
+def _compute_superset_info(subst_key1, subst_key2):
+  """Compute whether subst_key1 is a superset of subst_key2 and vice versa."""
+  # Since repeatedly iterating over subst keys is slow, we do both computations
+  # in one loop.
+  set1 = set(subst_key1)
+  set2 = set(subst_key2)
+  is_superset1 = set2 <= set1
+  is_superset2 = set1 <= set2
+  for k in set1 & set2:
+    if not is_superset1 and not is_superset2:
+      return False, False
+    if is_superset1 and not subst_key2[k] <= subst_key1[k]:
+      is_superset1 = False
+    if is_superset2 and not subst_key1[k] <= subst_key2[k]:
+      is_superset2 = False
+  return is_superset1, is_superset2
+
+
 class NonIterableStrError(Exception):
   """Error for matching `str` against `Iterable[str]`/`Sequence[str]`/etc."""
 
@@ -149,16 +167,16 @@ class _UniqueMatches:
     data_item = (subst_key, view, subst)
     for i, prev_data_item in enumerate(self._data[view_key]):
       prev_subst_key, prev_view, prev_subst = prev_data_item
-      if all(k in prev_subst_key and subst_key[k] <= prev_subst_key[k]
-             for k in subst_key):
+      cur_is_superset, prev_is_superset = _compute_superset_info(
+          subst_key, prev_subst_key)
+      if prev_is_superset:
         # A previous substitution is a superset of this one, so we do not need
         # to keep this one. We do copy over the view and origins.
         prev_view.update(view)
         for k, v in subst.items():
           prev_subst[k].PasteVariable(v)
         break
-      if all(k in subst_key and prev_subst_key[k] <= subst_key[k]
-             for k in prev_subst_key):
+      if cur_is_superset:
         # This substitution is a superset of a previous one, so we replace the
         # previous subst with this one. We do copy over the view and origins.
         self._data[view_key][i] = data_item

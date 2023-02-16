@@ -125,6 +125,9 @@ CFGNode* CFGNode::ConnectNew(const std::string& name, Binding* condition) {
 }
 
 void CFGNode::ConnectTo(CFGNode* node) {
+  if (this == node) {
+    return;  // no need to connect a node to itself
+  }
   // Another option for avoiding duplication would be to store outgoing edges in
   // a set. But sets are more expensive to iterate over, and we later iterate
   // over the outgoing edges many times, but we only store them once.

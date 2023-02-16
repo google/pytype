@@ -52,8 +52,7 @@ class TypedDictBuilder(abstract.PyTDClass):
 
   def __init__(self, ctx):
     typing_ast = ctx.loader.import_name("typing")
-    pyval = typing_ast.Lookup("typing._TypedDict")
-    pyval = pyval.Replace(name="typing.TypedDict")
+    pyval = typing_ast.Lookup("typing.TypedDict")
     super().__init__("TypedDict", pyval, ctx)
     # Signature for the functional constructor
     fn = typing_ast.Lookup("typing._TypedDictFunction")
