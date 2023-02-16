@@ -545,6 +545,11 @@ class CallTracer(vm.VirtualMachine):
         classes.append(val.data.to_structural_def(self.ctx.exitpoint, name))
     return classes
 
+  def _skip_definition_export(self, name, var):
+    return (name in abstract_utils.TOP_LEVEL_IGNORE or
+            self._is_typing_member(name, var) or
+            self._is_future_feature(name, var))
+
   def pytd_for_types(self, defs):
     # If a variable is annotated, we'll always output that type.
     annotated_names = set()
@@ -555,8 +560,7 @@ class CallTracer(vm.VirtualMachine):
       annotated_names.add(name)
       data.append(pytd.Constant(name, t))
     for name, var in defs.items():
-      if (name in abstract_utils.TOP_LEVEL_IGNORE or name in annotated_names or
-          self._is_typing_member(name, var)):
+      if name in annotated_names or self._skip_definition_export(name, var):
         continue
       log.info("Generating pytd type for top-level definition: %r", name)
       if any(v == self.ctx.convert.unsolvable
@@ -661,6 +665,12 @@ class CallTracer(vm.VirtualMachine):
         module = overlay.get_module(name)
         if name in module.members and module.members[name].data == var.data:
           return True
+    return False
+
+  def _is_future_feature(self, name, var):
+    for v in var.data:
+      if isinstance(v, abstract.Instance) and v.cls.module == "__future__":
+        return True
     return False
 
   def pytd_functions_for_call_traces(self):
