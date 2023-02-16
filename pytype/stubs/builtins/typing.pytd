@@ -637,15 +637,6 @@ if sys.version_info >= (3, 6):
     @abstractmethod
     def aclose(self) -> Awaitable[_T]: ...
 
-
-# Internal pytd class for typed dicts, used as the pyval for
-# typing_extensions.TypedDict before 3.8 and typing.TypedDict thereafter.
-class _TypedDict(Mapping[str, object]): ...
-
-# Internal pytd signature for the TypedDict functional constructor.
-def _TypedDictFunction(name: str, fields: Dict[str, Any], *, total: bool = ...): ...
-
-
 TYPE_CHECKING = ...  # type: bool
 
 # This does not exist at runtime; it needs to be here because it's used by
@@ -669,7 +660,15 @@ class SupportsIndex(Protocol):
     @abstractmethod
     def __index__(self) -> int: ...
 
-class TypedDict: ...
+# Pytd class for typed dicts, used as the pyval for typing_extensions.TypedDict
+# before 3.8 and typing.TypedDict thereafter.
+class TypedDict(Mapping[str, object]):
+    if sys.version_info >= (3, 9):
+        __required_keys__: ClassVar[frozenset[str]]
+        __optional_keys__: ClassVar[frozenset[str]]
+
+# Internal pytd signature for the TypedDict functional constructor.
+def _TypedDictFunction(name: str, fields: Dict[str, Any], *, total: bool = ...): ...
 
 # Python 3.9
 class Annotated: ...
