@@ -1,3 +1,14 @@
+Version 2023.02.17:
+
+Updates:
+* Add overlay for functools.cached_property.
+* Performance optimization: combine two expensive loops in _UniqueMatches.insert
+
+Bug fixes:
+* Don't parse literal string constants as type annotations.
+* Add missing __required_keys__ and __optional_keys__ attributes to TypedDict.
+* Do not reexport `__future__` imports.
+
 Version 2023.02.14:
 
 Bug fixes:

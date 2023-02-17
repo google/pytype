@@ -148,10 +148,6 @@ class AnnotationTest(test_base.BaseTest):
         return
     """)
     self.assertTypesMatchPytd(ty, """
-      import __future__
-
-      unicode_literals = ...  # type: __future__._Feature
-
       def f(c: int) -> None: ...
     """)
 
@@ -1327,10 +1323,8 @@ class TestStringifiedAnnotations(test_base.BaseTest):
           return self
     """)
     self.assertTypesMatchPytd(ty, """
-      import __future__
       import typing
       from typing import Generic, Set, TypeVar
-      annotations: __future__._Feature
       T = TypeVar('T')
       class A(Generic[T]):
         def f(self) -> A[Set[int]]: ...
@@ -1384,8 +1378,6 @@ class EllipsisTest(test_base.BaseTest):
           self.x = 5
     """)
     self.assertTypesMatchPytd(ty, """
-      import __future__
-      annotations: __future__._Feature
       x: int
       def f(x) -> None: ...
       class Foo:

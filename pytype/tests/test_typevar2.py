@@ -351,10 +351,8 @@ class TypeVarTest(test_base.BaseTest):
       v = f(42)
     """)
     self.assertTypesMatchPytd(ty, """
-      import __future__
       import typing
       from typing import Any
-      unicode_literals = ...  # type: __future__._Feature
       T = TypeVar("T")
       def f(x: T) -> T: ...
       v = ...  # type: int

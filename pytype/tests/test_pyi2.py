@@ -235,5 +235,20 @@ class PYITestAll(test_base.BaseTest):
     """)
 
 
+class PYITestFuture(test_base.BaseTest):
+  """Tests for __future__."""
+
+  def test_skip_reexport(self):
+    """Check that we don't reexport __future__ imports."""
+    ty = self.Infer("""
+      from __future__ import annotations
+      class A:
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A: ...
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()
