@@ -638,18 +638,20 @@ class PyTDSignature(utils.ContextWeakrefMixin):
   def _handle_paramspec(self, node, key, ret_map):
     """Construct a new function based on ParamSpec matching."""
     return_callable, subst = key
-    # TODO(b/217789659): We should not need to explicitly skip caching.
-    with self.ctx.convert.skip_cache():
-      val = self.ctx.convert.constant_to_value(
-          return_callable.ret, subst=subst, node=node)
+    val = self.ctx.convert.constant_to_value(
+        return_callable.ret, subst=subst, node=node)
     # Make sure the type params from subst get applied to val
     # TODO(b/217789659): It is not clear why constant_to_value does not reliably
     # do the type substitution.
     if _isinstance(val, "ParameterizedClass"):
+      inner_types = []
       for k, v in val.formal_type_parameters.items():
         if _isinstance(v, "TypeParameter") and v.full_name in subst:
           typ = self.ctx.convert.merge_classes(subst[v.full_name].data)
-          val.update_inner_type(k, typ)
+          inner_types.append((k, typ))
+        else:
+          inner_types.append((k, v))
+      val = val.replace(inner_types)
     elif _isinstance(val, "TypeParameter") and val.full_name in subst:
       val = self.ctx.convert.merge_classes(subst[val.full_name].data)
     ret = self._paramspec_signature(return_callable, val, subst)

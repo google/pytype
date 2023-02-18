@@ -562,7 +562,7 @@ class PropertyTemplate(BuiltinClass):
 def _is_fn_abstract(func_var):
   if func_var is None:
     return False
-  return any(getattr(d, "is_abstract", None) for d in func_var.data)
+  return any(getattr(d, "is_abstract", False) for d in func_var.data)
 
 
 class PropertyInstance(abstract.Function, mixin.HasSlots):
@@ -572,6 +572,14 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     super().__init__("property", ctx)
     mixin.HasSlots.init_mixin(self)
     self.name = name  # Reports the correct decorator in error messages.
+    is_abstract = False
+    for var in [fget, fset, fdel]:
+      if not var:
+        continue
+      is_abstract |= _is_fn_abstract(var)
+      for v in var.data:
+        v.is_attribute_of_class = True
+    self.is_abstract = is_abstract
     self.fget = fget
     self.fset = fset
     self.fdel = fdel
@@ -583,7 +591,6 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     self.set_native_slot("getter", self.getter_slot)
     self.set_native_slot("setter", self.setter_slot)
     self.set_native_slot("deleter", self.deleter_slot)
-    self.is_abstract = any(_is_fn_abstract(x) for x in [fget, fset, fdel])
     self.is_method = True
     self.bound_class = abstract.BoundFunction
 

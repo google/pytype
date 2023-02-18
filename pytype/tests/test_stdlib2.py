@@ -597,6 +597,18 @@ class StdlibTestsFeatures(test_base.BaseTest,
       print(C.x.fget, C.x.fset, C.x.fdel)
     """)
 
+  def test_re_and_typing(self):
+    self.CheckWithErrors("""
+      import re
+      from typing import Match, Optional, Pattern
+
+      ok1: Pattern = re.compile("")
+      ok2: Optional[Match] = re.match("", "")
+
+      no1: Pattern = 0  # annotation-type-mismatch
+      no2: Match = 0  # annotation-type-mismatch
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

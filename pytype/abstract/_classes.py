@@ -444,14 +444,15 @@ class PyTDClass(
         for base in self.pytd_cls.bases
     ]
 
-  def load_lazy_attribute(self, name, subst=None):
+  def load_lazy_attribute(self, name, subst=None, store=True):
     try:
-      return super().load_lazy_attribute(name, subst)
+      return super().load_lazy_attribute(name, subst, store)
     except self.ctx.convert.TypeParameterError as e:
       self.ctx.errorlog.unbound_type_param(self.ctx.vm.frames, self, name,
                                            e.type_param_name)
       member = self.ctx.new_unsolvable(self.ctx.root_node)
-      self.members[name] = member
+      if store:
+        self.members[name] = member
       return member
 
   def _convert_member(self, name, member, subst=None):

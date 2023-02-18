@@ -1,6 +1,5 @@
 """Code for translating between type systems."""
 
-import contextlib
 import logging
 import types
 from typing import Any, Dict
@@ -68,7 +67,6 @@ class Converter(utils.ContextWeakrefMixin):
     ctx.convert = self  # to make constant_to_value calls below work
 
     self._convert_cache: Dict[Any, Any] = {}
-    self._skip_cache = False
     self._resolved_late_types = {}  # performance cache
 
     # Initialize primitive_classes to empty to allow constant_to_value to run.
@@ -142,15 +140,6 @@ class Converter(utils.ContextWeakrefMixin):
         False: self.false,
         None: self.primitive_class_instances[bool],
     }
-
-  @contextlib.contextmanager
-  def skip_cache(self):
-    old = self._skip_cache
-    self._skip_cache = True
-    try:
-      yield
-    finally:
-      self._skip_cache = old
 
   def constant_name(self, constant_type):
     if constant_type is None:
@@ -505,7 +494,7 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       type_key = type(pyval)
     key = ("constant", pyval, type_key)
-    if not self._skip_cache and key in self._convert_cache:
+    if key in self._convert_cache:
       if self._convert_cache[key] is None:
         self._convert_cache[key] = self.unsolvable
         # This error is triggered by, e.g., classes inheriting from each other.
@@ -665,6 +654,29 @@ class Converter(utils.ContextWeakrefMixin):
     else:
       return typ
 
+  def _maybe_load_from_overlay(self, module, member_name):
+    # The typing module cannot be loaded until setup is complete and the first
+    # VM frame is pushed.
+    if (module == "typing" and not self.ctx.vm.frame or
+        module not in overlay_dict.overlays):
+      return None
+    overlay = self.ctx.vm.import_module(module, module, 0)
+    if overlay.get_module(member_name) is not overlay:
+      return None
+    # We may be loading a TypingContainer's underlying pytd type. If so,
+    # re-loading the TypingContainer in the middle of loading it will produce a
+    # recursion error. This is okay, since we will discard the result due to
+    # TypingContainer being a subclass of AnnotationClass.
+    with self.ctx.allow_recursive_convert():
+      member_var = overlay.load_lazy_attribute(member_name, store=False)
+    member = abstract_utils.get_atomic_value(member_var)
+    # AnnotationClass is a placeholder used in the construction of parameterized
+    # types, not a real type.
+    if isinstance(member, abstract.AnnotationClass):
+      return None
+    overlay.members[member_name] = member_var
+    return member
+
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a BaseValue that represents a python constant.
 
@@ -729,13 +741,9 @@ class Converter(utils.ContextWeakrefMixin):
         return val
       else:
         module, dot, base_name = pyval.name.rpartition(".")
-        # typing.TypingContainer intentionally loads the underlying pytd types.
-        if (module not in ("typing", "typing_extensions") and
-            module in overlay_dict.overlays):
-          overlay = self.ctx.vm.import_module(module, module, 0)
-          if overlay.get_module(base_name) is overlay:
-            overlay.load_lazy_attribute(base_name)
-            return abstract_utils.get_atomic_value(overlay.members[base_name])
+        overlay_member = self._maybe_load_from_overlay(module, base_name)
+        if overlay_member:
+          return overlay_member
         try:
           cls = abstract.PyTDClass.make(base_name, pyval, self.ctx)
         except mro.MROError as e:

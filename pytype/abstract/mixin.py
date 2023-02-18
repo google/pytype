@@ -221,7 +221,7 @@ class LazyMembers(metaclass=MixinMeta):
   def _convert_member(self, name, member, subst=None):
     raise NotImplementedError()
 
-  def load_lazy_attribute(self, name, subst=None):
+  def load_lazy_attribute(self, name, subst=None, store=True):
     """Load the named attribute into self.members."""
     if name in self.members or name not in self._member_map:
       return self.members.get(name)
@@ -230,9 +230,9 @@ class LazyMembers(metaclass=MixinMeta):
     assert isinstance(variable, cfg.Variable)
     # 'subst' can vary between attribute accesses, so it's not safe to store the
     # attribute value in 'members' if it uses any of the subst keys.
-    if not (isinstance(member, pytd.Node) and subst and
-            any(t.full_name in subst
-                for t in pytd_utils.GetTypeParameters(member))):
+    if store and not (isinstance(member, pytd.Node) and subst and
+                      any(t.full_name in subst
+                          for t in pytd_utils.GetTypeParameters(member))):
       self.members[name] = variable
     return variable
 
