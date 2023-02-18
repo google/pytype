@@ -5,7 +5,6 @@ import os
 from pytype import errors
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 def InitContents():
@@ -14,13 +13,24 @@ def InitContents():
   return ''.join(lines)
 
 
+def _Wrap(method):
+  def Wrapper(self, code: str) -> errors.ErrorLog:
+    extensions_pyi = pytd_utils.Print(
+        super(CodeTest, self).Infer(InitContents()))
+    with self.DepTree([('pytype_extensions.pyi', extensions_pyi)]):
+      return method(self, code)
+  return Wrapper
+
+
 class CodeTest(test_base.BaseTest):
 
-  def CheckWithErrors(self, code: str) -> errors.ErrorLog:
-    extensions_pyi = pytd_utils.Print(self.Infer(InitContents()))
-    with test_utils.Tempdir() as d:
-      d.create_file('pytype_extensions.pyi', extensions_pyi)
-      return super().CheckWithErrors(code, pythonpath=[d.path])
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    cls.Check = _Wrap(cls.Check)
+    cls.CheckWithErrors = _Wrap(cls.CheckWithErrors)
+    cls.Infer = _Wrap(cls.Infer)
+    cls.InferWithErrors = _Wrap(cls.InferWithErrors)
 
 
 class DecoratorTest(CodeTest):
@@ -95,6 +105,7 @@ class DecoratorTest(CodeTest):
 
 
 class DataclassTest(CodeTest):
+  """Tests for pytype_extensions.Dataclass."""
 
   def test_basic(self):
     self.CheckWithErrors("""
@@ -121,6 +132,14 @@ class DataclassTest(CodeTest):
       f(Foo(x='yes', y='1'))  # ok
       f(Bar(x='no', y=1))  # wrong-arg-types
       f(Baz())  # wrong-arg-types
+    """)
+
+  def test_fields(self):
+    self.Check("""
+      import dataclasses
+      import pytype_extensions
+      def f(x: pytype_extensions.Dataclass):
+        return dataclasses.fields(x)
     """)
 
 
