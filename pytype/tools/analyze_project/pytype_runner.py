@@ -49,9 +49,10 @@ def _get_executable(binary, module=None):
   elif binary == 'ninja':
     try:
       import ninja
-      return [sys.executable, '-m', module or binary]
+      to_return = [sys.executable, '-m', module or binary]
     except ImportError:
-      return [binary]
+      to_return [binary]
+    return to_return
   else:
     if sys.executable is not None:
       return [sys.executable, '-m', module or binary]
