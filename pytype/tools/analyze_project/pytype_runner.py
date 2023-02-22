@@ -46,10 +46,17 @@ def _get_executable(binary, module=None):
               path_utils.abspath(path_utils.dirname(custom_bin)),
               'pytype-single')
       ])
-  if sys.executable is not None:
-    return [sys.executable, '-m', module or binary]
+  elif binary == 'ninja':
+    try:
+      import ninja
+      return [sys.executable, '-m', module or binary]
+    except ImportError:
+      return [binary]
   else:
-    return [binary]
+    if sys.executable is not None:
+      return [sys.executable, '-m', module or binary]
+    else:
+      return [binary]
 PYTYPE_SINGLE = _get_executable('pytype-single', 'pytype.single')
 
 
