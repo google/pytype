@@ -1,5 +1,6 @@
 """Use pytype to analyze and infer types for an entire project."""
 
+import importlib
 import collections
 import itertools
 import logging
@@ -46,7 +47,8 @@ def _get_executable(binary, module=None):
               path_utils.abspath(path_utils.dirname(custom_bin)),
               'pytype-single')
       ])
-  if sys.executable is not None:
+  importable = importlib.util.find_spec(module or binary)
+  if sys.executable is not None and importable is not None:
     return [sys.executable, '-m', module or binary]
   else:
     return [binary]
