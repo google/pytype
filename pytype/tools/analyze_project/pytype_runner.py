@@ -48,7 +48,7 @@ def _get_executable(binary, module=None):
               'pytype-single')
       ])
   importable = importlib.util.find_spec(module or binary)
-  if sys.executable is not None and importable is not None:
+  if sys.executable is not None and importable:
     return [sys.executable, '-m', module or binary]
   else:
     return [binary]
