@@ -167,7 +167,7 @@ def _get_python_exe_version(python_exe: List[str]):
   Arguments:
     python_exe: absolute path to the Python executable
   Returns:
-    Version as (major, minor) tuple.
+    Version as (major, minor) tuple, or None if it could not be determined.
   """
   try:
     python_exe_version = subprocess.check_output(
@@ -184,7 +184,7 @@ def _parse_exe_version_string(version_str):
   Arguments:
     version_str: Version string as emitted by running `PYTHON_EXE -V`
   Returns:
-    Version as (major, minor) tuple.
+    Version as (major, minor) tuple, or None if it could not be determined.
   """
   # match the major.minor part of the version string, ignore the micro part
   matcher = re.search(r"Python (\d+\.\d+)\.\d+", version_str)
