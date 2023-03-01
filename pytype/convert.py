@@ -663,15 +663,16 @@ class Converter(utils.ContextWeakrefMixin):
     overlay = self.ctx.vm.import_module(module, module, 0)
     if overlay.get_module(member_name) is not overlay:
       return None
-    # We may encounter errors such as [recursion-error] from recursive loading
-    # of a TypingContainer or [not-supported-yet] for a typing feature in a
-    # too-low version. If there are errors, we discard the result.
-    with self.ctx.errorlog.checkpoint() as record:
+    # We may be loading a TypingContainer's underlying pytd type. If so,
+    # re-loading the TypingContainer in the middle of loading it will produce a
+    # recursion error. This is okay, since we will discard the result due to
+    # TypingContainer being a subclass of AnnotationClass.
+    with self.ctx.allow_recursive_convert():
       member_var = overlay.load_lazy_attribute(member_name, store=False)
     member = abstract_utils.get_atomic_value(member_var)
     # AnnotationClass is a placeholder used in the construction of parameterized
     # types, not a real type.
-    if record.errors or isinstance(member, abstract.AnnotationClass):
+    if isinstance(member, abstract.AnnotationClass):
       return None
     overlay.members[member_name] = member_var
     return member

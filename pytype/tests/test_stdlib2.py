@@ -558,9 +558,9 @@ class StdlibTestsFeatures(test_base.BaseTest,
     """)
     self.assertTypesMatchPytd(ty, """
       import re
-      from typing import Match, Optional, Pattern
-      pattern: Pattern[str]
-      match: Optional[Match[str]]
+      from typing import Optional
+      pattern: re.Pattern[str]
+      match: Optional[re.Match[str]]
       group: str
     """)
 

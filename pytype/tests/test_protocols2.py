@@ -362,14 +362,49 @@ class ProtocolTest(test_base.BaseTest):
             self = Foo[T]
           def __call__(self) -> T: ...
       """)
-      self.Check("""
-        from typing import Callable
+      errors = self.CheckWithErrors("""
+        from typing import Any, Callable
         import foo
         def f() -> Callable:
           return foo.Foo("")
         def g() -> Callable[[], str]:
           return foo.Foo("")
+        def h() -> Callable[[Any], str]:
+          return foo.Foo("")  # bad-return-type[e]
+        def i() -> Callable[[], int]:
+          return foo.Foo("")  # TODO(rechen): this should be an error
       """, pythonpath=[d.path])
+      # TODO(rechen): 'T' should be 'str'.
+      self.assertErrorSequences(errors, {
+          "e": ["def <callable>(self, _0) -> str: ...",
+                "def __call__(self: foo.Foo[T]) -> T: ..."]})
+
+  def test_staticmethod(self):
+    self.CheckWithErrors("""
+      from typing import Any, Callable, Protocol
+
+      class MyProtocol(Protocol):
+        @staticmethod
+        def __call__(a, b) -> int:
+          return 0
+
+      def f() -> MyProtocol:
+        return __any_object__
+
+      def g1(x: Callable[[Any, Any], int]):
+        pass
+      def g2(x: Callable[[Any], int]):
+        pass
+      def g3(x: Callable[[Any, Any, Any], int]):
+        pass
+      def g4(x: Callable[[Any, Any], str]):
+        pass
+
+      g1(f())  # ok
+      g2(f())  # wrong-arg-types  # too few Callable args
+      g3(f())  # wrong-arg-types  # too many Callable args
+      g3(f())  # wrong-arg-types  # wrong Callable return
+    """)
 
   def test_protocol_caching(self):
     self.Check("""

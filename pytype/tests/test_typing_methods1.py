@@ -341,28 +341,29 @@ class TypingMethodsTest(test_base.BaseTest):
         pattern = foo.f()
         m1 = pattern.search("foo")
         pattern.match("foo")
-        pieces = pattern.split("foo")
+        pattern.split("foo")
         pattern.findall("foo")[0]
         list(pattern.finditer("foo"))[0]
         pattern.sub("x", "x")
         pattern.subn("x", "x")
+        assert m1
         a = m1.pos
         b = m1.endpos
-        c = m1.group(1)
+        c = m1.group(0)
         d = m1.start()
         e = m1.end()
       """, deep=False, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
-        from typing import List, Match, Pattern
-        a = ...  # type: int
-        b = ...  # type: int
-        c = ...  # type: str
-        d = ...  # type: int
-        e = ...  # type: int
-        m1 = ...  # type: Match[str]
-        pattern = ...  # type: Pattern[str]
-        pieces = ...  # type: List[str]
+        import re
+        from typing import Pattern
+        a: int
+        b: int
+        c: str
+        d: int
+        e: int
+        m1: re.Match[str] | None
+        pattern: Pattern[str]
       """)
 
 
