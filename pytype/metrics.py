@@ -23,7 +23,11 @@ import math
 import os
 import re
 import time
-import tracemalloc
+try:
+  import tracemalloc  # pylint: disable=g-import-not-at-top
+except ImportError:
+  # Not available on PyPy
+  tracemalloc = None
 
 
 # Metric serialization/deserialization code, taking advantage of the fact that
@@ -336,6 +340,8 @@ class Snapshot(Metric):
 
   def __init__(self, name, enabled=False, groupby="lineno",
                nframes=1, count=10):
+    if enabled and tracemalloc is None:
+      raise RuntimeError("tracemalloc module couldn't be imported")
     super().__init__(name)
     self.snapshots = []
     # The metric to group memory blocks by. Default is "lineno", which groups by
