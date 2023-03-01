@@ -8,7 +8,7 @@ import sys
 from typing import AbstractSet, Optional
 
 from pytype import config
-from pytype.directors import blocks
+from pytype.blocks import blocks
 
 # directors.parser uses the stdlib ast library, which is much faster than
 # libcst, but we rely on ast features that are new in Python 3.9.

@@ -10,7 +10,7 @@ from pytype import metrics
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import mixin
-from pytype.directors import blocks
+from pytype.blocks import blocks
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
