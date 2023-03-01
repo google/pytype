@@ -514,9 +514,7 @@ def full_type_name(val, name):
     return full_type_name(val.cls, name)
   # The type is in current `class`
   for t in val.template:
-    if t.name == name:
-      return val.full_name + "." + name
-    elif t.full_name == name:
+    if name in (t.name, t.full_name):
       return t.full_name
   # The type is instantiated in `base class`
   for t in val.all_template_names:

@@ -97,11 +97,11 @@ class BaseValue(utils.ContextWeakrefMixin):
 
   def compute_mro(self):
     # default for objects with no MRO
-    return []
+    return ()
 
   def default_mro(self):
     # default for objects with unknown MRO
-    return [self, self.ctx.convert.object_type]
+    return (self, self.ctx.convert.object_type)
 
   def get_default_fullhash(self):
     return id(self)
