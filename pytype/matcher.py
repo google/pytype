@@ -1425,33 +1425,65 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       new_substs.append(new_subst)
     return self._merge_substs(subst, new_substs)
 
-  def _get_attribute_for_protocol_matching(self, cls, name, instance=None):
-    # For protocol matching, we want to look up attributes on classes (not
-    # instances) so that we get unbound methods. This means that we have to
-    # manually call __get__ on property instances
-    _, attribute = self.ctx.attribute_handler.get_attribute(
-        self._node, cls, name, cls.to_binding(self._node))
-    if not attribute:
-      return attribute
-    elif any(isinstance(attr, special_builtins.PropertyInstance)
-             for attr in attribute.data):
-      return self._resolve_property_attribute(cls, attribute, instance)
-    else:
-      return attribute
+  def _get_attribute_for_protocol_matching(
+      self, cls: abstract.BaseValue, name: str,
+      instance: Optional[abstract.BaseValue], unbind: bool
+  ) -> Tuple[Optional[cfg.Variable], bool]:
+    """Gets the specified attribute from cls, for protocol matching.
 
-  def _resolve_property_attribute(self, cls, attribute, instance):
-    instance = instance or abstract.Instance(cls, self.ctx)
-    resolved_attribute = self.ctx.program.NewVariable()
-    for b in attribute.bindings:
-      if isinstance(b.data, special_builtins.PropertyInstance):
-        fget = self.ctx.vm.bind_method(self._node, b.data.fget,
-                                       instance.to_variable(self._node))
-        _, ret = function.call_function(self.ctx, self._node, fget,
-                                        function.Args(()))
-        resolved_attribute.PasteVariable(ret)
-      else:
-        resolved_attribute.PasteBinding(b)
-    return resolved_attribute
+    Args:
+      cls: The class to get the attribute from.
+      name: The name of the attribute.
+      instance: Optionally, an instance of the class.
+      unbind: Whether to unbind the attribute if it is a bound function.
+
+    Returns:
+      A tuple of the attribute and whether any unbinding occurred.
+    """
+    valself_instance = instance or abstract.Instance(cls, self.ctx)
+    _, attribute = self.ctx.attribute_handler.get_attribute(
+        self._node, cls, name, valself_instance.to_binding(self._node))
+    if attribute:
+      return self._resolve_function_attribute_var(attribute, unbind)
+    else:
+      return attribute, False
+
+  def _resolve_function_attribute_var(
+      self, attribute: cfg.Variable, unbind: bool) -> Tuple[cfg.Variable, bool]:
+    """Returns a resolved attribute and whether any unbinding occurred."""
+    if any(self._is_native_callable(attr) or
+           (unbind and isinstance(attr, abstract.BoundFunction))
+           for attr in attribute.data):
+      resolved_attribute = self.ctx.program.NewVariable()
+      bound_to_unbound = False
+      for b in attribute.bindings:
+        val = self._resolve_function_attribute_value(b.data, unbind)
+        if val is b.data:
+          resolved_attribute.PasteBinding(b)
+        else:
+          resolved_attribute.AddBinding(val, {b}, self._node)
+          bound_to_unbound |= unbind
+      return resolved_attribute, bound_to_unbound
+    else:
+      return attribute, False
+
+  def _is_native_callable(self, val):
+    return (isinstance(val, abstract.NativeFunction) and
+            isinstance(val.func.__self__, abstract.CallableClass))
+
+  def _resolve_function_attribute_value(
+      self, attr: abstract.BaseValue, unbind: bool) -> abstract.BaseValue:
+    if self._is_native_callable(attr):
+      sig = function.Signature.from_callable(attr.func.__self__)
+      if unbind:
+        param_names = ("self",) + sig.param_names
+        annots = {**sig.annotations, "self": self.ctx.convert.unsolvable}
+        sig = sig._replace(param_names=param_names, annotations=annots)
+      return abstract.SimpleFunction(sig, self.ctx)
+    elif unbind and isinstance(attr, abstract.BoundFunction):
+      return attr.underlying
+    else:
+      return attr
 
   def _get_type(self, value):
     cls = value.cls
@@ -1510,8 +1542,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     Returns:
       A new type parameter assignment if the matching succeeded, None otherwise.
     """
-    left_attribute = self._get_attribute_for_protocol_matching(
-        left.cls, attribute, left)
+    left_attribute, left_is_bound = self._get_attribute_for_protocol_matching(
+        left.cls, attribute, instance=left, unbind=True)
     if left_attribute is None:
       if attribute == "__iter__":
         # See _get_attribute_names: left has an implicit __iter__ method
@@ -1522,8 +1554,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         _, left_attribute = self.ctx.attribute_handler.get_attribute(
             self._node, left, attribute)
     assert left_attribute
-    protocol_attribute_var = self._get_attribute_for_protocol_matching(
-        other_type, attribute)
+    protocol_attribute_var, _ = self._get_attribute_for_protocol_matching(
+        other_type, attribute, instance=None, unbind=left_is_bound)
+    assert protocol_attribute_var
     if (any(abstract_utils.is_callable(v) for v in left_attribute.data) and
         all(abstract_utils.is_callable(protocol_attribute)
             for protocol_attribute in protocol_attribute_var.data) and

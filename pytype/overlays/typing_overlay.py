@@ -553,6 +553,13 @@ def build_final_decorator(ctx):
   return FinalDecorator.make("final", ctx, "typing")
 
 
+def get_re_builder(member):
+  def build_re_member(ctx):
+    ast = ctx.loader.import_name("re")
+    return ctx.convert.constant_to_value(ast.Lookup(f"re.{member}"))
+  return build_re_member
+
+
 # name -> lowest_supported_version
 _unsupported_members = {
     "is_typeddict": (3, 10),
@@ -570,11 +577,13 @@ typing_overlay = {
     "Final": (overlay.build("Final", Final), (3, 8)),
     "Generic": (overlay.build("Generic", Generic), None),
     "Literal": (overlay.build("Literal", Literal), (3, 8)),
+    "Match": (get_re_builder("Match"), None),
     "NamedTuple": (named_tuple.NamedTupleClassBuilder, None),
     "NewType": (build_newtype, None),
     "NoReturn": (build_noreturn, None),
     "Optional": (overlay.build("Optional", Optional), None),
     "ParamSpec": (build_paramspec, (3, 10)),
+    "Pattern": (get_re_builder("Pattern"), None),
     "Tuple": (overlay.build("Tuple", Tuple), None),
     "TypeGuard": (_build("typing.TypeGuard"), (3, 10)),
     "TypeVar": (build_typevar, None),
