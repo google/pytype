@@ -467,7 +467,12 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     if name == "__getitem__" and valself is None:
       # See vm_utils._call_binop_on_bindings: valself == None is a special value
       # that indicates an annotation.
-      if self.cls.full_name != "builtins.type":
+      # TODO(rechen): In Python 3.8 and below, typeshed has a custom __getitem__
+      # defined on InitVar's metaclass, preventing pytype from recognizing it as
+      # a type annotation. We can remove the check for _InitVarMeta once we
+      # support only 3.9+.
+      if self.cls.full_name not in ("builtins.type",
+                                    "dataclasses._InitVarMeta"):
         # This class has a custom metaclass; check if it defines __getitem__.
         _, att = self.ctx.attribute_handler.get_attribute(
             node, self.cls, name, self.to_binding(node))
