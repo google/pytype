@@ -10,7 +10,7 @@ from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
-from pytype.directors import blocks
+from pytype.blocks import blocks
 from pytype.overlays import attr_overlay
 from pytype.overlays import overlay_dict
 from pytype.overlays import named_tuple

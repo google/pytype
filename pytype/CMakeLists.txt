@@ -696,6 +696,7 @@ py_library(
 
 add_subdirectory(abstract)
 add_subdirectory(ast)
+add_subdirectory(blocks)
 add_subdirectory(directors)
 add_subdirectory(imports)
 add_subdirectory(inspect)

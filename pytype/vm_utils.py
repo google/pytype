@@ -16,7 +16,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
-from pytype.directors import blocks
+from pytype.blocks import blocks
 from pytype.overlays import metaclass
 from pytype.platform_utils import path_utils
 from pytype.pyc import opcodes
