@@ -1,4 +1,5 @@
-# Simplified from third_party/py/neural_tangents/tests/empirical_test.py.
+# Simplified from
+# https://github.com/google/neural-tangents/blob/main/tests/empirical_test.py.
 # pylint: skip-file
 
 _functions = {
