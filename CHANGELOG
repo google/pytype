@@ -1,3 +1,15 @@
+Version 2023.03.02:
+
+Updates:
+* Update typeshed pin to commit 37a180e from Feb 3.
+* Make it possible to run pytype on PyPy.
+
+Bug fixes:
+* Use ninja importability to determine python-ninja usability.
+* Treat `typing.Pattern` and `typing.Match` as aliases of the same-named classes
+  in the `re` module.
+* Handle callables better in protocol matching.
+
 Version 2023.02.17:
 
 Updates:
