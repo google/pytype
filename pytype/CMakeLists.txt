@@ -113,6 +113,7 @@ filegroup(
     test_data/constant.py
     test_data/imports.py
     test_data/perf/__init__.py
+    test_data/perf/functions_dict.py
     test_data/perf/iso.py
     test_data/pytree.py
     test_data/simple.py
