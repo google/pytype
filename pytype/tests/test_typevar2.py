@@ -993,6 +993,17 @@ class TypeVarTestPy3(test_base.BaseTest):
         y: T = x
     """)
 
+  def test_none_constraint(self):
+    self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T', float, None)
+      def f(x: T) -> T:
+        return x
+      f(0.0)
+      f(None)
+      f("oops")  # wrong-arg-types
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
