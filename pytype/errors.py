@@ -629,8 +629,8 @@ class ErrorLog(ErrorLogBase):
   def _print_noniterable_str_error(self, error):
     """Pretty-print the matcher.NonIterableStrError instance."""
     return (
-        f"Note: {error.left_type.name} does not match iterables by default. "
-        "Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables")
+        f"Note: {error.left_type.name} does not match string iterables by "
+        "default. Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables")
 
   def _print_typed_dict_error(self, error):
     """Pretty-print the matcher.TypedDictError instance."""

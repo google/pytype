@@ -462,7 +462,7 @@ class ErrorTestPy3(test_base.BaseTest):
       f("abc")  # wrong-arg-types[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["str does not match iterables by default"]})
+        errors, {"e": ["str does not match string iterables by default"]})
 
   def test_nis_bad_return(self):
     errors = self.CheckWithErrors("""
@@ -471,7 +471,7 @@ class ErrorTestPy3(test_base.BaseTest):
         return "abc" # bad-return-type[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["str does not match iterables by default"]})
+        errors, {"e": ["str does not match string iterables by default"]})
 
   def test_protocol_mismatch(self):
     _, errors = self.InferWithErrors("""
