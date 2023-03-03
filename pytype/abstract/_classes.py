@@ -438,11 +438,26 @@ class PyTDClass(
 
   def bases(self):
     convert = self.ctx.convert
-    return [
-        convert.constant_to_var(
-            base, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
-        for base in self.pytd_cls.bases
-    ]
+    converted_bases = []
+    for base in self.pytd_cls.bases:
+      converted_base_options = []
+      stack = [base]
+      while stack:
+        option = stack.pop()
+        if isinstance(option, pytd.UnionType):
+          stack.extend(option.type_list)
+          continue
+        converted_option = convert.constant_to_var(
+            option, subst=datatypes.AliasingDict(), node=self.ctx.root_node)
+        converted_base_options.append(converted_option)
+      if len(converted_base_options) > 1:
+        converted_base = self.ctx.program.NewVariable()
+        for converted_option in converted_base_options:
+          converted_base.PasteVariable(converted_option)
+        converted_bases.append(converted_base)
+      else:
+        converted_bases.append(converted_base_options[0])
+    return converted_bases
 
   def load_lazy_attribute(self, name, subst=None, store=True):
     try:

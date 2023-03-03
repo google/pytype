@@ -378,7 +378,7 @@ def apply_mutations(node, get_mutations):
   return node
 
 
-def get_mro_bases(bases, ctx):
+def get_mro_bases(bases):
   """Get bases for MRO computation."""
   mro_bases = []
   has_user_generic = False
@@ -388,7 +388,7 @@ def get_mro_bases(bases, ctx):
     # A base class is a Variable. If it has multiple options, we would
     # technically get different MROs. But since ambiguous base classes are rare
     # enough, we instead just pick one arbitrary option per base class.
-    base = get_atomic_value(base_var, default=ctx.convert.unsolvable)
+    base = base_var.data[0]
     mro_bases.append(base)
     # check if it contains user-defined generic types
     if (_isinstance(base, "ParameterizedClass") and
