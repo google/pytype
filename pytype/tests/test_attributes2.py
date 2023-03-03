@@ -112,6 +112,28 @@ class TestAttributes(test_base.BaseTest):
           self.foo.extra = set()
     """)
 
+  def test_base_class_union(self):
+    with self.DepTree([("foo.pyi", """
+      class A:
+        x: str
+      class B:
+        x: str
+      class C1:
+        C: type[A]
+      class C2:
+        C: type[B]
+      def f() -> C1 | C2: ...
+    """), ("bar.py", """
+       import foo
+       class Bar(foo.f().C):
+         pass
+       assert_type(Bar().x, str)
+    """)]):
+      self.Check("""
+        import bar
+        assert_type(bar.Bar().x, str)
+      """)
+
 
 class TestAttributesPython3FeatureTest(test_base.BaseTest):
   """Tests for attributes over target code using Python 3 features."""

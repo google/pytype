@@ -496,7 +496,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
 
   def compute_mro(self):
     """Compute the class precedence list (mro) according to C3."""
-    bases = abstract_utils.get_mro_bases(self.bases(), self.ctx)
+    bases = abstract_utils.get_mro_bases(self.bases())
     bases = [[self]] + [list(base.mro) for base in bases] + [list(bases)]
     base2cls = {}
     newbases = []
