@@ -85,6 +85,15 @@ class TestCachedProperty(test_base.BaseTest):
         assert_type(x, int)
       """)
 
+  def test_infer(self):
+    ty = self.Infer("""
+      from functools import cached_property
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import functools
+      cached_property: type[functools.cached_property]
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
