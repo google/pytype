@@ -15,7 +15,6 @@ filegroup(
     builtins/attrs/__init__.pytd
     builtins/builtins.pytd
     builtins/mypy_extensions.pytd
-    builtins/numpy/__init__.pytd
     builtins/protocols.pytd
     builtins/typing.pytd
     stdlib/_ctypes.pytd
@@ -23,4 +22,5 @@ filegroup(
     stdlib/dummy_thread.pytd
     stdlib/encodings.pytd
     stdlib/enum.pytd
+    builtins/numpy/__init__.pytd
 )
