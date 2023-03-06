@@ -158,6 +158,23 @@ class TestMethodsPy3(test_base.BaseTest):
       assert_type(g(0), float)
     """)
 
+  def test_dunder_self(self):
+    self.Check("""
+      from typing import Type
+      class A:
+        def foo(self):
+          return 42
+
+        @classmethod
+        def bar(cls):
+          return cls()
+
+      a = A().foo.__self__
+      b = A.bar.__self__
+      assert_type(a, A)
+      assert_type(b, Type[A])
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

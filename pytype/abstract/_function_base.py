@@ -297,6 +297,11 @@ class BoundFunction(_base.BaseValue):
   def __repr__(self):
     return self.repr_names()[0] + "(...)"
 
+  def get_special_attribute(self, node, name, valself):
+    if name == "__self__":
+      return self.callself
+    return super().get_special_attribute(node, name, valself)
+
 
 class BoundInterpreterFunction(BoundFunction):
   """The method flavor of InterpreterFunction."""
