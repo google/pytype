@@ -35,6 +35,15 @@ class Visualizer {
     /** @private @const {!Object} */
     this.program = program;
 
+    /** @private @const {!Array<!Object>} */
+    this.queries = program.queries;
+
+    /** @private @const {number?} */
+    this.current_query = null;
+
+    /** @private @const {number} */
+    this.query_step = 0;
+
     let cfgnode_nodes = this.program.cfg_nodes.map(n => this.gen_cfgnode(n));
     let cfgnode_edges = this.program.cfg_nodes.flatMap(
         n => n.outgoing.map(
@@ -198,8 +207,26 @@ class Visualizer {
     this.cy.add(elems.filter(e => !this.elem_exists(e.data.id)));
   }
 
+  /** Adds a Binding to the visualization.
+   * You should probably call this.relayout() after this function, before
+   * calling anything else that adds nodes or edges.
+   * @param {number} bind_id The ID of the SerializedBinding to process.
+   * @return {!Array<!Object>} The list of Cytoscape elements generated for the
+   * given binding.
+   */
+  reveal_single_binding(bind_id) {
+    const elems = [];
+    const binding = this.program.bindings.find(b => b.id == bind_id);
+    const b_node = this.gen_binding(binding);
+    elems.push(b_node);
+    for (const cfg_node of this.program.cfg_nodes.filter(n => n.bindings.includes(bind_id))) {
+      elems.push(this.gen_edge('cfgnode_bind_edge', this.cfgnode_id(cfg_node.id), this.binding_id(bind_id)));
+    }
+    return elems;
+  }
+
   /**
-   * Adds a Binding to the visualization.
+   * Adds a Binding and all its children to the visualization.
    * In particular, this will add:
    * - a node for the Binding.
    * - an edge between each CFGNode that has the Binding in its bindings list.
@@ -209,16 +236,12 @@ class Visualizer {
    * - an edge between each SourceSet and CFGNode that is connected to the
    *   Origin that contains the SourceSet.
    * It does not recurse further into the SoureceSets' member Bindings.
+   * You should probably call this.relayout() after this function, before
+   * calling anything else that adds nodes or edges.
    * @param {number} bind_id The ID of the SerializedBinding to process.
    */
   reveal_binding(bind_id) {
-    const elems = [];
-    const binding = this.program.bindings.find(b => b.id == bind_id);
-    const b_node = this.gen_binding(binding);
-    elems.push(b_node);
-    for (const cfg_node of this.program.cfg_nodes.filter(n => n.bindings.includes(bind_id))) {
-      elems.push(this.gen_edge('cfgnode_bind_edge', this.cfgnode_id(cfg_node.id), this.binding_id(bind_id)));
-    }
+    const elems = this.reveal_single_binding(bind_id);
     for (const [o_id, origin] of binding.origins.entries()) {
       for (const [s_id, sourceset] of origin.source_sets.entries()) {
         const ss = this.gen_sourceset(bind_id, o_id, s_id);
@@ -320,6 +343,94 @@ class Visualizer {
     if (this.elem_exists(this.variable_id(var_id))) {
       this.get_var_cluster(var_id).toggleClass('highlight_node', false);
     }
+  }
+
+  /**
+   * Toggles on the 'highlight_node' style class for a given CFGNode.
+   * Has no effect if the CFGNode id does not correspond with an actual node.
+   * @param {number} node_id The ID number of the CFGNode to highlight.
+   */
+  highlight_cfgnode(node_id) {
+    console.log("Highlighting ", this.cfgnode_id(node_id));
+    this.cy.$id(this.cfgnode_id(node_id)).toggleClass('highlight_node', true);
+  }
+
+  /**
+   * Toggles off the 'highlight_node' style class for a given CFGNode.
+   * Has no effect if the CFGNode id does not correspond with an actual node.
+   * @param {number} node_id The ID number of the CFGNode to highlight.
+   */
+  unhighlight_cfgnode(node_id) {
+    this.cy.$id(this.cfgnode_id(node_id)).toggleClass('highlight_node', false);
+  }
+
+  /** Sets up a query for visualization.
+   * - Unsets the current query, if there is one.
+   * - Visualizes the first step of the query.
+   * @param {number} query_idx The index of the query to setup.
+  */
+  setup_query(query_idx) {
+    if (this.queries[query_idx] === undefined) {
+      console.log("Query", query_idx, "is not a valid query index:", this.queries);
+      return;
+    }
+
+    if (this.current_query === query_idx) {
+      return;
+    }
+
+    // Reset the current query, if there is one.
+    if (this.current_query !== null) {
+      const query = this.queries[this.current_query];
+      for (const step of query.steps.slice(0, this.query_step+1)) {
+        this.unhighlight_cfgnode(step.node);
+        for (const b_id of step.bindings) {
+            this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+        }
+      }
+    }
+
+    this.current_query = query_idx;
+    // query_step is immediately incremented by advance_query.
+    this.query_step = -1;
+    this.advance_query();
+  }
+
+  /**
+   * Show the next step of a query.
+   * Does nothing if the query is already at the final step.
+  */
+  advance_query() {
+    if (this.current_query === null) {
+      return;
+    }
+
+    if (this.query_step == this.queries[this.current_query].steps.length-1) {
+      return;
+    }
+    // Hide the previous step, if there is one.
+    if (this.query_step >= 0) {
+      const step = this.queries[this.current_query].steps[this.query_step];
+      this.unhighlight_cfgnode(step.node);
+        for (const b_id of step.bindings) {
+            this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+        }
+    }
+
+    this.query_step += 1;
+    const step = this.queries[this.current_query].steps[this.query_step];
+    this.highlight_cfgnode(step.node);
+    const elems = [];
+    // We don't know if a binding has been revealed before, so we need to both
+    // reveal the bindings *and* un-hide them.
+    for (const bind_id of step.bindings) {
+      elems.push(...this.reveal_single_binding(bind_id));
+    }
+    this.add_elems(elems);
+    for (const elem of elems) {
+      this.cy.$id(elem.data.id).toggleClass("hidden_node", false);
+    }
+    this.relayout();
   }
 
   /**

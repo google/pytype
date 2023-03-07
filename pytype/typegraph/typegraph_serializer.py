@@ -62,6 +62,25 @@ class SerializedBinding:
 
 
 @dataclasses.dataclass
+class SerializedQueryStep:
+  node: CFGNodeId
+  depth: int
+  bindings: List[BindingId]
+
+
+@dataclasses.dataclass
+class SerializedQuery:
+  id: int
+  solver_idx: int
+  start_node: CFGNodeId
+  end_node: CFGNodeId
+  initial_binding_count: int
+  shortcircuited: bool
+  from_cache: bool
+  steps: List[SerializedQueryStep]
+
+
+@dataclasses.dataclass
 class SerializedProgram:
   # Note that cfg_nodes and bindings contain all instances of their respective
   # types that are found in the program, while variables only contains the
@@ -71,6 +90,7 @@ class SerializedProgram:
   variables: List[SerializedVariable]
   bindings: List[SerializedBinding]
   entrypoint: CFGNodeId
+  queries: List[SerializedQuery]
 
 
 class TypegraphEncoder(json.JSONEncoder):
@@ -95,6 +115,7 @@ class TypegraphEncoder(json.JSONEncoder):
         "variables": variables,
         "entrypoint": program.entrypoint.id,
         "bindings": [self._encode_binding(b) for b in bindings],
+        "queries": self._encode_queries(program),
     }
 
   def _encode_cfgnode(self, node: cfg.CFGNode) -> Dict[str, Any]:
@@ -117,7 +138,7 @@ class TypegraphEncoder(json.JSONEncoder):
     }
 
   def _encode_binding_data(self, binding: cfg.Binding) -> str:
-    return pytd_utils.Print(binding.data.to_type())
+    return pytd_utils.Print(binding.data.to_type()) if binding.data else "None"
 
   def _encode_binding(self, binding: cfg.Binding) -> Dict[str, Any]:
     return {
@@ -134,6 +155,43 @@ class TypegraphEncoder(json.JSONEncoder):
         "where": origin.where.id,
         "source_sets": [[b.id for b in s] for s in origin.source_sets],
     }
+
+  def _encode_queries(self, program: cfg.Program) -> List[Dict[str, Any]]:
+    """Encodes information about solver queries from a Program's metrics.
+
+    The queries are numbered in the order they were recorded.
+
+    Args:
+      program: a cfg.Program.
+    Returns:
+      A list of dictionaries that correspond to SerializedQuery.
+    """
+    metrics = program.calculate_metrics()
+    solvers = metrics.solver_metrics
+    enc_queries = []
+    query_id = -1
+    for solver_idx, solver in enumerate(solvers):
+      for query in solver.query_metrics:
+        query_id += 1
+        steps = []
+        for step in query.steps:
+          steps.append({
+              "_type": "QueryStep",
+              "node": step.node,
+              "depth": step.depth,
+              "bindings": step.bindings,
+          })
+        enc_queries.append({
+            "_type": "Query",
+            "solver_idx": solver_idx,
+            "start_node": query.start_node,
+            "end_node": query.end_node,
+            "initial_binding_count": query.initial_binding_count,
+            "shortcircuited": query.shortcircuited,
+            "from_cache": query.from_cache,
+            "steps": steps,
+        })
+    return enc_queries
 
   def default(self, o):
     if isinstance(o, cfg.Program):
@@ -156,6 +214,8 @@ _TYP_MAP = {
     "Variable": SerializedVariable,
     "Binding": SerializedBinding,
     "Origin": SerializedOrigin,
+    "QueryStep": SerializedQueryStep,
+    "Query": SerializedQuery,
 }
 
 
@@ -179,3 +239,7 @@ def decode_program(json_str: str) -> SerializedProgram:
   prog = json.loads(json_str, object_hook=object_hook)
   assert isinstance(prog, SerializedProgram)
   return prog
+
+
+def to_serialized_program(program: cfg.Program) -> SerializedProgram:
+  return decode_program(encode_program(program))

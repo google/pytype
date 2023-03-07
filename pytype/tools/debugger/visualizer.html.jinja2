@@ -5,6 +5,8 @@
   * program: string. The JSON encoding of a pytype.typegraph.cfg.Program. Should
     be created by typegraph_serializer.encode_program.
   * var_table: dict[int, str]. A mapping of Variable IDs to names.
+  * query_table: list[typegraph_serializer.SerializedQuery]. A list of query
+    descriptions, created by the typegraph serializer.
 #}
 <!doctype html>
 
@@ -24,7 +26,7 @@
         position: absolute;
         top: 0px;
         left: 0px;
-        z-index: 0;
+        z-index: -1;
     }
 
     #vars-table {
@@ -34,6 +36,22 @@
         top: 0px;
         left: 0px;
         z-index: 1;
+        overflow: auto;
+    }
+
+    #query-table {
+        max-width: 25%;
+        max-height: 30%;
+        position: absolute;
+        top: 0px;
+        right: 0px;
+        z-index: 1;
+        overflow: auto;
+    }
+
+    #query-button {
+        position: absolute;
+        right: 30%;
     }
 
     #legend-cy {
@@ -82,6 +100,27 @@
           <td>{{name}}</td>
         </tr>
         {%- endfor %}{# var_table #}
+      </table>
+    </div>
+    <button id="query-button" type="button" onclick="vis.advance_query()">Next Step</button>
+    <div id="table-div">
+      <table id="query-table">
+        <tr>
+          <th>S#</th> <!-- Solver # -->
+          <th>Cached?</th> <!-- From Cache? -->
+          <th>Shortcircuited?</th> <!-- Shortcircuited? -->
+          <th>Start Node</th> <!-- Starting Node -->
+          <th>Description</th> <!-- Query Description -->
+        </tr>
+        {%- for query in query_table %}
+        <tr class=datarow onclick="vis.setup_query({{loop.index0}})" onmouseover="vis.highlight_cfgnode({{query.start_node}})" onmouseout="vis.unhighlight_cfgnode({{query.start_node}})">
+          <td>{{query.solver_idx}}</td>
+          <td>{{query.from_cache}}</td>
+          <td>{{query.shortcircuited}}</td>
+          <td>{{query.start_node}}</td>
+          <td>{{query.initial_binding_count}} binding(s)</td>
+        </tr>
+        {%- endfor %}{# queries #}
       </table>
     </div>
     <div id="cy"></div>
