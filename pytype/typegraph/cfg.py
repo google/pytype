@@ -109,6 +109,9 @@ class Program:
     self.next_binding_id += 1
     return self.next_binding_id-1
 
+  def calculate_metrics(self):
+    return Metrics()  # dummy implementation
+
 
 class CFGNode:
   """A node in the CFG.
@@ -848,3 +851,11 @@ class Solver:
         if self._RecallOrFindSolution(new_state, seen_states):
           return True
     return False
+
+
+# dummy implementation
+class Metrics:
+  binding_count: int
+  cfg_node_metrics: list
+  variable_metrics: list
+  solver_metrics: list
