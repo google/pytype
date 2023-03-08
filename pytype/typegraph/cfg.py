@@ -7,7 +7,7 @@ and to model path-specific visibility of nested data structures.
 import collections
 import dataclasses
 import logging
-from typing import Set
+from typing import Any, List, Set
 
 from pytype import metrics
 
@@ -109,7 +109,7 @@ class Program:
     self.next_binding_id += 1
     return self.next_binding_id-1
 
-  def calculate_metrics(self):
+  def calculate_metrics(self):  # pylint: disable=invalid-name
     return Metrics()  # dummy implementation
 
 
@@ -856,6 +856,6 @@ class Solver:
 # dummy implementation
 class Metrics:
   binding_count: int
-  cfg_node_metrics: list
-  variable_metrics: list
-  solver_metrics: list
+  cfg_node_metrics: List[Any]
+  variable_metrics: List[Any]
+  solver_metrics: List[Any]
