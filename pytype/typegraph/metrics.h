@@ -51,6 +51,19 @@ class VariableMetrics {
   const std::vector<NodeID> node_ids_;
 };
 
+class QueryStep {
+ public:
+  QueryStep(std::size_t cfgnode, std::vector<std::size_t> bindings, int depth):
+    cfgnode_(cfgnode), bindings_(bindings), depth_(depth) {}
+  std::size_t cfgnode() const { return cfgnode_; }
+  std::vector<std::size_t> bindings() const { return bindings_; }
+  int depth() const { return depth_; }
+ private:
+  std::size_t cfgnode_;
+  std::vector<std::size_t> bindings_;
+  int depth_;
+};
+
 /* QueryMetrics stores metrics for a single Solver query.
  * A "query" is a call to Solver::Solve. Large queries are broken into small
  * sub-queries, and the QueryMetrics for a large query will include all the
@@ -79,12 +92,16 @@ class QueryMetrics {
         initial_binding_count_(initial_binding_count),
         total_binding_count_(0),
         shortcircuited_(false),
-        from_cache_(false) {}
+        from_cache_(false),
+        steps_({}) {}
 
   ~QueryMetrics() {}
 
   std::size_t nodes_visited() const { return nodes_visited_; }
   void add_visited_node() { nodes_visited_ += 1; }
+
+  std::vector<QueryStep> steps() const { return steps_; }
+  void add_step(QueryStep step) { steps_.push_back(step); }
 
   NodeID start_node() const { return start_node_; }
 
@@ -112,6 +129,7 @@ class QueryMetrics {
   std::size_t total_binding_count_;
   bool shortcircuited_;
   bool from_cache_;
+  std::vector<QueryStep> steps_;
 };
 
 class CacheMetrics {

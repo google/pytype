@@ -8,7 +8,10 @@ jinja2.Environment needs to be created. generate() accepts a jinja2.Loader in
 order to support different execution environments.
 """
 
+import json
+
 import jinja2
+
 from pytype.typegraph import cfg
 from pytype.typegraph import typegraph_serializer
 
@@ -46,10 +49,13 @@ def generate(
   """
   env = jinja2.Environment(loader=loader)
   template = env.get_template(_TEMPLATE_NAME)
+  encoder = typegraph_serializer.TypegraphEncoder()
+  enc_prog = encoder.default(program)
   return template.render(
       cytoscape_url=cytoscape_url,
       dagre_url=dagre_url,
       cytoscape_dagre_url=cytoscape_dagre_url,
-      program=typegraph_serializer.encode_program(program),
+      program=json.dumps(enc_prog),
+      query_table=enc_prog["queries"],
       var_table=var_table,
   )

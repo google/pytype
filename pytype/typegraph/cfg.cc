@@ -1521,6 +1521,11 @@ PYBIND11_MODULE(cfg, m) {
                              &typegraph::VariableMetrics::binding_count)
       .def_property_readonly("node_ids", &typegraph::VariableMetrics::node_ids);
 
+  pybind11::class_<typegraph::QueryStep>(m, "QueryStep")
+      .def_property_readonly("node", &typegraph::QueryStep::cfgnode)
+      .def_property_readonly("depth", &typegraph::QueryStep::depth)
+      .def_property_readonly("bindings", &typegraph::QueryStep::bindings);
+
   pybind11::class_<typegraph::QueryMetrics>(m, "QueryMetrics")
       .def_property_readonly("nodes_visited",
                              &typegraph::QueryMetrics::nodes_visited)
@@ -1533,7 +1538,8 @@ PYBIND11_MODULE(cfg, m) {
       .def_property_readonly("shortcircuited",
                              &typegraph::QueryMetrics::shortcircuited)
       .def_property_readonly("from_cache",
-                             &typegraph::QueryMetrics::from_cache);
+                             &typegraph::QueryMetrics::from_cache)
+      .def_property_readonly("steps", &typegraph::QueryMetrics::steps);
 
   pybind11::class_<typegraph::CacheMetrics>(m, "CacheMetrics")
       .def_property_readonly("total_size", &typegraph::CacheMetrics::total_size)

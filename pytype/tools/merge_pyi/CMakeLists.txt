@@ -48,74 +48,74 @@ filegroup(
   SRCS
     test_data/__init__.py
     test_data/any.py
+    test_data/any.pyi
     test_data/async.pep484.py
     test_data/async.py
+    test_data/async.pyi
     test_data/decoration.pep484.py
     test_data/decoration.py
+    test_data/decoration.pyi
     test_data/defaults.pep484.py
     test_data/defaults.py
+    test_data/defaults.pyi
     test_data/heuristics.pep484.py
     test_data/heuristics.py
+    test_data/heuristics.pyi
     test_data/imports.pep484.py
     test_data/imports.py
+    test_data/imports.pyi
     test_data/imports_alias.pep484.py
     test_data/imports_alias.py
+    test_data/imports_alias.pyi
     test_data/imports_multiple.pep484.py
     test_data/imports_multiple.py
+    test_data/imports_multiple.pyi
     test_data/imports_notouch.pep484.py
     test_data/imports_notouch.py
+    test_data/imports_notouch.pyi
     test_data/member_var.pep484.py
     test_data/member_var.py
+    test_data/member_var.pyi
     test_data/mismatch.pep484.py
     test_data/mismatch.py
+    test_data/mismatch.pyi
     test_data/nonearg.pep484.py
     test_data/nonearg.py
+    test_data/nonearg.pyi
     test_data/oneliner.pep484.py
     test_data/oneliner.py
+    test_data/oneliner.pyi
     test_data/parse_error.py
+    test_data/parse_error.pyi
     test_data/partial.pep484.py
     test_data/partial.py
+    test_data/partial.pyi
     test_data/pyi_variations.pep484.py
     test_data/pyi_variations.py
+    test_data/pyi_variations.pyi
     test_data/redefine.pep484.py
     test_data/redefine.py
+    test_data/redefine.pyi
     test_data/retval_heuristics.pep484.py
     test_data/retval_heuristics.py
+    test_data/retval_heuristics.pyi
     test_data/scope.pep484.py
     test_data/scope.py
+    test_data/scope.pyi
     test_data/simple.pep484.py
     test_data/simple.py
+    test_data/simple.pyi
     test_data/simple_defaults.py
     test_data/stars.pep484.py
     test_data/stars.py
+    test_data/stars.pyi
     test_data/trailing_comma.pep484.py
     test_data/trailing_comma.py
+    test_data/trailing_comma.pyi
     test_data/typevar.pep484.py
     test_data/typevar.py
+    test_data/typevar.pyi
     test_data/var_annot.pep484.py
     test_data/var_annot.py
-    test_data/any.pyi
-    test_data/async.pyi
-    test_data/decoration.pyi
-    test_data/defaults.pyi
-    test_data/heuristics.pyi
-    test_data/imports.pyi
-    test_data/imports_alias.pyi
-    test_data/imports_multiple.pyi
-    test_data/imports_notouch.pyi
-    test_data/member_var.pyi
-    test_data/mismatch.pyi
-    test_data/nonearg.pyi
-    test_data/oneliner.pyi
-    test_data/parse_error.pyi
-    test_data/partial.pyi
-    test_data/pyi_variations.pyi
-    test_data/redefine.pyi
-    test_data/retval_heuristics.pyi
-    test_data/scope.pyi
-    test_data/simple.pyi
-    test_data/stars.pyi
-    test_data/trailing_comma.pyi
-    test_data/typevar.pyi
     test_data/var_annot.pyi
 )

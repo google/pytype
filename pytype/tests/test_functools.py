@@ -1,8 +1,10 @@
 """Test functools overlay."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
+@test_utils.skipBeforePy((3, 8), "cached_property is new in 3.8")
 class TestCachedProperty(test_base.BaseTest):
   """Tests for @cached.property."""
 
@@ -84,6 +86,15 @@ class TestCachedProperty(test_base.BaseTest):
         x = a.f
         assert_type(x, int)
       """)
+
+  def test_infer(self):
+    ty = self.Infer("""
+      from functools import cached_property
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import functools
+      cached_property: type[functools.cached_property]
+    """)
 
 
 if __name__ == "__main__":

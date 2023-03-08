@@ -556,7 +556,9 @@ class PropertyTemplate(BuiltinClass):
     return ret
 
   def call(self, node, funcv, args):
-    raise NotImplementedError()
+    property_args = self._get_args(args)
+    return node, PropertyInstance(
+        self.ctx, self.name, self, **property_args).to_variable(node)
 
 
 def _is_fn_abstract(func_var):
@@ -653,11 +655,6 @@ class Property(PropertyTemplate):
 
   def __init__(self, ctx):
     super().__init__(ctx, "property")
-
-  def call(self, node, funcv, args):
-    property_args = self._get_args(args)
-    return node, PropertyInstance(self.ctx, "property", self,
-                                  **property_args).to_variable(node)
 
 
 def _check_method_decorator_arg(fn_var, name, ctx):

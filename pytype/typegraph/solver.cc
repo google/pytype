@@ -296,6 +296,13 @@ bool Solver::FindSolution(const internal::State& state,
   // of all sets of bindings. This is because deduping the sets of bindings is
   // expensive and not currently worthwhile.
   query_metrics_.back().add_bindings(state.goals().size());
+
+  std::vector<std::size_t> goal_ids;
+  goal_ids.reserve(state.goals().size());
+  for (const Binding* goal : state.goals()) goal_ids.push_back(goal->id());
+
+  query_metrics_.back().add_step(
+      QueryStep(state.pos()->id(), goal_ids, current_depth));
   for (const Binding* goal : state.goals()) {
     LOG(INFO) << indent << "Goal: " << goal->variable()->id() << " = "
               << goal->data();

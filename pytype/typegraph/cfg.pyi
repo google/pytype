@@ -70,6 +70,11 @@ class VariableMetrics:
   binding_count: int
   node_ids: list[int]
 
+class QueryStep:
+  node: int
+  bindings: list[int]
+  depth: int
+
 class QueryMetrics:
   nodes_visited: int
   start_node: int
@@ -78,6 +83,7 @@ class QueryMetrics:
   total_binding_count: int
   shortcircuited: bool
   from_cache: bool
+  steps: list[QueryStep]
 
 class CacheMetrics:
   total_size: int
