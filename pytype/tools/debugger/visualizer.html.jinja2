@@ -29,29 +29,56 @@
         z-index: -1;
     }
 
-    #vars-table {
+    #variables-div {
         max-width: 10%;
         max-height: 30%;
         position: absolute;
         top: 0px;
         left: 0px;
         z-index: 1;
+        marging: 2px 5px;
+        background: #fff;
+    }
+
+    #variables-table {
         overflow: auto;
     }
 
-    #query-table {
+    #query-div {
         max-width: 25%;
         max-height: 30%;
+        display: flex;
+        flex-flow: column;
         position: absolute;
         top: 0px;
         right: 0px;
         z-index: 1;
-        overflow: auto;
+        margin: 2px 5px;
+        background: #fff;
+    }
+
+    #query-header {
+      display: flex;
+      flex: initial;
+      flex-flow: row nowrap;
+      align-items: center;
+    }
+
+    #query-title {
+        display: flex;
+        flex: auto;
+        font-style: bold;
     }
 
     #query-button {
-        position: absolute;
-        right: 30%;
+      display: flex;
+      flex: initial;
+      margin: 3px 5px;
+    }
+
+    #query-table {
+        flex: 1 25%;
+        overflow: auto;
     }
 
     #legend-cy {
@@ -60,7 +87,7 @@
       position: absolute;
       left: 0px;
       bottom: 0px;
-
+      margin: 2px 5px;
       border-style: solid;
       background: #fff;
     }
@@ -88,40 +115,48 @@
 </style>
 
 <body>
-    <div id="table-div">
-      <table id="vars-table">
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-        </tr>
-        {%- for (vid, name) in var_table|dictsort %}
-        <tr class=datarow onclick="vis.add_or_hide_var({{vid}})" onmouseover="vis.highlight_var({{vid}})" onmouseout="vis.unhighlight_var({{vid}})">
-          <td>{{vid}}</td>
-          <td>{{name}}</td>
-        </tr>
-        {%- endfor %}{# var_table #}
-      </table>
+    <div id="variables-div">
+      <div id="variables-title">Variables</div>
+      <div id="table-div">
+        <table id="variables-table">
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+          </tr>
+          {%- for (vid, name) in var_table|dictsort %}
+          <tr class=datarow onclick="vis.add_or_hide_var({{vid}})" onmouseover="vis.highlight_var({{vid}})" onmouseout="vis.unhighlight_var({{vid}})">
+            <td>{{vid}}</td>
+            <td>{{name}}</td>
+          </tr>
+          {%- endfor %}{# var_table #}
+        </table>
+      </div>
     </div>
-    <button id="query-button" type="button" onclick="vis.advance_query()">Next Step</button>
-    <div id="table-div">
-      <table id="query-table">
-        <tr>
-          <th>S#</th> <!-- Solver # -->
-          <th>Cached?</th> <!-- From Cache? -->
-          <th>Shortcircuited?</th> <!-- Shortcircuited? -->
-          <th>Start Node</th> <!-- Starting Node -->
-          <th>Description</th> <!-- Query Description -->
-        </tr>
-        {%- for query in query_table %}
-        <tr class=datarow onclick="vis.setup_query({{loop.index0}})" onmouseover="vis.highlight_cfgnode({{query.start_node}})" onmouseout="vis.unhighlight_cfgnode({{query.start_node}})">
-          <td>{{query.solver_idx}}</td>
-          <td>{{query.from_cache}}</td>
-          <td>{{query.shortcircuited}}</td>
-          <td>{{query.start_node}}</td>
-          <td>{{query.initial_binding_count}} binding(s)</td>
-        </tr>
-        {%- endfor %}{# queries #}
-      </table>
+    <div id="query-div">
+      <div id="query-header">
+        <div id="query-title">Queries</div>
+        <button id="query-button" type="button" onclick="vis.advance_query()">Next Step</button>
+      </div>
+      <div id="table-div">
+        <table id="query-table">
+          <tr>
+            <th>S#</th> <!-- Solver # -->
+            <th>Cached?</th> <!-- From Cache? -->
+            <th>Shortcircuited?</th> <!-- Shortcircuited? -->
+            <th>Start Node</th> <!-- Starting Node -->
+            <th>Description</th> <!-- Query Description -->
+          </tr>
+          {%- for query in query_table %}
+          <tr class=datarow onclick="vis.setup_query({{loop.index0}})" onmouseover="vis.highlight_cfgnode({{query.start_node}})" onmouseout="vis.unhighlight_cfgnode({{query.start_node}})">
+            <td>{{query.solver_idx}}</td>
+            <td>{{query.from_cache}}</td>
+            <td>{{query.shortcircuited}}</td>
+            <td>{{query.start_node}}</td>
+            <td>{{query.initial_binding_count}} binding(s)</td>
+          </tr>
+          {%- endfor %}{# queries #}
+        </table>
+      </div>
     </div>
     <div id="cy"></div>
     <div id="legend-cy">
