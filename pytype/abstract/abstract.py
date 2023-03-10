@@ -68,6 +68,7 @@ InterpreterFunction = _interpreter_function.InterpreterFunction
 
 PyTDFunction = _pytd_function.PyTDFunction
 PyTDSignature = _pytd_function.PyTDSignature
+SignatureMutationError = _pytd_function.SignatureMutationError
 
 Unknown = _singletons.Unknown
 Singleton = _singletons.Singleton

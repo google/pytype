@@ -255,7 +255,18 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       valself: Optional[cfg.Binding] = None) -> _NodeAndMaybeVarType:
     """Get an attribute from an instance."""
     cls = None if obj.cls.full_name == "builtins.type" else obj.cls
-    return self._get_attribute(node, obj, cls, name, valself)
+    try:
+      return self._get_attribute(node, obj, cls, name, valself)
+    except abstract.SignatureMutationError as e:
+      # This prevents a crash where we are trying to create a PyTDClass, and
+      # one of its methods has an invalid `self` annotation.  This will
+      # typically be caught via the wrong-arg-types check, but there seems to
+      # be a corner case where we hit this code path and pytype raises an
+      # exception.
+      # See tests/test_generic2: test_invalid_mutation
+      self.ctx.errorlog.invalid_signature_mutation(
+          self.ctx.vm.frames, f"{obj.name}.{name}", e.pytd_sig)
+      return node, self.ctx.new_unsolvable(node)
 
   def _get_attribute(self, node, obj, cls, name, valself):
     """Get an attribute from an object or its class.

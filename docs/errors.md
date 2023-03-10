@@ -46,6 +46,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [invalid-function-definition](#invalid-function-definition)
       * [invalid-function-type-comment](#invalid-function-type-comment)
       * [invalid-namedtuple-arg](#invalid-namedtuple-arg)
+      * [invalid-signature-mutation](#invalid-signature-mutation)
       * [invalid-super-call](#invalid-super-call)
       * [invalid-typevar](#invalid-typevar)
       * [late-directive](#late-directive)
@@ -74,7 +75,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [wrong-arg-types](#wrong-arg-types)
       * [wrong-keyword-args](#wrong-keyword-args)
 
-<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
+<!-- Added by: mdemello, at: 2023-03-09T19:22-08:00 -->
 
 <!--te-->
 
@@ -524,6 +525,20 @@ Field names:
 Also, there can be no duplicate field names. The typename has the same
 requirements, except that it can start with "_".
 
+## invalid-signature-mutation
+
+A method signature in a pyi file has an annotation on `self` that does not match
+the base class.
+
+Generic class methods can annotate `self` with more specific type parameters,
+which will then specialize the type of the receiver when the method is called,
+but the `self` annotation cannot mutate the base class.
+
+<!-- bad -->
+```python
+class A(Generic[T]):
+  def foo(self: B[int]): ...
+```
 
 ## invalid-super-call
 
