@@ -689,14 +689,11 @@ class StaticMethodInstance(abstract.Function, mixin.HasSlots):
     return node, self.func
 
 
-class StaticMethod(BuiltinClass):
+class StaticMethodTemplate(BuiltinClass):
   """Static method decorator."""
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "staticmethod")
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
@@ -705,6 +702,12 @@ class StaticMethod(BuiltinClass):
     if not _check_method_decorator_arg(arg, "staticmethod", self.ctx):
       return node, self.ctx.new_unsolvable(node)
     return node, StaticMethodInstance(self.ctx, self, arg).to_variable(node)
+
+
+class StaticMethod(StaticMethodTemplate):
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "staticmethod")
 
 
 class ClassMethodCallable(abstract.BoundFunction):
@@ -729,13 +732,10 @@ class ClassMethodInstance(abstract.Function, mixin.HasSlots):
     return node, self.ctx.program.NewVariable(results, [], node)
 
 
-class ClassMethod(BuiltinClass):
-  """Static method decorator."""
+class ClassMethodTemplate(BuiltinClass):
+  """Class method decorator."""
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "classmethod")
 
   def call(self, node, funcv, args):
     if len(args.posargs) != 1:
@@ -747,6 +747,12 @@ class ClassMethod(BuiltinClass):
       d.is_classmethod = True
       d.is_attribute_of_class = True
     return node, ClassMethodInstance(self.ctx, self, arg).to_variable(node)
+
+
+class ClassMethod(ClassMethodTemplate):
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "classmethod")
 
 
 class Dict(BuiltinClass):

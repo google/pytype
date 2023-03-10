@@ -216,6 +216,37 @@ class AbstractMethodTests(test_base.BaseTest):
             pass
     """)
 
+  def test_abstractmethod_variants(self):
+    # TODO(rechen): If we add a return type annotation to g, pytype reports
+    # [bad-return-type] despite the method being abstract.
+    self.Check("""
+      import abc
+      class C(abc.ABC):
+        @abc.abstractclassmethod
+        def f(cls) -> int: ...
+        @abc.abstractstaticmethod
+        def g(): ...
+    """)
+
+  def test_inference(self):
+    ty = self.Infer("""
+      from abc import abstractclassmethod
+      from abc import abstractmethod
+      from abc import abstractproperty
+      from abc import abstractstaticmethod
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import abc
+      from typing import Callable, Type, TypeVar
+
+      abstractclassmethod: Type[abc.abstractclassmethod]
+      abstractproperty: Type[abc.abstractproperty]
+      abstractstaticmethod: Type[abc.abstractstaticmethod]
+
+      _FuncT = TypeVar('_FuncT', bound=Callable)
+      def abstractmethod(funcobj: _FuncT) -> _FuncT: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
