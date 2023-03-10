@@ -104,6 +104,10 @@
       background-color: lightsteelblue;
     }
 
+    tr.datarow.selected-row {
+      background-color: lightsteelblue;
+    }
+
     table, th, td {
       border: 1px solid;
       border-collapse: collapse;
@@ -147,7 +151,7 @@
             <th>Description</th> <!-- Query Description -->
           </tr>
           {%- for query in query_table %}
-          <tr class=datarow onclick="vis.setup_query({{loop.index0}})" onmouseover="vis.highlight_cfgnode({{query.start_node}})" onmouseout="vis.unhighlight_cfgnode({{query.start_node}})">
+          <tr id="query_row{{loop.index0}}" class=datarow onclick="select_query({{loop.index0}})" onmouseover="vis.highlight_cfgnode({{query.start_node}})" onmouseout="vis.unhighlight_cfgnode({{query.start_node}})">
             <td>{{query.solver_idx}}</td>
             <td>{{query.from_cache}}</td>
             <td>{{query.shortcircuited}}</td>
