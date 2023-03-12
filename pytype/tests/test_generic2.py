@@ -1123,7 +1123,7 @@ class GenericFeatureTest(test_base.BaseTest):
         ("_typing.pyi", """
             from typing import Any
             NDArray: Any
-         """), ("numpy.pyi", """
+         """), ("my_numpy.pyi", """
             from _typing import NDArray
             from typing import Any, Generic, TypeVar
 
@@ -1134,7 +1134,7 @@ class GenericFeatureTest(test_base.BaseTest):
                 def __getitem__(self: NDArray[Any], key: str) -> NDArray[Any]: ...
         """)]):
       err = self.CheckWithErrors("""
-        import numpy as np
+        import my_numpy as np
 
         def aggregate_on_columns(matrix: np.ndarray):
           matrix = matrix[None, :]  # invalid-signature-mutation[e]
