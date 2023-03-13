@@ -49,7 +49,7 @@ class AbstractMethod(abstract.PyTDFunction):
   def make(cls, ctx):
     return super().make("abstractmethod", ctx, "abc")
 
-  def call(self, node, unused_func, args):
+  def call(self, node, unused_funcv, args):
     """Marks that the given function is abstract."""
     self.match_args(node, args)
     return node, _set_abstract(args, "funcobj")
