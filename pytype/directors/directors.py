@@ -9,6 +9,7 @@ from typing import AbstractSet, Optional
 
 from pytype import config
 from pytype.blocks import blocks
+from pytype.directors import annotations
 
 # directors.parser uses the stdlib ast library, which is much faster than
 # libcst, but we rely on ast features that are new in Python 3.9.
@@ -267,8 +268,8 @@ class Director:
     """
     self._filename = filename
     self._errorlog = errorlog
-    self._type_comments = {}  # Map from line number to type comment.
-    self._variable_annotations = {}  # Map from line number to annotation.
+    # Collects type comments and variable annotations by line number
+    self._variable_annotations = annotations.VariableAnnotations()
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -293,13 +294,11 @@ class Director:
 
   @property
   def type_comments(self):
-    return self._type_comments
+    return self._variable_annotations.type_comments
 
   @property
   def annotations(self):
-    # It's okay to overwrite type comments with variable annotations here
-    # because _FindIgnoredTypeComments in vm.py will flag ignored comments.
-    return {**self._type_comments, **self._variable_annotations}
+    return self._variable_annotations.annotations
 
   @property
   def ignore(self):
@@ -360,7 +359,8 @@ class Director:
           continue
       else:
         final_line = annot.start_line
-      self._variable_annotations[final_line] = annot.annotation
+      self._variable_annotations.add_annotation(
+          final_line, annot.name, annot.annotation)
 
     for decorator in visitor.decorators:
       # The MAKE_FUNCTION opcode is usually at the 'def' line but pre-3.8 was
@@ -407,12 +407,12 @@ class Director:
         self._ignore.set_line(line, True)
         self._ignore.set_line(final_line, True)
     else:
-      if final_line in self._type_comments:
+      if final_line in self._variable_annotations.type_comments:
         # If we have multiple type comments on the same line, take the last one,
         # but add an error to the log.
         self._errorlog.invalid_directive(
             self._filename, line, "Multiple type comments on the same line.")
-      self._type_comments[final_line] = data
+      self._variable_annotations.add_type_comment(final_line, data)
 
   def _process_pytype(
       self, line: int, data: str, open_ended: bool,

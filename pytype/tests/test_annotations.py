@@ -1385,6 +1385,23 @@ class EllipsisTest(test_base.BaseTest):
         def f(self) -> None: ...
     """)
 
+  def test_try_except_block(self):
+    # Regression test - the first except line puts a `STORE_NAME e` opcode in
+    # the next line, and the annotation on `a: int` therefore has two STORE ops
+    # in its line. This test confirms that the `int` annotation gets put on
+    # `STORE_NAME a` rather than `STORE_NAME e`
+    self.Check("""
+      try:
+        1
+      except Exception as e:
+        a: int = 10
+
+      try:
+        x = 1
+      except Exception as e:
+        pass
+    """)
+
 
 class BareAnnotationTest(test_base.BaseTest):
   """Tests variable annotations without assignment."""

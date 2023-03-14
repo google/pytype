@@ -60,6 +60,7 @@ class _StructuredComment:
 
 @dataclasses.dataclass(frozen=True)
 class _VariableAnnotation(LineRange):
+  name: str
   annotation: str
 
 
@@ -256,8 +257,12 @@ class _ParseVisitor(visitor.BaseVisitor):
       # don't need to be handled here.
       return
     annotation = ast.unparse(node.annotation)
+    if isinstance(node.target, ast.Name):
+      name = node.target.id
+    else:
+      name = None
     self.variable_annotations.append(
-        _VariableAnnotation(node.lineno, node.end_lineno, annotation))
+        _VariableAnnotation(node.lineno, node.end_lineno, name, annotation))
     self._process_structured_comments(LineRange.from_node(node))
 
   def visit_Try(self, node):

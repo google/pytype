@@ -392,19 +392,24 @@ class DirectorTest(DirectorTestCase):
 
 class VariableAnnotationsTest(DirectorTestCase):
 
+  def assertAnnotations(self, expected):
+    actual = {k: (v.name, v.annotation)
+              for k, v in self._director.annotations.items()}
+    self.assertEqual(expected, actual)
+
   def test_annotations(self):
     self._create("""
       v1: int = 0
       def f():
         v2: str = ''
     """)
-    self.assertEqual({2: "int", 4: "str"}, self._director.annotations)
+    self.assertAnnotations({2: ("v1", "int"), 4: ("v2", "str")})
 
   def test_precedence(self):
     self._create("v: int = 0  # type: str")
     # Variable annotations take precedence. vm.py's _FindIgnoredTypeComments
     # warns about the ignored comment.
-    self.assertEqual({1: "int"}, self._director.annotations)
+    self.assertAnnotations({1: ("v", "int")})
 
   def test_parameter_annotation(self):
     # director.annotations contains only variable annotations and function type
@@ -421,7 +426,7 @@ class VariableAnnotationsTest(DirectorTestCase):
       if __random__: v1: int = 0
       else: v2: str = ''
     """)
-    self.assertEqual({2: "int", 3: "str"}, self._director.annotations)
+    self.assertAnnotations({2: ("v1", "int"), 3: ("v2", "str")})
 
   def test_multistatement_line_no_annotation(self):
     self._create("""
@@ -447,7 +452,7 @@ class VariableAnnotationsTest(DirectorTestCase):
           [], int] = None
     """)
     lineno = 2 if sys.version_info[:2] >= (3, 8) else 3
-    self.assertEqual({lineno: "Callable[[], int]"}, self._director.annotations)
+    self.assertAnnotations({lineno: ("v", "Callable[[], int]")})
 
   def test_multiline_assignment(self):
     self._create("""
@@ -457,16 +462,15 @@ class VariableAnnotationsTest(DirectorTestCase):
       ]
     """)
     lineno = 2 if sys.version_info[:2] >= (3, 8) else 4
-    self.assertEqual({lineno: "List[int]"}, self._director.annotations)
+    self.assertAnnotations({lineno: ("v", "List[int]")})
 
   def test_complicated_annotation(self):
     self._create("v: int if __random__ else str = None")
-    self.assertEqual(
-        {1: "int if __random__ else str"}, self._director.annotations)
+    self.assertAnnotations({1: ("v", "int if __random__ else str")})
 
   def test_colon_in_value(self):
     self._create("v: Dict[str, int] = {x: y}")
-    self.assertEqual({1: "Dict[str, int]"}, self._director.annotations)
+    self.assertAnnotations({1: ("v", "Dict[str, int]")})
 
   def test_equals_sign_in_value(self):
     self._create("v = {x: f(y=0)}")
@@ -477,7 +481,7 @@ class VariableAnnotationsTest(DirectorTestCase):
       # comment
       v: int = 0
     """)
-    self.assertEqual({3: "int"}, self._director.annotations)
+    self.assertAnnotations({3: ("v", "int")})
 
 
 class LineNumbersTest(DirectorTestCase):
