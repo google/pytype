@@ -71,7 +71,15 @@ class _EnumTracker:
 
   def __init__(self, enum_cls):
     self.enum_cls = enum_cls
-    self.members = list(enum_cls.get_enum_members(qualified=True))
+    if isinstance(enum_cls, abstract.PyTDClass):
+      # We don't construct a special class for pytd enums, so we have to get the
+      # enum members manually here.
+      self.members = []
+      for k, v in enum_cls.members.items():
+        if all(d.cls == enum_cls for d in v.data):
+          self.members.append(f"{enum_cls.full_name}.{k}")
+    else:
+      self.members = list(enum_cls.get_enum_members(qualified=True))
     self.uncovered = set(self.members)
 
   def cover(self, enum_case):
@@ -141,7 +149,7 @@ class _BranchTracker:
 
   def check_ending(self,
                    line: int,
-                   implicit_return: bool = False) -> List[Tuple[int, Set[int]]]:
+                   implicit_return: bool = False) -> List[Tuple[int, Set[str]]]:
     """Check if we have ended a match statement with leftover cases."""
     if implicit_return:
       done = set()

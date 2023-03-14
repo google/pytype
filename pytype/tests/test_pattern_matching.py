@@ -762,6 +762,65 @@ class MatchCoverageTest(test_base.BaseTest):
           pass
     """, skip_repeat_calls=False)
 
+  def test_pytd_enum_basic(self):
+    with self.DepTree([("foo.pyi", """
+      import enum
+
+      class A(enum.Enum):
+        BASIC = 1
+        ADVANCED = 2
+    """)]):
+      self.Check("""
+        import foo
+
+        def f(v: foo.A):
+          match v:
+            case foo.A.BASIC:
+              return 'basic'
+            case foo.A.ADVANCED:
+              return 'control'
+            case _:
+              return 'unknown'
+      """)
+
+  def test_pytd_enum_redundant(self):
+    with self.DepTree([("foo.pyi", """
+      import enum
+
+      class A(enum.Enum):
+        BASIC = 1
+        ADVANCED = 2
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+
+        def f(v: foo.A):
+          match v:
+            case foo.A.BASIC:
+              return 'basic'
+            case foo.A.BASIC:  # redundant-match
+              return 'even more basic'
+            case _:
+              return 'unknown'
+      """)
+
+  def test_pytd_enum_incomplete(self):
+    with self.DepTree([("foo.pyi", """
+      import enum
+
+      class A(enum.Enum):
+        BASIC = 1
+        ADVANCED = 2
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+
+        def f(v: foo.A):
+          match v:  # incomplete-match
+            case foo.A.BASIC:
+              return 'basic'
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
