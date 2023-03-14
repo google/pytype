@@ -2,12 +2,12 @@
 # minimise the diffs we have to maintain here.
 
 from typing import (
-    AbstractSet, Any, AsyncGenerator, Awaitable, BinaryIO, Callable, Coroutine,
-    Dict, FrozenSet, Generator, Generic, Hashable, IO, ItemsView, Iterable,
-    Iterator, KeysView, List, Literal, Mapping, MutableSequence, Optional,
-    overload, Protocol, Reversible, Sequence, Set, Sized, SupportsAbs,
-    SupportsBytes, SupportsComplex, SupportsFloat, SupportsInt, TextIO, Tuple,
-    Type, Union, ValuesView)
+    AbstractSet, Any, AsyncGenerator, Awaitable, BinaryIO, Callable,
+    Concatenate, Coroutine, Dict, FrozenSet, Generator, Generic, Hashable, IO,
+    ItemsView, Iterable, Iterator, KeysView, List, Literal, Mapping,
+    MutableSequence, Optional, overload, ParamSpec, Protocol, Reversible,
+    Sequence, Set, Sized, SupportsAbs, SupportsBytes, SupportsComplex,
+    SupportsFloat, SupportsInt, TextIO, Tuple, Type, Union, ValuesView)
 
 if sys.version_info >= (3, 8):
     from typing import SupportsIndex
@@ -22,6 +22,8 @@ _K = TypeVar('_K')
 _V = TypeVar('_V')
 _K2 = TypeVar('_K2')
 _V2 = TypeVar('_V2')
+
+_P = ParamSpec('_P')
 
 class _Summable(Protocol):
   def __add__(self, __y: _T) -> _T: ...
@@ -269,15 +271,16 @@ class property(object):
     def __delete__(self, *args, **kwargs) -> Any: ...
 
 # staticmethod and classmethod are handled in special_builtins.py.
-class staticmethod(typing.Callable, Generic[_T]):
+class staticmethod(typing.Callable, Generic[_P, _T]):
     __slots__ = []
-    def __init__(self: staticmethod[_T], __f: Callable[..., _T]) -> None: ...
-    def __get__(self, __obj: _T2 | None, __type: Type[_T2] | None = ...) -> Callable[..., _T]: ...
+    def __init__(self: staticmethod[_T], __f: Callable[_P, _T]) -> None: ...
+    def __get__(self, __obj: _T2 | None, __type: Type[_T2] | None = ...) -> Callable[_P, _T]: ...
 
-class classmethod(typing.Callable, Generic[_T]):
+class classmethod(typing.Callable, Generic[_T, _P, _T2]):
     __slots__ = []
-    def __init__(self: classmethod[_T], __f: Callable[..., _T]) -> None: ...
-    def __get__(self, __obj: _T2 | None, __type: Type[_T2] | None = ...) -> Callable[..., _T]: ...
+    def __init__(self: classmethod[_T2],
+                 __f: Callable[Concatenate[_T, _P], _T2]) -> None: ...
+    def __get__(self, __obj: _T3 | None, __type: Type[_T3] | None = ...) -> Callable[_P, _T2]: ...
 
 _T_str = TypeVar('_T_str', bound=str)
 class str(Sequence[str], Hashable):

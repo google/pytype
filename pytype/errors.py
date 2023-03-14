@@ -1352,8 +1352,15 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, err_msg, details=details)
 
   @_error_name("invalid-function-definition")
-  def invalid_function_definition(self, stack, msg):
-    self.error(stack, msg)
+  def invalid_function_definition(self, stack, msg, details=None):
+    self.error(stack, msg, details=details)
+
+  @_error_name("invalid-signature-mutation")
+  def invalid_signature_mutation(self, stack, func_name, sig):
+    sig = self._pytd_print(sig)
+    msg = "Invalid self type mutation in pyi method signature"
+    details = f"{func_name}{sig}"
+    self.error(stack, msg, details)
 
   @_error_name("typed-dict-error")
   def typed_dict_error(self, stack, obj, name):

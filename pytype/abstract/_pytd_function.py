@@ -30,6 +30,13 @@ _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _GoodMatchType = Any
 
 
+class SignatureMutationError(Exception):
+  """Raise an error for invalid signature mutation in a pyi file."""
+
+  def __init__(self, pytd_sig):
+    self.pytd_sig = pytd_sig
+
+
 def _is_literal(annot: Optional[_base.BaseValue]):
   if isinstance(annot, _typing.Union):
     return all(_is_literal(o) for o in annot.options)
@@ -502,8 +509,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       except ValueError as e:
         log.error("Old: %s", pytd_utils.Print(p.type))
         log.error("New: %s", pytd_utils.Print(p.mutated_type))
-        raise ValueError("Mutable parameters setting a type to a "
-                         "different base type is not allowed.") from e
+        raise SignatureMutationError(pytd_sig) from e
 
   def _map_args(self, node, args):
     """Map the passed arguments to a name->binding dictionary.

@@ -1118,6 +1118,31 @@ class GenericFeatureTest(test_base.BaseTest):
         assert_type(a, foo.A[Any, int])
       """)
 
+  def test_invalid_mutation(self):
+    with self.DepTree([
+        ("_typing.pyi", """
+            from typing import Any
+            NDArray: Any
+         """), ("my_numpy.pyi", """
+            from _typing import NDArray
+            from typing import Any, Generic, TypeVar
+
+            _T1 = TypeVar("_T1")
+            _T2 = TypeVar("_T2")
+
+            class ndarray(Generic[_T1, _T2]):
+                def __getitem__(self: NDArray[Any], key: str) -> NDArray[Any]: ...
+        """)]):
+      err = self.CheckWithErrors("""
+        import my_numpy as np
+
+        def aggregate_on_columns(matrix: np.ndarray):
+          matrix = matrix[None, :]  # invalid-signature-mutation[e]
+      """)
+      self.assertErrorSequences(err, {
+          "e": ["ndarray.__getitem__", "self = Any"]
+      })
+
   def test_class_name_prefix(self):
     ty = self.Infer("""
       from typing import Generic, TypeVar

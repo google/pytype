@@ -14,6 +14,19 @@
  */
 
 /**
+ * Highlights the selected query table row and starts the query.
+ * @param {number} query_id the id of the query, corresponding to the row in the
+ * query table.
+*/
+function select_query(query_id) {
+  for (const elem of document.getElementsByClassName("datarow")) {
+    elem.classList.remove("selected-row");
+  }
+  document.getElementById("query_row"+query_id).classList.add("selected-row");
+  vis.setup_query(query_id);
+}
+
+/**
  * Visualizer handles manipulating the Cytoscape instance using the pytype
  * program data.
  * `cy` is a Cytoscape object, created by e.g. `cy = cytoscape({...});`.

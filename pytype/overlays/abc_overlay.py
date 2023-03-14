@@ -1,8 +1,19 @@
-"""Implementation of special members of Python 2's abc library."""
+"""Implementation of special members of Python's abc library."""
 
 from pytype.abstract import abstract
 from pytype.overlays import overlay
 from pytype.overlays import special_builtins
+
+
+def _set_abstract(args, argname):
+  if args.posargs:
+    func_var = args.posargs[0]
+  else:
+    func_var = args.namedargs[argname]
+  for func in func_var.data:
+    if isinstance(func, abstract.FUNCTION_TYPES):
+      func.is_abstract = True
+  return func_var
 
 
 class ABCOverlay(overlay.Overlay):
@@ -10,12 +21,25 @@ class ABCOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
+        "abstractclassmethod": AbstractClassMethod,
         "abstractmethod": AbstractMethod.make,
         "abstractproperty": AbstractProperty,
+        "abstractstaticmethod": AbstractStaticMethod,
         "ABCMeta": ABCMeta,
     }
     ast = ctx.loader.import_name("abc")
     super().__init__(ctx, "abc", member_map, ast)
+
+
+class AbstractClassMethod(special_builtins.ClassMethodTemplate):
+  """Implements abc.abstractclassmethod."""
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "abstractclassmethod", "abc")
+
+  def call(self, node, funcv, args):
+    _ = _set_abstract(args, "callable")
+    return super().call(node, funcv, args)
 
 
 class AbstractMethod(abstract.PyTDFunction):
@@ -25,21 +49,10 @@ class AbstractMethod(abstract.PyTDFunction):
   def make(cls, ctx):
     return super().make("abstractmethod", ctx, "abc")
 
-  def call(self, node, unused_func, args):
+  def call(self, node, unused_funcv, args):
     """Marks that the given function is abstract."""
     self.match_args(node, args)
-
-    # Since we have only 1 argument, it's easy enough to extract.
-    if args.posargs:
-      func_var = args.posargs[0]
-    else:
-      func_var = args.namedargs["function"]
-
-    for func in func_var.data:
-      if isinstance(func, abstract.FUNCTION_TYPES):
-        func.is_abstract = True
-
-    return node, func_var
+    return node, _set_abstract(args, "funcobj")
 
 
 class AbstractProperty(special_builtins.PropertyTemplate):
@@ -61,6 +74,17 @@ class AbstractProperty(special_builtins.PropertyTemplate):
           f.is_abstract = True
     return node, special_builtins.PropertyInstance(
         self.ctx, self.name, self, **property_args).to_variable(node)
+
+
+class AbstractStaticMethod(special_builtins.StaticMethodTemplate):
+  """Implements abc.abstractstaticmethod."""
+
+  def __init__(self, ctx):
+    super().__init__(ctx, "abstractstaticmethod", "abc")
+
+  def call(self, node, funcv, args):
+    _ = _set_abstract(args, "callable")
+    return super().call(node, funcv, args)
 
 
 class ABCMeta(special_builtins.TypeTemplate):
