@@ -176,22 +176,6 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       for _, typ in annot.get_inner_types():
         yield from self.get_late_annotations(typ)
 
-  def remove_late_annotations(self, annot, seen=None):
-    """Replace unresolved late annotations with unsolvables."""
-    if seen is None:
-      seen = {annot}
-    elif annot in seen:
-      return annot
-    else:
-      seen.add(annot)
-    if annot.is_late_annotation() and not annot.resolved:
-      return self.ctx.convert.unsolvable
-    elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.remove_late_annotations(val, seen))
-                     for key, val in annot.get_inner_types()]
-      return annot.replace(inner_types)
-    return annot
-
   def add_scope(self, annot, types, module, seen=None):
     """Add scope for type parameters.
 

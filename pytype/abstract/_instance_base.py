@@ -243,3 +243,11 @@ class Instance(SimpleValue):
   def instance_type_parameters(self):
     self._load_instance_type_parameters()
     return self._instance_type_parameters
+
+  def get_type_key(self, seen=None):
+    if not self._type_key and not self._instance_type_parameters_loaded:
+      # If we might be the middle of loading this class, don't try to access
+      # instance_type_parameters. We don't cache this intermediate type key
+      # because we want it to be overwritten by the real one.
+      return frozenset([self.cls])
+    return super().get_type_key(seen)

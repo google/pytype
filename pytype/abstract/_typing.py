@@ -584,7 +584,11 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
     for option in self.options:
-      k = (node, container, option)
+      try:
+        container_type_key = container.get_type_key()
+      except AttributeError:
+        container_type_key = container
+      k = (node, container_type_key, option)
       if k in self._instance_cache:
         if self._instance_cache[k] is None:
           self._instance_cache[k] = self.ctx.new_unsolvable(node)
@@ -640,6 +644,7 @@ class LateAnnotation:
     self._imports = imports or {}
     self._type = ctx.convert.unsolvable  # the resolved type of `expr`
     self._unresolved_instances = set()
+    self._resolved_instances = {}
     # _attribute_names needs to be defined last! This contains the names of all
     # of LateAnnotation's attributes, discovered by looking at
     # LateAnnotation.__dict__ and self.__dict__. These names are used in
@@ -756,7 +761,10 @@ class LateAnnotation:
   def instantiate(self, node, container=None):
     """Instantiate the pointed-to class, or record a placeholder instance."""
     if self.resolved:
-      return self._type.instantiate(node, container)
+      key = (node, container)
+      if key not in self._resolved_instances:
+        self._resolved_instances[key] = self._type.instantiate(node, container)
+      return self._resolved_instances[key]
     else:
       instance = _instance_base.Instance(self, self.ctx)
       self._unresolved_instances.add(instance)
