@@ -18,6 +18,13 @@ from pytype.pytd import pytd_utils
 log = logging.getLogger(__name__)
 
 
+def _get_container_type_key(container):
+  try:
+    return container.get_type_key()
+  except AttributeError:
+    return container
+
+
 class AnnotationClass(_instance_base.SimpleValue, mixin.HasSlots):
   """Base class of annotations that can be parameterized."""
 
@@ -584,11 +591,7 @@ class Union(_base.BaseValue, mixin.NestedAnnotation, mixin.HasSlots):
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()
     for option in self.options:
-      try:
-        container_type_key = container.get_type_key()
-      except AttributeError:
-        container_type_key = container
-      k = (node, container_type_key, option)
+      k = (node, _get_container_type_key(container), option)
       if k in self._instance_cache:
         if self._instance_cache[k] is None:
           self._instance_cache[k] = self.ctx.new_unsolvable(node)
@@ -761,7 +764,7 @@ class LateAnnotation:
   def instantiate(self, node, container=None):
     """Instantiate the pointed-to class, or record a placeholder instance."""
     if self.resolved:
-      key = (node, container)
+      key = (node, _get_container_type_key(container))
       if key not in self._resolved_instances:
         self._resolved_instances[key] = self._type.instantiate(node, container)
       return self._resolved_instances[key]
