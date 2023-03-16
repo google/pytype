@@ -207,6 +207,7 @@ class TypedDictClass(abstract.PyTDClass):
     ret = TypedDict(self.props, self.ctx)
     for (k, v) in args.namedargs.items():
       ret.set_str_item(node, k, v)
+    ret.cls = self
     return ret
 
   def instantiate_value(self, node, container):

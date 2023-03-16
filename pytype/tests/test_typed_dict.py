@@ -319,6 +319,27 @@ class TypedDictTest(test_base.BaseTest):
         assert_type(x.get('c', ''), str)
     """)
 
+  def test_generic_holder(self):
+    self.Check("""
+      from dataclasses import dataclass
+      from typing import Generic, TypedDict, TypeVar
+
+      T = TypeVar('T')
+
+      class Animal(TypedDict):
+        name: str
+
+      @dataclass
+      class GenericHolder(Generic[T]):
+        a: T
+        def get(self) -> T:
+          return self.a
+
+      class AnimalHolder(GenericHolder[Animal]):
+        def get2(self) -> Animal:
+          return self.get()
+    """)
+
 
 class TypedDictFunctionalTest(test_base.BaseTest):
   """Tests for typing.TypedDict functional constructor."""

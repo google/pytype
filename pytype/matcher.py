@@ -1145,6 +1145,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if not self._match_dict_against_typed_dict(left, other_type):
         return None
       return subst
+    elif isinstance(left.cls, typed_dict.TypedDictClass):
+      return self._match_typed_dict_against_dict(left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
         self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
@@ -1209,30 +1211,36 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # subclasses of abstract classes to act as their base classes.
       assert isinstance(cls1, type(cls2)) or isinstance(cls2, type(cls1))
 
-    if isinstance(other_type, abstract.ParameterizedClass):
-      if isinstance(left, abstract.ParameterizedClass):
-        assert_classes_match(left.base_cls, other_type.base_cls)
-      elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
-        return self._subst_with_type_parameters_from(subst, other_type)
-      else:
-        # Parameterized classes can rename type parameters, which is why we need
-        # the instance type for lookup. But if the instance type is not
-        # parameterized, then it is safe to use the param names in other_type.
-        assert_classes_match(left, other_type.base_cls)
-        left = other_type
-      for type_param in left.template:
-        class_param = other_type.get_formal_type_parameter(type_param.name)
-        instance_param = instance.get_instance_type_parameter(
-            type_param.full_name, self._node)
-        if instance_param.bindings and instance_param not in view:
-          binding, = instance_param.bindings
-          assert isinstance(binding.data, abstract.Unsolvable), binding.data
-          view = view.copy()
-          view[instance_param] = binding
-        subst = self.match_var_against_type(instance_param, class_param,
-                                            subst, view)
-        if subst is None:
-          return None
+    if not isinstance(other_type, abstract.ParameterizedClass):
+      return subst
+
+    if isinstance(left, abstract.ParameterizedClass):
+      assert_classes_match(left.base_cls, other_type.base_cls)
+    elif isinstance(left, abstract.AMBIGUOUS_OR_EMPTY):
+      return self._subst_with_type_parameters_from(subst, other_type)
+    else:
+      # Parameterized classes can rename type parameters, which is why we need
+      # the instance type for lookup. But if the instance type is not
+      # parameterized, then it is safe to use the param names in other_type.
+      assert_classes_match(left, other_type.base_cls)
+      left = other_type
+    return self._match_instance_parameters(
+        left, instance, other_type, subst, view)
+
+  def _match_instance_parameters(self, left, instance, other_type, subst, view):
+    for type_param in left.template:
+      class_param = other_type.get_formal_type_parameter(type_param.name)
+      instance_param = instance.get_instance_type_parameter(
+          type_param.full_name, self._node)
+      if instance_param.bindings and instance_param not in view:
+        binding, = instance_param.bindings
+        assert isinstance(binding.data, abstract.Unsolvable), binding.data
+        view = view.copy()
+        view[instance_param] = binding
+      subst = self.match_var_against_type(instance_param, class_param,
+                                          subst, view)
+      if subst is None:
+        return None
     return subst
 
   def _match_heterogeneous_tuple_instance(self, left, instance, other_type,
@@ -1367,6 +1375,17 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self._typed_dict_error = TypedDictError(bad, extra, missing)
       return False
     return True
+
+  def _match_typed_dict_against_dict(
+      self, left: typed_dict.TypedDictClass, other_type: abstract.BaseValue,
+      subst: _SubstType, view: _ViewType,
+  ) -> Optional[_SubstType]:
+    if other_type.full_name not in ("builtins.dict", "typing.Dict"):
+      return None
+    if isinstance(other_type, abstract.ParameterizedClass):
+      return self._match_instance_parameters(
+          left.cls, left, other_type, subst, view)
+    return subst
 
   def _get_attribute_names(self, left):
     """Get the attributes implemented (or implicit) on a type."""
