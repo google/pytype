@@ -322,7 +322,8 @@ class TypedDictTest(test_base.BaseTest):
   def test_generic_holder(self):
     self.Check("""
       from dataclasses import dataclass
-      from typing import Generic, TypedDict, TypeVar
+      from typing import Generic, TypeVar
+      from typing_extensions import TypedDict
 
       T = TypeVar('T')
 
