@@ -1159,6 +1159,52 @@ class AnnotationTest(test_base.BaseTest):
         pass
     """)
 
+  def test_circular_ref(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Callable, Generic, Sequence, TypeVar
+      T = TypeVar('T')
+      class BaseRegion(Generic[T]):
+        @property
+        def zones(self) -> Sequence[T]: ...
+      class BaseZone(Generic[T]):
+        @property
+        def region(self) -> T: ...
+    """)]):
+      ty = self.Infer("""
+        import foo
+        class Region(foo.BaseRegion['Zone']):
+          pass
+        class Zone(foo.BaseZone['Region']):
+          pass
+      """)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        class Region(foo.BaseRegion[Zone]): ...
+        class Zone(foo.BaseZone[Region]): ...
+      """)
+
+  def test_recursion_in_parent(self):
+    self.Check("""
+      class C(dict[str, tuple['C', 'C']]):
+        def f(self):
+          pass
+      C()
+    """)
+
+  def test_recursion_in_imported_class(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import MutableMapping, TypeVar, Union
+      T = TypeVar('T')
+      class NestedDict(MutableMapping[str, Union[T, "NestedDict"]]): ...
+      class Array: ...
+      class SpecDict(NestedDict[Array]): ...
+    """)]):
+      self.Check("""
+        import foo
+        def f() -> foo.SpecDict:
+          return foo.SpecDict()
+      """)
+
 
 class TestAnnotationsPython3Feature(test_base.BaseTest):
   """Tests for PEP 484 style inline annotations."""
@@ -1383,6 +1429,23 @@ class EllipsisTest(test_base.BaseTest):
       class Foo:
         x: int
         def f(self) -> None: ...
+    """)
+
+  def test_try_except_block(self):
+    # Regression test - the first except line puts a `STORE_NAME e` opcode in
+    # the next line, and the annotation on `a: int` therefore has two STORE ops
+    # in its line. This test confirms that the `int` annotation gets put on
+    # `STORE_NAME a` rather than `STORE_NAME e`
+    self.Check("""
+      try:
+        1
+      except Exception as e:
+        a: int = 10
+
+      try:
+        x = 1
+      except Exception as e:
+        pass
     """)
 
 

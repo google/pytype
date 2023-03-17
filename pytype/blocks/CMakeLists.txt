@@ -24,6 +24,7 @@ py_test(
     blocks_test.py
   DEPS
     .blocks
+    pytype.directors.annotations
     pytype.pyc.pyc
     pytype.tests.test_base
 )

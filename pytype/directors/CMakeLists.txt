@@ -5,6 +5,7 @@ py_library(
     directors
   DEPS
     ._directors
+    .annotations
     .init
     .parser
     .parser_libcst
@@ -17,10 +18,18 @@ py_library(
   SRCS
     directors.py
   DEPS
+    .annotations
     .parser
     .parser_libcst
     pytype.config
     pytype.blocks.blocks
+)
+
+py_library(
+  NAME
+    annotations
+  SRCS
+    annotations.py
 )
 
 py_library(

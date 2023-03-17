@@ -396,7 +396,9 @@ def merge_annotations(code, annotations):
   # Apply type comments to the STORE_* opcodes
   for line, op in visitor.store_ops.items():
     if line in annotations:
-      op.annotation = annotations[line]
+      annot = annotations[line]
+      if annot.name in (None, op.pretty_arg):
+        op.annotation = annot.annotation
 
   # Apply type comments to the MAKE_FUNCTION opcodes
   for start, (end, op) in sorted(
@@ -405,7 +407,7 @@ def merge_annotations(code, annotations):
       # Take the first comment we find as the function typecomment.
       if i in annotations:
         # Record the line number of the comment for error messages.
-        op.annotation = (annotations[i], i)
+        op.annotation = (annotations[i].annotation, i)
         break
   return code
 

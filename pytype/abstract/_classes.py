@@ -927,6 +927,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     # We subtract one to account for "T".
     self.tuple_length = num_parameters - 1
     self._instance = None
+    self._instance_cache = {}
     self.slots = ()  # tuples don't have any writable attributes
 
   def __repr__(self):
@@ -945,6 +946,9 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
     del args  # unused
     if self._instance:
       return self._instance
+    key = (container, node)
+    if key in self._instance_cache:
+      return self._instance_cache[key]
     content = []
     for i in range(self.tuple_length):
       p = self.formal_type_parameters[i]
@@ -957,7 +961,9 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
         content.append(p.instantiate(self.ctx.root_node))
     # Note that we intentionally don't set self._instance to the new tuple,
     # since the tuple will create and register itself with a fresh TupleClass.
-    return _instances.Tuple(tuple(content), self.ctx)
+    instance = _instances.Tuple(tuple(content), self.ctx)
+    self._instance_cache[key] = instance
+    return instance
 
   def instantiate(self, node, container=None):
     return self._new_instance(container, node, None).to_variable(node)

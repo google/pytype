@@ -53,6 +53,7 @@ class _StructuredComment:
 
 @dataclasses.dataclass(frozen=True)
 class _VariableAnnotation(LineRange):
+  name: str
   annotation: str
 
 
@@ -287,8 +288,12 @@ class _ParseVisitor(libcst.CSTVisitor):
     annotation = re.sub(
         r"\s*(#.*)?\n\s*", "",
         libcst.Module([node.annotation.annotation]).code)
+    if isinstance(node.target, libcst.Name):
+      name = node.target.value
+    else:
+      name = None
     self.variable_annotations.append(
-        _VariableAnnotation(pos.start.line, pos.end.line, annotation))
+        _VariableAnnotation(pos.start.line, pos.end.line, name, annotation))
 
   def visit_Return(self, node):
     self.block_returns.add_return(self._get_position(node))
