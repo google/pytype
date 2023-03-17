@@ -11,6 +11,7 @@ py_library(
     .collections_overlay
     .dataclass_overlay
     .enum_overlay
+    .fiddle_overlay
     .flax_overlay
     .functools_overlay
     .future_overlay
@@ -126,6 +127,18 @@ py_library(
 
 py_library(
   NAME
+    fiddle_overlay
+  SRCS
+    fiddle_overlay.py
+  DEPS
+    .classgen
+    .overlay
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+)
+
+py_library(
+  NAME
     flax_overlay
   SRCS
     flax_overlay.py
@@ -204,6 +217,7 @@ py_library(
     .collections_overlay
     .dataclass_overlay
     .enum_overlay
+    .fiddle_overlay
     .flax_overlay
     .functools_overlay
     .future_overlay

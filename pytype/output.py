@@ -14,6 +14,7 @@ from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.overlays import attr_overlay
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import fiddle_overlay
 from pytype.overlays import named_tuple
 from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
@@ -206,6 +207,13 @@ class Converter(utils.ContextWeakrefMixin):
       # TypedDict inherits from abstract.Dict for analysis purposes, but when
       # outputting to a pyi we do not want to treat it as a generic type.
       return pytd.NamedType(v.name)
+    elif isinstance(v, fiddle_overlay.Config):
+      # Fiddle config classes overload generic class notation, so that a config
+      # wrapping class Foo is written `fiddle.Config[Foo]`.
+      param = self.value_instance_to_pytd_type(
+          node, v.underlying, None, seen, view)
+      return pytd.GenericType(base_type=pytd.NamedType("fiddle.Config"),
+                              parameters=(param,))
     elif isinstance(v, abstract.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()

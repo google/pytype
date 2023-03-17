@@ -1222,3 +1222,12 @@ py_test(
     .test_base
     pytype.test_data
 )
+
+py_test(
+  NAME
+    test_fiddle_overlay
+  SRCS
+    test_fiddle_overlay.py
+  DEPS
+    .test_base
+)
