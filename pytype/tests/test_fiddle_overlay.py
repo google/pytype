@@ -36,6 +36,23 @@ class TestDataclassConfig(test_base.BaseTest):
         a.y = 2  # annotation-type-mismatch
       """)
 
+  def test_return_type(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+        def f() -> fiddle.Config[Simple]:
+          a = fiddle.Config(Simple)
+          a.x = 1
+          return a
+      """)
+
   def test_pyi(self):
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),

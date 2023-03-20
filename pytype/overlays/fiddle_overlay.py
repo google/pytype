@@ -1,8 +1,9 @@
 """Implementation of types from Python 2's fiddle library."""
 
-from typing import Any, Tuple
+from typing import Any, Dict, Tuple
 
 from pytype.abstract import abstract
+from pytype.abstract import mixin
 from pytype.overlays import classgen
 from pytype.overlays import overlay
 from pytype.pytd import pytd
@@ -11,6 +12,12 @@ from pytype.pytd import pytd
 # Type aliases so we aren't importing stuff purely for annotations
 Node = Any
 Variable = Any
+
+
+# Cache instances, so that we don't generate two different classes when
+# Config[Foo] is used in two separate places. We use the abstract class of Foo
+# as a key and store the generated Config instance as a value.
+_INSTANCE_CACHE: Dict[abstract.Class, abstract.Instance] = {}
 
 
 class FiddleOverlay(overlay.Overlay):
@@ -33,7 +40,7 @@ class FiddleOverlay(overlay.Overlay):
     super().__init__(ctx, "fiddle", member_map, ast)
 
 
-class ConfigBuilder(abstract.PyTDClass):
+class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
   """Factory for creating fiddle.Config classes."""
 
   _NAME_INDEX = 0
@@ -45,6 +52,8 @@ class ConfigBuilder(abstract.PyTDClass):
     if isinstance(pytd_cls, pytd.Constant):
       pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
     super().__init__("Config", pytd_cls, ctx)
+    mixin.HasSlots.init_mixin(self)
+    self.set_native_slot("__getitem__", self.getitem_slot)
 
   def __repr__(self):
     return "FiddleConfig"
@@ -54,10 +63,15 @@ class ConfigBuilder(abstract.PyTDClass):
     cls._NAME_INDEX += 1
     return f"Config_{cls._NAME_INDEX}"
 
-  def new_slot(self, node, cls, args) -> Tuple[Node, abstract.Instance]:
+  def new_slot(self, node, unused_cls, args) -> Tuple[Node, abstract.Instance]:
     template = args.data[0]
     node, ret = make_config(template, node, self.ctx)
     return node, ret.instantiate(node)
+
+  def getitem_slot(self, node, index_var) -> Tuple[Node, abstract.Instance]:
+    template = index_var.data[0]
+    node, ret = make_config(template, node, self.ctx)
+    return node, ret.to_variable(node)
 
   def get_own_new(self, node, value) -> Tuple[Node, Variable]:
     new = abstract.NativeFunction("__new__", self.new_slot, self.ctx)
@@ -88,6 +102,9 @@ def make_config(
 ) -> Tuple[Node, abstract.BaseValue]:
   """Generate a Config from a template class."""
 
+  if template in _INSTANCE_CACHE:
+    return node, _INSTANCE_CACHE[template]
+
   if _is_dataclass(template):
     fields = [classgen.Field(x.name, _convert_type(x.typ, node, ctx), x.default)
               for x in template.metadata["__dataclass_fields__"]]
@@ -99,6 +116,7 @@ def make_config(
     node, cls_var = classgen.make_interpreter_class(Config, props, node, ctx)
     cls = cls_var.data[0]
     cls.underlying = template
+    _INSTANCE_CACHE[template] = cls
     return node, cls
   else:
     return node, ctx.convert.unsolvable
