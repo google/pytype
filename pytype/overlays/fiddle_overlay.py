@@ -3,6 +3,7 @@
 from typing import Any, Dict, Tuple
 
 from pytype.abstract import abstract
+from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import classgen
 from pytype.overlays import overlay
@@ -63,8 +64,21 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
     cls._NAME_INDEX += 1
     return f"Config_{cls._NAME_INDEX}"
 
-  def new_slot(self, node, unused_cls, args) -> Tuple[Node, abstract.Instance]:
-    template = args.data[0]
+  def new_slot(
+      self, node, unused_cls, *args, **kwargs
+  ) -> Tuple[Node, abstract.Instance]:
+    template = args[0].data[0]
+    # Configs can be initialized either with no args, e.g. Config(Class) or with
+    # initial values, e.g. Config(Class, x=10, y=20). We need to check here that
+    # the extra args match the underlying __init__ signature.
+    # TODO(mdemello): We are calling the function and discarding the return
+    # value, when ideally we should just call function.match_all_args().
+    if len(args) > 1 or kwargs:
+      _, init_var = self.ctx.attribute_handler.get_attribute(
+          node, template, "__init__")
+      args = function.Args(posargs=args, namedargs=kwargs)
+      function.call_function(self.ctx, node, init_var, args)
+    # Now create the Config object.
     node, ret = make_config(template, node, self.ctx)
     return node, ret.instantiate(node)
 

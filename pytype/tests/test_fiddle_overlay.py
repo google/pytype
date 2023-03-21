@@ -131,5 +131,26 @@ class TestDataclassConfig(test_base.BaseTest):
         a.y = 2
       """)
 
+  def test_init_args(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.CheckWithErrors("""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+        a = fiddle.Config(Simple, x=1, y='2')
+        b = fiddle.Config(Simple, 1, '2')
+        c = fiddle.Config(Simple, 1, y='2')
+        d = fiddle.Config(Simple, x='a', y='2')  # wrong-arg-types
+        e = fiddle.Config(Simple, x=1)  # missing-parameter
+        f = fiddle.Config(Simple, x=1, y='2', z=3)  # wrong-keyword-args
+        g = fiddle.Config(Simple, 1, 2, 3)  # wrong-arg-count
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()
