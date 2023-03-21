@@ -5,8 +5,9 @@ Contains common functionality used by dataclasses, attrs and namedtuples.
 
 import abc
 import collections
+import dataclasses
 import logging
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, List
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -314,3 +315,49 @@ def get_or_create_annotations_dict(members, ctx):
     annotations_dict = abstract.AnnotationsDict({}, ctx)
     members["__annotations__"] = annotations_dict.to_variable(ctx.root_node)
   return annotations_dict
+
+
+@dataclasses.dataclass
+class Field:
+  """A class member variable."""
+
+  name: str
+  typ: Any
+  default: Any = None
+
+
+@dataclasses.dataclass
+class ClassProperties:
+  """Properties needed to construct a class."""
+
+  name: str
+  fields: List[Field]
+  bases: List[Any]
+
+  @classmethod
+  def from_field_names(cls, name, field_names, ctx):
+    """Make a ClassProperties from field names with no types."""
+    fields = [Field(n, ctx.convert.unsolvable, None) for n in field_names]
+    return cls(name, fields, [])
+
+
+def make_interpreter_class(class_type, props, node, ctx):
+  """Make an InterpreterClass from ClassProperties."""
+
+  name_var = ctx.convert.build_string(node, props.name)
+  bases = props.bases
+  members = {f.name: f.typ.instantiate(node) for f in props.fields}
+  locals_ = {f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
+             for f in props.fields}
+  annots = abstract.AnnotationsDict(locals_, ctx).to_variable(node)
+  members["__annotations__"] = annots
+  cls_dict = abstract.Dict(ctx)
+  cls_dict.update(node, members)
+  cls_props = class_mixin.ClassBuilderProperties(
+      name_var=name_var,
+      bases=bases,
+      class_dict_var=cls_dict.to_variable(node),
+      class_type=class_type)
+  node, cls_var = ctx.make_class(node, cls_props)
+  ctx.vm.trace_classdef(cls_var)
+  return node, cls_var

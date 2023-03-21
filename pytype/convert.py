@@ -12,6 +12,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import mixin
 from pytype.blocks import blocks
 from pytype.overlays import attr_overlay
+from pytype.overlays import fiddle_overlay
 from pytype.overlays import overlay_dict
 from pytype.overlays import named_tuple
 from pytype.overlays import special_builtins
@@ -864,6 +865,13 @@ class Converter(utils.ContextWeakrefMixin):
         elif isinstance(cls, pytd.CallableType):
           clsval = self.constant_to_value(cls, subst, self.ctx.root_node)
           return abstract.Instance(clsval, self.ctx)
+        elif fiddle_overlay.is_fiddle_config_pytd(base_cls):
+          # fiddle.Config[Foo] should call the constructor from the overlay, not
+          # create a generic PyTDClass.
+          node = get_node()
+          template_cls = self.constant_to_value(cls.parameters[0], subst, node)
+          _, ret = fiddle_overlay.make_config(template_cls, node, self.ctx)
+          return ret
         else:
           clsval = self.constant_to_value(base_cls, subst, self.ctx.root_node)
           instance = abstract.Instance(clsval, self.ctx)

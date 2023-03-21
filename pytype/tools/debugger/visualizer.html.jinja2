@@ -70,7 +70,7 @@
         font-style: bold;
     }
 
-    #query-button {
+    .query-button {
       display: flex;
       flex: initial;
       margin: 3px 5px;
@@ -139,7 +139,8 @@
     <div id="query-div">
       <div id="query-header">
         <div id="query-title">Queries</div>
-        <button id="query-button" type="button" onclick="vis.advance_query()">Next Step</button>
+        <button class="query-button" type="button" onclick="vis.retreat_query()">Prev Step</button>
+        <button class="query-button" type="button" onclick="vis.advance_query()">Next Step</button>
       </div>
       <div id="table-div">
         <table id="query-table">

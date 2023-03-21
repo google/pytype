@@ -220,14 +220,13 @@ class Visualizer {
     this.cy.add(elems.filter(e => !this.elem_exists(e.data.id)));
   }
 
-  /** Adds a Binding to the visualization.
-   * You should probably call this.relayout() after this function, before
-   * calling anything else that adds nodes or edges.
+  /** Collects the node for a binding and all the edges between it and the
+   * CFGNodes it is connected to.
    * @param {number} bind_id The ID of the SerializedBinding to process.
    * @return {!Array<!Object>} The list of Cytoscape elements generated for the
    * given binding.
    */
-  reveal_single_binding(bind_id) {
+  collect_single_binding(bind_id) {
     const elems = [];
     const binding = this.program.bindings.find(b => b.id == bind_id);
     const b_node = this.gen_binding(binding);
@@ -254,7 +253,7 @@ class Visualizer {
    * @param {number} bind_id The ID of the SerializedBinding to process.
    */
   reveal_binding(bind_id) {
-    const elems = this.reveal_single_binding(bind_id);
+    const elems = this.collect_single_binding(bind_id);
     for (const [o_id, origin] of binding.origins.entries()) {
       for (const [s_id, sourceset] of origin.source_sets.entries()) {
         const ss = this.gen_sourceset(bind_id, o_id, s_id);
@@ -418,16 +417,17 @@ class Visualizer {
       return;
     }
 
-    if (this.query_step == this.queries[this.current_query].steps.length-1) {
+    if (this.query_step === this.queries[this.current_query].steps.length-1) {
       return;
     }
+
     // Hide the previous step, if there is one.
     if (this.query_step >= 0) {
       const step = this.queries[this.current_query].steps[this.query_step];
       this.unhighlight_cfgnode(step.node);
-        for (const b_id of step.bindings) {
-            this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
-        }
+      for (const b_id of step.bindings) {
+          this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+      }
     }
 
     this.query_step += 1;
@@ -437,11 +437,51 @@ class Visualizer {
     // We don't know if a binding has been revealed before, so we need to both
     // reveal the bindings *and* un-hide them.
     for (const bind_id of step.bindings) {
-      elems.push(...this.reveal_single_binding(bind_id));
+      elems.push(...this.collect_single_binding(bind_id));
     }
     this.add_elems(elems);
     for (const elem of elems) {
       this.cy.$id(elem.data.id).toggleClass("hidden_node", false);
+    }
+    this.relayout();
+  }
+
+  /**
+   * Show the previous step of a query.
+   * Does nothing if the query is already at the first step.
+  */
+  retreat_query() {
+    if (this.current_query === null) {
+      return;
+    }
+
+    if (this.query_step === 0) {
+      return;
+    }
+
+    
+    let curr_step = this.queries[this.current_query].steps[this.query_step];
+    this.query_step -= 1;
+    let new_step = this.queries[this.current_query].steps[this.query_step];
+
+    // first, unhighlight/hide the current step. Cytoscape (or dagre) doesn't
+    // like it if we toggle a class without calling relayout() in between, so
+    // only hide a binding if it isn't also present in the step we're
+    // transitioning to.
+    this.unhighlight_cfgnode(curr_step.node);
+    for (const b_id of curr_step.bindings) {
+      if (!new_step.bindings.includes(b_id)) {
+        this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+      }
+    }
+    
+    // then process the previous step. All the nodes have already been added
+    // to the graph, so they just need to be unhidden.
+    this.highlight_cfgnode(new_step.node);
+    for (const bind_id of new_step.bindings) {
+      for (const elem of this.collect_single_binding(bind_id)) {
+        this.cy.$id(elem.data.id).toggleClass("hidden_node", false);
+      }
     }
     this.relayout();
   }

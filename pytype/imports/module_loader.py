@@ -116,6 +116,3 @@ class ModuleLoader(base.ModuleLoader):
                 module_name, module_name, self.options.pythonpath,
                 f"{len(self.options.imports_map)} items" if
                 self.options.imports_map is not None else "none")
-    if log.isEnabledFor(logging.DEBUG) and self.options.imports_map:
-      for module, path in self.options.imports_map.items():
-        log.debug("%s -> %s", module, path)
