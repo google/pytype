@@ -146,7 +146,7 @@ class TestDataclassConfig(test_base.BaseTest):
         b = fiddle.Config(Simple, 1, '2')
         c = fiddle.Config(Simple, 1, y='2')
         d = fiddle.Config(Simple, x='a', y='2')  # wrong-arg-types
-        e = fiddle.Config(Simple, x=1)  # missing-parameter
+        e = fiddle.Config(Simple, x=1)  # partial initialization is fine
         f = fiddle.Config(Simple, x=1, y='2', z=3)  # wrong-keyword-args
         g = fiddle.Config(Simple, 1, 2, 3)  # wrong-arg-count
       """)

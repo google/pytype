@@ -76,6 +76,11 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
     if len(args) > 1 or kwargs:
       _, init_var = self.ctx.attribute_handler.get_attribute(
           node, template, "__init__")
+      # Configs support partial initialization, so give every parameter a
+      # default when matching __init__.
+      init = init_var.data[0]
+      for k in init.signature.param_names:
+        init.signature.defaults[k] = self.ctx.new_unsolvable(node)
       args = function.Args(posargs=args, namedargs=kwargs)
       function.call_function(self.ctx, node, init_var, args)
     # Now create the Config object.
