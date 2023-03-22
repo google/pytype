@@ -111,7 +111,7 @@ def _convert_type(typ, node, ctx):
 
   if _is_dataclass(typ):
     _, new_typ = make_config(typ, node, ctx)
-    return new_typ
+    return abstract.Union([new_typ, typ], ctx)
   else:
     return typ
 

@@ -116,6 +116,34 @@ class TestDataclassConfig(test_base.BaseTest):
         a.x.y = 2  # annotation-type-mismatch
       """)
 
+  def test_nested_object_assignment(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class DataClass:
+          x: int
+          y: str
+
+        class RegularClass:
+          def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+        @dataclasses.dataclass
+        class Parent:
+          child_data: DataClass
+          child_regular: RegularClass
+
+        c = fiddle.Config(Parent)
+        c.child_data = fiddle.Config(DataClass)
+        c.child_data = DataClass(x=1, y='y')
+        c.child_regular = fiddle.Config(RegularClass)
+        c.child_regular = RegularClass(1, 2)
+      """)
+
   def test_non_dataclass(self):
     # Config values wrapping non-dataclasses are currently treated as Any
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
