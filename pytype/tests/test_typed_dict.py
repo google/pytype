@@ -341,6 +341,20 @@ class TypedDictTest(test_base.BaseTest):
           return self.get()
     """)
 
+  def test_match_mapping(self):
+    self.CheckWithErrors("""
+      from typing import Mapping
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+      def f1(a: Mapping[str, int]):
+        pass
+      def f2(a: Mapping[int, str]):
+        pass
+      f1(A(x=0))  # ok
+      f2(A(x=0))  # wrong-arg-types
+    """)
+
 
 class TypedDictFunctionalTest(test_base.BaseTest):
   """Tests for typing.TypedDict functional constructor."""

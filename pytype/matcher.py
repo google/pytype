@@ -1380,7 +1380,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self, left: typed_dict.TypedDictClass, other_type: abstract.BaseValue,
       subst: _SubstType, view: _ViewType,
   ) -> Optional[_SubstType]:
-    if other_type.full_name not in ("builtins.dict", "typing.Dict"):
+    dummy_dict = abstract.Instance(self.ctx.convert.dict_type, self.ctx)
+    if self._match_type_against_type(
+        dummy_dict, other_type, subst, view) is None:
       return None
     if isinstance(other_type, abstract.ParameterizedClass):
       return self._match_instance_parameters(
