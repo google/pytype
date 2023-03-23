@@ -1145,6 +1145,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if not self._match_dict_against_typed_dict(left, other_type):
         return None
       return subst
+    elif (isinstance(other_type, abstract.ParameterizedClass) and
+          isinstance(other_type.base_cls, typed_dict.TypedDictClass)):
+      if not self._match_dict_against_typed_dict(left, other_type.base_cls):
+        return None
+      return self._match_instance_parameters(
+          left.cls, left, other_type, subst, view)
     elif isinstance(left.cls, typed_dict.TypedDictClass):
       return self._match_typed_dict_against_dict(left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):

@@ -355,6 +355,17 @@ class TypedDictTest(test_base.BaseTest):
       f2(A(x=0))  # wrong-arg-types
     """)
 
+  def test_typed_dict_dataclass(self):
+    self.Check("""
+      import dataclasses
+      from typing_extensions import TypedDict
+      @dataclasses.dataclass
+      class A(TypedDict):
+        x: int
+      def f():
+        return A(x=0)
+    """)
+
 
 class TypedDictFunctionalTest(test_base.BaseTest):
   """Tests for typing.TypedDict functional constructor."""
