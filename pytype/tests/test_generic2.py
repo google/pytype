@@ -584,6 +584,29 @@ class GenericBasicTest(test_base.BaseTest):
         pass
     """)
 
+  def test_late_annotations(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class A(Generic[T]): ...
+      class B(Generic[T]): ...
+
+      class C(A['C']): ...
+      class D(A['B[D]']): ...
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+
+      class A(Generic[T]): ...
+      class B(Generic[T]): ...
+
+      class C(A[C]): ...
+      class D(A[B[D]]): ...
+    """)
+
   def test_type_parameter_count(self):
     self.Check("""
       from typing import Generic, List, TypeVar

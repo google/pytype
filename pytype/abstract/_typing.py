@@ -294,6 +294,14 @@ class AnnotationContainer(AnnotationClass):
           else:
             actual = param_value.instantiate(
                 root_node, container=abstract_utils.DUMMY_CONTAINER)
+        elif param_value.is_concrete and isinstance(param_value.pyval, str):
+          # TODO(b/261769826): Do we need to collect imports here?
+          expr = param_value.pyval
+          annot = LateAnnotation(expr, self.ctx.vm.frames, self.ctx,
+                                 imports=set())
+          base = expr.split("[", 1)[0]
+          self.ctx.vm.late_annotations[base].append(annot)
+          actual = annot.instantiate(root_node)
         else:
           actual = param_value.instantiate(root_node)
         match_result = self.ctx.matcher(root_node).compute_one_match(
