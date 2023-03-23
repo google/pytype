@@ -1071,6 +1071,23 @@ class MethodsTest(test_base.BaseTest):
         def __new__(cls: Type[_TBar]) -> _TBar: ...
     """)
 
+  def test_pyi_classmethod_and_staticmethod(self):
+    # Test that we can access method properties on imported classmethods.
+    with self.DepTree([("t.pyi", """
+      class A:
+        @classmethod
+        def foo(): ...
+        @staticmethod
+        def bar(): ...
+    """)]):
+      self.Check("""
+        import t
+        a = t.A.foo.__name__
+        b = t.A.bar.__name__
+        assert_type(a, str)
+        assert_type(b, str)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
