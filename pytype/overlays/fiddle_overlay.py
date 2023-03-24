@@ -64,6 +64,23 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
     cls._NAME_INDEX += 1
     return f"Config_{cls._NAME_INDEX}"
 
+  def _match_pytd_init(self, node, init_var, args):
+    init = init_var.data[0]
+    try:
+      init.match_args(node, args)
+    except function.FailedFunctionCall as e:
+      self.ctx.errorlog.invalid_function_call(self.ctx.vm.frames, e)
+
+  def _match_interpreter_init(self, node, init_var, args):
+    # Configs support partial initialization, so give every parameter a
+    # default when matching __init__.
+    init = init_var.data[0]
+    for k in init.signature.param_names:
+      init.signature.defaults[k] = self.ctx.new_unsolvable(node)
+    # TODO(mdemello): We are calling the function and discarding the return
+    # value, when ideally we should just call function.match_all_args().
+    function.call_function(self.ctx, node, init_var, args)
+
   def new_slot(
       self, node, unused_cls, *args, **kwargs
   ) -> Tuple[Node, abstract.Instance]:
@@ -71,18 +88,16 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
     # Configs can be initialized either with no args, e.g. Config(Class) or with
     # initial values, e.g. Config(Class, x=10, y=20). We need to check here that
     # the extra args match the underlying __init__ signature.
-    # TODO(mdemello): We are calling the function and discarding the return
-    # value, when ideally we should just call function.match_all_args().
     if len(args) > 1 or kwargs:
       _, init_var = self.ctx.attribute_handler.get_attribute(
           node, template, "__init__")
-      # Configs support partial initialization, so give every parameter a
-      # default when matching __init__.
-      init = init_var.data[0]
-      for k in init.signature.param_names:
-        init.signature.defaults[k] = self.ctx.new_unsolvable(node)
       args = function.Args(posargs=args, namedargs=kwargs)
-      function.call_function(self.ctx, node, init_var, args)
+      init = init_var.data[0]
+      if isinstance(init, abstract.PyTDFunction):
+        self._match_pytd_init(node, init_var, args)
+      else:
+        self._match_interpreter_init(node, init_var, args)
+
     # Now create the Config object.
     node, ret = make_config(template, node, self.ctx)
     return node, ret.instantiate(node)

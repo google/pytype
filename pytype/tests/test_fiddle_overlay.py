@@ -175,8 +175,32 @@ class TestDataclassConfig(test_base.BaseTest):
         c = fiddle.Config(Simple, 1, y='2')
         d = fiddle.Config(Simple, x='a', y='2')  # wrong-arg-types
         e = fiddle.Config(Simple, x=1)  # partial initialization is fine
-        f = fiddle.Config(Simple, x=1, y='2', z=3)  # wrong-keyword-args
-        g = fiddle.Config(Simple, 1, 2, 3)  # wrong-arg-count
+        f = fiddle.Config(Simple, x=1, z=3)  # wrong-keyword-args
+        g = fiddle.Config(Simple, 1, '2', 3)  # wrong-arg-count
+      """)
+
+  def test_pyi_underlying_class(self):
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        ("foo.pyi", """
+        import dataclasses
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+         """),
+    ]):
+      self.CheckWithErrors("""
+        import fiddle
+        from foo import Simple
+
+        a = fiddle.Config(Simple, x=1, y='2')
+        b = fiddle.Config(Simple, 1, '2')
+        c = fiddle.Config(Simple, 1, y='2')
+        d = fiddle.Config(Simple, x='a', y='2')  # wrong-arg-types
+        e = fiddle.Config(Simple, x=1)  # partial initialization is fine
+        f = fiddle.Config(Simple, x=1, z=3)  # wrong-keyword-args
+        g = fiddle.Config(Simple, 1, '2', 3)  # wrong-arg-count
       """)
 
 
