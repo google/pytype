@@ -175,6 +175,12 @@ class NativeFunction(Function):
           self.ctx.new_unsolvable(node) for _ in range(expected_argcount)
       ]
       namedargs = {}
+    if "self" in namedargs:
+      argnames = tuple(
+          "_" + str(i) for i in range(len(posargs) + len(namedargs)))
+      sig = function.Signature(
+          self.name, argnames, 0, None, set(), None, {}, {}, {})
+      raise function.DuplicateKeyword(sig, args, self.ctx, "self")
     return self.func(node, *posargs, **namedargs)
 
   def get_positional_names(self):
