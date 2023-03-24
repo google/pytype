@@ -207,13 +207,14 @@ class Converter(utils.ContextWeakrefMixin):
       # TypedDict inherits from abstract.Dict for analysis purposes, but when
       # outputting to a pyi we do not want to treat it as a generic type.
       return pytd.NamedType(v.name)
-    elif isinstance(v, fiddle_overlay.Config):
+    elif isinstance(v, fiddle_overlay.Buildable):
       # Fiddle config classes overload generic class notation, so that a config
       # wrapping class Foo is written `fiddle.Config[Foo]`.
       param = self.value_instance_to_pytd_type(
           node, v.underlying, None, seen, view)
-      return pytd.GenericType(base_type=pytd.NamedType("fiddle.Config"),
-                              parameters=(param,))
+      return pytd.GenericType(
+          base_type=pytd.NamedType(f"fiddle.{v.fiddle_type_name}"),
+          parameters=(param,))
     elif isinstance(v, abstract.Class):
       if not self._detailed and v.official_name is None:
         return pytd.AnythingType()

@@ -1,4 +1,4 @@
-"""Implementation of types from Python 2's fiddle library."""
+"""Implementation of types from the fiddle library."""
 
 from typing import Any, Dict, Tuple
 
@@ -16,9 +16,10 @@ Variable = Any
 
 
 # Cache instances, so that we don't generate two different classes when
-# Config[Foo] is used in two separate places. We use the abstract class of Foo
-# as a key and store the generated Config instance as a value.
-_INSTANCE_CACHE: Dict[abstract.Class, abstract.Instance] = {}
+# Config[Foo] is used in two separate places. We use a tuple of the abstract
+# class of Foo and a string (either "Config" or "Partial") as a key and store
+# the generated Buildable instance (either Config or Partial) as a value.
+_INSTANCE_CACHE: Dict[Tuple[abstract.Class, str], abstract.Instance] = {}
 
 
 class FiddleOverlay(overlay.Overlay):
@@ -35,34 +36,37 @@ class FiddleOverlay(overlay.Overlay):
       ctx: An instance of context.Context.
     """
     member_map = {
-        "Config": ConfigBuilder
+        "Config": ConfigBuilder,
+        "Partial": PartialBuilder,
     }
     ast = ctx.loader.import_name("fiddle")
     super().__init__(ctx, "fiddle", member_map, ast)
 
 
-class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
+class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
   """Factory for creating fiddle.Config classes."""
 
   _NAME_INDEX = 0
+  BUILDABLE_NAME = ""
 
   def __init__(self, ctx):
+    assert self.BUILDABLE_NAME, "Only instantiate BuildableBuilder subclasses."
     fiddle_ast = ctx.loader.import_name("fiddle")
-    pytd_cls = fiddle_ast.Lookup("fiddle.Config")
-    # fiddle.Config loads as a LateType, convert to pytd.Class
+    pytd_cls = fiddle_ast.Lookup(f"fiddle.{self.BUILDABLE_NAME}")
+    # fiddle.Config/Partial loads as a LateType, convert to pytd.Class
     if isinstance(pytd_cls, pytd.Constant):
       pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
-    super().__init__("Config", pytd_cls, ctx)
+    super().__init__(self.BUILDABLE_NAME, pytd_cls, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
 
   def __repr__(self):
-    return "FiddleConfig"
+    return f"Fiddle{self.BUILDABLE_NAME}"
 
   @classmethod
   def generate_name(cls):
     cls._NAME_INDEX += 1
-    return f"Config_{cls._NAME_INDEX}"
+    return f"{cls.BUILDABLE_NAME}_{cls._NAME_INDEX}"
 
   def _match_pytd_init(self, node, init_var, args):
     init = init_var.data[0]
@@ -72,7 +76,7 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
       self.ctx.errorlog.invalid_function_call(self.ctx.vm.frames, e)
 
   def _match_interpreter_init(self, node, init_var, args):
-    # Configs support partial initialization, so give every parameter a
+    # Buildables support partial initialization, so give every parameter a
     # default when matching __init__.
     init = init_var.data[0]
     for k in init.signature.param_names:
@@ -101,12 +105,12 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
           self._match_interpreter_init(node, init_var, args)
 
     # Now create the Config object.
-    node, ret = make_config(template, node, self.ctx)
+    node, ret = make_buildable(self.BUILDABLE_NAME, template, node, self.ctx)
     return node, ret.instantiate(node)
 
   def getitem_slot(self, node, index_var) -> Tuple[Node, abstract.Instance]:
     template = index_var.data[0]
-    node, ret = make_config(template, node, self.ctx)
+    node, ret = make_buildable(self.BUILDABLE_NAME, template, node, self.ctx)
     return node, ret.to_variable(node)
 
   def get_own_new(self, node, value) -> Tuple[Node, Variable]:
@@ -114,45 +118,74 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
     return node, new.to_variable(node)
 
 
-class Config(abstract.InterpreterClass):
-  """An instantiation of a fiddle.Config class with a particular template."""
+class ConfigBuilder(BuildableBuilder):
+  BUILDABLE_NAME = "Config"
+
+
+class PartialBuilder(BuildableBuilder):
+  BUILDABLE_NAME = "Partial"
+
+
+class Buildable(abstract.InterpreterClass):
+  def __init__(self, fiddle_type_name, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.fiddle_type_name = fiddle_type_name
+    self.underlying = None
+
+
+class Config(Buildable):
+  """An instantiation of a fiddle.Config with a particular template."""
 
   def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    # Store the original template class
-    self.underlying = None
+    super().__init__("Config", *args, **kwargs)
+
+
+class Partial(Buildable):
+  """An instantiation of a fiddle.Partial with a particular template."""
+
+  def __init__(self, *args, **kwargs):
+    super().__init__("Partial", *args, **kwargs)
 
 
 def _convert_type(typ, node, ctx):
   """Helper function for recursive type conversion of fields."""
 
   if _is_dataclass(typ):
-    _, new_typ = make_config(typ, node, ctx)
+    _, new_typ = make_buildable("Config", typ, node, ctx)
     return abstract.Union([new_typ, typ], ctx)
   else:
     return typ
 
 
-def make_config(
-    template: abstract.Class, node, ctx
+def make_buildable(
+    subclass_name: str, template: abstract.Class, node, ctx
 ) -> Tuple[Node, abstract.BaseValue]:
   """Generate a Config from a template class."""
+  if subclass_name not in ("Config", "Partial"):
+    raise ValueError("Unexpected subclass_name: " + subclass_name)
 
-  if template in _INSTANCE_CACHE:
-    return node, _INSTANCE_CACHE[template]
+  if (template, subclass_name) in _INSTANCE_CACHE:
+    return node, _INSTANCE_CACHE[(template, subclass_name)]
 
   if _is_dataclass(template):
     fields = [classgen.Field(x.name, _convert_type(x.typ, node, ctx), x.default)
               for x in template.metadata["__dataclass_fields__"]]
+    if subclass_name == "Config":
+      name = ConfigBuilder.generate_name()
+      interpreter_class = Config
+    else:
+      name = PartialBuilder.generate_name()
+      interpreter_class = Partial
     props = classgen.ClassProperties(
-        name=ConfigBuilder.generate_name(),
+        name=name,
         fields=fields,
         bases=[]
     )
-    node, cls_var = classgen.make_interpreter_class(Config, props, node, ctx)
+    node, cls_var = classgen.make_interpreter_class(
+        interpreter_class, props, node, ctx)
     cls = cls_var.data[0]
     cls.underlying = template
-    _INSTANCE_CACHE[template] = cls
+    _INSTANCE_CACHE[(template, subclass_name)] = cls
     return node, cls
   else:
     return node, ctx.convert.unsolvable
@@ -163,8 +196,18 @@ def _is_dataclass(typ) -> bool:
           "__dataclass_fields__" in typ.metadata)
 
 
-def is_fiddle_config_pytd(cls: pytd.Class) -> bool:
+def is_fiddle_buildable_pytd(cls: pytd.Class) -> bool:
   # We need the awkward check for the full name because while fiddle reexports
   # the class as fiddle.Config, we expand that in inferred pyi files to
   # fiddle._src.config.Config
-  return cls.name.startswith("fiddle.") and cls.name.endswith(".Config")
+  return cls.name.startswith("fiddle.") and (
+      cls.name.endswith(".Config") or cls.name.endswith(".Partial"))
+
+
+def get_fiddle_buildable_subclass(cls: pytd.Class) -> str:
+  if cls.name.endswith(".Config"):
+    return "Config"
+  if cls.name.endswith(".Partial"):
+    return "Partial"
+  raise ValueError(f"Unexpected {cls.name} when computing fiddle Buildable "
+                   "subclass; allowed suffixes are `.Config`, and `.Partial`.")

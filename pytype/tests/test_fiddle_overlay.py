@@ -14,15 +14,22 @@ class Buildable(Generic[T], metaclass=abc.ABCMeta):
 
 class Config(Generic[T], Buildable[T]):
   ...
+
+class Partial(Generic[T], Buildable[T]):
+  ...
 """
 
 
 class TestDataclassConfig(test_base.BaseTest):
   """Tests for Config wrapping a dataclass."""
 
+  @property
+  def buildable_type_name(self) -> str:
+    return "Config"
+
   def test_basic(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.CheckWithErrors("""
+      self.CheckWithErrors(f"""
         import dataclasses
         import fiddle
 
@@ -31,14 +38,14 @@ class TestDataclassConfig(test_base.BaseTest):
           x: int
           y: str
 
-        a = fiddle.Config(Simple)
+        a = fiddle.{self.buildable_type_name}(Simple)
         a.x = 1
         a.y = 2  # annotation-type-mismatch
       """)
 
   def test_return_type(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.Check("""
+      self.Check(f"""
         import dataclasses
         import fiddle
 
@@ -47,8 +54,8 @@ class TestDataclassConfig(test_base.BaseTest):
           x: int
           y: str
 
-        def f() -> fiddle.Config[Simple]:
-          a = fiddle.Config(Simple)
+        def f() -> fiddle.{self.buildable_type_name}[Simple]:
+          a = fiddle.{self.buildable_type_name}(Simple)
           a.x = 1
           return a
       """)
@@ -56,7 +63,7 @@ class TestDataclassConfig(test_base.BaseTest):
   def test_pyi(self):
     with self.DepTree([
         ("fiddle.pyi", _FIDDLE_PYI),
-        ("foo.pyi", """
+        ("foo.pyi", f"""
             import dataclasses
             import fiddle
 
@@ -65,7 +72,7 @@ class TestDataclassConfig(test_base.BaseTest):
               x: int
               y: str
 
-            a: fiddle.Config[Simple]
+            a: fiddle.{self.buildable_type_name}[Simple]
          """)]):
       self.CheckWithErrors("""
         import foo
@@ -76,7 +83,7 @@ class TestDataclassConfig(test_base.BaseTest):
 
   def test_nested_dataclasses(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.CheckWithErrors("""
+      self.CheckWithErrors(f"""
         import dataclasses
         import fiddle
 
@@ -90,14 +97,14 @@ class TestDataclassConfig(test_base.BaseTest):
           x: Simple
           y: str
 
-        a = fiddle.Config(Complex)
+        a = fiddle.{self.buildable_type_name}(Complex)
         a.x.x = 1
         a.x.y = 2  # annotation-type-mismatch
       """)
 
   def test_frozen_dataclasses(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.CheckWithErrors("""
+      self.CheckWithErrors(f"""
         import dataclasses
         import fiddle
 
@@ -111,14 +118,14 @@ class TestDataclassConfig(test_base.BaseTest):
           x: Simple
           y: str
 
-        a = fiddle.Config(Complex)
+        a = fiddle.{self.buildable_type_name}(Complex)
         a.x.x = 1
         a.x.y = 2  # annotation-type-mismatch
       """)
 
   def test_nested_object_assignment(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.Check("""
+      self.Check(f"""
         import dataclasses
         import fiddle
 
@@ -137,7 +144,7 @@ class TestDataclassConfig(test_base.BaseTest):
           child_data: DataClass
           child_regular: RegularClass
 
-        c = fiddle.Config(Parent)
+        c = fiddle.{self.buildable_type_name}(Parent)
         c.child_data = fiddle.Config(DataClass)
         c.child_data = DataClass(x=1, y='y')
         c.child_regular = fiddle.Config(RegularClass)
@@ -146,7 +153,7 @@ class TestDataclassConfig(test_base.BaseTest):
 
   def test_init_args(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.CheckWithErrors("""
+      self.CheckWithErrors(f"""
         import dataclasses
         import fiddle
 
@@ -155,13 +162,13 @@ class TestDataclassConfig(test_base.BaseTest):
           x: int
           y: str
 
-        a = fiddle.Config(Simple, x=1, y='2')
-        b = fiddle.Config(Simple, 1, '2')
-        c = fiddle.Config(Simple, 1, y='2')
-        d = fiddle.Config(Simple, x='a', y='2')  # wrong-arg-types
-        e = fiddle.Config(Simple, x=1)  # partial initialization is fine
-        f = fiddle.Config(Simple, x=1, z=3)  # wrong-keyword-args
-        g = fiddle.Config(Simple, 1, '2', 3)  # wrong-arg-count
+        a = fiddle.{self.buildable_type_name}(Simple, x=1, y='2')
+        b = fiddle.{self.buildable_type_name}(Simple, 1, '2')
+        c = fiddle.{self.buildable_type_name}(Simple, 1, y='2')
+        d = fiddle.{self.buildable_type_name}(Simple, x='a', y='2')  # wrong-arg-types
+        e = fiddle.{self.buildable_type_name}(Simple, x=1)  # partial initialization is fine
+        f = fiddle.{self.buildable_type_name}(Simple, x=1, z=3)  # wrong-keyword-args
+        g = fiddle.{self.buildable_type_name}(Simple, 1, '2', 3)  # wrong-arg-count
       """)
 
   def test_pyi_underlying_class(self):
@@ -175,17 +182,59 @@ class TestDataclassConfig(test_base.BaseTest):
           y: str
          """),
     ]):
-      self.CheckWithErrors("""
+      self.CheckWithErrors(f"""
         import fiddle
         from foo import Simple
 
-        a = fiddle.Config(Simple, x=1, y='2')
-        b = fiddle.Config(Simple, 1, '2')
-        c = fiddle.Config(Simple, 1, y='2')
-        d = fiddle.Config(Simple, x='a', y='2')  # wrong-arg-types
-        e = fiddle.Config(Simple, x=1)  # partial initialization is fine
-        f = fiddle.Config(Simple, x=1, z=3)  # wrong-keyword-args
-        g = fiddle.Config(Simple, 1, '2', 3)  # wrong-arg-count
+        a = fiddle.{self.buildable_type_name}(Simple, x=1, y='2')
+        b = fiddle.{self.buildable_type_name}(Simple, 1, '2')
+        c = fiddle.{self.buildable_type_name}(Simple, 1, y='2')
+        d = fiddle.{self.buildable_type_name}(Simple, x='a', y='2')  # wrong-arg-types
+        e = fiddle.{self.buildable_type_name}(Simple, x=1)  # partial initialization is fine
+        f = fiddle.{self.buildable_type_name}(Simple, x=1, z=3)  # wrong-keyword-args
+        g = fiddle.{self.buildable_type_name}(Simple, 1, '2', 3)  # wrong-arg-count
+      """)
+
+
+class TestDataclassPartial(TestDataclassConfig):
+
+  @property
+  def buildable_type_name(self) -> str:
+    return "Partial"
+
+  def test_nested_partial_assignment(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import dataclasses
+        import fiddle
+        from typing import Callable
+
+        @dataclasses.dataclass
+        class DataClass:
+          x: int
+          y: str
+
+        class RegularClass:
+          def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+        @dataclasses.dataclass
+        class Parent:
+          data_factory: Callable[..., DataClass]
+          regular_factory: Callable[..., RegularClass]
+
+        def data_builder(x: int = 1) -> DataClass:
+          return DataClass(x=x, y='y')
+
+        def regular_builder() -> RegularClass:
+          return RegularClass(1, 2)
+
+        c = fiddle.Partial(Parent)
+        c.child_data = data_builder
+        c.child_data = fiddle.Partial(DataClass)
+        c.regular_factory = regular_builder
+        c.regular_factory = fiddle.Partial(RegularClass)
       """)
 
 
