@@ -144,21 +144,6 @@ class TestDataclassConfig(test_base.BaseTest):
         c.child_regular = RegularClass(1, 2)
       """)
 
-  def test_non_dataclass(self):
-    # Config values wrapping non-dataclasses are currently treated as Any
-    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
-      self.Check("""
-        import fiddle
-
-        class Simple:
-          x: int
-          y: str
-
-        a = fiddle.Config(Simple)
-        a.x = 1
-        a.y = 2
-      """)
-
   def test_init_args(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
       self.CheckWithErrors("""
@@ -201,6 +186,38 @@ class TestDataclassConfig(test_base.BaseTest):
         e = fiddle.Config(Simple, x=1)  # partial initialization is fine
         f = fiddle.Config(Simple, x=1, z=3)  # wrong-keyword-args
         g = fiddle.Config(Simple, 1, '2', 3)  # wrong-arg-count
+      """)
+
+
+class TestClassConfig(test_base.BaseTest):
+  """Tests for Config wrapping a regular python class."""
+
+  def test_basic(self):
+    # Config values wrapping non-dataclasses are currently treated as Any
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import fiddle
+
+        class Simple:
+          x: int
+          y: str
+
+        a = fiddle.Config(Simple)
+        a.x = 1
+        a.y = 2
+      """)
+
+  def test_init_args(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import fiddle
+
+        class Simple:
+          x: int
+          y: str
+
+        a = fiddle.Config(Simple, 1)
+        b = fiddle.Config(Simple, 1, 2)  # no type checking yet
       """)
 
 

@@ -91,12 +91,14 @@ class ConfigBuilder(abstract.PyTDClass, mixin.HasSlots):
     if len(args) > 1 or kwargs:
       _, init_var = self.ctx.attribute_handler.get_attribute(
           node, template, "__init__")
-      args = function.Args(posargs=args, namedargs=kwargs)
-      init = init_var.data[0]
-      if isinstance(init, abstract.PyTDFunction):
-        self._match_pytd_init(node, init_var, args)
-      else:
-        self._match_interpreter_init(node, init_var, args)
+      if _is_dataclass(template):
+        # Only do init matching for dataclasses for now
+        args = function.Args(posargs=args, namedargs=kwargs)
+        init = init_var.data[0]
+        if isinstance(init, abstract.PyTDFunction):
+          self._match_pytd_init(node, init_var, args)
+        else:
+          self._match_interpreter_init(node, init_var, args)
 
     # Now create the Config object.
     node, ret = make_config(template, node, self.ctx)
