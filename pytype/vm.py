@@ -1805,6 +1805,12 @@ class VirtualMachine:
         # We can still check for final members being assigned to.
         if name in maybe_cls.final_members:
           self.ctx.errorlog.assigning_to_final(self.frames, name, local=False)
+      elif (isinstance(obj_val, abstract.Instance) and
+            "__annotations__" in obj_val.members):
+        # Some overlays add an __annotations__ dict to an abstract.Instance to
+        # replicate runtime type checks on individual instances.
+        annot = abstract_utils.get_annotations_dict(obj_val.members)
+        cur_annotations_dict = annot.annotated_locals
       else:
         cur_annotations_dict = None
       if cur_annotations_dict is not None:

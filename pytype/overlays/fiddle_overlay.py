@@ -3,6 +3,7 @@
 from typing import Any, Dict, Tuple
 
 from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import classgen
@@ -85,17 +86,14 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     # value, when ideally we should just call function.match_all_args().
     function.call_function(self.ctx, node, init_var, args)
 
-  def new_slot(
-      self, node, unused_cls, *args, **kwargs
-  ) -> Tuple[Node, abstract.Instance]:
-    template = args[0].data[0]
+  def _check_init_args(self, node, underlying, args, kwargs):
     # Configs can be initialized either with no args, e.g. Config(Class) or with
     # initial values, e.g. Config(Class, x=10, y=20). We need to check here that
     # the extra args match the underlying __init__ signature.
     if len(args) > 1 or kwargs:
       _, init_var = self.ctx.attribute_handler.get_attribute(
-          node, template, "__init__")
-      if _is_dataclass(template):
+          node, underlying, "__init__")
+      if _is_dataclass(underlying):
         # Only do init matching for dataclasses for now
         args = function.Args(posargs=args, namedargs=kwargs)
         init = init_var.data[0]
@@ -104,13 +102,23 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
         else:
           self._match_interpreter_init(node, init_var, args)
 
+  def new_slot(
+      self, node, unused_cls, *args, **kwargs
+  ) -> Tuple[Node, abstract.Instance]:
+    """Create a Config or Partial instance from args."""
+
+    underlying = args[0].data[0]
+    self._check_init_args(node, underlying, args, kwargs)
+
     # Now create the Config object.
-    node, ret = make_buildable(self.BUILDABLE_NAME, template, node, self.ctx)
-    return node, ret.instantiate(node)
+    node, ret = make_instance(self.BUILDABLE_NAME, underlying, node, self.ctx)
+    return node, ret.to_variable(node)
 
   def getitem_slot(self, node, index_var) -> Tuple[Node, abstract.Instance]:
-    template = index_var.data[0]
-    node, ret = make_buildable(self.BUILDABLE_NAME, template, node, self.ctx)
+    """Specialize the generic class with the value of index_var."""
+
+    underlying = index_var.data[0]
+    ret = BuildableType(self.BUILDABLE_NAME, underlying, self.ctx)
     return node, ret.to_variable(node)
 
   def get_own_new(self, node, value) -> Tuple[Node, Variable]:
@@ -119,16 +127,48 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 
 
 class ConfigBuilder(BuildableBuilder):
+  """Subclasses PyTDClass(fiddle.Config)."""
+
   BUILDABLE_NAME = "Config"
 
 
 class PartialBuilder(BuildableBuilder):
+  """Subclasses PyTDClass(fiddle.Partial)."""
+
   BUILDABLE_NAME = "Partial"
 
 
-class Buildable(abstract.InterpreterClass):
-  def __init__(self, fiddle_type_name, *args, **kwargs):
-    super().__init__(*args, **kwargs)
+class BuildableType(abstract.ParameterizedClass):
+  """Base generic class for fiddle.Config and fiddle.Partial."""
+
+  def __init__(self, fiddle_type_name, underlying, ctx, template=None):
+    if fiddle_type_name == "Config":
+      base_cls = ConfigBuilder(ctx)
+    else:
+      base_cls = PartialBuilder(ctx)
+    formal_type_parameters = {abstract_utils.T: underlying}
+    super().__init__(base_cls, formal_type_parameters, ctx, template)  # pytype: disable=wrong-arg-types
+    self.fiddle_type_name = fiddle_type_name
+    self.underlying = underlying
+
+  def replace(self, inner_types):
+    inner_types = dict(inner_types)
+    new_underlying = inner_types[abstract_utils.T]
+    typ = self.__class__
+    return typ(self.fiddle_type_name, new_underlying, self.ctx, self.template)
+
+  def instantiate(self, node, container=None):
+    _, ret = make_instance(
+        self.fiddle_type_name, self.underlying, node, self.ctx)
+    return ret.to_variable(node)
+
+  def __repr__(self):
+    return f"{self.fiddle_type_name}Type[{self.underlying}]"
+
+
+class Buildable(abstract.Instance):
+  def __init__(self, fiddle_type_name, cls, ctx, container=None):
+    super().__init__(cls, ctx, container)
     self.fiddle_type_name = fiddle_type_name
     self.underlying = None
 
@@ -147,48 +187,46 @@ class Partial(Buildable):
     super().__init__("Partial", *args, **kwargs)
 
 
-def _convert_type(typ, node, ctx):
+def _convert_type(typ, ctx):
   """Helper function for recursive type conversion of fields."""
+  new_typ = BuildableType("Config", typ, ctx)
+  return abstract.Union([new_typ, typ], ctx)
 
+
+def _make_fields(typ, ctx):
+  """Helper function for recursive type conversion of fields."""
   if _is_dataclass(typ):
-    _, new_typ = make_buildable("Config", typ, node, ctx)
-    return abstract.Union([new_typ, typ], ctx)
-  else:
-    return typ
+    fields = [classgen.Field(x.name, _convert_type(x.typ, ctx), x.default)
+              for x in typ.metadata["__dataclass_fields__"]]
+    return fields
+  return []
 
 
-def make_buildable(
-    subclass_name: str, template: abstract.Class, node, ctx
+def make_instance(
+    subclass_name: str, underlying: abstract.Class, node, ctx
 ) -> Tuple[Node, abstract.BaseValue]:
-  """Generate a Config from a template class."""
+  """Generate a Buildable instance from an underlying template class."""
+
   if subclass_name not in ("Config", "Partial"):
-    raise ValueError("Unexpected subclass_name: " + subclass_name)
+    raise ValueError(f"Unexpected instance class: {subclass_name}")
 
-  if (template, subclass_name) in _INSTANCE_CACHE:
-    return node, _INSTANCE_CACHE[(template, subclass_name)]
+  if (underlying, subclass_name) in _INSTANCE_CACHE:
+    return node, _INSTANCE_CACHE[(underlying, subclass_name)]
 
-  if _is_dataclass(template):
-    fields = [classgen.Field(x.name, _convert_type(x.typ, node, ctx), x.default)
-              for x in template.metadata["__dataclass_fields__"]]
-    if subclass_name == "Config":
-      name = ConfigBuilder.generate_name()
-      interpreter_class = Config
-    else:
-      name = PartialBuilder.generate_name()
-      interpreter_class = Partial
-    props = classgen.ClassProperties(
-        name=name,
-        fields=fields,
-        bases=[]
-    )
-    node, cls_var = classgen.make_interpreter_class(
-        interpreter_class, props, node, ctx)
-    cls = cls_var.data[0]
-    cls.underlying = template
-    _INSTANCE_CACHE[(template, subclass_name)] = cls
-    return node, cls
-  else:
-    return node, ctx.convert.unsolvable
+  instance_class = {"Config": Config, "Partial": Partial}[subclass_name]
+  # Create the specialized class Config[underlying] or Partial[underlying]
+  cls = BuildableType(subclass_name, underlying, ctx)
+  # Now create the instance, setting its class to `cls`
+  obj = instance_class(cls, ctx)
+  obj.underlying = underlying
+  fields = _make_fields(underlying, ctx)
+  for f in fields:
+    obj.members[f.name] = f.typ.instantiate(node)
+  # Add a per-instance annotations dict so setattr can be typechecked.
+  obj.members["__annotations__"] = classgen.make_annotations_dict(
+      fields, node, ctx)
+  _INSTANCE_CACHE[(underlying, subclass_name)] = obj
+  return node, obj
 
 
 def _is_dataclass(typ) -> bool:

@@ -16,7 +16,7 @@ class Config(Generic[T], Buildable[T]):
   ...
 
 class Partial(Generic[T], Buildable[T]):
-  ...
+  def __call__(self, *args, **kwargs): ...
 """
 
 
@@ -193,6 +193,55 @@ class TestDataclassConfig(test_base.BaseTest):
         e = fiddle.{self.buildable_type_name}(Simple, x=1)  # partial initialization is fine
         f = fiddle.{self.buildable_type_name}(Simple, x=1, z=3)  # wrong-keyword-args
         g = fiddle.{self.buildable_type_name}(Simple, 1, '2', 3)  # wrong-arg-count
+      """)
+
+  def test_typevar(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.CheckWithErrors(f"""
+        import dataclasses
+        import fiddle
+        from typing import TypeVar
+
+        _T = TypeVar('_T')
+
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+        def passthrough(conf: fiddle.{self.buildable_type_name}[_T]) -> fiddle.{self.buildable_type_name}[_T]:
+          return conf
+
+        a = fiddle.{self.buildable_type_name}(Simple)
+        x = passthrough(a)
+        assert_type(x, fiddle.{self.buildable_type_name}[Simple])
+    """)
+
+  def test_pyi_typevar(self):
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        ("foo.pyi", f"""
+          import fiddle
+          from typing import TypeVar
+
+          _T = TypeVar('_T')
+
+          def build(buildable: fiddle.{self.buildable_type_name}[_T]) -> _T: ...
+         """),
+    ]):
+      self.Check(f"""
+        import dataclasses
+        import fiddle
+        import foo
+
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+        a = fiddle.{self.buildable_type_name}(Simple, x=1, y='2')
+        b = foo.build(a)
+        assert_type(b, Simple)
       """)
 
 

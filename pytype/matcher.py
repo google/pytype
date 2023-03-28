@@ -11,6 +11,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import fiddle_overlay
 from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
@@ -1153,6 +1154,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           left.cls, left, other_type, subst, view)
     elif isinstance(left.cls, typed_dict.TypedDictClass):
       return self._match_typed_dict_against_dict(left, other_type, subst, view)
+    elif isinstance(other_type, fiddle_overlay.BuildableType):
+      if not isinstance(left, fiddle_overlay.Buildable):
+        return None
+      return self._match_fiddle_instance(
+          left.cls, left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
         self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
@@ -1233,20 +1239,35 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return self._match_instance_parameters(
         left, instance, other_type, subst, view)
 
+  def _match_instance_param_against_class_param(
+      self, instance_param, class_param, subst, view
+  ):
+    if instance_param.bindings and instance_param not in view:
+      binding, = instance_param.bindings
+      assert isinstance(binding.data, abstract.Unsolvable), binding.data
+      view = view.copy()
+      view[instance_param] = binding
+    subst = self.match_var_against_type(
+        instance_param, class_param, subst, view)
+    return subst, view
+
   def _match_instance_parameters(self, left, instance, other_type, subst, view):
     for type_param in left.template:
       class_param = other_type.get_formal_type_parameter(type_param.name)
       instance_param = instance.get_instance_type_parameter(
           type_param.full_name, self._node)
-      if instance_param.bindings and instance_param not in view:
-        binding, = instance_param.bindings
-        assert isinstance(binding.data, abstract.Unsolvable), binding.data
-        view = view.copy()
-        view[instance_param] = binding
-      subst = self.match_var_against_type(instance_param, class_param,
-                                          subst, view)
+      subst, view = self._match_instance_param_against_class_param(
+          instance_param, class_param, subst, view)
       if subst is None:
         return None
+    return subst
+
+  def _match_fiddle_instance(self, left, instance, other_type, subst, view):
+    class_param = other_type.get_formal_type_parameter(abstract_utils.T)
+    instance_param = instance.get_instance_type_parameter(
+        abstract_utils.T, self._node)
+    subst, _ = self._match_instance_param_against_class_param(
+        instance_param, class_param, subst, view)
     return subst
 
   def _match_heterogeneous_tuple_instance(self, left, instance, other_type,
