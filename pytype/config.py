@@ -240,6 +240,8 @@ FEATURE_FLAGS = [
           "Enable parameter count checks for overriding methods."),
     _flag("--use-enum-overlay", False,
           "Use the enum overlay for more precise enum checking."),
+    _flag("--strict-none-binding", False,
+          "Variables initialized as None retain their None binding."),
 ] + _OPT_IN_FEATURES
 
 

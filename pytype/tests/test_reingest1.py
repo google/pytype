@@ -226,6 +226,10 @@ class ReingestTest(test_base.BaseTest):
 class StrictNoneTest(test_base.BaseTest):
   """Tests for strict none."""
 
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(strict_none_binding=False)
+
   def test_pyi_return_constant(self):
     foo = self.Infer("""
       x = None

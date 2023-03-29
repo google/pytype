@@ -138,6 +138,7 @@ class BaseTest(unittest.TestCase):
         overriding_parameter_count_checks=True,
         strict_parameter_checks=True,
         strict_primitive_comparisons=True,
+        strict_none_binding=True,
         use_enum_overlay=True)
 
   @property

@@ -969,7 +969,10 @@ class VirtualMachine:
               self.ctx.convert.get_maybe_abstract_instance(b.data), [b], node)
         else:
           var.PasteBinding(b, node)
+      elif self.ctx.options.strict_none_binding:
+        var.PasteBinding(b, node)
       else:
+        # TODO(rechen): Remove once --strict-none-binding is fully enabled.
         var.AddBinding(self.ctx.convert.unsolvable, [b], node)
 
   def _has_strict_none_origins(self, binding):

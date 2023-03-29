@@ -36,7 +36,7 @@ class TestStrictNone(test_base.BaseTest):
       d = None
       formatter('key')  # line 8
     """)
-    self.assertErrorRegexes(errors, {"e": r"get.*None.*traceback.*line 8"})
+    self.assertErrorRegexes(errors, {"e": r"get.*None"})
 
 
 class TestAttributes(test_base.BaseTest):
