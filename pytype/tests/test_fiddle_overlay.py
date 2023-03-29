@@ -354,5 +354,50 @@ class TestClassConfig(test_base.BaseTest):
       """)
 
 
+class TestFunctionConfig(test_base.BaseTest):
+  """Tests for Config wrapping a function."""
+
+  def test_basic(self):
+    # Config values wrapping non-dataclasses are currently treated as Any
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import fiddle
+
+        def Simple(x: int, y: str):
+          pass
+
+        a = fiddle.Config(Simple)
+        a.x = 1
+        a.y = 2
+      """)
+
+  def test_init_args(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import fiddle
+
+        def Simple(x: int, y: str):
+          pass
+
+        a = fiddle.Config(Simple, 1)
+        b = fiddle.Config(Simple, 1, 2)  # no type checking yet
+        b = fiddle.Config(Simple, 1, 2, 3)  # no arg checking yet
+      """)
+
+  def test_matching(self):
+    # We should still recognise the Config class even if we currently treat it
+    # as Config[Any]
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import fiddle
+
+        def Simple(x: int, y: str):
+          pass
+
+        def f() -> fiddle.Config[Simple]:
+          return fiddle.Config(Simple, 1)
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()

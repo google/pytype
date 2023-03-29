@@ -148,7 +148,15 @@ class BuildableType(abstract.ParameterizedClass):
       base_cls = ConfigBuilder(ctx)
     else:
       base_cls = PartialBuilder(ctx)
-    formal_type_parameters = {abstract_utils.T: underlying}
+
+    if isinstance(underlying, abstract.Function):
+      # We don't support functions for now, but falling back to Any here gets us
+      # as much of the functionality as possible.
+      formal_type_parameters = {abstract_utils.T: ctx.convert.unsolvable}
+    else:
+      # Classes and TypeVars
+      formal_type_parameters = {abstract_utils.T: underlying}
+
     super().__init__(base_cls, formal_type_parameters, ctx, template)  # pytype: disable=wrong-arg-types
     self.fiddle_type_name = fiddle_type_name
     self.underlying = underlying
