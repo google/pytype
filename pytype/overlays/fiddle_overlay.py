@@ -60,6 +60,8 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     super().__init__(self.BUILDABLE_NAME, pytd_cls, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
+    # For consistency with the rest of the overlay
+    self.fiddle_type_name = self.BUILDABLE_NAME
 
   def __repr__(self):
     return f"Fiddle{self.BUILDABLE_NAME}"

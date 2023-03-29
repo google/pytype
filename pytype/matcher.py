@@ -1154,9 +1154,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           left.cls, left, other_type, subst, view)
     elif isinstance(left.cls, typed_dict.TypedDictClass):
       return self._match_typed_dict_against_dict(left, other_type, subst, view)
-    elif isinstance(other_type, fiddle_overlay.BuildableType):
-      if not isinstance(left, fiddle_overlay.Buildable):
-        return None
+    elif isinstance(other_type, (fiddle_overlay.BuildableBuilder,
+                                 fiddle_overlay.BuildableType)):
       return self._match_fiddle_instance(
           left.cls, left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):
@@ -1263,6 +1262,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return subst
 
   def _match_fiddle_instance(self, left, instance, other_type, subst, view):
+    if not isinstance(instance, fiddle_overlay.Buildable):
+      return None
+    elif instance.fiddle_type_name != other_type.fiddle_type_name:
+      return None
+    elif isinstance(other_type, fiddle_overlay.BuildableBuilder):
+      return subst
+    assert isinstance(other_type, fiddle_overlay.BuildableType)
     class_param = other_type.get_formal_type_parameter(abstract_utils.T)
     instance_param = instance.get_instance_type_parameter(
         abstract_utils.T, self._node)

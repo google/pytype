@@ -244,8 +244,28 @@ class TestDataclassConfig(test_base.BaseTest):
         assert_type(b, Simple)
       """)
 
+  def test_bare_type(self):
+    """Check that we can match fiddle.Config against fiddle.Config[A]."""
+
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check(f"""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+        def f() -> fiddle.{self.buildable_type_name}:
+          a = fiddle.{self.buildable_type_name}(Simple)
+          a.x = 1
+          return a
+      """)
+
 
 class TestDataclassPartial(TestDataclassConfig):
+  """Test fiddle.Partial over dataclasses."""
 
   @property
   def buildable_type_name(self) -> str:
@@ -284,6 +304,21 @@ class TestDataclassPartial(TestDataclassConfig):
         c.child_data = fiddle.Partial(DataClass)
         c.regular_factory = regular_builder
         c.regular_factory = fiddle.Partial(RegularClass)
+      """)
+
+  def test_config_partial_mismatch(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.CheckWithErrors("""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class DataClass:
+          x: int
+          y: str
+
+        def f() -> fiddle.Config:
+          return fiddle.Partial(DataClass)  # bad-return-type
       """)
 
 
