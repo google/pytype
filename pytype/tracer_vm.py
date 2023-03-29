@@ -346,7 +346,10 @@ class CallTracer(vm.VirtualMachine):
     Returns:
       A tuple of node and instance variable.
     """
-    cache = self._instance_cache[cls]
+    # We want a LateAnnotation to have different cache entries before and after
+    # resolution so that unresolved instances aren't accidentally kept around.
+    cls_key = cls.expr if cls.is_late_annotation() and not cls.resolved else cls
+    cache = self._instance_cache[cls_key]
     key = (self.current_opcode, extra_key)
     status = instance = cache.get(key)
     if not instance or isinstance(instance, _InitClassState):

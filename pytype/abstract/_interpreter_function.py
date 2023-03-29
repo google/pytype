@@ -529,6 +529,7 @@ class InterpreterFunction(_function_base.SignedFunction):
             "remaining_depth = %d, old_remaining_depth = %d", self.name,
             self.ctx.vm.remaining_depth(), old_remaining_depth)
       else:
+        log.info("Skipping call to %r and using cached return", self.name)
         ret = typeguard_return or old_ret.AssignToNewVariable(node)
         if self._store_call_records:
           # Even if the call is cached, we might not have been recording it.
