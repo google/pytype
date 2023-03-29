@@ -203,7 +203,7 @@ class TypedDictClass(abstract.PyTDClass):
     return abstract.SignedFunction(sig, self.ctx)
 
   def _new_instance(self, container, node, args):
-    self.init_method.match_and_map_args(node, args, {})
+    self.init_method.match_and_map_args(node, args, None)
     ret = TypedDict(self.props, self.ctx)
     for (k, v) in args.namedargs.items():
       ret.set_str_item(node, k, v)
