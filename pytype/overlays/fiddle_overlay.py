@@ -215,7 +215,12 @@ def make_instance(
 
   instance_class = {"Config": Config, "Partial": Partial}[subclass_name]
   # Create the specialized class Config[underlying] or Partial[underlying]
-  cls = BuildableType(subclass_name, underlying, ctx)
+  try:
+    cls = BuildableType(subclass_name, underlying, ctx)
+  except KeyError:
+    # We are in the middle of constructing the fiddle ast; fiddle.Config doesn't
+    # exist yet
+    return node, ctx.convert.unsolvable
   # Now create the instance, setting its class to `cls`
   obj = instance_class(cls, ctx)
   obj.underlying = underlying

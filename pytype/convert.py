@@ -939,15 +939,22 @@ class Converter(utils.ContextWeakrefMixin):
         template = list(range(len(pyval.args))) + [abstract_utils.ARGS,
                                                    abstract_utils.RET]
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
-      elif fiddle_overlay.is_fiddle_buildable_pytd(pyval):
-        # fiddle.Config[Foo] should call the constructor from the overlay, not
-        # create a generic PyTDClass.
-        node = get_node()
-        param, = pyval.parameters
-        underlying = self.constant_to_value(param, subst, node)
-        subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
-        return fiddle_overlay.BuildableType(subclass_name, underlying, self.ctx)
       else:
+        if fiddle_overlay.is_fiddle_buildable_pytd(pyval):
+          # fiddle.Config[Foo] should call the constructor from the overlay, not
+          # create a generic PyTDClass.
+          node = get_node()
+          param, = pyval.parameters
+          underlying = self.constant_to_value(param, subst, node)
+          subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
+          try:
+            return fiddle_overlay.BuildableType(
+                subclass_name, underlying, self.ctx)
+          except KeyError:
+            # We are in the middle of constructing the fiddle ast so
+            # fiddle.Config does not exist yet. Continue constructing a generic
+            # class.
+            pass
         abstract_class = abstract.ParameterizedClass
         if pyval.name == "typing.Generic":
           pyval_template = pyval.parameters
