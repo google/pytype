@@ -123,6 +123,32 @@ class TestDataclassConfig(test_base.BaseTest):
         a.x.y = 2  # annotation-type-mismatch
       """)
 
+  def test_nested_constructor(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check(f"""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class DataClass:
+          x: int
+          y: str
+
+        class RegularClass:
+          def __init__(self, a, b):
+            self.a = a
+            self.b = b
+
+        @dataclasses.dataclass
+        class Parent:
+          child_data: DataClass
+          child_regular: RegularClass
+
+        child_data = fiddle.Config(DataClass, x=1, y='y')
+        child_regular = fiddle.Config(RegularClass, 1, 2)
+        c = fiddle.{self.buildable_type_name}(Parent, child_data, child_regular)
+      """)
+
   def test_nested_object_assignment(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
       self.Check(f"""
