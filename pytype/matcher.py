@@ -1685,7 +1685,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     object_in_values = False
     for v in values:
       object_in_values |= v.cls == self.ctx.convert.object_type
-      superclasses = {c.full_name for c in v.cls.mro}
+      superclasses = {c.full_name for c in v.cls.mro or v.cls.default_mro()}
       for compat_name, name in _COMPATIBLE_BUILTINS:
         if compat_name in superclasses:
           superclasses.add(name)

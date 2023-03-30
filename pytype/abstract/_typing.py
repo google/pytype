@@ -279,12 +279,13 @@ class AnnotationContainer(AnnotationClass):
         for i, name in enumerate(template)
     }
 
-    # For user-defined generic types, check if its type parameter matches
-    # its corresponding concrete type
-    if isinstance(base_cls, _classes.InterpreterClass) and base_cls.template:
+    # Check if the concrete types match the type parameters.
+    if base_cls.template:
+      processed_params = self.ctx.annotation_utils.convert_class_annotations(
+          node, params)
       for formal_param in base_cls.template:
         root_node = self.ctx.root_node
-        param_value = params[formal_param.name]
+        param_value = processed_params[formal_param.name]
         if (isinstance(formal_param, TypeParameter) and
             not formal_param.is_generic() and
             isinstance(param_value, TypeParameter)):

@@ -972,6 +972,29 @@ class GenericBasicTest(test_base.BaseTest):
             self.data.value = None
       """)
 
+  def test_parameterize_generic_with_generic(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Generic, TypeVar, Union
+      class A: ...
+      class B: ...
+      T = TypeVar('T', bound=Union[A, B])
+      class Foo(Generic[T]): ...
+    """)]):
+      self.CheckWithErrors("""
+        from typing import Any, Generic, TypeVar
+        import foo
+
+        T = TypeVar('T')
+        class C(Generic[T]):
+          pass
+
+        class Bar(foo.Foo[C[Any]]):  # bad-concrete-type
+          def __init__(self):
+            pass
+          def f(self, c: C[Any]):
+            pass
+      """)
+
 
 class GenericFeatureTest(test_base.BaseTest):
   """Tests for User-defined Generic Type."""
