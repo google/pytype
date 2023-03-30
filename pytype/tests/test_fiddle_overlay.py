@@ -221,6 +221,31 @@ class TestDataclassConfig(test_base.BaseTest):
         g = fiddle.{self.buildable_type_name}(Simple, 1, '2', 3)  # wrong-arg-count
       """)
 
+  def test_explicit_init(self):
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        ("foo.pyi", """
+        import dataclasses
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+          def __init__(self: Simple, x: int, y: str): ...
+         """),
+    ]):
+      self.CheckWithErrors(f"""
+        import fiddle
+        from foo import Simple
+        a = fiddle.{self.buildable_type_name}(Simple, x=1, y='2')
+        b = fiddle.{self.buildable_type_name}(Simple, 1, '2')
+        c = fiddle.{self.buildable_type_name}(Simple, 1, y='2')
+        d = fiddle.{self.buildable_type_name}(Simple, x='a', y='2')  # wrong-arg-types
+        e = fiddle.{self.buildable_type_name}(Simple, x=1)  # partial initialization is fine
+        f = fiddle.{self.buildable_type_name}(Simple, x=1, z=3)  # wrong-keyword-args
+        g = fiddle.{self.buildable_type_name}(Simple, 1, '2', 3)  # wrong-arg-count
+      """)
+
   def test_typevar(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
       self.CheckWithErrors(f"""

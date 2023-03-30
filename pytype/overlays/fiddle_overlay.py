@@ -76,7 +76,10 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     try:
       init.match_args(node, args)
     except function.FailedFunctionCall as e:
-      self.ctx.errorlog.invalid_function_call(self.ctx.vm.frames, e)
+      if not isinstance(e, function.MissingParameter):
+        # We don't surface missing parameter errors because fiddle config
+        # objects have defaults for all fields.
+        self.ctx.errorlog.invalid_function_call(self.ctx.vm.frames, e)
 
   def _match_interpreter_init(self, node, init_var, args):
     # Buildables support partial initialization, so give every parameter a
@@ -88,7 +91,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     # value, when ideally we should just call function.match_all_args().
     function.call_function(self.ctx, node, init_var, args)
 
-  def _make_init_args(self, node, args, kwargs):
+  def _make_init_args(self, node, underlying, args, kwargs):
     """Unwrap Config instances for arg matching."""
     def unwrap(arg_var):
       # If an arg has a Config object, just use its underlying type and don't
@@ -97,7 +100,8 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
         if isinstance(d, Buildable):
           return d.underlying.instantiate(node)
       return arg_var
-    new_args = tuple(unwrap(arg) for arg in args)
+    new_args = (underlying.instantiate(node),)
+    new_args += tuple(unwrap(arg) for arg in args[1:])
     new_kwargs = {k: unwrap(arg) for k, arg in kwargs.items()}
     return function.Args(posargs=new_args, namedargs=new_kwargs)
 
@@ -110,7 +114,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
           node, underlying, "__init__")
       if _is_dataclass(underlying):
         # Only do init matching for dataclasses for now
-        args = self._make_init_args(node, args, kwargs)
+        args = self._make_init_args(node, underlying, args, kwargs)
         init = init_var.data[0]
         if isinstance(init, abstract.PyTDFunction):
           self._match_pytd_init(node, init_var, args)
