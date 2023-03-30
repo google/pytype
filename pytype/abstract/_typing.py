@@ -728,14 +728,10 @@ class LateAnnotation:
     # Add implicit imports for typing, since we can have late annotations like
     # `set[int]` which get converted to `typing.Set[int]`.
     if "typing" in self._imports:
-      mod = self.ctx.loader.import_name("typing")
+      overlay = self.ctx.vm.import_module("typing", "typing", 0)
       for v in self._imports["typing"]:
         if v not in f_globals.members:
-          if v == "Any":
-            typ = self.ctx.convert.unsolvable
-          else:
-            typ = self.ctx.convert.name_to_value(f"typing.{v}", ast=mod)
-          f_globals.members[v] = typ.to_variable(node)
+          f_globals.members[v] = overlay.get_module(v).load_lazy_attribute(v)
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
                                              f_locals, self.expr)
     if errorlog:

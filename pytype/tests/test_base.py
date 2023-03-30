@@ -452,9 +452,11 @@ class BaseTest(unittest.TestCase):
     """Creates a tree of .pyi deps."""
     old_pythonpath = self.options.pythonpath
     old_imports_map = self.options.imports_map
+    old_use_pickled_files = self.options.use_pickled_files
     try:
       with test_utils.Tempdir() as d:
         self.ConfigureOptions(pythonpath=[""], imports_map={})
+        use_pickled_files = False
         for dep in deps:
           if len(dep) == 3:
             path, contents, opts = dep
@@ -463,6 +465,7 @@ class BaseTest(unittest.TestCase):
             opts = {}
           base, ext = path_utils.splitext(path)
           pickle = opts.get("pickle", False)
+          use_pickled_files |= pickle
           new_path = base + (".pickled" if pickle else ".pyi")
           if ext == ".pyi":
             if pickle:
@@ -476,10 +479,12 @@ class BaseTest(unittest.TestCase):
           else:
             raise ValueError(f"Unrecognised dependency type: {path}")
           self.options.imports_map[base] = filepath
+        self.options.use_pickled_files = use_pickled_files
         yield d
     finally:
       self.ConfigureOptions(pythonpath=old_pythonpath,
-                            imports_map=old_imports_map)
+                            imports_map=old_imports_map,
+                            use_pickled_files=old_use_pickled_files)
 
 
 def _PrintErrorDebug(descr, value):

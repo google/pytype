@@ -1392,7 +1392,6 @@ class TestStringifiedAnnotations(test_base.BaseTest):
           return self
     """)
     self.assertTypesMatchPytd(ty, """
-      import typing
       from typing import Generic, Set, TypeVar
       T = TypeVar('T')
       class A(Generic[T]):
