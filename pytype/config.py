@@ -242,6 +242,8 @@ FEATURE_FLAGS = [
           "Use the enum overlay for more precise enum checking."),
     _flag("--strict-none-binding", False,
           "Variables initialized as None retain their None binding."),
+    _flag("--use-fiddle-overlay", False,
+          "Support the third-party fiddle library."),
 ] + _OPT_IN_FEATURES
 
 

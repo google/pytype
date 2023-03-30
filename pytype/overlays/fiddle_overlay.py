@@ -36,10 +36,14 @@ class FiddleOverlay(overlay.Overlay):
     Args:
       ctx: An instance of context.Context.
     """
-    member_map = {
-        "Config": ConfigBuilder,
-        "Partial": PartialBuilder,
-    }
+    if ctx.options.use_fiddle_overlay:
+      member_map = {
+          "Config": ConfigBuilder,
+          "Partial": PartialBuilder,
+      }
+    else:
+      member_map = {}
+
     ast = ctx.loader.import_name("fiddle")
     super().__init__(ctx, "fiddle", member_map, ast)
 
