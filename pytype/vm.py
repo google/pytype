@@ -278,9 +278,7 @@ class VirtualMachine:
       # Sometimes v is a binding.
       return [data] if data and not isinstance(data, list) else data
 
-    # isinstance(val, tuple) generates false positives for internal classes that
-    # are namedtuples.
-    if val.__class__ == tuple:
+    if isinstance(val, tuple):
       assert val
       data = tuple(get_data(v) for v in val)
     else:
@@ -971,7 +969,10 @@ class VirtualMachine:
               self.ctx.convert.get_maybe_abstract_instance(b.data), [b], node)
         else:
           var.PasteBinding(b, node)
+      elif self.ctx.options.strict_none_binding:
+        var.PasteBinding(b, node)
       else:
+        # TODO(rechen): Remove once --strict-none-binding is fully enabled.
         var.AddBinding(self.ctx.convert.unsolvable, [b], node)
 
   def _has_strict_none_origins(self, binding):
@@ -1807,6 +1808,12 @@ class VirtualMachine:
         # We can still check for final members being assigned to.
         if name in maybe_cls.final_members:
           self.ctx.errorlog.assigning_to_final(self.frames, name, local=False)
+      elif (isinstance(obj_val, abstract.Instance) and
+            "__annotations__" in obj_val.members):
+        # Some overlays add an __annotations__ dict to an abstract.Instance to
+        # replicate runtime type checks on individual instances.
+        annot = abstract_utils.get_annotations_dict(obj_val.members)
+        cur_annotations_dict = annot.annotated_locals
       else:
         cur_annotations_dict = None
       if cur_annotations_dict is not None:

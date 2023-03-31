@@ -203,7 +203,7 @@ class TypedDictClass(abstract.PyTDClass):
     return abstract.SignedFunction(sig, self.ctx)
 
   def _new_instance(self, container, node, args):
-    self.init_method.match_and_map_args(node, args, {})
+    self.init_method.match_and_map_args(node, args, None)
     ret = TypedDict(self.props, self.ctx)
     for (k, v) in args.namedargs.items():
       ret.set_str_item(node, k, v)
@@ -311,3 +311,16 @@ class TypedDict(abstract.Dict):
     except TypedDictKeyMissing:
       return node, default_var or self.ctx.convert.none.to_variable(node)
     return node, self.pyval[str_key]
+
+  def merge_instance_type_parameter(self, node, name, value):
+    _, _, short_name = name.rpartition(".")
+    if short_name == abstract_utils.K:
+      expected_length = 1
+    else:
+      assert short_name == abstract_utils.V, name
+      expected_length = len(self.fields)
+    if len(self.get_instance_type_parameter(name).data) >= expected_length:
+      # Since a TypedDict's key and value types are pre-defined, we never mutate
+      # them once fully set.
+      return
+    super().merge_instance_type_parameter(node, name, value)

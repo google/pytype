@@ -584,6 +584,29 @@ class GenericBasicTest(test_base.BaseTest):
         pass
     """)
 
+  def test_late_annotations(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class A(Generic[T]): ...
+      class B(Generic[T]): ...
+
+      class C(A['C']): ...
+      class D(A['B[D]']): ...
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+
+      class A(Generic[T]): ...
+      class B(Generic[T]): ...
+
+      class C(A[C]): ...
+      class D(A[B[D]]): ...
+    """)
+
   def test_type_parameter_count(self):
     self.Check("""
       from typing import Generic, List, TypeVar
@@ -947,6 +970,29 @@ class GenericBasicTest(test_base.BaseTest):
           def __init__(self, x: foo.Manager):
             self.data = x.get_data(__any_object__, __any_object__)
             self.data.value = None
+      """)
+
+  def test_parameterize_generic_with_generic(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Generic, TypeVar, Union
+      class A: ...
+      class B: ...
+      T = TypeVar('T', bound=Union[A, B])
+      class Foo(Generic[T]): ...
+    """)]):
+      self.CheckWithErrors("""
+        from typing import Any, Generic, TypeVar
+        import foo
+
+        T = TypeVar('T')
+        class C(Generic[T]):
+          pass
+
+        class Bar(foo.Foo[C[Any]]):  # bad-concrete-type
+          def __init__(self):
+            pass
+          def f(self, c: C[Any]):
+            pass
       """)
 
 

@@ -865,12 +865,15 @@ class Converter(utils.ContextWeakrefMixin):
         elif isinstance(cls, pytd.CallableType):
           clsval = self.constant_to_value(cls, subst, self.ctx.root_node)
           return abstract.Instance(clsval, self.ctx)
-        elif fiddle_overlay.is_fiddle_config_pytd(base_cls):
+        elif (self.ctx.options.use_fiddle_overlay and
+              fiddle_overlay.is_fiddle_buildable_pytd(base_cls)):
           # fiddle.Config[Foo] should call the constructor from the overlay, not
           # create a generic PyTDClass.
           node = get_node()
-          template_cls = self.constant_to_value(cls.parameters[0], subst, node)
-          _, ret = fiddle_overlay.make_config(template_cls, node, self.ctx)
+          underlying = self.constant_to_value(cls.parameters[0], subst, node)
+          subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(base_cls)
+          _, ret = fiddle_overlay.make_instance(
+              subclass_name, underlying, node, self.ctx)
           return ret
         else:
           clsval = self.constant_to_value(base_cls, subst, self.ctx.root_node)
@@ -938,6 +941,22 @@ class Converter(utils.ContextWeakrefMixin):
                                                    abstract_utils.RET]
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
+        if (self.ctx.options.use_fiddle_overlay and
+            fiddle_overlay.is_fiddle_buildable_pytd(pyval)):
+          # fiddle.Config[Foo] should call the constructor from the overlay, not
+          # create a generic PyTDClass.
+          node = get_node()
+          param, = pyval.parameters
+          underlying = self.constant_to_value(param, subst, node)
+          subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
+          try:
+            return fiddle_overlay.BuildableType(
+                subclass_name, underlying, self.ctx)
+          except KeyError:
+            # We are in the middle of constructing the fiddle ast so
+            # fiddle.Config does not exist yet. Continue constructing a generic
+            # class.
+            pass
         abstract_class = abstract.ParameterizedClass
         if pyval.name == "typing.Generic":
           pyval_template = pyval.parameters

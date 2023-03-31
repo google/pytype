@@ -74,7 +74,7 @@ class UtilsTest(test_base.UnitTest):
     self.assertEqual(t.base_type, pytd.ClassType("builtins.dict"))
 
   def test_has_object_superclass(self):
-    cls = self.builtins.Lookup("builtins.memoryview")
+    cls = self.builtins.Lookup("builtins.slice")
     self.assertEqual(cls.bases, (pytd.ClassType("builtins.object"),))
     cls = self.builtins.Lookup("builtins.object")
     self.assertEqual(cls.bases, ())

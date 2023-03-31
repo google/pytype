@@ -11,6 +11,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import dataclass_overlay
+from pytype.overlays import fiddle_overlay
 from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
@@ -1145,8 +1146,18 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if not self._match_dict_against_typed_dict(left, other_type):
         return None
       return subst
+    elif (isinstance(other_type, abstract.ParameterizedClass) and
+          isinstance(other_type.base_cls, typed_dict.TypedDictClass)):
+      if not self._match_dict_against_typed_dict(left, other_type.base_cls):
+        return None
+      return self._match_instance_parameters(
+          left.cls, left, other_type, subst, view)
     elif isinstance(left.cls, typed_dict.TypedDictClass):
       return self._match_typed_dict_against_dict(left, other_type, subst, view)
+    elif isinstance(other_type, (fiddle_overlay.BuildableBuilder,
+                                 fiddle_overlay.BuildableType)):
+      return self._match_fiddle_instance(
+          left.cls, left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
         self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
@@ -1227,20 +1238,42 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     return self._match_instance_parameters(
         left, instance, other_type, subst, view)
 
+  def _match_instance_param_against_class_param(
+      self, instance_param, class_param, subst, view
+  ):
+    if instance_param.bindings and instance_param not in view:
+      binding, = instance_param.bindings
+      assert isinstance(binding.data, abstract.Unsolvable), binding.data
+      view = view.copy()
+      view[instance_param] = binding
+    subst = self.match_var_against_type(
+        instance_param, class_param, subst, view)
+    return subst, view
+
   def _match_instance_parameters(self, left, instance, other_type, subst, view):
     for type_param in left.template:
       class_param = other_type.get_formal_type_parameter(type_param.name)
       instance_param = instance.get_instance_type_parameter(
           type_param.full_name, self._node)
-      if instance_param.bindings and instance_param not in view:
-        binding, = instance_param.bindings
-        assert isinstance(binding.data, abstract.Unsolvable), binding.data
-        view = view.copy()
-        view[instance_param] = binding
-      subst = self.match_var_against_type(instance_param, class_param,
-                                          subst, view)
+      subst, view = self._match_instance_param_against_class_param(
+          instance_param, class_param, subst, view)
       if subst is None:
         return None
+    return subst
+
+  def _match_fiddle_instance(self, left, instance, other_type, subst, view):
+    if not isinstance(instance, fiddle_overlay.Buildable):
+      return None
+    elif instance.fiddle_type_name != other_type.fiddle_type_name:
+      return None
+    elif isinstance(other_type, fiddle_overlay.BuildableBuilder):
+      return subst
+    assert isinstance(other_type, fiddle_overlay.BuildableType)
+    class_param = other_type.get_formal_type_parameter(abstract_utils.T)
+    instance_param = instance.get_instance_type_parameter(
+        abstract_utils.T, self._node)
+    subst, _ = self._match_instance_param_against_class_param(
+        instance_param, class_param, subst, view)
     return subst
 
   def _match_heterogeneous_tuple_instance(self, left, instance, other_type,
@@ -1380,7 +1413,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self, left: typed_dict.TypedDictClass, other_type: abstract.BaseValue,
       subst: _SubstType, view: _ViewType,
   ) -> Optional[_SubstType]:
-    if other_type.full_name not in ("builtins.dict", "typing.Dict"):
+    dummy_dict = abstract.Instance(self.ctx.convert.dict_type, self.ctx)
+    if self._match_type_against_type(
+        dummy_dict, other_type, subst, view) is None:
       return None
     if isinstance(other_type, abstract.ParameterizedClass):
       return self._match_instance_parameters(
@@ -1572,7 +1607,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       else:
         _, left_attribute = self.ctx.attribute_handler.get_attribute(
             self._node, left, attribute)
-    assert left_attribute
+    assert left_attribute, f"Attr {attribute!r} not found on {left.full_name}"
     protocol_attribute_var, _ = self._get_attribute_for_protocol_matching(
         other_type, attribute, instance=None, unbind=left_is_bound)
     assert protocol_attribute_var
@@ -1650,7 +1685,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     object_in_values = False
     for v in values:
       object_in_values |= v.cls == self.ctx.convert.object_type
-      superclasses = {c.full_name for c in v.cls.mro}
+      superclasses = {c.full_name for c in v.cls.mro or v.cls.default_mro()}
       for compat_name, name in _COMPATIBLE_BUILTINS:
         if compat_name in superclasses:
           superclasses.add(name)

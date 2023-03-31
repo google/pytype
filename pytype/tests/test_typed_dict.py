@@ -341,6 +341,49 @@ class TypedDictTest(test_base.BaseTest):
           return self.get()
     """)
 
+  def test_match_mapping(self):
+    self.CheckWithErrors("""
+      from typing import Mapping
+      from typing_extensions import TypedDict
+      class A(TypedDict):
+        x: int
+      def f1(a: Mapping[str, int]):
+        pass
+      def f2(a: Mapping[int, str]):
+        pass
+      f1(A(x=0))  # ok
+      f2(A(x=0))  # wrong-arg-types
+    """)
+
+  def test_typed_dict_dataclass(self):
+    self.Check("""
+      import dataclasses
+      from typing_extensions import TypedDict
+      @dataclasses.dataclass
+      class A(TypedDict):
+        x: int
+      def f():
+        return A(x=0)
+    """)
+
+  def test_iterable_generic_class_and_recursive_type_interaction(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Any, Generic, Iterable, TypeVar, Union
+      _ShapeType = TypeVar('_ShapeType')
+      _DType = TypeVar('_DType')
+      class ndarray(Generic[_ShapeType, _DType]):
+        def __iter__(self) -> Any: ...
+      ArrayTree = Union[Iterable[ArrayTree], ndarray]
+    """)]):
+      self.Check("""
+        import foo
+        from typing_extensions import TypedDict
+        class TD(TypedDict):
+          x: foo.ArrayTree
+        def f() -> TD:
+          return __any_object__
+      """)
+
 
 class TypedDictFunctionalTest(test_base.BaseTest):
   """Tests for typing.TypedDict functional constructor."""

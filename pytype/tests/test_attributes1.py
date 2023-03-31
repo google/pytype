@@ -9,19 +9,21 @@ class TestStrictNone(test_base.BaseTest):
   """Tests for strict attribute checking on None."""
 
   def test_module_constant(self):
-    self.Check("""
+    errors = self.CheckWithErrors("""
       x = None
       def f():
-        return x.upper()
+        return x.upper()  # attribute-error[e]
     """)
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def test_class_constant(self):
-    self.Check("""
+    errors = self.CheckWithErrors("""
       class Foo:
         x = None
         def f(self):
-          return self.x.upper()
+          return self.x.upper()  # attribute-error[e]
     """)
+    self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def test_class_constant_error(self):
     errors = self.CheckWithErrors("""
@@ -42,12 +44,12 @@ class TestStrictNone(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def test_late_initialization(self):
-    ty = self.Infer("""
+    ty, _ = self.InferWithErrors("""
       class Foo:
         def __init__(self):
           self.x = None
         def f(self):
-          return self.x.upper()
+          return self.x.upper()  # attribute-error
         def set_x(self):
           self.x = ""
     """)
@@ -61,6 +63,7 @@ class TestStrictNone(test_base.BaseTest):
     """)
 
   def test_pyi_constant(self):
+    self.options.tweak(strict_none_binding=False)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         x = ...  # type: None
@@ -72,6 +75,7 @@ class TestStrictNone(test_base.BaseTest):
       """, pythonpath=[d.path])
 
   def test_pyi_attribute(self):
+    self.options.tweak(strict_none_binding=False)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         class Foo:
@@ -122,6 +126,7 @@ class TestStrictNone(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"upper.*None"})
 
   def test_shadowed_local_origin(self):
+    self.options.tweak(strict_none_binding=False)
     self.Check("""
       x = None
       def f():
@@ -146,6 +151,7 @@ class TestStrictNone(test_base.BaseTest):
     """)
 
   def test_return_constant(self):
+    self.options.tweak(strict_none_binding=False)
     self.Check("""
       x = None
       def f():
@@ -201,6 +207,7 @@ class TestStrictNone(test_base.BaseTest):
     """)
 
   def test_discard_none_return(self):
+    self.options.tweak(strict_none_binding=False)
     ty = self.Infer("""
       x = None
       def f():
@@ -213,6 +220,7 @@ class TestStrictNone(test_base.BaseTest):
     """)
 
   def test_discard_none_yield(self):
+    self.options.tweak(strict_none_binding=False)
     ty = self.Infer("""
       x = None
       def f():
@@ -231,11 +239,12 @@ class TestStrictNone(test_base.BaseTest):
         return [x]
     """)
     self.assertTypesMatchPytd(ty, """
-      x = ...  # type: None
-      def f() -> list: ...
+      x: None
+      def f() -> list[None]: ...
     """)
 
   def test_discard_attribute_none_return(self):
+    self.options.tweak(strict_none_binding=False)
     ty = self.Infer("""
       class Foo:
         x = None
@@ -258,17 +267,17 @@ class TestStrictNone(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"item retrieval.*None.*int"})
 
   def test_ignore_getitem(self):
-    self.Check("""
+    self.CheckWithErrors("""
       x = None
       def f():
-        return x[0]
+        return x[0]  # unsupported-operands
     """)
 
   def test_ignore_iter(self):
-    self.Check("""
+    self.CheckWithErrors("""
       x = None
       def f():
-        return [y for y in x]
+        return [y for y in x]  # attribute-error
     """)
 
   def test_contains(self):
@@ -280,10 +289,10 @@ class TestStrictNone(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"'in'.*None.*int"})
 
   def test_ignore_contains(self):
-    self.Check("""
+    self.CheckWithErrors("""
       x = None
       def f():
-        return 42 in x
+        return 42 in x  # unsupported-operands
     """)
 
   def test_property(self):

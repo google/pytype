@@ -279,12 +279,13 @@ class AnnotationContainer(AnnotationClass):
         for i, name in enumerate(template)
     }
 
-    # For user-defined generic types, check if its type parameter matches
-    # its corresponding concrete type
-    if isinstance(base_cls, _classes.InterpreterClass) and base_cls.template:
+    # Check if the concrete types match the type parameters.
+    if base_cls.template:
+      processed_params = self.ctx.annotation_utils.convert_class_annotations(
+          node, params)
       for formal_param in base_cls.template:
         root_node = self.ctx.root_node
-        param_value = params[formal_param.name]
+        param_value = processed_params[formal_param.name]
         if (isinstance(formal_param, TypeParameter) and
             not formal_param.is_generic() and
             isinstance(param_value, TypeParameter)):
@@ -294,9 +295,17 @@ class AnnotationContainer(AnnotationClass):
           else:
             actual = param_value.instantiate(
                 root_node, container=abstract_utils.DUMMY_CONTAINER)
+        elif param_value.is_concrete and isinstance(param_value.pyval, str):
+          # TODO(b/261769826): Do we need to collect imports here?
+          expr = param_value.pyval
+          annot = LateAnnotation(expr, self.ctx.vm.frames, self.ctx,
+                                 imports=set())
+          base = expr.split("[", 1)[0]
+          self.ctx.vm.late_annotations[base].append(annot)
+          actual = annot.instantiate(root_node)
         else:
           actual = param_value.instantiate(root_node)
-        match_result = self.ctx.matcher(root_node).compute_one_match(
+        match_result = self.ctx.matcher(node).compute_one_match(
             actual, formal_param)
         if not match_result.success:
           if isinstance(param_value, TypeParameter):
@@ -720,14 +729,10 @@ class LateAnnotation:
     # Add implicit imports for typing, since we can have late annotations like
     # `set[int]` which get converted to `typing.Set[int]`.
     if "typing" in self._imports:
-      mod = self.ctx.loader.import_name("typing")
+      overlay = self.ctx.vm.import_module("typing", "typing", 0)
       for v in self._imports["typing"]:
         if v not in f_globals.members:
-          if v == "Any":
-            typ = self.ctx.convert.unsolvable
-          else:
-            typ = self.ctx.convert.name_to_value(f"typing.{v}", ast=mod)
-          f_globals.members[v] = typ.to_variable(node)
+          f_globals.members[v] = overlay.get_module(v).load_lazy_attribute(v)
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,
                                              f_locals, self.expr)
     if errorlog:

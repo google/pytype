@@ -415,9 +415,9 @@ class PyiTest(test_base.BaseTest):
             bad1: foo.X[str] = [0]  # annotation-type-mismatch
             bad2: foo.Y = ['']  # annotation-type-mismatch[e]
           """)
-          self.assertErrorSequences(errors, {
-              "e": ["Annotation: Union[List[foo.X[int]], int]",
-                    "Assignment: List[str]"]})
+          self.assertErrorRegexes(errors, {
+              "e": (r"Annotation: Union\[List\[foo.X(\[T\])?\[int\]\], int\].*"
+                    r"Assignment: List\[str\]")})
 
   def test_parameterize_and_forward(self):
     with self.DepTree([("foo.py", """
@@ -509,6 +509,25 @@ class PyiTest(test_base.BaseTest):
         def f(x: X):
           y = x[0]
           return y[1]
+      """)
+
+  def test_use_in_custom_generic_class(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Any, Generic, Iterable, TypeVar, Union
+      _ShapeType = TypeVar('_ShapeType')
+      _DType = TypeVar('_DType')
+      class ndarray(Generic[_ShapeType, _DType]):
+        def __iter__(self) -> Any: ...
+      ArrayTree = Union[Iterable[ArrayTree], ndarray]
+    """)]):
+      self.Check("""
+        from typing import Generic, TypeVar
+        import foo
+        T = TypeVar('T', bound=foo.ArrayTree)
+        class C(Generic[T]):
+          @classmethod
+          def make(cls, obj: T) -> 'C[T]':
+            return cls()
       """)
 
 

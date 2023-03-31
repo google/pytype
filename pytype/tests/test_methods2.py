@@ -80,15 +80,14 @@ class TestMethods(test_base.BaseTest):
   def test_max_depth(self):
     # pytype hits max depth in A.cmp() when trying to instantiate `other`,
     # leading to the FromInt() call in __init__ being skipped and pytype
-    # thinking that other.x is None. However, pytype should not report an
-    # attribute error on other.Upper() because vm._has_strict_none_origins
-    # filters out the None.
-    self.Check("""
-      from typing import Union
+    # thinking that other.x is an int. If max depth is raised, pytype correctly
+    # sees that self.x will be a str, and no error is raised.
+    self.CheckWithErrors("""
+      from typing import Any, Union
 
       class A:
         def __init__(self, x: int):
-          self.x = None
+          self.x = 1
           self.FromInt(x)
 
         def cmp(self, other: 'A') -> bool:
@@ -98,7 +97,7 @@ class TestMethods(test_base.BaseTest):
           self.x = 'x'
 
         def Upper(self) -> str:
-          return self.x.upper()
+          return self.x.upper()  # attribute-error
     """, maximum_depth=2)
 
   def test_call_dispatch(self):

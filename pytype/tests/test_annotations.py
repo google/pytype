@@ -1205,6 +1205,29 @@ class AnnotationTest(test_base.BaseTest):
           return foo.SpecDict()
       """)
 
+  def test_forward_ref_determinism(self):
+    # Repeat this test 20 times to check that the result is deterministic.
+    for _ in range(20):
+      self.Check("""
+        import dataclasses
+        from typing import List
+
+        @dataclasses.dataclass
+        class ChatMessage:
+          speaker: 'ChatUser'
+
+        class ChatUser:
+          def __init__(self, name: str, chat_room: 'ChatRoom'):
+            self.name = name
+            self.chat_room = chat_room
+            if self.name in self.chat_room.user_map:
+              raise ValueError()
+
+        class ChatRoom:
+          def __init__(self, users: List[ChatUser]):
+            self.user_map = {u.name: u for u in users}
+      """)
+
 
 class TestAnnotationsPython3Feature(test_base.BaseTest):
   """Tests for PEP 484 style inline annotations."""
@@ -1369,7 +1392,6 @@ class TestStringifiedAnnotations(test_base.BaseTest):
           return self
     """)
     self.assertTypesMatchPytd(ty, """
-      import typing
       from typing import Generic, Set, TypeVar
       T = TypeVar('T')
       class A(Generic[T]):

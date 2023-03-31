@@ -1,3 +1,21 @@
+Version 2023.03.31:
+
+Updates:
+* Add an overlay for the third party fiddle configuration library.
+* Add feature to not replace None with Any when it is the only value.
+
+Bug fixes:
+* Fix pattern matching over imported enums.
+* Track the variable name for annotated assignments in the director.
+* Don't replace late annotations with Any in class definitions.
+* Preserve TypedDict instances in TypeVar substitutions.
+* Delegate getattr on pyi classmethods and staticmethods to underlying method.
+* Support late annotations as parameters for user-defined generic classes.
+* Fix a nondeterminism bug in pytype.
+* Fix a latent type error in the typing.TypedDict overlay.
+* Fix a crash caused by failing to catch [bad-concrete-type].
+* Update memview stubs to be closer to API.
+
 Version 2023.03.13:
 
 Updates:

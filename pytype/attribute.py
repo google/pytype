@@ -82,6 +82,8 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     elif isinstance(obj, special_builtins.Super):
       return self.get_attribute(node, self.ctx.convert.super_type, name,
                                 valself)
+    elif isinstance(obj, (abstract.StaticMethod, abstract.ClassMethod)):
+      return self.get_attribute(node, obj.method, name, valself)
     elif isinstance(obj, abstract.BoundFunction):
       return self.get_attribute(node, obj.underlying, name, valself)
     elif isinstance(obj, abstract.TypeParameterInstance):
