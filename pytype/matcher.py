@@ -1607,7 +1607,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       else:
         _, left_attribute = self.ctx.attribute_handler.get_attribute(
             self._node, left, attribute)
-    assert left_attribute
+    assert left_attribute, f"Attr {attribute!r} not found on {left.full_name}"
     protocol_attribute_var, _ = self._get_attribute_for_protocol_matching(
         other_type, attribute, instance=None, unbind=left_is_bound)
     assert protocol_attribute_var
