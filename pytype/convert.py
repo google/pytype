@@ -865,7 +865,8 @@ class Converter(utils.ContextWeakrefMixin):
         elif isinstance(cls, pytd.CallableType):
           clsval = self.constant_to_value(cls, subst, self.ctx.root_node)
           return abstract.Instance(clsval, self.ctx)
-        elif fiddle_overlay.is_fiddle_buildable_pytd(base_cls):
+        elif (self.ctx.options.use_fiddle_overlay and
+              fiddle_overlay.is_fiddle_buildable_pytd(base_cls)):
           # fiddle.Config[Foo] should call the constructor from the overlay, not
           # create a generic PyTDClass.
           node = get_node()
@@ -940,7 +941,8 @@ class Converter(utils.ContextWeakrefMixin):
                                                    abstract_utils.RET]
         parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
       else:
-        if fiddle_overlay.is_fiddle_buildable_pytd(pyval):
+        if (self.ctx.options.use_fiddle_overlay and
+            fiddle_overlay.is_fiddle_buildable_pytd(pyval)):
           # fiddle.Config[Foo] should call the constructor from the overlay, not
           # create a generic PyTDClass.
           node = get_node()
