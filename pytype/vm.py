@@ -206,6 +206,8 @@ class VirtualMachine:
         Tuple[Optional[List[abstract.BaseValue]], ...]
     ]] = []
     # pyformat: enable
+    # Store the ordered bytecode after all preprocessing is done
+    self.block_graph = None
     # Track the order of creation of local vars, for attrs and dataclasses.
     self.local_ops: Dict[str, List[LocalOp]] = {}
     # Record the annotated and original values of locals.
@@ -491,7 +493,9 @@ class VirtualMachine:
         python_exe=self.ctx.options.python_exe,
         filename=filename,
         mode=mode)
-    return blocks.process_code(code, self.ctx.python_version)
+    code, block_graph = blocks.process_code(code, self.ctx.python_version)
+    self.block_graph = block_graph
+    return code
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""

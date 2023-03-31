@@ -12,6 +12,15 @@ py_library(
 
 py_library(
   NAME
+    block_serializer
+  SRCS
+    block_serializer.py
+  DEPS
+    .blocks
+)
+
+py_library(
+  NAME
     init
   SRCS
     __init__.py

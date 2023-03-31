@@ -150,6 +150,19 @@ class Block:
     return self.code.__iter__()
 
 
+class BlockGraph:
+  """CFG made up of ordered code blocks."""
+
+  def __init__(self):
+    self.graph = {}
+
+  def add(self, ordered_code):
+    self.graph[ordered_code.co_name] = ordered_code
+
+  def pretty_print(self):
+    return str(self.graph)
+
+
 def add_pop_block_targets(bytecode, python_version):
   """Modifies bytecode so that each POP_BLOCK has a block_target.
 
@@ -316,9 +329,12 @@ class OrderCodeVisitor:
 
   def __init__(self, python_version):
     self._python_version = python_version
+    self.block_graph = BlockGraph()
 
   def visit_code(self, code):
-    return order_code(code, self._python_version)
+    ordered_code = order_code(code, self._python_version)
+    self.block_graph.add(ordered_code)
+    return ordered_code
 
 
 class CollectAnnotationTargetsVisitor:
@@ -416,5 +432,6 @@ def process_code(code, python_version):
   # [binary opcodes] -> [pyc.Opcode]
   ops = pyc.visit(code, DisCodeVisitor())
   # pyc.load_marshal.CodeType -> blocks.OrderedCode
-  ordered = pyc.visit(ops, OrderCodeVisitor(python_version))
-  return ordered
+  visitor = OrderCodeVisitor(python_version)
+  ordered = pyc.visit(ops, visitor)
+  return ordered, visitor.block_graph
