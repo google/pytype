@@ -20,7 +20,7 @@ Variable = Any
 # Config[Foo] is used in two separate places. We use a tuple of the abstract
 # class of Foo and a string (either "Config" or "Partial") as a key and store
 # the generated Buildable instance (either Config or Partial) as a value.
-_INSTANCE_CACHE: Dict[Tuple[abstract.Class, str], abstract.Instance] = {}
+_INSTANCE_CACHE: Dict[Tuple[Node, abstract.Class, str], abstract.Instance] = {}
 
 
 class FiddleOverlay(overlay.Overlay):
@@ -241,8 +241,10 @@ def make_instance(
   if subclass_name not in ("Config", "Partial"):
     raise ValueError(f"Unexpected instance class: {subclass_name}")
 
-  if (underlying, subclass_name) in _INSTANCE_CACHE:
-    return node, _INSTANCE_CACHE[(underlying, subclass_name)]
+  # We include the root node in case the cache is shared between multiple runs.
+  cache_key = (ctx.root_node, underlying, subclass_name)
+  if cache_key in _INSTANCE_CACHE:
+    return node, _INSTANCE_CACHE[cache_key]
 
   instance_class = {"Config": Config, "Partial": Partial}[subclass_name]
   # Create the specialized class Config[underlying] or Partial[underlying]
@@ -261,7 +263,7 @@ def make_instance(
   # Add a per-instance annotations dict so setattr can be typechecked.
   obj.members["__annotations__"] = classgen.make_annotations_dict(
       fields, node, ctx)
-  _INSTANCE_CACHE[(underlying, subclass_name)] = obj
+  _INSTANCE_CACHE[cache_key] = obj
   return node, obj
 
 
