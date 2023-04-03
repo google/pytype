@@ -404,6 +404,43 @@ class MatchClassTest(test_base.BaseTest):
       def f(x: A) -> bool: ...
     """)
 
+  def test_builtin(self):
+    ty = self.Infer("""
+      def f(x: str):
+        match x:
+          case str(y):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: str) -> str: ...
+    """)
+
+  def test_builtin_kwargs(self):
+    ty = self.Infer("""
+      def f(x: str):
+        match x:
+          case str(y, kwarg=z):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: str) -> int: ...
+    """)
+
+  def test_builtin_too_many_params(self):
+    err = self.CheckWithErrors("""
+      def f(x: str):
+        match x:
+          case str(x, y):  # match-error[e]
+            return y
+          case _:
+            return 42
+    """)
+    self.assertErrorSequences(err, {"e": ["str()", "accepts 1", "2 given"]})
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):
