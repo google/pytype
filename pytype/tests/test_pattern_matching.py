@@ -858,6 +858,40 @@ class MatchCoverageTest(test_base.BaseTest):
               return 'basic'
       """)
 
+  def call_function_with_match(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case (Color.GREEN |
+              Color.BLUE):
+            return 'a'
+
+      a = f(Color.RED)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      a: int | str
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int | str: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
