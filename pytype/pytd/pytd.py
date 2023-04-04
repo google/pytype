@@ -167,7 +167,7 @@ class Class(Node):
     template: Tuple of pytd.TemplateItem instances.
   """
   name: str
-  metaclass: Union[None, Type]
+  keywords: Tuple[Tuple[str, Type], ...]
   bases: Tuple[Union['Class', Type], ...]
   methods: Tuple['Function', ...]
   constants: Tuple[Constant, ...]
@@ -212,6 +212,13 @@ class Class(Node):
 
   def __contains__(self, name):
     return bool(self.Get(name))
+
+  @property
+  def metaclass(self):
+    for key, val in self.keywords:
+      if key == 'metaclass':
+        return val
+    return None
 
 
 class MethodKind(enum.Enum):

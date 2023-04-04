@@ -701,7 +701,7 @@ class CallTracer(vm.VirtualMachine):
       log.info("Generating pytd class for call trace: %r", full_name)
       classes.append(pytd.Class(
           name=escape.pack_partial(full_name),
-          metaclass=None,
+          keywords=(),
           bases=(pytd.NamedType("builtins.object"),),  # not used in solver
           methods=tuple(self._call_traces_to_function(call_records)),
           constants=(),

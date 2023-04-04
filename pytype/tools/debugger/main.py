@@ -40,6 +40,10 @@ def make_parser():
       "--visualize", type=str, action="store",
       dest="visualize_typegraph", default=None,
       help="Generate an HTML visualization of the typegraph.")
+  parser.add_argument(
+      "--visualize-blocks", type=str, action="store",
+      dest="visualize_block_graph", default=None,
+      help="Generate an HTML visualization of the blockgraph.")
   # Add options from pytype-single.
   wrapper = datatypes.ParserWrapper(parser)
   pytype_config.add_all_pytype_options(wrapper)
@@ -61,7 +65,7 @@ def output_graphs(options, context):
 
   if options.visualize_typegraph:
     loader = jinja2.FileSystemLoader(_TEMPLATE_DIR)
-    output = visualizer.generate(
+    output = visualizer.generate_typegraph(
         program=program,
         var_table=context.vm.get_all_named_vars(),
         loader=loader,
@@ -70,6 +74,18 @@ def output_graphs(options, context):
       print(output)
     else:
       with open(options.visualize_typegraph, "w") as f:
+        f.write(output)
+
+  if options.visualize_block_graph:
+    loader = jinja2.FileSystemLoader(_TEMPLATE_DIR)
+    output = visualizer.generate_block_graph(
+        block_graph=context.vm.block_graph,
+        loader=loader,
+    )
+    if options.visualize_block_graph == "-":
+      print(output)
+    else:
+      with open(options.visualize_block_graph, "w") as f:
         f.write(output)
 
 

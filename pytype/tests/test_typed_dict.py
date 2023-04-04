@@ -434,6 +434,18 @@ class TypedDictFunctionalTest(test_base.BaseTest):
         assert_type(a["in"], int)
       """)
 
+  def test_total(self):
+    ty = self.Infer("""
+      from typing_extensions import TypedDict
+      X = TypedDict('X', {'name': str}, total=False)
+      X()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict, total=False):
+        name: str
+    """)
+
 
 _SINGLE = """
   from typing import TypedDict
@@ -627,6 +639,45 @@ class PyiTypedDictTest(test_base.BaseTest):
       class Bar:
         Foo: type[Foo]
     """)
+
+  def test_total_false(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import TypedDict
+      class Foo(TypedDict, total=False):
+        x: str
+        y: int
+    """), ("bar.pyi", """
+      from typing import TypedDict
+      class Bar(TypedDict, total=False):
+        x: str
+        y: int
+    """)]):
+      self.Check("""
+        import foo
+        import bar
+        foo.Foo(x='hello')
+        bar.Bar(x='world')
+      """)
+
+  def test_total_inheritance(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypedDict
+      class Parent1(TypedDict, total=True):
+        x: str
+      class Child1(Parent1, total=False):
+        y: int
+      class Parent2(TypedDict, total=False):
+        x: str
+      class Child2(Parent2, total=True):
+        y: int
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.Child1(x='')
+        foo.Child1(y=0)  # missing-parameter
+        foo.Child2(x='')  # missing-parameter
+        foo.Child2(y=0)
+      """)
 
 
 if __name__ == "__main__":

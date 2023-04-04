@@ -81,6 +81,8 @@ class _EnumTracker:
     else:
       self.members = list(enum_cls.get_enum_members(qualified=True))
     self.uncovered = set(self.members)
+    # The last case in an exhaustive enum match always succeeds.
+    self.implicit_default = None
 
   def cover(self, enum_case):
     assert enum_case.cls == self.enum_cls
@@ -97,10 +99,37 @@ class _BranchTracker:
     self.matches = director.matches
     self._tracker = {}
     self._active_ends = set()
+    # If we analyse the same match statement twice, the second time around we
+    # should not do exhaustiveness and redundancy checks since we have already
+    # tracked all the case branches.
+    self._seen_opcodes = set()
 
   def _add_new_match(self, match_val: abstract.Instance, match_line: int):
     self._tracker[match_line] = _EnumTracker(match_val.cls)
     self._active_ends.add(self.matches.start_to_end[match_line])
+
+  def _is_enum_match(
+      self, match_val: abstract.BaseValue, case_val: abstract.BaseValue
+  ) -> bool:
+    if not (isinstance(match_val, abstract.Instance) and
+            isinstance(match_val.cls, abstract.Class) and
+            match_val.cls.is_enum):
+      return False
+    if not (isinstance(case_val, abstract.Instance) and
+            case_val.cls == match_val.cls):
+      return False
+    return True
+
+  def _get_enum_tracker(
+      self, match_val: abstract.Instance, match_line: int
+  ) -> _EnumTracker:
+    if match_line is None:
+      return None
+    if match_line not in self._tracker:
+      self._add_new_match(match_val, match_line)
+    enum_tracker = self._tracker[match_line]
+    assert match_val.cls == enum_tracker.enum_cls
+    return enum_tracker
 
   def add_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
                  case_var: cfg.Variable) -> Optional[bool]:
@@ -111,26 +140,30 @@ class _BranchTracker:
     except abstract_utils.ConversionError:
       return None
     # We currently only implement exhaustiveness matching for enums.
-    if not (isinstance(match_val, abstract.Instance) and
-            isinstance(match_val.cls, abstract.Class) and
-            match_val.cls.is_enum):
+    if not self._is_enum_match(match_val, case_val):
       return None
-    if not (isinstance(case_val, abstract.Instance) and
-            case_val.cls == match_val.cls):
-      return None
+    if op in self._seen_opcodes:
+      match_line = self.matches.match_cases.get(op.line)
+      enum_tracker = self._get_enum_tracker(match_val, match_line)
+      if not enum_tracker:
+        return None
+      if case_val.cls == enum_tracker.implicit_default.cls:
+        return True
+      else:
+        return None
+    else:
+      self._seen_opcodes.add(op)
     match_line = self.matches.match_cases.get(op.line)
-    if match_line is None:
+    enum_tracker = self._get_enum_tracker(match_val, match_line)
+    if not enum_tracker:
       return None
-    if match_line not in self._tracker:
-      self._add_new_match(match_val, match_line)
-    enum_tracker = self._tracker[match_line]
-    assert match_val.cls == enum_tracker.enum_cls
     if case_val.name in enum_tracker.uncovered:
       enum_tracker.cover(case_val)
       if enum_tracker.uncovered:
         return None
       else:
         # This is the last remaining case, and will always succeed.
+        enum_tracker.implicit_default = case_val
         return True
     else:
       # This has already been covered, and will never succeed.
@@ -206,6 +239,8 @@ class VirtualMachine:
         Tuple[Optional[List[abstract.BaseValue]], ...]
     ]] = []
     # pyformat: enable
+    # Store the ordered bytecode after all preprocessing is done
+    self.block_graph = None
     # Track the order of creation of local vars, for attrs and dataclasses.
     self.local_ops: Dict[str, List[LocalOp]] = {}
     # Record the annotated and original values of locals.
@@ -491,7 +526,9 @@ class VirtualMachine:
         python_exe=self.ctx.options.python_exe,
         filename=filename,
         mode=mode)
-    return blocks.process_code(code, self.ctx.python_version)
+    code, block_graph = blocks.process_code(code, self.ctx.python_version)
+    self.block_graph = block_graph
+    return code
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
     """Run the given bytecode."""

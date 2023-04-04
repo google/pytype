@@ -44,7 +44,7 @@ class TestFolding(test_base.UnitTest):
         src, filename="test_input.py", python_version=self.python_version,
         python_exe=exe, mode=mode)
     code = pyc.parse_pyc_string(pyc_data)
-    code = blocks.process_code(code, self.python_version)
+    code, _ = blocks.process_code(code, self.python_version)
     return code
 
   def _find_load_folded(self, code):

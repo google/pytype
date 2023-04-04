@@ -894,8 +894,11 @@ class Converter(utils.ContextWeakrefMixin):
       slots = v.slots
 
     metaclass = v.metaclass(node)
-    if metaclass is not None:
+    if metaclass is None:
+      keywords = ()
+    else:
       metaclass = metaclass.get_instance_type(node)
+      keywords = (("metaclass", metaclass),)
 
     # Some of the class's bases may not be in global scope, so they won't show
     # up in the output. In that case, fold the base class's type information
@@ -957,7 +960,7 @@ class Converter(utils.ContextWeakrefMixin):
       final_constants.append(pytd.Constant(name, builder.build(), value))
 
     cls = pytd.Class(name=class_name,
-                     metaclass=metaclass,
+                     keywords=keywords,
                      bases=tuple(bases),
                      methods=tuple(methods.values()),
                      constants=tuple(final_constants),
@@ -982,15 +985,18 @@ class Converter(utils.ContextWeakrefMixin):
       assert False, f"Unexpected type variable type: {type(v)}"
 
   def _typed_dict_to_def(self, node, v, name):
+    keywords = []
+    if not v.props.total:
+      keywords.append(("total", pytd.Literal(False)))
+    bases = (pytd.NamedType("typing.TypedDict"),)
     constants = []
     for k, var in v.props.fields.items():
       typ = pytd_utils.JoinTypes(
           self.value_instance_to_pytd_type(node, p, None, set(), {})
           for p in var.data)
       constants.append(pytd.Constant(k, typ))
-    bases = (pytd.NamedType("typing.TypedDict"),)
     return pytd.Class(name=name,
-                      metaclass=None,
+                      keywords=tuple(keywords),
                       bases=bases,
                       methods=(),
                       constants=tuple(constants),

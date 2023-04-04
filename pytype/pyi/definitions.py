@@ -377,7 +377,7 @@ class Definitions:
     cls_name = escape.pack_newtype_base_class(
         name, len(self.generated_classes[name]))
     cls = pytd.Class(name=cls_name,
-                     metaclass=None,
+                     keywords=(),
                      bases=(typ,),
                      methods=tuple(methods),
                      constants=(),
@@ -403,7 +403,7 @@ class Definitions:
     self.add_import("typing", ["NamedTuple"])
     return pytd.NamedType(nt.name)
 
-  def new_typed_dict(self, name, items, total):
+  def new_typed_dict(self, name, items, keywords):
     """Returns a type for a TypedDict.
 
     This method is currently called only for TypedDict objects defined via
@@ -416,16 +416,22 @@ class Definitions:
     Args:
       name: the name of the TypedDict instance, e.g., "'Foo'".
       items: a {key: value_type} dict, e.g., {"'a'": "int", "'b'": "str"}.
-      total: A tuple of a single kwarg, e.g., ("total", NamedType("False")), or
-        None when no kwarg is passed.
+      keywords: A sequence of kwargs passed to the function.
     """
-    # TODO(rechen): support total (https://github.com/google/pytype/issues/1195)
-    del total  # unused
     cls_name = escape.pack_typeddict_base_class(
         name, len(self.generated_classes[name]))
+    processed_keywords = []
+    for k in keywords:
+      if k.arg != "total":
+        raise ParseError(f"Unexpected kwarg {k.arg!r} passed to TypedDict")
+      if (not isinstance(k.value, types.Pyval) or
+          not isinstance(k.value.value, bool)):
+        raise ParseError(
+            f"Illegal value {k.value!r} for 'total' kwarg to TypedDict")
+      processed_keywords.append((k.arg, k.value.to_pytd_literal()))
     constants = tuple(pytd.Constant(k, v) for k, v in items.items())
     cls = pytd.Class(name=cls_name,
-                     metaclass=None,
+                     keywords=tuple(processed_keywords),
                      bases=(pytd.NamedType("typing.TypedDict"),),
                      methods=(),
                      constants=constants,
@@ -656,7 +662,7 @@ class Definitions:
   ) -> pytd.Class:
     """Build a pytd.Class from definitions collected from an ast node."""
     bases = classdef.get_bases(bases)
-    metaclass = classdef.get_metaclass(keywords)
+    keywords = classdef.get_keywords(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
     # Make sure we don't have duplicate definitions.
@@ -705,7 +711,8 @@ class Definitions:
       # do the same here.
       bases = (pytd.NamedType("object"),)
 
-    return pytd.Class(name=class_name, metaclass=metaclass,
+    return pytd.Class(name=class_name,
+                      keywords=tuple(keywords),
                       bases=tuple(bases),
                       methods=tuple(methods),
                       constants=tuple(constants),

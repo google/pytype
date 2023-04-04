@@ -69,7 +69,7 @@ class TypedDictBuilder(abstract.PyTDClass):
     return node, cls_var
 
   def _extract_param(self, args, pos, name, pyval_type, typ):
-    var = args.posargs[pos]
+    var = args.namedargs[name] if pos is None else args.posargs[pos]
     try:
       return abstract_utils.get_atomic_python_constant(var, pyval_type)
     except abstract_utils.ConversionError as e:
@@ -82,8 +82,14 @@ class TypedDictBuilder(abstract.PyTDClass):
     name = self._extract_param(args, 0, "name", str, self.ctx.convert.str_type)
     fields = self._extract_param(
         args, 1, "fields", dict, self.ctx.convert.dict_type)
+    if "total" in args.namedargs:
+      total = self._extract_param(args, None, "total", bool,
+                                  self.ctx.convert.bool_type)
+    else:
+      total = True
+    required = set(fields) if total else set()
     props = TypedDictProperties(
-        name=name, fields=fields, required=set(fields.keys()), total=True)
+        name=name, fields=fields, required=required, total=total)
     return props
 
   def _validate_bases(self, cls_name, bases):
@@ -154,11 +160,15 @@ class TypedDictBuilder(abstract.PyTDClass):
     cls_var = cls.to_variable(node)
     return node, cls_var
 
-  def make_class_from_pyi(self, cls_name, pytd_cls, total=True):
+  def make_class_from_pyi(self, cls_name, pytd_cls):
     """Make a TypedDictClass from a pyi class."""
     # NOTE: Returns the abstract class, not a variable.
     name = pytd_cls.name or cls_name
-    if total is None:
+    for k, v in pytd_cls.keywords:
+      if k == "total":
+        total = v.value
+        break
+    else:
       total = True
     props = TypedDictProperties(
         name=name, fields={}, required=set(), total=total)

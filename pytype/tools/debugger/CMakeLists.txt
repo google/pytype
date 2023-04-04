@@ -22,6 +22,8 @@ py_library(
     __init__.py
     visualizer.py
   DEPS
+    pytype.blocks.blocks
+    pytype.blocks.block_serializer
     pytype.typegraph.cfg
     pytype.typegraph.typegraph_serializer
 )

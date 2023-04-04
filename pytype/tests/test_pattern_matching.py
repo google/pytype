@@ -404,6 +404,43 @@ class MatchClassTest(test_base.BaseTest):
       def f(x: A) -> bool: ...
     """)
 
+  def test_builtin(self):
+    ty = self.Infer("""
+      def f(x: str):
+        match x:
+          case str(y):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: str) -> str: ...
+    """)
+
+  def test_builtin_kwargs(self):
+    ty = self.Infer("""
+      def f(x: str):
+        match x:
+          case str(y, kwarg=z):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: str) -> int: ...
+    """)
+
+  def test_builtin_too_many_params(self):
+    err = self.CheckWithErrors("""
+      def f(x: str):
+        match x:
+          case str(x, y):  # match-error[e]
+            return y
+          case _:
+            return 42
+    """)
+    self.assertErrorSequences(err, {"e": ["str()", "accepts 1", "2 given"]})
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):
@@ -820,6 +857,40 @@ class MatchCoverageTest(test_base.BaseTest):
             case foo.A.BASIC:
               return 'basic'
       """)
+
+  def call_function_with_match(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case (Color.GREEN |
+              Color.BLUE):
+            return 'a'
+
+      a = f(Color.RED)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      a: int | str
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int | str: ...
+    """)
 
 
 if __name__ == "__main__":

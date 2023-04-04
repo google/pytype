@@ -7,7 +7,7 @@ import itertools
 import logging
 import re
 import reprlib
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence, Tuple, Union
 
 from pytype import overriding_checks
 from pytype import state as frame_state
@@ -36,6 +36,12 @@ _repr_obj.maxstring = _TRUNCATE_STR
 repper = _repr_obj.repr
 
 _FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
+
+# Classes supporting pattern matching without an explicit __match_args__
+_BUILTIN_MATCHERS = (
+    "bool", "bytearray", "bytes", "dict", "float", "frozenset", "int", "list",
+    "set", "str", "tuple"
+)
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -1050,6 +1056,22 @@ class ClassMatch:
   values: Optional[cfg.Variable]
 
 
+def _match_builtin_class(
+    node, success: bool, instance_var: cfg.Variable, cls: abstract.Class,
+    keys: Tuple[str], posarg_count: int, ctx
+) -> ClassMatch:
+  """Match a builtin class with a single posarg constructor."""
+  if posarg_count > 1:
+    ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count, 1)
+    return ClassMatch(False, None)
+  elif keys:
+    # Builtin matchers do not take kwargs
+    return ClassMatch(False, None)
+  else:
+    ret = [instance_var.AssignToNewVariable(node)]
+    return ClassMatch(success, ctx.convert.build_tuple(node, ret))
+
+
 def match_class(
     node,
     obj_var: cfg.Variable,
@@ -1069,7 +1091,12 @@ def match_class(
     success = True
   else:
     return ClassMatch(False, None)
+
   if posarg_count:
+    if isinstance(cls, abstract.PyTDClass) and cls.name in _BUILTIN_MATCHERS:
+      return _match_builtin_class(
+          node, success, instance_var, cls, keys, posarg_count, ctx)
+
     if posarg_count > len(cls.match_args):
       ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count,
                                        len(cls.match_args))

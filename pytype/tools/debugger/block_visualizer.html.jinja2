@@ -1,0 +1,128 @@
+{# Context schema:
+  * cytoscape_url: string. The path to the Cytoscape library.
+  * dagre_url: string. The path to the Dagre library.
+  * cytoscape_dagre_url: string. The path to the cytoscape-dagre library.
+  * program: string. The JSON encoding of a pytype.typegraph.cfg.Program. Should
+    be created by typegraph_serializer.encode_program.
+  * var_table: dict[int, str]. A mapping of Variable IDs to names.
+#}
+<!doctype html>
+
+<html>
+
+<head>
+    <title>Pytype Block Graph Visualizer</title>
+    <script src="{{cytoscape_url}}"></script>
+    <script src="{{dagre_url}}"></script>
+    <script src="{{cytoscape_dagre_url}}"></script>
+</head>
+
+<style>
+    #cy {
+        width: 100%;
+        height: 100%;
+        position: absolute;
+        top: 0px;
+        left: 0px;
+        z-index: 0;
+    }
+</style>
+
+<body>
+    <div id="cy"></div>
+    <script>
+      const layout_options = {
+        name: 'dagre',
+        nodeDimensionsIncludeLabels: true,
+        nodeSep: 1,
+      };
+      const style = [
+        // All graph nodes have their text centered by default. They are
+        // labeled using their name, with black text with a white outline.
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(code)',
+            'text-wrap': 'wrap',
+            'text-halign': 'right',
+            'text-valign': 'center',
+            'font-family': 'monospace',
+          },
+        },
+        {
+          selector: '.block_node',
+          style: {
+            'shape': 'rectangle',
+          },
+        },
+        // All edges have the 'bezier' curve style, which works for multiple
+        // edges between the two nodes and enables all arrow shapes.
+        {
+          selector: 'edge',
+          style: {
+            'curve-style': 'bezier',
+          },
+        },
+        {# edge from Block to Block #}
+        {
+          selector: '.block_edge',
+          style: {
+            'line-color': '#000',
+            'width': 4,
+            'target-arrow-color': '#f00',
+            'target-arrow-shape': 'triangle',
+          },
+        },
+        {# Used for animating nodes that appear #}
+        {
+          selector: '.highlight_node',
+          style: {
+            'border-color': 'blue',
+            'border-width': 3,
+            'line-color': 'blue',
+          },
+        },
+        {# This style is last so that it matches every node with the "hidden_node" class. #}
+        {
+          selector: '.hidden_node',
+          style: {
+            'display': 'none',
+          },
+        },
+      ];
+      const cy = cytoscape({
+        container: document.getElementById('cy'),
+        data: {
+          layout_options: layout_options,
+        },
+        elements: [],
+        style: style,
+      });
+
+      {% include "block_visualizer.js" %}
+      const code = {{graph_data}};
+
+      const vis = new Visualizer(cy, code);
+
+      const legend_cy = cytoscape({
+        container: document.getElementById('legend-cy'),
+        data: {
+          layout_options: {
+            ...layout_options
+          }
+        },
+        elements: vis.gen_legend(),
+        style: style,
+        {# these options make the legend non-interactive. #}
+        autoLock: true,
+        autoungrabify: true,
+        autounselectify: true,
+        userZoomingEnabled: false,
+        userPanningEnabled: false,
+        boxSelectionEnabled: false,
+      });
+      legend_cy.layout(legend_cy.data('layout_options')).run();
+    </script>
+</body>
+</html>
+{# end of template #}

@@ -327,8 +327,16 @@ class PrintVisitor(base_visitor.Visitor):
     # If object is the only base, we don't need to list any bases.
     if bases == ("object",):
       bases = ()
-    if node.metaclass is not None:
-      bases += ("metaclass=" + node.metaclass,)
+    keywords = []
+    for k, v in node.keywords:
+      vmatch = re.fullmatch(r"Literal\[(.+)\]", v)
+      if vmatch:
+        self._typing_import_counts["Literal"] -= 1
+        vprint = vmatch.group(1)
+      else:
+        vprint = v
+      keywords.append(f"{k}={vprint}")
+    bases += tuple(keywords)
     bases_str = f"({', '.join(bases)})" if bases else ""
     header = [f"class {node.name}{bases_str}:"]
     if node.slots is not None:

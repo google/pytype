@@ -118,7 +118,7 @@ class DirectorTestCase(unittest.TestCase):
     self._errorlog = errors.ErrorLog()
     if self.python_version < (3, 8):
       raw_code = pyc.compile_src(src, _TEST_FILENAME, self.python_version, None)
-      code = blocks.process_code(raw_code, self.python_version)
+      code, _ = blocks.process_code(raw_code, self.python_version)
     else:
       code = None
     self._director = directors.Director(

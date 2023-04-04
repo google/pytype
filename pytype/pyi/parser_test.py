@@ -2510,8 +2510,20 @@ class TypedDictTest(parser_test_base.ParserTestBase):
 
       X = typeddict_X_0
 
-      class typeddict_X_0(typing.TypedDict): ...
+      class typeddict_X_0(typing.TypedDict, total=False): ...
     """)
+
+  def test_function_syntax_unexpected_kwarg(self):
+    self.check_error("""
+      from typing import TypedDict
+      X = TypedDict('X', {}, oops=True)
+    """, 2, "Unexpected kwarg 'oops' passed to TypedDict")
+
+  def test_function_syntax_bad_total_value(self):
+    self.check_error("""
+      from typing import TypedDict
+      X = TypedDict('X', {}, total='oops')
+    """, 2, "Illegal value LITERAL('oops') for 'total' kwarg to TypedDict")
 
   def test_trailing_comma(self):
     self.check("""
@@ -2539,7 +2551,7 @@ class TypedDictTest(parser_test_base.ParserTestBase):
     """, """
       from typing import TypedDict
 
-      class Foo(TypedDict): ...
+      class Foo(TypedDict, total=False): ...
     """)
 
   def test_typing_extensions(self):
@@ -2550,7 +2562,7 @@ class TypedDictTest(parser_test_base.ParserTestBase):
     """, """
       from typing_extensions import TypedDict
 
-      class Foo(TypedDict): ...
+      class Foo(TypedDict, total=False): ...
     """)
 
   def test_multiple_classdef_kwargs(self):
@@ -2561,7 +2573,7 @@ class TypedDictTest(parser_test_base.ParserTestBase):
     """, """
       from typing import TypedDict
 
-      class Foo(TypedDict, metaclass=Meta): ...
+      class Foo(TypedDict, total=False, metaclass=Meta): ...
     """)
 
   def test_total_in_subclass(self):
@@ -2577,7 +2589,7 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       class Foo(TypedDict):
           x: str
 
-      class Bar(Foo):
+      class Bar(Foo, total=False):
           y: int
     """)
 
