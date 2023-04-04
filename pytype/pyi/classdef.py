@@ -3,9 +3,9 @@
 import collections
 import sys
 
-from typing import Dict, List
+from typing import cast, Dict, List
 
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import types
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd.parse import node as pytd_node
@@ -19,6 +19,7 @@ else:
 
 
 _PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
+ParseError = types.ParseError
 
 
 def get_bases(bases: List[pytd.Type]) -> List[pytd.Type]:
@@ -47,20 +48,23 @@ def get_bases(bases: List[pytd.Type]) -> List[pytd.Type]:
   return bases_out
 
 
-def get_metaclass(keywords: List[ast3.keyword]):
-  """Scan keywords for a metaclass."""
+def get_keywords(keywords: List[ast3.keyword]):
+  """Get valid class keywords."""
 
+  valid_keywords = []
   for k in keywords:
     keyword, value = k.arg, k.value
+    # TODO(rechen): We should validate in load_pytd that "total" is passed only
+    # to TypedDict subclasses. We can't do the validation here because external
+    # types need to be resolved first.
     if keyword not in ("metaclass", "total"):
       raise ParseError(f"Unexpected classdef kwarg {keyword!r}")
-    # TODO(rechen): We should store the "total" value instead of throwing it
-    # away and validate in load_pytd that "total" is passed only to TypedDict
-    # subclasses. We can't do the validation here because external types need to
-    # be resolved first.
-    if keyword == "metaclass":
-      return value
-  return None
+    if isinstance(value, types.Pyval):
+      pytd_value = value.to_pytd_literal()
+    else:
+      pytd_value = cast(pytd.Type, value)
+    valid_keywords.append((keyword, pytd_value))
+  return valid_keywords
 
 
 def get_decorators(decorators: List[str], type_map: Dict[str, pytd_node.Node]):

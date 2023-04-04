@@ -685,7 +685,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     elif node.func.id in _TYPING_NAMEDTUPLE_IDS + _COLL_NAMEDTUPLE_IDS:
       return self.defs.new_named_tuple(*node.args)
     elif node.func.id in _TYPEDDICT_IDS:
-      return self.defs.new_typed_dict(*node.args, total=False)
+      return self.defs.new_typed_dict(*node.args, node.keywords)
     elif node.func.id in _NEWTYPE_IDS:
       return self.defs.new_new_type(*node.args)
     # Convert all other calls to NamedTypes; for example:

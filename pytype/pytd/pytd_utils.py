@@ -431,7 +431,7 @@ def MergeBaseClass(cls, base):
   else:
     slots = base.slots
   return pytd.Class(name=cls.name,
-                    metaclass=cls.metaclass or base.metaclass,
+                    keywords=cls.keywords or base.keywords,
                     bases=bases,
                     methods=methods,
                     constants=constants,

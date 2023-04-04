@@ -34,7 +34,7 @@ class NamedTuple:
     class_base = pytd.NamedType("typing.NamedTuple")
     class_constants = tuple(pytd.Constant(n, t) for n, t in fields)
     return pytd.Class(name=class_name,
-                      metaclass=None,
+                      keywords=(),
                       bases=(class_base,),
                       methods=(),
                       constants=class_constants,

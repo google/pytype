@@ -47,7 +47,7 @@ class CanonicalOrderingVisitor(base_visitor.Visitor):
       constants = sorted(node.constants)
     return pytd.Class(
         name=node.name,
-        metaclass=node.metaclass,
+        keywords=node.keywords,
         bases=node.bases,
         methods=tuple(sorted(node.methods)),
         constants=tuple(constants),

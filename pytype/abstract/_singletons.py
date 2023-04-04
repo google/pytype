@@ -124,7 +124,7 @@ class Unknown(_base.BaseValue):
       methods = ()
     return pytd.Class(
         name=class_name,
-        metaclass=None,
+        keywords=(),
         bases=(pytd.NamedType("builtins.object"),),
         methods=methods,
         constants=tuple(pytd.Constant(name, Unknown._to_pytd(node, c))
