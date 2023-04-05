@@ -760,6 +760,23 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       breakpoint()
     """)
 
+  def test_range_with_index(self):
+    self.Check("""
+      class C:
+        def __index__(self) -> int:
+          return 2
+      range(C())
+    """)
+
+  def test_getitem_with_index(self):
+    self.Check("""
+      class C:
+        def __index__(self) -> int:
+          return 2
+      x = [7, 8, 9]
+      print(x[C()])
+    """)
+
 
 class TypesNoneTypeTest(test_base.BaseTest):
   """Tests for types.NoneType."""
