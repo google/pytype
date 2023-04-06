@@ -24,7 +24,6 @@ class TestDataclass(test_base.BaseTest):
         x: bool
         y: int
         z: str
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, x: bool, y: int, z: str) -> None: ...
     """)
 
@@ -43,7 +42,6 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: Foo
         y: str
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[Foo, str]]]
         def __init__(self, x: Foo, y: str) -> None: ...
     """)
 
@@ -63,9 +61,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, Union
       @dataclasses.dataclass
       class Foo:
-        x: str
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+        x: str = ...
+        y: int = ...
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
 
@@ -84,9 +81,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, Union
       @dataclasses.dataclass
       class Foo:
-        x: str
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+        x: str = ...
+        y: int = ...
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
     self.assertErrorRegexes(
@@ -109,7 +105,6 @@ class TestDataclass(test_base.BaseTest):
         x: bool
         y: int
         z: str
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
     """)
 
   def test_explicit_init(self):
@@ -130,7 +125,6 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: bool
         y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, a: bool) -> None: ...
     """)
 
@@ -148,9 +142,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, List, Union
       @dataclasses.dataclass
       class Foo:
-        x: bool
-        y: List[int]
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[bool, List[int]]]]
+        x: bool = ...
+        y: List[int] = ...
         def __init__(self, x: bool = ..., y: List[int] = ...) -> None: ...
     """)
 
@@ -214,9 +207,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict
       @dataclasses.dataclass
       class Foo:
-        x: bool
+        x: bool = ...
         y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: bool = ...) -> None: ...
     """)
 
@@ -235,7 +227,6 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: bool
         y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: bool, y: int) -> None: ...
     """)
 
@@ -292,9 +283,8 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo:
         w: float
-        x: bool
+        x: bool = ...
         y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, float]]]
         def __init__(self, w: float, x: bool = ...) -> None: ...
       class Bar(Foo):
         def get_w(self) -> float: ...
@@ -321,15 +311,13 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo:
         w: float
-        x: bool
+        x: bool = ...
         y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, float]]]
         def __init__(self, w: float, x: bool = ...) -> None: ...
       @dataclasses.dataclass
       class Bar(Foo):
         w: int
-        z: bool
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+        z: bool = ...
         def __init__(self, w: int, x: bool = ..., z: bool = ...) -> None: ...
     """)
 
@@ -352,17 +340,14 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class A:
         a: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, a: int) -> None: ...
       @dataclasses.dataclass
       class B:
         b: str
-        __dataclass_fields__: Dict[str, dataclasses.Field[str]]
         def __init__(self, b: str) -> None: ...
       @dataclasses.dataclass
       class C(B, A):
         c: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
         def __init__(self, a: int, b: str, c: int) -> None: ...
     """)
 
@@ -441,26 +426,22 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class IntLeaf:
           value: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
           def __init__(self, value: int) -> None: ...
 
       @dataclasses.dataclass
       class StrLeaf:
           label: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[str]]
           def __init__(self, label: str) -> None: ...
 
       @dataclasses.dataclass
       class Tree:
           children: Union[IntLeaf, StrLeaf, Tree]
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[IntLeaf, StrLeaf, Tree]]]
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
           def get_children(self) -> Union[IntLeaf, StrLeaf, Tree]: ...
           def get_leaf(self) -> int: ...
 
       @dataclasses.dataclass
       class Root(Tree):
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[IntLeaf, StrLeaf, Tree]]]
           def __init__(self, children: Union[IntLeaf, StrLeaf, Tree]) -> None: ...
 
       def get_value(x: Root) -> Optional[Union[int, str]]: ...
@@ -494,8 +475,7 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, Union
       @dataclasses.dataclass
       class A:
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+        y: int = ...
         def __init__(self, x: str, y: int = ...) -> None: ...
     """)
 
@@ -513,9 +493,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, Union
       @dataclasses.dataclass
       class A:
-        x: dataclasses.InitVar[str]
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+        x: dataclasses.InitVar[str] = ...
+        y: int = ...
         def __init__(self, x: str = ..., y: int = ...) -> None: ...
     """)
 
@@ -537,9 +516,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, Union
       @dataclasses.dataclass
       class A:
-        x: dataclasses.InitVar[str]
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str, Foo]]]
+        x: dataclasses.InitVar[str] = ...
+        y: int = ...
         def __init__(self, w: Foo, x: str = ..., y: int = ...) -> None: ...
 
       class Foo: ...
@@ -563,14 +541,12 @@ class TestDataclass(test_base.BaseTest):
       from typing import Dict, Union
       @dataclasses.dataclass
       class A:
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+        y: int = ...
         def __init__(self, x: str, y: int = ...) -> None: ...
 
       @dataclasses.dataclass
       class B(A):
-        z: dataclasses.InitVar[int]
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+        z: dataclasses.InitVar[int] = ...
         def __init__(self, x: str, y: int = ..., z: int = ...) -> None: ...
     """)
 
@@ -589,9 +565,8 @@ class TestDataclass(test_base.BaseTest):
       from typing import ClassVar, Dict
       @dataclasses.dataclass
       class Foo:
-        y: str
+        y: str = ...
         x: ClassVar[int]
-        __dataclass_fields__: Dict[str, dataclasses.Field[str]]
         def __init__(self, y: str = ...) -> None: ...
     """)
 
@@ -616,13 +591,11 @@ class TestDataclass(test_base.BaseTest):
         @dataclasses.dataclass
         class Inner:
           a: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
           def __init__(self, a: int) -> None: ...
       class Bar:
         @dataclasses.dataclass
         class Inner:
           b: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[str]]
           def __init__(self, b: str) -> None: ...
       Inner1 = Foo.Inner
       Inner2 = Bar.Inner
@@ -654,9 +627,8 @@ class TestDataclass(test_base.BaseTest):
       def field_wrapper(**kwargs) -> Any: ...
       @dataclasses.dataclass
       class Foo:
-        x: int
-        y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+        x: int = ...
+        y: int = ...
         def __init__(self, x: int = ..., y: int = ...) -> None: ...
     """)
 
@@ -678,7 +650,6 @@ class TestDataclass(test_base.BaseTest):
       class Foo:
         x: bool
         y: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         z: Annotated[str, 'property']
         def __init__(self, x: bool, y: int) -> None: ...
     """)
@@ -703,7 +674,6 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo(Generic[T]):
         x: T
-        __dataclass_fields__: Dict[str, dataclasses.Field[T]]
         def __init__(self, x: T) -> None:
           self = Foo[T]
       foo1: Foo[int]
@@ -769,6 +739,22 @@ class TestPyiDataclass(test_base.BaseTest):
         x = foo.A(10, 'hello')
       """, pythonpath=[d.path])
 
+  def test_protocol(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("foo.pyi", """
+        from dataclasses import dataclass
+        @dataclass
+        class A:
+          x: int
+          y: str
+      """)
+      self.Check("""
+        import foo
+        import dataclasses
+        x = foo.A(10, 'hello')
+        y = dataclasses.fields(x)
+      """, pythonpath=[d.path])
+
   def test_type_mismatch(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -805,8 +791,7 @@ class TestPyiDataclass(test_base.BaseTest):
         from typing import Dict, Union
         @dataclasses.dataclass
         class Foo(foo.A):
-          z: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+          z: str = ...
           def __init__(self, x: bool, y: int, z: str = ...) -> None: ...
       """)
 
@@ -836,8 +821,7 @@ class TestPyiDataclass(test_base.BaseTest):
         from typing import Dict, Union
         @dataclasses.dataclass
         class Foo(foo.B):
-          a: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+          a: str = ...
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
       """)
 
@@ -870,8 +854,7 @@ class TestPyiDataclass(test_base.BaseTest):
         from typing import Dict, Union
         @dataclasses.dataclass
         class Foo(foo.B):
-          a: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+          a: str = ...
           def __init__(self, x: bool, y: int, z: str, a: str = ...) -> None: ...
       """)
 
@@ -904,8 +887,7 @@ class TestPyiDataclass(test_base.BaseTest):
         from typing import Dict, Union
         @dataclasses.dataclass
         class Foo(foo.B):
-          a: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+          a: str = ...
           def __init__(self, x: bool, y: int = ..., z: str = ..., a: str = ...) -> None: ...
       """)
 
@@ -932,8 +914,7 @@ class TestPyiDataclass(test_base.BaseTest):
         from typing import Dict, Union
         @dataclasses.dataclass
         class Foo(foo.A):
-          z: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+          z: str = ...
           def __init__(self, y: int, z: str = ...) -> None: ...
       """)
 
@@ -964,8 +945,7 @@ class TestPyiDataclass(test_base.BaseTest):
         from typing import Annotated, Dict, Union
         @dataclasses.dataclass
         class Foo(foo.A):
-          a: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
+          a: str = ...
           b: Annotated[int, 'property']
           def __init__(self, x: bool, y: int, a: str = ...) -> None: ...
       """)
@@ -1024,7 +1004,6 @@ class TestPyiDataclass(test_base.BaseTest):
         @dataclasses.dataclass
         class B(foo.A):
           w: int
-          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, x, y: str, z: list, w: int) -> None: ...
       """)
 
@@ -1053,7 +1032,6 @@ class TestPyiDataclass(test_base.BaseTest):
         @dataclasses.dataclass
         class C(foo.A):
           w: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, foo.B]]]
           def __init__(self, x: foo.B, w: int) -> None: ...
       """)
 
@@ -1075,7 +1053,6 @@ class TestPyiDataclass(test_base.BaseTest):
       class Foo(Generic[T]):
         x: str
         y: T
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[str, T]]]
         def __init__(self, x: str, y: T) -> None:
             self = Foo[T]
     """)
@@ -1101,13 +1078,11 @@ class TestPyiDataclass(test_base.BaseTest):
       class Foo(Generic[T]):
         x: str
         y: T
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[str, T]]]
         def __init__(self, x: str, y: T) -> None:
             self = Foo[T]
       @dataclasses.dataclass
       class Bar(Foo[int]):
         z: float
-        __dataclass_fields__: Dict[str, dataclasses.Field[Union[float, int, str]]]
         def __init__(self, x: str, y: int, z: float) -> None: ...
     """)
 
@@ -1158,8 +1133,7 @@ class TestPyiDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class A:
           a1: int
-          a2: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          a2: int = ...
           def __init__(self, *, a1: int, a2: int = ...) -> None: ...
     """)
 
@@ -1186,13 +1160,11 @@ class TestPyiDataclass(test_base.BaseTest):
       class A:
           a1: int
           a2: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
           def __init__(self, *, a1: int, a2: int = ...) -> None: ...
 
       @dataclasses.dataclass
       class B(A):
           b1: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
           def __init__(self, b1: int, *, a1: int, a2: int = ...) -> None: ...
     """)
 
@@ -1217,14 +1189,12 @@ class TestPyiDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class A:
           a1: int
-          a2: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
+          a2: int = ...
           def __init__(self, a1: int, *, a2: int = ...) -> None: ...
 
       @dataclasses.dataclass
       class B(A):
           b1: int
-          __dataclass_fields__: Dict[str, dataclasses.Field[int]]
           def __init__(self, a1: int, b1: int, *, a2: int = ...) -> None: ...
     """)
 

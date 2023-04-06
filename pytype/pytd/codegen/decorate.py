@@ -52,8 +52,11 @@ def check_defaults(fields: Iterable[pytd.Constant], cls_name: str):
 
 
 def check_class(cls: pytd.Class) -> None:
-  fields = get_attributes(cls)
-  check_defaults(fields, cls.name)
+  if not has_init(cls):
+    # Check that we would generate a valid __init__ (without non-defaults
+    # following defaults)
+    fields = get_attributes(cls)
+    check_defaults(fields, cls.name)
 
 
 def add_init_from_fields(
@@ -86,12 +89,51 @@ def get_attributes(cls: pytd.Class):
   return tuple(attributes)
 
 
+def has_init(cls: pytd.Class) -> bool:
+  """Check if the class has an explicit __init__ method."""
+  return any(x.name == "__init__" for x in cls.methods)
+
+
 def add_generated_init(cls: pytd.Class) -> pytd.Class:
   # Do not override an __init__ from the pyi file
-  if any(x.name == "__init__" for x in cls.methods):
+  if has_init(cls):
     return cls
   fields = get_attributes(cls)
   return add_init_from_fields(cls, fields)
+
+
+def add_attrs_attrs(cls: pytd.Class) -> pytd.Class:
+  fields = get_attributes(cls)
+  types = (x.type for x in fields if x.name != "__attrs_attrs__")
+  base = pytd.LateType("builtins.tuple")
+  params = pytd.GenericType(pytd.LateType("attr.Attribute"),
+                            (pytd.UnionType(types),))
+  aa = pytd.GenericType(base, (params,))
+  attrs_attrs = pytd.Constant("__attrs_attrs__", aa)
+  constants = cls.constants + (attrs_attrs,)
+  return cls.Replace(constants=constants)
+
+
+def decorate_attrs(cls: pytd.Class) -> pytd.Class:
+  cls = add_generated_init(cls)
+  return add_attrs_attrs(cls)
+
+
+def add_dataclass_fields(cls: pytd.Class) -> pytd.Class:
+  fields = get_attributes(cls)
+  types = (x.type for x in fields if x.name != "__dataclass_fields__")
+  k = pytd.LateType("builtins.str")
+  v = pytd.GenericType(pytd.LateType("dataclasses.Field"),
+                       (pytd.UnionType(types),))
+  df = pytd.GenericType(pytd.LateType("builtins.dict"), (k, v))
+  dataclass_fields = pytd.Constant("__dataclass_fields__", df)
+  constants = cls.constants + (dataclass_fields,)
+  return cls.Replace(constants=constants)
+
+
+def decorate_dataclass(cls: pytd.Class) -> pytd.Class:
+  cls = add_generated_init(cls)
+  return add_dataclass_fields(cls)
 
 
 def process_class(cls: pytd.Class) -> Tuple[pytd.Class, bool]:
@@ -114,10 +156,11 @@ def validate_class(cls: pytd.Class) -> None:
 # "auto_attribs=True" to @attr.s decorators in pyi files.
 
 _DECORATORS = {
-    "dataclasses.dataclass": add_generated_init,
-    "attr.s": add_generated_init,
-    "attr.attrs": add_generated_init,
-    "attr._make.attrs": add_generated_init,
+    "dataclasses.dataclass": decorate_dataclass,
+    "attr.s": decorate_attrs,
+    "attr.attrs": decorate_attrs,
+    "attr._make.attrs": decorate_attrs,
+    "attr.define": decorate_attrs,
 }
 
 
@@ -126,4 +169,5 @@ _VALIDATORS = {
     "attr.s": check_class,
     "attr.attrs": check_class,
     "attr._make.attrs": check_class,
+    "attr.define": check_class,
 }

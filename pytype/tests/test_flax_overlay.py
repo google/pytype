@@ -36,7 +36,6 @@ class TestStructDataclass(test_base.BaseTest):
           x: bool
           y: int
           z: str
-          __dataclass_fields__: Dict[str, dataclasses.Field[Union[int, str]]]
           def __init__(self, x: bool, y: int, z: str) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -98,8 +97,7 @@ class TestLinenModule(test_base.BaseTest):
         @dataclasses.dataclass
         class Foo(nn.module.Module):
           x: bool
-          y: int
-          __dataclass_fields__: Dict[str, dataclasses.Field]
+          y: int = ...
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -120,8 +118,7 @@ class TestLinenModule(test_base.BaseTest):
         @dataclasses.dataclass
         class Foo(module.Module):
           x: bool
-          y: int
-          __dataclass_fields__: Dict[str, dataclasses.Field]
+          y: int = ...
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -143,8 +140,7 @@ class TestLinenModule(test_base.BaseTest):
         @dataclasses.dataclass
         class Foo(flax.linen.module.Module):
           x: bool
-          y: int
-          __dataclass_fields__: Dict[str, dataclasses.Field]
+          y: int = ...
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -165,8 +161,7 @@ class TestLinenModule(test_base.BaseTest):
         @dataclasses.dataclass
         class Foo(linen.module.Module):
           x: bool
-          y: int
-          __dataclass_fields__: Dict[str, dataclasses.Field]
+          y: int = ...
           def __init__(self, x: bool, y: int = ..., name: str = ..., parent = ...) -> None: ...
           def replace(self: _TFoo, **kwargs) -> _TFoo: ...
       """)
@@ -230,7 +225,6 @@ class TestLinenModule(test_base.BaseTest):
       @dataclasses.dataclass
       class Bar(foo.Foo):
         x: int
-        __dataclass_fields__: Dict[str, dataclasses.Field]
         def __init__(
             self, x: int, name: str = ..., parent: Any = ...) -> None: ...
         def replace(self: _TBar, **kwargs) -> _TBar: ...
@@ -260,7 +254,6 @@ class TestLinenModule(test_base.BaseTest):
         _TBar = TypeVar('_TBar', bound=Bar)
         @dataclasses.dataclass
         class Bar(foo.Foo):
-          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(self, name: str = ..., parent: Any = ...) -> None: ...
           def replace(self: _TBar, **kwargs) -> _TBar: ...
 
@@ -268,7 +261,6 @@ class TestLinenModule(test_base.BaseTest):
         @dataclasses.dataclass
         class Baz(Bar):
           x: int
-          __dataclass_fields__: Dict[str, dataclasses.Field]
           def __init__(
               self, x: int, name: str = ..., parent: Any = ...) -> None: ...
           def replace(self: _TBaz, **kwargs) -> _TBaz: ...

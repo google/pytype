@@ -642,6 +642,16 @@ def is_var_indefinite_iterable(var):
   return all(is_indefinite_iterable(x) for x in var.data)
 
 
+def is_dataclass(val: _BaseValueType) -> bool:
+  return (_isinstance(val, "Class") and
+          "__dataclass_fields__" in val.metadata)
+
+
+def is_attrs(val: _BaseValueType) -> bool:
+  return (_isinstance(val, "Class") and
+          "__attrs_attrs__" in val.metadata)
+
+
 def merged_type_parameter(node, var, param):
   if not var.bindings:
     return node.program.NewVariable()

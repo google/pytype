@@ -116,7 +116,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     if len(args) > 1 or kwargs:
       _, init_var = self.ctx.attribute_handler.get_attribute(
           node, underlying, "__init__")
-      if _is_dataclass(underlying):
+      if abstract_utils.is_dataclass(underlying):
         # Only do init matching for dataclasses for now
         args = self._make_init_args(node, underlying, args, kwargs)
         init = init_var.data[0]
@@ -226,7 +226,7 @@ def _convert_type(typ, ctx):
 
 def _make_fields(typ, ctx):
   """Helper function for recursive type conversion of fields."""
-  if _is_dataclass(typ):
+  if abstract_utils.is_dataclass(typ):
     fields = [classgen.Field(x.name, _convert_type(x.typ, ctx), x.default)
               for x in typ.metadata["__dataclass_fields__"]]
     return fields
@@ -265,11 +265,6 @@ def make_instance(
       fields, node, ctx)
   _INSTANCE_CACHE[cache_key] = obj
   return node, obj
-
-
-def _is_dataclass(typ) -> bool:
-  return (isinstance(typ, abstract.Class) and
-          "__dataclass_fields__" in typ.metadata)
 
 
 def is_fiddle_buildable_pytd(cls: pytd.Class) -> bool:
