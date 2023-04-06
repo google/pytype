@@ -201,5 +201,78 @@ class AttrsTest(CodeTest):
     """)
 
 
+def _WrapWithDeps(method, deps):
+  def Wrapper(self, code: str) -> errors.ErrorLog:
+    extensions_pyi = pytd_utils.Print(
+        super(PyiCodeTest, self).Infer(InitContents()))
+    with self.DepTree([('pytype_extensions.pyi', extensions_pyi)] + deps):
+      return method(self, code)
+  return Wrapper
+
+
+class PyiCodeTest(test_base.BaseTest):
+
+  _PYI_DEP = None
+
+  @classmethod
+  def setUpClass(cls):
+    super().setUpClass()
+    deps = [('foo.pyi', cls._PYI_DEP)]
+    cls.Check = _WrapWithDeps(cls.Check, deps)
+    cls.CheckWithErrors = _WrapWithDeps(cls.CheckWithErrors, deps)
+    cls.Infer = _WrapWithDeps(cls.Infer, deps)
+    cls.InferWithErrors = _WrapWithDeps(cls.InferWithErrors, deps)
+
+
+_ATTRS_PYI = """
+  import attrs
+
+  @attrs.define
+  class Foo:
+    x: int
+    y: int
+"""
+
+
+class AttrsPyiTest(PyiCodeTest):
+
+  _PYI_DEP = _ATTRS_PYI
+
+  def test_basic(self):
+    self.Check("""
+      import pytype_extensions
+      import foo
+
+      def f(x: pytype_extensions.Attrs[int]):
+        pass
+      f(foo.Foo(1, 2))
+    """)
+
+
+_DATACLASS_PYI = """
+  import dataclasses
+
+  @dataclasses.dataclass
+  class Foo:
+    x: int
+    y: int
+"""
+
+
+class DataclassPyiTest(PyiCodeTest):
+
+  _PYI_DEP = _DATACLASS_PYI
+
+  def test_basic(self):
+    self.Check("""
+      import pytype_extensions
+      import foo
+
+      def f(x: pytype_extensions.Dataclass[int]):
+        pass
+      f(foo.Foo(1, 2))
+    """)
+
+
 if __name__ == '__main__':
   test_base.main()
