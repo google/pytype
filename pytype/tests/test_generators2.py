@@ -154,6 +154,30 @@ class GeneratorFeatureTest(test_base.BaseTest):
               await connection
       """, pythonpath=[d.path])
 
+  def test_yield_from(self):
+    ty = self.Infer("""
+      def foo():
+        yield 'hello'
+      def bar():
+        yield from foo()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any, Generator
+      def foo() -> Generator[str, Any, None]: ...
+      def bar() -> Generator[str, Any, None]: ...
+    """)
+
+  def test_yield_from_check_return(self):
+    self.CheckWithErrors("""
+      from typing import Generator
+      def foo():
+        yield 'hello'
+      def bar() -> Generator[str, None, None]:
+        yield from foo()
+      def baz() -> Generator[int, None, None]:
+        yield from foo()  # bad-return-type
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

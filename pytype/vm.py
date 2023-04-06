@@ -2802,9 +2802,13 @@ class VirtualMachine:
     """Implementation of the YIELD_FROM opcode."""
     state, unused_none_var = state.pop()
     state, var = state.pop()
+    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
     result = self.ctx.program.NewVariable()
     for b in var.bindings:
       val = b.data
+      if val.full_name == "builtins.generator":
+        yield_variable.PasteVariable(
+            val.get_instance_type_parameter(abstract_utils.T), state.node)
       if isinstance(val, (abstract.Generator,
                           abstract.Coroutine, abstract.Unsolvable)):
         ret_var = val.get_instance_type_parameter(abstract_utils.V)
@@ -2825,6 +2829,12 @@ class VirtualMachine:
           result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
       else:
         result.AddBinding(val, {b}, state.node)
+    if yield_variable.bindings:
+      self.frame.yield_variable = yield_variable
+      if self.frame.check_return:
+        ret_type = self.frame.allowed_returns.get_formal_type_parameter(
+            abstract_utils.T)
+        self._check_return(state.node, yield_variable, ret_type)
     if not result.bindings:
       result.AddBinding(self.ctx.convert.unsolvable, [], state.node)
     return state.push(result)
