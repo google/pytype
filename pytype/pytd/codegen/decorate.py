@@ -4,6 +4,7 @@ from typing import Iterable, List, Tuple
 
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.pytd.codegen import function
 
 
@@ -102,13 +103,17 @@ def add_generated_init(cls: pytd.Class) -> pytd.Class:
   return add_init_from_fields(cls, fields)
 
 
-def add_attrs_attrs(cls: pytd.Class) -> pytd.Class:
+def get_field_type_union(cls: pytd.Class):
   fields = get_attributes(cls)
-  types = (x.type for x in fields if x.name != "__attrs_attrs__")
-  base = pytd.LateType("builtins.tuple")
-  params = pytd.GenericType(pytd.LateType("attr.Attribute"),
-                            (pytd.UnionType(types),))
-  aa = pytd.GenericType(base, (params,))
+  return pytd_utils.JoinTypes(x.type for x in fields)
+
+
+def add_attrs_attrs(cls: pytd.Class) -> pytd.Class:
+  if "__attrs_attrs__" in (x.name for x in cls.constants):
+    return cls
+  types = get_field_type_union(cls)
+  params = pytd.GenericType(pytd.LateType("attr.Attribute"), (types,))
+  aa = pytd.GenericType(pytd.LateType("builtins.tuple"), (params,))
   attrs_attrs = pytd.Constant("__attrs_attrs__", aa)
   constants = cls.constants + (attrs_attrs,)
   return cls.Replace(constants=constants)
@@ -120,11 +125,11 @@ def decorate_attrs(cls: pytd.Class) -> pytd.Class:
 
 
 def add_dataclass_fields(cls: pytd.Class) -> pytd.Class:
-  fields = get_attributes(cls)
-  types = (x.type for x in fields if x.name != "__dataclass_fields__")
+  if "__dataclass_fields__" in (x.name for x in cls.constants):
+    return cls
+  types = get_field_type_union(cls)
   k = pytd.LateType("builtins.str")
-  v = pytd.GenericType(pytd.LateType("dataclasses.Field"),
-                       (pytd.UnionType(types),))
+  v = pytd.GenericType(pytd.LateType("dataclasses.Field"), (types,))
   df = pytd.GenericType(pytd.LateType("builtins.dict"), (k, v))
   dataclass_fields = pytd.Constant("__dataclass_fields__", df)
   constants = cls.constants + (dataclass_fields,)
