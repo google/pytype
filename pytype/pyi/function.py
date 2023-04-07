@@ -170,7 +170,7 @@ def _pytd_star_param(arg: ast3.arg) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a *args argument."""
   if not arg:
     return None
-  return pytd_function.pytd_star_param(arg.arg, arg.annotation)
+  return pytd_function.pytd_star_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types
 
 
 def _pytd_starstar_param(
@@ -178,7 +178,7 @@ def _pytd_starstar_param(
   """Return a pytd.Parameter for a **kwargs argument."""
   if not arg:
     return None
-  return pytd_function.pytd_starstar_param(arg.arg, arg.annotation)
+  return pytd_function.pytd_starstar_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types
 
 
 def _apply_defaults(params: List[Param], defaults: List[Any]) -> None:

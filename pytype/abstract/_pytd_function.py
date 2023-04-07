@@ -82,6 +82,7 @@ class _MatchedSignatures:
           sigs.append((self._sig, arg_dict, match))
         break
     else:
+      assert self._cur_data is not None
       self._cur_data.append([(self._sig, arg_dict, match)])
 
   def get(self):

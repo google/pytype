@@ -33,7 +33,9 @@ def _validate_class(cls: pytd.Class, decorator: str) -> None:
 
 
 def _decorator_names(cls: pytd.Class) -> List[str]:
-  return [x.type.name for x in reversed(cls.decorators)]
+  return [
+      x.type.name for x in reversed(cls.decorators) if x.type.name is not None
+  ]
 
 
 def has_decorator(cls: pytd.Class, names):

@@ -74,7 +74,7 @@ def make_method(ctx,
     if not param.typ:
       return
     elif isinstance(param.typ, cfg.Variable):
-      types = param.typ.data
+      types = param.typ.data  # pytype: disable=attribute-error
       if len(types) == 1:
         annotations[param.name] = types[0].cls
       else:

@@ -217,6 +217,7 @@ class _DecoratedFunction:
   def add_property(self, decorator, sig):
     prop = self.prop_names[decorator]
     if prop.arity == len(sig.params):
+      assert self.properties is not None
       self.properties.set(prop.type, sig, self.name)
     else:
       raise TypeError("Property decorator @%s needs %d param(s), got %d" %
@@ -278,6 +279,7 @@ def merge_method_signatures(
         fn.sigs = [fn.properties.getter]
       else:
         sig = fn.properties.setter or fn.properties.deleter
+        assert sig is not None
         fn.sigs = [sig.Replace(return_type=pytd.AnythingType())]
     elif fn.decorator and check_unhandled_decorator:
       raise ValueError(f"Unhandled decorator: {fn.decorator}")
