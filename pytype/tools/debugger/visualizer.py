@@ -26,7 +26,7 @@ _DAGRE_URL = "https://www.gstatic.com/external_hosted/dagre/dagre.js"
 _CYTOSCAPE_DAGRE_URL = "https://www.gstatic.com/external_hosted/cytoscape-dagre/cytoscape-dagre.js"
 
 
-def generate_visualization(
+def _generate_visualization(
     template_file: str,
     loader: jinja2.BaseLoader,
     **kwargs
@@ -69,7 +69,7 @@ def generate_typegraph(
   """
   encoder = typegraph_serializer.TypegraphEncoder()
   enc_prog = encoder.default(program)
-  return generate_visualization(
+  return _generate_visualization(
       template_file=_TYPEGRAPH_TEMPLATE_NAME,
       loader=loader,
       program=json.dumps(enc_prog),
@@ -91,7 +91,7 @@ def generate_block_graph(
   Returns:
     str. The rendered visualization page.
   """
-  return generate_visualization(
+  return _generate_visualization(
       template_file=_BLOCKGRAPH_TEMPLATE_NAME,
       loader=loader,
       graph_data=block_serializer.encode_merged_graph(block_graph),
