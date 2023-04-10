@@ -147,7 +147,8 @@ class _BranchTracker:
       enum_tracker = self._get_enum_tracker(match_val, match_line)
       if not enum_tracker:
         return None
-      if case_val.cls == enum_tracker.implicit_default.cls:
+      if (enum_tracker.implicit_default and case_val and
+          case_val.cls == enum_tracker.implicit_default.cls):
         return True
       else:
         return None
