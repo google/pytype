@@ -430,9 +430,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         not self.name.endswith(".__init__")):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
-      if ("return" in annotations and
-          (self.ctx.options.always_use_return_annotations or
-           annotations["return"] == self.ctx.convert.no_return)):
+      if "return" in annotations:
         ret_type = annotations["return"]
         node, ret = self.ctx.vm.init_class(node, ret_type)
         if self.is_coroutine():
