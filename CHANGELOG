@@ -1,3 +1,19 @@
+Version 2023.04.11:
+
+Updates:
+* Add a block graph visualiser.
+* Remove the --always-use-return-annotations flag. Its behavior is now enabled
+  by default.
+
+Bug fixes:
+* Add pattern matching for builtins.
+* Keep track of already-seen cases when analysing the same match statement
+  twice.
+* Support `total=False` on imported TypedDicts.
+* Use SupportsIndex in some builtins.
+* Improve handling of dataclasses and attrs in pyi files.
+* Fix inferred yield type for YIELD_FROM opcode.
+
 Version 2023.03.31:
 
 Updates:

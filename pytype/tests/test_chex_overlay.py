@@ -51,7 +51,6 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -74,7 +73,6 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo:
         x: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -112,7 +110,6 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -137,7 +134,6 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod
@@ -162,7 +158,6 @@ class TestDataclass(test_base.BaseTest):
       @dataclasses.dataclass
       class Foo(Mapping, object):
         x: int
-        __dataclass_fields__: Dict[str, dataclasses.Field[int]]
         def __init__(self, x: int) -> None: ...
         def replace(self: _TFoo, **changes) -> _TFoo: ...
         @staticmethod

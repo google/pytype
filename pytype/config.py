@@ -234,8 +234,6 @@ _OPT_IN_FEATURES = [
 
 
 FEATURE_FLAGS = [
-    _flag("--always-use-return-annotations", False,
-          "Always use function return type annotations."),
     _flag("--overriding-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods."),
     _flag("--use-enum-overlay", False,

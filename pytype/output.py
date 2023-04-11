@@ -939,6 +939,7 @@ class Converter(utils.ContextWeakrefMixin):
           c.wrap("typing.ClassVar")
 
     final_constants = []
+    skip = set()
     if isinstance(v, named_tuple.NamedTupleClass):
       # The most precise way to get defaults is to check v.__new__.__defaults__,
       # since it's possible for the user to manually set __defaults__. If
@@ -951,10 +952,18 @@ class Converter(utils.ContextWeakrefMixin):
         fields_with_defaults = {f.name for f in v.props.fields if f.default}
       else:
         fields_with_defaults = set(new.signature.defaults)
+    elif abstract_utils.is_dataclass(v):
+      fields = v.metadata["__dataclass_fields__"]
+      fields_with_defaults = {f.name for f in fields if f.default}
+      skip.add("__dataclass_fields__")
+    elif abstract_utils.is_attrs(v):
+      fields = v.metadata["__attrs_attrs__"]
+      fields_with_defaults = {f.name for f in fields if f.default}
+      skip.add("__attrs_attrs__")
     else:
       fields_with_defaults = set()
     for name, builder in constants.items():
-      if not builder:
+      if not builder or name in skip:
         continue
       value = pytd.AnythingType() if name in fields_with_defaults else None
       final_constants.append(pytd.Constant(name, builder.build(), value))

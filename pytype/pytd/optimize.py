@@ -572,6 +572,7 @@ class PullInMethodClasses(visitors.Visitor):
 
   def _MaybeLookup(self, t):
     if isinstance(t, pytd.NamedType):
+      assert self._module is not None
       return self._module.Get(t.name)
     elif isinstance(t, pytd.ClassType):
       return t.cls

@@ -1045,7 +1045,7 @@ class NoSymbolOperationsTest(test_base.BaseTest):
       def f(): v = []; return v['foo']  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"item retrieval.*List.*str.*__getitem__ on List.*int"})
+        "e": r"item retrieval.*List.*str.*__getitem__ on List.*SupportsIndex"})
 
   def test_delitem(self):
     errors = self.CheckWithErrors("""
@@ -1060,7 +1060,7 @@ class NoSymbolOperationsTest(test_base.BaseTest):
       def f(): v = []; v['foo'] = 3  # unsupported-operands[e]
     """)
     self.assertErrorRegexes(errors, {
-        "e": r"item assignment.*List.*str.*__setitem__ on List.*int"})
+        "e": r"item assignment.*List.*str.*__setitem__ on List.*SupportsIndex"})
 
   def test_contains(self):
     errors = self.CheckWithErrors("""

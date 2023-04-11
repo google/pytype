@@ -133,7 +133,6 @@ class BaseTest(unittest.TestCase):
     super().setUp()
     self.options = config.Options.create(
         python_version=self.python_version,
-        always_use_return_annotations=True,
         enable_cached_property=True,
         overriding_parameter_count_checks=True,
         strict_parameter_checks=True,
@@ -211,6 +210,7 @@ class BaseTest(unittest.TestCase):
     self.ConfigureOptions(module_name=module_name)
     ret = analyze.infer_types(deep=deep, **kwargs)
     unit = ret.ast
+    assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, ret.builtins, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
@@ -246,6 +246,7 @@ class BaseTest(unittest.TestCase):
       ret = analyze.infer_types(code, options=self.options, loader=self.loader,
                                 filename=filename)
       unit = ret.ast
+      assert unit is not None
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
 
@@ -412,6 +413,7 @@ class BaseTest(unittest.TestCase):
         src, options=self.options, loader=self.loader, **kwargs)
     errorlog = ret.errorlog
     unit = ret.ast
+    assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
     if report_errors and errorlog:
       errorlog.print_to_stderr()

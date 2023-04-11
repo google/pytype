@@ -50,6 +50,7 @@ py_library(
     ._pytd
     .base_visitor
     .escape
+    .pytd_utils
 )
 
 toplevel_py_binary(

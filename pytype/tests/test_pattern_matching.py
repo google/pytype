@@ -892,6 +892,33 @@ class MatchCoverageTest(test_base.BaseTest):
       def f(x: Color) -> int | str: ...
     """)
 
+  def call_method_from_init(self):
+    """Regression test for a crash."""
+
+    # Caused a crash when trying to access EnumTracker.default_value before it
+    # had been set.
+
+    self.Check("""
+      import enum
+
+      class A(enum.Enum):
+        RED = 1
+        BLUE = 2
+        GREEN = 3
+
+
+      class Foo:
+        def __init__(self):
+          self.a = self.f(A.RED)
+
+        def f(self, x: A):
+          match x:
+            case A.RED:
+              return 42
+            case _:
+              raise ValueError('foo')
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

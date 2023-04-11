@@ -14,7 +14,7 @@ of pytype.
          * [Non-Standard/Experimental](#non-standard-experimental)
          * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2023-01-17T17:48-08:00 -->
+<!-- Added by: rechen, at: 2023-04-07T21:36+00:00 -->
 
 <!--te-->
 
@@ -79,6 +79,7 @@ Feature                                                                         
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ❌        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
 [PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | ❌        |
+[PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
 [PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ❌        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
@@ -139,6 +140,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [673]: https://www.python.org/dev/peps/pep-0673
 [675]: https://peps.python.org/pep-0675/
 [681]: https://peps.python.org/pep-0681/
+[695]: https://peps.python.org/pep-0695/
 [698]: https://peps.python.org/pep-0698/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81

@@ -194,6 +194,7 @@ class PytypeRunner:
       if not report_errors and dest in config.REPORT_ERRORS_ITEMS:
         continue
       arg_info = config.get_pytype_single_item(dest).arg_info
+      assert arg_info is not None
       if arg_info.to_command_line:
         value = arg_info.to_command_line(value)
       if isinstance(value, bool):

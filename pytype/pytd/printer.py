@@ -1,7 +1,6 @@
 """Printer to output pytd trees in pyi format."""
 
 import collections
-import copy
 import keyword
 import logging
 import re
@@ -42,8 +41,19 @@ class PrintVisitor(base_visitor.Visitor):
     self._paramspec_names = set()
     self._maybe_from_typing = set()
 
+  def copy(self):
+    # Note that copy.deepcopy is too slow to use here.
+    copy = PrintVisitor(self.multiline_args)
+    copy.in_alias = self.in_alias
+    copy.in_parameter = self.in_parameter
+    copy.in_literal = self.in_literal
+    copy.in_constant = self.in_constant
+    copy.in_signature = self.in_signature
+    copy._local_names = dict(self._local_names)  # pylint: disable=protected-access
+    return copy
+
   def Print(self, node):
-    return node.Visit(copy.deepcopy(self))
+    return node.Visit(self.copy())
 
   def _IsEmptyTuple(self, t: pytd.GenericType) -> bool:
     """Check if it is an empty tuple."""
