@@ -23,11 +23,12 @@ import math
 import os
 import re
 import time
+import types
 try:
   import tracemalloc  # pylint: disable=g-import-not-at-top
 except ImportError:
   # Not available on PyPy
-  tracemalloc = None
+  tracemalloc: types.ModuleType = None
 
 
 # Metric serialization/deserialization code, taking advantage of the fact that
