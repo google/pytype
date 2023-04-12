@@ -66,6 +66,8 @@ class Visualizer {
       this.cy.add(cfgnode_nodes);
       this.cy.add(cfgnode_edges);
     });
+    // We immediately hide every node except the root.
+    cy.nodes('[name != "root"]').toggleClass("hidden_node", true);
     this.relayout();
   }
 
@@ -74,6 +76,22 @@ class Visualizer {
    */
   relayout() {
     this.cy.layout(this.cy.data('layout_options')).run();
+  }
+
+  /**
+   * Set the hiddenNode style class on the Cytoscape element with the given ID.
+   * @param {string} id the Cytoscape ID of the element to modify.
+   */
+  hide(id) {
+    this.cy.$id(id).toggleClass("hidden_node", true);
+  }
+
+  /**
+   * Like hide, but the opposite.
+   * @param {string} id the Cytoscape ID of the element to modify.
+   */
+  unhide(id) {
+    this.cy.$id(id).toggleClass("hidden_node", false);
   }
 
   /**
@@ -259,6 +277,7 @@ class Visualizer {
         const ss = this.gen_sourceset(bind_id, o_id, s_id);
         elems.push(ss);
         elems.push(this.gen_edge('bind_source_edge', b_node.data.id, ss.data.id));
+        this.unhide(this.cfgnode_id(origin.where));
         elems.push(this.gen_edge('source_cfgnode_edge', ss.data.id, this.cfgnode_id(origin.where)));
         for (const member of sourceset) {
           const mem_bind = this.program.bindings.find(b => b.id == member);
@@ -391,18 +410,30 @@ class Visualizer {
       return;
     }
 
+    const new_query = this.queries[query_idx];
+
     // Reset the current query, if there is one.
     if (this.current_query !== null) {
       const query = this.queries[this.current_query];
       for (const step of query.steps.slice(0, this.query_step+1)) {
         this.unhighlight_cfgnode(step.node);
+        // Hide all the nodes for the query, unless it's visited by the new
+        // query. This avoids a bug related to toggling the same class multiple
+        // times between relayout() calls.
+        if (new_query.steps.find(s => s.node !== step.node)) {
+          this.hide(this.cfgnode_id(step.node));
+        }
         for (const b_id of step.bindings) {
-            this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+            this.hide(this.binding_id(b_id));
         }
       }
     }
 
     this.current_query = query_idx;
+    for (const step of new_query.steps) {
+      this.unhide(this.cfgnode_id(step.node));
+    }
+
     // query_step is immediately incremented by advance_query.
     this.query_step = -1;
     this.advance_query();
@@ -426,7 +457,7 @@ class Visualizer {
       const step = this.queries[this.current_query].steps[this.query_step];
       this.unhighlight_cfgnode(step.node);
       for (const b_id of step.bindings) {
-          this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+          this.hide(this.binding_id(b_id));
       }
     }
 
@@ -441,7 +472,7 @@ class Visualizer {
     }
     this.add_elems(elems);
     for (const elem of elems) {
-      this.cy.$id(elem.data.id).toggleClass("hidden_node", false);
+      this.unhide(elem.data.id);
     }
     this.relayout();
   }
@@ -471,16 +502,16 @@ class Visualizer {
     this.unhighlight_cfgnode(curr_step.node);
     for (const b_id of curr_step.bindings) {
       if (!new_step.bindings.includes(b_id)) {
-        this.cy.$id(this.binding_id(b_id)).toggleClass("hidden_node", true);
+        this.hide(this.binding_id(b_id));
       }
     }
-    
+
     // then process the previous step. All the nodes have already been added
     // to the graph, so they just need to be unhidden.
     this.highlight_cfgnode(new_step.node);
     for (const bind_id of new_step.bindings) {
       for (const elem of this.collect_single_binding(bind_id)) {
-        this.cy.$id(elem.data.id).toggleClass("hidden_node", false);
+        this.unhide(elem.data.id);
       }
     }
     this.relayout();
