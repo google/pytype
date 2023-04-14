@@ -28,7 +28,7 @@ class PytypeSourceUtilsTest(unittest.TestCase):
 
   def test_list_pytype_files(self):
     l = list(pytype_source_utils.list_pytype_files(f"stubs{os.path.sep}stdlib"))
-    self.assertIn("_ctypes.pytd", l)
+    self.assertIn("_elfzipimport.pytd", l)
     self.assertIn(f"collections{os.path.sep}__init__.pytd", l)
 
 
