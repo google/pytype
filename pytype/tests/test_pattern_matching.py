@@ -528,6 +528,64 @@ class MatchCoverageTest(test_base.BaseTest):
       def f(x: Color) -> int | str: ...
     """)
 
+  def test_default(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case _:
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int | str: ...
+    """)
+
+  def test_default_with_capture(self):
+    ty = self.Infer("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color):
+        match x:
+          case Color.RED:
+            return 10
+          case _ as foo:
+            return foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import enum
+      from typing import Type
+
+      Enum: Type[enum.Enum]
+
+      class Color(enum.Enum):
+          BLUE: int
+          GREEN: int
+          RED: int
+
+      def f(x: Color) -> int | Color: ...
+    """)
+
   def test_nonexhaustive(self):
     ty, err = self.InferWithErrors("""
       from enum import Enum

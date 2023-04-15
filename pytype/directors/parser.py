@@ -115,18 +115,22 @@ class _Matches:
     self.start_to_end = {}
     self.end_to_starts = collections.defaultdict(list)
     self.match_cases = {}
+    self.defaults = set()
 
   def add_match(self, start, end, cases):
     self.start_to_end[start] = end
     self.end_to_starts[end].append(start)
-    for case_start, case_end in cases:
+    for case_start, case_end, is_underscore in cases:
       for i in range(case_start, case_end + 1):
         self.match_cases[i] = start
+      if is_underscore:
+        self.defaults.add(case_start)
 
   def __repr__(self):
     return f"""
       Matches: {sorted(self.start_to_end.items())}
       Cases: {self.match_cases}
+      Defaults: {self.defaults}
     """
 
 
@@ -298,7 +302,12 @@ class _ParseVisitor(visitor.BaseVisitor):
   def visit_Match(self, node):
     start = node.lineno
     end = node.end_lineno
-    cases = [(c.pattern.lineno, c.pattern.end_lineno) for c in node.cases]
+    cases = []
+    for c in node.cases:
+      is_underscore = isinstance(c.pattern, ast.MatchAs) and (
+          c.pattern is None or
+          (isinstance(c.pattern, ast.MatchAs) and c.pattern.pattern is None))
+      cases.append((c.pattern.lineno, c.pattern.end_lineno, is_underscore))
     self.matches.add_match(start, end, cases)
 
   def generic_visit(self, node):
