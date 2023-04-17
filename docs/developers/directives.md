@@ -1,7 +1,7 @@
 # Directives and annotations
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2021-11-29' }
+freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
 *-->
 
 <!--ts-->
@@ -55,8 +55,9 @@ The Director is instantiated at the start of the main loop, in
 `vm.py/VirtualMachine::run_program()`. The rest of the code uses the director in
 two ways:
 
-1. Directly accessing the stored tables, e.g `director.decorators` and `director.annotations`, all of which are indexed by line number
-2. Calling `director.filter_error()` to check if an error has been disabled
+1.  Directly accessing the stored tables, e.g. `director.decorators` and
+    `director.annotations`, all of which are indexed by line number
+2.  Calling `director.filter_error()` to check if an error has been disabled
 
 The latter method is needed because error disabling is range based, so checking
 is not as simple as `if line_number in director.disables`.

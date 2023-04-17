@@ -172,7 +172,6 @@ class _BranchTracker:
 
   def add_default_branch(self, op: opcodes.Opcode):
     """Add a default match case branch to the tracker."""
-    assert op.name == "NOP"
     match_line = self.matches.match_cases.get(op.line)
     if match_line is None:
       return None
@@ -356,6 +355,9 @@ class VirtualMachine:
     state = bytecode_fn(state, op)
     if state.why in ("reraise", "NoReturn"):
       state = state.set_why("exception")
+    # Track `case _` in match statements
+    if op.line in self._branch_tracker.matches.defaults:
+      self._branch_tracker.add_default_branch(op)
     implicit_return = (
         op.name == "RETURN_VALUE" and
         op.line not in self._director.return_lines)
@@ -1245,8 +1247,6 @@ class VirtualMachine:
     return state, itr
 
   def byte_NOP(self, state, op):
-    # In match statements, `case _` compiles to a NOP
-    self._branch_tracker.add_default_branch(op)
     return state
 
   def byte_UNARY_NOT(self, state, op):

@@ -647,9 +647,9 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     return_callable, subst = key
     val = self.ctx.convert.constant_to_value(
         return_callable.ret, subst=subst, node=node)
-    # Make sure the type params from subst get applied to val
-    # TODO(b/217789659): It is not clear why constant_to_value does not reliably
-    # do the type substitution.
+    # Make sure the type params from subst get applied to val. constant_to_value
+    # does not reliably do the type substitution because it ignores `subst` when
+    # caching results.
     if _isinstance(val, "ParameterizedClass"):
       inner_types = []
       for k, v in val.formal_type_parameters.items():

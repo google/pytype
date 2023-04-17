@@ -18,7 +18,6 @@ filegroup(
     builtins/numpy/__init__.pytd
     builtins/protocols.pytd
     builtins/typing.pytd
-    stdlib/_ctypes.pytd
     stdlib/collections/__init__.pytd
     stdlib/dummy_thread.pytd
     stdlib/encodings.pytd

@@ -1,7 +1,7 @@
 # The Typegraph
 
 <!--*
-freshness: { owner: 'tsudol' reviewed: '2020-11-20' }
+freshness: { owner: 'tsudol' reviewed: '2023-04-14' }
 *-->
 
 <!--ts-->

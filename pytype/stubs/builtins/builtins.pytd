@@ -37,8 +37,6 @@ _AnyStr = TypeVar('_AnyStr', bytes, str)
 
 # isinstance() and issubclass() can take a type or an arbitrarily nested
 # tuple of types. This adds support for a few levels.
-# TODO(b/109648354): Replace this with:
-#   TypeTuple = Union[type, tuple[TypeTuple]]
 TypeTuple = Union[type, tuple[Union[type, tuple[type, ...]], ...]]
 
 def __import__(name: Union[str, bytes, bytearray], *args, **kwargs) -> module: ...

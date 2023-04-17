@@ -89,18 +89,13 @@ class _Matches:
     self.start_to_end = {}
     self.end_to_starts = collections.defaultdict(list)
     self.match_cases = {}
-
-  def add_match(self, start, end, cases):
-    self.start_to_end[start] = end
-    self.end_to_starts[end].append(start)
-    for case_start, case_end in cases:
-      for i in range(case_start, case_end + 1):
-        self.match_cases[i] = start
+    self.defaults = set()
 
   def __repr__(self):
     return f"""
       Matches: {sorted(self.start_to_end.items())}
       Cases: {self.match_cases}
+      Defaults: {self.defaults}
     """
 
 
