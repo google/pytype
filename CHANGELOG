@@ -1,3 +1,12 @@
+Version 2023.04.18:
+
+Updates:
+* Remove pytype's copy of the _ctypes stub.
+
+Bug fixes:
+* Remove expensive copy.deepcopy call from the pytd printer.
+* Track default (_) cases in match statements in the director.
+
 Version 2023.04.11:
 
 Updates:
