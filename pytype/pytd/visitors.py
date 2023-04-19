@@ -4,7 +4,7 @@ import collections
 import itertools
 import logging
 import re
-from typing import List, Set, cast
+from typing import List, Optional, Set, cast
 
 from pytype import datatypes
 from pytype import module_utils
@@ -681,7 +681,7 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   def LeaveTypeDeclUnit(self, _):
     del self.unit
 
-  def _LookupItemRecursive(self, name):
+  def _LookupItemRecursive(self, name: str) -> pytd.Node:
     return pytd.LookupItemRecursive(self.unit, name)
 
   def EnterClass(self, node):
@@ -690,21 +690,26 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
   def LeaveClass(self, unused_node):
     self.class_names.pop()
 
-  def _LookupScopedName(self, name):
+  def _LookupScopedName(self, name: str) -> Optional[pytd.Node]:
     """Look up a name in the chain of nested class scopes."""
-    scopes = [self.unit.name] + self.class_names
+    scopes = [self.unit.name]
     prefix = f"{self.unit.name}."
-    item = None
-    while item is None and scopes:
-      inner = scopes.pop()
+    if self.class_names and not self.class_names[0].startswith(prefix):
+      # For imported modules, the class names are already prefixed with the
+      # module name. But for the inferred type stub for the current module, the
+      # class names are bare, so we add the prefix here.
+      scopes.extend(prefix + name for name in self.class_names)
+    else:
+      scopes.extend(self.class_names)
+    for inner in scopes:
       lookup_name = f"{inner}.{name}"[len(prefix):]
       try:
-        item = self._LookupItemRecursive(lookup_name)
+        return self._LookupItemRecursive(lookup_name)
       except KeyError:
         pass
-    return item
+    return None
 
-  def _LookupLocalName(self, node):
+  def _LookupLocalName(self, node: pytd.Node) -> pytd.Node:
     assert "." not in node.name
     self.local_names.add(node.name)
     item = self._LookupScopedName(node.name)
