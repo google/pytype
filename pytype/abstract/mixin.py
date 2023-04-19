@@ -173,6 +173,7 @@ class NestedAnnotation(metaclass=MixinMeta):
   def init_mixin(self):
     self.processed = False
     self._seen_for_formal = False  # for calculating the 'formal' property
+    self._formal = None
 
   @property
   def formal(self):
@@ -180,11 +181,16 @@ class NestedAnnotation(metaclass=MixinMeta):
     # We can't compute self.formal in __init__ because doing so would force
     # evaluation of our type parameters during initialization, possibly
     # leading to an infinite loop.
+    if self._formal is not None:
+      return self._formal
     if self._seen_for_formal:
       return False
     self._seen_for_formal = True
     formal = any(t.formal for _, t in self.get_inner_types())
     self._seen_for_formal = False
+    if self.ctx.vm.late_annotations is None:
+      # Caching 'formal' is safe once all LateAnnotations have been resolved.
+      self._formal = formal
     return formal
 
   def get_inner_types(self):
