@@ -708,9 +708,12 @@ class LateAnnotation:
     return hash(self) == hash(other)
 
   def __getattribute__(self, name):
-    if name == "_attribute_names" or name in self._attribute_names:
-      return super().__getattribute__(name)
-    return self._type.__getattribute__(name)  # pytype: disable=attribute-error
+    # We use super().__getattribute__ directly for attribute access to avoid a
+    # performance penalty from this function recursively calling itself.
+    get = super().__getattribute__
+    if name == "_attribute_names" or name in get("_attribute_names"):
+      return get(name)
+    return get("_type").__getattribute__(name)  # pytype: disable=attribute-error
 
   def __setattr__(self, name, value):
     if not hasattr(self, "_attribute_names") or name in self._attribute_names:
