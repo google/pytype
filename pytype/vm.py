@@ -1002,7 +1002,7 @@ class VirtualMachine:
     for b in bindings:
       if self._has_strict_none_origins(b):
         if (discard_concrete_values and
-            isinstance(b.data, mixin.PythonConstant) and
+            isinstance(b.data, abstract.PythonConstant) and
             not isinstance(b.data.pyval, str)):
           # We need to keep constant strings as they may be forward references.
           var.AddBinding(
@@ -1621,7 +1621,7 @@ class VirtualMachine:
     bool_var = self.ctx.program.NewVariable()
     for b in var.bindings:
       v = b.data
-      if isinstance(v, mixin.PythonConstant) and isinstance(v.pyval, bool):
+      if isinstance(v, abstract.PythonConstant) and isinstance(v.pyval, bool):
         const = v.pyval is true_val
       elif not compare.compatible_with(v, True):
         const = not true_val

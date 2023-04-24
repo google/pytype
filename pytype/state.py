@@ -9,7 +9,6 @@ from pytype import compare
 from pytype import metrics
 from pytype import utils
 from pytype.abstract import abstract
-from pytype.abstract import mixin
 from pytype.blocks import blocks
 from pytype.typegraph import cfg
 
@@ -406,8 +405,8 @@ def _restrict_condition(node, bindings, logical_value):
 
 def _is_or_is_not_cmp(left, right, is_not=False):
   """Implementation of 'left is right' amd 'left is not right'."""
-  if (isinstance(left, mixin.PythonConstant) and
-      isinstance(right, mixin.PythonConstant)):
+  if (isinstance(left, abstract.PythonConstant) and
+      isinstance(right, abstract.PythonConstant)):
     if left.cls != right.cls:
       return is_not
     return is_not ^ (left.pyval == right.pyval)
