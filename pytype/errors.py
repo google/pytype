@@ -1470,6 +1470,11 @@ class ErrorLog(ErrorLogBase):
     msg = "ParamSpec error"
     self.error(stack, msg, details=details)
 
+  @_error_name("dataclass-error")
+  def dataclass_error(self, stack, details=None):
+    msg = "Dataclass error"
+    self.error(stack, msg, details=details)
+
 
 def get_error_names_set():
   return _ERROR_NAMES

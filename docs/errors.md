@@ -1,4 +1,4 @@
-<!--* freshness: { owner: 'rechen' reviewed: '2022-06-22' } *-->
+<!--* freshness: { owner: 'mdemello' reviewed: '2023-03-09'} *-->
 
 # Error classes
 
@@ -34,6 +34,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
       * [bad-yield-annotation](#bad-yield-annotation)
       * [base-class-error](#base-class-error)
       * [container-type-mismatch](#container-type-mismatch)
+      * [dataclass-error](#dataclass-error)
       * [duplicate-keyword-argument](#duplicate-keyword-argument)
       * [final-error](#final-error)
       * [ignored-abstractmethod](#ignored-abstractmethod)
@@ -284,6 +285,10 @@ Example:
 a: List[int] = [1, 2]
 a.append("hello")  # <-- contained type is now `int | str`
 ```
+
+## dataclass-error
+
+An error was raised while constructing a dataclass.
 
 ## duplicate-keyword-argument
 
