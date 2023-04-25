@@ -818,6 +818,15 @@ class NamedTupleTest(parser_test_base.ParserTestBase):
       class NamedTuple: ...
     """)
 
+  def test_default(self):
+    self.check("""
+      class Foo(NamedTuple):
+          x: bool = False
+    """, """
+      class Foo(NamedTuple):
+          x: bool = ...
+    """)
+
 
 class FunctionTest(parser_test_base.ParserTestBase):
 
