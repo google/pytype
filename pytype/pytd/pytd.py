@@ -774,7 +774,7 @@ def AliasMethod(func, from_constant):
       s.Replace(params=s.params[1:]) for s in new_func.signatures))
 
 
-def LookupItemRecursive(module, name):
+def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
   """Recursively look up name in module."""
 
   def ExtractClass(t):

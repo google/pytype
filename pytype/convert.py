@@ -9,7 +9,6 @@ from pytype import module_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import mixin
 from pytype.blocks import blocks
 from pytype.overlays import attr_overlay
 from pytype.overlays import fiddle_overlay
@@ -298,7 +297,7 @@ class Converter(utils.ContextWeakrefMixin):
     Returns:
       An instance of the same type as the data, abstract if possible.
     """
-    if isinstance(data, mixin.PythonConstant):
+    if isinstance(data, abstract.PythonConstant):
       data_type = type(data.pyval)
       if data_type in self.primitive_class_instances:
         return self.primitive_class_instances[data_type]

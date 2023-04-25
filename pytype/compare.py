@@ -2,7 +2,6 @@
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import mixin
 from pytype.pytd import slots
 
 # Equality classes.
@@ -30,7 +29,7 @@ def _incompatible(left_name, right_name):
 
 
 def _is_primitive_constant(ctx, value):
-  if isinstance(value, mixin.PythonConstant):
+  if isinstance(value, abstract.PythonConstant):
     return value.pyval.__class__ in ctx.convert.primitive_classes
   return False
 
@@ -242,7 +241,7 @@ def compatible_with(value, logical_value):
             bool(value.get_instance_type_parameter(abstract_utils.K).bindings))
   elif isinstance(value, abstract.LazyConcreteDict):
     return value.is_empty() != logical_value
-  elif isinstance(value, mixin.PythonConstant):
+  elif isinstance(value, abstract.PythonConstant):
     return bool(value.pyval) == logical_value
   elif isinstance(value, abstract.Instance):
     name = value.full_name

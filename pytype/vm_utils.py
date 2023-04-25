@@ -483,7 +483,7 @@ def make_class(node, props, ctx):
     base = ctx.convert.object_type
     bases = [base.to_variable(ctx.root_node)]
   if (isinstance(class_dict, abstract.Unsolvable) or
-      not isinstance(class_dict, mixin.PythonConstant)):
+      not isinstance(class_dict, abstract.PythonConstant)):
     # An unsolvable appears here if the vm hit maximum depth and gave up on
     # analyzing the class we're now building. Otherwise, if class_dict isn't
     # a constant, then it's an abstract dictionary, and we don't have enough

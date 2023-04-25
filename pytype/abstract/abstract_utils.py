@@ -201,6 +201,8 @@ class BadType:
 # Callers are expected to alias them like so:
 #   _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
+_ISINSTANCE_CACHE = {}
+
 
 def _isinstance(obj, name_or_names):
   """Do an isinstance() call for a class defined in pytype.abstract.
@@ -212,24 +214,21 @@ def _isinstance(obj, name_or_names):
   Returns:
     Whether obj is an instance of name_or_names.
   """
-  if not obj.__class__.__module__.startswith("pytype."):
-    return False
-  if isinstance(name_or_names, tuple):
-    names = name_or_names
-  elif name_or_names == "AMBIGUOUS_OR_EMPTY":
-    names = ("Unknown", "Unsolvable", "Empty")
+  # This function is heavily optimized because of how often it is called - over
+  # 13M times in one analysis of an 1,100-line file that we profiled. The cache
+  # improves performance by about 10% over calling getattr() on the abstract
+  # module every time, and checking the __class__ attribute is about 20% faster
+  # than calling isinstance.
+  if not _ISINSTANCE_CACHE:
+    from pytype.abstract import abstract  # pylint: disable=g-import-not-at-top  # pytype: disable=import-error
+    for attr in dir(abstract):
+      if attr[0].isupper():
+        _ISINSTANCE_CACHE[attr] = getattr(abstract, attr)
+  if name_or_names.__class__ == tuple:
+    class_or_classes = tuple(_ISINSTANCE_CACHE[name] for name in name_or_names)
   else:
-    names = (name_or_names,)
-  obj_cls = obj.__class__
-  if obj_cls.__module__.startswith("pytype.abstract.") and obj_cls in names:
-    # Do a simple check first to avoid expensive recursive calls and mro lookup
-    # when possible.
-    return True
-  if len(names) > 1:
-    return any(_isinstance(obj, name) for name in names)
-  name = names[0]
-  return any(cls.__module__.startswith("pytype.abstract.") and
-             cls.__name__ == name for cls in obj.__class__.mro())
+    class_or_classes = _ISINSTANCE_CACHE[name_or_names]
+  return isinstance(obj, class_or_classes)
 
 
 def _make(cls_name, *args, **kwargs):

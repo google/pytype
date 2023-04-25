@@ -229,7 +229,7 @@ class HasAttr(BinaryPredicate):
     if isinstance(obj, abstract.AMBIGUOUS_OR_EMPTY):
       return node, None
     # If attr is not a literal constant, don't try to resolve it.
-    if (not isinstance(attr, mixin.PythonConstant) or
+    if (not isinstance(attr, abstract.PythonConstant) or
         not isinstance(attr.pyval, str)):
       return node, None
     node, ret = self.ctx.attribute_handler.get_attribute(node, obj, attr.pyval)

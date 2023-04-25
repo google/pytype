@@ -495,7 +495,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     elif (isinstance(annotation, abstract.Instance) and
           annotation.cls == self.ctx.convert.str_type):
       # String annotations : Late evaluation
-      if isinstance(annotation, mixin.PythonConstant):
+      if isinstance(annotation, abstract.PythonConstant):
         expr = annotation.pyval
         if not expr:
           self.ctx.errorlog.invalid_annotation(stack, annotation,
@@ -578,7 +578,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                                                       f_locals, expr)
     result = abstract_utils.get_atomic_value(result_var)
     # If the result is a tuple, expand it.
-    if (isinstance(result, mixin.PythonConstant) and
+    if (isinstance(result, abstract.PythonConstant) and
         isinstance(result.pyval, tuple)):
       return (tuple(abstract_utils.get_atomic_value(x) for x in result.pyval),
               errorlog)

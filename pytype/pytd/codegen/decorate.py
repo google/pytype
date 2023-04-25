@@ -62,12 +62,31 @@ def check_class(cls: pytd.Class) -> None:
     check_defaults(fields, cls.name)
 
 
+def is_dataclass_kwonly(c: pytd.Type):
+  return (
+      (isinstance(c, pytd.NamedType) and
+       c.name == "dataclasses.KW_ONLY") or
+      (isinstance(c, pytd.ClassType) and
+       c.cls and c.cls.name == "dataclasses.KW_ONLY"))
+
+
 def add_init_from_fields(
     cls: pytd.Class,
     fields: Iterable[pytd.Constant]
 ) -> pytd.Class:
-  check_defaults(fields, cls.name)
-  init = function.generate_init(fields)
+  """Add a generated __init__ function based on class constants."""
+  pos = []
+  kw = []
+  kw_only = False
+  for f in fields:
+    if is_dataclass_kwonly(f.type):
+      kw_only = True
+    elif kw_only:
+      kw.append(f)
+    else:
+      pos.append(f)
+  check_defaults(pos, cls.name)
+  init = function.generate_init(pos, kw)
   methods = cls.methods + (init,)
   return cls.Replace(methods=methods)
 

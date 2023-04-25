@@ -707,6 +707,62 @@ class TestDataclass(test_base.BaseTest):
         child: Child
     """)
 
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_sticky_kwonly(self):
+    self.Check("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A():
+        a1: int
+        _: dataclasses.KW_ONLY
+        a2: int = dataclasses.field(default_factory=lambda: 0)
+
+      @dataclasses.dataclass
+      class B(A):
+        b1: str
+
+      b = B(1, '1')
+    """)
+
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_sticky_kwonly_error(self):
+    self.CheckWithErrors("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A():  # dataclass-error
+        a1: int
+        _a: dataclasses.KW_ONLY
+        a2: int = dataclasses.field(default_factory=lambda: 0)
+        _b: dataclasses.KW_ONLY
+        a3: int = 10
+    """)
+
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_sticky_kwonly_override(self):
+    ty = self.Infer("""
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A():
+        a1: int
+        _: dataclasses.KW_ONLY
+        a2: int = dataclasses.field(default_factory=lambda: 0)
+        a3: int = dataclasses.field(kw_only=False)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A:
+        a1: int
+        a2: int = ...
+        a3: int
+        _: dataclasses.KW_ONLY
+        def __init__(self, a1: int, a3: int, *, a2: int = ...) -> None: ...
+    """)
+
   def test_dataclass_transform(self):
     # While we don't support dataclass_transform yet, we should at least treat
     # it as returning an identity function to avoid errors like those seen in
@@ -1197,6 +1253,28 @@ class TestPyiDataclass(test_base.BaseTest):
           b1: int
           def __init__(self, a1: int, b1: int, *, a2: int = ...) -> None: ...
     """)
+
+  @test_utils.skipBeforePy((3, 10), "kw_only parameter is new in 3.10")
+  def test_sticky_kwonly(self):
+    with self.DepTree([("foo.pyi", """
+      import dataclasses
+
+      @dataclasses.dataclass
+      class A():
+        a1: int
+        _: dataclasses.KW_ONLY
+        a2: int = ...
+    """)]):
+      self.Check("""
+        import dataclasses
+        import foo
+
+        @dataclasses.dataclass
+        class B(foo.A):
+          b1: str
+
+        b = B(1, '1')
+      """)
 
 
 if __name__ == "__main__":

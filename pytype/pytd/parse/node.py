@@ -12,7 +12,7 @@ documentation in the various visitor methods below for details.
 For examples of visitors, see pytd/visitors.py
 """
 
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 import attrs
 
@@ -25,6 +25,7 @@ class Node:
   __slots__ = ()
 
   _name2item: Dict[str, Any]  # Lookup cache used by module and class nodes
+  name: Optional[str]
 
   def PopulateLookupCache(self, *members):
     # Instances are typically frozen attrs

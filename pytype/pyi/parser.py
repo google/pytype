@@ -299,6 +299,10 @@ class Splice:
     return str(self)
 
 
+def _is_valid_default(val):
+  return not val or types.is_any(val) or isinstance(val, types.Pyval)
+
+
 class _GeneratePytdVisitor(visitor.BaseVisitor):
   """Converts a typed_ast tree to a pytd tree."""
 
@@ -437,7 +441,6 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       val = node.value
     else:
       val = self.convert_node(node.value)
-    msg = f"Default value for {name}: {typ.name} can only be '...', got {val}"
     is_alias = False
     if name == "__match_args__" and isinstance(val, tuple):
       typ = pytd.NamedType("tuple")
@@ -448,8 +451,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           # to_pytd_literal raises an exception if the value is a float, but
           # checking upfront allows us to generate a nicer error message.
           if isinstance(node.value.value, float):
-            msg = (f"Default value for {name}: Final can only be '...' or a "
-                   f"legal Literal parameter, got {val}")
+            raise ParseError(
+                f"Default value for {name}: Final can only be '...' or a legal "
+                f"Literal parameter, got {val}")
           else:
             typ = node.value.to_pytd_literal()
             val = None
@@ -473,8 +477,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           typ = type_of("builtins.str")
         else:
           typ = pytd.AnythingType()
-    if val and not types.is_any(val):
-      raise ParseError(msg)
+    if not _is_valid_default(val):
+      raise ParseError(
+          f"Default value for {name}: {typ.name} can only be '...' or a "
+          f"literal constant, got {val}")
     if is_alias:
       assert not val
       ret = pytd.Alias(name, typ)

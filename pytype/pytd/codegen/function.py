@@ -132,14 +132,21 @@ def pytd_starstar_param(
       name, param_type, pytd.ParameterKind.REGULAR, True, None)
 
 
-def _make_param(attr: pytd.Constant) -> pytd.Parameter:
-  return Param(name=attr.name, type=attr.type, default=attr.value).to_pytd()
+def _make_param(attr: pytd.Constant, kw_only: bool = False) -> pytd.Parameter:
+  p = Param(name=attr.name, type=attr.type, default=attr.value)
+  if kw_only:
+    p.kind = pytd.ParameterKind.KWONLY
+  return p.to_pytd()
 
 
-def generate_init(fields: Iterable[pytd.Constant]) -> pytd.Function:
+def generate_init(
+    fields: Iterable[pytd.Constant],
+    kw_fields: Iterable[pytd.Constant]
+) -> pytd.Function:
   """Build an __init__ method from pytd class constants."""
   self_arg = Param("self").to_pytd()
   params = (self_arg,) + tuple(_make_param(c) for c in fields)
+  params += tuple(_make_param(c, True) for c in kw_fields)
   # We call this at 'runtime' rather than from the parser, so we need to use the
   # resolved type of None, rather than NamedType("NoneType")
   ret = pytd.ClassType("builtins.NoneType")

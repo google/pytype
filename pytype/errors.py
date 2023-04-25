@@ -16,7 +16,6 @@ from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
-from pytype.abstract import mixin
 from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import escape
 from pytype.pytd import optimize
@@ -536,7 +535,7 @@ class ErrorLog(ErrorLogBase):
                                       for o in t.options)
     elif t.is_concrete:
       return re.sub(r"(\\n|\s)+", " ",
-                    typing.cast(mixin.PythonConstant, t).str_of_constant(
+                    typing.cast(abstract.PythonConstant, t).str_of_constant(
                         self._print_as_expected_type))
     elif (isinstance(t, (abstract.AnnotationClass, abstract.Singleton)) or
           t.cls == t):
@@ -1469,6 +1468,11 @@ class ErrorLog(ErrorLogBase):
   @_error_name("paramspec-error")
   def paramspec_error(self, stack, details=None):
     msg = "ParamSpec error"
+    self.error(stack, msg, details=details)
+
+  @_error_name("dataclass-error")
+  def dataclass_error(self, stack, details=None):
+    msg = "Dataclass error"
     self.error(stack, msg, details=details)
 
 

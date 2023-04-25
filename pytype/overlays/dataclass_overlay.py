@@ -70,8 +70,18 @@ class Dataclass(classgen.Decorator):
     # would have init(x:int = 10, y:str = 'hello')
     own_attrs = []
     cls_locals = self.get_class_locals(node, cls)
+    sticky_kwonly = False
     for name, local in cls_locals.items():
       typ, orig = local.get_type(node, name), local.orig
+      if (isinstance(typ, abstract.PyTDClass) and
+          typ.full_name == "dataclasses.KW_ONLY"):
+        if sticky_kwonly:
+          # TODO(mdemello): If both KW_ONLY tags are named `_` we only get one
+          # entry in cls_locals
+          self.ctx.errorlog.dataclass_error(
+              self.ctx.vm.frames, "KW_ONLY can only be used once per class")
+        sticky_kwonly = True
+        continue
       kind = ""
       init = True
       kw_only = False
@@ -90,7 +100,7 @@ class Dataclass(classgen.Decorator):
           orig = field.default
           init = field.init
           if self.ctx.python_version >= (3, 10):
-            kw_only = field.kw_only
+            kw_only = sticky_kwonly if field.kw_only is None else field.kw_only
 
       if orig and orig.data == [self.ctx.convert.none]:
         # vm._apply_annotation mostly takes care of checking that the default
@@ -165,7 +175,7 @@ class FieldFunction(classgen.FieldConstructor):
     self.match_args(node, args)
     node, default_var = self._get_default_var(node, args)
     init = self.get_kwarg(args, "init", True)
-    kw_only = self.get_kwarg(args, "kw_only", False)
+    kw_only = self.get_kwarg(args, "kw_only", None)
     typ = FieldInstance(self.ctx, init, default_var, kw_only).to_variable(node)
     return node, typ
 
