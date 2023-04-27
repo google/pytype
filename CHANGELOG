@@ -1,3 +1,18 @@
+Version 2023.04.27:
+
+Updates:
+* Performance optimizations:
+  * Cache the `NestedAnnotation.formal` property.
+  * Speed up `LateAnnotation.__getattribute__`.
+  * Speed up abstract_utils._isinstance.
+* Add support for dataclasses.KW_ONLY.
+* Bump networkx version requirement to pick up a matplotlib compatibility fix.
+
+Bug fixes:
+* Fix a string manipulation bug in LookupScopedNames.
+* Fix a crash in the fiddle overlay when instantiating a function-based config.
+* Allow constants as defaults in pyi files.
+
 Version 2023.04.18:
 
 Updates:
