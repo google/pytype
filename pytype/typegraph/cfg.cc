@@ -1250,26 +1250,6 @@ static PyObject* VariableAddBinding(PyVariableObj* self, PyObject* args,
   return WrapBinding(program, attr);
 }
 
-PyDoc_STRVAR(variable_add_bindings_doc,
-             "AddBindings(variable)\n\n"
-             "Adds all the Bindings from another variable to this one.");
-
-static PyObject* VariableAddBindings(PyVariableObj* self, PyObject* args,
-                                     PyObject* kwargs) {
-  static const char *kwlist[] = {"variable", "where", nullptr};
-  PyVariableObj* variable = nullptr;
-  PyCFGNodeObj* where = nullptr;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O!O!", kwlist, &PyVariable,
-                                 &variable, &PyCFGNode, &where)) {
-    return nullptr;
-  }
-  for (const auto& binding : variable->u->bindings()) {
-    typegraph::Binding* copy = self->u->AddBinding(binding->data());
-    copy->CopyOrigins(binding.get(), where->cfg_node);
-  }
-  Py_RETURN_NONE;
-}
-
 PyDoc_STRVAR(
     var_assign_to_new_variable_doc,
     "Assign this variable to a new variable.\n\n"
@@ -1381,8 +1361,6 @@ static PyMethodDef variable_methods[] = {
      METH_VARARGS | METH_KEYWORDS, variable_filtered_data_doc},
     {"AddBinding", reinterpret_cast<PyCFunction>(VariableAddBinding),
      METH_VARARGS | METH_KEYWORDS, variable_add_choice_doc},
-    {"AddBindings", reinterpret_cast<PyCFunction>(VariableAddBindings),
-     METH_VARARGS | METH_KEYWORDS, variable_add_bindings_doc},
     {"AssignToNewVariable",
      reinterpret_cast<PyCFunction>(VarAssignToNewVariable),
      METH_VARARGS | METH_KEYWORDS, var_assign_to_new_variable_doc},
