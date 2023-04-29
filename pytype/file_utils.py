@@ -114,10 +114,16 @@ def expand_source_files(filenames, cwd=None):
   out = []
   for f in expand_globpaths(filenames.split(), cwd):
     if path_utils.isdir(f):
-      # If we have a directory, collect all the .py files within it.
-      out += recursive_glob(path_utils.join(f, "**", "*.py"))
+      # If we have a directory, collect all the .py files within it......and scripts too!!
+      paths = recursive_glob(path_utils.join(f, "**", "*"))
+      for path in paths:
+        if path.endswith(".py") or is_file_script(path):
+          out += [path]
     elif f.endswith(".py"):
       out.append(f)
+    elif is_file_script(f, cwd):
+      out.append(f)
+
   return set(out)
 
 
@@ -136,3 +142,12 @@ def replace_separator(path: str):
     return path.replace("/", os.path.sep).replace(":", os.pathsep)
   else:
     return path
+  
+def is_file_script(filename, dir=None):
+  # This is for python files that do not have the .py extension
+  # of course we assume that they start with a shebang
+  file_path = expand_path(filename, dir)
+  if path_utils.isfile(file_path):
+    with open(file_path, 'r') as file:
+      line = file.readline().rstrip().lower()
+      return line.startswith('#!') and (line.endswith('python') or line.endswith('python3'))

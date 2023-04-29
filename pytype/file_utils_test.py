@@ -107,10 +107,16 @@ class TestExpandSourceFiles(unittest.TestCase):
       file_utils.replace_separator("foo/bar/baz/e.py")
   ]
 
+  SCRIPT_CODE = """
+  #!/usr/bin/python3
+  print("hello, world")
+  """
+
   def _test_expand(self, string):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
-      pyfiles = [f for f in fs if f.endswith(".py")]
+      fs += [d.create_file("my_script", self.SCRIPT_CODE)]
+      pyfiles = [f for f in fs if f.endswith(".py") or file_utils.is_file_script(f)]
       self.assertCountEqual(
           pyfiles, file_utils.expand_source_files(string, d.path))
 
@@ -123,7 +129,8 @@ class TestExpandSourceFiles(unittest.TestCase):
   def test_cwd(self):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
-      pyfiles = [f for f in fs if f.endswith(".py")]
+      fs += [d.create_file("my_script", self.SCRIPT_CODE)]
+      pyfiles = [f for f in fs if f.endswith(".py") or file_utils.is_file_script(f)]
       # cd to d.path and run with just "." as an argument
       with file_utils.cd(d.path):
         self.assertCountEqual(
