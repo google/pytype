@@ -586,7 +586,8 @@ class VirtualMachine:
     self._director = director
     self.ctx.options.set_feature_flags(director.features)
     self._branch_tracker = _BranchTracker(director)
-    code = blocks.merge_annotations(code, self._director.annotations)
+    code = blocks.merge_annotations(
+        code, self._director.annotations, self._director.param_annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
     for line in visitor.ignored_lines():

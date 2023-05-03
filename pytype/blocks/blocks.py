@@ -377,6 +377,23 @@ class CollectAnnotationTargetsVisitor:
     return code
 
 
+class FunctionDefVisitor:
+  """Add metadata to function definition opcodes.
+
+  Depends on DisCodeVisitor having been run first.
+  """
+
+  def __init__(self, param_annotations):
+    self.annots = param_annotations
+
+  def visit_code(self, code):
+    for op in code.original_co_code:
+      if isinstance(op, opcodes.MAKE_FUNCTION):
+        if op.line in self.annots:
+          op.metadata.signature_annotations = self.annots[op.line]
+    return code
+
+
 def _is_function_def(fn_code):
   """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
   # Reject anything that is not a named function (e.g. <lambda>).
@@ -394,7 +411,7 @@ def _is_function_def(fn_code):
   return True
 
 
-def merge_annotations(code, annotations):
+def merge_annotations(code, annotations, param_annotations):
   """Merges type comments into their associated opcodes.
 
   Modifies code in place.
@@ -402,10 +419,15 @@ def merge_annotations(code, annotations):
   Args:
     code: An OrderedCode object.
     annotations: A map of lines to annotations.
+    param_annotations: A list of _ParamAnnotations from the director
 
   Returns:
     The code with annotations added to the relevant opcodes.
   """
+  if param_annotations:
+    visitor = FunctionDefVisitor(param_annotations)
+    pyc.visit(code, visitor)
+
   visitor = CollectAnnotationTargetsVisitor()
   code = pyc.visit(code, visitor)
 

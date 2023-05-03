@@ -918,6 +918,26 @@ class GenericTypeAliasTest(test_base.BaseTest):
       T2: Any
     """)
 
+  def test_unparameterized_typevar_alias(self):
+    err = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      U = TypeVar('U')
+      Foo = list[T]
+      Bar = dict[T, U]
+      def f(x: Foo) -> int:  # invalid-annotation[e]
+        return 42
+      def g(x: Foo) -> T:
+        return 42
+      def h(x: Foo[T]) -> int:  # invalid-annotation
+        return 42
+      def h(x: Foo, y: Bar) -> int:  # invalid-annotation
+        return 42
+      def j(x: Foo, y: Bar, z: U) -> int:
+        return 42
+    """)
+    self.assertErrorSequences(err, {"e": ["Foo is a generic alias"]})
+
 
 class TypeVarTestPy3(test_base.BaseTest):
   """Tests for TypeVar in Python 3."""
