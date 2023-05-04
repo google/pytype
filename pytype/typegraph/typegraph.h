@@ -341,6 +341,9 @@ class Variable {
   Binding* AddBinding(const BindingData& data, CFGNode* where,
                       const std::vector<Binding*>& source_set);
 
+  // Add data to this variable with origins copied from the given binding.
+  Binding* PasteBindingWithNewData(Binding* binding, const BindingData& data);
+
   // Adds all bindings from another variable to this one.
   void PasteVariable(Variable* variable, CFGNode* where,
                      const SourceSet& additional_sources);

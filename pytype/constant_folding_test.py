@@ -327,10 +327,10 @@ class PyvalTest(TypeBuilderTestBase):
     d = defs["d"].data[0]
     t1 = "List[int]"
     t2 = "List[str]"
-    self.assertPytd(a, "List[Any]")
+    self.assertPytd(a, "List[Union[List[int], List[str]]]")
     self.assertPytd(b, t1)
     self.assertPytd(c, t2)
-    self.assertPytd(d, "List[Any]")
+    self.assertPytd(d, "List[Union[List[int], List[str]]]")
 
   def test_long_list_of_tuples(self):
     elts = ["  (1, 2),", "  ('a', False),"] * 82

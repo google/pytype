@@ -1203,7 +1203,7 @@ static PyObject* VariableFilteredData(PyVariableObj* self,
   return list;
 }
 
-PyDoc_STRVAR(variable_add_choice_doc,
+PyDoc_STRVAR(variable_add_binding_doc,
              "AddBinding(data, source_set, where)\n\n"
              "Adds another option to this variable.\n\n"
              "This will not overwrite this variable in the current CFGNode. "
@@ -1250,24 +1250,29 @@ static PyObject* VariableAddBinding(PyVariableObj* self, PyObject* args,
   return WrapBinding(program, attr);
 }
 
-PyDoc_STRVAR(variable_add_bindings_doc,
-             "AddBindings(variable)\n\n"
-             "Adds all the Bindings from another variable to this one.");
+PyDoc_STRVAR(
+    variable_paste_binding_with_new_data_doc,
+    "Add data to this variable with origins copied from the given binding.\n\n"
+    "When copying a binding from one variable to another *at the same node*, "
+    "use this method to preseve the origins while changing the data. "
+    "Conceptually, you would want to do this when 'binding.data' and 'data' "
+    "represent the same data (but 'data' might, say, be a simplified "
+    "representation).");
 
-static PyObject* VariableAddBindings(PyVariableObj* self, PyObject* args,
-                                     PyObject* kwargs) {
-  static const char *kwlist[] = {"variable", "where", nullptr};
-  PyVariableObj* variable = nullptr;
-  PyCFGNodeObj* where = nullptr;
-  if (!SafeParseTupleAndKeywords(args, kwargs, "O!O!", kwlist, &PyVariable,
-                                 &variable, &PyCFGNode, &where)) {
+static PyObject* VariablePasteBindingWithNewData(
+    PyVariableObj* self, PyObject* args, PyObject* kwargs) {
+  static const char* kwlist[] = {"binding", "data", nullptr};
+  PyBindingObj* binding;
+  PyObject* data = nullptr;
+  if (!SafeParseTupleAndKeywords(args, kwargs, "O!O", kwlist, &PyBinding,
+                                 &binding, &data)) {
     return nullptr;
   }
-  for (const auto& binding : variable->u->bindings()) {
-    typegraph::Binding* copy = self->u->AddBinding(binding->data());
-    copy->CopyOrigins(binding.get(), where->cfg_node);
-  }
-  Py_RETURN_NONE;
+  PyProgramObj* program = get_program(self);
+  Py_INCREF(data);
+  typegraph::Binding* attr = self->u->PasteBindingWithNewData(
+      binding->attr, MakeBindingData(data));
+  return WrapBinding(program, attr);
 }
 
 PyDoc_STRVAR(
@@ -1380,9 +1385,10 @@ static PyMethodDef variable_methods[] = {
     {"FilteredData", reinterpret_cast<PyCFunction>(VariableFilteredData),
      METH_VARARGS | METH_KEYWORDS, variable_filtered_data_doc},
     {"AddBinding", reinterpret_cast<PyCFunction>(VariableAddBinding),
-     METH_VARARGS | METH_KEYWORDS, variable_add_choice_doc},
-    {"AddBindings", reinterpret_cast<PyCFunction>(VariableAddBindings),
-     METH_VARARGS | METH_KEYWORDS, variable_add_bindings_doc},
+     METH_VARARGS | METH_KEYWORDS, variable_add_binding_doc},
+    {"PasteBindingWithNewData",
+     reinterpret_cast<PyCFunction>(VariablePasteBindingWithNewData),
+     METH_VARARGS | METH_KEYWORDS, variable_paste_binding_with_new_data_doc},
     {"AssignToNewVariable",
      reinterpret_cast<PyCFunction>(VarAssignToNewVariable),
      METH_VARARGS | METH_KEYWORDS, var_assign_to_new_variable_doc},

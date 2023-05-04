@@ -124,6 +124,7 @@ class _ParseVisitor(libcst.CSTVisitor):
   def __init__(self):
     self.structured_comment_groups = collections.OrderedDict()
     self.variable_annotations = []
+    self.param_annotations = []
     self.decorators = []
     self.defs_start = None
     self.function_ranges = {}

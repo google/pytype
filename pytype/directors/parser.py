@@ -65,6 +65,12 @@ class _VariableAnnotation(LineRange):
 
 
 @dataclasses.dataclass(frozen=True)
+class _ParamAnnotations(LineRange):
+  name: str
+  annotations: dict[str, str]
+
+
+@dataclasses.dataclass(frozen=True)
 class _SourceTree:
   ast: ast.AST
   structured_comments: Mapping[int, Sequence[_StructuredComment]]
@@ -148,6 +154,7 @@ class _ParseVisitor(visitor.BaseVisitor):
         comments.
     variable_annotations: Sequence of PEP 526-style variable annotations with
       line numbers.
+    param_annotations: Similar to variable_annotations, but for function params.
     decorators: Sequence of lines at which decorated functions are defined.
     defs_start: The line number at which the first class or function definition
       appears, if any.
@@ -163,6 +170,7 @@ class _ParseVisitor(visitor.BaseVisitor):
         (LineRange(lineno, lineno), list(structured_comments))
         for lineno, structured_comments in raw_structured_comments.items())
     self.variable_annotations = []
+    self.param_annotations = []
     self.decorators = []
     self.defs_start = None
     self.function_ranges = {}
@@ -383,6 +391,12 @@ class _ParseVisitor(visitor.BaseVisitor):
     if node.decorator_list:
       start_lineno = min(d.lineno for d in node.decorator_list)
     self.function_ranges[start_lineno] = node.end_lineno
+    # Record all the `name: type` annotations in the signature
+    args = node.args.posonlyargs + node.args.args + node.args.kwonlyargs
+    annots = {arg.arg: ast.unparse(arg.annotation)
+              for arg in args if arg.annotation}
+    self.param_annotations.append(
+        _ParamAnnotations(node.lineno, node.end_lineno, node.name, annots))
 
   def visit_FunctionDef(self, node):
     self._visit_function_def(node)
