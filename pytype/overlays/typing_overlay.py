@@ -409,7 +409,7 @@ class NewType(abstract.PyTDFunction):
 class Overload(abstract.PyTDFunction):
   """Implementation of typing.overload."""
 
-  def call(self, node, unused_func, args):
+  def call(self, node, unused_func, args):  # pytype: disable=signature-mismatch
     """Marks that the given function is an overload."""
     self.match_args(node, args)
 
@@ -427,7 +427,7 @@ class Overload(abstract.PyTDFunction):
 class FinalDecorator(abstract.PyTDFunction):
   """Implementation of typing.final."""
 
-  def call(self, node, unused_func, args):
+  def call(self, node, unused_func, args):  # pytype: disable=signature-mismatch
     """Marks that the given function is final."""
     self.match_args(node, args)
     arg = args.posargs[0]

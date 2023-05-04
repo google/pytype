@@ -37,8 +37,9 @@ class CoroutineDecorator(abstract.PyTDFunction):
   def make_for_asyncio(cls, ctx):
     return super().make("coroutine", ctx, "asyncio")
 
-  def call(self, node, unused_func, args):
+  def call(self, node, func, args, alias_map=None):
     """Marks the function as a generator-based coroutine."""
+    del func, alias_map  # unused
     self.match_args(node, args)
     func_var = args.posargs[0]
     for func in func_var.data:

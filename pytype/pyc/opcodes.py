@@ -1,7 +1,7 @@
 """Opcode definitions."""
 
 import abc
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type
+from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type
 
 import attrs
 
@@ -31,7 +31,7 @@ class OpcodeMetadata:
   """Contextual metadata attached to opcodes."""
 
   # Function signature annotations in textual form
-  signature_annotations: Optional[Dict[str, str]] = None
+  signature_annotations: Optional[dict[str, str]] = None
 
 
 class Opcode:
