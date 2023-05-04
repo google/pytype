@@ -302,6 +302,13 @@ Binding* Variable::AddBinding(const BindingData& data,
   return binding;
 }
 
+Binding* Variable::PasteBindingWithNewData(
+    Binding* binding, const BindingData& data) {
+  Binding* new_binding = FindOrAddBinding(data);
+  new_binding->CopyOrigins(binding, nullptr);
+  return new_binding;
+}
+
 void Variable::PasteVariable(Variable* variable, CFGNode* where,
                              const SourceSet& additional_sources) {
   for (const auto& b : variable->bindings()) {

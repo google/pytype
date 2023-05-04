@@ -462,6 +462,25 @@ class Variable:
       binding.AddOrigin(where, source_set)
     return binding
 
+  def PasteBindingWithNewData(self, binding, data):
+    """Add data to this variable with origins copied from the given binding.
+
+    When copying a binding from one variable to another *at the same node*, use
+    this method to preseve the origins while changing the data. Conceptually,
+    you would want to do this when 'binding.data' and 'data' represent the same
+    data (but 'data' might, say, be a simplified representation).
+
+    Args:
+      binding: The binding to copy origins from.
+      data: The data to be added.
+
+    Returns:
+      The new binding.
+    """
+    new_binding = self.AddBinding(data)
+    new_binding.CopyOrigins(binding, None)
+    return new_binding
+
   def PasteVariable(self, variable, where=None, additional_sources=None):
     """Adds all the bindings from another variable to this one."""
     for binding in variable.bindings:

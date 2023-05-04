@@ -1601,8 +1601,8 @@ class VirtualMachine:
             ret.AddBinding(self.ctx.convert.bool_values[val], {b1, b2},
                            state.node)
           else:
-            leftover_x.AddBinding(b1.data, {b1}, state.node)
-            leftover_y.AddBinding(b2.data, {b2}, state.node)
+            leftover_x.PasteBinding(b1, state.node)
+            leftover_y.PasteBinding(b2, state.node)
         else:
           ret.AddBinding(self.ctx.convert.bool_values[val], {b1, b2},
                          state.node)
@@ -1617,7 +1617,7 @@ class VirtualMachine:
       ret.PasteVariable(leftover_ret, state.node)
     return state, ret
 
-  def _coerce_to_bool(self, node, var, true_val=True):
+  def _coerce_to_bool(self, var, true_val=True):
     """Coerce the values in a variable to bools."""
     bool_var = self.ctx.program.NewVariable()
     for b in var.bindings:
@@ -1630,7 +1630,7 @@ class VirtualMachine:
         const = true_val
       else:
         const = None
-      bool_var.AddBinding(self.ctx.convert.bool_values[const], {b}, node)
+      bool_var.PasteBindingWithNewData(b, self.ctx.convert.bool_values[const])
     return bool_var
 
   def _cmp_in(self, state, item, seq, true_val=True):
@@ -1640,7 +1640,7 @@ class VirtualMachine:
       state, ret = vm_utils.call_binary_operator(
           state, "__contains__", seq, item, report_errors=True, ctx=self.ctx)
       if ret.bindings:
-        ret = self._coerce_to_bool(state.node, ret, true_val=true_val)
+        ret = self._coerce_to_bool(ret, true_val=true_val)
     else:
       # For an object without a __contains__ method, cmp_in falls back to
       # checking item against the items produced by seq's iterator.
@@ -2016,7 +2016,7 @@ class VirtualMachine:
           continue
         else:
           self.ctx.errorlog.bad_unpacking(self.frames, len(tup), count)
-      nontuple_seq.AddBinding(b.data, {b}, state.node)
+      nontuple_seq.PasteBinding(b, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
       state, result = self._call(state, itr, "__next__", ())
@@ -2872,7 +2872,7 @@ class VirtualMachine:
       return state
     out = self.ctx.program.NewVariable()
     for b in keep:
-      out.AddBinding(b.data, {b}, state.node)
+      out.PasteBinding(b, state.node)
     return self._store_new_var_in_local(state, var, out)
 
   def _set_type_from_assert_isinstance(self, state, var, class_spec):

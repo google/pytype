@@ -678,7 +678,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     for other_value in new_value_binding.variable.bindings:
       if (other_value is not new_value_binding and
           other_value.data.get_type_key() == type_key):
-        new_var.AddBinding(other_value.data, {other_value}, self._node)
+        new_var.PasteBinding(other_value, self._node)
     if t.constraints:
       new_values = self._discard_ambiguous_values(new_var.data)
       has_error = not self._satisfies_single_type(new_values)
@@ -1067,11 +1067,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
             # If t isn't a TypeVar here it should be a ParamSpec
             assert t in self._paramspecs
             new_var = self.ctx.program.NewVariable()
-            new_var.AddBinding(
-                self.ctx.convert.get_maybe_abstract_instance(b2.data),
-                {b2},
-                self._node,
-            )
+            new_var.PasteBindingWithNewData(
+                b2, self.ctx.convert.get_maybe_abstract_instance(b2.data))
             has_error = False
           # If new_subst contains a TypeVar that is mutually exclusive with t,
           # then we can ignore this error because it is legal for t to not be
@@ -1515,7 +1512,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         if val is b.data:
           resolved_attribute.PasteBinding(b)
         else:
-          resolved_attribute.AddBinding(val, {b}, self._node)
+          resolved_attribute.PasteBindingWithNewData(b, val)
           bound_to_unbound |= unbind
       return resolved_attribute, bound_to_unbound
     else:

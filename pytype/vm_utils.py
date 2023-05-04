@@ -862,7 +862,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
     new_cell = ctx.program.NewVariable()
     if visible_bindings:
       for b in visible_bindings:
-        new_cell.AddBinding(b.data, {b}, state.node)
+        new_cell.PasteBinding(b, state.node)
     else:
       # See test_closures.ClosuresTest.test_no_visible_bindings.
       new_cell.AddBinding(ctx.convert.unsolvable)

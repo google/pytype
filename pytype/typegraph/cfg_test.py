@@ -925,6 +925,22 @@ class CFGTest(unittest.TestCase):
     v.AddBinding("x", [], p.NewCFGNode("root"))
     self.assertEqual(1, p.next_binding_id)
 
+  def test_paste_binding_with_new_data(self):
+    p = cfg.Program()
+    node = p.NewCFGNode("root")
+
+    v1 = p.NewVariable()
+    b1 = v1.AddBinding(["x"], [], node)
+
+    v2 = p.NewVariable()
+    b2 = v2.AddBinding(["y"], [b1], node)
+
+    v3 = p.NewVariable()
+    b3 = v3.PasteBindingWithNewData(b2, "z")
+
+    self.assertEqual(b3.data, "z")
+    self.assertEqual(b3.origins, b2.origins)
+
 
 if __name__ == "__main__":
   unittest.main()

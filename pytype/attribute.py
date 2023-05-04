@@ -397,10 +397,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           posargs.append(cls.to_variable(node))
           node2, get_result = function.call_function(
               self.ctx, node2, getter, function.Args(tuple(posargs)))
-          for getter in get_result.bindings:
-            result.AddBinding(getter.data, [getter], node2)
+          result.PasteVariable(get_result)
         else:
-          result.AddBinding(value, [v], node2)
+          result.PasteBinding(v, node2)
         nodes.append(node2)
       if nodes:
         return self.ctx.join_cfg_nodes(nodes), result
