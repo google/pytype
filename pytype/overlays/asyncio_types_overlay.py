@@ -42,8 +42,8 @@ class CoroutineDecorator(abstract.PyTDFunction):
     del func, alias_map  # unused
     self.match_args(node, args)
     func_var = args.posargs[0]
-    for func in func_var.data:
-      code = func.code
+    for funcv in func_var.data:
+      code = funcv.code
       if (not code.has_iterable_coroutine() and
           (self.module == "asyncio" or
            self.module == "types" and code.has_generator())):
