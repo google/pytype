@@ -236,6 +236,9 @@ _OPT_IN_FEATURES = [
 FEATURE_FLAGS = [
     _flag("--overriding-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods."),
+    _flag("--overriding-renamed-parameter-count-checks", False,
+          "Enable parameter count checks for overriding methods with "
+          "renamed arguments."),
     _flag("--use-enum-overlay", False,
           "Use the enum overlay for more precise enum checking."),
     _flag("--strict-none-binding", False,

@@ -44,6 +44,37 @@ class OverridingTest(test_base.BaseTest):
           pass
     """)
 
+  # Positional-or-keyword -> positional-or-keyword, same name or underscore.
+  def test_positional_or_keyword_name_and_type_mismatch(self):
+    # We don't report an error, since we have already disregarded the name
+    # mismatch and now cannot be sure a param with the same name is the same
+    # parameter for type checking purposes.
+    self.Check("""
+      class Foo:
+        def f(self, a: int, b: str) -> None:
+          pass
+
+      class Bar(Foo):
+        def f(self, b: int, c: int) -> None:
+          pass
+    """)
+
+  # Positional-or-keyword -> positional-or-keyword, same name or underscore.
+  def test_positional_or_keyword_name_and_count_mismatch(self):
+    self.CheckWithErrors("""
+      class Foo:
+        def f(self, a: int, b: int) -> None:
+          pass
+
+      class Bar(Foo):
+        def f(self, b: int) -> None:  # signature-mismatch
+          pass
+
+      class Baz(Foo):
+        def f(self, b: int, c:int, d: int) -> None:  # signature-mismatch
+          pass
+    """)
+
   # Positional-or-keyword -> positional-or-keyword, same name.
   def test_positional_or_keyword_to_keyword_only_mismatch(self):
     errors = self.CheckWithErrors("""

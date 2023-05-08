@@ -135,6 +135,7 @@ class BaseTest(unittest.TestCase):
         python_version=self.python_version,
         enable_cached_property=True,
         overriding_parameter_count_checks=True,
+        overriding_renamed_parameter_count_checks=True,
         strict_parameter_checks=True,
         strict_primitive_comparisons=True,
         strict_none_binding=True,

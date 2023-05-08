@@ -133,18 +133,21 @@ def _check_positional_parameter_annotations(method_signature, base_signature,
   return None
 
 
-def _check_positional_parameters(method_signature, base_signature, is_subtype):
+def _check_positional_parameters(
+    method_signature, base_signature, is_subtype, ctx
+):
   """Checks that the positional parameters of the overriding method match.
 
   Args:
     method_signature: signature of the overriding method.
     base_signature: signature of the overridden method.
     is_subtype: a binary function to compare types.
+    ctx: Context
 
   Returns:
     SignatureError if a mismatch is detected. Otherwise returns None.
   """
-
+  check_types = True
   # Check mappings of positional-or-keyword parameters of the overridden method.
   for base_param_pos, base_param_name in enumerate(base_signature.param_names):
     # Skip positional-only parameters - those that cannot be passed by name.
@@ -176,8 +179,12 @@ def _check_positional_parameters(method_signature, base_signature, is_subtype):
       # in the absence of positional-only parameters.
       # TODO(sinopalnikov): clean it up and start flagging the error.
       log.warning("Name mismatch for parameter '%r'.", base_param_name)
-      return None
-
+      # We match positional parameter type annotations by name, not position,
+      # later on, so if we have a name mismatch here we should disable
+      # annotation checking and just check param count.
+      if not ctx.options.overriding_renamed_parameter_count_checks:
+        return None
+      check_types = False
   # Check mappings of remaining positional parameters of the overriding method
   # that don't map to any positional parameters of the overridden method.
   remaining_method_params = (
@@ -195,6 +202,8 @@ def _check_positional_parameters(method_signature, base_signature, is_subtype):
           SignatureErrorType.DEFAULT_PARAMETER_MISMATCH,
           f"Parameter '{method_param_name}' must have a default value.")
 
+  if not check_types:
+    return None
   return _check_positional_parameter_annotations(method_signature,
                                                  base_signature, is_subtype)
 
@@ -417,7 +426,8 @@ def _check_signature_compatible(method_signature, base_signature,
     return matcher.compute_one_match(this_type_instance, that_type).success
 
   check_result = (
-      _check_positional_parameters(method_signature, base_signature, is_subtype)
+      _check_positional_parameters(
+          method_signature, base_signature, is_subtype, ctx)
       or _check_keyword_only_parameters(method_signature, base_signature,
                                         is_subtype) or
       _check_default_values(method_signature, base_signature) or
