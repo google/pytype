@@ -378,17 +378,34 @@ std::vector<Binding*> Variable::Filter(
   return filtered;
 }
 
-std::vector<Binding*> Variable::Prune(
-    const CFGNode* viewpoint, const bool strict) {
+std::vector<Binding*> Variable::Prune(const CFGNode* viewpoint) {
   std::vector<Binding*> result;  // use a vector for determinism
-  std::set<Binding*, pointer_less<Binding>> seen_results;
-  // Optimization: when only one binding exists, assume it is visible.
-  if (!viewpoint || (!strict && bindings_.size() == 1)) {
+  bool visible = false;
+  if (!viewpoint) {
+    visible = true;
+  } else if (bindings_.size() == 1) {
+    // When only one binding exists, it is visible iff a node associated to the
+    // binding is reachable.
+    bool any_visible = false;
+    for (const auto& kvpair : cfg_node_to_bindings_) {
+      if (program_->is_reachable(kvpair.first, viewpoint)) {
+        any_visible = true;
+        break;
+      }
+    }
+    if (any_visible) {
+      visible = true;
+    } else {
+      return result;
+    }
+  }
+  if (visible) {
     for (const auto& binding : bindings_) {
       result.push_back(binding.get());
     }
     return result;
   }
+  std::set<Binding*, pointer_less<Binding>> seen_results;
   std::stack<const CFGNode*> stack;
   CFGNodeSet seen;
   stack.push(viewpoint);

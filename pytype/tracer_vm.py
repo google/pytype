@@ -301,7 +301,7 @@ class CallTracer(vm.VirtualMachine):
   def _instantiate_var(self, node, clsv, container, instantiate_directly):
     """Build an (dummy) instance from a class, for analyzing it."""
     n = self.ctx.program.NewVariable()
-    for cls in clsv.Bindings(node, strict=False):
+    for cls in clsv.Bindings(node):
       node, var = self._instantiate_binding(
           node, cls, container, instantiate_directly)
       n.PasteVariable(var)
