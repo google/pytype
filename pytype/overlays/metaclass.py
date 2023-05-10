@@ -21,7 +21,8 @@ class AddMetaclassInstance(abstract.BaseValue):
     self.meta = meta
     self.module_name = module_name
 
-  def call(self, node, unused, args):
+  def call(self, node, func, args, alias_map=None):
+    del func, alias_map  # unused
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
           f"{self.module_name}.add_metaclass", ("cls",))
@@ -50,8 +51,9 @@ class AddMetaclass(abstract.PyTDFunction):
     self.module_name = module_name
     return self
 
-  def call(self, node, unused_func, args):
+  def call(self, node, func, args, alias_map=None):
     """Adds a metaclass."""
+    del func, alias_map  # unused
     self.match_args(node, args)
     meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.ctx.convert.unsolvable)
@@ -83,8 +85,9 @@ class WithMetaclassInstance(abstract.BaseValue, abstract.Class):  # pytype: disa
 class WithMetaclass(abstract.PyTDFunction):
   """Implements with_metaclass."""
 
-  def call(self, node, unused_func, args):
+  def call(self, node, func, args, alias_map=None):
     """Creates an anonymous class to act as a metaclass."""
+    del func, alias_map  # unused
     self.match_args(node, args)
     meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.ctx.convert.unsolvable)

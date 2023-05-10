@@ -1,5 +1,7 @@
 """Tests for TypeVar."""
 
+import sys
+
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
@@ -917,6 +919,29 @@ class GenericTypeAliasTest(test_base.BaseTest):
       T1 = TypeVar('T1')
       T2: Any
     """)
+
+  def test_unparameterized_typevar_alias(self):
+    err = self.CheckWithErrors("""
+      from typing import TypeVar
+      T = TypeVar('T')
+      U = TypeVar('U')
+      Foo = list[T]
+      Bar = dict[T, U]
+      def f(x: Foo) -> int:  # invalid-annotation[e]
+        return 42
+      def g(x: Foo) -> T:
+        return 42
+      def h(x: Foo[T]) -> int:  # invalid-annotation
+        return 42
+      def h(x: Foo, y: Bar) -> int:  # invalid-annotation
+        return 42
+      def j(x: Foo, y: Bar, z: U) -> int:
+        return 42
+    """)
+    if sys.version_info[:2] >= (3, 9):
+      # In 3.9+, we use opcode metadata to produce a better error message for
+      # bare generic aliases.
+      self.assertErrorSequences(err, {"e": ["Foo is a generic alias"]})
 
 
 class TypeVarTestPy3(test_base.BaseTest):

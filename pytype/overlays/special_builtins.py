@@ -57,7 +57,7 @@ class TypeNew(abstract.PyTDFunction):
     ret = self.ctx.program.NewVariable()
     for b in raw_ret.bindings:
       value = self.ctx.annotation_utils.deformalize(b.data)
-      ret.AddBinding(value, {b}, node)
+      ret.PasteBindingWithNewData(b, value)
     return node, ret
 
 

@@ -270,6 +270,7 @@ class Director:
     self._errorlog = errorlog
     # Collects type comments and variable annotations by line number
     self._variable_annotations = annotations.VariableAnnotations()
+    self._param_annotations = None
     # Lines that have "type: ignore".  These will disable all errors, and in
     # the future may have other impact (such as not attempting an import).
     self._ignore = _LineSet()
@@ -301,6 +302,14 @@ class Director:
     return self._variable_annotations.annotations
 
   @property
+  def param_annotations(self):
+    ret = {}
+    for a in self._param_annotations:
+      for i in range(a.start_line, a.end_line):
+        ret[i] = a.annotations
+    return ret
+
+  @property
   def ignore(self):
     return self._ignore
 
@@ -322,6 +331,7 @@ class Director:
     self.block_returns = visitor.block_returns
     self.return_lines = visitor.block_returns.all_returns()
     self._function_ranges = _BlockRanges(visitor.function_ranges)
+    self._param_annotations = visitor.param_annotations
     self.matches = visitor.matches
     self.features = set()
 

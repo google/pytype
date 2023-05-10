@@ -1,8 +1,12 @@
 """Opcode definitions."""
 
 import abc
-from typing import Any, Iterable, List, Mapping, Optional, Tuple, Type
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type
+
+import attrs
+
 from typing_extensions import Literal
+
 
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
@@ -22,11 +26,19 @@ PUSHES_BLOCK = 2048  # starts a block (while, try, finally, with, etc.)
 POPS_BLOCK = 4096  # ends a block
 
 
+@attrs.define(slots=True)
+class OpcodeMetadata:
+  """Contextual metadata attached to opcodes."""
+
+  # Function signature annotations in textual form
+  signature_annotations: Optional[Dict[str, str]] = None
+
+
 class Opcode:
   """An opcode without arguments."""
 
   __slots__ = ("line", "index", "prev", "next", "target", "block_target",
-               "code", "annotation", "folded")
+               "code", "annotation", "folded", "metadata")
   FLAGS = 0
 
   def __init__(self, index, line):
@@ -36,6 +48,7 @@ class Opcode:
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
     self.folded = None  # elided by constant folding
+    self.metadata = OpcodeMetadata()  # Filled in by the director
 
   def at_line(self, line):
     """Return a new opcode similar to this one but with a different line."""

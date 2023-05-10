@@ -409,17 +409,18 @@ class NewType(abstract.PyTDFunction):
 class Overload(abstract.PyTDFunction):
   """Implementation of typing.overload."""
 
-  def call(self, node, unused_func, args):
+  def call(self, node, func, args, alias_map=None):
     """Marks that the given function is an overload."""
+    del func, alias_map  # unused
     self.match_args(node, args)
 
     # Since we have only 1 argument, it's easy enough to extract.
     func_var = args.posargs[0] if args.posargs else args.namedargs["func"]
 
-    for func in func_var.data:
-      if isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES):
-        func.is_overload = True
-        self.ctx.vm.frame.overloads[func.name].append(func)
+    for funcv in func_var.data:
+      if isinstance(funcv, abstract.INTERPRETER_FUNCTION_TYPES):
+        funcv.is_overload = True
+        self.ctx.vm.frame.overloads[funcv.name].append(funcv)
 
     return node, func_var
 
@@ -427,8 +428,9 @@ class Overload(abstract.PyTDFunction):
 class FinalDecorator(abstract.PyTDFunction):
   """Implementation of typing.final."""
 
-  def call(self, node, unused_func, args):
+  def call(self, node, func, args, alias_map=None):
     """Marks that the given function is final."""
+    del func, alias_map  # unused
     self.match_args(node, args)
     arg = args.posargs[0]
     for obj in arg.data:

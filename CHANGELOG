@@ -1,3 +1,14 @@
+Version 2023.05.08:
+
+Updates:
+* When checking for unmatched typevars in defs, use a separate message for bare
+  generic aliases.
+* If an overridden method changes the name of a posarg, check posarg count but
+  not types.
+
+Bug fixes:
+* Fix for number of bindings when constant folding long lists.
+
 Version 2023.04.27:
 
 Updates:

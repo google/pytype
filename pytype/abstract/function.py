@@ -153,20 +153,56 @@ class Signature:
   def del_annotation(self, name):
     del self.annotations[name]  # Raises KeyError if annotation does not exist.
 
-  def check_type_parameter_count(self, stack):
+  def check_type_parameter_count(self, stack, opcode):
     """Check the count of type parameters in function."""
+    if not self.annotations:
+      return
     c = collections.Counter()
-    for annot in self.annotations.values():
-      c.update(annot.ctx.annotation_utils.get_type_parameters(annot))
+    if opcode and opcode.metadata.signature_annotations:
+      src_annots = opcode.metadata.signature_annotations
+    else:
+      src_annots = {}
+    bare_aliases = {}
+    bare_alias_params = {}
+    ctx = next(iter(self.annotations.values())).ctx
+    for name, annot in self.annotations.items():
+      params = ctx.annotation_utils.get_type_parameters(annot)
+      if params and name in src_annots and "[" not in src_annots[name]:
+        # Bare aliases for generic types should not refer to the type param in
+        # their error message.
+        # Record the textual annotation if the source code is not of the form:
+        #   x: Foo[...] or
+        #   x: Foo where Foo is the name of a type param
+        if not any(p.name == src_annots[name] for p in params):
+          for p in params:
+            bare_aliases[p.name] = name
+            bare_alias_params[name] = params
+      c.update(params)
+    bare_alias_errors = set()
     for param, count in c.items():
       if param.name in self.excluded_types:
         # skip all the type parameters in `excluded_types`
         continue
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):
-        param.ctx.errorlog.invalid_annotation(
-            stack, param, (f"TypeVar {param.name!r} appears only once in the "
-                           "function signature"))
+        if param.name in bare_aliases:
+          bare_alias_errors.add(bare_aliases[param.name])
+        else:
+          ctx.errorlog.invalid_annotation(
+              stack, param, (f"TypeVar {param.name!r} appears only once in the "
+                             "function signature"))
+      for var_name in bare_alias_errors:
+        annot = src_annots[var_name]
+        params = ", ".join(p.name for p in bare_alias_params[var_name])
+        any_params = ", ".join("Any" for p in bare_alias_params[var_name])
+        msg = (
+            f"In annotation '{var_name}: {annot}', {annot} is a "
+            "generic alias, and needs to be parameterized.\n"
+            f"Use '{var_name}: {annot}[{params}]' instead, or "
+            f"'{var_name}: {annot}[{any_params}]' to match any instance "
+            f"of {annot}"
+        )
+        ctx.errorlog.invalid_annotation(stack, annot, msg)
 
   def drop_first_parameter(self):
     return self._replace(param_names=self.param_names[1:])

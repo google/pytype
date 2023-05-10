@@ -515,7 +515,8 @@ def build_folded_type(ctx, state, const):
       # TODO(b/175443170): We should use a smaller MAX_SUBSCRIPT cutoff; this
       # behaviour is unrelated to MAX_VAR_SIZE (which limits the number of
       # distinct bindings for the overall typevar).
-      elts = elements[:MAX_VAR_SIZE] + tuple(typeconst(t) for t in params)
+      n = MAX_VAR_SIZE - len(params) - 1
+      elts = elements[:n] + tuple(typeconst(t) for t in params)
       state, vs = expand(state, elts)
       return state, ctx.convert.build_list(state.node, vs)
 
