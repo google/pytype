@@ -114,14 +114,12 @@ def expand_source_files(filenames, cwd=None):
   out = []
   for f in expand_globpaths(filenames.split(), cwd):
     if path_utils.isdir(f):
-      # If we have a directory, collect all the .py files within it......and scripts too!!
-      paths = recursive_glob(path_utils.join(f, "**", "*"))
-      for path in paths:
-        if path.endswith(".py") or is_file_script(path):
-          out += [path]
+      # If we have a directory, collect all the .py files within it....
+      out  += recursive_glob(path_utils.join(f, "**", "*.py"))
     elif f.endswith(".py"):
       out.append(f)
     elif is_file_script(f, cwd):
+      # .....and only process scripts when specfiied by the user.
       out.append(f)
 
   return set(out)

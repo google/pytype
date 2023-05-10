@@ -116,7 +116,7 @@ class TestExpandSourceFiles(unittest.TestCase):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       fs += [d.create_file("my_script", self.SCRIPT_CODE)]
-      pyfiles = [f for f in fs if f.endswith(".py") or file_utils.is_file_script(f)]
+      pyfiles = [f for f in fs if f.endswith(".py")]
       self.assertCountEqual(
           pyfiles, file_utils.expand_source_files(string, d.path))
 
@@ -130,7 +130,7 @@ class TestExpandSourceFiles(unittest.TestCase):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
       fs += [d.create_file("my_script", self.SCRIPT_CODE)]
-      pyfiles = [f for f in fs if f.endswith(".py") or file_utils.is_file_script(f)]
+      pyfiles = [f for f in fs if f.endswith(".py")]
       # cd to d.path and run with just "." as an argument
       with file_utils.cd(d.path):
         self.assertCountEqual(
