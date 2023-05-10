@@ -2029,7 +2029,8 @@ class VirtualMachine:
         option = option[:n_before] + [slurp] + option[n_before:]
       options.append(option)
     values = tuple(
-        self.ctx.convert.build_content(value) for value in zip(*options))
+        self.ctx.convert.build_content(value, discard_concrete_values=False)
+        for value in zip(*options))
     for value in reversed(values):
       if not value.bindings:
         # For something like

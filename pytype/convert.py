@@ -211,12 +211,18 @@ class Converter(utils.ContextWeakrefMixin):
     s = self.primitive_class_instances[str]
     return s.to_variable(node)
 
-  def build_content(self, elements):
+  def build_content(self, elements, discard_concrete_values=True):
     if len(elements) == 1:
       return next(iter(elements))
     var = self.ctx.program.NewVariable()
     for v in elements:
-      var.PasteVariable(v)
+      for b in v.bindings:
+        if (discard_concrete_values and
+            isinstance(b.data, abstract.PythonConstant)):
+          var.PasteBindingWithNewData(
+              b, self.get_maybe_abstract_instance(b.data))
+        else:
+          var.PasteBinding(b)
     return var
 
   def build_slice(self, node, start, stop, step=None):

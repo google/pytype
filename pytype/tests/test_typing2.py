@@ -1026,6 +1026,38 @@ class LiteralTest(test_base.BaseTest):
       def f(x: Literal[True]) -> Optional[str]: ...
     """)
 
+  def test_list_of_literals(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      from typing import List
+      from typing_extensions import Literal
+
+      Strings = Literal['hello', 'world']
+
+      @dataclasses.dataclass
+      class A:
+        x: List[Strings]
+
+      A(x=['hello', 'world'])
+      A(x=['oops'])  # wrong-arg-types
+    """)
+
+  def test_list_of_list_of_literals(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      from typing import List
+      from typing_extensions import Literal
+
+      Strings = Literal['hello', 'world']
+
+      @dataclasses.dataclass
+      class A:
+        x: List[List[Strings]]
+
+      A(x=[['hello', 'world']])
+      A(x=[['oops']])  # wrong-arg-types
+    """)
+
 
 class TypeAliasTest(test_base.BaseTest):
   """Tests for typing.TypeAlias."""
