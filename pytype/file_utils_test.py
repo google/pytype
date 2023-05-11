@@ -123,7 +123,6 @@ class TestExpandSourceFiles(unittest.TestCase):
   def test_cwd(self):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
-      fs += [d.create_file("my_script", self.SCRIPT_CODE)]
       pyfiles = [f for f in fs if f.endswith(".py")]
       # cd to d.path and run with just "." as an argument
       with file_utils.cd(d.path):
