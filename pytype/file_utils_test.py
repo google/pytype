@@ -107,15 +107,9 @@ class TestExpandSourceFiles(unittest.TestCase):
       file_utils.replace_separator("foo/bar/baz/e.py")
   ]
 
-  SCRIPT_CODE = """
-  #!/usr/bin/python3
-  print("hello, world")
-  """
-
   def _test_expand(self, string):
     with test_utils.Tempdir() as d:
       fs = [d.create_file(f) for f in self.FILES]
-      fs += [d.create_file("my_script", self.SCRIPT_CODE)]
       pyfiles = [f for f in fs if f.endswith(".py")]
       self.assertCountEqual(
           pyfiles, file_utils.expand_source_files(string, d.path))

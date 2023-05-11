@@ -3,6 +3,7 @@
 import contextlib
 import errno
 import os
+import re
 import sys
 
 from pytype.platform_utils import path_utils
@@ -115,7 +116,7 @@ def expand_source_files(filenames, cwd=None):
   for f in expand_globpaths(filenames.split(), cwd):
     if path_utils.isdir(f):
       # If we have a directory, collect all the .py files within it....
-      out  += recursive_glob(path_utils.join(f, "**", "*.py"))
+      out += recursive_glob(path_utils.join(f, "**", "*.py"))
     elif f.endswith(".py"):
       out.append(f)
     elif is_file_script(f, cwd):
@@ -148,4 +149,4 @@ def is_file_script(filename, dir=None):
   if path_utils.isfile(file_path):
     with open(file_path, 'r') as file:
       line = file.readline().rstrip().lower()
-      return line.startswith('#!') and (line.endswith('python') or line.endswith('python3'))
+      return re.fullmatch(r'#!.+python3?', line) is not None
