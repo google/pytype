@@ -3,6 +3,7 @@
 import contextlib
 import errno
 import os
+import re
 import sys
 
 from pytype.platform_utils import path_utils
@@ -114,10 +115,14 @@ def expand_source_files(filenames, cwd=None):
   out = []
   for f in expand_globpaths(filenames.split(), cwd):
     if path_utils.isdir(f):
-      # If we have a directory, collect all the .py files within it.
+      # If we have a directory, collect all the .py files within it....
       out += recursive_glob(path_utils.join(f, "**", "*.py"))
     elif f.endswith(".py"):
       out.append(f)
+    elif is_file_script(f, cwd):
+      # .....and only process scripts when specfiied by the user.
+      out.append(f)
+
   return set(out)
 
 
@@ -136,3 +141,12 @@ def replace_separator(path: str):
     return path.replace("/", os.path.sep).replace(":", os.pathsep)
   else:
     return path
+
+def is_file_script(filename, directory=None):
+  # This is for python files that do not have the .py extension
+  # of course we assume that they start with a shebang
+  file_path = expand_path(filename, directory)
+  if path_utils.isfile(file_path):
+    with open(file_path, 'r') as file:
+      line = file.readline().rstrip().lower()
+      return re.fullmatch(r'#!.+python3?', line) is not None
