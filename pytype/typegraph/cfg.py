@@ -358,7 +358,7 @@ class Variable:
 
   __str__ = __repr__
 
-  def Bindings(self, viewpoint, strict=True):
+  def Bindings(self, viewpoint):
     """Filters down the possibilities of bindings for this variable.
 
     It determines this by analyzing the control flow graph. Any definition for
@@ -368,12 +368,11 @@ class Variable:
 
     Arguments:
       viewpoint: The CFG node at which to determine the possible bindings.
-      strict: Whether to allow approximations for speed.
 
     Returns:
       A filtered list of bindings for this variable.
     """
-    if viewpoint is None or (not strict and len(self.bindings) == 1):
+    if viewpoint is None:
       return self.bindings
 
     num_bindings = len(self.bindings)

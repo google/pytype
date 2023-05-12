@@ -142,11 +142,12 @@ def replace_separator(path: str):
   else:
     return path
 
+
 def is_file_script(filename, directory=None):
   # This is for python files that do not have the .py extension
   # of course we assume that they start with a shebang
   file_path = expand_path(filename, directory)
   if path_utils.isfile(file_path):
-    with open(file_path, 'r') as file:
+    with open(file_path, "r") as file:
       line = file.readline().rstrip().lower()
-      return re.fullmatch(r'#!.+python3?', line) is not None
+      return re.fullmatch(r"#!.+python3?", line) is not None

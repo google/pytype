@@ -59,6 +59,14 @@ def _compute_superset_info(subst_key1, subst_key2):
   return is_superset1, is_superset2
 
 
+def _contains_literal(t) -> bool:
+  if isinstance(t, abstract.LiteralClass):
+    return True
+  if isinstance(t, abstract.Union):
+    return any(_contains_literal(o) for o in t.options)
+  return False
+
+
 class NonIterableStrError(Exception):
   """Error for matching `str` against `Iterable[str]`/`Sequence[str]`/etc."""
 
@@ -1250,10 +1258,21 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _match_instance_parameters(self, left, instance, other_type, subst, view):
     for type_param in left.template:
       class_param = other_type.get_formal_type_parameter(type_param.name)
-      instance_param = instance.get_instance_type_parameter(
-          type_param.full_name, self._node)
-      subst, view = self._match_instance_param_against_class_param(
-          instance_param, class_param, subst, view)
+      match_as_literal = (
+          instance.is_concrete and type_param.name == abstract_utils.T and
+          isinstance(instance.pyval, collections.abc.Iterable) and
+          not isinstance(instance.pyval, str) and
+          _contains_literal(class_param))
+      if match_as_literal:
+        instance_param = self.ctx.convert.build_content(
+            instance.pyval, discard_concrete_values=False)
+        subst = self._match_all_bindings(
+            instance_param, class_param, subst, view)
+      else:
+        instance_param = instance.get_instance_type_parameter(
+            type_param.full_name, self._node)
+        subst, view = self._match_instance_param_against_class_param(
+            instance_param, class_param, subst, view)
       if subst is None:
         return None
     return subst
