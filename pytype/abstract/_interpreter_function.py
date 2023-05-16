@@ -155,7 +155,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     self._call_records = []
     # TODO(b/78034005): Combine this and PyTDFunction.signatures into a single
     # way to handle multiple signatures that SignedFunction can also use.
-    self._overloads = overloads
+    self._all_overloads = overloads
+    self._active_overloads = overloads
     self.has_overloads = bool(overloads)
     self.is_overload = False  # will be set by typing_overlay.Overload.call
     self.posonlyarg_count = max(self.code.co_posonlyargcount, 0)
@@ -290,20 +291,32 @@ class InterpreterFunction(_function_base.SignedFunction):
 
   def signature_functions(self):
     """Get the functions that describe this function's signature."""
-    return self._overloads or [self]
+    return self._active_overloads or [self]
 
   def iter_signature_functions(self):
     """Loop through signatures, setting each as the primary one in turn."""
-    if not self._overloads:
+    if not self._all_overloads:
       yield self
       return
-    for f in self._overloads:
-      old_overloads = self._overloads
-      self._overloads = [f]
+    for f in self._all_overloads:
+      old_overloads = self._active_overloads
+      self._active_overloads = [f]
       try:
         yield f
       finally:
-        self._overloads = old_overloads
+        self._active_overloads = old_overloads
+
+  @contextlib.contextmanager
+  def reset_overloads(self):
+    if self._all_overloads == self._active_overloads:
+      yield
+      return
+    old_overloads = self._active_overloads
+    self._active_overloads = self._all_overloads
+    try:
+      yield
+    finally:
+      self._active_overloads = old_overloads
 
   def _find_matching_sig(self, node, args, alias_map):
     error = None

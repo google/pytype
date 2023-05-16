@@ -340,6 +340,9 @@ class BoundInterpreterFunction(BoundFunction):
     for f in self.underlying.iter_signature_functions():
       yield self.underlying.bound_class(self._callself, f)
 
+  def reset_overloads(self):
+    return self.underlying.reset_overloads()
+
 
 class BoundPyTDFunction(BoundFunction):
   pass

@@ -702,6 +702,14 @@ class VirtualMachine:
     """Attempt to call the given function with made-up arguments."""
     return node0, self.ctx.new_unsolvable(node0)
 
+  @contextlib.contextmanager
+  def _reset_overloads(self, func):
+    with contextlib.ExitStack() as stack:
+      for f in func.data:
+        if isinstance(f, abstract.INTERPRETER_FUNCTION_TYPES):
+          stack.enter_context(f.reset_overloads())
+      yield
+
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
@@ -724,8 +732,9 @@ class VirtualMachine:
     else:
       posargs = args
     state, func = state.pop()
-    state, ret = self.call_function_with_state(
-        state, func, posargs, namedargs, starargs, starstarargs)
+    with self._reset_overloads(func):
+      state, ret = self.call_function_with_state(
+          state, func, posargs, namedargs, starargs, starstarargs)
     return state.push(ret)
 
   def get_globals_dict(self):
@@ -2517,9 +2526,10 @@ class VirtualMachine:
     state, starargs = state.pop()
     starargs = vm_utils.ensure_unpacked_starargs(state.node, starargs, self.ctx)
     state, fn = state.pop()
-    state, ret = self.call_function_with_state(
-        state, fn, (), namedargs=None, starargs=starargs,
-        starstarargs=starstarargs)
+    with self._reset_overloads(fn):
+      state, ret = self.call_function_with_state(
+          state, fn, (), namedargs=None, starargs=starargs,
+          starstarargs=starstarargs)
     return state.push(ret)
 
   def byte_YIELD_VALUE(self, state, op):
@@ -2911,7 +2921,8 @@ class VirtualMachine:
   def byte_CALL_METHOD(self, state, op):
     state, args = state.popn(op.arg)
     state, func = state.pop()
-    state, result = self.call_function_with_state(state, func, args)
+    with self._reset_overloads(func):
+      state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
 
   def byte_RERAISE(self, state, op):
