@@ -236,10 +236,10 @@ class BoundFunction(_base.BaseValue):
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
       if self.replace_self_annot:
-        with self.underlying.set_self_annot(self.replace_self_annot):
-          node, ret = self.underlying.call(node, func, args,
-                                           alias_map=self.alias_map)
+        context = self.underlying.set_self_annot(self.replace_self_annot)
       else:
+        context = contextlib.nullcontext()
+      with context:
         node, ret = self.underlying.call(node, func, args,
                                          alias_map=self.alias_map)
     except function.InvalidParameters as e:
