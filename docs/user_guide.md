@@ -1,18 +1,19 @@
-<!--* freshness: { owner: 'rechen' reviewed: '2022-06-22' } *-->
+<!--* freshness: { exempt: true } *-->
 
 # User guide
 
 <!--ts-->
-   * [User guide](#user-guide)
-      * [Introduction](#introduction)
-      * [The typing module](#the-typing-module)
-      * [Silencing errors](#silencing-errors)
-      * [Variable annotations](#variable-annotations)
-      * [Hiding extra dependencies](#hiding-extra-dependencies)
-      * [Pyi stub files](#pyi-stub-files)
-      * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
+* [User guide](#user-guide)
+   * [Introduction](#introduction)
+   * [The typing module](#the-typing-module)
+   * [Silencing errors](#silencing-errors)
+   * [Variable annotations](#variable-annotations)
+   * [Hiding extra dependencies](#hiding-extra-dependencies)
+   * [Pyi stub files](#pyi-stub-files)
+   * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
 
-<!-- Added by: rechen, at: 2023-02-02T16:20-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:48 PM PDT 2023 -->
 
 <!--te-->
 

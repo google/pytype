@@ -1,15 +1,16 @@
 # Directives and annotations
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Directives and annotations](#directives-and-annotations)
-      * [Overview](#overview)
-      * [Director](#director)
+* [Directives and annotations](#directives-and-annotations)
+   * [Overview](#overview)
+   * [Director](#director)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:40 PM PDT 2023 -->
 
 <!--te-->
 

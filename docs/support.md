@@ -1,4 +1,4 @@
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-08' } *-->
+<!--* freshness: { exempt: true } *-->
 
 # Support
 
@@ -6,15 +6,16 @@ This page lists the Python versions and features supported by the latest version
 of pytype.
 
 <!--ts-->
-   * [Support](#support)
-      * [Python Version](#python-version)
-      * [Features](#features)
-         * [Core](#core)
-         * [Typing](#typing)
-         * [Non-Standard/Experimental](#non-standard-experimental)
-         * [Third-Party Libraries](#third-party-libraries)
+* [Support](#support)
+   * [Python Version](#python-version)
+   * [Features](#features)
+      * [Core](#core)
+      * [Typing](#typing)
+      * [Non-Standard/Experimental](#non-standardexperimental)
+      * [Third-Party Libraries](#third-party-libraries)
 
-<!-- Added by: rechen, at: 2023-04-07T21:36+00:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:47 PM PDT 2023 -->
 
 <!--te-->
 

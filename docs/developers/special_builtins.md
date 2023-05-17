@@ -1,21 +1,22 @@
 # Special Builtins
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Special Builtins](#special-builtins)
-      * [Overview](#overview)
-      * [Representation](#representation)
-      * [Invoking](#invoking)
-      * [Implementation details](#implementation-details)
-         * [Method delegation](#method-delegation)
-         * [Slots](#slots)
-         * [Instances](#instances)
-      * [Variables and data](#variables-and-data)
+* [Special Builtins](#special-builtins)
+   * [Overview](#overview)
+   * [Representation](#representation)
+   * [Invoking](#invoking)
+   * [Implementation details](#implementation-details)
+      * [Method delegation](#method-delegation)
+      * [Slots](#slots)
+      * [Instances](#instances)
+   * [Variables and data](#variables-and-data)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:43 PM PDT 2023 -->
 
 <!--te-->
 

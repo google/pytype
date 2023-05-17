@@ -1,6 +1,6 @@
 # How to setup environment for previewing changes to documentation
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-06-27' } *-->
+<!--* freshness: { exempt: true } *-->
 
 The pytype documentation is in markdown format.
 

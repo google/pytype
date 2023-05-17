@@ -1,18 +1,19 @@
 # Developer guide
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-09' } *-->
+<!--* freshness: { exempt: true } *-->
 
 This documentation is for developers of and contributors to pytype. It covers
 pytype's core concepts and code layout, as well as tips on suggested workflow.
 
 <!--ts-->
-   * [Developer guide](#developer-guide)
-      * [Contributing](#contributing)
-      * [Introduction](#introduction)
-      * [Basic concepts](#basic-concepts)
-      * [Updating the developer guide](#updating-the-developer-guide)
+* [Developer guide](#developer-guide)
+   * [Contributing](#contributing)
+   * [Introduction](#introduction)
+   * [Basic concepts](#basic-concepts)
+   * [Updating the developer guide](#updating-the-developer-guide)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:41 PM PDT 2023 -->
 
 <!--te-->
 

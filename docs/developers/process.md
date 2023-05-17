@@ -1,16 +1,17 @@
 # Development process
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-09' } *-->
+<!--* freshness: { exempt: true } *-->
 
 <!--ts-->
-   * [Development process](#development-process)
-      * [GitHub](#github)
-      * [Issue tracker](#issue-tracker)
-      * [Running pytype locally](#running-pytype-locally)
-      * [Debugging](#debugging)
-      * [Profiling](#profiling)
+* [Development process](#development-process)
+   * [GitHub](#github)
+   * [Issue tracker](#issue-tracker)
+   * [Running pytype locally](#running-pytype-locally)
+   * [Debugging](#debugging)
+   * [Profiling](#profiling)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:43 PM PDT 2023 -->
 
 <!--te-->
 

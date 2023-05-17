@@ -1,20 +1,21 @@
 # Pytype Tools
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Pytype Tools](#pytype-tools)
-      * [Introduction](#introduction)
-      * [analyze_project](#analyze_project)
-      * [merge_pyi](#merge_pyi)
-      * [traces](#traces)
-      * [annotate_ast](#annotate_ast)
-      * [xref](#xref)
-      * [Utilities](#utilities)
+* [Pytype Tools](#pytype-tools)
+   * [Introduction](#introduction)
+   * [analyze_project](#analyze_project)
+   * [merge_pyi](#merge_pyi)
+   * [traces](#traces)
+   * [annotate_ast](#annotate_ast)
+   * [xref](#xref)
+   * [Utilities](#utilities)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:44 PM PDT 2023 -->
 
 <!--te-->
 

@@ -1,20 +1,21 @@
 # Type Annotations
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Type Annotations](#type-annotations)
-      * [Introduction](#introduction)
-      * [Annotations dictionary](#annotations-dictionary)
-      * [Converting variable annotations to types](#converting-variable-annotations-to-types)
-         * [Forward references](#forward-references)
-         * [Complex annotations](#complex-annotations)
-         * [Conversion to abstract types](#conversion-to-abstract-types)
-      * [Tracking local operations](#tracking-local-operations)
+* [Type Annotations](#type-annotations)
+   * [Introduction](#introduction)
+   * [Annotations dictionary](#annotations-dictionary)
+   * [Converting variable annotations to types](#converting-variable-annotations-to-types)
+      * [Forward references](#forward-references)
+      * [Complex annotations](#complex-annotations)
+      * [Conversion to abstract types](#conversion-to-abstract-types)
+   * [Tracking local operations](#tracking-local-operations)
 
-<!-- Added by: rechen, at: 2023-02-02T16:20-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:38 PM PDT 2023 -->
 
 <!--te-->
 

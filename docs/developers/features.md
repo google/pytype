@@ -1,24 +1,25 @@
 # Supporting new typing features
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-09' } *-->
+<!--* freshness: { exempt: true } *-->
 
 <!--ts-->
-   * [Supporting new typing features](#supporting-new-typing-features)
-      * [Introduction](#introduction)
-      * [Loading](#loading)
-         * [Type stub parsing](#type-stub-parsing)
-         * [Conversion from a PyTD node to an abstract value](#conversion-from-a-pytd-node-to-an-abstract-value)
-      * [Analysis](#analysis)
-         * [typing_overlay](#typing_overlay)
-         * [Parameterized classes](#parameterized-classes)
-         * [typing_extensions_overlay](#typing_extensions_overlay)
-         * [Matching](#matching)
-      * [Output](#output)
-         * [Conversion from an abstract value to a PyTD node](#conversion-from-an-abstract-value-to-a-pytd-node)
-         * [PrintVisitor](#printvisitor)
-      * [Partial support](#partial-support)
+* [Supporting new typing features](#supporting-new-typing-features)
+   * [Introduction](#introduction)
+   * [Loading](#loading)
+      * [Type stub parsing](#type-stub-parsing)
+      * [Conversion from a PyTD node to an abstract value](#conversion-from-a-pytd-node-to-an-abstract-value)
+   * [Analysis](#analysis)
+      * [typing_overlay](#typing_overlay)
+      * [Parameterized classes](#parameterized-classes)
+      * [typing_extensions_overlay](#typing_extensions_overlay)
+      * [Matching](#matching)
+   * [Output](#output)
+      * [Conversion from an abstract value to a PyTD node](#conversion-from-an-abstract-value-to-a-pytd-node)
+      * [PrintVisitor](#printvisitor)
+   * [Partial support](#partial-support)
 
-<!-- Added by: rechen, at: 2022-03-30T20:47-07:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:40 PM PDT 2023 -->
 
 <!--te-->
 

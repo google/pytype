@@ -1,15 +1,16 @@
 # Overlays
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-09' } *-->
+<!--* freshness: { exempt: true } *-->
 
 <!--ts-->
-   * [Overlays](#overlays)
-      * [Introduction](#introduction)
-      * [Example](#example)
-      * [Mechanics](#mechanics)
-      * [Adding an overlay](#adding-an-overlay)
+* [Overlays](#overlays)
+   * [Introduction](#introduction)
+   * [Example](#example)
+   * [Mechanics](#mechanics)
+   * [Adding an overlay](#adding-an-overlay)
 
-<!-- Added by: rechen, at: 2022-06-22T23:51-07:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:42 PM PDT 2023 -->
 
 <!--te-->
 

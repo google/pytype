@@ -1,19 +1,20 @@
 # Type stubs
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-09' } *-->
+<!--* freshness: { exempt: true } *-->
 
 <!--ts-->
-   * [Type stubs](#type-stubs)
-      * [Introduction](#introduction)
-      * [Imports](#imports)
-      * [Parser](#parser)
-      * [AST manipulation](#ast-manipulation)
-      * [Stub generation](#stub-generation)
-      * [Optimizations](#optimizations)
-         * [AST simplification](#ast-simplification)
-         * [Pickling](#pickling)
+* [Type stubs](#type-stubs)
+   * [Introduction](#introduction)
+   * [Imports](#imports)
+   * [Parser](#parser)
+   * [AST manipulation](#ast-manipulation)
+   * [Stub generation](#stub-generation)
+   * [Optimizations](#optimizations)
+      * [AST simplification](#ast-simplification)
+      * [Pickling](#pickling)
 
-<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:45 PM PDT 2023 -->
 
 <!--te-->
 
