@@ -1,5 +1,6 @@
 """Load and link .pyi files."""
 
+import collections
 import dataclasses
 import logging
 import os
@@ -326,7 +327,7 @@ class Loader:
         pyi_options, missing_modules)
     self._resolver = _Resolver(self.builtins)
     self._import_name_cache = {}  # performance cache
-    self._aliases = {}
+    self._aliases = collections.defaultdict(dict)
     self._prefixes = set()
     # Paranoid verification that pytype.main properly checked the flags:
     if options.imports_map is not None:
@@ -448,7 +449,7 @@ class Loader:
           dep_name, lookup_ast=lookup_ast, lookup_ast_name=lookup_ast_name)
       if dep_name != name:
         # We have an alias. Store it in the aliases map.
-        self._aliases[dep_name] = name
+        self._aliases[ast_name][dep_name] = name
       if name in self._modules and self._modules[name].ast:
         dep_ast = self._modules[name].ast
       else:
@@ -506,7 +507,7 @@ class Loader:
     if mod_name and mod_name not in module_map:
       module_map[mod_name] = lookup_ast
     mod_ast = self._resolver.resolve_external_types(
-        mod_ast, module_map, self._aliases, mod_name=mod_name)
+        mod_ast, module_map, self._aliases[mod_name], mod_name=mod_name)
     return mod_ast
 
   def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None):
@@ -593,7 +594,7 @@ class Loader:
         # transitive imports, but lookups are expensive.
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
-          if k in self._aliases:
+          if k in self._aliases[mod_ast.name]:
             k = self._aliases[k]
           while k not in self._modules:
             if "." not in k:
