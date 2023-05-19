@@ -9,7 +9,6 @@ py_library(
     .init
     .parser
     .parser_libcst
-    pytype.blocks.blocks
 )
 
 py_library(
