@@ -1302,17 +1302,3 @@ def to_coroutine(state, obj, top, ctx):
   for b in obj.bindings:
     state = _binding_to_coroutine(state, b, bad_bindings, ret, top, ctx)
   return state, ret
-
-
-def adjust_block_returns(code, block_returns):
-  """Adjust line numbers for return statements in with blocks."""
-
-  rets = {k: iter(v) for k, v in block_returns}
-  for block in code.order:
-    for op in block:
-      if op.__class__.__name__ == "RETURN_VALUE":
-        if op.line in rets:
-          lines = rets[op.line]
-          new_line = next(lines, None)
-          if new_line:
-            op.line = new_line

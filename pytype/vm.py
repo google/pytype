@@ -33,6 +33,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.blocks import blocks
+from pytype.blocks import process_blocks
 from pytype.directors import directors
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib
@@ -387,7 +388,7 @@ class VirtualMachine:
     can_return = False
     return_nodes = []
     finally_tracker = vm_utils.FinallyStateTracker()
-    vm_utils.adjust_block_returns(frame.f_code, self._director.block_returns)
+    process_blocks.adjust_returns(frame.f_code, self._director.block_returns)
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
@@ -586,7 +587,7 @@ class VirtualMachine:
     self._director = director
     self.ctx.options.set_feature_flags(director.features)
     self._branch_tracker = _BranchTracker(director)
-    code = blocks.merge_annotations(
+    code = process_blocks.merge_annotations(
         code, self._director.annotations, self._director.param_annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
     pyc.visit(code, visitor)
@@ -594,7 +595,7 @@ class VirtualMachine:
       self.ctx.errorlog.ignored_type_comment(self.filename, line,
                                              self._director.type_comments[line])
     code = constant_folding.optimize(code)
-    vm_utils.adjust_block_returns(code, self._director.block_returns)
+    process_blocks.adjust_returns(code, self._director.block_returns)
 
     node, f_globals, f_locals, _ = self.run_bytecode(self.ctx.root_node, code)
     logging.info("Done running bytecode, postprocessing globals")

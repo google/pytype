@@ -12,9 +12,6 @@ STORE_OPCODES = (
     opcodes.STORE_DEREF,
     opcodes.STORE_GLOBAL)
 
-# Opcodes whose argument can be a block of code.
-CODE_LOADING_OPCODES = (opcodes.LOAD_CONST,)
-
 
 class OrderedCode:
   """Code object which knows about instruction ordering.
@@ -335,119 +332,6 @@ class OrderCodeVisitor:
     ordered_code = order_code(code, self._python_version)
     self.block_graph.add(ordered_code)
     return ordered_code
-
-
-class CollectAnnotationTargetsVisitor:
-  """Collect opcodes that might have annotations attached.
-
-  Depends on DisCodeVisitor having been run first.
-  """
-
-  def __init__(self):
-    # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
-    # visitor runs, and contains the last opcode for each line.
-    self.store_ops = {}
-    # A mutable map of start: (end, opcode) for MAKE_FUNCTION opcodes. This is
-    # modified as the visitor runs, and contains the range of lines that could
-    # contain function type comments.
-    self.make_function_ops = {}
-
-  def visit_code(self, code):
-    """Find STORE_* and MAKE_FUNCTION opcodes for attaching annotations."""
-    # Offset between function code and MAKE_FUNCTION
-    # [LOAD_CONST <code>, LOAD_CONST <function name>, MAKE_FUNCTION]
-    # In 3.11, the LOAD_CONST <function name> opcode is removed.
-    offset = 1 if code.python_version >= (3, 11) else 2
-    co_code = code.original_co_code
-    for i, op in enumerate(co_code):
-      if isinstance(op, opcodes.MAKE_FUNCTION):
-        code_op = co_code[i - offset]
-        assert isinstance(code_op, CODE_LOADING_OPCODES), code_op.__class__
-        fn_code = code.co_consts[code_op.arg]
-        if not _is_function_def(fn_code):
-          continue
-        # First line of code in body.
-        end_line = min(op.line for op in fn_code.original_co_code)
-        self.make_function_ops[op.line] = (end_line, op)
-      elif (isinstance(op, STORE_OPCODES) and
-            op.line not in self.make_function_ops):
-        # For type comments attached to multi-opcode lines, we want to mark the
-        # latest 'store' opcode and attach the type comment to it.
-        self.store_ops[op.line] = op
-    return code
-
-
-class FunctionDefVisitor:
-  """Add metadata to function definition opcodes.
-
-  Depends on DisCodeVisitor having been run first.
-  """
-
-  def __init__(self, param_annotations):
-    self.annots = param_annotations
-
-  def visit_code(self, code):
-    for op in code.original_co_code:
-      if isinstance(op, opcodes.MAKE_FUNCTION):
-        if op.line in self.annots:
-          op.metadata.signature_annotations = self.annots[op.line]
-    return code
-
-
-def _is_function_def(fn_code):
-  """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
-  # Reject anything that is not a named function (e.g. <lambda>).
-  first = fn_code.co_name[0]
-  if not (first == "_" or first.isalpha()):
-    return False
-
-  # Class definitions generate a constructor function. We can distinguish them
-  # by checking for code blocks that start with LOAD_NAME __name__
-  op = fn_code.first_opcode
-  if (isinstance(op, opcodes.LOAD_NAME) and
-      op.pretty_arg == "__name__"):
-    return False
-
-  return True
-
-
-def merge_annotations(code, annotations, param_annotations):
-  """Merges type comments into their associated opcodes.
-
-  Modifies code in place.
-
-  Args:
-    code: An OrderedCode object.
-    annotations: A map of lines to annotations.
-    param_annotations: A list of _ParamAnnotations from the director
-
-  Returns:
-    The code with annotations added to the relevant opcodes.
-  """
-  if param_annotations:
-    visitor = FunctionDefVisitor(param_annotations)
-    pyc.visit(code, visitor)
-
-  visitor = CollectAnnotationTargetsVisitor()
-  code = pyc.visit(code, visitor)
-
-  # Apply type comments to the STORE_* opcodes
-  for line, op in visitor.store_ops.items():
-    if line in annotations:
-      annot = annotations[line]
-      if annot.name in (None, op.pretty_arg):
-        op.annotation = annot.annotation
-
-  # Apply type comments to the MAKE_FUNCTION opcodes
-  for start, (end, op) in sorted(
-      visitor.make_function_ops.items(), reverse=True):
-    for i in range(start, end):
-      # Take the first comment we find as the function typecomment.
-      if i in annotations:
-        # Record the line number of the comment for error messages.
-        op.annotation = (annotations[i].annotation, i)
-        break
-  return code
 
 
 def process_code(code, python_version):
