@@ -19,6 +19,7 @@ prints:
 """
 
 from pytype.blocks import blocks
+from pytype.blocks import process_blocks
 from pytype.directors import annotations
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
@@ -501,7 +502,7 @@ class BlockStackTest(BaseBlocksTest):
         o.RETURN_VALUE, 0,
     ])
     code, _ = blocks.process_code(co, self.python_version)
-    ordered_code = blocks.merge_annotations(
+    ordered_code = process_blocks.merge_annotations(
         code, {1: annotations.VariableAnnotation(None, "float")}, {})
     bytecode = ordered_code.order[0].code
     self.assertIsNone(bytecode[1].annotation)

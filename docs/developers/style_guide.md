@@ -1,6 +1,6 @@
 # Style Guide
 
-<!--* freshness: { owner: 'rechen' reviewed: '2021-09-17' } *-->
+<!--* freshness: { exempt: true } *-->
 
 This is a living document in which pytype coding best practices will be
 documented.

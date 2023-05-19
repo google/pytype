@@ -1,16 +1,17 @@
 # Bytecode Compilation
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Bytecode Compilation](#bytecode-compilation)
-      * [Overview](#overview)
-      * [Host and Target Versions](#host-and-target-versions)
-      * [Opcodes](#opcodes)
+* [Bytecode Compilation](#bytecode-compilation)
+   * [Overview](#overview)
+   * [Host and Target Versions](#host-and-target-versions)
+   * [Opcodes](#opcodes)
 
-<!-- Added by: rechen, at: 2022-02-03T17:05-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:39 PM PDT 2023 -->
 
 <!--te-->
 

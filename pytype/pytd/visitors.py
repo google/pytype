@@ -105,8 +105,12 @@ class FillInLocalPointers(Visitor):
       all of the cls pointers have been filled in.
     """
     nodes = [node]
+    seen = set()
     while nodes:
       cur_node = nodes.pop(0)
+      if cur_node in seen:
+        continue
+      seen.add(cur_node)
       for prefix, cls in self._Lookup(cur_node):
         if isinstance(cls, pytd.Alias) and isinstance(cls.type, pytd.ClassType):
           if cls.type.cls:

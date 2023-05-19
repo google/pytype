@@ -200,6 +200,82 @@ class MatchTest(test_base.BaseTest):
       def f(x: dict[str, int]) -> int | None: ...
     """)
 
+  def test_overloaded_function(self):
+    self.Check("""
+      from typing import overload
+      class A:
+        pass
+      class B:
+        pass
+      @overload
+      def f(x: A) -> B: ...
+      @overload
+      def f(x: B) -> A: ...
+      @overload
+      def f(x: tuple[A, B]) -> B: ...
+      def f(x):
+        match x:
+          case A():
+            return B()
+          case B():
+            return A()
+          case A() as a, B() as b:
+            return f(a)
+          case _:
+            raise KeyError(key)
+    """)
+
+  def test_overloaded_function_kwargs_call(self):
+    self.Check("""
+      from typing import overload
+      class A:
+        pass
+      class B:
+        pass
+      @overload
+      def f(x: A) -> B: ...
+      @overload
+      def f(x: B) -> A: ...
+      @overload
+      def f(x: tuple[A, B]) -> B: ...
+      def f(x):
+        match x:
+          case A():
+            return B()
+          case B():
+            return A()
+          case A() as a, B() as b:
+            return f(**{'x': a})
+          case _:
+            raise KeyError(key)
+    """)
+
+  def test_overloaded_method(self):
+    self.Check("""
+      from typing import overload
+      class A:
+        pass
+      class B:
+        pass
+      class C:
+        @overload
+        def f(self, x: A) -> B: ...
+        @overload
+        def f(self, x: B) -> A: ...
+        @overload
+        def f(self, x: tuple[A, B]) -> B: ...
+        def f(self, x):
+          match x:
+            case A():
+              return B()
+            case B():
+              return A()
+            case A() as a, B() as b:
+              return self.f(a)
+            case _:
+              raise KeyError(key)
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchClassTest(test_base.BaseTest):

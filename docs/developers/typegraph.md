@@ -1,28 +1,29 @@
 # The Typegraph
 
 <!--*
-freshness: { owner: 'tsudol' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [The Typegraph](#the-typegraph)
-      * [Introduction](#introduction)
-      * [The Control Flow Graph](#the-control-flow-graph)
-      * [Code Components](#code-components)
-         * [Typegraph](#typegraph)
-      * [Binding Data](#binding-data)
-      * [Program](#program)
-         * [Default Data](#default-data)
-      * [Sets in the Typegraph](#sets-in-the-typegraph)
-         * [std::set or std::unordered_set?](#stdset-or-stdunordered_set)
-      * [Reachability](#reachability)
-         * [Implementation](#implementation)
-      * [The Solver Algorithm](#the-solver-algorithm)
-         * [A Simple Example](#a-simple-example)
-         * [A More Complex Example](#a-more-complex-example)
-         * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
+* [The Typegraph](#the-typegraph)
+   * [Introduction](#introduction)
+   * [The Control Flow Graph](#the-control-flow-graph)
+   * [Code Components](#code-components)
+      * [Typegraph](#typegraph)
+   * [Binding Data](#binding-data)
+   * [Program](#program)
+      * [Default Data](#default-data)
+   * [Sets in the Typegraph](#sets-in-the-typegraph)
+      * [std::set or std::unordered_set?](#stdset-or-stdunordered_set)
+   * [Reachability](#reachability)
+      * [Implementation](#implementation)
+   * [The Solver Algorithm](#the-solver-algorithm)
+      * [A Simple Example](#a-simple-example)
+      * [A More Complex Example](#a-more-complex-example)
+      * [Shortcircuiting and the solver cache](#shortcircuiting-and-the-solver-cache)
 
-<!-- Added by: rechen, at: 2022-07-11T17:31-07:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:44 PM PDT 2023 -->
 
 <!--te-->
 

@@ -1,23 +1,24 @@
 # Configuring pytype
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2023-04-14' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Configuring pytype](#configuring-pytype)
-      * [Overview](#overview)
-      * [The config.Options object](#the-configoptions-object)
-      * [Setting options](#setting-options)
-      * [Library-only options](#library-only-options)
-      * [Config internals](#config-internals)
-         * [Argument parsing](#argument-parsing)
-         * [Feature Flags](#feature-flags)
-         * [Postprocessing](#postprocessing)
-      * [Adding a new option](#adding-a-new-option)
-      * [Config files](#config-files)
+* [Configuring pytype](#configuring-pytype)
+   * [Overview](#overview)
+   * [The config.Options object](#the-configoptions-object)
+   * [Setting options](#setting-options)
+   * [Library-only options](#library-only-options)
+   * [Config internals](#config-internals)
+      * [Argument parsing](#argument-parsing)
+      * [Feature Flags](#feature-flags)
+      * [Postprocessing](#postprocessing)
+   * [Adding a new option](#adding-a-new-option)
+   * [Config files](#config-files)
 
-<!-- Added by: rechen, at: 2022-07-11T17:31-07:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:39 PM PDT 2023 -->
 
 <!--te-->
 

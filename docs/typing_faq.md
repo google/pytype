@@ -1,17 +1,18 @@
 # Pytype's Type System
 
 <!--*
-freshness: { owner: 'mdemello' reviewed: '2022-06-01' }
+freshness: { exempt: true }
 *-->
 
 <!--ts-->
-   * [Pytype's Type System](#pytypes-type-system)
-      * [Why do pytype's semantics differ from mypy's?](#why-do-pytypes-semantics-differ-from-mypys)
-      * [Why does pytype allow adding multiple types to a container?](#why-does-pytype-allow-adding-multiple-types-to-a-container)
-      * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
-      * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
+* [Pytype's Type System](#pytypes-type-system)
+   * [Why do pytype's semantics differ from mypy's?](#why-do-pytypes-semantics-differ-from-mypys)
+   * [Why does pytype allow adding multiple types to a container?](#why-does-pytype-allow-adding-multiple-types-to-a-container)
+   * [Why is Optional[Optional[T]] the same as Optional[T]?](#why-is-optionaloptionalt-the-same-as-optionalt)
+   * [Why is pytype not more like $other_language?](#why-is-pytype-not-more-like-other_language)
 
-<!-- Added by: rechen, at: 2023-02-02T16:12-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:47 PM PDT 2023 -->
 
 <!--te-->
 

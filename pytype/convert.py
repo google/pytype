@@ -1,5 +1,6 @@
 """Code for translating between type systems."""
 
+import contextlib
 import logging
 import types
 from typing import Any, Dict
@@ -516,9 +517,10 @@ class Converter(utils.ContextWeakrefMixin):
         return node
       recursive = isinstance(pyval, pytd.LateType) and pyval.recursive
       if recursive:
-        with self.ctx.allow_recursive_convert():
-          value = self._constant_to_value(pyval, subst, get_node)
+        context = self.ctx.allow_recursive_convert()
       else:
+        context = contextlib.nullcontext()
+      with context:
         value = self._constant_to_value(pyval, subst, get_node)
       if not need_node[0] or node is self.ctx.root_node:
         # Values that contain a non-root node cannot be cached. Otherwise,

@@ -1,18 +1,19 @@
 # Attributes
 
-<!--* freshness: { owner: 'rechen' reviewed: '2022-12-09' } *-->
+<!--* freshness: { exempt: true } *-->
 
 <!--ts-->
-   * [Attributes](#attributes)
-      * [Introduction](#introduction)
-         * [Terminology](#terminology)
-      * [Implementation](#implementation)
-         * [set_attribute](#set_attribute)
-         * [get_attribute](#get_attribute)
-         * [get_special_attribute](#get_special_attribute)
-         * [valself](#valself)
+* [Attributes](#attributes)
+   * [Introduction](#introduction)
+      * [Terminology](#terminology)
+   * [Implementation](#implementation)
+      * [set_attribute](#set_attribute)
+      * [get_attribute](#get_attribute)
+      * [get_special_attribute](#get_special_attribute)
+      * [valself](#valself)
 
-<!-- Added by: rechen, at: 2023-02-02T16:20-08:00 -->
+<!-- Created by https://github.com/ekalinin/github-markdown-toc -->
+<!-- Added by: rechen, at: Tue May 16 07:27:38 PM PDT 2023 -->
 
 <!--te-->
 

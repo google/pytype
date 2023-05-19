@@ -198,6 +198,7 @@ py_library(
     ._utils
     .datatypes
     pytype.abstract.abstract
+    pytype.blocks.blocks
     pytype.directors.directors
     pytype.overlays.overlays
     pytype.pyc.pyc
@@ -374,6 +375,7 @@ py_library(
     .compare
     .metrics
     pytype.abstract.abstract
+    pytype.blocks.blocks
     pytype.directors.directors
     pytype.typegraph.cfg
 )
@@ -424,6 +426,7 @@ py_library(
     .state
     .vm_utils
     pytype.abstract.abstract
+    pytype.blocks.blocks
     pytype.directors.directors
     pytype.overlays.overlays
     pytype.pyc.pyc
@@ -443,6 +446,7 @@ py_library(
     .overriding_checks
     .state
     pytype.abstract.abstract
+    pytype.blocks.blocks
     pytype.directors.directors
     pytype.overlays.overlays
     pytype.platform_utils.platform_utils
@@ -603,6 +607,7 @@ py_test(
     .load_pytd
     .state
     pytype.abstract.abstract
+    pytype.blocks.blocks
     pytype.directors.directors
     pytype.pyc.pyc
     pytype.pytd.pytd

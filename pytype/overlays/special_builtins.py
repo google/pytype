@@ -1,6 +1,6 @@
 """Custom implementations of builtin types."""
 
-import sys
+import contextlib
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -599,29 +599,23 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
   def fget_slot(self, node, obj, objtype):
     obj_val = abstract_utils.get_atomic_value(
         obj, default=self.ctx.convert.unsolvable)
-    set_self_annot_managers = []
+    # If this property is defined on a generic class, we need to annotate self
+    # with a parameterized type for the property return type to be computed
+    # properly, e.g.:
+    #   @property
+    #   def x(self) -> T: ...
+    # is changed to:
+    #   @property
+    #   def x(self: Foo[T]) -> T: ...
     t = abstract_utils.get_generic_type(obj_val)
-    if t and any(self in member.data for member in t.members.values()):
-      # This property is defined on a generic class. We need to annotate self
-      # with a parameterized type for the property return type to be computed
-      # properly, e.g.:
-      #   @property
-      #   def x(self) -> T: ...
-      # is changed to:
-      #   @property
-      #   def x(self: Foo[T]) -> T: ...
-      for f in self.fget.data:
-        if f.should_replace_self_annot():
-          set_self_annot_managers.append(f.set_self_annot(t))
-    for manager in set_self_annot_managers:
-      manager.__enter__()
-    try:
+    generic = t and any(self in member.data for member in t.members.values())
+    with contextlib.ExitStack() as stack:
+      if generic:
+        for f in self.fget.data:
+          if f.should_replace_self_annot():
+            stack.enter_context(f.set_self_annot(t))
       return function.call_function(self.ctx, node, self.fget,
                                     function.Args((obj,)))
-    finally:
-      exc_info = sys.exc_info()
-      for manager in set_self_annot_managers:
-        manager.__exit__(*exc_info)
 
   def fset_slot(self, node, obj, value):
     return function.call_function(self.ctx, node, self.fset,
