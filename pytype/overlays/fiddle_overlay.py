@@ -222,17 +222,27 @@ class Partial(Buildable):
     super().__init__("Partial", *args, **kwargs)
 
 
-def _convert_type(typ, ctx):
+def _convert_type(typ, subst, ctx):
   """Helper function for recursive type conversion of fields."""
+  if isinstance(typ, abstract.TypeParameter) and typ.name in subst:
+    # TODO(mdemello): Handle typevars in unions.
+    typ = subst[typ.name]
   new_typ = BuildableType("Config", typ, ctx)
   return abstract.Union([new_typ, typ], ctx)
 
 
 def _make_fields(typ, ctx):
   """Helper function for recursive type conversion of fields."""
+  if isinstance(typ, abstract.ParameterizedClass):
+    subst = typ.formal_type_parameters
+    typ = typ.base_cls
+  else:
+    subst = {}
   if abstract_utils.is_dataclass(typ):
-    fields = [classgen.Field(x.name, _convert_type(x.typ, ctx), x.default)
-              for x in typ.metadata["__dataclass_fields__"]]
+    fields = [
+        classgen.Field(x.name, _convert_type(x.typ, subst, ctx), x.default)
+        for x in typ.metadata["__dataclass_fields__"]
+    ]
     return fields
   return []
 
