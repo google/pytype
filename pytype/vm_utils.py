@@ -1082,7 +1082,12 @@ def match_class(
 ) -> ClassMatch:
   """Pick attributes out of a class instance for pattern matching."""
   keys = _convert_keys(keys_var)
-  cls = abstract_utils.get_atomic_value(cls_var, abstract.Class)
+  cls = abstract_utils.get_atomic_value(
+      cls_var, (abstract.Class, abstract.AnnotationContainer))
+  if isinstance(cls, abstract.AnnotationContainer):
+    # Special case typing.* and collections.abc.* classes that get loaded as
+    # an AnnotationContainer rather than a Class
+    cls = cls.base_cls
   if _var_maybe_unknown(obj_var):
     _, instance_var = ctx.vm.init_class(node, cls)
     success = None

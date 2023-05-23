@@ -349,6 +349,8 @@ class PyTDClass(
           subst=datatypes.AliasingDict(),
           node=self.ctx.root_node)
     self.slots = pytd_cls.slots
+    # TODO(mdemello): Store __match_args__ from pyi files in pytd.Class
+    self.match_args = ()
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)

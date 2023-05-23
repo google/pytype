@@ -517,6 +517,35 @@ class MatchClassTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(err, {"e": ["str()", "accepts 1", "2 given"]})
 
+  def test_collections_abc(self):
+    self.Check("""
+      from collections import abc
+
+      def match_seq(obj):
+        match obj:
+          case abc.Sequence():
+            return True
+          case _:
+            return None
+
+      x = match_seq([1, 2])
+      assert_type(x, bool)
+      y = match_seq(1)
+      assert_type(y, None)
+    """)
+
+  def test_collections_abc_posarg(self):
+    self.CheckWithErrors("""
+      from collections import abc
+
+      def match_seq(obj):
+        match obj:
+          case abc.Sequence(x):  # match-error
+            return True
+          case _:
+            return False
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):
