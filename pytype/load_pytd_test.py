@@ -627,6 +627,16 @@ class ImportPathsTest(_LoaderTest):
     """)
     self.assertFalse(ast.type_params)
 
+  def test_use_class_alias(self):
+    ast = self._import(foo="""
+      class A:
+        class B: ...
+        x: A2.B
+      A2 = A
+    """)
+    a = ast.Lookup("foo.A")
+    self.assertEqual(a.Lookup("x").type.cls, a.Lookup("foo.A.B"))
+
 
 class ImportTypeMacroTest(_LoaderTest):
 
