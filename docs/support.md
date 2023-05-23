@@ -15,7 +15,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 16 07:27:47 PM PDT 2023 -->
+<!-- Added by: rechen, at: Tue May 23 01:37:59 PM PDT 2023 -->
 
 <!--te-->
 
@@ -98,11 +98,32 @@ which pytype differs from other Python type checkers. See the
 *   Pytype forbids `str` from matching an iterable of `str`s, in order to catch
     a common accidental string iteration bug
     ([FAQ entry][faq-noniterable-strings]).
+
 *   Pytype allows `...` as a top-level annotation. When used this way, `...`
     means "inferred type" ([feature request and discussion][ellipsis-issue]).
+
+    For example, when you use `...` as the annotation for a function's return
+    type, the type will be inferred from the function body:
+
+    ```python
+    def f() -> ...:  # return type inferred as `int`
+      return 0
+    ```
+
+    For a variable annotation, the type will be inferred from the assignment:
+
+    ```python
+    _X: ... = 0  # type of `_X` inferred as `int`
+    ```
+
+    Note: pytype does not guarantee any particular inference strategy. Types
+    annotated as `...` may even be inferred as `Any`, effectively locally
+    disabling type analysis.
+
 *   `pytype_extensions`: The `pytype_extensions` namespace contains many useful
     extensions, mostly user-contributed. The best way to learn about them is to
     read the [inline documentation][pytype-extensions].
+
 *   Pytype allows type-annotated variables to be assigned to `None` or `...`
     without including the relevant type in the type annotation. For example, `x:
     str = None` and `x: str = ...` are allowed. This makes it easier to
