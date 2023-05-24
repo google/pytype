@@ -429,6 +429,29 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     else:
       raise KeyError(f"Unknown module {name}")
 
+  def _IsLocalName(self, prefix):
+    if prefix == self.name:
+      return True
+    if not self._unit:
+      return False
+    first_part = prefix.split(".", 1)[0]
+    if first_part in self._module_map:
+      return False
+    item = self._unit.Get(first_part)
+    if not item:
+      item = self._unit.Get(f"{self.name}.{first_part}")
+    while isinstance(item, pytd.Alias):
+      if isinstance(item.type, pytd.ClassType):
+        item = item.type.cls
+      elif isinstance(item.type, pytd.NamedType):
+        next_item = self._unit.Get(item.type.name)
+        if next_item == item:
+          break
+        item = next_item
+      else:
+        break
+    return isinstance(item, (pytd.Class, pytd.ParamSpec))
+
   def VisitNamedType(self, t):
     """Try to look up a NamedType.
 
@@ -448,10 +471,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         # We have a class with the same name as a module.
         return t
     module_name, dot, name = t.name.rpartition(".")
-    if (not dot or module_name == self.name or
-        self._unit and
-        isinstance(self._unit.Get(t.name.split(".", 1)[0]),
-                   (pytd.Class, pytd.ParamSpec))):
+    if not dot or self._IsLocalName(module_name):
       # Nothing to do here. This visitor will only look up nodes in other
       # modules.
       return t
