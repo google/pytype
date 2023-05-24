@@ -1,5 +1,7 @@
 # pytype - 🦆✔
 
+<!--* freshness: { exempt: true } *-->
+
 Pytype checks and infers types for your Python code - without requiring type
 annotations. Pytype can:
 
@@ -257,10 +259,10 @@ single Python file assuming that .pyi files have already been generated for all
 of its dependencies.
 * `pyxref`, a cross-references generator.
 
-## 2022 Roadmap
+## 2023 Roadmap
 
-* Complete Python 3.9 feature support.
-* Basic Python 3.10 support.
+* Typegraph rewrite for improved correctness and performance.
+* Basic Python 3.11 support.
 
 ## License
 [Apache 2.0][license]

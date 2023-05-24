@@ -777,12 +777,16 @@ def AliasMethod(func, from_constant):
 def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
   """Recursively look up name in module."""
 
-  def ExtractClass(t):
+  def ExtractClass(t, prev_item):
     if isinstance(t, ClassType) and t.cls:
       return t.cls
-    t = module.Get(t.name)
-    if isinstance(t, Class):
-      return t
+    top_level_t = module.Get(t.name)
+    if isinstance(top_level_t, Class):
+      return top_level_t
+    elif isinstance(prev_item, Class):
+      nested_t = prev_item.Get(f'{prev_item.name}.{t.name}')
+      if isinstance(nested_t, Class):
+        return nested_t
     return None
 
   def Lookup(item, *names):
@@ -798,11 +802,11 @@ def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
   item = module
 
   for part in parts:
-    prev_item = item
+    next_prev_item = item
     # Check the type of item and give up if we encounter a type we don't know
     # how to handle.
     if isinstance(item, Constant):
-      found = ExtractClass(item.type)
+      found = ExtractClass(item.type, prev_item)
       if not found:
         raise KeyError(item.type.name)
       item = found
@@ -814,12 +818,19 @@ def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
     # we try lookup for both naming conventions.
     found = Lookup(item, lookup_name, part)
     if found:
+      while (isinstance(found, Alias) and isinstance(found.type, NamedType) and
+             found.type.name.startswith(f'{item.name}.')):
+        resolved = Lookup(item, found.type.name)
+        if resolved:
+          found = resolved
+        else:
+          break
       item = found
     else:
       if not isinstance(item, Class):
         raise KeyError(item)
       for base in item.bases:
-        base_cls = ExtractClass(base)
+        base_cls = ExtractClass(base, prev_item)
         if base_cls is None:
           raise KeyError(item)
         found = Lookup(base_cls, lookup_name, part)
@@ -828,10 +839,11 @@ def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
           break  # name found!
       else:
         raise KeyError(item)  # unresolved
-    if isinstance(item, Constant):
+    if isinstance(item, (Constant, Class)):
       partial_name += '.' + item.name.rsplit('.', 1)[-1]
     else:
       partial_name = lookup_name
+    prev_item = next_prev_item
   if isinstance(item, Function):
     return AliasMethod(item, from_constant=isinstance(prev_item, Constant))
   else:

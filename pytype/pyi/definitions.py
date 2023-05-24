@@ -4,8 +4,9 @@ import collections
 import dataclasses
 import sys
 
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
+from pytype import utils
 from pytype.pyi import classdef
 from pytype.pyi import metadata
 from pytype.pyi import types
@@ -19,6 +20,7 @@ from pytype.pytd.codegen import function
 from pytype.pytd.codegen import namedtuple
 from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
+from pytype.pytd.parse import parser_constants
 
 # pylint: disable=g-import-not-at-top
 if sys.version_info >= (3, 8):
@@ -30,13 +32,6 @@ else:
 
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
-
-# Aliases for some typing.X types
-_ANNOTATED_TYPES = ("typing.Annotated", "typing_extensions.Annotated")
-_CALLABLE_TYPES = ("typing.Callable", "collections.abc.Callable")
-_CONCATENATE_TYPES = ("typing.Concatenate", "typing_extensions.Concatenate")
-_LITERAL_TYPES = ("typing.Literal", "typing_extensions.Literal")
-_TUPLE_TYPES = ("tuple", "builtins.tuple", "typing.Tuple")
 
 
 class StringParseError(ParseError):
@@ -493,23 +488,43 @@ class Definitions:
         if t:
           self.aliases[t.new_name] = t.pytd_alias()
 
-  def _matches_full_name(self, t, full_name):
-    """Whether t.name matches full_name in format {module}.{member}."""
-    return pytd_utils.MatchesFullName(
-        t, full_name, self.module_info.module_name, self.aliases)
+  def _resolve_alias(self, name: str) -> str:
+    if name in self.aliases:
+      alias = self.aliases[name].type
+      if isinstance(alias, pytd.NamedType):
+        name = alias.name
+      elif isinstance(alias, pytd.Module):
+        name = alias.module_name
+    return name
+
+  def matches_type(self, name: str, target: Union[str, Tuple[str, ...]]):
+    """Checks whether 'name' matches the 'target' type."""
+    if isinstance(target, tuple):
+      return any(self.matches_type(name, t) for t in target)
+    assert "." in target, "'target' must be a fully qualified type name"
+    if "." in name:
+      prefix, name_base = name.rsplit(".", 1)
+      name = f"{self._resolve_alias(prefix)}.{name_base}"
+    else:
+      name = self._resolve_alias(name)
+    name = utils.strip_prefix(name, parser_constants.EXTERNAL_NAME_PREFIX)
+    if name == target:
+      return True
+    module, target_base = target.rsplit(".", 1)
+    if name == target_base:
+      return True
+    if module == "builtins":
+      return self.matches_type(name, f"typing.{target_base.title()}")
+    equivalent_modules = {"typing", "collections.abc", "typing_extensions"}
+    if module not in equivalent_modules:
+      return False
+    return any(name == f"{mod}.{target_base}" for mod in equivalent_modules)
 
   def _matches_named_type(self, t, names):
     """Whether t is a NamedType matching any of names."""
     if not isinstance(t, pytd.NamedType):
       return False
-    for name in names:
-      if "." in name:
-        if self._matches_full_name(t, name):
-          return True
-      else:
-        if t.name == name:
-          return True
-    return False
+    return self.matches_type(t.name, names)
 
   def _is_empty_tuple(self, t):
     return isinstance(t, pytd.TupleType) and not t.parameters
@@ -551,22 +566,22 @@ class Definitions:
 
   def _parameterized_type(self, base_type: Any, parameters):
     """Return a parameterized type."""
-    if self._matches_named_type(base_type, _LITERAL_TYPES):
+    if self._matches_named_type(base_type, "typing.Literal"):
       return pytd_literal(parameters, self.aliases)
-    elif self._matches_named_type(base_type, _ANNOTATED_TYPES):
+    elif self._matches_named_type(base_type, "typing.Annotated"):
       return pytd_annotated(parameters)
     self._verify_no_literal_parameters(base_type, parameters)
     arg_is_paramspec = False
-    if self._matches_named_type(base_type, _TUPLE_TYPES):
+    if self._matches_named_type(base_type, "builtins.tuple"):
       if len(parameters) == 2 and parameters[1] is self.ELLIPSIS:
         parameters = parameters[:1]
         builder = pytd.GenericType
       else:
         builder = pytdgen.heterogeneous_tuple
-    elif self._matches_named_type(base_type, _CONCATENATE_TYPES):
+    elif self._matches_named_type(base_type, "typing.Concatenate"):
       assert parameters
       builder = pytd.Concatenate
-    elif self._matches_named_type(base_type, _CALLABLE_TYPES):
+    elif self._matches_named_type(base_type, "typing.Callable"):
       if parameters[0] is self.ELLIPSIS:
         parameters = (pytd.AnythingType(),) + parameters[1:]
       if parameters and isinstance(parameters[0], pytd.NamedType):
@@ -661,7 +676,7 @@ class Definitions:
       self, class_name, bases, keywords, decorators, defs
   ) -> pytd.Class:
     """Build a pytd.Class from definitions collected from an ast node."""
-    bases = classdef.get_bases(bases)
+    bases = classdef.get_bases(bases, self.matches_type)
     keywords = classdef.get_keywords(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 

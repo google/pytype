@@ -314,6 +314,27 @@ class TestDataclassConfig(test_base.BaseTest):
           return a
       """)
 
+  def test_generic_dataclass(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.CheckWithErrors(f"""
+        from typing import Generic, TypeVar
+        import dataclasses
+        import fiddle
+
+        T = TypeVar('T')
+
+        @dataclasses.dataclass
+        class D(Generic[T]):
+          x: T
+
+        a = fiddle.{self.buildable_type_name}(D)
+        a.x = 1
+        b = fiddle.{self.buildable_type_name}(D[int])
+        b.x = 1
+        c = fiddle.{self.buildable_type_name}(D[str])
+        c.x = 1  # annotation-type-mismatch
+      """)
+
 
 class TestDataclassPartial(TestDataclassConfig):
   """Test fiddle.Partial over dataclasses."""

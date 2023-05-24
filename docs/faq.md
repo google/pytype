@@ -22,9 +22,10 @@
    * [How do I annotate *args and **kwargs?](#how-do-i-annotate-args-and-kwargs)
    * [Why are signature mismatches in subclasses bad? {#signature-mismatch}](#why-are-signature-mismatches-in-subclasses-bad-signature-mismatch)
    * [What is the nothing type?](#what-is-the-nothing-type)
+   * [What does ... mean in a type annotation?](#what-does--mean-in-a-type-annotation)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 16 07:27:46 PM PDT 2023 -->
+<!-- Added by: rechen, at: Tue May 23 01:37:58 PM PDT 2023 -->
 
 <!--te-->
 
@@ -387,11 +388,47 @@ with another type is the other type.
 Do not use `nothing` in type annotations; it is an internal detail of pytype's
 inference engine.
 
+## What does `...` mean in a type annotation?
+
+`...` in a type annotation has several possible meanings:
+
+*   As the first argument to `Callable`, `...` means that the Callable takes any
+    number of arguments of any type, e.g.:
+
+    ```python
+    from collections.abc import Callable
+    _FUNC: Callable[..., int]
+    _FUNC()  # valid call
+    _FUNC(0, x=42)  # also valid call
+    ```
+
+*   As an optional second argument to `tuple`, `...` means that the tuple has a
+    specified element type but variable length, e.g.:
+
+    ```python
+    _TUPLE1: tuple[int]  # length 1 tuple of an int
+    _TUPLE2: tuple[int, int]  # length 2 tuple of two ints
+    _TUPLE3: tuple[int, ...]  # variable length tuple of ints
+    ```
+
+*   As a top-level annotation, `...` means that the type is inferred from the
+    implementation, e.g.:
+
+    ```python
+    def f() -> ...:  # return type inferred as `int`
+      return 0
+    ```
+
+    This is an experimental feature; see the
+    [experimental features documentation][pytype-experimental] for details.
+
 <!-- General references -->
+
 [compatibility]: user_guide.md#compatibility
 [how-do-i-disable-all-pytype-checks-for-a-particular-file]: #how-do-i-disable-all-pytype-checks-for-a-particular-file
 [oss-pytype]: https://github.com/google/pytype
 [pep-561-issue]: https://github.com/google/pytype/issues/151
+[pytype-experimental]: support.md#non-standardexperimental
 [typeshed]: https://github.com/python/typeshed
 [typing-faq]: typing_faq.md
 

@@ -158,7 +158,6 @@ py_library(
     .pytd_visitors
     pytype.utils
     pytype.platform_utils.platform_utils
-    pytype.pytd.parse.parse
 )
 
 py_library(

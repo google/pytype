@@ -3,11 +3,10 @@
 import collections
 import sys
 
-from typing import cast, Dict, List
+from typing import cast, Callable, Dict, List
 
 from pytype.pyi import types
 from pytype.pytd import pytd
-from pytype.pytd import pytd_utils
 from pytype.pytd.parse import node as pytd_node
 
 # pylint: disable=g-import-not-at-top
@@ -17,18 +16,17 @@ else:
   from typed_ast import ast3
 # pylint: enable=g-import-not-at-top
 
-
-_PROTOCOL_ALIASES = ("typing.Protocol", "typing_extensions.Protocol")
 ParseError = types.ParseError
 
 
-def get_bases(bases: List[pytd.Type]) -> List[pytd.Type]:
+def get_bases(
+    bases: List[pytd.Type], type_match: Callable[..., bool]) -> List[pytd.Type]:
   """Collect base classes."""
 
   bases_out = []
   namedtuple_index = None
   for i, p in enumerate(bases):
-    if p.name and pytd_utils.MatchesFullName(p, _PROTOCOL_ALIASES):
+    if p.name and type_match(p.name, "typing.Protocol"):
       if isinstance(p, pytd.GenericType):
         # From PEP 544: "`Protocol[T, S, ...]` is allowed as a shorthand for
         # `Protocol, Generic[T, S, ...]`."

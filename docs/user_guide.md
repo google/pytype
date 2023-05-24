@@ -5,7 +5,7 @@
 <!--ts-->
 * [User guide](#user-guide)
    * [Introduction](#introduction)
-   * [The typing module](#the-typing-module)
+   * [Advanced types](#advanced-types)
    * [Silencing errors](#silencing-errors)
    * [Variable annotations](#variable-annotations)
    * [Hiding extra dependencies](#hiding-extra-dependencies)
@@ -13,7 +13,7 @@
    * [Pytype's pyi stub files](#pytypes-pyi-stub-files)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 16 07:27:48 PM PDT 2023 -->
+<!-- Added by: rechen, at: Tue May 23 01:37:59 PM PDT 2023 -->
 
 <!--te-->
 
@@ -54,13 +54,12 @@ File "t.py", line 2, in annotated: bad option in return type [bad-return-type]
   Actually returned: float
 ```
 
-## The `typing` module
+## Advanced types
 
 The above code only used [built-in types][stdtypes] (`int` and `float`). To
-formulate more complex types, you typically need the
-[typing][pep-484-the-typing-module] module. It
-contains many useful definitions that can, for example, be used to declare a
-function that extracts the keys out of a mapping:
+formulate more complex types, you typically need to import some
+[advanced typing constructs][pep-484-the-typing-module]. For example, this is
+how you might declare a function that extracts the keys out of a mapping:
 
 ```python
 from collections.abc import Mapping, Sequence
@@ -102,6 +101,10 @@ def greet(name: str | None) -> str:
 Note: The `|` syntax is new in Python 3.10. If you need to support older
 versions, use `typing.Union[X, Y]` rather than `X | Y` and `typing.Optional[X]`
 as a shorthand for `typing.Union[X, None]`.
+
+The above-mentioned constructs are standardized and understood by all Python
+type checkers. Pytype additionally supports some experimental features. See the
+[experimental features documentation][pytype-experimental] for details.
 
 ## Silencing errors
 
@@ -238,6 +241,7 @@ and [typeshed][typeshed]. If you find a mistake in one of these files, please
 [pep-484-the-typing-module]: https://www.python.org/dev/peps/pep-0484/#the-typing-module
 [pep-526]: https://www.python.org/dev/peps/pep-0526/
 [pyi-examples]: https://github.com/python/typeshed/tree/master/stdlib
+[pytype-experimental]: support.md#non-standardexperimental
 [stdtypes]: https://docs.python.org/2/library/stdtypes.html
 [union]: https://docs.python.org/3/library/typing.html#typing.Union
 
