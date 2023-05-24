@@ -1,3 +1,21 @@
+Version 2023.05.24:
+
+Updates:
+* Performance improvements:
+  * Speed up Variable.Bindings by using the reachability analyzer.
+  * Implement literal erasure for List and Tuple.
+* Add support for analyzing python scripts.
+
+Bug fixes:
+* Fix bug in pytype's handling of overloads.
+* Fix timeout caused by name clash between a module and a package.
+* Limit the scope of module aliases in load_pytd.
+* Handle generic dataclasses in fiddle configs.
+* Support referring to a class via an alias in a pyi file.
+* Fix a crash when pattern matching on collections.abc classes.
+* Handle nested classes better in the LookupExternalTypes visitor.
+* Improve matching of typing names in the pyi parser.
+
 Version 2023.05.08:
 
 Updates:
