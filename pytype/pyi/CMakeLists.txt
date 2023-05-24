@@ -66,6 +66,7 @@ py_library(
     .classdef
     .metadata
     .types
+    pytype.utils
     pytype.pytd.pytd_for_parser
     pytype.pytd.parse.parse
 )

@@ -559,6 +559,19 @@ class ParserTest(parser_test_base.ParserTestBase):
           __match_args__: tuple
     """)
 
+  def test_typevar_alias(self):
+    self.check("""
+      from typing import TypeVar as _TypeVar
+      T = _TypeVar('T')
+      def f(x: T) -> T: ...
+    """, """
+      from typing import TypeVar, TypeVar as _TypeVar
+
+      T = TypeVar('T')
+
+      def f(x: T) -> T: ...
+    """)
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 

@@ -30,20 +30,6 @@ else:
 # reexport as parser.ParseError
 ParseError = types.ParseError
 
-_TYPEVAR_IDS = ("TypeVar", "typing.TypeVar")
-_PARAMSPEC_IDS = (
-    "ParamSpec", "typing.ParamSpec", "typing_extensions.ParamSpec")
-_TYPING_NAMEDTUPLE_IDS = ("NamedTuple", "typing.NamedTuple")
-_COLL_NAMEDTUPLE_IDS = ("namedtuple", "collections.namedtuple")
-_TYPEDDICT_IDS = (
-    "TypedDict", "typing.TypedDict", "typing_extensions.TypedDict")
-_NEWTYPE_IDS = ("NewType", "typing.NewType")
-_ANNOTATED_IDS = (
-    "Annotated", "typing.Annotated", "typing_extensions.Annotated")
-_FINAL_IDS = ("typing.Final", "typing_extensions.Final")
-_TYPE_ALIAS_IDS = ("typing.TypeAlias", "typing_extensions.TypeAlias")
-_TYPING_LITERAL_IDS = ("Literal", "typing.Literal", "typing_extensions.Literal")
-
 #------------------------------------------------------
 # imports
 
@@ -218,7 +204,8 @@ class AnnotationVisitor(visitor.BaseVisitor):
   def enter_Subscript(self, node):
     if isinstance(node.value, ast3.Attribute):
       node.value = _attribute_to_name(node.value).id
-    if getattr(node.value, "id", None) in _ANNOTATED_IDS:
+    if self.defs.matches_type(getattr(node.value, "id", ""),
+                              "typing.Annotated"):
       self._convert_typing_annotated(node)
     self.subscripted.append(node.value)
 
@@ -244,8 +231,13 @@ class AnnotationVisitor(visitor.BaseVisitor):
   def visit_BinOp(self, node):
     if self.subscripted:
       last = self.subscripted[-1]
-      if ((isinstance(last, ast3.Name) and last.id in _TYPING_LITERAL_IDS) or
-          isinstance(last, str) and last in _TYPING_LITERAL_IDS):
+      if isinstance(last, ast3.Name):
+        last_id = last.id
+      elif isinstance(last, str):
+        last_id = last
+      else:
+        last_id = ""
+      if self.defs.matches_type(last_id, "typing.Literal"):
         raise ParseError("Expressions are not allowed in typing.Literal.")
     if isinstance(node.op, ast3.BitOr):
       return self.defs.new_type("typing.Union", [node.left, node.right])
@@ -446,7 +438,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       typ = pytd.NamedType("tuple")
       val = None
     elif typ.name:
-      if pytd_utils.MatchesFullName(typ, _FINAL_IDS):
+      if self.defs.matches_type(typ.name, "typing.Final"):
         if isinstance(node.value, types.Pyval):
           # to_pytd_literal raises an exception if the value is a float, but
           # checking upfront allows us to generate a nicer error message.
@@ -460,7 +452,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         elif isinstance(val, pytd.NamedType):
           typ = pytd.Literal(val)
           val = None
-      elif pytd_utils.MatchesFullName(typ, _TYPE_ALIAS_IDS):
+      elif self.defs.matches_type(typ.name, "typing.TypeAlias"):
         typ = val
         val = None
         is_alias = True
@@ -668,31 +660,32 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     # passing them to internal functions directly in visit_Call.
     if isinstance(node.func, ast3.Attribute):
       node.func = _attribute_to_name(node.func)
-    if node.func.id in _TYPEVAR_IDS:
+    if self.defs.matches_type(node.func.id, "typing.TypeVar"):
       self._convert_typevar_args(node)
-    elif node.func.id in _PARAMSPEC_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.ParamSpec"):
       self._convert_paramspec_args(node)
-    elif node.func.id in _TYPING_NAMEDTUPLE_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.NamedTuple"):
       self._convert_typing_namedtuple_args(node)
-    elif node.func.id in _COLL_NAMEDTUPLE_IDS:
+    elif self.defs.matches_type(node.func.id, "collections.namedtuple"):
       self._convert_collections_namedtuple_args(node)
-    elif node.func.id in _TYPEDDICT_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.TypedDict"):
       self._convert_typed_dict_args(node)
-    elif node.func.id in _NEWTYPE_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.NewType"):
       return self._convert_newtype_args(node)
 
   def visit_Call(self, node):
-    if node.func.id in _TYPEVAR_IDS:
+    if self.defs.matches_type(node.func.id, "typing.TypeVar"):
       if self.level > 0:
         raise ParseError("TypeVars need to be defined at module level")
       return _TypeVar.from_call(node)
-    elif node.func.id in _PARAMSPEC_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.ParamSpec"):
       return _ParamSpec.from_call(node)
-    elif node.func.id in _TYPING_NAMEDTUPLE_IDS + _COLL_NAMEDTUPLE_IDS:
+    elif self.defs.matches_type(
+        node.func.id, ("typing.NamedTuple", "collections.namedtuple")):
       return self.defs.new_named_tuple(*node.args)
-    elif node.func.id in _TYPEDDICT_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.TypedDict"):
       return self.defs.new_typed_dict(*node.args, node.keywords)
-    elif node.func.id in _NEWTYPE_IDS:
+    elif self.defs.matches_type(node.func.id, "typing.NewType"):
       return self.defs.new_new_type(*node.args)
     # Convert all other calls to NamedTypes; for example:
     # * typing.pyi uses things like
