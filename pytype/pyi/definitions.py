@@ -504,7 +504,9 @@ class Definitions:
     assert "." in target, "'target' must be a fully qualified type name"
     if "." in name:
       prefix, name_base = name.rsplit(".", 1)
-      name = f"{self._resolve_alias(prefix)}.{name_base}"
+      if prefix not in ("builtins", "typing"):
+        prefix = self._resolve_alias(prefix)
+      name = f"{prefix}.{name_base}"
     else:
       name = self._resolve_alias(name)
     name = utils.strip_prefix(name, parser_constants.EXTERNAL_NAME_PREFIX)
