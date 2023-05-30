@@ -434,6 +434,17 @@ class TypedDictFunctionalTest(test_base.BaseTest):
         assert_type(a["in"], int)
       """)
 
+  def test_colon_field_name(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import TypedDict
+      XMLDict = TypedDict("XMLDict", {"xml:name": str})
+    """)]):
+      self.Check("""
+        import foo
+        d: foo.XMLDict
+        assert_type(d["xml:name"], str)
+      """)
+
   def test_total(self):
     ty = self.Infer("""
       from typing_extensions import TypedDict
