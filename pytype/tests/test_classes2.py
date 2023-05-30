@@ -368,7 +368,8 @@ class ClassesTestPython3Feature(test_base.BaseTest):
       from typing import Callable
       Foo = Callable[[], None]
       class Bar(Foo):
-        pass
+        def __call__(self):
+          pass
       def f(x: Foo):
         pass
       f(Bar(__any_object__, __any_object__))

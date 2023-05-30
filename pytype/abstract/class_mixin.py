@@ -296,7 +296,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     # methods, and we don't want [not-instantiable] errors all over the place
     # because a class has Protocol buried in its MRO.
     for var in self._bases:
-      if any(base.full_name == "typing.Protocol" for base in var.data):
+      if any(base.full_name == "typing.Protocol" or
+             isinstance(base, Class) and base.is_protocol for base in var.data):
         return True
     return False
 

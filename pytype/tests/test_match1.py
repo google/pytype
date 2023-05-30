@@ -139,10 +139,11 @@ class MatchTest(test_base.BaseTest):
 
   def test_maybe_parameterized(self):
     self.Check("""
-      import collections
-      class Foo(collections.MutableMapping):
+      import collections.abc
+      class Foo(collections.abc.MutableMapping):
         pass
-      dict.__delitem__(Foo(), __any_object__)  # pytype: disable=wrong-arg-types
+      def f(x: Foo):
+        dict.__delitem__(x, __any_object__)  # pytype: disable=wrong-arg-types
     """)
 
 
