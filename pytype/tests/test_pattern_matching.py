@@ -493,6 +493,23 @@ class MatchClassTest(test_base.BaseTest):
       def f(x: str) -> str: ...
     """)
 
+  def test_builtin_with_union(self):
+    ty = self.Infer("""
+      def f(x: int | str):
+        match x:
+          case str(y):
+            return y
+          case int(y):
+            return str(y)
+          case dict(y):
+            return y
+          case _:
+            return 42
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: int | str) -> str: ...
+    """)
+
   def test_builtin_kwargs(self):
     ty = self.Infer("""
       def f(x: str):

@@ -1068,7 +1068,11 @@ def _match_builtin_class(
     # Builtin matchers do not take kwargs
     return ClassMatch(False, None)
   else:
-    ret = [instance_var.AssignToNewVariable(node)]
+    if success:
+      ret = [cls.instantiate(node)]
+    else:
+      # Do not narrow the type if success != True
+      ret = [instance_var.AssignToNewVariable(node)]
     return ClassMatch(success, ctx.convert.build_tuple(node, ret))
 
 
@@ -1091,11 +1095,14 @@ def match_class(
   if _var_maybe_unknown(obj_var):
     _, instance_var = ctx.vm.init_class(node, cls)
     success = None
-  elif ctx.matcher(node).compute_one_match(obj_var, cls).success:
-    instance_var = obj_var
-    success = True
   else:
-    return ClassMatch(False, None)
+    m = ctx.matcher(node).compute_one_match(
+        obj_var, cls, match_all_views=False)
+    if m.success:
+      instance_var = obj_var
+      success = True
+    else:
+      return ClassMatch(False, None)
 
   if posarg_count:
     if isinstance(cls, abstract.PyTDClass) and cls.name in _BUILTIN_MATCHERS:
