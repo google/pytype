@@ -792,6 +792,21 @@ class ProtocolTest(test_base.BaseTest):
       f(0)
     """)
 
+  def test_not_instantiable(self):
+    self.CheckWithErrors("""
+      import abc
+      from typing import Protocol
+
+      class MyProtocol(Protocol):
+        @abc.abstractmethod
+        def f(self): ...
+
+      class Child(MyProtocol):
+        pass
+
+      Child()  # not-instantiable
+    """)
+
 
 class ProtocolsTestPython3Feature(test_base.BaseTest):
   """Tests for protocol implementation on a target using a Python 3 feature."""

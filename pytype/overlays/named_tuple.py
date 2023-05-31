@@ -1,7 +1,6 @@
 """Implementation of named tuples."""
 
 import dataclasses
-import keyword
 
 from typing import Any, List, Optional
 
@@ -73,18 +72,14 @@ class NamedTupleProperties:
     Also validates self.name, which has the same requirements, except it can
     start with "_", and cannot be changed.
     """
-    def invalid_name(field_name):
-      return (not all(c.isalnum() or c == "_" for c in field_name)
-              or keyword.iskeyword(field_name)
-              or not field_name  # catches empty string, etc.
-              or field_name[0].isdigit())
 
-    if invalid_name(self.name):
+    if not utils.is_valid_name(self.name):
       raise ValueError(self.name)
 
     seen = set()
     for idx, f in enumerate(self.fields):
-      if invalid_name(f.name) or f.name.startswith("_") or f.name in seen:
+      if (not utils.is_valid_name(f.name) or f.name.startswith("_") or
+          f.name in seen):
         if rename:
           f.name = "_%d" % idx
         else:

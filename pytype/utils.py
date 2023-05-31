@@ -3,6 +3,7 @@
 import collections
 import contextlib
 import itertools
+import keyword
 import re
 import threading
 import traceback
@@ -173,6 +174,11 @@ def unique_list(xs):
       seen.add(x)
       out.append(x)
   return out
+
+
+def is_valid_name(name: str) -> bool:
+  return (all(c.isalnum() or c == "_" for c in name) and
+          not keyword.iskeyword(name) and bool(name) and not name[0].isdigit())
 
 
 class DynamicVar:

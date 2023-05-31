@@ -1,7 +1,6 @@
 """Printer to output pytd trees in pyi format."""
 
 import collections
-import keyword
 import logging
 import re
 
@@ -328,7 +327,7 @@ class PrintVisitor(base_visitor.Visitor):
       for c in node.constants:
         name, typ = c.split(": ")
         constants[name] = typ
-      if any(keyword.iskeyword(name) for name in constants):
+      if any(not utils.is_valid_name(name) for name in constants):
         # We output the TypedDict in functional form, since using the class form
         # would produce a parse error when the pyi file is ingested.
         fields = "{%s}" % ", ".join(f"{name!r}: {typ}"

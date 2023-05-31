@@ -637,6 +637,14 @@ class ImportPathsTest(_LoaderTest):
     a = ast.Lookup("foo.A")
     self.assertEqual(a.Lookup("x").type.cls, a.Lookup("foo.A.B"))
 
+  def test_alias_typevar(self):
+    ast = self._import(foo="""
+      from typing import TypeVar as _TypeVar
+      T = _TypeVar('T')
+    """)
+    self.assertEqual(ast.Lookup("foo.T"),
+                     pytd.TypeParameter(name="T", scope="foo"))
+
 
 class ImportTypeMacroTest(_LoaderTest):
 

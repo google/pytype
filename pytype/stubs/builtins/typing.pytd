@@ -1,5 +1,11 @@
-# Special-cased by the parser: TypeVar, Any, NamedTuple, Optional, Union
 __all__ = ...  # type: List[str]
+
+# Special-cased by the parser
+class Any: ...
+TypeVar: Any
+Optional: Any
+Union: Any
+
 if sys.version_info >= (3, 0):
   AnyStr = TypeVar('AnyStr', str, bytes)
 else:
