@@ -28,8 +28,8 @@ class ChexOverlay(overlay.Overlay):
 class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
-  _DEFAULT_ARGS = {**dataclass_overlay.Dataclass._DEFAULT_ARGS,
-                   "mappable_dataclass": True}
+  DEFAULT_ARGS = {**dataclass_overlay.Dataclass.DEFAULT_ARGS,
+                  "mappable_dataclass": True}
 
   @classmethod
   def make(cls, ctx):
@@ -59,6 +59,27 @@ class Dataclass(dataclass_overlay.Dataclass):
         return_type=self.ctx.convert.tuple_type,
     )
 
+  def _add_mapping_methods(self, node, cls):
+    if "__getitem__" not in cls.members:
+      cls.members["__getitem__"] = overlay_utils.make_method(
+          ctx=self.ctx,
+          node=node,
+          name="__getitem__",
+          params=[overlay_utils.Param("key")],
+          return_type=self.ctx.convert.unsolvable)
+    if "__iter__" not in cls.members:
+      cls.members["__iter__"] = overlay_utils.make_method(
+          ctx=self.ctx,
+          node=node,
+          name="__iter__",
+          return_type=self.ctx.convert.name_to_value("typing.Iterator"))
+    if "__len__" not in cls.members:
+      cls.members["__len__"] = overlay_utils.make_method(
+          ctx=self.ctx,
+          node=node,
+          name="__len__",
+          return_type=self.ctx.convert.int_type)
+
   def decorate(self, node, cls):
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
@@ -70,3 +91,4 @@ class Dataclass(dataclass_overlay.Dataclass):
       return
     mapping = self.ctx.convert.name_to_value("typing.Mapping")
     overlay_utils.add_base_class(node, cls, mapping)
+    self._add_mapping_methods(node, cls)

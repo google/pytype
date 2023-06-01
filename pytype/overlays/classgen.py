@@ -52,7 +52,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
 
   # Defaults for the args that we support (dataclasses only support 'init',
   # but the others default to false so they should not affect anything).
-  _DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
+  DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
       "init": True,
       "kw_only": False,
       "auto_attribs": False,
@@ -74,7 +74,7 @@ class Decorator(abstract.PyTDFunction, metaclass=abc.ABCMeta):
     """Apply the decorator to cls."""
 
   def get_initial_args(self):
-    ret = self._DEFAULT_ARGS.copy()
+    ret = self.DEFAULT_ARGS.copy()
     ret.update(self.partial_args)
     return ret
 
