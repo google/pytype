@@ -143,6 +143,20 @@ class Next(BuiltinFunction):
       return node, self.ctx.new_unsolvable(node)
 
 
+class Round(BuiltinFunction):
+  """Implements round."""
+
+  name = "round"
+
+  def call(self, node, func, args, alias_map=None):
+    self.match_args(node, args)
+    node, fn = self.get_underlying_method(node, args.posargs[0], "__round__")
+    if fn is None:
+      return super().call(node, func, args, alias_map)
+    new_args = args.replace(posargs=args.posargs[1:])
+    return function.call_function(self.ctx, node, fn, new_args)
+
+
 class ObjectPredicate(BuiltinFunction):
   """The base class for builtin predicates of the form f(obj, ...) -> bool.
 

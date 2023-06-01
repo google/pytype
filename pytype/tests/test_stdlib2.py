@@ -117,6 +117,14 @@ class StdLibTestsBasic(test_base.BaseTest,
       assert_type(os.path.basename(x), str)
     """)
 
+  def test_decimal_round(self):
+    self.Check("""
+      import decimal
+      x = decimal.Decimal('5.02')
+      assert_type(round(x), int)
+      assert_type(round(x, 1), decimal.Decimal)
+    """)
+
 
 class StdlibTestsFeatures(test_base.BaseTest,
                           test_utils.TestCollectionsMixin):
