@@ -427,6 +427,16 @@ class TypingTest(test_base.BaseTest):
         "e2": r".*Expected: \(i: MyInt\)\nActually passed: \(i: int\)",
         "e3": r".*Expected:.*val: str\)\nActually passed:.*val: int\)"})
 
+  def test_new_type_not_abstract(self):
+    # At runtime, the 'class' created by NewType is simply an identity function,
+    # so it ignores abstract-ness.
+    self.Check("""
+      from typing import Mapping, NewType
+      X = NewType('X', Mapping)
+      def f() -> X:
+        return X({})
+    """)
+
   def test_maybe_return(self):
     self.Check("""
       def f() -> int:

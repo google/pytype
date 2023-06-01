@@ -391,19 +391,25 @@ class NewType(abstract.PyTDFunction):
       # We need the type arg to be an atomic value. If not, we just
       # silently return unsolvable.
       return node, self.ctx.new_unsolvable(node)
-    value_arg_name = "val"
+    if isinstance(type_value, abstract.AnnotationContainer):
+      type_value = type_value.base_cls
     constructor = overlay_utils.make_method(
         self.ctx,
         node,
         name="__init__",
-        params=[Param(value_arg_name, type_value)])
+        params=[Param("val", type_value)])
     members = abstract.Dict(self.ctx)
     members.set_str_item(node, "__init__", constructor)
     props = class_mixin.ClassBuilderProperties(
         name_var=name_arg,
         bases=[type_arg],
         class_dict_var=members.to_variable(node))
-    return self.ctx.make_class(node, props)
+    node, clsvar = self.ctx.make_class(node, props)
+    # At runtime, the 'class' created by NewType is simply an identity function,
+    # so it ignores abstract-ness.
+    for cls in clsvar.data:
+      cls.abstract_methods.clear()
+    return node, clsvar
 
 
 class Overload(abstract.PyTDFunction):
