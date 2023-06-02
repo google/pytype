@@ -1,3 +1,20 @@
+Version 2023.06.02:
+
+Updates:
+* Performance improvement: change Dict.set_str_item to merge nonatomic str
+  values into Dict._K.
+
+Bug fixes:
+* Fix crash caused by typing.TypeVar lookup failure.
+* Do not follow aliases for "builtins" and "typing" in pyi files.
+* Check [not-instantiable] for classes inheriting directly from a protocol.
+* Do a better job of catching illegal TypedDict field names.
+* FIX: Do not match all views for a var with multiple bindings in a CLASS_MATCH.
+* Take into account __round__ implementations when analyzing round().
+* Fix timeout caused by infinite loop in LookupItemRecursive.
+* Fix some spurious [not-instantiable] errors.
+* Only store the blockgraph when compiling the main module code.
+
 Version 2023.05.24:
 
 Updates:
