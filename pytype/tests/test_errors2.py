@@ -478,7 +478,7 @@ class ErrorTestPy3(test_base.BaseTest):
       class Foo: pass
       next(Foo())  # wrong-arg-types[e]
     """)
-    self.assertErrorSequences(errors, {"e": ["__iter__, __next__"]})
+    self.assertErrorSequences(errors, {"e": ["__next__"]})
 
   def test_protocol_mismatch_partial(self):
     _, errors = self.InferWithErrors("""

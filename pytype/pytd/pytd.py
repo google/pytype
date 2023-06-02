@@ -818,11 +818,13 @@ def LookupItemRecursive(module: TypeDeclUnit, name: str) -> Node:
     # we try lookup for both naming conventions.
     found = Lookup(item, lookup_name, part)
     if found:
+      seen = {found}
       while (isinstance(found, Alias) and isinstance(found.type, NamedType) and
              found.type.name.startswith(f'{item.name}.')):
         resolved = Lookup(item, found.type.name)
-        if resolved:
+        if resolved and resolved not in seen:
           found = resolved
+          seen.add(resolved)
         else:
           break
       item = found

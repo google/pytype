@@ -522,7 +522,9 @@ class VirtualMachine:
     frame.f_back = None
     return node, val
 
-  def compile_src(self, src, filename=None, mode="exec"):
+  def compile_src(
+      self, src, filename=None, mode="exec", store_blockgraph=False
+  ):
     """Compile the given source code."""
     code = pyc.compile_src(
         src,
@@ -531,7 +533,8 @@ class VirtualMachine:
         filename=filename,
         mode=mode)
     code, block_graph = blocks.process_code(code, self.ctx.python_version)
-    self.block_graph = block_graph
+    if store_blockgraph:
+      self.block_graph = block_graph
     return code
 
   def run_bytecode(self, node, code, f_globals=None, f_locals=None):
@@ -573,7 +576,7 @@ class VirtualMachine:
     if self.ctx.python_version >= (3, 8):
       src = preprocess.augment_annotations(src)
     src_tree = directors.parse_src(src, self.ctx.python_version)
-    code = self.compile_src(src, filename=filename)
+    code = self.compile_src(src, filename=filename, store_blockgraph=True)
     # In Python 3.8+, opcodes are consistently at the first line of the
     # corresponding source code. Before 3.8, they are on one of the last lines
     # but the exact positioning is unpredictable, so we pass the bytecode to the

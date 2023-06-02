@@ -132,12 +132,9 @@ class Reversible(Generic[_T], Protocol):
 
 class Iterator(Iterable[_T], Protocol):
   __slots__ = []
-  if sys.version_info >= (3, 0):
-    @abstractmethod
-    def __next__(self) -> _T: ...
-  else:
-    @abstractmethod
-    def next(self) -> _T: ...
+  def __iter__(self) -> Iterator[_T]: ...
+  @abstractmethod
+  def __next__(self) -> _T: ...
 
 
 class Iterable(Generic[_T], Protocol):

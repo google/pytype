@@ -93,6 +93,7 @@ class Context:
         special_builtins.IsInstance,
         special_builtins.IsSubclass,
         special_builtins.Next,
+        special_builtins.Round,
     ):
       self.special_builtins[cls.name] = cls.make(self)
     # If set, allow construction of recursive values, setting the

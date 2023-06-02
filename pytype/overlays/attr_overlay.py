@@ -258,8 +258,8 @@ class AttrsNextGenDefine(Attrs):
   """
 
   # Override the default arguments.
-  _DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
-      # Entries from Decorator._DEFAULT_ARGS
+  DEFAULT_ARGS: ClassVar[Dict[str, Any]] = {
+      # Entries from Decorator.DEFAULT_ARGS
       "init": True,
       "kw_only": False,
       # Deviations from @attr.s
