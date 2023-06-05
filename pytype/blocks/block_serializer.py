@@ -24,6 +24,7 @@ class SerializedBlock:
     make_id = lambda b: BlockId(f"{namespace}:{b.id}")
     block_id = make_id(block)
     code = "\n".join(str(op) for op in block.code)
+    code = f"<{namespace}: {block.id}>\n" + code
     incoming = [make_id(b) for b in block.incoming]
     outgoing = [make_id(b) for b in block.outgoing]
     return cls(
