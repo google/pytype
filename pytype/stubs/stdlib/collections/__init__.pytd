@@ -1,7 +1,7 @@
 # We maintain our own collections.pytd, rather than using collections.pyi from
 # typeshed, because this file makes use of mutable type parameters.
 import sys
-from typing import Any, Callable, DefaultDict, Dict, List, Mapping, Optional, Reversible, Text, Tuple, Union
+from typing import Any, Callable, DefaultDict, Dict, Generic, List, Mapping, MutableMapping, Optional, Reversible, Text, Tuple, Union, overload
 
 K = TypeVar("K")
 V = TypeVar("V")
@@ -9,6 +9,7 @@ K2 = TypeVar("K2")
 V2 = TypeVar("V2")
 DV = TypeVar("DV")
 T = TypeVar("T")
+T2 = TypeVar("T2")
 
 __all__ = ...  # type: list[Any]
 _abcoll = ...  # type: Any
@@ -30,9 +31,18 @@ loads = ...  # type: Callable
 
 class deque(typing.Deque[T]): ...
 
+AsyncGenerator = typing.AsyncGenerator
+AsyncIterable = typing.AsyncIterable
+AsyncIterator = typing.AsyncIterator
+Awaitable = typing.Awaitable
+ByteString = typing.ByteString
 Callable = typing.Callable
+ChainMap = typing.ChainMap
+Collection = typing.Collection
 Container = typing.Container
+Coroutine = typing.Coroutine
 Counter = typing.Counter
+Generator = typing.Generator
 Hashable = typing.Hashable
 ItemsView = typing.ItemsView
 Iterable = typing.Iterable
@@ -44,39 +54,22 @@ MutableMapping = typing.MutableMapping
 MutableSequence = typing.MutableSequence
 MutableSet = typing.MutableSet
 OrderedDict = typing.OrderedDict
+Reversible = typing.Reversible
 Sequence = typing.Sequence
 Set = typing.Set
 Sized = typing.Sized
 ValuesView = typing.ValuesView
-
-if sys.version_info[0] >= 3:
-  AsyncIterable = typing.AsyncIterable
-  AsyncIterator = typing.AsyncIterator
-  Awaitable = typing.Awaitable
-  ByteString = typing.ByteString
-  ChainMap = typing.ChainMap
-  Coroutine = typing.Coroutine
-  Collection = typing.Collection
-  Generator = typing.Generator
-  Reversible = typing.Reversible
-
-if sys.version_info >= (3, 6):
-  AsyncGenerator = typing.AsyncGenerator
 
 if sys.version_info >= (3, 7):
   def namedtuple(typename: Text,
     field_names: Union[Text, Iterable[Text], Iterable[nothing]],
     *,
     rename: bool = ..., defaults: List[Any] = ..., module = ...) -> type: ...
-elif sys.version_info >= (3, 6):
+else:
   def namedtuple(typename: Text,
     field_names: Union[Text, Iterable[Text], Iterable[nothing]],
     *,
     verbose: bool = ..., rename: bool = ..., module = ...) -> type: ...
-else:
-  def namedtuple(typename: Text,
-    field_names: Union[Text, Iterable[Text], Iterable[nothing]],
-    verbose: bool = ..., rename: bool = ...) -> type: ...
 
 class defaultdict(DefaultDict[K, V]):
   default_factory = ...  # type: Optional[Callable[[], V]]
@@ -104,8 +97,55 @@ class defaultdict(DefaultDict[K, V]):
   def __getitem__(self, key: K2) -> Any:
     self = defaultdict[Union[K, K2], Any]
 
-if sys.version_info[0] >= 3:
-    # TODO(kramm): Implement these
-    UserDict = ...  # type: Any
-    UserList = ...  # type: Any
-    UserString = ...  # type: Any
+class UserDict(MutableMapping[K, V]):
+  data: dict[K, V]
+
+  # __init__ should be kept roughly in line with `dict.__init__`, which has the same semantics
+  @overload
+  def __init__(self) -> NoneType:
+    self = UserDict[nothing, nothing]
+  @overload
+  def __init__(self, list: list[nothing]) -> NoneType:
+    self = UserDict[nothing, nothing]
+  @overload
+  def __init__(self, mapping: Mapping[K2, V2]) -> NoneType:
+    self = UserDict[K2, V2]
+  @overload
+  def __init__(self, iterable: Iterable[tuple[K2, V2]]) -> NoneType:
+    self = UserDict[K2, V2]
+  @overload
+  def __init__(self, *args, **kwargs) -> NoneType:
+    self = UserDict[Any, Any]
+  def __len__(self) -> int: ...
+  def __getitem__(self, key: K) -> V: ...
+  def __setitem__(self, key: K2, item: V2) -> None:
+    self = UserDict[K | K2, V | V2]
+  def __delitem__(self, key: K) -> None: ...
+  def __iter__(self) -> Iterator[K]: ...
+  def __contains__(self, key: object) -> bool: ...
+  def copy(self: T) -> T: ...
+  def __copy__(self: T) -> T: ...
+
+  # `UserDict.fromkeys` has the same semantics as `dict.fromkeys`, so should be kept in line with `dict.fromkeys`.
+  # TODO: Much like `dict.fromkeys`, the true signature of `UserDict.fromkeys` is inexpressible in the current type system.
+  # See #3800 & https://github.com/python/typing/issues/548#issuecomment-683336963.
+  @staticmethod
+  @overload
+  def fromkeys(keys: Iterable[K]) -> UserDict[K, None]: ...
+  @staticmethod
+  @overload
+  def fromkeys(keys: Iterable[K], value: V) -> UserDict[K, V]: ...
+  if sys.version_info >= (3, 9):
+    def __or__(self, other: UserDict[K2, V2] | dict[K2, V2]) -> UserDict[K | K2, V | V2]: ...
+    def __ror__(self, other: UserDict[K2, V2] | dict[K2, V2]) -> UserDict[K | K2, V | V2]: ...
+    # UserDict.__ior__ should be kept roughly in line with MutableMapping.update()
+    @overload
+    def __ior__(self, other: Mapping[K2, V2]) -> None:
+      self = UserDict[K | K2, V | V2]
+    @overload
+    def __ior__(self, other: Iterable[tuple[K2, V2]]) -> None:
+      self = UserDict[K | K2, V | V2]
+
+# TODO(b/285934316): Implement these
+UserList = ...  # type: Any
+UserString = ...  # type: Any
