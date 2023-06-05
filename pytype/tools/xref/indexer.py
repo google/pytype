@@ -718,6 +718,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
     ])
     # pytype sometimes analyses this twice, leading to duplicate opcode
     # traces. We only want the first two in the list.
+    d = data = None
     if (len(ops) >= 2 and
         ops[0][0] == "LOAD_BUILD_CLASS" and
         ops[1][0] in (
@@ -892,6 +893,7 @@ class IndexVisitor(ScopedVisitor, traces.MatchAstVisitor):
         c, _ = m.span()
         loc = source.Location(loc.line, c + 1)
 
+      imported = None
       try:
         [imported] = _unwrap(data)
       except (TypeError, ValueError):

@@ -302,7 +302,7 @@ def _process_calls(kythe, index):
         kythe.add_edge(source=anchor_vname, target=target, edge_name="ref/call")
         # The call is a child of the enclosing function/class (this lets us
         # generate call graphs).
-        if ref.scope != "module":
+        if ref.scope != "module":  # pytype: disable=name-error
           parent_defn = index.defs.get(call_ref.scope)
           if parent_defn:
             # TODO(mdemello): log the 'else' case; it should never happen.
@@ -311,7 +311,7 @@ def _process_calls(kythe, index):
                 target=kythe.vname(parent_defn.to_signature()),
                 edge_name="childof")
           else:
-            assert False, ref
+            assert False, ref  # pytype: disable=name-error
 
 
 def generate_graph(index, kythe_args):

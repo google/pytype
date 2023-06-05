@@ -522,6 +522,7 @@ class ContainerTest(test_base.BaseTest):
       def f():
         g = __any_object__
         s = {}
+        s1 = {}
         if g:
           s1 = {}
           s[__any_object__] = s1
@@ -532,7 +533,7 @@ class ContainerTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
-      # TODO(159069936): This should be "Dict[str, none]". s1 above can never
+      # TODO(b/159069936): This should be "Dict[str, none]". s1 above can never
       # contain another dictionary.
       def f() -> Dict[str, Union[None, dict]]: ...
     """)

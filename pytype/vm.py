@@ -20,6 +20,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from pytype import block_environment
 from pytype import compare
 from pytype import constant_folding
 from pytype import datatypes
@@ -264,6 +265,9 @@ class VirtualMachine:
     self._var_names = {}
     self._branch_tracker = None
 
+    # Locals attached to the block graph
+    self.block_env = block_environment.Environment()
+
   @property
   def current_local_ops(self):
     return self.local_ops[self.frame.f_code.co_name]
@@ -394,6 +398,7 @@ class VirtualMachine:
       if not state:
         log.warning("Skipping block %d, nothing connects to it.", block.id)
         continue
+      self.block_env.add_block(frame, block)
       self.frame.current_block = block
       op = None
       for op in block:
@@ -782,7 +787,18 @@ class VirtualMachine:
 
     Returns:
       A tuple of the state and the value (cfg.Variable)
+
+    Raises:
+      KeyError: If the name is determined to be undefined
     """
+    var = self.block_env.get_local(self.frame.current_block, name)
+    # When the block cfg code is more complete, we can simply create a new
+    # variable at the current node with var's bindings and return that. For now,
+    # we just use this as a reachability check to make sure `name` is defined in
+    # every path through the code.
+    if self.ctx.options.strict_undefined_checks and not var:
+      raise KeyError()
+
     return self.load_from(state, self.frame.f_locals, name)
 
   def load_global(self, state, name):
@@ -870,6 +886,7 @@ class VirtualMachine:
     m_frame = self.frame
     assert m_frame is not None
     if local:
+      self.block_env.store_local(self.frame.current_block, name, value)
       target = m_frame.f_locals
     else:
       target = m_frame.f_globals
@@ -2332,7 +2349,7 @@ class VirtualMachine:
            for d in tos.data):
       state, _ = state.popn(5)
     if preserve_tos:
-      state = state.push(saved_tos)
+      state = state.push(saved_tos)  # pytype: disable=name-error
     return state
 
   def byte_POP_BLOCK(self, state, op):

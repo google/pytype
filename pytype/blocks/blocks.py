@@ -154,7 +154,7 @@ class BlockGraph:
     self.graph = {}
 
   def add(self, ordered_code):
-    self.graph[ordered_code.co_name] = ordered_code
+    self.graph[ordered_code.first_opcode] = ordered_code
 
   def pretty_print(self):
     return str(self.graph)

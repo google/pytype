@@ -325,12 +325,14 @@ class _ParseVisitor(visitor.BaseVisitor):
       # For something like an If node, we need to add a range spanning the
       # header (the `if ...:` part).
       prev_field_value = None
+      end_lineno = None
       for field_name, field_value in ast.iter_fields(node):
         if field_name == "body":
           assert prev_field_value
           end_lineno = prev_field_value.end_lineno
           break
         prev_field_value = field_value
+      assert end_lineno  # this should always be set here
       self._process_structured_comments(LineRange(node.lineno, end_lineno))
     else:
       self._process_structured_comments(LineRange.from_node(node))
@@ -346,7 +348,9 @@ class _ParseVisitor(visitor.BaseVisitor):
       self._process_structured_comments(LineRange.from_node(decorator))
     # The line range for this definition starts at the beginning of the last
     # decorator and ends at the definition's name.
+    # pytype: disable=name-error
     self.decorators.append(LineRange(decorator.lineno, node.lineno))  # pylint: disable=undefined-loop-variable
+    # pytype: enable=name-error
 
   def _visit_def(self, node):
     self._visit_decorators(node)

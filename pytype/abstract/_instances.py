@@ -164,6 +164,8 @@ class Coroutine(_instance_base.Instance):
     elif func.code.has_iterable_coroutine():
       ret_var = ret_val.get_formal_type_parameter(
           abstract_utils.V).instantiate(node)
+    else:
+      assert False, f"Function {func.name} is not a coroutine"
     return cls(ctx, ret_var, node)
 
 

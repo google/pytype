@@ -424,9 +424,10 @@ class PytypeTest(test_base.UnitTest):
   def test_pytree(self):
     """Test pytype on a real-world program."""
     self.pytype_args["--quick"] = self.INCLUDE
+    self.pytype_args["--strict-undefined-checks"] = self.INCLUDE
     self._infer_types_and_check_errors("pytree.py", [
         "import-error", "import-error", "attribute-error", "attribute-error",
-        "attribute-error", "name-error"])
+        "attribute-error", "name-error", "name-error"])
     ast = self._parse_string(self.stdout)
     self.assertListEqual(["convert", "generate_matches", "type_repr"],
                          [f.name for f in ast.functions])

@@ -946,7 +946,7 @@ class EnumOverlayTest(test_base.BaseTest):
 
   def test_if_statement_name_error(self):
     # See b/195136939
-    self.Check("""
+    self.CheckWithErrors("""
       import enum
       class M(enum.Enum):
         A = 1
@@ -957,7 +957,7 @@ class EnumOverlayTest(test_base.BaseTest):
           x = 1
         elif m == M.B:
           x = 2
-        return x + 1
+        return x + 1  # name-error
 
       class A:
         def __init__(self, m: M):

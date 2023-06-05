@@ -50,10 +50,11 @@ class MixinMeta(type):
     Returns:
       The method overloaded by 'method'.
     """
+    method_cls = type(method.__self__)
     # Bound methods have a __self__ attribute, but we don't have a way of
     # annotating `method` as being a bound rather than unbound method.
     # pytype: disable=attribute-error
-    for supercls in type(method.__self__).__mro__:
+    for supercls in method_cls.__mro__:
       # Fetch from __dict__ rather than using getattr() because we only want
       # to consider methods defined on supercls itself (not on a base).
       if ("__mixin_overloads__" in supercls.__dict__ and
