@@ -542,7 +542,10 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
   def setitem_slot(self, node, name_var, value_var):
     """Implements the __setitem__ slot."""
     self.setitem(node, name_var, value_var)
-    return self.call_pytd(node, "__setitem__", name_var, value_var)
+    return self.call_pytd(
+        node, "__setitem__",
+        abstract_utils.abstractify_variable(name_var, self.ctx),
+        abstract_utils.abstractify_variable(value_var, self.ctx))
 
   def setdefault_slot(self, node, name_var, value_var=None):
     if value_var is None:

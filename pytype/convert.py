@@ -213,13 +213,14 @@ class Converter(utils.ContextWeakrefMixin):
     return s.to_variable(node)
 
   def build_content(self, elements, discard_concrete_values=True):
-    if len(elements) == 1:
+    if (len(elements) == 1 and (
+        not discard_concrete_values or
+        not any(v.is_concrete for v in elements[0].data))):
       return next(iter(elements))
     var = self.ctx.program.NewVariable()
     for v in elements:
       for b in v.bindings:
-        if (discard_concrete_values and
-            isinstance(b.data, abstract.PythonConstant)):
+        if discard_concrete_values and b.data.is_concrete:
           var.PasteBindingWithNewData(
               b, self.get_maybe_abstract_instance(b.data))
         else:
@@ -298,13 +299,17 @@ class Converter(utils.ContextWeakrefMixin):
     constant_to_var to discard concrete values that have been kept
     around for InterpreterFunction.
 
+    This method intentionally does not descend into containers, as doing so
+    causes new timeouts. If you need to discard concrete values inside
+    containers, use abstract_utils.abstractify_variable instead.
+
     Arguments:
       data: The data.
 
     Returns:
       An instance of the same type as the data, abstract if possible.
     """
-    if isinstance(data, abstract.PythonConstant):
+    if data.is_concrete:
       data_type = type(data.pyval)
       if data_type in self.primitive_class_instances:
         return self.primitive_class_instances[data_type]

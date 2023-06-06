@@ -962,3 +962,49 @@ def simplify_variable(var, node, ctx):
   for bindings in bindings_by_hash.values():
     new_var.AddBinding(bindings[0].data, bindings, node)
   return new_var
+
+
+def _abstractify_value(val, ctx, seen=None):
+  """Converts a maybe-abstract value to a concrete one.
+
+  Args:
+    val: A value.
+    ctx: The context.
+    seen: Optionally, a seen values set.
+
+  Unlike ctx.convert.get_maybe_abstract_instance, this method recursively
+  descends into lists and tuples.
+
+  Returns:
+    A concrete value.
+  """
+  if seen is None:
+    seen = set()
+  if not val.is_concrete or val in seen:
+    return val
+  seen = seen | {val}
+  if not isinstance(val.pyval, (list, tuple)):
+    return ctx.convert.get_maybe_abstract_instance(val)
+  new_content = []
+  for elem in val.pyval:
+    new_elem_data = [_abstractify_value(v, ctx, seen) for v in elem.data]
+    if any(v != new_v for v, new_v in zip(elem.data, new_elem_data)):
+      new_elem = ctx.program.NewVariable()
+      for b, new_data in zip(elem.bindings, new_elem_data):
+        new_elem.PasteBindingWithNewData(b, new_data)
+      new_content.append(new_elem)
+    else:
+      new_content.append(elem)
+  if any(elem != new_elem for elem, new_elem in zip(val.pyval, new_content)):
+    return type(val)(type(val.pyval)(new_content), ctx)
+  else:
+    return val
+
+
+def abstractify_variable(var, ctx):
+  if not any(v.is_concrete for v in var.data):
+    return var
+  new_var = ctx.program.NewVariable()
+  for b in var.bindings:
+    new_var.PasteBindingWithNewData(b, _abstractify_value(b.data, ctx))
+  return new_var
