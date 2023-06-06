@@ -105,6 +105,11 @@ class _BranchTracker:
     # should not do exhaustiveness and redundancy checks since we have already
     # tracked all the case branches.
     self._seen_opcodes = set()
+    # We need to track the match var so we can retrieve it in the default branch
+    # (which does not have a MATCH_* opcode)
+    # TODO(b/283921574): We can use this to implement exhaustiveness tracking
+    # for union types in class matches.
+    self._obj_vars = {}
 
   def _add_new_match(self, match_val: abstract.Instance, match_line: int):
     self._tracker[match_line] = _EnumTracker(match_val.cls)
@@ -132,6 +137,18 @@ class _BranchTracker:
     enum_tracker = self._tracker[match_line]
     assert match_val.cls == enum_tracker.enum_cls
     return enum_tracker
+
+  def get_current_match(self, op: opcodes.Opcode):
+    case_line = self.matches.match_cases[op.line]
+    return self.matches.start_to_end[case_line]
+
+  def register_obj_var(self, op: opcodes.Opcode, obj_var: cfg.Variable):
+    line = self.get_current_match(op)
+    self._obj_vars[line] = obj_var
+
+  def get_current_obj_var(self, op: opcodes.Opcode):
+    line = self.get_current_match(op)
+    return self._obj_vars.get(line)
 
   def add_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
                  case_var: cfg.Variable) -> Optional[bool]:
@@ -333,6 +350,22 @@ class VirtualMachine:
   def is_at_maximum_depth(self):
     return len(self.frames) > self._maximum_depth
 
+  def _handle_default_match_case(self, state, op):
+    """Handle the default case in a match statement."""
+    self._branch_tracker.add_default_branch(op)
+    obj_var = self._branch_tracker.get_current_obj_var(op)
+    if obj_var:
+      # The match statement generates a linear "main path" through the cfg
+      # (since it checks every branch sequentially), so if we ever store a new
+      # binding for the match var, when we hit the default branch we need to
+      # retrieve the var from the original cfg node and copy it here.
+      state = state.forward_cfg_node("MatchDefault")
+      name = self._var_names.get(obj_var.id)
+      return self.store_local(
+          state, name, obj_var.AssignToNewVariable(state.node))
+    else:
+      return state
+
   def run_instruction(
       self, op: opcodes.Opcode, state: frame_state.FrameState
   ) -> frame_state.FrameState:
@@ -362,7 +395,7 @@ class VirtualMachine:
       state = state.set_why("exception")
     # Track `case _` in match statements
     if op.line in self._branch_tracker.matches.defaults:
-      self._branch_tracker.add_default_branch(op)
+      state = self._handle_default_match_case(state, op)
     implicit_return = (
         op.name == "RETURN_VALUE" and
         op.line not in self._director.return_lines)
@@ -3008,6 +3041,17 @@ class VirtualMachine:
     obj_var, cls_var = state.topn(2)
     ret = vm_utils.match_class(
         state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx)
+    state = state.forward_cfg_node("MatchClass")
+    if ret.success is not False:  # pylint: disable=g-bool-id-comparison
+      # Narrow the type of the match variable since we are in a case branch
+      # where it has matched the given class. Also store the original obj_var,
+      # since the new narrowed assignment shadows it.
+      self._branch_tracker.register_obj_var(op, obj_var)
+      name = self._var_names.get(obj_var.id)
+      if name:
+        narrowed_type = self.ctx.join_variables(
+            state.node, [x.instantiate(state.node) for x in cls_var.data])
+        state = self.store_local(state, name, narrowed_type)
     state = state.set_top(
         self.ctx.convert.bool_values[ret.success].to_variable(state.node))
     if ret.values:
