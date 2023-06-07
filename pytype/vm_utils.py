@@ -1055,12 +1055,18 @@ class ClassMatch:
   success: Optional[bool]  # tri-state boolean for if-splitting
   values: Optional[cfg.Variable]
 
+  @property
+  def matched(self):
+    # Either True or None denotes a successful match
+    return self.success is not False  # pylint: disable=g-bool-id-comparison
+
 
 def _match_builtin_class(
-    node, success: bool, instance_var: cfg.Variable, cls: abstract.Class,
-    keys: Tuple[str], posarg_count: int, ctx
+    node, success: Optional[bool], cls: abstract.Class, keys: Tuple[str],
+    posarg_count: int, ctx
 ) -> ClassMatch:
   """Match a builtin class with a single posarg constructor."""
+  assert success is not False  # pylint: disable=g-bool-id-comparison
   if posarg_count > 1:
     ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count, 1)
     return ClassMatch(False, None)
@@ -1068,11 +1074,7 @@ def _match_builtin_class(
     # Builtin matchers do not take kwargs
     return ClassMatch(False, None)
   else:
-    if success:
-      ret = [cls.instantiate(node)]
-    else:
-      # Do not narrow the type if success != True
-      ret = [instance_var.AssignToNewVariable(node)]
+    ret = [cls.instantiate(node)]
     return ClassMatch(success, ctx.convert.build_tuple(node, ret))
 
 
@@ -1111,8 +1113,7 @@ def match_class(
 
   if posarg_count:
     if isinstance(cls, abstract.PyTDClass) and cls.name in _BUILTIN_MATCHERS:
-      return _match_builtin_class(
-          node, success, instance_var, cls, keys, posarg_count, ctx)
+      return _match_builtin_class(node, success, cls, keys, posarg_count, ctx)
 
     if posarg_count > len(cls.match_args):
       ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count,

@@ -6,17 +6,14 @@ Merge the test files once the rewrite is complete.
 """
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
-@test_utils.skipBeforePy((3, 10), "Depends on 3.10+ bytecode")
 class TestControlFlow(test_base.BaseTest):
   """Tests for control flow related features."""
 
   def test_local_definition(self):
     self.CheckWithErrors("""
-      from typing import Union
-      def f(x: Union[int, str]):
+      def f(x: int | str):
         if isinstance(x, int):
           if x > 10:
               y = 10

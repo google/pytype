@@ -384,8 +384,8 @@ class MatchClassTest(test_base.BaseTest):
           case B():
             assert_type(x, B)
           case _:
-            # We do not do exhaustiveness checks other than for enums
-            assert_type(x, A | B)
+            # This branch will not be entered
+            assert_type(1, str)
     """)
 
   def test_type_narrowing_union(self):
@@ -393,15 +393,43 @@ class MatchClassTest(test_base.BaseTest):
       class A: pass
       class B: pass
       class C: pass
+      class D: pass
 
-      def f(x: A | B | C):
+      def f(x: A | B | C | D):
         match x:
           case A() | B():
             assert_type(x, A | B)
           case C():
             assert_type(x, C)
           case _:
-            assert_type(x, A | B | C)
+            assert_type(x, D)
+    """)
+
+  def test_type_narrowing_mixed(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+      class D: pass
+
+      def f(x: A | B | C | int | bool):
+        match x:
+          case A():
+            assert_type(x, A)
+          case 1:
+            # Note that we do not do positive type narrowing here
+            assert_type(x, B | C | int | bool)
+          case B():
+            assert_type(x, B)
+          case True:
+            assert_type(x, C | int | bool)
+          case C():
+            assert_type(x, C)
+          case D():
+            # This branch will not be entered
+            assert_type(1, str)
+          case _:
+            assert_type(x, int | bool)
     """)
 
   def test_posargs(self):
@@ -539,7 +567,7 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x: int | str) -> int | str: ...
+      def f(x: int | str) -> str: ...
     """)
 
   def test_builtin_kwargs(self):
