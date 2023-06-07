@@ -428,7 +428,7 @@ class VirtualMachine:
       else:
         narrowed = [x.instantiate(state.node) for x in type_tracker.uncovered]
         obj_var = self.ctx.join_variables(state.node, narrowed)
-      return self.store_local(state, name, obj_var)
+      return self._store_local_or_cellvar(state, name, obj_var)
     else:
       return state
 
@@ -3100,6 +3100,18 @@ class VirtualMachine:
                          self.ctx.convert.false.to_variable(state.node))
     return state
 
+  def _store_local_or_cellvar(self, state, name, var):
+    if name in self.frame.f_locals.pyval:
+      return self.store_local(state, name, var)
+    cell_names = (self.frame.f_code.co_cellvars +
+                  self.frame.f_code.co_freevars)
+    try:
+      idx = cell_names.index(name)
+    except ValueError:
+      return self.store_local(state, name, var)
+    self.frame.cells[idx].PasteVariable(var)
+    return state
+
   def byte_MATCH_CLASS(self, state, op):
     """Implementation of the MATCH_CLASS opcode."""
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
@@ -3120,7 +3132,7 @@ class VirtualMachine:
       if var_name:
         narrowed_type = self.ctx.join_variables(
             state.node, [x.instantiate(state.node) for x in cls_var.data])
-        state = self.store_local(state, var_name, narrowed_type)
+        state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     state = state.set_top(
         self.ctx.convert.bool_values[success].to_variable(state.node))
     if ret.values:

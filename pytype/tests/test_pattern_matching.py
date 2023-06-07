@@ -623,6 +623,48 @@ class MatchClassTest(test_base.BaseTest):
             return False
     """)
 
+  def test_error(self):
+    ty, _ = self.InferWithErrors("""
+      def f(x):
+        match x:
+          case error():  # name-error
+            return 0
+          case _:
+            return None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> int | None: ...
+    """)
+
+  def test_nested_function(self):
+    ty = self.Infer("""
+      class A:
+        x: int
+      class B:
+        y: str
+      class C:
+        z: bytes
+      def f(arg: A | B | C):
+        def g():
+          match arg:
+            case A():
+              return arg.x
+            case B():
+              return arg.y
+            case _:
+              return arg.z
+        return g()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
+      class B:
+        y: str
+      class C:
+        z: bytes
+      def f(arg: A | B | C) -> int | str | bytes: ...
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):

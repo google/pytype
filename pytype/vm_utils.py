@@ -1088,8 +1088,11 @@ def match_class(
 ) -> ClassMatch:
   """Pick attributes out of a class instance for pattern matching."""
   keys = _convert_keys(keys_var)
-  cls = abstract_utils.get_atomic_value(
-      cls_var, (abstract.Class, abstract.AnnotationContainer))
+  try:
+    cls = abstract_utils.get_atomic_value(
+        cls_var, (abstract.Class, abstract.AnnotationContainer))
+  except abstract_utils.ConversionError:
+    return ClassMatch(success=None, values=None)
   if isinstance(cls, abstract.AnnotationContainer):
     # Special case typing.* and collections.abc.* classes that get loaded as
     # an AnnotationContainer rather than a Class
