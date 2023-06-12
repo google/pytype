@@ -247,9 +247,12 @@ class _BranchTracker:
     return True
 
   def check_ending(self,
-                   line: int,
+                   op: opcodes.Opcode,
                    implicit_return: bool = False) -> List[Tuple[int, Set[str]]]:
     """Check if we have ended a match statement with leftover cases."""
+    if op.metadata.is_out_of_order:
+      return []
+    line = op.line
     if implicit_return:
       done = set()
       if line in self.matches.match_cases:
@@ -466,7 +469,7 @@ class VirtualMachine:
     implicit_return = (
         op.name == "RETURN_VALUE" and
         op.line not in self._director.return_lines)
-    chk = self._branch_tracker.check_ending(op.line, implicit_return)
+    chk = self._branch_tracker.check_ending(op, implicit_return)
     if len(self.frames) <= 2:
       # We do exhaustiveness checking only when doing a top-level analysis of
       # the match code.
@@ -493,6 +496,7 @@ class VirtualMachine:
     return_nodes = []
     finally_tracker = vm_utils.FinallyStateTracker()
     process_blocks.adjust_returns(frame.f_code, self._director.block_returns)
+    process_blocks.check_out_of_order(frame.f_code)
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:

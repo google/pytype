@@ -32,6 +32,8 @@ class OpcodeMetadata:
 
   # Function signature annotations in textual form
   signature_annotations: Optional[Dict[str, str]] = None
+  # Code run out of line-number order, due to compiler optimisations.
+  is_out_of_order: bool = False
 
 
 class Opcode:
