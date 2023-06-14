@@ -3139,5 +3139,59 @@ class AllTest(parser_test_base.ParserTestBase):
     """, ("f", "g", "h"))
 
 
+class TypingSelfTest(parser_test_base.ParserTestBase):
+  """Tests for typing.Self."""
+
+  def test_method_return(self):
+    self.check("""
+      from typing_extensions import Self
+
+      class A:
+          def f(self) -> Self: ...
+    """, """
+      from typing import TypeVar
+      from typing_extensions import Self
+
+      _SelfA = TypeVar('_SelfA', bound=A)
+
+      class A:
+          def f(self: _SelfA) -> _SelfA: ...
+    """)
+
+  def test_classmethod_return(self):
+    self.check("""
+      from typing_extensions import Self
+
+      class A:
+          @classmethod
+          def f(cls) -> Self: ...
+    """, """
+      from typing import Type, TypeVar
+      from typing_extensions import Self
+
+      _SelfA = TypeVar('_SelfA', bound=A)
+
+      class A:
+          @classmethod
+          def f(cls: Type[_SelfA]) -> _SelfA: ...
+    """)
+
+  def test_new_return(self):
+    self.check("""
+      from typing_extensions import Self
+
+      class A:
+        def __new__(cls) -> Self: ...
+    """, """
+      from typing import Type, TypeVar
+      from typing_extensions import Self
+
+      _SelfA = TypeVar('_SelfA', bound=A)
+
+      class A:
+          def __new__(cls: Type[_SelfA]) -> _SelfA: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()

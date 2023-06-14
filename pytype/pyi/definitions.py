@@ -721,7 +721,8 @@ class Definitions:
           constants.append(pytd.Constant(name, t))
 
     bases = [p for p in bases if not isinstance(p, pytd.NothingType)]
-    methods = function.merge_method_signatures(methods)
+    methods = self._adjust_self_var(
+        class_name, function.merge_method_signatures(methods))
     if not bases and class_name not in ["classobj", "object"]:
       # A bases-less class inherits from classobj in Python 2 and from object
       # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we
@@ -737,6 +738,39 @@ class Definitions:
                       decorators=tuple(decorators),
                       slots=slots,
                       template=())
+
+  def _adjust_self_var(self, class_name, methods):
+    """Replaces typing.Self with a TypeVar."""
+    # TODO(b/224600845): Currently, this covers only the case of Self used as a
+    # a return annotation in a regular or classmethod.
+    adjusted_methods = []
+    self_var = None
+    for method in methods:
+      signatures = []
+      for sig in method.signatures:
+        if (sig.params and sig.return_type.name and
+            self.matches_type(sig.return_type.name, "typing.Self")):
+          if not self_var:
+            self_var = pytd.TypeParameter(name=f"_Self{class_name}",
+                                          bound=pytd.NamedType(class_name),
+                                          scope=f"{class_name}.{method.name}")
+            self.type_params.append(self_var)
+          # PEP 673 is inconsistent on where Self can be used: it says that
+          # `Self` in staticmethods is rejected but also shows examples of using
+          # `Self` in __new__, a staticmethod. Practically speaking, we have to
+          # support `Self` in __new__ because typeshed uses it.
+          if (method.kind is pytd.MethodKind.CLASSMETHOD or
+              method.name == "__new__"):
+            first_annot = pytd.GenericType(pytd.NamedType("type"),
+                                           parameters=(self_var,))
+          else:
+            first_annot = self_var
+          first_param = sig.params[0].Replace(type=first_annot)
+          sig = sig.Replace(params=(first_param,) + sig.params[1:],
+                            return_type=self_var)
+        signatures.append(sig)
+      adjusted_methods.append(method.Replace(signatures=tuple(signatures)))
+    return adjusted_methods
 
   def build_type_decl_unit(self, defs) -> pytd.TypeDeclUnit:
     """Return a pytd.TypeDeclUnit for the given defs (plus parser state)."""
