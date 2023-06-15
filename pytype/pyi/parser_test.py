@@ -562,15 +562,14 @@ class ParserTest(parser_test_base.ParserTestBase):
   def test_typevar_alias(self):
     self.check("""
       from typing import TypeVar as _TypeVar
-      T = _TypeVar('T')
-      def f(x: T) -> T: ...
-    """, """
-      from typing import TypeVar, TypeVar as _TypeVar
 
-      T = TypeVar('T')
+      T = _TypeVar('T')
 
       def f(x: T) -> T: ...
     """)
+
+  def test_typing_alias(self):
+    self.check("import typing as _typing")
 
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
@@ -1408,13 +1407,12 @@ class ClassTest(parser_test_base.ParserTestBase):
 
       class Foo(Protocol[T]): ...
     """, """
-      import typing
       from typing import Generic, TypeVar
       from typing_extensions import Protocol
 
       T = TypeVar('T')
 
-      class Foo(Generic[T], typing.Protocol): ...
+      class Foo(Generic[T], Protocol): ...
     """)
 
   def test_bad_typevar_in_mutation(self):
@@ -2499,12 +2497,11 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       from typing_extensions import TypedDict
       X = TypedDict('X', {})
     """, """
-      import typing
       from typing_extensions import TypedDict
 
       X = typeddict_X_0
 
-      class typeddict_X_0(typing.TypedDict): ...
+      class typeddict_X_0(TypedDict): ...
     """)
 
   def test_assign_with_items(self):
@@ -2512,12 +2509,11 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       from typing_extensions import TypedDict
       X = TypedDict('X', {'a': int, 'b': str})
     """, """
-      import typing
       from typing_extensions import TypedDict
 
       X = typeddict_X_0
 
-      class typeddict_X_0(typing.TypedDict):
+      class typeddict_X_0(TypedDict):
           a: int
           b: str
     """)
@@ -2527,12 +2523,11 @@ class TypedDictTest(parser_test_base.ParserTestBase):
       from typing_extensions import TypedDict
       X = TypedDict('X', {}, total=False)
     """, """
-      import typing
       from typing_extensions import TypedDict
 
       X = typeddict_X_0
 
-      class typeddict_X_0(typing.TypedDict, total=False): ...
+      class typeddict_X_0(TypedDict, total=False): ...
     """)
 
   def test_function_syntax_unexpected_kwarg(self):
@@ -2555,12 +2550,11 @@ class TypedDictTest(parser_test_base.ParserTestBase):
           'b': str,
       },)
     """, """
-      import typing
       from typing_extensions import TypedDict
 
       X = typeddict_X_0
 
-      class typeddict_X_0(typing.TypedDict):
+      class typeddict_X_0(TypedDict):
           a: int
           b: str
     """)

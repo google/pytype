@@ -3,12 +3,117 @@
 import collections
 import logging
 import re
+from typing import Dict, Optional
 
 from pytype import utils
 from pytype.pytd import base_visitor
 from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.pytd.parse import parser_constants
+
+# Aliases for readability:
+_NameType = _AliasType = str
+
+
+class _TypingImports:
+  """Imports from the `typing` module."""
+
+  def __init__(self):
+    # Typing members that are imported via `from typing import ...`.
+    self.members: Dict[_NameType, _AliasType] = {}
+    # The number of times that each typing member is used.
+    self._counts: Dict[_NameType, int] = collections.defaultdict(int)
+
+  def add(self, name: str, alias: str):
+    self._counts[name] += 1
+    if self.members.get(name, name) == name:  # don't overwrite existing aliases
+      self.members[name] = alias
+
+  def decrement_count(self, name: str):
+    self._counts[name] -= 1
+
+  def to_import_statements(self):
+    targets = []
+    for name, alias in self.members.items():
+      if self._counts[name] <= 0:
+        continue
+      targets.append(f"{name} as {alias}" if alias != name else name)
+    if targets:
+      return ["from typing import " + ", ".join(sorted(targets))]
+    else:
+      return []
+
+
+class _Imports:
+  """Imports tracker."""
+
+  def __init__(self):
+    self.track_imports = True
+    self._typing = _TypingImports()
+    self._direct_imports: Dict[_NameType, _AliasType] = {}
+    self._from_imports: Dict[_NameType, Dict[_NameType, _AliasType]] = {}
+    # Map from fully qualified import name to alias
+    self._reverse_alias_map: Dict[_NameType, _AliasType] = {}
+
+  @property
+  def typing_members(self):
+    return self._typing.members
+
+  def add(self, full_name: str, alias: Optional[str] = None):
+    """Adds an import.
+
+    Examples:
+    -------------------------------------------------------
+    Import Statement           | Method Call
+    -------------------------------------------------------
+    import abc                 | add('abc')
+    import abc as xyz          | add('abc', 'xyz')
+    import foo.bar             | add('foo.bar')
+    from foo import bar        | add('foo.bar', 'bar')
+    from foo import bar as baz | add('foo.bar', 'baz')
+
+    Args:
+      full_name: The full name of the thing being imported.
+      alias: The name that the imported thing is assigned to.
+    """
+    if not self.track_imports:
+      return
+    alias = alias or full_name
+    if "." not in full_name or full_name == alias and not alias.endswith(".*"):
+      self._direct_imports[full_name] = alias
+    else:
+      module, name = full_name.rsplit(".", 1)
+      if name == "*":
+        alias = "*"
+      if module == "typing":
+        self._typing.add(name, alias)
+      else:
+        self._from_imports.setdefault(module, {})[name] = alias
+    self._reverse_alias_map[full_name] = alias
+
+  def decrement_typing_count(self, member: str):
+    self._typing.decrement_count(member)
+
+  def get_alias(self, name: str):
+    if name.startswith("typing."):
+      return self._typing.members.get(utils.strip_prefix(name, "typing."))
+    return self._reverse_alias_map.get(name)
+
+  def to_import_statements(self):
+    """Converts self to import statements."""
+    imports = self._typing.to_import_statements()
+    for module, alias in self._direct_imports.items():
+      if alias == module:
+        imports.append(f"import {module}")
+      else:
+        imports.append(f"import {module} as {alias}")
+    for module, members in self._from_imports.items():
+      targets = ", ".join(sorted(f"{name} as {alias}" if alias != name else name
+                                 for name, alias in members.items()))
+      imports.append(f"from {module} import {targets}")
+    # Sort import lines lexicographically and ensure import statements come
+    # before from-import statements.
+    return sorted(imports, key=lambda s: (s.startswith("from "), s))
 
 
 class PrintVisitor(base_visitor.Visitor):
@@ -23,7 +128,6 @@ class PrintVisitor(base_visitor.Visitor):
   def __init__(self, multiline_args=False):
     super().__init__()
     self.class_names = []  # allow nested classes
-    self.imports = collections.defaultdict(set)
     self.in_alias = False
     self.in_parameter = False
     self.in_literal = False
@@ -32,13 +136,14 @@ class PrintVisitor(base_visitor.Visitor):
     self.multiline_args = multiline_args
 
     self._unit = None
-    self._local_names = {}
+    self._local_names = set()
     self._class_members = set()
-    self._typing_import_counts = collections.defaultdict(int)
-    self._module_aliases = {}
-    self._alias_imports = collections.defaultdict(set)
     self._paramspec_names = set()
-    self._maybe_from_typing = set()
+    self._imports = _Imports()
+
+  @property
+  def typing_imports(self):
+    return self._imports.typing_members
 
   def copy(self):
     # Note that copy.deepcopy is too slow to use here.
@@ -48,7 +153,13 @@ class PrintVisitor(base_visitor.Visitor):
     copy.in_literal = self.in_literal
     copy.in_constant = self.in_constant
     copy.in_signature = self.in_signature
-    copy._local_names = dict(self._local_names)  # pylint: disable=protected-access
+    # pylint: disable=protected-access
+    copy._local_names = set(self._local_names)
+    copy._imports._typing.members = dict(
+        self._imports._typing.members)
+    copy._imports._reverse_alias_map = dict(
+        self._imports._reverse_alias_map)
+    # pylint: enable=protected-access
     return copy
 
   def Print(self, node):
@@ -68,54 +179,12 @@ class PrintVisitor(base_visitor.Visitor):
     """Check if it is typing.Callable type."""
     return t.name == "typing.Callable"
 
-  def _RequireImport(self, module, name=None):
-    """Register that we're using name from module.
-
-    Args:
-      module: string identifier.
-      name: if None, means we want 'import module'. Otherwise string identifier
-       that we want to import.
-    """
-    self.imports[module].add(name)
-
-  def _ProcessTypingImports(self, imports):
-    # If we have imported something from typing_extensions do not try to also
-    # import it from typing
-    names = imports["typing"]
-    self._maybe_from_typing -= imports["typing_extensions"]
-    names |= self._maybe_from_typing
-    need_typing = False
-    for (name, count) in self._typing_import_counts.items():
-      if count:
-        need_typing = True
-      else:
-        names.discard(name)
-    if not need_typing:
-      names.discard(None)
-
-  def _GenerateImportStrings(self):
-    """Generate import statements needed by the nodes we've visited so far.
-
-    Returns:
-      List of strings.
-    """
-    ret = []
-    imports = self.imports.copy()
-    for k in self._alias_imports:
-      imports[k] = imports[k] | self._alias_imports[k]
-    self._ProcessTypingImports(imports)
-    for module, names in sorted(imports.items()):
-      if None in names:
-        ret.append(f"import {module}")
-        names.remove(None)
-      if names:
-        name_str = ", ".join(sorted(names))
-        ret.append(f"from {module} import {name_str}")
-
-    return ret
-
   def _IsBuiltin(self, module):
     return module == "builtins"
+
+  def _LookupTypingMember(self, name):
+    return (self._imports.get_alias(f"typing.{name}") or
+            self._imports.get_alias(f"typing_extensions.{name}"))
 
   def _FormatTypeParams(self, type_params):
     formatted_type_params = []
@@ -125,9 +194,9 @@ class PrintVisitor(base_visitor.Visitor):
       if t.bound:
         args.append(f"bound={self.Print(t.bound)}")
       if isinstance(t, pytd.ParamSpec):
-        typename = "ParamSpec"
+        typename = self._LookupTypingMember("ParamSpec")
       else:
-        typename = "TypeVar"
+        typename = self._LookupTypingMember("TypeVar")
       formatted_type_params.append(f"{t.name} = {typename}({', '.join(args)})")
     return sorted(formatted_type_params)
 
@@ -140,28 +209,16 @@ class PrintVisitor(base_visitor.Visitor):
     return name_in(self._class_members) or name_in(self._local_names)
 
   def _FromTyping(self, name):
-    self._typing_import_counts[name] += 1
+    extensions_name = self._imports.get_alias(f"typing_extensions.{name}")
+    if extensions_name:
+      return extensions_name
+    full_name = f"typing.{name}"
     if self._NameCollision(name):
-      self._RequireImport("typing")
-      return f"typing.{name}"
+      self._imports.add("typing")
+      return full_name
     else:
-      self._RequireImport("typing", name)
-      return name
-
-  def _ImportTypingExtension(self, name):
-    if self._unit and self._unit.name:
-      full_name = f"{self._unit.name}.{name}"
-    else:
-      full_name = name
-    # `name` is a typing construct that is not supported in all Python versions.
-    if (self._local_names.get(name) == "alias" or
-        self._local_names.get(full_name) == "alias"):
-      # A typing_extensions import is parsed as Alias(X, typing_extensions.X).
-      # If we see an alias to `name`, assume it's been explicitly imported from
-      # typing_extensions due to the current Python version not supporting it.
-      return name
-    else:
-      return self._FromTyping(name)
+      self._imports.add(full_name, name)
+      return self._imports.get_alias(full_name)
 
   def _StripUnitPrefix(self, name):
     if self._unit:
@@ -169,55 +226,51 @@ class PrintVisitor(base_visitor.Visitor):
     else:
       return name
 
+  def _IsAliasImport(self, node):
+    if not self._unit or self.in_constant or self.in_signature:
+      return False
+    elif isinstance(node.type, pytd.Module):
+      return True
+    # Modules and classes can be imported. Modules are represented as NamedTypes
+    # in partially resolved asts and sometimes as LateTypes in pickled asts.
+    return isinstance(
+        node.type, (pytd.NamedType, pytd.ClassType, pytd.LateType)
+    ) and "." in node.type.name
+
   def EnterTypeDeclUnit(self, unit):
     self._unit = unit
-    for definitions, label in [(unit.classes, "class"),
-                               (unit.functions, "function"),
-                               (unit.constants, "constant"),
-                               (unit.type_params, "type_param"),
-                               (unit.aliases, "alias")]:
-      for defn in definitions:
-        self._local_names[defn.name] = label
+    definitions = (unit.classes + unit.functions + unit.constants +
+                   unit.type_params + unit.aliases)
+    self._local_names = {c.name for c in definitions}
     for alias in unit.aliases:
-      # Modules are represented as NamedTypes in partially resolved asts and
-      # sometimes as LateTypes in asts modified for pickling.
-      if isinstance(alias.type, pytd.Module):
-        module_name = alias.type.module_name
-      elif isinstance(alias.type, (pytd.NamedType, pytd.LateType)):
-        module_name = alias.type.name
-      else:
+      if not self._IsAliasImport(alias):
         continue
-      name = self._StripUnitPrefix(alias.name)
-      self._module_aliases[module_name] = name
+      if isinstance(alias.type, pytd.Module):
+        name = alias.type.module_name
+        alias_name = alias.type.name
+      else:
+        name = alias.type.name
+        alias_name = self._StripUnitPrefix(alias.name)
+      self._imports.add(name, alias_name)
     self._paramspec_names = {x.name for x in unit.type_params
                              if isinstance(x, pytd.ParamSpec)}
 
   def LeaveTypeDeclUnit(self, _):
     self._unit = None
-    self._local_names = {}
+    self._local_names = set()
 
   def VisitTypeDeclUnit(self, node):
     """Convert the AST for an entire module back to a string."""
     for t in self.old_node.type_params:
       if isinstance(t, pytd.ParamSpec):
-        self._maybe_from_typing.add("ParamSpec")
+        self._FromTyping("ParamSpec")
       else:
         self._FromTyping("TypeVar")
+    imports = self._imports.to_import_statements()
 
-    aliases = []
-    imports = set(self._GenerateImportStrings())
-    for alias in filter(None, node.aliases):
-      if alias.startswith(("from ", "import ")):
-        imports.add(alias)
-      else:
-        aliases.append(alias)
-
-    # Sort import lines lexicographically and ensure import statements come
-    # before from-import statements.
-    imports = sorted(imports, key=lambda s: (s.startswith("from "), s))
-
-    # Remove deleted constants
-    constants = [c for c in node.constants if "<deleted>" not in c]
+    # Remove deleted nodes
+    aliases = list(filter(None, node.aliases))
+    constants = list(filter(None, node.constants))
 
     sections = [
         imports,
@@ -250,9 +303,9 @@ class PrintVisitor(base_visitor.Visitor):
     if self.class_names or node.value:
       return False
     if node.type == f"Type[typing.{node.name}]":
-      self._RequireImport("typing", node.name)
-      self._typing_import_counts["Type"] -= 1
-      del self._local_names[node.name]
+      self._FromTyping(node.name)
+      self._imports.decrement_typing_count("Type")
+      self._local_names.remove(node.name)
       return True
 
   def VisitConstant(self, node):
@@ -267,34 +320,25 @@ class PrintVisitor(base_visitor.Visitor):
         return node.name
     # Decrement Any, since the actual value is never printed.
     if node.value == "Any":
-      self._typing_import_counts["Any"] -= 1
+      self._imports.decrement_typing_count("Any")
     if self._DropTypingConstant(node):
-      return "<deleted>"
+      return None
     # Whether the constant has a default value is important for fields in
     # generated classes like namedtuples.
     suffix = " = ..." if node.value else ""
     return f"{node.name}: {node.type}{suffix}"
 
-  def EnterAlias(self, _):
-    self.old_imports = self.imports.copy()
+  def EnterAlias(self, node):
+    if self._IsAliasImport(node):
+      self._imports.track_imports = False
+
+  def LeaveAlias(self, _):
+    self._imports.track_imports = True
 
   def VisitAlias(self, node):
     """Convert an import or alias to a string (or None if handled elsewhere)."""
-    if (isinstance(self.old_node.type,
-                   (pytd.NamedType, pytd.ClassType, pytd.LateType)) and
-        not self.in_constant and not self.in_signature):
-      full_name = self.old_node.type.name
-      suffix = ""
-      module, _, name = full_name.rpartition(".")
-      if module:
-        alias_name = self._StripUnitPrefix(self.old_node.name)
-        if name not in ("*", alias_name):
-          suffix += f" as {alias_name}"
-        self.imports = self.old_imports  # undo unnecessary imports change
-        self._alias_imports[module].add(f"{name}{suffix}")
-        # Return None here since we do not want to emit the import statement
-        # from both self._alias_imports and unit.aliases
-        return None
+    if self._IsAliasImport(self.old_node):
+      return None  # the import statement has already been processed
     elif isinstance(self.old_node.type, (pytd.Constant, pytd.Function)):
       return self.Print(self.old_node.type.Replace(name=node.name))
     elif isinstance(self.old_node.type, pytd.Module):
@@ -340,7 +384,7 @@ class PrintVisitor(base_visitor.Visitor):
     for k, v in node.keywords:
       vmatch = re.fullmatch(r"Literal\[(.+)\]", v)
       if vmatch:
-        self._typing_import_counts["Literal"] -= 1
+        self._imports.decrement_typing_count("Literal")
         vprint = vmatch.group(1)
       else:
         vprint = v
@@ -408,12 +452,12 @@ class PrintVisitor(base_visitor.Visitor):
     if isinstance(node.type, pytd.GenericType):
       container_name = node.type.name.rpartition(".")[2]
       assert container_name in ("tuple", "dict")
-      self._typing_import_counts[container_name.capitalize()] -= 1
+      self._imports.decrement_typing_count(container_name.capitalize())
       # If the type is "Any", e.g. `**kwargs: Any`, decrement Any to avoid an
       # extraneous import of typing.Any. Any was visited before this function
       # transformed **kwargs, so it was incremented at least once already.
       if isinstance(node.type.parameters[-1], pytd.AnythingType):
-        self._typing_import_counts["Any"] -= 1
+        self._imports.decrement_typing_count("Any")
       return self.Print(
           node.Replace(type=node.type.parameters[-1], optional=False))
     else:
@@ -497,7 +541,7 @@ class PrintVisitor(base_visitor.Visitor):
     suffix = " = ..." if node.optional else ""
     if node.type == "Any":
       # Abbreviated form. "Any" is the default.
-      self._typing_import_counts["Any"] -= 1
+      self._imports.decrement_typing_count("Any")
       return node.name + suffix
     # For parameterized class, for example: ClsName[T, V].
     # Its name is `ClsName` before `[`.
@@ -505,13 +549,13 @@ class PrintVisitor(base_visitor.Visitor):
         self.class_names[-1].split("[")[0] == node.type.split("[")[0]):
       if "[" in node.type:
         elided = node.type.split("[", 1)[-1]
-        for k in self._typing_import_counts:
+        for k in self._imports.typing_members:
           if re.search(r"(^|\W)%s($|\W)" % k, elided):
-            self._typing_import_counts[k] -= 1
+            self._imports.decrement_typing_count(k)
       return node.name + suffix
     elif node.name == "cls" and self.class_names and (
         node.type == f"Type[{self.class_names[-1]}]"):
-      self._typing_import_counts["Type"] -= 1
+      self._imports.decrement_typing_count("Type")
       return node.name + suffix
     elif node.type is None:
       logging.warning("node.type is None")
@@ -526,8 +570,9 @@ class PrintVisitor(base_visitor.Visitor):
   def _UseExistingModuleAlias(self, name):
     prefix, suffix = name.rsplit(".", 1)
     while prefix:
-      if prefix in self._module_aliases:
-        return f"{self._module_aliases[prefix]}.{suffix}"
+      prefix_alias = self._imports.get_alias(prefix)
+      if prefix_alias:
+        return f"{prefix_alias}.{suffix}"
       prefix, _, remainder = prefix.rpartition(".")
       suffix = f"{remainder}.{suffix}"
     return None
@@ -552,7 +597,8 @@ class PrintVisitor(base_visitor.Visitor):
     elif prefix == "typing":
       node_name = self._FromTyping(suffix)
     elif prefix == "typing_extensions":
-      node_name = self._ImportTypingExtension(suffix)
+      self._imports.add(node.name, suffix)
+      node_name = self._FromTyping(suffix)
     elif "." not in node.name:
       node_name = node.name
     else:
@@ -568,11 +614,10 @@ class PrintVisitor(base_visitor.Visitor):
             module_alias = module
             while self._NameCollision(module_alias):
               module_alias = f"_{module_alias}"
+            self._imports.add(module, module_alias)
             if module_alias == module:
-              self._RequireImport(module)
               node_name = node.name
             else:
-              self._RequireImport(f"{module} as {module_alias}")
               node_name = ".".join(filter(bool, (module_alias, rest, suffix)))
         else:
           node_name = node.name
@@ -616,20 +661,7 @@ class PrintVisitor(base_visitor.Visitor):
     return f"{node.name}.kwargs"
 
   def VisitModule(self, node):
-    if self.in_constant or self.in_signature:
-      return "module"
-    elif not node.is_aliased:
-      return f"import {node.module_name}"
-    elif "." in node.module_name:
-      # `import x.y as z` and `from x import y as z` are equivalent, but the
-      # latter is a bit prettier.
-      prefix, suffix = node.module_name.rsplit(".", 1)
-      imp = f"from {prefix} import {suffix}"
-      if node.name != suffix:
-        imp += f" as {node.name}"
-      return imp
-    else:
-      return f"import {node.module_name} as {node.name}"
+    return "module"
 
   def MaybeCapitalize(self, name):
     """Capitalize a generic type, if necessary."""
@@ -649,7 +681,7 @@ class PrintVisitor(base_visitor.Visitor):
       param = self.old_node.parameters[0]
       # Callable[Any, X] is rewritten to Callable[..., X].
       if isinstance(param, pytd.AnythingType):
-        self._typing_import_counts["Any"] -= 1
+        self._imports.decrement_typing_count("Any")
       else:
         assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
@@ -668,7 +700,7 @@ class PrintVisitor(base_visitor.Visitor):
       return f"{typ}[[{args}], {node.ret}]"
 
   def VisitConcatenate(self, node):
-    base = self._ImportTypingExtension("Concatenate")
+    base = self._FromTyping("Concatenate")
     parameters = ", ".join(node.parameters)
     return f"{base}[{parameters}]"
 
@@ -750,10 +782,10 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_literal = False
 
   def VisitLiteral(self, node):
-    base = self._ImportTypingExtension("Literal")
+    base = self._FromTyping("Literal")
     return f"{base}[{node.value}]"
 
   def VisitAnnotated(self, node):
-    base = self._ImportTypingExtension("Annotated")
+    base = self._FromTyping("Annotated")
     annotations = ", ".join(node.annotations)
     return f"{base}[{node.base_type}, {annotations}]"
