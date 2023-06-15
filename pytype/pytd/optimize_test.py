@@ -294,7 +294,7 @@ class TestOptimize(parser_test_base.ParserTest):
         x = ...  # type: Union[int, other.Bar]
     """)
     ast = self.Parse(src)
-    ast = ast.Visit(visitors.ReplaceTypes(
+    ast = ast.Visit(visitors.ReplaceTypesByName(
         {"other.Bar": pytd.LateType("other.Bar")}))
     hierarchy = ast.Visit(visitors.ExtractSuperClassesByName())
     ast = ast.Visit(optimize.FindCommonSuperClasses(

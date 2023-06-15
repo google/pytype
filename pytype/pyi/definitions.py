@@ -675,9 +675,10 @@ class Definitions:
       return base_type
 
   def build_class(
-      self, class_name, bases, keywords, decorators, defs
+      self, fully_qualified_class_name, bases, keywords, decorators, defs
   ) -> pytd.Class:
     """Build a pytd.Class from definitions collected from an ast node."""
+    class_name = fully_qualified_class_name.rsplit(".", 1)[-1]
     bases = classdef.get_bases(bases, self.matches_type)
     keywords = classdef.get_keywords(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
@@ -722,7 +723,7 @@ class Definitions:
 
     bases = [p for p in bases if not isinstance(p, pytd.NothingType)]
     methods = self._adjust_self_var(
-        class_name, function.merge_method_signatures(methods))
+        fully_qualified_class_name, function.merge_method_signatures(methods))
     if not bases and class_name not in ["classobj", "object"]:
       # A bases-less class inherits from classobj in Python 2 and from object
       # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we
@@ -739,36 +740,48 @@ class Definitions:
                       slots=slots,
                       template=())
 
-  def _adjust_self_var(self, class_name, methods):
+  def _adjust_self_var(self, fully_qualified_class_name, methods):
     """Replaces typing.Self with a TypeVar."""
-    # TODO(b/224600845): Currently, this covers only the case of Self used as a
-    # a return annotation in a regular or classmethod.
+    # TODO(b/224600845): Currently, this covers only Self used in a method
+    # parameter or return annotation.
     adjusted_methods = []
-    self_var = None
+    typevar_name = f"_Self{fully_qualified_class_name.replace('.', '')}"
+    self_var = pytd.TypeParameter(
+        name=typevar_name,
+        bound=pytd.NamedType(fully_qualified_class_name),
+        scope=fully_qualified_class_name)
+    self_var_used = False
     for method in methods:
       signatures = []
       for sig in method.signatures:
-        if (sig.params and sig.return_type.name and
-            self.matches_type(sig.return_type.name, "typing.Self")):
-          if not self_var:
-            self_var = pytd.TypeParameter(name=f"_Self{class_name}",
-                                          bound=pytd.NamedType(class_name),
-                                          scope=f"{class_name}.{method.name}")
-            self.type_params.append(self_var)
-          # PEP 673 is inconsistent on where Self can be used: it says that
-          # `Self` in staticmethods is rejected but also shows examples of using
-          # `Self` in __new__, a staticmethod. Practically speaking, we have to
-          # support `Self` in __new__ because typeshed uses it.
-          if (method.kind is pytd.MethodKind.CLASSMETHOD or
-              method.name == "__new__"):
-            first_annot = pytd.GenericType(pytd.NamedType("type"),
-                                           parameters=(self_var,))
-          else:
-            first_annot = self_var
-          first_param = sig.params[0].Replace(type=first_annot)
-          sig = sig.Replace(params=(first_param,) + sig.params[1:],
-                            return_type=self_var)
         signatures.append(sig)
+        if not sig.params:
+          continue
+        def match_self(node):
+          return node.name and self.matches_type(node.name, "typing.Self")
+        replace_self = visitors.ReplaceTypesByMatcher(match_self, self_var)
+        old_param_types = [p.type for p in sig.params[1:]]
+        new_param_types = [t.Visit(replace_self) for t in old_param_types]
+        ret = sig.return_type.Visit(replace_self)
+        if old_param_types == new_param_types and ret == sig.return_type:
+          continue
+        if not self_var_used:
+          self.type_params.append(self_var)
+          self_var_used = True
+        # PEP 673 is inconsistent on where Self can be used: it says that Self
+        # in staticmethods is rejected but also shows examples of using Self in
+        # __new__, a staticmethod. Practically speaking, we have to support Self
+        # in __new__ because typeshed uses it.
+        if (method.kind is pytd.MethodKind.CLASSMETHOD or
+            method.name == "__new__"):
+          first_annot = pytd.GenericType(pytd.NamedType("type"),
+                                         parameters=(self_var,))
+        else:
+          first_annot = self_var
+        params = tuple(
+            p.Replace(type=t)
+            for p, t in zip(sig.params, [first_annot] + new_param_types))
+        signatures[-1] = sig.Replace(params=params, return_type=ret)
       adjusted_methods.append(method.Replace(signatures=tuple(signatures)))
     return adjusted_methods
 

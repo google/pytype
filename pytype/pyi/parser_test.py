@@ -3192,6 +3192,57 @@ class TypingSelfTest(parser_test_base.ParserTestBase):
           def __new__(cls: Type[_SelfA]) -> _SelfA: ...
     """)
 
+  def test_parameterized_return(self):
+    self.check("""
+      from typing import List
+      from typing_extensions import Self
+
+      class A:
+          def f(self) -> List[Self]: ...
+    """, """
+      from typing import List, TypeVar
+      from typing_extensions import Self
+
+      _SelfA = TypeVar('_SelfA', bound=A)
+
+      class A:
+          def f(self: _SelfA) -> List[_SelfA]: ...
+    """)
+
+  def test_parameter(self):
+    self.check("""
+      from typing_extensions import Self
+
+      class A:
+          def f(self, other: Self) -> bool: ...
+    """, """
+      from typing import TypeVar
+      from typing_extensions import Self
+
+      _SelfA = TypeVar('_SelfA', bound=A)
+
+      class A:
+          def f(self: _SelfA, other: _SelfA) -> bool: ...
+    """)
+
+  def test_nested_class(self):
+    self.check("""
+      from typing_extensions import Self
+
+      class A:
+          class B:
+              def f(self) -> Self: ...
+    """, """
+      from typing import TypeVar
+      from typing_extensions import Self
+
+      _SelfAB = TypeVar('_SelfAB', bound=A.B)
+
+      class A:
+          class B:
+              def f(self: _SelfAB) -> _SelfAB: ...
+    """)
+
 
 if __name__ == "__main__":
   unittest.main()

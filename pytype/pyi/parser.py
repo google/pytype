@@ -545,7 +545,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.annotation_visitor.visit(node.keywords)
     defs = _flatten_splices(node.body)
     return self.defs.build_class(
-        node.name, node.bases, node.keywords, decorators, defs)
+        full_class_name, node.bases, node.keywords, decorators, defs)
 
   def enter_If(self, node):
     # Evaluate the test and preemptively remove the invalid branch so we don't
