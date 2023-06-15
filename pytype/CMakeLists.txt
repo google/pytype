@@ -85,6 +85,7 @@ py_library(
     .analyze
     .annotation_utils
     .attribute
+    .block_environment
     .compare
     .config
     .context
@@ -258,6 +259,16 @@ py_library(
 
 py_library(
   NAME
+    block_environment
+  SRCS
+    block_environment.py
+  DEPS
+    pytype.blocks.blocks
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
     file_utils
   SRCS
     file_utils.py
@@ -417,6 +428,7 @@ py_library(
     __init__.py
     vm.py
   DEPS
+    .block_environment
     .compare
     .constant_folding
     .datatypes
@@ -592,6 +604,15 @@ py_test(
     .load_pytd
     pytype.abstract.abstract
     pytype.tests.test_base
+)
+
+py_test(
+  NAME
+    block_environment_test
+  SRCS
+    block_environment_test.py
+  DEPS
+    .block_environment
 )
 
 py_test(

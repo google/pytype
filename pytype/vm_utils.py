@@ -1096,11 +1096,16 @@ def match_class(
     _, instance_var = ctx.vm.init_class(node, cls)
     success = None
   else:
+    # Check both whether any binding of `obj_var` matches, and whether all of
+    # them do. If all bindings match then return True since the pattern will
+    # always succeed.
     m = ctx.matcher(node).compute_one_match(
         obj_var, cls, match_all_views=False)
+    total = ctx.matcher(node).compute_one_match(
+        obj_var, cls, match_all_views=True)
     if m.success:
       instance_var = obj_var
-      success = True
+      success = True if total.success else None
     else:
       return ClassMatch(False, None)
 

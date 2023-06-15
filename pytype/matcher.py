@@ -511,7 +511,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     subst = self._match_nonfinal_value_against_type(
         left, value, other_type, subst, view)
     if is_recursive:
-      self._recursive_annots_cache[key] = subst is not None
+      # TODO(b/283538379): We should know that key is defined here
+      self._recursive_annots_cache[key] = subst is not None  # pytype: disable=name-error
     return subst
 
   def _match_nonfinal_value_against_type(

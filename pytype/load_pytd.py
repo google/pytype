@@ -659,6 +659,7 @@ class Loader:
 
     # Now try to retrieve an external module from the module loader.
     mod_ast = None
+    default = None
     mod_info = self._module_loader.find_import(module_name)
     if mod_info:
       if mod_info.file_exists:

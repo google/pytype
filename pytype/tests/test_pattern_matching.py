@@ -372,6 +372,38 @@ class MatchClassTest(test_base.BaseTest):
       c: bool
     """)
 
+  def test_type_narrowing(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+
+      def f(x: A | B):
+        match x:
+          case A():
+            assert_type(x, A)
+          case B():
+            assert_type(x, B)
+          case _:
+            # We do not do exhaustiveness checks other than for enums
+            assert_type(x, A | B)
+    """)
+
+  def test_type_narrowing_union(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() | B():
+            assert_type(x, A | B)
+          case C():
+            assert_type(x, C)
+          case _:
+            assert_type(x, A | B | C)
+    """)
+
   def test_posargs(self):
     ty = self.Infer("""
       class A:
@@ -507,7 +539,7 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x: int | str) -> str: ...
+      def f(x: int | str) -> int | str: ...
     """)
 
   def test_builtin_kwargs(self):

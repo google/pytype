@@ -261,6 +261,8 @@ EXPERIMENTAL_FLAGS = [
           "Enable exhaustive checking of function parameter types."),
     _flag("--strict-primitive-comparisons", False,
           "Emit errors for comparisons between incompatible primitive types."),
+    _flag("--strict-undefined-checks", False,
+          "Check that variables are defined in all possible code paths."),
 ]
 
 

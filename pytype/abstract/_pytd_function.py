@@ -722,8 +722,10 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     if (not isinstance(typ, pytd.GenericType) or
         not isinstance(mutated_type, pytd.GenericType) or
         typ.base_type != mutated_type.base_type or
-        not isinstance(typ.base_type, pytd.ClassType)):
+        not isinstance(typ.base_type, (pytd.ClassType, pytd.LateType))):
       raise ValueError(f"Unsupported mutation:\n{typ!r} ->\n{mutated_type!r}")
+    if isinstance(typ.base_type, pytd.LateType):
+      return []  # we don't have enough information to compute mutations
     return [list(zip(mutated_type.base_type.cls.template,
                      mutated_type.parameters))]
 

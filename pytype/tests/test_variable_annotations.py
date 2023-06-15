@@ -227,10 +227,12 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
     ty = self.Infer("""
       def f():
         if __random__: v: int = None
+        else: v = __any_object__
         return v
     """)
     self.assertTypesMatchPytd(ty, """
-      def f() -> int: ...
+      from typing import Any
+      def f() -> Any: ...
     """)
 
   def test_multi_line_assignment(self):
