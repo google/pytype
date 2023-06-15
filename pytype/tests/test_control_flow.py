@@ -6,8 +6,10 @@ Merge the test files once the rewrite is complete.
 """
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
+@test_utils.skipBeforePy((3, 10), "Depends on 3.10+ bytecode")
 class TestControlFlow(test_base.BaseTest):
   """Tests for control flow related features."""
 
