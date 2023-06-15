@@ -829,7 +829,8 @@ class VirtualMachine:
     # variable at the current node with var's bindings and return that. For now,
     # we just use this as a reachability check to make sure `name` is defined in
     # every path through the code.
-    if self.ctx.options.strict_undefined_checks and not var:
+    if (self.ctx.options.strict_undefined_checks and
+        self.ctx.python_version >= (3, 10) and not var):
       raise KeyError()
 
     return self.load_from(state, self.frame.f_locals, name)
