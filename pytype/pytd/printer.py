@@ -20,21 +20,25 @@ class _TypingImports:
 
   def __init__(self):
     # Typing members that are imported via `from typing import ...`.
-    self.members: Dict[_NameType, _AliasType] = {}
+    self._members: Dict[_AliasType, _NameType] = {}
     # The number of times that each typing member is used.
     self._counts: Dict[_NameType, int] = collections.defaultdict(int)
 
+  @property
+  def members(self):
+    # Note that when a typing member has multiple aliases, this keeps only one.
+    return {name: alias for alias, name in self._members.items()}
+
   def add(self, name: str, alias: str):
     self._counts[name] += 1
-    if self.members.get(name, name) == name:  # don't overwrite existing aliases
-      self.members[name] = alias
+    self._members[alias] = name
 
   def decrement_count(self, name: str):
     self._counts[name] -= 1
 
   def to_import_statements(self):
     targets = []
-    for name, alias in self.members.items():
+    for alias, name in self._members.items():
       if not self._counts[name]:
         continue
       targets.append(f"{name} as {alias}" if alias != name else name)
@@ -50,8 +54,8 @@ class _Imports:
   def __init__(self):
     self.track_imports = True
     self._typing = _TypingImports()
-    self._direct_imports: Dict[_NameType, _AliasType] = {}
-    self._from_imports: Dict[_NameType, Dict[_NameType, _AliasType]] = {}
+    self._direct_imports: Dict[_AliasType, _NameType] = {}
+    self._from_imports: Dict[_NameType, Dict[_AliasType, _NameType]] = {}
     # Map from fully qualified import name to alias
     self._reverse_alias_map: Dict[_NameType, _AliasType] = {}
 
@@ -80,7 +84,7 @@ class _Imports:
       return
     alias = alias or full_name
     if "." not in full_name or full_name == alias and not alias.endswith(".*"):
-      self._direct_imports[full_name] = alias
+      self._direct_imports[alias] = full_name
     else:
       module, name = full_name.rsplit(".", 1)
       if name == "*":
@@ -88,7 +92,7 @@ class _Imports:
       if module == "typing":
         self._typing.add(name, alias)
       else:
-        self._from_imports.setdefault(module, {})[name] = alias
+        self._from_imports.setdefault(module, {})[alias] = name
     self._reverse_alias_map[full_name] = alias
 
   def decrement_typing_count(self, member: str):
@@ -108,14 +112,14 @@ class _Imports:
   def to_import_statements(self):
     """Converts self to import statements."""
     imports = self._typing.to_import_statements()
-    for module, alias in self._direct_imports.items():
+    for alias, module in self._direct_imports.items():
       if alias == module:
         imports.append(f"import {module}")
       else:
         imports.append(f"import {module} as {alias}")
     for module, members in self._from_imports.items():
       targets = ", ".join(sorted(f"{name} as {alias}" if alias != name else name
-                                 for name, alias in members.items()))
+                                 for alias, name in members.items()))
       imports.append(f"from {module} import {targets}")
     # Sort import lines lexicographically and ensure import statements come
     # before from-import statements.
@@ -161,8 +165,8 @@ class PrintVisitor(base_visitor.Visitor):
     copy.in_signature = self.in_signature
     # pylint: disable=protected-access
     copy._local_names = set(self._local_names)
-    copy._imports._typing.members = dict(
-        self._imports._typing.members)
+    copy._imports._typing._members = dict(
+        self._imports._typing._members)
     copy._imports._reverse_alias_map = dict(
         self._imports._reverse_alias_map)
     # pylint: enable=protected-access
@@ -222,9 +226,14 @@ class PrintVisitor(base_visitor.Visitor):
     if self._NameCollision(name):
       self._imports.add("typing")
       return full_name
-    else:
-      self._imports.add(full_name, name)
-      return self._imports.get_alias(full_name)
+    alias = self._imports.get_alias(full_name)
+    if not alias or "." in alias:
+      # `name` has not been directly imported. If the alias is dotted, then the
+      # typing module itself has been imported. Regardless, we prefer to use
+      # `from typing import <name>` for aesthetic reasons.
+      alias = name
+    self._imports.add(full_name, alias)
+    return alias
 
   def _StripUnitPrefix(self, name):
     if self._unit:
@@ -308,8 +317,9 @@ class PrintVisitor(base_visitor.Visitor):
     #   from typing import Foo
     if self.class_names or node.value:
       return False
-    if node.type == f"Type[typing.{node.name}]":
-      self._FromTyping(node.name)
+    full_typing_name = f"typing.{node.name}"
+    if node.type == f"Type[{full_typing_name}]":
+      self._imports.add(full_typing_name, node.name)
       self._imports.decrement_typing_count("Type")
       self._local_names.remove(node.name)
       return True
@@ -325,7 +335,7 @@ class PrintVisitor(base_visitor.Visitor):
       else:
         return node.name
     # Decrement Any, since the actual value is never printed.
-    if node.value == "Any":
+    if isinstance(self.old_node.value, pytd.AnythingType):
       self._imports.decrement_typing_count("Any")
     if self._DropTypingConstant(node):
       return None
@@ -478,8 +488,7 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
     if node.return_type == "nothing":
-      return_type = "NoReturn"  # a prettier alias for nothing
-      self._FromTyping(return_type)
+      return_type = self._FromTyping("NoReturn")  # a prettier alias for nothing
     else:
       return_type = node.return_type
     ret = f" -> {return_type}"
@@ -545,7 +554,7 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
-    if node.type == "Any":
+    if isinstance(self.old_node.type, pytd.AnythingType):
       # Abbreviated form. "Any" is the default.
       self._imports.decrement_typing_count("Any")
       return node.name + suffix

@@ -580,6 +580,26 @@ class ParserTest(parser_test_base.ParserTestBase):
   def test_typing_alias(self):
     self.check("import typing as _typing")
 
+  def test_multiple_aliases(self):
+    self.check("""
+      import foo
+      import foo as foo2
+    """)
+
+  def test_multiple_aliases_from_import(self):
+    self.check("""
+      from foo import bar, bar as bar2
+    """)
+
+  def test_multiple_typing_aliases(self):
+    self.check("""
+      from typing import Callable
+      MyFunc = Callable
+      YourFunc = Callable
+    """, """
+      from typing import Callable as MyFunc, Callable as YourFunc
+    """)
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 
