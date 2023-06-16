@@ -95,9 +95,15 @@ class _Imports:
     self._typing.decrement_count(member)
 
   def get_alias(self, name: str):
-    if name.startswith("typing."):
-      return self._typing.members.get(utils.strip_prefix(name, "typing."))
-    return self._reverse_alias_map.get(name)
+    if not name.startswith("typing."):
+      return self._reverse_alias_map.get(name)
+    bare_name = utils.strip_prefix(name, "typing.")
+    if bare_name in self._typing.members:
+      return self._typing.members[bare_name]
+    elif "typing" in self._reverse_alias_map:
+      return f"{self._reverse_alias_map['typing']}.{bare_name}"
+    else:
+      return None
 
   def to_import_statements(self):
     """Converts self to import statements."""
