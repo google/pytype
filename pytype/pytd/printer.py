@@ -35,7 +35,7 @@ class _TypingImports:
   def to_import_statements(self):
     targets = []
     for name, alias in self.members.items():
-      if self._counts[name] <= 0:
+      if not self._counts[name]:
         continue
       targets.append(f"{name} as {alias}" if alias != name else name)
     if targets:

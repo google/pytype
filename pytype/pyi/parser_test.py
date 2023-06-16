@@ -568,6 +568,15 @@ class ParserTest(parser_test_base.ParserTestBase):
       def f(x: T) -> T: ...
     """)
 
+  def test_local_typevar(self):
+    self.check("""
+      import typing
+
+      T = typing.TypeVar('T')
+
+      class TypeVar: ...
+    """)
+
   def test_typing_alias(self):
     self.check("import typing as _typing")
 
