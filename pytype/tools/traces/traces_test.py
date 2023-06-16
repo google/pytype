@@ -116,14 +116,14 @@ class MatchAstVisitorTest(MatchAstTestCase):
   def test_import(self):
     matches = self._get_traces("import os, sys as tzt", ast.Import)
     self.assertTracesEqual(matches, [
-        ((1, 7), "IMPORT_NAME", "os", ("import os",)),
-        ((1, 18), "STORE_NAME", "tzt", ("import sys",))])
+        ((1, 7), "IMPORT_NAME", "os", ("module",)),
+        ((1, 18), "STORE_NAME", "tzt", ("module",))])
 
   def test_import_from(self):
     matches = self._get_traces(
         "from os import path as p, environ", ast.ImportFrom)
     self.assertTracesEqual(matches, [
-        ((1, 23), "STORE_NAME", "p", ("import os.path",)),
+        ((1, 23), "STORE_NAME", "p", ("module",)),
         ((1, 26), "STORE_NAME", "environ", ("os._Environ[str]",))])
 
 

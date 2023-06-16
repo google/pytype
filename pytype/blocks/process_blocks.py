@@ -134,3 +134,20 @@ def adjust_returns(code, block_returns):
           new_line = next(lines, None)
           if new_line:
             op.line = new_line
+
+
+def check_out_of_order(code):
+  """Check if a line of code is executed out of order."""
+  # This sometimes happens due to compiler optimisations, and needs to be
+  # recorded so that we don't trigger code that is only meant to execute when
+  # the main flow of control reaches a certain line.
+  last_line = []
+  for block in code.order:
+    for op in block:
+      if not last_line or last_line[-1].line == op.line:
+        last_line.append(op)
+      else:
+        if op.line < last_line[-1].line:
+          for x in last_line:
+            x.metadata.is_out_of_order = True
+        last_line = [op]

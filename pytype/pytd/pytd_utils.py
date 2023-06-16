@@ -182,10 +182,10 @@ def Print(ast, multiline_args=False):
 
 
 def MakeTypeAnnotation(ast, multiline_args=False):
-  """Returns a type annotation and any added imports."""
+  """Returns a type annotation and any added typing imports."""
   vis = printer.PrintVisitor(multiline_args)
   annotation = ast.Visit(vis)
-  return annotation, vis.imports
+  return annotation, vis.typing_imports
 
 
 def CreateModule(name="<empty>", **kwargs):

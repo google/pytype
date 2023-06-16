@@ -384,8 +384,8 @@ class MatchClassTest(test_base.BaseTest):
           case B():
             assert_type(x, B)
           case _:
-            # We do not do exhaustiveness checks other than for enums
-            assert_type(x, A | B)
+            # This branch will not be entered
+            assert_type(1, str)
     """)
 
   def test_type_narrowing_union(self):
@@ -393,15 +393,43 @@ class MatchClassTest(test_base.BaseTest):
       class A: pass
       class B: pass
       class C: pass
+      class D: pass
 
-      def f(x: A | B | C):
+      def f(x: A | B | C | D):
         match x:
           case A() | B():
             assert_type(x, A | B)
           case C():
             assert_type(x, C)
           case _:
-            assert_type(x, A | B | C)
+            assert_type(x, D)
+    """)
+
+  def test_type_narrowing_mixed(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+      class D: pass
+
+      def f(x: A | B | C | int | bool):
+        match x:
+          case A():
+            assert_type(x, A)
+          case 1:
+            # Note that we do not do positive type narrowing here
+            assert_type(x, B | C | int | bool)
+          case B():
+            assert_type(x, B)
+          case True:
+            assert_type(x, C | int | bool)
+          case C():
+            assert_type(x, C)
+          case D():
+            # This branch will not be entered
+            assert_type(1, str)
+          case _:
+            assert_type(x, int | bool)
     """)
 
   def test_posargs(self):
@@ -539,7 +567,7 @@ class MatchClassTest(test_base.BaseTest):
             return 42
     """)
     self.assertTypesMatchPytd(ty, """
-      def f(x: int | str) -> int | str: ...
+      def f(x: int | str) -> str: ...
     """)
 
   def test_builtin_kwargs(self):
@@ -593,6 +621,48 @@ class MatchClassTest(test_base.BaseTest):
             return True
           case _:
             return False
+    """)
+
+  def test_error(self):
+    ty, _ = self.InferWithErrors("""
+      def f(x):
+        match x:
+          case error():  # name-error
+            return 0
+          case _:
+            return None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> int | None: ...
+    """)
+
+  def test_nested_function(self):
+    ty = self.Infer("""
+      class A:
+        x: int
+      class B:
+        y: str
+      class C:
+        z: bytes
+      def f(arg: A | B | C):
+        def g():
+          match arg:
+            case A():
+              return arg.x
+            case B():
+              return arg.y
+            case _:
+              return arg.z
+        return g()
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
+      class B:
+        y: str
+      class C:
+        z: bytes
+      def f(arg: A | B | C) -> int | str | bytes: ...
     """)
 
 
@@ -1129,6 +1199,31 @@ class MatchCoverageTest(test_base.BaseTest):
               return 42
             case _:
               raise ValueError('foo')
+    """)
+
+  def test_optimized_bytecode_out_of_order(self):
+    """Regression test for a bug resulting from compiler optimisations."""
+    # Compier optimisations that inline code can put blocks out of order, which
+    # could potentially interfere with our checks for the end of a match block.
+
+    self.Check("""
+      import enum
+
+      class Color(enum.Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def test(color: Color):
+        match color:
+          case Color.RED:
+            print("I see red!")
+          case Color.GREEN:
+            print("Grass is green")
+          case Color.BLUE:
+            print("I'm feeling the blues :(")
+        # This line compiles to a return statement after every case branch.
+        return color
     """)
 
 

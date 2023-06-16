@@ -1,6 +1,5 @@
 """Constructs related to type annotations."""
 
-import collections
 import dataclasses
 import logging
 import typing
@@ -241,20 +240,19 @@ class AnnotationContainer(AnnotationClass):
       # class_mixin.Class, and (2) we have to postpone error-checking anyway so
       # we might as well postpone the entire evaluation.
       printed_params = []
-      added_imports = collections.defaultdict(set)
+      added_typing_imports = set()
       for i, param in enumerate(inner):
         if i in ellipses:
           printed_params.append("...")
         else:
           typ = param.get_instance_type(node)
-          annot, imports = pytd_utils.MakeTypeAnnotation(typ)
+          annot, typing_imports = pytd_utils.MakeTypeAnnotation(typ)
           printed_params.append(annot)
-          for k, v in imports.items():
-            added_imports[k] |= v
+          added_typing_imports.update(typing_imports)
 
       expr = f"{self.base_cls.expr}[{', '.join(printed_params)}]"
       annot = LateAnnotation(expr, self.base_cls.stack, self.ctx,
-                             imports=added_imports)
+                             typing_imports=added_typing_imports)
       self.ctx.vm.late_annotations[self.base_cls.expr].append(annot)
       return annot
     template, processed_inner, abstract_class = self._get_value_info(
@@ -297,8 +295,7 @@ class AnnotationContainer(AnnotationClass):
                 root_node, container=abstract_utils.DUMMY_CONTAINER)
         elif param_value.is_concrete and isinstance(param_value.pyval, str):
           expr = param_value.pyval
-          annot = LateAnnotation(expr, self.ctx.vm.frames, self.ctx,
-                                 imports=set())
+          annot = LateAnnotation(expr, self.ctx.vm.frames, self.ctx)
           base = expr.split("[", 1)[0]
           self.ctx.vm.late_annotations[base].append(annot)
           actual = annot.instantiate(root_node)
@@ -646,13 +643,13 @@ class LateAnnotation:
 
   _RESOLVING = object()
 
-  def __init__(self, expr, stack, ctx, *, imports=None):
+  def __init__(self, expr, stack, ctx, *, typing_imports=None):
     self.expr = expr
     self.stack = stack
     self.ctx = ctx
     self.resolved = False
-    # Any new imports the annotation needs while resolving.
-    self._imports = imports or {}
+    # Any new typing imports the annotation needs while resolving.
+    self._typing_imports = typing_imports or set()
     self._type = ctx.convert.unsolvable  # the resolved type of `expr`
     self._unresolved_instances = set()
     self._resolved_instances = {}
@@ -730,9 +727,9 @@ class LateAnnotation:
     self.resolved = LateAnnotation._RESOLVING
     # Add implicit imports for typing, since we can have late annotations like
     # `set[int]` which get converted to `typing.Set[int]`.
-    if "typing" in self._imports:
+    if self._typing_imports:
       overlay = self.ctx.vm.import_module("typing", "typing", 0)
-      for v in self._imports["typing"]:
+      for v in self._typing_imports:
         if v not in f_globals.members:
           f_globals.members[v] = overlay.get_module(v).load_lazy_attribute(v)
     var, errorlog = abstract_utils.eval_expr(self.ctx, node, f_globals,

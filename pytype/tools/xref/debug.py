@@ -81,16 +81,28 @@ def show_types(index):
   for def_id in index.locs:
     defn = index.defs[def_id]
     for loc in index.locs[def_id]:
-      out.append((loc.location, defn.typ, defn.name, display_type(defn.data)))
+      out.append(
+          (loc.location, defn.typ, defn.name, display_type(defn.data), None))
   for ref, defn in index.links:
-    out.append((ref.location, defn.typ, ref.name, display_type(ref.data)))
+    if len(ref.data) > 1:
+      typ = display_type(ref.data[1:])
+      link_typ = display_type(ref.data)
+    else:
+      typ = display_type(ref.data)
+      link_typ = None
+    out.append((ref.location, defn.typ, ref.name, typ, link_typ))
   # Sort by location
-  for location, category, name, typ in sorted(out, key=lambda x: x[0]):
+  for location, category, name, typ, link_typ in sorted(
+      out, key=lambda x: x[0]):
     # Filter out some noise
     if (category in ("FunctionDef", "IsInstance") or
         typ in ("builtins.module", "__future__._Feature")):
       continue
-    print(f"{format_loc(location)}  |  {name.ljust(35)}  {typ}")
+    if link_typ:
+      print(
+          f"{format_loc(location)}  |  {name.ljust(35)}  {typ} [-> {link_typ}]")
+    else:
+      print(f"{format_loc(location)}  |  {name.ljust(35)}  {typ}")
 
 
 def show_index(index):

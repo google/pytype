@@ -4,7 +4,7 @@ import collections
 import itertools
 import logging
 import re
-from typing import List, Optional, Set, cast
+from typing import Callable, List, Optional, Set, cast
 
 from pytype import datatypes
 from pytype import module_utils
@@ -835,7 +835,7 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     return _MaybeSubstituteParametersInGenericType(node)
 
 
-class ReplaceTypes(Visitor):
+class ReplaceTypesByName(Visitor):
   """Visitor for replacing types in a tree.
 
   This replaces both NamedType and ClassType nodes that have a name in the
@@ -870,6 +870,22 @@ class ReplaceTypes(Visitor):
   # definition with itself, which is almost certainly not what is wanted,
   # because running pytd_utils.Print on it will result in output that's just a
   # list of class names with no contents.
+
+
+class ReplaceTypesByMatcher(Visitor):
+  """Replace types that satisfy a matching function."""
+
+  def __init__(
+      self, matcher: Callable[[pytd.Node], bool], replacement: pytd.Node):
+    super().__init__()
+    self._matcher = matcher
+    self._replacement = replacement
+
+  def VisitNamedType(self, node):
+    return self._replacement if self._matcher(node) else node
+
+  def VisitClassType(self, node):
+    return self.VisitNamedType(node)
 
 
 class ExtractSuperClassesByName(ExtractSuperClasses):
@@ -1122,7 +1138,7 @@ class CreateTypeParametersForSignatures(Visitor):
       replacements[self.class_name] = type_param
     if replacements:
       self.added_new_type_params = True
-      sig = sig.Visit(ReplaceTypes(replacements))
+      sig = sig.Visit(ReplaceTypesByName(replacements))
     return sig
 
   def EnterTypeDeclUnit(self, _):

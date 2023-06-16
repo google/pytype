@@ -272,7 +272,7 @@ def insert_solution(result, mapping, global_lookup):
   # We remove duplicates here (even though Optimize does so again) because
   # it's much faster before the string types are replaced.
   result = result.Visit(optimize.RemoveDuplicates())
-  return result.Visit(visitors.ReplaceTypes(subst))
+  return result.Visit(visitors.ReplaceTypesByName(subst))
 
 
 def convert_pytd(ast, builtins_pytd, protocols_pytd):

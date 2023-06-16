@@ -116,7 +116,7 @@ class TestVisitors(parser_test_base.ParserTest):
     new_tree.Visit(visitors.VerifyVisitor())
     self.AssertSourceEquals(new_tree, expected)
 
-  def test_replace_types(self):
+  def test_replace_types_by_name(self):
     src = textwrap.dedent("""
         from typing import Union
         class A:
@@ -132,8 +132,28 @@ class TestVisitors(parser_test_base.ParserTest):
                 raise B()
     """)
     tree = self.Parse(src)
-    new_tree = tree.Visit(visitors.ReplaceTypes({"A": pytd.NamedType("A2")}))
-    self.AssertSourceEquals(new_tree, expected)
+    tree2 = tree.Visit(visitors.ReplaceTypesByName({"A": pytd.NamedType("A2")}))
+    self.AssertSourceEquals(tree2, expected)
+
+  def test_replace_types_by_matcher(self):
+    src = textwrap.dedent("""
+        from typing import Union
+        class A:
+            def a(self, a: Union[A, B]) -> Union[A, B]:
+                raise A()
+                raise B()
+    """)
+    expected = textwrap.dedent("""
+        from typing import Union
+        class A:
+            def a(self: A2, a: Union[A2, B]) -> Union[A2, B]:
+                raise A2()
+                raise B()
+    """)
+    tree = self.Parse(src)
+    tree2 = tree.Visit(visitors.ReplaceTypesByMatcher(
+        lambda node: node.name == "A", pytd.NamedType("A2")))
+    self.AssertSourceEquals(tree2, expected)
 
   def test_superclasses_by_name(self):
     src = textwrap.dedent("""

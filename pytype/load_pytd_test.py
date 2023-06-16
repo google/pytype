@@ -588,7 +588,7 @@ class ImportPathsTest(_LoaderTest):
     expected = textwrap.dedent("""
       import subprocess as foo._subprocess
 
-      foo.x: _subprocess.Popen
+      foo.x: foo._subprocess.Popen
     """).strip()
     self.assertMultiLineEqual(pytd_utils.Print(ast), expected)
 

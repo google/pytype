@@ -15,8 +15,7 @@ class TestControlFlow(test_base.BaseTest):
 
   def test_local_definition(self):
     self.CheckWithErrors("""
-      from typing import Union
-      def f(x: Union[int, str]):
+      def f(x: int | str):
         if isinstance(x, int):
           if x > 10:
               y = 10

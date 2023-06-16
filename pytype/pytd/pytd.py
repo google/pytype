@@ -145,10 +145,6 @@ class Module(Node):
   name: str
   module_name: str
 
-  @property
-  def is_aliased(self):
-    return self.name != self.module_name
-
 
 @attrs.frozen(slots=False, cache_hash=True)
 class Class(Node):

@@ -463,7 +463,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
               pytd.NamedType("builtins.type"), (pytd.NamedType(n),))
         # We convert known special forms to their corresponding types and
         # otherwise treat them as unknown types.
-        if name in {"Final", "Protocol", "TypeGuard"}:
+        if name in {"Final", "Protocol", "Self", "TypeGuard"}:
           typ = type_of(f"typing.{name}")
         elif name == "LiteralString":
           typ = type_of("builtins.str")
@@ -545,7 +545,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.annotation_visitor.visit(node.keywords)
     defs = _flatten_splices(node.body)
     return self.defs.build_class(
-        node.name, node.bases, node.keywords, decorators, defs)
+        full_class_name, node.bases, node.keywords, decorators, defs)
 
   def enter_If(self, node):
     # Evaluate the test and preemptively remove the invalid branch so we don't
