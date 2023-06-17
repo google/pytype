@@ -99,15 +99,9 @@ class _Imports:
     self._typing.decrement_count(member)
 
   def get_alias(self, name: str):
-    if not name.startswith("typing."):
-      return self._reverse_alias_map.get(name)
-    bare_name = utils.strip_prefix(name, "typing.")
-    if bare_name in self._typing.members:
-      return self._typing.members[bare_name]
-    elif "typing" in self._reverse_alias_map:
-      return f"{self._reverse_alias_map['typing']}.{bare_name}"
-    else:
-      return None
+    if name.startswith("typing."):
+      return self._typing.members.get(utils.strip_prefix(name, "typing."))
+    return self._reverse_alias_map.get(name)
 
   def to_import_statements(self):
     """Converts self to import statements."""
@@ -193,8 +187,16 @@ class PrintVisitor(base_visitor.Visitor):
     return module == "builtins"
 
   def _LookupTypingMember(self, name):
-    return (self._imports.get_alias(f"typing.{name}") or
-            self._imports.get_alias(f"typing_extensions.{name}"))
+    prefixes = ("typing", "typing_extensions")
+    for prefix in prefixes:
+      alias = self._imports.get_alias(f"{prefix}.{name}")
+      if alias:
+        return alias
+    for prefix in prefixes:
+      prefix_alias = self._imports.get_alias(prefix)
+      if prefix_alias:
+        return f"{prefix_alias}.{name}"
+    raise AssertionError("This should never happen.")
 
   def _FormatTypeParams(self, type_params):
     formatted_type_params = []
@@ -226,12 +228,7 @@ class PrintVisitor(base_visitor.Visitor):
     if self._NameCollision(name):
       self._imports.add("typing")
       return full_name
-    alias = self._imports.get_alias(full_name)
-    if not alias or "." in alias:
-      # `name` has not been directly imported. If the alias is dotted, then the
-      # typing module itself has been imported. Regardless, we prefer to use
-      # `from typing import <name>` for aesthetic reasons.
-      alias = name
+    alias = self._imports.get_alias(full_name) or name
     self._imports.add(full_name, alias)
     return alias
 
