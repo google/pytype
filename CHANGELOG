@@ -1,3 +1,14 @@
+Version 2023.06.16:
+
+Updates:
+* Add partial typing.Self support in type stubs.
+* Make some minor improvements to pytype's type stub printer.
+
+Bug fixes:
+* Flesh out definition of collections.UserDict.
+* Fix timeout in file that constructs a complicated dict of tuples.
+* Narrow the type of the matched variable in case branches with class matches.
+
 Version 2023.06.02:
 
 Updates:
