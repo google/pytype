@@ -519,10 +519,7 @@ class Concatenate(abstract.AnnotationClass):
 
 def not_supported_yet(name, ctx, *, ast=None, details=None):
   ast = ast or ctx.loader.typing
-  full_name = f"{ast.name}.{name}"
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, full_name, details=details)
-  pytd_type = pytd.ToType(ast.Lookup(full_name), True, True, True)
-  return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)
+  return overlay_utils.not_supported_yet(name, ctx, ast, details=details)
 
 
 def build_any(ctx):
@@ -571,7 +568,19 @@ def get_re_builder(member):
 # name -> lowest_supported_version
 _unsupported_members = {
     "is_typeddict": (3, 10),
+    "LiteralString": (3, 11),
+    "Never": (3, 11),
+    "Required": (3, 11),
+    "NotRequired": (3, 11),
     "Self": (3, 11),
+    "TypeVarTuple": (3, 11),
+    "Unpack": (3, 11),
+    "assert_never": (3, 11),
+    "assert_type": (3, 11),
+    "reveal_type": (3, 11),
+    "dataclass_transform": (3, 11),
+    "get_overloads": (3, 11),
+    "clear_overloads": (3, 11),
 }
 
 
