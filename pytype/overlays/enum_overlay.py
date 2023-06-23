@@ -44,6 +44,12 @@ from pytype.typegraph import cfg
 log = logging.getLogger(__name__)
 
 
+# These members have been added in Python 3.11 and are not yet supported.
+_unsupported = ("StrEnum", "ReprEnum", "EnumCheck", "FlagBoundary", "verify",
+                "property", "member", "nonmember", "global_enum",
+                "show_flag_values")
+
+
 class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
@@ -53,7 +59,10 @@ class EnumOverlay(overlay.Overlay):
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
+          "EnumType": EnumMeta,
           "IntEnum": IntEnumBuilder,
+          **{name: overlay.build(name, overlay_utils.not_supported_yet)
+             for name in _unsupported},
       }
       ast = ast.Visit(visitors.RemoveMethods())
     else:
