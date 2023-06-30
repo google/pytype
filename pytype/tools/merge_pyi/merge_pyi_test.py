@@ -3,6 +3,7 @@ import difflib
 import logging
 import os
 import re
+import sys
 
 from pytype.platform_utils import path_utils
 from pytype.tools.merge_pyi import merge_pyi
@@ -14,6 +15,9 @@ __all__ = ('TestBuilder', 'load_tests')
 
 PY, PYI, EXPECTED = 'py', 'pyi', 'pep484.py'
 OVERWRITE_EXPECTED = 0  # flip to regenerate expected files
+
+# Some tests are sensitive to the libcst version
+SKIP_BEFORE_310 = {'pyi_variations'}
 
 
 def load_tests(unused_loader, standard_tests, unused_pattern):
@@ -36,6 +40,9 @@ class TestBuilder:
         continue
 
       if not OVERWRITE_EXPECTED and EXPECTED not in files_by_ext:
+        continue
+
+      if sys.version_info < (3, 10) and base in SKIP_BEFORE_310:
         continue
 
       py, pyi = (files_by_ext[x] for x in (PY, PYI))
