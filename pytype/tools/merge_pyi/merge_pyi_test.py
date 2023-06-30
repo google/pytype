@@ -63,7 +63,10 @@ def build_regression_test(py, pyi, outfile):
 
   def regression_test(test_case):
     py_input, pyi_src = (_read_file(f) for f in (py, pyi))
-    output = merge_pyi.merge_sources(py=py_input, pyi=pyi_src)
+    try:
+      output = merge_pyi.merge_sources(py=py_input, pyi=pyi_src)
+    except merge_pyi.MergeError:
+      pass
 
     if OVERWRITE_EXPECTED:
       with open(outfile, 'w') as f:
