@@ -161,4 +161,3 @@ def not_supported_yet(name, ctx, ast, details=None):
   ctx.errorlog.not_supported_yet(ctx.vm.frames, full_name, details=details)
   pytd_type = pytd.ToType(ast.Lookup(full_name), True, True, True)
   return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)
-
