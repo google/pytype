@@ -382,15 +382,15 @@ class ErrorMatcher:
     return expected
 
 
-class Py37Opcodes:
-  """Define constants for Python 3.7 opcodes.
+class Py310Opcodes:
+  """Define constants for Python 3.10 opcodes.
 
   Note that while our tests typically target the version that pytype is running
-  in, blocks_test and vm_test check disassembled bytecode, which changes from
-  version to version, so we fix the test version.
+  in, blocks_test checks disassembled bytecode, which changes from version to
+  version, so we fix the test version.
   """
 
-  for k, v in opcodes.python_3_7_mapping.items():
+  for k, v in opcodes.python_3_10_mapping.items():
     locals()[v.__name__] = k
   del k, v  # remove from the class namespace  # pylint: disable=undefined-loop-variable
 

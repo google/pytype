@@ -142,39 +142,39 @@ class ErrorLogTest(test_base.BaseTest):
 
 class SkipTest(test_base.BaseTest):
 
-  @test_utils.skipUnlessPy((3, 7), reason="testing skipUnlessPy")
+  @test_utils.skipUnlessPy((3, 10), reason="testing skipUnlessPy")
   def test_skip_unless_py(self):
-    # This test will fail if run in a version other than 3.7.
+    # This test will fail if run in a version other than 3.10.
     self.Check("""
       import sys
-      if sys.version_info.minor != 7:
+      if sys.version_info.minor != 10:
         name_error
     """)
 
-  @test_utils.skipIfPy((3, 7), reason="testing skipIfPy")
+  @test_utils.skipIfPy((3, 10), reason="testing skipIfPy")
   def test_skip_if_py(self):
-    # This test will fail if run in 3.7.
+    # This test will fail if run in 3.10.
     self.Check("""
       import sys
-      if sys.version_info.minor == 7:
+      if sys.version_info.minor == 10:
         name_error
     """)
 
-  @test_utils.skipBeforePy((3, 8), reason="testing skipBeforePy")
+  @test_utils.skipBeforePy((3, 10), reason="testing skipBeforePy")
   def test_skip_before_py(self):
-    # This will fail before 3.8.
+    # This will fail before 3.10.
     self.Check("""
       import sys
-      if sys.version_info.minor < 8:
+      if sys.version_info.minor < 10:
         name_error
     """)
 
-  @test_utils.skipFromPy((3, 8), reason="testing skipFromPy")
+  @test_utils.skipFromPy((3, 10), reason="testing skipFromPy")
   def test_skip_from_py(self):
-    # This will fail in 3.8+.
+    # This will fail in 3.10+.
     self.Check("""
       import sys
-      if sys.version_info.minor >= 8:
+      if sys.version_info.minor >= 10:
         name_error
     """)
 

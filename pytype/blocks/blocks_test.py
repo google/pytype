@@ -27,13 +27,15 @@ from pytype.tests import test_utils
 
 import unittest
 
+o = test_utils.Py310Opcodes
+
 
 class BaseBlocksTest(unittest.TestCase, test_utils.MakeCodeMixin):
   """A base class for implementing tests testing blocks.py."""
 
   # These tests check disassembled bytecode, which varies from version to
   # version, so we fix the test version.
-  python_version = (3, 7)
+  python_version = (3, 10)
 
 
 class OrderingTest(BaseBlocksTest):
@@ -47,7 +49,6 @@ class OrderingTest(BaseBlocksTest):
   def test_trivial(self):
     # Disassembled from:
     # | return None
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
@@ -61,7 +62,6 @@ class OrderingTest(BaseBlocksTest):
   def test_has_opcode(self):
     # Disassembled from:
     # | return None
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
@@ -75,7 +75,6 @@ class OrderingTest(BaseBlocksTest):
     # Disassembled from:
     # | yield 1
     # | yield None
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
         o.LOAD_CONST, 0,
@@ -99,7 +98,6 @@ class OrderingTest(BaseBlocksTest):
     # | if y > 1:
     # |   x -= 2
     # | return x
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
         o.LOAD_GLOBAL, 0,
@@ -107,7 +105,7 @@ class OrderingTest(BaseBlocksTest):
         o.LOAD_GLOBAL, 0,
         o.LOAD_CONST, 1,
         o.COMPARE_OP, 4,
-        o.POP_JUMP_IF_FALSE, 20,
+        o.POP_JUMP_IF_FALSE, 10,
         # b1:
         o.LOAD_FAST, 0,
         o.LOAD_CONST, 2,
@@ -135,7 +133,6 @@ class OrderingTest(BaseBlocksTest):
     # | else:
     # |   x += 2
     # | return x
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
         o.LOAD_GLOBAL, 0,
@@ -143,39 +140,34 @@ class OrderingTest(BaseBlocksTest):
         o.LOAD_GLOBAL, 0,
         o.LOAD_CONST, 1,
         o.COMPARE_OP, 4,
-        o.POP_JUMP_IF_FALSE, 22,
+        o.POP_JUMP_IF_FALSE, 12,
         # b1:
         o.LOAD_FAST, 0,
-        o.LOAD_CONST, 2,
+        o.LOAD_CONST, 0,
         o.INPLACE_SUBTRACT, 0,
         o.STORE_FAST, 0,
-        o.JUMP_FORWARD, 8,
+        o.LOAD_FAST, 0,
+        o.RETURN_VALUE, 0,
         # b2:
         o.LOAD_FAST, 0,
-        o.LOAD_CONST, 2,
+        o.LOAD_CONST, 0,
         o.INPLACE_ADD, 0,
         o.STORE_FAST, 0,
-        # b3:
         o.LOAD_FAST, 0,
         o.RETURN_VALUE, 0,
     ], name="diamond")
     ordered_code = self._order_code(co)
     self.assertEqual(ordered_code.co_name, "diamond")
-    b0, b1, b2, b3 = ordered_code.order
+    b0, b1, b2 = ordered_code.order
     self.assertCountEqual(b0.incoming, [])
     self.assertCountEqual(b0.outgoing, [b1, b2])
     self.assertCountEqual(b1.incoming, [b0])
-    self.assertCountEqual(b1.outgoing, [b3])
     self.assertCountEqual(b2.incoming, [b0])
-    self.assertCountEqual(b2.outgoing, [b3])
-    self.assertCountEqual(b3.incoming, [b1, b2])
-    self.assertCountEqual(b3.outgoing, [])
 
   def test_raise(self):
     # Disassembled from:
     # | raise ValueError()
     # | return 1
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
         o.LOAD_GLOBAL, 0,
@@ -196,7 +188,6 @@ class OrderingTest(BaseBlocksTest):
   def test_call(self):
     # Disassembled from:
     # | f()
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
         o.LOAD_GLOBAL, 0,
@@ -218,25 +209,21 @@ class OrderingTest(BaseBlocksTest):
     # |   pass
     # | finally:
     # |   pass
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
-        o.SETUP_FINALLY, 4,
+        o.SETUP_FINALLY, 3,
         o.POP_BLOCK, 0,
         # b1:
         o.LOAD_CONST, 0,
-        # b2:
-        o.END_FINALLY, 0,
-        # b3:
-        o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
+        # b2:
+        o.RERAISE, 0,
     ], name="finally")
     ordered_code = self._order_code(co)
-    b0, b1, b2, b3 = ordered_code.order
+    b0, b1, b2 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
-    self.assertEqual(len(b1.code), 1)
+    self.assertEqual(len(b1.code), 2)
     self.assertEqual(len(b2.code), 1)
-    self.assertEqual(len(b3.code), 2)
     self.assertCountEqual(b0.outgoing, [b1, b2])
 
   def test_except(self):
@@ -245,40 +232,32 @@ class OrderingTest(BaseBlocksTest):
     # |   pass
     # | except:
     # |   pass
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
-        o.SETUP_EXCEPT, 4,
+        o.SETUP_FINALLY, 3,
         o.POP_BLOCK, 0,
         # b1:
-        o.JUMP_FORWARD, 12,
+        o.LOAD_CONST, 0,
+        o.RETURN_VALUE, 0,
         # b2:
         o.POP_TOP, 0,
         o.POP_TOP, 0,
         o.POP_TOP, 0,
         o.POP_EXCEPT, 0,
-        o.JUMP_FORWARD, 2,
-        # b3:
-        o.END_FINALLY, 0,
-        # b4:
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
     ], name="except")
     ordered_code = self._order_code(co)
-    b0, b1, b2, b3 = ordered_code.order
+    b0, b1, b2 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
-    self.assertEqual(len(b1.code), 1)
-    self.assertEqual(len(b2.code), 5)
-    self.assertEqual(len(b3.code), 2)
+    self.assertEqual(len(b1.code), 2)
+    self.assertEqual(len(b2.code), 6)
     self.assertCountEqual([b1, b2], b0.outgoing)
-    self.assertCountEqual([b3], b1.outgoing)
-    self.assertCountEqual([b3], b2.outgoing)
 
   def test_return(self):
     # Disassembled from:
     # | return None
     # | return None
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,  # dead.
@@ -293,35 +272,66 @@ class OrderingTest(BaseBlocksTest):
     # Disassembled from:
     # | with None:
     # |   pass
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         # b0:
         o.LOAD_CONST, 0,
-        o.SETUP_WITH, 6,
+        o.SETUP_WITH, 9,
         o.POP_TOP, 0,
         o.POP_BLOCK, 0,
         # b1:
         o.LOAD_CONST, 0,
+        o.DUP_TOP, 0,
+        o.DUP_TOP, 0,
+        o.CALL_FUNCTION, 3,
         # b2:
-        o.WITH_CLEANUP_START, 0,
+        o.POP_TOP, 0,
+        o.LOAD_CONST, 0,
+        o.RETURN_VALUE, 0,
         # b3:
-        o.WITH_CLEANUP_FINISH, 0,
-        o.END_FINALLY, 0,
+        o.WITH_EXCEPT_START, 0,
+        o.POP_JUMP_IF_TRUE, 14,
         # b4:
+        o.RERAISE, 1,
+        # b5:
+        o.POP_TOP, 0,
+        o.POP_TOP, 0,
+        o.POP_TOP, 0,
+        o.POP_EXCEPT, 0,
+        o.POP_TOP, 0,
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
     ], name="with")
     ordered_code = self._order_code(co)
-    b0, b1, b2, b3, b4 = ordered_code.order
+    b0, b1, b2, b3, b4, b5 = ordered_code.order
     self.assertEqual(len(b0.code), 4)
-    self.assertEqual(len(b1.code), 1)
-    self.assertEqual(len(b2.code), 1)
+    self.assertEqual(len(b1.code), 4)
+    self.assertEqual(len(b2.code), 3)
     self.assertEqual(len(b3.code), 2)
-    self.assertEqual(len(b4.code), 2)
+    self.assertEqual(len(b4.code), 1)
+    self.assertEqual(len(b5.code), 7)
 
 
 class BlockStackTest(BaseBlocksTest):
   """Test the add_pop_block_targets function."""
+
+  def assertTargets(self, code, targets):
+    co = self.make_code(code)
+    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
+    blocks.add_pop_block_targets(bytecode, self.python_version)
+    for i in range(len(bytecode)):
+      op = bytecode[i]
+      actual_target = op.target
+      actual_block_target = op.block_target
+      target_id, block_id = targets.get(i, (None, None))
+      expected_target = None if target_id is None else bytecode[target_id]
+      expected_block_target = None if block_id is None else bytecode[block_id]
+      self.assertEqual(actual_target, expected_target,
+                       msg=(f"Block {i} ({op!r}) has target {actual_target!r}, "
+                            f"expected target {expected_target!r}"))
+      self.assertEqual(
+          actual_block_target, expected_block_target,
+          msg=(f"Block {i} ({op!r}) has block target {actual_block_target!r}, "
+               f"expected block target {expected_block_target!r}"))
 
   def test_finally(self):
     # Disassembled from:
@@ -329,21 +339,18 @@ class BlockStackTest(BaseBlocksTest):
     # |   pass
     # | finally:
     # |   pass
-    o = test_utils.Py37Opcodes
-    co = self.make_code([
-        o.SETUP_FINALLY, 4,
+    self.assertTargets([
+        o.SETUP_FINALLY, 3,
         o.POP_BLOCK, 0,
         o.LOAD_CONST, 0,
-        o.END_FINALLY, 0,
-        o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
-    ], name="finally")
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
-    # END_FINALLY == SETUP_FINALLY.target
-    self.assertEqual(bytecode[3], bytecode[0].target)
-    # END_FINALLY == POP_BLOCK.block_target
-    self.assertEqual(bytecode[3], bytecode[1].block_target)
+        o.RERAISE, 0,
+    ], {
+        # SETUP_FINALLY.target == RERAISE
+        0: (4, None),
+        # POP_BLOCK.block_target == RERAISE
+        1: (None, 4),
+    })
 
   def test_except(self):
     # Disassembled from:
@@ -351,102 +358,88 @@ class BlockStackTest(BaseBlocksTest):
     # |   pass
     # | except:
     # |   pass
-    o = test_utils.Py37Opcodes
-    co = self.make_code([
-        o.SETUP_EXCEPT, 4,
+    self.assertTargets([
+        o.SETUP_FINALLY, 3,
         o.POP_BLOCK, 0,
-        o.JUMP_FORWARD, 12,
-        o.POP_TOP, 0,
-        o.POP_TOP, 0,
-        o.POP_TOP, 0,
-        o.JUMP_FORWARD, 2,
-        o.END_FINALLY, 0,
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
-    ], name="except")
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
-    # POP_TOP == SETUP_EXCEPT.target
-    self.assertEqual(bytecode[3], bytecode[0].target)
-    # POP_TOP == POP_BLOCK.block_target
-    self.assertEqual(bytecode[3], bytecode[1].block_target)
+        o.POP_TOP, 0,
+        o.POP_TOP, 0,
+        o.POP_TOP, 0,
+        o.POP_EXCEPT, 0,
+        o.LOAD_CONST, 0,
+        o.RETURN_VALUE, 0,
+    ], {
+        # SETUP_FINALLY.target == POP_TOP
+        0: (4, None),
+        # POP_BLOCK.block_target == POP_TOP
+        1: (None, 4),
+    })
 
   def test_with(self):
     # Disassembled from:
     # | with None:
     # |   pass
-    o = test_utils.Py37Opcodes
-    co = self.make_code([
+    self.assertTargets([
         o.LOAD_CONST, 0,
-        o.SETUP_WITH, 6,
+        o.SETUP_WITH, 9,
         o.POP_TOP, 0,
         o.POP_BLOCK, 0,
         o.LOAD_CONST, 0,
-        o.WITH_CLEANUP_START, 0,
-        o.WITH_CLEANUP_FINISH, 0,
-        o.END_FINALLY, 0,
+        o.DUP_TOP, 0,
+        o.DUP_TOP, 0,
+        o.CALL_FUNCTION, 3,
+        o.POP_TOP, 0,
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
-    ], name="with")
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
-    # WITH_CLEANUP_START == SETUP_WITH.target
-    self.assertEqual(bytecode[5], bytecode[1].target)
-    # WITH_CLEANUP_START == POP_BLOCK.block_target
-    self.assertEqual(bytecode[5], bytecode[3].block_target)
+        o.WITH_EXCEPT_START, 0,
+        o.POP_JUMP_IF_TRUE, 14,
+        o.RERAISE, 1,
+        o.POP_TOP, 0,
+        o.POP_TOP, 0,
+    ], {
+        # SETUP_WITH.target == WITH_EXCEPT_START
+        1: (11, None),
+        # POP_BLOCK.block_target == WITH_EXCEPT_START
+        3: (None, 11),
+        # POP_JUMP_IF_TRUE.target == POP_TOP
+        12: (14, None),
+    })
 
   def test_loop(self):
     # Disassembled from:
     # | while []:
     # |   break
-    o = test_utils.Py37Opcodes
-    co = self.make_code([
-        o.SETUP_LOOP, 10,
+    self.assertTargets([
         o.BUILD_LIST, 0,
-        o.POP_JUMP_IF_FALSE, 10,
-        o.BREAK_LOOP, 0,
-        o.JUMP_ABSOLUTE, 2,
-        o.POP_BLOCK, 0,
+        o.POP_JUMP_IF_FALSE, 4,
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
-    ])
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
-    # LOAD_CONST == SETUP_LOOP.target
-    self.assertEqual(bytecode[6], bytecode[0].target)
-    # POP_BLOCK == POP_JUMP_IF_FALSE.target
-    self.assertEqual(bytecode[5], bytecode[2].target)
-    # BUILD_LIST == JUMP_ABSOLUTE.target
-    self.assertEqual(bytecode[1], bytecode[4].target)
-    # LOAD_CONST == POP_BLOCK.block_target
-    self.assertEqual(bytecode[6], bytecode[5].block_target)
+        o.LOAD_CONST, 0,
+        o.RETURN_VALUE, 0,
+    ], {
+        # POP_JUMP_IF_FALSE.target == LOAD_CONST
+        1: (4, None),
+    })
 
   def test_break(self):
     # Disassembled from:
     # | while True:
     # |  if []:
     # |    break
-    o = test_utils.Py37Opcodes
-    co = self.make_code([
-        o.SETUP_LOOP, 10,
+    self.assertTargets([
+        o.NOP, 0,
         o.BUILD_LIST, 0,
-        o.POP_JUMP_IF_FALSE, 2,
-        o.BREAK_LOOP, 0,
-        o.JUMP_ABSOLUTE, 2,
-        o.POP_BLOCK, 0,
-        o.LOAD_CONST, 0,
+        o.POP_JUMP_IF_FALSE, 5,
+        o.LOAD_CONST, 1,
         o.RETURN_VALUE, 0,
-    ])
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
-    # LOAD_CONST == SETUP_LOOP.target
-    self.assertEqual(bytecode[6], bytecode[0].target)
-    # LOAD_CONST == BREAK_LOOP.block_target
-    self.assertEqual(bytecode[6], bytecode[3].block_target)
-    # BUILD_LIST == POP_JUMP_IF_FALSE.target
-    self.assertEqual(bytecode[1], bytecode[2].target)
-    # BUILD_LIST == JUMP_ABSOLUTE.target
-    self.assertEqual(bytecode[1], bytecode[4].target)
+        o.JUMP_ABSOLUTE, 1,
+    ], {
+        # POP_JUMP_IF_FALSE.target == JUMP_ABSOLUTE
+        2: (5, None),
+        # JUMP_ABSOLUTE.target == BUILD_LIST
+        5: (1, None),
+    })
 
   def test_continue(self):
     # Disassembled from:
@@ -455,44 +448,31 @@ class BlockStackTest(BaseBlocksTest):
     # |     continue
     # |   except:
     # |     pass
-    o = test_utils.Py37Opcodes
-    co = self.make_code([
-        o.SETUP_LOOP, 24,
-        o.SETUP_EXCEPT, 6,
-        o.CONTINUE_LOOP, 2,
+    self.assertTargets([
+        o.NOP, 0,
+        o.SETUP_FINALLY, 2,
         o.POP_BLOCK, 0,
-        o.JUMP_ABSOLUTE, 2,
+        o.JUMP_ABSOLUTE, 0,
         o.POP_TOP, 0,
         o.POP_TOP, 0,
         o.POP_TOP, 0,
         o.POP_EXCEPT, 0,
-        o.JUMP_ABSOLUTE, 2,
-        o.END_FINALLY, 0,
-        o.JUMP_ABSOLUTE, 2,
-        o.POP_BLOCK, 0,
-        o.LOAD_CONST, 0,
-        o.RETURN_VALUE, 0,
-    ])
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
-    # LOAD_CONST == SETUP_LOOP.target
-    self.assertEqual(bytecode[13], bytecode[0].target)
-    # POP_TOP == SETUP_EXCEPT.target
-    self.assertEqual(bytecode[5], bytecode[1].target)
-    # SETUP_EXCEPT == CONTINUE_LOOP.target
-    self.assertEqual(bytecode[1], bytecode[2].target)
-    # SETUP_EXCEPT == JUMP_ABSOLUTE.target
-    self.assertEqual(bytecode[1], bytecode[4].target)
-    # SETUP_EXCEPT == JUMP_ABSOLUTE.target
-    self.assertEqual(bytecode[1], bytecode[9].target)
-    # SETUP_EXCEPT == JUMP_ABSOLUTE.target
-    self.assertEqual(bytecode[1], bytecode[11].target)
+        o.JUMP_ABSOLUTE, 1,
+    ], {
+        # SETUP_FINALLY.target == POP_TOP
+        1: (4, None),
+        # POP_BLOCK.block_target == POP_TOP
+        2: (None, 4),
+        # JUMP_ABSOLUTE.target == NOP
+        3: (0, None),
+        # JUMP_ABSOLUTE.target == SETUP_FINALLY
+        8: (1, None),
+    })
 
   def test_apply_typecomments(self):
     # Disassembly + type comment map from
     #   a = 1; b = 2  # type: float
     # The type comment should only apply to b.
-    o = test_utils.Py37Opcodes
     co = self.make_code([
         o.LOAD_CONST, 1,
         o.STORE_FAST, 0,
