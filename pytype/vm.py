@@ -3211,8 +3211,40 @@ class VirtualMachine:
     return state
 
   def byte_BINARY_OP(self, state, op):
-    del op
-    return state
+    """Implementation of BINARY_OP opcode."""
+    # Python 3.11 unified a lot of BINARY_* and INPLACE_* opcodes into a single
+    # BINARY_OP. The underlying operations remain unchanged, so we can just
+    # dispatch to them.
+    binops = [
+        self.byte_BINARY_ADD,
+        self.byte_BINARY_AND,
+        self.byte_BINARY_FLOOR_DIVIDE,
+        self.byte_BINARY_LSHIFT,
+        self.byte_BINARY_MATRIX_MULTIPLY,
+        self.byte_BINARY_MULTIPLY,
+        self.byte_BINARY_MODULO,  # NB_REMAINDER in 3.11
+        self.byte_BINARY_OR,
+        self.byte_BINARY_POWER,
+        self.byte_BINARY_RSHIFT,
+        self.byte_BINARY_SUBTRACT,
+        self.byte_BINARY_TRUE_DIVIDE,
+        self.byte_BINARY_XOR,
+        self.byte_INPLACE_ADD,
+        self.byte_INPLACE_AND,
+        self.byte_INPLACE_FLOOR_DIVIDE,
+        self.byte_INPLACE_LSHIFT,
+        self.byte_INPLACE_MATRIX_MULTIPLY,
+        self.byte_INPLACE_MULTIPLY,
+        self.byte_INPLACE_MODULO,  # NB_INPLACE_REMAINDER in 3.11
+        self.byte_INPLACE_OR,
+        self.byte_INPLACE_POWER,
+        self.byte_INPLACE_RSHIFT,
+        self.byte_INPLACE_SUBTRACT,
+        self.byte_INPLACE_TRUE_DIVIDE,
+        self.byte_INPLACE_XOR,
+    ]
+    binop = binops[op.arg]
+    return binop(state, op)
 
   def byte_SEND(self, state, op):
     del op
