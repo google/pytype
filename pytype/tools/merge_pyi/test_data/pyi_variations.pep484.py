@@ -10,7 +10,8 @@ def f3(x: e3):
 def f4(x: e4) -> r4:
     pass
 
-def f5(x: e5) -> r5:
+def f5(x:             # stripme
+    e5) -> r5:
     pass
 
 def f6(x: e6) -> r6:
@@ -19,7 +20,10 @@ def f6(x: e6) -> r6:
 def f7(x: e7) -> r7:
     pass
 
-def f8(x: e8) -> r8:
+def f8(x:     \
+     e8)     \
+     ->    \
+     r8:
     pass
 
 def f9(x) -> """
