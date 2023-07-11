@@ -1,7 +1,7 @@
 """Test state.py."""
 
 from pytype import compare
-from pytype import state
+from pytype import state as frame_state
 from pytype.typegraph import cfg
 
 import unittest
@@ -39,6 +39,57 @@ def fake_compatible_with(value, logical_value):
   return value.compatible[logical_value]
 
 
+class FakeContext:
+  """Supports weakref."""
+
+
+CTX = FakeContext()
+
+
+class DataStackTest(unittest.TestCase):
+  """Test data stack access and manipulation."""
+
+  def setUp(self):
+    super().setUp()
+    stack = (1, 2, 3, 4, 5, 6)
+    self.state = frame_state.FrameState(stack, [], None, CTX, None, None)
+
+  def test_push(self):
+    state = self.state.push(7, 8)
+    self.assertEqual(state.data_stack, (1, 2, 3, 4, 5, 6, 7, 8))
+
+  def test_peek(self):
+    self.assertEqual(self.state.peek(2), 5)
+
+  def test_top(self):
+    self.assertEqual(self.state.top(), 6)
+    self.assertEqual(self.state.topn(2), (5, 6))
+
+  def test_pop(self):
+    state, val = self.state.pop()
+    self.assertEqual(val, 6)
+    self.assertEqual(state.data_stack, (1, 2, 3, 4, 5))
+    state = state.pop_and_discard()
+    self.assertEqual(state.data_stack, (1, 2, 3, 4))
+    state, values = state.popn(3)
+    self.assertEqual(values, (2, 3, 4))
+    self.assertEqual(state.data_stack, (1,))
+
+  def test_set(self):
+    state = self.state.set_top(7)
+    self.assertEqual(state.data_stack, (1, 2, 3, 4, 5, 7))
+    state = state.set_second(6)
+    self.assertEqual(state.data_stack, (1, 2, 3, 4, 6, 7))
+
+  def test_rotate(self):
+    state = self.state.rotn(3)
+    self.assertEqual(state.data_stack, (1, 2, 3, 6, 4, 5))
+
+  def test_swap(self):
+    state = self.state.swap(4)
+    self.assertEqual(state.data_stack, (1, 2, 6, 4, 5, 3))
+
+
 class ConditionTestBase(unittest.TestCase):
 
   def setUp(self):
@@ -68,7 +119,7 @@ class ConditionTest(ConditionTestBase):
     x = self.new_binding()
     y = self.new_binding()
     z = self.new_binding()
-    c = state.Condition(self._node, [[x, y], [z]])
+    c = frame_state.Condition(self._node, [[x, y], [z]])
     self.check_binding("x=? y=? | z=?", c.binding, x=x, y=y, z=z)
 
   def test_parent_combination(self):
@@ -76,7 +127,7 @@ class ConditionTest(ConditionTestBase):
     x = self.new_binding()
     y = self.new_binding()
     z = self.new_binding()
-    c = state.Condition(self._node, [[x, y], [z]])
+    c = frame_state.Condition(self._node, [[x, y], [z]])
     self.check_binding("x=? y=? | z=?", c.binding,
                        p=p, x=x, y=y, z=z)
 
@@ -92,7 +143,7 @@ class SplitConditionTest(ConditionTestBase):
     var.AddBinding(ONLY_TRUE)
     var.AddBinding(ONLY_FALSE)
     var.AddBinding(AMBIGUOUS)
-    true_cond, false_cond = state.split_conditions(self._node, var)
+    true_cond, false_cond = frame_state.split_conditions(self._node, var)
     self.check_binding("v=? | v=T", true_cond.binding,
                        v=var.bindings[0])
     self.check_binding("v=? | v=F",
@@ -105,38 +156,38 @@ class RestrictConditionTest(ConditionTestBase):
   def setUp(self):
     super().setUp()
     p = self.new_binding()
-    self._parent = state.Condition(self._node, [[p]])
+    self._parent = frame_state.Condition(self._node, [[p]])
 
   def test_no_bindings(self):
-    c = state._restrict_condition(self._node, [], False)
-    self.assertIs(state.UNSATISFIABLE, c)
-    c = state._restrict_condition(self._node, [], True)
-    self.assertIs(state.UNSATISFIABLE, c)
+    c = frame_state._restrict_condition(self._node, [], False)
+    self.assertIs(frame_state.UNSATISFIABLE, c)
+    c = frame_state._restrict_condition(self._node, [], True)
+    self.assertIs(frame_state.UNSATISFIABLE, c)
 
   def test_none_restricted(self):
     x = self.new_binding()
     y = self.new_binding()
-    state._restrict_condition(self._node, [x, y], False)
-    state._restrict_condition(self._node, [x, y], True)
+    frame_state._restrict_condition(self._node, [x, y], False)
+    frame_state._restrict_condition(self._node, [x, y], True)
 
   def test_all_restricted(self):
     x = self.new_binding(ONLY_FALSE)
     y = self.new_binding(ONLY_FALSE)
-    c = state._restrict_condition(self._node, [x, y], True)
-    self.assertIs(state.UNSATISFIABLE, c)
+    c = frame_state._restrict_condition(self._node, [x, y], True)
+    self.assertIs(frame_state.UNSATISFIABLE, c)
 
   def test_some_restricted_no_parent(self):
     x = self.new_binding()  # Can be true or false.
     y = self.new_binding(ONLY_FALSE)
     z = self.new_binding()  # Can be true or false.
-    c = state._restrict_condition(self._node, [x, y, z], True)
+    c = frame_state._restrict_condition(self._node, [x, y, z], True)
     self.check_binding("x=? | z=?", c.binding, x=x, y=y, z=z)
 
   def test_some_restricted_with_parent(self):
     x = self.new_binding()  # Can be true or false.
     y = self.new_binding(ONLY_FALSE)
     z = self.new_binding()  # Can be true or false.
-    c = state._restrict_condition(self._node, [x, y, z], True)
+    c = frame_state._restrict_condition(self._node, [x, y, z], True)
     self.check_binding("x=? | z=?", c.binding,
                        x=x, y=y, z=z)
 
@@ -149,7 +200,7 @@ class RestrictConditionTest(ConditionTestBase):
            [b, c]]
     x = self.new_binding()  # Compatible with everything
     y = self.new_binding(FakeValue("DNF", dnf, False))  # Reduce to dnf
-    cond = state._restrict_condition(self._node, [x, y], True)
+    cond = frame_state._restrict_condition(self._node, [x, y], True)
     self.check_binding("a=? | b=? c=? | x=?", cond.binding,
                        a=a, b=b, c=c, x=x, y=y)
 

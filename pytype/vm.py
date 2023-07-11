@@ -3159,20 +3159,29 @@ class VirtualMachine:
   # TODO(b/265374890): Implement these Python 3.11 opcodes.
 
   def byte_CACHE(self, state, op):
+    # No stack or type effects
     del op
     return state
 
   def byte_PUSH_NULL(self, state, op):
+    # From docs: Used in the call sequence to match the NULL pushed by
+    # LOAD_METHOD for non-method calls.
+    # We currently don't push the NULL for LOAD_METHOD either.
     del op
     return state
 
   def byte_PUSH_EXC_INFO(self, state, op):
     del op
-    return state
+    state, top = state.pop()
+    exc = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
+    state = state.push(exc)
+    return state.push(top)
 
   def byte_CHECK_EXC_MATCH(self, state, op):
     del op
-    return state
+    state, _ = state.pop()
+    ret = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
+    return state.push(ret)
 
   def byte_CHECK_EG_MATCH(self, state, op):
     del op
@@ -3195,8 +3204,7 @@ class VirtualMachine:
     return state
 
   def byte_SWAP(self, state, op):
-    del op
-    return state
+    return state.swap(op.arg)
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, state, op):
     del op
@@ -3247,6 +3255,7 @@ class VirtualMachine:
     return binop(state, op)
 
   def byte_SEND(self, state, op):
+    # No stack effects
     del op
     return state
 
@@ -3275,10 +3284,12 @@ class VirtualMachine:
     return state
 
   def byte_RESUME(self, state, op):
+    # No stack or type effects
     del op
     return state
 
   def byte_PRECALL(self, state, op):
+    # No stack or type effects
     del op
     return state
 
@@ -3287,6 +3298,7 @@ class VirtualMachine:
     return state
 
   def byte_KW_NAMES(self, state, op):
+    # No stack or type effects
     del op
     return state
 

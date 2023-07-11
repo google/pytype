@@ -107,6 +107,17 @@ class FrameState(utils.ContextWeakrefMixin):
     rot = self.data_stack[-n:-1]
     return self.set_stack(self.data_stack[:-n] + (top,) + rot)
 
+  def swap(self, n):
+    """Swap the top of the data stack with the value in position n."""
+    if len(self.data_stack) < n:
+      raise IndexError("Trying to swap value %d in stack of size %d" %
+                       (n, len(self.data_stack)))
+    top = self.data_stack[-1]
+    nth = self.data_stack[-n]
+    in_between = self.data_stack[(-n + 1):-1]
+    rest = self.data_stack[:-n]
+    return self.set_stack(rest + (top,) + in_between + (nth,))
+
   def push_block(self, block):
     """Push a block on to the block stack."""
     return FrameState(self.data_stack, self.block_stack + (block,), self.node,
