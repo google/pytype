@@ -70,10 +70,6 @@ class Generic(object):
   __slots__ = []
 
 
-if sys.version_info < (3, 7):
-  class GenericMeta(type): ...
-
-
 # This class is the implementation of PEP 586
 # (https://www.python.org/dev/peps/pep-0586/)
 class Literal(Generic[_T]):
@@ -471,13 +467,10 @@ def get_type_hints(
     include_extras: bool = ...,
 ) -> dict[str, Any]: ...
 
-# This function is new in Python 3.8, but we define it unconditionally for
-# compatibility with typeshed, which does the same.
 def runtime_checkable(cls: _T) -> _T: ...
 
-if sys.version_info >= (3, 8):
-    def get_origin(tp: Any) -> Optional[Any]: ...
-    def get_args(tp: Any) -> Tuple[Any, ...]: ...
+def get_origin(tp: Any) -> Optional[Any]: ...
+def get_args(tp: Any) -> Tuple[Any, ...]: ...
 
 
 # Strictly speaking, this should be Dict[_K, _V]. (E.g. it's legal to do

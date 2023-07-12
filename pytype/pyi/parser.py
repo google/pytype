@@ -1,5 +1,6 @@
 """Parse a pyi file using typed_ast."""
 
+import ast as astlib
 import dataclasses
 import hashlib
 import sys
@@ -20,13 +21,6 @@ from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
 
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
-
 # reexport as parser.ParseError
 ParseError = types.ParseError
 
@@ -34,7 +28,7 @@ ParseError = types.ParseError
 # imports
 
 
-def _tuple_of_import(alias: ast3.alias) -> Union[str, Tuple[str, str]]:
+def _tuple_of_import(alias: astlib.alias) -> Union[str, Tuple[str, str]]:
   """Convert a typedast import into one that add_import expects."""
   if alias.asname is None:
     return alias.name
@@ -62,7 +56,7 @@ class _TypeVariable:
   constraints: List[Any]
 
   @classmethod
-  def from_call(cls, node: ast3.Call):
+  def from_call(cls, node: astlib.Call):
     """Construct a _TypeVar from an ast.Call node."""
     name, *constraints = node.args
     bound = None
@@ -97,19 +91,19 @@ class _ParamSpec(_TypeVariable):
 # Main tree visitor and generator code
 
 
-def _attribute_to_name(node: ast3.Attribute) -> ast3.Name:
+def _attribute_to_name(node: astlib.Attribute) -> astlib.Name:
   """Recursively convert Attributes to Names."""
   val = node.value
-  if isinstance(val, ast3.Name):
+  if isinstance(val, astlib.Name):
     prefix = val.id
-  elif isinstance(val, ast3.Attribute):
+  elif isinstance(val, astlib.Attribute):
     prefix = _attribute_to_name(val).id
   elif isinstance(val, (pytd.NamedType, pytd.Module)):
     prefix = val.name
   else:
     msg = f"Unexpected attribute access on {val!r} [{type(val)}]"
     raise ParseError(msg)
-  return ast3.Name(f"{prefix}.{node.attr}")
+  return astlib.Name(f"{prefix}.{node.attr}")
 
 
 class AnnotationVisitor(visitor.BaseVisitor):
@@ -126,14 +120,14 @@ class AnnotationVisitor(visitor.BaseVisitor):
     ]
 
   def show(self, node):
-    print(debug.dump(node, ast3, include_attributes=False))
+    print(debug.dump(node, astlib, include_attributes=False))
 
   def convert_late_annotation(self, annotation):
     try:
       # Late annotations may need to be parsed into an AST first
       if annotation.isalpha():
         return self.defs.new_type(annotation)
-      a = ast3.parse(annotation)
+      a = astlib.parse(annotation)
       # Unwrap the module the parser puts around the source string
       typ = a.body[0].value  # pytype: disable=attribute-error
       return self.visit(typ)
@@ -202,7 +196,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
     self._set_subscript_params(node, (typ,) + tuple(params))
 
   def enter_Subscript(self, node):
-    if isinstance(node.value, ast3.Attribute):
+    if isinstance(node.value, astlib.Attribute):
       node.value = _attribute_to_name(node.value).id
     if self.defs.matches_type(getattr(node.value, "id", ""),
                               "typing.Annotated"):
@@ -231,7 +225,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
   def visit_BinOp(self, node):
     if self.subscripted:
       last = self.subscripted[-1]
-      if isinstance(last, ast3.Name):
+      if isinstance(last, astlib.Name):
         last_id = last.id
       elif isinstance(last, str):
         last_id = last
@@ -239,13 +233,13 @@ class AnnotationVisitor(visitor.BaseVisitor):
         last_id = ""
       if self.defs.matches_type(last_id, "typing.Literal"):
         raise ParseError("Expressions are not allowed in typing.Literal.")
-    if isinstance(node.op, ast3.BitOr):
+    if isinstance(node.op, astlib.BitOr):
       return self.defs.new_type("typing.Union", [node.left, node.right])
     else:
       raise ParseError(f"Unexpected operator {node.op}")
 
   def visit_BoolOp(self, node):
-    if isinstance(node.op, ast3.Or):
+    if isinstance(node.op, astlib.Or):
       raise ParseError("Deprecated syntax `x or y`; use `Union[x, y]` instead")
     else:
       raise ParseError(f"Unexpected operator {node.op}")
@@ -310,7 +304,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.class_stack = []
 
   def show(self, node):
-    print(debug.dump(node, ast3, include_attributes=True))
+    print(debug.dump(node, astlib, include_attributes=True))
 
   def convert_node(self, node):
     # Converting a node via a visitor will convert the subnodes, but if the
@@ -354,9 +348,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.convert_node_annotations(node)
 
   def _get_name(self, node):
-    if isinstance(node, ast3.Name):
+    if isinstance(node, astlib.Name):
       return node.id
-    elif isinstance(node, ast3.Attribute):
+    elif isinstance(node, astlib.Attribute):
       return f"{node.value.id}.{node.attr}"
     else:
       raise ParseError(f"Unexpected node type in get_name: {node}")
@@ -364,9 +358,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def _preprocess_decorator_list(self, node):
     decorators = []
     for d in node.decorator_list:
-      if isinstance(d, (ast3.Name, ast3.Attribute)):
+      if isinstance(d, (astlib.Name, astlib.Attribute)):
         decorators.append(self._get_name(d))
-      elif isinstance(d, ast3.Call):
+      elif isinstance(d, astlib.Call):
         decorators.append(self._get_name(d.func))
       else:
         raise ParseError(f"Unexpected decorator: {d}")
@@ -387,7 +381,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     return function.NameAndSig.from_function(node, True)
 
   def _read_str_list(self, name, value):
-    if not (isinstance(value, (ast3.List, ast3.Tuple)) and
+    if not (isinstance(value, (astlib.List, astlib.Tuple)) and
             all(types.Pyval.is_str(x) for x in value.elts)):
       raise ParseError(f"{name} must be a list of strings")
     return tuple(x.value for x in value.elts)
@@ -405,15 +399,15 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     elif isinstance(value, pytd.NamedType):
       res = self.defs.resolve_type(value.name)
       return pytd.Alias(name, res)
-    elif isinstance(value, (ast3.List, ast3.Tuple)):
+    elif isinstance(value, (astlib.List, astlib.Tuple)):
       if name == "__all__":
         self.defs.all = self._read_str_list(name, value)
         return Splice([])
       else:
         # Silently discard the literal value, just preserve the collection type
-        typ = "list" if isinstance(value, ast3.List) else "tuple"
+        typ = "list" if isinstance(value, astlib.List) else "tuple"
         return pytd.Constant(name, pytd.NamedType(typ))
-    elif isinstance(value, ast3.Name):
+    elif isinstance(value, astlib.Name):
       value = self.defs.resolve_type(value.id)
       return pytd.Alias(name, value)
     else:
@@ -521,9 +515,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     out = []
     value = node.value
     for target in node.targets:
-      if isinstance(target, ast3.Tuple):
+      if isinstance(target, astlib.Tuple):
         count = len(target.elts)
-        if not (isinstance(value, ast3.Tuple) and count == len(value.elts)):
+        if not (isinstance(value, astlib.Tuple) and count == len(value.elts)):
           msg = f"Cannot unpack {count} values for multiple assignment"
           raise ParseError(msg)
         for k, v in zip(target.elts, value.elts):
@@ -552,7 +546,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     # waste time traversing it.
     node.test = conditions.evaluate(node.test, self.options)
     if not isinstance(node.test, bool):
-      raise ParseError("Unexpected if statement " + debug.dump(node, ast3))
+      raise ParseError("Unexpected if statement " + debug.dump(node, astlib))
 
     if node.test:
       node.orelse = []
@@ -561,7 +555,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
 
   def visit_If(self, node):
     if not isinstance(node.test, bool):
-      raise ParseError("Unexpected if statement " + debug.dump(node, ast3))
+      raise ParseError("Unexpected if statement " + debug.dump(node, astlib))
 
     if node.test:
       return Splice(node.body)
@@ -583,7 +577,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.defs.add_import(module, imports)
     return Splice([])
 
-  def _convert_newtype_args(self, node: ast3.Call):
+  def _convert_newtype_args(self, node: astlib.Call):
     if len(node.args) != 2:
       msg = "Wrong args: expected NewType(name, [(field, type), ...])"
       raise ParseError(msg)
@@ -591,7 +585,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     typ = self.convert_node(typ)
     node.args = [name.s, typ]
 
-  def _convert_typing_namedtuple_args(self, node: ast3.Call):
+  def _convert_typing_namedtuple_args(self, node: astlib.Call):
     # TODO(mdemello): handle NamedTuple("X", a=int, b=str, ...)
     if len(node.args) != 2:
       msg = "Wrong args: expected NamedTuple(name, [(field, type), ...])"
@@ -601,7 +595,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     fields = [(types.string_value(n), t) for (n, t) in fields]
     node.args = [name.s, fields]
 
-  def _convert_collections_namedtuple_args(self, node: ast3.Call):
+  def _convert_collections_namedtuple_args(self, node: astlib.Call):
     if len(node.args) != 2:
       msg = "Wrong args: expected namedtuple(name, [field, ...])"
       raise ParseError(msg)
@@ -615,7 +609,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     if not node.args:
       raise ParseError("Missing arguments to TypeVar")
     name, *rest = node.args
-    if not isinstance(name, ast3.Str):
+    if not isinstance(name, astlib.Str):
       raise ParseError("Bad arguments to TypeVar")
     node.args = [name.s] + [self.convert_node(x) for x in rest]
     # Special-case late types in bound since typeshed uses it.
@@ -628,21 +622,19 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def _convert_paramspec_args(self, node):
     return self._convert_typevar_args(node)
 
-  def _convert_typed_dict_args(self, node: ast3.Call):
+  def _convert_typed_dict_args(self, node: astlib.Call):
     msg = "Wrong args: expected TypedDict(name, {field: type, ...})"
     if len(node.args) != 2:
       raise ParseError(msg)
     name, fields = node.args
-    if not (isinstance(name, ast3.Str) and isinstance(fields, ast3.Dict)):
+    if not (isinstance(name, astlib.Str) and isinstance(fields, astlib.Dict)):
       raise ParseError(msg)
     name_value = name.s
     fields_value = {}
     for k, v in zip(fields.keys, fields.values):
-      if (hasattr(ast3, "Constant") and isinstance(k, ast3.Constant) and
-          isinstance(k.value, str)):  # Python 3.8+
+      if (hasattr(astlib, "Constant") and isinstance(k, astlib.Constant) and
+          isinstance(k.value, str)):
         k_value = k.value
-      elif isinstance(k, ast3.Str):  # Python 3.7
-        k_value = k.s
       else:
         raise ParseError(msg)
       v_pytd = self.convert_node(v)
@@ -658,7 +650,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     # We also convert some literal string nodes that are not meant to be types
     # (e.g. the first arg to TypeVar()) to their bare values since we are
     # passing them to internal functions directly in visit_Call.
-    if isinstance(node.func, ast3.Attribute):
+    if isinstance(node.func, astlib.Attribute):
       node.func = _attribute_to_name(node.func)
     if self.defs.matches_type(node.func.id, "typing.TypeVar"):
       self._convert_typevar_args(node)
@@ -757,7 +749,7 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   if sys.version_info >= (3, 8):
     kwargs["type_comments"] = True
   try:
-    ast_root_node = ast3.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
+    ast_root_node = astlib.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
   except SyntaxError as e:
     raise ParseError(e.msg, line=e.lineno, filename=filename) from e
   return ast_root_node
@@ -831,7 +823,7 @@ def parse_pyi_debug(
   options = options or PyiOptions()
   feature_version = _feature_version(options.python_version)
   root = _parse(src, feature_version, filename)
-  print(debug.dump(root, ast3, include_attributes=False))
+  print(debug.dump(root, astlib, include_attributes=False))
   gen_pytd = _GeneratePytdVisitor(src, filename, module_name, options)
   root = gen_pytd.visit(root)
   print("---transformed parse tree--------------------")

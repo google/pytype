@@ -72,8 +72,6 @@ class IndexerTest(test_base.BaseTest, IndexerTestMixin):
     self.assertDefLocs(ix, "module.f", [(1, 0)])
     self.assertDefLocs(ix, "module.f.x", [(1, 6), (2, 2)])
 
-  @test_utils.skipIfPy((3, 7),
-                       reason="a/b.py, f.py, p/q.py, x/y.py not found")
   def test_resolved_imports(self):
     # We need all imports to be valid for pytype
     code = """

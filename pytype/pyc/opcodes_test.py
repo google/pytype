@@ -40,7 +40,7 @@ class _TestBase(unittest.TestCase):
 class CommonTest(_TestBase):
   """Test bytecodes that are common to multiple Python versions."""
 
-  python_version = (3, 7)
+  python_version = (3, 10)
 
   def test_pop_top(self):
     self.assertSimple(1, 'POP_TOP')
@@ -90,47 +90,6 @@ class CommonTest(_TestBase):
         ('RETURN_VALUE',),
     ]
     self.assertDisassembly(code, expected)
-
-
-class Python37Test(_TestBase):
-  """Test bytecodes specific to Python 3.7."""
-
-  python_version = (3, 7, 0)
-
-  def test_load_build_class(self):
-    self.assertSimple(71, 'LOAD_BUILD_CLASS')
-
-  def test_yield_from(self):
-    self.assertSimple(72, 'YIELD_FROM')
-
-  def test_with_cleanup(self):
-    self.assertSimple(81, 'WITH_CLEANUP_START')
-
-  def test_unpack_ex(self):
-    self.assertName([94, 0], 'UNPACK_EX')
-
-  def test_setup_annotations(self):
-    self.assertSimple(85, 'SETUP_ANNOTATIONS')
-
-  def test_extended_arg(self):
-    # LOAD_CONST should be stored in the jump table with an address of 0, due to
-    # the extended arg; if we don't do this we would throw an exception.
-    code = [
-        0x90, 1,  # 0 EXTENDED_ARG, arg=1,
-        0x64, 2,  # 3 LOAD_CONST, arg=2
-        0x71, 0,  # 6 JUMP_ABSOLUTE, arg=0
-    ]
-    expected = [
-        ('LOAD_CONST', 0x102),
-        ('JUMP_ABSOLUTE',)
-    ]
-    self.assertDisassembly(code, expected)
-
-  def test_load_method(self):
-    self.assertName([160, 1], 'LOAD_METHOD')
-
-  def test_call_method(self):
-    self.assertName([161, 0], 'CALL_METHOD')
 
 
 class Python38Test(_TestBase):

@@ -3159,20 +3159,29 @@ class VirtualMachine:
   # TODO(b/265374890): Implement these Python 3.11 opcodes.
 
   def byte_CACHE(self, state, op):
+    # No stack or type effects
     del op
     return state
 
   def byte_PUSH_NULL(self, state, op):
+    # From docs: Used in the call sequence to match the NULL pushed by
+    # LOAD_METHOD for non-method calls.
+    # We currently don't push the NULL for LOAD_METHOD either.
     del op
     return state
 
   def byte_PUSH_EXC_INFO(self, state, op):
     del op
-    return state
+    state, top = state.pop()
+    exc = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
+    state = state.push(exc)
+    return state.push(top)
 
   def byte_CHECK_EXC_MATCH(self, state, op):
     del op
-    return state
+    state, _ = state.pop()
+    ret = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
+    return state.push(ret)
 
   def byte_CHECK_EG_MATCH(self, state, op):
     del op
@@ -3195,8 +3204,7 @@ class VirtualMachine:
     return state
 
   def byte_SWAP(self, state, op):
-    del op
-    return state
+    return state.swap(op.arg)
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, state, op):
     del op
@@ -3211,10 +3219,43 @@ class VirtualMachine:
     return state
 
   def byte_BINARY_OP(self, state, op):
-    del op
-    return state
+    """Implementation of BINARY_OP opcode."""
+    # Python 3.11 unified a lot of BINARY_* and INPLACE_* opcodes into a single
+    # BINARY_OP. The underlying operations remain unchanged, so we can just
+    # dispatch to them.
+    binops = [
+        self.byte_BINARY_ADD,
+        self.byte_BINARY_AND,
+        self.byte_BINARY_FLOOR_DIVIDE,
+        self.byte_BINARY_LSHIFT,
+        self.byte_BINARY_MATRIX_MULTIPLY,
+        self.byte_BINARY_MULTIPLY,
+        self.byte_BINARY_MODULO,  # NB_REMAINDER in 3.11
+        self.byte_BINARY_OR,
+        self.byte_BINARY_POWER,
+        self.byte_BINARY_RSHIFT,
+        self.byte_BINARY_SUBTRACT,
+        self.byte_BINARY_TRUE_DIVIDE,
+        self.byte_BINARY_XOR,
+        self.byte_INPLACE_ADD,
+        self.byte_INPLACE_AND,
+        self.byte_INPLACE_FLOOR_DIVIDE,
+        self.byte_INPLACE_LSHIFT,
+        self.byte_INPLACE_MATRIX_MULTIPLY,
+        self.byte_INPLACE_MULTIPLY,
+        self.byte_INPLACE_MODULO,  # NB_INPLACE_REMAINDER in 3.11
+        self.byte_INPLACE_OR,
+        self.byte_INPLACE_POWER,
+        self.byte_INPLACE_RSHIFT,
+        self.byte_INPLACE_SUBTRACT,
+        self.byte_INPLACE_TRUE_DIVIDE,
+        self.byte_INPLACE_XOR,
+    ]
+    binop = binops[op.arg]
+    return binop(state, op)
 
   def byte_SEND(self, state, op):
+    # No stack effects
     del op
     return state
 
@@ -3243,10 +3284,12 @@ class VirtualMachine:
     return state
 
   def byte_RESUME(self, state, op):
+    # No stack or type effects
     del op
     return state
 
   def byte_PRECALL(self, state, op):
+    # No stack or type effects
     del op
     return state
 
@@ -3255,6 +3298,7 @@ class VirtualMachine:
     return state
 
   def byte_KW_NAMES(self, state, op):
+    # No stack or type effects
     del op
     return state
 

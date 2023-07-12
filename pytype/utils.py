@@ -56,9 +56,9 @@ def validate_version(python_version):
   elif (2, 8) <= python_version < (3, 0):
     raise UsageError("Python version %r is not a valid Python version." %
                      format_version(python_version))
-  elif (3, 0) <= python_version <= (3, 6):
+  elif (3, 0) <= python_version <= (3, 7):
     raise UsageError(
-        "Python versions 3.0 - 3.6 are not supported. Use 3.7 and higher.")
+        "Python versions 3.0 - 3.7 are not supported. Use 3.8 and higher.")
   elif python_version > (3, 11) and _VALIDATE_PYTHON_VERSION_UPPER_BOUND:
     # We have an explicit per-minor-version mapping in opcodes.py
     raise UsageError("Python versions > 3.11 are not yet supported.")

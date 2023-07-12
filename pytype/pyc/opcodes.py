@@ -1004,12 +1004,13 @@ def _overlay_mapping(mapping, new_entries):
   return {k: v for k, v in ret.items() if v is not None}
 
 
-python_3_7_mapping = {
+python_3_8_mapping = {
     1: POP_TOP,
     2: ROT_TWO,
     3: ROT_THREE,
     4: DUP_TOP,
     5: DUP_TOP_TWO,
+    6: ROT_FOUR,  # ROT_FOUR returns under a different, cooler id!
     9: NOP,
     10: UNARY_POSITIVE,
     11: UNARY_NEGATIVE,
@@ -1030,6 +1031,8 @@ python_3_7_mapping = {
     50: GET_AITER,
     51: GET_ANEXT,
     52: BEFORE_ASYNC_WITH,
+    53: BEGIN_FINALLY,
+    54: END_ASYNC_FOR,
     55: INPLACE_ADD,
     56: INPLACE_SUBTRACT,
     57: INPLACE_MULTIPLY,
@@ -1053,7 +1056,6 @@ python_3_7_mapping = {
     77: INPLACE_AND,
     78: INPLACE_XOR,
     79: INPLACE_OR,
-    80: BREAK_LOOP,
     81: WITH_CLEANUP_START,
     82: WITH_CLEANUP_FINISH,
     83: RETURN_VALUE,
@@ -1089,9 +1091,6 @@ python_3_7_mapping = {
     114: POP_JUMP_IF_FALSE,
     115: POP_JUMP_IF_TRUE,
     116: LOAD_GLOBAL,
-    119: CONTINUE_LOOP,
-    120: SETUP_LOOP,
-    121: SETUP_EXCEPT,
     122: SETUP_FINALLY,
     124: LOAD_FAST,
     125: STORE_FAST,
@@ -1125,19 +1124,9 @@ python_3_7_mapping = {
     158: BUILD_TUPLE_UNPACK_WITH_CALL,
     160: LOAD_METHOD,
     161: CALL_METHOD,
-}
-
-python_3_8_mapping = _overlay_mapping(python_3_7_mapping, {
-    6: ROT_FOUR,  # ROT_FOUR returns under a different, cooler id!
-    53: BEGIN_FINALLY,
-    54: END_ASYNC_FOR,
-    80: None,   # BREAK_LOOP was removed in 3.8
-    119: None,  # CONTINUE_LOOP was removed in 3.8
-    120: None,  # SETUP_LOOP was removed in 3.8
-    121: None,  # SETUP_EXCEPT was removed in 3.8
     162: CALL_FINALLY,
     163: POP_FINALLY,
-})
+}
 
 python_3_9_mapping = _overlay_mapping(python_3_8_mapping, {
     48: RERAISE,
@@ -1452,7 +1441,6 @@ def dis(
   """Set up version-specific arguments and call _dis()."""
   major, minor = python_version[0], python_version[1]
   mapping = {
-      (3, 7): python_3_7_mapping,
       (3, 8): python_3_8_mapping,
       (3, 9): python_3_9_mapping,
       (3, 10): python_3_10_mapping,

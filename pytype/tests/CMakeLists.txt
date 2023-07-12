@@ -1240,3 +1240,12 @@ py_test(
   DEPS
     .test_base
 )
+
+py_test(
+  NAME
+    test_py_311
+  SRCS
+    test_py_311.py
+  DEPS
+    .test_base
+)

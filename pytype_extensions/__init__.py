@@ -1,7 +1,7 @@
 """Type system extensions for use with pytype."""
 import dataclasses
 import typing
-from typing import Any, Callable, Dict, Generic, Text, Tuple, Type, TypeVar
+from typing import Any, Callable, Dict, Tuple, TypeVar
 
 import attr
 

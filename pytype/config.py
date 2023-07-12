@@ -217,7 +217,7 @@ BASIC_OPTIONS = [
     _Arg(
         "-V", "--python_version", type=str, action="store",
         dest="python_version", default=None,
-        help='Python version to emulate ("major.minor", e.g. "3.7")'),
+        help='Python version to emulate ("major.minor", e.g. "3.10")'),
     _Arg(
         "--platform", type=str, action="store", dest="platform",
         default=sys.platform,
