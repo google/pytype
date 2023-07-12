@@ -85,6 +85,9 @@ class CollectTypeParameters(base_visitor.Visitor):
       self.params.append(p)
       self._seen.add(p.name)
 
+  def EnterParamSpec(self, p):
+    self.EnterTypeParameter(p)
+
 
 class ExtractSuperClasses(base_visitor.Visitor):
   """Visitor for extracting all superclasses (i.e., the class hierarchy).
