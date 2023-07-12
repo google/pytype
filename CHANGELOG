@@ -1,3 +1,10 @@
+Version 2023.07.12:
+
+Updates:
+* Drop support for Python 3.7, which reached end-of-life last month.
+* Support the new `BINARY_OP` opcode in python 3.11.
+* Fix some stack effects for the new 3.11 opcodes.
+
 Version 2023.06.16:
 
 Updates:
