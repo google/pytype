@@ -1208,6 +1208,30 @@ class GenericFeatureTest(test_base.BaseTest):
       class Alphabet(Alpha[str]): ...
     """)
 
+  def test_inherit_generic_namedtuple(self):
+    self.Check("""
+      from typing import AnyStr, Generic, NamedTuple
+      class Base(NamedTuple, Generic[AnyStr]):
+        x: AnyStr
+      class Child(Base[str]):
+        pass
+      c: Child
+      assert_type(c.x, str)
+    """)
+
+  def test_inherit_generic_namedtuple_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import AnyStr, Generic, NamedTuple
+      class Base(NamedTuple, Generic[AnyStr]):
+        x: AnyStr
+      class Child(Base[str]): ...
+    """)]):
+      self.Check("""
+        import foo
+        c: foo.Child
+        assert_type(c.x, str)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
