@@ -370,14 +370,16 @@ class ProtocolTest(test_base.BaseTest):
         def g() -> Callable[[], str]:
           return foo.Foo("")
         def h() -> Callable[[Any], str]:
-          return foo.Foo("")  # bad-return-type[e]
+          return foo.Foo("")  # bad-return-type[e1]
         def i() -> Callable[[], int]:
-          return foo.Foo("")  # TODO(rechen): this should be an error
+          return foo.Foo("")  # bad-return-type[e2]
       """, pythonpath=[d.path])
       # TODO(rechen): 'T' should be 'str'.
       self.assertErrorSequences(errors, {
-          "e": ["def <callable>(self, _0) -> str: ...",
-                "def __call__(self: foo.Foo[T]) -> T: ..."]})
+          "e1": ["def <callable>(self, _0) -> str: ...",
+                 "def __call__(self: foo.Foo[T]) -> T: ..."],
+          "e2": ["def <callable>(self) -> int: ...",
+                 "def __call__(self: foo.Foo[T]) -> T: ..."]})
 
   def test_staticmethod(self):
     self.CheckWithErrors("""
@@ -805,6 +807,19 @@ class ProtocolTest(test_base.BaseTest):
         pass
 
       Child()  # not-instantiable
+    """)
+
+  def test_substitute_typevar(self):
+    self.Check("""
+      from typing import Protocol, TypeVar
+      _T = TypeVar('_T')
+      _T_int = TypeVar('_T_int', bound=int)
+      class MyProtocol(Protocol[_T]):
+        def __getitem__(self, __k: int) -> _T: ...
+      def f(x: MyProtocol[_T_int]) -> _T_int:
+        return x[0]
+      f([0])
+      f([])
     """)
 
 
