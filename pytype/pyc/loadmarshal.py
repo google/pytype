@@ -15,6 +15,8 @@ from typing import List, Sequence, Tuple, Union
 
 from pytype import utils
 
+from pytype.third_party.cpython import umarshal
+
 
 TYPE_NULL = 0x30  # '0'
 TYPE_NONE = 0x4e  # 'N'
@@ -345,10 +347,7 @@ class _LoadMarshal:
     else:
       posonlyargcount = -1
     kwonlyargcount = self._read_long()
-    if self.python_version >= (3, 11):
-      nlocals = -1  # TODO(b/265374890): Where has this gone?
-    else:
-      nlocals = self._read_long()
+    nlocals = self._read_long()
     stacksize = self._read_long()
     flags = self._read_long()
     # The code field is a 'string of raw compiled bytecode'
@@ -357,29 +356,15 @@ class _LoadMarshal:
     consts = self.load()
     names = self.load()
     varnames = self.load()
-    if self.python_version >= (3, 11):
-      # TODO(b/265374890): In 3.11, freevars and cellvars seem to have been
-      # replaced by a string?
-      _ = self.load()
-      freevars = cellvars = ()
-    else:
-      freevars = self.load()
-      cellvars = self.load()
+    freevars = self.load()
+    cellvars = self.load()
     filename = self.load()
     name = self.load()
-    if self.python_version >= (3, 11):
-      qualname = self.load()
-      # TODO(b/265374890): we should replace vm_utils.make_function's use of
-      # CodeType.name with qualname, which contains the fully qualified name.
-      del qualname
     firstlineno = self._read_long()
     # lnotab, from
     # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt:
     # 'an array of unsigned bytes disguised as a Python bytes object'.
     lnotab = self.load()
-    if self.python_version >= (3, 11):
-      exceptiontable = self.load()
-      del exceptiontable  # TODO(b/265374890): What is this for?
     return CodeType(argcount, posonlyargcount, kwonlyargcount, nlocals,
                     stacksize, flags, code, consts, names, varnames, filename,
                     name, firstlineno, lnotab, freevars, cellvars,
@@ -434,9 +419,49 @@ class _LoadMarshal:
   }
 
 
+def loads_311(s: bytes, python_version: Tuple[int, int]):
+  """Unmarshal the python 3.11 pyc format."""
+  def transform(code):
+    consts = [
+        transform(c) if isinstance(c, umarshal.Code) else c
+        for c in code.co_consts
+    ]
+    # TODO(b/265374890): in 3.11+ there are some new fields which
+    # we currently discard.
+    # * We should replace vm_utils.make_function's use of CodeType.name with
+    #   qualname, which contains the fully qualified name.
+    # * We shoud see what co_exceptiontable is used for
+    # * 'lnotab' has been renamed to 'linetable'; perhaps we should adopt the
+    #   new name in our code as well.
+    return CodeType(
+        argcount=code.co_argcount,
+        posonlyargcount=code.co_posonlyargcount,
+        kwonlyargcount=code.co_kwonlyargcount,
+        nlocals=code.co_nlocals,
+        stacksize=code.co_stacksize,
+        flags=code.co_flags,
+        code=code.co_code,
+        consts=consts,
+        names=code.co_names,
+        varnames=code.co_varnames,
+        filename=code.co_filename,
+        name=code.co_name,
+        firstlineno=code.co_firstlineno,
+        lnotab=code.co_linetable,
+        freevars=code.co_freevars,
+        cellvars=code.co_cellvars,
+        python_version=python_version,
+    )
+  return transform(umarshal.loads(s))
+
+
 def loads(s, python_version):
-  um = _LoadMarshal(s, python_version)
-  result = um.load()
-  if not um.eof():
-    raise BufferError('trailing bytes in marshal data')
-  return result
+  # Python 3.11 changed the pyc format fairly drastically.
+  if python_version >= (3, 11):
+    return loads_311(s, python_version)
+  else:
+    um = _LoadMarshal(s, python_version)
+    result = um.load()
+    if not um.eof():
+      raise BufferError('trailing bytes in marshal data')
+    return result
