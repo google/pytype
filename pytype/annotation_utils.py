@@ -155,7 +155,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       # In this case t in A[T].f will be annotated with T with no module set,
       # since we don't know the correct module until T is specialized in
       # B[int].
-      annotation = annotation.with_module(cls.full_name)
+      annotation = annotation.with_module(cls.name)
       # Method parameter can be annotated with a typevar that doesn't
       # belong to the class template:
       #   class A(Generic[T]):
