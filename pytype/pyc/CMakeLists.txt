@@ -90,6 +90,7 @@ py_test(
   SRCS
     opcodes_test.py
   DEPS
+    .loadmarshal
     .opcodes
 )
 

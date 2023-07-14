@@ -97,12 +97,28 @@ class CodeType:
   CO_FUTURE_PRINT_FUNCTION = 0x10000
   CO_FUTURE_UNICODE_LITERALS = 0x20000
 
-  def __init__(self, argcount: int, posonlyargcount: int, kwonlyargcount: int,
-               nlocals: int, stacksize: int, flags: int, code: bytes,
-               consts: List[object], names: List[str], varnames: List[str],
-               filename: Union[bytes, str], name: str, firstlineno: int,
-               lnotab: Sequence[int], freevars: List[str], cellvars: List[str],
-               python_version: Tuple[int, int]):
+  def __init__(
+      self,
+      *,
+      argcount: int,
+      posonlyargcount: int,
+      kwonlyargcount: int,
+      nlocals: int,
+      stacksize: int,
+      flags: int,
+      code: bytes,
+      consts: List[object],
+      names: List[str],
+      varnames: List[str],
+      filename: Union[bytes, str],
+      name: str,
+      firstlineno: int,
+      lnotab: Sequence[int],
+      freevars: List[str],
+      cellvars: List[str],
+      python_version: Tuple[int, int],
+      localsplusnames: Tuple[str, ...] = (),  # new in 3.11
+  ):
     self.co_argcount = argcount
     self.co_posonlyargcount = posonlyargcount
     self.co_kwonlyargcount = kwonlyargcount
@@ -119,6 +135,7 @@ class CodeType:
     self.co_lnotab = lnotab
     self.co_freevars = freevars
     self.co_cellvars = cellvars
+    self.co_localsplusnames = localsplusnames
     self.python_version = python_version  # This field is not in types.CodeType.
 
   def __repr__(self):
@@ -365,10 +382,25 @@ class _LoadMarshal:
     # https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt:
     # 'an array of unsigned bytes disguised as a Python bytes object'.
     lnotab = self.load()
-    return CodeType(argcount, posonlyargcount, kwonlyargcount, nlocals,
-                    stacksize, flags, code, consts, names, varnames, filename,
-                    name, firstlineno, lnotab, freevars, cellvars,
-                    self.python_version)
+    return CodeType(
+        argcount=argcount,
+        posonlyargcount=posonlyargcount,
+        kwonlyargcount=kwonlyargcount,
+        nlocals=nlocals,
+        stacksize=stacksize,
+        flags=flags,
+        code=code,
+        consts=consts,
+        names=names,
+        varnames=varnames,
+        filename=filename,
+        name=name,
+        firstlineno=firstlineno,
+        lnotab=lnotab,
+        freevars=freevars,
+        cellvars=cellvars,
+        python_version=self.python_version
+    )
 
   def load_set(self):
     n = self._read_long()
@@ -451,6 +483,7 @@ def loads_311(s: bytes, python_version: Tuple[int, int]):
         freevars=code.co_freevars,
         cellvars=code.co_cellvars,
         python_version=python_version,
+        localsplusnames=code.co_localsplusnames,
     )
   return transform(umarshal.loads(s))
 

@@ -1,3 +1,4 @@
+from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 import unittest
 
@@ -5,10 +6,31 @@ import unittest
 class _TestBase(unittest.TestCase):
   """Base class for all opcodes.dis testing."""
 
-  def dis(self, code, **kwargs):
+  def dis(self, data, **kwargs):
     """Return the opcodes from disassembling a code sequence."""
-    return opcodes.dis(bytes(code),
-                       self.python_version, **kwargs)
+    defaults = {
+        'code': data,
+        'argcount': 0,
+        'posonlyargcount': 0,
+        'kwonlyargcount': 0,
+        'nlocals': 0,
+        'stacksize': 0,
+        'flags': 0,
+        'consts': [],
+        'names': [],
+        'varnames': [],
+        'filename': '',
+        'name': '',
+        'firstlineno': 0,
+        'lnotab': [],
+        'freevars': [],
+        'cellvars': [],
+        'python_version': self.python_version,
+        'localsplusnames': [],
+    }
+    defaults.update(kwargs)
+    code = loadmarshal.CodeType(**defaults)
+    return opcodes.dis(code)
 
   def assertSimple(self, opcode, name):
     """Assert that a single opcode byte disassembles to the given name."""
@@ -30,8 +52,8 @@ class _TestBase(unittest.TestCase):
 
   def assertLineNumbers(self, code, co_lnotab, expected):
     """Assert that the opcodes have the expected line numbers."""
-    ops = self.dis(code, co_lnotab=bytes(co_lnotab),
-                   co_firstlineno=1)
+    ops = self.dis(code, lnotab=bytes(co_lnotab),
+                   firstlineno=1)
     self.assertEqual(len(ops), len(expected))
     for o, e in zip(ops, expected):
       self.assertEqual(e, o.line)

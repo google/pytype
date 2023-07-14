@@ -295,7 +295,7 @@ class DisCodeVisitor:
   """Visitor for disassembling code into Opcode objects."""
 
   def visit_code(self, code):
-    code.co_code = opcodes.dis_code(code)
+    code.co_code = opcodes.dis(code)
     return code
 
 
