@@ -20,6 +20,8 @@ add_subdirectory(pybind11)
 
 add_subdirectory(pytype)
 
+add_subdirectory(third_party)
+
 # Add the "googletest" directory at the end as it defines its own CMake rules
 # for py_test etc. Adding it at the end avoids mixing up Pytype's definitions
 # with these definitions.
