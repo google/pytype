@@ -5,8 +5,6 @@ from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type
 
 import attrs
 
-from typing_extensions import Literal
-
 
 # We define all-uppercase classes, to match their opcode names:
 # pylint: disable=invalid-name
@@ -1319,21 +1317,24 @@ class _LineNumberTableParser(_BaseLineNumberTableParser):
     return self.lineno
 
 
-def _prettyprint_arg(cls, oparg, co_consts, co_names,
-                     co_varnames, cellvars_freevars):
+def _prettyprint_arg(cls, oparg, code):
   """Prettyprint `oparg`."""
   if cls.has_jrel():
     return oparg
-  elif co_consts and cls.has_const():
-    return repr(co_consts[oparg])
-  elif co_names and cls.has_name():
-    return co_names[oparg]
-  elif co_varnames and cls.has_local():
-    return co_varnames[oparg]
-  elif cellvars_freevars and cls.has_free():
-    return cellvars_freevars[oparg]
-  else:
-    return oparg
+  elif code.co_consts and cls.has_const():
+    return repr(code.co_consts[oparg])
+  elif code.co_names and cls.has_name():
+    return code.co_names[oparg]
+  elif code.co_varnames and cls.has_local():
+    return code.co_varnames[oparg]
+  elif cls.has_free():
+    if code.python_version < (3, 11):
+      if code.co_cellvars is not None and code.co_freevars is not None:
+        return (code.co_cellvars + code.co_freevars)[oparg]
+    else:
+      if code.co_localsplusnames:
+        return code.co_localsplusnames[oparg]
+  return oparg
 
 
 def _wordcode_reader(
@@ -1378,36 +1379,32 @@ def _is_backward_jump(opcls):
   return "JUMP_BACKWARD" in opcls.__name__
 
 
-def _dis(data, python_version, mapping,
-         co_varnames=None, co_names=None, co_consts=None, co_cellvars=None,
-         co_freevars=None, co_lnotab=None, co_firstlineno=None):
+def _dis(code, mapping):
   """Disassemble a string into a list of Opcode instances."""
-  code = []
-  if not co_lnotab:
+  ret = []
+  if not code.co_lnotab:
     lp = None
-  elif python_version >= (3, 10):
-    lp = _LineNumberTableParser(co_lnotab, co_firstlineno, python_version)
+  elif code.python_version >= (3, 10):
+    lp = _LineNumberTableParser(
+        code.co_lnotab, code.co_firstlineno, code.python_version)
   else:
-    lp = _LineNumberTableParserPre310(co_lnotab, co_firstlineno, python_version)
+    lp = _LineNumberTableParserPre310(
+        code.co_lnotab, code.co_firstlineno, code.python_version)
   offset_to_index = {}
-  if co_cellvars is not None and co_freevars is not None:
-    cellvars_freevars = co_cellvars + co_freevars
-  else:
-    cellvars_freevars = None
-  for pos, end_pos, cls, oparg in _wordcode_reader(data, mapping):
-    index = len(code)
+  for pos, end_pos, cls, oparg in _wordcode_reader(code.co_code, mapping):
+    index = len(ret)
     offset_to_index[pos] = index
     if lp:
       line = lp.get(pos)
     else:
-      # single line programs don't have co_lnotab
-      line = co_firstlineno
+      # single line programs don't have code.co_lnotab
+      line = code.co_firstlineno
     if oparg is not None:
       # 3.11 adds special handling for LOAD_GLOBAL and JUMP_BACKWARD* opcodes:
       # https://github.com/python/cpython/blob/db65a326a4022fbd43648858b460f52734faf1b5/Lib/dis.py#L461-L474
-      if python_version >= (3, 11) and cls.__name__ == "LOAD_GLOBAL":
+      if code.python_version >= (3, 11) and cls.__name__ == "LOAD_GLOBAL":
         oparg //= 2
-      elif python_version >= (3, 10):
+      elif code.python_version >= (3, 10):
         # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
         # changed how oparg is calculated.
         if cls.has_jrel():
@@ -1417,45 +1414,30 @@ def _dis(data, python_version, mapping,
           oparg *= 2
       elif cls.has_jrel():
         oparg += end_pos
-      pretty = _prettyprint_arg(cls, oparg, co_consts, co_names, co_varnames,
-                                cellvars_freevars)
-      code.append(cls(index, line, oparg, pretty))
+      pretty = _prettyprint_arg(cls, oparg, code)
+      ret.append(cls(index, line, oparg, pretty))
     else:
-      code.append(cls(index, line))
+      ret.append(cls(index, line))
 
   # Map the target of jump instructions to the opcode they jump to, and fill
   # in "next" and "prev" pointers
-  for i, op in enumerate(code):
+  for i, op in enumerate(ret):
     if op.FLAGS & (HAS_JREL | HAS_JABS):
       op.arg = op.pretty_arg = offset_to_index[op.arg]
-      op.target = code[op.arg]
-    get_code = lambda j: code[j] if 0 <= j < len(code) else None
+      op.target = ret[op.arg]
+    get_code = lambda j: ret[j] if 0 <= j < len(ret) else None
     op.prev = get_code(i - 1)
     op.next = get_code(i +(-1 if _is_backward_jump(op.__class__) else 1))
-  return code
+  return ret
 
 
-def dis(
-    data: bytes, python_version: Tuple[Literal[3], int], *args, **kwargs
-) -> List[Opcode]:
+def dis(code) -> List[Opcode]:
   """Set up version-specific arguments and call _dis()."""
-  major, minor = python_version[0], python_version[1]
+  major, minor, *_ = code.python_version
   mapping = {
       (3, 8): python_3_8_mapping,
       (3, 9): python_3_9_mapping,
       (3, 10): python_3_10_mapping,
       (3, 11): python_3_11_mapping,
   }[(major, minor)]
-  return _dis(data, python_version, mapping, *args, **kwargs)
-
-
-def dis_code(code):
-  return dis(data=code.co_code,
-             python_version=code.python_version,
-             co_varnames=code.co_varnames,
-             co_names=code.co_names,
-             co_consts=code.co_consts,
-             co_cellvars=code.co_cellvars,
-             co_freevars=code.co_freevars,
-             co_lnotab=code.co_lnotab,
-             co_firstlineno=code.co_firstlineno)
+  return _dis(code, mapping)

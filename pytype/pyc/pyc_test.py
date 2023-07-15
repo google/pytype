@@ -56,7 +56,7 @@ class TestPyc(test_base.UnitTest):
                          "a = a + 1\n"  # line 3
                         )
     self.assertIn("a", code.co_names)
-    op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
+    op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
     self.assertEqual([("LOAD_CONST", 1),
                       ("STORE_NAME", 1),
                       ("LOAD_NAME", 3),
@@ -69,7 +69,7 @@ class TestPyc(test_base.UnitTest):
   def test_mode(self):
     code = self._compile("foo", mode="eval")
     self.assertIn("foo", code.co_names)
-    ops = [op.name for op in opcodes.dis_code(code)]
+    ops = [op.name for op in opcodes.dis(code)]
     self.assertEqual(["LOAD_NAME",
                       "RETURN_VALUE"], ops)
 
@@ -77,7 +77,7 @@ class TestPyc(test_base.UnitTest):
     code = self._compile("a = 1\n"      # line 1
                         )
     self.assertIn("a", code.co_names)
-    op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
+    op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
     self.assertEqual([("LOAD_CONST", 1),
                       ("STORE_NAME", 1),
                       ("LOAD_CONST", 1),
@@ -89,7 +89,7 @@ class TestPyc(test_base.UnitTest):
                          "a = 1\n"      # line 3
                         )
     self.assertIn("a", code.co_names)
-    op_and_line = [(op.name, op.line) for op in opcodes.dis_code(code)]
+    op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
     self.assertEqual([("LOAD_CONST", 3),
                       ("STORE_NAME", 3),
                       ("LOAD_CONST", 3),

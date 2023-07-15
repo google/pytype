@@ -427,28 +427,41 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
                                       function.Args((name_var,)))
     return node, None
 
+  def _lookup_variable_annotation(self, node, base, name, valself):
+    if not isinstance(base, abstract.Class):
+      return None, None
+    annots = abstract_utils.get_annotations_dict(base.members)
+    if not annots:
+      return None, None
+    typ = annots.get_type(node, name)
+    if not typ or not typ.formal:
+      return typ, None
+    # The attribute contains a class-scoped type parameter, so we need to
+    # reinitialize it with the current instance's parameter values. In this
+    # case, we use the type from the annotation regardless of whether the
+    # attribute is otherwise defined.
+    if isinstance(base, abstract.ParameterizedClass):
+      typ = self.ctx.annotation_utils.sub_annotations_for_parameterized_class(
+          base, {name: typ})[name]
+    elif valself:
+      subst = abstract_utils.get_type_parameter_substitutions(
+          valself.data, self.ctx.annotation_utils.get_type_parameters(typ))
+      typ = self.ctx.annotation_utils.sub_one_annotation(
+          node, typ, [subst], instantiate_unbound=False)
+    else:
+      return typ, None
+    _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
+    return typ, attr
+
   def _lookup_from_mro_flat(self, node, base, name, valself, skip):
     """Look for an identifier in a single base class from an MRO."""
     # Potentially skip part of MRO, for super()
     if base in skip:
       return None
     # Check if the attribute is declared via a variable annotation.
-    typ = None
-    if isinstance(base, abstract.InterpreterClass):
-      annots = abstract_utils.get_annotations_dict(base.members)
-      if annots:
-        typ = annots.get_type(node, name)
-        if typ and typ.formal and valself:
-          # The attribute contains a class-scoped type parameter, so we need to
-          # reinitialize it with the current instance's parameter values. In
-          # this case, we use the type from the annotation regardless of whether
-          # the attribute is otherwise defined.
-          subst = abstract_utils.get_type_parameter_substitutions(
-              valself.data, self.ctx.annotation_utils.get_type_parameters(typ))
-          typ = self.ctx.annotation_utils.sub_one_annotation(
-              node, typ, [subst], instantiate_unbound=False)
-          _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
-          return attr
+    typ, attr = self._lookup_variable_annotation(node, base, name, valself)
+    if attr is not None:
+      return attr
     # When a special attribute is defined on a class buried in the MRO,
     # get_attribute (which calls get_special_attribute) is never called on
     # that class, so we have to call get_special_attribute here as well.

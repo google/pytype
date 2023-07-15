@@ -316,7 +316,7 @@ class BlockStackTest(BaseBlocksTest):
 
   def assertTargets(self, code, targets):
     co = self.make_code(code)
-    bytecode = opcodes.dis(co.co_code, python_version=self.python_version)
+    bytecode = opcodes.dis(co)
     blocks.add_pop_block_targets(bytecode, self.python_version)
     for i in range(len(bytecode)):
       op = bytecode[i]

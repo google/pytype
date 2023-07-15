@@ -37,6 +37,7 @@ py_library(
     loadmarshal.py
   DEPS
     pytype.utils
+    third_party.cpython.umarshal
 )
 
 py_library(
@@ -89,6 +90,7 @@ py_test(
   SRCS
     opcodes_test.py
   DEPS
+    .loadmarshal
     .opcodes
 )
 

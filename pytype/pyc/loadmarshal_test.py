@@ -167,5 +167,43 @@ class TestLoadMarshal(unittest.TestCase):
   def test_truncated_byte(self):
     self.assertRaises(EOFError, lambda: self.load(b'f'))
 
+  def test_load_code_311(self):
+    # Code from marshal.dumps of the following in a 3.11.4 interpreter:
+    #   def f():
+    #     x = 10
+    #     def g():
+    #       return x
+    #     return g
+    s = (b'\xe3\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
+         b'\x00\x03\x00\x00\x00\xf3\x16\x00\x00\x00\x87\x01\x97\x00d\x01\x8a'
+         b'\x01\x88\x01f\x01d\x02\x84\x08}\x00|\x00S\x00)\x03N\xe9\n\x00\x00'
+         b'\x00c\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00'
+         b'\x00\x13\x00\x00\x00\xf3\x08\x00\x00\x00\x95\x01\x97\x00\x89\x00'
+         b'S\x00)\x01N\xa9\x00)\x01\xda\x01xs\x01\x00\x00\x00\x80\xfa\x1e'
+         b'<ipython-input-1-229f6fd9be57>\xda\x01gz\x0cf.<locals>.g\x03\x00'
+         b'\x00\x00s\x08\x00\x00\x00\xf8\x80\x00\xd8\x0f\x10\x88\x08\xf3\x00'
+         b'\x00\x00\x00r\x04\x00\x00\x00)\x02r\x07\x00\x00\x00r\x05\x00\x00'
+         b'\x00s\x02\x00\x00\x00 @r\x06\x00\x00\x00\xda\x01fr\t\x00\x00\x00'
+         b'\x01\x00\x00\x00s&\x00\x00\x00\xf8\x80\x00\xd8\x08\n\x80A\xf0\x02'
+         b'\x01\x05\x11\xf0\x00\x01\x05\x11\xf0\x00\x01\x05\x11\xf0\x00\x01'
+         b'\x05\x11\xf0\x00\x01\x05\x11\xe0\x0b\x0c\x80Hr\x08\x00\x00\x00')
+    code = loadmarshal.loads(s, (3, 11))
+    self.assertEqual(code.co_argcount, 0)
+    self.assertEqual(code.co_kwonlyargcount, 0)
+    self.assertEqual(code.co_nlocals, 1)
+    self.assertEqual(code.co_stacksize, 2)
+    self.assertEqual(code.co_flags, 3)
+    self.assertEqual(code.co_names, ())
+    self.assertEqual(code.co_varnames, ('g',))
+    self.assertEqual(code.co_freevars, ())
+    self.assertEqual(code.co_cellvars, ('x',))
+    self.assertEqual(code.co_firstlineno, 1)
+    self.assertEqual(code.co_consts[:-1], [None, 10])
+    g = code.co_consts[-1]
+    self.assertIsInstance(g, loadmarshal.CodeType)
+    self.assertEqual(g.co_name, 'g')
+    self.assertEqual(g.co_freevars, ('x',))
+
+
 if __name__ == '__main__':
   unittest.main()

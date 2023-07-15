@@ -972,8 +972,16 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     other_ret_type = other_type.get_formal_type_parameter(abstract_utils.RET)
     new_subst = param_match(ret_type, other_ret_type, subst)
     if new_subst is None:
-      subst = self._instantiate_and_match(
-          ret_type, other_ret_type, subst, view, container=sig)
+      for k, v in subst.items():
+        if ret_type.name == k.rsplit(".", 1)[-1]:
+          if v in view:
+            subst = self.match_var_against_type(v, other_ret_type, subst, view)
+          else:
+            subst = self._match_all_bindings(v, other_ret_type, subst, view)
+          break
+      else:
+        subst = self._instantiate_and_match(
+            ret_type, other_ret_type, subst, view, container=sig)
       if subst is None:
         return subst
     else:
@@ -1635,6 +1643,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # TODO(rechen): Even if other_type isn't parameterized, we should run
       # _match_protocol_attribute to catch mismatches in method signatures.
       return subst
+    subst = subst.copy()
+    left_type_params = {  # pylint: disable=g-complex-comprehension
+        t.full_name: t for cls in left.cls.mro for t in cls.template}
+    for k, t in left_type_params.items():
+      if k not in subst:
+        subst[k] = left.get_instance_type_parameter(k)
+        self._type_params.seen.add(t)
     # Every binding of left_attribute needs to match at least one binding of
     # protocol_attribute_var.
     new_substs = []
