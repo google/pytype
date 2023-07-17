@@ -610,6 +610,33 @@ TYPE_CHECKING = ...  # type: bool
 class _Alias:
     def __getitem__(self, typeargs: Any) -> Any: ...
 
+class ForwardRef:
+    __forward_arg__: str
+    __forward_code__: Any
+    __forward_evaluated__: bool
+    __forward_value__: Any | None
+    __forward_is_argument__: bool
+    __forward_is_class__: bool
+    __forward_module__: Any | None
+    if sys.version_info >= (3, 9):
+        # The module and is_class arguments were added in later Python 3.9 versions.
+        def __init__(self, arg: str, is_argument: bool = True, module: Any | None = None, *, is_class: bool = False) -> None: ...
+    else:
+        def __init__(self, arg: str, is_argument: bool = True) -> None: ...
+
+    if sys.version_info >= (3, 9):
+        def _evaluate(
+            self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None, recursive_guard: frozenset[str]
+        ) -> Any | None: ...
+    else:
+        def _evaluate(self, globalns: dict[str, Any] | None, localns: dict[str, Any] | None) -> Any | None: ...
+
+    def __eq__(self, other: object) -> bool: ...
+    def __hash__(self) -> int: ...
+    if sys.version_info >= (3, 11):
+        def __or__(self, other: Any) -> Any: ...
+        def __ror__(self, other: Any) -> Any: ...
+
 # When adding a typing construct that is not available in all runtime versions,
 # do *not* add a sys.version_info guard here, as that would prevent us from
 # reusing the definition for typing_extensions. Instead, go to
