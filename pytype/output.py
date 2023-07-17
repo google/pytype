@@ -382,6 +382,8 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.Concatenate):
       # For debugging purposes, while developing the feature.
       return pytd.NamedType("typing.Concatenate")
+    elif isinstance(v, function.ParamSpecMatch):
+      return pytd.AnythingType()
     else:
       raise NotImplementedError(v.__class__.__name__)
 
