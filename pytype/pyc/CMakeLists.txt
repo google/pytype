@@ -37,7 +37,7 @@ py_library(
     loadmarshal.py
   DEPS
     pytype.utils
-    pytype.third_party.cpython.umarshal
+    third_party.cpython.umarshal
 )
 
 py_library(
