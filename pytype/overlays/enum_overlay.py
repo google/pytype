@@ -279,7 +279,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
         })
     super().__init__(sig, ctx)
 
-  def call(self, node, unused_f, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     _, argmap = self.match_and_map_args(node, args, alias_map)
     this_var = argmap["self"]
     other_var = argmap["other"]
@@ -747,7 +747,7 @@ class EnumMetaGetItem(abstract.SimpleFunction):
         enum.load_lazy_attribute(name)
         return enum.members[name]
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     _, argmap = self.match_and_map_args(node, args, alias_map)
     cls_var = argmap["cls"]
     name_var = argmap["name"]

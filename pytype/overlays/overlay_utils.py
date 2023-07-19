@@ -132,7 +132,7 @@ def make_method(ctx,
     assert kind == pytd.MethodKind.STATICMETHOD
     decorator = ctx.vm.load_special_builtin("staticmethod")
   args = function.Args(posargs=(retvar,))
-  return decorator.call(node, funcv=None, args=args)[1]
+  return decorator.call(node, func=None, args=args)[1]
 
 
 def add_base_class(node, cls, base_cls):

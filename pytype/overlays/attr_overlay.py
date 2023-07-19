@@ -393,10 +393,10 @@ class Attrib(classgen.FieldConstructor):
         args = args.replace_namedarg("default", self.ctx.new_unsolvable(node))
     return args
 
-  def call(self, node, funcb, args):
+  def call(self, node, func, args, alias_map=None):
     """Returns a type corresponding to an attr."""
     args = args.simplify(node, self.ctx)
-    args = self._match_and_discard_args(node, funcb, args)
+    args = self._match_and_discard_args(node, func, args)
     node, default_var = self._get_default_var(node, args)
     type_var = args.namedargs.get("type")
     init = self.get_kwarg(args, "init", True)

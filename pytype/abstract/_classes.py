@@ -36,7 +36,7 @@ class BuildClass(_base.BaseValue):
   def __init__(self, ctx):
     super().__init__("__build_class__", ctx)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     args = args.simplify(node, self.ctx)
     funcvar, name = args.posargs[0:2]
     kwargs = args.namedargs

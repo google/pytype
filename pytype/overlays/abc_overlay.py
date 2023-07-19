@@ -37,9 +37,9 @@ class AbstractClassMethod(special_builtins.ClassMethodTemplate):
   def __init__(self, ctx):
     super().__init__(ctx, "abstractclassmethod", "abc")
 
-  def call(self, node, funcv, args):
+  def call(self, node, func, args, alias_map=None):
     _ = _set_abstract(args, "callable")
-    return super().call(node, funcv, args)
+    return super().call(node, func, args, alias_map)
 
 
 class AbstractMethod(abstract.PyTDFunction):
@@ -62,7 +62,7 @@ class AbstractProperty(special_builtins.PropertyTemplate):
   def __init__(self, ctx):
     super().__init__(ctx, "abstractproperty", "abc")
 
-  def call(self, node, funcv, args):
+  def call(self, node, func, args, alias_map=None):
     property_args = self._get_args(args)
     for v in property_args.values():
       for b in v.bindings:
@@ -83,9 +83,9 @@ class AbstractStaticMethod(special_builtins.StaticMethodTemplate):
   def __init__(self, ctx):
     super().__init__(ctx, "abstractstaticmethod", "abc")
 
-  def call(self, node, funcv, args):
+  def call(self, node, func, args, alias_map=None):
     _ = _set_abstract(args, "callable")
-    return super().call(node, funcv, args)
+    return super().call(node, func, args, alias_map)
 
 
 class ABCMeta(special_builtins.TypeTemplate):

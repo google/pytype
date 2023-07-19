@@ -106,7 +106,7 @@ class Abs(BuiltinFunction):
 
   name = "abs"
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     self.match_args(node, args)
     arg = args.posargs[0]
     node, fn = self.get_underlying_method(node, arg, "__abs__")
@@ -131,7 +131,7 @@ class Next(BuiltinFunction):
       default = self.ctx.program.NewVariable()
     return arg, default
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     self.match_args(node, args)
     arg, default = self._get_args(args)
     node, fn = self.get_underlying_method(node, arg, "__next__")
@@ -167,7 +167,7 @@ class ObjectPredicate(BuiltinFunction):
   def run(self, node, args, result):
     raise NotImplementedError(self.__class__.__name__)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     try:
       self.match_args(node, args)
       node = self.ctx.connect_new_cfg_node(node, f"CallPredicate:{self.name}")
@@ -392,7 +392,7 @@ class SuperInstance(abstract.BaseValue):
     else:
       return super().get_special_attribute(node, name, valself)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     self.ctx.errorlog.not_callable(self.ctx.vm.frames, self)
     return node, self.ctx.new_unsolvable(node)
 
@@ -406,7 +406,7 @@ class Super(BuiltinClass):
   def __init__(self, ctx):
     super().__init__(ctx, "super")
 
-  def call(self, node, _, args):
+  def call(self, node, func, args, alias_map=None):
     result = self.ctx.program.NewVariable()
     num_args = len(args.posargs)
     if num_args == 0:
@@ -525,7 +525,7 @@ class RevealType(abstract.BaseValue):
   def __init__(self, ctx):
     super().__init__("reveal_type", ctx)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     for a in args.posargs:
       self.ctx.errorlog.reveal_type(self.ctx.vm.frames, node, a)
     return node, self.ctx.convert.build_none(node)
@@ -540,7 +540,7 @@ class AssertType(BuiltinFunction):
 
   name = "assert_type"
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     if len(args.posargs) == 1:
       a, = args.posargs
       t = None
@@ -569,7 +569,7 @@ class PropertyTemplate(BuiltinClass):
       ret[k] = v
     return ret
 
-  def call(self, node, funcv, args):
+  def call(self, node, func, args, alias_map=None):
     property_args = self._get_args(args)
     return node, PropertyInstance(
         self.ctx, self.name, self, **property_args).to_variable(node)
@@ -703,7 +703,7 @@ class StaticMethodTemplate(BuiltinClass):
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
 
-  def call(self, node, funcv, args):
+  def call(self, node, func, args, alias_map=None):
     if len(args.posargs) != 1:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
@@ -745,7 +745,7 @@ class ClassMethodTemplate(BuiltinClass):
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
 
-  def call(self, node, funcv, args):
+  def call(self, node, func, args, alias_map=None):
     if len(args.posargs) != 1:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
@@ -769,7 +769,7 @@ class Dict(BuiltinClass):
   def __init__(self, ctx):
     super().__init__(ctx, "dict")
 
-  def call(self, node, funcb, args):
+  def call(self, node, func, args, alias_map=None):
     if not args.has_non_namedargs():
       # special-case a dict constructor with explicit k=v args
       d = abstract.Dict(self.ctx)
@@ -777,7 +777,7 @@ class Dict(BuiltinClass):
         d.set_str_item(node, k, v)
       return node, d.to_variable(node)
     else:
-      return super().call(node, funcb, args)
+      return super().call(node, func, args, alias_map)
 
 
 class TypeTemplate(BuiltinClass, mixin.HasSlots):

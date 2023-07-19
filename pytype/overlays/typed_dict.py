@@ -61,7 +61,7 @@ class TypedDictBuilder(abstract.PyTDClass):
     self.fn_sig = function.Signature.from_pytd(
         self.ctx, "typing.TypedDict", sig)
 
-  def call(self, node, _, args):
+  def call(self, node, func, args, alias_map=None):
     """Call the functional constructor."""
     props = self._extract_args(args)
     cls = TypedDictClass(props, self, self.ctx)

@@ -285,7 +285,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
       raise TypeVarError("ambiguous **kwargs not allowed")
     return constraints, bound, covariant, contravariant
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     """Call typing.TypeVar()."""
     args = args.simplify(node, self.ctx)
     try:
