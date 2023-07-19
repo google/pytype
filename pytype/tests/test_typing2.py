@@ -645,6 +645,15 @@ class TypingTest(test_base.BaseTest):
       f(x)
     """)
 
+  def test_forwardref(self):
+    # From https://docs.python.org/3/library/typing.html#typing.ForwardRef:
+    #   Class used for internal typing representation of string forward
+    #   references. [...] ForwardRef should not be instantiated by a user
+    self.CheckWithErrors("""
+      from typing import ForwardRef
+      X = ForwardRef("Y")  # not-callable
+    """)
+
 
 class CounterTest(test_base.BaseTest):
   """Tests for typing.Counter."""
