@@ -169,7 +169,7 @@ class FieldFunction(classgen.FieldConstructor):
   def make(cls, ctx):
     return super().make("field", ctx, "dataclasses")
 
-  def call(self, node, unused_func, args):
+  def call(self, node, func, args, alias_map=None):
     """Returns a type corresponding to a field."""
     args = args.simplify(node, self.ctx)
     self.match_args(node, args)

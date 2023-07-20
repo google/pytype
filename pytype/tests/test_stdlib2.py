@@ -617,6 +617,23 @@ class StdlibTestsFeatures(test_base.BaseTest,
       no2: Match = 0  # annotation-type-mismatch
     """)
 
+  def test_contextmanager_keywordonly(self):
+    ty = self.Infer("""
+      from contextlib import contextmanager
+      @contextmanager
+      def myctx(*, msg=None):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Callable, Iterator, ParamSpec, TypeVar
+      _P = ParamSpec('_P')
+      _T_co = TypeVar('_T_co')
+      def contextmanager(
+          func: Callable[_P, Iterator[_T_co]]
+      ) -> Callable[_P, contextlib._GeneratorContextManager[_T_co]]: ...
+      def myctx(*, msg = ...) -> contextlib._GeneratorContextManager: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

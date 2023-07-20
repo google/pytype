@@ -600,8 +600,11 @@ class Converter(utils.ContextWeakrefMixin):
     sig = v.signature
 
     def get_parameter(p, kind):
-      return pytd.Parameter(p, sig.annotations[p].get_instance_type(node), kind,
-                            p in sig.defaults, None)
+      if p in sig.annotations:
+        param_type = sig.annotations[p].get_instance_type(node)
+      else:
+        param_type = pytd.AnythingType()
+      return pytd.Parameter(p, param_type, kind, p in sig.defaults, None)
 
     posonly = [
         get_parameter(p, pytd.ParameterKind.POSONLY) for p in sig.posonly_params

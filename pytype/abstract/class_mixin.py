@@ -446,7 +446,8 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         return
     self.ctx.errorlog.not_instantiable(self.ctx.vm.frames, self)
 
-  def call(self, node, func, args):
+  def call(self, node, func, args, alias_map=None):
+    del alias_map  # unused
     self._check_not_instantiable()
     node, variable = self._call_new_and_init(node, func, args)
     if variable is None:

@@ -232,7 +232,7 @@ class NamedTupleBuilder(NamedTupleBuilderBase):
     return _Args(
         name=name, field_names=field_names, defaults=defaults, rename=rename)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     """Creates a namedtuple class definition."""
     # If we can't extract the arguments, we take the easy way out and return Any
     try:
@@ -314,7 +314,7 @@ class NamedTupleFuncBuilder(NamedTupleBuilderBase):
 
     return _Args(name=cls_name, field_names=names, field_types=types)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     try:
       args, props = self.process_args(node, args)
     except _ArgsError:
@@ -348,7 +348,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
     # old implementation to implement the NamedTuple in python 3.6+
     self.namedtuple = NamedTupleFuncBuilder.make(ctx)
 
-  def call(self, node, _, args):
+  def call(self, node, func, args, alias_map=None):
     posargs = args.posargs
     if isinstance(args.namedargs, dict):
       namedargs = args.namedargs
@@ -368,7 +368,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                 "NamedTuple, not both")
       self.ctx.errorlog.invalid_namedtuple_arg(
           self.ctx.vm.frames, err_msg=errmsg)
-    return self.namedtuple.call(node, None, args)
+    return self.namedtuple.call(node, None, args, alias_map)
 
   def make_class(self, node, bases, f_locals):
     # If BuildClass.call() hits max depth, f_locals will be [unsolvable]

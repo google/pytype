@@ -1232,6 +1232,20 @@ class GenericFeatureTest(test_base.BaseTest):
         assert_type(c.x, str)
       """)
 
+  def test_generic_signature(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Generic, TypeVar, Union
+      T = TypeVar('T', bound=Union[int, str])
+      class A(Generic[T]):
+        def f(self, x: T): ...
+    """)]):
+      self.Check("""
+        import foo
+        class B(foo.A[str]):
+          def f(self, x: str):
+            pass
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -285,7 +285,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
       raise TypeVarError("ambiguous **kwargs not allowed")
     return constraints, bound, covariant, contravariant
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     """Call typing.TypeVar()."""
     args = args.simplify(node, self.ctx)
     try:
@@ -517,6 +517,25 @@ class Concatenate(abstract.AnnotationClass):
     return abstract.Concatenate(list(inner), self.ctx)
 
 
+class ForwardRef(abstract.PyTDClass):
+  """Implementation of typing.ForwardRef."""
+
+  def __init__(self, ctx):
+    pyval = ctx.loader.import_name("typing").Lookup("typing.ForwardRef")
+    super().__init__("ForwardRef", pyval, ctx)
+
+  def call(self, node, func, args, alias_map=None):
+    # From https://docs.python.org/3/library/typing.html#typing.ForwardRef:
+    #   Class used for internal typing representation of string forward
+    #   references. [...] ForwardRef should not be instantiated by a user
+    self.ctx.errorlog.not_callable(
+        self.ctx.vm.frames, self,
+        details=(
+            "ForwardRef should never be instantiated by a user: "
+            "https://docs.python.org/3/library/typing.html#typing.ForwardRef"))
+    return node, self.ctx.new_unsolvable(node)
+
+
 def not_supported_yet(name, ctx, *, ast=None, details=None):
   ast = ast or ctx.loader.typing
   return overlay_utils.not_supported_yet(name, ctx, ast, details=details)
@@ -592,6 +611,7 @@ typing_overlay = {
     "Concatenate": (Concatenate, (3, 10)),
     "final": (build_final_decorator, (3, 8)),
     "Final": (overlay.build("Final", Final), (3, 8)),
+    "ForwardRef": (ForwardRef, None),
     "Generic": (overlay.build("Generic", Generic), None),
     "Literal": (overlay.build("Literal", Literal), (3, 8)),
     "Match": (get_re_builder("Match"), None),

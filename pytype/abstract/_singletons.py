@@ -87,7 +87,7 @@ class Unknown(_base.BaseValue):
                                              new)
     return new
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     ret = self.ctx.convert.create_new_unknown(
         node, source=self.owner, action="call:" + self.name)
     self._calls.append((args.posargs, args.namedargs, ret))

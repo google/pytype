@@ -124,7 +124,7 @@ class NativeFunction(Function):
   def argcount(self, _):
     return self.func.func_code.co_argcount
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     sig = None
     if isinstance(self.func.__self__, _classes.CallableClass):
       sig = function.Signature.from_callable(self.func.__self__)
@@ -668,7 +668,7 @@ class SimpleFunction(SignedFunction):
                                    defaults, annotations)
     return cls(signature, ctx)
 
-  def call(self, node, _, args, alias_map=None):
+  def call(self, node, func, args, alias_map=None):
     args = args.simplify(node, self.ctx)
     callargs = self._map_args(node, args)
     substs = self.match_args(node, args, alias_map)
