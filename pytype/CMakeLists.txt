@@ -385,6 +385,7 @@ py_library(
     ._utils
     .compare
     .metrics
+    .module_utils
     pytype.abstract.abstract
     pytype.blocks.blocks
     pytype.directors.directors
@@ -461,7 +462,6 @@ py_library(
     pytype.blocks.blocks
     pytype.directors.directors
     pytype.overlays.overlays
-    pytype.platform_utils.platform_utils
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.typegraph.cfg
