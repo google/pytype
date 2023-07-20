@@ -702,13 +702,29 @@ class set(Set[_T]):
     # {1}.union(x)), they're actually static methods. (Which will accept a
     # variable number of arguments, the first of which can e.g. be self.)
     @staticmethod
+    @overload
+    def union(*args: Iterable[_T]) -> set[_T]: ...
+    @staticmethod
+    @overload
     def union(*args, **kwargs) -> set[Any]: ...
     @staticmethod
+    @overload
+    def intersection(*args: Iterable[_T]) -> set[_T]: ...
+    @staticmethod
+    @overload
     def intersection(*args, **kwargs) -> set[Any]: ...
     @staticmethod
+    @overload
+    def difference(*args: Iterable[_T]) -> set[_T]: ...
+    @staticmethod
+    @overload
     def difference(*args, **kwargs) -> set[Any]: ...
     @staticmethod
-    def symmetric_difference(Iterable) -> set[Any]: ...
+    @overload
+    def symmetric_difference(*args: Iterable[_T]) -> set[_T]: ...
+    @staticmethod
+    @overload
+    def symmetric_difference(*args, **kwargs) -> set[Any]: ...
 
 class frozenset(FrozenSet[_T]):
     __slots__ = []
