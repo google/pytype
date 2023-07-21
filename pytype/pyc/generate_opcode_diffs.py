@@ -72,30 +72,47 @@ def generate_diffs(argv):
                            text=True, check=True)
     dis2 = json.loads(proc2.stdout)
 
-  # Diff the two opcode mappings, generating a change dictionary with three
-  # type of entries:
+  # Diff the two opcode mappings, generating a change dictionary with entries:
   #   index: ('DELETE', deleted opcode)
   #   index: ('CHANGE', old opcode at this index, new opcode at this index)
+  #   index: ('FLAG_CHANGE', opcode)
   #   index: ('ADD', new opcode)
   num_opcodes = len(dis1['opname'])
   assert num_opcodes == len(dis2['opname'])
   changed = {}
-  moved = set()
+  impl_changed = set()
+  name_unchanged = set()
 
   def is_unset(opname_entry):
     return opname_entry == f'<{i}>'
 
   for i in range(num_opcodes):
-    if dis1['opname'][i] != dis2['opname'][i]:
-      if is_unset(dis2['opname'][i]):
-        changed[i] = ('DELETE', dis1['opname'][i])
+    opname1 = dis1['opname'][i]
+    opname2 = dis2['opname'][i]
+    if opname1 == opname2:
+      name_unchanged.add(i)
+      continue
+    if is_unset(opname2):
+      changed[i] = ('DELETE', opname1)
+    else:
+      if opname2 in dis1['opmap']:
+        impl_changed.add(opname2)
+      if is_unset(opname1):
+        changed[i] = ('ADD', opname2)
       else:
-        if dis2['opname'][i] in dis1['opmap']:
-          moved.add(dis2['opname'][i])
-        if is_unset(dis1['opname'][i]):
-          changed[i] = ('ADD', dis2['opname'][i])
-        else:
-          changed[i] = ('CHANGE', dis1['opname'][i], dis2['opname'][i])
+        changed[i] = ('CHANGE', opname1, opname2)
+
+  # Detect flag changes
+  for i in name_unchanged:
+    for k in (dis1 | dis2):
+      if not k.startswith('HAS_'):
+        continue
+      has_flag1 = k in dis1 and i in dis1[k]
+      has_flag2 = k in dis2 and i in dis2[k]
+      if has_flag1 != has_flag2:
+        opname = dis1['opname'][i]
+        impl_changed.add(opname)
+        changed[i] = ('FLAG_CHANGE', opname)
 
   # Generate opcode classes.
   classes = []
@@ -129,10 +146,11 @@ def generate_diffs(argv):
     elif diff[0] == 'CHANGE':
       old_name, new_name = diff[1:]  # pytype: disable=bad-unpacking
       diffs.append(f'{op}: {new_name},  # was {old_name} in {version1}')
-    else:
-      assert diff[0] == 'ADD'
+    elif diff[0] == 'ADD':
       name = diff[1]
       diffs.append(f'{op}: {name},')
+    else:
+      assert diff[0] == 'FLAG_CHANGE'
 
   # Generate stub implementations.
   stubs = []
@@ -140,29 +158,29 @@ def generate_diffs(argv):
     if diff[0] == 'DELETE':
       continue
     name = diff[-1]
-    if name in moved:
+    if name in impl_changed:
       continue
     stubs.append([f'def byte_{name}(self, state, op):',
                   '  del op',
                   '  return state'])
 
-  return classes, diffs, stubs, sorted(moved)
+  return classes, diffs, stubs, sorted(impl_changed)
 
 
 def main(argv):
-  classes, diff, stubs, moved = generate_diffs(argv)
+  classes, diff, stubs, impl_changed = generate_diffs(argv)
   print('---- NEW OPCODES (pyc/opcodes.py) ----\n')
   print('\n\n\n'.join('\n'.join(cls) for cls in classes))
-  if moved:
+  if impl_changed:
     print('\nNOTE: Delete the old class definitions for the following '
-          'modified opcodes: ' + ', '.join(moved))
+          'modified opcodes: ' + ', '.join(impl_changed))
   print('\n---- OPCODE MAPPING DIFF (pyc/opcodes.py) ----\n')
   print('    ' + '\n    '.join(diff))
   print('\n---- OPCODE STUB IMPLEMENTATIONS (vm.py) ----\n')
   print('\n\n'.join('  ' + '\n  '.join(stub) for stub in stubs))
-  if moved:
+  if impl_changed:
     print('\nNOTE: The implementations of the following modified opcodes may '
-          'need to be updated: ' + ', '.join(moved))
+          'need to be updated: ' + ', '.join(impl_changed))
 
 
 if __name__ == '__main__':
