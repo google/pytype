@@ -933,7 +933,7 @@ class POP_JUMP_FORWARD_IF_NONE(OpcodeWithArg):
 
 
 class JUMP_BACKWARD_NO_INTERRUPT(OpcodeWithArg):
-  _FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL | NO_NEXT
   __slots__ = ()
 
 
@@ -943,7 +943,7 @@ class MAKE_CELL(OpcodeWithArg):
 
 
 class JUMP_BACKWARD(OpcodeWithArg):
-  _FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL | NO_NEXT
   __slots__ = ()
 
 

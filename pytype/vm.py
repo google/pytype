@@ -2330,7 +2330,7 @@ class VirtualMachine:
     return state
 
   def byte_JUMP_ABSOLUTE(self, state, op):
-    self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
+    self.store_jump(op.target, state.forward_cfg_node("JumpAbsolute"))
     return state
 
   def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
@@ -3268,7 +3268,7 @@ class VirtualMachine:
     return state
 
   def byte_JUMP_BACKWARD_NO_INTERRUPT(self, state, op):
-    del op
+    self.store_jump(op.target, state.forward_cfg_node("JumpBackward"))
     return state
 
   def byte_MAKE_CELL(self, state, op):
@@ -3276,7 +3276,7 @@ class VirtualMachine:
     return state
 
   def byte_JUMP_BACKWARD(self, state, op):
-    del op
+    self.store_jump(op.target, state.forward_cfg_node("JumpBackward"))
     return state
 
   def byte_COPY_FREE_VARS(self, state, op):
