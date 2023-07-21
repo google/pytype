@@ -14,20 +14,23 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
   def _generate_diffs(self):
     with mock.patch.object(subprocess, 'run') as mock_run:
       mapping_38 = json.dumps({
-          'opmap': {'DO_THIS': 1, 'I_MOVE': 2, 'DO_EIGHT': 5},
+          'opmap': {'DO_THIS': 1, 'I_MOVE': 2, 'DO_EIGHT': 5, 'JUMP': 8},
           'opname': ['<0>', 'DO_THIS', 'I_MOVE', '<3>', '<4>', 'DO_EIGHT',
-                     '<6>', '<7>'],
+                     '<6>', '<7>', 'JUMP'],
           'HAVE_ARGUMENT': 3,
           'HAS_CONST': [],
           'HAS_NAME': [],
+          'HAS_JREL': [],
       })
       mapping_39 = json.dumps({
-          'opmap': {'I_MOVE': 3, 'DO_THAT': 4, 'DO_THAT_TOO': 5, 'DO_NINE': 7},
+          'opmap': {'I_MOVE': 3, 'DO_THAT': 4, 'DO_THAT_TOO': 5, 'DO_NINE': 7,
+                    'JUMP': 8},
           'opname': ['<0>', '<1>', '<2>', 'I_MOVE', 'DO_THAT', 'DO_THAT_TOO',
-                     '<6>', 'DO_NINE'],
+                     '<6>', 'DO_NINE', 'JUMP'],
           'HAVE_ARGUMENT': 6,
           'HAS_CONST': [7],
           'HAS_NAME': [5, 7],
+          'HAS_JREL': [8],
       })
       mock_run.side_effect = [types.SimpleNamespace(stdout=mapping_38),
                               types.SimpleNamespace(stdout=mapping_39)]
@@ -35,7 +38,7 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
 
   def test_classes(self):
     classes, _, _, _ = self._generate_diffs()
-    i_move, do_that, do_that_too, do_nine = classes
+    i_move, do_that, do_that_too, do_nine, jump = classes
     self.assertMultiLineEqual('\n'.join(i_move), textwrap.dedent("""
       class I_MOVE(Opcode):
         __slots__ = ()
@@ -52,6 +55,11 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
     self.assertMultiLineEqual('\n'.join(do_nine), textwrap.dedent("""
       class DO_NINE(OpcodeWithArg):
         FLAGS = HAS_ARGUMENT | HAS_CONST | HAS_NAME
+        __slots__ = ()
+    """).strip())
+    self.assertMultiLineEqual('\n'.join(jump), textwrap.dedent("""
+      class JUMP(OpcodeWithArg):
+        FLAGS = HAS_ARGUMENT | HAS_JREL
         __slots__ = ()
     """).strip())
 
@@ -85,9 +93,9 @@ class GenerateOpcodeDiffsTest(unittest.TestCase):
         return state
     """).strip())
 
-  def test_moved(self):
-    _, _, _, moved = self._generate_diffs()
-    self.assertEqual(moved, ['I_MOVE'])
+  def test_impl_changed(self):
+    _, _, _, impl_changed = self._generate_diffs()
+    self.assertEqual(impl_changed, ['I_MOVE', 'JUMP'])
 
 
 if __name__ == '__main__':

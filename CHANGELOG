@@ -1,3 +1,16 @@
+Version 2023.07.21:
+
+Fixes:
+* Include ParamSpecs in CollectTypeParameters.
+* Fill in TypeVar substitutions when matching against protocols.
+* Look up TypeVar values when retrieving an attribute from a ParameterizedClass.
+* Add missing __buffer__ method to builtins.bytearray.
+* output.py: don't crash upon encountering ParamSpecMatch.
+* Add ForwardRef definition to typing stub.
+* Implement definitions of collections.UserList, collections.UserString.
+* Overload union, intersection, difference, and symmetric difference for Set
+  class.
+
 Version 2023.07.12:
 
 Updates:

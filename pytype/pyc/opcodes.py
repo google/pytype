@@ -39,7 +39,7 @@ class Opcode:
 
   __slots__ = ("line", "index", "prev", "next", "target", "block_target",
                "code", "annotation", "folded", "metadata")
-  FLAGS = 0
+  _FLAGS = 0
 
   def __init__(self, index, line):
     self.index = index
@@ -79,55 +79,59 @@ class Opcode:
 
   @classmethod
   def has_const(cls):
-    return bool(cls.FLAGS & HAS_CONST)
+    return bool(cls._FLAGS & HAS_CONST)
 
   @classmethod
   def has_name(cls):
-    return bool(cls.FLAGS & HAS_NAME)
+    return bool(cls._FLAGS & HAS_NAME)
 
   @classmethod
   def has_jrel(cls):
-    return bool(cls.FLAGS & HAS_JREL)
+    return bool(cls._FLAGS & HAS_JREL)
 
   @classmethod
   def has_jabs(cls):
-    return bool(cls.FLAGS & HAS_JABS)
+    return bool(cls._FLAGS & HAS_JABS)
+
+  @classmethod
+  def has_known_jump(cls):
+    return bool(cls._FLAGS & (HAS_JREL | HAS_JABS))
 
   @classmethod
   def has_junknown(cls):
-    return bool(cls.FLAGS & HAS_JUNKNOWN)
+    return bool(cls._FLAGS & HAS_JUNKNOWN)
 
   @classmethod
   def has_jump(cls):
-    return bool(cls.FLAGS & (HAS_JREL | HAS_JABS | HAS_JUNKNOWN))
+    return bool(cls._FLAGS & (HAS_JREL | HAS_JABS | HAS_JUNKNOWN))
 
   @classmethod
   def has_local(cls):
-    return bool(cls.FLAGS & HAS_LOCAL)
+    return bool(cls._FLAGS & HAS_LOCAL)
 
   @classmethod
   def has_free(cls):
-    return bool(cls.FLAGS & HAS_FREE)
+    return bool(cls._FLAGS & HAS_FREE)
 
   @classmethod
   def has_nargs(cls):
-    return bool(cls.FLAGS & HAS_NARGS)
+    return bool(cls._FLAGS & HAS_NARGS)
 
   @classmethod
   def has_argument(cls):
-    return bool(cls.FLAGS & HAS_ARGUMENT)
+    return bool(cls._FLAGS & HAS_ARGUMENT)
 
   @classmethod
   def no_next(cls):
-    return bool(cls.FLAGS & NO_NEXT)
+    return bool(cls._FLAGS & NO_NEXT)
 
   @classmethod
   def carry_on_to_next(cls):
-    return not cls.FLAGS & NO_NEXT
+    return not cls._FLAGS & NO_NEXT
 
   @classmethod
   def store_jump(cls):
-    return bool(cls.FLAGS & STORE_JUMP)
+    return bool(cls._FLAGS & STORE_JUMP)
 
   @classmethod
   def does_jump(cls):
@@ -135,15 +139,11 @@ class Opcode:
 
   @classmethod
   def pushes_block(cls):
-    return bool(cls.FLAGS & PUSHES_BLOCK)
+    return bool(cls._FLAGS & PUSHES_BLOCK)
 
   @classmethod
   def pops_block(cls):
-    return bool(cls.FLAGS & POPS_BLOCK)
-
-  @classmethod
-  def has_arg(cls):
-    return False
+    return bool(cls._FLAGS & POPS_BLOCK)
 
 
 class OpcodeWithArg(Opcode):
@@ -163,13 +163,9 @@ class OpcodeWithArg(Opcode):
     else:
       return out
 
-  @classmethod
-  def has_arg(cls):
-    return True
-
 
 class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
   def __str__(self):
@@ -292,7 +288,7 @@ class END_ASYNC_FOR(Opcode):
   # See tests/test_stdlib2:StdlibTestsFeatures.test_async_iter and
   # tests/test_coroutine:GeneratorFeatureTest.test_async_for_pyi for tests
   # that fail if we add NO_NEXT.
-  FLAGS = HAS_JUNKNOWN
+  _FLAGS = HAS_JUNKNOWN
   __slots__ = ()
 
 
@@ -361,7 +357,7 @@ class LOAD_BUILD_CLASS(Opcode):
 
 
 class YIELD_FROM(Opcode):
-  FLAGS = HAS_JUNKNOWN
+  _FLAGS = HAS_JUNKNOWN
   __slots__ = ()
 
 
@@ -392,12 +388,12 @@ class INPLACE_OR(Opcode):
 
 
 class BREAK_LOOP(Opcode):
-  FLAGS = HAS_JUNKNOWN | NO_NEXT
+  _FLAGS = HAS_JUNKNOWN | NO_NEXT
   __slots__ = ()
 
 
 class WITH_CLEANUP_START(Opcode):
-  FLAGS = HAS_JUNKNOWN  # might call __exit__
+  _FLAGS = HAS_JUNKNOWN  # might call __exit__
   __slots__ = ()
 
 
@@ -406,7 +402,7 @@ class WITH_CLEANUP_FINISH(Opcode):
 
 
 class RETURN_VALUE(Opcode):
-  FLAGS = HAS_JUNKNOWN | NO_NEXT
+  _FLAGS = HAS_JUNKNOWN | NO_NEXT
   __slots__ = ()
 
 
@@ -419,17 +415,17 @@ class SETUP_ANNOTATIONS(Opcode):
 
 
 class YIELD_VALUE(Opcode):
-  FLAGS = HAS_JUNKNOWN
+  _FLAGS = HAS_JUNKNOWN
   __slots__ = ()
 
 
 class POP_BLOCK(Opcode):
-  FLAGS = POPS_BLOCK
+  _FLAGS = POPS_BLOCK
   __slots__ = ()
 
 
 class END_FINALLY(Opcode):
-  FLAGS = HAS_JUNKNOWN  # might re-raise an exception
+  _FLAGS = HAS_JUNKNOWN  # might re-raise an exception
   __slots__ = ()
 
 
@@ -438,338 +434,338 @@ class POP_EXCEPT(Opcode):
 
 
 class STORE_NAME(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_NAME(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class UNPACK_SEQUENCE(OpcodeWithArg):  # Arg: Number of tuple items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class FOR_ITER(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT
+  _FLAGS = HAS_JREL|HAS_ARGUMENT
   __slots__ = ()
 
 
 class LIST_APPEND(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class UNPACK_EX(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_ATTR(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_ATTR(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_GLOBAL(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_GLOBAL(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_CONST(OpcodeWithArg):  # Arg: Index in const list
-  FLAGS = HAS_ARGUMENT|HAS_CONST
+  _FLAGS = HAS_ARGUMENT|HAS_CONST
   __slots__ = ()
 
 
 class LOAD_NAME(OpcodeWithArg):  # Arg: Index in name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_TUPLE(OpcodeWithArg):  # Arg: Number of tuple items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_LIST(OpcodeWithArg):  # Arg: Number of list items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_SET(OpcodeWithArg):  # Arg: Number of set items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_MAP(OpcodeWithArg):  # Arg: Number of dict entries (up to 255)
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_ATTR(OpcodeWithArg):  # Arg: Index in name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class COMPARE_OP(OpcodeWithArg):  # Arg: Comparison operator
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class IMPORT_NAME(OpcodeWithArg):  # Arg: Index in name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NAME|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
 class IMPORT_FROM(OpcodeWithArg):  # Arg: Index in name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_FORWARD(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|NO_NEXT
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|NO_NEXT
   __slots__ = ()
 
 
 class JUMP_IF_FALSE_OR_POP(OpcodeWithArg):
-  FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_JABS|HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_IF_TRUE_OR_POP(OpcodeWithArg):
-  FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_JABS|HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_ABSOLUTE(OpcodeWithArg):
-  FLAGS = HAS_JABS|HAS_ARGUMENT|NO_NEXT
+  _FLAGS = HAS_JABS|HAS_ARGUMENT|NO_NEXT
   __slots__ = ()
 
 
 class POP_JUMP_IF_FALSE(OpcodeWithArg):
-  FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_JABS|HAS_ARGUMENT
   __slots__ = ()
 
 
 class POP_JUMP_IF_TRUE(OpcodeWithArg):
-  FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_JABS|HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_GLOBAL(OpcodeWithArg):  # Indexes into name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class CONTINUE_LOOP(OpcodeWithArg):  # Acts as jump
-  FLAGS = HAS_JABS|HAS_ARGUMENT|NO_NEXT
+  _FLAGS = HAS_JABS|HAS_ARGUMENT|NO_NEXT
   __slots__ = ()
 
 
 class SETUP_LOOP(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class SETUP_EXCEPT(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class SETUP_FINALLY(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class LOAD_FAST(OpcodeWithArg):  # Loads local variable number
-  FLAGS = HAS_LOCAL|HAS_ARGUMENT
+  _FLAGS = HAS_LOCAL|HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_FAST(OpcodeWithArg):  # Stores local variable number
-  FLAGS = HAS_LOCAL|HAS_ARGUMENT
+  _FLAGS = HAS_LOCAL|HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_FAST(OpcodeWithArg):  # Deletes local variable number
-  FLAGS = HAS_LOCAL|HAS_ARGUMENT
+  _FLAGS = HAS_LOCAL|HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_ANNOTATION(OpcodeWithArg):
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class RAISE_VARARGS(OpcodeWithArg):  # Arg: Number of raise args (1, 2, or 3)
-  FLAGS = HAS_ARGUMENT|HAS_JUNKNOWN|NO_NEXT
+  _FLAGS = HAS_ARGUMENT|HAS_JUNKNOWN|NO_NEXT
   __slots__ = ()
 
 
 class CALL_FUNCTION(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
 class MAKE_FUNCTION(OpcodeWithArg):  # Arg: Number of args with default values
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_SLICE(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class MAKE_CLOSURE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_CLOSURE(OpcodeWithArg):
-  FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE|HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_DEREF(OpcodeWithArg):
-  FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE|HAS_ARGUMENT
   __slots__ = ()
 
 
 class STORE_DEREF(OpcodeWithArg):
-  FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE|HAS_ARGUMENT
   __slots__ = ()
 
 
 class DELETE_DEREF(OpcodeWithArg):
-  FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE|HAS_ARGUMENT
   __slots__ = ()
 
 
 class CALL_FUNCTION_VAR(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
 class CALL_FUNCTION_KW(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
 class CALL_FUNCTION_VAR_KW(OpcodeWithArg):  # Arg: #args + (#kwargs << 8)
-  FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
 class CALL_FUNCTION_EX(OpcodeWithArg):  # Arg: flags
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class SETUP_WITH(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class EXTENDED_ARG(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class SET_ADD(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class MAP_ADD(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_CLASSDEREF(OpcodeWithArg):
-  FLAGS = HAS_FREE|HAS_ARGUMENT
+  _FLAGS = HAS_FREE|HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_LIST_UNPACK(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_MAP_UNPACK(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_MAP_UNPACK_WITH_CALL(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_TUPLE_UNPACK(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_SET_UNPACK(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class SETUP_ASYNC_WITH(OpcodeWithArg):
-  FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
   __slots__ = ()
 
 
 class FORMAT_VALUE(OpcodeWithArg):  # Arg: Flags
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_CONST_KEY_MAP(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_STRING(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BUILD_TUPLE_UNPACK_WITH_CALL(OpcodeWithArg):  # Arg: Number of items
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class LOAD_METHOD(OpcodeWithArg):  # Arg: Index in name list
-  FLAGS = HAS_NAME|HAS_ARGUMENT
+  _FLAGS = HAS_NAME|HAS_ARGUMENT
   __slots__ = ()
 
 
 class CALL_METHOD(OpcodeWithArg):  # Arg: #args
-  FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
+  _FLAGS = HAS_NARGS|HAS_ARGUMENT|HAS_JUNKNOWN
   __slots__ = ()
 
 
 class CALL_FINALLY(OpcodeWithArg):  # Arg: Jump offset to finally block
-  FLAGS = HAS_JREL | HAS_ARGUMENT
+  _FLAGS = HAS_JREL | HAS_ARGUMENT
   __slots__ = ()
 
 
 class POP_FINALLY(OpcodeWithArg):
   # might re-raise an exception or jump to a finally
-  FLAGS = HAS_ARGUMENT | HAS_JUNKNOWN
+  _FLAGS = HAS_ARGUMENT | HAS_JUNKNOWN
   __slots__ = ()
 
 
@@ -786,37 +782,37 @@ class LIST_TO_TUPLE(Opcode):
 
 
 class IS_OP(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class CONTAINS_OP(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class JUMP_IF_NOT_EXC_MATCH(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JABS
+  _FLAGS = HAS_ARGUMENT | HAS_JABS
   __slots__ = ()
 
 
 class LIST_EXTEND(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class SET_UPDATE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class DICT_MERGE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class DICT_UPDATE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -841,22 +837,22 @@ class COPY_DICT_WITHOUT_KEYS(Opcode):
 
 
 class ROT_N(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class RERAISE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | NO_NEXT
+  _FLAGS = HAS_ARGUMENT | NO_NEXT
   __slots__ = ()
 
 
 class GEN_START(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class MATCH_CLASS(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
@@ -897,102 +893,102 @@ class PREP_RERAISE_STAR(Opcode):
 
 
 class SWAP(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class POP_JUMP_FORWARD_IF_FALSE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_FORWARD_IF_TRUE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class COPY(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class BINARY_OP(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class SEND(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_FORWARD_IF_NOT_NONE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_FORWARD_IF_NONE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class JUMP_BACKWARD_NO_INTERRUPT(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class MAKE_CELL(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_FREE
+  _FLAGS = HAS_ARGUMENT | HAS_FREE
   __slots__ = ()
 
 
 class JUMP_BACKWARD(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class COPY_FREE_VARS(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class RESUME(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class PRECALL(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class CALL(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
 
 class KW_NAMES(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_CONST
+  _FLAGS = HAS_ARGUMENT | HAS_CONST
   __slots__ = ()
 
 
 class POP_JUMP_BACKWARD_IF_NOT_NONE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_BACKWARD_IF_NONE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_BACKWARD_IF_FALSE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
-  FLAGS = HAS_ARGUMENT | HAS_JREL
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
@@ -1363,7 +1359,7 @@ def _wordcode_reader(
     if cls is EXTENDED_ARG:
       oparg = data[pos+1] | extended_arg
       extended_arg = oparg << 8
-    elif cls.FLAGS & HAS_ARGUMENT:
+    elif cls.has_argument():
       oparg = data[pos+1] | extended_arg
       extended_arg = 0
     else:
@@ -1377,6 +1373,26 @@ def _wordcode_reader(
 
 def _is_backward_jump(opcls):
   return "JUMP_BACKWARD" in opcls.__name__
+
+
+def _process_oparg_at_pos(opcls, oparg, pos, python_version):
+  """Processes an opcode argument value at an instruction position."""
+  if python_version < (3, 10):
+    # 3.10 changes how oparg is calculated:
+    # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
+    return oparg + (pos if opcls.has_jrel() else 0)
+  if python_version < (3, 11) and opcls.has_jabs():
+    return oparg * 2
+  if opcls.has_known_jump():
+    # Either opcls has a relative jump or the python version is 3.11+.
+    # Starting in 3.11, all jumps are relative.
+    signed_oparg = -oparg if _is_backward_jump(opcls) else oparg
+    return signed_oparg * 2 + pos
+  if python_version >= (3, 11) and opcls.__name__ == "LOAD_GLOBAL":
+    # 3.11 adds special handling for LOAD_GLOBAL and JUMP_BACKWARD* opcodes:
+    # https://github.com/python/cpython/blob/db65a326a4022fbd43648858b460f52734faf1b5/Lib/dis.py#L461-L474
+    return oparg // 2
+  return oparg
 
 
 def _dis(code, mapping):
@@ -1400,20 +1416,7 @@ def _dis(code, mapping):
       # single line programs don't have code.co_lnotab
       line = code.co_firstlineno
     if oparg is not None:
-      # 3.11 adds special handling for LOAD_GLOBAL and JUMP_BACKWARD* opcodes:
-      # https://github.com/python/cpython/blob/db65a326a4022fbd43648858b460f52734faf1b5/Lib/dis.py#L461-L474
-      if code.python_version >= (3, 11) and cls.__name__ == "LOAD_GLOBAL":
-        oparg //= 2
-      elif code.python_version >= (3, 10):
-        # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
-        # changed how oparg is calculated.
-        if cls.has_jrel():
-          signed_oparg = -oparg if _is_backward_jump(cls) else oparg
-          oparg = signed_oparg * 2 + end_pos
-        elif cls.has_jabs():
-          oparg *= 2
-      elif cls.has_jrel():
-        oparg += end_pos
+      oparg = _process_oparg_at_pos(cls, oparg, end_pos, code.python_version)
       pretty = _prettyprint_arg(cls, oparg, code)
       ret.append(cls(index, line, oparg, pretty))
     else:
@@ -1422,7 +1425,7 @@ def _dis(code, mapping):
   # Map the target of jump instructions to the opcode they jump to, and fill
   # in "next" and "prev" pointers
   for i, op in enumerate(ret):
-    if op.FLAGS & (HAS_JREL | HAS_JABS):
+    if op.has_known_jump():
       op.arg = op.pretty_arg = offset_to_index[op.arg]
       op.target = ret[op.arg]
     get_code = lambda j: ret[j] if 0 <= j < len(ret) else None

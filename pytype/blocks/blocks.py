@@ -103,6 +103,17 @@ class OrderedCode:
       count += 1
     return count
 
+  def get_closure_var_name(self, arg):
+    if self.python_version >= (3, 11):
+      name = self.co_localsplusnames[arg]
+    else:
+      n_cellvars = len(self.co_cellvars)
+      if arg < n_cellvars:
+        name = self.co_cellvars[arg]
+      else:
+        name = self.co_freevars[arg - n_cellvars]
+    return name
+
 
 class Block:
   """A block is a node in a directed graph.

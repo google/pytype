@@ -18,7 +18,6 @@ from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.blocks import blocks
 from pytype.overlays import metaclass
-from pytype.platform_utils import path_utils
 from pytype.pyc import opcodes
 from pytype.pytd import mro
 from pytype.pytd import pytd
@@ -322,15 +321,6 @@ def get_name_error_details(
   return None
 
 
-def _module_name(frame):
-  if frame.f_code.co_filename:
-    return ".".join(
-        re.sub(r"\.py$", "",
-               frame.f_code.co_filename).split(path_utils.sep)[-2:])
-  else:
-    return ""
-
-
 def log_opcode(op, state, frame, stack_size):
   """Write a multi-line log message, including backtrace and stack."""
   if not log.isEnabledFor(logging.INFO):
@@ -338,11 +328,10 @@ def log_opcode(op, state, frame, stack_size):
   indent = " > " * (stack_size - 1)
   stack_rep = repper(state.data_stack)
   block_stack_rep = repper(state.block_stack)
-  module_name = _module_name(frame)
-  if module_name:
+  if frame.module_name:
     name = frame.f_code.co_name
     log.info("%s | index: %d, %r, module: %s line: %d",
-             indent, op.index, name, module_name, op.line)
+             indent, op.index, name, frame.module_name, op.line)
   else:
     log.info("%s | index: %d, line: %d",
              indent, op.index, op.line)
@@ -814,15 +803,6 @@ def call_inplace_operator(state, iname, x, y, ctx):
   return state, ret
 
 
-def get_closure_var_name(frame, arg):
-  n_cellvars = len(frame.f_code.co_cellvars)
-  if arg < n_cellvars:
-    name = frame.f_code.co_cellvars[arg]
-  else:
-    name = frame.f_code.co_freevars[arg - n_cellvars]
-  return name
-
-
 def check_for_deleted(state, name, var, ctx):
   if any(isinstance(x, abstract.Deleted) for x in var.Data(state.node)):
     # Referencing a deleted variable
@@ -869,7 +849,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
     # Update the cell because the DELETE_DEREF implementation works on
     # variable identity.
     ctx.vm.frame.cells[op.arg] = cell = new_cell
-  name = get_closure_var_name(ctx.vm.frame, op.arg)
+  name = ctx.vm.frame.f_code.get_closure_var_name(op.arg)
   ctx.vm.set_var_name(cell, name)
   check_for_deleted(state, name, cell, ctx)
   ctx.vm.trace_opcode(op, name, cell)

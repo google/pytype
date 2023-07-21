@@ -1663,7 +1663,7 @@ class VirtualMachine:
     """Stores a value in a closure cell."""
     state, value = state.pop()
     assert isinstance(value, cfg.Variable)
-    name = vm_utils.get_closure_var_name(self.frame, op.arg)
+    name = self.frame.f_code.get_closure_var_name(op.arg)
     value = self._apply_annotation(
         state, op, name, value, self.current_annotated_locals, check_types=True)
     state = state.forward_cfg_node(f"StoreDeref:{name}")
@@ -1673,7 +1673,7 @@ class VirtualMachine:
 
   def byte_DELETE_DEREF(self, state, op):
     value = abstract.Deleted(self.ctx).to_variable(state.node)
-    name = vm_utils.get_closure_var_name(self.frame, op.arg)
+    name = self.frame.f_code.get_closure_var_name(op.arg)
     state = state.forward_cfg_node(f"DelDeref:{name}")
     self.frame.cells[op.arg].PasteVariable(value, state.node)
     self.trace_opcode(op, name, value)
@@ -1681,7 +1681,7 @@ class VirtualMachine:
 
   def byte_LOAD_CLASSDEREF(self, state, op):
     """Retrieves a value out of either locals or a closure cell."""
-    name = vm_utils.get_closure_var_name(self.frame, op.arg)
+    name = self.frame.f_code.get_closure_var_name(op.arg)
     try:
       state, val = self.load_local(state, name)
       self.trace_opcode(op, name, val)

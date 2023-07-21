@@ -7,6 +7,7 @@ from typing import Any, Collection, Dict, Optional, Tuple, Union
 
 from pytype import compare
 from pytype import metrics
+from pytype import module_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.blocks import blocks
@@ -325,6 +326,12 @@ class Frame(utils.ContextWeakrefMixin):
     self.substs = substs
     # Do not add to error tracebacks
     self.skip_in_tracebacks = False
+
+    # Set the module name (used in logging)
+    if f_code.co_filename:
+      self.module_name = module_utils.path_to_module_name(f_code.co_filename)
+    else:
+      self.module_name = ""
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
