@@ -3280,7 +3280,7 @@ class VirtualMachine:
     return state
 
   def byte_COPY_FREE_VARS(self, state, op):
-    del op
+    self.frame.copy_free_vars(op.arg)
     return state
 
   def byte_RESUME(self, state, op):
