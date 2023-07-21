@@ -104,7 +104,7 @@ def generate_diffs(argv):
 
   # Detect flag changes
   for i in name_unchanged:
-    for k in (dis1 | dis2):
+    for k in set(dis1).union(dis2):
       if not k.startswith('HAS_'):
         continue
       has_flag1 = k in dis1 and i in dis1[k]
