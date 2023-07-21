@@ -286,7 +286,8 @@ class Splice:
 
 
 def _is_valid_default(val):
-  return not val or types.is_any(val) or isinstance(val, types.Pyval)
+  return (not val or types.is_any(val) or isinstance(val, types.Pyval) or
+          val.name == "None")
 
 
 class _GeneratePytdVisitor(visitor.BaseVisitor):
