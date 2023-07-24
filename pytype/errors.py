@@ -1234,6 +1234,10 @@ class ErrorLog(ErrorLogBase):
     msg = f"Cannot unpack {vals_str} into {vars_str}"
     self.error(stack, msg, keyword=vals_str)
 
+  @_error_name("bad-unpacking")
+  def nondeterministic_unpacking(self, stack):
+    self.error(stack, "Unpacking a non-deterministic order iterable.")
+
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
     types = [

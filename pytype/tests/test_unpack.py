@@ -153,6 +153,26 @@ class TestUnpack(test_base.BaseTest):
           foo.f(x, y, **kwargs)
       """, pythonpath=[d.path])
 
+  def test_set_length_one_nondeterministic_unpacking(self):
+    self.Check("""
+    (x,) = {'a'}
+    """)
+
+  def test_frozenset_length_one_nondeterministic_unpacking(self):
+    self.Check("""
+    (x,) = frozenset(['a'])
+    """)
+
+  def test_set_nondeterministic_unpacking(self):
+    self.CheckWithErrors("""
+    (x, y) = {'a', 'b'}   # bad-unpacking
+    """)
+
+  def test_frozenset_nondeterministic_unpacking(self):
+    self.CheckWithErrors("""
+    (x, y) = frozenset(['a', 'b'])   # bad-unpacking
+    """)
+
   def test_str(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

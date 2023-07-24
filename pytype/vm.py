@@ -2140,7 +2140,10 @@ class VirtualMachine:
     nontuple_seq = self.ctx.program.NewVariable()
     has_slurp = n_after > -1
     count = n_before + max(n_after, 0)
+    nondeterministic_iterable = False
     for b in abstract_utils.expand_type_parameter_instances(seq.bindings):
+      if b.data.full_name in ("builtins.set", "builtins.frozenset"):
+        nondeterministic_iterable = True
       tup = self._get_literal_sequence(b.data)
       if tup is not None:
         if has_slurp and len(tup) >= count:
@@ -2166,6 +2169,8 @@ class VirtualMachine:
     values = tuple(
         self.ctx.convert.build_content(value, discard_concrete_values=False)
         for value in zip(*options))
+    if len(values) > 1 and nondeterministic_iterable:
+      self.ctx.errorlog.nondeterministic_unpacking(self.frames)
     for value in reversed(values):
       if not value.bindings:
         # For something like
