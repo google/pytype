@@ -335,6 +335,9 @@ class VirtualMachine:
     # Locals attached to the block graph
     self.block_env = block_environment.Environment()
 
+    # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
+    self._kw_names = ()
+
   @property
   def current_local_ops(self):
     return self.local_ops[self.frame.f_code.co_name]
@@ -845,6 +848,26 @@ class VirtualMachine:
     else:
       posargs = args
     state, func = state.pop()
+    with self._reset_overloads(func):
+      state, ret = self.call_function_with_state(
+          state, func, posargs, namedargs, starargs, starstarargs)
+    return state.push(ret)
+
+  def call_function_from_stack_311(self, state, num):
+    """Pop arguments for a function and call it."""
+    # We need a separate version of call_function_from_stack for 3.11+
+    state, args = state.popn(num)
+    state, func = state.pop()
+    if self._kw_names:
+      n_kw = len(self._kw_names)
+      posargs = args[:-n_kw]
+      kw_vals = args[-n_kw:]
+      namedargs = {k: v for  k, v in zip(self._kw_names, kw_vals)}
+    else:
+      posargs = args
+      namedargs = {}
+    starargs = starstarargs = None
+    self._kw_names = ()
     with self._reset_overloads(func):
       state, ret = self.call_function_with_state(
           state, func, posargs, namedargs, starargs, starstarargs)
@@ -3169,9 +3192,9 @@ class VirtualMachine:
     return state
 
   def byte_PUSH_NULL(self, state, op):
-    # From docs: Used in the call sequence to match the NULL pushed by
-    # LOAD_METHOD for non-method calls.
-    # We currently don't push the NULL for LOAD_METHOD either.
+    # From docs: "Used in the call sequence to match the NULL pushed by
+    # LOAD_METHOD for non-method calls". We don't push the NULL in either case;
+    # see the comment under byte_LOAD_METHOD for more context.
     del op
     return state
 
@@ -3299,12 +3322,11 @@ class VirtualMachine:
     return state
 
   def byte_CALL(self, state, op):
-    del op
-    return state
+    return self.call_function_from_stack_311(state, op.arg)
 
   def byte_KW_NAMES(self, state, op):
-    # No stack or type effects
-    del op
+    # Stores a list of kw names to be retrieved by CALL
+    self._kw_names = self.frame.f_code.co_consts[op.arg]
     return state
 
   def byte_POP_JUMP_BACKWARD_IF_NOT_NONE(self, state, op):
