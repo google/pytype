@@ -325,6 +325,9 @@ def log_opcode(op, state, frame, stack_size):
   """Write a multi-line log message, including backtrace and stack."""
   if not log.isEnabledFor(logging.INFO):
     return
+  if isinstance(op, (opcodes.CACHE, opcodes.PRECALL)):
+    # Do not log NOP-like compiler optimisation opcodes.
+    return
   indent = " > " * (stack_size - 1)
   stack_rep = repper(state.data_stack)
   block_stack_rep = repper(state.block_stack)
