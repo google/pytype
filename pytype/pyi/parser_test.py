@@ -289,6 +289,17 @@ class ParserTest(parser_test_base.ParserTestBase):
     base, = ast.Lookup("Bar").bases
     self.assertEqual(base, pytd.NamedType("foo.c.X"))
 
+  def test_keyword_import(self):
+    self.check("""
+      import importlib
+      my_module = importlib.import_module('await.break.in.global.or.yield')
+    """, """
+      import importlib
+      from typing import Any
+
+      my_module: Any
+    """)
+
   def test_duplicate_names(self):
     self.check_error("""
       def foo() -> int: ...
