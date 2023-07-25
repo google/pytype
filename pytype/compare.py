@@ -273,3 +273,10 @@ def compatible_with(value, logical_value):
     # By default a value is ambiguous - it could potentially evaluate to either
     # True or False. Thus we return True here regardless of logical_value.
     return True
+
+
+def compatible_with_none(value):
+  return (value.full_name == "builtins.NoneType" or
+          isinstance(value, (abstract.AMBIGUOUS_OR_EMPTY,
+                             abstract.TypeParameterInstance,
+                             abstract.ParamSpecInstance)))

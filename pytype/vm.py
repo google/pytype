@@ -2336,10 +2336,12 @@ class VirtualMachine:
     return state.pop_and_discard()
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True, or_pop=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
+                            pop=vm_utils.PopBehavior.OR)
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False, or_pop=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
+                            pop=vm_utils.PopBehavior.OR)
 
   def byte_JUMP_IF_TRUE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True)
@@ -2348,10 +2350,12 @@ class VirtualMachine:
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_JUMP_FORWARD(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
@@ -2370,7 +2374,8 @@ class VirtualMachine:
     state = self._replace_abstract_exception(state, exc_type)
     state = state.push(self.ctx.convert.bool_values[None].to_variable(
         state.node))
-    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
@@ -3235,12 +3240,10 @@ class VirtualMachine:
     return state.swap(op.arg)
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_FALSE(state, op)
 
   def byte_POP_JUMP_FORWARD_IF_TRUE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_TRUE(state, op)
 
   def byte_COPY(self, state, op):
     del op
@@ -3288,12 +3291,13 @@ class VirtualMachine:
     return state
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx,
+                            jump_if_val=frame_state.NOT_NONE,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_FORWARD_IF_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=None,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_JUMP_BACKWARD_NO_INTERRUPT(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node("JumpBackward"))
@@ -3330,17 +3334,16 @@ class VirtualMachine:
     return state
 
   def byte_POP_JUMP_BACKWARD_IF_NOT_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx,
+                            jump_if_val=frame_state.NOT_NONE,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_BACKWARD_IF_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=None,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_BACKWARD_IF_FALSE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_FALSE(state, op)
 
   def byte_POP_JUMP_BACKWARD_IF_TRUE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_TRUE(state, op)

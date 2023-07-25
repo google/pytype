@@ -19,6 +19,9 @@ log = logging.getLogger(__name__)
 # condition cannot be satisfied with any known bindings.
 UNSATISFIABLE = object()
 
+# Represents the `not None` condition for restrict_condition().
+NOT_NONE = object()
+
 FrameType = Union["SimpleFrame", "Frame"]
 # This should be context.Context, which can't be imported due to a circular dep.
 _ContextType = Any
@@ -385,41 +388,38 @@ class Condition:
 _restrict_counter = metrics.MapCounter("state_restrict")
 
 
-def split_conditions(node, var):
-  """Return a pair of conditions for the value being true and false."""
-  return (_restrict_condition(node, var.bindings, True),
-          _restrict_condition(node, var.bindings, False))
+def _match_condition(value, condition):
+  if isinstance(condition, bool):
+    return compare.compatible_with(value, condition)
+  elif condition is None:
+    return compare.compatible_with_none(value)
+  else:
+    assert condition is NOT_NONE
+    return value.full_name != "builtins.NoneType"
 
 
-def _restrict_condition(node, bindings, logical_value):
+def restrict_condition(node, var, condition):
   """Return a restricted condition based on filtered bindings.
 
   Args:
     node: The CFGNode.
-    bindings: A sequence of bindings.
-    logical_value: Either True or False.
+    var: A variable.
+    condition: A value that we will check each binding for compatibility with.
 
   Returns:
-    A Condition or None.  Each binding is checked for compatibility with
-    logical_value.  If either no bindings match, or all bindings match, then
-    None is returned.  Otherwise a new Condition is built from the specified,
-    compatible, bindings.
+    A Condition or None. Each binding of the variable is checked for
+    compatibility with the condition. If either no bindings match, or all
+    bindings match, then None is returned.  Otherwise a new Condition is built
+    from the specified, compatible, bindings.
   """
   dnf = []
   restricted = False
-  for b in bindings:
-    match = compare.compatible_with(b.data, logical_value)
-    if match is True:  # pylint: disable=g-bool-id-comparison
-      dnf.append([b])
-    elif match is False:  # pylint: disable=g-bool-id-comparison
-      restricted = True
+  for b in var.bindings:
+    match_result = _match_condition(b.data, condition)
+    if match_result:
+      dnf.append([b])  # the binding may match the condition
     else:
-      dnf.extend(match)
-      # In theory, the value could have returned [[b]] as its DNF, in which
-      # case this isn't really a restriction.  However in practice this is
-      # very unlikely to occur, and treating it as a restriction will not
-      # cause any problems.
-      restricted = True
+      restricted = True  # the binding cannot match the condition
   if not dnf:
     _restrict_counter.inc("unsatisfiable")
     return UNSATISFIABLE

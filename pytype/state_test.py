@@ -10,10 +10,10 @@ import unittest
 def source_summary(binding, **varnames):
   """A simple deterministic listing of source variables."""
   clauses = []
-  name_map = {b.variable: name for name, b in varnames.items()}
+  name_map = {b: name for name, b in varnames.items()}
   for origin in binding.origins:
     for sources in origin.source_sets:
-      bindings = [f"{name_map[b.variable]}={b.data}" for b in sources]
+      bindings = [f"{name_map[b]}={b.data}" for b in sources]
       clauses.append(" ".join(sorted(bindings)))
   return " | ".join(sorted(clauses))
 
@@ -96,16 +96,6 @@ class ConditionTestBase(unittest.TestCase):
     super().setUp()
     self._program = cfg.Program()
     self._node = self._program.NewCFGNode("test")
-    self._old_compatible_with = compare.compatible_with
-    compare.compatible_with = fake_compatible_with
-
-  def tearDown(self):
-    super().tearDown()
-    compare.compatible_with = self._old_compatible_with
-
-  def new_binding(self, value=AMBIGUOUS):
-    var = self._program.NewVariable()
-    return var.AddBinding(value)
 
   def check_binding(self, expected, binding, **varnames):
     self.assertEqual(len(binding.origins), 1)
@@ -114,6 +104,10 @@ class ConditionTestBase(unittest.TestCase):
 
 
 class ConditionTest(ConditionTestBase):
+
+  def new_binding(self, value=AMBIGUOUS):
+    var = self._program.NewVariable()
+    return var.AddBinding(value)
 
   def test_no_parent(self):
     x = self.new_binding()
@@ -132,77 +126,57 @@ class ConditionTest(ConditionTestBase):
                        p=p, x=x, y=y, z=z)
 
 
-class SplitConditionTest(ConditionTestBase):
-
-  def test(self):
-    # Test that we split both sides and that everything gets passed through
-    # correctly.  Don't worry about special cases within _restrict_condition
-    # since those are tested separately.
-    self.new_binding()
-    var = self._program.NewVariable()
-    var.AddBinding(ONLY_TRUE)
-    var.AddBinding(ONLY_FALSE)
-    var.AddBinding(AMBIGUOUS)
-    true_cond, false_cond = frame_state.split_conditions(self._node, var)
-    self.check_binding("v=? | v=T", true_cond.binding,
-                       v=var.bindings[0])
-    self.check_binding("v=? | v=F",
-                       false_cond.binding,
-                       v=var.bindings[0])
-
-
 class RestrictConditionTest(ConditionTestBase):
 
   def setUp(self):
     super().setUp()
-    p = self.new_binding()
-    self._parent = frame_state.Condition(self._node, [[p]])
+    self._old_compatible_with = compare.compatible_with
+    compare.compatible_with = fake_compatible_with
+
+  def tearDown(self):
+    super().tearDown()
+    compare.compatible_with = self._old_compatible_with
+
+  def test_split(self):
+    # Test that we split both sides and everything is passed through correctly.
+    var = self._program.NewVariable()
+    var.AddBinding(ONLY_TRUE)
+    var.AddBinding(ONLY_FALSE)
+    var.AddBinding(AMBIGUOUS)
+    true_cond = frame_state.restrict_condition(self._node, var, True)
+    false_cond = frame_state.restrict_condition(self._node, var, False)
+    self.check_binding("v0=T | v2=?", true_cond.binding, v0=var.bindings[0],
+                       v1=var.bindings[1], v2=var.bindings[2])
+    self.check_binding("v1=F | v2=?", false_cond.binding, v0=var.bindings[0],
+                       v1=var.bindings[1], v2=var.bindings[2])
 
   def test_no_bindings(self):
-    c = frame_state._restrict_condition(self._node, [], False)
-    self.assertIs(frame_state.UNSATISFIABLE, c)
-    c = frame_state._restrict_condition(self._node, [], True)
-    self.assertIs(frame_state.UNSATISFIABLE, c)
+    var = self._program.NewVariable()
+    false_cond = frame_state.restrict_condition(self._node, var, False)
+    true_cond = frame_state.restrict_condition(self._node, var, True)
+    self.assertIs(frame_state.UNSATISFIABLE, false_cond)
+    self.assertIs(frame_state.UNSATISFIABLE, true_cond)
 
   def test_none_restricted(self):
-    x = self.new_binding()
-    y = self.new_binding()
-    frame_state._restrict_condition(self._node, [x, y], False)
-    frame_state._restrict_condition(self._node, [x, y], True)
+    var = self._program.NewVariable()
+    var.AddBinding(AMBIGUOUS)
+    false_cond = frame_state.restrict_condition(self._node, var, False)
+    true_cond = frame_state.restrict_condition(self._node, var, True)
+    self.assertIsNone(false_cond)
+    self.assertIsNone(true_cond)
 
   def test_all_restricted(self):
-    x = self.new_binding(ONLY_FALSE)
-    y = self.new_binding(ONLY_FALSE)
-    c = frame_state._restrict_condition(self._node, [x, y], True)
+    var = self._program.NewVariable()
+    var.AddBinding(ONLY_FALSE)
+    c = frame_state.restrict_condition(self._node, var, True)
     self.assertIs(frame_state.UNSATISFIABLE, c)
 
-  def test_some_restricted_no_parent(self):
-    x = self.new_binding()  # Can be true or false.
-    y = self.new_binding(ONLY_FALSE)
-    z = self.new_binding()  # Can be true or false.
-    c = frame_state._restrict_condition(self._node, [x, y, z], True)
-    self.check_binding("x=? | z=?", c.binding, x=x, y=y, z=z)
-
-  def test_some_restricted_with_parent(self):
-    x = self.new_binding()  # Can be true or false.
-    y = self.new_binding(ONLY_FALSE)
-    z = self.new_binding()  # Can be true or false.
-    c = frame_state._restrict_condition(self._node, [x, y, z], True)
-    self.check_binding("x=? | z=?", c.binding,
-                       x=x, y=y, z=z)
-
-  def test_restricted_to_dnf(self):
-    # DNF for a | (b & c)
-    a = self.new_binding()
-    b = self.new_binding()
-    c = self.new_binding()
-    dnf = [[a],
-           [b, c]]
-    x = self.new_binding()  # Compatible with everything
-    y = self.new_binding(FakeValue("DNF", dnf, False))  # Reduce to dnf
-    cond = frame_state._restrict_condition(self._node, [x, y], True)
-    self.check_binding("a=? | b=? c=? | x=?", cond.binding,
-                       a=a, b=b, c=c, x=x, y=y)
+  def test_some_restricted(self):
+    var = self._program.NewVariable()
+    x = var.AddBinding(AMBIGUOUS)  # Can be true or false.
+    y = var.AddBinding(ONLY_FALSE)
+    c = frame_state.restrict_condition(self._node, var, True)
+    self.check_binding("x=?", c.binding, x=x, y=y)
 
 
 if __name__ == "__main__":
