@@ -862,7 +862,7 @@ class VirtualMachine:
       n_kw = len(self._kw_names)
       posargs = args[:-n_kw]
       kw_vals = args[-n_kw:]
-      namedargs = {k: v for  k, v in zip(self._kw_names, kw_vals)}
+      namedargs = dict(zip(self._kw_names, kw_vals))
     else:
       posargs = args
       namedargs = {}
