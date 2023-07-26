@@ -335,6 +335,9 @@ class VirtualMachine:
     # Locals attached to the block graph
     self.block_env = block_environment.Environment()
 
+    # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
+    self._kw_names = ()
+
   @property
   def current_local_ops(self):
     return self.local_ops[self.frame.f_code.co_name]
@@ -845,6 +848,26 @@ class VirtualMachine:
     else:
       posargs = args
     state, func = state.pop()
+    with self._reset_overloads(func):
+      state, ret = self.call_function_with_state(
+          state, func, posargs, namedargs, starargs, starstarargs)
+    return state.push(ret)
+
+  def call_function_from_stack_311(self, state, num):
+    """Pop arguments for a function and call it."""
+    # We need a separate version of call_function_from_stack for 3.11+
+    state, args = state.popn(num)
+    state, func = state.pop()
+    if self._kw_names:
+      n_kw = len(self._kw_names)
+      posargs = args[:-n_kw]
+      kw_vals = args[-n_kw:]
+      namedargs = dict(zip(self._kw_names, kw_vals))
+    else:
+      posargs = args
+      namedargs = {}
+    starargs = starstarargs = None
+    self._kw_names = ()
     with self._reset_overloads(func):
       state, ret = self.call_function_with_state(
           state, func, posargs, namedargs, starargs, starstarargs)
@@ -2140,7 +2163,10 @@ class VirtualMachine:
     nontuple_seq = self.ctx.program.NewVariable()
     has_slurp = n_after > -1
     count = n_before + max(n_after, 0)
+    nondeterministic_iterable = False
     for b in abstract_utils.expand_type_parameter_instances(seq.bindings):
+      if b.data.full_name in ("builtins.set", "builtins.frozenset"):
+        nondeterministic_iterable = True
       tup = self._get_literal_sequence(b.data)
       if tup is not None:
         if has_slurp and len(tup) >= count:
@@ -2166,6 +2192,8 @@ class VirtualMachine:
     values = tuple(
         self.ctx.convert.build_content(value, discard_concrete_values=False)
         for value in zip(*options))
+    if len(values) > 1 and nondeterministic_iterable:
+      self.ctx.errorlog.nondeterministic_unpacking(self.frames)
     for value in reversed(values):
       if not value.bindings:
         # For something like
@@ -2308,10 +2336,12 @@ class VirtualMachine:
     return state.pop_and_discard()
 
   def byte_JUMP_IF_TRUE_OR_POP(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True, or_pop=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
+                            pop=vm_utils.PopBehavior.OR)
 
   def byte_JUMP_IF_FALSE_OR_POP(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False, or_pop=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
+                            pop=vm_utils.PopBehavior.OR)
 
   def byte_JUMP_IF_TRUE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True)
@@ -2320,17 +2350,19 @@ class VirtualMachine:
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=True)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
-    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_JUMP_FORWARD(self, state, op):
     self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
     return state
 
   def byte_JUMP_ABSOLUTE(self, state, op):
-    self.store_jump(op.target, state.forward_cfg_node("JumpForward"))
+    self.store_jump(op.target, state.forward_cfg_node("JumpAbsolute"))
     return state
 
   def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
@@ -2342,7 +2374,8 @@ class VirtualMachine:
     state = self._replace_abstract_exception(state, exc_type)
     state = state.push(self.ctx.convert.bool_values[None].to_variable(
         state.node))
-    return vm_utils.jump_if(state, op, self.ctx, pop=True, jump_if_val=False)
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
@@ -3164,9 +3197,9 @@ class VirtualMachine:
     return state
 
   def byte_PUSH_NULL(self, state, op):
-    # From docs: Used in the call sequence to match the NULL pushed by
-    # LOAD_METHOD for non-method calls.
-    # We currently don't push the NULL for LOAD_METHOD either.
+    # From docs: "Used in the call sequence to match the NULL pushed by
+    # LOAD_METHOD for non-method calls". We don't push the NULL in either case;
+    # see the comment under byte_LOAD_METHOD for more context.
     del op
     return state
 
@@ -3207,12 +3240,10 @@ class VirtualMachine:
     return state.swap(op.arg)
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_FALSE(state, op)
 
   def byte_POP_JUMP_FORWARD_IF_TRUE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_TRUE(state, op)
 
   def byte_COPY(self, state, op):
     del op
@@ -3260,15 +3291,16 @@ class VirtualMachine:
     return state
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx,
+                            jump_if_val=frame_state.NOT_NONE,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_FORWARD_IF_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=None,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_JUMP_BACKWARD_NO_INTERRUPT(self, state, op):
-    del op
+    self.store_jump(op.target, state.forward_cfg_node("JumpBackward"))
     return state
 
   def byte_MAKE_CELL(self, state, op):
@@ -3276,11 +3308,11 @@ class VirtualMachine:
     return state
 
   def byte_JUMP_BACKWARD(self, state, op):
-    del op
+    self.store_jump(op.target, state.forward_cfg_node("JumpBackward"))
     return state
 
   def byte_COPY_FREE_VARS(self, state, op):
-    del op
+    self.frame.copy_free_vars(op.arg)
     return state
 
   def byte_RESUME(self, state, op):
@@ -3294,26 +3326,24 @@ class VirtualMachine:
     return state
 
   def byte_CALL(self, state, op):
-    del op
-    return state
+    return self.call_function_from_stack_311(state, op.arg)
 
   def byte_KW_NAMES(self, state, op):
-    # No stack or type effects
-    del op
+    # Stores a list of kw names to be retrieved by CALL
+    self._kw_names = self.frame.f_code.co_consts[op.arg]
     return state
 
   def byte_POP_JUMP_BACKWARD_IF_NOT_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx,
+                            jump_if_val=frame_state.NOT_NONE,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_BACKWARD_IF_NONE(self, state, op):
-    del op
-    return state
+    return vm_utils.jump_if(state, op, self.ctx, jump_if_val=None,
+                            pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_BACKWARD_IF_FALSE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_FALSE(state, op)
 
   def byte_POP_JUMP_BACKWARD_IF_TRUE(self, state, op):
-    del op
-    return state
+    return self.byte_POP_JUMP_IF_TRUE(state, op)

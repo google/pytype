@@ -69,6 +69,10 @@ class ParserTest(parser_test_base.ParserTestBase):
         x = ... # type: int
        y""", 3, "unindent does not match")
 
+  def test_invalid_literal_annotation(self):
+    self.check_error("def f(x: False): ...", 1,
+                     "Unexpected literal: False")
+
   @unittest.skip("New parser does not support this")
   def test_type_on_next_line(self):
     self.check("""
@@ -288,6 +292,17 @@ class ParserTest(parser_test_base.ParserTestBase):
                      parser_test_base.IGNORE)
     base, = ast.Lookup("Bar").bases
     self.assertEqual(base, pytd.NamedType("foo.c.X"))
+
+  def test_keyword_import(self):
+    self.check("""
+      import importlib
+      my_module = importlib.import_module('await.break.in.global.or.yield')
+    """, """
+      import importlib
+      from typing import Any
+
+      my_module: Any
+    """)
 
   def test_duplicate_names(self):
     self.check_error("""

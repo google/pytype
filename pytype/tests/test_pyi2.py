@@ -110,6 +110,16 @@ class PYITest(test_base.BaseTest):
       def f(x) -> Callable[..., nothing]: ...
     """)
 
+  def test_keyword_import(self):
+    with self.DepTree([("foo.pyi", """
+      import importlib
+      my_module = importlib.import_module('regretting.decisions.in.naming')
+    """)]):
+      self.Check("""
+        from foo import my_module
+        print(my_module.whatever)
+      """)
+
 
 class PYITestPython3Feature(test_base.BaseTest):
   """Tests for PYI."""

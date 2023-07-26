@@ -3,6 +3,7 @@
 import abc
 import collections.abc
 import dataclasses
+import enum
 import itertools
 import logging
 import re
@@ -41,6 +42,13 @@ _BUILTIN_MATCHERS = (
     "bool", "bytearray", "bytes", "dict", "float", "frozenset", "int", "list",
     "set", "str", "tuple"
 )
+
+
+class PopBehavior(enum.Enum):
+  """Ways in which a JUMP_IF opcode may pop a value off the stack."""
+  NONE = enum.auto()  # does not pop
+  OR = enum.auto()  # pops when the jump is not taken
+  ALWAYS = enum.auto()  # always pops
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -324,6 +332,9 @@ def get_name_error_details(
 def log_opcode(op, state, frame, stack_size):
   """Write a multi-line log message, including backtrace and stack."""
   if not log.isEnabledFor(logging.INFO):
+    return
+  if isinstance(op, (opcodes.CACHE, opcodes.PRECALL)):
+    # Do not log NOP-like compiler optimisation opcodes.
     return
   indent = " > " * (stack_size - 1)
   stack_rep = repper(state.data_stack)
@@ -856,30 +867,36 @@ def load_closure_cell(state, op, check_bindings, ctx):
   return state.push(cell)
 
 
-def jump_if(state, op, ctx, pop=False, jump_if_val=False, or_pop=False):
+def jump_if(state, op, ctx, *, jump_if_val, pop=PopBehavior.NONE):
   """Implementation of various _JUMP_IF bytecodes.
 
   Args:
     state: Initial FrameState.
     op: An opcode.
     ctx: The current context.
-    pop: True if a value is popped off the stack regardless.
-    jump_if_val: True or False (indicates which value will lead to a jump).
-    or_pop: True if a value is popped off the stack only when the jump is
-        not taken.
+    jump_if_val: Indicates what value leads to a jump. The non-jump state is
+      reached by the value's negation. Use frame_state.NOT_NONE for `not None`.
+    pop: Whether and how the opcode pops a value off the stack.
   Returns:
     The new FrameState.
   """
-  assert not (pop and or_pop)
   # Determine the conditions.  Assume jump-if-true, then swap conditions
   # if necessary.
-  if pop:
+  if pop is PopBehavior.ALWAYS:
     state, value = state.pop()
   else:
     value = state.top()
-  jump, normal = frame_state.split_conditions(state.node, value)
-  if not jump_if_val:
-    jump, normal = normal, jump
+  if jump_if_val is None:
+    normal_val = frame_state.NOT_NONE
+  elif jump_if_val is frame_state.NOT_NONE:
+    normal_val = None
+  elif isinstance(jump_if_val, bool):
+    normal_val = not jump_if_val
+  else:
+    raise NotImplementedError(f"Unsupported jump value: {jump_if_val!r}")
+  jump = frame_state.restrict_condition(state.node, value, jump_if_val)
+  normal = frame_state.restrict_condition(state.node, value, normal_val)
+
   # Jump.
   if jump is not frame_state.UNSATISFIABLE:
     if jump:
@@ -892,7 +909,7 @@ def jump_if(state, op, ctx, pop=False, jump_if_val=False, or_pop=False):
   else:
     else_state = None
   # Don't jump.
-  if or_pop:
+  if pop is PopBehavior.OR:
     state = state.pop_and_discard()
   if normal is frame_state.UNSATISFIABLE:
     return state.set_why("unsatisfiable")

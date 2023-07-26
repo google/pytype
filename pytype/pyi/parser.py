@@ -24,6 +24,8 @@ from pytype.pytd.codegen import decorate
 # reexport as parser.ParseError
 ParseError = types.ParseError
 
+_UNKNOWN_IMPORT = "__unknown_import__"
+
 #------------------------------------------------------
 # imports
 
@@ -286,7 +288,8 @@ class Splice:
 
 
 def _is_valid_default(val):
-  return not val or types.is_any(val) or isinstance(val, types.Pyval)
+  return (not val or types.is_any(val) or isinstance(val, types.Pyval) or
+          val.name == "None")
 
 
 class _GeneratePytdVisitor(visitor.BaseVisitor):
@@ -312,6 +315,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     #   node = annotation_visitor.visit(node)
     # However, the AnnotationVisitor returns None if it does not trigger on the
     # root node it is passed, so call it via this method instead.
+    if isinstance(node, types.Pyval) and node.type != "str":
+      raise ParseError(f"Unexpected literal: {node.value!r}")
     ret = self.annotation_visitor.visit(node)
     return ret if ret is not None else node
 
@@ -514,6 +519,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self.convert_node_annotations(node)
     out = []
     value = node.value
+    is_unknown_import = getattr(value, "name", None) == _UNKNOWN_IMPORT
     for target in node.targets:
       if isinstance(target, astlib.Tuple):
         count = len(target.elts)
@@ -522,6 +528,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           raise ParseError(msg)
         for k, v in zip(target.elts, value.elts):
           out.append(self._assign(node, k, v))
+      elif is_unknown_import:
+        constant = pytd.Constant(target.id, pytd.AnythingType())
+        self.defs.add_alias_or_constant(constant)
+        out.append(constant)
       else:
         out.append(self._assign(node, target, value))
     return Splice(out)
@@ -679,6 +689,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       return self.defs.new_typed_dict(*node.args, node.keywords)
     elif self.defs.matches_type(node.func.id, "typing.NewType"):
       return self.defs.new_new_type(*node.args)
+    elif self.defs.matches_type(node.func.id, "importlib.import_module"):
+      return pytd.NamedType(_UNKNOWN_IMPORT)
     # Convert all other calls to NamedTypes; for example:
     # * typing.pyi uses things like
     #     List = _Alias()
