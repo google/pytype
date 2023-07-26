@@ -69,6 +69,10 @@ class ParserTest(parser_test_base.ParserTestBase):
         x = ... # type: int
        y""", 3, "unindent does not match")
 
+  def test_invalid_literal_annotation(self):
+    self.check_error("def f(x: False): ...", 1,
+                     "Unexpected literal: False")
+
   @unittest.skip("New parser does not support this")
   def test_type_on_next_line(self):
     self.check("""

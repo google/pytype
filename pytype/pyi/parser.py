@@ -315,6 +315,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     #   node = annotation_visitor.visit(node)
     # However, the AnnotationVisitor returns None if it does not trigger on the
     # root node it is passed, so call it via this method instead.
+    if isinstance(node, types.Pyval) and node.type != "str":
+      raise ParseError(f"Unexpected literal: {node.value!r}")
     ret = self.annotation_visitor.visit(node)
     return ret if ret is not None else node
 
