@@ -665,6 +665,22 @@ class MatchClassTest(test_base.BaseTest):
       def f(arg: A | B | C) -> int | str | bytes: ...
     """)
 
+  def test_instance_attribute(self):
+    self.Check("""
+      class Foo:
+        def __init__(self):
+          self.x = 42
+        @property
+        def y(self):
+          return self.x - 1
+      def f(x: Foo | str):
+        match x:
+          case Foo():
+            return x.y
+          case str():
+            return int(x)
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):

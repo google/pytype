@@ -3166,7 +3166,7 @@ class VirtualMachine:
       var_name = self._var_names.get(obj_var.id)
       if var_name:
         narrowed_type = self.ctx.join_variables(
-            state.node, [x.instantiate(state.node) for x in cls_var.data])
+            state.node, [self.init_class(state.node, x) for x in cls_var.data])
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     state = state.set_top(
         self.ctx.convert.bool_values[success].to_variable(state.node))
