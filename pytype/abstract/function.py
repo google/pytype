@@ -899,8 +899,7 @@ class AbstractReturnType(_ReturnType):
 
   def instantiate_parameter(self, node, param_name):
     param = self._type.get_formal_type_parameter(param_name)
-    _, param_instance = self._ctx.vm.init_class(node, param)
-    return param_instance
+    return self._ctx.vm.init_class(node, param)
 
 
 class PyTDReturnType(_ReturnType):
@@ -1029,7 +1028,7 @@ def call_function(
     elif _isinstance(func, "InterpreterFunction"):
       sig = func.signature_functions()[0].signature
       ret = sig.annotations.get("return", ctx.convert.unsolvable)
-      node, result = ctx.vm.init_class(node, ret)
+      result = ctx.vm.init_class(node, ret)
     else:
       result = ctx.new_unsolvable(node)
   else:

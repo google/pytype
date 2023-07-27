@@ -217,7 +217,7 @@ def add_member(node, cls, name, typ):
   else:
     # See test_attr.TestAttrib.test_repeated_default - keying on the name
     # prevents attributes from sharing the same default object.
-    _, instance = typ.ctx.vm.init_class(node, typ, extra_key=name)
+    instance = typ.ctx.vm.init_class(node, typ, extra_key=name)
   cls.members[name] = instance
 
 

@@ -443,13 +443,11 @@ class InterpreterFunction(_function_base.SignedFunction):
         not self.name.endswith(".__init__")):
       log.info("Maximum depth reached. Not analyzing %r", self.name)
       self._set_callself_maybe_missing_members()
-      if "return" in annotations:
-        ret_type = annotations["return"]
-        node, ret = self.ctx.vm.init_class(node, ret_type)
-        if self.is_coroutine():
-          ret = _instances.Coroutine(self.ctx, ret, node).to_variable(node)
-      else:
-        ret = self.ctx.new_unsolvable(node)
+      if "return" not in annotations:
+        return node, self.ctx.new_unsolvable(node)
+      ret = self.ctx.vm.init_class(node, annotations["return"])
+      if self.is_coroutine():
+        ret = _instances.Coroutine(self.ctx, ret, node).to_variable(node)
       return node, ret
 
     first_arg = sig.get_first_arg(callargs)

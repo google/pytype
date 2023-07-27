@@ -316,7 +316,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     return annotations
 
   def init_annotation(self, node, name, annot, container=None, extra_key=None):
-    node, value = self.ctx.vm.init_class(
+    value = self.ctx.vm.init_class(
         node, annot, container=container, extra_key=extra_key)
     for d in value.data:
       d.from_annotation = name
