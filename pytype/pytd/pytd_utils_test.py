@@ -1,13 +1,10 @@
 import textwrap
 
-from pytype.imports import pickle_utils
-from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.parse import parser_test_base
-from pytype.tests import test_utils
 
 import unittest
 
@@ -250,52 +247,6 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertEqual("def foo(x, y) -> Any: ...",
                      pytd_utils.Print(pytd_utils.DummyMethod("foo", "x", "y")))
 
-  def test_diff_same_pickle(self):
-    ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    with test_utils.Tempdir() as d:
-      filename = path_utils.join(d.path, "foo.pickled")
-      pickle_utils.StoreAst(ast, filename)
-      with open(filename, "rb") as fi:
-        data = fi.read()
-    named_pickles = [("foo", data)]
-    self.assertFalse(pytd_utils.DiffNamedPickles(named_pickles, named_pickles))
-
-  def test_diff_pickle_name(self):
-    ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    with test_utils.Tempdir() as d:
-      filename = path_utils.join(d.path, "foo.pickled")
-      pickle_utils.StoreAst(ast, filename)
-      with open(filename, "rb") as fi:
-        data = fi.read()
-    named_pickles1 = [("foo", data)]
-    named_pickles2 = [("bar", data)]
-    self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
-
-  def test_diff_pickle_ast(self):
-    ast1 = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    ast2 = ast1.Replace(type_params=(pytd.TypeParameter("T", (), None, None),))
-    with test_utils.Tempdir() as d:
-      data = []
-      for ast in (ast1, ast2):
-        filename = path_utils.join(d.path, "foo.pickled")
-        pickle_utils.StoreAst(ast, filename)
-        with open(filename, "rb") as fi:
-          data.append(fi.read())
-    named_pickles1 = [("foo", data[0])]
-    named_pickles2 = [("foo", data[1])]
-    self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
-
-  def test_diff_pickle_length(self):
-    ast = pytd.TypeDeclUnit("foo", (), (), (), (), ())
-    with test_utils.Tempdir() as d:
-      filename = path_utils.join(d.path, "foo.pickled")
-      pickle_utils.StoreAst(ast, filename)
-      with open(filename, "rb") as fi:
-        data = fi.read()
-    named_pickles1 = []
-    named_pickles2 = [("foo", data)]
-    self.assertTrue(pytd_utils.DiffNamedPickles(named_pickles1, named_pickles2))
-
   def test_asteq(self):
     # This creates two ASts that are equivalent but whose sources are slightly
     # different. The union types are different (int,str) vs (str,int) but the
@@ -348,22 +299,6 @@ class TestUtils(parser_test_base.ParserTest):
     self.assertTrue(pytd_utils.ASTeq(tree1, tree1))
     self.assertTrue(pytd_utils.ASTeq(tree2, tree1))
     self.assertTrue(pytd_utils.ASTeq(tree2, tree2))
-
-  def test_astdiff(self):
-    src1 = textwrap.dedent("""
-        a: int
-        b: str""").lstrip()
-    src2 = textwrap.dedent("""
-        a: int
-        b: float""").lstrip()
-    tree1 = parser.parse_string(src1, options=self.options)
-    tree2 = parser.parse_string(src2, options=self.options)
-    normalize = lambda diff: textwrap.dedent("\n".join(diff))
-    self.assertEqual(normalize(pytd_utils.ASTdiff(tree1, tree1)), src1)
-    self.assertEqual(normalize(pytd_utils.ASTdiff(tree2, tree2)), src2)
-    diff_pattern = r"(?s)- b.*\+ b"
-    self.assertRegex(normalize(pytd_utils.ASTdiff(tree1, tree2)), diff_pattern)
-    self.assertRegex(normalize(pytd_utils.ASTdiff(tree2, tree1)), diff_pattern)
 
   def test_type_builder(self):
     t = pytd_utils.TypeBuilder()

@@ -157,7 +157,6 @@ py_library(
     .printer
     .pytd_visitors
     pytype.utils
-    pytype.platform_utils.platform_utils
 )
 
 py_library(
@@ -378,10 +377,9 @@ py_test(
     .pytd_utils
     .visitors
     pytype.imports.imports
-    pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.parse.parser_test_base
-    pytype.tests.test_base
+    pytype.tests.test_utils
 )
 
 py_test(
