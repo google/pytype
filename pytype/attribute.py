@@ -501,7 +501,14 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             value = value.property_get(valself.AssignToNewVariable(node),
                                        abstract_utils.is_subclass(valself, cls))
           if isinstance(value, abstract.Property):
-            node, value = value.call(node, None, None)
+            try:
+              node, value = value.call(node, None, None)
+            except function.FailedFunctionCall as error:
+              # In normal circumstances, property calls should not fail. But in
+              # case one ever does, handle the failure gracefully.
+              self.ctx.errorlog.invalid_function_call(
+                  self.ctx.vm.stack(value), error)
+              value = self.ctx.new_unsolvable(node)
             final_values = value.data
           else:
             final_values = [value]

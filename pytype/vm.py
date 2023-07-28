@@ -481,9 +481,8 @@ class VirtualMachine:
     self.frame.current_opcode = None
     return state
 
-  def run_frame(self, frame, node, annotated_locals=None):
-    """Run a frame (typically belonging to a method)."""
-    self.push_frame(frame)
+  def _run_frame_blocks(self, frame, node, annotated_locals):
+    """Runs a frame's code blocks."""
     frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self.ctx)
     frame_name = frame.f_code.co_name
@@ -536,7 +535,16 @@ class VirtualMachine:
         state = state.forward_cfg_node("NewBlock")
         frame.states[op.next] = state.merge_into(frame.states.get(op.next))
     vm_utils.update_excluded_types(node, self.ctx)
-    self.pop_frame(frame)
+    return can_return, return_nodes
+
+  def run_frame(self, frame, node, annotated_locals=None):
+    """Run a frame (typically belonging to a method)."""
+    self.push_frame(frame)
+    try:
+      can_return, return_nodes = self._run_frame_blocks(
+          frame, node, annotated_locals)
+    finally:
+      self.pop_frame(frame)
     if not return_nodes:
       # Happens if the function never returns. (E.g. an infinite loop)
       assert not frame.return_variable.bindings
