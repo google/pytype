@@ -594,7 +594,7 @@ class Loader:
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
           if k in self._aliases[mod_ast.name]:
-            k = self._aliases[k]
+            k = self._aliases[mod_ast.name][k]
           while k not in self._modules:
             if "." not in k:
               break
