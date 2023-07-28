@@ -326,7 +326,8 @@ class CallTracer(vm.VirtualMachine):
           for child in v.instance_type_parameters.values():
             values.extend(child.data)
 
-  def init_class(self, node, cls, container=None, extra_key=None):
+  def init_class_and_forward_node(
+      self, node, cls, container=None, extra_key=None):
     """Instantiate a class, and also call __init__.
 
     Calling __init__ can be expensive, so this method caches its created
@@ -383,6 +384,9 @@ class CallTracer(vm.VirtualMachine):
       cache[key] = instance
     return node, instance
 
+  def init_class(self, node, cls, container=None, extra_key=None):
+    return self.init_class_and_forward_node(node, cls, container, extra_key)[-1]
+
   def _call_method(self, node, binding, method_name):
     node, method = self.ctx.attribute_handler.get_attribute(
         node, binding.data.cls, method_name, binding)
@@ -422,7 +426,7 @@ class CallTracer(vm.VirtualMachine):
     cls = val.data
     log.info("Analyzing class: %r", cls.full_name)
     self._analyzed_classes.add(cls)
-    node, instance = self.init_class(node, cls)
+    node, instance = self.init_class_and_forward_node(node, cls)
     good_instances = [b for b in instance.bindings if cls == b.data.cls]
     if not good_instances:
       # __new__ returned something that's not an instance of our class.

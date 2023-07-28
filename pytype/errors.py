@@ -1270,11 +1270,11 @@ class ErrorLog(ErrorLogBase):
       ctx = typ.data[0].ctx
       typ = ctx.annotation_utils.extract_annotation(node, typ, "assert_type",
                                                     ctx.vm.simple_stack())
-      node, typ = ctx.vm.init_class(node, typ)
-      wanted = [
-          self._print_as_actual_type(b.data)
-          for b in abstract_utils.expand_type_parameter_instances(typ.bindings)
-          if node.HasCombination([b])]
+      node, instance = ctx.vm.init_class_and_forward_node(node, typ)
+      instance_bindings = abstract_utils.expand_type_parameter_instances(
+          instance.bindings)
+      wanted = [self._print_as_actual_type(b.data) for b in instance_bindings
+                if node.HasCombination([b])]
       expected = self._join_printed_types(wanted)
     if actual != expected:
       details = f"Expected: {expected}\n  Actual: {actual}"

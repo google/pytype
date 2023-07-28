@@ -1,6 +1,19 @@
+Version 2023.07.28:
+
+Updates:
+* Flip the enable-cached-property flag to True. This flag is now a no-op and
+  will be removed in the next release.
+* Add bad_unpacking error for unordered types (set and frozenset) unpacking.
+* Support assigning to `importlib.import_module(...)` in pyi files.
+
+Bug fixes:
+* Raise a parser error when loading a pyi file with an invalid literal
+  annotation.
+* Use init_class instead of instantiate in MATCH_CLASS.
+
 Version 2023.07.21:
 
-Fixes:
+Bug fixes:
 * Include ParamSpecs in CollectTypeParameters.
 * Fill in TypeVar substitutions when matching against protocols.
 * Look up TypeVar values when retrieving an attribute from a ParameterizedClass.

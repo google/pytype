@@ -4,7 +4,6 @@ import collections
 import dataclasses
 import logging
 import os
-import pickle
 
 from typing import Dict, Iterable, List, Optional
 
@@ -196,7 +195,7 @@ class _ModuleMap:
         seen.add(m)
       if not m.pickle:
         continue
-      loaded_ast = pickle.loads(m.pickle)
+      loaded_ast = pickle_utils.LoadAst(m.pickle)
       deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
       loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
       assert m.module_name in self._modules

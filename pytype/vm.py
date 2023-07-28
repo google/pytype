@@ -788,7 +788,7 @@ class VirtualMachine:
   def init_class(self, node, cls, container=None, extra_key=None):
     # This dummy implementation is overwritten in tracer_vm.py.
     del cls, container, extra_key
-    return node, None
+    return NotImplemented
 
   def call_function_with_state(self, state, funcv, posargs, namedargs=None,
                                starargs=None, starstarargs=None,
@@ -1846,8 +1846,7 @@ class VirtualMachine:
       elif isinstance(e, abstract.Class) and any(
           base.full_name == "builtins.BaseException" or
           isinstance(base, abstract.AMBIGUOUS_OR_EMPTY) for base in e.mro):
-        node, instance = self.init_class(node, e)
-        value.PasteVariable(instance)
+        value.PasteVariable(self.init_class(node, e))
         types.append(e)
       elif isinstance(e, abstract.Union):
         stack.extend(e.options)
@@ -2701,9 +2700,8 @@ class VirtualMachine:
       ret_type = self.frame.allowed_returns
       self._check_return(state.node, ret,
                          ret_type.get_formal_type_parameter(abstract_utils.T))
-      _, send_var = self.init_class(
-          state.node,
-          ret_type.get_formal_type_parameter(abstract_utils.T2))
+      send_var = self.init_class(
+          state.node, ret_type.get_formal_type_parameter(abstract_utils.T2))
       return state.push(send_var)
     return state.push(self.ctx.new_unsolvable(state.node))
 
@@ -2779,7 +2777,7 @@ class VirtualMachine:
 
   def _set_frame_return(self, node, frame, var):
     if frame.allowed_returns is not None:
-      _, retvar = self.init_class(node, frame.allowed_returns)
+      retvar = self.init_class(node, frame.allowed_returns)
     else:
       retvar = var
     frame.return_variable.PasteVariable(retvar, node)
@@ -3050,10 +3048,9 @@ class VirtualMachine:
     # we check that at least one binding of var is compatible with typ?
     classes = []
     abstract_utils.flatten(class_spec, classes)
-    node, new_type = self.init_class(state.node,
-                                     self.ctx.convert.merge_values(classes))
-    state = state.change_cfg_node(node)
-    return self._store_new_var_in_local(state, var, new_type)
+    instance = self.init_class(
+        state.node, self.ctx.convert.merge_values(classes))
+    return self._store_new_var_in_local(state, var, instance)
 
   def _check_test_assert(self, state, func, args):
     """Narrow the types of variables based on test assertions."""
@@ -3169,7 +3166,7 @@ class VirtualMachine:
       var_name = self._var_names.get(obj_var.id)
       if var_name:
         narrowed_type = self.ctx.join_variables(
-            state.node, [x.instantiate(state.node) for x in cls_var.data])
+            state.node, [self.init_class(state.node, x) for x in cls_var.data])
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     state = state.set_top(
         self.ctx.convert.bool_values[success].to_variable(state.node))

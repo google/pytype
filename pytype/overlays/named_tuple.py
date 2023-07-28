@@ -493,8 +493,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
 
     # Add classvars to members
     for name, typ in classvars:
-      _, var = ctx.vm.init_class(ctx.root_node, typ)
-      cls.members[name] = var
+      cls.members[name] = ctx.vm.init_class(ctx.root_node, typ)
 
     # Add any methods defined in the class, potentially overwriting the
     # generated ones

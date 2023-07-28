@@ -854,7 +854,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     if typeguard_return:
       retvar = typeguard_return
     else:
-      node, retvar = self.ctx.vm.init_class(node, ret)
+      retvar = self.ctx.vm.init_class(node, ret)
     return node, retvar
 
   def get_special_attribute(self, node, name, valself):
@@ -1001,7 +1001,7 @@ class TupleClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=signatu
           # Constructing the tuple directly is faster than calling call_pytd.
           instance = _instance_base.Instance(
               self.ctx.convert.tuple_type, self.ctx)
-          node, contained_type = self.ctx.vm.init_class(
+          contained_type = self.ctx.vm.init_class(
               node, self.formal_type_parameters[abstract_utils.T])
           instance.merge_instance_type_parameter(
               node, abstract_utils.T, contained_type)

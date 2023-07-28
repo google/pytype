@@ -1095,7 +1095,7 @@ def match_class(
     # an AnnotationContainer rather than a Class
     cls = cls.base_cls
   if _var_maybe_unknown(obj_var):
-    _, instance_var = ctx.vm.init_class(node, cls)
+    instance_var = ctx.vm.init_class(node, cls)
     success = None
   else:
     # Check both whether any binding of `obj_var` matches, and whether all of

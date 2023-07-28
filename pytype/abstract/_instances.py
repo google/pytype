@@ -202,7 +202,7 @@ class BaseGenerator(_instance_base.Instance):
         if self.is_return_allowed:
           type_params.append(abstract_utils.V)
         for param_name in type_params:
-          _, param_var = self.ctx.vm.init_class(
+          param_var = self.ctx.vm.init_class(
               node, ret_type.get_formal_type_parameter(param_name))
           self.merge_instance_type_parameter(node, param_name, param_var)
       else:

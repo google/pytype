@@ -11,6 +11,12 @@ _PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
 _PICKLE_RECURSION_LIMIT_AST = 40000
 
 
+def LoadAst(data):
+  """Load data that has been read from a pickled file."""
+  # This exists to consolidate all uses of pickle into one module.
+  return pickle.loads(data)
+
+
 class LoadPickleError(Exception):
   """Errors when loading a pickled pytd file."""
 

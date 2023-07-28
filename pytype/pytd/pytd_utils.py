@@ -11,11 +11,7 @@ locally or within a larger repository.
 # pylint: disable=invalid-name
 
 import collections
-import difflib
-import io
 import itertools
-import pickle
-import pickletools
 import re
 
 from pytype import utils
@@ -333,44 +329,14 @@ class OrderedSet(dict):
     self[item] = None
 
 
-def ASTeq(ast1, ast2):
+def ASTeq(ast1: pytd.TypeDeclUnit, ast2: pytd.TypeDeclUnit):
+  # pytd.TypeDeclUnit does equality by ID, so we need a helper in order to do
+  # by-value equality.
   return (ast1.constants == ast2.constants and
           ast1.type_params == ast2.type_params and
           ast1.classes == ast2.classes and
           ast1.functions == ast2.functions and
           ast1.aliases == ast2.aliases)
-
-
-def ASTdiff(ast1, ast2):
-  return difflib.ndiff(Print(ast1).splitlines(), Print(ast2).splitlines())
-
-
-def DiffNamedPickles(named_pickles1, named_pickles2):
-  """Diff two lists of (name, pickled_module)."""
-  len1, len2 = len(named_pickles1), len(named_pickles2)
-  if len1 != len2:
-    return ["different number of pyi files: %d, %d" % (len1, len2)]
-  diff = []
-  for (name1, pickle1), (name2, pickle2) in zip(named_pickles1, named_pickles2):
-    if name1 != name2:
-      diff.append(f"different ordering of pyi files: {name1}, {name2}")
-    elif pickle1 != pickle2:
-      ast1, ast2 = pickle.loads(pickle1), pickle.loads(pickle2)
-      if ASTeq(ast1.ast, ast2.ast):
-        diff.append(f"asts match but pickles differ: {name1}")
-        p1 = io.StringIO()
-        p2 = io.StringIO()
-        pickletools.dis(pickle1, out=p1)
-        pickletools.dis(pickle2, out=p2)
-        diff.extend(difflib.unified_diff(
-            p1.getvalue().splitlines(),
-            p2.getvalue().splitlines()))
-      else:
-        diff.append(f"asts differ: {name1}")
-        diff.append("-" * 50)
-        diff.extend(ASTdiff(ast1.ast, ast2.ast))
-        diff.append("-" * 50)
-  return diff
 
 
 def GetTypeParameters(node):
