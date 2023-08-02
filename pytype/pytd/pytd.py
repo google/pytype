@@ -250,6 +250,7 @@ class Function(Node):
   signatures: Tuple['Signature', ...]
   kind: MethodKind
   flags: MethodFlag = MethodFlag.NONE
+  decorators: Tuple[Alias, ...] = ()
 
   @property
   def is_abstract(self):
