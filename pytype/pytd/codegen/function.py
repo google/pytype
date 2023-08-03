@@ -258,8 +258,8 @@ class _DecoratedFunction:
 
 
 def merge_method_signatures(
+    defs,
     name_and_sigs: List[NameAndSig],
-    check_unhandled_decorator: bool = False
 ) -> List[pytd.Function]:
   """Group the signatures by name, turning each group into a function."""
   functions = {}
@@ -288,8 +288,6 @@ def merge_method_signatures(
         sig = fn.properties.setter or fn.properties.deleter
         assert sig is not None
         fn.sigs = [sig.Replace(return_type=pytd.AnythingType())]
-    elif fn.decorator and check_unhandled_decorator:
-      raise ValueError(f"Unhandled decorator: {fn.decorator}")
     else:
       # Other decorators do not affect the kind
       kind = pytd.MethodKind.METHOD
@@ -300,5 +298,11 @@ def merge_method_signatures(
       flags |= pytd.MethodFlag.COROUTINE
     if fn.is_final:
       flags |= pytd.MethodFlag.FINAL
-    methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags))
+    if fn.decorator and fn.decorator not in {"staticmethod", "classmethod"}:
+      qualified_dec = defs.resolve_type(fn.decorator)
+      decorator = pytd.Alias(fn.decorator, qualified_dec)
+      decorators = (decorator,)
+    else:
+      decorators = ()
+    methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags, decorators))
   return methods

@@ -258,18 +258,16 @@ class _ToTypeVisitor(Visitor):
 
   def __init__(self, allow_singletons):
     super().__init__()
-    self._in_alias = False
+    self._in_alias = 0
     self._in_literal = 0
     self.allow_singletons = allow_singletons
     self.allow_functions = False
 
-  def EnterAlias(self, _):
-    assert not self._in_alias
-    self._in_alias = True
+  def EnterAlias(self, node):
+    self._in_alias += 1
 
   def LeaveAlias(self, _):
-    assert self._in_alias
-    self._in_alias = False
+    self._in_alias -= 1
 
   def EnterLiteral(self, _):
     self._in_literal += 1
@@ -370,10 +368,14 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     self._module_map = module_map
     self._module_alias_map = module_alias_map or {}
     self.name = self_name
-    self._alias_name = None
+    self._alias_names = []
     self._in_generic_type = 0
     self._star_imports = set()
     self._unit = module_map.get(self_name)
+
+  @property
+  def _alias_name(self):
+    return self._alias_names[-1] if self._alias_names else None
 
   def _ResolveUsingGetattr(self, module_name, module):
     """Try to resolve an identifier using the top level __getattr__ function."""
@@ -403,15 +405,13 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
           return imported_alias
     return None
 
-  def EnterAlias(self, t):
-    super().EnterAlias(t)
-    assert not self._alias_name
-    self._alias_name = t.name
+  def EnterAlias(self, node):
+    super().EnterAlias(node)
+    self._alias_names.append(node.name)
 
-  def LeaveAlias(self, t):
-    super().LeaveAlias(t)
-    assert self._alias_name
-    self._alias_name = None
+  def LeaveAlias(self, node):
+    super().LeaveAlias(node)
+    self._alias_names.pop()
 
   def EnterGenericType(self, _):
     self._in_generic_type += 1
@@ -464,7 +464,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         if an identifier in a module isn't a class.
     """
     if t.name in self._module_map:
-      if self._alias_name and "." in self._alias_name:
+      if self._alias_name and "." in self._alias_name:  # pylint: disable=unsupported-membership-test
         # Module aliases appear only in asts that use fully-qualified names.
         return pytd.Module(name=self._alias_name, module_name=t.name)
       else:

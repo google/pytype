@@ -358,8 +358,8 @@ class NoReturn(abstract.Singleton):
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
-  def __init__(self, name, signatures, kind, ctx):
-    super().__init__(name, signatures, kind, ctx)
+  def __init__(self, name, signatures, kind, decorators, ctx):
+    super().__init__(name, signatures, kind, decorators, ctx)
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
     self._name_arg_name = signature.param_names[0]
@@ -557,6 +557,15 @@ class DataclassTransform(abstract.SimpleValue):
   def call(self, node, func, args, alias_map=None):
     del func, alias_map  # unused
     arg = args.posargs[0]
+    for d in arg.data:
+      if isinstance(d, (abstract.Class, abstract.Function)):
+        d.decorators.append("typing.dataclass_transform")
+      elif isinstance(d, abstract.AMBIGUOUS_OR_EMPTY):
+        pass
+      else:
+        message = "Can only apply dataclass_transform to a class or function."
+        self.ctx.errorlog.dataclass_error(self.ctx.vm.frames, details=message)
+
     return node, arg
 
 

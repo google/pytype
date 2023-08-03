@@ -394,7 +394,8 @@ class Converter(utils.ContextWeakrefMixin):
   def convert_pytd_function(self, pytd_func, factory=abstract.PyTDFunction):
     sigs = [abstract.PyTDSignature(pytd_func.name, sig, self.ctx)
             for sig in pytd_func.signatures]
-    return factory(pytd_func.name, sigs, pytd_func.kind, self.ctx)
+    return factory(
+        pytd_func.name, sigs, pytd_func.kind, pytd_func.decorators, self.ctx)
 
   def constant_to_var(self, pyval, subst=None, node=None, source_sets=None,
                       discard_concrete_values=False):

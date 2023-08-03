@@ -122,11 +122,11 @@ class PyTDFunction(_function_base.Function):
     if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
       pyval = pyval.type
     f = ctx.convert.constant_to_value(pyval, {}, ctx.root_node)
-    self = cls(name, f.signatures, pyval.kind, ctx)
+    self = cls(name, f.signatures, pyval.kind, pyval.decorators, ctx)
     self.module = module
     return self
 
-  def __init__(self, name, signatures, kind, ctx):
+  def __init__(self, name, signatures, kind, decorators, ctx):
     super().__init__(name, ctx)
     assert signatures
     self.kind = kind
@@ -144,6 +144,7 @@ class PyTDFunction(_function_base.Function):
     for sig in signatures:
       sig.function = self
       sig.name = self.name
+    self.decorators = [d.type.name for d in decorators]
 
   def property_get(self, callself, is_class=False):
     if self.kind == pytd.MethodKind.STATICMETHOD:

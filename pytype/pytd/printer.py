@@ -249,6 +249,18 @@ class PrintVisitor(base_visitor.Visitor):
         node.type, (pytd.NamedType, pytd.ClassType, pytd.LateType)
     ) and "." in node.type.name
 
+  def _ProcessDecorators(self, node):
+    # Our handling of class and function decorators is a bit hacky (see
+    # output.py); this makes sure that typing classes read in directly from a
+    # pyi file and then reemitted (e.g. in assertTypesMatchPytd) have their
+    # required module imports handled correctly.
+    decorators = []
+    for d in node.decorators:
+      decorators.append("@" + self.VisitNamedType(d))
+      if d.type.name.startswith("typing."):
+        self.VisitNamedType(d.type)
+    return decorators
+
   def EnterTypeDeclUnit(self, unit):
     self._unit = unit
     definitions = (unit.classes + unit.functions + unit.constants +
@@ -410,15 +422,7 @@ class PrintVisitor(base_visitor.Visitor):
       slots = [self.INDENT + f"__slots__ = [{slots_str}]"]
     else:
       slots = []
-    decorators = ["@" + self.VisitNamedType(d)
-                  for d in self.old_node.decorators]
-    # Our handling of class decorators is a bit hacky (see output.py); this
-    # makes sure that typing classes read in directly from a pyi file and then
-    # reemitted (e.g. in assertTypesMatchPytd) have their required module
-    # imports handled correctly.
-    for d in self.old_node.decorators:
-      if d.type.name.startswith("typing."):
-        self.VisitNamedType(d.type)
+    decorators = self._ProcessDecorators(self.old_node)
     if node.classes or node.methods or node.constants or slots:
       # We have multiple methods, and every method has multiple signatures
       # (i.e., the method string will have multiple lines). Combine this into
@@ -439,7 +443,11 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""
     function_name = node.name
-    decorators = ""
+    if self.old_node.decorators:
+      decorators = self._ProcessDecorators(self.old_node)
+      decorators = "\n".join(decorators) + "\n"
+    else:
+      decorators = ""
     if node.is_final:
       decorators += "@" + self._FromTyping("final") + "\n"
     if (node.kind == pytd.MethodKind.STATICMETHOD and

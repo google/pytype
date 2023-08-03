@@ -36,6 +36,7 @@ from pytype.abstract import mixin
 from pytype.blocks import blocks
 from pytype.blocks import process_blocks
 from pytype.directors import directors
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib
 from pytype.pyc import loadmarshal
@@ -804,6 +805,12 @@ class VirtualMachine:
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
+    for f in funcv.data:
+      if isinstance(f, abstract.Function):
+        if "typing.dataclass_transform" in f.decorators:
+          func = dataclass_overlay.Dataclass.transform(self.ctx, f)
+          funcv = func.to_variable(state.node)
+          break
     args = function.Args(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
         starstarargs=starstarargs)

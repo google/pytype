@@ -369,7 +369,7 @@ class Definitions:
     args = [("self", pytd.AnythingType()), ("val", typ)]
     ret = pytd.NamedType("NoneType")
     methods = function.merge_method_signatures(
-        [function.NameAndSig.make("__init__", args, ret)])
+        self, [function.NameAndSig.make("__init__", args, ret)])
     cls_name = escape.pack_newtype_base_class(
         name, len(self.generated_classes[name]))
     cls = pytd.Class(name=cls_name,
@@ -724,7 +724,8 @@ class Definitions:
 
     bases = [p for p in bases if not isinstance(p, pytd.NothingType)]
     methods = self._adjust_self_var(
-        fully_qualified_class_name, function.merge_method_signatures(methods))
+        fully_qualified_class_name,
+        function.merge_method_signatures(self, methods))
     if not bases and class_name not in ["classobj", "object"]:
       # A bases-less class inherits from classobj in Python 2 and from object
       # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we
@@ -806,7 +807,7 @@ class Definitions:
     generated_classes = sum(self.generated_classes.values(), [])
 
     classes = generated_classes + classes
-    functions = function.merge_method_signatures(functions)
+    functions = function.merge_method_signatures(self, functions)
     _check_module_functions(functions)
 
     name_to_class = {c.name: c for c in classes}
