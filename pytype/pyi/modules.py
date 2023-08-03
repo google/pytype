@@ -5,9 +5,11 @@ from typing import Any
 
 from pytype import file_utils
 from pytype import module_utils
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import types
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
+from pytype.pytd.parse import parser_constants
+
+_ParseError = types.ParseError
 
 
 @dataclasses.dataclass
@@ -39,15 +41,15 @@ class Module:
       # Generated from "from . import foo" - see parser.yy
       prefix, _, name = orig_name.partition("__PACKAGE__.")
       if prefix:
-        raise ParseError(f"Cannot resolve import: {orig_name}")
+        raise _ParseError(f"Cannot resolve import: {orig_name}")
       return f"{self.package_name}.{name}"
     elif "__PARENT__." in orig_name:
       # Generated from "from .. import foo" - see parser.yy
       prefix, _, name = orig_name.partition("__PARENT__.")
       if prefix:
-        raise ParseError(f"Cannot resolve import: {orig_name}")
+        raise _ParseError(f"Cannot resolve import: {orig_name}")
       if not self.parent_name:
-        raise ParseError(
+        raise _ParseError(
             f"Cannot resolve relative import ..: Package {self.package_name} "
             "has no parent"
         )
@@ -65,7 +67,7 @@ class Module:
     if orig_name.startswith("."):
       name = module_utils.get_absolute_name(self.package_name, orig_name)
       if name is None:
-        raise ParseError(
+        raise _ParseError(
             f"Cannot resolve relative import {orig_name.rsplit('.', 1)[0]}")
       return name
     return orig_name

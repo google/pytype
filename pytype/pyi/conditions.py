@@ -4,7 +4,7 @@ import sys
 from typing import Optional, Tuple, Union
 
 from pytype.ast import visitor as ast_visitor
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import types
 from pytype.pytd import slots as cmp_slots
 
 # pylint: disable=g-import-not-at-top
@@ -13,6 +13,8 @@ if sys.version_info >= (3, 8):
 else:
   from typed_ast import ast3
 # pylint: enable=g-import-not-at-top
+
+_ParseError = types.ParseError
 
 
 class ConditionEvaluator(ast_visitor.BaseVisitor):
@@ -51,28 +53,28 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
       if key is None:
         key = slice(None, None, None)
       if isinstance(key, int) and not isinstance(value, int):
-        raise ParseError(
+        raise _ParseError(
             "an element of sys.version_info must be compared to an integer")
       if isinstance(key, slice) and not _is_int_tuple(value):
-        raise ParseError(
+        raise _ParseError(
             "sys.version_info must be compared to a tuple of integers")
       try:
         actual = self._options.python_version[key]
       except IndexError as e:
-        raise ParseError(str(e)) from e
+        raise _ParseError(str(e)) from e
       if isinstance(key, slice):
         actual = _three_tuple(actual)
         value = _three_tuple(value)
     elif name == "sys.platform":
       if not isinstance(value, str):
-        raise ParseError("sys.platform must be compared to a string")
+        raise _ParseError("sys.platform must be compared to a string")
       valid_cmps = (cmp_slots.EQ, cmp_slots.NE)
       if op not in valid_cmps:
-        raise ParseError(
+        raise _ParseError(
             "sys.platform must be compared using %s or %s" % valid_cmps)
       actual = self._options.platform
     else:
-      raise ParseError(f"Unsupported condition: {name!r}.")
+      raise _ParseError(f"Unsupported condition: {name!r}.")
     return cmp_slots.COMPARES[op](actual, value)
 
   def fail(self, name=None):
@@ -81,7 +83,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     else:
       msg = "Unsupported condition. "
     msg += "Supported checks are sys.platform and sys.version_info"
-    raise ParseError(msg)
+    raise _ParseError(msg)
 
   def visit_Attribute(self, node):
     if not isinstance(node.value, ast3.Name):
@@ -121,13 +123,13 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     elif isinstance(node.op, ast3.And):
       return all(node.values)
     else:
-      raise ParseError(f"Unexpected boolean operator: {node.op}")
+      raise _ParseError(f"Unexpected boolean operator: {node.op}")
 
   def visit_UnaryOp(self, node):
     if isinstance(node.op, ast3.USub) and isinstance(node.operand, int):
       return -node.operand
     else:
-      raise ParseError(f"Unexpected unary operator: {node.op}")
+      raise _ParseError(f"Unexpected unary operator: {node.op}")
 
   def visit_Compare(self, node):
     if isinstance(node.left, tuple):

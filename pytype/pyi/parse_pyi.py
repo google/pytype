@@ -4,8 +4,10 @@ import sys
 
 from pytype import module_utils
 from pytype.pyi import parser
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
+from pytype.pyi import types
 from pytype.pytd import pytd_utils
+
+_ParseError = types.ParseError
 
 
 if __name__ == '__main__':
@@ -17,7 +19,7 @@ if __name__ == '__main__':
 
   try:
     out, _ = parser.parse_pyi_debug(src, filename, module_name)
-  except ParseError as e:
+  except _ParseError as e:
     print(e)
     sys.exit(1)
 

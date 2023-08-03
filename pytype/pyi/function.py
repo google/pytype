@@ -6,10 +6,11 @@ import textwrap
 from typing import Any, List, Optional
 
 from pytype.pyi import types
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function
+
+_ParseError = types.ParseError
 
 # pylint: disable=g-import-not-at-top
 if sys.version_info >= (3, 8):
@@ -89,7 +90,7 @@ class NameAndSig(pytd_function.NameAndSig):
     decorators -= (abstracts | coroutines | overload | final | ignored)
     # TODO(mdemello): do we need this limitation?
     if len(decorators) > 1:
-      raise ParseError(f"Too many decorators for {name}")
+      raise _ParseError(f"Too many decorators for {name}")
     decorator, = decorators if decorators else (None,)
 
     exceptions = []
@@ -112,9 +113,9 @@ class NameAndSig(pytd_function.NameAndSig):
             Only `raise` statements and type mutations are valid
         """).lstrip()
         if isinstance(x, ast3.AST):
-          raise ParseError(msg).at(x)
+          raise _ParseError(msg).at(x)
         else:
-          raise ParseError(msg)
+          raise _ParseError(msg)
 
     # exceptions
     sig = _pytd_signature(function, is_async, exceptions=exceptions)
@@ -128,9 +129,9 @@ class NameAndSig(pytd_function.NameAndSig):
       try:
         sig = sig.Visit(mutator)
       except NotImplementedError as e:
-        raise ParseError(str(e)) from e
+        raise _ParseError(str(e)) from e
       if not mutator.successful:
-        raise ParseError(f"No parameter named {mutator.name!r}")
+        raise _ParseError(f"No parameter named {mutator.name!r}")
 
     return cls(name, sig, decorator, is_abstract, is_coroutine, is_final,
                is_overload)

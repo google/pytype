@@ -10,7 +10,6 @@ from pytype import utils
 from pytype.pyi import classdef
 from pytype.pyi import metadata
 from pytype.pyi import types
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import escape
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -33,8 +32,10 @@ else:
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
+_ParseError = types.ParseError
 
-class StringParseError(ParseError):
+
+class StringParseError(_ParseError):
   pass
 
 
@@ -59,18 +60,18 @@ def _split_definitions(defs: List[Any]):
       aliases.append(d)
     elif isinstance(d, types.SlotDecl):
       if slots is not None:
-        raise ParseError("Duplicate __slots__ declaration")
+        raise _ParseError("Duplicate __slots__ declaration")
       slots = d.slots
     elif isinstance(d, types.Ellipsis):
       pass
     elif isinstance(d, ast3.Expr):
-      raise ParseError("Unexpected expression").at(d)
+      raise _ParseError("Unexpected expression").at(d)
     else:
       msg = "Unexpected definition"
       lineno = None
       if isinstance(d, ast3.AST):
         lineno = getattr(d, "lineno", None)
-      raise ParseError(msg, line=lineno)
+      raise _ParseError(msg, line=lineno)
   return constants, functions, aliases, slots, classes
 
 
@@ -163,9 +164,9 @@ def pytd_literal(
         if isinstance(t, pytd.Literal):
           literal_parameters.append(t)
         else:
-          raise ParseError(f"Literal[{t}] not supported")
+          raise _ParseError(f"Literal[{t}] not supported")
     else:
-      raise ParseError(f"Literal[{p}] not supported")
+      raise _ParseError(f"Literal[{p}] not supported")
   return pytd_utils.JoinTypes(literal_parameters)
 
 
@@ -179,13 +180,13 @@ def _convert_annotated(x):
     fn, posargs, kwargs = x
     return metadata.call_to_annotation(fn, posargs=posargs, kwargs=kwargs)
   else:
-    raise ParseError(f"Cannot convert metadata {x}")
+    raise _ParseError(f"Cannot convert metadata {x}")
 
 
 def pytd_annotated(parameters: List[Any]) -> pytd.Type:
   """Create a pytd.Annotated."""
   if len(parameters) < 2:
-    raise ParseError(
+    raise _ParseError(
         "typing.Annotated takes at least two parameters: "
         "Annotated[type, annotation, ...].")
   typ, *annotations = parameters
@@ -258,7 +259,7 @@ class _VerifyMutators(visitors.Visitor):
         fn = pytd_utils.Print(self.current_function)
         msg = "Type parameter(s) {{{}}} not in scope in\n\n{}".format(
             ", ".join(sorted(extra)), fn)
-        raise ParseError(msg)
+        raise _ParseError(msg)
 
 
 class _ContainsAnyType(visitors.Visitor):
@@ -355,7 +356,7 @@ class Definitions:
     if isinstance(alias_or_constant, pytd.Constant):
       self.constants.append(alias_or_constant)
     elif isinstance(alias_or_constant, types.SlotDecl):
-      raise ParseError("__slots__ only allowed on the class level")
+      raise _ParseError("__slots__ only allowed on the class level")
     elif isinstance(alias_or_constant, pytd.Alias):
       name, value = alias_or_constant.name, alias_or_constant.type
       self.type_map[name] = value
@@ -418,10 +419,10 @@ class Definitions:
     processed_keywords = []
     for k in keywords:
       if k.arg != "total":
-        raise ParseError(f"Unexpected kwarg {k.arg!r} passed to TypedDict")
+        raise _ParseError(f"Unexpected kwarg {k.arg!r} passed to TypedDict")
       if (not isinstance(k.value, types.Pyval) or
           not isinstance(k.value.value, bool)):
-        raise ParseError(
+        raise _ParseError(
             f"Illegal value {k.value!r} for 'total' kwarg to TypedDict")
       processed_keywords.append((k.arg, k.value.to_pytd_literal()))
     constants = tuple(pytd.Constant(k, v) for k, v in items.items())
@@ -441,8 +442,8 @@ class Definitions:
   def _add_type_variable(self, name, tvar, typename, pytd_type):
     """Add a type variable definition, `name = TypeName(name, args)`."""
     if name != tvar.name:
-      raise ParseError(f"{typename} name needs to be {tvar.name!r} "
-                       f"(not {name!r})")
+      raise _ParseError(f"{typename} name needs to be {tvar.name!r} "
+                        f"(not {name!r})")
     bound = tvar.bound
     if isinstance(bound, str):
       bound = pytd.NamedType(bound)
@@ -541,7 +542,7 @@ class Definitions:
              p.type == "str" and p.value for p in parameters):
         error_cls = StringParseError
       else:
-        error_cls = ParseError
+        error_cls = _ParseError
       parameters = ", ".join(
           p.repr_str() if isinstance(p, types.Pyval) else "_"
           for p in parameters)
@@ -599,7 +600,7 @@ class Definitions:
         any(p is self.ELLIPSIS for p in parameters)):
       # TODO(b/217789659): We can only check builtin and typing names for now,
       # since `...` can fill in for a ParamSpec.
-      raise ParseError("Unexpected ellipsis parameter")
+      raise _ParseError("Unexpected ellipsis parameter")
     parameters = self._remove_unsupported_features(parameters)
     if arg_is_paramspec:
       # Hack - Callable needs an extra arg for paramspecs
@@ -660,18 +661,18 @@ class Definitions:
         resolved_type = visitors.MaybeSubstituteParameters(
             base_type, parameters)
       except ValueError as e:
-        raise ParseError(str(e)) from e
+        raise _ParseError(str(e)) from e
       if resolved_type:
         return resolved_type
     if parameters is not None:
       if (len(parameters) > 1 and isinstance(base_type, pytd.NamedType) and
           base_type.name == "typing.Optional"):
-        raise ParseError(f"Too many options to {base_type.name}")
+        raise _ParseError(f"Too many options to {base_type.name}")
       return self._parameterized_type(base_type, parameters)
     else:
       if (isinstance(base_type, pytd.NamedType) and
           base_type.name in _TYPING_SETS):
-        raise ParseError(f"Missing options to {base_type.name}")
+        raise _ParseError(f"Missing options to {base_type.name}")
       return base_type
 
   def build_class(
@@ -832,7 +833,7 @@ class Definitions:
                   for name, count in collections.Counter(all_names).items()
                   if count >= 2]
     if duplicates:
-      raise ParseError(
+      raise _ParseError(
           "Duplicate top-level identifier(s): " + ", ".join(duplicates))
 
     return pytd.TypeDeclUnit(name=None,
@@ -855,11 +856,11 @@ def _check_module_functions(functions):
   # module.__getattr__ should have a unique signature
   g = [f for f in functions if f.name == "__getattr__"]
   if g and len(g[0].signatures) > 1:
-    raise ParseError("Multiple signatures for module __getattr__")
+    raise _ParseError("Multiple signatures for module __getattr__")
 
   # module-level functions cannot be properties
   properties = [x for x in functions if x.kind == pytd.MethodKind.PROPERTY]
   if properties:
     prop_names = ", ".join(p.name for p in properties)
-    raise ParseError(
+    raise _ParseError(
         "Module-level functions with property decorators: " + prop_names)
