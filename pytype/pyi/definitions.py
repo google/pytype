@@ -2,9 +2,10 @@
 
 import collections
 import dataclasses
+import itertools
 import sys
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
 from pytype import utils
 from pytype.pyi import classdef
@@ -34,9 +35,22 @@ _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
 _ParseError = types.ParseError
 
+_NodeT = TypeVar("_NodeT", bound=pytd.Node)
+
 
 class StringParseError(_ParseError):
   pass
+
+
+class _DuplicateDefsError(Exception):
+
+  def __init__(self, duplicates):
+    super().__init__()
+    self._duplicates = duplicates
+
+  def to_parse_error(self, namespace):
+    return _ParseError(f"Duplicate attribute name(s) in {namespace}: " +
+                       ", ".join(self._duplicates))
 
 
 def _split_definitions(defs: List[Any]):
@@ -684,8 +698,13 @@ class Definitions:
     keywords = classdef.get_keywords(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
-    # Make sure we don't have duplicate definitions.
-    classdef.check_for_duplicate_defs(methods, constants, aliases)
+    # De-duplicate definitions. Note that for methods, we want to keep
+    # duplicates in order to handle overloads.
+    try:
+      _, constants, aliases = _check_for_duplicate_defs(
+          methods, constants, aliases)
+    except _DuplicateDefsError as e:
+      raise e.to_parse_error(namespace=f"class {class_name}") from e
 
     if aliases:
       vals_dict = {val.name: val
@@ -825,21 +844,16 @@ class Definitions:
         assert isinstance(t, pytd.Alias)
         aliases.append(t)
 
-    all_names = ([f.name for f in functions] +
-                 [c.name for c in constants] +
-                 [c.name for c in self.type_params] +
-                 [c.name for c in classes] +
-                 [c.name for c in aliases])
-    duplicates = [name
-                  for name, count in collections.Counter(all_names).items()
-                  if count >= 2]
-    if duplicates:
-      raise _ParseError(
-          "Duplicate top-level identifier(s): " + ", ".join(duplicates))
+    try:
+      functions, constants, type_params, classes, aliases = (
+          _check_for_duplicate_defs(
+              functions, constants, self.type_params, classes, aliases))
+    except _DuplicateDefsError as e:
+      raise e.to_parse_error(namespace="module") from e
 
     return pytd.TypeDeclUnit(name=None,
                              constants=tuple(constants),
-                             type_params=tuple(self.type_params),
+                             type_params=tuple(type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
                              aliases=tuple(aliases))
@@ -865,3 +879,23 @@ def _check_module_functions(functions):
     prop_names = ", ".join(p.name for p in properties)
     raise _ParseError(
         "Module-level functions with property decorators: " + prop_names)
+
+
+def _remove_duplicates(nodes: List[_NodeT]) -> List[_NodeT]:
+  # This will keep the *last* node with a given name, while preserving order.
+  unique_nodes = {node.name: node for node in nodes}
+  return list(unique_nodes.values())
+
+
+def _check_for_duplicate_defs(*defs: List[_NodeT]) -> List[List[_NodeT]]:
+  """Check a class's list of definitions for duplicates."""
+  # Duplicates within the same list of definitions are fine, since the list is
+  # ordered. The last one wins. However, we will raise an error if, e.g., we
+  # have a function and a constant with the same name.
+  unique_defs = [_remove_duplicates(d) for d in defs]
+  all_names = [node.name for node in itertools.chain.from_iterable(unique_defs)]
+  duplicates = [name for name, count in collections.Counter(all_names).items()
+                if count >= 2]
+  if duplicates:
+    raise _DuplicateDefsError(duplicates)
+  return unique_defs
