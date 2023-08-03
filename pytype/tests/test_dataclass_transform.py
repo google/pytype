@@ -33,6 +33,24 @@ class TestDataclassTransform(test_base.BaseTest):
       dataclass_transform()(x) # dataclass-error
     """)
 
+  def test_py_function(self):
+    self.CheckWithErrors("""
+      from typing_extensions import dataclass_transform  # not-supported-yet
+
+      # NOTE: The decorator overrides the function body and makes `dc` a
+      # dataclass decorator.
+      @dataclass_transform()
+      def dc(cls):
+        return cls
+
+      @dc
+      class A:
+        x: int
+
+      a = A(x=10)
+      assert_type(a, A)
+    """)
+
   def test_write_pyi(self):
     ty, _ = self.InferWithErrors("""
       from typing_extensions import dataclass_transform  # not-supported-yet
