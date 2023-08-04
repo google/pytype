@@ -118,7 +118,6 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     self.is_dynamic = self.compute_is_dynamic()
     log.info("Created class: %r", self)
     self.type_param_check()
-    self.decorators = []
     self._first_opcode = first_opcode
 
   def _get_class(self):
@@ -317,7 +316,7 @@ class PyTDClass(
     # Apply decorators first, in case they set any properties that later
     # initialization code needs to read.
     self.has_explicit_init = any(x.name == "__init__" for x in pytd_cls.methods)
-    pytd_cls, decorated = decorate.process_class(pytd_cls)
+    pytd_cls = decorate.process_class(pytd_cls)
     self.pytd_cls = pytd_cls
     super().__init__(name, ctx)
     if decorate.has_decorator(
@@ -354,7 +353,8 @@ class PyTDClass(
     mixin.LazyMembers.init_mixin(self, mm)
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
-    if decorated:
+    self.decorators = [x.type.name for x in pytd_cls.decorators]
+    if self.decorators:
       self._populate_decorator_metadata()
 
   @classmethod
@@ -380,17 +380,21 @@ class PyTDClass(
     """Fill in class attribute metadata for decorators like @dataclass."""
     key = None
     keyed_decorator = None
-    for decorator in self.pytd_cls.decorators:
-      decorator_name = decorator.type.name
-      decorator_key = class_mixin.get_metadata_key(decorator_name)
+    for decorator in self.decorators:
+      decorator_key = class_mixin.get_metadata_key(decorator)
       if decorator_key:
         if key:
           error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
           self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
         else:
           key, keyed_decorator = decorator_key, decorator
-          self._init_attr_metadata_from_pytd(decorator_name)
-          self._recompute_init_from_metadata(key)
+          if key == "__dataclass_transform__":
+            # TODO(mdemello): Fix how we handle metadata keys; we have been
+            # assuming that they always contain __init__ fields.
+            self.metadata[key] = True
+          else:
+            self._init_attr_metadata_from_pytd(decorator)
+            self._recompute_init_from_metadata(key)
 
   def _init_attr_metadata_from_pytd(self, decorator):
     """Initialise metadata[key] with a list of Attributes."""

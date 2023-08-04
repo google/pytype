@@ -166,7 +166,6 @@ py_library(
   DEPS
     .abstract_utils
     .class_mixin
-    .function
     pytype.pytd.pytd
 )
 

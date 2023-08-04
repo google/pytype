@@ -41,6 +41,10 @@ _METADATA_KEYS = {
     "attr._next_gen.define": "__attrs_attrs__",
     "attr._next_gen.mutable": "__attrs_attrs__",
     "attr._next_gen.frozen": "__attrs_attrs__",
+
+    # Dataclass transform
+    "typing.dataclass_transform": "__dataclass_transform__",
+    "typing_extensions.dataclass_transform": "__dataclass_transform__",
 }
 
 
@@ -159,6 +163,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
       self.cls = metaclass
     # Key-value store of metadata for overlays to use.
     self.metadata = {}
+    self.decorators = []
     self._instance_cache = {}
     self._init_abstract_methods()
     self._init_protocol_attributes()

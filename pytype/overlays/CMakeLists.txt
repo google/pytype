@@ -317,7 +317,6 @@ py_library(
   SRCS
     typing_overlay.py
   DEPS
-    .dataclass_overlay
     .named_tuple
     .overlay
     .overlay_utils

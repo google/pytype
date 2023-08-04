@@ -10,8 +10,10 @@ from pytype import module_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import function
 from pytype.blocks import blocks
 from pytype.overlays import attr_overlay
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import fiddle_overlay
 from pytype.overlays import overlay_dict
 from pytype.overlays import named_tuple
@@ -290,6 +292,14 @@ class Converter(utils.ContextWeakrefMixin):
     """Make a namedtuple class from a pytd class."""
     builder = named_tuple.NamedTupleClassBuilder(ctx)
     return builder.make_class_from_pyi(name, pytd_cls)
+
+  def apply_dataclass_transform(self, cls_var, node, ctx):
+    cls = abstract_utils.get_atomic_value(cls_var)
+    # We need to propagate the metadata key since anything in the entire tree of
+    # subclasses is a dataclass, even without a decorator.
+    cls.metadata["__dataclass_transform__"] = True
+    args = function.Args(posargs=(cls_var,))
+    return dataclass_overlay.Dataclass.make(ctx).call(node, None, args)
 
   def get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
