@@ -623,6 +623,18 @@ class ParserTest(parser_test_base.ParserTestBase):
       from typing import Callable as MyFunc, Callable as YourFunc
     """)
 
+  def test_bad_list_parameter(self):
+    self.check_error("""
+      from typing import List
+      x: List[[]]
+    """, 2, "Unexpected list parameter")
+
+  def test_bad_list_parameter_in_callable(self):
+    self.check_error("""
+      from typing import Callable
+      x: Callable[..., []]
+    """, 2, "Unexpected list parameter")
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 
@@ -3000,6 +3012,35 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       class C1(Generic[P]): ...
 
       class C2(Generic[P]): ...
+    """)
+
+  def test_usage_in_defining_class(self):
+    # TODO(b/217789659): We should preserve the `...` and list parameters
+    # to `Test` rather than converting them to `Any`.
+    self.check("""
+      from typing import Generic, TypeVar
+      from typing_extensions import ParamSpec
+
+      _P = ParamSpec('_P')
+      _T = TypeVar('_T')
+
+      class Test(Generic[_P, _T]):
+          a: Test[..., object]
+          b: Test[_P, object]
+          c: Test[[], object]
+          d: Test[[object, object], object]
+    """, """
+      from typing import Any, Generic, TypeVar
+      from typing_extensions import ParamSpec
+
+      _P = ParamSpec('_P')
+      _T = TypeVar('_T')
+
+      class Test(Generic[_P, _T]):
+          a: Test[Any, object]
+          b: Test[_P, object]
+          c: Test[Any, object]
+          d: Test[Any, object]
     """)
 
 

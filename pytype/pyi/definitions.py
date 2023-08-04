@@ -570,11 +570,25 @@ class Definitions:
     return (not module and name in pep484.BUILTIN_TO_TYPING or
             module == "typing" and name in pep484.ALL_TYPING_NAMES)
 
-  def _remove_unsupported_features(self, parameters):
+  def _check_for_illegal_parameters(self, base_type, parameters, is_callable):
+    if not self._is_builtin_or_typing_member(base_type):
+      # TODO(b/217789659): We can only check builtin and typing names for now,
+      # since `...` can fill in for a ParamSpec and `[]` can be used to
+      # parameterize a user-defined generic class that uses ParamSpec.
+      return
+    if any(p is self.ELLIPSIS for p in parameters):
+      raise _ParseError("Unexpected ellipsis parameter")
+    elif (any(isinstance(p, list) for p in parameters[1:]) or
+          parameters and not is_callable and isinstance(parameters[0], list)):
+      raise _ParseError("Unexpected list parameter")
+
+  def _remove_unsupported_features(self, parameters, is_callable):
     """Returns a copy of 'parameters' with unsupported features removed."""
     processed_parameters = []
     for p in parameters:
       if p is self.ELLIPSIS:
+        processed = pytd.AnythingType()
+      elif not is_callable and isinstance(p, list):
         processed = pytd.AnythingType()
       else:
         processed = p
@@ -589,6 +603,7 @@ class Definitions:
       return pytd_annotated(parameters)
     self._verify_no_literal_parameters(base_type, parameters)
     arg_is_paramspec = False
+    is_callable = False
     if self._matches_named_type(base_type, "builtins.tuple"):
       if len(parameters) == 2 and parameters[1] is self.ELLIPSIS:
         parameters = parameters[:1]
@@ -604,18 +619,15 @@ class Definitions:
       if parameters and isinstance(parameters[0], pytd.NamedType):
         if parameters[0].name in self.paramspec_names:
           arg_is_paramspec = True
+      is_callable = True
       builder = pytdgen.pytd_callable
     elif pytdgen.is_any(base_type):
       builder = lambda *_: pytd.AnythingType()
     else:
       assert parameters
       builder = pytd.GenericType
-    if (self._is_builtin_or_typing_member(base_type) and
-        any(p is self.ELLIPSIS for p in parameters)):
-      # TODO(b/217789659): We can only check builtin and typing names for now,
-      # since `...` can fill in for a ParamSpec.
-      raise _ParseError("Unexpected ellipsis parameter")
-    parameters = self._remove_unsupported_features(parameters)
+    self._check_for_illegal_parameters(base_type, parameters, is_callable)
+    parameters = self._remove_unsupported_features(parameters, is_callable)
     if arg_is_paramspec:
       # Hack - Callable needs an extra arg for paramspecs
       return builder(base_type, parameters, arg_is_paramspec)
