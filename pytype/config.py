@@ -249,8 +249,6 @@ FEATURE_FLAGS = [
 
 
 EXPERIMENTAL_FLAGS = [
-    _flag("--enable-cached-property", True,
-          "Support pyglib's @cached.property."),
     _flag("--precise-return", False,
           "Infer precise return types even for invalid function calls."),
     _flag("--protocols", False,
