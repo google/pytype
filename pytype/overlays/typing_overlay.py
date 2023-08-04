@@ -12,6 +12,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
@@ -358,8 +359,8 @@ class NoReturn(abstract.Singleton):
 class NewType(abstract.PyTDFunction):
   """Implementation of typing.NewType as a function."""
 
-  def __init__(self, name, signatures, kind, ctx):
-    super().__init__(name, signatures, kind, ctx)
+  def __init__(self, name, signatures, kind, decorators, ctx):
+    super().__init__(name, signatures, kind, decorators, ctx)
     assert len(self.signatures) == 1, "NewType has more than one signature."
     signature = self.signatures[0].signature
     self._name_arg_name = signature.param_names[0]
@@ -536,6 +537,43 @@ class ForwardRef(abstract.PyTDClass):
     return node, self.ctx.new_unsolvable(node)
 
 
+class DataclassTransformBuilder(abstract.PyTDFunction):
+  """Minimal implementation of typing.dataclass_transform."""
+
+  def call(self, node, func, args, alias_map=None):
+    del func, alias_map  # unused
+    # We are not yet doing anything with the args but since we have a type
+    # signature available we might as well check it.
+    self.match_args(node, args)
+    ret = DataclassTransform(self.ctx)
+    return node, ret.to_variable(node)
+
+
+class DataclassTransform(abstract.SimpleValue):
+  """Minimal implementation of typing.dataclass_transform."""
+
+  def __init__(self, ctx):
+    super().__init__("<dataclass_transform>", ctx)
+
+  def call(self, node, func, args, alias_map=None):
+    del func, alias_map  # unused
+    arg = args.posargs[0]
+    for d in arg.data:
+      if isinstance(d, abstract.Function):
+        d.decorators.append("typing.dataclass_transform")
+      elif isinstance(d, abstract.Class):
+        d.decorators.append("typing.dataclass_transform")
+        # Work around import cycles in abstract/_special_classes
+        d.metadata["__dataclass_transform__"] = dataclass_overlay.Dataclass
+      elif isinstance(d, abstract.AMBIGUOUS_OR_EMPTY):
+        pass
+      else:
+        message = "Can only apply dataclass_transform to a class or function."
+        self.ctx.errorlog.dataclass_error(self.ctx.vm.frames, details=message)
+
+    return node, arg
+
+
 def not_supported_yet(name, ctx, *, ast=None, details=None):
   ast = ast or ctx.loader.typing
   return overlay_utils.not_supported_yet(name, ctx, ast, details=details)
@@ -577,6 +615,11 @@ def build_final_decorator(ctx):
   return FinalDecorator.make("final", ctx, "typing")
 
 
+def build_dataclass_transform(ctx):
+  ctx.errorlog.not_supported_yet(ctx.vm.frames, "dataclass_transform")
+  return DataclassTransformBuilder.make("dataclass_transform", ctx, "typing")
+
+
 def get_re_builder(member):
   def build_re_member(ctx):
     ast = ctx.loader.import_name("re")
@@ -597,7 +640,6 @@ _unsupported_members = {
     "assert_never": (3, 11),
     "assert_type": (3, 11),
     "reveal_type": (3, 11),
-    "dataclass_transform": (3, 11),
     "get_overloads": (3, 11),
     "clear_overloads": (3, 11),
 }
@@ -628,6 +670,7 @@ typing_overlay = {
     "Union": (Union, None),
     "TYPE_CHECKING": (build_typechecking, None),
     "cast": (build_cast, None),
+    "dataclass_transform": (build_dataclass_transform, (3, 11)),
     "overload": (build_overload, None),
     **{k: (overlay.build(k, not_supported_yet), v)
        for k, v in _unsupported_members.items()}

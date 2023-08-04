@@ -34,6 +34,14 @@ class Dataclass(classgen.Decorator):
   def make(cls, ctx, mod="dataclasses"):
     return super().make("dataclass", ctx, mod)
 
+  @classmethod
+  def transform(cls, ctx, func):
+    """Generate an instance for a func decorated with @dataclass_transform."""
+    ret = cls.make(ctx)
+    ret.name = func.name
+    ret.module = func.module
+    return ret
+
   def _handle_initvar(self, node, cls, name, typ, orig):
     """Unpack or delete an initvar in the class annotations."""
     initvar = match_initvar(typ)

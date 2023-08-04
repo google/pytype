@@ -763,7 +763,9 @@ def _parse(src: str, feature_version: int, filename: str = ""):
   try:
     ast_root_node = astlib.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
   except SyntaxError as e:
-    raise ParseError(e.msg, line=e.lineno, filename=filename) from e
+    raise ParseError(
+        e.msg, line=e.lineno, filename=filename, column=e.offset, text=e.text
+    ) from e
   return ast_root_node
 
 

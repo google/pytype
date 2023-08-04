@@ -309,22 +309,22 @@ class ParserTest(parser_test_base.ParserTestBase):
       def foo() -> int: ...
       foo = ... # type: int""",
                      None,
-                     "Duplicate top-level identifier(s): foo")
+                     "Duplicate attribute name(s) in module: foo")
     self.check_error("""
       from x import foo
       def foo() -> int: ...""",
                      None,
-                     "Duplicate top-level identifier(s): foo")
+                     "Duplicate attribute name(s) in module: foo")
     self.check_error("""
       X = ... # type: int
       class X: ...""",
                      None,
-                     "Duplicate top-level identifier(s): X")
+                     "Duplicate attribute name(s) in module: X")
     self.check_error("""
       X = ... # type: int
       X = TypeVar('X')""",
                      None,
-                     "Duplicate top-level identifier(s): X")
+                     "Duplicate attribute name(s) in module: X")
     # A function is allowed to appear multiple times.
     self.check("""
       def foo(x: int) -> int: ...
@@ -348,6 +348,14 @@ class ParserTest(parser_test_base.ParserTestBase):
       def foo(x: int) -> int: ...
       @overload
       def foo(x: str) -> str: ...""")
+    # Names of the same type (e.g., all constants) are allowed to appear
+    # multiple times. The last one wins.
+    self.check("""
+        x: str
+        x: int
+    """, """
+        x: int
+    """)
 
   def test_type(self):
     self.check("x: str")
@@ -614,6 +622,18 @@ class ParserTest(parser_test_base.ParserTestBase):
     """, """
       from typing import Callable as MyFunc, Callable as YourFunc
     """)
+
+  def test_bad_list_parameter(self):
+    self.check_error("""
+      from typing import List
+      x: List[[]]
+    """, 2, "Unexpected list parameter")
+
+  def test_bad_list_parameter_in_callable(self):
+    self.check_error("""
+      from typing import Callable
+      x: Callable[..., []]
+    """, 2, "Unexpected list parameter")
 
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
@@ -1393,16 +1413,21 @@ class ClassTest(parser_test_base.ParserTestBase):
       """)
 
   def test_duplicate_name(self):
-    self.check_error("""
+    # Duplicate constants: last one wins.
+    self.check("""
       class Foo:
-          bar = ...  # type: int
-          bar = ...  # type: str
-      """, 1, "Duplicate class-level identifier(s): bar")
+          bar: int
+          bar: str
+    """, """
+      class Foo:
+          bar: str
+    """)
+    # Duplicate names between different node types is an error.
     self.check_error("""
       class Foo:
           def bar(self) -> int: ...
           bar = ...  # type: str
-      """, 1, "Duplicate class-level identifier(s): bar")
+      """, 1, "Duplicate attribute name(s) in class Foo: bar")
     # Multiple method defs are ok (needed for variant signatures).
     self.check("""
       class Foo:
@@ -2807,7 +2832,7 @@ class ErrorTest(test_base.UnitTest):
   def test_filename(self):
     src = textwrap.dedent("""
       a: int
-      a: int
+      def a() -> int: ...
     """)
     with self.assertRaisesRegex(parser.ParseError, "File.*foo.pyi"):
       parser.parse_pyi(src, "foo.pyi", "foo")
@@ -2987,6 +3012,35 @@ class ParamSpecTest(parser_test_base.ParserTestBase):
       class C1(Generic[P]): ...
 
       class C2(Generic[P]): ...
+    """)
+
+  def test_usage_in_defining_class(self):
+    # TODO(b/217789659): We should preserve the `...` and list parameters
+    # to `Test` rather than converting them to `Any`.
+    self.check("""
+      from typing import Generic, TypeVar
+      from typing_extensions import ParamSpec
+
+      _P = ParamSpec('_P')
+      _T = TypeVar('_T')
+
+      class Test(Generic[_P, _T]):
+          a: Test[..., object]
+          b: Test[_P, object]
+          c: Test[[], object]
+          d: Test[[object, object], object]
+    """, """
+      from typing import Any, Generic, TypeVar
+      from typing_extensions import ParamSpec
+
+      _P = ParamSpec('_P')
+      _T = TypeVar('_T')
+
+      class Test(Generic[_P, _T]):
+          a: Test[Any, object]
+          b: Test[_P, object]
+          c: Test[Any, object]
+          d: Test[Any, object]
     """)
 
 

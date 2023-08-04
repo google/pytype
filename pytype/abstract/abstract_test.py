@@ -283,7 +283,7 @@ class FunctionTest(AbstractTestBase):
     pytd_sig = pytd.Signature(
         tuple(pytd_params), None, None, pytd.AnythingType(), (), ())
     sig = abstract.PyTDSignature(name, pytd_sig, self._ctx)
-    return abstract.PyTDFunction(name, (sig,), pytd.MethodKind.METHOD,
+    return abstract.PyTDFunction(name, (sig,), pytd.MethodKind.METHOD, (),
                                  self._ctx)
 
   def _call_pytd_function(self, f, args):

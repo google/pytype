@@ -276,7 +276,7 @@ def PrepareForExport(module_name, ast, loader):
 def SourceToExportableAst(module_name, src, loader):
   """Parse the source code into a pickle-able ast."""
   ast = parser.parse_string(
-      src=src, name=module_name,
+      src=src, name=module_name, filename=loader.options.input,
       options=parser.PyiOptions.from_toplevel_options(loader.options))
   ast = ast.Visit(visitors.LookupBuiltins(loader.builtins, full_names=False))
   ast = ast.Visit(visitors.LookupLocalTypes())

@@ -12,6 +12,13 @@ import weakref
 
 from pytype.platform_utils import path_utils
 
+_STYLE_BRIGHT = "\x1b[1m"
+_STYLE_RESET_ALL = "\x1b[0m"
+_FORE_RED = "\x1b[31m"
+_FORE_RESET = "\x1b[39m"
+COLOR_ERROR_NAME_TEMPLATE = (_STYLE_BRIGHT + _FORE_RED + "%s" + _FORE_RESET +
+                             _STYLE_RESET_ALL)
+
 
 # We disable the check that keeps pytype from running on not-yet-supported
 # versions when we detect that a pytype test is executing, in order to be able

@@ -99,6 +99,16 @@ class Converter(utils.ContextWeakrefMixin):
     return (isinstance(v, abstract.TupleClass) or
             isinstance(instance, abstract.Tuple))
 
+  def _make_decorator(self, name, alias):
+    # If decorators are output as aliases to NamedTypes, they will be converted
+    # to Functions and fail a verification step if those functions have type
+    # parameters. Since we just want the function name, and since we have a
+    # fully resolved name at this stage, we just output a minimal pytd.Function
+    sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
+    fn = pytd.Function(
+        name, (sig,), pytd.MethodKind.METHOD, pytd.MethodFlag.NONE)
+    return pytd.Alias(alias, fn)
+
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.CallableClass):
@@ -589,11 +599,14 @@ class Converter(utils.ContextWeakrefMixin):
           self._function_call_combination_to_signature(
               func, combination, num_combinations)
           for combination in combinations)
+    decorators = tuple(self._make_decorator(x, x) for x in v.decorators)
     return pytd.Function(
         name=function_name,
         signatures=tuple(signatures),
         kind=pytd.MethodKind.METHOD,
-        flags=pytd.MethodFlag.abstract_flag(v.is_abstract))
+        flags=pytd.MethodFlag.abstract_flag(v.is_abstract),
+        decorators=decorators
+    )
 
   def _simple_func_to_def(self, node, v, name):
     """Convert a SimpleFunction to a PyTD definition."""
@@ -717,20 +730,9 @@ class Converter(utils.ContextWeakrefMixin):
       defn = defn.Replace(kind=kind)
       methods[name] = defn
 
-    # If decorators are output as aliases to NamedTypes, they will be converted
-    # to Functions and fail a verification step if those functions have type
-    # parameters. Since we just want the function name, and since we have a
-    # fully resolved name at this stage, we just output a minimal pytd.Function
-    sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
-    decorators = [
-        pytd.Alias(x, pytd.Function(x, (sig,), pytd.MethodKind.METHOD,
-                                    pytd.MethodFlag.NONE))
-        for x in v.decorators
-    ]
+    decorators = [self._make_decorator(x, x) for x in v.decorators]
     if v.final:
-      fn = pytd.Function("typing.final", (sig,), pytd.MethodKind.METHOD,
-                         pytd.MethodFlag.NONE)
-      decorators.append(pytd.Alias("final", fn))
+      decorators.append(self._make_decorator("typing.final", "final"))
 
     # Collect nested classes
     classes = [self.value_to_pytd_def(node, x, x.name)

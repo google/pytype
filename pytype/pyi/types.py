@@ -66,7 +66,7 @@ class ParseError(Exception):
       lines.append(f'  File: "{self._filename}", line {self._line}')
     if self._column and self._text:
       indent = 4
-      stripped = self._text.lstrip()
+      stripped = self._text.strip()
       lines.append("%*s%s" % (indent, "", stripped))
       # Output a pointer below the error column, adjusting for stripped spaces.
       pos = indent + (self._column - 1) - (len(self._text) - len(stripped))

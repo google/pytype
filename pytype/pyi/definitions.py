@@ -2,15 +2,15 @@
 
 import collections
 import dataclasses
+import itertools
 import sys
 
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
 from pytype import utils
 from pytype.pyi import classdef
 from pytype.pyi import metadata
 from pytype.pyi import types
-from pytype.pyi.types import ParseError  # pylint: disable=g-importing-member
 from pytype.pytd import escape
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -33,9 +33,24 @@ else:
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
 
+_ParseError = types.ParseError
 
-class StringParseError(ParseError):
+_NodeT = TypeVar("_NodeT", bound=pytd.Node)
+
+
+class StringParseError(_ParseError):
   pass
+
+
+class _DuplicateDefsError(Exception):
+
+  def __init__(self, duplicates):
+    super().__init__()
+    self._duplicates = duplicates
+
+  def to_parse_error(self, namespace):
+    return _ParseError(f"Duplicate attribute name(s) in {namespace}: " +
+                       ", ".join(self._duplicates))
 
 
 def _split_definitions(defs: List[Any]):
@@ -59,18 +74,18 @@ def _split_definitions(defs: List[Any]):
       aliases.append(d)
     elif isinstance(d, types.SlotDecl):
       if slots is not None:
-        raise ParseError("Duplicate __slots__ declaration")
+        raise _ParseError("Duplicate __slots__ declaration")
       slots = d.slots
     elif isinstance(d, types.Ellipsis):
       pass
     elif isinstance(d, ast3.Expr):
-      raise ParseError("Unexpected expression").at(d)
+      raise _ParseError("Unexpected expression").at(d)
     else:
       msg = "Unexpected definition"
       lineno = None
       if isinstance(d, ast3.AST):
         lineno = getattr(d, "lineno", None)
-      raise ParseError(msg, line=lineno)
+      raise _ParseError(msg, line=lineno)
   return constants, functions, aliases, slots, classes
 
 
@@ -163,9 +178,9 @@ def pytd_literal(
         if isinstance(t, pytd.Literal):
           literal_parameters.append(t)
         else:
-          raise ParseError(f"Literal[{t}] not supported")
+          raise _ParseError(f"Literal[{t}] not supported")
     else:
-      raise ParseError(f"Literal[{p}] not supported")
+      raise _ParseError(f"Literal[{p}] not supported")
   return pytd_utils.JoinTypes(literal_parameters)
 
 
@@ -179,13 +194,13 @@ def _convert_annotated(x):
     fn, posargs, kwargs = x
     return metadata.call_to_annotation(fn, posargs=posargs, kwargs=kwargs)
   else:
-    raise ParseError(f"Cannot convert metadata {x}")
+    raise _ParseError(f"Cannot convert metadata {x}")
 
 
 def pytd_annotated(parameters: List[Any]) -> pytd.Type:
   """Create a pytd.Annotated."""
   if len(parameters) < 2:
-    raise ParseError(
+    raise _ParseError(
         "typing.Annotated takes at least two parameters: "
         "Annotated[type, annotation, ...].")
   typ, *annotations = parameters
@@ -258,7 +273,7 @@ class _VerifyMutators(visitors.Visitor):
         fn = pytd_utils.Print(self.current_function)
         msg = "Type parameter(s) {{{}}} not in scope in\n\n{}".format(
             ", ".join(sorted(extra)), fn)
-        raise ParseError(msg)
+        raise _ParseError(msg)
 
 
 class _ContainsAnyType(visitors.Visitor):
@@ -355,7 +370,7 @@ class Definitions:
     if isinstance(alias_or_constant, pytd.Constant):
       self.constants.append(alias_or_constant)
     elif isinstance(alias_or_constant, types.SlotDecl):
-      raise ParseError("__slots__ only allowed on the class level")
+      raise _ParseError("__slots__ only allowed on the class level")
     elif isinstance(alias_or_constant, pytd.Alias):
       name, value = alias_or_constant.name, alias_or_constant.type
       self.type_map[name] = value
@@ -368,7 +383,7 @@ class Definitions:
     args = [("self", pytd.AnythingType()), ("val", typ)]
     ret = pytd.NamedType("NoneType")
     methods = function.merge_method_signatures(
-        [function.NameAndSig.make("__init__", args, ret)])
+        self, [function.NameAndSig.make("__init__", args, ret)])
     cls_name = escape.pack_newtype_base_class(
         name, len(self.generated_classes[name]))
     cls = pytd.Class(name=cls_name,
@@ -418,10 +433,10 @@ class Definitions:
     processed_keywords = []
     for k in keywords:
       if k.arg != "total":
-        raise ParseError(f"Unexpected kwarg {k.arg!r} passed to TypedDict")
+        raise _ParseError(f"Unexpected kwarg {k.arg!r} passed to TypedDict")
       if (not isinstance(k.value, types.Pyval) or
           not isinstance(k.value.value, bool)):
-        raise ParseError(
+        raise _ParseError(
             f"Illegal value {k.value!r} for 'total' kwarg to TypedDict")
       processed_keywords.append((k.arg, k.value.to_pytd_literal()))
     constants = tuple(pytd.Constant(k, v) for k, v in items.items())
@@ -441,8 +456,8 @@ class Definitions:
   def _add_type_variable(self, name, tvar, typename, pytd_type):
     """Add a type variable definition, `name = TypeName(name, args)`."""
     if name != tvar.name:
-      raise ParseError(f"{typename} name needs to be {tvar.name!r} "
-                       f"(not {name!r})")
+      raise _ParseError(f"{typename} name needs to be {tvar.name!r} "
+                        f"(not {name!r})")
     bound = tvar.bound
     if isinstance(bound, str):
       bound = pytd.NamedType(bound)
@@ -541,7 +556,7 @@ class Definitions:
              p.type == "str" and p.value for p in parameters):
         error_cls = StringParseError
       else:
-        error_cls = ParseError
+        error_cls = _ParseError
       parameters = ", ".join(
           p.repr_str() if isinstance(p, types.Pyval) else "_"
           for p in parameters)
@@ -555,11 +570,25 @@ class Definitions:
     return (not module and name in pep484.BUILTIN_TO_TYPING or
             module == "typing" and name in pep484.ALL_TYPING_NAMES)
 
-  def _remove_unsupported_features(self, parameters):
+  def _check_for_illegal_parameters(self, base_type, parameters, is_callable):
+    if not self._is_builtin_or_typing_member(base_type):
+      # TODO(b/217789659): We can only check builtin and typing names for now,
+      # since `...` can fill in for a ParamSpec and `[]` can be used to
+      # parameterize a user-defined generic class that uses ParamSpec.
+      return
+    if any(p is self.ELLIPSIS for p in parameters):
+      raise _ParseError("Unexpected ellipsis parameter")
+    elif (any(isinstance(p, list) for p in parameters[1:]) or
+          parameters and not is_callable and isinstance(parameters[0], list)):
+      raise _ParseError("Unexpected list parameter")
+
+  def _remove_unsupported_features(self, parameters, is_callable):
     """Returns a copy of 'parameters' with unsupported features removed."""
     processed_parameters = []
     for p in parameters:
       if p is self.ELLIPSIS:
+        processed = pytd.AnythingType()
+      elif not is_callable and isinstance(p, list):
         processed = pytd.AnythingType()
       else:
         processed = p
@@ -574,6 +603,7 @@ class Definitions:
       return pytd_annotated(parameters)
     self._verify_no_literal_parameters(base_type, parameters)
     arg_is_paramspec = False
+    is_callable = False
     if self._matches_named_type(base_type, "builtins.tuple"):
       if len(parameters) == 2 and parameters[1] is self.ELLIPSIS:
         parameters = parameters[:1]
@@ -589,18 +619,15 @@ class Definitions:
       if parameters and isinstance(parameters[0], pytd.NamedType):
         if parameters[0].name in self.paramspec_names:
           arg_is_paramspec = True
+      is_callable = True
       builder = pytdgen.pytd_callable
     elif pytdgen.is_any(base_type):
       builder = lambda *_: pytd.AnythingType()
     else:
       assert parameters
       builder = pytd.GenericType
-    if (self._is_builtin_or_typing_member(base_type) and
-        any(p is self.ELLIPSIS for p in parameters)):
-      # TODO(b/217789659): We can only check builtin and typing names for now,
-      # since `...` can fill in for a ParamSpec.
-      raise ParseError("Unexpected ellipsis parameter")
-    parameters = self._remove_unsupported_features(parameters)
+    self._check_for_illegal_parameters(base_type, parameters, is_callable)
+    parameters = self._remove_unsupported_features(parameters, is_callable)
     if arg_is_paramspec:
       # Hack - Callable needs an extra arg for paramspecs
       return builder(base_type, parameters, arg_is_paramspec)
@@ -660,18 +687,18 @@ class Definitions:
         resolved_type = visitors.MaybeSubstituteParameters(
             base_type, parameters)
       except ValueError as e:
-        raise ParseError(str(e)) from e
+        raise _ParseError(str(e)) from e
       if resolved_type:
         return resolved_type
     if parameters is not None:
       if (len(parameters) > 1 and isinstance(base_type, pytd.NamedType) and
           base_type.name == "typing.Optional"):
-        raise ParseError(f"Too many options to {base_type.name}")
+        raise _ParseError(f"Too many options to {base_type.name}")
       return self._parameterized_type(base_type, parameters)
     else:
       if (isinstance(base_type, pytd.NamedType) and
           base_type.name in _TYPING_SETS):
-        raise ParseError(f"Missing options to {base_type.name}")
+        raise _ParseError(f"Missing options to {base_type.name}")
       return base_type
 
   def build_class(
@@ -683,8 +710,13 @@ class Definitions:
     keywords = classdef.get_keywords(keywords)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
-    # Make sure we don't have duplicate definitions.
-    classdef.check_for_duplicate_defs(methods, constants, aliases)
+    # De-duplicate definitions. Note that for methods, we want to keep
+    # duplicates in order to handle overloads.
+    try:
+      _, constants, aliases = _check_for_duplicate_defs(
+          methods, constants, aliases)
+    except _DuplicateDefsError as e:
+      raise e.to_parse_error(namespace=f"class {class_name}") from e
 
     if aliases:
       vals_dict = {val.name: val
@@ -723,7 +755,8 @@ class Definitions:
 
     bases = [p for p in bases if not isinstance(p, pytd.NothingType)]
     methods = self._adjust_self_var(
-        fully_qualified_class_name, function.merge_method_signatures(methods))
+        fully_qualified_class_name,
+        function.merge_method_signatures(self, methods))
     if not bases and class_name not in ["classobj", "object"]:
       # A bases-less class inherits from classobj in Python 2 and from object
       # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we
@@ -805,7 +838,7 @@ class Definitions:
     generated_classes = sum(self.generated_classes.values(), [])
 
     classes = generated_classes + classes
-    functions = function.merge_method_signatures(functions)
+    functions = function.merge_method_signatures(self, functions)
     _check_module_functions(functions)
 
     name_to_class = {c.name: c for c in classes}
@@ -823,21 +856,16 @@ class Definitions:
         assert isinstance(t, pytd.Alias)
         aliases.append(t)
 
-    all_names = ([f.name for f in functions] +
-                 [c.name for c in constants] +
-                 [c.name for c in self.type_params] +
-                 [c.name for c in classes] +
-                 [c.name for c in aliases])
-    duplicates = [name
-                  for name, count in collections.Counter(all_names).items()
-                  if count >= 2]
-    if duplicates:
-      raise ParseError(
-          "Duplicate top-level identifier(s): " + ", ".join(duplicates))
+    try:
+      functions, constants, type_params, classes, aliases = (
+          _check_for_duplicate_defs(
+              functions, constants, self.type_params, classes, aliases))
+    except _DuplicateDefsError as e:
+      raise e.to_parse_error(namespace="module") from e
 
     return pytd.TypeDeclUnit(name=None,
                              constants=tuple(constants),
-                             type_params=tuple(self.type_params),
+                             type_params=tuple(type_params),
                              functions=tuple(functions),
                              classes=tuple(classes),
                              aliases=tuple(aliases))
@@ -855,11 +883,31 @@ def _check_module_functions(functions):
   # module.__getattr__ should have a unique signature
   g = [f for f in functions if f.name == "__getattr__"]
   if g and len(g[0].signatures) > 1:
-    raise ParseError("Multiple signatures for module __getattr__")
+    raise _ParseError("Multiple signatures for module __getattr__")
 
   # module-level functions cannot be properties
   properties = [x for x in functions if x.kind == pytd.MethodKind.PROPERTY]
   if properties:
     prop_names = ", ".join(p.name for p in properties)
-    raise ParseError(
+    raise _ParseError(
         "Module-level functions with property decorators: " + prop_names)
+
+
+def _remove_duplicates(nodes: List[_NodeT]) -> List[_NodeT]:
+  # This will keep the *last* node with a given name, while preserving order.
+  unique_nodes = {node.name: node for node in nodes}
+  return list(unique_nodes.values())
+
+
+def _check_for_duplicate_defs(*defs: List[_NodeT]) -> List[List[_NodeT]]:
+  """Check a class's list of definitions for duplicates."""
+  # Duplicates within the same list of definitions are fine, since the list is
+  # ordered. The last one wins. However, we will raise an error if, e.g., we
+  # have a function and a constant with the same name.
+  unique_defs = [_remove_duplicates(d) for d in defs]
+  all_names = [node.name for node in itertools.chain.from_iterable(unique_defs)]
+  duplicates = [name for name, count in collections.Counter(all_names).items()
+                if count >= 2]
+  if duplicates:
+    raise _DuplicateDefsError(duplicates)
+  return unique_defs

@@ -52,13 +52,6 @@ _ELLIPSIS = object()
 
 _FuncT = TypeVar("_FuncT", bound=Callable)
 
-_STYLE_BRIGHT = "\x1b[1m"
-_STYLE_RESET_ALL = "\x1b[0m"
-_FORE_RED = "\x1b[31m"
-_FORE_RESET = "\x1b[39m"
-_COLOR_ERROR_NAME_TEMPLATE = (_STYLE_BRIGHT + _FORE_RED + "%s" + _FORE_RESET +
-                              _STYLE_RESET_ALL)
-
 
 def _error_name(name) -> Callable[[_FuncT], _FuncT]:
   """Decorate a function so that it binds the current error name."""
@@ -335,7 +328,10 @@ class Error:
     pos = self._position()
     if pos:
       pos += ": "
-    name = _COLOR_ERROR_NAME_TEMPLATE % (self._name,) if color else self._name
+    if color:
+      name = utils.COLOR_ERROR_NAME_TEMPLATE % self._name
+    else:
+      name = self._name
     text = "{}{} [{}]".format(pos, self._message.replace("\n", "\n  "), name)
     if self._details:
       text += "\n  " + self._details.replace("\n", "\n  ")

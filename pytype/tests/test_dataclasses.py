@@ -763,20 +763,6 @@ class TestDataclass(test_base.BaseTest):
         def __init__(self, a1: int, a3: int, *, a2: int = ...) -> None: ...
     """)
 
-  def test_dataclass_transform(self):
-    # While we don't support dataclass_transform yet, we should at least treat
-    # it as returning an identity function to avoid errors like those seen in
-    # https://github.com/google/flax/pull/1927#issuecomment-1052107383.
-    ty, _ = self.InferWithErrors("""
-      from typing_extensions import dataclass_transform  # not-supported-yet
-      @dataclass_transform()
-      class Foo:
-        pass
-    """)
-    self.assertTypesMatchPytd(ty, """
-      class Foo: ...
-    """)
-
 
 class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""

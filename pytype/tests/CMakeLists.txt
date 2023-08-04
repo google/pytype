@@ -1249,3 +1249,12 @@ py_test(
   DEPS
     .test_base
 )
+
+py_test(
+  NAME
+    test_dataclass_transform
+  SRCS
+    test_dataclass_transform.py
+  DEPS
+    .test_base
+)
