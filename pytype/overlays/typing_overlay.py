@@ -12,6 +12,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.overlays import dataclass_overlay
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
@@ -558,8 +559,12 @@ class DataclassTransform(abstract.SimpleValue):
     del func, alias_map  # unused
     arg = args.posargs[0]
     for d in arg.data:
-      if isinstance(d, (abstract.Class, abstract.Function)):
+      if isinstance(d, abstract.Function):
         d.decorators.append("typing.dataclass_transform")
+      elif isinstance(d, abstract.Class):
+        d.decorators.append("typing.dataclass_transform")
+        # Work around import cycles in abstract/_special_classes
+        d.metadata["__dataclass_transform__"] = dataclass_overlay.Dataclass
       elif isinstance(d, abstract.AMBIGUOUS_OR_EMPTY):
         pass
       else:

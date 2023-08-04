@@ -3,8 +3,8 @@
 from pytype.tests import test_base
 
 
-class TestDataclassTransform(test_base.BaseTest):
-  """Tests for @dataclass_transform."""
+class TestFunction(test_base.BaseTest):
+  """Tests for @dataclass_transform on functions."""
 
   def test_passthrough(self):
     # Test that @dataclass_transform just returns its decorated class.
@@ -105,6 +105,108 @@ class TestDataclassTransform(test_base.BaseTest):
         a = A(x=10)
         b = A() # missing-parameter
       """)
+
+
+class TestClass(test_base.BaseTest):
+  """Tests for @dataclass_transform on classes."""
+
+  def test_single_inheritance(self):
+    self.CheckWithErrors("""
+      from typing_extensions import dataclass_transform # not-supported-yet
+      @dataclass_transform()
+      class Base: ...
+
+      class A(Base):
+          x: int
+          y: str
+
+      class B(A):
+          z: int
+
+      a = B(1, '2', 3)
+      b = B(1, 2)  # missing-parameter
+      c = B(1, 2, 3)  # wrong-arg-types
+    """)
+
+  def test_multiple_inheritance(self):
+    self.CheckWithErrors("""
+      from typing_extensions import dataclass_transform # not-supported-yet
+      @dataclass_transform()
+      class Mixin: ...
+
+      class Base:
+        pass
+
+      class A(Base, Mixin):
+          x: int
+          y: str
+
+      class B(A):
+          z: int
+
+      a = B(1, '2', 3)
+      b = B(1, 2)  # missing-parameter
+      c = B(1, 2, 3)  # wrong-arg-types
+    """)
+
+  def test_redundant_decorator(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      from typing_extensions import dataclass_transform # not-supported-yet
+
+      @dataclass_transform()
+      class Base: ...
+
+      @dataclasses.dataclass
+      class A(Base):
+          x: int
+          y: str
+
+      class B(A):
+          z: int
+
+      a = B(1, '2', 3)
+      b = B(1, 2)  # missing-parameter
+      c = B(1, 2, 3)  # wrong-arg-types
+    """)
+
+  def test_write_pyi(self):
+    ty, _ = self.InferWithErrors("""
+      from typing_extensions import dataclass_transform # not-supported-yet
+      @dataclass_transform()
+      class Mixin: ...
+
+      class Base:
+        pass
+
+      class A(Base, Mixin):
+          x: int
+          y: str
+
+      class B(A):
+          z: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from typing import dataclass_transform
+
+      @dataclasses.dataclass
+      class A(Base, Mixin):
+          x: int
+          y: str
+          def __init__(self, x: int, y: str) -> None: ...
+
+      @dataclasses.dataclass
+      class B(A):
+          z: int
+          def __init__(self, x: int, y: str, z: int) -> None: ...
+
+      class Base: ...
+
+      @dataclass_transform
+      class Mixin: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
