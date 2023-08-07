@@ -406,6 +406,7 @@ class VirtualMachine:
 
   def _handle_match_case(self, state, op):
     """Track type narrowing and default cases in a match statement."""
+    assert self._branch_tracker is not None
     opname = op.__class__.__name__
     if not (opname.startswith("MATCH_") or
             opname in ("COMPARE_OP", "IS_OP", "CONTAINS_OP", "NOP")):
@@ -454,6 +455,7 @@ class VirtualMachine:
     Raises:
       VirtualMachineError: if a fatal error occurs.
     """
+    assert self._branch_tracker is not None
     _opcode_counter.inc(op.name)
     self.frame.current_opcode = op
     self._importing = "IMPORT" in op.__class__.__name__
@@ -484,6 +486,7 @@ class VirtualMachine:
 
   def _run_frame_blocks(self, frame, node, annotated_locals):
     """Runs a frame's code blocks."""
+    assert self._director is not None
     frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self.ctx)
     frame_name = frame.f_code.co_name
@@ -1899,6 +1902,7 @@ class VirtualMachine:
 
   def _compare_op(self, state, op_arg, op):
     """Pops and compares the top two stack values and pushes a boolean."""
+    assert self._branch_tracker is not None
     state, (x, y) = state.popn(2)
     match_enum = self._branch_tracker.add_cmp_branch(op, x, y)
     if match_enum is not None:
@@ -2405,7 +2409,9 @@ class VirtualMachine:
   def store_jump(self, target, state):
     assert target
     assert self.frame is not None
-    self.frame.targets[self.frame.current_block.id].append(target)
+    current_block = self.frame.current_block
+    assert current_block is not None
+    self.frame.targets[current_block.id].append(target)
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
@@ -2713,6 +2719,7 @@ class VirtualMachine:
     self.frame.yield_variable = value
     if self.frame.check_return:
       ret_type = self.frame.allowed_returns
+      assert ret_type is not None
       self._check_return(state.node, ret,
                          ret_type.get_formal_type_parameter(abstract_utils.T))
       send_var = self.init_class(
@@ -2749,6 +2756,7 @@ class VirtualMachine:
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
+    assert self._director is not None
     name = self.frame.f_code.co_names[op.arg]
     if op.line in self._director.ignore:
       # "from x import y  # type: ignore"
@@ -2803,6 +2811,7 @@ class VirtualMachine:
     if self.frame.check_return:
       if self.frame.f_code.has_generator():
         ret_type = self.frame.allowed_returns
+        assert ret_type is not None
         self._check_return(state.node, var,
                            ret_type.get_formal_type_parameter(abstract_utils.V))
       elif not self.frame.f_code.has_async_generator():
@@ -3017,6 +3026,7 @@ class VirtualMachine:
     if yield_variable.bindings:
       self.frame.yield_variable = yield_variable
       if self.frame.check_return:
+        assert self.frame.allowed_returns is not None
         ret_type = self.frame.allowed_returns.get_formal_type_parameter(
             abstract_utils.T)
         self._check_return(state.node, yield_variable, ret_type)
@@ -3173,6 +3183,7 @@ class VirtualMachine:
     state = state.forward_cfg_node("MatchClass")
     success = ret.success
     if ret.matched:
+      assert self._branch_tracker is not None
       # Narrow the type of the match variable since we are in a case branch
       # where it has matched the given class. The branch tracker will store the
       # original (unnarrowed) type, since the new variable shadows it.

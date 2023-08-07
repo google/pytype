@@ -397,7 +397,7 @@ class _TypeVariable(_base.BaseValue):
     var = self.ctx.program.NewVariable()
     if container and (not isinstance(container, _instance_base.SimpleValue) or
                       self.full_name in container.all_template_names):
-      instance = self._INSTANCE_CLASS(self, container, self.ctx)  # pylint: disable=not-callable
+      instance = self._INSTANCE_CLASS(self, container, self.ctx)  # pylint: disable=not-callable  # pytype: disable=not-callable
       return instance.to_variable(node)
     else:
       for c in self.constraints:

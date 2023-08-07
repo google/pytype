@@ -298,7 +298,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
     except TypeVarError as e:
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, str(e), e.bad_call)
       typeparam_args = ()
-    param = self._ABSTRACT_CLASS(name, self.ctx, *typeparam_args)  # pylint: disable=not-callable
+    param = self._ABSTRACT_CLASS(name, self.ctx, *typeparam_args)  # pytype: disable=not-callable  # pylint: disable=not-callable
     return node, param.to_variable(node)
 
 
