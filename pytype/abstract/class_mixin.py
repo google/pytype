@@ -344,6 +344,12 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     """Call the metaclass's __init__ method if it does anything interesting."""
     if self.cls.full_name == "builtins.type":
       return node
+    elif (isinstance(self.cls, Class) and
+          "__dataclass_transform__" in self.cls.metadata):
+      # A metaclass with @dataclass_transform just needs to apply the attribute
+      # to the current class.
+      self.metadata["__dataclass_transform__"] = True
+      return node
     node, init = self.ctx.attribute_handler.get_attribute(
         node, self.cls, "__init__")
     if not init or not any(

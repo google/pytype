@@ -252,5 +252,70 @@ class TestClass(test_base.BaseTest):
       """)
 
 
+class TestMetaclass(test_base.BaseTest):
+  """Tests for @dataclass_transform on metaclasses."""
+
+  def test_basic(self):
+    self.CheckWithErrors("""
+      from typing_extensions import dataclass_transform # not-supported-yet
+
+      @dataclass_transform()
+      class Meta(type): ...
+
+      class Base(metaclass=Meta): ...
+
+      class A(Base):
+        x: int
+        y: str
+
+      a = A(1, '2')
+      a = A(1, 2)  # wrong-arg-types
+    """)
+
+  def test_pyi_class(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import dataclass_transform
+
+      @dataclass_transform
+      class Meta(type):
+        ...
+
+      class Base(metaclass=Meta): ...
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+
+        class A(foo.Base):
+          x: int
+          y: str
+
+        a = A(x=10, y='foo')
+        b = A(10) # missing-parameter
+        c = A(10, 20) # wrong-arg-types
+      """)
+
+  def test_reingest(self):
+    with self.DepTree([("foo.py", """
+      from typing_extensions import dataclass_transform  # pytype: disable=not-supported-yet
+
+      @dataclass_transform()
+      class Meta(type):
+        ...
+
+      class Base(metaclass=Meta): ...
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+
+        class A(foo.Base):
+          x: int
+          y: str
+
+        a = A(x=10, y='foo')
+        b = A(10) # missing-parameter
+        c = A(10, 20) # wrong-arg-types
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()
