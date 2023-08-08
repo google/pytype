@@ -3042,9 +3042,9 @@ class VirtualMachine:
     state, result = self.load_attr(state, self_obj, name)
     # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
     # this opcode should push two values onto the stack: either the unbound
-    # method and its `self` or NULL and the bound method. However, pushing only
-    # the bound method and modifying CALL_METHOD accordingly works in all cases
-    # we've tested.
+    # method and its `self` or NULL and the bound method. Since we always
+    # retrieve a bound method, we push the NULL
+    state = self._push_null(state)
     self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
 
@@ -3103,6 +3103,8 @@ class VirtualMachine:
   def byte_CALL_METHOD(self, state, op):
     state, args = state.popn(op.arg)
     state, func = state.pop()
+    # pop the NULL off the stack (see LOAD_METHOD)
+    state, _ = state.pop()
     with self._reset_overloads(func):
       state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
@@ -3220,12 +3222,12 @@ class VirtualMachine:
     del op
     return state
 
+  def _push_null(self, state):
+    null = abstract.Null(self.ctx).to_variable(state.node)
+    return state.push(null)
+
   def byte_PUSH_NULL(self, state, op):
-    # From docs: "Used in the call sequence to match the NULL pushed by
-    # LOAD_METHOD for non-method calls". We don't push the NULL in either case;
-    # see the comment under byte_LOAD_METHOD for more context.
-    del op
-    return state
+    return self._push_null(state)
 
   def byte_PUSH_EXC_INFO(self, state, op):
     del op

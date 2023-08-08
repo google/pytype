@@ -240,3 +240,10 @@ class Unsolvable(Singleton):
 
   def argcount(self, _):
     return 0
+
+
+class Null(Singleton):
+  """A NULL value pushed onto the data stack."""
+
+  def __init__(self, ctx):
+    super().__init__("null", ctx)

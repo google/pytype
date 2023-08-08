@@ -77,6 +77,7 @@ Singleton = _singletons.Singleton
 Empty = _singletons.Empty
 Deleted = _singletons.Deleted
 Unsolvable = _singletons.Unsolvable
+Null = _singletons.Null
 
 AnnotationClass = _typing.AnnotationClass
 AnnotationContainer = _typing.AnnotationContainer
