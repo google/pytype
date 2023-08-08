@@ -3,7 +3,11 @@
 import ast as astlib
 import dataclasses
 import hashlib
+import io
+import keyword
+import re
 import sys
+import tokenize
 from typing import Any, List, Optional, Tuple, Union
 
 from pytype.ast import debug
@@ -43,6 +47,15 @@ def _import_from_module(module: Optional[str], level: int) -> str:
     return {1: "__PACKAGE__", 2: "__PARENT__"}[level]
   prefix = "." * level
   return prefix + module
+
+
+def _keyword_to_parseable_name(kw):
+  return f"__KW_{kw}__"
+
+
+def _parseable_name_to_real_name(name):
+  m = re.fullmatch(r"__KW_(?P<keyword>.+)__", name)
+  return m.group("keyword") if m else name
 
 
 #------------------------------------------------------
@@ -175,7 +188,21 @@ class AnnotationVisitor(visitor.BaseVisitor):
     else:
       return self.defs.new_type(node.id)
 
+  def _convert_getattr(self, node):
+    # The protobuf pyi generator outputs getattr(X, 'attr') when 'attr' is a
+    # Python keyword.
+    if node.func.name != "getattr" or len(node.args) != 2:
+      return None
+    obj, attr = node.args
+    if (not isinstance(obj, pytd.NamedType) or
+        not isinstance(attr, types.Pyval) or attr.type != "str"):
+      return None
+    return pytd.NamedType(f"{obj.name}.{attr.value}")
+
   def visit_Call(self, node):
+    ret = self._convert_getattr(node)
+    if ret:
+      return ret
     raise ParseError("Constructors and function calls in type annotations "
                      "are not supported.")
 
@@ -349,6 +376,9 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       # docstrings
       return Splice([])
 
+  def enter_arg(self, node):
+    self.convert_node_annotations(node)
+
   def visit_arg(self, node):
     self.convert_node_annotations(node)
 
@@ -426,7 +456,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
 
   def visit_AnnAssign(self, node):
     self.convert_node_annotations(node)
-    name = node.target.id
+    name = _parseable_name_to_real_name(node.target.id)
     typ = node.annotation
     if isinstance(node.value, types.Pyval):
       val = node.value
@@ -722,7 +752,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
 
   def enter_ClassDef(self, node):
     self.level += 1
-    self.class_stack.append(node.name)
+    self.class_stack.append(_parseable_name_to_real_name(node.name))
 
   def leave_ClassDef(self, node):
     self.level -= 1
@@ -755,17 +785,59 @@ def post_process_ast(ast, src, name=None):
   return ast
 
 
+def _fix_src(src: str) -> str:
+  """Attempts to fix syntax errors in the source code."""
+  # TODO(b/294445640): This is a hacky workaround to deal with invalid stubs
+  # produced by the protobuf pyi generator.
+  try:
+    tokens = list(tokenize.generate_tokens(io.StringIO(src).readline))
+  except SyntaxError:
+    return src
+  num_tokens = len(tokens)
+
+  def _is_classname(i):
+    return i and tokens[i-1].string == "class"
+
+  def _is_varname(i):
+    if i and tokens[i-1].string.strip():  # not proceeded by whitespace
+      return False
+    return i < num_tokens - 1 and tokens[i+1].type == tokenize.OP
+
+  lines = src.splitlines()
+  for i, token in enumerate(tokens):
+    if (not keyword.iskeyword(token.string) or
+        not _is_classname(i) and not _is_varname(i)):
+      continue
+    start_line, start_col = token.start
+    end_line, end_col = token.end
+    if start_line != end_line:
+      continue
+    line = lines[start_line-1]
+    new_line = (line[:start_col] + _keyword_to_parseable_name(token.string) +
+                line[end_col:])
+    lines[start_line-1] = new_line
+  return "\n".join(lines)
+
+
 def _parse(src: str, feature_version: int, filename: str = ""):
   """Call the typed_ast parser with the appropriate feature version."""
   kwargs = {"feature_version": feature_version}
   if sys.version_info >= (3, 8):
     kwargs["type_comments"] = True
   try:
-    ast_root_node = astlib.parse(src, filename, **kwargs)  # pylint: disable=unexpected-keyword-arg
+    ast_root_node = astlib.parse(src, filename, **kwargs)
   except SyntaxError as e:
-    raise ParseError(
-        e.msg, line=e.lineno, filename=filename, column=e.offset, text=e.text
-    ) from e
+    # We only attempt to fix the source code if a syntax error is encountered
+    # because (1) this way, if the fixing fails, the error details will
+    # correctly reflect the original source, and (2) fixing is unnecessary most
+    # of the time, so always running it would be inefficient.
+    fixed_src = _fix_src(src)
+    try:
+      ast_root_node = astlib.parse(fixed_src, filename, **kwargs)
+    except SyntaxError:
+      raise ParseError(
+          e.msg, line=e.lineno, filename=filename, column=e.offset, text=e.text
+      ) from e
   return ast_root_node
 
 

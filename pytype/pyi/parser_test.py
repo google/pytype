@@ -3336,5 +3336,68 @@ class TypingSelfTest(parser_test_base.ParserTestBase):
     """)
 
 
+class FixSyntaxErrorTest(parser_test_base.ParserTestBase):
+
+  def test_keyword_class_name(self):
+    self.check("""
+      class None: ...
+    """)
+
+  def test_keyword_attribute_name(self):
+    self.check("""
+      async: int
+    """)
+
+  def test_keyword_attribute_name_in_class(self):
+    self.check("""
+      class X:
+          async: int
+    """)
+
+  def test_multiple_keywords(self):
+    self.check("""
+      a: str
+      in: bool
+
+      class True:
+          async: int
+    """)
+
+
+class GetAttrInAnnotationTest(parser_test_base.ParserTestBase):
+
+  def test_getattr_in_classvar(self):
+    self.check("""
+      from typing import ClassVar
+
+      class X:
+          class None: ...
+          x: ClassVar[getattr(X, 'None')]
+    """, """
+      from typing import ClassVar
+
+      class X:
+          class None: ...
+          x: ClassVar[X.None]
+    """)
+
+  def test_getattr_in_function_arg(self):
+    self.check("""
+      from typing import Union
+
+      class X:
+          class None: ...
+
+      def f(x: Union[str, getattr(X, 'None')]) -> None: ...
+    """, """
+      from typing import Union
+
+      class X:
+          class None: ...
+
+      def f(x: Union[str, X.None]) -> None: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()
