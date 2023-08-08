@@ -57,8 +57,13 @@ class SimpleValue(_base.BaseValue):
   @property
   def maybe_missing_members(self):
     if self._maybe_missing_members is None:
-      self._maybe_missing_members = isinstance(
-          self.cls, class_mixin.Class) and self.cls.is_dynamic
+      # maybe_missing_members indicates that every attribute access on this
+      # object should always succeed. This is usually indicated by the class
+      # setting _HAS_DYNAMIC_ATTRIBUTES = True.
+      # This should apply to both the class and instances of the class.
+      dyn_self = isinstance(self, class_mixin.Class) and self.is_dynamic
+      dyn_cls = isinstance(self.cls, class_mixin.Class) and self.cls.is_dynamic
+      self._maybe_missing_members = dyn_self or dyn_cls
     return self._maybe_missing_members
 
   @maybe_missing_members.setter

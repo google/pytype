@@ -585,13 +585,12 @@ class TestAttributes(test_base.BaseTest):
     """)
 
   def test_has_dynamic_attributes_class_attr(self):
-    # Only instance attributes are dynamic.
-    errors = self.CheckWithErrors("""
+    # Class attributes are dynamic too.
+    self.Check("""
       class Foo:
         _HAS_DYNAMIC_ATTRIBUTES = True
-      Foo.CONST  # attribute-error[e]
+      Foo.CONST
     """)
-    self.assertErrorRegexes(errors, {"e": r"CONST.*Foo"})
 
   def test_has_dynamic_attributes_metaclass(self):
     # Since class attributes of Foo are instance attributes for the metaclass,
