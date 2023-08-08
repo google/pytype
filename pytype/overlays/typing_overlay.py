@@ -543,6 +543,9 @@ class DataclassTransformBuilder(abstract.PyTDFunction):
     del func, alias_map  # unused
     # We are not yet doing anything with the args but since we have a type
     # signature available we might as well check it.
+    if args.namedargs:
+      self.ctx.errorlog.not_supported_yet(
+          self.ctx.vm.frames, "Arguments to dataclass_transform")
     self.match_args(node, args)
     ret = DataclassTransform(self.ctx)
     return node, ret.to_variable(node)
@@ -614,7 +617,6 @@ def build_final_decorator(ctx):
 
 
 def build_dataclass_transform(ctx):
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, "dataclass_transform")
   return DataclassTransformBuilder.make("dataclass_transform", ctx, "typing")
 
 
