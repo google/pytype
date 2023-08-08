@@ -344,6 +344,7 @@ def log_opcode(op, state, frame, stack_size):
     log.info("%s | index: %d, line: %d",
              indent, op.index, op.line)
   log.info("%s | data_stack: %s", indent, stack_rep)
+  log.info("%s | data_stack: %s", indent, [x.data for x in state.data_stack])
   log.info("%s | block_stack: %s", indent, block_stack_rep)
   log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
   log.info("%s ## %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))

@@ -875,6 +875,9 @@ class VirtualMachine:
   def call_function_from_stack_311(self, state, num):
     """Pop arguments for a function and call it."""
     # We need a separate version of call_function_from_stack for 3.11+
+    is_meth = state.peek(num + 2)
+    if not (is_meth.data and isinstance(is_meth.data[0], abstract.Null)):
+      num += 1
     state, args = state.popn(num)
     state, func = state.pop()
     if self._kw_names:
@@ -3248,7 +3251,11 @@ class VirtualMachine:
 
   def byte_BEFORE_WITH(self, state, op):
     del op
-    return state
+    state, ctxmgr = state.pop()
+    state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
+    state = state.push(exit_method)
+    state, ctxmgr_obj = self._call(state, ctxmgr, "__enter__", ())
+    return state.push(ctxmgr_obj)
 
   def byte_RETURN_GENERATOR(self, state, op):
     del op
