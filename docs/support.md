@@ -11,11 +11,13 @@ of pytype.
    * [Features](#features)
       * [Core](#core)
       * [Typing](#typing)
-      * [Non-Standard/Experimental](#non-standardexperimental)
+      * [Non-Standard {#non_standard_features}](#non-standard-non_standard_features)
+      * [Experimental {#experiments}](#experimental-experiments)
+         * [Ellipsis Annotation {#experimental_pytype_ellipsis_annotation}](#ellipsis-annotation-experimental_pytype_ellipsis_annotation)
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue Jun 13 08:58:35 PM PDT 2023 -->
+<!-- Added by: rechen, at: Tue Aug  8 12:00:43 AM PDT 2023 -->
 
 <!--te-->
 
@@ -50,12 +52,14 @@ Note: pytype supports all language and stdlib features in its supported versions
 unless noted otherwise. This section lists features that are difficult to type
 for which pytype has or intends to add custom support.
 
-Feature                                  | Supports | Issues
----------------------------------------- | :------: | :----------:
-Control Flow Analysis ("Type Narrowing") | ✅        |
-collections.namedtuple                   | ✅        |
-Dataclasses                              | ✅        |
-Enums                                    | ✅        | Requires `--use-enum-overlay` flag externally
+| Feature                      | Supports | Issues                             |
+| ---------------------------- | :------: | :--------------------------------: |
+| Control Flow Analysis ("Type | ✅        |                                    |
+: Narrowing")                  :          :                                    :
+| collections.namedtuple       | ✅        |                                    |
+| Dataclasses                  | ✅        |                                    |
+| Enums                        | ✅        | Requires `--use-enum-overlay` flag |
+:                              :          : externally                         :
 
 ### Typing
 
@@ -79,17 +83,16 @@ Feature                                                                         
 [PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
 [PEP 673 -- Self Type][673]                                                             | 3.11    | 🟡        | [#1283][self]
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
-[PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | ❌        |
+[PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | 🟡        |
 [PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
 [PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ❌        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
 
-### Non-Standard/Experimental
+### Non-Standard {#non_standard_features}
 
-This section describes notable non-standard and experimental features supported
-by pytype.
+This section describes notable non-standard features supported by pytype.
 
 Note: This is not and does not endeavor to be an exhaustive list of the ways in
 which pytype differs from other Python type checkers. See the
@@ -98,9 +101,34 @@ which pytype differs from other Python type checkers. See the
 *   Pytype forbids `str` from matching an iterable of `str`s, in order to catch
     a common accidental string iteration bug
     ([FAQ entry][faq-noniterable-strings]).
+*   `pytype_extensions`: The `pytype_extensions` namespace contains many useful
+    extensions, mostly user-contributed. The best way to learn about them is to
+    read the [inline documentation][pytype-extensions].
+*   Pytype allows type-annotated variables to be assigned to `None` or `...`
+    without including the relevant type in the type annotation. For example, `x:
+    str = None` and `x: str = ...` are allowed. This makes it easier to
+    type-annotate code that uses `None` or `...` to indicate an unset value.
 
-*   Pytype allows `...` as a top-level annotation. When used this way, `...`
-    means "inferred type" ([feature request and discussion][ellipsis-issue]).
+### Experimental {#experiments}
+
+This section describes short-lived experimental features that pytype is trialing
+which aren't part of the typing spec. In general, experiments are confined to
+the non-opensourced parts of the Google codebase since they are not supported by
+other type-checking systems.
+
+By default, experiments have a maximum lifetime of 24 months. They will then
+either be incorporated into a widely accepted, non-Google only standard or
+reverted. In either case, our team will be responsible for any remaining code
+cleanups. The lifetime of an experiment may be extended if forward progress
+toward adoption by the wider typing community is shown.
+
+#### Ellipsis Annotation {#experimental_pytype_ellipsis_annotation}
+
+*   Start date: [Jan 2022][experimental-ellipsis-commit]
+*   End date: 2024
+*   Reference: [feature request and discussion][ellipsis-issue]
+*   Details: Pytype allows `...` as a top-level annotation. When used this way,
+    `...` means "inferred type".
 
     For example, when you use `...` as the annotation for a function's return
     type, the type will be inferred from the function body:
@@ -120,14 +148,11 @@ which pytype differs from other Python type checkers. See the
     annotated as `...` may even be inferred as `Any`, effectively locally
     disabling type analysis.
 
-*   `pytype_extensions`: The `pytype_extensions` namespace contains many useful
-    extensions, mostly user-contributed. The best way to learn about them is to
-    read the [inline documentation][pytype-extensions].
-
-*   Pytype allows type-annotated variables to be assigned to `None` or `...`
-    without including the relevant type in the type annotation. For example, `x:
-    str = None` and `x: str = ...` are allowed. This makes it easier to
-    type-annotate code that uses `None` or `...` to indicate an unset value.
+    Warning: using `...` as a top-level annotation is an experimental feature
+    that is supported only by pytype. Do not use it on any code that is
+    opensourced. Other type checkers such as mypy, pyright, and pycharm will
+    consider this annotation to be an error since it is an experiment and is not
+    part of the current language standard.
 
 ### Third-Party Libraries
 
@@ -167,6 +192,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [ellipsis-issue]: https://github.com/python/typing/issues/276
+[experimental-ellipsis-commit]: https://github.com/google/pytype/commit/9f3f21e7a5bcedf6584bb41fd228878498182991
 [faq-noniterable-strings]: https://google.github.io/pytype/faq.html#why-doesnt-str-match-against-string-iterables
 [generic-aliases]: https://github.com/google/pytype/issues/793
 [packaging]: https://github.com/google/pytype/issues/151
