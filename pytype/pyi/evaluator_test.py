@@ -1,19 +1,11 @@
 """Tests for pytype.pyi.evaluator."""
 
-import sys
+import ast as astlib
 
 from pytype.pyi import evaluator
 from pytype.pyi import types
 
 import unittest
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
-
 
 _eval = evaluator.eval_string_literal
 
@@ -51,19 +43,19 @@ class EvaluatorTest(unittest.TestCase):
     self.assertEqual(_eval('5 + 5'), 10)
 
   def test_constant(self):
-    const = ast3.Constant('salutations')
+    const = astlib.Constant('salutations')
     self.assertEqual(evaluator.literal_eval(const), 'salutations')
 
   def test_expr(self):
-    expr = ast3.Expr(ast3.Num(8))
+    expr = astlib.Expr(astlib.Num(8))
     self.assertEqual(evaluator.literal_eval(expr), 8)
 
   def test_pyi_int_constant(self):
-    const = types.Pyval.from_num(ast3.parse('42', mode='eval').body)
+    const = types.Pyval.from_num(astlib.parse('42', mode='eval').body)
     self.assertEqual(evaluator.literal_eval(const), 42)
 
   def test_pyi_none_constant(self):
-    const = types.Pyval.from_const(ast3.parse('None', mode='eval').body)
+    const = types.Pyval.from_const(astlib.parse('None', mode='eval').body)
     self.assertIsNone(evaluator.literal_eval(const))
 
 

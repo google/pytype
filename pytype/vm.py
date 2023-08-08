@@ -353,7 +353,8 @@ class VirtualMachine:
 
   @property
   def current_line(self) -> Optional[int]:
-    return self.current_opcode and self.current_opcode.line  # pytype: disable=attribute-error
+    current_opcode = self.current_opcode
+    return current_opcode and current_opcode.line
 
   @contextlib.contextmanager
   def _suppress_opcode_tracing(self):

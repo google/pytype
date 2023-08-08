@@ -1,19 +1,12 @@
 """Class definitions in pyi files."""
 
-import sys
+import ast as astlib
 
 from typing import cast, Callable, Dict, List
 
 from pytype.pyi import types
 from pytype.pytd import pytd
 from pytype.pytd.parse import node as pytd_node
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
 
 _ParseError = types.ParseError
 
@@ -45,7 +38,7 @@ def get_bases(
   return bases_out
 
 
-def get_keywords(keywords: List[ast3.keyword]):
+def get_keywords(keywords: List[astlib.keyword]):
   """Get valid class keywords."""
 
   valid_keywords = []

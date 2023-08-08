@@ -550,7 +550,7 @@ class Converter(utils.ContextWeakrefMixin):
         #     d = {"a": 1j}
         if recursive:
           annot = abstract.LateAnnotation(
-              pyval.name, self.ctx.vm.frames, self.ctx)  # pytype: disable=attribute-error
+              pyval.name, self.ctx.vm.frames, self.ctx)
           annot.set_type(value)
           value = annot
         self._convert_cache[key] = value

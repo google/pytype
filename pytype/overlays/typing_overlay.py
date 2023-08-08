@@ -5,7 +5,8 @@
 
 import abc
 
-from typing import Dict as _Dict, Optional as _Optional, Tuple as _Tuple
+from typing import (
+    Dict as _Dict, Optional as _Optional, Tuple as _Tuple, Type as _Type)
 
 from pytype import utils
 from pytype.abstract import abstract
@@ -230,7 +231,7 @@ class TypeVarError(Exception):
 class _TypeVariable(abstract.PyTDFunction, abc.ABC):
   """Base class for type variables (TypeVar and ParamSpec)."""
 
-  _ABSTRACT_CLASS = None
+  _ABSTRACT_CLASS: _Type[abstract.BaseValue] = None
 
   @abc.abstractmethod
   def _get_namedarg(self, node, args, name, default_value):
@@ -298,7 +299,7 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
     except TypeVarError as e:
       self.ctx.errorlog.invalid_typevar(self.ctx.vm.frames, str(e), e.bad_call)
       typeparam_args = ()
-    param = self._ABSTRACT_CLASS(name, self.ctx, *typeparam_args)  # pytype: disable=not-callable  # pylint: disable=not-callable
+    param = self._ABSTRACT_CLASS(name, self.ctx, *typeparam_args)  # pylint: disable=not-callable
     return node, param.to_variable(node)
 
 

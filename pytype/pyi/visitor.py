@@ -1,16 +1,9 @@
 """Base visitor for typed_ast parse trees."""
 
-import sys
+import ast as astlib
 
 from pytype.ast import visitor as ast_visitor
 from pytype.pyi import types
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
 
 _ParseError = types.ParseError
 
@@ -24,7 +17,7 @@ class BaseVisitor(ast_visitor.BaseVisitor):
   """
 
   def __init__(self, *, defs=None, filename=None):
-    super().__init__(ast3, visit_decorators=False)
+    super().__init__(astlib, visit_decorators=False)
     self.defs = defs
     self.filename = filename  # used for error messages
     self.src_code = None  # set in subclass, used for error messages
@@ -71,7 +64,7 @@ class BaseVisitor(ast_visitor.BaseVisitor):
     return self.visit_Str(node)
 
   def visit_UnaryOp(self, node):
-    if isinstance(node.op, ast3.USub):
+    if isinstance(node.op, astlib.USub):
       if isinstance(node.operand, types.Pyval):
         return node.operand.negated()
     raise _ParseError(f"Unexpected unary operator: {node.op}")

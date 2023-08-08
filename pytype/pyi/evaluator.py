@@ -8,16 +8,8 @@ auto-stringifying type annotations.
 We also separate out string and node evaluation into separate functions.
 """
 
-import sys
-
+import ast as astlib
 from pytype.pyi import types
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
 
 
 _NUM_TYPES = (int, float, complex)
@@ -26,43 +18,43 @@ _NUM_TYPES = (int, float, complex)
 # pylint: disable=invalid-unary-operand-type
 def _convert(node):
   """Helper function for literal_eval."""
-  if isinstance(node, ast3.Constant):  # pytype: disable=module-attr
+  if isinstance(node, astlib.Constant):
     return node.value
-  elif isinstance(node, (ast3.Str, ast3.Bytes)):
+  elif isinstance(node, (astlib.Str, astlib.Bytes)):
     return node.s
-  elif isinstance(node, ast3.Num):
+  elif isinstance(node, astlib.Num):
     return node.n
-  elif isinstance(node, ast3.Tuple):
+  elif isinstance(node, astlib.Tuple):
     return tuple(map(_convert, node.elts))
-  elif isinstance(node, ast3.List):
+  elif isinstance(node, astlib.List):
     return list(map(_convert, node.elts))
-  elif isinstance(node, ast3.Set):
+  elif isinstance(node, astlib.Set):
     return set(map(_convert, node.elts))
-  elif isinstance(node, ast3.Dict):
+  elif isinstance(node, astlib.Dict):
     return {_convert(k): _convert(v) for k, v in zip(node.keys, node.values)}
-  elif isinstance(node, ast3.NameConstant):
+  elif isinstance(node, astlib.NameConstant):
     return node.value
-  elif isinstance(node, ast3.Name):
+  elif isinstance(node, astlib.Name):
     return node.id
   elif isinstance(node, types.Pyval):
     return node.value
   elif node.__class__.__name__ == "NamedType" and node.name == "None":
     # We convert None to pytd.NamedType('None') in types.Pyval
     return None
-  elif (isinstance(node, ast3.UnaryOp) and
-        isinstance(node.op, (ast3.UAdd, ast3.USub))):
+  elif (isinstance(node, astlib.UnaryOp) and
+        isinstance(node.op, (astlib.UAdd, astlib.USub))):
     operand = _convert(node.operand)
     if isinstance(operand, _NUM_TYPES):
-      if isinstance(node.op, ast3.UAdd):
+      if isinstance(node.op, astlib.UAdd):
         return operand
       else:
         return -operand
-  elif (isinstance(node, ast3.BinOp) and
-        isinstance(node.op, (ast3.Add, ast3.Sub))):
+  elif (isinstance(node, astlib.BinOp) and
+        isinstance(node.op, (astlib.Add, astlib.Sub))):
     left = _convert(node.left)
     right = _convert(node.right)
     if isinstance(left, _NUM_TYPES) and isinstance(right, _NUM_TYPES):
-      if isinstance(node.op, ast3.Add):
+      if isinstance(node.op, astlib.Add):
         return left + right
       else:
         return left - right
@@ -71,13 +63,13 @@ def _convert(node):
 
 
 def literal_eval(node):
-  """Modified version of ast3.literal_eval, handling things like typenames."""
-  if isinstance(node, ast3.Expression):
+  """Modified version of ast.literal_eval, handling things like typenames."""
+  if isinstance(node, astlib.Expression):
     node = node.body
-  if isinstance(node, ast3.Expr):
+  if isinstance(node, astlib.Expr):
     node = node.value
   return _convert(node)
 
 
 def eval_string_literal(src: str):
-  return literal_eval(ast3.parse(src, mode="eval"))
+  return literal_eval(astlib.parse(src, mode="eval"))

@@ -1,9 +1,9 @@
 """Generate cross references from a project."""
 
+import ast as astlib
 import collections
 import dataclasses
 import re
-import sys
 import textwrap
 import types
 from typing import Any, List, Optional, Type, TypeVar
@@ -25,14 +25,6 @@ from pytype.tools.traces import traces
 from pytype.tools.xref import callgraph
 from pytype.tools.xref import utils as xref_utils
 from pytype.tools.xref import node_utils
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
-
 
 # A mapping of offsets between a node's start position and the symbol being
 # defined. e.g. in the declaration "class X" the X is at +6 from the start.
@@ -67,13 +59,8 @@ def get_location(node):
 
 
 def get_end_location(node):
-  # These attributes are new in Python 3.8.
-  if sys.version_info[:2] >= (3, 8):
-    end_lineno = node.end_lineno
-    end_col_offset = node.end_col_offset
-  else:
-    end_lineno = node.lineno
-    end_col_offset = node.col_offset
+  end_lineno = node.end_lineno
+  end_col_offset = node.end_col_offset
   return source.Location(end_lineno, end_col_offset)
 
 
@@ -491,7 +478,7 @@ class ScopedVisitor(ast_visitor.BaseVisitor):
     elif c == self._ast.Module:
       return self.module_name
     else:
-      raise Exception(f"Unexpected scope: {node!r}")
+      raise Exception(f"Unexpected scope: {node!r}")  # pylint: disable=broad-exception-raised
 
   def iprint(self, x):
     """Print messages indented by scope level, for debugging."""
@@ -1338,8 +1325,8 @@ def process_file(options, source_text=None, generate_callgraphs=False,
           ctx=ctx)
       pytd_module = ret.ast
   # pylint: disable=unexpected-keyword-arg
-  ast_root_node = ast3.parse(src, options.input,
-                             feature_version=options.python_version[1])
+  ast_root_node = astlib.parse(src, options.input,
+                               feature_version=options.python_version[1])
   # pylint: enable=unexpected-keyword-arg
 
   # TODO(mdemello): Get from args
@@ -1347,7 +1334,7 @@ def process_file(options, source_text=None, generate_callgraphs=False,
   src_code = source.Code(
       src, ctx.vm.opcode_traces, VmTrace, filename=options.input)
   ix = Indexer(
-      ast=ast3,
+      ast=astlib,
       src=src_code,
       loader=ctx.loader,
       module_name=module_name,

@@ -189,7 +189,7 @@ class NamedTupleBuilder(NamedTupleBuilderBase):
     # Subclasses of NamedTupleBuilder need a different pyval.
     if not pyval:
       pyval = collections_ast.Lookup("collections.namedtuple")
-    self = super().make(name, ctx, "collections", pyval=pyval)  # pytype: disable=wrong-arg-types
+    self = super().make(name, ctx, "collections", pyval=pyval)
     self.collections_ast = collections_ast
     return self
 

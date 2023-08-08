@@ -1,6 +1,6 @@
 """Function definitions in pyi files."""
 
-import sys
+import ast as astlib
 import textwrap
 
 from typing import Any, List, Optional
@@ -11,13 +11,6 @@ from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function
 
 _ParseError = types.ParseError
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
 
 
 class Mutator(visitors.Visitor):
@@ -58,7 +51,7 @@ class Param(pytd_function.Param):
   """Internal representation of function parameters."""
 
   @classmethod
-  def from_arg(cls, arg: ast3.arg, kind: pytd.ParameterKind) -> "Param":
+  def from_arg(cls, arg: astlib.arg, kind: pytd.ParameterKind) -> "Param":
     """Constructor from an ast.argument node."""
     p = cls(arg.arg)
     if arg.annotation:
@@ -72,7 +65,7 @@ class NameAndSig(pytd_function.NameAndSig):
 
   @classmethod
   def from_function(
-      cls, function: ast3.FunctionDef, is_async: bool) -> "NameAndSig":
+      cls, function: astlib.FunctionDef, is_async: bool) -> "NameAndSig":
     """Constructor from an ast.FunctionDef node."""
     name = function.name
 
@@ -102,8 +95,8 @@ class NameAndSig(pytd_function.NameAndSig):
         mutators.append(x)
       elif isinstance(x, types.Ellipsis):
         pass
-      elif (isinstance(x, ast3.Expr) and
-            isinstance(x.value, ast3.Str) and
+      elif (isinstance(x, astlib.Expr) and
+            isinstance(x.value, astlib.Str) and
             i == 0):
         # docstring
         pass
@@ -112,7 +105,7 @@ class NameAndSig(pytd_function.NameAndSig):
             Unexpected statement in function body.
             Only `raise` statements and type mutations are valid
         """).lstrip()
-        if isinstance(x, ast3.AST):
+        if isinstance(x, astlib.AST):
           raise _ParseError(msg).at(x)
         else:
           raise _ParseError(msg)
@@ -138,7 +131,7 @@ class NameAndSig(pytd_function.NameAndSig):
 
 
 def _pytd_signature(
-    function: ast3.FunctionDef,
+    function: astlib.FunctionDef,
     is_async: bool,
     exceptions: Optional[List[pytd.Type]] = None
 ) -> pytd.Signature:
@@ -167,7 +160,7 @@ def _pytd_signature(
                         exceptions=tuple(exceptions), template=())
 
 
-def _pytd_star_param(arg: ast3.arg) -> Optional[pytd.Parameter]:
+def _pytd_star_param(arg: astlib.arg) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a *args argument."""
   if not arg:
     return None
@@ -175,7 +168,7 @@ def _pytd_star_param(arg: ast3.arg) -> Optional[pytd.Parameter]:
 
 
 def _pytd_starstar_param(
-    arg: Optional[ast3.arg]) -> Optional[pytd.Parameter]:
+    arg: Optional[astlib.arg]) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a **kwargs argument."""
   if not arg:
     return None

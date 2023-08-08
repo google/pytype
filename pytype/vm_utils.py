@@ -279,12 +279,9 @@ def get_name_error_details(
         prefix = clean(scope.name)
         break
     elif isinstance(scope, abstract.InterpreterClass):
-      # TODO(rechen): Remove this disable once pytype can analyze abstract.py.
-      # pytype: disable=attribute-error
       if name in scope.members:
         # The user may have intended to reference <Class>.<name>
         class_name_parts.append(scope.name)
-      # pytype: enable=attribute-error
     else:
       outer_scope = None
       if scope:

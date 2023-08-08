@@ -1,19 +1,11 @@
 """Common datatypes and pytd utilities."""
 
+import ast as astlib
 import dataclasses
-import sys
 from typing import Any, Tuple
 
 from pytype.pytd import pytd
 from pytype.pytd.codegen import pytdgen
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
-
 
 _STRING_TYPES = ("str", "bytes", "unicode")
 
@@ -39,7 +31,7 @@ class ParseError(Exception):
 
   def at(self, node, filename=None, src_code=None):
     """Add position information from `node` if it doesn't already exist."""
-    # NOTE: ast3.Module has no position info, and will be the `node` when
+    # NOTE: ast.Module has no position info, and will be the `node` when
     # build_type_decl_unit() is called, so we cannot call `node.lineno`
     if not self._line:
       self._line = getattr(node, "lineno", None)
@@ -90,22 +82,22 @@ class SlotDecl:
 
 
 @dataclasses.dataclass
-class Pyval(ast3.AST):
+class Pyval(astlib.AST):
   """Literal constants in pyi files."""
-  # Inherits from ast3.AST so it can be visited by ast visitors.
+  # Inherits from ast.AST so it can be visited by ast visitors.
 
   type: str
   value: Any
 
   @classmethod
-  def from_num(cls, node: ast3.Num):
+  def from_num(cls, node: astlib.Num):
     if isinstance(node.n, int):
       return cls("int", node.n)
     else:
       return cls("float", node.n)
 
   @classmethod
-  def from_str(cls, node: ast3.Str):
+  def from_str(cls, node: astlib.Str):
     if node.kind == "b":
       return cls("bytes", node.s)
     elif node.kind == "u":
@@ -114,7 +106,7 @@ class Pyval(ast3.AST):
       return cls("str", node.s)
 
   @classmethod
-  def from_const(cls, node: ast3.NameConstant):
+  def from_const(cls, node: astlib.NameConstant):
     if node.value is None:
       return pytd.NamedType("None")
     return cls(type(node.value).__name__, node.value)

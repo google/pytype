@@ -1,9 +1,9 @@
 """Construct and collect pytd definitions to build a TypeDeclUnit."""
 
+import ast as astlib
 import collections
 import dataclasses
 import itertools
-import sys
 
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
 
@@ -21,14 +21,6 @@ from pytype.pytd.codegen import namedtuple
 from pytype.pytd.codegen import pytdgen
 from pytype.pytd.parse import node as pytd_node
 from pytype.pytd.parse import parser_constants
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
-
 
 # Typing members that represent sets of types.
 _TYPING_SETS = ("typing.Intersection", "typing.Optional", "typing.Union")
@@ -78,12 +70,12 @@ def _split_definitions(defs: List[Any]):
       slots = d.slots
     elif isinstance(d, types.Ellipsis):
       pass
-    elif isinstance(d, ast3.Expr):
+    elif isinstance(d, astlib.Expr):
       raise _ParseError("Unexpected expression").at(d)
     else:
       msg = "Unexpected definition"
       lineno = None
-      if isinstance(d, ast3.AST):
+      if isinstance(d, astlib.AST):
         lineno = getattr(d, "lineno", None)
       raise _ParseError(msg, line=lineno)
   return constants, functions, aliases, slots, classes
