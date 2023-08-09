@@ -311,11 +311,6 @@ class ParserTest(parser_test_base.ParserTestBase):
                      None,
                      "Duplicate attribute name(s) in module: foo")
     self.check_error("""
-      from x import foo
-      def foo() -> int: ...""",
-                     None,
-                     "Duplicate attribute name(s) in module: foo")
-    self.check_error("""
       X = ... # type: int
       class X: ...""",
                      None,
@@ -355,6 +350,16 @@ class ParserTest(parser_test_base.ParserTestBase):
         x: int
     """, """
         x: int
+    """)
+
+  def test_duplicate_import(self):
+    # Imports of duplicate names are allowed and ignored. Otherwise, an import
+    # from a file we have no control over could clash with local contents.
+    self.check("""
+      from foo import Bar
+      class Bar: ...
+    """, """
+      class Bar: ...
     """)
 
   def test_type(self):

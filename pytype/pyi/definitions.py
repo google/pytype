@@ -891,15 +891,26 @@ def _remove_duplicates(nodes: List[_NodeT]) -> List[_NodeT]:
   return list(unique_nodes.values())
 
 
+def _is_import(node):
+  return (isinstance(node, pytd.Alias) and node.type.name and
+          node.type.name.startswith(parser_constants.EXTERNAL_NAME_PREFIX))
+
+
 def _check_for_duplicate_defs(*defs: List[_NodeT]) -> List[List[_NodeT]]:
-  """Check a class's list of definitions for duplicates."""
+  """Check lists of definitions for duplicates."""
   # Duplicates within the same list of definitions are fine, since the list is
   # ordered. The last one wins. However, we will raise an error if, e.g., we
   # have a function and a constant with the same name.
   unique_defs = [_remove_duplicates(d) for d in defs]
-  all_names = [node.name for node in itertools.chain.from_iterable(unique_defs)]
-  duplicates = [name for name, count in collections.Counter(all_names).items()
-                if count >= 2]
+  # Imports of duplicate names are allowed and ignored. Otherwise, an import
+  # from a file we have no control over could clash with local contents.
+  local_names = collections.Counter(
+      node.name for node in itertools.chain.from_iterable(unique_defs)
+      if not _is_import(node))
+  duplicates = [name for name, count in local_names.items() if count >= 2]
   if duplicates:
     raise _DuplicateDefsError(duplicates)
-  return unique_defs
+  return [
+      [node for node in d if not local_names[node.name] or not _is_import(node)]
+      for d in unique_defs
+  ]
