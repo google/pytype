@@ -378,23 +378,31 @@ class PyTDClass(
 
   def _populate_decorator_metadata(self):
     """Fill in class attribute metadata for decorators like @dataclass."""
-    key = None
-    keyed_decorator = None
+    keyed_decorators = {}
     for decorator in self.decorators:
-      decorator_key = class_mixin.get_metadata_key(decorator)
-      if decorator_key:
-        if key:
-          error = f"Cannot apply both @{keyed_decorator} and @{decorator}."
-          self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
-        else:
-          key, keyed_decorator = decorator_key, decorator
-          if key == "__dataclass_transform__":
-            # TODO(mdemello): Fix how we handle metadata keys; we have been
-            # assuming that they always contain __init__ fields.
-            self.metadata[key] = True
-          else:
-            self._init_attr_metadata_from_pytd(decorator)
-            self._recompute_init_from_metadata(key)
+      key = class_mixin.get_metadata_key(decorator)
+      if key:
+        keyed_decorators[decorator] = key
+    # Because dataclass() can be used to implement dataclass_transform() at
+    # runtime, a class may be decorated with both.
+    if ("typing.dataclass_transform" in keyed_decorators and
+        "dataclasses.dataclass" in keyed_decorators):
+      del keyed_decorators["dataclasses.dataclass"]
+    if not keyed_decorators:
+      return
+    elif len(keyed_decorators) > 1:
+      decorator1, decorator2, *_ = sorted(keyed_decorators)
+      error = f"Cannot apply both @{decorator1} and @{decorator2}."
+      self.ctx.errorlog.invalid_annotation(self.ctx.vm.frames, self, error)
+      return
+    (decorator, key), = keyed_decorators.items()  # pylint: disable=unbalanced-dict-unpacking
+    if key == "__dataclass_transform__":
+      # TODO(mdemello): Fix how we handle metadata keys; we have been
+      # assuming that they always contain __init__ fields.
+      self.metadata[key] = True
+    else:
+      self._init_attr_metadata_from_pytd(decorator)
+      self._recompute_init_from_metadata(key)
 
   def _init_attr_metadata_from_pytd(self, decorator):
     """Initialise metadata[key] with a list of Attributes."""

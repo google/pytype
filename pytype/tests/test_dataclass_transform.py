@@ -70,10 +70,12 @@ class TestFunction(test_base.BaseTest):
         return f
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Any, dataclass_transform
+      from typing import TypeVar, dataclass_transform
+
+      _T0 = TypeVar('_T0')
 
       @dataclass_transform
-      def dc(f) -> Any: ...
+      def dc(f: _T0) -> _T0: ...
     """)
 
   def test_pyi_function(self):
@@ -115,6 +117,15 @@ class TestFunction(test_base.BaseTest):
         a = A(x=10)
         b = A() # missing-parameter
       """)
+
+  def test_function_with_arguments(self):
+    self.Check("""
+      from typing_extensions import dataclass_transform
+      @dataclass_transform()
+      def dc(cls, *, init=True, repr=True, eq=True, order=False,
+             unsafe_hash=False, frozen=False, kw_only=False):
+        return cls
+    """)
 
 
 class TestClass(test_base.BaseTest):
@@ -178,6 +189,32 @@ class TestClass(test_base.BaseTest):
       a = B(1, '2', 3)
       b = B(1, 2)  # missing-parameter
       c = B(1, 2, 3)  # wrong-arg-types
+    """)
+
+  def test_redundant_decorator_pyi(self):
+    ty = self.Infer("""
+      import dataclasses
+      from typing_extensions import dataclass_transform
+
+      @dataclass_transform()
+      class A:
+        pass
+
+      @dataclasses.dataclass
+      class B(A):
+        x: int
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from typing import dataclass_transform
+
+      @dataclass_transform
+      class A: ...
+
+      @dataclasses.dataclass
+      class B(A):
+        x: int
+        def __init__(self, x: int) -> None: ...
     """)
 
   def test_write_pyi(self):
@@ -259,6 +296,25 @@ class TestClass(test_base.BaseTest):
         a = A(x=10, y='foo')
         b = A(10) # missing-parameter
         c = A(10, 20) # wrong-arg-types
+      """)
+
+  def test_init_subclass_impl(self):
+    with self.DepTree([("foo.py", """
+      import dataclasses
+      from typing_extensions import dataclass_transform
+
+      @dataclass_transform()
+      class X:
+        def __init_subclass__(cls):
+          return dataclasses.dataclass(cls)
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        class Y(foo.X):
+          x: int
+        Y()  # missing-parameter
+        Y(x=0)  # ok
+        Y(x='')  # wrong-arg-types
       """)
 
 

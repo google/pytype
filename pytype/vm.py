@@ -809,12 +809,6 @@ class VirtualMachine:
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
-    for f in funcv.data:
-      if isinstance(f, abstract.Function):
-        if "typing.dataclass_transform" in f.decorators:
-          func = dataclass_overlay.Dataclass.transform(self.ctx, f)
-          funcv = func.to_variable(state.node)
-          break
     args = function.Args(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
         starstarargs=starstarargs)
@@ -845,6 +839,22 @@ class VirtualMachine:
           stack.enter_context(f.reset_overloads())
       yield
 
+  def _call_function_from_stack_helper(self, state, funcv, posargs, namedargs,
+                                       starargs, starstarargs):
+    """Helper for call_function_from_stack."""
+    for f in funcv.data:
+      if isinstance(f, abstract.Function):
+        if "typing.dataclass_transform" in f.decorators:
+          func = dataclass_overlay.Dataclass.transform(self.ctx, f)
+          funcv_to_call = func.to_variable(state.node)
+          break
+    else:
+      funcv_to_call = funcv
+    with self._reset_overloads(funcv):
+      state, ret = self.call_function_with_state(
+          state, funcv_to_call, posargs, namedargs, starargs, starstarargs)
+    return state.push(ret)
+
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
@@ -867,10 +877,8 @@ class VirtualMachine:
     else:
       posargs = args
     state, func = state.pop()
-    with self._reset_overloads(func):
-      state, ret = self.call_function_with_state(
-          state, func, posargs, namedargs, starargs, starstarargs)
-    return state.push(ret)
+    return self._call_function_from_stack_helper(
+        state, func, posargs, namedargs, starargs, starstarargs)
 
   def call_function_from_stack_311(self, state, num):
     """Pop arguments for a function and call it."""
@@ -890,10 +898,8 @@ class VirtualMachine:
       namedargs = {}
     starargs = starstarargs = None
     self._kw_names = ()
-    with self._reset_overloads(func):
-      state, ret = self.call_function_with_state(
-          state, func, posargs, namedargs, starargs, starstarargs)
-    return state.push(ret)
+    return self._call_function_from_stack_helper(
+        state, func, posargs, namedargs, starargs, starstarargs)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
