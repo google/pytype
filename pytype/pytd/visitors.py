@@ -515,6 +515,11 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     if (isinstance(item, pytd.Constant) and
         item.name == "typing_extensions.TypedDict"):
       return self.to_type(pytd.NamedType("typing.TypedDict"))
+    # Special case for typing.dataclass_transform
+    # TODO(b/295106604): This works around a bug when importing chex.dataclass
+    if (isinstance(item, pytd.Function) and
+        item.name == "typing.dataclass_transform"):
+      return item
     return self.to_type(item)
 
   def VisitClassType(self, t):
