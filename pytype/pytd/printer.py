@@ -137,6 +137,7 @@ class PrintVisitor(base_visitor.Visitor):
     self.in_literal = False
     self.in_constant = False
     self.in_signature = False
+    self.in_function = False
     self.multiline_args = multiline_args
 
     self._unit = None
@@ -157,6 +158,7 @@ class PrintVisitor(base_visitor.Visitor):
     copy.in_literal = self.in_literal
     copy.in_constant = self.in_constant
     copy.in_signature = self.in_signature
+    copy.in_function = self.in_function
     # pylint: disable=protected-access
     copy._local_names = set(self._local_names)
     copy._imports._typing._members = dict(
@@ -259,7 +261,7 @@ class PrintVisitor(base_visitor.Visitor):
       decorators.append("@" + self.VisitNamedType(d))
       if d.type.name.startswith("typing."):
         self.VisitNamedType(d.type)
-    return decorators
+    return utils.unique_list(decorators)
 
   def EnterTypeDeclUnit(self, unit):
     self._unit = unit
@@ -354,7 +356,7 @@ class PrintVisitor(base_visitor.Visitor):
     return f"{node.name}: {node.type}{suffix}"
 
   def EnterAlias(self, node):
-    if self._IsAliasImport(node):
+    if self.in_function or self._IsAliasImport(node):
       self._imports.track_imports = False
 
   def LeaveAlias(self, _):
@@ -439,6 +441,12 @@ class PrintVisitor(base_visitor.Visitor):
       methods = []
     lines = decorators + header + slots + classes + constants + methods
     return "\n".join(lines) + "\n"
+
+  def EnterFunction(self, node):
+    self.in_function = True
+
+  def LeaveFunction(self, node):
+    self.in_function = False
 
   def VisitFunction(self, node):
     """Visit function, producing multi-line string (one for each signature)."""

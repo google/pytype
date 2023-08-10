@@ -279,12 +279,9 @@ def get_name_error_details(
         prefix = clean(scope.name)
         break
     elif isinstance(scope, abstract.InterpreterClass):
-      # TODO(rechen): Remove this disable once pytype can analyze abstract.py.
-      # pytype: disable=attribute-error
       if name in scope.members:
         # The user may have intended to reference <Class>.<name>
         class_name_parts.append(scope.name)
-      # pytype: enable=attribute-error
     else:
       outer_scope = None
       if scope:
@@ -347,6 +344,7 @@ def log_opcode(op, state, frame, stack_size):
     log.info("%s | index: %d, line: %d",
              indent, op.index, op.line)
   log.info("%s | data_stack: %s", indent, stack_rep)
+  log.info("%s | data_stack: %s", indent, [x.data for x in state.data_stack])
   log.info("%s | block_stack: %s", indent, block_stack_rep)
   log.info("%s | node: <%d>%s", indent, state.node.id, state.node.name)
   log.info("%s ## %s", indent, utils.maybe_truncate(str(op), _TRUNCATE))

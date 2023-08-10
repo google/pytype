@@ -25,7 +25,7 @@
    * [What does ... mean in a type annotation?](#what-does--mean-in-a-type-annotation)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 23 01:37:58 PM PDT 2023 -->
+<!-- Added by: rechen, at: Tue Aug  8 10:30:53 AM PDT 2023 -->
 
 <!--te-->
 
@@ -428,7 +428,7 @@ inference engine.
 [how-do-i-disable-all-pytype-checks-for-a-particular-file]: #how-do-i-disable-all-pytype-checks-for-a-particular-file
 [oss-pytype]: https://github.com/google/pytype
 [pep-561-issue]: https://github.com/google/pytype/issues/151
-[pytype-experimental]: support.md#non-standardexperimental
+[pytype-experimental]: support.md#experiments
 [typeshed]: https://github.com/python/typeshed
 [typing-faq]: typing_faq.md
 

@@ -5,14 +5,14 @@
 
 import abc
 
-from typing import Dict as _Dict, Optional as _Optional, Tuple as _Tuple
+from typing import (
+    Dict as _Dict, Optional as _Optional, Tuple as _Tuple, Type as _Type)
 
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
-from pytype.overlays import dataclass_overlay
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
@@ -231,7 +231,7 @@ class TypeVarError(Exception):
 class _TypeVariable(abstract.PyTDFunction, abc.ABC):
   """Base class for type variables (TypeVar and ParamSpec)."""
 
-  _ABSTRACT_CLASS = None
+  _ABSTRACT_CLASS: _Type[abstract.BaseValue] = None
 
   @abc.abstractmethod
   def _get_namedarg(self, node, args, name, default_value):
@@ -544,6 +544,9 @@ class DataclassTransformBuilder(abstract.PyTDFunction):
     del func, alias_map  # unused
     # We are not yet doing anything with the args but since we have a type
     # signature available we might as well check it.
+    if args.namedargs:
+      self.ctx.errorlog.not_supported_yet(
+          self.ctx.vm.frames, "Arguments to dataclass_transform")
     self.match_args(node, args)
     ret = DataclassTransform(self.ctx)
     return node, ret.to_variable(node)
@@ -563,8 +566,7 @@ class DataclassTransform(abstract.SimpleValue):
         d.decorators.append("typing.dataclass_transform")
       elif isinstance(d, abstract.Class):
         d.decorators.append("typing.dataclass_transform")
-        # Work around import cycles in abstract/_special_classes
-        d.metadata["__dataclass_transform__"] = dataclass_overlay.Dataclass
+        d.metadata["__dataclass_transform__"] = True
       elif isinstance(d, abstract.AMBIGUOUS_OR_EMPTY):
         pass
       else:
@@ -616,7 +618,6 @@ def build_final_decorator(ctx):
 
 
 def build_dataclass_transform(ctx):
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, "dataclass_transform")
   return DataclassTransformBuilder.make("dataclass_transform", ctx, "typing")
 
 

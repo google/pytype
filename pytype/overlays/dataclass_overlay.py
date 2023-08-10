@@ -37,6 +37,10 @@ class Dataclass(classgen.Decorator):
   @classmethod
   def transform(cls, ctx, func):
     """Generate an instance for a func decorated with @dataclass_transform."""
+    # If an overlay subclasses dataclass_overlay.Dataclass we assume it
+    # implicitly handles @dataclass_transform itself
+    if isinstance(func, cls):
+      return func
     ret = cls.make(ctx)
     ret.name = func.name
     ret.module = func.module

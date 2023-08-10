@@ -335,12 +335,48 @@ class AnnotationContainer(AnnotationClass):
     return self._call_helper(node, self.base_cls, func, args)
 
 
+class _TypeVariableInstance(_base.BaseValue):
+  """An instance of a type parameter."""
+
+  def __init__(self, param, instance, ctx):
+    super().__init__(param.name, ctx)
+    self.cls = self.param = param
+    self.instance = instance
+    self.module = param.module
+
+  def call(self, node, func, args, alias_map=None):
+    var = self.instance.get_instance_type_parameter(self.name)
+    if var.bindings:
+      return function.call_function(self.ctx, node, var, args)
+    else:
+      return node, self.ctx.convert.empty.to_variable(self.ctx.root_node)
+
+  def __eq__(self, other):
+    if isinstance(other, type(self)):
+      return self.param == other.param and self.instance == other.instance
+    return NotImplemented
+
+  def __hash__(self):
+    return hash((self.param, self.instance))
+
+  def __repr__(self):
+    return f"{self.__class__.__name__}({self.name!r})"
+
+
+class TypeParameterInstance(_TypeVariableInstance):
+  """An instance of a TypeVar type parameter."""
+
+
+class ParamSpecInstance(_TypeVariableInstance):
+  """An instance of a ParamSpec type parameter."""
+
+
 class _TypeVariable(_base.BaseValue):
   """Parameter of a type."""
 
   formal = True
 
-  _INSTANCE_CLASS = None
+  _INSTANCE_CLASS: Type[_TypeVariableInstance] = None
 
   def __init__(self,
                name,
@@ -416,42 +452,6 @@ class _TypeVariable(_base.BaseValue):
 
   def call(self, node, func, args, alias_map=None):
     return node, self.instantiate(node)
-
-
-class _TypeVariableInstance(_base.BaseValue):
-  """An instance of a type parameter."""
-
-  def __init__(self, param, instance, ctx):
-    super().__init__(param.name, ctx)
-    self.cls = self.param = param
-    self.instance = instance
-    self.module = param.module
-
-  def call(self, node, func, args, alias_map=None):
-    var = self.instance.get_instance_type_parameter(self.name)
-    if var.bindings:
-      return function.call_function(self.ctx, node, var, args)
-    else:
-      return node, self.ctx.convert.empty.to_variable(self.ctx.root_node)
-
-  def __eq__(self, other):
-    if isinstance(other, type(self)):
-      return self.param == other.param and self.instance == other.instance
-    return NotImplemented
-
-  def __hash__(self):
-    return hash((self.param, self.instance))
-
-  def __repr__(self):
-    return f"{self.__class__.__name__}({self.name!r})"
-
-
-class TypeParameterInstance(_TypeVariableInstance):
-  """An instance of a TypeVar type parameter."""
-
-
-class ParamSpecInstance(_TypeVariableInstance):
-  """An instance of a ParamSpec type parameter."""
 
 
 class TypeParameter(_TypeVariable):

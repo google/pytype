@@ -357,7 +357,7 @@ class Frame(utils.ContextWeakrefMixin):
 
   def lookup_name(self, target_name):
     for store in (self.f_locals, self.f_globals, self.f_builtins):
-      if target_name in store.members:
+      if store is not None and target_name in store.members:
         return store.members[target_name]
     i = (self.f_code.co_cellvars + self.f_code.co_freevars).index(target_name)
     return self.cells[i]

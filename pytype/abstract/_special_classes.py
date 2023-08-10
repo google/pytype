@@ -2,7 +2,6 @@
 
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
-from pytype.abstract import function
 from pytype.pytd import pytd
 
 
@@ -23,14 +22,8 @@ def build_class(node, props, kwargs, ctx):
       return base.make_class(
           node, props.bases, props.class_dict_var, total=kwargs.get("total"))
     elif "__dataclass_transform__" in base.metadata:
-      dc = base.metadata["__dataclass_transform__"]
       node, cls_var = ctx.make_class(node, props)
-      # We need to propagate the metadata key as well; anything in the entire
-      # tree of subclasses is a dataclass
-      cls = abstract_utils.get_atomic_value(cls_var)
-      cls.metadata["__dataclass_transform__"] = dc
-      args = function.Args(posargs=(cls_var,))
-      return dc.make(ctx).call(node, None, args)
+      return ctx.convert.apply_dataclass_transform(cls_var, node, ctx)
   return node, None
 
 

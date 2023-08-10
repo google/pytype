@@ -353,7 +353,8 @@ class VirtualMachine:
 
   @property
   def current_line(self) -> Optional[int]:
-    return self.current_opcode and self.current_opcode.line  # pytype: disable=attribute-error
+    current_opcode = self.current_opcode
+    return current_opcode and current_opcode.line
 
   @contextlib.contextmanager
   def _suppress_opcode_tracing(self):
@@ -406,6 +407,7 @@ class VirtualMachine:
 
   def _handle_match_case(self, state, op):
     """Track type narrowing and default cases in a match statement."""
+    assert self._branch_tracker is not None
     opname = op.__class__.__name__
     if not (opname.startswith("MATCH_") or
             opname in ("COMPARE_OP", "IS_OP", "CONTAINS_OP", "NOP")):
@@ -454,6 +456,7 @@ class VirtualMachine:
     Raises:
       VirtualMachineError: if a fatal error occurs.
     """
+    assert self._branch_tracker is not None
     _opcode_counter.inc(op.name)
     self.frame.current_opcode = op
     self._importing = "IMPORT" in op.__class__.__name__
@@ -484,6 +487,7 @@ class VirtualMachine:
 
   def _run_frame_blocks(self, frame, node, annotated_locals):
     """Runs a frame's code blocks."""
+    assert self._director is not None
     frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self.ctx)
     frame_name = frame.f_code.co_name
@@ -805,12 +809,6 @@ class VirtualMachine:
     """Call a function with the given state."""
     assert starargs is None or isinstance(starargs, cfg.Variable)
     assert starstarargs is None or isinstance(starstarargs, cfg.Variable)
-    for f in funcv.data:
-      if isinstance(f, abstract.Function):
-        if "typing.dataclass_transform" in f.decorators:
-          func = dataclass_overlay.Dataclass.transform(self.ctx, f)
-          funcv = func.to_variable(state.node)
-          break
     args = function.Args(
         posargs=posargs, namedargs=namedargs, starargs=starargs,
         starstarargs=starstarargs)
@@ -841,6 +839,22 @@ class VirtualMachine:
           stack.enter_context(f.reset_overloads())
       yield
 
+  def _call_function_from_stack_helper(self, state, funcv, posargs, namedargs,
+                                       starargs, starstarargs):
+    """Helper for call_function_from_stack."""
+    for f in funcv.data:
+      if isinstance(f, abstract.Function):
+        if "typing.dataclass_transform" in f.decorators:
+          func = dataclass_overlay.Dataclass.transform(self.ctx, f)
+          funcv_to_call = func.to_variable(state.node)
+          break
+    else:
+      funcv_to_call = funcv
+    with self._reset_overloads(funcv):
+      state, ret = self.call_function_with_state(
+          state, funcv_to_call, posargs, namedargs, starargs, starstarargs)
+    return state.push(ret)
+
   def call_function_from_stack(self, state, num, starargs, starstarargs):
     """Pop arguments for a function and call it."""
 
@@ -863,14 +877,15 @@ class VirtualMachine:
     else:
       posargs = args
     state, func = state.pop()
-    with self._reset_overloads(func):
-      state, ret = self.call_function_with_state(
-          state, func, posargs, namedargs, starargs, starstarargs)
-    return state.push(ret)
+    return self._call_function_from_stack_helper(
+        state, func, posargs, namedargs, starargs, starstarargs)
 
   def call_function_from_stack_311(self, state, num):
     """Pop arguments for a function and call it."""
     # We need a separate version of call_function_from_stack for 3.11+
+    is_meth = state.peek(num + 2)
+    if not (is_meth.data and isinstance(is_meth.data[0], abstract.Null)):
+      num += 1
     state, args = state.popn(num)
     state, func = state.pop()
     if self._kw_names:
@@ -883,10 +898,8 @@ class VirtualMachine:
       namedargs = {}
     starargs = starstarargs = None
     self._kw_names = ()
-    with self._reset_overloads(func):
-      state, ret = self.call_function_with_state(
-          state, func, posargs, namedargs, starargs, starstarargs)
-    return state.push(ret)
+    return self._call_function_from_stack_helper(
+        state, func, posargs, namedargs, starargs, starstarargs)
 
   def get_globals_dict(self):
     """Get a real python dict of the globals."""
@@ -1899,6 +1912,7 @@ class VirtualMachine:
 
   def _compare_op(self, state, op_arg, op):
     """Pops and compares the top two stack values and pushes a boolean."""
+    assert self._branch_tracker is not None
     state, (x, y) = state.popn(2)
     match_enum = self._branch_tracker.add_cmp_branch(op, x, y)
     if match_enum is not None:
@@ -2405,7 +2419,9 @@ class VirtualMachine:
   def store_jump(self, target, state):
     assert target
     assert self.frame is not None
-    self.frame.targets[self.frame.current_block.id].append(target)
+    current_block = self.frame.current_block
+    assert current_block is not None
+    self.frame.targets[current_block.id].append(target)
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
@@ -2713,6 +2729,7 @@ class VirtualMachine:
     self.frame.yield_variable = value
     if self.frame.check_return:
       ret_type = self.frame.allowed_returns
+      assert ret_type is not None
       self._check_return(state.node, ret,
                          ret_type.get_formal_type_parameter(abstract_utils.T))
       send_var = self.init_class(
@@ -2749,6 +2766,7 @@ class VirtualMachine:
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
+    assert self._director is not None
     name = self.frame.f_code.co_names[op.arg]
     if op.line in self._director.ignore:
       # "from x import y  # type: ignore"
@@ -2803,6 +2821,7 @@ class VirtualMachine:
     if self.frame.check_return:
       if self.frame.f_code.has_generator():
         ret_type = self.frame.allowed_returns
+        assert ret_type is not None
         self._check_return(state.node, var,
                            ret_type.get_formal_type_parameter(abstract_utils.V))
       elif not self.frame.f_code.has_async_generator():
@@ -3017,6 +3036,7 @@ class VirtualMachine:
     if yield_variable.bindings:
       self.frame.yield_variable = yield_variable
       if self.frame.check_return:
+        assert self.frame.allowed_returns is not None
         ret_type = self.frame.allowed_returns.get_formal_type_parameter(
             abstract_utils.T)
         self._check_return(state.node, yield_variable, ret_type)
@@ -3031,9 +3051,9 @@ class VirtualMachine:
     state, result = self.load_attr(state, self_obj, name)
     # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
     # this opcode should push two values onto the stack: either the unbound
-    # method and its `self` or NULL and the bound method. However, pushing only
-    # the bound method and modifying CALL_METHOD accordingly works in all cases
-    # we've tested.
+    # method and its `self` or NULL and the bound method. Since we always
+    # retrieve a bound method, we push the NULL
+    state = self._push_null(state)
     self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
 
@@ -3092,6 +3112,8 @@ class VirtualMachine:
   def byte_CALL_METHOD(self, state, op):
     state, args = state.popn(op.arg)
     state, func = state.pop()
+    # pop the NULL off the stack (see LOAD_METHOD)
+    state, _ = state.pop()
     with self._reset_overloads(func):
       state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
@@ -3173,6 +3195,7 @@ class VirtualMachine:
     state = state.forward_cfg_node("MatchClass")
     success = ret.success
     if ret.matched:
+      assert self._branch_tracker is not None
       # Narrow the type of the match variable since we are in a case branch
       # where it has matched the given class. The branch tracker will store the
       # original (unnarrowed) type, since the new variable shadows it.
@@ -3208,12 +3231,12 @@ class VirtualMachine:
     del op
     return state
 
+  def _push_null(self, state):
+    null = abstract.Null(self.ctx).to_variable(state.node)
+    return state.push(null)
+
   def byte_PUSH_NULL(self, state, op):
-    # From docs: "Used in the call sequence to match the NULL pushed by
-    # LOAD_METHOD for non-method calls". We don't push the NULL in either case;
-    # see the comment under byte_LOAD_METHOD for more context.
-    del op
-    return state
+    return self._push_null(state)
 
   def byte_PUSH_EXC_INFO(self, state, op):
     del op
@@ -3234,7 +3257,11 @@ class VirtualMachine:
 
   def byte_BEFORE_WITH(self, state, op):
     del op
-    return state
+    state, ctxmgr = state.pop()
+    state, exit_method = self.load_attr(state, ctxmgr, "__exit__")
+    state = state.push(exit_method)
+    state, ctxmgr_obj = self._call(state, ctxmgr, "__enter__", ())
+    return state.push(ctxmgr_obj)
 
   def byte_RETURN_GENERATOR(self, state, op):
     del op

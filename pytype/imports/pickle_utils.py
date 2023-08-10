@@ -55,8 +55,7 @@ def SavePickle(data, filename=None, compress=False, open_function=open):
         # deterministic gzip files.
         with gzip.GzipFile(filename="", mode="wb",
                            fileobj=fi, mtime=1.0) as zfi:
-          # TODO(b/173150871): Remove disable once typeshed bug is fixed.
-          pickle.dump(data, zfi, _PICKLE_PROTOCOL)  # pytype: disable=wrong-arg-types
+          pickle.dump(data, zfi, _PICKLE_PROTOCOL)
     elif filename is not None:
       with open_function(filename, "wb") as fi:
         pickle.dump(data, fi, _PICKLE_PROTOCOL)

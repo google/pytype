@@ -1,6 +1,6 @@
 """Apply decorators to classes and functions."""
 
-from typing import Iterable, List, Tuple
+from typing import Iterable, List
 
 from pytype.pytd import base_visitor
 from pytype.pytd import pytd
@@ -15,14 +15,14 @@ class ValidateDecoratedClassVisitor(base_visitor.Visitor):
     validate_class(cls)
 
 
-def _decorate_class(cls: pytd.Class, decorator: str) -> Tuple[pytd.Class, bool]:
+def _decorate_class(cls: pytd.Class, decorator: str) -> pytd.Class:
   """Apply a single decorator to a class."""
   factory = _DECORATORS.get(decorator, None)
   if factory:
-    return factory(cls), True
+    return factory(cls)
   else:
     # do nothing for unknown decorators
-    return cls, False
+    return cls
 
 
 def _validate_class(cls: pytd.Class, decorator: str) -> None:
@@ -38,7 +38,7 @@ def _decorator_names(cls: pytd.Class) -> List[str]:
   ]
 
 
-def has_decorator(cls: pytd.Class, names):
+def has_decorator(cls: pytd.Class, names) -> bool:
   return bool(set(names) & set(_decorator_names(cls)))
 
 
@@ -62,7 +62,7 @@ def check_class(cls: pytd.Class) -> None:
     check_defaults(fields, cls.name)
 
 
-def is_dataclass_kwonly(c: pytd.Type):
+def is_dataclass_kwonly(c: pytd.Type) -> bool:
   return (
       (isinstance(c, pytd.NamedType) and
        c.name == "dataclasses.KW_ONLY") or
@@ -162,13 +162,11 @@ def decorate_dataclass(cls: pytd.Class) -> pytd.Class:
   return add_dataclass_fields(cls)
 
 
-def process_class(cls: pytd.Class) -> Tuple[pytd.Class, bool]:
+def process_class(cls: pytd.Class) -> pytd.Class:
   """Apply all decorators to a class."""
-  changed = False
   for decorator in _decorator_names(cls):
-    cls, decorated = _decorate_class(cls, decorator)
-    changed = changed or decorated
-  return cls, changed
+    cls = _decorate_class(cls, decorator)
+  return cls
 
 
 def validate_class(cls: pytd.Class) -> None:

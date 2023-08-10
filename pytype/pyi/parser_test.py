@@ -311,11 +311,6 @@ class ParserTest(parser_test_base.ParserTestBase):
                      None,
                      "Duplicate attribute name(s) in module: foo")
     self.check_error("""
-      from x import foo
-      def foo() -> int: ...""",
-                     None,
-                     "Duplicate attribute name(s) in module: foo")
-    self.check_error("""
       X = ... # type: int
       class X: ...""",
                      None,
@@ -355,6 +350,16 @@ class ParserTest(parser_test_base.ParserTestBase):
         x: int
     """, """
         x: int
+    """)
+
+  def test_duplicate_import(self):
+    # Imports of duplicate names are allowed and ignored. Otherwise, an import
+    # from a file we have no control over could clash with local contents.
+    self.check("""
+      from foo import Bar
+      class Bar: ...
+    """, """
+      class Bar: ...
     """)
 
   def test_type(self):
@@ -3333,6 +3338,69 @@ class TypingSelfTest(parser_test_base.ParserTestBase):
       class A:
           class B:
               def f(self: _SelfAB) -> _SelfAB: ...
+    """)
+
+
+class FixSyntaxErrorTest(parser_test_base.ParserTestBase):
+
+  def test_keyword_class_name(self):
+    self.check("""
+      class None: ...
+    """)
+
+  def test_keyword_attribute_name(self):
+    self.check("""
+      async: int
+    """)
+
+  def test_keyword_attribute_name_in_class(self):
+    self.check("""
+      class X:
+          async: int
+    """)
+
+  def test_multiple_keywords(self):
+    self.check("""
+      a: str
+      in: bool
+
+      class True:
+          async: int
+    """)
+
+
+class GetAttrInAnnotationTest(parser_test_base.ParserTestBase):
+
+  def test_getattr_in_classvar(self):
+    self.check("""
+      from typing import ClassVar
+
+      class X:
+          class None: ...
+          x: ClassVar[getattr(X, 'None')]
+    """, """
+      from typing import ClassVar
+
+      class X:
+          class None: ...
+          x: ClassVar[X.None]
+    """)
+
+  def test_getattr_in_function_arg(self):
+    self.check("""
+      from typing import Union
+
+      class X:
+          class None: ...
+
+      def f(x: Union[str, getattr(X, 'None')]) -> None: ...
+    """, """
+      from typing import Union
+
+      class X:
+          class None: ...
+
+      def f(x: Union[str, X.None]) -> None: ...
     """)
 
 

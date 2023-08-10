@@ -71,17 +71,18 @@ def make_method(ctx,
 
   def _process_annotation(param):
     """Process a single param into annotations."""
-    if not param.typ:
+    param_type = param.typ
+    if not param_type:
       return
-    elif isinstance(param.typ, cfg.Variable):
-      types = param.typ.data  # pytype: disable=attribute-error
+    elif isinstance(param_type, cfg.Variable):
+      types = param_type.data
       if len(types) == 1:
         annotations[param.name] = types[0].cls
       else:
         t = abstract.Union([t.cls for t in types], ctx)
         annotations[param.name] = t
     else:
-      annotations[param.name] = param.typ
+      annotations[param.name] = param_type
 
   # Set default values
   params = params or []

@@ -25,6 +25,36 @@ class TestPy311(test_base.BaseTest):
         x ^= y
     """)
 
+  def test_method_call(self):
+    self.Check("""
+      class A:
+        def f(self):
+          return 42
+
+      x = A().f()
+      assert_type(x, int)
+    """)
+
+  def test_context_manager(self):
+    self.Check("""
+      class A:
+        def __enter__(self):
+          pass
+        def __exit__(self, a, b, c):
+          pass
+
+      lock = A()
+
+      def f() -> str:
+        path = ''
+        with lock:
+          try:
+            pass
+          except:
+            pass
+          return path
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

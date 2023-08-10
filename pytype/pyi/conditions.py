@@ -1,18 +1,11 @@
 """Process conditional blocks in pyi files."""
 
-import sys
+import ast as astlib
 from typing import Optional, Tuple, Union
 
 from pytype.ast import visitor as ast_visitor
 from pytype.pyi import types
 from pytype.pytd import slots as cmp_slots
-
-# pylint: disable=g-import-not-at-top
-if sys.version_info >= (3, 8):
-  import ast as ast3
-else:
-  from typed_ast import ast3
-# pylint: enable=g-import-not-at-top
 
 _ParseError = types.ParseError
 
@@ -21,14 +14,14 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
   """Evaluates if statements in pyi files."""
 
   def __init__(self, options):
-    super().__init__(ast=ast3)
+    super().__init__(ast=astlib)
     self._compares = {
-        ast3.Eq: cmp_slots.EQ,
-        ast3.Gt: cmp_slots.GT,
-        ast3.Lt: cmp_slots.LT,
-        ast3.GtE: cmp_slots.GE,
-        ast3.LtE: cmp_slots.LE,
-        ast3.NotEq: cmp_slots.NE
+        astlib.Eq: cmp_slots.EQ,
+        astlib.Gt: cmp_slots.GT,
+        astlib.Lt: cmp_slots.LT,
+        astlib.GtE: cmp_slots.GE,
+        astlib.LtE: cmp_slots.LE,
+        astlib.NotEq: cmp_slots.NE
     }
     self._options = options
 
@@ -86,7 +79,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     raise _ParseError(msg)
 
   def visit_Attribute(self, node):
-    if not isinstance(node.value, ast3.Name):
+    if not isinstance(node.value, astlib.Name):
       self.fail()
     name = f"{node.value.id}.{node.attr}"
     if node.value.id == "sys":
@@ -118,15 +111,15 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     return tuple(node.elts)
 
   def visit_BoolOp(self, node):
-    if isinstance(node.op, ast3.Or):
+    if isinstance(node.op, astlib.Or):
       return any(node.values)
-    elif isinstance(node.op, ast3.And):
+    elif isinstance(node.op, astlib.And):
       return all(node.values)
     else:
       raise _ParseError(f"Unexpected boolean operator: {node.op}")
 
   def visit_UnaryOp(self, node):
-    if isinstance(node.op, ast3.USub) and isinstance(node.operand, int):
+    if isinstance(node.op, astlib.USub) and isinstance(node.operand, int):
       return -node.operand
     else:
       raise _ParseError(f"Unexpected unary operator: {node.op}")
@@ -141,7 +134,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
     return self._eval_comparison(ident, op, right)
 
 
-def evaluate(test: ast3.AST, options) -> bool:
+def evaluate(test: astlib.AST, options) -> bool:
   return ConditionEvaluator(options).visit(test)
 
 
