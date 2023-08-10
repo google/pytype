@@ -1355,5 +1355,12 @@ class EnumOverlayTest(test_base.BaseTest):
       assert_type(M.I, str)
     """)
 
+  def test_not_supported_yet(self):
+    self.CheckWithErrors("""
+      import enum
+      enum.StrEnum  # not-supported-yet
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

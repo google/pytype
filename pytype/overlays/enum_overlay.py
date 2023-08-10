@@ -56,12 +56,14 @@ class EnumOverlay(overlay.Overlay):
   def __init__(self, ctx):
     ast = ctx.loader.import_name("enum")
     if ctx.options.use_enum_overlay:
+      def not_supported_yet(name, ctx):
+        return overlay_utils.not_supported_yet(name, ctx, ast)
       member_map = {
           "Enum": EnumBuilder,
           "EnumMeta": EnumMeta,
           "EnumType": EnumMeta,
           "IntEnum": IntEnumBuilder,
-          **{name: overlay.build(name, overlay_utils.not_supported_yet)
+          **{name: overlay.build(name, not_supported_yet)
              for name in _unsupported},
       }
       ast = ast.Visit(visitors.RemoveMethods())
