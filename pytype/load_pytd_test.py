@@ -645,6 +645,21 @@ class ImportPathsTest(_LoaderTest):
     self.assertEqual(ast.Lookup("foo.T"),
                      pytd.TypeParameter(name="T", scope="foo"))
 
+  def test_alias_property_with_setter(self):
+    ast = self._import(foo="""
+      class X:
+        @property
+        def f(self) -> int: ...
+        @f.setter
+        def f(self, value: int) -> None: ...
+        g = f
+    """)
+    x = ast.Lookup("foo.X")
+    self.assertEqual(pytd_utils.Print(x.Lookup("f")),
+                     "f: Annotated[int, 'property']")
+    self.assertEqual(pytd_utils.Print(x.Lookup("g")),
+                     "g: Annotated[int, 'property']")
+
 
 class ImportTypeMacroTest(_LoaderTest):
 

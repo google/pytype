@@ -711,8 +711,11 @@ class Definitions:
       raise e.to_parse_error(namespace=f"class {class_name}") from e
 
     if aliases:
-      vals_dict = {val.name: val
-                   for val in constants + aliases + methods + classes}
+      # Reversing `methods` makes it so that when a function has multiple
+      # signatures, pytype grabs the first one when resolving the alias. This is
+      # important for properties.
+      vals_dict = {val.name: val for val in itertools.chain(
+          constants, aliases, reversed(methods), classes)}
       for val in aliases:
         name = val.name
         seen_names = set()
