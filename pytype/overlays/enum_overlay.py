@@ -59,10 +59,10 @@ class EnumOverlay(overlay.Overlay):
       def not_supported_yet(name, ctx):
         return overlay_utils.not_supported_yet(name, ctx, ast)
       member_map = {
-          "Enum": EnumBuilder,
+          "Enum": overlay.build("Enum", EnumBuilder),
           "EnumMeta": EnumMeta,
           "EnumType": EnumMeta,
-          "IntEnum": IntEnumBuilder,
+          "IntEnum": overlay.build("IntEnum", EnumBuilder),
           **{name: overlay.build(name, not_supported_yet)
              for name in _unsupported},
       }
@@ -76,7 +76,7 @@ class EnumOverlay(overlay.Overlay):
 class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
-  def __init__(self, ctx, name="Enum"):
+  def __init__(self, name, ctx):
     enum_ast = ctx.vm.loaded_overlays["enum"].ast
     pyval = enum_ast.Lookup(f"enum.{name}")
     super().__init__(name, pyval, ctx)
@@ -192,13 +192,6 @@ class EnumBuilder(abstract.PyTDClass):
         metaclass_var=metaclass,
         class_type=EnumInstance)
     return self.ctx.make_class(node, props)
-
-
-class IntEnumBuilder(EnumBuilder):
-  """Overlays enum.IntEnum using EnumBuilder."""
-
-  def __init__(self, ctx):
-    super().__init__(ctx, name="IntEnum")
 
 
 class EnumInstance(abstract.InterpreterClass):

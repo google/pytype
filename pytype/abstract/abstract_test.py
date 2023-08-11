@@ -608,23 +608,18 @@ class FunctionTest(AbstractTestBase):
     self.assertIs(f.kind, pytd.MethodKind.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 
-  def test_constructor_args_pyval(self):
-    sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
-    pyval = pytd.Function(
-        "blah", (sig,), pytd.MethodKind.STATICMETHOD, pytd.MethodFlag.NONE)
-    f = abstract.PyTDFunction.make("open", self._ctx, "builtins", pyval=pyval)
-    self.assertEqual(f.full_name, "builtins.open")
-    f_sig, = f.signatures
-    self.assertIs(f_sig.pytd_sig, sig)
-    self.assertIs(f.kind, pytd.MethodKind.STATICMETHOD)
-    self.assertIs(f.ctx.vm, self._ctx.vm)
+  def test_constructor_args_pyval_name(self):
+    f = abstract.PyTDFunction.make(
+        "blah", self._ctx, "builtins", pyval_name="open")
+    self.assertEqual(f.full_name, "builtins.blah")
+    self.assertEqual(f.signatures[0].signature.name, "builtins.blah")
 
   def test_get_constructor_args(self):
     f = abstract.PyTDFunction.make(
         "TypeVar", self._ctx, "typing", pyval_name="_typevar_new")
     self.assertEqual(f.full_name, "typing.TypeVar")
     self.assertCountEqual({sig.pytd_sig for sig in f.signatures},
-                          self._ctx.loader.import_name("typing").Lookup(
+                          self._ctx.loader.typing.Lookup(
                               "typing._typevar_new").signatures)
     self.assertIs(f.kind, pytd.MethodKind.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)

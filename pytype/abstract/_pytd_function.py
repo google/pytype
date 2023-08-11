@@ -97,30 +97,27 @@ class PyTDFunction(_function_base.Function):
   """
 
   @classmethod
-  def make(cls, name, ctx, module, pyval=None, pyval_name=None):
+  def make(cls, name, ctx, module, pyval_name=None):
     """Create a PyTDFunction.
 
     Args:
       name: The function name.
       ctx: The abstract context.
       module: The module that the function is in.
-      pyval: Optionally, the pytd.Function object to use. Otherwise, it is
-        fetched from the loader.
       pyval_name: Optionally, the name of the pytd.Function object to look up,
         if it is different from the function name.
 
     Returns:
       A new PyTDFunction.
     """
-    assert not pyval or not pyval_name  # there's never a reason to pass both
-    if not pyval:
-      pyval_name = module + "." + (pyval_name or name)
-      if module not in ("builtins", "typing"):
-        pyval = ctx.loader.import_name(module).Lookup(pyval_name)
-      else:
-        pyval = ctx.loader.lookup_builtin(pyval_name)
+    pyval_name = module + "." + (pyval_name or name)
+    if module not in ("builtins", "typing"):
+      pyval = ctx.loader.import_name(module).Lookup(pyval_name)
+    else:
+      pyval = ctx.loader.lookup_builtin(pyval_name)
     if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
       pyval = pyval.type
+    pyval = pyval.Replace(name=f"{module}.{name}")
     f = ctx.convert.constant_to_value(pyval, {}, ctx.root_node)
     self = cls(name, f.signatures, pyval.kind, pyval.decorators, ctx)
     self.module = module

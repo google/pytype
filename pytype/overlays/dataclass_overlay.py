@@ -31,8 +31,8 @@ class Dataclass(classgen.Decorator):
   """Implements the @dataclass decorator."""
 
   @classmethod
-  def make(cls, ctx, mod="dataclasses"):
-    return super().make("dataclass", ctx, mod)
+  def make(cls, ctx, module="dataclasses"):
+    return super().make("dataclass", ctx, module)
 
   @classmethod
   def transform(cls, ctx, func):

@@ -110,7 +110,7 @@ class _FieldMatchError(Exception):
     self.param = param
 
 
-class NamedTupleBuilderBase(abstract.PyTDFunction):
+class _NamedTupleBuilderBase(abstract.PyTDFunction):
   """Base class that handles namedtuple function args processing.
 
   Performs the same argument checking as collections.namedtuple, e.g. making
@@ -177,21 +177,12 @@ class NamedTupleBuilderBase(abstract.PyTDFunction):
     return args, props
 
 
-class NamedTupleBuilder(NamedTupleBuilderBase):
+class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
   """Factory for creating collections.namedtuple classes."""
 
-  collections_ast: pytd.TypeDeclUnit
-
   @classmethod
-  def make(cls, name, ctx, pyval=None):
-    # Loading the ast should be memoized after the import in CollectionsOverlay
-    collections_ast = ctx.loader.import_name("collections")
-    # Subclasses of NamedTupleBuilder need a different pyval.
-    if not pyval:
-      pyval = collections_ast.Lookup("collections.namedtuple")
-    self = super().make(name, ctx, "collections", pyval=pyval)
-    self.collections_ast = collections_ast
-    return self
+  def make(cls, ctx):
+    return super().make("namedtuple", ctx, "collections")
 
   def extract_args(self, node, callargs):
     """Extracts the typename, field_names and rename arguments.
@@ -244,20 +235,16 @@ class NamedTupleBuilder(NamedTupleBuilderBase):
     return node, cls_var
 
 
-class NamedTupleFuncBuilder(NamedTupleBuilderBase):
+class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
   """Factory for creating typing.NamedTuples via the function constructor."""
 
   _fields_param: abstract_utils.BadType
 
   @classmethod
   def make(cls, ctx):
-    typing_ast = ctx.loader.import_name("typing")
+    typing_ast = ctx.loader.typing
     # typing.pytd contains a NamedTuple class def and a _NamedTuple func def.
-    # Replace the name of the returned function so that error messages will
-    # correctly display "typing.NamedTuple".
-    pyval = typing_ast.Lookup("typing._NamedTuple")
-    pyval = pyval.Replace(name="typing.NamedTuple")
-    self = super().make("NamedTuple", ctx, "typing", pyval)
+    self = super().make("NamedTuple", ctx, "typing", pyval_name="_NamedTuple")
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
@@ -339,7 +326,7 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                  "_make", "_replace", "_asdict", "_source")
 
   def __init__(self, ctx):
-    typing_ast = ctx.loader.import_name("typing")
+    typing_ast = ctx.loader.typing
     pyval = typing_ast.Lookup("typing.NamedTuple")
     super().__init__("NamedTuple", pyval, ctx)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a

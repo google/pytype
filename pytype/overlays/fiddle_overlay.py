@@ -38,8 +38,8 @@ class FiddleOverlay(overlay.Overlay):
     """
     if ctx.options.use_fiddle_overlay:
       member_map = {
-          "Config": ConfigBuilder,
-          "Partial": PartialBuilder,
+          "Config": overlay.build("Config", BuildableBuilder),
+          "Partial": overlay.build("Partial", BuildableBuilder),
       }
     else:
       member_map = {}
@@ -51,29 +51,20 @@ class FiddleOverlay(overlay.Overlay):
 class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
   """Factory for creating fiddle.Config classes."""
 
-  _NAME_INDEX = 0
-  BUILDABLE_NAME = ""
-
-  def __init__(self, ctx):
-    assert self.BUILDABLE_NAME, "Only instantiate BuildableBuilder subclasses."
+  def __init__(self, name, ctx):
     fiddle_ast = ctx.loader.import_name("fiddle")
-    pytd_cls = fiddle_ast.Lookup(f"fiddle.{self.BUILDABLE_NAME}")
+    pytd_cls = fiddle_ast.Lookup(f"fiddle.{name}")
     # fiddle.Config/Partial loads as a LateType, convert to pytd.Class
     if isinstance(pytd_cls, pytd.Constant):
       pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
-    super().__init__(self.BUILDABLE_NAME, pytd_cls, ctx)
+    super().__init__(name, pytd_cls, ctx)
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
     # For consistency with the rest of the overlay
-    self.fiddle_type_name = self.BUILDABLE_NAME
+    self.fiddle_type_name = name
 
   def __repr__(self):
-    return f"Fiddle{self.BUILDABLE_NAME}"
-
-  @classmethod
-  def generate_name(cls):
-    cls._NAME_INDEX += 1
-    return f"{cls.BUILDABLE_NAME}_{cls._NAME_INDEX}"
+    return f"Fiddle{self.name}"
 
   def _match_pytd_init(self, node, init_var, args):
     init = init_var.data[0]
@@ -138,14 +129,14 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     self._check_init_args(node, underlying, args, kwargs)
 
     # Now create the Config object.
-    node, ret = make_instance(self.BUILDABLE_NAME, underlying, node, self.ctx)
+    node, ret = make_instance(self.name, underlying, node, self.ctx)
     return node, ret.to_variable(node)
 
   def getitem_slot(self, node, index_var) -> Tuple[Node, abstract.Instance]:
     """Specialize the generic class with the value of index_var."""
 
     underlying = index_var.data[0]
-    ret = BuildableType(self.BUILDABLE_NAME, underlying, self.ctx)
+    ret = BuildableType(self.name, underlying, self.ctx)
     return node, ret.to_variable(node)
 
   def get_own_new(self, node, value) -> Tuple[Node, Variable]:
@@ -153,26 +144,11 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     return node, new.to_variable(node)
 
 
-class ConfigBuilder(BuildableBuilder):
-  """Subclasses PyTDClass(fiddle.Config)."""
-
-  BUILDABLE_NAME = "Config"
-
-
-class PartialBuilder(BuildableBuilder):
-  """Subclasses PyTDClass(fiddle.Partial)."""
-
-  BUILDABLE_NAME = "Partial"
-
-
 class BuildableType(abstract.ParameterizedClass):
   """Base generic class for fiddle.Config and fiddle.Partial."""
 
   def __init__(self, fiddle_type_name, underlying, ctx, template=None):
-    if fiddle_type_name == "Config":
-      base_cls = ConfigBuilder(ctx)
-    else:
-      base_cls = PartialBuilder(ctx)
+    base_cls = BuildableBuilder(fiddle_type_name, ctx)
 
     if isinstance(underlying, abstract.Function):
       # We don't support functions for now, but falling back to Any here gets us

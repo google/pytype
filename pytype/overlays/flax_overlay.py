@@ -115,14 +115,18 @@ class Module(abstract.PyTDClass):
 
   IMPLICIT_FIELDS = ("name", "parent")
 
-  def __init__(self, ctx, name="Module", module="flax.linen.module"):
-    ast = ctx.loader.import_name(module)
-    pytd_cls = ast.Lookup(f"{module}.{name}")
+  # 'Module' can also be imported through an alias in flax.linen, but we always
+  # want to use its full, unaliased name.
+  _MODULE = "flax.linen.module"
+
+  def __init__(self, ctx):
+    ast = ctx.loader.import_name(self._MODULE)
+    pytd_cls = ast.Lookup(f"{self._MODULE}.Module")
     # flax.linen.Module loads as a LateType, we need to convert it and then get
     # the pytd.Class back out to use in our own constructor.
     if isinstance(pytd_cls, pytd.Constant):
       pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
-    super().__init__(name, pytd_cls, ctx)
+    super().__init__("Module", pytd_cls, ctx)
 
   def init_subclass(self, node, cls):
     # Subclasses of Module call self.setup() when creating instances.
@@ -137,13 +141,13 @@ class Module(abstract.PyTDClass):
     """Get the type an instance of us would have."""
     # The class is imported as flax.linen.Module but aliases
     # flax.linen.module.Module internally
-    return pytd.NamedType("flax.linen.module.Module")
+    return pytd.NamedType(self.full_name)
 
   @property
   def full_name(self):
     # Override the full name here rather than overriding the module name in the
     # overlay because we might want to overlay other things from flax.linen.
-    return "flax.linen.module.Module"
+    return f"{self._MODULE}.{self.name}"
 
   def __repr__(self):
-    return "Overlay(flax.linen.module.Module)"
+    return f"Overlay({self.full_name})"

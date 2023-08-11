@@ -72,12 +72,10 @@ class BuiltinFunction(abstract.PyTDFunction):
     return super().make(cls.name, ctx, "builtins")
 
   @classmethod
-  def make_alias(cls, name, ctx, module_name):
+  def make_alias(cls, name, ctx, module):
     """Create an alias to this function."""
     # See overlays/pytype_extensions_overlay.py
-    self = super().make(name, ctx, module_name)
-    self.module_name = module_name
-    return self
+    return super().make(name, ctx, module)
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""

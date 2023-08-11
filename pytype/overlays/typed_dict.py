@@ -51,7 +51,7 @@ class TypedDictBuilder(abstract.PyTDClass):
   """Factory for creating typing.TypedDict classes."""
 
   def __init__(self, ctx):
-    typing_ast = ctx.loader.import_name("typing")
+    typing_ast = ctx.loader.typing
     pyval = typing_ast.Lookup("typing.TypedDict")
     super().__init__("TypedDict", pyval, ctx)
     # Signature for the functional constructor
