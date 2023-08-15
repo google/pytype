@@ -338,6 +338,32 @@ class OverloadTestPy3(test_base.BaseTest):
       def f(*, x: float = ..., **kwargs) -> float: ...
     """)
 
+  def test_pyi_overload_alias(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import overload
+      @overload
+      def f(x: int) -> int: ...
+      @overload
+      def f(x: str) -> str: ...
+      g = f
+      class X:
+        @overload
+        def f(self, x: int) -> int: ...
+        @overload
+        def f(self, x: str) -> str: ...
+        g = f
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        foo.g(0)  # ok
+        foo.g('')  # ok
+        foo.g(None)  # wrong-arg-types
+        x = foo.X()
+        x.g(0)  # ok
+        x.g('')  # ok
+        x.g(None)  # wrong-arg-types
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

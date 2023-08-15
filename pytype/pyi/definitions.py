@@ -2,7 +2,6 @@
 
 import ast as astlib
 import collections
-import dataclasses
 import itertools
 
 from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
@@ -710,6 +709,10 @@ class Definitions:
     except _DuplicateDefsError as e:
       raise e.to_parse_error(namespace=f"class {class_name}") from e
 
+    methods = self._adjust_self_var(
+        fully_qualified_class_name,
+        function.merge_method_signatures(self, methods))
+
     if aliases:
       vals_dict = {val.name: val
                    for val in constants + aliases + methods + classes}
@@ -735,9 +738,8 @@ class Definitions:
           # The alias value comes from outside the class. The best we can do is
           # to fill in Any.
           val = pytd.Constant(name, pytd.AnythingType())
-        if isinstance(val, function.NameAndSig):
-          val = dataclasses.replace(val, name=name)
-          methods.append(val)
+        if isinstance(val, pytd.Function):
+          methods.append(val.Replace(name=name))
         else:
           if isinstance(val, pytd.Class):
             t = pytdgen.pytd_type(pytd.NamedType(class_name + "." + val.name))
@@ -746,9 +748,6 @@ class Definitions:
           constants.append(pytd.Constant(name, t))
 
     bases = [p for p in bases if not isinstance(p, pytd.NothingType)]
-    methods = self._adjust_self_var(
-        fully_qualified_class_name,
-        function.merge_method_signatures(self, methods))
     if not bases and class_name not in ["classobj", "object"]:
       # A bases-less class inherits from classobj in Python 2 and from object
       # in Python 3. typeshed assumes the Python 3 behavior for all stubs, so we

@@ -16,16 +16,16 @@ log = logging.getLogger(__name__)
 class AddMetaclassInstance(abstract.BaseValue):
   """AddMetaclass instance (constructed by AddMetaclass.call())."""
 
-  def __init__(self, meta, ctx, module_name):
+  def __init__(self, meta, ctx, module):
     super().__init__("AddMetaclassInstance", ctx)
     self.meta = meta
-    self.module_name = module_name
+    self.module = module
 
   def call(self, node, func, args, alias_map=None):
     del func, alias_map  # unused
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
-          f"{self.module_name}.add_metaclass", ("cls",))
+          f"{self.module}.add_metaclass", ("cls",))
       raise function.WrongArgCount(sig, args, self.ctx)
     cls_var = args.posargs[0]
     for b in cls_var.bindings:
@@ -43,22 +43,14 @@ class AddMetaclassInstance(abstract.BaseValue):
 class AddMetaclass(abstract.PyTDFunction):
   """Implements the add_metaclass decorator."""
 
-  module_name: str
-
-  @classmethod
-  def make(cls, name, ctx, module_name):
-    self = super().make(name, ctx, module_name)
-    self.module_name = module_name
-    return self
-
   def call(self, node, func, args, alias_map=None):
     """Adds a metaclass."""
     del func, alias_map  # unused
     self.match_args(node, args)
     meta = abstract_utils.get_atomic_value(
         args.posargs[0], default=self.ctx.convert.unsolvable)
-    return node, AddMetaclassInstance(meta, self.ctx,
-                                      self.module_name).to_variable(node)
+    return node, AddMetaclassInstance(
+        meta, self.ctx, self.module).to_variable(node)
 
 
 class WithMetaclassInstance(abstract.BaseValue, abstract.Class):  # pytype: disable=signature-mismatch  # overriding-return-type-checks

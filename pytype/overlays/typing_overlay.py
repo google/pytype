@@ -74,8 +74,8 @@ class TypingOverlay(overlay.Overlay):
 class Redirect(overlay.Overlay):
   """Base class for overlays that redirect to typing."""
 
-  def __init__(self, module_name, aliases, ctx):
-    ast = ctx.loader.import_name(module_name)
+  def __init__(self, module, aliases, ctx):
+    ast = ctx.loader.import_name(module)
     member_map = {k: _build(v) for k, v in aliases.items()}
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:
       # Any public members that are not explicitly implemented are unsupported.
@@ -88,7 +88,7 @@ class Redirect(overlay.Overlay):
         member_map[name] = _build(f"typing.{name}")
       elif name not in member_map:
         member_map[name] = _build_not_supported_yet(name, ast)
-    super().__init__(ctx, module_name, member_map, ast)
+    super().__init__(ctx, module, member_map, ast)
 
 
 def _build(name):
@@ -109,13 +109,12 @@ def _build_not_supported_yet(name, ast):
 class Union(abstract.AnnotationClass):
   """Implementation of typing.Union[...]."""
 
-  def __init__(self, ctx, options=()):
+  def __init__(self, ctx):
     super().__init__("Union", ctx)
-    self.options = options
 
   def _build_value(self, node, inner, ellipses):
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
-    return abstract.Union(self.options + inner, self.ctx)
+    return abstract.Union(inner, self.ctx)
 
 
 class Annotated(abstract.AnnotationClass):
@@ -522,7 +521,7 @@ class ForwardRef(abstract.PyTDClass):
   """Implementation of typing.ForwardRef."""
 
   def __init__(self, ctx):
-    pyval = ctx.loader.import_name("typing").Lookup("typing.ForwardRef")
+    pyval = ctx.loader.typing.Lookup("typing.ForwardRef")
     super().__init__("ForwardRef", pyval, ctx)
 
   def call(self, node, func, args, alias_map=None):

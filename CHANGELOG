@@ -1,3 +1,17 @@
+Version 2023.08.14:
+
+Updates:
+* Add support for typing_extensions.dataclass_transform used without arguments.
+* Remove --enable-cached-property entirely.
+
+Bug fixes:
+* Relax the pyi parser's duplicate identifier detection.
+* Don't crash on `[]` appearing in the parameters of a user-defined class.
+* Work around syntax errors in type stubs.
+* Allow `_HAS_DYNAMIC_ATTRIBUTES` to work for class attribute lookups.
+* Fix how pytype handles aliases to properties and overloaded methods in stubs.
+* Fix how the enum overlay logs [not-supported-yet].
+
 Version 2023.07.28:
 
 Updates:

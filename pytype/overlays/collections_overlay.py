@@ -25,8 +25,7 @@ class CollectionsOverlay(overlay.Overlay):
 
 
 collections_overlay = {
-    "namedtuple": overlay.build(
-        "namedtuple", named_tuple.NamedTupleBuilder.make),
+    "namedtuple": named_tuple.CollectionsNamedTupleBuilder.make,
 }
 
 
