@@ -454,29 +454,6 @@ class AnnotationTest(test_base.BaseTest):
         def f(x) -> Any: ...
       """)
 
-  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
-  def test_bad_call_no_kwarg_pre_38(self):
-    ty, errors = self.InferWithErrors("""
-      def foo():
-        labels = {
-          'baz': None
-        }
-
-        labels['baz'] = bar(
-          labels['baz'])  # wrong-arg-types[e]
-
-      def bar(path: str, **kwargs):
-        return path
-
-    """)
-    self.assertTypesMatchPytd(ty, """
-      def foo() -> None: ...
-      def bar(path: str, **kwargs) -> str: ...
-    """)
-    error = r"Actually passed:.*path: None"
-    self.assertErrorRegexes(errors, {"e": error})
-
-  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_bad_call_no_kwarg(self):
     ty, errors = self.InferWithErrors("""
       def foo():
@@ -498,29 +475,6 @@ class AnnotationTest(test_base.BaseTest):
     error = r"Actually passed:.*path: None"
     self.assertErrorRegexes(errors, {"e": error})
 
-  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
-  def test_bad_call_with_kwarg_pre_38(self):
-    ty, errors = self.InferWithErrors("""
-      def foo():
-        labels = {
-          'baz': None
-        }
-
-        labels['baz'] = bar(
-          labels['baz'], x=42)  # wrong-arg-types[e]
-
-      def bar(path: str, **kwargs):
-        return path
-
-    """)
-    self.assertTypesMatchPytd(ty, """
-      def foo() -> None: ...
-      def bar(path: str, **kwargs) -> str: ...
-    """)
-    error = r"Actually passed:.*path: None"
-    self.assertErrorRegexes(errors, {"e": error})
-
-  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_bad_call_with_kwarg(self):
     ty, errors = self.InferWithErrors("""
       def foo():
@@ -1474,7 +1428,6 @@ class EllipsisTest(test_base.BaseTest):
 class BareAnnotationTest(test_base.BaseTest):
   """Tests variable annotations without assignment."""
 
-  @test_utils.skipBeforePy((3, 8), "requires ast features in 3.8+")
   def test_bare_annotations(self):
     ty = self.Infer("""
       class Foo:

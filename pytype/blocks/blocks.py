@@ -42,7 +42,7 @@ class OrderedCode:
 
   _HAS_DYNAMIC_ATTRIBUTES = True
 
-  def __init__(self, code, bytecode, order, python_version):
+  def __init__(self, code, bytecode, order):
     # Copy all "co_*" attributes from code.
     # This is preferable to both inheritance (because we don't want to be
     # compatible with the base class, which is too low level) as well as
@@ -56,7 +56,7 @@ class OrderedCode:
     # Keep the original co_code around temporarily to work around an issue in
     # the block collection algorithm (b/191517403)
     self.original_co_code = bytecode
-    self.python_version = python_version
+    self.python_version = code.python_version
     for insn in bytecode:
       insn.code = self
 
@@ -171,7 +171,7 @@ class BlockGraph:
     return str(self.graph)
 
 
-def add_pop_block_targets(bytecode, python_version):
+def add_pop_block_targets(bytecode):
   """Modifies bytecode so that each POP_BLOCK has a block_target.
 
   This is to achieve better initial ordering of try/except and try/finally code.
@@ -189,7 +189,6 @@ def add_pop_block_targets(bytecode, python_version):
 
   Args:
     bytecode: An array of bytecodes.
-    python_version: The target python version.
   """
   if not bytecode:
     return
@@ -197,10 +196,7 @@ def add_pop_block_targets(bytecode, python_version):
   for op in bytecode:
     op.block_target = None
 
-  if python_version >= (3, 8):
-    setup_except_op = opcodes.SETUP_FINALLY
-  else:
-    setup_except_op = opcodes.SETUP_EXCEPT
+  setup_except_op = opcodes.SETUP_FINALLY
   todo = [(bytecode[0], ())]  # unordered queue of (position, block_stack)
   seen = set()
   while todo:
@@ -310,7 +306,7 @@ class DisCodeVisitor:
     return code
 
 
-def order_code(code, python_version):
+def order_code(code):
   """Split a CodeType object into ordered blocks.
 
   This takes a CodeType object (i.e., a piece of compiled Python code) and
@@ -318,15 +314,13 @@ def order_code(code, python_version):
 
   Args:
     code: A loadmarshal.CodeType object.
-    python_version: The target python version.
 
   Returns:
     A CodeBlocks instance.
   """
   bytecodes = code.co_code
-  add_pop_block_targets(bytecodes, python_version)
-  return OrderedCode(code, bytecodes, compute_order(bytecodes),
-                     code.python_version)
+  add_pop_block_targets(bytecodes)
+  return OrderedCode(code, bytecodes, compute_order(bytecodes))
 
 
 class OrderCodeVisitor:
@@ -340,15 +334,15 @@ class OrderCodeVisitor:
     self.block_graph = BlockGraph()
 
   def visit_code(self, code):
-    ordered_code = order_code(code, self._python_version)
+    ordered_code = order_code(code)
     self.block_graph.add(ordered_code)
     return ordered_code
 
 
-def process_code(code, python_version):
+def process_code(code):
   # [binary opcodes] -> [pyc.Opcode]
   ops = pyc.visit(code, DisCodeVisitor())
   # pyc.load_marshal.CodeType -> blocks.OrderedCode
-  visitor = OrderCodeVisitor(python_version)
+  visitor = OrderCodeVisitor(code.python_version)
   ordered = pyc.visit(ops, visitor)
   return ordered, visitor.block_graph

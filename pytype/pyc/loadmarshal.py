@@ -358,11 +358,7 @@ class _LoadMarshal:
   def load_code(self):
     """Load a Python code object."""
     argcount = self._read_long()
-    # Python 3.8+ has positional only arguments.
-    if self.python_version >= (3, 8):
-      posonlyargcount = self._read_long()
-    else:
-      posonlyargcount = -1
+    posonlyargcount = self._read_long()
     kwonlyargcount = self._read_long()
     nlocals = self._read_long()
     stacksize = self._read_long()

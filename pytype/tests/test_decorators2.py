@@ -229,22 +229,6 @@ class DecoratorsTest(test_base.BaseTest):
       x.func(12)
     """)
 
-  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
-  def test_instance_as_decorator_error_pre_38(self):
-    errors = self.CheckWithErrors("""
-      class Decorate:
-        def __call__(self, func):
-          return func
-      class Foo:
-        @classmethod
-        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]  # not-callable
-        def bar(cls):
-          pass
-      Foo.bar()
-    """)
-    self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
-
-  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_instance_as_decorator_error(self):
     errors = self.CheckWithErrors("""
       class Decorate:
@@ -259,21 +243,6 @@ class DecoratorsTest(test_base.BaseTest):
     """)
     self.assertErrorRegexes(errors, {"e": r"Decorate.*1.*2"})
 
-  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
-  def test_uncallable_instance_as_decorator_pre_38(self):
-    errors = self.CheckWithErrors("""
-      class Decorate:
-        pass  # forgot to define __call__
-      class Foo:
-        @classmethod
-        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]  # not-callable
-        def bar(cls):
-          pass
-      Foo.bar()
-    """)
-    self.assertErrorRegexes(errors, {"e1": r"Decorate.*1.*2"})
-
-  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_uncallable_instance_as_decorator(self):
     errors = self.CheckWithErrors("""
       class Decorate:

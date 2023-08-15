@@ -657,7 +657,7 @@ class VirtualMachine:
         python_exe=self.ctx.options.python_exe,
         filename=filename,
         mode=mode)
-    code, block_graph = blocks.process_code(code, self.ctx.python_version)
+    code, block_graph = blocks.process_code(code)
     if store_blockgraph:
       self.block_graph = block_graph
     return code
@@ -698,8 +698,7 @@ class VirtualMachine:
     """
     self.filename = filename
     self._maximum_depth = maximum_depth
-    if self.ctx.python_version >= (3, 8):
-      src = preprocess.augment_annotations(src)
+    src = preprocess.augment_annotations(src)
     src_tree = directors.parse_src(src, self.ctx.python_version)
     code = self.compile_src(src, filename=filename, store_blockgraph=True)
     # In Python 3.8+, opcodes are consistently at the first line of the
@@ -707,8 +706,7 @@ class VirtualMachine:
     # but the exact positioning is unpredictable, so we pass the bytecode to the
     # director to make adjustments based on the opcodes' observed line numbers.
     director = directors.Director(
-        src_tree, self.ctx.errorlog, filename, self.ctx.options.disable,
-        code if self.ctx.python_version < (3, 8) else None)
+        src_tree, self.ctx.errorlog, filename, self.ctx.options.disable)
     # This modifies the errorlog passed to the constructor.  Kind of ugly,
     # but there isn't a better way to wire both pieces together.
     self.ctx.errorlog.set_error_filter(director.filter_error)
@@ -1901,13 +1899,9 @@ class VirtualMachine:
     value, types = self._instantiate_exception(state.node, exc_type)
     if None in types:
       exc_type = self.ctx.new_unsolvable(state.node)
-    if self.ctx.python_version >= (3, 8):
-      # See SETUP_FINALLY: in 3.8+, we push the exception on twice.
-      state, (_, _, tb, _, _) = state.popn(5)
-      state = state.push(value, exc_type, tb, value, exc_type)
-    else:
-      state, _ = state.popn(2)
-      state = state.push(value, exc_type)
+    # See SETUP_FINALLY: we push the exception on twice.
+    state, (_, _, tb, _, _) = state.popn(5)
+    state = state.push(value, exc_type, tb, value, exc_type)
     return state
 
   def _compare_op(self, state, op_arg, op):
@@ -2324,13 +2318,9 @@ class VirtualMachine:
     """Implements the MAP_ADD opcode."""
     # Used by the compiler e.g. for {x, y for x, y in ...}
     count = op.arg
-    # In 3.8+, the value is at the top of the stack, followed by the key. Before
-    # that, it's the other way around.
+    # The value is at the top of the stack, followed by the key.
     state, item = state.popn(2)
-    if self.ctx.python_version >= (3, 8):
-      key, val = item
-    else:
-      val, key = item
+    key, val = item
     the_map = state.peek(count)
     state, _ = self._call(state, the_map, "__setitem__", (key, val))
     return state
@@ -2454,38 +2444,28 @@ class VirtualMachine:
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
     jump_state = self.push_abstract_exception(state)
-    if self.ctx.python_version >= (3, 8):
-      # I have no idea why we need to push the exception twice! See
-      # test_exceptions.TestExceptions.test_reuse_name for a test that fails if
-      # we don't do this.
-      jump_state = self.push_abstract_exception(jump_state)
+    # I have no idea why we need to push the exception twice! See
+    # test_exceptions.TestExceptions.test_reuse_name for a test that fails if
+    # we don't do this.
+    jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
     return vm_utils.push_block(state, "setup-except")
 
-  # Note: this opcode is removed in Python 3.8.
-  def byte_SETUP_EXCEPT(self, state, op):
-    return self._setup_except(state, op)
-
   def is_setup_except(self, op):
-    """Check whether op is equivalent to a SETUP_EXCEPT opcode."""
-    # In Python 3.8+, exception setup is done using the SETUP_FINALLY opcode.
-    # Before that, there was a separate SETUP_EXCEPT opcode.
-    if self.ctx.python_version >= (3, 8):
-      if isinstance(op, opcodes.SETUP_FINALLY):
-        for i, block in enumerate(self.frame.f_code.order):
-          if block.id == op.arg:
-            if not any(isinstance(o, opcodes.BEGIN_FINALLY)
-                       for o in self.frame.f_code.order[i-1]):
-              return True
-            break
-      return False
-    else:
-      return isinstance(op, opcodes.SETUP_EXCEPT)
+    """Check whether op is setting up an except block."""
+    if isinstance(op, opcodes.SETUP_FINALLY):
+      for i, block in enumerate(self.frame.f_code.order):
+        if block.id == op.arg:
+          if not any(isinstance(o, opcodes.BEGIN_FINALLY)
+                     for o in self.frame.f_code.order[i-1]):
+            return True
+          break
+    return False
 
   def byte_SETUP_FINALLY(self, state, op):
     """Implements the SETUP_FINALLY opcode."""
-    # In Python 3.8+, SETUP_FINALLY handles setup for both except and finally
-    # blocks. Examine the targeted block to determine which setup to do.
+    # SETUP_FINALLY handles setup for both except and finally blocks. Examine
+    # the targeted block to determine which setup to do.
     if self.is_setup_except(op):
       return self._setup_except(state, op)
     # Emulate finally by connecting the try to the finally block (with
@@ -2537,8 +2517,7 @@ class VirtualMachine:
   def byte_POP_EXCEPT(self, state, op):  # Python 3 only
     # We don't push the special except-handler block, so we don't need to
     # pop it, either.
-    if self.ctx.python_version >= (3, 8):
-      state, _ = state.popn(3)
+    state, _ = state.popn(3)
     return state
 
   def byte_SETUP_WITH(self, state, op):
@@ -2551,8 +2530,8 @@ class VirtualMachine:
     state = vm_utils.push_block(state, "finally", level)
     return state.push(ctxmgr_obj)
 
-  def _with_cleanup_start(self, state, op):
-    """Implements WITH_CLEANUP_START before Python 3.8."""
+  def _with_cleanup_start_none(self, state, op):
+    """Implements WITH_CLEANUP_START when TOS is None."""
     state, u = state.pop()  # pop 'None'
     state, exit_func = state.pop()
     state = state.push(u)
@@ -2563,11 +2542,11 @@ class VirtualMachine:
         state, exit_func, (u, v, w))
     return state.push(suppress_exception)
 
-  def _with_cleanup_start_3_8(self, state, op):
-    """Implements WITH_CLEANUP_START in Python 3.8+."""
+  def _with_cleanup_start(self, state, op):
+    """Implements WITH_CLEANUP_START."""
     tos = state.top()
     if tos.data == [self.ctx.convert.none]:
-      return self._with_cleanup_start(state, op)
+      return self._with_cleanup_start_none(state, op)
     state, (w, v, u, *rest, exit_func) = state.popn(7)
     state = state.push(*rest)
     state = state.push(self.ctx.convert.build_none(state.node))
@@ -2578,10 +2557,7 @@ class VirtualMachine:
 
   def byte_WITH_CLEANUP_START(self, state, op):
     """Called to start cleaning up a with block. Calls the exit handlers etc."""
-    if self.ctx.python_version >= (3, 8):
-      return self._with_cleanup_start_3_8(state, op)
-    else:
-      return self._with_cleanup_start(state, op)
+    return self._with_cleanup_start(state, op)
 
   def byte_WITH_CLEANUP_FINISH(self, state, op):
     """Called to finish cleaning up a with block."""

@@ -43,25 +43,10 @@ class BaseVisitor(ast_visitor.BaseVisitor):
     except Exception as e:  # pylint: disable=broad-except
       raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
-  def visit_Ellipsis(self, node):
-    return self.defs.ELLIPSIS
-
   def visit_Constant(self, node):
     if node.value is Ellipsis:
       return self.defs.ELLIPSIS
     return types.Pyval.from_const(node)
-
-  def visit_NameConstant(self, node):
-    return types.Pyval.from_const(node)
-
-  def visit_Num(self, node):
-    return types.Pyval.from_num(node)
-
-  def visit_Str(self, node):
-    return types.Pyval.from_str(node)
-
-  def visit_Bytes(self, node):
-    return self.visit_Str(node)
 
   def visit_UnaryOp(self, node):
     if isinstance(node.op, astlib.USub):

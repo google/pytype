@@ -503,15 +503,6 @@ class NotSupportedYetTest(test_base.BaseTest):
       from typing_extensions import Final
     """)
 
-  @test_utils.skipFromPy((3, 8), "Final is added to typing in 3.8")
-  def test_supported_construct_in_unsupported_version(self):
-    errors = self.CheckWithErrors("""
-      from typing import Final  # not-supported-yet[e]
-    """)
-    self.assertErrorSequences(
-        errors, {"e": ["Import Final from typing_extensions", "before 3.8"]})
-
-  @test_utils.skipBeforePy((3, 8), "Final is added to typing in Python 3.8")
   def test_supported_construct_in_supported_version(self):
     self.Check("""
       from typing import Final

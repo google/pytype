@@ -47,11 +47,11 @@ class EvaluatorTest(unittest.TestCase):
     self.assertEqual(evaluator.literal_eval(const), 'salutations')
 
   def test_expr(self):
-    expr = astlib.Expr(astlib.Num(8))
+    expr = astlib.Expr(astlib.Constant(8))
     self.assertEqual(evaluator.literal_eval(expr), 8)
 
   def test_pyi_int_constant(self):
-    const = types.Pyval.from_num(astlib.parse('42', mode='eval').body)
+    const = types.Pyval.from_const(astlib.parse('42', mode='eval').body)
     self.assertEqual(evaluator.literal_eval(const), 42)
 
   def test_pyi_none_constant(self):

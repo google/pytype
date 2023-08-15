@@ -188,9 +188,10 @@ class DocString:
     assert isinstance(node, (ast.ClassDef, ast.FunctionDef))
     if (node.body and
         isinstance(node.body[0], ast.Expr) and
-        isinstance(node.body[0].value, ast.Str)):
+        isinstance(node.body[0].value, ast.Constant) and
+        isinstance(node.body[0].value.value, str)):
       doc_node = node.body[0]
-      doc = doc_node.value.s
+      doc = doc_node.value.value
       length = len(doc)  # we want to preserve the byte length
       # strip indentation from multiline docstrings
       if "\n" in doc:

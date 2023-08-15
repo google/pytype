@@ -584,7 +584,6 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       v4: str
     """)
 
-  @test_utils.skipBeforePy((3, 8), "new hex signature added in 3.8.")
   def test_bytes_hex(self):
     self.Check("""
       b = b'abc'
@@ -738,7 +737,6 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       f("")  # wrong-arg-types
     """)
 
-  @test_utils.skipBeforePy((3, 8), "__index__ support is new in 3.8")
   def test_int_from_index(self):
     self.Check("""
       class Foo:

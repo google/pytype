@@ -235,18 +235,6 @@ class NamedTupleTestPy3(test_base.BaseTest):
     self.assertMultiLineEqual(pytd_utils.Print(ty.Lookup("foo")),
                               "def foo(x: X) -> Union[bytes, str]: ...")
 
-  @test_utils.skipFromPy((3, 8), "error line number changed in 3.8")
-  def test_bad_call_pre_38(self):
-    _, errorlog = self.InferWithErrors("""
-        from typing import NamedTuple
-        E2 = NamedTuple('Employee2', [('name', str), ('id', int)],
-                        birth=str, gender=bool)  # invalid-namedtuple-arg[e1]  # wrong-keyword-args[e2]
-    """)
-    self.assertErrorRegexes(errorlog, {
-        "e1": r"Either list of fields or keywords.*",
-        "e2": r".*(birth, gender).*NamedTuple"})
-
-  @test_utils.skipBeforePy((3, 8), "error line number changed in 3.8")
   def test_bad_call(self):
     _, errorlog = self.InferWithErrors("""
         from typing import NamedTuple

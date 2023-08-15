@@ -6,7 +6,6 @@ from pytype.pyi import parser
 from pytype.pyi import parser_test_base
 from pytype.pytd import pytd
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 import unittest
 
@@ -95,17 +94,7 @@ class ParserTest(parser_test_base.ParserTestBase):
     self.check_error("x = 12.3", 1,
                      "Only '0.0' allowed as float literal")
 
-  @test_utils.skipFromPy((3, 8), "No longer tagging strings 'unicode'")
-  def test_string_constant_37(self):
-    self.check("x = b''", "x: bytes")
-    self.check("x = u''", "x: unicode")
-    self.check('x = b""', "x: bytes")
-    self.check('x = u""', "x: unicode")
-    self.check("x = ''", "x: str")
-    self.check('x = ""', "x: str")
-
-  @test_utils.skipBeforePy((3, 8), "No longer tagging strings 'unicode'")
-  def test_string_constant_38(self):
+  def test_string_constant(self):
     self.check("x = b''", "x: bytes")
     self.check("x = u''", "x: str")
     self.check('x = b""', "x: bytes")
@@ -1138,12 +1127,11 @@ class FunctionTest(parser_test_base.ParserTestBase):
                      None,
                      "Module-level functions with property decorators: foo")
 
-    line = 1 if sys.version_info < (3, 8) else 3
     self.check_error("""
       @classmethod
       @staticmethod
       def foo() -> int: ...""",
-                     line,
+                     3,
                      "Too many decorators for foo")
 
   def test_module_getattr(self):
@@ -1184,11 +1172,10 @@ class FunctionTest(parser_test_base.ParserTestBase):
     """)
 
   def test_bad_decorated_class(self):
-    line = 1 if sys.version_info < (3, 8) else 2
     self.check_error("""
       @classmethod
       class Foo: ...
-    """, line, "Unsupported class decorators: classmethod")
+    """, 2, "Unsupported class decorators: classmethod")
 
   def test_dataclass_decorator(self):
     self.check("""
@@ -1990,7 +1977,6 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
       """, expected)
 
   def test_property_decorator_bad_syntax(self):
-    line = 1 if sys.version_info < (3, 8) else 2
     self.check_error("""
       class A:
           @property
@@ -2003,13 +1989,12 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
           def name(self): ...
       """, 1, "@name.setter needs 2 param(s), got 1")
 
-    line = 2 if sys.version_info < (3, 8) else 4
     self.check_error("""
       class A:
           @property
           @staticmethod
           def name(self): ...
-      """, line, "Too many decorators for name")
+      """, 4, "Too many decorators for name")
 
     self.check_error("""
       @property
@@ -2387,15 +2372,6 @@ class LiteralTest(parser_test_base.ParserTestBase):
       z: Literal[b'xyz']
     """)
 
-  @test_utils.skipFromPy((3, 8), "No longer tagging strings 'unicode'")
-  def test_unicodestring(self):
-    self.check("""
-      from typing import Literal
-
-      y: Literal[u'']
-      z: Literal[u'xyz']
-    """)
-
   def test_none(self):
     self.check("""
       from typing import Literal
@@ -2445,14 +2421,6 @@ class LiteralTest(parser_test_base.ParserTestBase):
 
       x: Tuple[str, b'', str, str]
     """, 3, "Tuple[_, b'', _, _] not supported")
-
-  @test_utils.skipFromPy((3, 8), "No longer tagging strings 'unicode'")
-  def test_stray_unicodestring(self):
-    self.check_error("""
-      from typing import Tuple
-
-      x: Tuple[str, u'', str, str]
-    """, 3, "Tuple[_, u'', _, _] not supported")
 
   def test_typing_extensions(self):
     self.check("""

@@ -1,7 +1,6 @@
 """Tests for disabling errors."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class DisableTest(test_base.BaseTest):
@@ -97,7 +96,6 @@ class DisableTest(test_base.BaseTest):
         '''docstring'''  # pytype: disable=bad-return-type
     """)
 
-  @test_utils.skipBeforePy((3, 8), "RETURN_VALUE opcode lineno changed in 3.8")
   def test_implicit_return_not_at_end(self):
     self.Check("""
       import logging
@@ -171,18 +169,6 @@ class DisableTest(test_base.BaseTest):
         pass
     """)
 
-  @test_utils.skipFromPy((3, 8), "MAKE_FUNCTION opcode lineno changes in 3.8")
-  def test_do_not_silence_parameter_mismatch_pre38(self):
-    self.CheckWithErrors("""
-      def f(
-        x: int = 0.0,
-        y: str = '',  # annotation-type-mismatch
-        **kwargs,
-      ):
-        pass  # pytype: disable=annotation-type-mismatch
-    """)
-
-  @test_utils.skipBeforePy((3, 8), "MAKE_FUNCTION opcode lineno changes in 3.8")
   def test_do_not_silence_parameter_mismatch(self):
     self.CheckWithErrors("""
       def f(  # annotation-type-mismatch

@@ -2,10 +2,8 @@
 
 import bisect
 import collections
-import dataclasses
 import logging
 import sys
-from typing import AbstractSet, Optional
 
 from pytype import config
 from pytype.blocks import blocks
@@ -185,13 +183,6 @@ def _collect_bytecode(ordered_code):
   return bytecode_blocks
 
 
-def _adjust_line_number(line, allowed_lines, min_line):
-  adjusted_line = line
-  while adjusted_line not in allowed_lines and adjusted_line >= min_line:
-    adjusted_line -= 1
-  return adjusted_line if adjusted_line >= min_line else None
-
-
 def _is_function_call(opcode_name):
   return opcode_name.startswith("CALL_") or opcode_name in {
       "BINARY_SUBSCR",
@@ -215,44 +206,10 @@ def _is_return_op(opcode_name):
   return opcode_name.startswith("YIELD_") or opcode_name == "RETURN_VALUE"
 
 
-@dataclasses.dataclass
-class _OpcodeLines:
-  """Stores opcode line numbers for Director.adjust_line_numbers()."""
-
-  store_lines: AbstractSet[int]
-  make_function_lines: AbstractSet[int]
-  load_attr_lines: AbstractSet[int]
-  return_lines: AbstractSet[int]
-  call_lines: AbstractSet[int]
-
-  @classmethod
-  def from_code(cls, code):
-    """Builds an _OpcodeLines from a code object."""
-    store_lines = set()
-    make_function_lines = set()
-    load_attr_lines = set()
-    return_lines = set()
-    call_lines = set()
-    for block in _collect_bytecode(code):
-      for opcode in block:
-        if opcode.name.startswith("STORE_"):
-          store_lines.add(opcode.line)
-        elif opcode.name == "MAKE_FUNCTION":
-          make_function_lines.add(opcode.line)
-        elif _is_load_attribute_op(opcode.name):
-          load_attr_lines.add(opcode.line)
-        elif _is_return_op(opcode.name):
-          return_lines.add(opcode.line)
-        elif _is_function_call(opcode.name):
-          call_lines.add(opcode.line)
-    return cls(store_lines, make_function_lines, load_attr_lines, return_lines,
-               call_lines)
-
-
 class Director:
   """Holds all of the directive information for a source file."""
 
-  def __init__(self, src_tree, errorlog, filename, disable, code):
+  def __init__(self, src_tree, errorlog, filename, disable):
     """Create a Director for a source file.
 
     Args:
@@ -261,10 +218,6 @@ class Director:
         errorlog.
       filename: The name of the source file.
       disable: List of error messages to always ignore.
-      code: Optionally, bytecode for adjusting line numbers. If provided,
-        directives will be moved to lines at which corresponding opcodes are
-        present. Otherwise, directives will be moved to the starting line of
-        their containing statement.
     """
     self._filename = filename
     self._errorlog = errorlog
@@ -291,7 +244,7 @@ class Director:
     self.block_returns = None
     self._function_ranges = _BlockRanges({})
     # Parse the source code for directives.
-    self._parse_src_tree(src_tree, code)
+    self._parse_src_tree(src_tree)
 
   @property
   def type_comments(self):
@@ -317,16 +270,12 @@ class Director:
   def decorators(self):
     return self._decorators
 
-  def _parse_src_tree(self, src_tree, code):
+  def _parse_src_tree(self, src_tree):
     """Parse a source file, extracting directives from comments."""
     visitor = parser.visit_src_tree(src_tree)
     # TODO(rechen): This check can be removed once parser_libcst is gone.
     if not visitor:
       return
-    if code:
-      opcode_lines = _OpcodeLines.from_code(code)
-    else:
-      opcode_lines = None
 
     self.block_returns = visitor.block_returns
     self.return_lines = visitor.block_returns.all_returns()
@@ -339,53 +288,28 @@ class Director:
       for comment in group:
         if comment.tool == "type":
           self._process_type(comment.line, comment.data, comment.open_ended,
-                             line_range, opcode_lines)
+                             line_range)
         else:
           assert comment.tool == "pytype"
           try:
             self._process_pytype(comment.line, comment.data, comment.open_ended,
-                                 line_range, opcode_lines)
+                                 line_range)
           except _DirectiveError as e:
             self._errorlog.invalid_directive(
                 self._filename, comment.line, str(e))
         # Make sure the function range ends at the last "interesting" line.
         if (not isinstance(line_range, parser.Call) and
             self._function_ranges.has_end(line_range.end_line)):
-          if opcode_lines:
-            end = _adjust_line_number(
-                line_range.end_line, opcode_lines.return_lines,
-                line_range.start_line)
-          else:
-            end = line_range.start_line
+          end = line_range.start_line
           self._function_ranges.adjust_end(line_range.end_line, end)
 
     for annot in visitor.variable_annotations:
-      if opcode_lines:
-        final_line = _adjust_line_number(
-            annot.end_line, opcode_lines.store_lines, annot.start_line)
-        if not final_line:
-          log.error("No STORE_* opcode found for annotation %r on line %d",
-                    annot, annot.end_line)
-          continue
-      else:
-        final_line = annot.start_line
       self._variable_annotations.add_annotation(
-          final_line, annot.name, annot.annotation)
+          annot.start_line, annot.name, annot.annotation)
 
     for decorator in visitor.decorators:
-      # The MAKE_FUNCTION opcode is usually at the 'def' line but pre-3.8 was
-      # sometimes somewhere in the last decorator's line range.
-      if opcode_lines:
-        final_line = _adjust_line_number(
-            decorator.end_line, opcode_lines.make_function_lines,
-            decorator.start_line)
-        if not final_line:
-          log.warning("No MAKE_FUNCTION opcode found for decorator on line %d",
-                      decorator.end_line)
-          continue
-      else:
-        final_line = decorator.end_line
-      self._decorators.add(final_line)
+      # The MAKE_FUNCTION opcode is at the 'def' line.
+      self._decorators.add(decorator.end_line)
 
     if visitor.defs_start is not None:
       disables = list(self._disables.items())
@@ -398,18 +322,14 @@ class Director:
 
   def _process_type(
       self, line: int, data: str, open_ended: bool,
-      line_range: parser.LineRange, opcode_lines: Optional[_OpcodeLines]):
+      line_range: parser.LineRange):
     """Process a type: comment."""
     is_ignore = parser.IGNORE_RE.match(data)
     if not is_ignore and line != line_range.end_line:
       # Warn and discard type comments placed in the middle of expressions.
       self._errorlog.ignored_type_comment(self._filename, line, data)
       return
-    if opcode_lines:
-      final_line = _adjust_line_number(
-          line, opcode_lines.store_lines, line_range.start_line) or line
-    else:
-      final_line = line_range.start_line
+    final_line = line_range.start_line
     if is_ignore:
       if open_ended:
         self._ignore.start_range(line, True)
@@ -426,7 +346,7 @@ class Director:
 
   def _process_pytype(
       self, line: int, data: str, open_ended: bool,
-      line_range: parser.LineRange, opcode_lines: Optional[_OpcodeLines]):
+      line_range: parser.LineRange):
     """Process a pytype: comment."""
     if not data:
       raise _DirectiveError("Invalid directive syntax.")
@@ -475,7 +395,7 @@ class Director:
             lines.start_range(line, disable)
           else:
             final_line = self._adjust_line_number_for_pytype_directive(
-                line, error_name, line_range, opcode_lines)
+                line, error_name, line_range)
             if final_line != line:
               # Set the disable on the original line so that, even if we mess up
               # adjusting the line number, silencing an error by adding a
@@ -487,32 +407,11 @@ class Director:
               self._filename, line, f"Invalid error name: '{error_name}'")
 
   def _adjust_line_number_for_pytype_directive(
-      self, line: int, error_class: str, line_range: parser.LineRange,
-      opcode_lines: Optional[_OpcodeLines]):
+      self, line: int, error_class: str, line_range: parser.LineRange):
     """Adjusts the line number for a pytype directive."""
     if error_class not in _ALL_ADJUSTABLE_ERRORS:
       return line
-    if not opcode_lines:
-      return line_range.start_line
-    if error_class == "annotation-type-mismatch":
-      allowed_lines = (
-          opcode_lines.store_lines | opcode_lines.make_function_lines)
-    elif error_class == "attribute-error":
-      allowed_lines = opcode_lines.load_attr_lines
-    elif error_class == "bad-return-type":
-      allowed_lines = opcode_lines.return_lines
-    elif error_class == "bad-yield-annotation":
-      allowed_lines = opcode_lines.make_function_lines
-    elif error_class == "invalid-annotation":
-      allowed_lines = opcode_lines.make_function_lines
-    elif error_class == "not-supported-yet":
-      allowed_lines = opcode_lines.store_lines
-    elif error_class == "unsupported-operands":
-      allowed_lines = opcode_lines.store_lines | opcode_lines.call_lines
-    else:
-      allowed_lines = opcode_lines.call_lines
-    return _adjust_line_number(
-        line, allowed_lines, line_range.start_line) or line
+    return line_range.start_line
 
   def filter_error(self, error):
     """Return whether the error should be logged.

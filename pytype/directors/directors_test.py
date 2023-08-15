@@ -4,9 +4,7 @@ import sys
 import textwrap
 
 from pytype import errors
-from pytype.blocks import blocks
 from pytype.directors import directors
-from pytype.pyc import pyc
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -116,13 +114,8 @@ class DirectorTestCase(unittest.TestCase):
     src = textwrap.dedent(src)
     src_tree = directors.parse_src(src, self.python_version)
     self._errorlog = errors.ErrorLog()
-    if self.python_version < (3, 8):
-      raw_code = pyc.compile_src(src, _TEST_FILENAME, self.python_version, None)
-      code, _ = blocks.process_code(raw_code, self.python_version)
-    else:
-      code = None
     self._director = directors.Director(
-        src_tree, self._errorlog, _TEST_FILENAME, disable, code)
+        src_tree, self._errorlog, _TEST_FILENAME, disable)
 
   def _should_report(self, expected, lineno, error_name="test-error",
                      filename=_TEST_FILENAME):
@@ -451,8 +444,7 @@ class VariableAnnotationsTest(DirectorTestCase):
       v: Callable[  # a very important comment
           [], int] = None
     """)
-    lineno = 2 if sys.version_info[:2] >= (3, 8) else 3
-    self.assertAnnotations({lineno: ("v", "Callable[[], int]")})
+    self.assertAnnotations({2: ("v", "Callable[[], int]")})
 
   def test_multiline_assignment(self):
     self._create("""
@@ -461,8 +453,7 @@ class VariableAnnotationsTest(DirectorTestCase):
           1,
       ]
     """)
-    lineno = 2 if sys.version_info[:2] >= (3, 8) else 4
-    self.assertAnnotations({lineno: ("v", "List[int]")})
+    self.assertAnnotations({2: ("v", "List[int]")})
 
   def test_complicated_annotation(self):
     self._create("v: int if __random__ else str = None")
@@ -495,12 +486,7 @@ class LineNumbersTest(DirectorTestCase):
         )
       ]  # type: dict
     """)
-    # The line number of STORE_NAME v changes between versions.
-    if self.python_version >= (3, 8):
-      lineno = 2
-    else:
-      lineno = 3
-    self.assertEqual({lineno: "dict"}, self._director.type_comments)
+    self.assertEqual({2: "dict"}, self._director.type_comments)
 
   def test_type_comment_with_trailing_comma(self):
     self._create("""
@@ -515,16 +501,9 @@ class LineNumbersTest(DirectorTestCase):
         ],  # some comment
       ]  # type: dict
     """)
-    # The line numbers of STORE_NAME change between versions.
-    if self.python_version >= (3, 8):
-      v_lineno = 2
-      w_lineno = 7
-    else:
-      v_lineno = 3
-      w_lineno = 9
     self.assertEqual({
-        v_lineno: "dict",
-        w_lineno: "dict"
+        2: "dict",
+        7: "dict"
     }, self._director.type_comments)
 
   def test_decorators(self):
@@ -544,14 +523,7 @@ class LineNumbersTest(DirectorTestCase):
         def bar():
           pass
     """)
-    if self.python_version >= (3, 8):
-      real_decorator_lineno = 7
-      decorator_lineno = 14
-    else:
-      real_decorator_lineno = 6
-      decorator_lineno = 11
-    self.assertEqual(self._director.decorators,
-                     {real_decorator_lineno, decorator_lineno})
+    self.assertEqual(self._director.decorators, {7, 14})
 
   def test_stacked_decorators(self):
     self._create("""
@@ -564,8 +536,7 @@ class LineNumbersTest(DirectorTestCase):
       class A:
           pass
     """)
-    lineno = 8 if self.python_version >= (3, 8) else 6
-    self.assertEqual(self._director.decorators, {lineno})
+    self.assertEqual(self._director.decorators, {8})
 
   def test_overload(self):
     self._create("""
@@ -601,20 +572,14 @@ class DisableDirectivesTest(DirectorTestCase):
       toplevel(
           a, b, c, d)  # pytype: disable=wrong-arg-types
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3)
-    else:
-      self.assertDisables(3)
+    self.assertDisables(2, 3)
 
   def test_nested(self):
     self._create("""
       toplevel(
           nested())  # pytype: disable=wrong-arg-types
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3)
-    else:
-      self.assertDisables(3)
+    self.assertDisables(2, 3)
 
   def test_multiple_nested(self):
     self._create("""
@@ -623,10 +588,7 @@ class DisableDirectivesTest(DirectorTestCase):
         nested2(),  # pytype: disable=wrong-arg-types
         nested3())
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 4)
-    else:
-      self.assertDisables(4)
+    self.assertDisables(2, 4)
 
   def test_multiple_toplevel(self):
     self._create("""
@@ -645,10 +607,7 @@ class DisableDirectivesTest(DirectorTestCase):
           deeply_nested2()),
         nested3())
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 4, 5)
-    else:
-      self.assertDisables(5)
+    self.assertDisables(2, 4, 5)
 
   def test_non_toplevel(self):
     self._create("""
@@ -656,10 +615,7 @@ class DisableDirectivesTest(DirectorTestCase):
         f("oops")  # pytype: disable=wrong-arg-types
       ]
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3)
-    else:
-      self.assertDisables(3)
+    self.assertDisables(2, 3)
 
   def test_non_toplevel_bad_annotation(self):
     self._create("""
@@ -667,10 +623,7 @@ class DisableDirectivesTest(DirectorTestCase):
         f(
             "oops")]  # pytype: disable=annotation-type-mismatch
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 4, error_class="annotation-type-mismatch")
-    else:
-      self.assertDisables(4, error_class="annotation-type-mismatch")
+    self.assertDisables(2, 4, error_class="annotation-type-mismatch")
 
   def test_trailing_parenthesis(self):
     self._create("""
@@ -678,10 +631,7 @@ class DisableDirectivesTest(DirectorTestCase):
           a, b, c, d,
       )  # pytype: disable=wrong-arg-types
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 4)
-    else:
-      self.assertDisables(3, 4)
+    self.assertDisables(2, 4)
 
   def test_multiple_bytecode_blocks(self):
     self._create("""
@@ -710,10 +660,7 @@ class DisableDirectivesTest(DirectorTestCase):
          d)  # pytype: disable=wrong-arg-types
       )
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 5, 6)
-    else:
-      self.assertDisables(6)
+    self.assertDisables(2, 5, 6)
 
   def test_iterate(self):
     self._create("""
@@ -747,10 +694,7 @@ class DisableDirectivesTest(DirectorTestCase):
           converter=converter, factory=list, type=dict[str, str]
         )  # pytype: disable=annotation-type-mismatch
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(7, 9, error_class="annotation-type-mismatch")
-    else:
-      self.assertDisables(8, 9, error_class="annotation-type-mismatch")
+    self.assertDisables(7, 9, error_class="annotation-type-mismatch")
 
   def test_return(self):
     self._create("""
@@ -760,10 +704,7 @@ class DisableDirectivesTest(DirectorTestCase):
          return f(
              "oops")  # pytype: disable=bad-return-type
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(5, 6, error_class="bad-return-type")
-    else:
-      self.assertDisables(6, error_class="bad-return-type")
+    self.assertDisables(5, 6, error_class="bad-return-type")
 
   def test_if(self):
     self._create("""
@@ -780,10 +721,7 @@ class DisableDirectivesTest(DirectorTestCase):
         "something_unsupported"
       ]  # pytype: disable=not-supported-yet
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 4, error_class="not-supported-yet")
-    else:
-      self.assertDisables(3, 4, error_class="not-supported-yet")
+    self.assertDisables(2, 4, error_class="not-supported-yet")
 
   def test_range(self):
     self._create("""
@@ -804,10 +742,7 @@ class DisableDirectivesTest(DirectorTestCase):
         some_bad_function(
             "some bad arg")]  # type: ignore
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, 4, disables=self._director.ignore)
-    else:
-      self.assertDisables(4, disables=self._director.ignore)
+    self.assertDisables(2, 3, 4, disables=self._director.ignore)
 
   def test_ignore_range(self):
     self._create("""
@@ -827,10 +762,7 @@ class DisableDirectivesTest(DirectorTestCase):
            baz("e"):  # pytype: disable=wrong-arg-types
         pass
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 6)
-    else:
-      self.assertDisables(6)
+    self.assertDisables(2, 6)
 
   def test_not_instantiable(self):
     self._create("""
@@ -838,20 +770,14 @@ class DisableDirectivesTest(DirectorTestCase):
         A(
       )]  # pytype: disable=not-instantiable
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, 4, error_class="not-instantiable")
-    else:
-      self.assertDisables(3, 4, error_class="not-instantiable")
+    self.assertDisables(2, 3, 4, error_class="not-instantiable")
 
   def test_unsupported_operands_in_call(self):
     self._create("""
       some_func(
         x < y)  # pytype: disable=unsupported-operands
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, error_class="unsupported-operands")
-    else:
-      self.assertDisables(3, error_class="unsupported-operands")
+    self.assertDisables(2, 3, error_class="unsupported-operands")
 
   def test_unsupported_operands_in_assignment(self):
     self._create("""
@@ -859,10 +785,7 @@ class DisableDirectivesTest(DirectorTestCase):
         some_call(),
         "oops")  # pytype: disable=unsupported-operands
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 4, error_class="unsupported-operands")
-    else:
-      self.assertDisables(4, error_class="unsupported-operands")
+    self.assertDisables(2, 4, error_class="unsupported-operands")
 
   def test_header(self):
     self._create("""
@@ -871,10 +794,7 @@ class DisableDirectivesTest(DirectorTestCase):
           y == 0):
         pass
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, error_class="attribute-error")
-    else:
-      self.assertDisables(3, error_class="attribute-error")
+    self.assertDisables(2, 3, error_class="attribute-error")
 
   def test_try(self):
     self._create("""
@@ -911,10 +831,7 @@ class DisableDirectivesTest(DirectorTestCase):
       def f():
         pass
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, 4, 5)
-    else:
-      self.assertDisables(5)
+    self.assertDisables(2, 3, 4, 5)
 
   def test_nested_call_in_class_decorator(self):
     self._create("""
@@ -926,10 +843,7 @@ class DisableDirectivesTest(DirectorTestCase):
       class C:
         pass
     """)
-    if self.python_version >= (3, 8):
-      self.assertDisables(2, 3, 4, 5)
-    else:
-      self.assertDisables(5)
+    self.assertDisables(2, 3, 4, 5)
 
 
 class GlobalDirectivesTest(DirectorTestCase):
