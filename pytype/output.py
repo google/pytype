@@ -452,7 +452,7 @@ class Converter(utils.ContextWeakrefMixin):
       assert isinstance(d, pytd.Function)
       sigs = tuple(sig.Replace(params=sig.params[1:]) for sig in d.signatures)
       return d.Replace(signatures=sigs)
-    elif isinstance(v, attr_overlay.Attrs):
+    elif isinstance(v, attr_overlay.AttrsBase):
       ret = pytd.NamedType("typing.Callable")
       md = metadata.to_pytd(v.to_metadata())
       return pytd.Annotated(ret, ("'pytype_metadata'", md))

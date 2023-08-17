@@ -93,18 +93,8 @@ class _NoChange():
 _NO_CHANGE = _NoChange()
 
 
-class Attrs(classgen.Decorator):
-  """Implements the @attr.s decorator."""
-
-  @classmethod
-  def make(cls, ctx):
-    return super().make("s", ctx, "attr")
-
-  @classmethod
-  def make_dataclass(cls, ctx):
-    ret = super().make("s", ctx, "attr")
-    ret.partial_args["auto_attribs"] = True
-    return ret
+class AttrsBase(classgen.Decorator):
+  """Base class for @attr.s and @attrs.define."""
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs
@@ -112,8 +102,9 @@ class Attrs(classgen.Decorator):
     return attr.name.lstrip("_")
 
   def _handle_auto_attribs(
-      self, auto_attribs: Optional[bool], unused_local_ops,
-      unused_cls_name: str) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+      self, auto_attribs: Optional[bool], local_ops, cls_name: str
+  ) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+    del local_ops, cls_name  # unused
     # Why _NO_CHANGE instead of passing auto_attribs?
     # Because result is going into potentially an OrderedDict, where
     # writing even the same value might have a side effect (changing ordering).
@@ -236,12 +227,28 @@ class Attrs(classgen.Decorator):
       cls.update_method_type_params()
 
   def to_metadata(self):
+    # For simplicity, we give all attrs decorators with the same behavior as
+    # attr.s the same tag.
     return {
         "tag": "attr.s",
         "init": self._current_args["init"],
         "kw_only": self._current_args["kw_only"],
         "auto_attribs": self._current_args["auto_attribs"]
     }
+
+
+class Attrs(AttrsBase):
+  """Implements the @attr.s decorator."""
+
+  @classmethod
+  def make(cls, ctx):
+    return super().make("s", ctx, "attr")
+
+  @classmethod
+  def make_dataclass(cls, ctx):
+    ret = super().make("s", ctx, "attr")
+    ret.partial_args["auto_attribs"] = True
+    return ret
 
   @classmethod
   def from_metadata(cls, ctx, metadata):
@@ -251,7 +258,7 @@ class Attrs(classgen.Decorator):
     return ret
 
 
-class AttrsNextGenDefine(Attrs):
+class AttrsNextGenDefine(AttrsBase):
   """Implements the @attr.define decorator.
 
   See https://www.attrs.org/en/stable/api.html#next-generation-apis
@@ -274,8 +281,7 @@ class AttrsNextGenDefine(Attrs):
 
   @classmethod
   def make(cls, ctx, module):
-    # Bypass Attrs's make; go straight to its superclass.
-    return super(Attrs, cls).make("define", ctx, module)  # pylint: disable=bad-super-call
+    return super().make("define", ctx, module)
 
   def _handle_auto_attribs(self, auto_attribs, local_ops, cls_name):
     if auto_attribs is not None:
