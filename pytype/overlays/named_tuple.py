@@ -181,8 +181,8 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
   """Factory for creating collections.namedtuple classes."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("namedtuple", ctx, "collections")
+  def make(cls, ctx, module):
+    return super().make("namedtuple", ctx, module)
 
   def extract_args(self, node, callargs):
     """Extracts the typename, field_names and rename arguments.
@@ -242,14 +242,13 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
 
   @classmethod
   def make(cls, ctx):
-    typing_ast = ctx.loader.typing
     # typing.pytd contains a NamedTuple class def and a _NamedTuple func def.
     self = super().make("NamedTuple", ctx, "typing", pyval_name="_NamedTuple")
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
-    fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
+    fields_pyval = ctx.loader.lookup_pytd("typing", "_NamedTupleFields").type
     fields_type = ctx.convert.constant_to_value(fields_pyval, {}, ctx.root_node)
     # pylint: disable=protected-access
     self._fields_param = abstract_utils.BadType(name="fields", typ=fields_type)
@@ -325,9 +324,8 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                  "_fields", "_field_defaults", "_field_types",
                  "_make", "_replace", "_asdict", "_source")
 
-  def __init__(self, ctx):
-    typing_ast = ctx.loader.typing
-    pyval = typing_ast.Lookup("typing.NamedTuple")
+  def __init__(self, ctx, module="typing"):
+    pyval = ctx.loader.lookup_pytd(module, "NamedTuple")
     super().__init__("NamedTuple", pyval, ctx)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the

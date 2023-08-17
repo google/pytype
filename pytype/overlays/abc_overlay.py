@@ -34,8 +34,8 @@ class ABCOverlay(overlay.Overlay):
 class AbstractClassMethod(special_builtins.ClassMethodTemplate):
   """Implements abc.abstractclassmethod."""
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "abstractclassmethod", "abc")
+  def __init__(self, ctx, module):
+    super().__init__(ctx, "abstractclassmethod", module)
 
   def call(self, node, func, args, alias_map=None):
     _ = _set_abstract(args, "callable")
@@ -46,8 +46,8 @@ class AbstractMethod(abstract.PyTDFunction):
   """Implements the @abc.abstractmethod decorator."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("abstractmethod", ctx, "abc")
+  def make(cls, ctx, module):
+    return super().make("abstractmethod", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     """Marks that the given function is abstract."""
@@ -59,8 +59,8 @@ class AbstractMethod(abstract.PyTDFunction):
 class AbstractProperty(special_builtins.PropertyTemplate):
   """Implements the @abc.abstractproperty decorator."""
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "abstractproperty", "abc")
+  def __init__(self, ctx, module):
+    super().__init__(ctx, "abstractproperty", module)
 
   def call(self, node, func, args, alias_map=None):
     property_args = self._get_args(args)
@@ -80,8 +80,8 @@ class AbstractProperty(special_builtins.PropertyTemplate):
 class AbstractStaticMethod(special_builtins.StaticMethodTemplate):
   """Implements abc.abstractstaticmethod."""
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "abstractstaticmethod", "abc")
+  def __init__(self, ctx, module):
+    super().__init__(ctx, "abstractstaticmethod", module)
 
   def call(self, node, func, args, alias_map=None):
     _ = _set_abstract(args, "callable")
@@ -90,5 +90,5 @@ class AbstractStaticMethod(special_builtins.StaticMethodTemplate):
 
 class ABCMeta(special_builtins.TypeTemplate):
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "ABCMeta", "abc")
+  def __init__(self, ctx, module):
+    super().__init__(ctx, "ABCMeta", module)

@@ -34,10 +34,6 @@ class DataclassOverlay(overlay.Overlay):
 class Dataclass(dataclass_overlay.Dataclass):
   """Implements the @dataclass decorator."""
 
-  @classmethod
-  def make(cls, ctx):
-    return super().make(ctx, "flax.struct")
-
   def decorate(self, node, cls):
     super().decorate(node, cls)
     if not isinstance(cls, abstract.InterpreterClass):
@@ -119,9 +115,9 @@ class Module(abstract.PyTDClass):
   # want to use its full, unaliased name.
   _MODULE = "flax.linen.module"
 
-  def __init__(self, ctx):
-    ast = ctx.loader.import_name(self._MODULE)
-    pytd_cls = ast.Lookup(f"{self._MODULE}.Module")
+  def __init__(self, ctx, module):
+    del module  # unused
+    pytd_cls = ctx.loader.lookup_pytd(self._MODULE, "Module")
     # flax.linen.Module loads as a LateType, we need to convert it and then get
     # the pytd.Class back out to use in our own constructor.
     if isinstance(pytd_cls, pytd.Constant):

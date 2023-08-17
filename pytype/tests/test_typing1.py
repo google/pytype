@@ -489,7 +489,7 @@ class NotSupportedYetTest(test_base.BaseTest):
       from typing_extensions import Self  # not-supported-yet[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"typing.Self not supported yet$"})
+        errors, {"e": r"typing_extensions.Self not supported yet$"})
 
   def test_unsupported_construct(self):
     errors = self.CheckWithErrors("""

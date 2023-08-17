@@ -47,8 +47,8 @@ class PopenInit(abstract.PyTDFunction):
 class Popen(abstract.PyTDClass, mixin.HasSlots):
   """Custom implementation of subprocess.Popen."""
 
-  def __init__(self, ctx):
-    pytd_cls = ctx.loader.import_name("subprocess").Lookup("subprocess.Popen")
+  def __init__(self, ctx, module):
+    pytd_cls = ctx.loader.lookup_pytd(module, "Popen")
     super().__init__("Popen", pytd_cls, ctx)
     mixin.HasSlots.init_mixin(self)
     self._setting_init = False  # recursion detection

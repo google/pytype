@@ -31,10 +31,6 @@ class Dataclass(dataclass_overlay.Dataclass):
   DEFAULT_ARGS = {**dataclass_overlay.Dataclass.DEFAULT_ARGS,
                   "mappable_dataclass": True}
 
-  @classmethod
-  def make(cls, ctx):
-    return super().make(ctx, "chex")
-
   def _add_replace_method(self, node, cls):
     cls.members["replace"] = classgen.make_replace_method(
         self.ctx, node, cls, kwargs_name="changes")

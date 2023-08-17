@@ -47,7 +47,7 @@ class TypingOverlay(overlay.Overlay):
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and _is_typing_container(cls):
-        member_map[name] = (overlay.build(name, TypingContainer), None)
+        member_map[name] = (_builder(name, TypingContainer), None)
     super().__init__(ctx, "typing", member_map, ast)
 
   # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
@@ -66,8 +66,8 @@ class TypingOverlay(overlay.Overlay):
       # import them from typing_extensions instead.
       details = (f"Import {name} from typing_extensions in Python versions "
                  f"before {utils.format_version(lowest_supported_version)}.")
-      return not_supported_yet(name, self.ctx, details=details).to_variable(
-          self.ctx.root_node)
+      return overlay_utils.not_supported_yet(
+          name, self.ctx, self.name, details).to_variable(self.ctx.root_node)
     return super()._convert_member(name, builder, subst)
 
 
@@ -75,8 +75,10 @@ class Redirect(overlay.Overlay):
   """Base class for overlays that redirect to typing."""
 
   def __init__(self, module, aliases, ctx):
+    assert all(v.startswith("typing.") for v in aliases.values())
+    member_map = {k: _builder_from_name(v[len("typing."):])
+                  for k, v in aliases.items()}
     ast = ctx.loader.import_name(module)
-    member_map = {k: _build(v) for k, v in aliases.items()}
     for pyval in ast.aliases + ast.classes + ast.constants + ast.functions:
       # Any public members that are not explicitly implemented are unsupported.
       _, name = pyval.name.rsplit(".", 1)
@@ -85,25 +87,27 @@ class Redirect(overlay.Overlay):
       if name in typing_overlay:
         member_map[name] = typing_overlay[name][0]
       elif f"typing.{name}" in ctx.loader.typing:
-        member_map[name] = _build(f"typing.{name}")
+        member_map[name] = _builder_from_name(name)
       elif name not in member_map:
-        member_map[name] = _build_not_supported_yet(name, ast)
+        member_map[name] = overlay.add_name(
+            name, overlay_utils.not_supported_yet)
     super().__init__(ctx, module, member_map, ast)
 
 
-def _build(name):
-  def resolve(ctx):
-    ast = ctx.loader.typing
-    pytd_val = ast.Lookup(name)
+def _builder_from_name(name):
+  def resolve(ctx, module):
+    del module  # unused
+    pytd_val = ctx.loader.lookup_pytd("typing", name)
     if isinstance(pytd_val, pytd.Class) and _is_typing_container(pytd_val):
-      return TypingContainer(name.rsplit(".", 1)[-1], ctx)
-    pytd_type = pytd.ToType(ast.Lookup(name), True, True, True)
+      return TypingContainer(name, ctx)
+    pytd_type = pytd.ToType(pytd_val, True, True, True)
     return ctx.convert.constant_to_value(pytd_type)
   return resolve
 
 
-def _build_not_supported_yet(name, ast):
-  return lambda ctx: not_supported_yet(name, ctx, ast=ast)
+def _builder(name, builder):
+  """Turns (name, ctx) -> val signatures into (ctx, module) -> val."""
+  return lambda ctx, module: builder(name, ctx)
 
 
 class Union(abstract.AnnotationClass):
@@ -307,6 +311,13 @@ class TypeVar(_TypeVariable):
 
   _ABSTRACT_CLASS = abstract.TypeParameter
 
+  @classmethod
+  def make(cls, ctx, module):
+    # We always want to use typing as the module, since pytype's typing.pytd
+    # contains a _typevar_new helper.
+    del module
+    return super().make("TypeVar", ctx, "typing", pyval_name="_typevar_new")
+
   def _get_namedarg(self, node, args, name, default_value):
     if name not in args.namedargs:
       return default_value
@@ -324,6 +335,13 @@ class ParamSpec(_TypeVariable):
   """Representation of typing.ParamSpec, as a function."""
 
   _ABSTRACT_CLASS = abstract.ParamSpec
+
+  @classmethod
+  def make(cls, ctx, module):
+    # We always want to use typing as the module, since pytype's typing.pytd
+    # contains a _paramspec_new helper.
+    del module
+    return super().make("ParamSpec", ctx, "typing", pyval_name="_paramspec_new")
 
   def _get_namedarg(self, node, args, name, default_value):
     if name not in args.namedargs:
@@ -434,6 +452,13 @@ class Overload(abstract.PyTDFunction):
 class FinalDecorator(abstract.PyTDFunction):
   """Implementation of typing.final."""
 
+  @classmethod
+  def make(cls, ctx, module):
+    # Although final can also be imported from typing_extensions, we want to use
+    # the definition in pytype's typing.pytd that is under our control.
+    del module
+    return super().make("final", ctx, "typing")
+
   def call(self, node, func, args, alias_map=None):
     """Marks that the given function is final."""
     del func, alias_map  # unused
@@ -509,9 +534,6 @@ class Literal(TypingContainer):
 class Concatenate(abstract.AnnotationClass):
   """Implementation of typing.Concatenate[...]."""
 
-  def __init__(self, ctx):
-    super().__init__("Concatenate", ctx)
-
   def _build_value(self, node, inner, ellipses):
     self.ctx.errorlog.invalid_ellipses(self.ctx.vm.frames, ellipses, self.name)
     return abstract.Concatenate(list(inner), self.ctx)
@@ -520,8 +542,8 @@ class Concatenate(abstract.AnnotationClass):
 class ForwardRef(abstract.PyTDClass):
   """Implementation of typing.ForwardRef."""
 
-  def __init__(self, ctx):
-    pyval = ctx.loader.typing.Lookup("typing.ForwardRef")
+  def __init__(self, ctx, module):
+    pyval = ctx.loader.lookup_pytd(module, "ForwardRef")
     super().__init__("ForwardRef", pyval, ctx)
 
   def call(self, node, func, args, alias_map=None):
@@ -575,55 +597,23 @@ class DataclassTransform(abstract.SimpleValue):
     return node, arg
 
 
-def not_supported_yet(name, ctx, *, ast=None, details=None):
-  ast = ast or ctx.loader.typing
-  return overlay_utils.not_supported_yet(name, ctx, ast, details=details)
-
-
 def build_any(ctx):
   return ctx.convert.unsolvable
-
-
-def build_newtype(ctx):
-  return NewType.make("NewType", ctx, "typing")
 
 
 def build_noreturn(ctx):
   return ctx.convert.no_return
 
 
-def build_overload(ctx):
-  return Overload.make("overload", ctx, "typing")
-
-
-def build_typevar(ctx):
-  return TypeVar.make("TypeVar", ctx, "typing", pyval_name="_typevar_new")
-
-
-def build_paramspec(ctx):
-  return ParamSpec.make("ParamSpec", ctx, "typing", pyval_name="_paramspec_new")
-
-
 def build_typechecking(ctx):
   return ctx.convert.true
 
 
-def build_cast(ctx):
-  return Cast.make("cast", ctx, "typing")
-
-
-def build_final_decorator(ctx):
-  return FinalDecorator.make("final", ctx, "typing")
-
-
-def build_dataclass_transform(ctx):
-  return DataclassTransformBuilder.make("dataclass_transform", ctx, "typing")
-
-
 def get_re_builder(member):
-  def build_re_member(ctx):
-    ast = ctx.loader.import_name("re")
-    return ctx.convert.constant_to_value(ast.Lookup(f"re.{member}"))
+  def build_re_member(ctx, module):
+    del module  # unused
+    pyval = ctx.loader.lookup_pytd("re", member)
+    return ctx.convert.constant_to_value(pyval)
   return build_re_member
 
 
@@ -647,31 +637,32 @@ _unsupported_members = {
 
 # name -> (builder, lowest_supported_version)
 typing_overlay = {
-    "Annotated": (overlay.build("Annotated", Annotated), (3, 9)),
-    "Any": (build_any, None),
-    "Callable": (overlay.build("Callable", Callable), None),
-    "Concatenate": (Concatenate, (3, 10)),
-    "final": (build_final_decorator, (3, 8)),
-    "Final": (overlay.build("Final", Final), (3, 8)),
+    "Annotated": (_builder("Annotated", Annotated), (3, 9)),
+    "Any": (overlay.drop_module(build_any), None),
+    "Callable": (_builder("Callable", Callable), None),
+    "Concatenate": (_builder("Concatenate", Concatenate), None),
+    "final": (FinalDecorator.make, (3, 8)),
+    "Final": (_builder("Final", Final), (3, 8)),
     "ForwardRef": (ForwardRef, None),
-    "Generic": (overlay.build("Generic", Generic), None),
-    "Literal": (overlay.build("Literal", Literal), (3, 8)),
+    "Generic": (_builder("Generic", Generic), None),
+    "Literal": (_builder("Literal", Literal), (3, 8)),
     "Match": (get_re_builder("Match"), None),
     "NamedTuple": (named_tuple.NamedTupleClassBuilder, None),
-    "NewType": (build_newtype, None),
-    "NoReturn": (build_noreturn, None),
-    "Optional": (overlay.build("Optional", Optional), None),
-    "ParamSpec": (build_paramspec, (3, 10)),
+    "NewType": (overlay.add_name("NewType", NewType.make), None),
+    "NoReturn": (overlay.drop_module(build_noreturn), None),
+    "Optional": (_builder("Optional", Optional), None),
+    "ParamSpec": (ParamSpec.make, (3, 10)),
     "Pattern": (get_re_builder("Pattern"), None),
-    "Tuple": (overlay.build("Tuple", Tuple), None),
-    "TypeGuard": (_build("typing.TypeGuard"), (3, 10)),
-    "TypeVar": (build_typevar, None),
-    "TypedDict": (typed_dict.TypedDictBuilder, (3, 8)),
-    "Union": (Union, None),
-    "TYPE_CHECKING": (build_typechecking, None),
-    "cast": (build_cast, None),
-    "dataclass_transform": (build_dataclass_transform, (3, 11)),
-    "overload": (build_overload, None),
-    **{k: (overlay.build(k, not_supported_yet), v)
+    "Tuple": (_builder("Tuple", Tuple), None),
+    "TypeGuard": (_builder_from_name("TypeGuard"), (3, 10)),
+    "TypeVar": (TypeVar.make, None),
+    "TypedDict": (overlay.drop_module(typed_dict.TypedDictBuilder), (3, 8)),
+    "Union": (overlay.drop_module(Union), None),
+    "TYPE_CHECKING": (overlay.drop_module(build_typechecking), None),
+    "cast": (overlay.add_name("cast", Cast.make), None),
+    "dataclass_transform": (overlay.add_name(
+        "dataclass_transform", DataclassTransformBuilder.make), (3, 11)),
+    "overload": (overlay.add_name("overload", Overload.make), None),
+    **{k: (overlay.add_name(k, overlay_utils.not_supported_yet), v)
        for k, v in _unsupported_members.items()}
 }

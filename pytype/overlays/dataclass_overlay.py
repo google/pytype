@@ -178,8 +178,8 @@ class FieldFunction(classgen.FieldConstructor):
   """Implements dataclasses.field."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("field", ctx, "dataclasses")
+  def make(cls, ctx, module):
+    return super().make("field", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     """Returns a type corresponding to a field."""

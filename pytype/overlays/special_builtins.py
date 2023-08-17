@@ -67,15 +67,9 @@ class BuiltinFunction(abstract.PyTDFunction):
   name = None
 
   @classmethod
-  def make(cls, ctx):
+  def make(cls, ctx, module="builtins"):
     assert cls.name
-    return super().make(cls.name, ctx, "builtins")
-
-  @classmethod
-  def make_alias(cls, name, ctx, module):
-    """Create an alias to this function."""
-    # See overlays/pytype_extensions_overlay.py
-    return super().make(name, ctx, module)
+    return super().make(cls.name, ctx, module)
 
   def get_underlying_method(self, node, receiver, method_name):
     """Get the bound method that a built-in function delegates to."""
@@ -347,8 +341,7 @@ class BuiltinClass(abstract.PyTDClass):
     if module == "builtins":
       pytd_cls = ctx.loader.lookup_builtin(f"builtins.{name}")
     else:
-      ast = ctx.loader.import_name(module)
-      pytd_cls = ast.Lookup(f"{module}.{name}")
+      pytd_cls = ctx.loader.lookup_pytd(module, name)
     super().__init__(name, pytd_cls, ctx)
     self.module = module
 

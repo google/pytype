@@ -708,6 +708,11 @@ class Loader:
     found = self.builtins.Get(name)
     return found if found is not None else self.typing.Lookup(name)
 
+  def lookup_pytd(self, module: str, name: str) -> pytd.Node:
+    ast = self.import_name(module)
+    assert ast, f"Module not found: {module}"
+    return ast.Lookup(f"{module}.{name}")
+
 
 class PickledPyiLoader(Loader):
   """A Loader which always loads pickle instead of PYI, for speed."""

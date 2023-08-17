@@ -2,7 +2,7 @@
 
 import enum
 import logging
-from typing import Any, Callable, ClassVar, Dict, Optional, Tuple, TypeVar, Union
+from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -37,21 +37,15 @@ class _AttrOverlayBase(overlay.Overlay):
     member_map = {
         # Attr's next-gen APIs
         # See https://www.attrs.org/en/stable/api.html#next-gen
-        "define": self._build(AttrsNextGenDefine.make),
+        "define": AttrsNextGenDefine.make,
         # These (may) have different default arguments than 'define' for the
         # "frozen" arguments, but the overlay doesn't look at that yet.
-        "mutable": self._build(AttrsNextGenDefine.make),
-        "frozen": self._build(AttrsNextGenDefine.make),
-        "field": self._build(Attrib.make),
+        "mutable": AttrsNextGenDefine.make,
+        "frozen": AttrsNextGenDefine.make,
+        "field": Attrib.make,
     }
     ast = ctx.loader.import_name(self._MODULE_NAME)
     super().__init__(ctx, self._MODULE_NAME, member_map, ast)
-
-  @classmethod
-  def _build(
-      cls, make_fn: Callable[[Any, str], _TBaseValue],
-  ) -> Callable[[Any], _TBaseValue]:
-    return lambda ctx: make_fn(ctx, cls._MODULE_NAME)
 
 
 class AttrOverlay(_AttrOverlayBase):
@@ -68,10 +62,10 @@ class AttrOverlay(_AttrOverlayBase):
     super().__init__(ctx)
     self._member_map.update({
         "attrs": Attrs.make,
-        "attrib": self._build(Attrib.make),
+        "attrib": Attrib.make,
         "s": Attrs.make,
         "dataclass": Attrs.make_dataclass,
-        "ib": self._build(Attrib.make),
+        "ib": Attrib.make,
     })
 
 
@@ -241,12 +235,12 @@ class Attrs(AttrsBase):
   """Implements the @attr.s decorator."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("s", ctx, "attr")
+  def make(cls, ctx, module="attr"):
+    return super().make("s", ctx, module)
 
   @classmethod
-  def make_dataclass(cls, ctx):
-    ret = super().make("s", ctx, "attr")
+  def make_dataclass(cls, ctx, module):
+    ret = super().make("s", ctx, module)
     ret.partial_args["auto_attribs"] = True
     return ret
 

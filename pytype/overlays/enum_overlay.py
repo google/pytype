@@ -56,14 +56,12 @@ class EnumOverlay(overlay.Overlay):
   def __init__(self, ctx):
     ast = ctx.loader.import_name("enum")
     if ctx.options.use_enum_overlay:
-      def not_supported_yet(name, ctx):
-        return overlay_utils.not_supported_yet(name, ctx, ast)
       member_map = {
-          "Enum": overlay.build("Enum", EnumBuilder),
+          "Enum": overlay.add_name("Enum", EnumBuilder),
           "EnumMeta": EnumMeta,
           "EnumType": EnumMeta,
-          "IntEnum": overlay.build("IntEnum", EnumBuilder),
-          **{name: overlay.build(name, not_supported_yet)
+          "IntEnum": overlay.add_name("IntEnum", EnumBuilder),
+          **{name: overlay.add_name(name, overlay_utils.not_supported_yet)
              for name in _unsupported},
       }
       ast = ast.Visit(visitors.RemoveMethods())
@@ -73,13 +71,16 @@ class EnumOverlay(overlay.Overlay):
     super().__init__(ctx, "enum", member_map, ast)
 
 
+def _lookup_pytd(ctx, module, name):
+  # We have to look up the ast from the overlay because the overlay modifies it.
+  return ctx.vm.loaded_overlays[module].ast.Lookup(f"{module}.{name}")
+
+
 class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
-  def __init__(self, name, ctx):
-    enum_ast = ctx.vm.loaded_overlays["enum"].ast
-    pyval = enum_ast.Lookup(f"enum.{name}")
-    super().__init__(name, pyval, ctx)
+  def __init__(self, name, ctx, module):
+    super().__init__(name, _lookup_pytd(ctx, module, name), ctx)
 
   def make_class(self, node, props):
     """Check the members for errors, then create the enum class."""
@@ -295,9 +296,8 @@ class EnumMeta(abstract.PyTDClass):
   enum behavior: EnumMetaInit for modifying enum classes, for example.
   """
 
-  def __init__(self, ctx):
-    enum_ast = ctx.vm.loaded_overlays["enum"].ast
-    pytd_cls = enum_ast.Lookup("enum.EnumMeta")
+  def __init__(self, ctx, module):
+    pytd_cls = _lookup_pytd(ctx, module, "EnumMeta")
     super().__init__("EnumMeta", pytd_cls, ctx)
     init = EnumMetaInit(ctx)
     self._member_map["__init__"] = init

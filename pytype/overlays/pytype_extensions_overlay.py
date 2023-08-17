@@ -9,12 +9,7 @@ class PytypeExtensionsOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
-        "assert_type": build_assert_type
+        "assert_type": special_builtins.AssertType.make,
     }
     ast = ctx.loader.import_name("pytype_extensions")
     super().__init__(ctx, "pytype_extensions", member_map, ast)
-
-
-def build_assert_type(ctx):
-  return special_builtins.AssertType.make_alias("assert_type", ctx,
-                                                "pytype_extensions")

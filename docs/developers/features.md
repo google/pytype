@@ -160,9 +160,8 @@ the new feature.
 It is often desirable to check in partial support for a complicated feature and
 finish it later. Some tips for doing this gracefully:
 
-*   To prevent premature use, map a feature to
-    `typing_overlay.not_supported_yet` to generate an error when it is imported
-    in source files.
+*   To prevent premature use, map a feature to `overlay_utils.not_supported_yet`
+    to generate an error when it is imported in source files.
 *   If you've implemented only the PyTD logic for a feature, convert the pytd
     nodes to `ctx.convert.unsolvable` to treat them as `Any` in abstract
     analysis.

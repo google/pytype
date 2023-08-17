@@ -19,5 +19,5 @@ class FunctoolsOverlay(overlay.Overlay):
 
 class CachedProperty(special_builtins.PropertyTemplate):
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "cached_property", _MODULE_NAME)
+  def __init__(self, ctx, module):
+    super().__init__(ctx, "cached_property", module)

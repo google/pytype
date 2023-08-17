@@ -9,11 +9,7 @@ class FutureUtilsOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
-        "with_metaclass": build_with_metaclass,
+        "with_metaclass": metaclass.WithMetaclass.make,
     }
     ast = ctx.loader.import_name("future.utils")
     super().__init__(ctx, "future.utils", member_map, ast)
-
-
-def build_with_metaclass(ctx):
-  return metaclass.WithMetaclass.make("with_metaclass", ctx, "future.utils")

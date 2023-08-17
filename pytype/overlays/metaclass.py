@@ -43,6 +43,10 @@ class AddMetaclassInstance(abstract.BaseValue):
 class AddMetaclass(abstract.PyTDFunction):
   """Implements the add_metaclass decorator."""
 
+  @classmethod
+  def make(cls, ctx, module):
+    return super().make("add_metaclass", ctx, module)
+
   def call(self, node, func, args, alias_map=None):
     """Adds a metaclass."""
     del func, alias_map  # unused
@@ -76,6 +80,10 @@ class WithMetaclassInstance(abstract.BaseValue, abstract.Class):  # pytype: disa
 
 class WithMetaclass(abstract.PyTDFunction):
   """Implements with_metaclass."""
+
+  @classmethod
+  def make(cls, ctx, module):
+    return super().make("with_metaclass", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     """Creates an anonymous class to act as a metaclass."""
