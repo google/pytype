@@ -704,9 +704,10 @@ class Loader:
     """Gets a name -> ResolvedModule map of the loader's resolved modules."""
     return self._modules.get_resolved_modules()
 
-  def lookup_builtin(self, name):
-    found = self.builtins.Get(name)
-    return found if found is not None else self.typing.Lookup(name)
+  def lookup_pytd(self, module: str, name: str) -> pytd.Node:
+    ast = self.import_name(module)
+    assert ast, f"Module not found: {module}"
+    return ast.Lookup(f"{module}.{name}")
 
 
 class PickledPyiLoader(Loader):

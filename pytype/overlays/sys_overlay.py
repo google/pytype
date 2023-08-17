@@ -9,8 +9,8 @@ class SysOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
-        "platform": build_platform,
-        "version_info": build_version_info,
+        "platform": overlay.drop_module(build_platform),
+        "version_info": overlay.drop_module(build_version_info),
     }
     ast = ctx.loader.import_name("sys")
     super().__init__(ctx, "sys", member_map, ast)

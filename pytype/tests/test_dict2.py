@@ -100,7 +100,6 @@ class DictTest(test_base.BaseTest):
       c: Dict[str, int]
     """)
 
-  @test_utils.skipBeforePy((3, 8), "Dict views are reversible in Python 3.8+.")
   def test_reverse_views(self):
     self.Check("""
       x = {'a': 'b'}

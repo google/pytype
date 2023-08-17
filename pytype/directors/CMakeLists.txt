@@ -64,6 +64,4 @@ py_test(
   DEPS
     .directors
     pytype.errors
-    pytype.blocks.blocks
-    pytype.pyc.pyc
 )

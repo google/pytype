@@ -44,7 +44,7 @@ class TestFolding(test_base.UnitTest):
         src, filename="test_input.py", python_version=self.python_version,
         python_exe=exe, mode=mode)
     code = pyc.parse_pyc_string(pyc_data)
-    code, _ = blocks.process_code(code, self.python_version)
+    code, _ = blocks.process_code(code)
     return code
 
   def _find_load_folded(self, code):
@@ -115,32 +115,6 @@ class TestFolding(test_base.UnitTest):
         )), val, elements)
     ])
 
-  @test_utils.skipFromPy((3, 8), "opcode line number changed in 3.8")
-  def test_nested_pre38(self):
-    actual = self._process("""
-      a = {
-        'x': [(1, '2', 3), ('4', '5', 6)],
-        'y': [{'a': 'b'}, {'c': 'd'}],
-        ('p', 'q'): 'r'
-      }
-    """)
-    val = {
-        "x": [(1, "2", 3), ("4", "5", 6)],
-        "y": [{"a": "b"}, {"c": "d"}],
-        ("p", "q"): "r"
-    }
-    x = ("list", (
-        ("tuple", int, str, int),
-        ("tuple", str, str, int)
-    ))
-    y = ("list", ("map", str, str))
-    k = (("tuple", str, str), str)
-    elements = {"x": x, "y": y, ("p", "q"): str}
-    self.assertCountEqual(actual, [
-        (4, ("map", k, (y, x, str)), val, elements)
-    ])
-
-  @test_utils.skipBeforePy((3, 8), "opcode line number changed in 3.8")
   def test_nested(self):
     actual = self._process("""
       a = {

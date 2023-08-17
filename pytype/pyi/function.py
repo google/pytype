@@ -96,8 +96,8 @@ class NameAndSig(pytd_function.NameAndSig):
       elif isinstance(x, types.Ellipsis):
         pass
       elif (isinstance(x, astlib.Expr) and
-            isinstance(x.value, astlib.Str) and
-            i == 0):
+            isinstance(x.value, astlib.Constant) and
+            isinstance(x.value.value, str) and i == 0):
         # docstring
         pass
       else:

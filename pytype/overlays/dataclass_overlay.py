@@ -140,9 +140,8 @@ class Dataclass(classgen.Decorator):
     # dataclasses.is_dataclass uses to determine if an object is a dataclass (or
     # an instance of one).
     attr_types = self.ctx.convert.merge_values({attr.typ for attr in attrs})
-    dataclass_ast = self.ctx.loader.import_name("dataclasses")
     generic_field = abstract.ParameterizedClass(
-        self.ctx.convert.name_to_value("dataclasses.Field", ast=dataclass_ast),
+        self.ctx.convert.lookup_value("dataclasses", "Field"),
         {abstract_utils.T: attr_types}, self.ctx)
     dataclass_fields_params = {
         abstract_utils.K: self.ctx.convert.str_type,
@@ -178,8 +177,8 @@ class FieldFunction(classgen.FieldConstructor):
   """Implements dataclasses.field."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("field", ctx, "dataclasses")
+  def make(cls, ctx, module):
+    return super().make("field", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     """Returns a type corresponding to a field."""

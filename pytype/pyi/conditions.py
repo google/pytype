@@ -98,12 +98,6 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
   def visit_Constant(self, node):
     return node.value
 
-  def visit_Num(self, node):
-    return node.n
-
-  def visit_Str(self, node):
-    return node.s
-
   def visit_Subscript(self, node):
     return (node.value, node.slice)
 

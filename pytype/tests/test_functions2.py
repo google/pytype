@@ -685,7 +685,6 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         def __init__(self) -> None: ...
     """)
 
-  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_positional_only_parameter(self):
     ty, errors = self.InferWithErrors("""
       def f(x, /, y):
@@ -702,7 +701,6 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
     self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
                                              "Expected: (x, /, y)"]})
 
-  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_positional_only_parameter_pyi(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -719,7 +717,6 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       self.assertErrorSequences(errors, {"e": ["Invalid keyword argument x",
                                                "Expected: (x, /, y)"]})
 
-  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_positional_and_keyword_arguments(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
@@ -733,7 +730,6 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
         f(1, x=1)
       """, pythonpath=[d.path])
 
-  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_posonly_starstararg_clash(self):
     self.Check("""
       def f(arg: int, /, **kwargs: str):
@@ -741,7 +737,6 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       f(1, arg='text')
     """)
 
-  @test_utils.skipBeforePy((3, 8), "new in Python 3.8")
   def test_pyi_posonly_starstararg_clash(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """

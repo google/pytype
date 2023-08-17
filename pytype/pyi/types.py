@@ -90,23 +90,7 @@ class Pyval(astlib.AST):
   value: Any
 
   @classmethod
-  def from_num(cls, node: astlib.Num):
-    if isinstance(node.n, int):
-      return cls("int", node.n)
-    else:
-      return cls("float", node.n)
-
-  @classmethod
-  def from_str(cls, node: astlib.Str):
-    if node.kind == "b":
-      return cls("bytes", node.s)
-    elif node.kind == "u":
-      return cls("unicode", node.s)
-    else:
-      return cls("str", node.s)
-
-  @classmethod
-  def from_const(cls, node: astlib.NameConstant):
+  def from_const(cls, node: astlib.Constant):
     if node.value is None:
       return pytd.NamedType("None")
     return cls(type(node.value).__name__, node.value)

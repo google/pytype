@@ -157,8 +157,7 @@ def add_base_class(node, cls, base_cls):
     cls.mro = cls.mro + (base_cls,)
 
 
-def not_supported_yet(name, ctx, ast, details=None):
-  full_name = f"{ast.name}.{name}"
-  ctx.errorlog.not_supported_yet(ctx.vm.frames, full_name, details=details)
-  pytd_type = pytd.ToType(ast.Lookup(full_name), True, True, True)
+def not_supported_yet(name, ctx, module, details=None):
+  pytd_type = ctx.loader.lookup_pytd(module, name)
+  ctx.errorlog.not_supported_yet(ctx.vm.frames, pytd_type.name, details=details)
   return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)

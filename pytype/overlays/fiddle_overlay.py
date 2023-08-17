@@ -38,8 +38,8 @@ class FiddleOverlay(overlay.Overlay):
     """
     if ctx.options.use_fiddle_overlay:
       member_map = {
-          "Config": overlay.build("Config", BuildableBuilder),
-          "Partial": overlay.build("Partial", BuildableBuilder),
+          "Config": overlay.add_name("Config", BuildableBuilder),
+          "Partial": overlay.add_name("Partial", BuildableBuilder),
       }
     else:
       member_map = {}
@@ -51,9 +51,8 @@ class FiddleOverlay(overlay.Overlay):
 class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
   """Factory for creating fiddle.Config classes."""
 
-  def __init__(self, name, ctx):
-    fiddle_ast = ctx.loader.import_name("fiddle")
-    pytd_cls = fiddle_ast.Lookup(f"fiddle.{name}")
+  def __init__(self, name, ctx, module):
+    pytd_cls = ctx.loader.lookup_pytd(module, name)
     # fiddle.Config/Partial loads as a LateType, convert to pytd.Class
     if isinstance(pytd_cls, pytd.Constant):
       pytd_cls = ctx.convert.constant_to_value(pytd_cls).pytd_cls
@@ -148,7 +147,7 @@ class BuildableType(abstract.ParameterizedClass):
   """Base generic class for fiddle.Config and fiddle.Partial."""
 
   def __init__(self, fiddle_type_name, underlying, ctx, template=None):
-    base_cls = BuildableBuilder(fiddle_type_name, ctx)
+    base_cls = BuildableBuilder(fiddle_type_name, ctx, "fiddle")
 
     if isinstance(underlying, abstract.Function):
       # We don't support functions for now, but falling back to Any here gets us

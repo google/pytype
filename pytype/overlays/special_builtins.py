@@ -64,17 +64,15 @@ class TypeNew(abstract.PyTDFunction):
 class BuiltinFunction(abstract.PyTDFunction):
   """Implementation of functions in builtins.pytd."""
 
-  name = None
+  _NAME: str = None
 
   @classmethod
   def make(cls, ctx):
-    assert cls.name
-    return super().make(cls.name, ctx, "builtins")
+    assert cls._NAME
+    return super().make(cls._NAME, ctx, "builtins")
 
   @classmethod
   def make_alias(cls, name, ctx, module):
-    """Create an alias to this function."""
-    # See overlays/pytype_extensions_overlay.py
     return super().make(name, ctx, module)
 
   def get_underlying_method(self, node, receiver, method_name):
@@ -102,7 +100,7 @@ def get_file_mode(sig, args):
 class Abs(BuiltinFunction):
   """Implements abs."""
 
-  name = "abs"
+  _NAME = "abs"
 
   def call(self, node, func, args, alias_map=None):
     self.match_args(node, args)
@@ -117,7 +115,7 @@ class Abs(BuiltinFunction):
 class Next(BuiltinFunction):
   """Implements next."""
 
-  name = "next"
+  _NAME = "next"
 
   def _get_args(self, args):
     arg = args.posargs[0]
@@ -144,7 +142,7 @@ class Next(BuiltinFunction):
 class Round(BuiltinFunction):
   """Implements round."""
 
-  name = "round"
+  _NAME = "round"
 
   def call(self, node, func, args, alias_map=None):
     self.match_args(node, args)
@@ -219,7 +217,7 @@ class BinaryPredicate(ObjectPredicate):
 class HasAttr(BinaryPredicate):
   """The hasattr() function."""
 
-  name = "hasattr"
+  _NAME = "hasattr"
 
   def _call_predicate(self, node, left, right):
     return self._has_attr(node, left.data, right.data)
@@ -251,7 +249,7 @@ class HasAttr(BinaryPredicate):
 class IsInstance(BinaryPredicate):
   """The isinstance() function."""
 
-  name = "isinstance"
+  _NAME = "isinstance"
 
   def _call_predicate(self, node, left, right):
     return node, self._is_instance(left.data, right.data)
@@ -279,7 +277,7 @@ class IsInstance(BinaryPredicate):
 class IsSubclass(BinaryPredicate):
   """The issubclass() function."""
 
-  name = "issubclass"
+  _NAME = "issubclass"
 
   def _call_predicate(self, node, left, right):
     return node, self._is_subclass(left.data, right.data)
@@ -305,7 +303,7 @@ class IsSubclass(BinaryPredicate):
 class IsCallable(UnaryPredicate):
   """The callable() function."""
 
-  name = "callable"
+  _NAME = "callable"
 
   def _call_predicate(self, node, obj):
     return self._is_callable(node, obj)
@@ -343,13 +341,21 @@ class BuiltinClass(abstract.PyTDClass):
   module in builtins and inherit the custom behaviour.
   """
 
-  def __init__(self, ctx, name, module="builtins"):
-    if module == "builtins":
-      pytd_cls = ctx.loader.lookup_builtin(f"builtins.{name}")
-    else:
-      ast = ctx.loader.import_name(module)
-      pytd_cls = ast.Lookup(f"{module}.{name}")
-    super().__init__(name, pytd_cls, ctx)
+  _NAME: str = None
+
+  @classmethod
+  def make(cls, ctx):
+    assert cls._NAME
+    return cls(cls._NAME, ctx, "builtins")
+
+  @classmethod
+  def make_alias(cls, name, ctx, module):
+    # Although this method has the same signature as __init__, it makes alias
+    # creation more readable and consistent with BuiltinFunction.
+    return cls(name, ctx, module)
+
+  def __init__(self, name, ctx, module):
+    super().__init__(name, ctx.loader.lookup_pytd(module, name), ctx)
     self.module = module
 
 
@@ -400,9 +406,7 @@ class Super(BuiltinClass):
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("super", ("cls", "self"))
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "super")
+  _NAME = "super"
 
   def call(self, node, func, args, alias_map=None):
     result = self.ctx.program.NewVariable()
@@ -461,8 +465,7 @@ class Super(BuiltinClass):
 class Object(BuiltinClass):
   """Implementation of builtins.object."""
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "object")
+  _NAME = "object"
 
   def is_object_new(self, func):
     """Whether the given function is object.__new__.
@@ -535,8 +538,7 @@ class AssertType(BuiltinFunction):
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names(
       "assert_type", ("variable", "type"))
-
-  name = "assert_type"
+  _NAME = "assert_type"
 
   def call(self, node, func, args, alias_map=None):
     if len(args.posargs) == 1:
@@ -550,10 +552,11 @@ class AssertType(BuiltinFunction):
     return node, self.ctx.convert.build_none(node)
 
 
-class PropertyTemplate(BuiltinClass):
-  """Template for property decorators."""
+class Property(BuiltinClass):
+  """Property decorator."""
 
   _KEYS = ["fget", "fset", "fdel", "doc"]
+  _NAME = "property"
 
   def signature(self):
     # Minimal signature, only used for constructing exceptions.
@@ -656,13 +659,6 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     return node, result
 
 
-class Property(PropertyTemplate):
-  """Property method decorator."""
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "property")
-
-
 def _check_method_decorator_arg(fn_var, name, ctx):
   """Check that @classmethod or @staticmethod are applied to a function."""
   for d in fn_var.data:
@@ -695,11 +691,12 @@ class StaticMethodInstance(abstract.Function, mixin.HasSlots):
     return node, self.func
 
 
-class StaticMethodTemplate(BuiltinClass):
+class StaticMethod(BuiltinClass):
   """Static method decorator."""
 
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("staticmethod", ("func",))
+  _NAME = "staticmethod"
 
   def call(self, node, func, args, alias_map=None):
     if len(args.posargs) != 1:
@@ -708,12 +705,6 @@ class StaticMethodTemplate(BuiltinClass):
     if not _check_method_decorator_arg(arg, "staticmethod", self.ctx):
       return node, self.ctx.new_unsolvable(node)
     return node, StaticMethodInstance(self.ctx, self, arg).to_variable(node)
-
-
-class StaticMethod(StaticMethodTemplate):
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "staticmethod")
 
 
 class ClassMethodCallable(abstract.BoundFunction):
@@ -738,10 +729,12 @@ class ClassMethodInstance(abstract.Function, mixin.HasSlots):
     return node, self.ctx.program.NewVariable(results, [], node)
 
 
-class ClassMethodTemplate(BuiltinClass):
+class ClassMethod(BuiltinClass):
   """Class method decorator."""
+
   # Minimal signature, only used for constructing exceptions.
   _SIGNATURE = function.Signature.from_param_names("classmethod", ("func",))
+  _NAME = "classmethod"
 
   def call(self, node, func, args, alias_map=None):
     if len(args.posargs) != 1:
@@ -755,17 +748,10 @@ class ClassMethodTemplate(BuiltinClass):
     return node, ClassMethodInstance(self.ctx, self, arg).to_variable(node)
 
 
-class ClassMethod(ClassMethodTemplate):
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "classmethod")
-
-
 class Dict(BuiltinClass):
   """Implementation of builtins.dict."""
 
-  def __init__(self, ctx):
-    super().__init__(ctx, "dict")
+  _NAME = "dict"
 
   def call(self, node, func, args, alias_map=None):
     if not args.has_non_namedargs():
@@ -778,7 +764,9 @@ class Dict(BuiltinClass):
       return super().call(node, func, args, alias_map)
 
 
-class TypeTemplate(BuiltinClass, mixin.HasSlots):
+class Type(BuiltinClass, mixin.HasSlots):
+
+  _NAME = "type"
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
@@ -786,9 +774,3 @@ class TypeTemplate(BuiltinClass, mixin.HasSlots):
     slot = self.ctx.convert.convert_pytd_function(
         self.pytd_cls.Lookup("__new__"), TypeNew)
     self.set_slot("__new__", slot)
-
-
-class Type(TypeTemplate):
-
-  def __init__(self, ctx):
-    super().__init__(ctx, "type")

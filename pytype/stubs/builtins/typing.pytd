@@ -6,10 +6,7 @@ TypeVar: Any
 Optional: Any
 Union: Any
 
-if sys.version_info >= (3, 0):
-  AnyStr = TypeVar('AnyStr', str, bytes)
-else:
-  AnyStr = TypeVar('AnyStr', str, unicode)
+AnyStr = TypeVar('AnyStr', str, bytes)
 _ARGS = TypeVar('_ARGS')
 _RET = TypeVar('_RET')
 
@@ -31,10 +28,7 @@ _V3 = TypeVar('_V3')
 _V4 = TypeVar('_V4')
 
 
-if sys.version_info >= (3, 0):
-  Text = str
-else:
-  Text = Union[str, unicode]
+Text = str
 
 
 # These functions do not exist in typing.py. They are here for documentation
@@ -49,12 +43,9 @@ def _paramspec_new(
 
 
 class Callable(Generic[_ARGS, _RET], Protocol):
-  if sys.version_info < (3, 0):
-    func_name: str
-  else:
-    __annotations__: Dict[str, Any]
-    __kwdefaults__: Dict[str, Any]
-    __qualname__: str
+  __annotations__: Dict[str, Any]
+  __kwdefaults__: Dict[str, Any]
+  __qualname__: str
   __closure__: Optional[Tuple[Any, ...]]
   __code__: Any
   __defaults__: Optional[Tuple[Any, ...]]
@@ -112,12 +103,10 @@ class SupportsRound(Generic[_T], Protocol):
   def __round__(self, ndigits: int = ...) -> _T: ...
 
 
-# The SupportsBytes protocol was introduced in python3 typeshed.
-if sys.version_info >= (3, 0):
-  class SupportsBytes(Protocol):
-    __slots__ = []
-    @abstractmethod
-    def __bytes__(self) -> bytes: ...
+class SupportsBytes(Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __bytes__(self) -> bytes: ...
 
 
 class Reversible(Generic[_T], Protocol):
@@ -195,9 +184,6 @@ class MutableSequence(Sequence[_T], Protocol):
   @abstractmethod
   def __setitem__(self, i: slice, v: Iterable[_T2]) -> None:
     self = MutableSequence[Union[_T, _T2]]
-  if sys.version_info < (3, 0):
-    def __setslice__(self, i: int, j: int, s: Iterable[_T2]) -> None:
-      self = MutableSequence[Union[_T, _T2]]
   @abstractmethod
   def __delitem__(self, i: Union[int, slice]) -> None: ...
   def __add__(self, x: Iterable[_T2]) -> MutableSequence[Union[_T, _T2]]: ...
@@ -245,10 +231,7 @@ class IO(Iterator[AnyStr]):
   def __enter__(self: _T_IO) -> _T_IO: ...
   def __exit__(self, t, value, traceback) -> bool: ...
   def __iter__(self) -> Iterator[AnyStr]: ...
-  if sys.version_info >= (3, 0):
-    def __next__(self) -> AnyStr: ...
-  else:
-    def next(self) -> AnyStr: ...
+  def __next__(self) -> AnyStr: ...
   def close(self) -> None: ...
   def fileno(self) -> int: ...
   def flush(self) -> None: ...
@@ -262,10 +245,7 @@ class IO(Iterator[AnyStr]):
   def tell(self) -> int: ...
   def truncate(self, size: Optional[int] = ...) -> int: ...
   def writable(self) -> bool: ...
-  if sys.version_info >= (3, 0):
-    def write(self, s: AnyStr) -> int: ...
-  else:
-    def write(self, s: Union[bytes, bytearray, Text]) -> int: ...
+  def write(self, s: AnyStr) -> int: ...
   def writelines(self, lines: Iterable[AnyStr]) -> None: ...
 
 
@@ -292,13 +272,6 @@ class Mapping(Sized, Iterable[_K], Container[_K], Generic[_K, _V], Protocol):
   def items(self) -> AbstractSet[Tuple[_K, _V]]: ...
   def keys(self) -> KeysView[_K]: ...
   def values(self) -> ValuesView[_V]: ...
-  if sys.version_info < (3, 0):
-    def iteritems(self) -> Iterator[Tuple[_K, _V]]: ...
-    def iterkeys(self) -> Iterator[_K]: ...
-    def itervalues(self) -> Iterator[_V]: ...
-    def viewitems(self) -> ItemsView[_K, _V]: ...
-    def viewkeys(self) -> KeysView[_K]: ...
-    def viewvalues(self) -> ValuesView[_V]: ...
 
 
 class MutableMapping(Mapping[_K, _V], Protocol):
@@ -381,10 +354,7 @@ class Generator(Iterator[_T], Generic[_T, _T2, _V]):
   gi_frame: Any  # Should be types.FrameType
   gi_running: bool
   gi_yieldfrom: Optional[Generator[Any, Any, Any]]
-  if sys.version_info >= (3, 0):
-    def __next__(self) -> _T: ...
-  else:
-    def next(self) -> _T: ...
+  def __next__(self) -> _T: ...
   def send(self, value: _T2) -> _T: ...
   def throw(self, typ: BaseException, val = ..., tb = ...) -> _T: ...
   def close(self) -> None: ...
@@ -510,98 +480,87 @@ class Counter(Dict[_K, int]):
     def total(self) -> int: ...
 
 
-if sys.version_info >= (3, 0):
-  class AsyncIterable(Generic[_T], Protocol):
-    __slots__ = []
-    if sys.version_info < (3, 5):
-      @abstractmethod
-      def __aiter__(self) -> Awaitable[AsyncIterator[_T]]: ...
-    else:
-      @abstractmethod
-      def __aiter__(self) -> AsyncIterator[_T]: ...
+class AsyncIterable(Generic[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __aiter__(self) -> AsyncIterator[_T]: ...
 
-  class AsyncIterator(AsyncIterable[_T], Protocol):
-    __slots__ = []
-    @abstractmethod
-    def __anext__(self) -> Awaitable[_T]: ...
+class AsyncIterator(AsyncIterable[_T], Protocol):
+  __slots__ = []
+  @abstractmethod
+  def __anext__(self) -> Awaitable[_T]: ...
 
-  class ChainMap(MutableMapping[_K, _V]):
-    maps: List[MutableMapping[_K, _V]]
-    parents: ChainMap[_K, _V]
-    def __init__(self) -> None:
-      self = ChainMap[nothing, nothing]
-    def __init__(self, map1: MutableMapping[_K1, _V1]) -> None:
-      self = ChainMap[_K1, _V1]
-    def __init__(
-        self,
-        map1: MutableMapping[_K1, _V1],
-        map2: Mapping[_K2, _V2]
-    ) -> None:
-      self = ChainMap[Union[_K1, _K2], Union[_V1, _V2]]
-    def __init__(
-        self,
-        map1: MutableMapping[_K1, _V1],
-        map2: Mapping[_K2, _V2],
-        map3: Mapping[_K3, _V3]
-    ) -> None:
-      self = ChainMap[Union[_K1, _K2, _K3], Union[_V1, _V2, _V3]]
-    def __init__(
-        self,
-        map1: MutableMapping[_K1, _V1],
-        map2: Mapping[_K2, _V2],
-        map3: Mapping[_K3, _V3],
-        map4: Mapping[_K4, _V4]
-    ) -> None:
-      self = ChainMap[Union[_K1, _K2, _K3, _K4], Union[_V1, _V2, _V3, _V4]]
-    def __init__(self, *maps: MutableMapping[Any, Any]) -> None:
-      self = ChainMap[Any, Any]
-    def __delitem__(self, k) -> None: ...
-    def __getitem__(self, key: _K) -> _V: ...
-    def __iter__(self) -> Iterator[_K]: ...
-    def __len__(self) -> int: ...
-    def __setitem__(self, k: _K2, v: _V2) -> None:
-      self = ChainMap[Union[_K, _K2], Union[_V, _V2]]
-    def new_child(self, m: None = ...) -> ChainMap[_K, _V]: ...
-    def new_child(
-        self, m: Mapping[_K2, _V2]
-    ) -> ChainMap[Union[_K, _K2], Union[_V2, _V2]]: ...
+class ChainMap(MutableMapping[_K, _V]):
+  maps: List[MutableMapping[_K, _V]]
+  parents: ChainMap[_K, _V]
+  def __init__(self) -> None:
+    self = ChainMap[nothing, nothing]
+  def __init__(self, map1: MutableMapping[_K1, _V1]) -> None:
+    self = ChainMap[_K1, _V1]
+  def __init__(
+      self,
+      map1: MutableMapping[_K1, _V1],
+      map2: Mapping[_K2, _V2]
+  ) -> None:
+    self = ChainMap[Union[_K1, _K2], Union[_V1, _V2]]
+  def __init__(
+      self,
+      map1: MutableMapping[_K1, _V1],
+      map2: Mapping[_K2, _V2],
+      map3: Mapping[_K3, _V3]
+  ) -> None:
+    self = ChainMap[Union[_K1, _K2, _K3], Union[_V1, _V2, _V3]]
+  def __init__(
+      self,
+      map1: MutableMapping[_K1, _V1],
+      map2: Mapping[_K2, _V2],
+      map3: Mapping[_K3, _V3],
+      map4: Mapping[_K4, _V4]
+  ) -> None:
+    self = ChainMap[Union[_K1, _K2, _K3, _K4], Union[_V1, _V2, _V3, _V4]]
+  def __init__(self, *maps: MutableMapping[Any, Any]) -> None:
+    self = ChainMap[Any, Any]
+  def __delitem__(self, k) -> None: ...
+  def __getitem__(self, key: _K) -> _V: ...
+  def __iter__(self) -> Iterator[_K]: ...
+  def __len__(self) -> int: ...
+  def __setitem__(self, k: _K2, v: _V2) -> None:
+    self = ChainMap[Union[_K, _K2], Union[_V, _V2]]
+  def new_child(self, m: None = ...) -> ChainMap[_K, _V]: ...
+  def new_child(
+    self, m: Mapping[_K2, _V2]
+  ) -> ChainMap[Union[_K, _K2], Union[_V2, _V2]]: ...
 
+class Awaitable(Generic[_T], Protocol):
+  @abstractmethod
+  def __await__(self) -> Generator[Any, None, _T]: ...
 
-if sys.version_info >= (3, 5):
-  class Awaitable(Generic[_T], Protocol):
-    @abstractmethod
-    def __await__(self) -> Generator[Any, None, _T]: ...
+class Coroutine(Awaitable[_V], Generic[_T, _T2, _V]):
+  __slots__ = []
+  @abstractmethod
+  def send(self, value: _T2) -> _T: ...
+  @abstractmethod
+  def throw(self, typ: Type[BaseException], val = ..., tb = ...) -> _T: ...
+  @abstractmethod
+  def close(self) -> None: ...
 
-  class Coroutine(Awaitable[_V], Generic[_T, _T2, _V]):
-    __slots__ = []
-    @abstractmethod
-    def send(self, value: _T2) -> _T: ...
-    @abstractmethod
-    def throw(self, typ: Type[BaseException], val = ..., tb = ...) -> _T: ...
-    @abstractmethod
-    def close(self) -> None: ...
+class AsyncContextManager(Generic[_T], Protocol):
+  @abstractmethod
+  def __aenter__(self) -> Awaitable[_T]: ...
+  @abstractmethod
+  def __aexit__(self, exc_type: Optional[Type[BaseException]],
+                exc_value: Optional[BaseException],
+                traceback: Optional[Any]) -> Awaitable[Optional[bool]]: ...
 
-
-if sys.version_info >= (3, 5):
-  class AsyncContextManager(Generic[_T], Protocol):
-    @abstractmethod
-    def __aenter__(self) -> Awaitable[_T]: ...
-    @abstractmethod
-    def __aexit__(self, exc_type: Optional[Type[BaseException]],
-                  exc_value: Optional[BaseException],
-                  traceback: Optional[Any]) -> Awaitable[Optional[bool]]: ...
-
-
-if sys.version_info >= (3, 6):
-  # _T is the yield type, _T2 the send type
-  class AsyncGenerator(AsyncIterator[_T], Generic[_T, _T2]):
-    __slots__ = []
-    @abstractmethod
-    def asend(self, value: _T2) -> Awaitable[_T]: ...
-    @abstractmethod
-    def athrow(self, typ: Type[BaseException], val = ..., tb = ...) -> Awaitable[_T]: ...
-    @abstractmethod
-    def aclose(self) -> Awaitable[_T]: ...
+# _T is the yield type, _T2 the send type
+class AsyncGenerator(AsyncIterator[_T], Generic[_T, _T2]):
+  __slots__ = []
+  @abstractmethod
+  def asend(self, value: _T2) -> Awaitable[_T]: ...
+  @abstractmethod
+  def athrow(self, typ: Type[BaseException], val = ..., tb = ...) -> Awaitable[_T]: ...
+  @abstractmethod
+  def aclose(self) -> Awaitable[_T]: ...
 
 TYPE_CHECKING = ...  # type: bool
 

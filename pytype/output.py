@@ -205,7 +205,7 @@ class Converter(utils.ContextWeakrefMixin):
         value = repr(v.value.pyval)
       elif isinstance(v.value.pyval, bool):
         # True and False are stored as pytd constants.
-        value = self.ctx.loader.lookup_builtin(f"builtins.{v.value.pyval}")
+        value = self.ctx.loader.lookup_pytd("builtins", v.value.pyval)
       else:
         # Ints are stored as their literal values. Note that Literal[None] or a
         # nested literal will never appear here, since we simplified it to None
@@ -452,7 +452,7 @@ class Converter(utils.ContextWeakrefMixin):
       assert isinstance(d, pytd.Function)
       sigs = tuple(sig.Replace(params=sig.params[1:]) for sig in d.signatures)
       return d.Replace(signatures=sigs)
-    elif isinstance(v, attr_overlay.Attrs):
+    elif isinstance(v, attr_overlay.AttrsBase):
       ret = pytd.NamedType("typing.Callable")
       md = metadata.to_pytd(v.to_metadata())
       return pytd.Annotated(ret, ("'pytype_metadata'", md))

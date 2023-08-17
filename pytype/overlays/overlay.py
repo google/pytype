@@ -6,9 +6,9 @@ from pytype import datatypes
 from pytype.abstract import abstract
 from pytype.typegraph import cfg
 
-# The argument type is pytype.context.Context, but we can't import context here
-# due to a circular dependency.
-BuilderType = Callable[[Any], abstract.BaseValue]
+# The first argument type is pytype.context.Context, but we can't import context
+# here due to a circular dependency.
+BuilderType = Callable[[Any, str], abstract.BaseValue]
 
 
 class Overlay(abstract.Module):
@@ -48,7 +48,7 @@ class Overlay(abstract.Module):
   def _convert_member(
       self, name: str, member: BuilderType,
       subst: Optional[Dict[str, cfg.Variable]] = None) -> cfg.Variable:
-    val = member(self.ctx)
+    val = member(self.ctx, self.name)
     val.module = self.name
     return val.to_variable(self.ctx.root_node)
 
@@ -66,6 +66,11 @@ class Overlay(abstract.Module):
     return items
 
 
-def build(name, builder):
-  """Wrapper to turn (name, ctx) -> val method signatures into (ctx) -> val."""
-  return lambda ctx: builder(name, ctx)
+def add_name(name, builder):
+  """Turns (name, ctx, module) -> val signatures into (ctx, module) -> val."""
+  return lambda ctx, module: builder(name, ctx, module)
+
+
+def drop_module(builder):
+  """Turns (ctx) -> val signatures into (ctx, module) -> val."""
+  return lambda ctx, module: builder(ctx)

@@ -9,10 +9,10 @@ class SixOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
-        "add_metaclass": build_add_metaclass,
-        "with_metaclass": build_with_metaclass,
-        "string_types": build_string_types,
-        "integer_types": build_integer_types,
+        "add_metaclass": metaclass.AddMetaclass.make,
+        "with_metaclass": metaclass.WithMetaclass.make,
+        "string_types": overlay.drop_module(build_string_types),
+        "integer_types": overlay.drop_module(build_integer_types),
         "PY2": build_version_bool(2),
         "PY3": build_version_bool(3),
     }
@@ -20,16 +20,11 @@ class SixOverlay(overlay.Overlay):
     super().__init__(ctx, "six", member_map, ast)
 
 
-def build_add_metaclass(ctx):
-  return metaclass.AddMetaclass.make("add_metaclass", ctx, "six")
-
-
-def build_with_metaclass(ctx):
-  return metaclass.WithMetaclass.make("with_metaclass", ctx, "six")
-
-
 def build_version_bool(major):
-  return lambda ctx: ctx.convert.bool_values[ctx.python_version[0] == major]
+  def make(ctx, module):
+    del module  # unused
+    return ctx.convert.bool_values[ctx.python_version[0] == major]
+  return make
 
 
 def build_string_types(ctx):

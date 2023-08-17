@@ -181,8 +181,8 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
   """Factory for creating collections.namedtuple classes."""
 
   @classmethod
-  def make(cls, ctx):
-    return super().make("namedtuple", ctx, "collections")
+  def make(cls, ctx, module):
+    return super().make("namedtuple", ctx, module)
 
   def extract_args(self, node, callargs):
     """Extracts the typename, field_names and rename arguments.
@@ -242,14 +242,13 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
 
   @classmethod
   def make(cls, ctx):
-    typing_ast = ctx.loader.typing
     # typing.pytd contains a NamedTuple class def and a _NamedTuple func def.
     self = super().make("NamedTuple", ctx, "typing", pyval_name="_NamedTuple")
     # NamedTuple's fields arg has type Sequence[Sequence[Union[str, type]]],
     # which doesn't provide precise enough type-checking, so we have to do
     # some of our own in _getargs. _NamedTupleFields is an alias to
     # List[Tuple[str, type]], which gives a more understandable error message.
-    fields_pyval = typing_ast.Lookup("typing._NamedTupleFields").type
+    fields_pyval = ctx.loader.lookup_pytd("typing", "_NamedTupleFields").type
     fields_type = ctx.convert.constant_to_value(fields_pyval, {}, ctx.root_node)
     # pylint: disable=protected-access
     self._fields_param = abstract_utils.BadType(name="fields", typ=fields_type)
@@ -325,9 +324,8 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
                  "_fields", "_field_defaults", "_field_types",
                  "_make", "_replace", "_asdict", "_source")
 
-  def __init__(self, ctx):
-    typing_ast = ctx.loader.typing
-    pyval = typing_ast.Lookup("typing.NamedTuple")
+  def __init__(self, ctx, module="typing"):
+    pyval = ctx.loader.lookup_pytd(module, "NamedTuple")
     super().__init__("NamedTuple", pyval, ctx)
     # Prior to python 3.6, NamedTuple is a function. Although NamedTuple is a
     # class in python 3.6+, we can still use it like a function. Hold the
@@ -500,9 +498,11 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         # Move to SimpleFunction.from_pyi if we add it to one more overlay.
         args = function.Args(posargs=(m_var,))
         if m.kind == pytd.MethodKind.CLASSMETHOD:
-          _, m_var = special_builtins.ClassMethod(ctx).call(node, meth, args)
+          _, m_var = special_builtins.ClassMethod.make(ctx).call(
+              node, meth, args)
         elif m.kind == pytd.MethodKind.STATICMETHOD:
-          _, m_var = special_builtins.StaticMethod(ctx).call(node, meth, args)
+          _, m_var = special_builtins.StaticMethod.make(ctx).call(
+              node, meth, args)
         cls.members[m.name] = m_var
 
     return cls
@@ -513,7 +513,7 @@ class _DictBuilder:
 
   def __init__(self, ctx):
     self.ctx = ctx
-    self.dict_cls = ctx.convert.name_to_value("builtins.dict")
+    self.dict_cls = ctx.convert.lookup_value("builtins", "dict")
 
   def make(self, typ):
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
@@ -630,15 +630,15 @@ def _build_namedtuple(props, node, ctx):
   # _make is a classmethod, so it needs to be wrapped by
   # special_builtins.ClassMethodInstance.
   # Like __new__, it uses the _Tname TypeVar.
-  sized_cls = ctx.convert.name_to_value("typing.Sized")
+  sized_cls = ctx.convert.lookup_value("typing", "Sized")
   iterable_type = abstract.ParameterizedClass(
-      ctx.convert.name_to_value("typing.Iterable"),
+      ctx.convert.lookup_value("typing", "Iterable"),
       {abstract_utils.T: field_types_union}, ctx)
   cls_type = abstract.ParameterizedClass(ctx.convert.type_type,
                                          {abstract_utils.T: cls_type_param},
                                          ctx)
   len_type = abstract.CallableClass(
-      ctx.convert.name_to_value("typing.Callable"), {
+      ctx.convert.lookup_value("typing", "Callable"), {
           0: sized_cls,
           abstract_utils.ARGS: sized_cls,
           abstract_utils.RET: ctx.convert.int_type

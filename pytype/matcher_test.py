@@ -47,8 +47,7 @@ class MatcherTest(MatcherTestBase):
     with test_utils.Tempdir() as d:
       d.create_file(filename + ".pyi", src)
       self.ctx.options.tweak(pythonpath=[d.path])  # monkeypatch
-      ast = self.ctx.loader.import_name(filename)
-      return ast.Lookup(filename + "." + objname)
+      return self.ctx.loader.lookup_pytd(filename, objname)
 
   def _convert(self, x, name, as_instance=False):
     pyval = self._parse_and_lookup(x, name)
@@ -379,7 +378,7 @@ class MatcherTest(MatcherTestBase):
     self.assertNoMatch(left2, right2)
 
   def test_anystr_instance_against_anystr(self):
-    right = self.ctx.convert.name_to_value("typing.AnyStr")
+    right = self.ctx.convert.lookup_value("typing", "AnyStr")
     dummy_instance = abstract.Instance(self.ctx.convert.tuple_type, self.ctx)
     left = abstract.TypeParameterInstance(right, dummy_instance, self.ctx)
     for result in self._match_var(left, right):
@@ -460,13 +459,13 @@ class MatcherTest(MatcherTestBase):
 
   def test_list_against_mapping(self):
     left = self._convert_type("list", as_instance=True)
-    right = self.ctx.convert.name_to_value("typing.Mapping")
+    right = self.ctx.convert.lookup_value("typing", "Mapping")
     self.assertNoMatch(left, right)
 
   def test_list_against_parameterized_mapping(self):
     left = self._convert_type("list", as_instance=True)
     right = abstract.ParameterizedClass(
-        self.ctx.convert.name_to_value("typing.Mapping"), {
+        self.ctx.convert.lookup_value("typing", "Mapping"), {
             abstract_utils.K:
                 abstract.TypeParameter(abstract_utils.K, self.ctx),
             abstract_utils.V:

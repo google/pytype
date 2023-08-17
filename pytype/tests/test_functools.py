@@ -1,10 +1,8 @@
 """Test functools overlay."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
-@test_utils.skipBeforePy((3, 8), "cached_property is new in 3.8")
 class TestCachedProperty(test_base.BaseTest):
   """Tests for @cached.property."""
 

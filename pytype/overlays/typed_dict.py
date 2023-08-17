@@ -51,11 +51,10 @@ class TypedDictBuilder(abstract.PyTDClass):
   """Factory for creating typing.TypedDict classes."""
 
   def __init__(self, ctx):
-    typing_ast = ctx.loader.typing
-    pyval = typing_ast.Lookup("typing.TypedDict")
+    pyval = ctx.loader.lookup_pytd("typing", "TypedDict")
     super().__init__("TypedDict", pyval, ctx)
     # Signature for the functional constructor
-    fn = typing_ast.Lookup("typing._TypedDictFunction")
+    fn = ctx.loader.lookup_pytd("typing", "_TypedDictFunction")
     fn = fn.Replace(name="typing.TypedDict")
     sig, = fn.signatures
     self.fn_sig = function.Signature.from_pytd(

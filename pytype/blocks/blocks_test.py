@@ -44,7 +44,7 @@ class OrderingTest(BaseBlocksTest):
   def _order_code(self, code):
     """Helper function to disassemble and then order code."""
     disassembled_code = pyc.visit(code, blocks.DisCodeVisitor())
-    return blocks.order_code(disassembled_code, self.python_version)
+    return blocks.order_code(disassembled_code)
 
   def test_trivial(self):
     # Disassembled from:
@@ -317,7 +317,7 @@ class BlockStackTest(BaseBlocksTest):
   def assertTargets(self, code, targets):
     co = self.make_code(code)
     bytecode = opcodes.dis(co)
-    blocks.add_pop_block_targets(bytecode, self.python_version)
+    blocks.add_pop_block_targets(bytecode)
     for i in range(len(bytecode)):
       op = bytecode[i]
       actual_target = op.target
@@ -481,7 +481,7 @@ class BlockStackTest(BaseBlocksTest):
         o.LOAD_CONST, 0,
         o.RETURN_VALUE, 0,
     ])
-    code, _ = blocks.process_code(co, self.python_version)
+    code, _ = blocks.process_code(co)
     ordered_code = process_blocks.merge_annotations(
         code, {1: annotations.VariableAnnotation(None, "float")}, {})
     bytecode = ordered_code.order[0].code

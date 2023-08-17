@@ -20,10 +20,6 @@ def _convert(node):
   """Helper function for literal_eval."""
   if isinstance(node, astlib.Constant):
     return node.value
-  elif isinstance(node, (astlib.Str, astlib.Bytes)):
-    return node.s
-  elif isinstance(node, astlib.Num):
-    return node.n
   elif isinstance(node, astlib.Tuple):
     return tuple(map(_convert, node.elts))
   elif isinstance(node, astlib.List):
@@ -32,8 +28,6 @@ def _convert(node):
     return set(map(_convert, node.elts))
   elif isinstance(node, astlib.Dict):
     return {_convert(k): _convert(v) for k, v in zip(node.keys, node.values)}
-  elif isinstance(node, astlib.NameConstant):
-    return node.value
   elif isinstance(node, astlib.Name):
     return node.id
   elif isinstance(node, types.Pyval):

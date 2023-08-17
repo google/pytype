@@ -2,7 +2,7 @@
 
 import enum
 import logging
-from typing import Any, Callable, ClassVar, Dict, Optional, Tuple, TypeVar, Union
+from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -37,21 +37,15 @@ class _AttrOverlayBase(overlay.Overlay):
     member_map = {
         # Attr's next-gen APIs
         # See https://www.attrs.org/en/stable/api.html#next-gen
-        "define": self._build(AttrsNextGenDefine.make),
+        "define": AttrsNextGenDefine.make,
         # These (may) have different default arguments than 'define' for the
         # "frozen" arguments, but the overlay doesn't look at that yet.
-        "mutable": self._build(AttrsNextGenDefine.make),
-        "frozen": self._build(AttrsNextGenDefine.make),
-        "field": self._build(Attrib.make),
+        "mutable": AttrsNextGenDefine.make,
+        "frozen": AttrsNextGenDefine.make,
+        "field": Attrib.make,
     }
     ast = ctx.loader.import_name(self._MODULE_NAME)
     super().__init__(ctx, self._MODULE_NAME, member_map, ast)
-
-  @classmethod
-  def _build(
-      cls, make_fn: Callable[[Any, str], _TBaseValue],
-  ) -> Callable[[Any], _TBaseValue]:
-    return lambda ctx: make_fn(ctx, cls._MODULE_NAME)
 
 
 class AttrOverlay(_AttrOverlayBase):
@@ -68,10 +62,10 @@ class AttrOverlay(_AttrOverlayBase):
     super().__init__(ctx)
     self._member_map.update({
         "attrs": Attrs.make,
-        "attrib": self._build(Attrib.make),
+        "attrib": Attrib.make,
         "s": Attrs.make,
         "dataclass": Attrs.make_dataclass,
-        "ib": self._build(Attrib.make),
+        "ib": Attrib.make,
     })
 
 
@@ -93,18 +87,8 @@ class _NoChange():
 _NO_CHANGE = _NoChange()
 
 
-class Attrs(classgen.Decorator):
-  """Implements the @attr.s decorator."""
-
-  @classmethod
-  def make(cls, ctx):
-    return super().make("s", ctx, "attr")
-
-  @classmethod
-  def make_dataclass(cls, ctx):
-    ret = super().make("s", ctx, "attr")
-    ret.partial_args["auto_attribs"] = True
-    return ret
+class AttrsBase(classgen.Decorator):
+  """Base class for @attr.s and @attrs.define."""
 
   def init_name(self, attr):
     # attrs removes leading underscores from attrib names when generating kwargs
@@ -112,8 +96,9 @@ class Attrs(classgen.Decorator):
     return attr.name.lstrip("_")
 
   def _handle_auto_attribs(
-      self, auto_attribs: Optional[bool], unused_local_ops,
-      unused_cls_name: str) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+      self, auto_attribs: Optional[bool], local_ops, cls_name: str
+  ) -> Tuple[Union[Optional[bool], _NoChange], Any]:
+    del local_ops, cls_name  # unused
     # Why _NO_CHANGE instead of passing auto_attribs?
     # Because result is going into potentially an OrderedDict, where
     # writing even the same value might have a side effect (changing ordering).
@@ -216,9 +201,8 @@ class Attrs(classgen.Decorator):
     # Add the __attrs_attrs__ attribute, the presence of which `attr.has` uses
     # to determine if an object has `attrs` attributes.
     attr_types = self.ctx.convert.merge_values({attr.typ for attr in attrs})
-    attr_ast = self.ctx.loader.import_name("attr")
     generic_attribute = abstract.ParameterizedClass(
-        self.ctx.convert.name_to_value("attr.Attribute", ast=attr_ast),
+        self.ctx.convert.lookup_value("attr", "Attribute"),
         {abstract_utils.T: attr_types}, self.ctx)
     attr_attribute_params = {abstract_utils.T: generic_attribute}
     attr_attribute_type = abstract.ParameterizedClass(
@@ -236,12 +220,28 @@ class Attrs(classgen.Decorator):
       cls.update_method_type_params()
 
   def to_metadata(self):
+    # For simplicity, we give all attrs decorators with the same behavior as
+    # attr.s the same tag.
     return {
         "tag": "attr.s",
         "init": self._current_args["init"],
         "kw_only": self._current_args["kw_only"],
         "auto_attribs": self._current_args["auto_attribs"]
     }
+
+
+class Attrs(AttrsBase):
+  """Implements the @attr.s decorator."""
+
+  @classmethod
+  def make(cls, ctx, module="attr"):
+    return super().make("s", ctx, module)
+
+  @classmethod
+  def make_dataclass(cls, ctx, module):
+    ret = super().make("s", ctx, module)
+    ret.partial_args["auto_attribs"] = True
+    return ret
 
   @classmethod
   def from_metadata(cls, ctx, metadata):
@@ -251,7 +251,7 @@ class Attrs(classgen.Decorator):
     return ret
 
 
-class AttrsNextGenDefine(Attrs):
+class AttrsNextGenDefine(AttrsBase):
   """Implements the @attr.define decorator.
 
   See https://www.attrs.org/en/stable/api.html#next-generation-apis
@@ -274,8 +274,7 @@ class AttrsNextGenDefine(Attrs):
 
   @classmethod
   def make(cls, ctx, module):
-    # Bypass Attrs's make; go straight to its superclass.
-    return super(Attrs, cls).make("define", ctx, module)  # pylint: disable=bad-super-call
+    return super().make("define", ctx, module)
 
   def _handle_auto_attribs(self, auto_attribs, local_ops, cls_name):
     if auto_attribs is not None:
@@ -459,7 +458,7 @@ class Attrib(classgen.FieldConstructor):
     if not valid_sigs:
       anyt = self.ctx.convert.unsolvable
       wanted_type = abstract.CallableClass(
-          self.ctx.convert.name_to_value("typing.Callable"), {
+          self.ctx.convert.lookup_value("typing", "Callable"), {
               0: anyt,
               abstract_utils.ARGS: anyt,
               abstract_utils.RET: anyt

@@ -86,37 +86,31 @@ class TestLoadMarshal(unittest.TestCase):
 
   def test_load_code(self):
     """Load a Python code object."""
-    co = (b'c'  # code
-          b'\1\0\0\0'  # args: 1
-          b'\2\0\0\0'  # kw args: 2
-          b'\3\0\0\0'  # locals: 3
-          b'\4\0\0\0'  # stacksize: 4
-          b'\5\0\0\0'  # flags: 5
-          b's\1\0\0\0\0'  # code '\0'
-          b')\0'  # consts: ()
-          b')\0'  # names: ()
-          b')\0'  # varnames: ()
-          b')\0'  # freevars: ()
-          b')\0'  # cellvars: ()
-          b'z\7test.py'  # filename: 'test.py'
-          b'z\4test'  # name: 'test.py'
-          b'\6\0\0\0'  # first line no: 6
-          b'N')  # lnotab: None
-    code = self.load(co, python_version=(3, 5))
-    self.assertEqual(code.co_argcount, 1)
-    self.assertEqual(code.co_kwonlyargcount, 2)
-    self.assertEqual(code.co_nlocals, 3)
-    self.assertEqual(code.co_stacksize, 4)
-    self.assertEqual(code.co_flags, 5)
-    self.assertEqual(code.co_code, b'\0')
-    self.assertEqual(code.co_consts, ())
+    # Obtained by running the following in a Python 3.10.12 interpreter:
+    #   $ def f(x, /, y): return x+y
+    #   $ import marshal
+    #   $ marshal.dumps(f.__code__)
+    co = (b'\xe3\x02\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02\x00\x00'
+          b'\x00\x02\x00\x00\x00C\x00\x00\x00s\x08\x00\x00\x00|\x00|\x01\x17'
+          b'\x00S\x00)\x01N\xa9\x00)\x02\xda\x01x\xda\x01yr\x01\x00\x00\x00r'
+          b'\x01\x00\x00\x00\xfa\x07<stdin>\xda\x01f\x01\x00\x00\x00s\x02\x00'
+          b'\x00\x00\x08\x00')
+    code = self.load(co, python_version=(3, 10))
+    self.assertEqual(code.co_argcount, 2)
+    self.assertEqual(code.co_posonlyargcount, 1)
+    self.assertEqual(code.co_kwonlyargcount, 0)
+    self.assertEqual(code.co_nlocals, 2)
+    self.assertEqual(code.co_stacksize, 2)
+    self.assertEqual(code.co_flags, 67)
+    self.assertEqual(code.co_code, b'|\x00|\x01\x17\x00S\x00')
+    self.assertEqual(code.co_consts, (None,))
     self.assertEqual(code.co_names, ())
-    self.assertEqual(code.co_varnames, ())
+    self.assertEqual(code.co_varnames, ('x', 'y'))
     self.assertEqual(code.co_freevars, ())
     self.assertEqual(code.co_cellvars, ())
-    self.assertEqual(code.co_filename, 'test.py')
-    self.assertEqual(code.co_firstlineno, 6)
-    self.assertIsNone(code.co_lnotab)
+    self.assertEqual(code.co_filename, '<stdin>')
+    self.assertEqual(code.co_firstlineno, 1)
+    self.assertEqual(code.co_lnotab, b'\x08\x00')
 
   def test_load_unicode(self):
     self.assertStrictEqual(self.load(b'u\4\0\0\0test', (3, 9)), 'test')

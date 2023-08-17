@@ -623,7 +623,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       raise ParseError(msg)
     name, typ = node.args
     typ = self.convert_node(typ)
-    node.args = [name.s, typ]
+    node.args = [name.value, typ]
 
   def _convert_typing_namedtuple_args(self, node: astlib.Call):
     # TODO(mdemello): handle NamedTuple("X", a=int, b=str, ...)
@@ -633,7 +633,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     name, fields = node.args
     fields = self.convert_node(fields)
     fields = [(types.string_value(n), t) for (n, t) in fields]
-    node.args = [name.s, fields]
+    node.args = [name.value, fields]
 
   def _convert_collections_namedtuple_args(self, node: astlib.Call):
     if len(node.args) != 2:
@@ -642,16 +642,16 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     name, fields = node.args
     fields = self.convert_node(fields)
     fields = [(types.string_value(n), pytd.AnythingType()) for n in fields]
-    node.args = [name.s, fields]  # pytype: disable=attribute-error
+    node.args = [name.value, fields]  # pytype: disable=attribute-error
 
   def _convert_typevar_args(self, node):
     self.annotation_visitor.visit(node.keywords)
     if not node.args:
       raise ParseError("Missing arguments to TypeVar")
     name, *rest = node.args
-    if not isinstance(name, astlib.Str):
+    if not (isinstance(name, astlib.Constant) and isinstance(name.value, str)):
       raise ParseError("Bad arguments to TypeVar")
-    node.args = [name.s] + [self.convert_node(x) for x in rest]
+    node.args = [name.value] + [self.convert_node(x) for x in rest]
     # Special-case late types in bound since typeshed uses it.
     for kw in node.keywords:
       if kw.arg == "bound":
@@ -667,9 +667,10 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     if len(node.args) != 2:
       raise ParseError(msg)
     name, fields = node.args
-    if not (isinstance(name, astlib.Str) and isinstance(fields, astlib.Dict)):
+    if not (isinstance(name, astlib.Constant) and
+            isinstance(name.value, str) and isinstance(fields, astlib.Dict)):
       raise ParseError(msg)
-    name_value = name.s
+    name_value = name.value
     fields_value = {}
     for k, v in zip(fields.keys, fields.values):
       if (hasattr(astlib, "Constant") and isinstance(k, astlib.Constant) and
@@ -821,9 +822,7 @@ def _fix_src(src: str) -> str:
 
 def _parse(src: str, feature_version: int, filename: str = ""):
   """Call the typed_ast parser with the appropriate feature version."""
-  kwargs = {"feature_version": feature_version}
-  if sys.version_info >= (3, 8):
-    kwargs["type_comments"] = True
+  kwargs = {"feature_version": feature_version, "type_comments": True}
   try:
     ast_root_node = astlib.parse(src, filename, **kwargs)
   except SyntaxError as e:

@@ -1,7 +1,6 @@
 """Tests for overriding."""
 
 from pytype.tests import test_base
-from pytype.tests import test_utils
 
 
 class OverridingTest(test_base.BaseTest):
@@ -1066,7 +1065,6 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   # Positional-only -> Positional-only or positional-or-keyword, any name.
-  @test_utils.skipBeforePy((3, 8), "Positional-only supported in 3.8+")
   def test_positional_only_match(self):
     self.Check("""
       class Foo:
@@ -1079,7 +1077,6 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   # Positional-only -> Positional-only or positional-or-keyword, any name.
-  @test_utils.skipBeforePy((3, 8), "Positional-only supported in 3.8+")
   def test_positional_only_to_keyword_only(self):
     self.CheckWithErrors("""
       class Foo:
@@ -1092,7 +1089,6 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   # Positional-or-keyword -> positional-only.
-  @test_utils.skipBeforePy((3, 8), "Positional-only supported in 3.8+")
   def test_positional_or_keyword_to_positional_only_mismatch(self):
     self.CheckWithErrors("""
       class Foo:
@@ -1105,7 +1101,6 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   # Keyword-only -> Positional-or-keyword or keyword-only, same name.
-  @test_utils.skipBeforePy((3, 8), "Positional-only supported in 3.8+")
   def test_keyword_only_to_positional_only_mismatch(self):
     self.CheckWithErrors("""
       class Foo:
@@ -1118,7 +1113,6 @@ class OverridingTest(test_base.BaseTest):
     """)
 
   # Keyword-only -> Positional-only, same name.
-  @test_utils.skipBeforePy((3, 8), "Positional-only supported in 3.8+")
   def test_keyword_only_to_positional_only_count_mismatch(self):
     self.CheckWithErrors("""
       class Foo:
@@ -1162,7 +1156,6 @@ class OverridingTest(test_base.BaseTest):
             return 0
       """)
 
-  @test_utils.skipBeforePy((3, 8), "Error line numbers changed in 3.8.")
   def test_disable(self):
     self.Check("""
       class Foo:

@@ -719,12 +719,9 @@ class AssignmentCommentTest(test_base.BaseTest):
     if sys.version_info[:2] >= (3, 9):
       line1_error = ""
       line2_error = "  # ignored-type-comment"
-    elif self.python_version >= (3, 8):
+    else:
       line1_error = "  # annotation-type-mismatch"
       line2_error = ""
-    else:
-      line1_error = ""
-      line2_error = "  # annotation-type-mismatch"
     self.CheckWithErrors(f"""
       class Foo({line1_error}
           int):  # type: str{line2_error}

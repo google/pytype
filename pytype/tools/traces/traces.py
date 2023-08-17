@@ -189,9 +189,6 @@ class MatchAstVisitor(visitor.BaseVisitor):
     return [(self._get_match_location(node), tr) for tr in self._get_traces(
         node.lineno, [op], symbol, maxmatch=1, num_lines=10)]
 
-  def match_Bytes(self, node):
-    return self._match_constant(node, node.s)
-
   def match_Call(self, node):
     # When calling a method of a class, the node name is <value>.<method>, but
     # only the method name is traced.
@@ -205,10 +202,7 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def match_Constant(self, node):
     # As of Python 3.8, bools, numbers, bytes, strings, ellipsis etc are
     # all constants instead of individual ast nodes.
-    return self._match_constant(node, node.s)
-
-  def match_Ellipsis(self, node):
-    return self._match_constant(node, Ellipsis)
+    return self._match_constant(node, node.value)
 
   def match_FunctionDef(self, node):
     symbol = _SymbolMatcher.from_regex(r"(%s|None)" % node.name)
@@ -239,15 +233,6 @@ class MatchAstVisitor(visitor.BaseVisitor):
       return []
     return [(self._get_match_location(node), tr)
             for tr in self._get_traces(lineno, ops, node.id, 1)]
-
-  def match_NameConstant(self, node):
-    return self._match_constant(node, node.value)
-
-  def match_Num(self, node):
-    return self._match_constant(node, node.n)
-
-  def match_Str(self, node):
-    return self._match_constant(node, node.s)
 
   def match_Subscript(self, node):
     return [(self._get_match_location(node), tr) for tr in self._get_traces(

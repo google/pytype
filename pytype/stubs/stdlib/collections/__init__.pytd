@@ -69,16 +69,10 @@ Set = typing.Set
 Sized = typing.Sized
 ValuesView = typing.ValuesView
 
-if sys.version_info >= (3, 7):
-  def namedtuple(typename: Text,
-    field_names: Union[Text, Iterable[Text], Iterable[nothing]],
-    *,
-    rename: bool = ..., defaults: List[Any] = ..., module = ...) -> type: ...
-else:
-  def namedtuple(typename: Text,
-    field_names: Union[Text, Iterable[Text], Iterable[nothing]],
-    *,
-    verbose: bool = ..., rename: bool = ..., module = ...) -> type: ...
+def namedtuple(typename: Text,
+  field_names: Union[Text, Iterable[Text], Iterable[nothing]],
+  *,
+  rename: bool = ..., defaults: List[Any] = ..., module = ...) -> type: ...
 
 class defaultdict(DefaultDict[K, V]):
   default_factory = ...  # type: Optional[Callable[[], V]]
