@@ -1073,7 +1073,7 @@ class AbstractTest(AbstractTestBase):
         cls.instantiate(self._node).data, [self._ctx.convert.unsolvable])
 
   def test_super_type(self):
-    supercls = special_builtins.Super(self._ctx)
+    supercls = special_builtins.Super.make(self._ctx)
     self.assertEqual(supercls.cls, self._ctx.convert.type_type)
 
   def test_instantiate_interpreter_class(self):

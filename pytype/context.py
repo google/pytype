@@ -82,7 +82,7 @@ class Context:
         special_builtins.StaticMethod,
         special_builtins.Type,
     ):
-      instance = cls(self)
+      instance = cls.make(self)
       self.special_builtins[instance.name] = instance
     # builtin functions
     for cls in (
@@ -95,7 +95,8 @@ class Context:
         special_builtins.Next,
         special_builtins.Round,
     ):
-      self.special_builtins[cls.name] = cls.make(self)
+      instance = cls.make(self)
+      self.special_builtins[instance.name] = instance
     # If set, allow construction of recursive values, setting the
     # self-referential field to Any
     self.recursion_allowed = False

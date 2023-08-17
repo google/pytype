@@ -498,9 +498,11 @@ class NamedTupleClassBuilder(abstract.PyTDClass):
         # Move to SimpleFunction.from_pyi if we add it to one more overlay.
         args = function.Args(posargs=(m_var,))
         if m.kind == pytd.MethodKind.CLASSMETHOD:
-          _, m_var = special_builtins.ClassMethod(ctx).call(node, meth, args)
+          _, m_var = special_builtins.ClassMethod.make(ctx).call(
+              node, meth, args)
         elif m.kind == pytd.MethodKind.STATICMETHOD:
-          _, m_var = special_builtins.StaticMethod(ctx).call(node, meth, args)
+          _, m_var = special_builtins.StaticMethod.make(ctx).call(
+              node, meth, args)
         cls.members[m.name] = m_var
 
     return cls

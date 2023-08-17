@@ -741,9 +741,9 @@ class Converter(utils.ContextWeakrefMixin):
                                     self.primitive_classes[types.CodeType],
                                     self.ctx)
     elif pyval is super:
-      return special_builtins.Super(self.ctx)
+      return special_builtins.Super.make(self.ctx)
     elif pyval is object:
-      return special_builtins.Object(self.ctx)
+      return special_builtins.Object.make(self.ctx)
     elif pyval.__class__ is type:
       try:
         return self.name_to_value(self._type_to_name(pyval), subst)

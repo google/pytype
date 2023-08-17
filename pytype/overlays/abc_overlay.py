@@ -21,21 +21,23 @@ class ABCOverlay(overlay.Overlay):
 
   def __init__(self, ctx):
     member_map = {
-        "abstractclassmethod": AbstractClassMethod,
+        "abstractclassmethod": AbstractClassMethod.make,
         "abstractmethod": AbstractMethod.make,
-        "abstractproperty": AbstractProperty,
-        "abstractstaticmethod": AbstractStaticMethod,
-        "ABCMeta": ABCMeta,
+        "abstractproperty": AbstractProperty.make,
+        "abstractstaticmethod": AbstractStaticMethod.make,
+        "ABCMeta": overlay.add_name(
+            "ABCMeta", special_builtins.Type.make_alias),
     }
     ast = ctx.loader.import_name("abc")
     super().__init__(ctx, "abc", member_map, ast)
 
 
-class AbstractClassMethod(special_builtins.ClassMethodTemplate):
+class AbstractClassMethod(special_builtins.ClassMethod):
   """Implements abc.abstractclassmethod."""
 
-  def __init__(self, ctx, module):
-    super().__init__(ctx, "abstractclassmethod", module)
+  @classmethod
+  def make(cls, ctx, module):
+    return super().make_alias("abstractclassmethod", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     _ = _set_abstract(args, "callable")
@@ -56,11 +58,12 @@ class AbstractMethod(abstract.PyTDFunction):
     return node, _set_abstract(args, "funcobj")
 
 
-class AbstractProperty(special_builtins.PropertyTemplate):
+class AbstractProperty(special_builtins.Property):
   """Implements the @abc.abstractproperty decorator."""
 
-  def __init__(self, ctx, module):
-    super().__init__(ctx, "abstractproperty", module)
+  @classmethod
+  def make(cls, ctx, module):
+    return super().make_alias("abstractproperty", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     property_args = self._get_args(args)
@@ -77,18 +80,13 @@ class AbstractProperty(special_builtins.PropertyTemplate):
         self.ctx, self.name, self, **property_args).to_variable(node)
 
 
-class AbstractStaticMethod(special_builtins.StaticMethodTemplate):
+class AbstractStaticMethod(special_builtins.StaticMethod):
   """Implements abc.abstractstaticmethod."""
 
-  def __init__(self, ctx, module):
-    super().__init__(ctx, "abstractstaticmethod", module)
+  @classmethod
+  def make(cls, ctx, module):
+    return super().make_alias("abstractstaticmethod", ctx, module)
 
   def call(self, node, func, args, alias_map=None):
     _ = _set_abstract(args, "callable")
     return super().call(node, func, args, alias_map)
-
-
-class ABCMeta(special_builtins.TypeTemplate):
-
-  def __init__(self, ctx, module):
-    super().__init__(ctx, "ABCMeta", module)
