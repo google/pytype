@@ -355,11 +355,7 @@ class BuiltinClass(abstract.PyTDClass):
     return cls(name, ctx, module)
 
   def __init__(self, name, ctx, module):
-    if module == "builtins":
-      pytd_cls = ctx.loader.lookup_builtin(f"builtins.{name}")
-    else:
-      pytd_cls = ctx.loader.lookup_pytd(module, name)
-    super().__init__(name, pytd_cls, ctx)
+    super().__init__(name, ctx.loader.lookup_pytd(module, name), ctx)
     self.module = module
 
 

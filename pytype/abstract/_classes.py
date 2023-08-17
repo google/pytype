@@ -888,7 +888,7 @@ class LiteralClass(ParameterizedClass):
   """The class of a typing.Literal."""
 
   def __init__(self, instance, ctx, template=None):
-    base_cls = ctx.convert.name_to_value("typing.Literal")
+    base_cls = ctx.convert.lookup_value("typing", "Literal")
     formal_type_parameters = {abstract_utils.T: instance.cls}
     super().__init__(base_cls, formal_type_parameters, ctx, template)
     self._instance = instance

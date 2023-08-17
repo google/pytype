@@ -152,10 +152,12 @@ class TypingContainer(abstract.AnnotationContainer):
 
   def __init__(self, name, ctx):
     if name in pep484.TYPING_TO_BUILTIN:
-      pytd_name = "builtins." + pep484.TYPING_TO_BUILTIN[name]
+      module = "builtins"
+      pytd_name = pep484.TYPING_TO_BUILTIN[name]
     else:
-      pytd_name = "typing." + name
-    base = ctx.convert.name_to_value(pytd_name)
+      module = "typing"
+      pytd_name = name
+    base = ctx.convert.lookup_value(module, pytd_name)
     super().__init__(name, ctx, base)
 
 

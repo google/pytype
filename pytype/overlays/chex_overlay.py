@@ -68,7 +68,7 @@ class Dataclass(dataclass_overlay.Dataclass):
           ctx=self.ctx,
           node=node,
           name="__iter__",
-          return_type=self.ctx.convert.name_to_value("typing.Iterator"))
+          return_type=self.ctx.convert.lookup_value("typing", "Iterator"))
     if "__len__" not in cls.members:
       cls.members["__len__"] = overlay_utils.make_method(
           ctx=self.ctx,
@@ -85,6 +85,6 @@ class Dataclass(dataclass_overlay.Dataclass):
     self._add_to_tuple_method(node, cls)
     if not self.args[cls]["mappable_dataclass"]:
       return
-    mapping = self.ctx.convert.name_to_value("typing.Mapping")
+    mapping = self.ctx.convert.lookup_value("typing", "Mapping")
     overlay_utils.add_base_class(node, cls, mapping)
     self._add_mapping_methods(node, cls)

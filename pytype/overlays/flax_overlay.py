@@ -85,9 +85,7 @@ class ModuleDataclass(dataclass_overlay.Dataclass):
 
   def get_class_locals(self, node, cls):
     cls_locals = super().get_class_locals(node, cls)
-    dataclass_ast = self.ctx.loader.import_name("dataclasses")
-    initvar = self.ctx.convert.name_to_value(
-        "dataclasses.InitVar", ast=dataclass_ast)
+    initvar = self.ctx.convert.lookup_value("dataclasses", "InitVar")
     def make_initvar(t):
       return abstract.ParameterizedClass(initvar, {abstract_utils.T: t},
                                          self.ctx)

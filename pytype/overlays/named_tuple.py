@@ -513,7 +513,7 @@ class _DictBuilder:
 
   def __init__(self, ctx):
     self.ctx = ctx
-    self.dict_cls = ctx.convert.name_to_value("builtins.dict")
+    self.dict_cls = ctx.convert.lookup_value("builtins", "dict")
 
   def make(self, typ):
     # Normally, we would use abstract_utils.K and abstract_utils.V, but
@@ -630,15 +630,15 @@ def _build_namedtuple(props, node, ctx):
   # _make is a classmethod, so it needs to be wrapped by
   # special_builtins.ClassMethodInstance.
   # Like __new__, it uses the _Tname TypeVar.
-  sized_cls = ctx.convert.name_to_value("typing.Sized")
+  sized_cls = ctx.convert.lookup_value("typing", "Sized")
   iterable_type = abstract.ParameterizedClass(
-      ctx.convert.name_to_value("typing.Iterable"),
+      ctx.convert.lookup_value("typing", "Iterable"),
       {abstract_utils.T: field_types_union}, ctx)
   cls_type = abstract.ParameterizedClass(ctx.convert.type_type,
                                          {abstract_utils.T: cls_type_param},
                                          ctx)
   len_type = abstract.CallableClass(
-      ctx.convert.name_to_value("typing.Callable"), {
+      ctx.convert.lookup_value("typing", "Callable"), {
           0: sized_cls,
           abstract_utils.ARGS: sized_cls,
           abstract_utils.RET: ctx.convert.int_type

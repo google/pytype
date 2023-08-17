@@ -110,11 +110,7 @@ class PyTDFunction(_function_base.Function):
     Returns:
       A new PyTDFunction.
     """
-    pyval_name = module + "." + (pyval_name or name)
-    if module not in ("builtins", "typing"):
-      pyval = ctx.loader.import_name(module).Lookup(pyval_name)
-    else:
-      pyval = ctx.loader.lookup_builtin(pyval_name)
+    pyval = ctx.loader.lookup_pytd(module, pyval_name or name)
     if isinstance(pyval, pytd.Alias) and isinstance(pyval.type, pytd.Function):
       pyval = pyval.type
     pyval = pyval.Replace(name=f"{module}.{name}")

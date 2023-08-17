@@ -297,7 +297,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_bad_arg(self):
     f = self._make_pytd_function(
-        (self._ctx.loader.lookup_builtin("builtins.str"),))
+        (self._ctx.loader.lookup_pytd("builtins", "str"),))
     arg = self._ctx.convert.primitive_class_instances[int].to_variable(
         self._ctx.root_node)
     self.assertRaises(
@@ -305,7 +305,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_simple_call(self):
     f = self._make_pytd_function(
-        (self._ctx.loader.lookup_builtin("builtins.str"),))
+        (self._ctx.loader.lookup_pytd("builtins", "str"),))
     arg = self._ctx.convert.primitive_class_instances[str].to_variable(
         self._ctx.root_node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -315,7 +315,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_multiple_arg_bindings(self):
     f = self._make_pytd_function(
-        (self._ctx.loader.lookup_builtin("builtins.str"),))
+        (self._ctx.loader.lookup_pytd("builtins", "str"),))
     arg = self._ctx.program.NewVariable()
     arg.AddBinding(self._ctx.convert.primitive_class_instances[str], [],
                    self._ctx.root_node)
@@ -328,7 +328,7 @@ class FunctionTest(AbstractTestBase):
 
   def test_call_with_skipped_combination(self):
     f = self._make_pytd_function(
-        (self._ctx.loader.lookup_builtin("builtins.str"),))
+        (self._ctx.loader.lookup_pytd("builtins", "str"),))
     node = self._ctx.root_node.ConnectNew()
     arg = self._ctx.convert.primitive_class_instances[str].to_variable(node)
     node, ret = self._call_pytd_function(f, (arg,))
@@ -604,7 +604,7 @@ class FunctionTest(AbstractTestBase):
     self.assertEqual(f.full_name, "builtins.open")
     self.assertCountEqual(
         {sig.pytd_sig for sig in f.signatures},
-        self._ctx.loader.lookup_builtin("builtins.open").signatures)
+        self._ctx.loader.lookup_pytd("builtins", "open").signatures)
     self.assertIs(f.kind, pytd.MethodKind.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 
@@ -619,8 +619,8 @@ class FunctionTest(AbstractTestBase):
         "TypeVar", self._ctx, "typing", pyval_name="_typevar_new")
     self.assertEqual(f.full_name, "typing.TypeVar")
     self.assertCountEqual({sig.pytd_sig for sig in f.signatures},
-                          self._ctx.loader.typing.Lookup(
-                              "typing._typevar_new").signatures)
+                          self._ctx.loader.lookup_pytd(
+                              "typing", "_typevar_new").signatures)
     self.assertIs(f.kind, pytd.MethodKind.METHOD)
     self.assertIs(f.ctx.vm, self._ctx.vm)
 
@@ -675,7 +675,7 @@ class AbstractMethodsTest(AbstractTestBase):
     self.assertCountEqual(cls.abstract_methods, {"f"})
 
   def test_inherited_abstract_method(self):
-    sized_pytd = self._ctx.loader.typing.Lookup("typing.Sized")
+    sized_pytd = self._ctx.loader.lookup_pytd("typing", "Sized")
     sized = self._ctx.convert.constant_to_value(sized_pytd, {},
                                                 self._ctx.root_node)
     cls = abstract.InterpreterClass("X",
@@ -684,7 +684,7 @@ class AbstractMethodsTest(AbstractTestBase):
     self.assertCountEqual(cls.abstract_methods, {"__len__"})
 
   def test_overridden_abstract_method(self):
-    sized_pytd = self._ctx.loader.typing.Lookup("typing.Sized")
+    sized_pytd = self._ctx.loader.lookup_pytd("typing", "Sized")
     sized = self._ctx.convert.constant_to_value(sized_pytd, {},
                                                 self._ctx.root_node)
     bases = [sized.to_variable(self._ctx.root_node)]
@@ -693,7 +693,7 @@ class AbstractMethodsTest(AbstractTestBase):
     self.assertFalse(cls.abstract_methods)
 
   def test_overridden_abstract_method_still_abstract(self):
-    sized_pytd = self._ctx.loader.typing.Lookup("typing.Sized")
+    sized_pytd = self._ctx.loader.lookup_pytd("typing", "Sized")
     sized = self._ctx.convert.constant_to_value(sized_pytd, {},
                                                 self._ctx.root_node)
     bases = [sized.to_variable(self._ctx.root_node)]

@@ -3108,8 +3108,8 @@ class VirtualMachine:
 
   def byte_LOAD_ASSERTION_ERROR(self, state, op):
     del op  # unused
-    assertion_error = self.ctx.convert.name_to_value("builtins.AssertionError")
-    return state.push(assertion_error.to_variable(state.node))
+    assert_error = self.ctx.convert.lookup_value("builtins", "AssertionError")
+    return state.push(assert_error.to_variable(state.node))
 
   def byte_GET_LEN(self, state, op):
     del op

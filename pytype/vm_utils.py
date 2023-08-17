@@ -408,7 +408,7 @@ def _expand_generic_protocols(node, bases, ctx):
     if any(abstract_utils.is_generic_protocol(b) for b in base.data):
       protocol_base = ctx.program.NewVariable()
       generic_base = ctx.program.NewVariable()
-      generic_cls = ctx.convert.name_to_value("typing.Generic")
+      generic_cls = ctx.convert.lookup_value("typing", "Generic")
       for b in base.bindings:
         if abstract_utils.is_generic_protocol(b.data):
           protocol_base.AddBinding(b.data.base_cls, {b}, node)
@@ -1008,7 +1008,7 @@ def match_sequence(obj_var: cfg.Variable) -> bool:
 
 def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
   """See if var is a map for pattern matching."""
-  mapping = ctx.convert.name_to_value("typing.Mapping")
+  mapping = ctx.convert.lookup_value("typing", "Mapping")
   return (
       abstract_utils.match_atomic_python_constant(
           obj_var, collections.abc.Mapping) or

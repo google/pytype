@@ -94,7 +94,7 @@ class Converter(utils.ContextWeakrefMixin):
         v: self.constant_to_value(v) for v in primitive_classes
     }
     self.primitive_class_names = [
-        self._type_to_name(x) for x in self.primitive_classes]
+        ".".join(self._type_to_name(x)) for x in self.primitive_classes]
     self.none = abstract.ConcreteValue(None, self.primitive_classes[NoneType],
                                        self.ctx)
     self.true = abstract.ConcreteValue(True, self.primitive_classes[bool],
@@ -156,17 +156,17 @@ class Converter(utils.ContextWeakrefMixin):
     """Convert a type to its name."""
     assert t.__class__ is type
     if t is types.FunctionType:
-      return "typing.Callable"
+      return "typing", "Callable"
     elif t is IteratorType:
-      return "builtins.object"
+      return "builtins", "object"
     elif t is CoroutineType:
-      return "builtins.coroutine"
+      return "builtins", "coroutine"
     elif t is AwaitableType:
-      return "typing.Awaitable"
+      return "typing", "Awaitable"
     elif t is AsyncGeneratorType:
-      return "builtins.asyncgenerator"
+      return "builtins", "asyncgenerator"
     else:
-      return "builtins." + t.__name__
+      return "builtins", t.__name__
 
   def value_to_constant(self, val, constant_type):
     if val.is_concrete and isinstance(val.pyval, constant_type or object):
@@ -174,11 +174,8 @@ class Converter(utils.ContextWeakrefMixin):
     name = self.constant_name(constant_type)
     raise abstract_utils.ConversionError(f"{val} is not of type {name}")
 
-  def name_to_value(self, name, subst=None, ast=None):
-    if ast is None:
-      pytd_cls = self.ctx.loader.lookup_builtin(name)
-    else:
-      pytd_cls = ast.Lookup(name)
+  def lookup_value(self, module, name, subst=None):
+    pytd_cls = self.ctx.loader.lookup_pytd(module, name)
     subst = subst or datatypes.AliasingDict()
     return self.constant_to_value(pytd_cls, subst, self.ctx.root_node)
 
@@ -361,9 +358,9 @@ class Converter(utils.ContextWeakrefMixin):
       return arg_type.get_formal_type_parameter(abstract_utils.T)
 
   def _copy_type_parameters(
-      self, old_container: abstract.Class, new_container_name: str
-  ) -> abstract.BaseValue:
-    new_container = self.name_to_value(new_container_name)
+      self, old_container: abstract.Class, new_container_module: str,
+      new_container_name: str) -> abstract.BaseValue:
+    new_container = self.lookup_value(new_container_module, new_container_name)
     if isinstance(old_container, abstract.ParameterizedClass):
       return abstract.ParameterizedClass(new_container,
                                          old_container.formal_type_parameters,
@@ -374,10 +371,10 @@ class Converter(utils.ContextWeakrefMixin):
   def widen_type(self, container):
     """Widen a tuple to an iterable, or a dict to a mapping."""
     if container.full_name == "builtins.tuple":
-      return self._copy_type_parameters(container, "typing.Iterable")
+      return self._copy_type_parameters(container, "typing", "Iterable")
     else:
       assert container.full_name == "builtins.dict", container.full_name
-      return self._copy_type_parameters(container, "typing.Mapping")
+      return self._copy_type_parameters(container, "typing", "Mapping")
 
   def merge_values(self, values):
     """Merge a collection of values into a single one."""
@@ -625,9 +622,9 @@ class Converter(utils.ContextWeakrefMixin):
       cls.load_lazy_attribute(name)
       # The cls has already been converted, so don't try to convert the member.
       return abstract_utils.get_atomic_value(cls.members[name])
-    if pyval == self.ctx.loader.lookup_builtin("builtins.True"):
+    if pyval == self.ctx.loader.lookup_pytd("builtins", "True"):
       value = True
-    elif pyval == self.ctx.loader.lookup_builtin("builtins.False"):
+    elif pyval == self.ctx.loader.lookup_pytd("builtins", "False"):
       value = False
     elif isinstance(pyval, str):
       value = evaluator.eval_string_literal(pyval)
@@ -746,7 +743,7 @@ class Converter(utils.ContextWeakrefMixin):
       return special_builtins.Object.make(self.ctx)
     elif pyval.__class__ is type:
       try:
-        return self.name_to_value(self._type_to_name(pyval), subst)
+        return self.lookup_value(*self._type_to_name(pyval), subst)
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
@@ -785,10 +782,8 @@ class Converter(utils.ContextWeakrefMixin):
       if pyval.cls:
         cls = pyval.cls
       else:
-        # If pyval is a reference to a class in builtins or typing, we can fill
-        # in the class ourselves. lookup_builtin raises a KeyError if the name
-        # is not found.
-        cls = self.ctx.loader.lookup_builtin(pyval.name)
+        # lookup_pytd raises a KeyError if the name is not found.
+        cls = self.ctx.loader.lookup_pytd(*pyval.name.split(".", 1))
         assert isinstance(cls, pytd.Class)
       return self.constant_to_value(cls, subst, self.ctx.root_node)
     elif isinstance(pyval, pytd.NothingType):

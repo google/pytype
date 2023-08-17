@@ -26,7 +26,7 @@ into a proper enum.
 import collections
 import contextlib
 import logging
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -38,7 +38,6 @@ from pytype.overlays import overlay_utils
 from pytype.overlays import special_builtins
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.pytd import visitors
 from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
@@ -54,7 +53,6 @@ class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
   def __init__(self, ctx):
-    ast = ctx.loader.import_name("enum")
     if ctx.options.use_enum_overlay:
       member_map = {
           "Enum": overlay.add_name("Enum", EnumBuilder),
@@ -64,23 +62,27 @@ class EnumOverlay(overlay.Overlay):
           **{name: overlay.add_name(name, overlay_utils.not_supported_yet)
              for name in _unsupported},
       }
-      ast = ast.Visit(visitors.RemoveMethods())
     else:
       member_map = {}
 
-    super().__init__(ctx, "enum", member_map, ast)
+    super().__init__(ctx, "enum", member_map, ctx.loader.import_name("enum"))
 
 
-def _lookup_pytd(ctx, module, name):
-  # We have to look up the ast from the overlay because the overlay modifies it.
-  return ctx.vm.loaded_overlays[module].ast.Lookup(f"{module}.{name}")
+class _DelGetAttributeMixin:
+
+  _member_map: Dict[str, Any]
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    if "__getattribute__" in self._member_map:
+      del self._member_map["__getattribute__"]
 
 
-class EnumBuilder(abstract.PyTDClass):
+class EnumBuilder(_DelGetAttributeMixin, abstract.PyTDClass):
   """Overlays enum.Enum."""
 
   def __init__(self, name, ctx, module):
-    super().__init__(name, _lookup_pytd(ctx, module, name), ctx)
+    super().__init__(name, ctx.loader.lookup_pytd(module, name), ctx)
 
   def make_class(self, node, props):
     """Check the members for errors, then create the enum class."""
@@ -289,7 +291,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
     return node, self.ctx.convert.build_bool(node, this.cls == other.cls)
 
 
-class EnumMeta(abstract.PyTDClass):
+class EnumMeta(_DelGetAttributeMixin, abstract.PyTDClass):
   """Wrapper for enum.EnumMeta.
 
   EnumMeta is essentially a container for the functions that drive a lot of the
@@ -297,7 +299,7 @@ class EnumMeta(abstract.PyTDClass):
   """
 
   def __init__(self, ctx, module):
-    pytd_cls = _lookup_pytd(ctx, module, "EnumMeta")
+    pytd_cls = ctx.loader.lookup_pytd(module, "EnumMeta")
     super().__init__("EnumMeta", pytd_cls, ctx)
     init = EnumMetaInit(ctx)
     self._member_map["__init__"] = init
@@ -325,7 +327,7 @@ class EnumMetaInit(abstract.SimpleFunction):
         defaults={},
         annotations={})
     super().__init__(sig, ctx)
-    self._str_pytd = ctx.loader.lookup_builtin("builtins.str")
+    self._str_pytd = ctx.loader.lookup_pytd("builtins", "str")
 
   def _get_class_locals(self, node, cls_name, cls_dict):
     # First, check if get_class_locals works for this class.

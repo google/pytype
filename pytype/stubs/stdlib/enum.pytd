@@ -2,7 +2,7 @@
 # - Remove EnumMeta.__getattribute__
 # - Remove Enum.__getattribute__
 # - Remove auto.__getattribute__
-# The enum overlay removes these __getattribute__s when the overlay is enabled.
+# The enum overlay removes __getattribute__ from EnumMeta and Enum when enabled.
 
 from typing import Any, Dict, Iterable, Iterator, Tuple, Type, TypeVar, Union
 
@@ -76,4 +76,3 @@ def member(): ...
 def nonmember(): ...
 def global_enum(): ...
 def show_flag_values(): ...
-

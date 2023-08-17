@@ -351,7 +351,7 @@ class InterpreterFunction(_function_base.SignedFunction):
             not args.has_namedargs() and not args.starargs and
             not args.starstarargs and not self.signature.has_param_annotations):
       return args
-    exception_type = self.ctx.convert.name_to_value("builtins.BaseException")
+    exception_type = self.ctx.convert.lookup_value("builtins", "BaseException")
     arg1 = self.ctx.program.NewVariable(
         [exception_type, self.ctx.convert.none], [], node)
     arg2 = exception_type.instantiate(node)

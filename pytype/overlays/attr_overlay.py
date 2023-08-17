@@ -201,9 +201,8 @@ class AttrsBase(classgen.Decorator):
     # Add the __attrs_attrs__ attribute, the presence of which `attr.has` uses
     # to determine if an object has `attrs` attributes.
     attr_types = self.ctx.convert.merge_values({attr.typ for attr in attrs})
-    attr_ast = self.ctx.loader.import_name("attr")
     generic_attribute = abstract.ParameterizedClass(
-        self.ctx.convert.name_to_value("attr.Attribute", ast=attr_ast),
+        self.ctx.convert.lookup_value("attr", "Attribute"),
         {abstract_utils.T: attr_types}, self.ctx)
     attr_attribute_params = {abstract_utils.T: generic_attribute}
     attr_attribute_type = abstract.ParameterizedClass(
@@ -459,7 +458,7 @@ class Attrib(classgen.FieldConstructor):
     if not valid_sigs:
       anyt = self.ctx.convert.unsolvable
       wanted_type = abstract.CallableClass(
-          self.ctx.convert.name_to_value("typing.Callable"), {
+          self.ctx.convert.lookup_value("typing", "Callable"), {
               0: anyt,
               abstract_utils.ARGS: anyt,
               abstract_utils.RET: anyt
