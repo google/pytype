@@ -14,7 +14,7 @@
       * [Pickling](#pickling)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 16 07:27:45 PM PDT 2023 -->
+<!-- Added by: rechen, at: Mon Aug 21 12:02:11 PM PDT 2023 -->
 
 <!--te-->
 
@@ -117,9 +117,9 @@ to be the methods that do AST postprocessing and finalization.
 ## Parser
 
 The stub parser in [pytype/pyi][pytype.pyi] reads in a type stub and produces an
-AST representation of its contents. It uses the open source `typed_ast` parser
-to convert the type stub into a python AST (type stubs are required to parse as
-valid python3), then generates a pytd tree from the AST.
+AST representation of its contents. It uses the stdlib `ast` parser to convert
+the type stub into a python AST (type stubs are required to parse as valid
+python3), then generates a pytd tree from the AST.
 
 The pytd nodes are defined in [pytype/pytd/pytd.py][pytype.pytd.pytd] as
 immutable `attrs` classes.

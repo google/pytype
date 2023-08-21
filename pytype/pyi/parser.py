@@ -1,4 +1,4 @@
-"""Parse a pyi file using typed_ast."""
+"""Parse a pyi file using the ast library."""
 
 import ast as astlib
 import dataclasses
@@ -122,7 +122,7 @@ def _attribute_to_name(node: astlib.Attribute) -> astlib.Name:
 
 
 class _AnnotationVisitor(visitor.BaseVisitor):
-  """Converts typed_ast annotations to pytd."""
+  """Converts ast type annotations to pytd."""
 
   def __init__(self, defs, filename):
     super().__init__(defs=defs, filename=filename)
@@ -154,12 +154,6 @@ class _AnnotationVisitor(visitor.BaseVisitor):
 
   def visit_Pyval(self, node):
     # Handle a types.Pyval node (converted from a literal constant).
-    # We do not handle the mixed case
-    #   x: List['int']
-    # since we need to not convert subscripts for typing.Literal, i.e.
-    #   x: Literal['int']
-    # pyi files do not require quoting forward references anyway, so we keep the
-    # code simple here and just handle the basic case of a fully quoted type.
     if node.type == "str" and not self.subscripted:
       return self.convert_late_annotation(node.value)
 
@@ -317,7 +311,7 @@ def _is_valid_default(val):
 
 
 class _GeneratePytdVisitor(visitor.BaseVisitor):
-  """Converts a typed_ast tree to a pytd tree."""
+  """Converts an ast tree to a pytd tree."""
 
   def __init__(self, src, filename, module_name, options):
     defs = definitions.Definitions(modules.Module(filename, module_name))
@@ -420,7 +414,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def new_alias_or_constant(self, name, value):
     """Build an alias or constant."""
     # This is here rather than in _Definitions because we need to build a
-    # constant or alias from a partially converted typed_ast subtree.
+    # constant or alias from a partially converted ast subtree.
     if name == "__slots__":
       return types.SlotDecl(self._read_str_list(name, value))
     elif isinstance(value, types.Pyval):
@@ -817,7 +811,7 @@ def _fix_src(src: str) -> str:
 
 
 def _parse(src: str, feature_version: int, filename: str = ""):
-  """Call the typed_ast parser with the appropriate feature version."""
+  """Call the ast parser with the appropriate feature version."""
   kwargs = {"feature_version": feature_version, "type_comments": True}
   try:
     ast_root_node = astlib.parse(src, filename, **kwargs)

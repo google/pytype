@@ -707,7 +707,10 @@ class TypingTestPython3Feature(test_base.BaseTest):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         from typing import NamedTuple
-        def f() -> NamedTuple("ret", [("x", int), ("y", str)]): ...
+        class Ret(NamedTuple):
+          x: int
+          y: str
+        def f() -> Ret: ...
       """)
       ty = self.Infer("""
         import foo

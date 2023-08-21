@@ -660,6 +660,14 @@ class ImportPathsTest(_LoaderTest):
     self.assertEqual(pytd_utils.Print(x.Lookup("g")),
                      "g: Annotated[int, 'property']")
 
+  def test_typing_alias(self):
+    # typing._Alias is a typeshed construct.
+    ast = self._import(foo="""
+      from typing import _Alias
+      X = _Alias()
+    """)
+    self.assertEqual(pytd_utils.Print(ast), "from typing import _Alias as X")
+
 
 class ImportTypeMacroTest(_LoaderTest):
 

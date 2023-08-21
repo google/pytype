@@ -1,4 +1,4 @@
-"""Testing code to run the typed_ast based pyi parser."""
+"""Testing code to run the ast based pyi parser."""
 
 import sys
 

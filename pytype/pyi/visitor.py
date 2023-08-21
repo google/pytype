@@ -1,4 +1,4 @@
-"""Base visitor for typed_ast parse trees."""
+"""Base visitor for ast parse trees."""
 
 import ast as astlib
 
@@ -9,7 +9,7 @@ _ParseError = types.ParseError
 
 
 class BaseVisitor(ast_visitor.BaseVisitor):
-  """Base visitor for all typed_ast visitors.
+  """Base visitor for all ast visitors.
 
   - Reraises ParseError with position information.
   - Handles literal constants
