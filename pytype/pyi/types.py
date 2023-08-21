@@ -2,12 +2,18 @@
 
 import ast as astlib
 import dataclasses
-from typing import Any, Tuple
+from typing import Any, Optional, Tuple
 
 from pytype.pytd import pytd
 from pytype.pytd.codegen import pytdgen
 
 _STRING_TYPES = ("str", "bytes", "unicode")
+
+
+def node_position(node):
+  # NOTE: ast.Module has no position info, and will be the `node` when
+  # build_type_decl_unit() is called, so we cannot call `node.lineno`
+  return getattr(node, "lineno", None), getattr(node, "col_offset", None)
 
 
 class ParseError(Exception):
@@ -31,11 +37,8 @@ class ParseError(Exception):
 
   def at(self, node, filename=None, src_code=None):
     """Add position information from `node` if it doesn't already exist."""
-    # NOTE: ast.Module has no position info, and will be the `node` when
-    # build_type_decl_unit() is called, so we cannot call `node.lineno`
     if not self._line:
-      self._line = getattr(node, "lineno", None)
-      self._column = getattr(node, "col_offset", None)
+      self._line, self._column = node_position(node)
     if not self._filename:
       self._filename = filename
     if self._line and src_code:
@@ -56,7 +59,7 @@ class ParseError(Exception):
     lines = []
     if self._filename or self._line is not None:
       lines.append(f'  File: "{self._filename}", line {self._line}')
-    if self._column and self._text:
+    if self._column is not None and self._text:
       indent = 4
       stripped = self._text.strip()
       lines.append("%*s%s" % (indent, "", stripped))
@@ -88,12 +91,14 @@ class Pyval(astlib.AST):
 
   type: str
   value: Any
+  lineno: Optional[int]
+  col_offset: Optional[int]
 
   @classmethod
   def from_const(cls, node: astlib.Constant):
     if node.value is None:
       return pytd.NamedType("None")
-    return cls(type(node.value).__name__, node.value)
+    return cls(type(node.value).__name__, node.value, *node_position(node))
 
   def to_pytd(self):
     return pytd.NamedType(self.type)
@@ -121,7 +126,7 @@ class Pyval(astlib.AST):
   def negated(self):
     """Return a new constant with value -self.value."""
     if self.type in ("int", "float"):
-      return Pyval(self.type, -self.value)
+      return Pyval(self.type, -self.value, self.lineno, self.col_offset)
     raise ParseError("Unary `-` can only apply to numeric literals.")
 
   @classmethod

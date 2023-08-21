@@ -16,24 +16,21 @@ class BaseVisitor(ast_visitor.BaseVisitor):
   - Has an optional Definitions member
   """
 
-  def __init__(self, *, defs=None, filename=None):
+  def __init__(self, *, defs=None, filename=None, src_code=None):
     super().__init__(astlib, visit_decorators=False)
     self.defs = defs
     self.filename = filename  # used for error messages
-    self.src_code = None  # set in subclass, used for error messages
-    # Keep track of the name being subscripted. See AnnotationVisitor.visit_Name
-    # for why this is needed.
-    self.subscripted = []
-
-  def _call_visitor(self, node):
-    try:
-      return super()._call_visitor(node)
-    except Exception as e:  # pylint: disable=broad-except
-      raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
+    self.src_code = src_code  # used for error messages
 
   def enter(self, node):
     try:
       return super().enter(node)
+    except Exception as e:  # pylint: disable=broad-except
+      raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
+
+  def visit(self, node):
+    try:
+      return super().visit(node)
     except Exception as e:  # pylint: disable=broad-except
       raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
 
@@ -42,6 +39,9 @@ class BaseVisitor(ast_visitor.BaseVisitor):
       return super().leave(node)
     except Exception as e:  # pylint: disable=broad-except
       raise _ParseError.from_exc(e).at(node, self.filename, self.src_code)
+
+  def generic_visit(self, node):
+    return node
 
   def visit_Constant(self, node):
     if node.value is Ellipsis:

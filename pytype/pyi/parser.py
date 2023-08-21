@@ -121,11 +121,12 @@ def _attribute_to_name(node: astlib.Attribute) -> astlib.Name:
   return astlib.Name(f"{prefix}.{node.attr}")
 
 
-class AnnotationVisitor(visitor.BaseVisitor):
+class _AnnotationVisitor(visitor.BaseVisitor):
   """Converts typed_ast annotations to pytd."""
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
+  def __init__(self, defs, filename):
+    super().__init__(defs=defs, filename=filename)
+    self.subscripted = []  # Keep track of the name being subscripted.
     # Exclude defaults because they may contain strings
     # which should not be interpreted as annotations
     self._node_children[self._ast.arguments] = [
@@ -150,10 +151,6 @@ class AnnotationVisitor(visitor.BaseVisitor):
       # Clear out position information since it is relative to the typecomment
       e.clear_position()
       raise e
-
-  def convert_metadata(self, node):
-    ret = MetadataVisitor().visit(node)
-    return ret if ret is not None else node
 
   def visit_Pyval(self, node):
     # Handle a types.Pyval node (converted from a literal constant).
@@ -221,7 +218,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
   def _convert_typing_annotated(self, node):
     typ, *args = self._get_subscript_params(node).elts
     typ = self.visit(typ)
-    params = (self.convert_metadata(x) for x in args)
+    params = (_MetadataVisitor().visit(x) for x in args)
     self._set_subscript_params(node, (typ,) + tuple(params))
 
   def enter_Subscript(self, node):
@@ -274,7 +271,7 @@ class AnnotationVisitor(visitor.BaseVisitor):
       raise ParseError(f"Unexpected operator {node.op}")
 
 
-class MetadataVisitor(visitor.BaseVisitor):
+class _MetadataVisitor(visitor.BaseVisitor):
   """Converts typing.Annotated metadata."""
 
   def visit_Call(self, node):
@@ -324,13 +321,12 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
 
   def __init__(self, src, filename, module_name, options):
     defs = definitions.Definitions(modules.Module(filename, module_name))
-    super().__init__(defs=defs, filename=filename)
-    self.src_code = src
+    super().__init__(defs=defs, filename=filename, src_code=src)
     self.module_name = module_name
     self.options = options
     self.level = 0
     self.in_function = False  # pyi will not have nested defs
-    self.annotation_visitor = AnnotationVisitor(defs=defs, filename=filename)
+    self.annotation_visitor = _AnnotationVisitor(defs=defs, filename=filename)
     self.class_stack = []
 
   def show(self, node):
@@ -340,7 +336,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     # Converting a node via a visitor will convert the subnodes, but if the
     # argument node itself needs conversion, we need to use the pattern
     #   node = annotation_visitor.visit(node)
-    # However, the AnnotationVisitor returns None if it does not trigger on the
+    # However, the _AnnotationVisitor returns None if it does not trigger on the
     # root node it is passed, so call it via this method instead.
     if isinstance(node, types.Pyval) and node.type != "str":
       raise ParseError(f"Unexpected literal: {node.value!r}")
