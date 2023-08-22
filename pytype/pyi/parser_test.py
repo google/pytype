@@ -72,27 +72,11 @@ class ParserTest(parser_test_base.ParserTestBase):
     self.check_error("def f(x: False): ...", 1,
                      "Unexpected literal: False")
 
-  @unittest.skip("New parser does not support this")
-  def test_type_on_next_line(self):
-    self.check("""
-      a = ...
-      # type: int""",
-               """
-      a: int""")
-
   def test_constant(self):
     self.check("x = ...", "x: Any", "from typing import Any")
     self.check("x: str")
     self.check("x = 0", "x: int")
     self.check("x = 0.0", "x: float")
-
-  @unittest.skip("Not checking invalid literals")
-  def test_invalid_constant(self):
-    self.check_error("x = 123", 1,
-                     "Only '0' allowed as int literal")
-    self.check("x = 0.0", "x: float")
-    self.check_error("x = 12.3", 1,
-                     "Only '0.0' allowed as float literal")
 
   def test_string_constant(self):
     self.check("x = b''", "x: bytes")
@@ -101,15 +85,6 @@ class ParserTest(parser_test_base.ParserTestBase):
     self.check('x = u""', "x: str")
     self.check("x = ''", "x: str")
     self.check('x = ""', "x: str")
-
-  @unittest.skip("We allow all strings.")
-  def test_invalid_string_constant(self):
-    self.check_error("x = b'x'", 1,
-                     "Only '', b'', and u'' allowed as string literals")
-    self.check_error("x = u'x'", 1,
-                     "Only '', b'', and u'' allowed as string literals")
-    self.check_error("x = 'x'", 1,
-                     "Only '', b'', and u'' allowed as string literals")
 
   def test_constant_pep526(self):
     self.check("x : str", "x: str")
@@ -357,13 +332,12 @@ class ParserTest(parser_test_base.ParserTestBase):
     self.check("x: foo.bar.Baz", prologue="import foo.bar")
     self.check("x: nothing")
 
-  @unittest.skip("TODO: add errors for these")
   def test_deprecated_type(self):
     self.check_error("x = ...  # type: int and str and float",
-                     1, "invalid syntax")
+                     1, "Unexpected operator")
     self.check_error("x = ...  # type: ?", 1, "invalid syntax")
-    self.check("x = ...  # type: int or str or float",
-               1, "invalid syntax")
+    self.check_error("x = ...  # type: int or str or float",
+                     1, "Deprecated syntax")
 
   def test_empty_union_or_intersection_or_optional(self):
     self.check_error("def f(x: typing.Union): ...", 1,
@@ -429,7 +403,7 @@ class ParserTest(parser_test_base.ParserTestBase):
 
     # Check various illegal TypeVar arguments.
     self.check_error("T = TypeVar()", 1, "Missing arguments to TypeVar")
-    self.check_error("T = TypeVar(*args)", 1, "Bad arguments to TypeVar")
+    self.check_error("T = TypeVar(*args)", 1, "Unsupported node type: Starred")
     self.check_error("T = TypeVar(...)", 1, "Bad arguments to TypeVar")
     self.check_error("T = TypeVar('Q')", 1,
                      "TypeVar name needs to be 'Q' (not 'T')")
@@ -483,7 +457,7 @@ class ParserTest(parser_test_base.ParserTestBase):
         File: "foo.py", line 2
           this is not valid
          ^
-      ParseError: Unexpected expression
+      ParseError: Unsupported node type: IsNot
     """).strip("\n"), str(e.exception))
 
   def test_pep484_translations(self):
@@ -649,6 +623,13 @@ class QuotedTypeTest(parser_test_base.ParserTestBase):
       def f(x: "int", *args: "float", y: "str", **kwargs: "bool") -> "str": ...
     """, """
       def f(x: int, *args: float, y: str, **kwargs: bool) -> str: ...
+    """)
+
+  def test_partial_quotes(self):
+    self.check("""
+      x: List["A"]
+    """, """
+      x: List[A]
     """)
 
 
@@ -946,17 +927,6 @@ class FunctionTest(parser_test_base.ParserTestBase):
     self.check_error("def foo(*x, *y) -> int: ...", 1, "invalid syntax")
     self.check_error("def foo(**x, *y) -> int: ...", 1, "invalid syntax")
 
-  @unittest.skip("New parser does not support this syntax")
-  def test_ellipsis_param(self):
-    self.check("def foo(...) -> int: ...",
-               "def foo(*args, **kwargs) -> int: ...")
-    self.check("def foo(x: int, ...) -> int: ...",
-               "def foo(x: int, *args, **kwargs) -> int: ...")
-    self.check_error("def foo(..., x) -> int: ...", 1,
-                     "ellipsis (...) must be last parameter")
-    self.check_error("def foo(*, ...) -> int: ...", 1,
-                     "ellipsis (...) not compatible with bare *")
-
   def test_typeignore(self):
     self.check("def foo() -> int:  # type: ignore\n  ...",
                "def foo() -> int: ...")
@@ -1147,16 +1117,18 @@ class FunctionTest(parser_test_base.ParserTestBase):
   def test_type_check_only(self):
     self.check("""
       from typing import type_check_only
+
       @type_check_only
       def f() -> None: ...
-    """, "def f() -> None: ...")
+    """)
 
   def test_type_check_only_class(self):
     self.check("""
       from typing import type_check_only
+
       @type_check_only
       class Foo: ...
-    """, "class Foo: ...")
+    """)
 
   def test_decorated_class(self):
     self.check("""
@@ -1175,7 +1147,17 @@ class FunctionTest(parser_test_base.ParserTestBase):
     self.check_error("""
       @classmethod
       class Foo: ...
-    """, 2, "Unsupported class decorators: classmethod")
+    """, 2, "Unsupported class decorator: classmethod")
+    self.check_error("""
+      from typing import overload
+      @overload
+      class Foo: ...
+    """, 3, "Unsupported class decorator: overload")
+    self.check_error("""
+      import typing
+      @typing.overload
+      class Foo: ...
+    """, 3, "Unsupported class decorator: typing.overload")
 
   def test_dataclass_decorator(self):
     self.check("""
@@ -2406,21 +2388,21 @@ class LiteralTest(parser_test_base.ParserTestBase):
       from typing import Tuple
 
       x: Tuple[int, int, 0, int]
-    """, 3, "Tuple[_, _, 0, _] not supported")
+    """, 3, "Unexpected literal: 0")
 
   def test_stray_string(self):
     self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, str, '', str]
-    """, 3, "Tuple[_, _, '', _] not supported")
+    """, 3, "Unexpected literal: ''")
 
   def test_stray_bytestring(self):
     self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, b'', str, str]
-    """, 3, "Tuple[_, b'', _, _] not supported")
+    """, 3, "Unexpected literal: b''")
 
   def test_typing_extensions(self):
     self.check("""
@@ -2493,7 +2475,7 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x2: Literal[True]
       x3: Literal['x3']
       x4: Literal[b'x4']
-      x5: Literal[None]
+      x5: None
       x6: Literal[Color.RED]
 
       class Color(enum.Enum):
@@ -2530,6 +2512,12 @@ class LiteralTest(parser_test_base.ParserTestBase):
 
       x: Literal["Happy Valentine's Day"]
     """)
+
+  def test_bad_literal(self):
+    self.check_error("""
+      from typing import Literal
+      x: Literal[list[int]]
+    """, 2, "Literal[List[int]] not supported")
 
 
 class TypedDictTest(parser_test_base.ParserTestBase):
@@ -3077,6 +3065,20 @@ class UnionOrTest(parser_test_base.ParserTestBase):
       def f(x: Union[int, str]) -> None: ...
       def g(x: Union[bool, str, float]) -> None: ...
       def h(x: Optional[str]) -> None: ...
+    """)
+
+  def test_alias(self):
+    self.check("""
+      from typing_extensions import TypeAlias
+      X: TypeAlias = None
+      def f(x: X | str) -> None: ...
+    """, """
+      from typing import Optional
+      from typing_extensions import TypeAlias
+
+      X = None
+
+      def f(x: Optional[str]) -> None: ...
     """)
 
 

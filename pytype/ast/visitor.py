@@ -18,7 +18,7 @@ class BaseVisitor:
     maybe_decorators = ["decorator_list"] if visit_decorators else []
     self._node_children = {
         self._ast.Module: ["body"],
-        self._ast.ClassDef: maybe_decorators + ["bases", "body"],
+        self._ast.ClassDef: maybe_decorators + ["keywords", "bases", "body"],
         self._ast.FunctionDef: maybe_decorators + ["body", "args", "returns"],
         self._ast.Assign: ["targets", "value"],
     }

@@ -29,10 +29,6 @@ _ParseError = types.ParseError
 _NodeT = TypeVar("_NodeT", bound=pytd.Node)
 
 
-class StringParseError(_ParseError):
-  pass
-
-
 class _DuplicateDefsError(Exception):
 
   def __init__(self, duplicates):
@@ -143,7 +139,7 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     return value.Replace(name=alias.name)
 
 
-def pytd_literal(
+def _pytd_literal(
     parameters: List[Any], aliases: Dict[str, pytd.Alias]) -> pytd.Type:
   """Create a pytd.Literal."""
   literal_parameters = []
@@ -166,12 +162,10 @@ def pytd_literal(
       literal_parameters.append(p)
     elif isinstance(p, pytd.UnionType):
       for t in p.type_list:
-        if isinstance(t, pytd.Literal):
-          literal_parameters.append(t)
-        else:
-          raise _ParseError(f"Literal[{t}] not supported")
+        assert isinstance(t, pytd.Literal), t
+        literal_parameters.append(t)
     else:
-      raise _ParseError(f"Literal[{p}] not supported")
+      raise _ParseError(f"Literal[{pytd_utils.Print(p)}] not supported")
   return pytd_utils.JoinTypes(literal_parameters)
 
 
@@ -188,7 +182,7 @@ def _convert_annotated(x):
     raise _ParseError(f"Cannot convert metadata {x}")
 
 
-def pytd_annotated(parameters: List[Any]) -> pytd.Type:
+def _pytd_annotated(parameters: List[Any]) -> pytd.Type:
   """Create a pytd.Annotated."""
   if len(parameters) < 2:
     raise _ParseError(
@@ -354,14 +348,9 @@ class Definitions:
 
     Args:
       alias_or_constant: the top-level definition to add.
-
-    Raises:
-      ParseError: For an invalid __slots__ declaration.
     """
     if isinstance(alias_or_constant, pytd.Constant):
       self.constants.append(alias_or_constant)
-    elif isinstance(alias_or_constant, types.SlotDecl):
-      raise _ParseError("__slots__ only allowed on the class level")
     elif isinstance(alias_or_constant, pytd.Alias):
       name, value = alias_or_constant.name, alias_or_constant.type
       self.type_map[name] = value
@@ -369,12 +358,31 @@ class Definitions:
     else:
       assert False, "Unknown type of assignment"
 
+  def new_type_from_value(self, value):
+    if isinstance(value, types.Pyval):
+      return value.to_pytd()
+    elif isinstance(value, types.Ellipsis):
+      return pytd.AnythingType()
+    elif isinstance(value, (list, tuple)):
+      # Silently discard the literal value, just preserve the collection type
+      return pytd.NamedType(value.__class__.__name__)
+    else:
+      return None
+
+  def new_alias_or_constant(self, name, value):
+    """Build an alias or constant."""
+    typ = self.new_type_from_value(value)
+    if typ:
+      return pytd.Constant(name, typ)
+    else:
+      return pytd.Alias(name, value)
+
   def new_new_type(self, name, typ):
     """Returns a type for a NewType."""
     args = [("self", pytd.AnythingType()), ("val", typ)]
     ret = pytd.NamedType("NoneType")
     methods = function.merge_method_signatures(
-        self, [function.NameAndSig.make("__init__", args, ret)])
+        [function.NameAndSig.make("__init__", args, ret)])
     cls_name = escape.pack_newtype_base_class(
         name, len(self.generated_classes[name]))
     cls = pytd.Class(name=cls_name,
@@ -407,8 +415,8 @@ class Definitions:
   def new_typed_dict(self, name, items, keywords):
     """Returns a type for a TypedDict.
 
-    This method is currently called only for TypedDict objects defined via
-    the following function-based syntax:
+    This method is called only for TypedDict objects defined via the following
+    function-based syntax:
 
       Foo = TypedDict('Foo', {'a': int, 'b': str}, total=False)
 
@@ -444,10 +452,16 @@ class Definitions:
     self.add_import("typing", ["TypedDict"])
     return pytd.NamedType(cls_name)
 
-  def _add_type_variable(self, name, tvar, typename, pytd_type):
-    """Add a type variable definition, `name = TypeName(name, args)`."""
+  def add_type_variable(self, name, tvar):
+    """Add a type variable definition."""
+    if tvar.kind == "TypeVar":
+      pytd_type = pytd.TypeParameter
+    else:
+      assert tvar.kind == "ParamSpec"
+      pytd_type = pytd.ParamSpec
+      self.paramspec_names.add(name)
     if name != tvar.name:
-      raise _ParseError(f"{typename} name needs to be {tvar.name!r} "
+      raise _ParseError(f"{tvar.kind} name needs to be {tvar.name!r} "
                         f"(not {name!r})")
     bound = tvar.bound
     if isinstance(bound, str):
@@ -455,13 +469,6 @@ class Definitions:
     constraints = tuple(tvar.constraints) if tvar.constraints else ()
     self.type_params.append(pytd_type(
         name=name, constraints=constraints, bound=bound))
-
-  def add_type_var(self, name, tvar):
-    self._add_type_variable(name, tvar, "TypeVar", pytd.TypeParameter)
-
-  def add_param_spec(self, name, tvar):
-    self._add_type_variable(name, tvar, "ParamSpec", pytd.ParamSpec)
-    self.paramspec_names.add(name)
 
   def add_import(self, from_package, import_list):
     """Add an import.
@@ -540,20 +547,6 @@ class Definitions:
   def _is_heterogeneous_tuple(self, t):
     return isinstance(t, pytd.TupleType)
 
-  def _verify_no_literal_parameters(self, base_type, parameters):
-    """Raises an error if 'parameters' contains any literal types."""
-    if any(isinstance(p, types.Pyval) for p in parameters):
-      if all(not isinstance(p, types.Pyval) or
-             p.type == "str" and p.value for p in parameters):
-        error_cls = StringParseError
-      else:
-        error_cls = _ParseError
-      parameters = ", ".join(
-          p.repr_str() if isinstance(p, types.Pyval) else "_"
-          for p in parameters)
-      raise error_cls(
-          f"{pytd_utils.Print(base_type)}[{parameters}] not supported")
-
   def _is_builtin_or_typing_member(self, t):
     if t.name is None:
       return False
@@ -589,10 +582,10 @@ class Definitions:
   def _parameterized_type(self, base_type: Any, parameters):
     """Return a parameterized type."""
     if self._matches_named_type(base_type, "typing.Literal"):
-      return pytd_literal(parameters, self.aliases)
+      return _pytd_literal(parameters, self.aliases)
     elif self._matches_named_type(base_type, "typing.Annotated"):
-      return pytd_annotated(parameters)
-    self._verify_no_literal_parameters(base_type, parameters)
+      return _pytd_annotated(parameters)
+    assert not any(isinstance(p, types.Pyval) for p in parameters), parameters
     arg_is_paramspec = False
     is_callable = False
     if self._matches_named_type(base_type, "builtins.tuple"):
@@ -638,7 +631,7 @@ class Definitions:
       return name
     if isinstance(name, pytd.NamedType):
       name = name.name
-    assert isinstance(name, str)
+    assert isinstance(name, str), f"Expected str, got {name}"
     if name == "nothing":
       return pytd.NothingType()
     base_type = self.type_map.get(name)
@@ -692,6 +685,15 @@ class Definitions:
         raise _ParseError(f"Missing options to {base_type.name}")
       return base_type
 
+  def _validate_decorators(self, decorators: List[pytd.Alias]):
+    """Validate a class decorator list."""
+    # Check for some function/method-only decorators
+    nonclass = ("builtins.property", "builtins.classmethod",
+                "builtins.staticmethod", "typing.overload")
+    for d in decorators:
+      if self.matches_type(d.name, nonclass):
+        raise _ParseError(f"Unsupported class decorator: {d.name}")
+
   def build_class(
       self, fully_qualified_class_name, bases, keywords, decorators, defs
   ) -> pytd.Class:
@@ -699,6 +701,7 @@ class Definitions:
     class_name = fully_qualified_class_name.rsplit(".", 1)[-1]
     bases = classdef.get_bases(bases, self.matches_type)
     keywords = classdef.get_keywords(keywords)
+    self._validate_decorators(decorators)
     constants, methods, aliases, slots, classes = _split_definitions(defs)
 
     # De-duplicate definitions. Note that for methods, we want to keep
@@ -710,8 +713,7 @@ class Definitions:
       raise e.to_parse_error(namespace=f"class {class_name}") from e
 
     methods = self._adjust_self_var(
-        fully_qualified_class_name,
-        function.merge_method_signatures(self, methods))
+        fully_qualified_class_name, function.merge_method_signatures(methods))
 
     if aliases:
       vals_dict = {val.name: val
@@ -829,7 +831,7 @@ class Definitions:
     generated_classes = sum(self.generated_classes.values(), [])
 
     classes = generated_classes + classes
-    functions = function.merge_method_signatures(self, functions)
+    functions = function.merge_method_signatures(functions)
     _check_module_functions(functions)
 
     name_to_class = {c.name: c for c in classes}

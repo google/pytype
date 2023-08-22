@@ -160,6 +160,10 @@ def generate_init(
 # Method signature merging
 
 
+def _type_name(alias: Optional[pytd.Alias]):
+  return alias and alias.type.name
+
+
 @dataclasses.dataclass
 class _Property:
   type: str
@@ -215,9 +219,10 @@ class _DecoratedFunction:
 
   def __post_init__(self):
     self.prop_names = _property_decorators(self.name)
-    if self.decorator in self.prop_names:
+    decorator_name = _type_name(self.decorator)
+    if decorator_name in self.prop_names:
       self.properties = _Properties()
-      self.add_property(self.decorator, self.sigs[0])
+      self.add_property(decorator_name, self.sigs[0])
     else:
       self.properties = None
 
@@ -235,15 +240,16 @@ class _DecoratedFunction:
     # Check for decorator consistency. Note that we currently limit pyi files to
     # one decorator per function, other than @abstractmethod and @coroutine
     # which are special-cased.
-    if (self.properties and fn.decorator in self.prop_names):
+    fn_name = _type_name(fn.decorator)
+    if (self.properties and fn_name in self.prop_names):
       # For properties, we can have at most one of setter, getter and deleter,
       # and no other overloads
-      self.add_property(fn.decorator, fn.signature)
+      self.add_property(fn_name, fn.signature)
       # For properties, it's fine if, e.g., the getter is abstract but the
       # setter is not, so we skip the @abstractmethod and  @coroutine
       # consistency checks.
       return
-    elif self.decorator == fn.decorator:
+    elif _type_name(self.decorator) == fn_name:
       # For other decorators, we can have multiple overloads but they need to
       # all have the same decorator
       self.sigs.append(fn.signature)
@@ -258,7 +264,6 @@ class _DecoratedFunction:
 
 
 def merge_method_signatures(
-    defs,
     name_and_sigs: List[NameAndSig],
 ) -> List[pytd.Function]:
   """Group the signatures by name, turning each group into a function."""
@@ -270,9 +275,11 @@ def merge_method_signatures(
       functions[fn.name].add_overload(fn)
   methods = []
   for name, fn in functions.items():
-    if name == "__new__" or fn.decorator == "staticmethod":
+    is_staticmethod = _type_name(fn.decorator) == "staticmethod"
+    is_classmethod = _type_name(fn.decorator) == "classmethod"
+    if name == "__new__" or is_staticmethod:
       kind = pytd.MethodKind.STATICMETHOD
-    elif name == "__init_subclass__" or fn.decorator == "classmethod":
+    elif name == "__init_subclass__" or is_classmethod:
       kind = pytd.MethodKind.CLASSMETHOD
     elif fn.properties:
       kind = pytd.MethodKind.PROPERTY
@@ -298,10 +305,8 @@ def merge_method_signatures(
       flags |= pytd.MethodFlag.COROUTINE
     if fn.is_final:
       flags |= pytd.MethodFlag.FINAL
-    if fn.decorator and fn.decorator not in {"staticmethod", "classmethod"}:
-      qualified_dec = defs.resolve_type(fn.decorator)
-      decorator = pytd.Alias(fn.decorator, qualified_dec)
-      decorators = (decorator,)
+    if fn.decorator and not is_staticmethod and not is_classmethod:
+      decorators = (fn.decorator,)
     else:
       decorators = ()
     methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags, decorators))

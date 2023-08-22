@@ -2,11 +2,10 @@
 
 import ast as astlib
 
-from typing import cast, Callable, Dict, List
+from typing import cast, Callable, List
 
 from pytype.pyi import types
 from pytype.pytd import pytd
-from pytype.pytd.parse import node as pytd_node
 
 _ParseError = types.ParseError
 
@@ -55,24 +54,3 @@ def get_keywords(keywords: List[astlib.keyword]):
       pytd_value = cast(pytd.Type, value)
     valid_keywords.append((keyword, pytd_value))
   return valid_keywords
-
-
-def get_decorators(decorators: List[str], type_map: Dict[str, pytd_node.Node]):
-  """Process a class decorator list."""
-
-  # Drop the @type_check_only decorator from classes
-  # TODO(mdemello): Workaround for the bug that typing.foo class decorators
-  # don't add the import, since typing.type_check_only is the only one.
-  decorators = [x for x in decorators if x != "type_check_only"]
-
-  # Check for some function/method-only decorators
-  nonclass = {"property", "classmethod", "staticmethod", "overload"}
-  unsupported_decorators = set(decorators) & nonclass
-  if unsupported_decorators:
-    raise _ParseError(
-        f"Unsupported class decorators: {', '.join(unsupported_decorators)}")
-
-  # Convert decorators to named types. These are wrapped as aliases because we
-  # otherwise do not allow referencing functions as types.
-  return [pytd.Alias(d, type_map.get(d) or pytd.NamedType(d))
-          for d in decorators]
