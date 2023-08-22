@@ -18,7 +18,7 @@ if __name__ == '__main__':
   module_name = module_utils.path_to_module_name(filename)
 
   try:
-    out, _ = parser.parse_pyi_debug(src, filename, module_name)
+    out, _ = parser.parse_pyi(src, filename, module_name, debug_mode=True)
   except _ParseError as e:
     print(e)
     sys.exit(1)

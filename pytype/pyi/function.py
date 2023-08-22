@@ -1,9 +1,10 @@
 """Function definitions in pyi files."""
 
 import ast as astlib
+import dataclasses
 import textwrap
 
-from typing import Any, List, Optional
+from typing import Any, List, Optional, cast
 
 from pytype.pyi import types
 from pytype.pytd import pytd
@@ -60,30 +61,29 @@ class Param(pytd_function.Param):
     return p
 
 
+@dataclasses.dataclass
+class SigProperties:
+  abstract: bool
+  coroutine: bool
+  final: bool
+  overload: bool
+  is_async: bool
+
+
 class NameAndSig(pytd_function.NameAndSig):
   """Internal representation of function signatures."""
 
   @classmethod
   def from_function(
-      cls, function: astlib.FunctionDef, is_async: bool) -> "NameAndSig":
+      cls, function: astlib.FunctionDef, props: SigProperties) -> "NameAndSig":
     """Constructor from an ast.FunctionDef node."""
     name = function.name
 
-    # decorators
-    decorators = set(function.decorator_list)
-    abstracts = {"abstractmethod", "abc.abstractmethod"}
-    coroutines = {"coroutine", "asyncio.coroutine", "coroutines.coroutine"}
-    overload = {"overload"}
-    final = {"final"}
-    ignored = {"type_check_only"}
-    is_abstract = bool(decorators & abstracts)
-    is_coroutine = bool(decorators & coroutines)
-    is_overload = bool(decorators & overload)
-    is_final = bool(decorators & final)
-    decorators -= (abstracts | coroutines | overload | final | ignored)
+    decorators = cast(List[str], function.decorator_list)
     # TODO(mdemello): do we need this limitation?
     if len(decorators) > 1:
-      raise _ParseError(f"Too many decorators for {name}")
+      raise _ParseError(f"Too many decorators for {name}: " +
+                        ", ".join(decorators))
     decorator, = decorators if decorators else (None,)
 
     exceptions = []
@@ -111,7 +111,7 @@ class NameAndSig(pytd_function.NameAndSig):
           raise _ParseError(msg)
 
     # exceptions
-    sig = _pytd_signature(function, is_async, exceptions=exceptions)
+    sig = _pytd_signature(function, props.is_async, exceptions=exceptions)
 
     # mutators
     # If `self` is generic, a type parameter is being mutated.
@@ -126,8 +126,8 @@ class NameAndSig(pytd_function.NameAndSig):
       if not mutator.successful:
         raise _ParseError(f"No parameter named {mutator.name!r}")
 
-    return cls(name, sig, decorator, is_abstract, is_coroutine, is_final,
-               is_overload)
+    return cls(name, sig, decorator, props.abstract, props.coroutine,
+               props.final, props.overload)
 
 
 def _pytd_signature(

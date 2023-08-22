@@ -8,7 +8,7 @@ import keyword
 import re
 import sys
 import tokenize
-from typing import Any, List, Optional, Tuple, Union
+from typing import Any, List, Optional, Tuple, Union, cast
 
 from pytype.ast import debug
 from pytype.pyi import classdef
@@ -66,13 +66,14 @@ def _parseable_name_to_real_name(name):
 class _TypeVariable:
   """Internal representation of type variables."""
 
+  kind: str  # TypeVar or ParamSpec
   name: str
-  bound: Optional[str]
-  constraints: List[Any]
+  bound: Optional[pytd.Type]
+  constraints: List[pytd.Type]
 
   @classmethod
-  def from_call(cls, node: astlib.Call):
-    """Construct a _TypeVar from an ast.Call node."""
+  def from_call(cls, kind: str, node: astlib.Call):
+    """Construct a TypeVar or ParamSpec from an ast.Call node."""
     name, *constraints = node.args
     bound = None
     # 'bound' is the only keyword argument we currently use.
@@ -86,17 +87,7 @@ class _TypeVariable:
     for kw in node.keywords:
       if kw.arg == "bound":
         bound = kw.value
-    return cls(name, bound, constraints)
-
-
-@dataclasses.dataclass
-class _TypeVar(_TypeVariable):
-  """Internal representation of TypeVar."""
-
-
-@dataclasses.dataclass
-class _ParamSpec(_TypeVariable):
-  """Internal representation of ParamSpec."""
+    return cls(kind, name, bound, constraints)
 
 
 #------------------------------------------------------
@@ -121,6 +112,13 @@ def _attribute_to_name(node: astlib.Attribute) -> astlib.Name:
   return astlib.Name(f"{prefix}.{node.attr}")
 
 
+def _read_str_list(name, value):
+  if not (isinstance(value, (astlib.List, astlib.Tuple)) and
+          all(types.Pyval.is_str(x) for x in value.elts)):
+    raise ParseError(f"{name} must be a list of strings")
+  return tuple(x.value for x in value.elts)
+
+
 class _AnnotationVisitor(visitor.BaseVisitor):
   """Converts ast type annotations to pytd."""
 
@@ -139,13 +137,13 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     print(debug.dump(node, astlib, include_attributes=False))
 
   def convert_late_annotation(self, annotation):
+    # Late annotations may need to be parsed into an AST first
+    if annotation.isalpha():
+      return self.defs.new_type(annotation)
     try:
-      # Late annotations may need to be parsed into an AST first
-      if annotation.isalpha():
-        return self.defs.new_type(annotation)
       a = astlib.parse(annotation)
       # Unwrap the module the parser puts around the source string
-      typ = a.body[0].value  # pytype: disable=attribute-error
+      typ = cast(List[astlib.Expr], a.body)[0].value
       return self.visit(typ)
     except ParseError as e:
       # Clear out position information since it is relative to the typecomment
@@ -164,20 +162,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     return list(node.elts)
 
   def visit_Name(self, node):
-    if self.subscripted and (node is self.subscripted[-1]):
-      # This is needed because
-      #   Foo[X]
-      # parses to
-      #   Subscript(Name(id = Foo), Name(id = X))
-      # so we see visit_Name(Foo) before visit_Subscript(Foo[X]).
-      # If Foo resolves to a generic type we want to know if it is being passed
-      # params in this context (in which case we simply resolve the type here,
-      # and create a new type when we get the param list in visit_Subscript) or
-      # if it is just being used as a bare Foo, in which case we need to create
-      # the new type Foo[Any] below.
-      return self.defs.resolve_type(node.id)
-    else:
-      return self.defs.new_type(node.id)
+    return self.defs.new_type(node.id)
 
   def _convert_getattr(self, node):
     # The protobuf pyi generator outputs getattr(X, 'attr') when 'attr' is a
@@ -209,7 +194,7 @@ class _AnnotationVisitor(visitor.BaseVisitor):
     else:
       node.slice.value = new_val
 
-  def _convert_typing_annotated(self, node):
+  def _convert_typing_annotated_args(self, node):
     typ, *args = self._get_subscript_params(node).elts
     typ = self.visit(typ)
     params = (_MetadataVisitor().visit(x) for x in args)
@@ -217,11 +202,24 @@ class _AnnotationVisitor(visitor.BaseVisitor):
 
   def enter_Subscript(self, node):
     if isinstance(node.value, astlib.Attribute):
-      node.value = _attribute_to_name(node.value).id
-    if self.defs.matches_type(getattr(node.value, "id", ""),
-                              "typing.Annotated"):
-      self._convert_typing_annotated(node)
+      node.value = _attribute_to_name(node.value)
     self.subscripted.append(node.value)
+    if not isinstance(node.value, astlib.Name):
+      return
+    # This is needed because
+    #   Foo[X]
+    # parses to
+    #   Subscript(Name(id = Foo), Name(id = X))
+    # so we would see visit_Name(Foo) before visit_Subscript(Foo[X]). We would
+    # assume that we are seing a bare Foo, and possibly emit an error about Foo
+    # needing to be parameterized. So we simply resolve the name here, and
+    # create a new type when we get the param list in visit_Subscript.
+    node.value = self.defs.resolve_type(node.value.id)
+    # We process typing.Annotated metadata early so that the metadata is not
+    # mistaken for a bad type.
+    if (node.value.name and
+        self.defs.matches_type(node.value.name, "typing.Annotated")):
+      self._convert_typing_annotated_args(node)
 
   def visit_Subscript(self, node):
     params = self._get_subscript_params(node)
@@ -397,13 +395,35 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     self._preprocess_decorator_list(node)
     node.body = _flatten_splices(node.body)
 
+  def _extract_function_properties(self, node):
+    decorators = []
+    abstract = coroutine = final = overload = False
+    for d in node.decorator_list:
+      # Since we can't import other parts of the stdlib in builtins and typing,
+      # we treat the abstractmethod and coroutine decorators as pseudo-builtins.
+      if self.defs.matches_type(
+          d, ("builtins.abstractmethod", "abc.abstractmethod")):
+        abstract = True
+      elif self.defs.matches_type(d, (
+          "builtins.coroutine", "asyncio.coroutine", "coroutines.coroutine")):
+        coroutine = True
+      elif self.defs.matches_type(d, "typing.final"):
+        final = True
+      elif self.defs.matches_type(d, "typing.overload"):
+        overload = True
+      else:
+        decorators.append(d)
+    return decorators, function.SigProperties(
+        abstract=abstract, coroutine=coroutine, final=final, overload=overload,
+        is_async=isinstance(node, astlib.AsyncFunctionDef))
+
   def visit_FunctionDef(self, node):
     self._preprocess_function(node)
-    return function.NameAndSig.from_function(node, False)
+    node.decorator_list, props = self._extract_function_properties(node)
+    return function.NameAndSig.from_function(node, props)
 
   def visit_AsyncFunctionDef(self, node):
-    self._preprocess_function(node)
-    return function.NameAndSig.from_function(node, True)
+    return self.visit_FunctionDef(node)
 
   def _read_str_list(self, name, value):
     if not (isinstance(value, (astlib.List, astlib.Tuple)) and
@@ -416,7 +436,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     # This is here rather than in _Definitions because we need to build a
     # constant or alias from a partially converted ast subtree.
     if name == "__slots__":
-      return types.SlotDecl(self._read_str_list(name, value))
+      return types.SlotDecl(_read_str_list(name, value))
     elif isinstance(value, types.Pyval):
       return pytd.Constant(name, value.to_pytd())
     elif isinstance(value, types.Ellipsis):
@@ -426,7 +446,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       return pytd.Alias(name, res)
     elif isinstance(value, (astlib.List, astlib.Tuple)):
       if name == "__all__":
-        self.defs.all = self._read_str_list(name, value)
+        self.defs.all = _read_str_list(name, value)
         return Splice([])
       else:
         # Silently discard the literal value, just preserve the collection type
@@ -505,18 +525,15 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     name = node.target.id
     if name == "__all__":
       # Ignore other assignments
-      self.defs.all += self._read_str_list(name, node.value)
+      self.defs.all += _read_str_list(name, node.value)
     return Splice([])
 
   def _assign(self, node, target, value):
     name = target.id
 
     # Record and erase TypeVar and ParamSpec definitions.
-    if isinstance(value, _TypeVar):
-      self.defs.add_type_var(name, value)
-      return Splice([])
-    elif isinstance(value, _ParamSpec):
-      self.defs.add_param_spec(name, value)
+    if isinstance(value, _TypeVariable):
+      self.defs.add_type_variable(name, value)
       return Splice([])
 
     if node.type_comment:
@@ -697,13 +714,12 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
       return self._convert_newtype_args(node)
 
   def visit_Call(self, node):
-    if self.defs.matches_type(node.func.id, "typing.TypeVar"):
-      if self.level > 0:
-        raise ParseError("TypeVars need to be defined at module level")
-      return _TypeVar.from_call(node)
-    elif self.defs.matches_type(node.func.id, "typing.ParamSpec"):
-      return _ParamSpec.from_call(node)
-    elif self.defs.matches_type(
+    for tvar_kind in ("TypeVar", "ParamSpec"):
+      if self.defs.matches_type(node.func.id, f"typing.{tvar_kind}"):
+        if self.level > 0:
+          raise ParseError(f"{tvar_kind}s need to be defined at module level")
+        return _TypeVariable.from_call(tvar_kind, node)
+    if self.defs.matches_type(
         node.func.id, ("typing.NamedTuple", "collections.namedtuple")):
       return self.defs.new_named_tuple(*node.args)
     elif self.defs.matches_type(node.func.id, "typing.TypedDict"):
@@ -876,40 +892,28 @@ def parse_pyi(
     filename: Optional[str],
     module_name: str,
     options: Optional[PyiOptions] = None,
+    debug_mode: bool = False,
 ) -> pytd.TypeDeclUnit:
   """Parse a pyi string."""
   filename = filename or ""
   options = options or PyiOptions()
   feature_version = _feature_version(options.python_version)
   root = _parse(src, feature_version, filename)
+  if debug_mode:
+    print(debug.dump(root, astlib, include_attributes=False))
   gen_pytd = _GeneratePytdVisitor(src, filename, module_name, options)
   root = gen_pytd.visit(root)
+  if debug_mode:
+    print("---transformed parse tree--------------------")
+    print(root)
   root = post_process_ast(root, src, module_name)
+  if debug_mode:
+    print("---post-processed---------------------")
+    print(root)
+    print("------------------------")
+    print(gen_pytd.defs.type_map)
+    print(gen_pytd.defs.module_path_map)
   return root
-
-
-def parse_pyi_debug(
-    src: str,
-    filename: str,
-    module_name: str,
-    options: Optional[PyiOptions] = None,
-) -> Tuple[pytd.TypeDeclUnit, _GeneratePytdVisitor]:
-  """Debug version of parse_pyi."""
-  options = options or PyiOptions()
-  feature_version = _feature_version(options.python_version)
-  root = _parse(src, feature_version, filename)
-  print(debug.dump(root, astlib, include_attributes=False))
-  gen_pytd = _GeneratePytdVisitor(src, filename, module_name, options)
-  root = gen_pytd.visit(root)
-  print("---transformed parse tree--------------------")
-  print(root)
-  root = post_process_ast(root, src, module_name)
-  print("---post-processed---------------------")
-  print(root)
-  print("------------------------")
-  print(gen_pytd.defs.type_map)
-  print(gen_pytd.defs.module_path_map)
-  return root, gen_pytd
 
 
 def canonical_pyi(pyi, multiline_args=False, options=None):

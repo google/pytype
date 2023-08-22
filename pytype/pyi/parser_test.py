@@ -1117,16 +1117,18 @@ class FunctionTest(parser_test_base.ParserTestBase):
   def test_type_check_only(self):
     self.check("""
       from typing import type_check_only
+
       @type_check_only
       def f() -> None: ...
-    """, "def f() -> None: ...")
+    """)
 
   def test_type_check_only_class(self):
     self.check("""
       from typing import type_check_only
+
       @type_check_only
       class Foo: ...
-    """, "class Foo: ...")
+    """)
 
   def test_decorated_class(self):
     self.check("""
@@ -2500,6 +2502,12 @@ class LiteralTest(parser_test_base.ParserTestBase):
 
       x: Literal["Happy Valentine's Day"]
     """)
+
+  def test_bad_literal(self):
+    self.check_error("""
+      from typing import Literal
+      x: Literal[list[int]]
+    """, 2, "Literal[List[int]] not supported")
 
 
 class TypedDictTest(parser_test_base.ParserTestBase):

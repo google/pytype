@@ -60,11 +60,6 @@ def get_keywords(keywords: List[astlib.keyword]):
 def get_decorators(decorators: List[str], type_map: Dict[str, pytd_node.Node]):
   """Process a class decorator list."""
 
-  # Drop the @type_check_only decorator from classes
-  # TODO(mdemello): Workaround for the bug that typing.foo class decorators
-  # don't add the import, since typing.type_check_only is the only one.
-  decorators = [x for x in decorators if x != "type_check_only"]
-
   # Check for some function/method-only decorators
   nonclass = {"property", "classmethod", "staticmethod", "overload"}
   unsupported_decorators = set(decorators) & nonclass

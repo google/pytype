@@ -143,7 +143,7 @@ def _maybe_resolve_alias(alias, name_to_class, name_to_constant):
     return value.Replace(name=alias.name)
 
 
-def pytd_literal(
+def _pytd_literal(
     parameters: List[Any], aliases: Dict[str, pytd.Alias]) -> pytd.Type:
   """Create a pytd.Literal."""
   literal_parameters = []
@@ -166,12 +166,10 @@ def pytd_literal(
       literal_parameters.append(p)
     elif isinstance(p, pytd.UnionType):
       for t in p.type_list:
-        if isinstance(t, pytd.Literal):
-          literal_parameters.append(t)
-        else:
-          raise _ParseError(f"Literal[{t}] not supported")
+        assert isinstance(t, pytd.Literal), t
+        literal_parameters.append(t)
     else:
-      raise _ParseError(f"Literal[{p}] not supported")
+      raise _ParseError(f"Literal[{pytd_utils.Print(p)}] not supported")
   return pytd_utils.JoinTypes(literal_parameters)
 
 
@@ -188,7 +186,7 @@ def _convert_annotated(x):
     raise _ParseError(f"Cannot convert metadata {x}")
 
 
-def pytd_annotated(parameters: List[Any]) -> pytd.Type:
+def _pytd_annotated(parameters: List[Any]) -> pytd.Type:
   """Create a pytd.Annotated."""
   if len(parameters) < 2:
     raise _ParseError(
@@ -407,8 +405,8 @@ class Definitions:
   def new_typed_dict(self, name, items, keywords):
     """Returns a type for a TypedDict.
 
-    This method is currently called only for TypedDict objects defined via
-    the following function-based syntax:
+    This method is called only for TypedDict objects defined via the following
+    function-based syntax:
 
       Foo = TypedDict('Foo', {'a': int, 'b': str}, total=False)
 
@@ -444,10 +442,16 @@ class Definitions:
     self.add_import("typing", ["TypedDict"])
     return pytd.NamedType(cls_name)
 
-  def _add_type_variable(self, name, tvar, typename, pytd_type):
-    """Add a type variable definition, `name = TypeName(name, args)`."""
+  def add_type_variable(self, name, tvar):
+    """Add a type variable definition."""
+    if tvar.kind == "TypeVar":
+      pytd_type = pytd.TypeParameter
+    else:
+      assert tvar.kind == "ParamSpec"
+      pytd_type = pytd.ParamSpec
+      self.paramspec_names.add(name)
     if name != tvar.name:
-      raise _ParseError(f"{typename} name needs to be {tvar.name!r} "
+      raise _ParseError(f"{tvar.kind} name needs to be {tvar.name!r} "
                         f"(not {name!r})")
     bound = tvar.bound
     if isinstance(bound, str):
@@ -455,13 +459,6 @@ class Definitions:
     constraints = tuple(tvar.constraints) if tvar.constraints else ()
     self.type_params.append(pytd_type(
         name=name, constraints=constraints, bound=bound))
-
-  def add_type_var(self, name, tvar):
-    self._add_type_variable(name, tvar, "TypeVar", pytd.TypeParameter)
-
-  def add_param_spec(self, name, tvar):
-    self._add_type_variable(name, tvar, "ParamSpec", pytd.ParamSpec)
-    self.paramspec_names.add(name)
 
   def add_import(self, from_package, import_list):
     """Add an import.
@@ -589,9 +586,9 @@ class Definitions:
   def _parameterized_type(self, base_type: Any, parameters):
     """Return a parameterized type."""
     if self._matches_named_type(base_type, "typing.Literal"):
-      return pytd_literal(parameters, self.aliases)
+      return _pytd_literal(parameters, self.aliases)
     elif self._matches_named_type(base_type, "typing.Annotated"):
-      return pytd_annotated(parameters)
+      return _pytd_annotated(parameters)
     self._verify_no_literal_parameters(base_type, parameters)
     arg_is_paramspec = False
     is_callable = False
@@ -638,7 +635,7 @@ class Definitions:
       return name
     if isinstance(name, pytd.NamedType):
       name = name.name
-    assert isinstance(name, str)
+    assert isinstance(name, str), f"Expected str, got {name}"
     if name == "nothing":
       return pytd.NothingType()
     base_type = self.type_map.get(name)
