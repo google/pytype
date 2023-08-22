@@ -79,11 +79,11 @@ class NameAndSig(pytd_function.NameAndSig):
     """Constructor from an ast.FunctionDef node."""
     name = function.name
 
-    decorators = cast(List[str], function.decorator_list)
+    decorators = cast(List[pytd.Alias], function.decorator_list)
     # TODO(mdemello): do we need this limitation?
     if len(decorators) > 1:
       raise _ParseError(f"Too many decorators for {name}: " +
-                        ", ".join(decorators))
+                        ", ".join(d.name for d in decorators))
     decorator, = decorators if decorators else (None,)
 
     exceptions = []

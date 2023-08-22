@@ -16,9 +16,8 @@ class BaseVisitor(ast_visitor.BaseVisitor):
   - Has an optional Definitions member
   """
 
-  def __init__(self, *, defs=None, filename=None, src_code=None):
-    super().__init__(astlib, visit_decorators=False)
-    self.defs = defs
+  def __init__(self, *, filename=None, src_code=None, visit_decorators=False):
+    super().__init__(astlib, visit_decorators=visit_decorators)
     self.filename = filename  # used for error messages
     self.src_code = src_code  # used for error messages
 
@@ -42,14 +41,3 @@ class BaseVisitor(ast_visitor.BaseVisitor):
 
   def generic_visit(self, node):
     return node
-
-  def visit_Constant(self, node):
-    if node.value is Ellipsis:
-      return self.defs.ELLIPSIS
-    return types.Pyval.from_const(node)
-
-  def visit_UnaryOp(self, node):
-    if isinstance(node.op, astlib.USub):
-      if isinstance(node.operand, types.Pyval):
-        return node.operand.negated()
-    raise _ParseError(f"Unexpected unary operator: {node.op}")

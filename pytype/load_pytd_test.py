@@ -663,10 +663,12 @@ class ImportPathsTest(_LoaderTest):
   def test_typing_alias(self):
     # typing._Alias is a typeshed construct.
     ast = self._import(foo="""
-      from typing import _Alias
+      from typing import _Alias, TypeAlias
       X = _Alias()
+      Y: TypeAlias = _Alias()
     """)
-    self.assertEqual(pytd_utils.Print(ast), "from typing import _Alias as X")
+    self.assertEqual(pytd_utils.Print(ast),
+                     "from typing import _Alias as X, _Alias as Y")
 
 
 class ImportTypeMacroTest(_LoaderTest):

@@ -5,7 +5,6 @@ import dataclasses
 from typing import Any, Optional, Tuple
 
 from pytype.pytd import pytd
-from pytype.pytd.codegen import pytdgen
 
 _STRING_TYPES = ("str", "bytes", "unicode")
 
@@ -84,7 +83,7 @@ class SlotDecl:
   slots: Tuple[str, ...]
 
 
-@dataclasses.dataclass
+@dataclasses.dataclass(frozen=True)
 class Pyval(astlib.AST):
   """Literal constants in pyi files."""
   # Inherits from ast.AST so it can be visited by ast visitors.
@@ -96,8 +95,6 @@ class Pyval(astlib.AST):
 
   @classmethod
   def from_const(cls, node: astlib.Constant):
-    if node.value is None:
-      return pytd.NamedType("None")
     return cls(type(node.value).__name__, node.value, *node_position(node))
 
   def to_pytd(self):
@@ -113,8 +110,8 @@ class Pyval(astlib.AST):
 
   def to_pytd_literal(self):
     """Make a pytd node from Literal[self.value]."""
-    if self.value is None:
-      return pytd.NamedType("None")
+    if self.type == "NoneType":
+      return pytd.NamedType("NoneType")
     if self.type in _STRING_TYPES:
       val = self.repr_str()
     elif self.type == "float":
@@ -135,26 +132,6 @@ class Pyval(astlib.AST):
 
   def __repr__(self):
     return f"LITERAL({self.repr_str()})"
-
-
-def string_value(val, context=None) -> str:
-  """Convert a Pyval(str) to a string if needed."""
-  if isinstance(val, str):
-    return val
-  elif Pyval.is_str(val):
-    return str(val.value)
-  else:
-    if context:
-      msg = f"Type mismatch in {context}"
-    else:
-      msg = "Type mismatch"
-    raise ParseError(f"{msg}: Expected str, got {val}")
-
-
-def is_any(val) -> bool:
-  if isinstance(val, Ellipsis):
-    return True
-  return pytdgen.is_any(val)
 
 
 def builtin_keyword_constants():

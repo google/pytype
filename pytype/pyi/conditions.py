@@ -95,7 +95,7 @@ class ConditionEvaluator(ast_visitor.BaseVisitor):
   def visit_Index(self, node):
     return node.value
 
-  def visit_Constant(self, node):
+  def visit_Pyval(self, node):
     return node.value
 
   def visit_Subscript(self, node):

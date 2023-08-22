@@ -403,7 +403,7 @@ class ParserTest(parser_test_base.ParserTestBase):
 
     # Check various illegal TypeVar arguments.
     self.check_error("T = TypeVar()", 1, "Missing arguments to TypeVar")
-    self.check_error("T = TypeVar(*args)", 1, "Bad arguments to TypeVar")
+    self.check_error("T = TypeVar(*args)", 1, "Unsupported node type: Starred")
     self.check_error("T = TypeVar(...)", 1, "Bad arguments to TypeVar")
     self.check_error("T = TypeVar('Q')", 1,
                      "TypeVar name needs to be 'Q' (not 'T')")
@@ -457,7 +457,7 @@ class ParserTest(parser_test_base.ParserTestBase):
         File: "foo.py", line 2
           this is not valid
          ^
-      ParseError: Unexpected expression
+      ParseError: Unsupported node type: IsNot
     """).strip("\n"), str(e.exception))
 
   def test_pep484_translations(self):
@@ -1147,7 +1147,17 @@ class FunctionTest(parser_test_base.ParserTestBase):
     self.check_error("""
       @classmethod
       class Foo: ...
-    """, 2, "Unsupported class decorators: classmethod")
+    """, 2, "Unsupported class decorator: classmethod")
+    self.check_error("""
+      from typing import overload
+      @overload
+      class Foo: ...
+    """, 3, "Unsupported class decorator: overload")
+    self.check_error("""
+      import typing
+      @typing.overload
+      class Foo: ...
+    """, 3, "Unsupported class decorator: typing.overload")
 
   def test_dataclass_decorator(self):
     self.check("""
@@ -2378,21 +2388,21 @@ class LiteralTest(parser_test_base.ParserTestBase):
       from typing import Tuple
 
       x: Tuple[int, int, 0, int]
-    """, 3, "Tuple[_, _, 0, _] not supported")
+    """, 3, "Unexpected literal: 0")
 
   def test_stray_string(self):
     self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, str, '', str]
-    """, 3, "Tuple[_, _, '', _] not supported")
+    """, 3, "Unexpected literal: ''")
 
   def test_stray_bytestring(self):
     self.check_error("""
       from typing import Tuple
 
       x: Tuple[str, b'', str, str]
-    """, 3, "Tuple[_, b'', _, _] not supported")
+    """, 3, "Unexpected literal: b''")
 
   def test_typing_extensions(self):
     self.check("""
@@ -2465,7 +2475,7 @@ class LiteralTest(parser_test_base.ParserTestBase):
       x2: Literal[True]
       x3: Literal['x3']
       x4: Literal[b'x4']
-      x5: Literal[None]
+      x5: None
       x6: Literal[Color.RED]
 
       class Color(enum.Enum):
