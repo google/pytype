@@ -141,7 +141,7 @@ class InterpreterFunction(_function_base.SignedFunction):
 
   def __init__(self, name, def_opcode, code, f_locals, f_globals, defaults,
                kw_defaults, closure, annotations, overloads, ctx):
-    log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
+    log.debug("Creating InterpreterFunction %r for %r", name, code.name)
     self.bound_class = _function_base.BoundInterpreterFunction
     self.doc = code.co_consts[0] if code.co_consts else None
     self.def_opcode = def_opcode

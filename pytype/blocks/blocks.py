@@ -17,6 +17,8 @@ class OrderedCode:
   """Code object which knows about instruction ordering.
 
   Attributes:
+    filename: Filename of the current module
+    name: Code name (e.g. function name, <lambda>, etc.)
     co_argcount: Same as loadmarshal.CodeType.
     co_posonlyargcount: Same as loadmarshal.CodeType.
     co_kwonlyargcount: Same as loadmarshal.CodeType.
@@ -26,8 +28,6 @@ class OrderedCode:
     co_consts: Same as loadmarshal.CodeType.
     co_names: Same as loadmarshal.CodeType.
     co_varnames: Same as loadmarshal.CodeType.
-    co_filename: Same as loadmarshal.CodeType.
-    co_name: Same as loadmarshal.CodeType.
     co_firstlineno: Same as loadmarshal.CodeType.
     co_lnotab: Same as loadmarshal.CodeType.
     co_freevars: Same as loadmarshal.CodeType.
@@ -50,8 +50,11 @@ class OrderedCode:
     # callers).
     # NOTE: We don't copy co_code; callers should use self.code_iter instead.
     assert hasattr(code, "co_code")
+    exclude = {"co_code", "co_filename", "co_name"}
     self.__dict__.update({name: value for name, value in code.__dict__.items()
-                          if name.startswith("co_") and name != "co_code"})
+                          if name.startswith("co_") and name not in exclude})
+    self.name = code.co_name
+    self.filename = code.co_filename
     self.order = order
     # Keep the original co_code around temporarily to work around an issue in
     # the block collection algorithm (b/191517403)

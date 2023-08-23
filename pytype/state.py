@@ -337,14 +337,14 @@ class Frame(utils.ContextWeakrefMixin):
     self.skip_in_tracebacks = False
 
     # Set the module name (used in logging)
-    if f_code.co_filename:
-      self.module_name = module_utils.path_to_module_name(f_code.co_filename)
+    if f_code.filename:
+      self.module_name = module_utils.path_to_module_name(f_code.filename)
     else:
       self.module_name = ""
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
-        id(self), self.f_code.co_filename, self.f_lineno
+        id(self), self.f_code.filename, self.f_lineno
     )
 
   def copy_free_vars(self, n):

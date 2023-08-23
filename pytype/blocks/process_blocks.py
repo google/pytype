@@ -12,7 +12,7 @@ CODE_LOADING_OPCODES = (opcodes.LOAD_CONST,)
 def _is_function_def(fn_code):
   """Helper function for CollectFunctionTypeCommentTargetsVisitor."""
   # Reject anything that is not a named function (e.g. <lambda>).
-  first = fn_code.co_name[0]
+  first = fn_code.name[0]
   if not (first == "_" or first.isalpha()):
     return False
 

@@ -366,7 +366,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
   def apply_annotation(self, node, op, name, value):
     """If there is an annotation for the op, return its value."""
     assert op is self.ctx.vm.frame.current_opcode
-    if op.code.co_filename != self.ctx.vm.filename:
+    if op.code.filename != self.ctx.vm.filename:
       return AnnotatedValue(None, value)
     if not op.annotation:
       return AnnotatedValue(None, value)

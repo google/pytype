@@ -337,7 +337,7 @@ def log_opcode(op, state, frame, stack_size):
   stack_rep = repper(state.data_stack)
   block_stack_rep = repper(state.block_stack)
   if frame.module_name:
-    name = frame.f_code.co_name
+    name = frame.f_code.name
     log.info("%s | index: %d, %r, module: %s line: %d",
              indent, op.index, name, frame.module_name, op.line)
   else:
@@ -572,7 +572,7 @@ def make_function(name, node, code, globs, defaults, kw_defaults, closure,
         c for c in abstract_utils.get_atomic_python_constant(closure))
     log.info("closure: %r", closure)
   if not name:
-    name = abstract_utils.get_atomic_python_constant(code).co_name
+    name = abstract_utils.get_atomic_python_constant(code).name
   if not name:
     name = "<lambda>"
   val = abstract.InterpreterFunction.make(
@@ -937,7 +937,7 @@ def process_function_type_comment(node, op, func, ctx):
 
   # It is an error to use a type comment on an annotated function.
   if func.signature.annotations:
-    ctx.errorlog.redundant_function_type_comment(op.code.co_filename, lineno)
+    ctx.errorlog.redundant_function_type_comment(op.code.filename, lineno)
     return
 
   # Parse the comment, use a fake Opcode that is similar to the original

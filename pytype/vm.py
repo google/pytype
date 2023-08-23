@@ -341,11 +341,11 @@ class VirtualMachine:
 
   @property
   def current_local_ops(self):
-    return self.local_ops[self.frame.f_code.co_name]
+    return self.local_ops[self.frame.f_code.name]
 
   @property
   def current_annotated_locals(self):
-    return self.annotated_locals[self.frame.f_code.co_name]
+    return self.annotated_locals[self.frame.f_code.name]
 
   @property
   def current_opcode(self) -> Optional[opcodes.Opcode]:
@@ -490,7 +490,7 @@ class VirtualMachine:
     assert self._director is not None
     frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self.ctx)
-    frame_name = frame.f_code.co_name
+    frame_name = frame.f_code.name
     if frame_name not in self.local_ops or frame_name != "<module>":
       # abstract_utils.eval_expr creates a temporary frame called "<module>". We
       # don't care to track locals for this frame and don't want it to overwrite
@@ -589,7 +589,7 @@ class VirtualMachine:
       new_locals=False, func=None, first_arg=None, substs=()):
     """Create a new frame object, using the given args, globals and locals."""
     if any(code is f.f_code for f in self.frames):
-      log.info("Detected recursion in %s", code.co_name or code.co_filename)
+      log.info("Detected recursion in %s", code.name or code.filename)
       raise self.VirtualMachineRecursionError()
 
     log.info("make_frame: callargs=%s, f_globals=[%s@%x], f_locals=[%s@%x]",
@@ -674,7 +674,7 @@ class VirtualMachine:
           "globals", {
               "__builtins__": self.ctx.loader.builtins,
               "__name__": "__main__",
-              "__file__": code.co_filename,
+              "__file__": code.filename,
               "__doc__": None,
               "__package__": None,
           }, self.ctx)

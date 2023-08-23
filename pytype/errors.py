@@ -97,11 +97,11 @@ def _make_traceback_str(frames):
   for frame in frames:
     if frame is _ELLIPSIS:
       line = "..."
-    elif frame.current_opcode.code.co_name == "<module>":
+    elif frame.current_opcode.code.name == "<module>":
       line = format_line % (frame.current_opcode.line, "current file")
     else:
       line = format_line % (frame.current_opcode.line,
-                            frame.current_opcode.code.co_name)
+                            frame.current_opcode.code.name)
     traceback.append(line)
   return TRACEBACK_MARKER + "\n  " + "\n  ".join(traceback)
 
@@ -244,8 +244,8 @@ class Error:
     if opcode is None:
       return cls(severity, message, **kwargs)
     else:
-      return cls(severity, message, filename=opcode.code.co_filename,
-                 lineno=opcode.line, methodname=opcode.code.co_name,
+      return cls(severity, message, filename=opcode.code.filename,
+                 lineno=opcode.line, methodname=opcode.code.name,
                  opcode_name=opcode.__class__.__name__,
                  traceback=_make_traceback_str(stack), **kwargs)
 

@@ -69,8 +69,8 @@ class Tempdir:
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class FakeCode:
-  co_filename: str
-  co_name: str
+  filename: str
+  name: str
 
 
 class FakeOpcode:

@@ -416,7 +416,7 @@ class Super(BuiltinClass):
       cls_var = None
       # If we are in a list comprehension we want the enclosing frame.
       index = -1
-      while self.ctx.vm.frames[index].f_code.co_name == "<listcomp>":
+      while self.ctx.vm.frames[index].f_code.name == "<listcomp>":
         index -= 1
       frame = self.ctx.vm.frames[index]
       for i, free_var in enumerate(frame.f_code.co_freevars):
