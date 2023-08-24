@@ -52,7 +52,7 @@ class CollectAnnotationTargetsVisitor:
       if isinstance(op, opcodes.MAKE_FUNCTION):
         code_op = co_code[i - offset]
         assert isinstance(code_op, CODE_LOADING_OPCODES), code_op.__class__
-        fn_code = code.co_consts[code_op.arg]
+        fn_code = code.consts[code_op.arg]
         if not _is_function_def(fn_code):
           continue
         # First line of code in body.

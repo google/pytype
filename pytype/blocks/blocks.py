@@ -19,17 +19,15 @@ class OrderedCode:
   Attributes:
     filename: Filename of the current module
     name: Code name (e.g. function name, <lambda>, etc.)
+    consts: Tuple of code constants
+    names: Tuple of names of global variables used in the code
+    varnames: Tuple of names of args and local variables
+    co_consts: Alias for consts
     co_argcount: Same as loadmarshal.CodeType.
     co_posonlyargcount: Same as loadmarshal.CodeType.
     co_kwonlyargcount: Same as loadmarshal.CodeType.
-    co_nlocals: Same as loadmarshal.CodeType.
-    co_stacksize: Same as loadmarshal.CodeType.
     co_flags: Same as loadmarshal.CodeType.
-    co_consts: Same as loadmarshal.CodeType.
-    co_names: Same as loadmarshal.CodeType.
-    co_varnames: Same as loadmarshal.CodeType.
     co_firstlineno: Same as loadmarshal.CodeType.
-    co_lnotab: Same as loadmarshal.CodeType.
     co_freevars: Same as loadmarshal.CodeType.
     co_cellvars: Same as loadmarshal.CodeType.
     order: A list of bytecode blocks. They're ordered ancestors-first, see
@@ -50,11 +48,17 @@ class OrderedCode:
     # callers).
     # NOTE: We don't copy co_code; callers should use self.code_iter instead.
     assert hasattr(code, "co_code")
-    exclude = {"co_code", "co_filename", "co_name"}
+    exclude = {
+        "co_code", "co_filename", "co_name", "co_consts", "co_names",
+        "co_varnames", "co_nlocals", "co_stacksize", "co_lnotab"
+    }
     self.__dict__.update({name: value for name, value in code.__dict__.items()
                           if name.startswith("co_") and name not in exclude})
     self.name = code.co_name
     self.filename = code.co_filename
+    self.consts = code.co_consts
+    self.names = code.co_names
+    self.varnames = code.co_varnames
     self.order = order
     # Keep the original co_code around temporarily to work around an issue in
     # the block collection algorithm (b/191517403)
@@ -62,6 +66,13 @@ class OrderedCode:
     self.python_version = code.python_version
     for insn in bytecode:
       insn.code = self
+
+  @property
+  def co_consts(self):
+    # The blocks/pyc code mixes CodeType and OrderedCode objects when
+    # recursively iterating over code objects, so we need this accessor until
+    # that is fixed.
+    return self.consts
 
   @property
   def code_iter(self):

@@ -1556,7 +1556,7 @@ class VirtualMachine:
 
   def byte_LOAD_CONST(self, state, op):
     try:
-      raw_const = self.frame.f_code.co_consts[op.arg]
+      raw_const = self.frame.f_code.consts[op.arg]
     except IndexError:
       # We have tried to access an undefined closure variable.
       # There is an associated LOAD_DEREF failure where the error will be
@@ -1612,7 +1612,7 @@ class VirtualMachine:
 
   def byte_LOAD_NAME(self, state, op):
     """Load a name. Can be a local, global, or builtin."""
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     try:
       state, val = self.load_local(state, name)
     except KeyError:
@@ -1637,16 +1637,16 @@ class VirtualMachine:
     return state.push(val)
 
   def byte_STORE_NAME(self, state, op):
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     return self._pop_and_store(state, op, name, local=True)
 
   def byte_DELETE_NAME(self, state, op):
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     return self._del_name(op, state, name, local=True)
 
   def byte_LOAD_FAST(self, state, op):
     """Load a local. Unlike LOAD_NAME, it doesn't fall back to globals."""
-    name = self.frame.f_code.co_varnames[op.arg]
+    name = self.frame.f_code.varnames[op.arg]
     try:
       state, val = self.load_local(state, name)
     except KeyError:
@@ -1664,16 +1664,16 @@ class VirtualMachine:
     return state.push(val)
 
   def byte_STORE_FAST(self, state, op):
-    name = self.frame.f_code.co_varnames[op.arg]
+    name = self.frame.f_code.varnames[op.arg]
     return self._pop_and_store(state, op, name, local=True)
 
   def byte_DELETE_FAST(self, state, op):
-    name = self.frame.f_code.co_varnames[op.arg]
+    name = self.frame.f_code.varnames[op.arg]
     return self._del_name(op, state, name, local=True)
 
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     if name == "None":
       # Load None itself as a constant to avoid the None filtering done on
       # variables. This workaround is safe because assigning to None is a
@@ -1693,11 +1693,11 @@ class VirtualMachine:
     return state.push(val)
 
   def byte_STORE_GLOBAL(self, state, op):
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     return self._pop_and_store(state, op, name, local=False)
 
   def byte_DELETE_GLOBAL(self, state, op):
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     return self._del_name(op, state, name, local=False)
 
   def byte_LOAD_CLOSURE(self, state, op):
@@ -1974,7 +1974,7 @@ class VirtualMachine:
 
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
     with self._suppress_opcode_tracing():
@@ -2051,7 +2051,7 @@ class VirtualMachine:
 
   def byte_STORE_ATTR(self, state, op):
     """Store an attribute."""
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     state, (val, obj) = state.popn(2)
     node, annotations_dict, check_attribute_types = (
         self._get_type_of_attr_to_store(state.node, op, obj, name))
@@ -2065,7 +2065,7 @@ class VirtualMachine:
     return state
 
   def byte_DELETE_ATTR(self, state, op):
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     state, obj = state.pop()
     return self.del_attr(state, obj, name)
 
@@ -2715,7 +2715,7 @@ class VirtualMachine:
 
   def byte_IMPORT_NAME(self, state, op):
     """Import a single module."""
-    full_name = self.frame.f_code.co_names[op.arg]
+    full_name = self.frame.f_code.names[op.arg]
     # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
     state, (level_var, fromlist) = state.popn(2)
     assert self._director is not None
@@ -2743,7 +2743,7 @@ class VirtualMachine:
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
     assert self._director is not None
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     if op.line in self._director.ignore:
       # "from x import y  # type: ignore"
       # TODO(mdemello): Should we add some sort of signal data to indicate that
@@ -2837,7 +2837,7 @@ class VirtualMachine:
   def byte_STORE_ANNOTATION(self, state, op):
     """Implementation of the STORE_ANNOTATION opcode."""
     state, annotations_var = self.load_local(state, "__annotations__")
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     state, value = state.pop()
     typ = self.ctx.annotation_utils.extract_annotation(
         state.node,
@@ -3022,7 +3022,7 @@ class VirtualMachine:
 
   def byte_LOAD_METHOD(self, state, op):
     """Implementation of the LOAD_METHOD opcode."""
-    name = self.frame.f_code.co_names[op.arg]
+    name = self.frame.f_code.names[op.arg]
     state, self_obj = state.pop()
     state, result = self.load_attr(state, self_obj, name)
     # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
@@ -3344,7 +3344,7 @@ class VirtualMachine:
 
   def byte_KW_NAMES(self, state, op):
     # Stores a list of kw names to be retrieved by CALL
-    self._kw_names = self.frame.f_code.co_consts[op.arg]
+    self._kw_names = self.frame.f_code.consts[op.arg]
     return state
 
   def byte_POP_JUMP_BACKWARD_IF_NOT_NONE(self, state, op):

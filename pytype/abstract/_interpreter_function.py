@@ -117,9 +117,9 @@ class InterpreterFunction(_function_base.SignedFunction):
     overloads = ctx.vm.frame.overloads[name]
     key = (name, code,
            _hash_all_dicts(
-               (f_globals.members, set(code.co_names)),
+               (f_globals.members, set(code.names)),
                (f_locals.members,
-                set(f_locals.members) - set(code.co_varnames)), ({
+                set(f_locals.members) - set(code.varnames)), ({
                     key: ctx.program.NewVariable([value], [], ctx.root_node)
                     for key, value in annotations.items()
                 }, None), (dict(
@@ -143,7 +143,7 @@ class InterpreterFunction(_function_base.SignedFunction):
                kw_defaults, closure, annotations, overloads, ctx):
     log.debug("Creating InterpreterFunction %r for %r", name, code.name)
     self.bound_class = _function_base.BoundInterpreterFunction
-    self.doc = code.co_consts[0] if code.co_consts else None
+    self.doc = code.consts[0] if code.consts else None
     self.def_opcode = def_opcode
     self.code = code
     self.f_globals = f_globals
@@ -213,21 +213,21 @@ class InterpreterFunction(_function_base.SignedFunction):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
-    kwonly = set(self.code.co_varnames[
+    kwonly = set(self.code.varnames[
         self.code.co_argcount:self.nonstararg_count])
     arg_pos = self.nonstararg_count
     if self.has_varargs():
-      vararg_name = self.code.co_varnames[arg_pos]
+      vararg_name = self.code.varnames[arg_pos]
       arg_pos += 1
     if self.has_kwargs():
-      kwarg_name = self.code.co_varnames[arg_pos]
+      kwarg_name = self.code.varnames[arg_pos]
       arg_pos += 1
     defaults = dict(zip(
         self.get_positional_names()[-len(self.defaults):], self.defaults))
     defaults.update(self.kw_defaults)
     return function.Signature(
         name,
-        tuple(self.code.co_varnames[:self.code.co_argcount]),
+        tuple(self.code.varnames[:self.code.co_argcount]),
         self.posonlyarg_count,
         vararg_name,
         tuple(kwonly),
@@ -368,9 +368,9 @@ class InterpreterFunction(_function_base.SignedFunction):
          callargs["self"].data != self.ctx.callself_stack[-1].data)):
       callkey = _hash_all_dicts(
           (callargs, None),
-          (frame.f_globals.members, set(self.code.co_names)),
+          (frame.f_globals.members, set(self.code.names)),
           (frame.f_locals.members,
-           set(frame.f_locals.members) - set(self.code.co_varnames)))
+           set(frame.f_locals.members) - set(self.code.varnames)))
     else:
       # Make the callkey the number of times this function has been called so
       # that no call has the same key as a previous one.
@@ -629,15 +629,15 @@ class InterpreterFunction(_function_base.SignedFunction):
     return all_combinations
 
   def get_positional_names(self):
-    return list(self.code.co_varnames[:self.code.co_argcount])
+    return list(self.code.varnames[:self.code.co_argcount])
 
   def get_nondefault_params(self):
     for i in range(self.nonstararg_count):
-      yield self.code.co_varnames[i], i >= self.code.co_argcount
+      yield self.code.varnames[i], i >= self.code.co_argcount
 
   def get_kwonly_names(self):
     return list(
-        self.code.co_varnames[self.code.co_argcount:self.nonstararg_count])
+        self.code.varnames[self.code.co_argcount:self.nonstararg_count])
 
   def get_parameters(self):
     default_pos = self.code.co_argcount - len(self.defaults)
@@ -685,4 +685,4 @@ class InterpreterFunction(_function_base.SignedFunction):
       return False
     if [op.name for op in ops] != ["LOAD_CONST", "RETURN_VALUE"]:
       return False
-    return self.code.co_consts[ops[0].arg] is None
+    return self.code.consts[ops[0].arg] is None

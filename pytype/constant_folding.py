@@ -277,7 +277,7 @@ class _FoldConstants:
       stack = _Stack()
       for op in block:
         if isinstance(op, opcodes.LOAD_CONST):
-          elt = code.co_consts[op.arg]
+          elt = code.consts[op.arg]
           if isinstance(elt, tuple):
             typ = build_tuple(elt)
             stack.push(_Constant(typ, elt, typ[1], op))

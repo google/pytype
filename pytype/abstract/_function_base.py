@@ -186,7 +186,7 @@ class NativeFunction(Function):
 
   def get_positional_names(self):
     code = self.func.func_code
-    return list(code.co_varnames[:code.co_argcount])
+    return list(code.varnames[:code.co_argcount])
 
   def property_get(self, callself, is_class=False):
     return self

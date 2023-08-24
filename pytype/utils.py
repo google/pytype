@@ -149,7 +149,7 @@ def list_strip_prefix(l, prefix):
 
 def _arg_names(f):
   """Return the argument names of a function."""
-  return f.__code__.co_varnames[:f.__code__.co_argcount]
+  return f.__code__.varnames[:f.__code__.co_argcount]
 
 
 def invert_dict(d):

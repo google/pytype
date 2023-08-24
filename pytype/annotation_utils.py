@@ -450,7 +450,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           stack, annot, details=errorlog.details)
     code = func.code
     expected = code.get_arg_count()
-    names = code.co_varnames
+    names = code.varnames
 
     # This is a hack.  Specifying the type of the first arg is optional in
     # class and instance methods.  There is no way to tell at this time

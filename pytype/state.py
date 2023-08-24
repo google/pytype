@@ -295,7 +295,7 @@ class Frame(utils.ContextWeakrefMixin):
     # f.co_cellvars: All f-local variables that are used in g (or any other
     #                closure).
     # g.co_freevars: All variables from f that g uses.
-    # Also, note that f.co_cellvars will only also be in f.co_varnames
+    # Also, note that f.co_cellvars will only also be in f.varnames
     # if they are also parameters of f (because co_varnames[0:co_argcount] are
     # always the parameters), but won't otherwise.
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
