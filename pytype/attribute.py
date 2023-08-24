@@ -498,8 +498,9 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
               not isinstance(base, abstract.InterpreterClass)):
             # See BaseValue.property_get for an explanation of the
             # parameters we're passing here.
-            value = value.property_get(valself.AssignToNewVariable(node),
-                                       abstract_utils.is_subclass(valself, cls))
+            value = value.property_get(
+                valself.AssignToNewVariable(node),
+                abstract_utils.is_subclass(valself.data, cls))
           if isinstance(value, abstract.Property):
             try:
               node, value = value.call(node, None, None)

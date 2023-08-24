@@ -107,6 +107,9 @@ class Function(_instance_base.SimpleValue):
   def set_function_defaults(self, node, defaults_var):
     raise NotImplementedError(self.__class__.__name__)
 
+  def update_signature_scope(self, cls):
+    return
+
 
 class NativeFunction(Function):
   """An abstract value representing a native function.
@@ -640,6 +643,11 @@ class SignedFunction(Function):
     # Optimization: return a generator to avoid iterating over the mutations an
     # extra time.
     return generator
+
+  def update_signature_scope(self, cls):
+    self.signature.excluded_types.update(
+        [t.name for t in cls.template])
+    self.signature.add_scope(cls.full_name)
 
 
 class SimpleFunction(SignedFunction):

@@ -356,11 +356,12 @@ def equivalent_to(binding, cls):
           binding.data.full_name == cls.full_name)
 
 
-def is_subclass(binding, cls):
-  """Wehther binding.data is a subclass of cls, modulo parameterization."""
-  return (_isinstance(binding.data, "Class") and
-          any(binding_cls.full_name == cls.full_name
-              for binding_cls in binding.data.mro))
+def is_subclass(value, cls):
+  """Whether value is a subclass of cls, modulo parameterization."""
+  if _isinstance(value, "Union"):
+    return any(is_subclass(v, cls) for v in value.options)
+  return (_isinstance(value, "Class") and
+          any(value_cls.full_name == cls.full_name for value_cls in value.mro))
 
 
 def apply_mutations(node, get_mutations):
@@ -901,16 +902,27 @@ def get_generic_type(val: _BaseValueType) -> Optional[_ParameterizedClassType]:
     The type of the value, with concrete type parameters replaced by TypeVars.
     For example, the generic type of `[0]` is `List[T]`.
   """
-  if not _isinstance(val.cls, "Class") or val.cls.full_name == "builtins.type":
+  is_class = _isinstance(val, "Class")
+  if is_class:
+    cls = val
+  elif _isinstance(val.cls, "Class"):
+    cls = val.cls
+  else:
     return None
-  for cls in val.cls.mro:
-    if _isinstance(cls, "ParameterizedClass"):
-      base_cls = cls.base_cls
+  for parent_cls in cls.mro:
+    if _isinstance(parent_cls, "ParameterizedClass"):
+      base_cls = parent_cls.base_cls
     else:
-      base_cls = cls
+      base_cls = parent_cls
     if _isinstance(base_cls, "Class") and base_cls.template:
+      ctx = base_cls.ctx
       params = {item.name: item for item in base_cls.template}
-      return _make("ParameterizedClass", base_cls, params, base_cls.ctx)
+      generic_cls = _make("ParameterizedClass", base_cls, params, ctx)
+      if is_class:
+        return _make(
+            "ParameterizedClass", ctx.convert.type_type, {T: generic_cls}, ctx)
+      else:
+        return generic_cls
   return None
 
 

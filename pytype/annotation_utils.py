@@ -202,9 +202,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       seen.add(annot)
     if isinstance(annot, abstract.TypeParameter):
       if annot.name in types:
-        new_annot = annot.copy()
-        new_annot.module = module
-        return new_annot
+        return annot.with_module(module)
       return annot
     elif isinstance(annot, mixin.NestedAnnotation):
       inner_types = [(key, self.add_scope(typ, types, module, seen))
@@ -326,7 +324,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     """Extracts an annotation from var and instantiates it."""
     frame = self.ctx.vm.frame
     substs = frame.substs
-    if frame.func and isinstance(frame.func.data, abstract.BoundFunction):
+    if frame.func and (isinstance(frame.func.data, abstract.BoundFunction) or
+                       frame.func.data.is_attribute_of_class):
       self_var = frame.first_arg
       if self_var:
         # self_var is an instance of (a subclass of) the class on which
@@ -336,7 +335,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         type_params = []
         defining_classes = []
         for v in self_var.data:
-          for cls in v.cls.mro:
+          v_cls = v if isinstance(v, abstract.Class) else v.cls
+          for cls in v_cls.mro:
             if cls.name == defining_cls_name:
               # Normalize type parameter names by dropping the scope.
               type_params.extend(p.with_module(None) for p in cls.template)

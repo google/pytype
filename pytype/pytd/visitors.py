@@ -941,6 +941,7 @@ class AdjustSelf(Visitor):
     super().__init__()
     self.class_types = []  # allow nested classes
     self.force = force
+    self.method_kind = None
 
   def EnterClass(self, cls):
     self.class_types.append(ClassAsType(cls))
@@ -948,14 +949,21 @@ class AdjustSelf(Visitor):
   def LeaveClass(self, unused_node):
     self.class_types.pop()
 
+  def EnterFunction(self, f):
+    if self.class_types:
+      self.method_kind = f.kind
+
+  def LeaveFunction(self, f):
+    if self.class_types:
+      self.method_kind = None
+
   def VisitClass(self, node):
     return node
 
   def VisitParameter(self, p):
     """Adjust all parameters called "self" to have their base class type.
 
-    But do this only if their original type is unoccupied ("object" or,
-    if configured, "Any").
+    But do this only if their original type is unoccupied ("Any").
 
     Args:
       p: pytd.Parameter instance.
@@ -966,9 +974,15 @@ class AdjustSelf(Visitor):
     if not self.class_types:
       # We're not within a class, so this is not a parameter of a method.
       return p
-    if p.name == "self" and (
-        self.force or isinstance(p.type, pytd.AnythingType)):
+    if not self.force and not isinstance(p.type, pytd.AnythingType):
+      return p
+    if p.name == "self" and self.method_kind in (pytd.MethodKind.METHOD,
+                                                 pytd.MethodKind.PROPERTY):
       return p.Replace(type=self.class_types[-1])
+    elif p.name == "cls" and self.method_kind == pytd.MethodKind.CLASSMETHOD:
+      cls_type = pytd.GenericType(pytd.NamedType("builtins.type"),
+                                  parameters=(self.class_types[-1],))
+      return p.Replace(type=cls_type)
     else:
       return p
 

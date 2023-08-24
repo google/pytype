@@ -164,7 +164,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     signature = self._build_signature(name, annotations)
     super().__init__(signature, ctx)
     self._check_signature()
-    self._update_signature_scope()
+    self._update_signature_scope_from_closure()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
     self.is_class_builder = False  # Will be set by BuildClass.
@@ -232,7 +232,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         defaults,
         annotations)
 
-  def _update_signature_scope(self):
+  def _update_signature_scope_from_closure(self):
     # If this is a nested function in an instance method and the nested function
     # accesses 'self', then the first variable in the closure is 'self'. We use
     # 'self' to update the scopes of any type parameters in the nested method's
@@ -246,7 +246,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     except abstract_utils.ConversionError:
       return
     if isinstance(instance.cls, _classes.InterpreterClass):
-      instance.cls.update_signature_scope(self)
+      self.update_signature_scope(instance.cls)
 
   def get_first_opcode(self):
     return self.code.first_opcode
