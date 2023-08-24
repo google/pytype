@@ -56,6 +56,18 @@ class UsageTest(test_base.BaseTest):
       bad4: Y = [{''}]  # annotation-type-mismatch
     """)
 
+  def test_init(self):
+    self.Check("""
+      from typing import MutableSequence
+
+      class Node:
+        def __init__(self, *args: 'Node'):
+          pass
+
+      class MutableNode(Node, MutableSequence):
+        pass
+    """)
+
 
 class MatchTest(test_base.BaseTest):
   """Tests abstract matching of recursive types."""

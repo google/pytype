@@ -4,7 +4,7 @@ import contextlib
 import inspect
 import itertools
 import logging
-from typing import Type
+from typing import Optional, Type
 
 from pytype.abstract import _base
 from pytype.abstract import _classes
@@ -237,6 +237,13 @@ class BoundFunction(_base.BaseValue):
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
       if self.replace_self_annot:
+        replace_self_annot = True
+      else:
+        # If a function is recursively calling itself and has set the `self`
+        # annotation for the previous call, we want to clear it for this one.
+        replace_self_annot = (isinstance(self.underlying, SignedFunction) and
+                              self.underlying.has_self_annot)
+      if replace_self_annot:
         context = self.underlying.set_self_annot(self.replace_self_annot)
       else:
         context = contextlib.nullcontext()
@@ -415,20 +422,27 @@ class SignedFunction(Function):
     # annotating `self` in `__init__` is otherwise illegal.
     self._has_self_annot = False
 
+  @property
+  def has_self_annot(self):
+    return self._has_self_annot
+
   @contextlib.contextmanager
-  def set_self_annot(self, annot_class):
+  def set_self_annot(self, annot_class: Optional[_base.BaseValue]):
     """Set the annotation for `self` in a class."""
     self_name = self.signature.param_names[0]
     old_self = self.signature.annotations.get(self_name)
     old_has_self_annot = self._has_self_annot
-    self.signature.annotations[self_name] = annot_class
-    self._has_self_annot = True
+    if annot_class:
+      self.signature.annotations[self_name] = annot_class
+    elif old_self:
+      del self.signature.annotations[self_name]
+    self._has_self_annot = bool(annot_class)
     try:
       yield
     finally:
       if old_self:
         self.signature.annotations[self_name] = old_self
-      else:
+      elif annot_class:
         del self.signature.annotations[self_name]
       self._has_self_annot = old_has_self_annot
 
