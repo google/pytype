@@ -20,41 +20,26 @@ class OrderedCode:
     filename: Filename of the current module
     name: Code name (e.g. function name, <lambda>, etc.)
     consts: Tuple of code constants
+    co_consts: Alias for consts
     names: Tuple of names of global variables used in the code
     varnames: Tuple of names of args and local variables
     argcount: Number of args
     posonlyargcount: Number of posonly args
     kwonlyargcount: Number of kwonly args
-    co_consts: Alias for consts
-    co_flags: Same as loadmarshal.CodeType.
-    co_firstlineno: Same as loadmarshal.CodeType.
-    co_freevars: Same as loadmarshal.CodeType.
-    co_cellvars: Same as loadmarshal.CodeType.
-    order: A list of bytecode blocks. They're ordered ancestors-first, see
-      cfg_utils.py:order_nodes.
+    firstlineno: The first line number of the code
+    freevars: Tuple of free variable names
+    cellvars: Tuple of cell variable names
+    co_localsplusnames: Python 3.11+ combined variable name list
+    order: A list of bytecode blocks, ordered ancestors-first
+      (See cfg_utils.py:order_nodes)
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
     original_co_code: The original code object's co_code.
     first_opcode: The first opcode in code_iter.
     python_version: The Python version this bytecode is from.
   """
 
-  _HAS_DYNAMIC_ATTRIBUTES = True
-
   def __init__(self, code, bytecode, order):
-    # Copy all "co_*" attributes from code.
-    # This is preferable to both inheritance (because we don't want to be
-    # compatible with the base class, which is too low level) as well as
-    # object composition (because that would make the API too clunky for
-    # callers).
-    # NOTE: We don't copy co_code; callers should use self.code_iter instead.
     assert hasattr(code, "co_code")
-    exclude = {
-        "co_code", "co_filename", "co_name", "co_consts", "co_names",
-        "co_varnames", "co_nlocals", "co_stacksize", "co_lnotab",
-        "co_argcount", "co_posonlyargcount", "co_kwonlyargcount",
-    }
-    self.__dict__.update({name: value for name, value in code.__dict__.items()
-                          if name.startswith("co_") and name not in exclude})
     self.name = code.co_name
     self.filename = code.co_filename
     self.consts = code.co_consts
@@ -63,6 +48,18 @@ class OrderedCode:
     self.argcount = code.co_argcount
     self.posonlyargcount = max(code.co_posonlyargcount, 0)
     self.kwonlyargcount = max(code.co_kwonlyargcount, 0)
+    self.cellvars = code.co_cellvars
+    self.freevars = code.co_freevars
+    self.firstlineno = code.co_firstlineno
+    self._combined_vars = self.cellvars + self.freevars
+    # Retain the co_ name since this refers directly to CodeType internals.
+    self._co_flags = code.co_flags
+    # TODO(b/297225222): Leave this as a co_* name until we come up with a
+    # unified representation that works for 3.10 and 3.11
+    if code.python_version >= (3, 11):
+      self.co_localsplusnames = code.co_localsplusnames
+    else:
+      self.co_localsplusnames = None
     self.order = order
     # Keep the original co_code around temporarily to work around an issue in
     # the block collection algorithm (b/191517403)
@@ -90,28 +87,28 @@ class OrderedCode:
     return any(isinstance(op, op_type) for op in self.code_iter)
 
   def has_iterable_coroutine(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_ITERABLE_COROUTINE)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_ITERABLE_COROUTINE)
 
   def set_iterable_coroutine(self):
-    self.co_flags |= loadmarshal.CodeType.CO_ITERABLE_COROUTINE
+    self._co_flags |= loadmarshal.CodeType.CO_ITERABLE_COROUTINE
 
   def has_coroutine(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_COROUTINE)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_COROUTINE)
 
   def has_generator(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_GENERATOR)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_GENERATOR)
 
   def has_async_generator(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_ASYNC_GENERATOR)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_ASYNC_GENERATOR)
 
   def has_varargs(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_VARARGS)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_VARARGS)
 
   def has_varkeywords(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
 
   def has_newlocals(self):
-    return bool(self.co_flags & loadmarshal.CodeType.CO_NEWLOCALS)
+    return bool(self._co_flags & loadmarshal.CodeType.CO_NEWLOCALS)
 
   def get_arg_count(self):
     """Total number of arg names including '*args' and '**kwargs'."""
@@ -126,12 +123,16 @@ class OrderedCode:
     if self.python_version >= (3, 11):
       name = self.co_localsplusnames[arg]
     else:
-      n_cellvars = len(self.co_cellvars)
+      n_cellvars = len(self.cellvars)
       if arg < n_cellvars:
-        name = self.co_cellvars[arg]
+        name = self.cellvars[arg]
       else:
-        name = self.co_freevars[arg - n_cellvars]
+        name = self.freevars[arg - n_cellvars]
     return name
+
+  def get_cell_index(self, name):
+    """Get the index of name in the code frame's cell list."""
+    return self._combined_vars.index(name)
 
 
 class Block:

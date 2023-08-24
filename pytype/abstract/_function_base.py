@@ -56,7 +56,7 @@ class Function(_instance_base.SimpleValue):
     if not f:
       # Should not happen but does in some contrived test cases.
       return None
-    for name, v in zip(f.f_code.co_freevars, f.cells):
+    for name, v in zip(f.f_code.freevars, f.cells):
       if v == var:
         return name
     return None

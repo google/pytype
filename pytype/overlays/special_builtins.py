@@ -419,9 +419,9 @@ class Super(BuiltinClass):
       while self.ctx.vm.frames[index].f_code.name == "<listcomp>":
         index -= 1
       frame = self.ctx.vm.frames[index]
-      for i, free_var in enumerate(frame.f_code.co_freevars):
+      for i, free_var in enumerate(frame.f_code.freevars):
         if free_var == abstract.BuildClass.CLOSURE_NAME:
-          cls_var = frame.cells[len(frame.f_code.co_cellvars) + i]
+          cls_var = frame.cells[len(frame.f_code.cellvars) + i]
           break
       if not (cls_var and cls_var.bindings):
         self.ctx.errorlog.invalid_super_call(

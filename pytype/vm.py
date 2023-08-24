@@ -3150,10 +3150,8 @@ class VirtualMachine:
   def _store_local_or_cellvar(self, state, name, var):
     if name in self.frame.f_locals.pyval:
       return self.store_local(state, name, var)
-    cell_names = (self.frame.f_code.co_cellvars +
-                  self.frame.f_code.co_freevars)
     try:
-      idx = cell_names.index(name)
+      idx = self.frame.f_code.get_cell_index(name)
     except ValueError:
       return self.store_local(state, name, var)
     self.frame.cells[idx].PasteVariable(var)
