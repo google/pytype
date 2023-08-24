@@ -177,7 +177,7 @@ def _collect_bytecode(ordered_code):
   while stack:
     code = stack.pop()
     bytecode_blocks.append(code.original_co_code)
-    for const in code.co_consts:
+    for const in code.consts:
       if isinstance(const, blocks.OrderedCode):
         stack.append(const)
   return bytecode_blocks

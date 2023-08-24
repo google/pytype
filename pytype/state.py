@@ -271,7 +271,7 @@ class Frame(utils.ContextWeakrefMixin):
           self.ctx.root_node, f_globals, "__builtins__")
       builtins_pu, = bltin.bindings
       self.f_builtins = builtins_pu.data
-    self.f_lineno = f_code.co_firstlineno
+    self.f_lineno = f_code.firstlineno
     # The first argument is used to make Python 3 super calls when super is not
     # passed any arguments.
     self.first_arg = first_arg
@@ -305,14 +305,14 @@ class Frame(utils.ContextWeakrefMixin):
           self.ctx.program.NewVariable() for _ in f_code.co_localsplusnames
       ]
     else:
-      assert len(f_code.co_freevars) == len(closure or [])
-      self.cells = [self.ctx.program.NewVariable() for _ in f_code.co_cellvars]
+      assert len(f_code.freevars) == len(closure or [])
+      self.cells = [self.ctx.program.NewVariable() for _ in f_code.cellvars]
       self.cells.extend(closure or [])
 
     if callargs:
       for name, value in sorted(callargs.items()):
-        if name in f_code.co_cellvars:
-          i = f_code.co_cellvars.index(name)
+        if name in f_code.cellvars:
+          i = f_code.cellvars.index(name)
           self.cells[i].PasteVariable(value, node)
         else:
           self.ctx.attribute_handler.set_attribute(node, f_locals, name, value)
@@ -328,8 +328,8 @@ class Frame(utils.ContextWeakrefMixin):
     self.class_closure_var = None
     if func and isinstance(func.data, abstract.InterpreterFunction):
       closure_name = abstract.BuildClass.CLOSURE_NAME
-      if func.data.is_class_builder and closure_name in f_code.co_cellvars:
-        i = f_code.co_cellvars.index(closure_name)
+      if func.data.is_class_builder and closure_name in f_code.cellvars:
+        i = f_code.cellvars.index(closure_name)
         self.class_closure_var = self.cells[i]
     self.func = func
     self.substs = substs
@@ -337,14 +337,14 @@ class Frame(utils.ContextWeakrefMixin):
     self.skip_in_tracebacks = False
 
     # Set the module name (used in logging)
-    if f_code.co_filename:
-      self.module_name = module_utils.path_to_module_name(f_code.co_filename)
+    if f_code.filename:
+      self.module_name = module_utils.path_to_module_name(f_code.filename)
     else:
       self.module_name = ""
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
-        id(self), self.f_code.co_filename, self.f_lineno
+        id(self), self.f_code.filename, self.f_lineno
     )
 
   def copy_free_vars(self, n):
@@ -359,7 +359,7 @@ class Frame(utils.ContextWeakrefMixin):
     for store in (self.f_locals, self.f_globals, self.f_builtins):
       if store is not None and target_name in store.members:
         return store.members[target_name]
-    i = (self.f_code.co_cellvars + self.f_code.co_freevars).index(target_name)
+    i = self.f_code.get_cell_index(target_name)
     return self.cells[i]
 
 

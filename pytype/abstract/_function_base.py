@@ -4,7 +4,7 @@ import contextlib
 import inspect
 import itertools
 import logging
-from typing import Type
+from typing import Optional, Type
 
 from pytype.abstract import _base
 from pytype.abstract import _classes
@@ -56,7 +56,7 @@ class Function(_instance_base.SimpleValue):
     if not f:
       # Should not happen but does in some contrived test cases.
       return None
-    for name, v in zip(f.f_code.co_freevars, f.cells):
+    for name, v in zip(f.f_code.freevars, f.cells):
       if v == var:
         return name
     return None
@@ -107,6 +107,9 @@ class Function(_instance_base.SimpleValue):
   def set_function_defaults(self, node, defaults_var):
     raise NotImplementedError(self.__class__.__name__)
 
+  def update_signature_scope(self, cls):
+    return
+
 
 class NativeFunction(Function):
   """An abstract value representing a native function.
@@ -123,7 +126,7 @@ class NativeFunction(Function):
     self.bound_class = lambda callself, underlying: self
 
   def argcount(self, _):
-    return self.func.func_code.co_argcount
+    return self.func.func_code.argcount
 
   def call(self, node, func, args, alias_map=None):
     sig = None
@@ -186,7 +189,7 @@ class NativeFunction(Function):
 
   def get_positional_names(self):
     code = self.func.func_code
-    return list(code.co_varnames[:code.co_argcount])
+    return list(code.varnames[:code.argcount])
 
   def property_get(self, callself, is_class=False):
     return self
@@ -237,6 +240,13 @@ class BoundFunction(_base.BaseValue):
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
       if self.replace_self_annot:
+        replace_self_annot = True
+      else:
+        # If a function is recursively calling itself and has set the `self`
+        # annotation for the previous call, we want to clear it for this one.
+        replace_self_annot = (isinstance(self.underlying, SignedFunction) and
+                              self.underlying.has_self_annot)
+      if replace_self_annot:
         context = self.underlying.set_self_annot(self.replace_self_annot)
       else:
         context = contextlib.nullcontext()
@@ -415,20 +425,27 @@ class SignedFunction(Function):
     # annotating `self` in `__init__` is otherwise illegal.
     self._has_self_annot = False
 
+  @property
+  def has_self_annot(self):
+    return self._has_self_annot
+
   @contextlib.contextmanager
-  def set_self_annot(self, annot_class):
+  def set_self_annot(self, annot_class: Optional[_base.BaseValue]):
     """Set the annotation for `self` in a class."""
     self_name = self.signature.param_names[0]
     old_self = self.signature.annotations.get(self_name)
     old_has_self_annot = self._has_self_annot
-    self.signature.annotations[self_name] = annot_class
-    self._has_self_annot = True
+    if annot_class:
+      self.signature.annotations[self_name] = annot_class
+    elif old_self:
+      del self.signature.annotations[self_name]
+    self._has_self_annot = bool(annot_class)
     try:
       yield
     finally:
       if old_self:
         self.signature.annotations[self_name] = old_self
-      else:
+      elif annot_class:
         del self.signature.annotations[self_name]
       self._has_self_annot = old_has_self_annot
 
@@ -626,6 +643,11 @@ class SignedFunction(Function):
     # Optimization: return a generator to avoid iterating over the mutations an
     # extra time.
     return generator
+
+  def update_signature_scope(self, cls):
+    self.signature.excluded_types.update(
+        [t.name for t in cls.template])
+    self.signature.add_scope(cls.full_name)
 
 
 class SimpleFunction(SignedFunction):

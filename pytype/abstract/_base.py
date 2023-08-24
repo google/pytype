@@ -370,12 +370,9 @@ class BaseValue(utils.ContextWeakrefMixin):
         not self.signature.param_names):
       # no 'self' to replace
       return False
-    if _isinstance(self, "InterpreterFunction"):
-      # always replace for user-defined methods
-      return True
     # SimpleFunctions are methods we construct internally for generated classes
     # like namedtuples.
-    if not _isinstance(self, "SimpleFunction"):
+    if not _isinstance(self, ("InterpreterFunction", "SimpleFunction")):
       return False
     # We don't want to clobber our own generic annotations.
     return (

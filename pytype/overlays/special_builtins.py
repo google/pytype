@@ -416,12 +416,12 @@ class Super(BuiltinClass):
       cls_var = None
       # If we are in a list comprehension we want the enclosing frame.
       index = -1
-      while self.ctx.vm.frames[index].f_code.co_name == "<listcomp>":
+      while self.ctx.vm.frames[index].f_code.name == "<listcomp>":
         index -= 1
       frame = self.ctx.vm.frames[index]
-      for i, free_var in enumerate(frame.f_code.co_freevars):
+      for i, free_var in enumerate(frame.f_code.freevars):
         if free_var == abstract.BuildClass.CLOSURE_NAME:
-          cls_var = frame.cells[len(frame.f_code.co_cellvars) + i]
+          cls_var = frame.cells[len(frame.f_code.cellvars) + i]
           break
       if not (cls_var and cls_var.bindings):
         self.ctx.errorlog.invalid_super_call(
@@ -658,6 +658,13 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     result = self.ctx.program.NewVariable([prop], fdel.bindings, node)
     return node, result
 
+  def update_signature_scope(self, cls):
+    for fvar in (self.fget, self.fset, self.fdel):
+      if fvar:
+        for f in fvar.data:
+          if isinstance(f, abstract.Function):
+            f.update_signature_scope(cls)
+
 
 def _check_method_decorator_arg(fn_var, name, ctx):
   """Check that @classmethod or @staticmethod are applied to a function."""
@@ -727,6 +734,11 @@ class ClassMethodInstance(abstract.Function, mixin.HasSlots):
   def func_slot(self, node, obj, objtype):
     results = [ClassMethodCallable(objtype, b.data) for b in self.func.bindings]
     return node, self.ctx.program.NewVariable(results, [], node)
+
+  def update_signature_scope(self, cls):
+    for f in self.func.data:
+      if isinstance(f, abstract.Function):
+        f.update_signature_scope(cls)
 
 
 class ClassMethod(BuiltinClass):

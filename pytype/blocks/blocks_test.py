@@ -85,7 +85,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE, 0,
     ], name="yield")
     ordered_code = self._order_code(co)
-    self.assertEqual(ordered_code.co_name, "yield")
+    self.assertEqual(ordered_code.name, "yield")
     b0, b1 = ordered_code.order
     self.assertCountEqual(b0.outgoing, [b1])
     self.assertCountEqual(b1.incoming, [b0])
@@ -116,7 +116,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE, 0,
     ], name="triangle")
     ordered_code = self._order_code(co)
-    self.assertEqual(ordered_code.co_name, "triangle")
+    self.assertEqual(ordered_code.name, "triangle")
     b0, b1, b2 = ordered_code.order
     self.assertCountEqual(b0.incoming, [])
     self.assertCountEqual(b0.outgoing, [b1, b2])
@@ -157,7 +157,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE, 0,
     ], name="diamond")
     ordered_code = self._order_code(co)
-    self.assertEqual(ordered_code.co_name, "diamond")
+    self.assertEqual(ordered_code.name, "diamond")
     b0, b1, b2 = ordered_code.order
     self.assertCountEqual(b0.incoming, [])
     self.assertCountEqual(b0.outgoing, [b1, b2])
@@ -177,7 +177,7 @@ class OrderingTest(BaseBlocksTest):
         o.RETURN_VALUE, 0,  # dead.
     ], name="raise")
     ordered_code = self._order_code(co)
-    self.assertEqual(ordered_code.co_name, "raise")
+    self.assertEqual(ordered_code.name, "raise")
     b0, b1 = ordered_code.order
     self.assertEqual(len(b0.code), 2)
     self.assertCountEqual(b0.incoming, [])

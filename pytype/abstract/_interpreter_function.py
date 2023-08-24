@@ -117,9 +117,9 @@ class InterpreterFunction(_function_base.SignedFunction):
     overloads = ctx.vm.frame.overloads[name]
     key = (name, code,
            _hash_all_dicts(
-               (f_globals.members, set(code.co_names)),
+               (f_globals.members, set(code.names)),
                (f_locals.members,
-                set(f_locals.members) - set(code.co_varnames)), ({
+                set(f_locals.members) - set(code.varnames)), ({
                     key: ctx.program.NewVariable([value], [], ctx.root_node)
                     for key, value in annotations.items()
                 }, None), (dict(
@@ -141,9 +141,9 @@ class InterpreterFunction(_function_base.SignedFunction):
 
   def __init__(self, name, def_opcode, code, f_locals, f_globals, defaults,
                kw_defaults, closure, annotations, overloads, ctx):
-    log.debug("Creating InterpreterFunction %r for %r", name, code.co_name)
+    log.debug("Creating InterpreterFunction %r for %r", name, code.name)
     self.bound_class = _function_base.BoundInterpreterFunction
-    self.doc = code.co_consts[0] if code.co_consts else None
+    self.doc = code.consts[0] if code.consts else None
     self.def_opcode = def_opcode
     self.code = code
     self.f_globals = f_globals
@@ -159,14 +159,12 @@ class InterpreterFunction(_function_base.SignedFunction):
     self._active_overloads = overloads
     self.has_overloads = bool(overloads)
     self.is_overload = False  # will be set by typing_overlay.Overload.call
-    self.posonlyarg_count = max(self.code.co_posonlyargcount, 0)
-    self.nonstararg_count = self.code.co_argcount
-    if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
-      self.nonstararg_count += self.code.co_kwonlyargcount
+    self.posonlyarg_count = self.code.posonlyargcount
+    self.nonstararg_count = self.code.argcount + self.code.kwonlyargcount
     signature = self._build_signature(name, annotations)
     super().__init__(signature, ctx)
     self._check_signature()
-    self._update_signature_scope()
+    self._update_signature_scope_from_closure()
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
     self.is_class_builder = False  # Will be set by BuildClass.
@@ -213,21 +211,20 @@ class InterpreterFunction(_function_base.SignedFunction):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
-    kwonly = set(self.code.co_varnames[
-        self.code.co_argcount:self.nonstararg_count])
+    kwonly = set(self.code.varnames[self.code.argcount:self.nonstararg_count])
     arg_pos = self.nonstararg_count
     if self.has_varargs():
-      vararg_name = self.code.co_varnames[arg_pos]
+      vararg_name = self.code.varnames[arg_pos]
       arg_pos += 1
     if self.has_kwargs():
-      kwarg_name = self.code.co_varnames[arg_pos]
+      kwarg_name = self.code.varnames[arg_pos]
       arg_pos += 1
     defaults = dict(zip(
         self.get_positional_names()[-len(self.defaults):], self.defaults))
     defaults.update(self.kw_defaults)
     return function.Signature(
         name,
-        tuple(self.code.co_varnames[:self.code.co_argcount]),
+        tuple(self.code.varnames[:self.code.argcount]),
         self.posonlyarg_count,
         vararg_name,
         tuple(kwonly),
@@ -235,7 +232,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         defaults,
         annotations)
 
-  def _update_signature_scope(self):
+  def _update_signature_scope_from_closure(self):
     # If this is a nested function in an instance method and the nested function
     # accesses 'self', then the first variable in the closure is 'self'. We use
     # 'self' to update the scopes of any type parameters in the nested method's
@@ -249,13 +246,13 @@ class InterpreterFunction(_function_base.SignedFunction):
     except abstract_utils.ConversionError:
       return
     if isinstance(instance.cls, _classes.InterpreterClass):
-      instance.cls.update_signature_scope(self)
+      self.update_signature_scope(instance.cls)
 
   def get_first_opcode(self):
     return self.code.first_opcode
 
   def argcount(self, _):
-    return self.code.co_argcount
+    return self.code.argcount
 
   def match_args(self, node, args, alias_map=None, match_all_views=False):
     if not self.signature.has_param_annotations:
@@ -368,9 +365,9 @@ class InterpreterFunction(_function_base.SignedFunction):
          callargs["self"].data != self.ctx.callself_stack[-1].data)):
       callkey = _hash_all_dicts(
           (callargs, None),
-          (frame.f_globals.members, set(self.code.co_names)),
+          (frame.f_globals.members, set(self.code.names)),
           (frame.f_locals.members,
-           set(frame.f_locals.members) - set(self.code.co_varnames)))
+           set(frame.f_locals.members) - set(self.code.varnames)))
     else:
       # Make the callkey the number of times this function has been called so
       # that no call has the same key as a previous one.
@@ -629,18 +626,18 @@ class InterpreterFunction(_function_base.SignedFunction):
     return all_combinations
 
   def get_positional_names(self):
-    return list(self.code.co_varnames[:self.code.co_argcount])
+    return list(self.code.varnames[:self.code.argcount])
 
   def get_nondefault_params(self):
     for i in range(self.nonstararg_count):
-      yield self.code.co_varnames[i], i >= self.code.co_argcount
+      yield self.code.varnames[i], i >= self.code.argcount
 
   def get_kwonly_names(self):
     return list(
-        self.code.co_varnames[self.code.co_argcount:self.nonstararg_count])
+        self.code.varnames[self.code.argcount:self.nonstararg_count])
 
   def get_parameters(self):
-    default_pos = self.code.co_argcount - len(self.defaults)
+    default_pos = self.code.argcount - len(self.defaults)
     i = 0
     for name in self.get_positional_names():
       if i < self.posonlyarg_count:
@@ -685,4 +682,4 @@ class InterpreterFunction(_function_base.SignedFunction):
       return False
     if [op.name for op in ops] != ["LOAD_CONST", "RETURN_VALUE"]:
       return False
-    return self.code.co_consts[ops[0].arg] is None
+    return self.code.consts[ops[0].arg] is None

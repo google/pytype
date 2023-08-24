@@ -147,11 +147,6 @@ def list_strip_prefix(l, prefix):
   return l[len(prefix):] if list_startswith(l, prefix) else l
 
 
-def _arg_names(f):
-  """Return the argument names of a function."""
-  return f.__code__.co_varnames[:f.__code__.co_argcount]
-
-
 def invert_dict(d):
   """Invert a dictionary.
 

@@ -1101,6 +1101,17 @@ class GenericFeatureTest(test_base.BaseTest):
         errors, {"e1": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'",
                  "e2": r"TypeVar\(s\) 'T2' not in scope for class 'Foo'"})
 
+  def test_typevar_in_classmethod(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class X(Generic[T]):
+        @classmethod
+        def f(cls, x: T) -> T:
+          y: T = x
+          return y
+    """)
+
   def test_reingest_generic(self):
     foo = self.Infer("""
       from typing import Generic, TypeVar
@@ -1244,6 +1255,82 @@ class GenericFeatureTest(test_base.BaseTest):
         class B(foo.A[str]):
           def f(self, x: str):
             pass
+      """)
+
+  def test_classmethod(self):
+    self.Check("""
+      from typing import Generic, Type, TypeVar
+      T = TypeVar('T')
+      class X(Generic[T]):
+        @classmethod
+        def f(cls) -> Type[T]:
+          return __any_object__
+      class Y(X[str]):
+        pass
+      assert_type(Y.f(), Type[str])
+      assert_type(Y().f(), Type[str])
+    """)
+
+  def test_classmethod_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class X(Generic[T]):
+        @classmethod
+        def f(cls) -> type[T]: ...
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Type
+        class Y(foo.X[str]):
+          pass
+        assert_type(Y.f(), Type[str])
+        assert_type(Y().f(), Type[str])
+      """)
+
+  def test_classmethod_reingest(self):
+    with self.DepTree([("foo.py", """
+      from typing import Generic, Type, TypeVar
+      T = TypeVar('T')
+      class X(Generic[T]):
+        @classmethod
+        def f(cls) -> Type[T]:
+          return __any_object__
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Type
+        class Y(foo.X[str]):
+          pass
+        assert_type(Y.f(), Type[str])
+        assert_type(Y().f(), Type[str])
+      """)
+
+  def test_annotated_cls(self):
+    self.Check("""
+      from typing import Generic, Type, TypeVar
+      T = TypeVar('T', int, str)
+      class A(Generic[T]):
+        @classmethod
+        def f(cls: Type['A[T]'], x: T) -> T:
+          return x
+      def f() -> str:
+        return A.f('')
+    """)
+
+  @test_base.skip("TODO(b/297390011): Support this.")
+  def test_annotated_cls_pyi(self):
+    with self.DepTree([("foo.pyi", """
+       from typing import Generic, Type, TypeVar
+       T = TypeVar('T', int, str)
+       class A(Generic[T]):
+         @classmethod
+         def f(cls: Type[A[T]], x: T) -> T: ...
+     """)]):
+      self.Check("""
+         import foo
+         def f() -> str:
+           return foo.A.f('')
       """)
 
 

@@ -603,6 +603,25 @@ class ParserTest(parser_test_base.ParserTestBase):
       x: Callable[..., []]
     """, 2, "Unexpected list parameter")
 
+  def test_typing_import_in_cls_parameter(self):
+    self.check("""
+      from typing import Generic, List, Type, TypeVar
+
+      T = TypeVar('T')
+
+      class A(Generic[T]):
+          @classmethod
+          def f(cls: Type[A[List[int]]]) -> None: ...
+    """, """
+      from typing import Generic, TypeVar
+
+      T = TypeVar('T')
+
+      class A(Generic[T]):
+          @classmethod
+          def f(cls) -> None: ...
+    """)
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 

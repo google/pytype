@@ -355,7 +355,7 @@ class TypeVarTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, TypeVar
-      a = ...  # type: Dict[str, type]
+      a = ...  # type: Dict[str, nothing]
       T = TypeVar('T')
     """)
 

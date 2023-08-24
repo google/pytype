@@ -127,28 +127,13 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   def get_first_opcode(self):
     return self._first_opcode
 
-  def update_signature_scope(self, method):
-    method.signature.excluded_types.update(
-        [t.name for t in self.template])
-    method.signature.add_scope(self.full_name)
-
   def update_method_type_params(self):
     if self.template:
       # For function type parameters check
       for mbr in self.members.values():
-        prop_updated = False
         for m in reversed(mbr.data):
-          if _isinstance(m, "SignedFunction"):
-            self.update_signature_scope(m)
-          elif not prop_updated and m.__class__.__name__ == "PropertyInstance":
-            # We generate a new variable every time we add a property slot, so
-            # take the last one (which contains bindings for all defined slots).
-            prop_updated = True
-            for slot in (m.fget, m.fset, m.fdel):
-              if slot:
-                for d in slot.data:
-                  if _isinstance(d, "SignedFunction"):
-                    self.update_signature_scope(d)
+          if _isinstance(m, "Function"):
+            m.update_signature_scope(self)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""
