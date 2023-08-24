@@ -564,26 +564,31 @@ class PrintVisitor(base_visitor.Visitor):
     assert self.in_parameter
     self.in_parameter = False
 
+  def _DecrementParameterImports(self, name):
+    if "[" not in name:
+      return
+    param = name.split("[", 1)[-1]
+    for k in self._imports.typing_members:
+      if re.search(r"\b%s\b" % k, param):
+        self._imports.decrement_typing_count(k)
+
   def VisitParameter(self, node):
     """Convert a function parameter to a string."""
     suffix = " = ..." if node.optional else ""
+    # For parameterized class, for example: ClsName[T, V].
+    # Its name is `ClsName` before `[`.
+    class_name = self.class_names[-1].split("[")[0] if self.class_names else ""
     if isinstance(self.old_node.type, pytd.AnythingType):
       # Abbreviated form. "Any" is the default.
       self._imports.decrement_typing_count("Any")
       return node.name + suffix
-    # For parameterized class, for example: ClsName[T, V].
-    # Its name is `ClsName` before `[`.
-    elif node.name == "self" and self.class_names and (
-        self.class_names[-1].split("[")[0] == node.type.split("[")[0]):
-      if "[" in node.type:
-        elided = node.type.split("[", 1)[-1]
-        for k in self._imports.typing_members:
-          if re.search(r"(^|\W)%s($|\W)" % k, elided):
-            self._imports.decrement_typing_count(k)
+    elif node.name == "self" and class_name == node.type.split("[")[0]:
+      self._DecrementParameterImports(node.type)
       return node.name + suffix
-    elif node.name == "cls" and self.class_names and (
-        node.type == f"Type[{self.class_names[-1]}]"):
+    elif (node.name == "cls" and
+          re.fullmatch(rf"Type\[{class_name}(\[.+\])?\]", node.type)):
       self._imports.decrement_typing_count("Type")
+      self._DecrementParameterImports(node.type[5:-1])
       return node.name + suffix
     elif node.type is None:
       logging.warning("node.type is None")
