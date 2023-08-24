@@ -22,10 +22,10 @@ class OrderedCode:
     consts: Tuple of code constants
     names: Tuple of names of global variables used in the code
     varnames: Tuple of names of args and local variables
+    argcount: Number of args
+    posonlyargcount: Number of posonly args
+    kwonlyargcount: Number of kwonly args
     co_consts: Alias for consts
-    co_argcount: Same as loadmarshal.CodeType.
-    co_posonlyargcount: Same as loadmarshal.CodeType.
-    co_kwonlyargcount: Same as loadmarshal.CodeType.
     co_flags: Same as loadmarshal.CodeType.
     co_firstlineno: Same as loadmarshal.CodeType.
     co_freevars: Same as loadmarshal.CodeType.
@@ -50,7 +50,8 @@ class OrderedCode:
     assert hasattr(code, "co_code")
     exclude = {
         "co_code", "co_filename", "co_name", "co_consts", "co_names",
-        "co_varnames", "co_nlocals", "co_stacksize", "co_lnotab"
+        "co_varnames", "co_nlocals", "co_stacksize", "co_lnotab",
+        "co_argcount", "co_posonlyargcount", "co_kwonlyargcount",
     }
     self.__dict__.update({name: value for name, value in code.__dict__.items()
                           if name.startswith("co_") and name not in exclude})
@@ -59,6 +60,9 @@ class OrderedCode:
     self.consts = code.co_consts
     self.names = code.co_names
     self.varnames = code.co_varnames
+    self.argcount = code.co_argcount
+    self.posonlyargcount = max(code.co_posonlyargcount, 0)
+    self.kwonlyargcount = max(code.co_kwonlyargcount, 0)
     self.order = order
     # Keep the original co_code around temporarily to work around an issue in
     # the block collection algorithm (b/191517403)
@@ -110,7 +114,8 @@ class OrderedCode:
     return bool(self.co_flags & loadmarshal.CodeType.CO_NEWLOCALS)
 
   def get_arg_count(self):
-    count = self.co_argcount + max(self.co_kwonlyargcount, 0)
+    """Total number of arg names including '*args' and '**kwargs'."""
+    count = self.argcount + self.kwonlyargcount
     if self.has_varargs():
       count += 1
     if self.has_varkeywords():

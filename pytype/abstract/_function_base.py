@@ -123,7 +123,7 @@ class NativeFunction(Function):
     self.bound_class = lambda callself, underlying: self
 
   def argcount(self, _):
-    return self.func.func_code.co_argcount
+    return self.func.func_code.argcount
 
   def call(self, node, func, args, alias_map=None):
     sig = None
@@ -186,7 +186,7 @@ class NativeFunction(Function):
 
   def get_positional_names(self):
     code = self.func.func_code
-    return list(code.varnames[:code.co_argcount])
+    return list(code.varnames[:code.argcount])
 
   def property_get(self, callself, is_class=False):
     return self

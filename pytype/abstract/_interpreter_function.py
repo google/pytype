@@ -159,10 +159,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     self._active_overloads = overloads
     self.has_overloads = bool(overloads)
     self.is_overload = False  # will be set by typing_overlay.Overload.call
-    self.posonlyarg_count = max(self.code.co_posonlyargcount, 0)
-    self.nonstararg_count = self.code.co_argcount
-    if self.code.co_kwonlyargcount >= 0:  # This is usually -1 or 0 (fast call)
-      self.nonstararg_count += self.code.co_kwonlyargcount
+    self.posonlyarg_count = self.code.posonlyargcount
+    self.nonstararg_count = self.code.argcount + self.code.kwonlyargcount
     signature = self._build_signature(name, annotations)
     super().__init__(signature, ctx)
     self._check_signature()
@@ -213,8 +211,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     """Build a function.Signature object representing this function."""
     vararg_name = None
     kwarg_name = None
-    kwonly = set(self.code.varnames[
-        self.code.co_argcount:self.nonstararg_count])
+    kwonly = set(self.code.varnames[self.code.argcount:self.nonstararg_count])
     arg_pos = self.nonstararg_count
     if self.has_varargs():
       vararg_name = self.code.varnames[arg_pos]
@@ -227,7 +224,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     defaults.update(self.kw_defaults)
     return function.Signature(
         name,
-        tuple(self.code.varnames[:self.code.co_argcount]),
+        tuple(self.code.varnames[:self.code.argcount]),
         self.posonlyarg_count,
         vararg_name,
         tuple(kwonly),
@@ -255,7 +252,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     return self.code.first_opcode
 
   def argcount(self, _):
-    return self.code.co_argcount
+    return self.code.argcount
 
   def match_args(self, node, args, alias_map=None, match_all_views=False):
     if not self.signature.has_param_annotations:
@@ -629,18 +626,18 @@ class InterpreterFunction(_function_base.SignedFunction):
     return all_combinations
 
   def get_positional_names(self):
-    return list(self.code.varnames[:self.code.co_argcount])
+    return list(self.code.varnames[:self.code.argcount])
 
   def get_nondefault_params(self):
     for i in range(self.nonstararg_count):
-      yield self.code.varnames[i], i >= self.code.co_argcount
+      yield self.code.varnames[i], i >= self.code.argcount
 
   def get_kwonly_names(self):
     return list(
-        self.code.varnames[self.code.co_argcount:self.nonstararg_count])
+        self.code.varnames[self.code.argcount:self.nonstararg_count])
 
   def get_parameters(self):
-    default_pos = self.code.co_argcount - len(self.defaults)
+    default_pos = self.code.argcount - len(self.defaults)
     i = 0
     for name in self.get_positional_names():
       if i < self.posonlyarg_count:
