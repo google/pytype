@@ -3076,11 +3076,10 @@ class VirtualMachine:
     if not (isinstance(cls, abstract.Class) and cls.is_test_class()):
       return state
     if f.name == "assertIsNotNone":
-      if len(args) == 1:
-        pred = lambda v: not self._data_is_none(v)
-        state = self._narrow(state, var, pred)
+      pred = lambda v: not self._data_is_none(v)
+      state = self._narrow(state, var, pred)
     elif f.name == "assertIsInstance":
-      if len(args) == 2:
+      if len(args) >= 2:
         class_spec = args[1].data[0]
         state = self._set_type_from_assert_isinstance(state, var, class_spec)
     return state
