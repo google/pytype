@@ -156,18 +156,20 @@ class CallTracer(vm.VirtualMachine):
       assert isinstance(fn, abstract.InterpreterFunction)
       opcode = fn.def_opcode
       f_globals = fn.f_globals
+    log.info("Analyzing function: %r", fn.name)
+    state = frame_state.FrameState.init(node, self.ctx)
     frame = frame_state.SimpleFrame(
         node=node, opcode=opcode, f_globals=f_globals)
     # We only want this frame to show up in errors if it's at the top of the
     # stack (i.e. we haven't started analysing the actual function yet)
     frame.skip_in_tracebacks = True
     self.push_frame(frame)
-    log.info("Analyzing function: %r", fn.name)
-    state = frame_state.FrameState.init(node, self.ctx)
-    state, ret = self.call_function_with_state(
-        state, val.AssignToNewVariable(node), args, kwargs, starargs,
-        starstarargs)
-    self.pop_frame(frame)
+    try:
+      state, ret = self.call_function_with_state(
+          state, val.AssignToNewVariable(node), args, kwargs, starargs,
+          starstarargs)
+    finally:
+      self.pop_frame(frame)
     return state.node, ret
 
   def _maybe_fix_classmethod_cls_arg(self, node, cls, func, args):
