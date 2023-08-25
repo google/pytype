@@ -205,11 +205,23 @@ class BinaryPredicate(ObjectPredicate):
     raise NotImplementedError(self.__class__.__name__)
 
   def run(self, node, args, result):
-    for left in abstract_utils.expand_type_parameter_instances(
-        args.posargs[0].bindings):
-      for right in abstract_utils.expand_type_parameter_instances(
-          args.posargs[1].bindings):
+    for right in abstract_utils.expand_type_parameter_instances(
+        args.posargs[1].bindings):
+      one_result = []
+      for left in abstract_utils.expand_type_parameter_instances(
+          args.posargs[0].bindings):
         node, pyval = self._call_predicate(node, left, right)
+        one_result.append((left, node, pyval))
+      unsolvable_matches = any(
+          isinstance(left.data, abstract.Unsolvable) and pyval in (None, True)
+          for (left, _, pyval) in one_result)
+      for left, node, pyval in one_result:
+        if (unsolvable_matches and
+            not isinstance(left.data, abstract.Unsolvable) and pyval is None):
+          # If unsolvable (i.e., Any) satisfies the predicate, then we should
+          # ignore non-Any values. See test_splits2:AmbiguousIsInstanceTest for
+          # the reasoning.
+          pyval = False
         result.AddBinding(self.ctx.convert.bool_values[pyval],
                           source_set=(left, right), where=node)
 

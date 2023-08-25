@@ -3,6 +3,58 @@
 from pytype.tests import test_base
 
 
+class AmbiguousIsInstanceTest(test_base.BaseTest):
+  """Tests that isinstance() checks work with Any.
+
+  Concretely, the following should not produce any errors:
+
+  X: Any
+  def f(x: X | str):
+    if isinstance(x, X):
+      # This attribute access should not be an error, even though we don't know
+      # that x isn't a str.
+      return x.y
+
+  This is needed to support gradual typing:
+  - Typed and untyped code should be able to interoperate seamlessly. X may
+    originate from a untyped or partially typed library.
+  - Converting code from more to less typed should never introduce new type
+    errors. In this example, no error would be reported if X were a class with a
+    'y' attribute, so downgrading X to Any should not introduce errors.
+  """
+
+  def test_basic(self):
+    self.Check("""
+      from typing import Any, Union
+      X: Any
+      def f(x: Union[X, str]):
+        if isinstance(x, X):
+          return x.y
+    """)
+
+  def test_multiple_classes(self):
+    self.CheckWithErrors("""
+      from typing import Any, Union
+      X: Any
+      def f(x: Union[X, str]):
+        if isinstance(x, (X, str)):
+          print(x.y)  # attribute-error
+        if isinstance(x, (X, int)):
+          print(x.real)  # ok
+    """)
+
+  def test_inversion(self):
+    self.CheckWithErrors("""
+      from typing import Any, Union
+      X: Any
+      def f(x: Union[X, str]):
+        if not isinstance(x, X):
+          print(x.y)  # attribute-error
+        else:
+          print(x.z)  # ok
+    """)
+
+
 class SplitTest(test_base.BaseTest):
   """Tests for if-splitting."""
 
