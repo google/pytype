@@ -118,6 +118,7 @@ class CodeType:
       cellvars: List[str],
       python_version: Tuple[int, int],
       localsplusnames: Tuple[str, ...] = (),  # new in 3.11
+      localspluskinds: Tuple[int, ...] = (),  # new in 3.11
   ):
     self.co_argcount = argcount
     self.co_posonlyargcount = posonlyargcount
@@ -136,6 +137,7 @@ class CodeType:
     self.co_freevars = freevars
     self.co_cellvars = cellvars
     self.co_localsplusnames = localsplusnames
+    self.co_localspluskinds = localspluskinds
     self.python_version = python_version  # This field is not in types.CodeType.
 
   def __repr__(self):
@@ -480,6 +482,7 @@ def loads_311(s: bytes, python_version: Tuple[int, int]):
         cellvars=code.co_cellvars,
         python_version=python_version,
         localsplusnames=code.co_localsplusnames,
+        localspluskinds=code.co_localspluskinds,
     )
   return transform(umarshal.loads(s))
 

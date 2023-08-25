@@ -13,6 +13,22 @@ STORE_OPCODES = (
     opcodes.STORE_GLOBAL)
 
 
+class _Locals311:
+  """Unpack the code.co_localsplus* attributes in 3.11+."""
+
+  # Cell kinds (cpython/Include/internal/pycore_code.h)
+  CO_FAST_LOCAL = 0x20
+  CO_FAST_CELL = 0x40
+  CO_FAST_FREE = 0x80
+
+  def __init__(self, code):
+    table = list(zip(code.co_localsplusnames, code.co_localspluskinds))
+    filter_names = lambda k: tuple(name for name, kind in table if kind & k)
+    self.co_varnames = filter_names(self.CO_FAST_LOCAL)
+    self.co_cellvars = filter_names(self.CO_FAST_CELL)
+    self.co_freevars = filter_names(self.CO_FAST_FREE)
+
+
 class OrderedCode:
   """Code object which knows about instruction ordering.
 
@@ -29,7 +45,6 @@ class OrderedCode:
     firstlineno: The first line number of the code
     freevars: Tuple of free variable names
     cellvars: Tuple of cell variable names
-    co_localsplusnames: Python 3.11+ combined variable name list
     order: A list of bytecode blocks, ordered ancestors-first
       (See cfg_utils.py:order_nodes)
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
@@ -44,22 +59,22 @@ class OrderedCode:
     self.filename = code.co_filename
     self.consts = code.co_consts
     self.names = code.co_names
-    self.varnames = code.co_varnames
     self.argcount = code.co_argcount
     self.posonlyargcount = max(code.co_posonlyargcount, 0)
     self.kwonlyargcount = max(code.co_kwonlyargcount, 0)
-    self.cellvars = code.co_cellvars
-    self.freevars = code.co_freevars
     self.firstlineno = code.co_firstlineno
+    if code.python_version >= (3, 11):
+      localsplus = _Locals311(code)
+      self.varnames = localsplus.co_varnames
+      self.cellvars = localsplus.co_cellvars
+      self.freevars = localsplus.co_freevars
+    else:
+      self.varnames = code.co_varnames
+      self.cellvars = code.co_cellvars
+      self.freevars = code.co_freevars
     self._combined_vars = self.cellvars + self.freevars
     # Retain the co_ name since this refers directly to CodeType internals.
     self._co_flags = code.co_flags
-    # TODO(b/297225222): Leave this as a co_* name until we come up with a
-    # unified representation that works for 3.10 and 3.11
-    if code.python_version >= (3, 11):
-      self.co_localsplusnames = code.co_localsplusnames
-    else:
-      self.co_localsplusnames = None
     self.order = order
     # Keep the original co_code around temporarily to work around an issue in
     # the block collection algorithm (b/191517403)
@@ -120,14 +135,11 @@ class OrderedCode:
     return count
 
   def get_closure_var_name(self, arg):
-    if self.python_version >= (3, 11):
-      name = self.co_localsplusnames[arg]
+    n_cellvars = len(self.cellvars)
+    if arg < n_cellvars:
+      name = self.cellvars[arg]
     else:
-      n_cellvars = len(self.cellvars)
-      if arg < n_cellvars:
-        name = self.cellvars[arg]
-      else:
-        name = self.freevars[arg - n_cellvars]
+      name = self.freevars[arg - n_cellvars]
     return name
 
   def get_cell_index(self, name):
