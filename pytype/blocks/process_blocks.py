@@ -47,7 +47,7 @@ class CollectAnnotationTargetsVisitor:
     # [LOAD_CONST <code>, LOAD_CONST <function name>, MAKE_FUNCTION]
     # In 3.11, the LOAD_CONST <function name> opcode is removed.
     offset = 1 if code.python_version >= (3, 11) else 2
-    co_code = code.original_co_code
+    co_code = list(code.code_iter)
     for i, op in enumerate(co_code):
       if isinstance(op, opcodes.MAKE_FUNCTION):
         code_op = co_code[i - offset]
@@ -56,7 +56,7 @@ class CollectAnnotationTargetsVisitor:
         if not _is_function_def(fn_code):
           continue
         # First line of code in body.
-        end_line = min(op.line for op in fn_code.original_co_code)
+        end_line = min(op.line for op in fn_code.code_iter)
         self.make_function_ops[op.line] = (end_line, op)
       elif (isinstance(op, blocks.STORE_OPCODES) and
             op.line not in self.make_function_ops):
@@ -76,7 +76,7 @@ class FunctionDefVisitor:
     self.annots = param_annotations
 
   def visit_code(self, code):
-    for op in code.original_co_code:
+    for op in code.code_iter:
       if isinstance(op, opcodes.MAKE_FUNCTION):
         if op.line in self.annots:
           op.metadata.signature_annotations = self.annots[op.line]

@@ -48,7 +48,6 @@ class OrderedCode:
     order: A list of bytecode blocks, ordered ancestors-first
       (See cfg_utils.py:order_nodes)
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
-    original_co_code: The original code object's co_code.
     first_opcode: The first opcode in code_iter.
     python_version: The Python version this bytecode is from.
   """
@@ -76,9 +75,6 @@ class OrderedCode:
     # Retain the co_ name since this refers directly to CodeType internals.
     self._co_flags = code.co_flags
     self.order = order
-    # Keep the original co_code around temporarily to work around an issue in
-    # the block collection algorithm (b/191517403)
-    self.original_co_code = bytecode
     self.python_version = code.python_version
     for insn in bytecode:
       insn.code = self
