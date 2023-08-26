@@ -1080,6 +1080,16 @@ class LiteralTest(test_base.BaseTest):
       A(x=[['oops']])  # wrong-arg-types
     """)
 
+  def test_lots_of_literals(self):
+    ty = self.Infer("""
+      from typing import Literal
+      X: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 'A']
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+      X: Literal[1, 2, 3, 4, 5, 6, 7, 8, 9, 'A']
+    """)
+
 
 class TypeAliasTest(test_base.BaseTest):
   """Tests for typing.TypeAlias."""
