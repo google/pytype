@@ -622,6 +622,23 @@ class ParserTest(parser_test_base.ParserTestBase):
           def f(cls) -> None: ...
     """)
 
+  def test_property_import_shared_name(self):
+    self.check("""
+      from foo import bar
+
+      class X:
+          @property
+          def bar(self) -> int: ...
+          @bar.setter
+          def bar(self, x: int) -> None: ...
+    """, """
+      from foo import bar
+      from typing import Annotated
+
+      class X:
+          bar: Annotated[int, 'property']
+    """)
+
 
 class QuotedTypeTest(parser_test_base.ParserTestBase):
 
