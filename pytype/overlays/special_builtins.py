@@ -215,7 +215,7 @@ class BinaryPredicate(ObjectPredicate):
       unsolvable_matches = any(
           isinstance(left.data, abstract.Unsolvable) and pyval in (None, True)
           for (left, _, pyval) in one_result)
-      for left, node, pyval in one_result:
+      for left, result_node, pyval in one_result:
         if (unsolvable_matches and
             not isinstance(left.data, abstract.Unsolvable) and pyval is None):
           # If unsolvable (i.e., Any) satisfies the predicate, then we should
@@ -223,7 +223,7 @@ class BinaryPredicate(ObjectPredicate):
           # the reasoning.
           pyval = False
         result.AddBinding(self.ctx.convert.bool_values[pyval],
-                          source_set=(left, right), where=node)
+                          source_set=(left, right), where=result_node)
 
 
 class HasAttr(BinaryPredicate):
