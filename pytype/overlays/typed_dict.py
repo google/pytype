@@ -333,3 +333,30 @@ class TypedDict(abstract.Dict):
       # them once fully set.
       return
     super().merge_instance_type_parameter(node, name, value)
+
+
+def _is_typeddict(val: abstract.BaseValue):
+  if isinstance(val, abstract.Union):
+    return all(_is_typeddict(v) for v in val.options)
+  return isinstance(val, TypedDictClass)
+
+
+class IsTypedDict(abstract.PyTDFunction):
+  """Implementation of typing.is_typeddict."""
+
+  def call(self, node, func, args, alias_map=None):
+    self.match_args(node, args)
+    if args.posargs:
+      tp = args.posargs[0]
+    elif "tp" in args.namedargs:
+      tp = args.namedargs["tp"]
+    else:
+      return node, self.ctx.convert.bool_values[None].to_variable(node)
+    is_typeddict = [_is_typeddict(v) for v in tp.data]
+    if all(is_typeddict):
+      boolval = True
+    elif not any(is_typeddict):
+      boolval = False
+    else:
+      boolval = None
+    return node, self.ctx.convert.bool_values[boolval].to_variable(node)
