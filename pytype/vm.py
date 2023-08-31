@@ -2199,16 +2199,22 @@ class VirtualMachine:
           continue
         else:
           self.ctx.errorlog.bad_unpacking(self.frames, len(tup), count)
-      nontuple_seq.PasteBinding(b, state.node)
+      if b.IsVisible(state.node):
+        nontuple_seq.PasteBinding(b, state.node)
     if nontuple_seq.bindings:
       state, itr = self._get_iter(state, nontuple_seq)
-      state, result = self._call(state, itr, "__next__", ())
+      state, itr_result = self._call(state, itr, "__next__", ())
+    elif not options:
+      itr_result = self.ctx.new_unsolvable(state.node)
+    else:
+      itr_result = None
+    if itr_result:
       # For a non-literal iterable, next() should always return the same type T,
       # so we can iterate `count` times in both UNPACK_SEQUENCE and UNPACK_EX,
       # and assign the slurp variable type List[T].
-      option = [result for _ in range(count)]
+      option = [itr_result for _ in range(count)]
       if has_slurp:
-        slurp = self.ctx.convert.build_list_of_type(state.node, result)
+        slurp = self.ctx.convert.build_list_of_type(state.node, itr_result)
         option = option[:n_before] + [slurp] + option[n_before:]
       options.append(option)
     values = tuple(

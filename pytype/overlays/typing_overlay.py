@@ -621,7 +621,6 @@ def get_re_builder(member):
 
 # name -> lowest_supported_version
 _unsupported_members = {
-    "is_typeddict": (3, 10),
     "LiteralString": (3, 11),
     "Never": (3, 11),
     "Required": (3, 11),
@@ -664,6 +663,8 @@ typing_overlay = {
     "cast": (overlay.add_name("cast", Cast.make), None),
     "dataclass_transform": (overlay.add_name(
         "dataclass_transform", DataclassTransformBuilder.make), (3, 11)),
+    "is_typeddict": (
+        overlay.add_name("is_typeddict", typed_dict.IsTypedDict.make), (3, 10)),
     "overload": (overlay.add_name("overload", Overload.make), None),
     **{k: (overlay.add_name(k, overlay_utils.not_supported_yet), v)
        for k, v in _unsupported_members.items()}

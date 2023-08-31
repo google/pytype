@@ -6,7 +6,6 @@ import logging
 import sys
 
 from pytype import config
-from pytype.blocks import blocks
 from pytype.directors import annotations
 
 # directors.parser uses the stdlib ast library, which is much faster than
@@ -169,41 +168,6 @@ class _BlockRanges:
     self._start_to_end[start] = new_end
     del self._end_to_start[old_end]
     self._end_to_start[new_end] = start
-
-
-def _collect_bytecode(ordered_code):
-  bytecode_blocks = []
-  stack = [ordered_code]
-  while stack:
-    code = stack.pop()
-    bytecode_blocks.append(code.original_co_code)
-    for const in code.consts:
-      if isinstance(const, blocks.OrderedCode):
-        stack.append(const)
-  return bytecode_blocks
-
-
-def _is_function_call(opcode_name):
-  return opcode_name.startswith("CALL_") or opcode_name in {
-      "BINARY_SUBSCR",
-      "COMPARE_OP",
-      "FOR_ITER",
-  }
-
-
-def _is_load_attribute_op(opcode_name):
-  """Checks whether the opcode loads an attribute."""
-  return (opcode_name.startswith("GET_") or
-          opcode_name.startswith("UNPACK_") or
-          opcode_name in {
-              "LOAD_ATTR",
-              "LOAD_METHOD",
-              "SETUP_WITH",
-          })
-
-
-def _is_return_op(opcode_name):
-  return opcode_name.startswith("YIELD_") or opcode_name == "RETURN_VALUE"
 
 
 class Director:

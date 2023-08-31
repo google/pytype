@@ -160,6 +160,10 @@ def generate_init(
 # Method signature merging
 
 
+def _alias_name(alias: Optional[pytd.Alias]):
+  return alias and alias.name
+
+
 def _type_name(alias: Optional[pytd.Alias]):
   return alias and alias.type.name
 
@@ -219,7 +223,7 @@ class _DecoratedFunction:
 
   def __post_init__(self):
     self.prop_names = _property_decorators(self.name)
-    decorator_name = _type_name(self.decorator)
+    decorator_name = _alias_name(self.decorator)
     if decorator_name in self.prop_names:
       self.properties = _Properties()
       self.add_property(decorator_name, self.sigs[0])
@@ -240,7 +244,7 @@ class _DecoratedFunction:
     # Check for decorator consistency. Note that we currently limit pyi files to
     # one decorator per function, other than @abstractmethod and @coroutine
     # which are special-cased.
-    fn_name = _type_name(fn.decorator)
+    fn_name = _alias_name(fn.decorator)
     if (self.properties and fn_name in self.prop_names):
       # For properties, we can have at most one of setter, getter and deleter,
       # and no other overloads
@@ -249,7 +253,7 @@ class _DecoratedFunction:
       # setter is not, so we skip the @abstractmethod and  @coroutine
       # consistency checks.
       return
-    elif _type_name(self.decorator) == fn_name:
+    elif _type_name(self.decorator) == _type_name(fn.decorator):
       # For other decorators, we can have multiple overloads but they need to
       # all have the same decorator
       self.sigs.append(fn.signature)

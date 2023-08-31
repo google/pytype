@@ -300,14 +300,9 @@ class Frame(utils.ContextWeakrefMixin):
     # always the parameters), but won't otherwise.
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
     self.closure = closure
-    if self.f_code.python_version >= (3, 11):
-      self.cells = [
-          self.ctx.program.NewVariable() for _ in f_code.co_localsplusnames
-      ]
-    else:
-      assert len(f_code.freevars) == len(closure or [])
-      self.cells = [self.ctx.program.NewVariable() for _ in f_code.cellvars]
-      self.cells.extend(closure or [])
+    assert len(f_code.freevars) == len(closure or [])
+    self.cells = [self.ctx.program.NewVariable() for _ in f_code.cellvars]
+    self.cells.extend(closure or [])
 
     if callargs:
       for name, value in sorted(callargs.items()):

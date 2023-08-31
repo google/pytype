@@ -52,6 +52,17 @@ def _is_package(filename):
     return base == "__init__"
   return False
 
+_ModuleNameType = _AliasNameType = _NameType = str
+
+
+def _merge_aliases(
+    aliases: Dict[_ModuleNameType, Dict[_AliasNameType, _NameType]]
+) -> Dict[_AliasNameType, _NameType]:
+  all_aliases = {}
+  for mod_aliases in aliases.values():
+    all_aliases.update(mod_aliases)
+  return all_aliases
+
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class ResolvedModule:
@@ -257,12 +268,18 @@ class _Resolver:
     return mod_ast
 
   def resolve_external_types(self, mod_ast, module_map, aliases, *, mod_name):
+    """Resolves external types in mod_ast."""
     name = mod_name or mod_ast.name
     try:
       mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
-          module_map, self_name=name, module_alias_map=aliases))
-    except KeyError as e:
-      raise BadDependencyError(str(e), name) from e
+          module_map, self_name=name, module_alias_map=aliases[name]))
+    except KeyError:
+      all_aliases = _merge_aliases(aliases)
+      try:
+        mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
+            module_map, self_name=name, module_alias_map=all_aliases))
+      except KeyError as e:
+        raise BadDependencyError(str(e), name) from e
     return mod_ast
 
   def resolve_module_alias(self, name, *, lookup_ast=None,
@@ -506,7 +523,7 @@ class Loader:
     if mod_name and mod_name not in module_map:
       module_map[mod_name] = lookup_ast
     mod_ast = self._resolver.resolve_external_types(
-        mod_ast, module_map, self._aliases[mod_name], mod_name=mod_name)
+        mod_ast, module_map, self._aliases, mod_name=mod_name)
     return mod_ast
 
   def _resolve_classtype_pointers(self, mod_ast, *, lookup_ast=None):
@@ -581,6 +598,15 @@ class Loader:
     self._import_name_cache[module_name] = mod_ast
     return mod_ast
 
+  def _resolve_module(self, name, aliases):
+    if name in aliases:
+      name = aliases[name]
+    while name not in self._modules:
+      if "." not in name:
+        break
+      name, _ = name.rsplit(".", 1)
+    return name
+
   def finish_and_verify_ast(self, mod_ast):
     """Verify the ast, doing external type resolution first if necessary."""
     if mod_ast:
@@ -593,12 +619,10 @@ class Loader:
         # transitive imports, but lookups are expensive.
         dependencies = self._resolver.collect_dependencies(mod_ast)
         for k in dependencies:
-          if k in self._aliases[mod_ast.name]:
-            k = self._aliases[mod_ast.name][k]
-          while k not in self._modules:
-            if "." not in k:
-              break
-            k, _ = k.rsplit(".", 1)
+          k = self._resolve_module(k, self._aliases[mod_ast.name])
+          if k not in self._modules:
+            all_aliases = _merge_aliases(self._aliases)
+            k = self._resolve_module(k, all_aliases)
           if k not in self._modules:
             assert mod_ast
             raise (

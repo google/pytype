@@ -1,6 +1,7 @@
 """Tests for typing.TypedDict."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class TypedDictTest(test_base.BaseTest):
@@ -689,6 +690,217 @@ class PyiTypedDictTest(test_base.BaseTest):
         foo.Child2(x='')  # missing-parameter
         foo.Child2(y=0)
       """)
+
+
+class IsTypedDictTest(test_base.BaseTest):
+  """Tests for typing.is_typeddict.
+
+  These tests define variables based on the result of is_typeddict, allowing us
+  to verify the result based on whether the corresponding variable appears in
+  the pytd.
+  """
+
+  def test_basic(self):
+    ty = self.Infer("""
+      from typing_extensions import is_typeddict, TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      if is_typeddict(X):
+        X_is_typeddict = True
+      else:
+        X_is_not_typeddict = True
+      if is_typeddict(Y):
+        Y_is_typeddict = True
+      else:
+        Y_is_not_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      X_is_typeddict: bool
+      Y_is_not_typeddict: bool
+    """)
+
+  def test_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+    """)]):
+      ty = self.Infer("""
+        import foo
+        from typing_extensions import is_typeddict
+        if is_typeddict(foo.X):
+          X_is_typeddict = True
+        else:
+          X_is_not_typeddict = True
+        if is_typeddict(foo.Y):
+          Y_is_typeddict = True
+        else:
+          Y_is_not_typeddict = True
+      """)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        X_is_typeddict: bool
+        Y_is_not_typeddict: bool
+      """)
+
+  @test_utils.skipBeforePy((3, 10), "is_typeddict is new in Python 3.10.")
+  def test_from_typing(self):
+    ty = self.Infer("""
+      from typing import is_typeddict, TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      if is_typeddict(X):
+        X_is_typeddict = True
+      else:
+        X_is_not_typeddict = True
+      if is_typeddict(Y):
+        Y_is_typeddict = True
+      else:
+        Y_is_not_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      X_is_typeddict: bool
+      Y_is_not_typeddict: bool
+    """)
+
+  def test_union(self):
+    ty = self.Infer("""
+      from typing import Union
+      from typing_extensions import is_typeddict, TypedDict
+      class X(TypedDict):
+        x: str
+      class Y(TypedDict):
+        y: int
+      class Z:
+        z: bytes
+      if is_typeddict(Union[X, Y]):
+        XY_is_typeddict = True
+      else:
+        XY_is_not_typeddict = True
+      if is_typeddict(Union[X, Z]):
+        XZ_is_typeddict = True
+      else:
+        XZ_is_not_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y(TypedDict):
+        y: int
+      class Z:
+        z: bytes
+      XY_is_typeddict: bool
+      XZ_is_not_typeddict: bool
+    """)
+
+  def test_split(self):
+    ty = self.Infer("""
+      from typing_extensions import is_typeddict, TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      cls = X if __random__ else Y
+      if is_typeddict(cls):
+        XY_may_be_typeddict = True
+      else:
+        XY_may_not_be_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      cls: type[X | Y]
+      XY_may_be_typeddict: bool
+      XY_may_not_be_typeddict: bool
+    """)
+
+  def test_namedarg(self):
+    ty = self.Infer("""
+      from typing_extensions import is_typeddict, TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      if is_typeddict(tp=X):
+        X_is_typeddict = True
+      else:
+        X_is_not_typeddict = True
+      if is_typeddict(tp=Y):
+        Y_is_typeddict = True
+      else:
+        Y_is_not_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y:
+        y: int
+      X_is_typeddict: bool
+      Y_is_not_typeddict: bool
+    """)
+
+  def test_ambiguous(self):
+    ty = self.Infer("""
+      from typing_extensions import is_typeddict
+      if is_typeddict(*__any_object__, **__any_object__):
+        ambiguous_may_be_typeddict = True
+      else:
+        ambiguous_may_not_be_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      ambiguous_may_be_typeddict: bool
+      ambiguous_may_not_be_typeddict: bool
+    """)
+
+  def test_subclass(self):
+    ty = self.Infer("""
+      from typing_extensions import is_typeddict, TypedDict
+      class X(TypedDict):
+        x: str
+      class Y(X):
+        pass
+      if is_typeddict(Y):
+        Y_is_typeddict = True
+      else:
+        Y_is_not_typeddict = True
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypedDict
+      class X(TypedDict):
+        x: str
+      class Y(TypedDict):
+        x: str
+      Y_is_typeddict: bool
+    """)
+
+  def test_bad_args(self):
+    self.CheckWithErrors("""
+      from typing_extensions import is_typeddict
+      is_typeddict()  # missing-parameter
+      is_typeddict(__any_object__, __any_object__)  # wrong-arg-count
+      is_typeddict(toilet_paper=True)  # wrong-keyword-args
+    """)
 
 
 if __name__ == "__main__":

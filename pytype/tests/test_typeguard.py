@@ -423,6 +423,19 @@ class TypeGuardTest(test_base.BaseTest):
         return f(getattr)
     """)
 
+  def test_unpack_tuple(self):
+    self.Check("""
+      from typing import Any, TypeGuard
+      def f(x) -> TypeGuard[tuple[str, int]]:
+        return True
+      x: Any
+      if f(x):
+        assert_type(x, tuple[str, int])
+        e1, e2 = x
+        assert_type(e1, str)
+        assert_type(e2, int)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

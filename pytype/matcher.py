@@ -1524,7 +1524,14 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     Returns:
       A tuple of the attribute and whether any unbinding occurred.
     """
-    valself_instance = instance or abstract.Instance(cls, self.ctx)
+    if instance:
+      valself_instance = instance
+    else:
+      valself_instance = abstract.Instance(cls, self.ctx)
+      if isinstance(cls, abstract.ParameterizedClass):
+        for param_name, param in cls.formal_type_parameters.items():
+          valself_instance.merge_instance_type_parameter(
+              self._node, param_name, param.instantiate(self._node))
     _, attribute = self.ctx.attribute_handler.get_attribute(
         self._node, cls, name, valself_instance.to_binding(self._node))
     if attribute:
