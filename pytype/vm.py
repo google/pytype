@@ -1118,7 +1118,7 @@ class VirtualMachine:
 
   def _del_name(self, op, state, name, local):
     """Called when a local or global is deleted."""
-    value = abstract.Deleted(self.ctx).to_variable(state.node)
+    value = abstract.Deleted(op.line, self.ctx).to_variable(state.node)
     state = state.forward_cfg_node(f"Del:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -1721,7 +1721,7 @@ class VirtualMachine:
     return state
 
   def byte_DELETE_DEREF(self, state, op):
-    value = abstract.Deleted(self.ctx).to_variable(state.node)
+    value = abstract.Deleted(op.line, self.ctx).to_variable(state.node)
     name = self.frame.f_code.get_closure_var_name(op.arg)
     state = state.forward_cfg_node(f"DelDeref:{name}")
     self.frame.cells[op.arg].PasteVariable(value, state.node)

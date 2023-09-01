@@ -345,15 +345,16 @@ class ClosuresTestPy3(test_base.BaseTest):
     """)
 
   def test_closures_delete_deref(self):
-    self.InferWithErrors("""
+    err = self.CheckWithErrors("""
       def f():
         x = "hello"
         def g():
           nonlocal x  # force x to be stored in a closure cell
           x = 10
         del x
-        return x  # name-error
+        return x  # name-error[e]
     """)
+    self.assertErrorSequences(err, {"e": ["Variable x", "deleted", "line 6"]})
 
   def test_nonlocal(self):
     ty = self.Infer("""
@@ -370,15 +371,16 @@ class ClosuresTestPy3(test_base.BaseTest):
     """)
 
   def test_nonlocal_delete_deref(self):
-    self.InferWithErrors("""
+    err = self.CheckWithErrors("""
       def f():
         x = True
         def g():
           nonlocal x
           del x
         g()
-        return x  # name-error
+        return x  # name-error[e]
     """)
+    self.assertErrorSequences(err, {"e": ["Variable x", "deleted", "line 5"]})
 
   def test_reuse_after_delete_deref(self):
     ty = self.Infer("""

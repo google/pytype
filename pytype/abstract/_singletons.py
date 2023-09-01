@@ -202,8 +202,9 @@ class Empty(Singleton):
 class Deleted(Empty):
   """Assigned to variables that have del called on them."""
 
-  def __init__(self, ctx):
+  def __init__(self, line, ctx):
     super().__init__(ctx)
+    self.line = line
     self.name = "deleted"
 
   def get_special_attribute(self, node, name, valself):
