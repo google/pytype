@@ -813,10 +813,12 @@ def call_inplace_operator(state, iname, x, y, ctx):
 
 
 def check_for_deleted(state, name, var, ctx):
-  if any(isinstance(x, abstract.Deleted) for x in var.Data(state.node)):
-    # Referencing a deleted variable
-    details = f"\nVariable {name} has been used after it has been deleted."
-    ctx.errorlog.name_error(ctx.vm.frames, name, details=details)
+  for x in var.Data(state.node):
+    if isinstance(x, abstract.Deleted):
+      # Referencing a deleted variable
+      details = (f"\nVariable {name} has been used after it has been deleted"
+                 f" (line {x.line}).")
+      ctx.errorlog.name_error(ctx.vm.frames, name, details=details)
 
 
 def load_closure_cell(state, op, check_bindings, ctx):

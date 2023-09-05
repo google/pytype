@@ -1166,7 +1166,7 @@ class AbstractTest(AbstractTestBase):
 
   def test_singleton_subclass(self):
     self.assertIs(abstract.Empty(self._ctx), abstract.Empty(self._ctx))
-    self.assertIsNot(abstract.Deleted(self._ctx), abstract.Empty(self._ctx))
+    self.assertIsNot(abstract.Deleted(1, self._ctx), abstract.Empty(self._ctx))
 
 
 if __name__ == "__main__":
