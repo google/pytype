@@ -101,7 +101,7 @@ def ProductionCodePassWithCtor(obj: WithCtor):
   return obj.Mul100(7)
 
 
-class InstrumentationForTestingTest(absltest.TestCase):
+class InstrumentationForTestingTest(unittest.TestCase):
 
   def testFakeNoCtor(self):
     orig_fake_obj = FakeNoCtor(3)
