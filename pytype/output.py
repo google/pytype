@@ -790,7 +790,13 @@ class Converter(utils.ContextWeakrefMixin):
               return sig.Replace(params=(new_first_param,) + sig.params[1:])
             else:
               return sig
-          signatures = tuple(filter(None, (fix(s) for s in method.signatures)))
+          if (isinstance(value, abstract.InterpreterFunction) and
+              len(value.signature_functions()) > 1):
+            # We should never discard overloads in the source code.
+            signatures = method.signatures
+          else:
+            signatures = tuple(
+                filter(None, (fix(s) for s in method.signatures)))
           if signatures and signatures != method.signatures:
             # Filter out calls made from subclasses unless they are the only
             # ones recorded; when inferring types for ParentClass.__init__, we

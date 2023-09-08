@@ -364,6 +364,31 @@ class OverloadTestPy3(test_base.BaseTest):
         x.g(None)  # wrong-arg-types
       """)
 
+  def test_sometimes_annotate_self(self):
+    ty = self.Infer("""
+      from typing import TypeVar, overload
+      T = TypeVar('T')
+      class C:
+        @overload
+        def f(self: T, x: str) -> T: ...
+        @overload
+        def f(self, x: int) -> int: ...
+        def f(self, x):
+          if isinstance(x, str):
+            return self
+          else:
+            return x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar, overload
+      T = TypeVar('T')
+      class C:
+        @overload
+        def f(self: T, x: str) -> T: ...
+        @overload
+        def f(self, x: int) -> int: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
