@@ -365,6 +365,9 @@ INFRASTRUCTURE_OPTIONS = [
         "--color", action="store", choices=["always", "auto", "never"],
         default="auto",
         help="Choose never to disable color in the shell output."),
+    _Arg(
+        "--no-validate-version", action="store_false", dest="validate_version",
+        default=True, help="Don't validate the Python version."),
 ]
 
 
@@ -673,6 +676,7 @@ class Postprocessor:
     # ("" is a valid entry to denote the current directory)
     self.output_options.pythonpath = pythonpath.split(os.pathsep)
 
+  @uses(["validate_version"])
   def _store_python_version(self, python_version):
     """Configure the python version."""
     if python_version:
@@ -686,7 +690,8 @@ class Postprocessor:
       self.error(
           f"--python_version must be <major>.<minor>: {python_version!r}")
     # Check that we have a version supported by pytype.
-    utils.validate_version(version)
+    if self.output_options.validate_version:
+      utils.validate_version(version)
     self.output_options.python_version = version
 
     try:

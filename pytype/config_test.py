@@ -146,8 +146,9 @@ class PostprocessorTest(unittest.TestCase):
   def test_subset(self):
     python_version = sys.version_info[:2]
     input_options = types.SimpleNamespace(
-        pythonpath=".", python_version=utils.format_version(python_version))
-    self.make({"python_version"}, input_options)
+        pythonpath=".", python_version=utils.format_version(python_version),
+        validate_version=True)
+    self.make({"python_version", "validate_version"}, input_options)
     with self.assertRaises(AttributeError):
       _ = self.output_options.pythonpath  # not processed
     self.assertTupleEqual(self.output_options.python_version, python_version)
@@ -161,8 +162,10 @@ class PostprocessorTest(unittest.TestCase):
     python_version = sys.version_info[:2]
     input_options = types.SimpleNamespace(
         disable="import-error,attribute-error",
-        python_version=utils.format_version(python_version))
-    self.make({"disable", "python_version"}, input_options, set_output=False)
+        python_version=utils.format_version(python_version),
+        validate_version=True)
+    self.make({"disable", "python_version", "validate_version"}, input_options,
+              set_output=False)
     self.assertSequenceEqual(
         input_options.disable, ["import-error", "attribute-error"])
     self.assertTupleEqual(input_options.python_version, python_version)
@@ -203,8 +206,9 @@ class PostprocessorTest(unittest.TestCase):
       self.make({"disable", "enable_only"}, input_options)
 
   def test_python_version_default(self):
-    input_options = types.SimpleNamespace(python_version=None)
-    self.make({"python_version"}, input_options)
+    input_options = types.SimpleNamespace(
+        python_version=None, validate_version=True)
+    self.make({"python_version", "validate_version"}, input_options)
     self.assertEqual(self.output_options.python_version,
                      (sys.version_info.major, sys.version_info.minor))
 
