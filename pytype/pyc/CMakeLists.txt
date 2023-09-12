@@ -7,8 +7,6 @@ py_library(
     ._pyc
     .compile_bytecode
     .compiler
-    .loadmarshal
-    .magic
     .opcodes
 )
 
@@ -32,23 +30,6 @@ py_library(
 
 py_library(
   NAME
-    loadmarshal
-  SRCS
-    loadmarshal.py
-  DEPS
-    pytype.utils
-    third_party.cpython.umarshal
-)
-
-py_library(
-  NAME
-    magic
-  SRCS
-    magic.py
-)
-
-py_library(
-  NAME
     opcodes
   SRCS
     opcodes.py
@@ -61,8 +42,6 @@ py_library(
     pyc.py
   DEPS
     .compiler
-    .loadmarshal
-    .magic
     pytype.utils
 )
 
@@ -77,20 +56,10 @@ py_test(
 
 py_test(
   NAME
-    loadmarshal_test
-  SRCS
-    loadmarshal_test.py
-  DEPS
-    .loadmarshal
-)
-
-py_test(
-  NAME
     opcodes_test
   SRCS
     opcodes_test.py
   DEPS
-    .loadmarshal
     .opcodes
 )
 
@@ -104,15 +73,6 @@ py_test(
     .compiler
     .opcodes
     pytype.tests.test_base
-)
-
-py_test(
-  NAME
-    magic_test
-  SRCS
-    magic_test.py
-  DEPS
-    .magic
 )
 
 py_library(

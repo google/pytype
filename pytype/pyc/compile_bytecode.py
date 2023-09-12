@@ -27,6 +27,7 @@ def _write32(f, w):
 
 def write_pyc(f, codeobject, source_size=0, timestamp=0):
   f.write(MAGIC)
+  f.write(b"\r\n\0\0")
   _write32(f, timestamp)
   _write32(f, source_size)
   f.write(marshal.dumps(codeobject))

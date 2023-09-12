@@ -11,6 +11,8 @@ import sys
 import textwrap
 import tokenize
 
+import pycnite
+
 from pytype import context
 from pytype import file_utils
 from pytype import load_pytd
@@ -18,7 +20,6 @@ from pytype import state as frame_state
 from pytype.file_utils import makedirs
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
-from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 
 import unittest
@@ -227,12 +228,12 @@ class MakeCodeMixin:
 
   def make_code(self, int_array, name="testcode"):
     """Utility method for creating CodeType objects."""
-    return loadmarshal.CodeType(
-        argcount=0, posonlyargcount=0, kwonlyargcount=0, nlocals=2,
-        stacksize=2, flags=0, consts=[None, 1, 2], names=[],
-        varnames=["x", "y"], filename="", name=name, firstlineno=1,
-        lnotab=[], freevars=[], cellvars=[],
-        code=bytes(int_array),
+    return pycnite.types.CodeType38(
+        co_argcount=0, co_posonlyargcount=0, co_kwonlyargcount=0, co_nlocals=2,
+        co_stacksize=2, co_flags=0, co_consts=[None, 1, 2], co_names=[],
+        co_varnames=["x", "y"], co_filename="", co_name=name, co_firstlineno=1,
+        co_lnotab=b"", co_freevars=(), co_cellvars=(),
+        co_code=bytes(int_array),
         python_version=self.python_version)
 
 

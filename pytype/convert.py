@@ -5,6 +5,8 @@ import logging
 import types
 from typing import Any, Dict
 
+import pycnite
+
 from pytype import datatypes
 from pytype import module_utils
 from pytype import utils
@@ -20,7 +22,6 @@ from pytype.overlays import named_tuple
 from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
 from pytype.overlays import typing_overlay
-from pytype.pyc import loadmarshal
 from pytype.pyi import evaluator
 from pytype.pyi import metadata
 from pytype.pytd import mro
@@ -733,7 +734,9 @@ class Converter(utils.ContextWeakrefMixin):
             self.ctx.root_node, abstract_utils.T,
             self.constant_to_var(element, subst, self.ctx.root_node))
       return instance
-    elif isinstance(pyval, (loadmarshal.CodeType, blocks.OrderedCode)):
+    elif isinstance(pyval, (pycnite.types.CodeTypeBase, blocks.OrderedCode)):
+      # TODO(mdemello): We should never be dealing with a raw pycnite CodeType
+      # at this point.
       return abstract.ConcreteValue(pyval,
                                     self.primitive_classes[types.CodeType],
                                     self.ctx)

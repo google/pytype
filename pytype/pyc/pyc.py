@@ -1,38 +1,15 @@
 """Functions for generating, reading and parsing pyc."""
 
 import copy
-import io
+
+from pycnite import pyc
 
 from pytype import utils
 from pytype.pyc import compiler
-from pytype.pyc import loadmarshal
-from pytype.pyc import magic
 
 
 # Reexport since we have exposed this error publicly as pyc.CompileError
 CompileError = compiler.CompileError
-
-
-def parse_pyc_stream(fi):
-  """Parse pyc data from a file.
-
-  Args:
-    fi: A file-like object.
-
-  Returns:
-    An instance of loadmarshal.CodeType.
-
-  Raises:
-    IOError: If we can't read the file or the file is malformed.
-  """
-  magic_word = fi.read(2)
-  python_version = magic.magic_word_to_version(magic_word)
-  crlf = fi.read(2)  # cr, lf
-  if crlf != b"\r\n":
-    raise OSError("Malformed pyc file")
-  fi.read(4)  # timestamp
-  fi.read(4)  # raw size
-  return loadmarshal.loads(fi.read(), python_version)
 
 
 def parse_pyc_string(data):
@@ -42,9 +19,9 @@ def parse_pyc_string(data):
     data: pyc data
 
   Returns:
-    An instance of loadmarshal.CodeType.
+    An instance of pycnite.types.CodeTypeBase.
   """
-  return parse_pyc_stream(io.BytesIO(data))
+  return pyc.loads(data)
 
 
 class AdjustFilename:
@@ -69,7 +46,7 @@ def compile_src(src, filename, python_version, python_exe, mode="exec"):
     mode: "exec", "eval" or "single".
 
   Returns:
-    An instance of loadmarshal.CodeType.
+    An instance of pycnite.types.CodeTypeBase.
 
   Raises:
     UsageError: If python_exe and python_version are mismatched.
@@ -96,7 +73,7 @@ def visit(c, visitor):
   if hasattr(c, "co_consts"):
     # This is a CodeType object (because it has co_consts). Visit co_consts,
     # and then the CodeType object itself.
-    k = (c, visitor)
+    k = (id(c), visitor)
     if k not in _VISIT_CACHE:
       new_consts = []
       changed = False
