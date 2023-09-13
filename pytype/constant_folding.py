@@ -380,8 +380,8 @@ class _FoldConstants:
         if id(op) in stack.consts:
           t = stack.consts[id(op)]
           arg = t
-          pretty_arg = t
-          o = opcodes.LOAD_FOLDED_CONST(op.index, op.line, arg, pretty_arg)
+          argval = t
+          o = opcodes.LOAD_FOLDED_CONST(op.index, op.line, arg, argval)
           o.next = op.next
           o.target = op.target
           o.block_target = op.block_target

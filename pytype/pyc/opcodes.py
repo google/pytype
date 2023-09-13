@@ -148,17 +148,23 @@ class Opcode:
 
 
 class OpcodeWithArg(Opcode):
-  """An opcode with one argument."""
+  """An opcode with one argument.
 
-  __slots__ = ("arg", "pretty_arg")
+  Attributes:
+    arg: The integer opcode argument read in from the bytecode
+    argval: A decoded version of arg, performing the same steps the cpython
+      interpreter does to convert arg into a python value.
+  """
 
-  def __init__(self, index, line, arg, pretty_arg):
+  __slots__ = ("arg", "argval")
+
+  def __init__(self, index, line, arg, argval):
     super().__init__(index, line)
     self.arg = arg
-    self.pretty_arg = pretty_arg
+    self.argval = argval
 
   def __str__(self):
-    out = f"{self.basic_str()} {self.pretty_arg}"
+    out = f"{self.basic_str()} {self.argval}"
     if self.annotation:
       return f"{out}  # type: {self.annotation}"
     else:
@@ -1013,17 +1019,10 @@ def dis(code) -> List[Opcode]:
   # in "next" and "prev" pointers
   for i, op in enumerate(ret):
     if op.has_known_jump():
-      # op.pretty_arg is the postprocessed version of op.arg
-      op.arg = op.pretty_arg = offset_to_index[op.pretty_arg]
+      # op.argval is the postprocessed version of op.arg
+      op.arg = op.argval = offset_to_index[op.argval]
       op.target = ret[op.arg]
     get_code = lambda j: ret[j] if 0 <= j < len(ret) else None
     op.prev = get_code(i - 1)
     op.next = get_code(i +(-1 if _is_backward_jump(op.__class__) else 1))
-    if isinstance(op, OpcodeWithArg):
-      # pretty_arg is initialised from pycnite's op.argval, which is not
-      # necessarily a string.
-      # TODO(mdemello): We should store both argval and pretty_arg; we currently
-      # use the latter strictly for debugging purposes but preserving argval
-      # could clean up some code in vm.py
-      op.pretty_arg = str(op.pretty_arg)
   return ret

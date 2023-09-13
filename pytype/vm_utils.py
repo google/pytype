@@ -843,7 +843,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
   # inner function before the variable is defined, raise a name error here.
   # See test_closures.ClosuresTest.test_undefined_var
   if check_bindings and not cell.bindings:
-    ctx.errorlog.name_error(ctx.vm.frames, op.pretty_arg)
+    ctx.errorlog.name_error(ctx.vm.frames, op.argval)
     cell = ctx.new_unsolvable(state.node)
   visible_bindings = cell.Filter(state.node, strict=False)
   if len(visible_bindings) != len(cell.bindings):

@@ -19,8 +19,7 @@ def _is_function_def(fn_code):
   # Class definitions generate a constructor function. We can distinguish them
   # by checking for code blocks that start with LOAD_NAME __name__
   op = fn_code.first_opcode
-  if (isinstance(op, opcodes.LOAD_NAME) and
-      op.pretty_arg == "__name__"):
+  if isinstance(op, opcodes.LOAD_NAME) and op.argval == "__name__":
     return False
 
   return True
@@ -107,7 +106,7 @@ def merge_annotations(code, annotations, param_annotations):
   for line, op in visitor.store_ops.items():
     if line in annotations:
       annot = annotations[line]
-      if annot.name in (None, op.pretty_arg):
+      if annot.name in (None, op.argval):
         op.annotation = annot.annotation
 
   # Apply type comments to the MAKE_FUNCTION opcodes
