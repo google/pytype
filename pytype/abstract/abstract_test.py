@@ -1169,5 +1169,54 @@ class AbstractTest(AbstractTestBase):
     self.assertIsNot(abstract.Deleted(1, self._ctx), abstract.Empty(self._ctx))
 
 
+class SignatureTest(AbstractTestBase):
+  """Tests for abstract.function.Signature."""
+
+  def test_prepend_to_paramspec(self):
+    paramspec = abstract.ParamSpec("P", self._ctx)
+    # Callable[P, Any]
+    in_sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        posonly_count=0,
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"x": paramspec},
+    )
+    # Callable[Concatenate[int, P], Any]
+    out_sig = in_sig.prepend_parameter("_", self._ctx.convert.int_type)
+    self.assertEqual(out_sig.param_names, ("x",))
+    x_type = out_sig.annotations["x"]
+    self.assertIsInstance(x_type, abstract.Concatenate)
+    self.assertEqual(x_type.args, [self._ctx.convert.int_type])
+    self.assertEqual(x_type.paramspec, paramspec)
+
+  def test_prepend_to_concatenate(self):
+    paramspec = abstract.ParamSpec("P", self._ctx)
+    concatenate = abstract.Concatenate(
+        [self._ctx.convert.str_type, paramspec], self._ctx)
+    # Callable[Concatenate[str, P], Any]
+    in_sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        posonly_count=0,
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"x": concatenate},
+    )
+    # Callable[Concatenate[int, str, P], Any]
+    out_sig = in_sig.prepend_parameter("_", self._ctx.convert.int_type)
+    self.assertEqual(out_sig.param_names, ("x",))
+    x_type = out_sig.annotations["x"]
+    self.assertIsInstance(x_type, abstract.Concatenate)
+    self.assertEqual(
+        x_type.args, [self._ctx.convert.int_type, self._ctx.convert.str_type])
+    self.assertEqual(x_type.paramspec, paramspec)
+
+
 if __name__ == "__main__":
   unittest.main()
