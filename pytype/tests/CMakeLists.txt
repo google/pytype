@@ -33,7 +33,6 @@ py_library(
     pytype.libvm
     pytype.utils
     pytype.platform_utils.platform_utils
-    pytype.pyc.pyc
 )
 
 py_test(

@@ -11,7 +11,8 @@ import sys
 import textwrap
 import tokenize
 
-import pycnite
+import pycnite.mapping
+import pycnite.types
 
 from pytype import context
 from pytype import file_utils
@@ -20,7 +21,6 @@ from pytype import state as frame_state
 from pytype.file_utils import makedirs
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
-from pytype.pyc import opcodes
 
 import unittest
 
@@ -391,8 +391,8 @@ class Py310Opcodes:
   version, so we fix the test version.
   """
 
-  for k, v in opcodes.python_3_10_mapping.items():
-    locals()[v.__name__] = k
+  for k, v in pycnite.mapping.PYTHON_3_10_MAPPING.items():
+    locals()[v] = k
   del k, v  # remove from the class namespace  # pylint: disable=undefined-loop-variable
 
 
