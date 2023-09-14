@@ -131,14 +131,6 @@ class OrderedCode:
       count += 1
     return count
 
-  def get_closure_var_name(self, arg):
-    n_cellvars = len(self.cellvars)
-    if arg < n_cellvars:
-      name = self.cellvars[arg]
-    else:
-      name = self.freevars[arg - n_cellvars]
-    return name
-
   def get_cell_index(self, name):
     """Get the index of name in the code frame's cell list."""
     return self._combined_vars.index(name)

@@ -860,7 +860,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
     # Update the cell because the DELETE_DEREF implementation works on
     # variable identity.
     ctx.vm.frame.cells[op.arg] = cell = new_cell
-  name = ctx.vm.frame.f_code.get_closure_var_name(op.arg)
+  name = op.argval
   ctx.vm.set_var_name(cell, name)
   check_for_deleted(state, name, cell, ctx)
   ctx.vm.trace_opcode(op, name, cell)
