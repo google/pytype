@@ -20,6 +20,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+from pycnite import marshal as pyc_marshal
+
 from pytype import block_environment
 from pytype import compare
 from pytype import constant_folding
@@ -39,7 +41,6 @@ from pytype.directors import directors
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import overlay_dict
 from pytype.overlays import overlay as overlay_lib
-from pytype.pyc import loadmarshal
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pyi import parser
@@ -2601,9 +2602,10 @@ class VirtualMachine:
     pos_defaults = ()
     kw_defaults = {}
     annot = {}
-    if arg & loadmarshal.MAKE_FUNCTION_HAS_FREE_VARS:
+    Flags = pyc_marshal.Flags
+    if arg & Flags.MAKE_FUNCTION_HAS_FREE_VARS:
       state, free_vars = state.pop()
-    if arg & loadmarshal.MAKE_FUNCTION_HAS_ANNOTATIONS:
+    if arg & Flags.MAKE_FUNCTION_HAS_ANNOTATIONS:
       state, packed_annot = state.pop()
       # In Python 3.10+, packed_annot is a tuple of variables:
       # (param_name1, param_type1, param_name2, param_type2, ...)
@@ -2622,11 +2624,11 @@ class VirtualMachine:
       for k in annot:
         annot[k] = self.ctx.annotation_utils.convert_function_type_annotation(
             k, annot[k])
-    if arg & loadmarshal.MAKE_FUNCTION_HAS_KW_DEFAULTS:
+    if arg & Flags.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       state, packed_kw_def = state.pop()
       kw_defaults = abstract_utils.get_atomic_python_constant(
           packed_kw_def, dict)
-    if arg & loadmarshal.MAKE_FUNCTION_HAS_POS_DEFAULTS:
+    if arg & Flags.MAKE_FUNCTION_HAS_POS_DEFAULTS:
       state, packed_pos_def = state.pop()
       pos_defaults = abstract_utils.get_atomic_python_constant(
           packed_pos_def, tuple)
@@ -2690,7 +2692,7 @@ class VirtualMachine:
 
   def byte_CALL_FUNCTION_EX(self, state, op):
     """Call a function."""
-    if op.arg & loadmarshal.CALL_FUNCTION_EX_HAS_KWARGS:
+    if op.arg & pyc_marshal.Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       state, starstarargs = state.pop()
     else:
       starstarargs = None
@@ -2928,7 +2930,7 @@ class VirtualMachine:
     return state.push(res)
 
   def byte_FORMAT_VALUE(self, state, op):
-    if op.arg & loadmarshal.FVS_MASK:
+    if op.arg & pyc_marshal.Flags.FVS_MASK:
       state = state.pop_and_discard()
     # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
     # push a new string onto the stack.

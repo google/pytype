@@ -1,4 +1,4 @@
-from pytype.pyc import loadmarshal
+import pycnite.types
 from pytype.pyc import opcodes
 import unittest
 
@@ -9,27 +9,26 @@ class _TestBase(unittest.TestCase):
   def dis(self, data, **kwargs):
     """Return the opcodes from disassembling a code sequence."""
     defaults = {
-        'code': data,
-        'argcount': 0,
-        'posonlyargcount': 0,
-        'kwonlyargcount': 0,
-        'nlocals': 0,
-        'stacksize': 0,
-        'flags': 0,
-        'consts': [],
-        'names': [],
-        'varnames': [],
-        'filename': '',
-        'name': '',
-        'firstlineno': 0,
-        'lnotab': [],
-        'freevars': [],
-        'cellvars': [],
+        'co_code': data,
+        'co_argcount': 0,
+        'co_posonlyargcount': 0,
+        'co_kwonlyargcount': 0,
+        'co_nlocals': 0,
+        'co_stacksize': 0,
+        'co_flags': 0,
+        'co_consts': [],
+        'co_names': [],
+        'co_varnames': [],
+        'co_filename': '',
+        'co_name': '',
+        'co_firstlineno': 0,
+        'co_lnotab': [],
+        'co_freevars': [],
+        'co_cellvars': [],
         'python_version': self.python_version,
-        'localsplusnames': [],
     }
     defaults.update(kwargs)
-    code = loadmarshal.CodeType(**defaults)
+    code = pycnite.types.CodeType38(**defaults)
     return opcodes.dis(code)
 
   def assertSimple(self, opcode, name):
@@ -52,8 +51,8 @@ class _TestBase(unittest.TestCase):
 
   def assertLineNumbers(self, code, co_lnotab, expected):
     """Assert that the opcodes have the expected line numbers."""
-    ops = self.dis(code, lnotab=bytes(co_lnotab),
-                   firstlineno=1)
+    ops = self.dis(code, co_lnotab=bytes(co_lnotab),
+                   co_firstlineno=1)
     self.assertEqual(len(ops), len(expected))
     for o, e in zip(ops, expected):
       self.assertEqual(e, o.line)

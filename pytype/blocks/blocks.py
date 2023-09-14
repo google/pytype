@@ -1,6 +1,7 @@
 """Functions for computing the execution order of bytecode."""
 
-from pytype.pyc import loadmarshal
+from pycnite import marshal as pyc_marshal
+
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.typegraph import cfg_utils
@@ -98,28 +99,28 @@ class OrderedCode:
     return any(isinstance(op, op_type) for op in self.code_iter)
 
   def has_iterable_coroutine(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_ITERABLE_COROUTINE)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_ITERABLE_COROUTINE)
 
   def set_iterable_coroutine(self):
-    self._co_flags |= loadmarshal.CodeType.CO_ITERABLE_COROUTINE
+    self._co_flags |= pyc_marshal.Flags.CO_ITERABLE_COROUTINE
 
   def has_coroutine(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_COROUTINE)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_COROUTINE)
 
   def has_generator(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_GENERATOR)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_GENERATOR)
 
   def has_async_generator(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_ASYNC_GENERATOR)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_ASYNC_GENERATOR)
 
   def has_varargs(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_VARARGS)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_VARARGS)
 
   def has_varkeywords(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_VARKEYWORDS)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_VARKEYWORDS)
 
   def has_newlocals(self):
-    return bool(self._co_flags & loadmarshal.CodeType.CO_NEWLOCALS)
+    return bool(self._co_flags & pyc_marshal.Flags.CO_NEWLOCALS)
 
   def get_arg_count(self):
     """Total number of arg names including '*args' and '**kwargs'."""
@@ -341,7 +342,7 @@ def order_code(code):
   splits it into ordered basic blocks.
 
   Args:
-    code: A loadmarshal.CodeType object.
+    code: A pycnite.types.CodeTypeBase object.
 
   Returns:
     A CodeBlocks instance.

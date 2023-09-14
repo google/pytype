@@ -200,7 +200,6 @@ py_library(
     .datatypes
     pytype.abstract.abstract
     pytype.blocks.blocks
-    pytype.directors.directors
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pyi.parser

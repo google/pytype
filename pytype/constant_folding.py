@@ -27,7 +27,8 @@ from typing import Any, Dict, FrozenSet, Tuple
 
 import attrs
 
-from pytype.pyc import loadmarshal
+from pycnite import marshal as pyc_marshal
+
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 
@@ -288,7 +289,7 @@ class _FoldConstants:
         elif isinstance(op, opcodes.BUILD_SET):
           stack.build(set, op)
         elif isinstance(op, opcodes.FORMAT_VALUE):
-          if op.arg & loadmarshal.FVS_MASK:
+          if op.arg & pyc_marshal.Flags.FVS_MASK:
             stack.build_str(2, op)
           else:
             stack.build_str(1, op)
