@@ -35,6 +35,12 @@ class TestPy311(test_base.BaseTest):
       assert_type(x, int)
     """)
 
+  def test_global_call(self):
+    self.Check("""
+      def f(x):
+        return any(x)
+    """)
+
   def test_context_manager(self):
     self.Check("""
       class A:

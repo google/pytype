@@ -1674,6 +1674,10 @@ class VirtualMachine:
 
   def byte_LOAD_GLOBAL(self, state, op):
     """Load a global variable, or fall back to trying to load a builtin."""
+    if self.ctx.python_version >= (3, 11) and op.arg & 1:
+      # Compiler-generated marker that will be consumed in byte_CALL
+      # We are loading a global and calling it as a function.
+      state = self._push_null(state)
     name = op.argval
     if name == "None":
       # Load None itself as a constant to avoid the None filtering done on
