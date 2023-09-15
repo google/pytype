@@ -28,6 +28,7 @@ class _Locals311:
     self.co_varnames = filter_names(self.CO_FAST_LOCAL)
     self.co_cellvars = filter_names(self.CO_FAST_CELL)
     self.co_freevars = filter_names(self.CO_FAST_FREE)
+    self.localsplus = code.co_localsplusnames
 
 
 class OrderedCode:
@@ -46,6 +47,7 @@ class OrderedCode:
     firstlineno: The first line number of the code
     freevars: Tuple of free variable names
     cellvars: Tuple of cell variable names
+    localsplus: Tuple of local variable names in 3.11+
     order: A list of bytecode blocks, ordered ancestors-first
       (See cfg_utils.py:order_nodes)
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
@@ -68,10 +70,12 @@ class OrderedCode:
       self.varnames = localsplus.co_varnames
       self.cellvars = localsplus.co_cellvars
       self.freevars = localsplus.co_freevars
+      self.localsplus = localsplus.localsplus
     else:
       self.varnames = code.co_varnames
       self.cellvars = code.co_cellvars
       self.freevars = code.co_freevars
+      self.localsplus = None
     self._combined_vars = self.cellvars + self.freevars
     # Retain the co_ name since this refers directly to CodeType internals.
     self._co_flags = code.co_flags

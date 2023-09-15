@@ -301,13 +301,17 @@ class Frame(utils.ContextWeakrefMixin):
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
     self.closure = closure
     assert len(f_code.freevars) == len(closure or [])
-    self.cells = [self.ctx.program.NewVariable() for _ in f_code.cellvars]
-    self.cells.extend(closure or [])
+    if self.ctx.python_version < (3, 11):
+      cell_names = f_code.cellvars
+    else:
+      cell_names = f_code.localsplus
 
+    self.cells = [self.ctx.program.NewVariable() for _ in cell_names]
+    self.cells.extend(closure or [])
     if callargs:
       for name, value in sorted(callargs.items()):
         if name in f_code.cellvars:
-          i = f_code.cellvars.index(name)
+          i = cell_names.index(name)
           self.cells[i].PasteVariable(value, node)
         else:
           self.ctx.attribute_handler.set_attribute(node, f_locals, name, value)
@@ -348,7 +352,11 @@ class Frame(utils.ContextWeakrefMixin):
 
   def copy_free_vars(self, n):
     # TODO(b/290796661): Should we be using PasteVariable here instead?
-    self.cells[-n:] = self.closure
+    n_locals = len(self.f_code.varnames)
+    n_cellvars = len(self.f_code.cellvars)
+    offset = n_locals + n_cellvars
+    for i in range(n):
+      self.cells[i + offset] = self.closure[i]
 
   @property
   def type_params(self):

@@ -882,11 +882,17 @@ class VirtualMachine:
   def call_function_from_stack_311(self, state, num):
     """Pop arguments for a function and call it."""
     # We need a separate version of call_function_from_stack for 3.11+
-    is_meth = state.peek(num + 2)
-    if not (is_meth.data and isinstance(is_meth.data[0], abstract.Null)):
+    # Stack top is either
+    #   function: [NULL,   function, num * arg]
+    #   method:   [method, self,     num * arg]
+    m = state.peek(num + 2)
+    is_meth = not(m.data and isinstance(m.data[0], abstract.Null))
+    if is_meth:
       num += 1
     state, args = state.popn(num)
     state, func = state.pop()
+    if not is_meth:
+      state = state.pop_and_discard()  # pop off the NULL
     if self._kw_names:
       n_kw = len(self._kw_names)
       posargs = args[:-n_kw]
@@ -2703,6 +2709,8 @@ class VirtualMachine:
     state, starargs = state.pop()
     starargs = vm_utils.ensure_unpacked_starargs(state.node, starargs, self.ctx)
     state, fn = state.pop()
+    if self.ctx.python_version >= (3, 11):
+      state = state.pop_and_discard()
     with self._reset_overloads(fn):
       state, ret = self.call_function_with_state(
           state, fn, (), namedargs=None, starargs=starargs,
@@ -3270,8 +3278,7 @@ class VirtualMachine:
     return self.byte_POP_JUMP_IF_TRUE(state, op)
 
   def byte_COPY(self, state, op):
-    del op
-    return state
+    return state.push(state.peek(op.arg))
 
   def byte_BINARY_OP(self, state, op):
     """Implementation of BINARY_OP opcode."""
