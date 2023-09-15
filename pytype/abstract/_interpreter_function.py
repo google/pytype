@@ -137,6 +137,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       # Reusing the old closure variables would lead to the closure containing
       # future values, such as Deleted.
       cls._function_cache[key].closure = closure
+    ctx.vm.frame.functions_created_in_frame.append(cls._function_cache[key])
     return cls._function_cache[key]
 
   def __init__(self, name, def_opcode, code, f_locals, f_globals, defaults,

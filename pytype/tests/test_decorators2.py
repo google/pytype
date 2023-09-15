@@ -319,6 +319,31 @@ class DecoratorsTest(test_base.BaseTest):
         def f(self: T) -> T: ...
     """)
 
+  def test_typevar_in_decorated_function_in_function(self):
+    self.Check("""
+      from typing import Any, TypeVar
+      T = TypeVar('T')
+      def decorate(f) -> Any:
+        return f
+      def f_out(x: T) -> T:
+        @decorate
+        def f_in() -> T:
+          return x
+        return x
+    """)
+
+  def test_typevar_in_decorated_method_in_class(self):
+    self.Check("""
+      from typing import Any, Generic, TypeVar
+      T = TypeVar('T')
+      def decorate(f) -> Any:
+        return f
+      class C(Generic[T]):
+        @decorate
+        def f(self, x: T):
+          pass
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

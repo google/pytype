@@ -74,10 +74,12 @@ class BuildClass(_base.BaseValue):
     if func.last_frame:
       func.f_locals = func.last_frame.f_locals
       class_closure_var = func.last_frame.class_closure_var
+      undecorated_methods = func.last_frame.functions_created_in_frame
     else:
       # We have hit 'maximum depth' before setting func.last_frame
       func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
+      undecorated_methods = ()
 
     props = class_mixin.ClassBuilderProperties(
         name_var=name,
@@ -85,7 +87,8 @@ class BuildClass(_base.BaseValue):
         class_dict_var=func.f_locals.to_variable(node),
         metaclass_var=metaclass,
         new_class_var=class_closure_var,
-        is_decorated=self.is_decorated)
+        is_decorated=self.is_decorated,
+        undecorated_methods=undecorated_methods)
     # Check for special classes first.
     node, clsvar = _special_classes.build_class(node, props, kwargs, self.ctx)
     if not clsvar:
@@ -104,7 +107,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
   def __init__(self, name: str, bases: List[cfg.Variable],
                members: Dict[str, cfg.Variable], cls: _base.BaseValue,
-               first_opcode: Optional[opcodes.Opcode], ctx: _ContextType):
+               first_opcode: Optional[opcodes.Opcode],
+               undecorated_methods: Tuple[Any, ...], ctx: _ContextType):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
@@ -116,6 +120,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     self.slots = self._convert_str_tuple(members, "__slots__")
     self.match_args = self._convert_str_tuple(members, "__match_args__") or ()
     self.is_dynamic = self.compute_is_dynamic()
+    self._undecorated_methods = undecorated_methods
     log.info("Created class: %r", self)
     self.type_param_check()
     self._first_opcode = first_opcode
@@ -128,12 +133,17 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     return self._first_opcode
 
   def update_method_type_params(self):
-    if self.template:
-      # For function type parameters check
-      for mbr in self.members.values():
-        for m in reversed(mbr.data):
-          if _isinstance(m, "Function"):
-            m.update_signature_scope(self)
+    if not self.template:
+      return
+    # For function type parameters check
+    methods = set()
+    for mbr in self.members.values():
+      for m in mbr.data:
+        if _isinstance(m, "Function"):
+          methods.add(m)
+    methods.update(self._undecorated_methods)
+    for m in methods:
+      m.update_signature_scope(self)
 
   def type_param_check(self):
     """Throw exception for invalid type parameters."""

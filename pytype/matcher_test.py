@@ -39,7 +39,7 @@ class MatcherTest(MatcherTestBase):
   """Test matcher.AbstractMatcher."""
 
   def _make_class(self, name):
-    return abstract.InterpreterClass(name, [], {}, None, None, self.ctx)
+    return abstract.InterpreterClass(name, [], {}, None, None, (), self.ctx)
 
   def _parse_and_lookup(self, src, objname, filename=None):
     if filename is None:

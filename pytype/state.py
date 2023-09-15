@@ -337,6 +337,10 @@ class Frame(utils.ContextWeakrefMixin):
     else:
       self.module_name = ""
 
+    # All InterpreterFunction objects created while this frame was at the top of
+    # the frame stack.
+    self.functions_created_in_frame = []
+
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (
         id(self), self.f_code.filename, self.f_lineno
