@@ -417,6 +417,8 @@ class SignedFunction(Function):
   """
 
   def __init__(self, signature, ctx):
+    # We should only instantiate subclasses of SignedFunction
+    assert self.__class__ != SignedFunction
     super().__init__(signature.name, ctx)
     self.signature = signature
     # Track whether we've annotated `self` with `set_self_annot`, since

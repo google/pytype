@@ -345,23 +345,3 @@ def make_annotations_dict(fields, node, ctx):
   locals_ = {f.name: abstract_utils.Local(node, None, f.typ, None, ctx)
              for f in fields}
   return abstract.AnnotationsDict(locals_, ctx).to_variable(node)
-
-
-def make_interpreter_class(class_type, props, node, ctx):
-  """Make an InterpreterClass from ClassProperties."""
-
-  name_var = ctx.convert.build_string(node, props.name)
-  bases = props.bases
-  members = {f.name: f.typ.instantiate(node) for f in props.fields}
-  annots = make_annotations_dict(props.fields, node, ctx)
-  members["__annotations__"] = annots
-  cls_dict = abstract.Dict(ctx)
-  cls_dict.update(node, members)
-  cls_props = class_mixin.ClassBuilderProperties(
-      name_var=name_var,
-      bases=bases,
-      class_dict_var=cls_dict.to_variable(node),
-      class_type=class_type)
-  node, cls_var = ctx.make_class(node, cls_props)
-  ctx.vm.trace_classdef(cls_var)
-  return node, cls_var
