@@ -960,8 +960,12 @@ class FunctionTest(parser_test_base.ParserTestBase):
     # Various illegal uses of * args.
     self.check_error("def foo(*) -> int: ...", 1,
                      "named arguments must follow bare *")
-    self.check_error("def foo(*x, *y) -> int: ...", 1, "invalid syntax")
-    self.check_error("def foo(**x, *y) -> int: ...", 1, "invalid syntax")
+    if self.python_version >= (3, 11):
+      expected_error = "ParseError"
+    else:
+      expected_error = "invalid syntax"
+    self.check_error("def foo(*x, *y) -> int: ...", 1, expected_error)
+    self.check_error("def foo(**x, *y) -> int: ...", 1, expected_error)
 
   def test_typeignore(self):
     self.check("def foo() -> int:  # type: ignore\n  ...",

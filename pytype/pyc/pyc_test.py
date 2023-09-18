@@ -57,31 +57,40 @@ class TestPyc(test_base.UnitTest):
                         )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
-    self.assertEqual([("LOAD_CONST", 1),
-                      ("STORE_NAME", 1),
-                      ("LOAD_NAME", 3),
-                      ("LOAD_CONST", 3),
-                      ("BINARY_ADD", 3),
-                      ("STORE_NAME", 3),
-                      ("LOAD_CONST", 3),
-                      ("RETURN_VALUE", 3)], op_and_line)
+    expected = [("LOAD_CONST", 1),
+                ("STORE_NAME", 1),
+                ("LOAD_NAME", 3),
+                ("LOAD_CONST", 3),
+                ("BINARY_ADD", 3),
+                ("STORE_NAME", 3),
+                ("LOAD_CONST", 3),
+                ("RETURN_VALUE", 3)]
+    if self.python_version >= (3, 11):
+      expected = [("RESUME", 0)] + expected
+      expected[5] = ("BINARY_OP", 3)  # this was BINARY_ADD in 3.10-
+    self.assertEqual(expected, op_and_line)
 
   def test_mode(self):
     code = self._compile("foo", mode="eval")
     self.assertIn("foo", code.co_names)
     ops = [op.name for op in opcodes.dis(code)]
-    self.assertEqual(["LOAD_NAME",
-                      "RETURN_VALUE"], ops)
+    expected = ["LOAD_NAME", "RETURN_VALUE"]
+    if self.python_version >= (3, 11):
+      expected = ["RESUME"] + expected
+    self.assertEqual(expected, ops)
 
   def test_singlelineno(self):
     code = self._compile("a = 1\n"      # line 1
                         )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
-    self.assertEqual([("LOAD_CONST", 1),
-                      ("STORE_NAME", 1),
-                      ("LOAD_CONST", 1),
-                      ("RETURN_VALUE", 1)], op_and_line)
+    expected = [("LOAD_CONST", 1),
+                ("STORE_NAME", 1),
+                ("LOAD_CONST", 1),
+                ("RETURN_VALUE", 1)]
+    if self.python_version >= (3, 11):
+      expected = [("RESUME", 0)] + expected
+    self.assertEqual(expected, op_and_line)
 
   def test_singlelinenowithspace(self):
     code = self._compile("\n"
@@ -90,10 +99,13 @@ class TestPyc(test_base.UnitTest):
                         )
     self.assertIn("a", code.co_names)
     op_and_line = [(op.name, op.line) for op in opcodes.dis(code)]
-    self.assertEqual([("LOAD_CONST", 3),
-                      ("STORE_NAME", 3),
-                      ("LOAD_CONST", 3),
-                      ("RETURN_VALUE", 3)], op_and_line)
+    expected = [("LOAD_CONST", 3),
+                ("STORE_NAME", 3),
+                ("LOAD_CONST", 3),
+                ("RETURN_VALUE", 3)]
+    if self.python_version >= (3, 11):
+      expected = [("RESUME", 0)] + expected
+    self.assertEqual(expected, op_and_line)
 
 
 if __name__ == "__main__":
