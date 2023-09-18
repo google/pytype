@@ -1011,7 +1011,7 @@ def dis(code) -> List[Opcode]:
   for index, op in enumerate(bytecode.dis(code)):
     cls = g[op.name]
     offset_to_index[op.offset] = index
-    if op.arg is not None:
+    if cls.has_argument():
       ret.append(cls(index, op.line, op.arg, op.argval))
     else:
       ret.append(cls(index, op.line))
