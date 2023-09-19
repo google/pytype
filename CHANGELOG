@@ -1,3 +1,22 @@
+Version 2023.09.19:
+
+Updates:
+* Update typeshed pin to commit ce222e5 from Jun 12.
+* pytype-single: Add --no-validate-version flag to disable Python version
+  checks. This makes testing not-yet-supported versions easier.
+* Remove max version requirement for installing pytype. This prevents accidental
+  installation of very old versions of pytype that don't have this requirement.
+  Pytype itself still emits an error upon encountering an unsupported version.
+* Use pycnite for bytecode processing.
+
+Bug fixes:
+* Fix a corner case in ParamSpec matching for a class with a __call__ method.
+* Python 3.11:
+  * Fix implementations of several 3.11 opcodes.
+  * op.next should not point backwards even if the op is a backwards jump.
+* Track undecorated functions for better handling of TypeVars in signatures.
+* Fix 'TypeVar not in scope' check for imported TypeVars.
+
 Version 2023.09.11:
 
 Updates:

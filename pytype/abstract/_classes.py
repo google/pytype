@@ -136,12 +136,22 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     if not self.template:
       return
     # For function type parameters check
-    methods = set()
+    methods = []
+    # members of self._undecorated_methods that will be ignored for updating
+    # signature scope.
+    skip = set()
     for mbr in self.members.values():
       for m in mbr.data:
-        if _isinstance(m, "Function"):
-          methods.add(m)
-    methods.update(self._undecorated_methods)
+        if not _isinstance(m, "Function"):
+          continue
+        methods.append(m)
+        # We don't need to update the same method twice.
+        skip.add(m)
+        if m.__class__.__name__ == "StaticMethodInstance":
+          # TypeVars in staticmethods should not be treated as bound to the
+          # current class.
+          skip.update(m.func.data)
+    methods.extend(m for m in self._undecorated_methods if m not in skip)
     for m in methods:
       m.update_signature_scope(self)
 

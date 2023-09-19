@@ -4,7 +4,7 @@ import collections
 import dataclasses
 import itertools
 
-from typing import AbstractSet, Any, Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Set, Tuple
 
 from pytype import state
 from pytype import utils
@@ -397,7 +397,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
 
   def extract_annotation(
       self, node, var, name, stack,
-      allowed_type_params: Optional[AbstractSet[str]] = None):
+      allowed_type_params: Optional[Set[str]] = None):
     """Returns an annotation extracted from 'var'.
 
     Args:
@@ -421,8 +421,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if typ.formal and allowed_type_params is not None:
       allowed_type_params = (allowed_type_params |
                              self.get_callable_type_parameter_names(typ))
-      illegal_params = [x.name for x in self.get_type_parameters(typ)
-                        if x.name not in allowed_type_params]
+      illegal_params = []
+      for x in self.get_type_parameters(typ):
+        if not allowed_type_params.intersection([x.name, x.full_name]):
+          illegal_params.append(x.name)
       if illegal_params:
         details = "TypeVar(s) %s not in scope" % ", ".join(
             repr(p) for p in utils.unique_list(illegal_params))

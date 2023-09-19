@@ -1333,6 +1333,31 @@ class GenericFeatureTest(test_base.BaseTest):
            return foo.A.f('')
       """)
 
+  def test_generic_staticmethod(self):
+    # Regression test for a crash caused by
+    # InterpreterClass.update_method_type_params treating static methods as
+    # instance methods.
+    self.Check("""
+      from typing import Any, Callable, Generic, TypeVar, Union
+
+      T = TypeVar('T')
+
+      class Expr(Generic[T]):
+
+        def __call__(self, *args: Any, **kwargs: Any) -> T:
+          return __any_object__
+
+        @staticmethod
+        def make_unbound(
+            init: Union[Callable[..., T], 'Expr[T]'],
+        ) -> 'Expr[T]':
+          return Expr()
+
+
+      def expr_var(initial_expr: Expr[T]) -> Expr[T]:
+        return Expr.make_unbound(init=initial_expr)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

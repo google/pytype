@@ -999,10 +999,6 @@ class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
   __slots__ = ()
 
 
-def _is_backward_jump(opcls):
-  return "JUMP_BACKWARD" in opcls.__name__
-
-
 def dis(code) -> List[Opcode]:
   """Disassemble a string into a list of Opcode instances."""
   ret = []
@@ -1024,5 +1020,5 @@ def dis(code) -> List[Opcode]:
       op.target = ret[op.arg]
     get_code = lambda j: ret[j] if 0 <= j < len(ret) else None
     op.prev = get_code(i - 1)
-    op.next = get_code(i +(-1 if _is_backward_jump(op.__class__) else 1))
+    op.next = get_code(i + 1)
   return ret

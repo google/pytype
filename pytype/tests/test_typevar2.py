@@ -595,6 +595,18 @@ class TypeVarTest(test_base.BaseTest):
       x: Callable[[T], T] = lambda x: x
     """)
 
+  def test_imported_typevar_in_scope(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeVar
+      T = TypeVar('T')
+    """)]):
+      self.Check("""
+        import foo
+        def f(x: foo.T) -> foo.T:
+          y: foo.T = x
+          return y
+      """)
+
 
 class GenericTypeAliasTest(test_base.BaseTest):
   """Tests for generic type aliases ("type macros")."""
