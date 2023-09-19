@@ -298,7 +298,7 @@ def show_ordered_code(code, extra_col=None):
       op_lines.append([
           op.index,
           op.__class__.__name__,
-          getattr(op, "pretty_arg", ""),
+          getattr(op, "argval", ""),
           op.target and op.target.index,
           op.block_target and op.block_target.index,
           op.next and op.next.index,

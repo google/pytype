@@ -35,6 +35,12 @@ class TestPy311(test_base.BaseTest):
       assert_type(x, int)
     """)
 
+  def test_global_call(self):
+    self.Check("""
+      def f(x):
+        return any(x)
+    """)
+
   def test_context_manager(self):
     self.Check("""
       class A:
@@ -53,6 +59,48 @@ class TestPy311(test_base.BaseTest):
           except:
             pass
           return path
+    """)
+
+  def test_deref1(self):
+    self.Check("""
+      def f(*args):
+        def rmdirs(
+            unlink,
+            dirname,
+            removedirs,
+            enoent_error,
+            directory,
+            files,
+        ):
+          for path in [dirname(f) for f in files]:
+            removedirs(path, directory)
+        rmdirs(*args)
+    """)
+
+  def test_deref2(self):
+    self.Check("""
+      def f(x):
+        y = x
+        x = lambda: y
+
+        def g():
+          return x
+    """)
+
+  def test_super(self):
+    self.Check("""
+      class A:
+        def __init__(self):
+          super(A, self).__init__()
+    """)
+
+  def test_call_function_ex(self):
+    self.Check("""
+      import datetime
+      def f(*args):
+        return g(datetime.datetime(*args), 10)
+      def g(x, y):
+        return (x, y)
     """)
 
 

@@ -167,8 +167,7 @@ class NativeFunction(Function):
         # If we have too many arguments, or starargs and starstarargs are both
         # empty, then we can be certain of a WrongArgCount error.
         argnames = tuple("_" + str(i) for i in range(expected_argcount))
-        sig = function.Signature(
-            self.name, argnames, 0, None, set(), None, {}, {}, {})
+        sig = function.Signature.from_param_names(self.name, argnames)
         raise function.WrongArgCount(sig, args, self.ctx)
       assert actual_argcount < expected_argcount
       # Assume that starargs or starstarargs fills in the missing arguments.
@@ -182,8 +181,7 @@ class NativeFunction(Function):
     if "self" in namedargs:
       argnames = tuple(
           "_" + str(i) for i in range(len(posargs) + len(namedargs)))
-      sig = function.Signature(
-          self.name, argnames, 0, None, set(), None, {}, {}, {})
+      sig = function.Signature.from_param_names(self.name, argnames)
       raise function.DuplicateKeyword(sig, args, self.ctx, "self")
     return self.func(node, *posargs, **namedargs)
 
@@ -419,6 +417,8 @@ class SignedFunction(Function):
   """
 
   def __init__(self, signature, ctx):
+    # We should only instantiate subclasses of SignedFunction
+    assert self.__class__ != SignedFunction
     super().__init__(signature.name, ctx)
     self.signature = signature
     # Track whether we've annotated `self` with `set_self_annot`, since

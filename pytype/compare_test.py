@@ -334,7 +334,7 @@ class FunctionTest(CompareTestBase):
 class ClassTest(CompareTestBase):
 
   def test_compatible_with(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, (), self._ctx)
     self.assertTruthy(cls)
 
 

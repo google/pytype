@@ -1567,9 +1567,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     if self._is_native_callable(attr):
       sig = function.Signature.from_callable(attr.func.__self__)
       if unbind:
-        param_names = ("self",) + sig.param_names
-        annots = {**sig.annotations, "self": self.ctx.convert.unsolvable}
-        sig = sig._replace(param_names=param_names, annotations=annots)
+        sig = sig.prepend_parameter("self", self.ctx.convert.unsolvable)
       return abstract.SimpleFunction(sig, self.ctx)
     elif unbind and isinstance(attr, abstract.BoundFunction):
       return attr.underlying
@@ -1604,7 +1602,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     converter = self.ctx.pytd_convert
     for signature in function.get_signatures(attribute):
       callable_signature = converter.signature_to_callable(signature)
-      if isinstance(callable_signature, abstract.CallableClass):
+      if (isinstance(callable_signature, abstract.CallableClass) and
+          not isinstance(callable_signature.formal_type_parameters.get(0),
+                         abstract.Concatenate)):
         # Prevent the matcher from trying to enforce contravariance on 'self'.
         callable_signature.formal_type_parameters[0] = (
             self.ctx.convert.unsolvable)

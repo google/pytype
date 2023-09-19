@@ -5,7 +5,7 @@ import collections
 import dataclasses
 import itertools
 import logging
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Any, Dict, Optional, Sequence, Tuple, TypeVar, cast
 
 import attrs
 
@@ -69,6 +69,8 @@ def get_signatures(func):
 def _print(t):
   return pytd_utils.Print(t.get_instance_type())
 
+_SigT = TypeVar("_SigT", bound="Signature")
+
 
 class Signature:
   """Representation of a Python function signature.
@@ -94,9 +96,18 @@ class Signature:
       posonly_count names in param_names).
   """
 
-  def __init__(self, name, param_names, posonly_count, varargs_name,
-               kwonly_params, kwargs_name, defaults, annotations,
-               postprocess_annotations=True):
+  def __init__(
+      self,
+      name: str,
+      param_names: Tuple[str, ...],
+      posonly_count: int,
+      varargs_name: Optional[str],
+      kwonly_params: Tuple[str, ...],
+      kwargs_name: Optional[str],
+      defaults: Dict[str, cfg.Variable],
+      annotations: Dict[str, _base.BaseValue],
+      postprocess_annotations: bool = True,
+  ) -> None:
     self.name = name
     self.param_names = param_names
     self.posonly_count = posonly_count
@@ -206,6 +217,46 @@ class Signature:
 
   def drop_first_parameter(self):
     return self._replace(param_names=self.param_names[1:])
+
+  def _make_concatenated_type(
+      self, type1: _base.BaseValue, type2: Optional[_base.BaseValue]
+  ) -> Optional[_base.BaseValue]:
+    """Concatenates type1 and type2 if possible.
+
+    If type2 is a ParamSpec or Concatenate object, creates a new Concatenate
+    object by adding type1 to the front.
+
+    Args:
+      type1: An abstract value.
+      type2: An abstract value or None.
+
+    Returns:
+      A new Concatenate object, or None if type2 cannot be concatenated to.
+    """
+    if _isinstance(type2, "ParamSpec"):
+      new_args = [type1, type2]
+    elif _isinstance(type2, "Concatenate"):
+      # Pytype can't understand this custom isinstance check.
+      type2 = cast(Any, type2)
+      new_args = [type1] + type2.args + [type2.paramspec]
+    else:
+      return None
+    return _make("Concatenate", new_args, type1.ctx)
+
+  def prepend_parameter(self: _SigT, name: str, typ: _base.BaseValue) -> _SigT:
+    """Returns a new signature with a `name: typ` param added to the front."""
+    if self.param_names:
+      param_name = self.param_names[0]
+      param_type = self.annotations.get(param_name)
+      concatenated_type = self._make_concatenated_type(typ, param_type)
+      if concatenated_type:
+        # The existing first parameter actually represents a variable number of
+        # parameters. Ignore `name` and add in the new type.
+        return self._replace(
+            annotations={**self.annotations, param_name: concatenated_type})
+    param_names = (name,) + self.param_names
+    annots = {**self.annotations, name: typ}
+    return self._replace(param_names=param_names, annotations=annots)
 
   def mandatory_param_count(self):
     num = len([name
@@ -1182,6 +1233,6 @@ def build_paramspec_signature(pspec_match, r_args, return_value, ctx):
   param_names = tuple(ret_posargs) + sig.param_names[l_nargs:]
   # All params need to be in the annotations dict or output.py crashes
   sig.populate_annotation_dict(ann, ctx, param_names)
-  posonly_count = sig.posonly_count + len(r_args) - l_nargs
+  posonly_count = max(sig.posonly_count + len(r_args) - l_nargs, 0)
   return sig._replace(param_names=param_names, annotations=ann,
                       posonly_count=posonly_count)

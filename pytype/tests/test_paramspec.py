@@ -433,6 +433,66 @@ class PyiParamSpecTest(test_base.BaseTest):
           assert_type(b, bool)
       """)
 
+  def test_match_callable(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Any, Callable, ParamSpec
+      P = ParamSpec('P')
+      def f(x: Callable[P, Any]) -> Callable[P, Any]: ...
+    """)]):
+      self.Check("""
+        import foo
+
+        # Any function should match `Callable[P, Any]`.
+        def f0():
+          pass
+        def f1(x):
+          pass
+        def f2(x1, x2):
+          pass
+        foo.f(f0)
+        foo.f(f1)
+        foo.f(f2)
+
+        class C0:
+          def __call__(self):
+            pass
+        class C1:
+          def __call__(self, x1):
+            pass
+        class C2:
+          def __call__(self, x1, x2):
+            pass
+
+        # Any class object should match.
+        foo.f(C0)
+
+        # Any class instance with a `__call__` method should match.
+        foo.f(C0())
+        foo.f(C1())
+        foo.f(C2())
+      """)
+
+  def test_callable_class_inference(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Any, Callable, ParamSpec
+      P = ParamSpec('P')
+      def f(x: Callable[P, Any]) -> Callable[P, Any]: ...
+    """)]):
+      ty = self.Infer("""
+        import foo
+        class C:
+          def __call__(self, x: int, y) -> str:
+            return str(x)
+        f = foo.f(C())
+      """)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        from typing import Any
+        class C:
+          def __call__(self, x: int, y) -> str: ...
+        def f(x: int, y) -> Any: ...
+      """)
+
 
 class ContextlibTest(test_base.BaseTest):
   """Test some more complex uses of contextlib."""

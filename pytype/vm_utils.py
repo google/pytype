@@ -516,7 +516,8 @@ def make_class(node, props, ctx):
       class_type = props.class_type or abstract.InterpreterClass
       assert issubclass(class_type, abstract.InterpreterClass)
       val = class_type(
-          name, bases, class_dict.pyval, cls, ctx.vm.current_opcode, ctx)
+          name, bases, class_dict.pyval, cls, ctx.vm.current_opcode,
+          props.undecorated_methods, ctx)
       _check_final_members(val, class_dict.pyval, ctx)
       overriding_checks.check_overriding_members(val, bases, class_dict.pyval,
                                                  ctx.matcher(node), ctx)
@@ -602,7 +603,7 @@ def update_excluded_types(node, ctx):
   func = ctx.vm.frame.func.data
   if isinstance(func, abstract.BoundFunction):
     func = func.underlying
-  if not isinstance(func, abstract.SignedFunction):
+  if not isinstance(func, abstract.InterpreterFunction):
     return
   # If we have code like:
   #   def f(x: T):
@@ -611,18 +612,14 @@ def update_excluded_types(node, ctx):
   # to avoid 'appears only once in signature' errors for T. Similarly, any
   # TypeVars that appear in variable annotations in a function body also need to
   # be added to excluded_types.
+  for v in ctx.vm.frame.functions_created_in_frame:
+    v.signature.excluded_types |= func.signature.type_params
+    func.signature.excluded_types |= v.signature.type_params
   for name, local in ctx.vm.current_annotated_locals.items():
     typ = local.get_type(node, name)
     if typ:
       func.signature.excluded_types.update(
           p.name for p in ctx.annotation_utils.get_type_parameters(typ))
-    if local.orig:
-      for v in local.orig.data:
-        if isinstance(v, abstract.BoundFunction):
-          v = v.underlying
-        if isinstance(v, abstract.SignedFunction):
-          v.signature.excluded_types |= func.signature.type_params
-          func.signature.excluded_types |= v.signature.type_params
 
 
 def push_block(state, t, level=None):
@@ -843,7 +840,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
   # inner function before the variable is defined, raise a name error here.
   # See test_closures.ClosuresTest.test_undefined_var
   if check_bindings and not cell.bindings:
-    ctx.errorlog.name_error(ctx.vm.frames, op.pretty_arg)
+    ctx.errorlog.name_error(ctx.vm.frames, op.argval)
     cell = ctx.new_unsolvable(state.node)
   visible_bindings = cell.Filter(state.node, strict=False)
   if len(visible_bindings) != len(cell.bindings):
@@ -860,7 +857,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
     # Update the cell because the DELETE_DEREF implementation works on
     # variable identity.
     ctx.vm.frame.cells[op.arg] = cell = new_cell
-  name = ctx.vm.frame.f_code.get_closure_var_name(op.arg)
+  name = op.argval
   ctx.vm.set_var_name(cell, name)
   check_for_deleted(state, name, cell, ctx)
   ctx.vm.trace_opcode(op, name, cell)

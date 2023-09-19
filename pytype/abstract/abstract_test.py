@@ -193,30 +193,30 @@ class PyTDTest(AbstractTestBase):
   """Tests for abstract -> pytd type conversions."""
 
   def test_metaclass(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, None, self._ctx)
-    meta = abstract.InterpreterClass("M", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, (), self._ctx)
+    meta = abstract.InterpreterClass("M", [], {}, None, None, (), self._ctx)
     meta.official_name = "M"
     cls.cls = meta
     pytd_cls = cls.to_pytd_def(self._ctx.root_node, "X")
     self.assertEqual(pytd_cls.metaclass, pytd.NamedType("M"))
 
   def test_inherited_metaclass(self):
-    base = abstract.InterpreterClass("X", [], {}, None, None, self._ctx)
+    base = abstract.InterpreterClass("X", [], {}, None, None, (), self._ctx)
     base.official_name = "X"
-    meta = abstract.InterpreterClass("M", [], {}, None, None, self._ctx)
+    meta = abstract.InterpreterClass("M", [], {}, None, None, (), self._ctx)
     meta.official_name = "M"
     base.cls = meta
     child = abstract.InterpreterClass("Y",
                                       [base.to_variable(self._ctx.root_node)],
-                                      {}, None, None, self._ctx)
+                                      {}, None, None, (), self._ctx)
     self.assertIs(child.cls, base.cls)
     pytd_cls = child.to_pytd_def(self._ctx.root_node, "Y")
     self.assertIs(pytd_cls.metaclass, None)
 
   def test_metaclass_union(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, None, self._ctx)
-    meta1 = abstract.InterpreterClass("M1", [], {}, None, None, self._ctx)
-    meta2 = abstract.InterpreterClass("M2", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, (), self._ctx)
+    meta1 = abstract.InterpreterClass("M1", [], {}, None, None, (), self._ctx)
+    meta2 = abstract.InterpreterClass("M2", [], {}, None, None, (), self._ctx)
     meta1.official_name = "M1"
     meta2.official_name = "M2"
     cls.cls = abstract.Union([meta1, meta2], self._ctx)
@@ -671,7 +671,8 @@ class AbstractMethodsTest(AbstractTestBase):
   def test_abstract_method(self):
     func = abstract.Function("f", self._ctx).to_variable(self._ctx.root_node)
     func.data[0].is_abstract = True
-    cls = abstract.InterpreterClass("X", [], {"f": func}, None, None, self._ctx)
+    cls = abstract.InterpreterClass(
+        "X", [], {"f": func}, None, None, (), self._ctx)
     self.assertCountEqual(cls.abstract_methods, {"f"})
 
   def test_inherited_abstract_method(self):
@@ -680,7 +681,7 @@ class AbstractMethodsTest(AbstractTestBase):
                                                 self._ctx.root_node)
     cls = abstract.InterpreterClass("X",
                                     [sized.to_variable(self._ctx.root_node)],
-                                    {}, None, None, self._ctx)
+                                    {}, None, None, (), self._ctx)
     self.assertCountEqual(cls.abstract_methods, {"__len__"})
 
   def test_overridden_abstract_method(self):
@@ -689,7 +690,8 @@ class AbstractMethodsTest(AbstractTestBase):
                                                 self._ctx.root_node)
     bases = [sized.to_variable(self._ctx.root_node)]
     members = {"__len__": self._ctx.new_unsolvable(self._ctx.root_node)}
-    cls = abstract.InterpreterClass("X", bases, members, None, None, self._ctx)
+    cls = abstract.InterpreterClass(
+        "X", bases, members, None, None, (), self._ctx)
     self.assertFalse(cls.abstract_methods)
 
   def test_overridden_abstract_method_still_abstract(self):
@@ -700,7 +702,8 @@ class AbstractMethodsTest(AbstractTestBase):
     func = abstract.Function("__len__", self._ctx)
     func.is_abstract = True
     members = {"__len__": func.to_variable(self._ctx.root_node)}
-    cls = abstract.InterpreterClass("X", bases, members, None, None, self._ctx)
+    cls = abstract.InterpreterClass(
+        "X", bases, members, None, None, (), self._ctx)
     self.assertCountEqual(cls.abstract_methods, {"__len__"})
 
 
@@ -1028,7 +1031,7 @@ class SimpleFunctionTest(AbstractTestBase):
 class AbstractTest(AbstractTestBase):
 
   def test_interpreter_class_official_name(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, (), self._ctx)
     cls.update_official_name("Z")
     self.assertEqual(cls.official_name, "Z")
     cls.update_official_name("A")  # takes effect because A < Z
@@ -1050,7 +1053,7 @@ class AbstractTest(AbstractTestBase):
   def test_type_parameter_equality(self):
     param1 = abstract.TypeParameter("S", self._ctx)
     param2 = abstract.TypeParameter("T", self._ctx)
-    cls = abstract.InterpreterClass("S", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("S", [], {}, None, None, (), self._ctx)
     self.assertEqual(param1, param1)
     self.assertNotEqual(param1, param2)
     self.assertNotEqual(param1, cls)
@@ -1058,7 +1061,7 @@ class AbstractTest(AbstractTestBase):
   def test_union_equality(self):
     union1 = abstract.Union((self._ctx.convert.unsolvable,), self._ctx)
     union2 = abstract.Union((self._ctx.convert.none,), self._ctx)
-    cls = abstract.InterpreterClass("Union", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("Union", [], {}, None, None, (), self._ctx)
     self.assertEqual(union1, union1)
     self.assertNotEqual(union1, union2)
     self.assertNotEqual(union1, cls)
@@ -1077,7 +1080,7 @@ class AbstractTest(AbstractTestBase):
     self.assertEqual(supercls.cls, self._ctx.convert.type_type)
 
   def test_instantiate_interpreter_class(self):
-    cls = abstract.InterpreterClass("X", [], {}, None, None, self._ctx)
+    cls = abstract.InterpreterClass("X", [], {}, None, None, (), self._ctx)
     # When there is no current frame, create a new instance every time.
     v1 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
     v2 = abstract_utils.get_atomic_value(cls.instantiate(self._node))
@@ -1167,6 +1170,55 @@ class AbstractTest(AbstractTestBase):
   def test_singleton_subclass(self):
     self.assertIs(abstract.Empty(self._ctx), abstract.Empty(self._ctx))
     self.assertIsNot(abstract.Deleted(1, self._ctx), abstract.Empty(self._ctx))
+
+
+class SignatureTest(AbstractTestBase):
+  """Tests for abstract.function.Signature."""
+
+  def test_prepend_to_paramspec(self):
+    paramspec = abstract.ParamSpec("P", self._ctx)
+    # Callable[P, Any]
+    in_sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        posonly_count=0,
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"x": paramspec},
+    )
+    # Callable[Concatenate[int, P], Any]
+    out_sig = in_sig.prepend_parameter("_", self._ctx.convert.int_type)
+    self.assertEqual(out_sig.param_names, ("x",))
+    x_type = out_sig.annotations["x"]
+    self.assertIsInstance(x_type, abstract.Concatenate)
+    self.assertEqual(x_type.args, [self._ctx.convert.int_type])
+    self.assertEqual(x_type.paramspec, paramspec)
+
+  def test_prepend_to_concatenate(self):
+    paramspec = abstract.ParamSpec("P", self._ctx)
+    concatenate = abstract.Concatenate(
+        [self._ctx.convert.str_type, paramspec], self._ctx)
+    # Callable[Concatenate[str, P], Any]
+    in_sig = function.Signature(
+        name="f",
+        param_names=("x",),
+        posonly_count=0,
+        varargs_name=None,
+        kwonly_params=(),
+        kwargs_name=None,
+        defaults={},
+        annotations={"x": concatenate},
+    )
+    # Callable[Concatenate[int, str, P], Any]
+    out_sig = in_sig.prepend_parameter("_", self._ctx.convert.int_type)
+    self.assertEqual(out_sig.param_names, ("x",))
+    x_type = out_sig.annotations["x"]
+    self.assertIsInstance(x_type, abstract.Concatenate)
+    self.assertEqual(
+        x_type.args, [self._ctx.convert.int_type, self._ctx.convert.str_type])
+    self.assertEqual(x_type.paramspec, paramspec)
 
 
 if __name__ == "__main__":

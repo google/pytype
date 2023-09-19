@@ -201,7 +201,7 @@ class TypedDictClass(abstract.PyTDClass):
   def _make_init(self, props):
     # __init__ method for type checking signatures.
     # We construct this here and pass it to TypedDictClass because we need
-    # access to abstract.SignedFunction.
+    # access to abstract.SimpleFunction.
     sig = function.Signature.from_param_names(
         f"{props.name}.__init__", props.fields.keys(),
         kind=pytd.ParameterKind.KWONLY)
@@ -209,7 +209,7 @@ class TypedDictClass(abstract.PyTDClass):
                        for k, v in props.fields.items()}
     sig.defaults = {k: self.ctx.new_unsolvable(self.ctx.root_node)
                     for k in props.optional}
-    return abstract.SignedFunction(sig, self.ctx)
+    return abstract.SimpleFunction(sig, self.ctx)
 
   def _new_instance(self, container, node, args):
     self.init_method.match_and_map_args(node, args, None)

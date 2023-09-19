@@ -1,9 +1,10 @@
 """Opcode definitions."""
 
-import abc
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Tuple, Type
+from typing import Dict, List, Optional
 
 import attrs
+
+from pycnite import bytecode
 
 
 # We define all-uppercase classes, to match their opcode names:
@@ -147,17 +148,23 @@ class Opcode:
 
 
 class OpcodeWithArg(Opcode):
-  """An opcode with one argument."""
+  """An opcode with one argument.
 
-  __slots__ = ("arg", "pretty_arg")
+  Attributes:
+    arg: The integer opcode argument read in from the bytecode
+    argval: A decoded version of arg, performing the same steps the cpython
+      interpreter does to convert arg into a python value.
+  """
 
-  def __init__(self, index, line, arg, pretty_arg):
+  __slots__ = ("arg", "argval")
+
+  def __init__(self, index, line, arg, argval):
     super().__init__(index, line)
     self.arg = arg
-    self.pretty_arg = pretty_arg
+    self.argval = argval
 
   def __str__(self):
-    out = f"{self.basic_str()} {self.pretty_arg}"
+    out = f"{self.basic_str()} {self.argval}"
     if self.annotation:
       return f"{out}  # type: {self.annotation}"
     else:
@@ -992,455 +999,30 @@ class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
   __slots__ = ()
 
 
-def _overlay_mapping(mapping, new_entries):
-  ret = mapping.copy()
-  ret.update(new_entries)
-  return {k: v for k, v in ret.items() if v is not None}
-
-
-python_3_8_mapping = {
-    1: POP_TOP,
-    2: ROT_TWO,
-    3: ROT_THREE,
-    4: DUP_TOP,
-    5: DUP_TOP_TWO,
-    6: ROT_FOUR,  # ROT_FOUR returns under a different, cooler id!
-    9: NOP,
-    10: UNARY_POSITIVE,
-    11: UNARY_NEGATIVE,
-    12: UNARY_NOT,
-    15: UNARY_INVERT,
-    16: BINARY_MATRIX_MULTIPLY,
-    17: INPLACE_MATRIX_MULTIPLY,
-    19: BINARY_POWER,
-    20: BINARY_MULTIPLY,
-    22: BINARY_MODULO,
-    23: BINARY_ADD,
-    24: BINARY_SUBTRACT,
-    25: BINARY_SUBSCR,
-    26: BINARY_FLOOR_DIVIDE,
-    27: BINARY_TRUE_DIVIDE,
-    28: INPLACE_FLOOR_DIVIDE,
-    29: INPLACE_TRUE_DIVIDE,
-    50: GET_AITER,
-    51: GET_ANEXT,
-    52: BEFORE_ASYNC_WITH,
-    53: BEGIN_FINALLY,
-    54: END_ASYNC_FOR,
-    55: INPLACE_ADD,
-    56: INPLACE_SUBTRACT,
-    57: INPLACE_MULTIPLY,
-    59: INPLACE_MODULO,
-    60: STORE_SUBSCR,
-    61: DELETE_SUBSCR,
-    62: BINARY_LSHIFT,
-    63: BINARY_RSHIFT,
-    64: BINARY_AND,
-    65: BINARY_XOR,
-    66: BINARY_OR,
-    67: INPLACE_POWER,
-    68: GET_ITER,
-    69: GET_YIELD_FROM_ITER,
-    70: PRINT_EXPR,
-    71: LOAD_BUILD_CLASS,
-    72: YIELD_FROM,
-    73: GET_AWAITABLE,
-    75: INPLACE_LSHIFT,
-    76: INPLACE_RSHIFT,
-    77: INPLACE_AND,
-    78: INPLACE_XOR,
-    79: INPLACE_OR,
-    81: WITH_CLEANUP_START,
-    82: WITH_CLEANUP_FINISH,
-    83: RETURN_VALUE,
-    84: IMPORT_STAR,
-    85: SETUP_ANNOTATIONS,
-    86: YIELD_VALUE,
-    87: POP_BLOCK,
-    88: END_FINALLY,
-    89: POP_EXCEPT,
-    90: STORE_NAME,
-    91: DELETE_NAME,
-    92: UNPACK_SEQUENCE,
-    93: FOR_ITER,
-    94: UNPACK_EX,
-    95: STORE_ATTR,
-    96: DELETE_ATTR,
-    97: STORE_GLOBAL,
-    98: DELETE_GLOBAL,
-    100: LOAD_CONST,
-    101: LOAD_NAME,
-    102: BUILD_TUPLE,
-    103: BUILD_LIST,
-    104: BUILD_SET,
-    105: BUILD_MAP,
-    106: LOAD_ATTR,
-    107: COMPARE_OP,
-    108: IMPORT_NAME,
-    109: IMPORT_FROM,
-    110: JUMP_FORWARD,
-    111: JUMP_IF_FALSE_OR_POP,
-    112: JUMP_IF_TRUE_OR_POP,
-    113: JUMP_ABSOLUTE,
-    114: POP_JUMP_IF_FALSE,
-    115: POP_JUMP_IF_TRUE,
-    116: LOAD_GLOBAL,
-    122: SETUP_FINALLY,
-    124: LOAD_FAST,
-    125: STORE_FAST,
-    126: DELETE_FAST,
-    130: RAISE_VARARGS,
-    131: CALL_FUNCTION,
-    132: MAKE_FUNCTION,
-    133: BUILD_SLICE,
-    134: MAKE_CLOSURE,
-    135: LOAD_CLOSURE,
-    136: LOAD_DEREF,
-    137: STORE_DEREF,
-    138: DELETE_DEREF,
-    141: CALL_FUNCTION_KW,
-    142: CALL_FUNCTION_EX,
-    143: SETUP_WITH,
-    144: EXTENDED_ARG,
-    145: LIST_APPEND,
-    146: SET_ADD,
-    147: MAP_ADD,
-    148: LOAD_CLASSDEREF,
-    149: BUILD_LIST_UNPACK,
-    150: BUILD_MAP_UNPACK,
-    151: BUILD_MAP_UNPACK_WITH_CALL,
-    152: BUILD_TUPLE_UNPACK,
-    153: BUILD_SET_UNPACK,
-    154: SETUP_ASYNC_WITH,
-    155: FORMAT_VALUE,
-    156: BUILD_CONST_KEY_MAP,
-    157: BUILD_STRING,
-    158: BUILD_TUPLE_UNPACK_WITH_CALL,
-    160: LOAD_METHOD,
-    161: CALL_METHOD,
-    162: CALL_FINALLY,
-    163: POP_FINALLY,
-}
-
-python_3_9_mapping = _overlay_mapping(python_3_8_mapping, {
-    48: RERAISE,
-    49: WITH_EXCEPT_START,
-    53: None,  # was BEGIN_FINALLY in 3.8
-    74: LOAD_ASSERTION_ERROR,
-    81: None,  # was WITH_CLEANUP_START in 3.8
-    82: LIST_TO_TUPLE,  # was WITH_CLEANUP_FINISH in 3.8
-    88: None,  # was END_FINALLY in 3.8
-    117: IS_OP,
-    118: CONTAINS_OP,
-    121: JUMP_IF_NOT_EXC_MATCH,
-    149: None,  # was BUILD_LIST_UNPACK in 3.8
-    150: None,  # was BUILD_MAP_UNPACK in 3.8
-    151: None,  # was BUILD_MAP_UNPACK_WITH_CALL in 3.8
-    152: None,  # was BUILD_TUPLE_UNPACK in 3.8
-    153: None,  # was BUILD_SET_UNPACK in 3.8
-    158: None,  # was BUILD_TUPLE_UNPACK_WITH_CALL in 3.8
-    162: LIST_EXTEND,  # was CALL_FINALLY in 3.8
-    163: SET_UPDATE,  # was POP_FINALLY in 3.8
-    164: DICT_MERGE,
-    165: DICT_UPDATE,
-})
-
-python_3_10_mapping = _overlay_mapping(python_3_9_mapping, {
-    30: GET_LEN,
-    31: MATCH_MAPPING,
-    32: MATCH_SEQUENCE,
-    33: MATCH_KEYS,
-    34: COPY_DICT_WITHOUT_KEYS,
-    48: None,  # was RERAISE in 3.9
-    99: ROT_N,
-    119: RERAISE,
-    129: GEN_START,
-    152: MATCH_CLASS,
-})
-
-python_3_11_mapping = _overlay_mapping(python_3_10_mapping, {
-    0: CACHE,
-    2: PUSH_NULL,  # was ROT_TWO in 3.10
-    3: None,  # was ROT_THREE in 3.10
-    4: None,  # was DUP_TOP in 3.10
-    5: None,  # was DUP_TOP_TWO in 3.10
-    6: None,  # was ROT_FOUR in 3.10
-    16: None,  # was BINARY_MATRIX_MULTIPLY in 3.10
-    17: None,  # was INPLACE_MATRIX_MULTIPLY in 3.10
-    19: None,  # was BINARY_POWER in 3.10
-    20: None,  # was BINARY_MULTIPLY in 3.10
-    22: None,  # was BINARY_MODULO in 3.10
-    23: None,  # was BINARY_ADD in 3.10
-    24: None,  # was BINARY_SUBTRACT in 3.10
-    26: None,  # was BINARY_FLOOR_DIVIDE in 3.10
-    27: None,  # was BINARY_TRUE_DIVIDE in 3.10
-    28: None,  # was INPLACE_FLOOR_DIVIDE in 3.10
-    29: None,  # was INPLACE_TRUE_DIVIDE in 3.10
-    34: None,  # was COPY_DICT_WITHOUT_KEYS in 3.10
-    35: PUSH_EXC_INFO,
-    36: CHECK_EXC_MATCH,
-    37: CHECK_EG_MATCH,
-    53: BEFORE_WITH,
-    55: None,  # was INPLACE_ADD in 3.10
-    56: None,  # was INPLACE_SUBTRACT in 3.10
-    57: None,  # was INPLACE_MULTIPLY in 3.10
-    59: None,  # was INPLACE_MODULO in 3.10
-    62: None,  # was BINARY_LSHIFT in 3.10
-    63: None,  # was BINARY_RSHIFT in 3.10
-    64: None,  # was BINARY_AND in 3.10
-    65: None,  # was BINARY_XOR in 3.10
-    66: None,  # was BINARY_OR in 3.10
-    67: None,  # was INPLACE_POWER in 3.10
-    72: None,  # was YIELD_FROM in 3.10
-    73: None,  # was GET_AWAITABLE in 3.10
-    75: RETURN_GENERATOR,  # was INPLACE_LSHIFT in 3.10
-    76: None,  # was INPLACE_RSHIFT in 3.10
-    77: None,  # was INPLACE_AND in 3.10
-    78: None,  # was INPLACE_XOR in 3.10
-    79: None,  # was INPLACE_OR in 3.10
-    87: ASYNC_GEN_WRAP,  # was POP_BLOCK in 3.10
-    88: PREP_RERAISE_STAR,
-    99: SWAP,  # was ROT_N in 3.10
-    113: None,  # was JUMP_ABSOLUTE in 3.10
-    114: POP_JUMP_FORWARD_IF_FALSE,  # was POP_JUMP_IF_FALSE in 3.10
-    115: POP_JUMP_FORWARD_IF_TRUE,  # was POP_JUMP_IF_TRUE in 3.10
-    120: COPY,
-    121: None,  # was JUMP_IF_NOT_EXC_MATCH in 3.10
-    122: BINARY_OP,  # was SETUP_FINALLY in 3.10
-    123: SEND,
-    128: POP_JUMP_FORWARD_IF_NOT_NONE,
-    129: POP_JUMP_FORWARD_IF_NONE,  # was GEN_START in 3.10
-    131: GET_AWAITABLE,  # was CALL_FUNCTION in 3.10
-    134: JUMP_BACKWARD_NO_INTERRUPT,
-    135: MAKE_CELL,  # was LOAD_CLOSURE in 3.10
-    136: LOAD_CLOSURE,  # was LOAD_DEREF in 3.10
-    137: LOAD_DEREF,  # was STORE_DEREF in 3.10
-    138: STORE_DEREF,  # was DELETE_DEREF in 3.10
-    139: DELETE_DEREF,
-    140: JUMP_BACKWARD,
-    141: None,  # was CALL_FUNCTION_KW in 3.10
-    143: None,  # was SETUP_WITH in 3.10
-    149: COPY_FREE_VARS,
-    151: RESUME,
-    154: None,  # was SETUP_ASYNC_WITH in 3.10
-    161: None,  # was CALL_METHOD in 3.10
-    166: PRECALL,
-    171: CALL,
-    172: KW_NAMES,
-    173: POP_JUMP_BACKWARD_IF_NOT_NONE,
-    174: POP_JUMP_BACKWARD_IF_NONE,
-    175: POP_JUMP_BACKWARD_IF_FALSE,
-    176: POP_JUMP_BACKWARD_IF_TRUE,
-})
-
-
-class _BaseLineNumberTableParser(abc.ABC):
-  """State machine for decoding a Python line number array."""
-
-  def __init__(
-      self, lnotab: bytes, firstlineno: int, python_version: Tuple[int, int]):
-    if python_version < (3, 11):
-      assert not len(lnotab) & 1  # lnotab always has an even number of elements
-    self.lnotab = lnotab
-    self.lineno = firstlineno
-    self.next_addr = self.lnotab[0] if self.lnotab else 0
-    self.pos = 0
-
-  @abc.abstractmethod
-  def get(self, i: int) -> int:
-    """Get the line number for the instruction at the given position.
-
-    This does NOT allow random access. Call with incremental numbers. The format
-    of the line number table is described in
-    https://github.com/python/cpython/blob/master/Objects/lnotab_notes.txt.
-
-    Args:
-      i: The byte position in the bytecode. i needs to stay constant or increase
-        between calls.
-
-    Returns:
-      The line number corresponding to the position at i.
-    """
-
-
-class _LineNumberTableParserPre310(_BaseLineNumberTableParser):
-  """Parses the pre-Python 3.10 line number table format."""
-
-  def get(self, i):
-    while i >= self.next_addr and self.pos < len(self.lnotab):
-      line_diff = self.lnotab[self.pos + 1]
-      # The Python docs have more details on this weird bit twiddling.
-      # https://github.com/python/cpython/commit/f3914eb16d28ad9eb20fe5133d9aa83658bcc27f
-      if line_diff >= 0x80:
-        line_diff -= 0x100
-      self.lineno += line_diff
-
-      self.pos += 2
-      if self.pos < len(self.lnotab):
-        self.next_addr += self.lnotab[self.pos]
-    return self.lineno
-
-
-class _LineNumberTableParser(_BaseLineNumberTableParser):
-  """Parses the Python 3.10+ line number table format.
-
-  See
-  https://github.com/python/cpython/commit/877df851c3ecdb55306840e247596e7b7805a60a
-  """
-
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    if self.lnotab:
-      self.lineno += self.line_delta
-
-  @property
-  def line_delta(self):
-    line_delta = self.lnotab[self.pos + 1]
-    # These line delta adjustments are based on
-    # https://github.com/python/cpython/blob/ee912ad6f66bb8cf5a8a2b4a7ecd2752bf070864/Tools/gdb/libpython.py#L666-L669
-    if line_delta == 128:
-      line_delta = 0
-    elif line_delta > 128:
-      line_delta -= 256
-    return line_delta
-
-  def get(self, i):
-    while i >= self.next_addr and self.pos < len(self.lnotab):
-      self.pos += 2
-      if self.pos < len(self.lnotab):
-        self.next_addr += self.lnotab[self.pos]
-        self.lineno += self.line_delta
-    return self.lineno
-
-
-def _prettyprint_arg(cls, oparg, code):
-  """Prettyprint `oparg`."""
-  if cls.has_jrel():
-    return oparg
-  elif code.co_consts and cls.has_const():
-    return repr(code.co_consts[oparg])
-  elif code.co_names and cls.has_name():
-    return code.co_names[oparg]
-  elif code.co_varnames and cls.has_local():
-    return code.co_varnames[oparg]
-  elif cls.has_free():
-    if code.python_version < (3, 11):
-      if code.co_cellvars is not None and code.co_freevars is not None:
-        return (code.co_cellvars + code.co_freevars)[oparg]
-    else:
-      if code.co_localsplusnames:
-        return code.co_localsplusnames[oparg]
-  return oparg
-
-
-def _wordcode_reader(
-    data: bytes, mapping: Mapping[int, Type[Opcode]]
-) -> Iterable[Tuple[int, int, Any, Optional[int]]]:
-  """Reads binary data from pyc files as wordcode.
-
-  Works with Python3.6 and above. Based on
-  https://github.com/python/cpython/blob/feb44550888eb4755efee11bf01daeb285e5b685/Lib/dis.py#L422.
-
-  Arguments:
-    data: The block of binary pyc code
-    mapping: {opcode : class}
-
-  Yields:
-    (start position, end position, opcode class, oparg)
-    The opcode class should really have type `Type[Opcode]`, but using this type
-    is more trouble than it's worth, since we would end up having to do a lot of
-    asserts/casts to distinguish between Opcode and its subclass OpcodeWithArg.
-  """
-  extended_arg = 0
-  start = 0
-  for pos in range(0, len(data), 2):
-    opcode = data[pos]
-    cls = mapping[opcode]
-    if cls is EXTENDED_ARG:
-      oparg = data[pos+1] | extended_arg
-      extended_arg = oparg << 8
-    elif cls.has_argument():
-      oparg = data[pos+1] | extended_arg
-      extended_arg = 0
-    else:
-      oparg = None
-      extended_arg = 0
-    # Don't yield EXTENDED_ARG; it is part of the next opcode.
-    if cls is not EXTENDED_ARG:
-      yield (start, pos + 2, cls, oparg)
-      start = pos + 2
-
-
 def _is_backward_jump(opcls):
   return "JUMP_BACKWARD" in opcls.__name__
 
 
-def _process_oparg_at_pos(opcls, oparg, pos, python_version):
-  """Processes an opcode argument value at an instruction position."""
-  if python_version < (3, 10):
-    # 3.10 changes how oparg is calculated:
-    # https://github.com/python/cpython/commit/fcb55c0037baab6f98f91ee38ce84b6f874f034a
-    return oparg + (pos if opcls.has_jrel() else 0)
-  if python_version < (3, 11) and opcls.has_jabs():
-    return oparg * 2
-  if opcls.has_known_jump():
-    # Either opcls has a relative jump or the python version is 3.11+.
-    # Starting in 3.11, all jumps are relative.
-    signed_oparg = -oparg if _is_backward_jump(opcls) else oparg
-    return signed_oparg * 2 + pos
-  if python_version >= (3, 11) and opcls.__name__ == "LOAD_GLOBAL":
-    # 3.11 adds special handling for LOAD_GLOBAL and JUMP_BACKWARD* opcodes:
-    # https://github.com/python/cpython/blob/db65a326a4022fbd43648858b460f52734faf1b5/Lib/dis.py#L461-L474
-    return oparg // 2
-  return oparg
-
-
-def _dis(code, mapping):
+def dis(code) -> List[Opcode]:
   """Disassemble a string into a list of Opcode instances."""
   ret = []
-  if not code.co_lnotab:
-    lp = None
-  elif code.python_version >= (3, 10):
-    lp = _LineNumberTableParser(
-        code.co_lnotab, code.co_firstlineno, code.python_version)
-  else:
-    lp = _LineNumberTableParserPre310(
-        code.co_lnotab, code.co_firstlineno, code.python_version)
   offset_to_index = {}
-  for pos, end_pos, cls, oparg in _wordcode_reader(code.co_code, mapping):
-    index = len(ret)
-    offset_to_index[pos] = index
-    if lp:
-      line = lp.get(pos)
+  g = globals()
+  for index, op in enumerate(bytecode.dis(code)):
+    cls = g[op.name]
+    offset_to_index[op.offset] = index
+    if cls.has_argument():
+      ret.append(cls(index, op.line, op.arg, op.argval))
     else:
-      # single line programs don't have code.co_lnotab
-      line = code.co_firstlineno
-    if oparg is not None:
-      oparg = _process_oparg_at_pos(cls, oparg, end_pos, code.python_version)
-      pretty = _prettyprint_arg(cls, oparg, code)
-      ret.append(cls(index, line, oparg, pretty))
-    else:
-      ret.append(cls(index, line))
-
+      ret.append(cls(index, op.line))
   # Map the target of jump instructions to the opcode they jump to, and fill
   # in "next" and "prev" pointers
   for i, op in enumerate(ret):
     if op.has_known_jump():
-      op.arg = op.pretty_arg = offset_to_index[op.arg]
+      # op.argval is the postprocessed version of op.arg
+      op.arg = op.argval = offset_to_index[op.argval]
       op.target = ret[op.arg]
     get_code = lambda j: ret[j] if 0 <= j < len(ret) else None
     op.prev = get_code(i - 1)
     op.next = get_code(i +(-1 if _is_backward_jump(op.__class__) else 1))
   return ret
-
-
-def dis(code) -> List[Opcode]:
-  """Set up version-specific arguments and call _dis()."""
-  major, minor, *_ = code.python_version
-  mapping = {
-      (3, 8): python_3_8_mapping,
-      (3, 9): python_3_9_mapping,
-      (3, 10): python_3_10_mapping,
-      (3, 11): python_3_11_mapping,
-  }[(major, minor)]
-  return _dis(code, mapping)

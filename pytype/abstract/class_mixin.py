@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from typing import Any, List, Optional, Type
+from typing import Any, List, Optional, Tuple, Type
 
 from pytype import datatypes
 from pytype.abstract import abstract_utils
@@ -123,10 +123,18 @@ class ClassBuilderProperties:
     new_class_var: If not None, make_class() will return new_class_var with
         the newly constructed class added as a binding. Otherwise, a new
         variable if returned.
-    is_decorated: True if the class definition has a decorator.
     class_type: The internal type to build an instance of. Defaults to
         abstract.InterpreterClass. If set, must be a subclass of
         abstract.InterpreterClass.
+    is_decorated: True if the class definition has a decorator.
+    undecorated_methods: All methods defined in this class, without any
+        decorators applied. For example, if we have the following class:
+            class C:
+              @add_x_parameter  # decorator that adds a `x` parameter
+              def f(self):
+                pass
+        then class_dict_var contains function f with signature (self, x),
+        while undecorated_methods contains f with signature (self).
   """
 
   name_var: cfg.Variable
@@ -136,6 +144,7 @@ class ClassBuilderProperties:
   new_class_var: Optional[cfg.Variable] = None
   class_type: Optional[Type["Class"]] = None
   is_decorated: bool = False
+  undecorated_methods: Tuple[Any, ...] = ()
 
 
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
