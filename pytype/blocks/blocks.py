@@ -1,9 +1,12 @@
 """Functions for computing the execution order of bytecode."""
 
+from typing import Any, List, Tuple, Union, cast
+
+from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
+import pycnite.types
 
 from pytype.pyc import opcodes
-from pytype.pyc import pyc
 from pytype.typegraph import cfg_utils
 
 STORE_OPCODES = (
@@ -22,13 +25,56 @@ class _Locals311:
   CO_FAST_CELL = 0x40
   CO_FAST_FREE = 0x80
 
-  def __init__(self, code):
+  def __init__(self, code: pycnite.types.CodeType311):
     table = list(zip(code.co_localsplusnames, code.co_localspluskinds))
     filter_names = lambda k: tuple(name for name, kind in table if kind & k)
     self.co_varnames = filter_names(self.CO_FAST_LOCAL)
     self.co_cellvars = filter_names(self.CO_FAST_CELL)
     self.co_freevars = filter_names(self.CO_FAST_FREE)
     self.localsplus = code.co_localsplusnames
+
+
+class Block:
+  """A block is a node in a directed graph.
+
+  It has incoming and outgoing edges (jumps). Incoming jumps always jump
+  to the first instruction of our bytecode, and outgoing jumps always jump
+  from the last instruction. There are no jump instructions in the middle of
+  a byte code block.
+  A block implements most of the "sequence" interface, i.e., it can be used as
+  if it was a Python list of bytecode instructions.
+
+  Attributes:
+    id: Block id
+    code: A bytecode object (a list of instances of opcodes.Opcode).
+    incoming: Incoming edges. These are blocks that jump to the first
+      instruction in our code object.
+    outgoing: Outgoing edges. These are the targets jumped to by the last
+      instruction in our code object.
+  """
+
+  def __init__(self, code):
+    self.id = code[0].index
+    self.code = code
+    self.incoming = set()
+    self.outgoing = set()
+
+  def connect_outgoing(self, target):
+    """Add an outgoing edge."""
+    self.outgoing.add(target)
+    target.incoming.add(self)
+
+  def __str__(self):
+    return "<Block %d>" % self.id
+
+  def __repr__(self):
+    return "<Block %d: %r>" % (self.id, self.code)
+
+  def __getitem__(self, index_or_slice):
+    return self.code.__getitem__(index_or_slice)
+
+  def __iter__(self):
+    return self.code.__iter__()
 
 
 class OrderedCode:
@@ -52,30 +98,50 @@ class OrderedCode:
       (See cfg_utils.py:order_nodes)
     code_iter: A flattened list of block opcodes. Corresponds to co_code.
     first_opcode: The first opcode in code_iter.
+    exception_table: The exception table (for python 3.11+)
     python_version: The Python version this bytecode is from.
   """
+
+  name: str
+  filename: Union[bytes, str]
+  consts: Tuple[Any, ...]
+  names: Tuple[str, ...]
+  argcount: int
+  posonlyargcount: int
+  kwonlyargcount: int
+  varnames: Tuple[str, ...]
+  cellvars: Tuple[str, ...]
+  freevars: Tuple[str, ...]
+  localsplus: Tuple[str, ...]
+  exception_table: Tuple[Any, ...]
+  order: List[Block]
+  python_version = Tuple[int, int]
 
   def __init__(self, code, bytecode, order):
     assert hasattr(code, "co_code")
     self.name = code.co_name
     self.filename = code.co_filename
-    self.consts = code.co_consts
-    self.names = code.co_names
+    self.consts = tuple(code.co_consts)
+    self.names = tuple(code.co_names)
     self.argcount = code.co_argcount
     self.posonlyargcount = max(code.co_posonlyargcount, 0)
     self.kwonlyargcount = max(code.co_kwonlyargcount, 0)
     self.firstlineno = code.co_firstlineno
     if code.python_version >= (3, 11):
+      code = cast(pycnite.types.CodeType311, code)
       localsplus = _Locals311(code)
-      self.varnames = localsplus.co_varnames
-      self.cellvars = localsplus.co_cellvars
-      self.freevars = localsplus.co_freevars
-      self.localsplus = localsplus.localsplus
+      self.varnames = tuple(localsplus.co_varnames)
+      self.cellvars = tuple(localsplus.co_cellvars)
+      self.freevars = tuple(localsplus.co_freevars)
+      self.localsplus = tuple(localsplus.localsplus)
+      self.exception_table = tuple(code.co_exceptiontable)
     else:
-      self.varnames = code.co_varnames
-      self.cellvars = code.co_cellvars
-      self.freevars = code.co_freevars
-      self.localsplus = None
+      code = cast(pycnite.types.CodeType38, code)
+      self.varnames = tuple(code.co_varnames)
+      self.cellvars = tuple(code.co_cellvars)
+      self.freevars = tuple(code.co_freevars)
+      self.localsplus = ()
+      self.exception_table = ()
     self._combined_vars = self.cellvars + self.freevars
     # Retain the co_ name since this refers directly to CodeType internals.
     self._co_flags = code.co_flags
@@ -138,49 +204,6 @@ class OrderedCode:
   def get_cell_index(self, name):
     """Get the index of name in the code frame's cell list."""
     return self._combined_vars.index(name)
-
-
-class Block:
-  """A block is a node in a directed graph.
-
-  It has incoming and outgoing edges (jumps). Incoming jumps always jump
-  to the first instruction of our bytecode, and outgoing jumps always jump
-  from the last instruction. There are no jump instructions in the middle of
-  a byte code block.
-  A block implements most of the "sequence" interface, i.e., it can be used as
-  if it was a Python list of bytecode instructions.
-
-  Attributes:
-    id: Block id
-    code: A bytecode object (a list of instances of opcodes.Opcode).
-    incoming: Incoming edges. These are blocks that jump to the first
-      instruction in our code object.
-    outgoing: Outgoing edges. These are the targets jumped to by the last
-      instruction in our code object.
-  """
-
-  def __init__(self, code):
-    self.id = code[0].index
-    self.code = code
-    self.incoming = set()
-    self.outgoing = set()
-
-  def connect_outgoing(self, target):
-    """Add an outgoing edge."""
-    self.outgoing.add(target)
-    target.incoming.add(self)
-
-  def __str__(self):
-    return "<Block %d>" % self.id
-
-  def __repr__(self):
-    return "<Block %d: %r>" % (self.id, self.code)
-
-  def __getitem__(self, index_or_slice):
-    return self.code.__getitem__(index_or_slice)
-
-  def __iter__(self):
-    return self.code.__iter__()
 
 
 class BlockGraph:
@@ -323,51 +346,48 @@ def compute_order(bytecode):
   return cfg_utils.order_nodes(blocks)
 
 
-class DisCodeVisitor:
-  """Visitor for disassembling code into Opcode objects."""
-
-  def visit_code(self, code):
-    code.co_code = opcodes.dis(code)
-    return code
-
-
-def order_code(code):
+def _order_code(dis_code: pycnite.types.DisassembledCode) -> OrderedCode:
   """Split a CodeType object into ordered blocks.
 
   This takes a CodeType object (i.e., a piece of compiled Python code) and
   splits it into ordered basic blocks.
 
   Args:
-    code: A pycnite.types.CodeTypeBase object.
+    dis_code: A pycnite.types.DisassembledCode object.
 
   Returns:
-    A CodeBlocks instance.
+    An OrderedCode instance.
   """
-  bytecodes = code.co_code
-  add_pop_block_targets(bytecodes)
-  return OrderedCode(code, bytecodes, compute_order(bytecodes))
+  ops = opcodes.build_opcodes(dis_code.opcodes)
+  add_pop_block_targets(ops)
+  blocks = compute_order(ops)
+  return OrderedCode(dis_code.code, ops, blocks)
 
 
-class OrderCodeVisitor:
-  """Visitor for recursively changing all CodeType to OrderedCode.
+def _process(
+    dis_code: pycnite.types.DisassembledCode,
+    block_graph: BlockGraph
+) -> OrderedCode:
+  """Recursively convert code -> OrderedCode, while collecting a blockgraph."""
+  ordered_code = _order_code(dis_code)
+  if dis_code.children:
+    # dis_code.children is an ordered list of DisassembledCode for every code
+    # object in dis_code.code.co_consts
+    children = iter(dis_code.children)
+    new_consts = list(dis_code.code.co_consts)
+    for i, c in enumerate(new_consts):
+      if hasattr(c, "co_consts"):
+        # This is a CodeType object (because it has co_consts).
+        new_consts[i] = _process(next(children), block_graph)
+    ordered_code.consts = tuple(new_consts)
+  block_graph.add(ordered_code)
+  return ordered_code
 
-  Depends on DisCodeVisitor having been run first.
-  """
 
-  def __init__(self, python_version):
-    self._python_version = python_version
-    self.block_graph = BlockGraph()
-
-  def visit_code(self, code):
-    ordered_code = order_code(code)
-    self.block_graph.add(ordered_code)
-    return ordered_code
-
-
-def process_code(code):
-  # [binary opcodes] -> [pyc.Opcode]
-  ops = pyc.visit(code, DisCodeVisitor())
-  # pyc.load_marshal.CodeType -> blocks.OrderedCode
-  visitor = OrderCodeVisitor(code.python_version)
-  ordered = pyc.visit(ops, visitor)
-  return ordered, visitor.block_graph
+def process_code(
+    code: pycnite.types.CodeTypeBase
+) -> Tuple[OrderedCode, BlockGraph]:
+  dis_code = pyc_bytecode.dis_all(code)
+  block_graph = BlockGraph()
+  ordered = _process(dis_code, block_graph)
+  return ordered, block_graph

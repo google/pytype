@@ -5,6 +5,7 @@ from typing import Dict, List, Optional
 import attrs
 
 from pycnite import bytecode
+import pycnite.types
 
 
 # We define all-uppercase classes, to match their opcode names:
@@ -45,6 +46,8 @@ class Opcode:
   def __init__(self, index, line):
     self.index = index
     self.line = line
+    self.prev = None
+    self.next = None
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
@@ -999,12 +1002,12 @@ class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
   __slots__ = ()
 
 
-def dis(code) -> List[Opcode]:
-  """Disassemble a string into a list of Opcode instances."""
+def build_opcodes(ops: List[pycnite.types.Opcode]) -> List[Opcode]:
+  """Convert pycnite Opcodes to pytype Opcodes."""
   ret = []
   offset_to_index = {}
   g = globals()
-  for index, op in enumerate(bytecode.dis(code)):
+  for index, op in enumerate(ops):
     cls = g[op.name]
     offset_to_index[op.offset] = index
     if cls.has_argument():
@@ -1022,3 +1025,9 @@ def dis(code) -> List[Opcode]:
     op.prev = get_code(i - 1)
     op.next = get_code(i + 1)
   return ret
+
+
+def dis(code) -> List[Opcode]:
+  """Disassemble a string into a list of Opcode instances."""
+  ops = bytecode.dis(code)
+  return build_opcodes(ops)

@@ -22,7 +22,6 @@ from pytype.blocks import blocks
 from pytype.blocks import process_blocks
 from pytype.directors import annotations
 from pytype.pyc import opcodes
-from pytype.pyc import pyc
 from pytype.tests import test_utils
 
 import unittest
@@ -43,8 +42,8 @@ class OrderingTest(BaseBlocksTest):
 
   def _order_code(self, code):
     """Helper function to disassemble and then order code."""
-    disassembled_code = pyc.visit(code, blocks.DisCodeVisitor())
-    return blocks.order_code(disassembled_code)
+    ordered, _ = blocks.process_code(code)
+    return ordered
 
   def test_trivial(self):
     # Disassembled from:
