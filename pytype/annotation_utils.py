@@ -352,16 +352,21 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         name,
         self.ctx.vm.simple_stack(),
         allowed_type_params=set(itertools.chain(*substs)))
-    orig_typ = typ
+    if isinstance(typ, typing_overlay.Final):
+      return typ, self.ctx.new_unsolvable(node)
+    return self._sub_and_instantiate(node, name, typ, substs)
+
+  def _sub_and_instantiate(self, node, name, typ, substs):
     if isinstance(typ, abstract.FinalAnnotation):
-      typ = typ.annotation
-    elif isinstance(typ, typing_overlay.Final):
-      typ = self.ctx.convert.unsolvable
+      t, value = self._sub_and_instantiate(node, name, typ.annotation, substs)
+      return abstract.FinalAnnotation(t, self.ctx), value
     if typ.formal:
-      typ = self.sub_one_annotation(node, typ, substs,
-                                    instantiate_unbound=False)
-    _, value = self.init_annotation(node, name, typ)
-    return orig_typ, value
+      substituted_type = self.sub_one_annotation(node, typ, substs,
+                                                 instantiate_unbound=False)
+    else:
+      substituted_type = typ
+    _, value = self.init_annotation(node, name, substituted_type)
+    return substituted_type, value
 
   def apply_annotation(self, node, op, name, value):
     """If there is an annotation for the op, return its value."""
