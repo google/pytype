@@ -24,7 +24,7 @@ jobs:
           - manylinux2014_aarch64
         pyver: ['cp38-cp38', 'cp39-cp39', 'cp310-cp310']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up QEMU
@@ -60,7 +60,7 @@ jobs:
       matrix:
         python_version: ['3.8', '3.9', '3.10']
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
       - name: Set up Python ${{ matrix.python_version }}
