@@ -21,28 +21,26 @@ jobs:
             python-version: '3.11'
             experimental: true
           - os: ubuntu-20.04
-            python-version: '3.12-dev'
+            python-version: '3.12'
             experimental: true
     steps:
     - name: Cancel previous
-      uses: styfle/cancel-workflow-action@0.9.1
+      uses: styfle/cancel-workflow-action@0.11.0
       with:
         access_token: ${{ github.token }}
     
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         submodules: true
     - name: setup python
       uses: actions/setup-python@v4
       with:
         python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
 
     - name: Install system packages
       run: |
-        sudo apt-get install g++
-        sudo apt-get install cmake
-        sudo apt-get install bison
-        sudo apt-get install flex
+        sudo apt-get install bison cmake flex g++
 
     - name: Install Dependencies
       run: pip install -r requirements.txt
