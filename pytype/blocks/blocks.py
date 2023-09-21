@@ -244,7 +244,7 @@ def add_pop_block_targets(bytecode):
   for op in bytecode:
     op.block_target = None
 
-  setup_except_op = opcodes.SETUP_FINALLY
+  setup_except_op = (opcodes.SETUP_FINALLY, opcodes.SETUP_EXCEPT_311)
   todo = [(bytecode[0], ())]  # unordered queue of (position, block_stack)
   seen = set()
   while todo:
@@ -358,10 +358,11 @@ def _order_code(dis_code: pycnite.types.DisassembledCode) -> OrderedCode:
   Returns:
     An OrderedCode instance.
   """
-  ops = opcodes.build_opcodes(dis_code.opcodes)
-  add_pop_block_targets(ops)
-  blocks = compute_order(ops)
-  return OrderedCode(dis_code.code, ops, blocks)
+  b = opcodes.OpcodeBuilder.build(
+      dis_code.opcodes, dis_code.exception_table)
+  add_pop_block_targets(b.ops)
+  blocks = compute_order(b.ops)
+  return OrderedCode(dis_code.code, b.ops, blocks)
 
 
 def _process(

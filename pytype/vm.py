@@ -1577,6 +1577,9 @@ class VirtualMachine:
     state, var = constant_folding.build_folded_type(self.ctx, state, const)
     return state.push(var)
 
+  def byte_SETUP_EXCEPT_311(self, state, op):
+    return self._setup_except(state, op)
+
   def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()
 
