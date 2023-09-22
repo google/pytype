@@ -1035,14 +1035,24 @@ def _add_setup_except(offset_to_op, exc_table):
   #
   # Insert a SETUP_EXCEPT_311 just before the start, and if needed a POP_BLOCK
   # just after the end of every exception range.
+  skip_lines = set()
   for e in exc_table.entries:
     pre_start = offset_to_op.get(e.start - 2)
-    if isinstance(pre_start, BEFORE_WITH):
+    start_op = offset_to_op[e.start]
+    if isinstance(pre_start, (BEFORE_WITH, GET_AITER)):
       # Python 3.11 puts with blocks in the exception table, but the BEFORE_WITH
-      # has already set up a block; we don't need to do it with SETUP_EXCEPT
-      pass
+      # has already set up a block; we don't need to do it with SETUP_EXCEPT.
+      # Similarly for async blocks.
+      skip_lines.add(pre_start.line)
+      continue
+    elif start_op.line in skip_lines:
+      # See tests/test_returns::test_nested_with - for complex flows involving
+      # with blocks there are several exception table entries, and there doesn't
+      # seem to be any good way to tell from the bytecode whether any of them
+      # correspond to try: statements, but removing the ones that have the same
+      # line number as the with seems to work.
+      continue
     else:
-      start_op = offset_to_op[e.start]
       setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
       offset_to_op[e.start - 1] = setup_op
       target_op = offset_to_op[e.target]
