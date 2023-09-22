@@ -1048,15 +1048,22 @@ def _add_setup_except(offset_to_op, exc_table):
       target_op = offset_to_op[e.target]
       setup_op.target = target_op
     if not e.lasti:
-      end_op = offset_to_op[e.end]
+      if e.end not in offset_to_op:
+        # e.end is an exclusive boundary in the pyc file; pycnite converts it to
+        # an inclusive one by subtracting 2, but that does not always correspond
+        # to an op since the wordcode is not strictly one op every two bytes.
+        end = max(i for i in offset_to_op if i < e.end)
+      else:
+        end = e.end
+      end_op = offset_to_op[end]
       pop_op = POP_BLOCK(-1, end_op.line)
-      offset_to_op[e.end + 1] = pop_op
+      offset_to_op[end + 1] = pop_op
       # If an if: block or other conditional jump is the last expression in a
       # try: block it will jump past our new POP_BLOCK statement
-      for off in range(e.start, e.end):
+      for off in range(e.start, end):
         if op := offset_to_op.get(off):
           op = cast(OpcodeWithArg, op)
-          if op.has_known_jump() and op.argval > e.end:
+          if op.has_known_jump() and op.argval > end:
             op.target = pop_op
 
 
