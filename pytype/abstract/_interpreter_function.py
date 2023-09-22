@@ -694,10 +694,14 @@ class InterpreterFunction(_function_base.SignedFunction):
   def has_empty_body(self):
     # TODO(mdemello): Optimise this.
     ops = list(self.code.code_iter)
-    if len(ops) != 2:
+    if self.ctx.python_version >= (3, 11):
+      empty_body_ops = ["RESUME", "LOAD_CONST", "RETURN_VALUE"]
+    else:
+      empty_body_ops = ["LOAD_CONST", "RETURN_VALUE"]
+    if len(ops) != len(empty_body_ops):
       # This check isn't strictly necessary but prevents us from wastefully
       # building a list of opcode names for a long method.
       return False
-    if [op.name for op in ops] != ["LOAD_CONST", "RETURN_VALUE"]:
+    if [op.name for op in ops] != empty_body_ops:
       return False
-    return self.code.consts[ops[0].arg] is None
+    return self.code.consts[ops[-2].arg] is None
