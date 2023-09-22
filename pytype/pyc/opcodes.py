@@ -1035,22 +1035,26 @@ def _add_setup_except(offset_to_op, exc_table):
   #
   # Insert a SETUP_EXCEPT_311 just before the start, and if needed a POP_BLOCK
   # just after the end of every exception range.
-  skip_lines = set()
+
+  # Python 3.11 puts with blocks in the exception table, but the BEFORE_WITH
+  # has already set up a block; we don't need to do it with SETUP_EXCEPT.
+  # Similarly for async blocks.
+  #
+  # For complex flows there are several exception table entries, and there
+  # doesn't seem to be any good way to tell from the bytecode whether any of
+  # them correspond to try: statements, but removing the ones that have the same
+  # line number as the with/async seems to work.
+  #
+  # See test_returns::test_nested_with and test_stdlib2::test_async for
+  # examples of complex with/try interactions.
+  block_ops = (BEFORE_WITH, BEFORE_ASYNC_WITH, GET_AITER)
+  skip_lines = {
+      v.line for v in offset_to_op.values()
+      if isinstance(v, block_ops)
+  }
   for e in exc_table.entries:
-    pre_start = offset_to_op.get(e.start - 2)
     start_op = offset_to_op[e.start]
-    if isinstance(pre_start, (BEFORE_WITH, GET_AITER)):
-      # Python 3.11 puts with blocks in the exception table, but the BEFORE_WITH
-      # has already set up a block; we don't need to do it with SETUP_EXCEPT.
-      # Similarly for async blocks.
-      skip_lines.add(pre_start.line)
-      continue
-    elif start_op.line in skip_lines:
-      # See tests/test_returns::test_nested_with - for complex flows involving
-      # with blocks there are several exception table entries, and there doesn't
-      # seem to be any good way to tell from the bytecode whether any of them
-      # correspond to try: statements, but removing the ones that have the same
-      # line number as the with seems to work.
+    if start_op.line in skip_lines:
       continue
     else:
       setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
