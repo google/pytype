@@ -1036,11 +1036,17 @@ def _add_setup_except(offset_to_op, exc_table):
   # Insert a SETUP_EXCEPT_311 just before the start, and if needed a POP_BLOCK
   # just after the end of every exception range.
   for e in exc_table.entries:
-    start_op = offset_to_op[e.start]
-    setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
-    offset_to_op[e.start - 1] = setup_op
-    target_op = offset_to_op[e.target]
-    setup_op.target = target_op
+    pre_start = offset_to_op.get(e.start - 2)
+    if isinstance(pre_start, BEFORE_WITH):
+      # Python 3.11 puts with blocks in the exception table, but the BEFORE_WITH
+      # has already set up a block; we don't need to do it with SETUP_EXCEPT
+      pass
+    else:
+      start_op = offset_to_op[e.start]
+      setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
+      offset_to_op[e.start - 1] = setup_op
+      target_op = offset_to_op[e.target]
+      setup_op.target = target_op
     if not e.lasti:
       end_op = offset_to_op[e.end]
       pop_op = POP_BLOCK(-1, end_op.line)
