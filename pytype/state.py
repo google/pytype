@@ -162,8 +162,10 @@ class FrameState(utils.ContextWeakrefMixin):
     """Merge with another state."""
     if other is None:
       return self
-    assert len(self.data_stack) == len(other.data_stack)
-    assert len(self.block_stack) == len(other.block_stack)
+    assert len(self.data_stack) == len(other.data_stack), (
+        self.data_stack, other.data_stack)
+    assert len(self.block_stack) == len(other.block_stack), (
+        self.block_stack, other.block_stack)
     both = list(zip(self.data_stack, other.data_stack))
     if any(v1 is not v2 for v1, v2 in both):
       for v, o in both:

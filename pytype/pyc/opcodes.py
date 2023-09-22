@@ -1051,6 +1051,13 @@ def _add_setup_except(offset_to_op, exc_table):
       end_op = offset_to_op[e.end]
       pop_op = POP_BLOCK(-1, end_op.line)
       offset_to_op[e.end + 1] = pop_op
+      # If an if: block or other conditional jump is the last expression in a
+      # try: block it will jump past our new POP_BLOCK statement
+      for off in range(e.start, e.end):
+        if op := offset_to_op.get(off):
+          op = cast(OpcodeWithArg, op)
+          if op.has_known_jump() and op.argval > e.end:
+            op.target = pop_op
 
 
 def _make_opcode_list(offset_to_op):
@@ -1075,7 +1082,7 @@ def _add_jump_targets(ops, offset_to_index):
   """Map the target of jump instructions to the opcode they jump to."""
   for op in ops:
     op = cast(OpcodeWithArg, op)
-    if isinstance(op, SETUP_EXCEPT_311):
+    if op.target:
       # We have already set op.target, we need to fill in its index in op.arg
       op.arg = op.argval = op.target.index
     elif op.has_known_jump():
