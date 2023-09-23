@@ -238,6 +238,8 @@ class TestExceptions(test_base.BaseTest):
       def foo() -> int: ...
     """)
 
+  @test_utils.skipFromPy(
+      (3, 11), reason="Code gets eliminated very early, not worth fixing")
   def test_dont_eliminate_except_block(self):
     # Testing for dead code is imprecise, so do not do it at all unless we add
     # special cases for code analysis within try blocks.
@@ -251,6 +253,20 @@ class TestExceptions(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def foo() -> Union[int, complex]: ...
+    """)
+
+  @test_utils.skipBeforePy((3, 11), reason="New behaviour in 3.11")
+  def test_eliminate_except_block(self):
+    # The dead except block gets eliminated in 3.11
+    ty = self.Infer("""
+      def foo():
+        try:
+          return 42
+        except Exception:
+          return 1+3j
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def foo() -> int: ...
     """)
 
   def test_assert(self):
@@ -395,11 +411,11 @@ class TestExceptions(test_base.BaseTest):
   def test_bad_type(self):
     errors = self.CheckWithErrors("""
       try:
-        pass
+        x = 1
       except None:  # mro-error[e1]
         pass
       try:
-        pass
+        x = 2
       except type(None):  # mro-error[e2]
         pass
     """)
