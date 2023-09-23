@@ -1,6 +1,6 @@
 """Opcode definitions."""
 
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Dict, List, Optional, cast
 
 import attrs
 
@@ -1139,38 +1139,17 @@ def _add_jump_targets(ops, offset_to_index):
       op.target = ops[op.arg]
 
 
-class OpcodeBuilder:
-  """Build up a list of Opcodes from pycnite opcodes."""
-
-  def __init__(self, ops, offset_to_index):
-    self.ops = ops
-    self.offset_to_index = offset_to_index
-
-  @classmethod
-  def build(cls, ops: List[pycnite.types.Opcode], exc_table=None):
-    """Build a list of opcodes from pycnite opcodes."""
-    offset_to_op = _make_opcodes(ops)
-    if exc_table:
-      _add_setup_except(offset_to_op, exc_table)
-    ops, offset_to_index = _make_opcode_list(offset_to_op)
-    _add_jump_targets(ops, offset_to_index)
-    return cls(ops, offset_to_index)
+def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> List[Opcode]:
+  """Build a list of opcodes from pycnite opcodes."""
+  offset_to_op = _make_opcodes(dis_code.opcodes)
+  if dis_code.exception_table:
+    _add_setup_except(offset_to_op, dis_code.exception_table)
+  ops, offset_to_index = _make_opcode_list(offset_to_op)
+  _add_jump_targets(ops, offset_to_index)
+  return ops
 
 
-# TODO(mdemello): Get rid of these two functions; they don't work for 3.11
-# exceptions. (They are currently used in tests.)
-
-
-def build_opcodes(
-    ops: List[pycnite.types.Opcode]
-) -> Tuple[List[Opcode], Dict[int, int]]:
-  """Convert pycnite Opcodes to pytype Opcodes."""
-  ret = OpcodeBuilder.build(ops)
-  return ret.ops, ret.offset_to_index
-
-
-def dis(code) -> List[Opcode]:
-  """Disassemble a string into a list of Opcode instances."""
-  ops = bytecode.dis(code)
-  ret, _ = build_opcodes(ops)
-  return ret
+def dis(code: pycnite.types.CodeTypeBase) -> List[Opcode]:
+  """Build a list of opcodes from a pycnite CodeType."""
+  dis_code = bytecode.dis_all(code)
+  return build_opcodes(dis_code)

@@ -358,11 +358,10 @@ def _order_code(dis_code: pycnite.types.DisassembledCode) -> OrderedCode:
   Returns:
     An OrderedCode instance.
   """
-  b = opcodes.OpcodeBuilder.build(
-      dis_code.opcodes, dis_code.exception_table)
-  add_pop_block_targets(b.ops)
-  blocks = compute_order(b.ops)
-  return OrderedCode(dis_code.code, b.ops, blocks)
+  ops = opcodes.build_opcodes(dis_code)
+  add_pop_block_targets(ops)
+  blocks = compute_order(ops)
+  return OrderedCode(dis_code.code, ops, blocks)
 
 
 def _process(
