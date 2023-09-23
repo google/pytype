@@ -103,6 +103,16 @@ class TestPy311(test_base.BaseTest):
         return (x, y)
     """)
 
+  def test_exception_type(self):
+    self.Check("""
+      class FooError(Exception):
+        pass
+      try:
+        raise FooError()
+      except FooError as e:
+        assert_type(e, FooError)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

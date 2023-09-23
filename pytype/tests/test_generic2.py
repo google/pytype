@@ -1358,6 +1358,27 @@ class GenericFeatureTest(test_base.BaseTest):
         return Expr.make_unbound(init=initial_expr)
     """)
 
+  def test_inherit_from_generic_class_with_generic_instance_method(self):
+    ty = self.Infer("""
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Base(Generic[T]):
+        def __init__(self, x: T):
+          self.x: T = x
+      class Child(Base[bool]):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Generic, TypeVar
+      T = TypeVar('T')
+      class Base(Generic[T]):
+        x: T
+        def __init__(self, x: T) -> None:
+          self = Base[T]
+      class Child(Base[bool]):
+        x: bool
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

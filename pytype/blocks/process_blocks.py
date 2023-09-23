@@ -26,10 +26,7 @@ def _is_function_def(fn_code):
 
 
 class CollectAnnotationTargetsVisitor:
-  """Collect opcodes that might have annotations attached.
-
-  Depends on DisCodeVisitor having been run first.
-  """
+  """Collect opcodes that might have annotations attached."""
 
   def __init__(self):
     # A mutable map of line: opcode for STORE_* opcodes. This is modified as the
@@ -55,7 +52,8 @@ class CollectAnnotationTargetsVisitor:
         if not _is_function_def(fn_code):
           continue
         # First line of code in body.
-        end_line = min(op.line for op in fn_code.code_iter)
+        end_line = min(op.line for op in fn_code.code_iter
+                       if not isinstance(op, opcodes.RESUME))
         self.make_function_ops[op.line] = (end_line, op)
       elif (isinstance(op, blocks.STORE_OPCODES) and
             op.line not in self.make_function_ops):
@@ -66,10 +64,7 @@ class CollectAnnotationTargetsVisitor:
 
 
 class FunctionDefVisitor:
-  """Add metadata to function definition opcodes.
-
-  Depends on DisCodeVisitor having been run first.
-  """
+  """Add metadata to function definition opcodes."""
 
   def __init__(self, param_annotations):
     self.annots = param_annotations

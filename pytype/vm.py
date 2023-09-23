@@ -636,10 +636,31 @@ class VirtualMachine:
       return self.frames
 
   def push_abstract_exception(self, state):
-    tb = self.ctx.convert.build_list(state.node, [])
-    value = self.ctx.convert.create_new_unknown(state.node)
-    exctype = self.ctx.convert.create_new_unknown(state.node)
-    return state.push(tb, value, exctype)
+    """Push an exception onto the data stack."""
+    if self.ctx.python_version >= (3, 11):
+      # In 3.11+, exceptions are represented as one item rather than the three
+      # items in 3.10-. Additionally, this item is used only for pytype's
+      # internal bookkeeping, so it can be Any.
+      state = state.push(self.ctx.new_unsolvable(state.node))
+    else:
+      # I have no idea why we need to push the exception twice! See
+      # test_exceptions.TestExceptions.test_reuse_name for a test that fails if
+      # we don't do this.
+      for _ in range(2):
+        tb = self.ctx.convert.build_list(state.node, [])
+        value = self.ctx.convert.create_new_unknown(state.node)
+        exctype = self.ctx.convert.create_new_unknown(state.node)
+        state = state.push(tb, value, exctype)
+    return state
+
+  def pop_abstract_exception(self, state):
+    # We don't push the special except-handler block, so we don't need to
+    # pop it, either.
+    if self.ctx.python_version >= (3, 11):
+      state, _ = state.pop()
+    else:
+      state, _ = state.popn(3)
+    return state
 
   def resume_frame(self, node, frame):
     frame.f_back = self.frame
@@ -1577,6 +1598,9 @@ class VirtualMachine:
     state, var = constant_folding.build_folded_type(self.ctx, state, const)
     return state.push(var)
 
+  def byte_SETUP_EXCEPT_311(self, state, op):
+    return self._setup_except(state, op)
+
   def byte_POP_TOP(self, state, op):
     return state.pop_and_discard()
 
@@ -1908,11 +1932,15 @@ class VirtualMachine:
     # `except` block, when we know the exception being caught, we can replace
     # the unknowns with more useful variables.
     value, types = self._instantiate_exception(state.node, exc_type)
-    if None in types:
-      exc_type = self.ctx.new_unsolvable(state.node)
-    # See SETUP_FINALLY: we push the exception on twice.
-    state, (_, _, tb, _, _) = state.popn(5)
-    state = state.push(value, exc_type, tb, value, exc_type)
+    if self.ctx.python_version >= (3, 11):
+      state, _ = state.pop()
+      state = state.push(value)
+    else:
+      if None in types:
+        exc_type = self.ctx.new_unsolvable(state.node)
+      # See SETUP_FINALLY: we push the exception on twice.
+      state, (_, _, tb, _, _) = state.popn(5)
+      state = state.push(value, exc_type, tb, value, exc_type)
     return state
 
   def _compare_op(self, state, op_arg, op):
@@ -2400,17 +2428,31 @@ class VirtualMachine:
     self.store_jump(op.target, state.forward_cfg_node("JumpAbsolute"))
     return state
 
-  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
-    state, (unused_exc, exc_type) = state.popn(2)
+  def _check_exc_match(self, state):
+    if self.ctx.python_version >= (3, 11):
+      state, exc_type = state.pop()
+    else:
+      state, (unused_exc, exc_type) = state.popn(2)
     # At runtime, this opcode calls isinstance(exc, exc_type) and pushes the
     # result onto the stack. Instead, we use exc_type to refine the type of the
     # exception instance still on the stack and push on an indefinite result for
     # the isinstance call.
     state = self._replace_abstract_exception(state, exc_type)
-    state = state.push(self.ctx.convert.bool_values[None].to_variable(
+    return state.push(self.ctx.convert.bool_values[None].to_variable(
         state.node))
+
+  def byte_JUMP_IF_NOT_EXC_MATCH(self, state, op):
+    # Opcode for exception type matching in Python 3.10-. In 3.11+, this is
+    # replaced by CHECK_EXC_MATCH followed by POP_JUMP_FORWARD_IF_FALSE.
+    state = self._check_exc_match(state)
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
                             pop=vm_utils.PopBehavior.ALWAYS)
+
+  def byte_CHECK_EXC_MATCH(self, state, op):
+    # Opcode for exception type matching in Python 3.11+. For 3.10-, see
+    # JUMP_IF_NOT_EXC_MATCH.
+    del op  # unused
+    return self._check_exc_match(state)
 
   def byte_SETUP_LOOP(self, state, op):
     # We ignore the implicit jump in SETUP_LOOP; the interpreter never takes it.
@@ -2461,10 +2503,6 @@ class VirtualMachine:
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
     jump_state = self.push_abstract_exception(state)
-    # I have no idea why we need to push the exception twice! See
-    # test_exceptions.TestExceptions.test_reuse_name for a test that fails if
-    # we don't do this.
-    jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
     return vm_utils.push_block(state, "setup-except")
 
@@ -2532,10 +2570,7 @@ class VirtualMachine:
       return state.set_why("exception")
 
   def byte_POP_EXCEPT(self, state, op):  # Python 3 only
-    # We don't push the special except-handler block, so we don't need to
-    # pop it, either.
-    state, _ = state.popn(3)
-    return state
+    return self.pop_abstract_exception(state)
 
   def byte_SETUP_WITH(self, state, op):
     """Starts a 'with' statement. Will push a block."""
@@ -3115,7 +3150,7 @@ class VirtualMachine:
 
   def byte_RERAISE(self, state, op):
     del op  # unused
-    state, _ = state.popn(3)
+    state = self.pop_abstract_exception(state)
     return state.set_why("reraise")
 
   def byte_WITH_EXCEPT_START(self, state, op):
@@ -3237,12 +3272,6 @@ class VirtualMachine:
     exc = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
     state = state.push(exc)
     return state.push(top)
-
-  def byte_CHECK_EXC_MATCH(self, state, op):
-    del op
-    state, _ = state.pop()
-    ret = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
-    return state.push(ret)
 
   def byte_CHECK_EG_MATCH(self, state, op):
     del op

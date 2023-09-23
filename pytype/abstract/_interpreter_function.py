@@ -336,19 +336,36 @@ class InterpreterFunction(_function_base.SignedFunction):
       for b in self.ctx.callself_stack[-1].bindings:
         b.data.maybe_missing_members = True
 
+  def _is_unannotated_contextmanager_exit(self, func, args):
+    """Returns whether this is an unannotated contextmanager __exit__ method.
+
+    If this is a bound method named __exit__ that has no type annotations and is
+    passed four positional args and nothing else, then we assume that it is a
+    contextmanager's __exit__ method that needs annotations added.
+
+    Args:
+      func: A method binding for self.
+      args: Passed arguments.
+    """
+    if not isinstance(func, _function_base.BoundInterpreterFunction):
+      return False
+    if not (self.name.endswith(".__exit__") or self.name == "__exit__"):
+      return False
+    if self.signature.has_param_annotations:
+      return False
+    return (len(args.posargs) == 4 and not args.has_namedargs() and
+            not args.starargs and not args.starstarargs)
+
   def _fix_args_for_unannotated_contextmanager_exit(self, node, func, args):
     """Adjust argument types for a contextmanager's __exit__ method."""
+    if not self._is_unannotated_contextmanager_exit(func.data, args):
+      return args
     # When a contextmanager is used in a 'with' statement, its __exit__ method
     # is implicitly called with either (None, None, None) or
     # (exc_type, exc_value, traceback) depending on whether an exception is
     # encountered. These two cases generate different bytecode, and our VM
     # always assumes no exception. But for analyzing __exit__, we should allow
     # for both possibilities.
-    if not (isinstance(func.data, _function_base.BoundInterpreterFunction) and
-            self.name.endswith(".__exit__") and len(args.posargs) == 4 and
-            not args.has_namedargs() and not args.starargs and
-            not args.starstarargs and not self.signature.has_param_annotations):
-      return args
     exception_type = self.ctx.convert.lookup_value("builtins", "BaseException")
     arg1 = self.ctx.program.NewVariable(
         [exception_type, self.ctx.convert.none], [], node)
@@ -677,10 +694,14 @@ class InterpreterFunction(_function_base.SignedFunction):
   def has_empty_body(self):
     # TODO(mdemello): Optimise this.
     ops = list(self.code.code_iter)
-    if len(ops) != 2:
+    if self.ctx.python_version >= (3, 11):
+      empty_body_ops = ["RESUME", "LOAD_CONST", "RETURN_VALUE"]
+    else:
+      empty_body_ops = ["LOAD_CONST", "RETURN_VALUE"]
+    if len(ops) != len(empty_body_ops):
       # This check isn't strictly necessary but prevents us from wastefully
       # building a list of opcode names for a long method.
       return False
-    if [op.name for op in ops] != ["LOAD_CONST", "RETURN_VALUE"]:
+    if [op.name for op in ops] != empty_body_ops:
       return False
-    return self.code.consts[ops[0].arg] is None
+    return self.code.consts[ops[-2].arg] is None

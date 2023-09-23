@@ -1,10 +1,11 @@
 """Opcode definitions."""
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple, cast
 
 import attrs
 
 from pycnite import bytecode
+import pycnite.types
 
 
 # We define all-uppercase classes, to match their opcode names:
@@ -45,6 +46,8 @@ class Opcode:
   def __init__(self, index, line):
     self.index = index
     self.line = line
+    self.prev = None
+    self.next = None
     self.target = None
     self.code = None  # If we have a CodeType or OrderedCode parent
     self.annotation = None
@@ -170,13 +173,23 @@ class OpcodeWithArg(Opcode):
     else:
       return out
 
+# --------------------------------------------------------
+# Fake opcodes used internally
 
-class LOAD_FOLDED_CONST(OpcodeWithArg):  # A fake opcode used internally
+
+class LOAD_FOLDED_CONST(OpcodeWithArg):
   _FLAGS = HAS_ARGUMENT
   __slots__ = ()
 
   def __str__(self):
     return self.basic_str() + " " + str(self.arg.value)
+
+
+class SETUP_EXCEPT_311(OpcodeWithArg):
+  _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
+  __slots__ = ()
+
+# --------------------------------------------------------
 
 
 class POP_TOP(Opcode):
@@ -999,26 +1012,138 @@ class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
   __slots__ = ()
 
 
-def dis(code) -> List[Opcode]:
-  """Disassemble a string into a list of Opcode instances."""
-  ret = []
-  offset_to_index = {}
+def _make_opcodes(ops: List[pycnite.types.Opcode]):
+  """Convert pycnite opcodes to pytype opcodes."""
   g = globals()
-  for index, op in enumerate(bytecode.dis(code)):
+  offset_to_op = {}
+  for op in ops:
     cls = g[op.name]
-    offset_to_index[op.offset] = index
     if cls.has_argument():
-      ret.append(cls(index, op.line, op.arg, op.argval))
+      opcode = cls(0, op.line, op.arg, op.argval)
     else:
-      ret.append(cls(index, op.line))
-  # Map the target of jump instructions to the opcode they jump to, and fill
-  # in "next" and "prev" pointers
-  for i, op in enumerate(ret):
-    if op.has_known_jump():
+      opcode = cls(0, op.line)
+    offset_to_op[op.offset] = opcode
+  return offset_to_op
+
+
+def _add_setup_except(offset_to_op, exc_table):
+  """Handle the exception table in 3.11+."""
+  # In python 3.11, exception handling is no longer bytecode-based - see
+  # https://github.com/python/cpython/blob/main/Objects/exception_handling_notes.txt
+  # This makes it hard for pytype to analyse code containing exceptions, so we
+  # add back some opcodes to mark exception blocks.
+  #
+  # Insert a SETUP_EXCEPT_311 just before the start, and if needed a POP_BLOCK
+  # just after the end of every exception range.
+
+  # Python 3.11 puts with blocks in the exception table, but the BEFORE_WITH
+  # has already set up a block; we don't need to do it with SETUP_EXCEPT.
+  # Similarly for async blocks.
+  #
+  # For complex flows there are several exception table entries, and there
+  # doesn't seem to be any good way to tell from the bytecode whether any of
+  # them correspond to try: statements, but removing the ones that have the same
+  # line number as the with/async seems to work.
+  #
+  # See test_returns::test_nested_with and test_stdlib2::test_async for
+  # examples of complex with/try interactions.
+  block_ops = (BEFORE_WITH, BEFORE_ASYNC_WITH, GET_AITER)
+  skip_lines = {
+      v.line for v in offset_to_op.values()
+      if isinstance(v, block_ops)
+  }
+  for e in exc_table.entries:
+    start_op = offset_to_op[e.start]
+    if start_op.line in skip_lines:
+      continue
+    else:
+      setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
+      offset_to_op[e.start - 1] = setup_op
+      target_op = offset_to_op[e.target]
+      setup_op.target = target_op
+    if not e.lasti:
+      if e.end not in offset_to_op:
+        # e.end is an exclusive boundary in the pyc file; pycnite converts it to
+        # an inclusive one by subtracting 2, but that does not always correspond
+        # to an op since the wordcode is not strictly one op every two bytes.
+        end = max(i for i in offset_to_op if i < e.end)
+      else:
+        end = e.end
+      end_op = offset_to_op[end]
+      pop_op = POP_BLOCK(-1, end_op.line)
+      offset_to_op[end + 1] = pop_op
+      # If an if: block or other conditional jump is the last expression in a
+      # try: block it will jump past our new POP_BLOCK statement
+      for off in range(e.start, end):
+        if op := offset_to_op.get(off):
+          op = cast(OpcodeWithArg, op)
+          if op.has_known_jump() and op.argval > end:
+            op.target = pop_op
+
+
+def _make_opcode_list(offset_to_op):
+  """Convert opcodes to a list and fill in opcode.index, next and prev."""
+  ops = []
+  offset_to_index = {}
+  prev_op = None
+  for index, off in enumerate(sorted(offset_to_op)):
+    op = offset_to_op[off]
+    op.index = index
+    offset_to_index[off] = index
+    if prev_op:
+      prev_op.next = op
+    op.prev = prev_op
+    op.next = None
+    ops.append(op)
+    prev_op = op
+  return ops, offset_to_index
+
+
+def _add_jump_targets(ops, offset_to_index):
+  """Map the target of jump instructions to the opcode they jump to."""
+  for op in ops:
+    op = cast(OpcodeWithArg, op)
+    if op.target:
+      # We have already set op.target, we need to fill in its index in op.arg
+      op.arg = op.argval = op.target.index
+    elif op.has_known_jump():
       # op.argval is the postprocessed version of op.arg
       op.arg = op.argval = offset_to_index[op.argval]
-      op.target = ret[op.arg]
-    get_code = lambda j: ret[j] if 0 <= j < len(ret) else None
-    op.prev = get_code(i - 1)
-    op.next = get_code(i + 1)
+      op.target = ops[op.arg]
+
+
+class OpcodeBuilder:
+  """Build up a list of Opcodes from pycnite opcodes."""
+
+  def __init__(self, ops, offset_to_index):
+    self.ops = ops
+    self.offset_to_index = offset_to_index
+
+  @classmethod
+  def build(cls, ops: List[pycnite.types.Opcode], exc_table=None):
+    """Build a list of opcodes from pycnite opcodes."""
+    offset_to_op = _make_opcodes(ops)
+    if exc_table:
+      _add_setup_except(offset_to_op, exc_table)
+    ops, offset_to_index = _make_opcode_list(offset_to_op)
+    _add_jump_targets(ops, offset_to_index)
+    return cls(ops, offset_to_index)
+
+
+# TODO(mdemello): Get rid of these two functions; they don't work for 3.11
+# exceptions. (They are currently used in tests.)
+
+
+def build_opcodes(
+    ops: List[pycnite.types.Opcode]
+) -> Tuple[List[Opcode], Dict[int, int]]:
+  """Convert pycnite Opcodes to pytype Opcodes."""
+  ret = OpcodeBuilder.build(ops)
+  return ret.ops, ret.offset_to_index
+
+
+def dis(code) -> List[Opcode]:
+  """Disassemble a string into a list of Opcode instances."""
+  ops = bytecode.dis(code)
+  ret, _ = build_opcodes(ops)
   return ret
