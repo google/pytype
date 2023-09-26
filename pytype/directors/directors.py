@@ -194,11 +194,8 @@ class Director:
     # Map from error name to lines for which that error is disabled.  Note
     # that _ALL_ERRORS is essentially a wildcard name (it matches all names).
     self._disables = collections.defaultdict(_LineSet)
-    # Line numbers of decorators. Since this is used to mark a class or function
-    # as decorated, stacked decorators will record the one closest to the
-    # definition (i.e. the last one). The python bytecode uses this line number
-    # for all the stacked decorator invocations.
-    self._decorators = set()
+    # Function line number -> decorators map.
+    self._decorators = collections.defaultdict(list)
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
@@ -271,9 +268,7 @@ class Director:
       self._variable_annotations.add_annotation(
           annot.start_line, annot.name, annot.annotation)
 
-    for decorator in visitor.decorators:
-      # The MAKE_FUNCTION opcode is at the 'def' line.
-      self._decorators.add(decorator.end_line)
+    self._decorators = visitor.decorators
 
     if visitor.defs_start is not None:
       disables = list(self._disables.items())

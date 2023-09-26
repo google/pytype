@@ -171,7 +171,7 @@ class _ParseVisitor(visitor.BaseVisitor):
         for lineno, structured_comments in raw_structured_comments.items())
     self.variable_annotations = []
     self.param_annotations = []
-    self.decorators = []
+    self.decorators = collections.defaultdict(list)
     self.defs_start = None
     self.function_ranges = {}
     self.block_returns = _BlockReturns()
@@ -344,13 +344,10 @@ class _ParseVisitor(visitor.BaseVisitor):
   def _visit_decorators(self, node):
     if not node.decorator_list:
       return
-    for decorator in node.decorator_list:
-      self._process_structured_comments(LineRange.from_node(decorator))
-    # The line range for this definition starts at the beginning of the last
-    # decorator and ends at the definition's name.
-    # pytype: disable=name-error
-    self.decorators.append(LineRange(decorator.lineno, node.lineno))  # pylint: disable=undefined-loop-variable
-    # pytype: enable=name-error
+    for dec in node.decorator_list:
+      self._process_structured_comments(LineRange.from_node(dec))
+      dec_base = dec.func if isinstance(dec, ast.Call) else dec
+      self.decorators[node.lineno].append(ast.unparse(dec_base))
 
   def _visit_def(self, node):
     self._visit_decorators(node)

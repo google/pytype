@@ -126,7 +126,7 @@ class ClassBuilderProperties:
     class_type: The internal type to build an instance of. Defaults to
         abstract.InterpreterClass. If set, must be a subclass of
         abstract.InterpreterClass.
-    is_decorated: True if the class definition has a decorator.
+    decorators: Decorators applied to this class.
     undecorated_methods: All methods defined in this class, without any
         decorators applied. For example, if we have the following class:
             class C:
@@ -143,7 +143,7 @@ class ClassBuilderProperties:
   metaclass_var: Optional[cfg.Variable] = None
   new_class_var: Optional[cfg.Variable] = None
   class_type: Optional[Type["Class"]] = None
-  is_decorated: bool = False
+  decorators: Optional[List[str]] = None
   undecorated_methods: Tuple[Any, ...] = ()
 
 

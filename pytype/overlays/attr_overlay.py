@@ -6,6 +6,7 @@ from typing import Any, ClassVar, Dict, Optional, Tuple, TypeVar, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.overlays import classgen
@@ -215,7 +216,10 @@ class AttrsBase(classgen.Decorator):
         abstract_utils.Local(node, None, attr_attribute_type, None, self.ctx))
 
     if isinstance(cls, abstract.InterpreterClass):
-      cls.decorators.append("attr.s")
+      # Replaces all decorators with equivalent behavior with @attr.s.
+      cls.decorators = [
+          d for d in cls.decorators
+          if class_mixin.get_metadata_key(d) != "__attrs_attrs__"] + ["attr.s"]
       # Fix up type parameters in methods added by the decorator.
       cls.update_method_type_params()
 

@@ -2696,8 +2696,7 @@ class VirtualMachine:
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
         closure=free_vars, opcode=op, ctx=self.ctx)
     assert self._director is not None
-    if op.line in self._director.decorators:
-      fn.data[0].is_decorated = True
+    fn.data[0].decorators = self._director.decorators[op.line]
     vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
     self.trace_opcode(op, fn.data[0].name, fn)
     self.trace_functiondef(fn)
@@ -2817,9 +2816,8 @@ class VirtualMachine:
   def byte_LOAD_BUILD_CLASS(self, state, op):
     cls = abstract.BuildClass(self.ctx).to_variable(state.node)
     assert self._director is not None
-    if op.line in self._director.decorators:
-      # Will be copied into the abstract.InterpreterClass
-      cls.data[0].is_decorated = True
+    # Will be copied into the abstract.InterpreterClass
+    cls.data[0].decorators = self._director.decorators[op.line]
     self.trace_opcode(op, "", cls)
     return state.push(cls)
 

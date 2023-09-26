@@ -35,6 +35,7 @@ class BuildClass(_base.BaseValue):
 
   def __init__(self, ctx):
     super().__init__("__build_class__", ctx)
+    self.decorators = []
 
   def call(self, node, func, args, alias_map=None):
     args = args.simplify(node, self.ctx)
@@ -87,7 +88,7 @@ class BuildClass(_base.BaseValue):
         class_dict_var=func.f_locals.to_variable(node),
         metaclass_var=metaclass,
         new_class_var=class_closure_var,
-        is_decorated=self.is_decorated,
+        decorators=self.decorators,
         undecorated_methods=undecorated_methods)
     # Check for special classes first.
     node, clsvar = _special_classes.build_class(node, props, kwargs, self.ctx)

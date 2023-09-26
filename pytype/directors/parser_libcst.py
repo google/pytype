@@ -125,7 +125,7 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.structured_comment_groups = collections.OrderedDict()
     self.variable_annotations = []
     self.param_annotations = []
-    self.decorators = []
+    self.decorators = collections.defaultdict(list)
     self.defs_start = None
     self.function_ranges = {}
     self.block_returns = _BlockReturns()
@@ -295,14 +295,11 @@ class _ParseVisitor(libcst.CSTVisitor):
     self.block_returns.add_return(self._get_position(node))
 
   def _visit_decorators(self, node):
-    if not node.decorators:
-      return
-    # The line range for this definition starts at the beginning of the last
-    # decorator and ends at the definition's name.
-    decorator = node.decorators[-1]
-    start = self._get_position(decorator).start
-    end = self._get_position(node.name).start
-    self.decorators.append(LineRange(start.line, end.line))
+    funcdef_pos = self._get_position(node.name).start.line
+    for decorator in node.decorators:
+      dec = decorator.decorator
+      dec_base = dec.func if isinstance(dec, libcst.Call) else dec
+      self.decorators[funcdef_pos].append(libcst.Module([dec_base]).code)
 
   def _visit_def(self, node):
     line = self._get_position(node).start.line

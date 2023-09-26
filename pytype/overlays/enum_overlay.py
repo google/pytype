@@ -86,7 +86,7 @@ class EnumBuilder(_DelGetAttributeMixin, abstract.PyTDClass):
 
   def make_class(self, node, props):
     """Check the members for errors, then create the enum class."""
-    # TODO(tsudol): Handle is_decorated: @enum.unique, for example.
+    # TODO(tsudol): Handle decorators: @enum.unique, for example.
 
     # make_class intercepts the class creation for enums in order to check for
     # errors. EnumMeta turns the class into a full enum, but that's too late for

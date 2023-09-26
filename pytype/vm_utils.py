@@ -521,7 +521,7 @@ def make_class(node, props, ctx):
       _check_final_members(val, class_dict.pyval, ctx)
       overriding_checks.check_overriding_members(val, bases, class_dict.pyval,
                                                  ctx.matcher(node), ctx)
-      val.is_decorated = props.is_decorated
+      val.decorators = props.decorators or []
     except mro.MROError as e:
       ctx.errorlog.mro_error(ctx.vm.frames, name, e.mro_seqs)
       var = ctx.new_unsolvable(node)
