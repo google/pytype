@@ -73,6 +73,12 @@ class Module(_instance_base.Instance, mixin.LazyMembers):
 
   def _convert_member(self, name, member, subst=None):
     """Called to convert the items in _member_map to cfg.Variable."""
+    if isinstance(member, pytd.Alias) and isinstance(member.type, pytd.Module):
+      module = self.ctx.vm.import_module(
+          member.type.module_name, member.type.module_name, 0)
+      if not module:
+        raise abstract_utils.ModuleLoadError()
+      return module.to_variable(self.ctx.root_node)
     var = self.ctx.convert.constant_to_var(member)
     for value in var.data:
       # Only do this if this is a class which isn't already part of a module, or
