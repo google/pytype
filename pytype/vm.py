@@ -3212,6 +3212,17 @@ class VirtualMachine:
     self.frame.cells[idx].PasteVariable(var)
     return state
 
+  def _make_instance_for_match(self, state, cls_var):
+    """Instantiate a type for match case narrowing."""
+    # This specifically handles the case where we match against an
+    # AnnotationContainer in MATCH_CLASS, and need to replace it with its base
+    # class when narrowing the matched variable.
+    ret = []
+    for v in cls_var.data:
+      cls = v.base_cls if isinstance(v, abstract.AnnotationContainer) else v
+      ret.append(self.init_class(state.node, cls))
+    return self.ctx.join_variables(state.node, ret)
+
   def byte_MATCH_CLASS(self, state, op):
     """Implementation of the MATCH_CLASS opcode."""
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
@@ -3231,8 +3242,7 @@ class VirtualMachine:
       success = success or complete
       var_name = self._var_names.get(obj_var.id)
       if var_name:
-        narrowed_type = self.ctx.join_variables(
-            state.node, [self.init_class(state.node, x) for x in cls_var.data])
+        narrowed_type = self._make_instance_for_match(state, cls_var)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     state = state.set_top(
         self.ctx.convert.bool_values[success].to_variable(state.node))

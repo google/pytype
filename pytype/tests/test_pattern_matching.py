@@ -623,6 +623,29 @@ class MatchClassTest(test_base.BaseTest):
             return False
     """)
 
+  def test_callable(self):
+    self.Check("""
+      from typing import Any, Callable
+
+      def f(x: Callable):
+        return x()
+
+      def g() -> int:
+        return 42
+
+      def match_callable(obj):
+        match obj:
+          case Callable():
+            return f(obj)
+          case _:
+            return None
+
+      x = match_callable(g)
+      assert_type(x, Any)
+      y = match_callable(1)
+      assert_type(y, None)
+    """)
+
   def test_error(self):
     ty, _ = self.InferWithErrors("""
       def f(x):
