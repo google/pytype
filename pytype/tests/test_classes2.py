@@ -552,6 +552,37 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         pass
     """)
 
+  def test_attribute_in_decorated_init(self):
+    self.Check("""
+      from typing import Any
+      def decorate(f) -> Any:
+        return f
+      class X:
+        @decorate
+        def __init__(self):
+          self.x = 0
+      x = X()
+      assert_type(x.x, int)
+    """)
+
+  def test_attribute_in_decorated_init_inference(self):
+    ty = self.Infer("""
+      from typing import Any
+      def decorate(f) -> Any:
+        return f
+      class X:
+        @decorate
+        def __init__(self):
+          self.x = 0
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def decorate(f) -> Any: ...
+      class X:
+        __init__: Any
+        x: int
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

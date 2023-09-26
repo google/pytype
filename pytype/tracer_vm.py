@@ -253,7 +253,7 @@ class CallTracer(vm.VirtualMachine):
       node2.ConnectTo(node0)
     return node0
 
-  def bind_method(self, node, methodvar, instance_var):
+  def _bind_method(self, node, methodvar, instance_var):
     bound = self.ctx.program.NewVariable()
     for m in methodvar.Data(node):
       if isinstance(m, special_builtins.ClassMethodInstance):
@@ -389,15 +389,37 @@ class CallTracer(vm.VirtualMachine):
   def init_class(self, node, cls, container=None, extra_key=None):
     return self.init_class_and_forward_node(node, cls, container, extra_key)[-1]
 
-  def _call_method(self, node, binding, method_name):
+  def get_bound_method(self, node, obj, method_name, valself):
+
+    def bind(cur_node, m):
+      return self._bind_method(cur_node, m, valself.AssignToNewVariable())
+
     node, method = self.ctx.attribute_handler.get_attribute(
+        node, obj, method_name, valself)
+    if not method:
+      return node, None
+    cls = valself.data.cls
+    bound_method = bind(node, method) if obj == cls else method
+    if (not isinstance(cls, abstract.InterpreterClass) or
+        any(isinstance(m, abstract.FUNCTION_TYPES) for m in bound_method.data)):
+      return node, bound_method
+    # If the method is not something that pytype recognizes as a function -
+    # which can happen if the method is decorated, for example - then we look up
+    # the method before any decorators were applied and use that instead.
+    undecorated_method = cls.get_undecorated_method(method_name, node)
+    if undecorated_method.data:
+      return node, bind(node, undecorated_method)
+    else:
+      return node, bound_method
+
+  def _call_method(self, node, binding, method_name):
+    node, bound_method = self.get_bound_method(
         node, binding.data.cls, method_name, binding)
-    if method:
-      bound_method = self.bind_method(
-          node, method, binding.AssignToNewVariable())
-      node = self.analyze_method_var(
+    if bound_method:
+      return self.analyze_method_var(
           node, method_name, bound_method, binding.data.cls.to_binding(node))
-    return node
+    else:
+      return node
 
   def _call_init_on_binding(self, node, b):
     if isinstance(b.data, abstract.SimpleValue):
@@ -455,7 +477,7 @@ class CallTracer(vm.VirtualMachine):
           name = unwrapped.data[0].name if unwrapped else v.name
           self.ctx.errorlog.ignored_abstractmethod(
               self.ctx.vm.simple_stack(cls.get_first_opcode()), cls.name, name)
-      b = self.bind_method(node, methodvar, instance)
+      b = self._bind_method(node, methodvar, instance)
       node = self.analyze_method_var(node, name, b, val)
     return node
 

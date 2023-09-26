@@ -3,7 +3,7 @@
 import collections
 import itertools
 import logging
-from typing import Any, Collection, Dict, Optional, Tuple, Union
+from typing import Any, Collection, Dict, List, Optional, Tuple, Union
 
 from pytype import compare
 from pytype import metrics
@@ -345,7 +345,9 @@ class Frame(utils.ContextWeakrefMixin):
 
     # All InterpreterFunction objects created while this frame was at the top of
     # the frame stack.
-    self.functions_created_in_frame = []
+    self.functions_created_in_frame: Dict[
+        str, List[abstract.InterpreterFunction]
+    ] = collections.defaultdict(list)
 
   def __repr__(self):     # pragma: no cover
     return "<Frame at 0x%08x: %r @ %d>" % (

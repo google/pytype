@@ -612,9 +612,10 @@ def update_excluded_types(node, ctx):
   # to avoid 'appears only once in signature' errors for T. Similarly, any
   # TypeVars that appear in variable annotations in a function body also need to
   # be added to excluded_types.
-  for v in ctx.vm.frame.functions_created_in_frame:
-    v.signature.excluded_types |= func.signature.type_params
-    func.signature.excluded_types |= v.signature.type_params
+  for functions in ctx.vm.frame.functions_created_in_frame.values():
+    for f in functions:
+      f.signature.excluded_types |= func.signature.type_params
+      func.signature.excluded_types |= f.signature.type_params
   for name, local in ctx.vm.current_annotated_locals.items():
     typ = local.get_type(node, name)
     if typ:

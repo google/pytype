@@ -80,7 +80,7 @@ class BuildClass(_base.BaseValue):
       # We have hit 'maximum depth' before setting func.last_frame
       func.f_locals = self.ctx.convert.unsolvable
       class_closure_var = None
-      undecorated_methods = ()
+      undecorated_methods = None
 
     props = class_mixin.ClassBuilderProperties(
         name_var=name,
@@ -106,10 +106,12 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
   program.
   """
 
-  def __init__(self, name: str, bases: List[cfg.Variable],
-               members: Dict[str, cfg.Variable], cls: _base.BaseValue,
-               first_opcode: Optional[opcodes.Opcode],
-               undecorated_methods: Tuple[Any, ...], ctx: _ContextType):
+  def __init__(
+      self, name: str, bases: List[cfg.Variable],
+      members: Dict[str, cfg.Variable], cls: _base.BaseValue,
+      first_opcode: Optional[opcodes.Opcode],
+      undecorated_methods: Optional[class_mixin.FunctionMapType],
+      ctx: _ContextType):
     self._bases = bases
     super().__init__(name, ctx)
     self.members = datatypes.MonitorDict(members)
@@ -121,7 +123,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     self.slots = self._convert_str_tuple(members, "__slots__")
     self.match_args = self._convert_str_tuple(members, "__match_args__") or ()
     self.is_dynamic = self.compute_is_dynamic()
-    self._undecorated_methods = undecorated_methods
+    self._undecorated_methods = undecorated_methods or {}
     log.info("Created class: %r", self)
     self.type_param_check()
     self._first_opcode = first_opcode
@@ -152,7 +154,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
           # TypeVars in staticmethods should not be treated as bound to the
           # current class.
           skip.update(m.func.data)
-    methods.extend(m for m in self._undecorated_methods if m not in skip)
+    for undecorated_methods in self._undecorated_methods.values():
+      methods.extend(m for m in undecorated_methods if m not in skip)
     for m in methods:
       m.update_signature_scope(self)
 
@@ -305,6 +308,10 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         if isinstance(base, PyTDClass) and base.full_name == "typing.Protocol":
           return True
     return False
+
+  def get_undecorated_method(self, name, node):
+    return self.ctx.program.NewVariable(
+        self._undecorated_methods.get(name, ()), (), node)
 
 
 class PyTDClass(

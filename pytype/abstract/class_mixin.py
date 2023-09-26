@@ -2,7 +2,7 @@
 
 import dataclasses
 import logging
-from typing import Any, List, Optional, Tuple, Type
+from typing import Any, List, Mapping, Optional, Sequence, Type
 
 from pytype import datatypes
 from pytype.abstract import abstract_utils
@@ -16,6 +16,9 @@ from pytype.typegraph import cfg
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _make = abstract_utils._make  # pylint: disable=protected-access
+
+_InterpreterFunction = Any  # can't import due to a circular dependency
+FunctionMapType = Mapping[str, Sequence[_InterpreterFunction]]
 
 
 # Classes have a metadata dictionary that can store arbitrary metadata for
@@ -144,7 +147,7 @@ class ClassBuilderProperties:
   new_class_var: Optional[cfg.Variable] = None
   class_type: Optional[Type["Class"]] = None
   decorators: Optional[List[str]] = None
-  undecorated_methods: Tuple[Any, ...] = ()
+  undecorated_methods: Optional[FunctionMapType] = None
 
 
 class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
@@ -422,12 +425,12 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     return node, variable
 
   def _call_method(self, node, value, method_name, args):
-    node, method = self.ctx.attribute_handler.get_attribute(
+    node, bound_method = self.ctx.vm.get_bound_method(
         node, value.data, method_name, value)
-    if method:
+    if bound_method:
       call_repr = f"{self.name}.{method_name}(..._)"
       log.debug("calling %s", call_repr)
-      node, ret = function.call_function(self.ctx, node, method, args)
+      node, ret = function.call_function(self.ctx, node, bound_method, args)
       log.debug("%s returned %r", call_repr, ret)
     return node
 
