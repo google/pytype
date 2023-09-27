@@ -196,6 +196,8 @@ class Director:
     self._disables = collections.defaultdict(_LineSet)
     # Function line number -> decorators map.
     self._decorators = collections.defaultdict(list)
+    # Decorator line number -> decorated function line number map.
+    self._decorated_functions = {}
     # Apply global disable, from the command line arguments:
     for error_name in disable:
       self._disables[error_name].start_range(0, True)
@@ -230,6 +232,10 @@ class Director:
   @property
   def decorators(self):
     return self._decorators
+
+  @property
+  def decorated_functions(self):
+    return self._decorated_functions
 
   def _parse_src_tree(self, src_tree):
     """Parse a source file, extracting directives from comments."""
@@ -268,7 +274,10 @@ class Director:
       self._variable_annotations.add_annotation(
           annot.start_line, annot.name, annot.annotation)
 
-    self._decorators = visitor.decorators
+    for lineno, decorators in visitor.decorators.items():
+      for decorator_lineno, decorator_name in decorators:
+        self._decorators[lineno].append(decorator_name)
+        self._decorated_functions[decorator_lineno] = lineno
 
     if visitor.defs_start is not None:
       disables = list(self._disables.items())

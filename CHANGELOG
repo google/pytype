@@ -1,3 +1,18 @@
+Version 2023.09.27:
+
+Updates:
+* Update typeshed pin to commit 8597724 from Sep 18.
+* Python 3.11: add exception handling.
+* Support pattern matching literal sequences.
+
+Bug fixes:
+* Take TypeVar substitutions into account when extracting annotations.
+* Fix a crash when pattern matching against `Callable()`.
+* Apply overlays when loading modules imported in pyi files.
+* Don't ignore decorated initializers.
+* Add object.__format__ to builtins stubs.
+* Export the type stub for attrs.cmp_using.
+
 Version 2023.09.19:
 
 Updates:

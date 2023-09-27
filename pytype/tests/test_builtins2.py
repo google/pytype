@@ -674,6 +674,15 @@ class BuiltinTests2(test_base.BaseTest):
         foo.x("a = 2")
       """, pythonpath=[d.path])
 
+  def test_format_string(self):
+    self.Check("""
+      class A:
+        def __format__(self, format_spec):
+          return "hard_coded".__format__(format_spec)
+      a = A()
+      print(f"{a}")
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

@@ -299,7 +299,9 @@ class _ParseVisitor(libcst.CSTVisitor):
     for decorator in node.decorators:
       dec = decorator.decorator
       dec_base = dec.func if isinstance(dec, libcst.Call) else dec
-      self.decorators[funcdef_pos].append(libcst.Module([dec_base]).code)
+      dec_name = libcst.Module([dec_base]).code
+      dec_pos = self._get_position(decorator).start.line
+      self.decorators[funcdef_pos].append((dec_pos, dec_name))
 
   def _visit_def(self, node):
     line = self._get_position(node).start.line

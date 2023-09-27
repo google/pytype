@@ -347,7 +347,7 @@ class _ParseVisitor(visitor.BaseVisitor):
     for dec in node.decorator_list:
       self._process_structured_comments(LineRange.from_node(dec))
       dec_base = dec.func if isinstance(dec, ast.Call) else dec
-      self.decorators[node.lineno].append(ast.unparse(dec_base))
+      self.decorators[node.lineno].append((dec.lineno, ast.unparse(dec_base)))
 
   def _visit_def(self, node):
     self._visit_decorators(node)
