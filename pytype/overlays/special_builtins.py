@@ -685,10 +685,8 @@ def _check_method_decorator_arg(fn_var, name, ctx):
       _ = function.get_signatures(d)
     except NotImplementedError:
       # We are wrapping something that is not a function in a method decorator.
-      # TODO(mdemello): The error line is the function definition rather than
-      # the line with `@classmethod` or `@staticmethod`
       details = f"@{name} applied to something that is not a function."
-      ctx.errorlog.not_callable(ctx.vm.frames, d, details)
+      ctx.errorlog.not_callable(ctx.vm.stack(None), d, details)
       return False
   return True
 

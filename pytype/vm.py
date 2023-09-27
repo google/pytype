@@ -321,7 +321,7 @@ class VirtualMachine:
         Tuple[abstract.InterpreterFunction, opcodes.Opcode]] = []
 
     self._maximum_depth = None  # set by run_program() and analyze()
-    self._director = None
+    self._director: directors.Director = None
     self._analyzing = False  # Are we in self.analyze()?
     self._importing = False  # Are we importing another file?
     self._trace_opcodes = True  # whether to trace opcodes
@@ -488,7 +488,6 @@ class VirtualMachine:
 
   def _run_frame_blocks(self, frame, node, annotated_locals):
     """Runs a frame's code blocks."""
-    assert self._director is not None
     frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
         node, self.ctx)
     frame_name = frame.f_code.name
@@ -627,11 +626,39 @@ class VirtualMachine:
     else:
       return ()
 
-  def stack(self, func):
+  def _in_3_11_decoration(self):
+    """Are we in a Python 3.11 decorator call?"""
+    if self.ctx.python_version != (3, 11):
+      return False
+    if not isinstance(self.current_opcode, opcodes.CALL):
+      return False
+    prev = self.current_opcode
+    # Skip past the PRECALL opcode.
+    for _ in range(2):
+      prev = prev.prev
+      if not prev:
+        return False
+    # `prev` is the last loaded argument. For this call to be a decorator call,
+    # the last argument must be the decorated object or another decorator.
+    return (prev.line != self.current_line and
+            any(prev.line in d for d in (self._director.decorators,
+                                         self._director.decorated_functions)))
+
+  def stack(self, func, is_decoration=False):
     """Get a frame stack for the given function for error reporting."""
-    if isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and (
-        not self.frame or not self.frame.current_opcode):
+    if (isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and
+        not self.current_opcode):
       return self.simple_stack(func.get_first_opcode())
+    elif self._in_3_11_decoration():
+      # TODO(b/241431224): In Python 3.10, the line number of the CALL opcode
+      # for a decorator is at the function definition line, while in 3.11, the
+      # opcode is at the decorator line. For a smoother transition from 3.10 to
+      # 3.11, we adjust the error line number for a bad decorator call to match
+      # 3.10. The 3.11 line number is more sensible, so we should stop making
+      # this adjustment once we're out of the transition period.
+      adjusted_opcode = self.current_opcode.at_line(
+          self._director.decorated_functions[self.current_line])
+      return self.simple_stack(adjusted_opcode)
     else:
       return self.frames
 
@@ -2034,10 +2061,8 @@ class VirtualMachine:
       else:
         maybe_cls = obj_val.cls
       if isinstance(maybe_cls, abstract.InterpreterClass):
-        m_director = self._director
-        assert m_director is not None
         if ("__annotations__" not in maybe_cls.members and
-            op.line in m_director.annotations):
+            op.line in self._director.annotations):
           # The class has no annotated class attributes but does have an
           # annotated instance attribute.
           cur_annotations_dict = abstract.AnnotationsDict({}, self.ctx)
@@ -2695,7 +2720,6 @@ class VirtualMachine:
     fn = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
         closure=free_vars, opcode=op, ctx=self.ctx)
-    assert self._director is not None
     fn.data[0].decorators = self._director.decorators[op.line]
     vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
     self.trace_opcode(op, fn.data[0].name, fn)
@@ -2772,7 +2796,6 @@ class VirtualMachine:
     full_name = op.argval
     # The identifiers in the (unused) fromlist are repeated in IMPORT_FROM.
     state, (level_var, fromlist) = state.popn(2)
-    assert self._director is not None
     if op.line in self._director.ignore:
       # "import name  # type: ignore"
       self.trace_opcode(op, full_name, None)
@@ -2796,7 +2819,6 @@ class VirtualMachine:
 
   def byte_IMPORT_FROM(self, state, op):
     """IMPORT_FROM is mostly like LOAD_ATTR but doesn't pop the container."""
-    assert self._director is not None
     name = op.argval
     if op.line in self._director.ignore:
       # "from x import y  # type: ignore"
@@ -2815,7 +2837,6 @@ class VirtualMachine:
 
   def byte_LOAD_BUILD_CLASS(self, state, op):
     cls = abstract.BuildClass(self.ctx).to_variable(state.node)
-    assert self._director is not None
     # Will be copied into the abstract.InterpreterClass
     cls.data[0].decorators = self._director.decorators[op.line]
     self.trace_opcode(op, "", cls)
@@ -2883,8 +2904,7 @@ class VirtualMachine:
 
   def _record_annotation(self, node, op, name, typ):
     # Annotations in self._director are handled by _apply_annotation.
-    assert self.frame is not None and self._director is not None
-    if self.frame.current_opcode.line not in self._director.annotations:
+    if self.current_line not in self._director.annotations:
       self._record_local(node, op, name, typ)
 
   def byte_STORE_ANNOTATION(self, state, op):

@@ -525,6 +525,7 @@ class LineNumbersTest(DirectorTestCase):
     """)
     self.assertEqual(
         self._director.decorators, {7: ["real_decorator"], 14: ["decorator"]})
+    self.assertEqual(self._director.decorated_functions, {6: 7, 10: 14})
 
   def test_stacked_decorators(self):
     self._create("""
@@ -538,6 +539,7 @@ class LineNumbersTest(DirectorTestCase):
           pass
     """)
     self.assertEqual(self._director.decorators, {8: ["decorator", "foo"]})
+    self.assertEqual(self._director.decorated_functions, {2: 8, 6: 8})
 
   def test_overload(self):
     self._create("""
@@ -554,6 +556,7 @@ class LineNumbersTest(DirectorTestCase):
     """)
     self.assertEqual(
         self._director.decorators, {5: ["overload"], 8: ["overload"]})
+    self.assertEqual(self._director.decorated_functions, {4: 5, 7: 8})
 
 
 class DisableDirectivesTest(DirectorTestCase):
