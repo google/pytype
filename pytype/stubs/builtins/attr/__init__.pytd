@@ -35,6 +35,7 @@ from . import exceptions as exceptions
 from . import filters as filters
 from . import setters as setters
 from . import validators as validators
+from ._cmp import cmp_using
 from ._version_info import VersionInfo
 
 __version__: str
