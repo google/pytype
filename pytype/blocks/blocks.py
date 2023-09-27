@@ -1,6 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
-from typing import Any, List, Tuple, Union, cast
+from typing import Any, List, Optional, Tuple, Union, cast
 
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
@@ -83,6 +83,7 @@ class OrderedCode:
   Attributes:
     filename: Filename of the current module
     name: Code name (e.g. function name, <lambda>, etc.)
+    qualname: The fully qualified code name in 3.11+
     consts: Tuple of code constants
     co_consts: Alias for consts
     names: Tuple of names of global variables used in the code
@@ -103,6 +104,7 @@ class OrderedCode:
   """
 
   name: str
+  qualname: Optional[str]
   filename: Union[bytes, str]
   consts: Tuple[Any, ...]
   names: Tuple[str, ...]
@@ -129,6 +131,7 @@ class OrderedCode:
     self.firstlineno = code.co_firstlineno
     if code.python_version >= (3, 11):
       code = cast(pycnite.types.CodeType311, code)
+      self.qualname = code.co_qualname
       localsplus = _Locals311(code)
       self.varnames = tuple(localsplus.co_varnames)
       self.cellvars = tuple(localsplus.co_cellvars)
@@ -137,6 +140,7 @@ class OrderedCode:
       self.exception_table = tuple(code.co_exceptiontable)
     else:
       code = cast(pycnite.types.CodeType38, code)
+      self.qualname = None
       self.varnames = tuple(code.co_varnames)
       self.cellvars = tuple(code.co_cellvars)
       self.freevars = tuple(code.co_freevars)

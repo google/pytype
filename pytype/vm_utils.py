@@ -573,7 +573,7 @@ def make_function(name, node, code, globs, defaults, kw_defaults, closure,
         c for c in abstract_utils.get_atomic_python_constant(closure))
     log.info("closure: %r", closure)
   if not name:
-    name = abstract_utils.get_atomic_python_constant(code).name
+    name = abstract_utils.get_atomic_python_constant(code).qualname
   if not name:
     name = "<lambda>"
   val = abstract.InterpreterFunction.make(
