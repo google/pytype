@@ -427,7 +427,8 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--strict-undefined-checks"] = self.INCLUDE
     self._infer_types_and_check_errors("pytree.py", [
         "import-error", "import-error", "attribute-error", "attribute-error",
-        "attribute-error", "name-error", "name-error"])
+        "attribute-error", "name-error", "name-error", "signature-mismatch",
+        "signature-mismatch"])
     ast = self._parse_string(self.stdout)
     self.assertListEqual(["convert", "generate_matches", "type_repr"],
                          [f.name for f in ast.functions])
