@@ -109,6 +109,10 @@ class Converter(utils.ContextWeakrefMixin):
         name, (sig,), pytd.MethodKind.METHOD, pytd.MethodFlag.NONE)
     return pytd.Alias(alias, fn)
 
+  def _make_decorators(self, decorators):
+    return [self._make_decorator(d, d) for d in decorators
+            if class_mixin.get_metadata_key(d)]
+
   def _value_to_parameter_types(self, node, v, instance, template, seen, view):
     """Get PyTD types for the parameters of an instance of an abstract value."""
     if isinstance(v, abstract.CallableClass):
@@ -599,7 +603,7 @@ class Converter(utils.ContextWeakrefMixin):
           self._function_call_combination_to_signature(
               func, combination, num_combinations)
           for combination in combinations)
-    decorators = tuple(self._make_decorator(x, x) for x in v.decorators)
+    decorators = tuple(self._make_decorators(v.decorators))
     return pytd.Function(
         name=function_name,
         signatures=tuple(signatures),
@@ -730,7 +734,7 @@ class Converter(utils.ContextWeakrefMixin):
       defn = defn.Replace(kind=kind)
       methods[name] = defn
 
-    decorators = [self._make_decorator(x, x) for x in v.decorators]
+    decorators = self._make_decorators(v.decorators)
     if v.final:
       decorators.append(self._make_decorator("typing.final", "final"))
 

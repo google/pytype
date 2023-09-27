@@ -763,6 +763,27 @@ class TestDataclass(test_base.BaseTest):
         def __init__(self, a1: int, a3: int, *, a2: int = ...) -> None: ...
     """)
 
+  def test_star_import(self):
+    with self.DepTree([("foo.pyi", """
+      import dataclasses
+    """)]):
+      ty = self.Infer("""
+        import dataclasses
+        from foo import *
+        @dataclasses.dataclass
+        class X:
+          b: int
+          a: str = ...
+      """)
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      @dataclasses.dataclass
+      class X:
+        b: int
+        a: str = ...
+        def __init__(self, b: int, a: str = ...) -> None: ...
+    """)
+
 
 class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""

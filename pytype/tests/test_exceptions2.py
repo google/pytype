@@ -65,7 +65,7 @@ class TestExceptionsPy3(test_base.BaseTest):
           return ValueError
       def f(x: Foo):
         try:
-          pass
+          print(x)
         except x.exception_types as e:  # mro-error[e]
           return e
     """)

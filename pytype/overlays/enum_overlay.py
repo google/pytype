@@ -86,7 +86,7 @@ class EnumBuilder(_DelGetAttributeMixin, abstract.PyTDClass):
 
   def make_class(self, node, props):
     """Check the members for errors, then create the enum class."""
-    # TODO(tsudol): Handle is_decorated: @enum.unique, for example.
+    # TODO(tsudol): Handle decorators: @enum.unique, for example.
 
     # make_class intercepts the class creation for enums in order to check for
     # errors. EnumMeta turns the class into a full enum, but that's too late for
@@ -580,7 +580,9 @@ class EnumMetaInit(abstract.SimpleFunction):
         init_args = function.Args(
             posargs=(member_var,),
             starargs=self._value_to_starargs(node, value, base_type))
-        node = cls.call_init(node, cls.to_binding(node), init_args)
+        node, init = self.ctx.attribute_handler.get_attribute(
+            node, cls, "__init__", cls.to_binding(node))
+        node, _ = function.call_function(self.ctx, node, init, init_args)
       member.members["value"] = member.members["_value_"]
       member.members["name"] = self.ctx.convert.build_string(node, name)
       for attr_name in member.members:

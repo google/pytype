@@ -523,7 +523,8 @@ class LineNumbersTest(DirectorTestCase):
         def bar():
           pass
     """)
-    self.assertEqual(self._director.decorators, {7, 14})
+    self.assertEqual(
+        self._director.decorators, {7: ["real_decorator"], 14: ["decorator"]})
 
   def test_stacked_decorators(self):
     self._create("""
@@ -536,7 +537,7 @@ class LineNumbersTest(DirectorTestCase):
       class A:
           pass
     """)
-    self.assertEqual(self._director.decorators, {8})
+    self.assertEqual(self._director.decorators, {8: ["decorator", "foo"]})
 
   def test_overload(self):
     self._create("""
@@ -551,7 +552,8 @@ class LineNumbersTest(DirectorTestCase):
       def f(x=None):
         return 0 if x is None else x
     """)
-    self.assertEqual(self._director.decorators, {5, 8})
+    self.assertEqual(
+        self._director.decorators, {5: ["overload"], 8: ["overload"]})
 
 
 class DisableDirectivesTest(DirectorTestCase):

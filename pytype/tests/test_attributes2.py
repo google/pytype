@@ -297,6 +297,22 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
         assert_type(Bar.x, str)
       """)
 
+  def test_attribute_access(self):
+    # Regression test for a failure to find attribute C0.x that only occurs when
+    # the key type for `mapping` contains both `Type` and `Union`.
+    self.Check("""
+      from typing import Dict, Type, Union
+      class C0:
+        def __init__(self):
+          self.x = 42
+        def f(self):
+          return self.x
+      class C1: pass
+      class C2: pass
+      mapping: Dict[Type[Union[C1, C2]], C0]
+      assert_type(mapping[C1].f(), int)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

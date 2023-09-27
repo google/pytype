@@ -59,6 +59,49 @@ class MatchTest(test_base.BaseTest):
       def f(x: int) -> None: ...
     """)
 
+  def test_sequence3(self):
+    self.Check("""
+      from typing import Tuple
+
+      def f(path: Tuple[str, str]) -> bool:
+        match path:
+          case (('foo' | 'bar'), 'baz'):
+            return True
+          case _:
+            return False
+          """)
+
+  def test_sequence4(self):
+    self.Check("""
+      from typing import Sequence
+
+      def f(path: Sequence[str]) -> bool:
+        match path:
+          case [*_, ('foo' | 'bar'), 'baz']:
+            return True
+          case _:
+            return False
+          """)
+
+  def test_sequence5(self):
+    self.Check("""
+      from typing import List, Optional
+      def f(path):
+        match path:
+          case (*_, ('foo' | 'bar'), 'baz'):
+            return 10
+          case _:
+            return None
+
+      a = f((1, 2, 3, 4, 'foo', 'baz'))
+      b = f((1, 2))
+      xs: List[str] = []
+      c = f(xs)
+      assert_type(a, int)
+      assert_type(b, None)
+      assert_type(c, Optional[int])
+    """)
+
   def test_list1(self):
     ty = self.Infer("""
       def f(x: list[int]):
@@ -621,6 +664,29 @@ class MatchClassTest(test_base.BaseTest):
             return True
           case _:
             return False
+    """)
+
+  def test_callable(self):
+    self.Check("""
+      from typing import Any, Callable
+
+      def f(x: Callable):
+        return x()
+
+      def g() -> int:
+        return 42
+
+      def match_callable(obj):
+        match obj:
+          case Callable():
+            return f(obj)
+          case _:
+            return None
+
+      x = match_callable(g)
+      assert_type(x, Any)
+      y = match_callable(1)
+      assert_type(y, None)
     """)
 
   def test_error(self):
