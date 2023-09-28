@@ -49,6 +49,7 @@ class PytypeTest(test_base.UnitTest):
         "--python_version": utils.format_version(self.python_version),
         "--verbosity": 1,
         "--color": "never",
+        "--no-validate-version": self.INCLUDE,
     }
 
   def _data_path(self, filename):
