@@ -128,7 +128,7 @@ class AttrsBase(classgen.Decorator):
             # We cannot have both a type annotation and a type argument.
             msg = "attr.ib cannot have both a 'type' arg and a type annotation."
             self.ctx.errorlog.invalid_annotation(
-                self.ctx.vm.frames, typ, details=msg)
+                self.ctx.vm.stack(), typ, details=msg)
             attr.typ = self.ctx.convert.unsolvable
           elif attrib.type_source == TypeSource.CONVERTER:
             msg = "attr.ib type has been assigned by the converter."

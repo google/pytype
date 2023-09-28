@@ -443,7 +443,7 @@ class Signature:
       elif has_default:
         msg = (f"In method {self.name}, non-default argument {name} "
                "follows default argument")
-        ctx.errorlog.invalid_function_definition(ctx.vm.frames, msg)
+        ctx.errorlog.invalid_function_definition(ctx.vm.stack(), msg)
         return
 
   def _yield_arguments(self):

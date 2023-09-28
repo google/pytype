@@ -644,7 +644,7 @@ class VirtualMachine:
             any(prev.line in d for d in (self._director.decorators,
                                          self._director.decorated_functions)))
 
-  def stack(self, func, is_decoration=False):
+  def stack(self, func=None):
     """Get a frame stack for the given function for error reporting."""
     if (isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and
         not self.current_opcode):

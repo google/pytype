@@ -686,7 +686,7 @@ def _check_method_decorator_arg(fn_var, name, ctx):
     except NotImplementedError:
       # We are wrapping something that is not a function in a method decorator.
       details = f"@{name} applied to something that is not a function."
-      ctx.errorlog.not_callable(ctx.vm.stack(None), d, details)
+      ctx.errorlog.not_callable(ctx.vm.stack(), d, details)
       return False
   return True
 
