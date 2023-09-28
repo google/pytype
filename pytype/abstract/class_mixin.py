@@ -180,7 +180,7 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
     self._init_abstract_methods()
     self._init_protocol_attributes()
     self._init_overrides_bool()
-    self._all_formal_type_parameters = datatypes.AliasingMonitorDict()
+    self._all_formal_type_parameters = datatypes.AliasingDict()
     self._all_formal_type_parameters_loaded = False
     # Call these methods in addition to __init__ when constructing instances.
     self.additional_init_methods = []

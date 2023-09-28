@@ -161,7 +161,7 @@ class MonitorDict(Dict[_K, _V]):
   """
 
   def __delitem__(self, name):
-    raise NotImplementedError
+    raise NotImplementedError()
 
   @property
   def changestamp(self):
@@ -210,39 +210,6 @@ class AliasingDict(Dict[_K, _V]):
 
   def copy(self, *args, aliases=None, **kwargs):
     return self.__class__(self, *args, aliases=aliases, **kwargs)
-
-  def add_alias(self, alias, name, op=None):
-    """Alias 'alias' to 'name'.
-
-    After aliasing, we will think `alias` and `name`, they represent the same
-    name. We will merge the values if `op` is provided.
-
-    Args:
-      alias: A string.
-      name: A string.
-      op: The function used to merge the values.
-    """
-    alias = self.aliases.find_by_name(alias)
-    name = self.aliases.find_by_name(name)
-    if alias == name:  # Already in one component
-      return
-    elif alias in self and name in self:
-      # Merge the values if `op` operator is provided
-      val = op(self[alias], self[name]) if op else self[alias]
-      del self[alias]
-      del self[name]
-      root = self.aliases.merge(alias, name)
-      self[root] = val
-    elif alias not in self and name not in self:
-      self.aliases.merge(alias, name)
-    elif alias in self:
-      root = self.aliases.merge(alias, name)
-      self[root] = dict.__getitem__(self, alias)
-      if alias != root: dict.__delitem__(self, alias)
-    elif name in self:
-      root = self.aliases.merge(alias, name)
-      self[root] = dict.__getitem__(self, name)
-      if name != root: dict.__delitem__(self, name)
 
   def same_name(self, name1, name2):
     return self.aliases.find_by_name(name1) == self.aliases.find_by_name(name2)
@@ -309,6 +276,70 @@ class AliasingDict(Dict[_K, _V]):
   def viewvalues(self):
     raise NotImplementedError()
 
+  def merge_from(self, lam_dict, op):
+    """Merge the other `AliasingDict` into current class.
+
+    Args:
+      lam_dict: The dict to merge from.
+      op: The function used to merge the values.
+    """
+    # Merge from dict
+    for key, val in lam_dict.items():
+      if key in self:
+        self[key] = op(self[key], val, key)
+      else:
+        self[key] = val
+    # Merge the aliasing info
+    for cur_id in range(lam_dict.aliases.latest_id):
+      parent_id = lam_dict.aliases.parent[cur_id]
+      cur_name = lam_dict.aliases.id2name[cur_id]
+      parent_name = lam_dict.aliases.id2name[parent_id]
+      if (self.aliases.find_by_name(cur_name) !=
+          self.aliases.find_by_name(parent_name)):
+        self.add_alias(cur_name, parent_name, op)
+
+  def _merge(self, name1, name2, op):
+    name1 = self.aliases.find_by_name(name1)
+    name2 = self.aliases.find_by_name(name2)
+    assert name1 != name2
+    self[name1] = op(self[name1], self[name2], name1)
+    dict.__delitem__(self, name2)
+    root = self.aliases.merge(name1, name2)
+    self._copy_item(name1, root)
+
+  def _copy_item(self, src, tgt):
+    """Assign the dict `src` value to `tgt`."""
+    if src == tgt:
+      return
+    self[tgt] = dict.__getitem__(self, src)
+    dict.__delitem__(self, src)
+
+  def add_alias(self, alias, name, op=None):
+    """Alias 'alias' to 'name'.
+
+    After aliasing, we will think `alias` and `name`, they represent the same
+    name. We will merge the values if `op` is provided.
+
+    Args:
+      alias: A string.
+      name: A string.
+      op: The function used to merge the values.
+    """
+    alias = self.aliases.find_by_name(alias)
+    name = self.aliases.find_by_name(name)
+    if alias == name:
+      return
+    elif alias in self and name in self:
+      self._merge(alias, name, op)
+    elif alias not in self and name not in self:
+      self.aliases.merge(alias, name)
+    elif alias in self:
+      root = self.aliases.merge(alias, name)
+      self._copy_item(alias, root)
+    elif name in self:
+      root = self.aliases.merge(alias, name)
+      self._copy_item(name, root)
+
 
 class HashableDict(AliasingDict[_K, _V]):
   """A AliasingDict subclass that can be hashed.
@@ -348,60 +379,6 @@ class HashableDict(AliasingDict[_K, _V]):
 
 class AliasingMonitorDict(AliasingDict[_K, _V], MonitorDict[_K, _V]):
   """The dictionary that supports aliasing, lazy dict and monitor."""
-
-  def merge_from(self, lam_dict, op):
-    """Merge the other `AliasingMonitorDict` into current class.
-
-    Args:
-      lam_dict: The dict to merge from.
-      op: The function used to merge the values.
-    """
-    # Merge from dict
-    for key, val in lam_dict.items():
-      if key in self:
-        self[key] = op(self[key], val, key)
-      else:
-        self[key] = val
-    # Merge the aliasing info
-    for cur_id in range(lam_dict.aliases.latest_id):
-      parent_id = lam_dict.aliases.parent[cur_id]
-      cur_name = lam_dict.aliases.id2name[cur_id]
-      parent_name = lam_dict.aliases.id2name[parent_id]
-      if (self.aliases.find_by_name(cur_name) !=
-          self.aliases.find_by_name(parent_name)):
-        self.add_alias(cur_name, parent_name, op)
-
-  def _merge(self, name1, name2, op):
-    name1 = self.aliases.find_by_name(name1)
-    name2 = self.aliases.find_by_name(name2)
-    assert name1 != name2
-    self[name1] = op(self[name1], self[name2], name1)
-    dict.__delitem__(self, name2)
-    root = self.aliases.merge(name1, name2)
-    self._copy_item(name1, root)
-
-  def _copy_item(self, src, tgt):
-    """Assign the dict `src` value to `tgt`."""
-    if src == tgt:
-      return
-    self[tgt] = dict.__getitem__(self, src)
-    dict.__delitem__(self, src)
-
-  def add_alias(self, alias, name, op=None):
-    alias = self.aliases.find_by_name(alias)
-    name = self.aliases.find_by_name(name)
-    if alias == name:
-      return
-    elif alias in self and name in self:
-      self._merge(alias, name, op)
-    elif alias not in self and name not in self:
-      self.aliases.merge(alias, name)
-    elif alias in self:
-      root = self.aliases.merge(alias, name)
-      self._copy_item(alias, root)
-    elif name in self:
-      root = self.aliases.merge(alias, name)
-      self._copy_item(name, root)
 
 
 class Box:
