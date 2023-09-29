@@ -257,7 +257,7 @@ class ErrorTest(test_base.BaseTest):
         import modfoo
         modfoo.baz  # module-attr[e4]
       """, pythonpath=[d.path])
-      if self.python_version >= (3, 10):
+      if self.python_version == (3, 10):
         e2_msg = "No attribute 'bar' on None"
         e3_msg = "No attribute 'bar' on int"
       else:
@@ -876,15 +876,16 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": ["Invalid base class: None"]})
 
-  @test_utils.skipFromPy((3, 10), "Pre-3.10: log one error for all bad options")
-  def test_bad_ambiguous_base_class_pre310(self):
+  @test_utils.skipIfPy((3, 10),
+                       reason="non-3.10: log one error for all bad options")
+  def test_bad_ambiguous_base_class(self):
     errors = self.CheckWithErrors("""
       class Bar(None if __random__ else 42): pass  # base-class-error[e]
     """)
     self.assertErrorSequences(errors, {"e": ["Optional[<instance of int>]"]})
 
-  @test_utils.skipBeforePy((3, 10), "3.10+: log one error per bad option")
-  def test_bad_ambiguous_base_class(self):
+  @test_utils.skipUnlessPy((3, 10), reason="3.10: log one error per bad option")
+  def test_bad_ambiguous_base_class_310(self):
     errors = self.CheckWithErrors("""
       class Bar(None if __random__ else 42): pass  # base-class-error[e1]  # base-class-error[e2]
     """)
