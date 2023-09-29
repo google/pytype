@@ -91,7 +91,7 @@ class Dataclass(classgen.Decorator):
           # TODO(mdemello): If both KW_ONLY tags are named `_` we only get one
           # entry in cls_locals
           self.ctx.errorlog.dataclass_error(
-              self.ctx.vm.frames, "KW_ONLY can only be used once per class")
+              self.ctx.vm.stack(), "KW_ONLY can only be used once per class")
         sticky_kwonly = True
         continue
       kind = ""
