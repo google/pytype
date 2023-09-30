@@ -3211,13 +3211,12 @@ class VirtualMachine:
     """Implementation of the MATCH_KEYS opcode."""
     del op
     obj_var, keys_var = state.topn(2)
-    vals = vm_utils.match_keys(state.node, obj_var, keys_var, self.ctx)
-    if vals:
-      state = state.push(vals,
-                         self.ctx.convert.true.to_variable(state.node))
-    else:
-      state = state.push(self.ctx.convert.none.to_variable(state.node),
-                         self.ctx.convert.false.to_variable(state.node))
+    ret = vm_utils.match_keys(state.node, obj_var, keys_var, self.ctx)
+    vals = ret or self.ctx.convert.none.to_variable(state.node)
+    state = state.push(vals)
+    if self.ctx.python_version == (3, 10):
+      succ = self.ctx.convert.bool_values[bool(ret)]
+      state = state.push(succ.to_variable(state.node))
     return state
 
   def _store_local_or_cellvar(self, state, name, var):
@@ -3246,11 +3245,12 @@ class VirtualMachine:
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
     posarg_count = op.arg
     state, keys_var = state.pop()
-    obj_var, cls_var = state.topn(2)
+    state, (obj_var, cls_var) = state.popn(2)
     ret = vm_utils.match_class(
         state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx)
     state = state.forward_cfg_node("MatchClass")
     success = ret.success
+    vals = ret.values or self.ctx.convert.none.to_variable(state.node)
     if ret.matched:
       assert self._branch_tracker is not None
       # Narrow the type of the match variable since we are in a case branch
@@ -3262,10 +3262,10 @@ class VirtualMachine:
       if var_name:
         narrowed_type = self._make_instance_for_match(state, cls_var)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
-    state = state.set_top(
-        self.ctx.convert.bool_values[success].to_variable(state.node))
-    if ret.values:
-      state = state.set_second(ret.values)
+    state = state.push(vals)
+    if self.ctx.python_version == (3, 10):
+      succ = self.ctx.convert.bool_values[success].to_variable(state.node)
+      state = state.push(succ)
     return state
 
   def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
