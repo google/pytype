@@ -3246,6 +3246,7 @@ class VirtualMachine:
     posarg_count = op.arg
     state, keys_var = state.pop()
     state, (obj_var, cls_var) = state.popn(2)
+    orig_node = state.node
     ret = vm_utils.match_class(
         state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx)
     state = state.forward_cfg_node("MatchClass")
@@ -3262,10 +3263,17 @@ class VirtualMachine:
       if var_name:
         narrowed_type = self._make_instance_for_match(state, cls_var)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
-    state = state.push(vals)
     if self.ctx.python_version == (3, 10):
+      state = state.push(vals)
       succ = self.ctx.convert.bool_values[success].to_variable(state.node)
       state = state.push(succ)
+    else:
+      if success is None:
+        # In 3.11 we only have a single return value on the stack. If the match
+        # is ambigious, we need to add a second binding so the subsequent
+        # JUMP_IF will take both branches.
+        vals.AddBinding(self.ctx.convert.none, [], orig_node)
+      state = state.push(vals)
     return state
 
   def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
