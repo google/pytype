@@ -445,6 +445,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
         if name in {"Final", "Protocol", "Self", "TypeGuard"}:
           typ = type_of(f"typing.{name}")
         elif name == "LiteralString":
+          # TODO(b/303083512): Support LiteralString.
           typ = type_of("builtins.str")
         else:
           typ = pytd.AnythingType()
