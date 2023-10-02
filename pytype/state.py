@@ -330,8 +330,7 @@ class Frame(utils.ContextWeakrefMixin):
     if func and isinstance(func.data, abstract.InterpreterFunction):
       closure_name = abstract.BuildClass.CLOSURE_NAME
       if func.data.is_class_builder and closure_name in f_code.cellvars:
-        i = f_code.cellvars.index(closure_name)
-        self.class_closure_var = self.cells[i]
+        self.class_closure_var = self.cells[f_code.get_cell_index(closure_name)]
     self.func = func
     self.substs = substs
     # Do not add to error tracebacks
