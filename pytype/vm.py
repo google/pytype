@@ -3382,9 +3382,17 @@ class VirtualMachine:
     return binop(state, op)
 
   def byte_SEND(self, state, op):
-    # No stack effects
-    del op
-    return state
+    """Implementation of SEND opcode."""
+    self.store_jump(op.target, state.forward_cfg_node("Send"))
+    state, var = state.pop()
+    recv = state.top()
+    node, result, _ = self._retrieve_attr(state.node, recv, "__next__")
+    if self._var_is_none(var) and result:
+      state = state.change_cfg_node(node)
+      state, ret = self.call_function_with_state(state, result, ())
+    else:
+      state, ret = self._call(state, recv, "send", (var,))
+    return state.push(ret)
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx,
