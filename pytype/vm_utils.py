@@ -303,13 +303,15 @@ def get_name_error_details(
         else:
           outer_scope = "global scope"
       if outer_scope:
-        if ctx.vm.frame.func.data.is_class_builder:
+        if not ctx.vm.frame.func.data.is_class_builder:
+          inner_scope = f"function {clean(ctx.vm.frame.func.data.name)!r}"
+        elif ctx.python_version >= (3, 11):
+          inner_scope = f"class {clean(class_frames[0].func.data.name)!r}"
+        else:
           class_name = ".".join(parts + [
               class_frame.func.data.name
               for class_frame in reversed(class_frames)])
           inner_scope = f"class {class_name!r}"
-        else:
-          inner_scope = f"function {clean(ctx.vm.frame.func.data.name)!r}"
         return _NameInOuterFunctionErrorDetails(name, outer_scope, inner_scope)
   if class_name_parts:
     return _NameInOuterClassErrorDetails(
@@ -318,10 +320,17 @@ def get_name_error_details(
   # Check if 'name' is defined in one of the classes with their own frames.
   if class_frames:
     for i, frame in enumerate(class_frames[1:]):
-      if name in ctx.vm.annotated_locals[frame.func.data.name]:
-        class_parts = [part.func.data.name
-                       for part in reversed(class_frames[i+1:])]
-        class_name = ".".join(parts + class_parts)
+      if ctx.python_version >= (3, 11):
+        short_name = frame.func.data.name.rsplit(".", 1)[-1]
+      else:
+        short_name = frame.func.data.name
+      if name in ctx.vm.annotated_locals[short_name]:
+        if ctx.python_version >= (3, 11):
+          class_name = clean(frame.func.data.name)
+        else:
+          class_parts = [part.func.data.name
+                         for part in reversed(class_frames[i+1:])]
+          class_name = ".".join(parts + class_parts)
         return _NameInInnerClassErrorDetails(name, class_name)
   return None
 
