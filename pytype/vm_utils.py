@@ -845,7 +845,8 @@ def load_closure_cell(state, op, check_bindings, ctx):
   Returns:
     A new state.
   """
-  cell = ctx.vm.frame.cells[op.arg]
+  cell_index = ctx.vm.frame.f_code.get_cell_index(op.argval)
+  cell = ctx.vm.frame.cells[cell_index]
   # If we have closed over a variable in an inner function, then invoked the
   # inner function before the variable is defined, raise a name error here.
   # See test_closures.ClosuresTest.test_undefined_var
@@ -866,7 +867,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
       new_cell.AddBinding(ctx.convert.unsolvable)
     # Update the cell because the DELETE_DEREF implementation works on
     # variable identity.
-    ctx.vm.frame.cells[op.arg] = cell = new_cell
+    ctx.vm.frame.cells[cell_index] = cell = new_cell
   name = op.argval
   ctx.vm.set_var_name(cell, name)
   check_for_deleted(state, name, cell, ctx)

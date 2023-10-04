@@ -302,14 +302,16 @@ class Frame(utils.ContextWeakrefMixin):
     # always the parameters), but won't otherwise.
     # Cells 0 .. num(cellvars)-1 : cellvar; num(cellvars) .. end : freevar
     self.closure = closure
-    assert len(f_code.freevars) == len(closure or [])
+    freevars = closure or []
+    assert len(f_code.freevars) == len(freevars)
     if self.ctx.python_version < (3, 11):
       cell_names = f_code.cellvars
+    elif freevars:
+      cell_names = f_code.localsplus[:-len(freevars)]
     else:
       cell_names = f_code.localsplus
-
     self.cells = [self.ctx.program.NewVariable() for _ in cell_names]
-    self.cells.extend(closure or [])
+    self.cells.extend(freevars)
     if callargs:
       for name, value in sorted(callargs.items()):
         if name in f_code.cellvars:
@@ -330,7 +332,7 @@ class Frame(utils.ContextWeakrefMixin):
     if func and isinstance(func.data, abstract.InterpreterFunction):
       closure_name = abstract.BuildClass.CLOSURE_NAME
       if func.data.is_class_builder and closure_name in f_code.cellvars:
-        self.class_closure_var = self.cells[f_code.get_cell_index(closure_name)]
+        self.class_closure_var = self.get_cell_by_name(closure_name)
     self.func = func
     self.substs = substs
     # Do not add to error tracebacks
@@ -355,9 +357,7 @@ class Frame(utils.ContextWeakrefMixin):
 
   def copy_free_vars(self, n):
     # TODO(b/290796661): Should we be using PasteVariable here instead?
-    n_locals = len(self.f_code.varnames)
-    n_cellvars = len(self.f_code.cellvars)
-    offset = n_locals + n_cellvars
+    offset = len(self.cells) - len(self.f_code.freevars)
     for i in range(n):
       self.cells[i + offset] = self.closure[i]
 
@@ -369,8 +369,10 @@ class Frame(utils.ContextWeakrefMixin):
     for store in (self.f_locals, self.f_globals, self.f_builtins):
       if store is not None and target_name in store.members:
         return store.members[target_name]
-    i = self.f_code.get_cell_index(target_name)
-    return self.cells[i]
+    return self.get_cell_by_name(target_name)
+
+  def get_cell_by_name(self, name):
+    return self.cells[self.f_code.get_cell_index(name)]
 
 
 class Condition:

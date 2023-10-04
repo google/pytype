@@ -432,7 +432,7 @@ class Super(BuiltinClass):
       # The implicit type argument is available in a freevar named '__class__'.
       closure_name = abstract.BuildClass.CLOSURE_NAME
       if closure_name in frame.f_code.freevars:
-        cls_var = frame.cells[frame.f_code.get_cell_index(closure_name)]
+        cls_var = frame.get_cell_by_name(closure_name)
       else:
         cls_var = None
       if not (cls_var and cls_var.bindings):

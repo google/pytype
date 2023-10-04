@@ -138,7 +138,7 @@ class OrderedCode:
       self.freevars = tuple(localsplus.co_freevars)
       self.localsplus = tuple(localsplus.localsplus)
       self.exception_table = tuple(code.co_exceptiontable)
-      self._combined_vars = self.varnames + self.cellvars + self.freevars
+      combined_vars = self.localsplus
     else:
       code = cast(pycnite.types.CodeType38, code)
       self.qualname = None
@@ -147,7 +147,8 @@ class OrderedCode:
       self.freevars = tuple(code.co_freevars)
       self.localsplus = ()
       self.exception_table = ()
-      self._combined_vars = self.cellvars + self.freevars
+      combined_vars = self.cellvars + self.freevars
+    self._combined_vars = {name: i for (i, name) in enumerate(combined_vars)}
     # Retain the co_ name since this refers directly to CodeType internals.
     self._co_flags = code.co_flags
     self.order = order
@@ -208,7 +209,7 @@ class OrderedCode:
 
   def get_cell_index(self, name):
     """Get the index of name in the code frame's cell list."""
-    return self._combined_vars.index(name)
+    return self._combined_vars[name]
 
 
 class BlockGraph:

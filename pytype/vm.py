@@ -1778,7 +1778,7 @@ class VirtualMachine:
     value = self._apply_annotation(
         state, op, name, value, self.current_annotated_locals, check_types=True)
     state = state.forward_cfg_node(f"StoreDeref:{name}")
-    self.frame.cells[op.arg].PasteVariable(value, state.node)
+    self.frame.get_cell_by_name(name).PasteVariable(value, state.node)
     self.trace_opcode(op, name, value)
     return state
 
@@ -1786,7 +1786,7 @@ class VirtualMachine:
     value = abstract.Deleted(op.line, self.ctx).to_variable(state.node)
     name = op.argval
     state = state.forward_cfg_node(f"DelDeref:{name}")
-    self.frame.cells[op.arg].PasteVariable(value, state.node)
+    self.frame.get_cell_by_name(name).PasteVariable(value, state.node)
     self.trace_opcode(op, name, value)
     return state
 
