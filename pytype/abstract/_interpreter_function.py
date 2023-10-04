@@ -251,7 +251,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       self.update_signature_scope(instance.cls)
 
   def get_first_opcode(self):
-    return self.code.first_opcode
+    return self.code.get_first_opcode(skip_noop=True)
 
   def argcount(self, _):
     return self.code.argcount

@@ -488,7 +488,7 @@ class VirtualMachine:
 
   def _run_frame_blocks(self, frame, node, annotated_locals):
     """Runs a frame's code blocks."""
-    frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
+    frame.states[frame.f_code.get_first_opcode()] = frame_state.FrameState.init(
         node, self.ctx)
     frame_name = frame.f_code.name
     if frame_name not in self.local_ops or frame_name != "<module>":

@@ -327,7 +327,7 @@ class BoundInterpreterFunction(BoundFunction):
       yield
 
   def get_first_opcode(self):
-    return self.underlying.code.first_opcode
+    return self.underlying.code.get_first_opcode(skip_noop=True)
 
   @property
   def has_overloads(self):

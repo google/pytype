@@ -16,6 +16,11 @@ STORE_OPCODES = (
     opcodes.STORE_DEREF,
     opcodes.STORE_GLOBAL)
 
+_NOOP_OPCODES = (
+    opcodes.NOP,
+    opcodes.PRECALL,
+    opcodes.RESUME)
+
 
 class _Locals311:
   """Unpack the code.co_localsplus* attributes in 3.11+."""
@@ -167,9 +172,10 @@ class OrderedCode:
   def code_iter(self):
     return (op for block in self.order for op in block)  # pylint: disable=g-complex-comprehension
 
-  @property
-  def first_opcode(self):
-    return next(self.code_iter)
+  def get_first_opcode(self, skip_noop=False):
+    for op in self.code_iter:
+      if not skip_noop or not isinstance(op, _NOOP_OPCODES):
+        return op
 
   def has_opcode(self, op_type):
     return any(isinstance(op, op_type) for op in self.code_iter)
@@ -219,7 +225,7 @@ class BlockGraph:
     self.graph = {}
 
   def add(self, ordered_code):
-    self.graph[ordered_code.first_opcode] = ordered_code
+    self.graph[ordered_code.get_first_opcode()] = ordered_code
 
   def pretty_print(self):
     return str(self.graph)
