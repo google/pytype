@@ -775,6 +775,15 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       print(x[C()])
     """)
 
+  def test_set_union(self):
+    self.Check("""
+      from typing import Set, Union
+      x: Set[int]
+      y: Set[str]
+      assert_type(x.union(y), Set[Union[int, str]])
+      assert_type(set.union(x, y), Set[Union[int, str]])
+    """)
+
 
 class TypesNoneTypeTest(test_base.BaseTest):
   """Tests for types.NoneType."""
