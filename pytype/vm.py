@@ -2775,21 +2775,30 @@ class VirtualMachine:
           starstarargs=starstarargs)
     return state.push(ret)
 
+  def _check_frame_yield(self, state, ret):
+    if not self.frame.check_return:
+      return None
+    ret_type = self.frame.allowed_returns
+    assert ret_type is not None
+    self._check_return(state.node, ret,
+                       ret_type.get_formal_type_parameter(abstract_utils.T))
+    return ret_type
+
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
     state, ret = state.pop()
     value = self.frame.yield_variable.AssignToNewVariable(state.node)
     value.PasteVariable(ret, state.node)
     self.frame.yield_variable = value
-    if self.frame.check_return:
-      ret_type = self.frame.allowed_returns
-      assert ret_type is not None
-      self._check_return(state.node, ret,
-                         ret_type.get_formal_type_parameter(abstract_utils.T))
+    ret_type = self._check_frame_yield(state, ret)
+    if self.ctx.python_version >= (3, 11) and isinstance(op.prev, opcodes.SEND):
+      send_var = ret
+    elif ret_type:
       send_var = self.init_class(
           state.node, ret_type.get_formal_type_parameter(abstract_utils.T2))
-      return state.push(send_var)
-    return state.push(self.ctx.new_unsolvable(state.node))
+    else:
+      send_var = self.ctx.new_unsolvable(state.node)
+    return state.push(send_var)
 
   def byte_IMPORT_NAME(self, state, op):
     """Import a single module."""
@@ -3051,11 +3060,8 @@ class VirtualMachine:
       ret = self.ctx.new_unsolvable(state.node)
     return state.push(ret)
 
-  def byte_YIELD_FROM(self, state, op):
-    """Implementation of the YIELD_FROM opcode."""
-    state, unused_none_var = state.pop()
-    state, var = state.pop()
-    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+  def _yield_from_value(self, state, var, yield_variable):
+    """Helper function for YIELD_FROM and SEND."""
     result = self.ctx.program.NewVariable()
     for b in var.bindings:
       val = b.data
@@ -3082,6 +3088,14 @@ class VirtualMachine:
           result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
       else:
         result.AddBinding(val, {b}, state.node)
+    return result
+
+  def byte_YIELD_FROM(self, state, op):
+    """Implementation of the YIELD_FROM opcode."""
+    state, unused_none_var = state.pop()
+    state, var = state.pop()
+    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+    result = self._yield_from_value(state, var, yield_variable)
     if yield_variable.bindings:
       self.frame.yield_variable = yield_variable
       if self.frame.check_return:
@@ -3386,12 +3400,22 @@ class VirtualMachine:
     self.store_jump(op.target, state.forward_cfg_node("Send"))
     state, var = state.pop()
     recv = state.top()
-    node, result, _ = self._retrieve_attr(state.node, recv, "__next__")
-    if self._var_is_none(var) and result:
+    node, next_meth, _ = self._retrieve_attr(state.node, recv, "__next__")
+    if self._var_is_none(var) and next_meth:
       state = state.change_cfg_node(node)
-      state, ret = self.call_function_with_state(state, result, ())
+      state, ret = self.call_function_with_state(state, next_meth, ())
     else:
-      state, ret = self._call(state, recv, "send", (var,))
+      yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+      ret = self._yield_from_value(state, recv, yield_variable)
+      if yield_variable.bindings:
+        self.frame.yield_variable = yield_variable
+        if self.frame.check_return:
+          assert self.frame.allowed_returns is not None
+          ret_type = self.frame.allowed_returns.get_formal_type_parameter(
+              abstract_utils.T)
+          self._check_return(state.node, yield_variable, ret_type)
+      if not ret.bindings:
+        ret.AddBinding(self.ctx.convert.unsolvable, [], state.node)
     return state.push(ret)
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
