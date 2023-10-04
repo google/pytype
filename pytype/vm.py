@@ -340,6 +340,13 @@ class VirtualMachine:
     # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
     self._kw_names = ()
 
+    # In 3.11, await calls get compiled into a loop, but for typing purposes we
+    # want to treat them as straight line code. This needs a way for us to track
+    # the target of the async SEND opcode that points past the end of the loop,
+    # so we can mark it reachable without actually branching and looping.
+    # TODO(mdemello): We should rewrite the bytecode to handle this instead.
+    self._send_targets = set()
+
   @property
   def current_local_ops(self):
     return self.local_ops[self.frame.f_code.name]
@@ -534,7 +541,7 @@ class VirtualMachine:
         # return, raise, or yield. Leave the current frame.
         can_return |= state.why in ("return", "yield")
         return_nodes.append(state.node)
-      elif op.carry_on_to_next():
+      elif op.carry_on_to_next() or op.next in self._send_targets:
         # We're starting a new block, so start a new CFG node. We don't want
         # nodes to overlap the boundary of blocks.
         state = state.forward_cfg_node("NewBlock")
@@ -2491,6 +2498,9 @@ class VirtualMachine:
     return state.push(itr)
 
   def store_jump(self, target, state):
+    if isinstance(target, opcodes.SEND):
+      # We do not want to treat an await call as a loop
+      return
     assert target
     assert self.frame is not None
     current_block = self.frame.current_block
@@ -3397,9 +3407,9 @@ class VirtualMachine:
 
   def byte_SEND(self, state, op):
     """Implementation of SEND opcode."""
-    self.store_jump(op.target, state.forward_cfg_node("Send"))
+    self._send_targets.add(op.target)
     state, var = state.pop()
-    recv = state.top()
+    state, recv = state.pop()
     node, next_meth, _ = self._retrieve_attr(state.node, recv, "__next__")
     if self._var_is_none(var) and next_meth:
       state = state.change_cfg_node(node)
