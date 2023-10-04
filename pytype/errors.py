@@ -1234,27 +1234,29 @@ class ErrorLog(ErrorLogBase):
   def nondeterministic_unpacking(self, stack):
     self.error(stack, "Unpacking a non-deterministic order iterable.")
 
+  def _var_to_printed_type(self, var, node):
+    if not var.bindings:
+      return "nothing"
+    converter = var.data[0].ctx.pytd_convert
+    with converter.set_output_mode(converter.OutputMode.DETAILED):
+      typ = pytd_utils.JoinTypes(
+          b.data.to_type()
+          for b in abstract_utils.expand_type_parameter_instances(var.bindings)
+          if node.HasCombination([b]))
+    return self._pytd_print(typ)
+
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
-    types = [
-        self._print_as_actual_type(b.data)
-        for b in abstract_utils.expand_type_parameter_instances(var.bindings)
-        if node.HasCombination([b])]
-    self.error(stack, self._join_printed_types(types))
+    self.error(stack, self._var_to_printed_type(var, node))
 
   @_error_name("assert-type")
   def assert_type(self, stack, node, var, typ=None):
     """Check that a variable type matches its expected value."""
-
-    types = [
-        self._print_as_actual_type(b.data)
-        for b in abstract_utils.expand_type_parameter_instances(var.bindings)
-        if node.HasCombination([b])]
-    actual = self._join_printed_types(types)
+    actual = self._var_to_printed_type(var, node)
 
     # assert_type(x) checks that x is not Any
     if typ is None:
-      if types == ["Any"] or types == ["typing.Any"]:
+      if actual in ("Any", "typing.Any"):
         self.error(stack, f"Asserted type was {actual}")
       return
 
@@ -1267,11 +1269,7 @@ class ErrorLog(ErrorLogBase):
       typ = ctx.annotation_utils.extract_annotation(node, typ, "assert_type",
                                                     ctx.vm.simple_stack())
       node, instance = ctx.vm.init_class_and_forward_node(node, typ)
-      instance_bindings = abstract_utils.expand_type_parameter_instances(
-          instance.bindings)
-      wanted = [self._print_as_actual_type(b.data) for b in instance_bindings
-                if node.HasCombination([b])]
-      expected = self._join_printed_types(wanted)
+      expected = self._var_to_printed_type(instance, node)
     if actual != expected:
       details = f"Expected: {expected}\n  Actual: {actual}"
       self.error(stack, actual, details=details)

@@ -925,26 +925,6 @@ class ErrorTest(test_base.BaseTest):
         "e1": r"class list", "e2": r"1.*Not a type", "e3": r"2.*Not a type",
         "e4": r"class A"})
 
-  def test_reveal_type(self):
-    errors = self.CheckWithErrors("""
-      class Foo:
-        pass
-      reveal_type(Foo)  # reveal-type[e1]
-      reveal_type(Foo())  # reveal-type[e2]
-      reveal_type([1,2,3])  # reveal-type[e3]
-    """)
-    self.assertErrorSequences(errors, {
-        "e1": ["Type[Foo]"], "e2": ["Foo"], "e3": ["List[int]"]
-    })
-
-  def test_reveal_type_expression(self):
-    errors = self.CheckWithErrors("""
-      x = 42
-      y = "foo"
-      reveal_type(x or y)  # reveal-type[e]
-    """)
-    self.assertErrorSequences(errors, {"e": ["Union[int, str]"]})
-
   def test_not_protocol(self):
     errors = self.CheckWithErrors("""
       a = []
@@ -1025,6 +1005,39 @@ class OperationsTest(test_base.BaseTest):
       def f(): return 'foo' ^ 3  # unsupported-operands[e]
     """)
     self.assertErrorSequences(errors, {"e": ["^", "'foo': str", "3: int"]})
+
+
+class RevealTypeTest(test_base.BaseTest):
+  """Tests for pseudo-builtin reveal_type()."""
+
+  def test_reveal_type(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        pass
+      reveal_type(Foo)  # reveal-type[e1]
+      reveal_type(Foo())  # reveal-type[e2]
+      reveal_type([1,2,3])  # reveal-type[e3]
+    """)
+    self.assertErrorSequences(errors, {
+        "e1": ["Type[Foo]"], "e2": ["Foo"], "e3": ["List[int]"]
+    })
+
+  def test_reveal_type_expression(self):
+    errors = self.CheckWithErrors("""
+      x = 42
+      y = "foo"
+      reveal_type(x or y)  # reveal-type[e]
+    """)
+    self.assertErrorSequences(errors, {"e": ["Union[int, str]"]})
+
+  def test_combine_containers(self):
+    errors = self.CheckWithErrors("""
+      from typing import Set, Union
+      x: Set[Union[int, str]]
+      y: Set[Union[str, bytes]]
+      reveal_type(x | y)  # reveal-type[e]
+    """)
+    self.assertErrorSequences(errors, {"e": ["Set[Union[bytes, int, str]]"]})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):

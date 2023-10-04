@@ -238,61 +238,6 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": ["str", "int"]})
 
-  def test_assert_type(self):
-    _, errors = self.InferWithErrors("""
-      from typing import Union
-      class A: pass
-      def f(x: int, y: str, z):
-        assert_type(x, int)
-        assert_type(y, int)  # assert-type[e1]
-        assert_type(z)  # assert-type[e2]
-        if __random__:
-          x = A()
-        assert_type(x, Union[A, int])
-    """)
-    self.assertErrorSequences(errors, {
-        "e1": ["Expected", "int", "Actual", "str"],
-        "e2": ["type was Any"]
-    })
-
-  def test_assert_type_str(self):
-    _, errors = self.InferWithErrors("""
-      class A: pass
-      def f(x: int, y: str, z):
-        assert_type(x, 'int')
-        assert_type(y, 'int')  # assert-type[e1]
-        assert_type(z)  # assert-type[e2]
-        if __random__:
-          x = A()
-        assert_type(x, 'Union[A, int]')
-    """)
-    self.assertErrorSequences(errors, {
-        "e1": ["Expected", "int", "Actual", "str"],
-        "e2": ["type was Any"]
-    })
-
-  def test_assert_type_import(self):
-    with test_utils.Tempdir() as d:
-      d.create_file("pytype_extensions.pyi", """
-        def assert_type(*args): ...
-      """)
-      _, errors = self.InferWithErrors("""
-        from typing import Union
-        from pytype_extensions import assert_type
-        class A: pass
-        def f(x: int, y: str, z):
-          assert_type(x, int)
-          assert_type(y, int)  # assert-type[e1]
-          assert_type(z)  # assert-type[e2]
-          if __random__:
-            x = A()
-          assert_type(x, Union[A, int])
-      """, pythonpath=[d.path])
-      self.assertErrorSequences(errors, {
-          "e1": ["Expected", "int", "Actual", "str"],
-          "e2": ["type was Any"]
-      })
-
   def test_bad_self_annot(self):
     self.CheckWithErrors("""
       class Foo:
@@ -389,6 +334,73 @@ class ErrorTest(test_base.BaseTest):
       self.assertErrorSequences(errors, {
           "e1": ["Expected: (_0: int, ...)", "Actual", "(_0: str)"],
           "e2": ["Expected: (x: str, ...)", "Actual", "(x: int)"]})
+
+
+class AssertTypeTest(test_base.BaseTest):
+  """Tests for pseudo-builtin assert_type()."""
+
+  def test_assert_type(self):
+    _, errors = self.InferWithErrors("""
+      from typing import Union
+      class A: pass
+      def f(x: int, y: str, z):
+        assert_type(x, int)
+        assert_type(y, int)  # assert-type[e1]
+        assert_type(z)  # assert-type[e2]
+        if __random__:
+          x = A()
+        assert_type(x, Union[A, int])
+    """)
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected", "int", "Actual", "str"],
+        "e2": ["type was Any"]
+    })
+
+  def test_assert_type_str(self):
+    _, errors = self.InferWithErrors("""
+      class A: pass
+      def f(x: int, y: str, z):
+        assert_type(x, 'int')
+        assert_type(y, 'int')  # assert-type[e1]
+        assert_type(z)  # assert-type[e2]
+        if __random__:
+          x = A()
+        assert_type(x, 'Union[A, int]')
+    """)
+    self.assertErrorSequences(errors, {
+        "e1": ["Expected", "int", "Actual", "str"],
+        "e2": ["type was Any"]
+    })
+
+  def test_assert_type_import(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("pytype_extensions.pyi", """
+        def assert_type(*args): ...
+      """)
+      _, errors = self.InferWithErrors("""
+        from typing import Union
+        from pytype_extensions import assert_type
+        class A: pass
+        def f(x: int, y: str, z):
+          assert_type(x, int)
+          assert_type(y, int)  # assert-type[e1]
+          assert_type(z)  # assert-type[e2]
+          if __random__:
+            x = A()
+          assert_type(x, Union[A, int])
+      """, pythonpath=[d.path])
+      self.assertErrorSequences(errors, {
+          "e1": ["Expected", "int", "Actual", "str"],
+          "e2": ["type was Any"]
+      })
+
+  def test_combine_containers(self):
+    self.Check("""
+      from typing import Set, Union
+      x: Set[Union[int, str]]
+      y: Set[Union[str, bytes]]
+      assert_type(x | y, "Set[Union[bytes, int, str]]")
+    """)
 
 
 class InPlaceOperationsTest(test_base.BaseTest):
