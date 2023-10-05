@@ -1,6 +1,7 @@
 """Tests for control flow (with statements, loops, exceptions, etc.)."""
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
 class FlowTest(test_base.BaseTest):
@@ -183,6 +184,7 @@ class FlowTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, "def f() -> str: ...")
 
+  @test_utils.skipIfPy((3, 8), reason="Broken in 3.8")
   def test_raise_in_with(self):
     ty = self.Infer("""
       def f():
