@@ -32,16 +32,6 @@ class SignatureErrorType(enum.Enum):
   RETURN_TYPE_MISMATCH = enum.auto()
 
 
-SIGNATURE_ERROR_TYPE_TO_OPTION_NAME = {
-    SignatureErrorType.DEFAULT_PARAMETER_MISMATCH:
-        "overriding_parameter_count_checks",
-    SignatureErrorType.KWONLY_PARAMETER_COUNT_MISMATCH:
-        "overriding_parameter_count_checks",
-    SignatureErrorType.POSITIONAL_PARAMETER_COUNT_MISMATCH:
-        "overriding_parameter_count_checks",
-}
-
-
 @dataclasses.dataclass
 class SignatureError:
   error_code: SignatureErrorType = SignatureErrorType.NO_ERROR
@@ -178,7 +168,7 @@ def _check_positional_parameters(
       # We don't report it as an error, as this is a very common practice
       # in the absence of positional-only parameters.
       # TODO(sinopalnikov): clean it up and start flagging the error.
-      log.warning("Name mismatch for parameter '%r'.", base_param_name)
+      log.warning("Name mismatch for parameter %r.", base_param_name)
       # We match positional parameter type annotations by name, not position,
       # later on, so if we have a name mismatch here we should disable
       # annotation checking and just check param count.
@@ -434,12 +424,6 @@ def _check_signature_compatible(method_signature, base_signature,
       _check_return_types(method_signature, base_signature, is_subtype))
 
   if check_result:
-    if check_result.error_code in SIGNATURE_ERROR_TYPE_TO_OPTION_NAME:
-      # Check if the error is disabled by an option.
-      option_name = SIGNATURE_ERROR_TYPE_TO_OPTION_NAME[check_result.error_code]
-      if not getattr(ctx.options, option_name):
-        log.warning(check_result.message)
-        return
     ctx.errorlog.overriding_signature_mismatch(
         stack, base_signature, method_signature, details=check_result.message)
 

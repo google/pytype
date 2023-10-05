@@ -234,8 +234,6 @@ _OPT_IN_FEATURES = [
 
 
 FEATURE_FLAGS = [
-    _flag("--overriding-parameter-count-checks", True,
-          "Enable parameter count checks for overriding methods."),
     _flag("--overriding-renamed-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods with "
           "renamed arguments."),
