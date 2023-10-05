@@ -531,6 +531,7 @@ class VirtualMachine:
           assert m_frame is not None
           for target in m_frame.targets[block.id]:
             del frame.states[target]
+        self.block_env.mark_dead_end(block)
         # return, raise, or yield. Leave the current frame.
         can_return |= state.why in ("return", "yield")
         return_nodes.append(state.node)
