@@ -285,8 +285,12 @@ class ClosuresTest(test_base.BaseTest):
         return f()
       e()
     """, report_errors=False)
-    self.assertHasReturnType(ty.Lookup("e"), self.anything)
-    self.assertTrue(ty.Lookup("f"))
+    self.assertTypesMatchPytd(ty, """
+      import ctypes
+      from typing import Any
+      def e() -> Any: ...
+      def f() -> Any: ...
+    """)
 
   def test_recursion(self):
     self.Check("""

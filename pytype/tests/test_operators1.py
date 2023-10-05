@@ -9,156 +9,153 @@ class ConcreteTest(test_base.BaseTest,
   """Tests for operators on concrete values (no unknowns)."""
 
   def test_add(self):
-    self.check_expr("x + y", ["x=1", "y=2"], self.int)
-    self.check_expr("x + y", ["x=1.0", "y=2"], self.float)
-    self.check_expr("x + y", ["x=1", "y=2.0"], self.float)
-    self.check_expr("x + y", ["x=1.1", "y=2.1"], self.float)
+    self.check_expr("x + y", ["x=1", "y=2"], "int")
+    self.check_expr("x + y", ["x=1.0", "y=2"], "float")
+    self.check_expr("x + y", ["x=1", "y=2.0"], "float")
+    self.check_expr("x + y", ["x=1.1", "y=2.1"], "float")
 
   def test_add2(self):
     # split out from test_add for better sharding
-    self.check_expr("x + y", ["x=1", "y=2j"], self.complex)
-    self.check_expr("x + y", ["x=1.0", "y=2j"], self.complex)
-    self.check_expr("x + y", ["x=2j", "y=1"], self.complex)
-    self.check_expr("x + y", ["x=3+2j", "y=1.0"], self.complex)
-    self.check_expr("x + y", ["x=1j", "y=2j"], self.complex)
+    self.check_expr("x + y", ["x=1", "y=2j"], "complex")
+    self.check_expr("x + y", ["x=1.0", "y=2j"], "complex")
+    self.check_expr("x + y", ["x=2j", "y=1"], "complex")
+    self.check_expr("x + y", ["x=3+2j", "y=1.0"], "complex")
+    self.check_expr("x + y", ["x=1j", "y=2j"], "complex")
 
   def test_add3(self):
     # split out from test_add for better sharding
-    self.check_expr("x + y", ["x='1'", "y='2'"], self.str)
-    self.check_expr("x + y", ["x=[1]", "y=[2]"], self.int_list)
-    self.check_expr("x + y", ["a=1", "x=[a,a,a]", "y=[a,a,a]"], self.int_list)
-    self.check_expr("x + y", ["a=1", "x=[a,a,a]", "y=[]"], self.int_list)
-    self.check_expr("x + y", ["a=1", "x=[]", "y=[a,a,a]"], self.int_list)
+    self.check_expr("x + y", ["x='1'", "y='2'"], "str")
+    self.check_expr("x + y", ["x=[1]", "y=[2]"], "list[int]")
+    self.check_expr("x + y", ["a=1", "x=[a,a,a]", "y=[a,a,a]"], "list[int]")
+    self.check_expr("x + y", ["a=1", "x=[a,a,a]", "y=[]"], "list[int]")
+    self.check_expr("x + y", ["a=1", "x=[]", "y=[a,a,a]"], "list[int]")
 
   def test_add4(self):
     # split out from test_add for better sharding
-    self.check_expr("x + y", ["x=[]", "y=[]"], self.nothing_list)
-    self.check_expr("x + y", ["x=[1]", "y=['abc']"], self.intorstr_list)
-    self.check_expr("x + y", ["x=(1,)", "y=(2,)"],
-                    self.make_tuple(self.int, self.int))
-    self.check_expr("x + y", ["x=(1,)", "y=(2.0,)"],
-                    self.make_tuple(self.int, self.float))
+    self.check_expr("x + y", ["x=[]", "y=[]"], "list[nothing]")
+    self.check_expr("x + y", ["x=[1]", "y=['abc']"], "list[int | str]")
+    self.check_expr("x + y", ["x=(1,)", "y=(2,)"], "tuple[int, int]")
+    self.check_expr("x + y", ["x=(1,)", "y=(2.0,)"], "tuple[int, float]")
 
   def test_and(self):
-    self.check_expr("x & y", ["x=3", "y=5"], self.int)
-    self.check_expr("x & y", ["x={1}", "y={1, 2}"], self.int_set)
-    self.check_expr("x & y", ["x={1}", "y={1.2}"], self.int_set)
-    self.check_expr("x & y", ["x={1, 2}", "y=set([1])"], self.int_set)
-    self.check_expr("x & y", ["x=1", "y=2"], self.int)
+    self.check_expr("x & y", ["x=3", "y=5"], "int")
+    self.check_expr("x & y", ["x={1}", "y={1, 2}"], "set[int]")
+    self.check_expr("x & y", ["x={1}", "y={1.2}"], "set[int]")
+    self.check_expr("x & y", ["x={1, 2}", "y=set([1])"], "set[int]")
+    self.check_expr("x & y", ["x=1", "y=2"], "int")
 
   def test_frozenset_ops(self):
     self.check_expr("x & y", ["x=frozenset()", "y=frozenset()"],
-                    self.empty_frozenset)
+                    "frozenset[nothing]")
     self.check_expr("x - y", ["x=frozenset()", "y=frozenset()"],
-                    self.empty_frozenset)
+                    "frozenset[nothing]")
     self.check_expr("x | y", ["x=frozenset([1.0])", "y=frozenset([2.2])"],
-                    self.float_frozenset)
+                    "frozenset[float]")
 
   def test_contains(self):
-    self.check_expr("x in y", ["x=[1]", "y=[1, 2]"], self.bool)
-    self.check_expr("x in y", ["x='ab'", "y='abcd'"], self.bool)
-    self.check_expr("x in y", ["x='ab'", "y=['abcd']"], self.bool)
+    self.check_expr("x in y", ["x=[1]", "y=[1, 2]"], "bool")
+    self.check_expr("x in y", ["x='ab'", "y='abcd'"], "bool")
+    self.check_expr("x in y", ["x='ab'", "y=['abcd']"], "bool")
 
   def test_div(self):
-    self.check_expr("x / y", ["x=1.0", "y=2"], self.float)
-    self.check_expr("x / y", ["x=1", "y=2.0"], self.float)
-    self.check_expr("x / y", ["x=1.1", "y=2.1"], self.float)
-    self.check_expr("x / y", ["x=1j", "y=2j"], self.complex)
+    self.check_expr("x / y", ["x=1.0", "y=2"], "float")
+    self.check_expr("x / y", ["x=1", "y=2.0"], "float")
+    self.check_expr("x / y", ["x=1.1", "y=2.1"], "float")
+    self.check_expr("x / y", ["x=1j", "y=2j"], "complex")
 
   def test_div2(self):
     # split out from test_div for better sharding
-    self.check_expr("x / y", ["x=1", "y=2j"], self.complex)
-    self.check_expr("x / y", ["x=1.0", "y=2j"], self.complex)
-    self.check_expr("x / y", ["x=2j", "y=1j"], self.complex)
-    self.check_expr("x / y", ["x=2j", "y=1"], self.complex)
-    self.check_expr("x / y", ["x=3+2j", "y=1.0"], self.complex)
+    self.check_expr("x / y", ["x=1", "y=2j"], "complex")
+    self.check_expr("x / y", ["x=1.0", "y=2j"], "complex")
+    self.check_expr("x / y", ["x=2j", "y=1j"], "complex")
+    self.check_expr("x / y", ["x=2j", "y=1"], "complex")
+    self.check_expr("x / y", ["x=3+2j", "y=1.0"], "complex")
 
   def test_floordiv(self):
-    self.check_expr("x // y", ["x=1", "y=2"], self.int)
-    self.check_expr("x // y", ["x=1.0", "y=2"], self.float)
-    self.check_expr("x // y", ["x=1", "y=2.0"], self.float)
-    self.check_expr("x // y", ["x=1.1", "y=2.1"], self.float)
-    self.check_expr("x // y", ["x=1j", "y=2j"], self.complex)
+    self.check_expr("x // y", ["x=1", "y=2"], "int")
+    self.check_expr("x // y", ["x=1.0", "y=2"], "float")
+    self.check_expr("x // y", ["x=1", "y=2.0"], "float")
+    self.check_expr("x // y", ["x=1.1", "y=2.1"], "float")
+    self.check_expr("x // y", ["x=1j", "y=2j"], "complex")
 
   def test_floordiv2(self):
     # split out from test_floordiv for better sharding
-    self.check_expr("x // y", ["x=1", "y=2j"], self.complex)
-    self.check_expr("x // y", ["x=1.0", "y=2j"], self.complex)
-    self.check_expr("x // y", ["x=2j", "y=1j"], self.complex)
-    self.check_expr("x // y", ["x=2j", "y=1"], self.complex)
-    self.check_expr("x // y", ["x=3+2j", "y=1.0"], self.complex)
+    self.check_expr("x // y", ["x=1", "y=2j"], "complex")
+    self.check_expr("x // y", ["x=1.0", "y=2j"], "complex")
+    self.check_expr("x // y", ["x=2j", "y=1j"], "complex")
+    self.check_expr("x // y", ["x=2j", "y=1"], "complex")
+    self.check_expr("x // y", ["x=3+2j", "y=1.0"], "complex")
 
   def test_invert(self):
-    self.check_expr("~x", ["x=3"], self.int)
-    self.check_expr("~x", ["x=False"], self.int)
+    self.check_expr("~x", ["x=3"], "int")
+    self.check_expr("~x", ["x=False"], "int")
 
   def test_lshift(self):
-    self.check_expr("x << y", ["x=1", "y=2"], self.int)
+    self.check_expr("x << y", ["x=1", "y=2"], "int")
 
   def test_rshift(self):
-    self.check_expr("x >> y", ["x=1", "y=2"], self.int)
+    self.check_expr("x >> y", ["x=1", "y=2"], "int")
 
   def test_sub(self):
-    self.check_expr("x - y", ["x=1", "y=2"], self.int)
-    self.check_expr("x - y", ["x=1.0", "y=2"], self.float)
-    self.check_expr("x - y", ["x=1", "y=2.0"], self.float)
-    self.check_expr("x - y", ["x=1.1", "y=2.1"], self.float)
+    self.check_expr("x - y", ["x=1", "y=2"], "int")
+    self.check_expr("x - y", ["x=1.0", "y=2"], "float")
+    self.check_expr("x - y", ["x=1", "y=2.0"], "float")
+    self.check_expr("x - y", ["x=1.1", "y=2.1"], "float")
 
   def test_sub2(self):
     # split out from test_sub for better sharding
-    self.check_expr("x - y", ["x=1j", "y=2j"], self.complex)
-    self.check_expr("x - y", ["x={1}", "y={1, 2}"], self.int_set)
-    self.check_expr("x - y", ["x={1}", "y={1.2}"], self.int_set)
-    self.check_expr("x - y", ["x={1, 2}", "y=set([1])"], self.int_set)
+    self.check_expr("x - y", ["x=1j", "y=2j"], "complex")
+    self.check_expr("x - y", ["x={1}", "y={1, 2}"], "set[int]")
+    self.check_expr("x - y", ["x={1}", "y={1.2}"], "set[int]")
+    self.check_expr("x - y", ["x={1, 2}", "y=set([1])"], "set[int]")
 
   def test_sub_frozenset(self):
-    self.check_expr("x - y", ["x={1, 2}", "y=frozenset([1.0])"],
-                    self.int_set)
+    self.check_expr("x - y", ["x={1, 2}", "y=frozenset([1.0])"], "set[int]")
 
   def test_mod(self):
-    self.check_expr("x % y", ["x=1", "y=2"], self.int)
-    self.check_expr("x % y", ["x=1.5", "y=2.5"], self.float)
-    self.check_expr("x % y", ["x='%r'", "y=set()"], self.str)
+    self.check_expr("x % y", ["x=1", "y=2"], "int")
+    self.check_expr("x % y", ["x=1.5", "y=2.5"], "float")
+    self.check_expr("x % y", ["x='%r'", "y=set()"], "str")
 
   def test_mul(self):
-    self.check_expr("x * y", ["x=1", "y=2"], self.int)
-    self.check_expr("x * y", ["x=1", "y=2.1"], self.float)
-    self.check_expr("x * y", ["x=1+2j", "y=2.1+3.4j"], self.complex)
-    self.check_expr("x * y", ["x='x'", "y=3"], self.str)
-    self.check_expr("x * y", ["x=3", "y='x'"], self.str)
+    self.check_expr("x * y", ["x=1", "y=2"], "int")
+    self.check_expr("x * y", ["x=1", "y=2.1"], "float")
+    self.check_expr("x * y", ["x=1+2j", "y=2.1+3.4j"], "complex")
+    self.check_expr("x * y", ["x='x'", "y=3"], "str")
+    self.check_expr("x * y", ["x=3", "y='x'"], "str")
 
   def test_mul2(self):
     # split out from test_mul for better sharding
-    self.check_expr("x * y", ["x=[1, 2]", "y=3"], self.int_list)
-    self.check_expr("x * y", ["x=99", "y=[1.0, 2]"], self.intorfloat_list)
-    self.check_expr("x * y", ["x=(1, 2)", "y=3"], self.int_tuple)
-    self.check_expr("x * y", ["x=0", "y=(1, 2.0)"], self.intorfloat_tuple)
+    self.check_expr("x * y", ["x=[1, 2]", "y=3"], "list[int]")
+    self.check_expr("x * y", ["x=99", "y=[1.0, 2]"], "list[int | float]")
+    self.check_expr("x * y", ["x=(1, 2)", "y=3"], "tuple[int, ...]")
+    self.check_expr("x * y", ["x=0", "y=(1, 2.0)"], "tuple[int | float, ...]")
 
   def test_neg(self):
-    self.check_expr("-x", ["x=1"], self.int)
-    self.check_expr("-x", ["x=1.5"], self.float)
-    self.check_expr("-x", ["x=1j"], self.complex)
+    self.check_expr("-x", ["x=1"], "int")
+    self.check_expr("-x", ["x=1.5"], "float")
+    self.check_expr("-x", ["x=1j"], "complex")
 
   def test_or(self):
-    self.check_expr("x | y", ["x=1", "y=2"], self.int)
-    self.check_expr("x | y", ["x={1}", "y={2}"], self.int_set)
+    self.check_expr("x | y", ["x=1", "y=2"], "int")
+    self.check_expr("x | y", ["x={1}", "y={2}"], "set[int]")
 
   def test_pos(self):
-    self.check_expr("+x", ["x=1"], self.int)
-    self.check_expr("+x", ["x=1.5"], self.float)
-    self.check_expr("+x", ["x=2 + 3.1j"], self.complex)
+    self.check_expr("+x", ["x=1"], "int")
+    self.check_expr("+x", ["x=1.5"], "float")
+    self.check_expr("+x", ["x=2 + 3.1j"], "complex")
 
   def test_pow(self):
-    self.check_expr("x ** y", ["x=1", "y=2"], self.intorfloat)
-    self.check_expr("x ** y", ["x=1", "y=-2"], self.intorfloat)
-    self.check_expr("x ** y", ["x=1.0", "y=2"], self.float)
-    self.check_expr("x ** y", ["x=1", "y=2.0"], self.float)
-    self.check_expr("x ** y", ["x=1.1", "y=2.1"], self.float)
-    self.check_expr("x ** y", ["x=1j", "y=2j"], self.complex)
+    self.check_expr("x ** y", ["x=1", "y=2"], "int | float")
+    self.check_expr("x ** y", ["x=1", "y=-2"], "int | float")
+    self.check_expr("x ** y", ["x=1.0", "y=2"], "float")
+    self.check_expr("x ** y", ["x=1", "y=2.0"], "float")
+    self.check_expr("x ** y", ["x=1.1", "y=2.1"], "float")
+    self.check_expr("x ** y", ["x=1j", "y=2j"], "complex")
 
   def test_xor(self):
-    self.check_expr("x ^ y", ["x=1", "y=2"], self.int)
-    self.check_expr("x ^ y", ["x={1}", "y={2}"], self.int_set)
+    self.check_expr("x ^ y", ["x=1", "y=2"], "int")
+    self.check_expr("x ^ y", ["x={1}", "y={2}"], "set[int]")
 
   def test_add_type_parameter_instance(self):
     self.Check("""
@@ -217,7 +214,7 @@ class OverloadTest(test_base.BaseTest,
     # __nonzero__ is hard to test, because you can never call it directly -
     # "not x" will call __nonzero__ on x, but then convert the result to boolean
     # and invert it. Hence, we're only checking for bool here.
-    self.check_unary("__nonzero__", "not", self.bool)
+    self.check_unary("__nonzero__", "not", "bool")
 
 
 class ReverseTest(test_base.BaseTest,

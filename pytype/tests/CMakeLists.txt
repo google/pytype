@@ -502,7 +502,6 @@ py_test(
     test_containers.py
   DEPS
     .test_base
-    pytype.pytd.pytd
 )
 
 py_test(
@@ -809,7 +808,6 @@ py_test(
     test_inheritance.py
   DEPS
     .test_base
-    pytype.pytd.pytd
 )
 
 py_test(

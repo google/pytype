@@ -16,16 +16,16 @@ class InTest(test_base.BaseTest):
       f("y", "x")
       f("y", (1,))
       f("y", object())
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
     self.assertErrorRegexes(errors, {"e": r"'in'.*object"})
 
   def test_deep(self):
     ty = self.Infer("""
       def f(x, y):
         return x in y
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
 
   def test_overloaded(self):
     ty = self.Infer("""
@@ -68,8 +68,8 @@ class NotInTest(test_base.BaseTest):
       f("y", "x")
       f("y", (1,))
       f("y", object())
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
     self.assertErrorRegexes(errors, {"e": r"'in'.*object"})
 
   # "not in" maps to the inverse of __contains__
@@ -109,15 +109,15 @@ class IsTest(test_base.BaseTest):
       def f(x, y):
         return x is y
       f(1, 2)
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
 
   def test_deep(self):
     ty = self.Infer("""
       def f(x, y):
         return x is y
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
 
 
 class IsNotTest(test_base.BaseTest):
@@ -128,15 +128,15 @@ class IsNotTest(test_base.BaseTest):
       def f(x, y):
         return x is not y
       f(1, 2)
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
 
   def test_deep(self):
     ty = self.Infer("""
       def f(x, y):
         return x is y
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """)
+    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
 
   def test_class_new(self):
     # The assert should not block inference of the return type, since cls could
@@ -185,8 +185,14 @@ class CmpTest(test_base.BaseTest):
       f(1, 2)
       f(1, "a")  # <- error raised from here but in line 2
       f(object(), "x")
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f(x: int, y: int) -> bool: ...
+      @overload
+      def f(x: object, y: str) -> bool: ...
+    """)
     self.assertErrorRegexes(errors, {"e": "Types.*int.*str"})
     self.assertErrorRegexes(errors, {"e": "Called from.*line 4"})
 
@@ -198,7 +204,7 @@ class CmpTest(test_base.BaseTest):
     for op in self.OPS:
       errors = self.CheckWithErrors(f"""
         '1' {op} 2 # unsupported-operands[e]
-      """, deep=False)
+      """)
       self.assertErrorRegexes(errors, {"e": "Types.*str.*int"})
 
   def test_overloaded(self):
@@ -208,30 +214,12 @@ class CmpTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() < 3
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
-
-  @test_base.skip("Needs full emulation of Objects/object.c:try_rich_compare")
-  def test_reverse(self):
-    ty = self.Infer("""
+    """)
+    self.assertTypesMatchPytd(ty, """
       class Foo:
-        def __lt__(self, x):
-          return 3j
-        def __gt__(self, x):
-          raise x
-      class Bar(Foo):
-        def __gt__(self, x):
-          return (3,)
-      def f1():
-        return Foo() < 3
-      def f2():
-        return Foo() < Foo()
-      def f3():
-        return Foo() < Bar()
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f1"), self.complex)
-    self.assertOnlyHasReturnType(ty.Lookup("f2"), self.complex)
-    self.assertOnlyHasReturnType(ty.Lookup("f3"), self.tuple)
+        def __lt__(self, x) -> complex: ...
+      def f() -> complex: ...
+    """)
 
 
 class EqTest(test_base.BaseTest):
@@ -244,8 +232,16 @@ class EqTest(test_base.BaseTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f(x: int, y: int) -> bool: ...
+      @overload
+      def f(x: int, y: str) -> bool: ...
+      @overload
+      def f(x: object, y: str) -> bool: ...
+    """)
 
   def test_overloaded(self):
     ty = self.Infer("""
@@ -254,8 +250,12 @@ class EqTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() == 3
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def __eq__(self, x) -> complex: ...
+      def f() -> complex: ...
+    """)
 
   def test_class(self):
     ty = self.Infer("""
@@ -265,7 +265,15 @@ class EqTest(test_base.BaseTest):
       f(1, "a")
       f(object(), "x")
     """, deep=False)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f(x: int, y: int) -> bool: ...
+      @overload
+      def f(x: int, y: str) -> bool: ...
+      @overload
+      def f(x: object, y: str) -> bool: ...
+    """)
 
   def test_primitive_against_unknown(self):
     self.assertNoCrash(self.Check, """
@@ -284,8 +292,16 @@ class NeTest(test_base.BaseTest):
       f(1, 2)
       f(1, "a")
       f(object(), "x")
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.bool)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      from typing import overload
+      @overload
+      def f(x: int, y: int) -> bool: ...
+      @overload
+      def f(x: int, y: str) -> bool: ...
+      @overload
+      def f(x: object, y: str) -> bool: ...
+    """)
 
   def test_overloaded(self):
     ty = self.Infer("""
@@ -294,8 +310,12 @@ class NeTest(test_base.BaseTest):
           return 3j
       def f():
         return Foo() != 3
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def __ne__(self, x) -> complex: ...
+      def f() -> complex: ...
+    """)
 
 
 class InstanceUnequalityTest(test_base.BaseTest):

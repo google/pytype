@@ -15,7 +15,6 @@ from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
 from pytype.pyi import parser
 from pytype.pytd import optimize
-from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
@@ -76,58 +75,6 @@ class BaseTest(unittest.TestCase):
     # We use class-wide loader to avoid creating a new loader for every test
     # method if not required.
     cls._loader = None
-
-    def t(name):  # pylint: disable=invalid-name
-      return pytd.ClassType("builtins." + name)
-    cls.bool = t("bool")
-    cls.dict = t("dict")
-    cls.float = t("float")
-    cls.complex = t("complex")
-    cls.int = t("int")
-    cls.list = t("list")
-    cls.none_type = t("NoneType")
-    cls.object = t("object")
-    cls.set = t("set")
-    cls.frozenset = t("frozenset")
-    cls.str = t("str")
-    cls.bytearray = t("bytearray")
-    cls.tuple = t("tuple")
-    cls.unicode = t("unicode")
-    cls.generator = t("generator")
-    cls.function = pytd.ClassType("typing.Callable")
-    cls.anything = pytd.AnythingType()
-    cls.nothing = pytd.NothingType()
-    cls.module = t("module")
-    cls.file = t("file")
-
-    # The various union types use pytd_utils.CanonicalOrdering()'s ordering:
-    cls.intorstr = pytd.UnionType((cls.int, cls.str))
-    cls.strorunicode = pytd.UnionType((cls.str, cls.unicode))
-    cls.intorfloat = pytd.UnionType((cls.float, cls.int))
-    cls.intorfloatorstr = pytd.UnionType((cls.float, cls.int, cls.str))
-    cls.complexorstr = pytd.UnionType((cls.complex, cls.str))
-    cls.intorfloatorcomplex = pytd.UnionType(
-        (cls.int, cls.float, cls.complex))
-    cls.int_tuple = pytd.GenericType(cls.tuple, (cls.int,))
-    cls.nothing_tuple = pytd.TupleType(cls.tuple, ())
-    cls.intorfloat_tuple = pytd.GenericType(cls.tuple, (cls.intorfloat,))
-    cls.int_set = pytd.GenericType(cls.set, (cls.int,))
-    cls.intorfloat_set = pytd.GenericType(cls.set, (cls.intorfloat,))
-    cls.unknown_frozenset = pytd.GenericType(cls.frozenset, (cls.anything,))
-    cls.float_frozenset = pytd.GenericType(cls.frozenset, (cls.float,))
-    cls.empty_frozenset = pytd.GenericType(cls.frozenset, (cls.nothing,))
-    cls.int_list = pytd.GenericType(cls.list, (cls.int,))
-    cls.str_list = pytd.GenericType(cls.list, (cls.str,))
-    cls.intorfloat_list = pytd.GenericType(cls.list, (cls.intorfloat,))
-    cls.intorstr_list = pytd.GenericType(cls.list, (cls.intorstr,))
-    cls.anything_list = pytd.GenericType(cls.list, (cls.anything,))
-    cls.nothing_list = pytd.GenericType(cls.list, (cls.nothing,))
-    cls.int_int_dict = pytd.GenericType(cls.dict, (cls.int, cls.int))
-    cls.int_str_dict = pytd.GenericType(cls.dict, (cls.int, cls.str))
-    cls.str_int_dict = pytd.GenericType(cls.dict, (cls.str, cls.int))
-    cls.nothing_nothing_dict = pytd.GenericType(cls.dict,
-                                                (cls.nothing, cls.nothing))
-    cls.make_tuple = lambda self, *args: pytd.TupleType(cls.tuple, tuple(args))
 
   def setUp(self):
     super().setUp()
@@ -250,104 +197,6 @@ class BaseTest(unittest.TestCase):
       assert unit is not None
       unit.Visit(visitors.VerifyVisitor())
       return pytd_utils.CanonicalOrdering(unit)
-
-  @classmethod
-  def SignatureHasReturnType(cls, sig, return_type):
-    for desired_type in pytd_utils.UnpackUnion(return_type):
-      if desired_type == return_type:
-        return True
-      elif isinstance(sig.return_type, pytd.UnionType):
-        return desired_type in sig.return_type.type_list
-      else:
-        return False
-
-  @classmethod
-  def HasSignature(cls, func, parameter_types, return_type):
-    for sig in func.signatures:
-      if (parameter_types == tuple(p.type for p in sig.params) and
-          cls.SignatureHasReturnType(sig, return_type)):
-        return True
-    return False
-
-  @classmethod
-  def HasExactSignature(cls, func, parameter_types, return_type):
-    for sig in func.signatures:
-      if (parameter_types == tuple(p.type for p in sig.params) and
-          return_type == sig.return_type):
-        return True
-    return False
-
-  @classmethod
-  def PrintSignature(cls, parameter_types, return_type):
-    return "({}) -> {}".format(
-        ", ".join(pytd_utils.Print(t) for t in parameter_types),
-        pytd_utils.Print(return_type))
-
-  def assertHasOnlySignatures(self, func, *sigs):
-    """Asserts that the function has the given signatures and no others."""
-    self.assertIsInstance(func, pytd.Function)
-    for parameter_types, return_type in sigs:
-      if not self.HasExactSignature(func, parameter_types, return_type):
-        self.fail("Could not find signature: {name}{sig} in {func}".
-                  format(name=func.name,
-                         sig=self.PrintSignature(parameter_types, return_type),
-                         func=pytd_utils.Print(func)))
-    msg = ("{func} has the wrong number of signatures ({has}), "
-           "expected {expect}".format(
-               func=func, has=len(func.signatures), expect=len(sigs)))
-    self.assertEqual(len(func.signatures), len(sigs), msg)
-
-  def assertHasSignature(self, func, parameter_types, return_type):
-    if not self.HasSignature(func, parameter_types, return_type):
-      self.fail("Could not find signature: f{} in {}".format(
-          self.PrintSignature(parameter_types, return_type),
-          pytd_utils.Print(func)))
-
-  def assertNotHasSignature(self, func, parameter_types, return_type):
-    if self.HasSignature(func, parameter_types, return_type):
-      self.fail("Found signature: f{} in {}".format(
-          self.PrintSignature(parameter_types, return_type),
-          pytd_utils.Print(func)))
-
-  def assertTypeEquals(self, t1, t2):
-    self.assertEqual(t1, t2,
-                     f"Type {pytd_utils.Print(t1)!r} != "
-                     f"{pytd_utils.Print(t2)!r}")
-
-  def assertOnlyHasReturnType(self, func, t):
-    """Test that a given return type is the only one."""
-    ret = pytd_utils.JoinTypes(sig.return_type
-                               for sig in func.signatures)
-    self.assertEqual(t, ret,
-                     "Return type {!r} != {!r}".format(pytd_utils.Print(t),
-                                                       pytd_utils.Print(ret)))
-
-  def assertHasReturnType(self, func, t):
-    """Test that a given return type is present. Ignore extras."""
-    ret = pytd_utils.JoinTypes(sig.return_type
-                               for sig in func.signatures)
-    if isinstance(ret, pytd.UnionType):
-      self.assertIn(t, ret.type_list,
-                    "Return type {!r} not found in {!r}".format(
-                        pytd_utils.Print(t), pytd_utils.Print(ret)))
-    else:
-      self.assertEqual(t, ret,
-                       "Return type {!r} != {!r}".format(pytd_utils.Print(ret),
-                                                         pytd_utils.Print(t)))
-
-  def assertHasAllReturnTypes(self, func, types):
-    """Test that all given return types are present. Ignore extras."""
-    for t in types:
-      self.assertHasReturnType(func, t)
-
-  def assertIsIdentity(self, func):
-    """Tests whether a given function is equivalent to the identity function."""
-    self.assertGreaterEqual(len(func.signatures), 1)
-    for sig in func.signatures:
-      self.assertEqual(len(sig.params), 1)
-      param1, = sig.params
-      self.assertEqual(param1.type, sig.return_type,
-                       f"Not identity: {pytd_utils.Print(func)!r}")
 
   def assertErrorRegexes(self, matcher, expected_errors):
     matcher.assert_error_regexes(expected_errors)

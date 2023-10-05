@@ -37,7 +37,7 @@ class MapTest(test_base.BaseTest):
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
     """)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
+    self.assertTypesMatchPytd(ty, "def f(input_string, sub) -> str: ...")
 
   def test_empty(self):
     ty = self.Infer("""
