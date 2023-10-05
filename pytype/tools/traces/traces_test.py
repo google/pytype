@@ -2,6 +2,7 @@
 
 import ast
 import collections
+import sys
 import textwrap
 from pytype import config
 from pytype.pytd import pytd
@@ -9,6 +10,12 @@ from pytype.pytd import pytd_utils
 from pytype.tests import test_utils
 from pytype.tools.traces import traces
 import unittest
+
+_PYVER = sys.version_info[:2]
+
+_BINMOD_OP = "BINARY_OP" if _PYVER >= (3, 11) else "BINARY_MODULO"
+_CALLFUNC_OP = "CALL" if _PYVER >= (3, 11) else "CALL_FUNCTION"
+_CALLMETH_OP = "CALL" if _PYVER >= (3, 11) else "CALL_METHOD"
 
 
 class _NotImplementedVisitor(traces.MatchAstVisitor):
@@ -36,7 +43,7 @@ class TraceTest(unittest.TestCase):
 
   def test_traces(self):
     src = traces.trace("")
-    trace, = src.traces[1]
+    trace, = src.traces[0 if _PYVER >= (3, 11) else 1]
     self.assertEqual(trace.op, "LOAD_CONST")
     self.assertIsNone(trace.symbol)
     pyval, = trace.types
@@ -199,7 +206,7 @@ class MatchCallTest(MatchAstTestCase):
       f(42)
     """, ast.Call)
     self.assertTracesEqual(matches, [
-        ((3, 0), "CALL_FUNCTION", "f", ("Callable[[Any], Any]", "float"))])
+        ((3, 0), _CALLFUNC_OP, "f", ("Callable[[Any], Any]", "float"))])
 
   def test_chain(self):
     matches = self._get_traces("""
@@ -209,8 +216,8 @@ class MatchCallTest(MatchAstTestCase):
       Foo().f(42)
     """, ast.Call)
     self.assertTracesEqual(matches, [
-        ((4, 0), "CALL_FUNCTION", "Foo", ("Type[Foo]", "Foo")),
-        ((4, 0), "CALL_METHOD", "f", ("Callable[[Any], Any]", "int"))])
+        ((4, 0), _CALLFUNC_OP, "Foo", ("Type[Foo]", "Foo")),
+        ((4, 0), _CALLMETH_OP, "f", ("Callable[[Any], Any]", "int"))])
 
   def test_multiple_bindings(self):
     matches = self._get_traces("""
@@ -226,7 +233,7 @@ class MatchCallTest(MatchAstTestCase):
       f(42)
     """, ast.Call)
     self.assertTracesEqual(matches, [
-        ((10, 0), "CALL_FUNCTION", "f",
+        ((10, 0), _CALLFUNC_OP, "f",
          ("Callable[[Any], Any]", "Union[int, float]"))])
 
   def test_bad_call(self):
@@ -235,12 +242,12 @@ class MatchCallTest(MatchAstTestCase):
       f(42)
     """, ast.Call)
     self.assertTracesEqual(
-        matches, [((2, 0), "CALL_FUNCTION", "f", ("Callable[[], Any]", "Any"))])
+        matches, [((2, 0), _CALLFUNC_OP, "f", ("Callable[[], Any]", "Any"))])
 
   def test_literal(self):
     matches = self._get_traces("''.upper()", ast.Call)
     self.assertTracesEqual(matches, [
-        ((1, 0), "CALL_METHOD", "upper", ("Callable[[], str]", "str"))])
+        ((1, 0), _CALLMETH_OP, "upper", ("Callable[[], str]", "str"))])
 
   def test_lookahead(self):
     matches = self._get_traces("""
@@ -253,7 +260,7 @@ class MatchCallTest(MatchAstTestCase):
       )
     """, ast.Call)
     self.assertTracesEqual(matches, [
-        ((3, 0), "CALL_FUNCTION", "f",
+        ((3, 0), _CALLFUNC_OP, "f",
          ("Callable[[Any, Any, Any], Any]", "int"))])
 
 
@@ -320,18 +327,16 @@ class MatchBinOpTest(MatchAstTestCase):
       v = "hello %s"
       print(v % "world")
     """, ast.BinOp)
-    self.assertTracesEqual(
-        matches, [((2, 6), "BINARY_MODULO", "__mod__", ("str",))])
+    self.assertTracesEqual(matches, [((2, 6), _BINMOD_OP, "__mod__", ("str",))])
 
   def test_modulo_multiline_string(self):
     matches = self._get_traces("""
       ('%s'
        '%s' %
-       (__any_object__,
-        __any_object__))
+       ('hello',
+        'world'))
     """, ast.BinOp)
-    self.assertTracesEqual(
-        matches, [((1, 1), "BINARY_MODULO", "__mod__", ("str",))])
+    self.assertTracesEqual(matches, [((1, 1), _BINMOD_OP, "__mod__", ("str",))])
 
 
 class MatchLambdaTest(MatchAstTestCase):

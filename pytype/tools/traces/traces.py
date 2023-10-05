@@ -20,7 +20,13 @@ _ATTR_OPS = frozenset((
     "STORE_ATTR",
 ))
 
+_BINMOD_OPS = frozenset((
+    "BINARY_MODULO",
+    "BINARY_OP",
+))
+
 _CALL_OPS = frozenset((
+    "CALL",
     "CALL_FUNCTION",
     "CALL_FUNCTION_EX",
     "CALL_FUNCTION_KW",
@@ -181,13 +187,12 @@ class MatchAstVisitor(visitor.BaseVisitor):
   def match_BinOp(self, node):
     if not isinstance(node.op, self._ast.Mod):
       raise NotImplementedError(f"match_Binop:{node.op.__class__.__name__}")
-    op = "BINARY_MODULO"
     symbol = "__mod__"
     # The node's lineno is the first line of the operation, but the opcode's
     # lineno is the last line, so we look ahead to try to find the last line.
     # We do a long lookahead in order to support formatting of long strings.
     return [(self._get_match_location(node), tr) for tr in self._get_traces(
-        node.lineno, [op], symbol, maxmatch=1, num_lines=10)]
+        node.lineno, _BINMOD_OPS, symbol, maxmatch=1, num_lines=10)]
 
   def match_Call(self, node):
     # When calling a method of a class, the node name is <value>.<method>, but
