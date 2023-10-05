@@ -257,7 +257,7 @@ class ErrorTest(test_base.BaseTest):
         import modfoo
         modfoo.baz  # module-attr[e4]
       """, pythonpath=[d.path])
-      if self.python_version >= (3, 10):
+      if self.python_version == (3, 10):
         e2_msg = "No attribute 'bar' on None"
         e3_msg = "No attribute 'bar' on int"
       else:
@@ -876,15 +876,16 @@ class ErrorTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {"e": ["Invalid base class: None"]})
 
-  @test_utils.skipFromPy((3, 10), "Pre-3.10: log one error for all bad options")
-  def test_bad_ambiguous_base_class_pre310(self):
+  @test_utils.skipIfPy((3, 10),
+                       reason="non-3.10: log one error for all bad options")
+  def test_bad_ambiguous_base_class(self):
     errors = self.CheckWithErrors("""
       class Bar(None if __random__ else 42): pass  # base-class-error[e]
     """)
     self.assertErrorSequences(errors, {"e": ["Optional[<instance of int>]"]})
 
-  @test_utils.skipBeforePy((3, 10), "3.10+: log one error per bad option")
-  def test_bad_ambiguous_base_class(self):
+  @test_utils.skipUnlessPy((3, 10), reason="3.10: log one error per bad option")
+  def test_bad_ambiguous_base_class_310(self):
     errors = self.CheckWithErrors("""
       class Bar(None if __random__ else 42): pass  # base-class-error[e1]  # base-class-error[e2]
     """)
@@ -923,26 +924,6 @@ class ErrorTest(test_base.BaseTest):
     self.assertErrorRegexes(errors, {
         "e1": r"class list", "e2": r"1.*Not a type", "e3": r"2.*Not a type",
         "e4": r"class A"})
-
-  def test_reveal_type(self):
-    errors = self.CheckWithErrors("""
-      class Foo:
-        pass
-      reveal_type(Foo)  # reveal-type[e1]
-      reveal_type(Foo())  # reveal-type[e2]
-      reveal_type([1,2,3])  # reveal-type[e3]
-    """)
-    self.assertErrorSequences(errors, {
-        "e1": ["Type[Foo]"], "e2": ["Foo"], "e3": ["List[int]"]
-    })
-
-  def test_reveal_type_expression(self):
-    errors = self.CheckWithErrors("""
-      x = 42
-      y = "foo"
-      reveal_type(x or y)  # reveal-type[e]
-    """)
-    self.assertErrorSequences(errors, {"e": ["Union[int, str]"]})
 
   def test_not_protocol(self):
     errors = self.CheckWithErrors("""
@@ -1024,6 +1005,39 @@ class OperationsTest(test_base.BaseTest):
       def f(): return 'foo' ^ 3  # unsupported-operands[e]
     """)
     self.assertErrorSequences(errors, {"e": ["^", "'foo': str", "3: int"]})
+
+
+class RevealTypeTest(test_base.BaseTest):
+  """Tests for pseudo-builtin reveal_type()."""
+
+  def test_reveal_type(self):
+    errors = self.CheckWithErrors("""
+      class Foo:
+        pass
+      reveal_type(Foo)  # reveal-type[e1]
+      reveal_type(Foo())  # reveal-type[e2]
+      reveal_type([1,2,3])  # reveal-type[e3]
+    """)
+    self.assertErrorSequences(errors, {
+        "e1": ["Type[Foo]"], "e2": ["Foo"], "e3": ["List[int]"]
+    })
+
+  def test_reveal_type_expression(self):
+    errors = self.CheckWithErrors("""
+      x = 42
+      y = "foo"
+      reveal_type(x or y)  # reveal-type[e]
+    """)
+    self.assertErrorSequences(errors, {"e": ["Union[int, str]"]})
+
+  def test_combine_containers(self):
+    errors = self.CheckWithErrors("""
+      from typing import Set, Union
+      x: Set[Union[int, str]]
+      y: Set[Union[str, bytes]]
+      reveal_type(x | y)  # reveal-type[e]
+    """)
+    self.assertErrorSequences(errors, {"e": ["Set[Union[bytes, int, str]]"]})
 
 
 class InPlaceOperationsTest(test_base.BaseTest):

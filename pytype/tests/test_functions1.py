@@ -294,8 +294,11 @@ class TestFunctions(test_base.BaseTest):
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(1, 2)
-    """, deep=False, show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("g"), self.int)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      def f(a: int, b: int) -> int: ...
+      def g(*args, **kwargs) -> int: ...
+    """)
 
   def test_pass_through_kwargs(self):
     ty = self.Infer("""
@@ -304,8 +307,11 @@ class TestFunctions(test_base.BaseTest):
       def g(*args, **kwargs):
         return f(*args, **kwargs)
       g(a=1, b=2)
-    """, deep=False, show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("g"), self.int)
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      def f(a: int, b: int) -> int: ...
+      def g(*args, **kwargs) -> int: ...
+    """)
 
   def test_pass_through_named_args_and_kwargs(self):
     self.CheckWithErrors("""

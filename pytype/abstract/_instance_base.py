@@ -222,7 +222,7 @@ class Instance(SimpleValue):
   def _load_instance_type_parameters(self):
     if self._instance_type_parameters_loaded:
       return
-    all_formal_type_parameters = datatypes.AliasingMonitorDict()
+    all_formal_type_parameters = datatypes.AliasingDict()
     abstract_utils.parse_formal_type_parameters(
         self.cls, None, all_formal_type_parameters, self._container)
     self._instance_type_parameters = self._instance_type_parameters.copy(

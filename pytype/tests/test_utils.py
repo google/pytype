@@ -111,8 +111,8 @@ class OperatorsTestMixin:
         return {expr}
       f()
     """
-    ty = self.Infer(src, deep=False)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), expected_return)
+    ty = self.Infer(src)
+    self.assertTypesMatchPytd(ty, f"def f() -> {expected_return}: ...")
 
   def check_binary(self, function_name, op):
     """Check the binary operator."""
@@ -125,10 +125,13 @@ class OperatorsTestMixin:
       def f():
         return Foo() {op} Bar()
       f()
-    """,
-                    deep=False,
-                    show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, f"""
+      class Foo:
+        def {function_name}(self, unused_x) -> complex: ...
+      class Bar: ...
+      def f() -> complex: ...
+    """)
 
   def check_unary(self, function_name, op, ret=None):
     """Check the unary operator."""
@@ -139,14 +142,16 @@ class OperatorsTestMixin:
       def f():
         return {op} Foo()
       f()
-    """,
-                    deep=False,
-                    show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), ret or self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, f"""
+      class Foo:
+        def {function_name}(self) -> complex: ...
+      def f() -> {ret or "complex"}: ...
+    """)
 
   def check_reverse(self, function_name, op):
     """Check the reverse operator."""
-    ty = self.Infer("""
+    ty = self.Infer(f"""
       class Foo:
         def __{function_name}__(self, x):
           return 3j
@@ -162,13 +167,17 @@ class OperatorsTestMixin:
       def i():
         return Foo() {op} Foo()  # use Foo.__{function_name}__
       f(); g(); h(); i()
-    """.format(op=op, function_name=function_name),
-                    deep=False,
-                    show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.complex)
-    self.assertHasReturnType(ty.Lookup("g"), self.str)
-    self.assertHasReturnType(ty.Lookup("h"), self.str)
-    self.assertHasReturnType(ty.Lookup("i"), self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, f"""
+      class Foo:
+        def __{function_name}__(self, x) -> complex: ...
+      class Bar(Foo):
+        def __r{function_name}__(self, x) -> str: ...
+      def f() -> complex: ...
+      def g() -> str: ...
+      def h() -> str: ...
+      def i() -> complex: ...
+    """)
 
   def check_inplace(self, function_name, op):
     """Check the inplace operator."""
@@ -181,10 +190,12 @@ class OperatorsTestMixin:
         x {op} None
         return x
       f()
-    """,
-                    deep=False,
-                    show_library_calls=True)
-    self.assertHasReturnType(ty.Lookup("f"), self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, f"""
+      class Foo:
+        def __{function_name}__(self, x) -> complex: ...
+      def f() -> complex: ...
+    """)
 
 
 class InplaceTestMixin:
@@ -200,10 +211,9 @@ class InplaceTestMixin:
         {assignments}
         x {op}= y
         return x
-      a = f(1, 2)
     """
-    ty = self.Infer(src, deep=False)
-    self.assertTypeEquals(ty.Lookup("a").type, expected_return)
+    ty = self.Infer(src)
+    self.assertTypesMatchPytd(ty, f"def f(x, y) -> {expected_return}: ...")
 
 
 class TestCollectionsMixin:

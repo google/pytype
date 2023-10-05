@@ -641,7 +641,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     # `LazyFormalTypeParameters`
     if not isinstance(self._formal_type_parameters,
                       abstract_utils.LazyFormalTypeParameters):
-      tparams = datatypes.AliasingMonitorDict()
+      tparams = datatypes.AliasingDict()
       abstract_utils.parse_formal_type_parameters(self, None, tparams)
 
   def get_formal_type_parameters(self):

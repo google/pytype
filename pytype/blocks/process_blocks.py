@@ -18,7 +18,7 @@ def _is_function_def(fn_code):
 
   # Class definitions generate a constructor function. We can distinguish them
   # by checking for code blocks that start with LOAD_NAME __name__
-  op = fn_code.first_opcode
+  op = fn_code.get_first_opcode()
   if isinstance(op, opcodes.LOAD_NAME) and op.argval == "__name__":
     return False
 

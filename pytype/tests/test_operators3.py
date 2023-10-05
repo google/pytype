@@ -9,7 +9,7 @@ class ConcreteTest(test_base.BaseTest,
   """Tests for operators on concrete values (no unknowns)."""
 
   def test_div(self):
-    self.check_expr("x / y", ["x=1", "y=2"], self.float)
+    self.check_expr("x / y", ["x=1", "y=2"], "float")
 
 
 class OverloadTest(test_base.BaseTest,

@@ -1,3 +1,15 @@
+Version 2023.10.05:
+
+Updates:
+* Default --overriding-parameter-count-checks to True. This flag is now a no-op.
+
+Bug fixes:
+* Improve type signatures for set.union.
+* Simplify the output of assert_type and reveal_type.
+* --strict-undefined-checks: Don't propagate block locals when a block cannot be
+  exited from.
+* Fix various Python 3.11 bugs.
+
 Version 2023.09.27:
 
 Updates:

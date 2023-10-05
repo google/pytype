@@ -1,6 +1,6 @@
 """Track python variables in relation to the block graph."""
 
-from typing import Dict, List
+from typing import Set, Dict, List
 
 from pytype.blocks import blocks
 from pytype.typegraph import cfg
@@ -16,14 +16,21 @@ class Environment:
 
   def __init__(self):
     self.block_locals: BlockLocals = {}
+    # Blocks whose outgoing edges cannot be traversed. This can happen if, for
+    # example, a block unconditionally raises an exception.
+    self._dead_ends: Set[blocks.Block] = set()
+
+  def mark_dead_end(self, block):
+    self._dead_ends.add(block)
 
   def add_block(self, frame, block):
     """Add a new block and initialize its locals."""
 
     local = {}
     self.block_locals[block] = local
-    incoming = [b for b in block.incoming
-                if b in self.block_locals and b != block]
+    incoming = [
+        b for b in block.incoming
+        if b in self.block_locals and b != block and b not in self._dead_ends]
     n_inc = len(incoming)
     if n_inc == 0:
       frame_locals = {k: [v] for k, v in frame.f_locals.pyval.items()}

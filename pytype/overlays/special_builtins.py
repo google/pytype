@@ -424,17 +424,17 @@ class Super(BuiltinClass):
     result = self.ctx.program.NewVariable()
     num_args = len(args.posargs)
     if num_args == 0:
-      # The implicit type argument is available in a freevar named '__class__'.
-      cls_var = None
       # If we are in a list comprehension we want the enclosing frame.
       index = -1
       while self.ctx.vm.frames[index].f_code.name == "<listcomp>":
         index -= 1
       frame = self.ctx.vm.frames[index]
-      for i, free_var in enumerate(frame.f_code.freevars):
-        if free_var == abstract.BuildClass.CLOSURE_NAME:
-          cls_var = frame.cells[len(frame.f_code.cellvars) + i]
-          break
+      # The implicit type argument is available in a freevar named '__class__'.
+      closure_name = abstract.BuildClass.CLOSURE_NAME
+      if closure_name in frame.f_code.freevars:
+        cls_var = frame.get_cell_by_name(closure_name)
+      else:
+        cls_var = None
       if not (cls_var and cls_var.bindings):
         self.ctx.errorlog.invalid_super_call(
             self.ctx.vm.frames,
@@ -686,7 +686,7 @@ def _check_method_decorator_arg(fn_var, name, ctx):
     except NotImplementedError:
       # We are wrapping something that is not a function in a method decorator.
       details = f"@{name} applied to something that is not a function."
-      ctx.errorlog.not_callable(ctx.vm.stack(None), d, details)
+      ctx.errorlog.not_callable(ctx.vm.stack(), d, details)
       return False
   return True
 

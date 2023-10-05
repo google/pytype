@@ -37,7 +37,7 @@ class MapTest(test_base.BaseTest):
       def f(input_string, sub):
         return ''.join(map(lambda ch: ch, input_string))
     """)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.str)
+    self.assertTypesMatchPytd(ty, "def f(input_string, sub) -> str: ...")
 
   def test_empty(self):
     ty = self.Infer("""
@@ -773,6 +773,15 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
           return 2
       x = [7, 8, 9]
       print(x[C()])
+    """)
+
+  def test_set_union(self):
+    self.Check("""
+      from typing import Set, Union
+      x: Set[int]
+      y: Set[str]
+      assert_type(x.union(y), Set[Union[int, str]])
+      assert_type(set.union(x, y), Set[Union[int, str]])
     """)
 
 

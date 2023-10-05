@@ -1,6 +1,6 @@
 """Functions for computing the execution order of bytecode."""
 
-from typing import Any, List, Tuple, Union, cast
+from typing import Any, List, Optional, Tuple, Union, cast
 
 from pycnite import bytecode as pyc_bytecode
 from pycnite import marshal as pyc_marshal
@@ -15,6 +15,11 @@ STORE_OPCODES = (
     opcodes.STORE_ATTR,
     opcodes.STORE_DEREF,
     opcodes.STORE_GLOBAL)
+
+_NOOP_OPCODES = (
+    opcodes.NOP,
+    opcodes.PRECALL,
+    opcodes.RESUME)
 
 
 class _Locals311:
@@ -83,6 +88,7 @@ class OrderedCode:
   Attributes:
     filename: Filename of the current module
     name: Code name (e.g. function name, <lambda>, etc.)
+    qualname: The fully qualified code name in 3.11+
     consts: Tuple of code constants
     co_consts: Alias for consts
     names: Tuple of names of global variables used in the code
@@ -103,6 +109,7 @@ class OrderedCode:
   """
 
   name: str
+  qualname: Optional[str]
   filename: Union[bytes, str]
   consts: Tuple[Any, ...]
   names: Tuple[str, ...]
@@ -129,20 +136,24 @@ class OrderedCode:
     self.firstlineno = code.co_firstlineno
     if code.python_version >= (3, 11):
       code = cast(pycnite.types.CodeType311, code)
+      self.qualname = code.co_qualname
       localsplus = _Locals311(code)
       self.varnames = tuple(localsplus.co_varnames)
       self.cellvars = tuple(localsplus.co_cellvars)
       self.freevars = tuple(localsplus.co_freevars)
       self.localsplus = tuple(localsplus.localsplus)
       self.exception_table = tuple(code.co_exceptiontable)
+      combined_vars = self.localsplus
     else:
       code = cast(pycnite.types.CodeType38, code)
+      self.qualname = None
       self.varnames = tuple(code.co_varnames)
       self.cellvars = tuple(code.co_cellvars)
       self.freevars = tuple(code.co_freevars)
       self.localsplus = ()
       self.exception_table = ()
-    self._combined_vars = self.cellvars + self.freevars
+      combined_vars = self.cellvars + self.freevars
+    self._combined_vars = {name: i for (i, name) in enumerate(combined_vars)}
     # Retain the co_ name since this refers directly to CodeType internals.
     self._co_flags = code.co_flags
     self.order = order
@@ -161,9 +172,10 @@ class OrderedCode:
   def code_iter(self):
     return (op for block in self.order for op in block)  # pylint: disable=g-complex-comprehension
 
-  @property
-  def first_opcode(self):
-    return next(self.code_iter)
+  def get_first_opcode(self, skip_noop=False):
+    for op in self.code_iter:
+      if not skip_noop or not isinstance(op, _NOOP_OPCODES):
+        return op
 
   def has_opcode(self, op_type):
     return any(isinstance(op, op_type) for op in self.code_iter)
@@ -203,7 +215,7 @@ class OrderedCode:
 
   def get_cell_index(self, name):
     """Get the index of name in the code frame's cell list."""
-    return self._combined_vars.index(name)
+    return self._combined_vars[name]
 
 
 class BlockGraph:
@@ -213,7 +225,7 @@ class BlockGraph:
     self.graph = {}
 
   def add(self, ordered_code):
-    self.graph[ordered_code.first_opcode] = ordered_code
+    self.graph[ordered_code.get_first_opcode()] = ordered_code
 
   def pretty_print(self):
     return str(self.graph)

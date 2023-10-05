@@ -1,6 +1,5 @@
 """Test list, dict, etc."""
 
-from pytype.pytd import pytd
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -13,42 +12,36 @@ class ContainerTest(test_base.BaseTest):
       def f(x):
         return x
       f((3, "str"))
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((pytd.TupleType(self.tuple, (self.int, self.str)),),
-         pytd.TupleType(self.tuple, (self.int, self.str))))
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: tuple[int, str]) -> tuple[int, str]: ...
+    """)
 
   def test_tuple(self):
     ty = self.Infer("""
       def f(x):
         return x[0]
       f((3, "str"))
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((pytd.TupleType(self.tuple, (self.int, self.str)),),
-         self.int))
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, "def f(x: tuple[int, str]) -> int: ...")
 
   def test_tuple_swap(self):
     ty = self.Infer("""
       def f(x):
         return (x[1], x[0])
       f((3, "str"))
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((pytd.TupleType(self.tuple, (self.int, self.str)),),
-         pytd.TupleType(self.tuple, (self.str, self.int))))
+    """, deep=False)
+    self.assertTypesMatchPytd(ty, """
+      def f(x: tuple[int, str]) -> tuple[str, int]: ...
+    """)
 
   def test_empty_tuple(self):
     ty = self.Infer("""
       def f():
         return ()
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"), ((), pytd.TupleType(self.tuple, ())))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> tuple[()]: ...")
 
   def test_sets_sanity(self):
     ty = self.Infer("""
@@ -57,10 +50,8 @@ class ContainerTest(test_base.BaseTest):
         x.add(10)
         return x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.set, (self.int,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> set[int]: ...")
 
   def test_sets_add(self):
     ty = self.Infer("""
@@ -70,10 +61,8 @@ class ContainerTest(test_base.BaseTest):
         x.add(10)
         return x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.set, (self.int,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> set[int]: ...")
 
   def test_sets(self):
     ty = self.Infer("""
@@ -87,20 +76,16 @@ class ContainerTest(test_base.BaseTest):
           x.add(10)
           return x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.set, (self.int,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> set[int]: ...")
 
   def test_list_literal(self):
     ty = self.Infer("""
       def f():
         return [1, 2, 3]
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.list, (self.int,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> list[int]: ...")
 
   def test_list_append(self):
     ty = self.Infer("""
@@ -111,17 +96,15 @@ class ContainerTest(test_base.BaseTest):
         x.append(3)
         return x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.list, (self.int,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> list[int]: ...")
 
   def test_list_setitem(self):
     ty = self.Infer("""
       layers = [((),)]
       for x, in layers:
         layers[0] = x,
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       layers = ...  # type: List[Tuple[Tuple[()]]]
@@ -137,10 +120,8 @@ class ContainerTest(test_base.BaseTest):
         x.append(3)
         return [0] + x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.list, (self.int,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> list[int]: ...")
 
   def test_list_concat_multi_type(self):
     ty = self.Infer("""
@@ -150,13 +131,8 @@ class ContainerTest(test_base.BaseTest):
         x.append("str")
         return x + [1.3] + x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((),
-         pytd.GenericType(
-             self.list,
-             (pytd.UnionType((self.int, self.float, self.str)),))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> list[int | float | str]: ...")
 
   def test_union_into_type_param(self):
     ty = self.Infer("""
@@ -184,10 +160,8 @@ class ContainerTest(test_base.BaseTest):
         x.append(3)
         return ["str"] + x
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), pytd.GenericType(self.list, (self.intorstr,))))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> list[int | str]: ...")
 
   def test_any_object(self):
     ty = self.Infer("""
@@ -198,50 +172,45 @@ class ContainerTest(test_base.BaseTest):
       def h():
         return __any_object__("name")
       f(); g(); h()
-    """, deep=False)
-    self.assertHasOnlySignatures(ty.Lookup("f"), ((), self.anything))
-    self.assertHasOnlySignatures(ty.Lookup("g"), ((), self.anything))
-    self.assertHasOnlySignatures(ty.Lookup("h"), ((), self.anything))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      def f() -> Any: ...
+      def g() -> Any: ...
+      def h() -> Any: ...
+    """)
 
   def test_dict_literal(self):
     ty = self.Infer("""
       def f():
         return {"test": 1, "arg": 42}
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), self.str_int_dict))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> dict[str, int]: ...")
 
   def test_dict_empty_constructor(self):
     ty = self.Infer("""
       def f():
         return dict()
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), self.nothing_nothing_dict))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> dict[nothing, nothing]: ...")
 
   def test_dict_constructor(self):
     ty = self.Infer("""
       def f():
         return dict([(1, 2), (3, 4)])
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), self.int_int_dict))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> dict[int, int]: ...")
 
   def test_dict_constructor2(self):
     ty = self.Infer("""
       def f():
         return dict([(1, "bar"), (2, "foo")])
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), self.int_str_dict))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> dict[int, str]: ...")
 
   def test_dict_setitem(self):
     ty = self.Infer("""
@@ -251,16 +220,14 @@ class ContainerTest(test_base.BaseTest):
         d["arg"] = 42
         return d
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(
-        ty.Lookup("f"),
-        ((), self.str_int_dict))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> dict[str, int]: ...")
 
   def test_dict_update(self):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1}, b=2j)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       d = ...  # type: Dict[str, Union[int, complex]]
@@ -270,7 +237,7 @@ class ContainerTest(test_base.BaseTest):
     ty = self.Infer("""
       d = {}
       d.update({"a": 1} if __random__ else {"b": 2j}, c=3.0)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       d = ...  # type: Dict[str, Union[int, float, complex]]
@@ -293,10 +260,14 @@ class ContainerTest(test_base.BaseTest):
         return a.parent
 
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(ty.Lookup("f"),
-                                 ((),
-                                  self.intorstr))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        parent: int | str
+        def __init__(self) -> None: ...
+      def set_parent(l) -> None: ...
+      def f() -> int | str: ...
+    """)
 
   def test_overloading(self):
     ty = self.Infer("""
@@ -304,8 +275,9 @@ class ContainerTest(test_base.BaseTest):
         parent = None
         children = ()
         def bar(self, new):
+          if self.parent:
             for ch in self.parent.children:
-                ch.foobar = 3
+              ch.foobar = 3
 
       class Node(Base):
         def __init__(self, children):
@@ -325,10 +297,21 @@ class ContainerTest(test_base.BaseTest):
         return l2.foobar
 
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(ty.Lookup("f"),
-                                 ((),
-                                  self.int))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Base:
+        parent: None
+        children: tuple[()]
+        def bar(self, new) -> None: ...
+      class Node(Base):
+        children: list
+        def __init__(self, children) -> None: ...
+      class Leaf(Base):
+        parent: Node
+        foobar: int
+        def __init__(self) -> None: ...
+      def f() -> int: ...
+    """)
 
   def test_class_attr(self):
     ty = self.Infer("""
@@ -343,10 +326,13 @@ class ContainerTest(test_base.BaseTest):
         return n1.foobar
 
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(ty.Lookup("f"),
-                                 ((),
-                                  self.int))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Node:
+        children: tuple[()] | list[Node]
+        foobar: int
+      def f() -> int: ...
+    """)
 
   def test_heterogeneous(self):
     ty = self.Infer("""
@@ -356,10 +342,8 @@ class ContainerTest(test_base.BaseTest):
         x.append("str")
         return x[0]
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(ty.Lookup("f"),
-                                 ((),
-                                  self.intorstr))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> int | str: ...")
 
   def test_list_comprehension(self):
     # uses byte_LIST_APPEND
@@ -367,10 +351,8 @@ class ContainerTest(test_base.BaseTest):
       def f():
         return [i for i in (1,2,3)]
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(ty.Lookup("f"),
-                                 ((),
-                                  self.int_list))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> list[int]: ...")
 
   def test_set_comprehension(self):
     # uses byte_SET_ADD
@@ -378,10 +360,8 @@ class ContainerTest(test_base.BaseTest):
       def f():
         return {i for i in [1,2,3]}
       f()
-    """, deep=False, show_library_calls=True)
-    self.assertHasOnlySignatures(ty.Lookup("f"),
-                                 ((),
-                                  self.int_set))
+    """)
+    self.assertTypesMatchPytd(ty, "def f() -> set[int]: ...")
 
   def test_empty_or_string(self):
     ty = self.Infer("""
@@ -389,7 +369,7 @@ class ContainerTest(test_base.BaseTest):
       d["a"] = "queen"
       entry = d["a"]
       open('%s' % entry, 'w')
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       d = ...  # type: Dict[str, str]
@@ -539,10 +519,10 @@ class ContainerTest(test_base.BaseTest):
     """)
 
   def test_eq_operator_on_item_from_empty_dict(self):
-    self.Infer("""
+    self.Check("""
       d = {}
       d[1] == d[1]
-    """, deep=False)
+    """)
 
   def test_dict(self):
     ty = self.Infer("""

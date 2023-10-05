@@ -303,13 +303,15 @@ def get_name_error_details(
         else:
           outer_scope = "global scope"
       if outer_scope:
-        if ctx.vm.frame.func.data.is_class_builder:
+        if not ctx.vm.frame.func.data.is_class_builder:
+          inner_scope = f"function {clean(ctx.vm.frame.func.data.name)!r}"
+        elif ctx.python_version >= (3, 11):
+          inner_scope = f"class {clean(class_frames[0].func.data.name)!r}"
+        else:
           class_name = ".".join(parts + [
               class_frame.func.data.name
               for class_frame in reversed(class_frames)])
           inner_scope = f"class {class_name!r}"
-        else:
-          inner_scope = f"function {clean(ctx.vm.frame.func.data.name)!r}"
         return _NameInOuterFunctionErrorDetails(name, outer_scope, inner_scope)
   if class_name_parts:
     return _NameInOuterClassErrorDetails(
@@ -318,10 +320,17 @@ def get_name_error_details(
   # Check if 'name' is defined in one of the classes with their own frames.
   if class_frames:
     for i, frame in enumerate(class_frames[1:]):
-      if name in ctx.vm.annotated_locals[frame.func.data.name]:
-        class_parts = [part.func.data.name
-                       for part in reversed(class_frames[i+1:])]
-        class_name = ".".join(parts + class_parts)
+      if ctx.python_version >= (3, 11):
+        short_name = frame.func.data.name.rsplit(".", 1)[-1]
+      else:
+        short_name = frame.func.data.name
+      if name in ctx.vm.annotated_locals[short_name]:
+        if ctx.python_version >= (3, 11):
+          class_name = clean(frame.func.data.name)
+        else:
+          class_parts = [part.func.data.name
+                         for part in reversed(class_frames[i+1:])]
+          class_name = ".".join(parts + class_parts)
         return _NameInInnerClassErrorDetails(name, class_name)
   return None
 
@@ -573,7 +582,7 @@ def make_function(name, node, code, globs, defaults, kw_defaults, closure,
         c for c in abstract_utils.get_atomic_python_constant(closure))
     log.info("closure: %r", closure)
   if not name:
-    name = abstract_utils.get_atomic_python_constant(code).name
+    name = abstract_utils.get_atomic_python_constant(code).qualname
   if not name:
     name = "<lambda>"
   val = abstract.InterpreterFunction.make(
@@ -836,7 +845,8 @@ def load_closure_cell(state, op, check_bindings, ctx):
   Returns:
     A new state.
   """
-  cell = ctx.vm.frame.cells[op.arg]
+  cell_index = ctx.vm.frame.f_code.get_cell_index(op.argval)
+  cell = ctx.vm.frame.cells[cell_index]
   # If we have closed over a variable in an inner function, then invoked the
   # inner function before the variable is defined, raise a name error here.
   # See test_closures.ClosuresTest.test_undefined_var
@@ -857,7 +867,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
       new_cell.AddBinding(ctx.convert.unsolvable)
     # Update the cell because the DELETE_DEREF implementation works on
     # variable identity.
-    ctx.vm.frame.cells[op.arg] = cell = new_cell
+    ctx.vm.frame.cells[cell_index] = cell = new_cell
   name = op.argval
   ctx.vm.set_var_name(cell, name)
   check_for_deleted(state, name, cell, ctx)

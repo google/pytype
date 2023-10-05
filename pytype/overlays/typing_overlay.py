@@ -470,7 +470,7 @@ class FinalDecorator(abstract.PyTDFunction):
       if self._can_be_final(obj):
         obj.final = True
       else:
-        self.ctx.errorlog.bad_final_decorator(self.ctx.vm.frames, obj)
+        self.ctx.errorlog.bad_final_decorator(self.ctx.vm.stack(), obj)
     return node, arg
 
   def _can_be_final(self, obj):

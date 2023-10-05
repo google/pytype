@@ -19,9 +19,9 @@ class AsyncioOverlay(overlay.Overlay):
   """A custom overlay for the 'asyncio' module."""
 
   def __init__(self, ctx):
-    member_map = {
-        "coroutine": CoroutineDecorator.make
-    }
+    member_map = {}
+    if ctx.python_version <= (3, 10):
+      member_map["coroutine"] = CoroutineDecorator.make
     ast = ctx.loader.import_name("asyncio")
     super().__init__(ctx, "asyncio", member_map, ast)
 

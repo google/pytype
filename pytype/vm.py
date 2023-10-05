@@ -488,7 +488,7 @@ class VirtualMachine:
 
   def _run_frame_blocks(self, frame, node, annotated_locals):
     """Runs a frame's code blocks."""
-    frame.states[frame.f_code.first_opcode] = frame_state.FrameState.init(
+    frame.states[frame.f_code.get_first_opcode()] = frame_state.FrameState.init(
         node, self.ctx)
     frame_name = frame.f_code.name
     if frame_name not in self.local_ops or frame_name != "<module>":
@@ -531,6 +531,7 @@ class VirtualMachine:
           assert m_frame is not None
           for target in m_frame.targets[block.id]:
             del frame.states[target]
+        self.block_env.mark_dead_end(block)
         # return, raise, or yield. Leave the current frame.
         can_return |= state.why in ("return", "yield")
         return_nodes.append(state.node)
@@ -644,7 +645,7 @@ class VirtualMachine:
             any(prev.line in d for d in (self._director.decorators,
                                          self._director.decorated_functions)))
 
-  def stack(self, func, is_decoration=False):
+  def stack(self, func=None):
     """Get a frame stack for the given function for error reporting."""
     if (isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and
         not self.current_opcode):
@@ -1778,7 +1779,7 @@ class VirtualMachine:
     value = self._apply_annotation(
         state, op, name, value, self.current_annotated_locals, check_types=True)
     state = state.forward_cfg_node(f"StoreDeref:{name}")
-    self.frame.cells[op.arg].PasteVariable(value, state.node)
+    self.frame.get_cell_by_name(name).PasteVariable(value, state.node)
     self.trace_opcode(op, name, value)
     return state
 
@@ -1786,7 +1787,7 @@ class VirtualMachine:
     value = abstract.Deleted(op.line, self.ctx).to_variable(state.node)
     name = op.argval
     state = state.forward_cfg_node(f"DelDeref:{name}")
-    self.frame.cells[op.arg].PasteVariable(value, state.node)
+    self.frame.get_cell_by_name(name).PasteVariable(value, state.node)
     self.trace_opcode(op, name, value)
     return state
 
@@ -2564,7 +2565,13 @@ class VirtualMachine:
     return state
 
   def byte_END_ASYNC_FOR(self, state, op):
-    state, _ = state.popn(7)
+    if self.ctx.python_version < (3, 11):
+      state, _ = state.popn(7)
+    else:
+      # The cpython docs say this pops two values, the iterable and an
+      # exception. Since we have not pushed an exception in GET_ANEXT, we don't
+      # need to pop one here.
+      state, _ = state.pop()
     return state
 
   def byte_POP_FINALLY(self, state, op):
@@ -2775,21 +2782,30 @@ class VirtualMachine:
           starstarargs=starstarargs)
     return state.push(ret)
 
+  def _check_frame_yield(self, state, ret):
+    if not self.frame.check_return:
+      return None
+    ret_type = self.frame.allowed_returns
+    assert ret_type is not None
+    self._check_return(state.node, ret,
+                       ret_type.get_formal_type_parameter(abstract_utils.T))
+    return ret_type
+
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
     state, ret = state.pop()
     value = self.frame.yield_variable.AssignToNewVariable(state.node)
     value.PasteVariable(ret, state.node)
     self.frame.yield_variable = value
-    if self.frame.check_return:
-      ret_type = self.frame.allowed_returns
-      assert ret_type is not None
-      self._check_return(state.node, ret,
-                         ret_type.get_formal_type_parameter(abstract_utils.T))
+    ret_type = self._check_frame_yield(state, ret)
+    if self.ctx.python_version >= (3, 11) and isinstance(op.prev, opcodes.SEND):
+      send_var = ret
+    elif ret_type:
       send_var = self.init_class(
           state.node, ret_type.get_formal_type_parameter(abstract_utils.T2))
-      return state.push(send_var)
-    return state.push(self.ctx.new_unsolvable(state.node))
+    else:
+      send_var = self.ctx.new_unsolvable(state.node)
+    return state.push(send_var)
 
   def byte_IMPORT_NAME(self, state, op):
     """Import a single module."""
@@ -3051,11 +3067,8 @@ class VirtualMachine:
       ret = self.ctx.new_unsolvable(state.node)
     return state.push(ret)
 
-  def byte_YIELD_FROM(self, state, op):
-    """Implementation of the YIELD_FROM opcode."""
-    state, unused_none_var = state.pop()
-    state, var = state.pop()
-    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+  def _yield_from_value(self, state, var, yield_variable):
+    """Helper function for YIELD_FROM and SEND."""
     result = self.ctx.program.NewVariable()
     for b in var.bindings:
       val = b.data
@@ -3082,6 +3095,14 @@ class VirtualMachine:
           result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
       else:
         result.AddBinding(val, {b}, state.node)
+    return result
+
+  def byte_YIELD_FROM(self, state, op):
+    """Implementation of the YIELD_FROM opcode."""
+    state, unused_none_var = state.pop()
+    state, var = state.pop()
+    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+    result = self._yield_from_value(state, var, yield_variable)
     if yield_variable.bindings:
       self.frame.yield_variable = yield_variable
       if self.frame.check_return:
@@ -3173,7 +3194,10 @@ class VirtualMachine:
 
   def byte_WITH_EXCEPT_START(self, state, op):
     del op  # unused
-    func = state.peek(7)
+    if self.ctx.python_version < (3, 11):
+      func = state.peek(7)
+    else:
+      func = state.peek(4)
     args = state.topn(3)
     state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
@@ -3211,13 +3235,12 @@ class VirtualMachine:
     """Implementation of the MATCH_KEYS opcode."""
     del op
     obj_var, keys_var = state.topn(2)
-    vals = vm_utils.match_keys(state.node, obj_var, keys_var, self.ctx)
-    if vals:
-      state = state.push(vals,
-                         self.ctx.convert.true.to_variable(state.node))
-    else:
-      state = state.push(self.ctx.convert.none.to_variable(state.node),
-                         self.ctx.convert.false.to_variable(state.node))
+    ret = vm_utils.match_keys(state.node, obj_var, keys_var, self.ctx)
+    vals = ret or self.ctx.convert.none.to_variable(state.node)
+    state = state.push(vals)
+    if self.ctx.python_version == (3, 10):
+      succ = self.ctx.convert.bool_values[bool(ret)]
+      state = state.push(succ.to_variable(state.node))
     return state
 
   def _store_local_or_cellvar(self, state, name, var):
@@ -3246,11 +3269,13 @@ class VirtualMachine:
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
     posarg_count = op.arg
     state, keys_var = state.pop()
-    obj_var, cls_var = state.topn(2)
+    state, (obj_var, cls_var) = state.popn(2)
+    orig_node = state.node
     ret = vm_utils.match_class(
         state.node, obj_var, cls_var, keys_var, posarg_count, self.ctx)
     state = state.forward_cfg_node("MatchClass")
     success = ret.success
+    vals = ret.values or self.ctx.convert.none.to_variable(state.node)
     if ret.matched:
       assert self._branch_tracker is not None
       # Narrow the type of the match variable since we are in a case branch
@@ -3262,10 +3287,17 @@ class VirtualMachine:
       if var_name:
         narrowed_type = self._make_instance_for_match(state, cls_var)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
-    state = state.set_top(
-        self.ctx.convert.bool_values[success].to_variable(state.node))
-    if ret.values:
-      state = state.set_second(ret.values)
+    if self.ctx.python_version == (3, 10):
+      state = state.push(vals)
+      succ = self.ctx.convert.bool_values[success].to_variable(state.node)
+      state = state.push(succ)
+    else:
+      if success is None:
+        # In 3.11 we only have a single return value on the stack. If the match
+        # is ambigious, we need to add a second binding so the subsequent
+        # JUMP_IF will take both branches.
+        vals.AddBinding(self.ctx.convert.none, [], orig_node)
+      state = state.push(vals)
     return state
 
   def byte_COPY_DICT_WITHOUT_KEYS(self, state, op):
@@ -3374,9 +3406,26 @@ class VirtualMachine:
     return binop(state, op)
 
   def byte_SEND(self, state, op):
-    # No stack effects
-    del op
-    return state
+    """Implementation of SEND opcode."""
+    state, var = state.pop()
+    state, recv = state.pop()
+    node, next_meth, _ = self._retrieve_attr(state.node, recv, "__next__")
+    if self._var_is_none(var) and next_meth:
+      state = state.change_cfg_node(node)
+      state, ret = self.call_function_with_state(state, next_meth, ())
+    else:
+      yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+      ret = self._yield_from_value(state, recv, yield_variable)
+      if yield_variable.bindings:
+        self.frame.yield_variable = yield_variable
+        if self.frame.check_return:
+          assert self.frame.allowed_returns is not None
+          ret_type = self.frame.allowed_returns.get_formal_type_parameter(
+              abstract_utils.T)
+          self._check_return(state.node, yield_variable, ret_type)
+      if not ret.bindings:
+        ret.AddBinding(self.ctx.convert.unsolvable, [], state.node)
+    return state.push(ret)
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx,

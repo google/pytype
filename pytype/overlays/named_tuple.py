@@ -544,7 +544,7 @@ class NamedTupleClass(abstract.InterpreterClass):
         short = t.module
         param = t.name
         ival.instance_type_parameters.add_alias(
-            f"{short}.{param}", f"{long}.{param}", lambda x, y: x or y)
+            f"{short}.{param}", f"{long}.{param}", lambda x, y, z: x or y)
     return inst
 
 

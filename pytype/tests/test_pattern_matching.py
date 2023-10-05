@@ -689,7 +689,8 @@ class MatchClassTest(test_base.BaseTest):
       assert_type(y, None)
     """)
 
-  def test_error(self):
+  @test_utils.skipFromPy((3, 11), "Behaviour changed in 3.11")
+  def test_error_310(self):
     ty, _ = self.InferWithErrors("""
       def f(x):
         match x:
@@ -700,6 +701,20 @@ class MatchClassTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> int | None: ...
+    """)
+
+  @test_utils.skipBeforePy((3, 11), "Behaviour changed in 3.11")
+  def test_error_311(self):
+    ty, _ = self.InferWithErrors("""
+      def f(x):
+        match x:
+          case error():  # name-error
+            return 0
+          case _:
+            return None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      def f(x) -> None: ...
     """)
 
   def test_nested_function(self):

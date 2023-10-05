@@ -1,6 +1,5 @@
 """Tests for classes, MROs, inheritance etc."""
 
-from pytype.pytd import pytd
 from pytype.tests import test_base
 
 
@@ -41,11 +40,18 @@ class InheritanceTest(test_base.BaseTest):
         return A.y
       def by():
         return A.y
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("ax"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("bx"), self.str)
-    self.assertOnlyHasReturnType(ty.Lookup("ay"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("by"), self.int)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+       x: int
+       y: int
+      class B(A):
+        x: str
+      def ax() -> int: ...
+      def bx() -> str: ...
+      def ay() -> int: ...
+      def by() -> int: ...
+    """)
 
   def test_multiple_inheritance(self):
     ty = self.Infer("""
@@ -64,10 +70,20 @@ class InheritanceTest(test_base.BaseTest):
         return D.y
       def z():
         return D.z
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("x"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("y"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("z"), self.complex)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        x: int
+      class B(A):
+        y: int
+      class C(A):
+        y: str
+        z: complex
+      class D(B, C): ...
+      def x() -> int: ...
+      def y() -> int: ...
+      def z() -> complex: ...
+    """)
 
   def test_inherit_from_builtins(self):
     ty = self.Infer("""
@@ -78,10 +94,12 @@ class InheritanceTest(test_base.BaseTest):
       def f():
         return MyDict()
       f()
-    """, deep=False, show_library_calls=True)
-    mydict = ty.Lookup("MyDict")
-    self.assertOnlyHasReturnType(ty.Lookup("f"),
-                                 pytd.ClassType("MyDict", mydict))
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class MyDict(dict):
+        def __init__(self) -> None: ...
+      def f() -> MyDict: ...
+    """)
 
   def test_inherit_methods_from_object(self):
     # Test that even in the presence of multi-level inheritance,
@@ -98,10 +116,14 @@ class InheritanceTest(test_base.BaseTest):
       def h():
         return "bla".__sizeof__()
       f(); g(); h()
-    """, deep=False, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("g"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("h"), self.int)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A: ...
+      class B(A): ...
+      def f() -> int: ...
+      def g() -> int: ...
+      def h() -> int: ...
+    """)
 
   def test_mro(self):
     ty = self.Infer("""
@@ -125,11 +147,20 @@ class InheritanceTest(test_base.BaseTest):
         return C().b()
       def i():
         return D().b()
-    """, show_library_calls=True)
-    self.assertOnlyHasReturnType(ty.Lookup("f"), self.int)
-    self.assertOnlyHasReturnType(ty.Lookup("g"), self.float)
-    self.assertOnlyHasReturnType(ty.Lookup("h"), self.str)
-    self.assertOnlyHasReturnType(ty.Lookup("i"), self.float)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class A:
+        def a(self) -> int: ...
+      class B(A):
+        def b(self) -> float: ...
+      class C(A):
+        def b(self) -> str: ...
+      class D(B, C): ...
+      def f() -> int: ...
+      def g() -> float: ...
+      def h() -> str: ...
+      def i() -> float: ...
+    """)
 
   def test_ambiguous_base_class(self):
     self.Check("""

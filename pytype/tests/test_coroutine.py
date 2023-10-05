@@ -95,7 +95,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
       import asyncio
       import types
 
-      @asyncio.coroutine
+      @types.coroutine
       def f1():
         yield from asyncio.sleep(1)
 
@@ -126,6 +126,29 @@ class GeneratorFeatureTest(test_base.BaseTest):
       def f1() -> Coroutine[Any, Any, None]: ...
       def f2() -> Coroutine[Any, Any, None]: ...
       def f3() -> Coroutine[Any, Any, Union[int, str]]: ...
+    """)
+
+  @test_utils.skipFromPy((3, 11), "asyncio.coroutine was removed in 3.11")
+  def test_asyncio_coroutine_inference(self):
+    ty = self.Infer("""
+      import asyncio
+      @asyncio.coroutine
+      def f():
+        yield from asyncio.sleep(1)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      import asyncio
+      from typing import Any, Coroutine
+      def f() -> Coroutine[Any, Any, None]: ...
+    """)
+
+  @test_utils.skipBeforePy((3, 11), "asyncio.coroutine was removed in 3.11")
+  def test_asyncio_coroutine_does_not_exist(self):
+    self.CheckWithErrors("""
+      import asyncio
+      @asyncio.coroutine  # module-attr
+      def f():
+        yield from asyncio.sleep(1)
     """)
 
   def test_generator_based_coroutine_error(self):
