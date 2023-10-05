@@ -1108,13 +1108,29 @@ def _add_setup_except(offset_to_op, exc_table):
             break
 
 
-def _make_opcode_list(offset_to_op):
+def _make_opcode_list(offset_to_op, python_version):
   """Convert opcodes to a list and fill in opcode.index, next and prev."""
   ops = []
   offset_to_index = {}
   prev_op = None
-  for index, off in enumerate(sorted(offset_to_op)):
-    op = offset_to_op[off]
+  index = -1
+  op_items = sorted(offset_to_op.items())
+  for i, (off, op) in enumerate(op_items):
+    index += 1
+    if python_version == (3, 11):
+      if (isinstance(op, JUMP_BACKWARD) and
+          i + 1 < len(op_items) and
+          isinstance(op_items[i + 1][1], END_ASYNC_FOR)):
+        # In 3.11 `async for` is compiled into an infinite loop, relying on the
+        # exception handler to break out. This causes the block graph to be
+        # pruned abruptly, so we need to remove the loop opcode.
+        index -= 1
+        continue
+      elif (isinstance(op, JUMP_BACKWARD_NO_INTERRUPT) and
+            isinstance(offset_to_op[op.argval], SEND)):
+        # Likewise, `await` is compiled into an infinite loop which we remove.
+        index -= 1
+        continue
     op.index = index
     offset_to_index[off] = index
     if prev_op:
@@ -1130,7 +1146,10 @@ def _add_jump_targets(ops, offset_to_index):
   """Map the target of jump instructions to the opcode they jump to."""
   for op in ops:
     op = cast(OpcodeWithArg, op)
-    if op.target:
+    if isinstance(op, SEND):
+      # This has a target in the bytecode, but is not a jump
+      op.target = None
+    elif op.target:
       # We have already set op.target, we need to fill in its index in op.arg
       op.arg = op.argval = op.target.index
     elif op.has_known_jump():
@@ -1144,8 +1163,8 @@ def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> List[Opcode]:
   offset_to_op = _make_opcodes(dis_code.opcodes)
   if dis_code.exception_table:
     _add_setup_except(offset_to_op, dis_code.exception_table)
-  ops, offset_to_index = _make_opcode_list(offset_to_op)
-  _add_jump_targets(ops, offset_to_index)
+  ops, offset_to_idx = _make_opcode_list(offset_to_op, dis_code.python_version)
+  _add_jump_targets(ops, offset_to_idx)
   return ops
 
 

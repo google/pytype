@@ -340,13 +340,6 @@ class VirtualMachine:
     # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
     self._kw_names = ()
 
-    # In 3.11, await calls get compiled into a loop, but for typing purposes we
-    # want to treat them as straight line code. This needs a way for us to track
-    # the target of the async SEND opcode that points past the end of the loop,
-    # so we can mark it reachable without actually branching and looping.
-    # TODO(mdemello): We should rewrite the bytecode to handle this instead.
-    self._send_targets = set()
-
   @property
   def current_local_ops(self):
     return self.local_ops[self.frame.f_code.name]
@@ -541,7 +534,7 @@ class VirtualMachine:
         # return, raise, or yield. Leave the current frame.
         can_return |= state.why in ("return", "yield")
         return_nodes.append(state.node)
-      elif op.carry_on_to_next() or op.next in self._send_targets:
+      elif op.carry_on_to_next():
         # We're starting a new block, so start a new CFG node. We don't want
         # nodes to overlap the boundary of blocks.
         state = state.forward_cfg_node("NewBlock")
@@ -2498,9 +2491,6 @@ class VirtualMachine:
     return state.push(itr)
 
   def store_jump(self, target, state):
-    if isinstance(target, opcodes.SEND):
-      # We do not want to treat an await call as a loop
-      return
     assert target
     assert self.frame is not None
     current_block = self.frame.current_block
@@ -2574,7 +2564,13 @@ class VirtualMachine:
     return state
 
   def byte_END_ASYNC_FOR(self, state, op):
-    state, _ = state.popn(7)
+    if self.ctx.python_version < (3, 11):
+      state, _ = state.popn(7)
+    else:
+      # The cpython docs say this pops two values, the iterable and an
+      # exception. Since we have not pushed an exception in GET_ANEXT, we don't
+      # need to pop one here.
+      state, _ = state.pop()
     return state
 
   def byte_POP_FINALLY(self, state, op):
@@ -3197,7 +3193,10 @@ class VirtualMachine:
 
   def byte_WITH_EXCEPT_START(self, state, op):
     del op  # unused
-    func = state.peek(7)
+    if self.ctx.python_version < (3, 11):
+      func = state.peek(7)
+    else:
+      func = state.peek(4)
     args = state.topn(3)
     state, result = self.call_function_with_state(state, func, args)
     return state.push(result)
@@ -3407,7 +3406,6 @@ class VirtualMachine:
 
   def byte_SEND(self, state, op):
     """Implementation of SEND opcode."""
-    self._send_targets.add(op.target)
     state, var = state.pop()
     state, recv = state.pop()
     node, next_meth, _ = self._retrieve_attr(state.node, recv, "__next__")
