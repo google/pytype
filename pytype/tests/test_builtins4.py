@@ -775,13 +775,43 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       print(x[C()])
     """)
 
-  def test_set_union(self):
+
+class SetMethodsTest(test_base.BaseTest):
+  """Tests for methods of the `set` class."""
+
+  def test_union(self):
     self.Check("""
       from typing import Set, Union
       x: Set[int]
       y: Set[str]
       assert_type(x.union(y), Set[Union[int, str]])
       assert_type(set.union(x, y), Set[Union[int, str]])
+    """)
+
+  def test_difference(self):
+    self.Check("""
+      from typing import Set
+      x: Set[int]
+      assert_type(x.difference({None}), Set[int])
+      assert_type(set.difference(x, {None}), Set[int])
+    """)
+
+  def test_intersection(self):
+    self.Check("""
+      from typing import Set
+      x: Set[int]
+      y: Set[str]
+      assert_type(x.intersection(y), Set[int])
+      assert_type(set.intersection(x, y), Set[int])
+    """)
+
+  def test_symmetric_difference(self):
+    self.Check("""
+      from typing import Set, Union
+      x: Set[int]
+      y: Set[str]
+      assert_type(x.symmetric_difference(y), Set[Union[int, str]])
+      assert_type(set.symmetric_difference(x, y), Set[Union[int, str]])
     """)
 
 

@@ -34,7 +34,7 @@ class MatchTest(test_base.BaseTest):
       from typing import Set
       s = ...  # type: Set[int]
 
-      def f(x) -> set: ...
+      def f(x) -> Set[int]: ...
     """)
 
   def test_generic_hierarchy(self):
