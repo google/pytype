@@ -335,6 +335,54 @@ class TestDataclassConfig(test_base.BaseTest):
         c.x = 1  # annotation-type-mismatch
       """)
 
+  def test_dataclass_error_detection(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.CheckWithErrors(f"""
+        import dataclasses
+        import fiddle
+        @dataclasses.dataclass
+        class A:
+          x: int
+          y: str
+        A(x=0)  # missing-parameter
+        fiddle.{self.buildable_type_name}(A, x=0)
+        A(x=0)  # missing-parameter
+      """)
+
+  def test_dataclass_error_detection_pyi(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI), ("foo.pyi", """
+      import dataclasses
+      @dataclasses.dataclass
+      class Foo:
+        x: int
+        y: str
+        def __init__(self, x: int, y: str) -> None: ...
+    """)]):
+      self.CheckWithErrors(f"""
+        import fiddle
+        import foo
+        foo.Foo(x=0)  # missing-parameter
+        fiddle.{self.buildable_type_name}(foo.Foo, x=0)
+        foo.Foo(x=0)  # missing-parameter
+      """)
+
+  def test_imported_dataclass(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI), ("foo.pyi", """
+      import dataclasses
+      @dataclasses.dataclass
+      class Foo:
+        x: int
+        y: str
+        def __init__(self, x: int, y: str) -> None: ...
+    """)]):
+      errors = self.CheckWithErrors(f"""
+        import fiddle
+        import foo
+        fiddle.{self.buildable_type_name}(foo.Foo, x='')  # wrong-arg-types[e]
+      """)
+      self.assertErrorSequences(errors, {"e": ["Expected", "x: int",
+                                               "Actual", "x: str"]})
+
 
 class TestDataclassPartial(TestDataclassConfig):
   """Test fiddle.Partial over dataclasses."""
