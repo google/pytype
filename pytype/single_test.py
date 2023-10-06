@@ -498,7 +498,7 @@ class PytypeTest(test_base.UnitTest):
       {canary}
       x = foo.x
       y = csv.writer
-      z = asyncio.coroutine
+      z = asyncio.Future
     """)
     pyi = self._make_file("""
       import datetime
