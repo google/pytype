@@ -2523,11 +2523,19 @@ class VirtualMachine:
     return state.push(itr)
 
   def store_jump(self, target, state):
+    """Stores a jump to the target opcode."""
     assert target
     assert self.frame is not None
     current_block = self.frame.current_block
+    current_opcode = self.frame.current_opcode
     assert current_block is not None
+    assert current_opcode is not None
+
     self.frame.targets[current_block.id].append(target)
+    if current_opcode.push_exc_block:
+      state = vm_utils.push_block(state, "setup-except")
+    elif current_opcode.pop_exc_block:
+      state, _ = state.pop_block()
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
@@ -2557,9 +2565,13 @@ class VirtualMachine:
 
   def _setup_except(self, state, op):
     """Sets up an except block."""
+    if isinstance(op, opcodes.SETUP_EXCEPT_311):
+      jump_state, _ = state.popn(len(state.data_stack) - op.stack_depth)
+    else:
+      jump_state = state
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
-    jump_state = self.push_abstract_exception(state)
+    jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
     return vm_utils.push_block(state, "setup-except")
 
