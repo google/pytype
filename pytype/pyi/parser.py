@@ -449,10 +449,13 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
           typ = type_of("builtins.str")
         else:
           typ = pytd.AnythingType()
-    if val and not isinstance(val, (types.Ellipsis, types.Pyval)):
-      raise ParseError(
-          f"Default value for {name}: {typ.name} can only be '...' or a "
-          f"literal constant, got {val}")
+    if val:
+      if isinstance(val, (types.Ellipsis, types.Pyval)):
+        val = pytd.AnythingType()
+      else:
+        raise ParseError(
+            f"Default value for {name}: {typ.name} can only be '...' or a "
+            f"literal constant, got {val}")
     if is_alias:
       assert not val
       ret = pytd.Alias(name, typ)
