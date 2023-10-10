@@ -1034,7 +1034,7 @@ def _add_exception_block(offset_to_op, e):
   start_op = offset_to_op[e.start]
   setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
   setup_op.stack_depth = e.depth
-  offset_to_op[e.start - 1] = setup_op
+  offset_to_op[e.start - 0.5] = setup_op
   target_op = offset_to_op[e.target]
   setup_op.target = target_op
   # Pop the block that we have pushed in SETUP_EXCEPT.
@@ -1047,7 +1047,7 @@ def _add_exception_block(offset_to_op, e):
     end = e.end
   end_op = offset_to_op[end]
   pop_op = POP_BLOCK(-1, end_op.line)
-  offset_to_op[end + 1] = pop_op
+  offset_to_op[end + 0.5] = pop_op
 
 
 def _get_exception_bitmask(offset_to_op, exception_ranges):
@@ -1098,6 +1098,9 @@ def _add_setup_except(offset_to_op, exc_table):
       exception_ranges[e.start] = e.end
   # Jumps into and out of exception ranges skip the POP_BLOCK ops we just added,
   # so we mark the jumps so that they can push or pop blocks themselves.
+  # NOTE: Our synthetic opcodes added in _add_exception_block have non-integer
+  # offsets, and so will not be in the in_exception bitmask, but since we are
+  # only concerned with JUMP_* opcodes here it does not matter.
   in_exception = _get_exception_bitmask(offset_to_op, exception_ranges)
   for off, op in offset_to_op.items():
     if not op.has_known_jump() or isinstance(op, SETUP_EXCEPT_311):

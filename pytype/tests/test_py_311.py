@@ -180,6 +180,21 @@ class TestPy311(test_base.BaseTest):
           pass
     """)
 
+  def test_while_and_nested_try_2(self):
+    self.Check("""
+      def f():
+        i = j = 0
+        while True:
+          try:
+            try:
+              i += 1
+            finally:
+              j += 1
+          except:
+            break
+        return
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
