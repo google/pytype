@@ -87,6 +87,7 @@ class BaseTest(unittest.TestCase):
         strict_none_binding=True,
         use_enum_overlay=True,
         use_fiddle_overlay=True,
+        validate_version=False,
     )
 
   @property
