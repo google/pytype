@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue Aug  8 12:00:43 AM PDT 2023 -->
+<!-- Added by: rechen, at: Tue Oct 10 01:57:19 PM PDT 2023 -->
 
 <!--te-->
 
@@ -31,7 +31,7 @@ of pytype.
     (upcoming versions), if applicable
 
 Version | Analyzes   | Runs In    | Issue
-:-----: | :--------: | :--------: | :------------:
+:-----: | :--------: | :--------: | :----------:
 2.7     | 2021.08.03 | 2020.04.01 | [#545][py27]
 3.5     | 2021.09.09 | 2020.10.08 | [#677][py35]
 3.6     | 2022.01.05 | 2022.01.05 |
@@ -39,7 +39,8 @@ Version | Analyzes   | Runs In    | Issue
 3.8     | ✅          | ✅          |
 3.9     | ✅          | ✅          |
 3.10    | ✅          | ✅          |
-3.11    | ❌          | ❌          | [#1308][py311]
+3.11    | ✅          | ✅          |
+3.12    | ❌          | ❌          |
 
 ## Features
 
