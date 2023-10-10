@@ -82,6 +82,9 @@ class _Constant:
   def tag(self):
     return self.typ[0]
 
+  def __repr__(self):
+    return repr(self.value)
+
 
 @attrs.define
 class _Collection:

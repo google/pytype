@@ -55,6 +55,10 @@ class PopBehavior(enum.Enum):
 class _Block:
   type: str
   level: int
+  op_index: int
+
+  def __repr__(self):
+    return f"Block({self.type}: {self.op_index} level={self.level})"
 
 
 class FindIgnoredTypeComments:
@@ -632,10 +636,10 @@ def update_excluded_types(node, ctx):
           p.name for p in ctx.annotation_utils.get_type_parameters(typ))
 
 
-def push_block(state, t, level=None):
+def push_block(state, t, level=None, *, index=0):
   if level is None:
     level = len(state.data_stack)
-  return state.push_block(_Block(t, level))
+  return state.push_block(_Block(t, level, index))
 
 
 def _base(cls):

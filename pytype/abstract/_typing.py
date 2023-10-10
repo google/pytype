@@ -3,7 +3,7 @@
 import dataclasses
 import logging
 import typing
-from typing import Mapping, Tuple, Type, Union as _Union
+from typing import Mapping, Optional, Set, Tuple, Type, Union as _Union
 
 from pytype import datatypes
 from pytype.abstract import _base
@@ -87,7 +87,8 @@ class AnnotationContainer(AnnotationClass):
     return f"AnnotationContainer({self.name})"
 
   def _sub_annotation(
-      self, annot: _base.BaseValue, subst: Mapping[str, _base.BaseValue]
+      self, annot: _base.BaseValue, subst: Mapping[str, _base.BaseValue],
+      seen: Optional[Set[_base.BaseValue]] = None,
   ) -> _base.BaseValue:
     """Apply type parameter substitutions to an annotation."""
     # This is very similar to annotation_utils.sub_one_annotation, but a couple
@@ -98,13 +99,18 @@ class AnnotationContainer(AnnotationClass):
     # - subst contains the type to be substituted in, not an instance of it.
     #   Again, instantiating the type just to later get the type of the instance
     #   is unnecessary extra work.
+    if seen is None:
+      seen = set()
+    if annot in seen:
+      return annot.ctx.convert.unsolvable
+    seen = seen | {annot}
     if isinstance(annot, TypeParameter):
       if annot.full_name in subst:
         return subst[annot.full_name]
       else:
         return self.ctx.convert.unsolvable
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self._sub_annotation(val, subst))
+      inner_types = [(key, self._sub_annotation(val, subst, seen))
                      for key, val in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot

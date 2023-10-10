@@ -61,7 +61,7 @@ class AnnotationTest(test_base.BaseTest):
     _, errors = self.InferWithErrors("""
       s = {1}
       def foo(x: int):
-        s.intersection(x)
+        s.intersection([x])
       foo(3.0)  # wrong-arg-types[e]
     """)
     self.assertErrorRegexes(errors, {"e": r"x: int.*x: float"})

@@ -40,7 +40,8 @@ class Opcode:
   """An opcode without arguments."""
 
   __slots__ = ("line", "index", "prev", "next", "target", "block_target",
-               "code", "annotation", "folded", "metadata")
+               "code", "annotation", "folded", "metadata",
+               "push_exc_block", "pop_exc_block")
   _FLAGS = 0
 
   def __init__(self, index, line):
@@ -53,6 +54,8 @@ class Opcode:
     self.annotation = None
     self.folded = None  # elided by constant folding
     self.metadata = OpcodeMetadata()  # Filled in by the director
+    self.push_exc_block = False
+    self.pop_exc_block = False
 
   def at_line(self, line):
     """Return a new opcode similar to this one but with a different line."""
@@ -187,7 +190,7 @@ class LOAD_FOLDED_CONST(OpcodeWithArg):
 
 class SETUP_EXCEPT_311(OpcodeWithArg):
   _FLAGS = HAS_JREL|HAS_ARGUMENT|STORE_JUMP|PUSHES_BLOCK
-  __slots__ = ()
+  __slots__ = ("stack_depth",)
 
 # --------------------------------------------------------
 
@@ -1026,6 +1029,44 @@ def _make_opcodes(ops: List[pycnite.types.Opcode]):
   return offset_to_op
 
 
+def _add_exception_block(offset_to_op, e):
+  """Adds opcodes marking an exception block."""
+  start_op = offset_to_op[e.start]
+  setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
+  setup_op.stack_depth = e.depth
+  offset_to_op[e.start - 0.5] = setup_op
+  target_op = offset_to_op[e.target]
+  setup_op.target = target_op
+  # Pop the block that we have pushed in SETUP_EXCEPT.
+  if e.end not in offset_to_op:
+    # e.end is an exclusive boundary in the pyc file; pycnite converts it to
+    # an inclusive one by subtracting 2, but that does not always correspond
+    # to an op since the wordcode is not strictly one op every two bytes.
+    end = max(i for i in offset_to_op if i < e.end)
+  else:
+    end = e.end
+  end_op = offset_to_op[end]
+  pop_op = POP_BLOCK(-1, end_op.line)
+  offset_to_op[end + 0.5] = pop_op
+
+
+def _get_exception_bitmask(offset_to_op, exception_ranges):
+  """Get a bitmask for whether an offset is in an exception range."""
+  in_exception = 0
+  pos = 1
+  exception_end = None
+  for i in range(max(offset_to_op) + 1):
+    if i in exception_ranges:
+      in_exception += pos
+      exception_end = exception_ranges[i]
+    elif exception_end is not None:
+      in_exception += pos
+    if i == exception_end:
+      exception_end = None
+    pos <<= 1
+  return in_exception
+
+
 def _add_setup_except(offset_to_op, exc_table):
   """Handle the exception table in 3.11+."""
   # In python 3.11, exception handling is no longer bytecode-based - see
@@ -1033,79 +1074,43 @@ def _add_setup_except(offset_to_op, exc_table):
   # This makes it hard for pytype to analyse code containing exceptions, so we
   # add back some opcodes to mark exception blocks.
   #
-  # Insert a SETUP_EXCEPT_311 just before the start, and if needed a POP_BLOCK
-  # just after the end of every exception range.
+  # Insert a SETUP_EXCEPT_311 just before the start and a POP_BLOCK just after
+  # the end of every exception range.
 
   # Python 3.11 puts with blocks in the exception table, but the BEFORE_WITH
   # has already set up a block; we don't need to do it with SETUP_EXCEPT.
   # Similarly for async blocks.
   #
-  # For complex flows there are several exception table entries, and there
-  # doesn't seem to be any good way to tell from the bytecode whether any of
-  # them correspond to try: statements, but removing the ones that have the same
-  # line number as the with/async seems to work.
-  #
   # See test_returns::test_nested_with and test_stdlib2::test_async for
   # examples of complex with/try interactions.
-  block_ops = (BEFORE_WITH, BEFORE_ASYNC_WITH, GET_AITER)
-  skip_lines = {
-      v.line for v in offset_to_op.values()
-      if isinstance(v, block_ops)
-  }
+  seen_lines = set()
+  exception_ranges = {}
   for e in exc_table.entries:
-    start_op = offset_to_op[e.start]
-    if start_op.line in skip_lines:
+    if isinstance(offset_to_op[e.target], END_ASYNC_FOR):
+      # This entry corresponds to an `async for` block.
       continue
-    else:
-      setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
-      offset_to_op[e.start - 1] = setup_op
-      target_op = offset_to_op[e.target]
-      setup_op.target = target_op
-    if not e.lasti:
-      # Pop the block that we have pushed in SETUP_EXEC.
-      if e.end not in offset_to_op:
-        # e.end is an exclusive boundary in the pyc file; pycnite converts it to
-        # an inclusive one by subtracting 2, but that does not always correspond
-        # to an op since the wordcode is not strictly one op every two bytes.
-        end = max(i for i in offset_to_op if i < e.end)
-      else:
-        end = e.end
-      end_op = offset_to_op[end]
-      pop_op = POP_BLOCK(-1, end_op.line)
-      offset_to_op[end + 1] = pop_op
-      # If an if: block or other conditional jump is the last expression in a
-      # try: block it will jump past our new POP_BLOCK statement
-      for off in range(e.start, end):
-        if op := offset_to_op.get(off):
-          op = cast(OpcodeWithArg, op)
-          if op.has_known_jump() and op.argval > end:
-            op.target = pop_op
-    elif isinstance(start_op, PUSH_EXC_INFO):
-      # The block stack is already handled correctly in this case (see below).
+    line = offset_to_op[e.start].line
+    if not e.lasti and line not in seen_lines:
+      seen_lines.add(line)
+      # Entries corresponding to a `with` block have `lasti` set, while the
+      # first entry for an exception block does not. So this is an exception.
+      _add_exception_block(offset_to_op, e)
+      exception_ranges[e.start] = e.end
+  # Jumps into and out of exception ranges skip the POP_BLOCK ops we just added,
+  # so we mark the jumps so that they can push or pop blocks themselves.
+  # NOTE: Our synthetic opcodes added in _add_exception_block have non-integer
+  # offsets, and so will not be in the in_exception bitmask, but since we are
+  # only concerned with JUMP_* opcodes here it does not matter.
+  in_exception = _get_exception_bitmask(offset_to_op, exception_ranges)
+  for off, op in offset_to_op.items():
+    if not op.has_known_jump() or isinstance(op, SETUP_EXCEPT_311):
       continue
-    else:
-      # If we are in an exception handler, we need to pop the block we just
-      # pushed before jumping past a RERAISE, *except* if we have PUSH_EXC_INFO
-      # at the start of the exception block. See test_stdlib2::test_async for a
-      # case that crashes if we do not do this check.
-      # TODO(mdemello): This is very hacky, and was mostly developed by
-      # examining the generated bytecode in 3.10 and 3.11 for a bunch of cases.
-      # Is there some better way to handle this?
-
-      # If we jump past the end of the block, find a POP_EXCEPT statement and
-      # add a POP_BLOCK to it.
-      pop_exc_off = 0
-      for off in range(e.end, e.target):
-        if op := offset_to_op.get(off):
-          if isinstance(op, POP_EXCEPT):
-            pop_exc_off = off
-          op = cast(OpcodeWithArg, op)
-          if op.has_known_jump() and op.argval > e.end:
-            if pop_exc_off:
-              line = offset_to_op[pop_exc_off].line
-              pop_op = POP_BLOCK(-1, line)
-              offset_to_op[pop_exc_off - 1] = pop_op
-            break
+    starts_in_exception = (1 << off) & in_exception
+    ends_in_exception = (1 << op.argval) & in_exception
+    if starts_in_exception and not ends_in_exception:
+      op.pop_exc_block = True
+    elif ends_in_exception and not starts_in_exception:
+      op.push_exc_block = True
 
 
 def _make_opcode_list(offset_to_op, python_version):

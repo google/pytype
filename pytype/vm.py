@@ -1323,7 +1323,38 @@ class VirtualMachine:
              "interpreter")
     return state
 
-  def del_subscr(self, state, obj, subscr):
+  def _handle_311_pattern_match_on_dict(self, state, op, obj, ret):
+    """Handle DELETE_SUBSCR within a pattern match in 3.11."""
+    # Very specific hack for pattern matching in 3.11. When cpython
+    # compiles a match statement it dups the match object onto the stack
+    # several times, which makes type narrowing complicated. Here we check for
+    # the compilation pattern of `case {key: val, ..., **rest}` which calls
+    # DELETE_SUBSCR on the concrete keys and binds the remaining dict to `rest`
+    # (3.10 had a specific COPY_DICT_WITHOUT_KEYS opcode to handle this but it
+    # was removed in 3.11).
+    assert self._branch_tracker is not None
+    if not (self.ctx.python_version == (3, 11) and
+            op.line in self._branch_tracker.matches.match_cases):
+      return state
+    if state.top() == obj:
+      state = state.pop_and_discard()
+      return state.push(ret)
+    return state
+
+  def del_subscr(self, state, op, obj, subscr):
+    """Implementation of del obj[subscr]."""
+    # Handle the special case of deleting a concrete key from a concrete dict.
+    try:
+      d = abstract_utils.get_atomic_python_constant(obj, dict)
+      k = abstract_utils.get_atomic_python_constant(subscr, str)
+    except abstract_utils.ConversionError:
+      pass
+    else:
+      if k in d:
+        keys = self.ctx.convert.build_tuple(state.node, [subscr])
+        ret = vm_utils.copy_dict_without_keys(state.node, obj, keys, self.ctx)
+        state = self._store_new_var_in_local(state, obj, ret)
+        state = self._handle_311_pattern_match_on_dict(state, op, obj, ret)
     return self._delete_item(state, obj, subscr)
 
   def pop_varargs(self, state):
@@ -2171,7 +2202,7 @@ class VirtualMachine:
 
   def byte_DELETE_SUBSCR(self, state, op):
     state, (obj, subscr) = state.popn(2)
-    return self.del_subscr(state, obj, subscr)
+    return self.del_subscr(state, op, obj, subscr)
 
   def byte_BUILD_TUPLE(self, state, op):
     count = op.arg
@@ -2492,11 +2523,20 @@ class VirtualMachine:
     return state.push(itr)
 
   def store_jump(self, target, state):
+    """Stores a jump to the target opcode."""
     assert target
     assert self.frame is not None
     current_block = self.frame.current_block
+    current_opcode = self.frame.current_opcode
     assert current_block is not None
+    assert current_opcode is not None
+
     self.frame.targets[current_block.id].append(target)
+    if current_opcode.push_exc_block:
+      state = vm_utils.push_block(
+          state, "setup-except", index=current_opcode.index)
+    elif current_opcode.pop_exc_block:
+      state, _ = state.pop_block()
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
@@ -2526,11 +2566,15 @@ class VirtualMachine:
 
   def _setup_except(self, state, op):
     """Sets up an except block."""
+    if isinstance(op, opcodes.SETUP_EXCEPT_311):
+      jump_state, _ = state.popn(len(state.data_stack) - op.stack_depth)
+    else:
+      jump_state = state
     # Assume that it's possible to throw the exception at the first
     # instruction of the code:
-    jump_state = self.push_abstract_exception(state)
+    jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
-    return vm_utils.push_block(state, "setup-except")
+    return vm_utils.push_block(state, "setup-except", index=op.index)
 
   def is_setup_except(self, op):
     """Check whether op is setting up an except block."""

@@ -152,5 +152,43 @@ class Python38Test(_TestBase):
     self.assertLineNumbers(code, lnotab, [1, 2, 3, 1, 1])
 
 
+class ExceptionBitmaskTest(unittest.TestCase):
+  """Tests for opcodes._get_exception_bitmask."""
+
+  def assertBitmask(self, *, offset_to_op, exc_ranges, expected_bitmask):
+    bitmask = bin(opcodes._get_exception_bitmask(offset_to_op, exc_ranges))
+    self.assertEqual(bitmask, expected_bitmask)
+
+  def test_one_exception_range(self):
+    self.assertBitmask(
+        offset_to_op={1: None, 5: None, 8: None, 13: None},
+        exc_ranges={4: 10},
+        expected_bitmask='0b11111110000')
+
+  def test_multiple_exception_ranges(self):
+    self.assertBitmask(
+        offset_to_op={1: None, 3: None, 5: None, 7: None, 9: None},
+        exc_ranges={1: 4, 7: 9},
+        expected_bitmask='0b1110011110')
+
+  def test_length_one_range(self):
+    self.assertBitmask(
+        offset_to_op={0: None, 3: None, 6: None, 7: None, 12: None},
+        exc_ranges={0: 0, 6: 6, 7: 7, 12: 12},
+        expected_bitmask='0b1000011000001')
+
+  def test_overlapping_ranges(self):
+    self.assertBitmask(
+        offset_to_op={1: None, 5: None, 8: None, 13: None},
+        exc_ranges={1: 5, 4: 9},
+        expected_bitmask='0b1111111110')
+
+  def test_no_exception(self):
+    self.assertBitmask(
+        offset_to_op={1: None, 5: None, 8: None, 13: None},
+        exc_ranges={},
+        expected_bitmask='0b0')
+
+
 if __name__ == '__main__':
   unittest.main()

@@ -67,23 +67,36 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 
   def _match_pytd_init(self, node, init_var, args):
     init = init_var.data[0]
+    old_pytd_sigs = []
+    for signature in init.signatures:
+      old_pytd_sig = signature.pytd_sig
+      signature.pytd_sig = old_pytd_sig.Replace(
+          params=tuple(p.Replace(optional=True) for p in old_pytd_sig.params))
+      old_pytd_sigs.append(old_pytd_sig)
     try:
       init.match_args(node, args)
-    except function.FailedFunctionCall as e:
-      if not isinstance(e, function.MissingParameter):
-        # We don't surface missing parameter errors because fiddle config
-        # objects have defaults for all fields.
-        self.ctx.errorlog.invalid_function_call(self.ctx.vm.frames, e)
+    finally:
+      for signature, old_pytd_sig in zip(init.signatures, old_pytd_sigs):
+        signature.pytd_sig = old_pytd_sig
 
   def _match_interpreter_init(self, node, init_var, args):
     # Buildables support partial initialization, so give every parameter a
     # default when matching __init__.
     init = init_var.data[0]
+    old_defaults = {}
     for k in init.signature.param_names:
+      old_defaults[k] = init.signature.defaults.get(k)
       init.signature.defaults[k] = self.ctx.new_unsolvable(node)
     # TODO(mdemello): We are calling the function and discarding the return
     # value, when ideally we should just call function.match_all_args().
-    function.call_function(self.ctx, node, init_var, args)
+    try:
+      function.call_function(self.ctx, node, init_var, args)
+    finally:
+      for k, default in old_defaults.items():
+        if default:
+          init.signature.defaults[k] = default
+        else:
+          del init.signature.defaults[k]
 
   def _make_init_args(self, node, underlying, args, kwargs):
     """Unwrap Config instances for arg matching."""

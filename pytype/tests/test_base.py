@@ -80,7 +80,6 @@ class BaseTest(unittest.TestCase):
     super().setUp()
     self.options = config.Options.create(
         python_version=self.python_version,
-        overriding_parameter_count_checks=True,
         overriding_renamed_parameter_count_checks=True,
         strict_parameter_checks=True,
         strict_undefined_checks=True,
@@ -88,6 +87,7 @@ class BaseTest(unittest.TestCase):
         strict_none_binding=True,
         use_enum_overlay=True,
         use_fiddle_overlay=True,
+        validate_version=False,
     )
 
   @property

@@ -296,6 +296,12 @@ def add_pop_block_targets(bytecode):
       # We push the entire opcode onto the block stack, for better debugging.
       block_stack += (op,)
     elif op.does_jump() and op.target:
+      if op.push_exc_block:
+        # We're jumping into an exception range, so push onto the block stack.
+        setup_op = op.target
+        while not isinstance(setup_op, setup_except_op):
+          setup_op = setup_op.prev
+        block_stack += (setup_op,)
       todo.append((op.target, block_stack))
 
     if not op.no_next():
