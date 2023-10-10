@@ -149,6 +149,22 @@ toplevel_py_binary(
     pytype.pytd.pytd_for_parser
 )
 
+toplevel_py_binary(
+  NAME
+    parse_pickle
+  SRCS
+    parse_pickle.py
+  MAIN
+    parse_pickle.py
+  DEPS
+    .types
+    pytype.config
+    pytype.load_pytd
+    pytype.utils
+    pytype.imports.imports
+    pytype.pytd.pytd
+)
+
 py_library(
   NAME
     parser_test_base
