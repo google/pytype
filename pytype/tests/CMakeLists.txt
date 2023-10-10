@@ -1255,3 +1255,12 @@ py_test(
   DEPS
     .test_base
 )
+
+py_test(
+  NAME
+    test_typing_self
+  SRCS
+    test_typing_self.py
+  DEPS
+    .test_base
+)
