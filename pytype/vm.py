@@ -2533,7 +2533,8 @@ class VirtualMachine:
 
     self.frame.targets[current_block.id].append(target)
     if current_opcode.push_exc_block:
-      state = vm_utils.push_block(state, "setup-except")
+      state = vm_utils.push_block(
+          state, "setup-except", index=current_opcode.index)
     elif current_opcode.pop_exc_block:
       state, _ = state.pop_block()
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
@@ -2573,7 +2574,7 @@ class VirtualMachine:
     # instruction of the code:
     jump_state = self.push_abstract_exception(jump_state)
     self.store_jump(op.target, jump_state)
-    return vm_utils.push_block(state, "setup-except")
+    return vm_utils.push_block(state, "setup-except", index=op.index)
 
   def is_setup_except(self, op):
     """Check whether op is setting up an except block."""

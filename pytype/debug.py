@@ -301,13 +301,14 @@ def show_ordered_code(code, extra_col=None):
           getattr(op, "argval", ""),
           op.target and op.target.index,
           op.block_target and op.block_target.index,
+          "✓" if op.push_exc_block else "",
           op.next and op.next.index,
           op.line,
           extra_col.get(op.index)
       ])
     boundaries.append((start, end))
     start = end
-  headers = ["ix", "op", "arg", "tgt", "btgt", "next", "line", "extra"]
+  headers = ["ix", "op", "arg", "tgt", "btgt", "exc", "next", "line", "extra"]
   block_table = tabulate.tabulate(op_lines, headers, tablefmt="presto")
   block_table = block_table.split("\n")
   tab = [[block_table[0]]]
