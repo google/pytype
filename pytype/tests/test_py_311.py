@@ -195,6 +195,23 @@ class TestPy311(test_base.BaseTest):
         return
     """)
 
+  def test_while_and_nested_try_3(self):
+    self.Check("""
+      import os
+
+      def RmDirs(dir_name):
+        try:
+          parent_directory = os.path.dirname(dir_name)
+          while parent_directory:
+            try:
+              os.rmdir(parent_directory)
+            except OSError as err:
+              pass
+            parent_directory = os.path.dirname(parent_directory)
+        except OSError as err:
+          pass
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
