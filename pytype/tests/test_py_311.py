@@ -103,6 +103,19 @@ class TestPy311(test_base.BaseTest):
               return response.tensorboards[0].name
     """)
 
+  def test_yield_from(self):
+    self.Check("""
+      def f():
+        yield 1
+        return 'a', 'b'
+      def g():
+        a, b = yield from f()
+        assert_type(a, str)
+        assert_type(b, str)
+      for x in g():
+        assert_type(x, int)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
