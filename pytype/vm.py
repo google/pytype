@@ -2838,9 +2838,6 @@ class VirtualMachine:
 
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
-    if self.ctx.python_version >= (3, 11) and isinstance(op.prev, opcodes.SEND):
-      # See byte_SEND for what's happening here.
-      return state
     state, yield_value = state.pop()
     yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
     yield_variable.PasteVariable(yield_value, state.node)
@@ -3150,20 +3147,15 @@ class VirtualMachine:
       ret_var.AddBinding(self.ctx.convert.unsolvable, [], node)
     return ret_var
 
-  def _yield_from(self, state):
-    """Helper function for YIELD_FROM and SEND."""
-    state, unused_send = state.pop()
-    state, generator_var = state.pop()
-    yield_var = self._get_generator_yield(state.node, generator_var)
+  def byte_YIELD_FROM(self, state, op):
+    """Implementation of the YIELD_FROM opcode."""
+    state, (generator, unused_send) = state.popn(2)
+    yield_var = self._get_generator_yield(state.node, generator)
     if yield_var.bindings:
       self.frame.yield_variable = yield_var
       _ = self._check_frame_yield(state, yield_var)
-    ret_var = self._get_generator_return(state.node, generator_var)
+    ret_var = self._get_generator_return(state.node, generator)
     return state.push(ret_var)
-
-  def byte_YIELD_FROM(self, state, op):
-    """Implementation of the YIELD_FROM opcode."""
-    return self._yield_from(state)
 
   def byte_LOAD_METHOD(self, state, op):
     """Implementation of the LOAD_METHOD opcode."""
@@ -3458,16 +3450,19 @@ class VirtualMachine:
 
   def byte_SEND(self, state, op):
     """Implementation of SEND opcode."""
-    # In 3.11, SEND + YIELD_VALUE + JUMP_BACKWARD_NO_INTERRUPT are used to
-    # implement `yield from`, which in 3.10 was implemented by the YIELD_FROM
-    # opcode. See
+    # In Python 3.11, a SEND + YIELD_VALUE + JUMP_BACKWARD_NO_INTERRUPT sequence
+    # is used to implement `yield from` (previously implemented by the
+    # YIELD_FROM opcode). SEND gets a value from a generator, YIELD_VALUE yields
+    # the value, and JUMP_BACKWARD_NO_INTERRUPT jumps back to SEND, repeatedly,
+    # until the generator runs out of values. Then SEND pushes the generator's
+    # return value onto the stack and jumps past JUMP_BACKWARD_NO_INTERRUPT. See
     # https://github.com/python/cpython/blob/c6d5628be950bdf2c31243b4cc0d9e0b658458dd/Python/ceval.c#L2577
-    # for the 3.11 CPython source. To avoid an infinite loop, we have removed
-    # the JUMP_BACKWARD_NO_INTERRUPT. So instead of attempting to follow the
-    # 3.11 implementation, we have SEND implement YIELD_FROM and YIELD_VALUE do
-    # nothing when it detects that the previous opcode was a SEND.
-    assert isinstance(op.next, opcodes.YIELD_VALUE)
-    return self._yield_from(state)
+    # for the CPython source.
+    state, (generator, unused_send) = state.popn(2)
+    yield_var = self._get_generator_yield(state.node, generator)
+    ret_var = self._get_generator_return(state.node, generator)
+    self.store_jump(op.target, state.push(ret_var))
+    return state.push(generator).push(yield_var)
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx,
