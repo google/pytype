@@ -629,9 +629,9 @@ class VirtualMachine:
 
   def _in_3_11_decoration(self):
     """Are we in a Python 3.11 decorator call?"""
-    if self.ctx.python_version != (3, 11):
-      return False
-    if not isinstance(self.current_opcode, opcodes.CALL):
+    if not (self.ctx.python_version == (3, 11) and
+            isinstance(self.current_opcode, opcodes.CALL) and
+            self.current_line in self._director.decorated_functions):
       return False
     prev = self.current_opcode
     # Skip past the PRECALL opcode.

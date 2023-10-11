@@ -83,6 +83,16 @@ class TestPy311(test_base.BaseTest):
         return (x, y)
     """)
 
+  def test_callable_parameter_in_function(self):
+    # Tests that we don't mis-identify the defaultdict call as a decorator.
+    self.Check("""
+      import collections
+      class C:
+        def __init__(self):
+          self.x = collections.defaultdict(
+              lambda key: key)  # pytype: disable=wrong-arg-types
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
