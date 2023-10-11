@@ -533,6 +533,15 @@ py_test(
 
 py_test(
   NAME
+    test_flow3
+  SRCS
+    test_flow3.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_methods1
   SRCS
     test_methods1.py
