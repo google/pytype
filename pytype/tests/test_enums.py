@@ -924,6 +924,15 @@ class EnumOverlayTest(test_base.BaseTest):
         A = 1
     """)
 
+  def test_strenum(self):
+    self.Check("""
+      import enum
+      class MyEnum(enum.StrEnum):
+        A = 'A'
+      for x in MyEnum:
+        assert_type(x, MyEnum)
+    """)
+
   def test_unique_enum_in_dict(self):
     # Regression test for a recursion error in matcher.py
     self.assertNoCrash(self.Check, """
@@ -1358,7 +1367,7 @@ class EnumOverlayTest(test_base.BaseTest):
   def test_not_supported_yet(self):
     self.CheckWithErrors("""
       import enum
-      enum.StrEnum  # not-supported-yet
+      enum.ReprEnum  # not-supported-yet
     """)
 
 
