@@ -93,6 +93,16 @@ class TestPy311(test_base.BaseTest):
               lambda key: key)  # pytype: disable=wrong-arg-types
     """)
 
+  def test_async_for(self):
+    self.Check("""
+      class Client:
+        async def get_or_create_tensorboard(self):
+          response = await __any_object__
+          async for page in response.pages:
+            if page.tensorboards:
+              return response.tensorboards[0].name
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

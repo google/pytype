@@ -1129,11 +1129,17 @@ def _make_opcode_list(offset_to_op, python_version):
         # In 3.11 `async for` is compiled into an infinite loop, relying on the
         # exception handler to break out. This causes the block graph to be
         # pruned abruptly, so we need to remove the loop opcode.
-        index -= 1
-        continue
+        skip = True
       elif (isinstance(op, JUMP_BACKWARD_NO_INTERRUPT) and
             isinstance(offset_to_op[op.argval], SEND)):
         # Likewise, `await` is compiled into an infinite loop which we remove.
+        skip = True
+      else:
+        skip = False
+      if skip:
+        #  We map the offset to the index of the next opcode so that jumps to
+        # `op` are redirected correctly.
+        offset_to_index[off] = index
         index -= 1
         continue
     op.index = index
