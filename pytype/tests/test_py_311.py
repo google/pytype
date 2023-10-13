@@ -41,26 +41,6 @@ class TestPy311(test_base.BaseTest):
         return any(x)
     """)
 
-  def test_context_manager(self):
-    self.Check("""
-      class A:
-        def __enter__(self):
-          pass
-        def __exit__(self, a, b, c):
-          pass
-
-      lock = A()
-
-      def f() -> str:
-        path = ''
-        with lock:
-          try:
-            pass
-          except:
-            pass
-          return path
-    """)
-
   def test_deref1(self):
     self.Check("""
       def f(*args):
@@ -103,113 +83,46 @@ class TestPy311(test_base.BaseTest):
         return (x, y)
     """)
 
-  def test_exception_type(self):
+  def test_callable_parameter_in_function(self):
+    # Tests that we don't mis-identify the defaultdict call as a decorator.
     self.Check("""
-      class FooError(Exception):
-        pass
-      try:
-        raise FooError()
-      except FooError as e:
-        assert_type(e, FooError)
+      import collections
+      class C:
+        def __init__(self):
+          self.x = collections.defaultdict(
+              lambda key: key)  # pytype: disable=wrong-arg-types
     """)
 
-  def test_try_with(self):
+  def test_async_for(self):
     self.Check("""
-      def f(obj, x):
-        try:
-          with __any_object__:
-            obj.get(x)
-        except:
-          pass
+      class Client:
+        async def get_or_create_tensorboard(self):
+          response = await __any_object__
+          async for page in response.pages:
+            if page.tensorboards:
+              return response.tensorboards[0].name
     """)
 
-  def test_try_if_with(self):
-    self.Check("""
-      from typing import Any
-      import os
-      pytz: Any
-      def f():
-        tz_env = os.environ.get('TZ')
-        try:
-          if tz_env == 'localtime':
-            with open('localtime') as localtime:
-              return pytz.tzfile.build_tzinfo('', localtime)
-        except IOError:
-          return pytz.UTC
-    """)
-
-  def test_try_finally(self):
-    self.Check("""
-      import tempfile
-      dir_ = None
-      def f():
-        global dir_
-        try:
-          if dir_:
-            return dir_
-          dir_ = tempfile.mkdtemp()
-        finally:
-          print(dir_)
-    """)
-
-  def test_nested_try_in_for(self):
-    self.Check("""
-      def f(x):
-        for i in x:
-          fd = __any_object__
-          try:
-            try:
-              if __random__:
-                return True
-            except ValueError:
-              continue
-          finally:
-            fd.close()
-    """)
-
-  def test_while_and_nested_try(self):
-    self.Check("""
-      def f(p):
-        try:
-          while __random__:
-            try:
-              return p.communicate()
-            except KeyboardInterrupt:
-              pass
-        finally:
-          pass
-    """)
-
-  def test_while_and_nested_try_2(self):
+  def test_yield_from(self):
     self.Check("""
       def f():
-        i = j = 0
-        while True:
-          try:
-            try:
-              i += 1
-            finally:
-              j += 1
-          except:
-            break
-        return
+        yield 1
+        return 'a', 'b'
+      def g():
+        a, b = yield from f()
+        assert_type(a, str)
+        assert_type(b, str)
+      for x in g():
+        assert_type(x, int)
     """)
 
-  def test_while_and_nested_try_3(self):
+  def test_splat(self):
     self.Check("""
-      import os
-
-      def RmDirs(dir_name):
-        try:
-          parent_directory = os.path.dirname(dir_name)
-          while parent_directory:
-            try:
-              os.rmdir(parent_directory)
-            except OSError as err:
-              pass
-            parent_directory = os.path.dirname(parent_directory)
-        except OSError as err:
-          pass
+      def f(value, g):
+        converted = []
+        if isinstance(value, (dict, *tuple({}))):
+          converted.append(value)
+        return g(*converted)
     """)
 
 

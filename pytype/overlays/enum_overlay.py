@@ -44,9 +44,8 @@ log = logging.getLogger(__name__)
 
 
 # These members have been added in Python 3.11 and are not yet supported.
-_unsupported = ("StrEnum", "ReprEnum", "EnumCheck", "FlagBoundary", "verify",
-                "property", "member", "nonmember", "global_enum",
-                "show_flag_values")
+_unsupported = ("ReprEnum", "EnumCheck", "FlagBoundary", "verify", "property",
+                "member", "nonmember", "global_enum", "show_flag_values")
 
 
 class EnumOverlay(overlay.Overlay):
@@ -59,6 +58,7 @@ class EnumOverlay(overlay.Overlay):
           "EnumMeta": EnumMeta,
           "EnumType": EnumMeta,
           "IntEnum": overlay.add_name("IntEnum", EnumBuilder),
+          "StrEnum": overlay.add_name("StrEnum", EnumBuilder),
           **{name: overlay.add_name(name, overlay_utils.not_supported_yet)
              for name in _unsupported},
       }

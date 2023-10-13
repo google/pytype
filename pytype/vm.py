@@ -629,9 +629,9 @@ class VirtualMachine:
 
   def _in_3_11_decoration(self):
     """Are we in a Python 3.11 decorator call?"""
-    if self.ctx.python_version != (3, 11):
-      return False
-    if not isinstance(self.current_opcode, opcodes.CALL):
+    if not (self.ctx.python_version == (3, 11) and
+            isinstance(self.current_opcode, opcodes.CALL) and
+            self.current_line in self._director.decorated_functions):
       return False
     prev = self.current_opcode
     # Skip past the PRECALL opcode.
@@ -2372,10 +2372,13 @@ class VirtualMachine:
     # Before Python 3.9, BUILD_TUPLE_UNPACK took care of tuple unpacking. In
     # 3.9+, this opcode is replaced by LIST_EXTEND+LIST_TO_TUPLE+CALL_FUNCTION,
     # so CALL_FUNCTION needs to be considered as consuming the list.
-    if self.ctx.python_version >= (3, 9):
-      stop_classes = blocks.STORE_OPCODES + (opcodes.CALL_FUNCTION,)
+    if self.ctx.python_version >= (3, 11):
+      call_consumers = (opcodes.CALL,)
+    elif self.ctx.python_version >= (3, 9):
+      call_consumers = (opcodes.CALL_FUNCTION,)
     else:
-      stop_classes = blocks.STORE_OPCODES
+      call_consumers = ()
+    stop_classes = blocks.STORE_OPCODES + call_consumers
     while next_op:
       next_op = next_op.next
       if isinstance(next_op, opcodes.CALL_FUNCTION_EX):
@@ -2826,27 +2829,26 @@ class VirtualMachine:
           starstarargs=starstarargs)
     return state.push(ret)
 
-  def _check_frame_yield(self, state, ret):
+  def _check_frame_yield(self, state, yield_value):
     if not self.frame.check_return:
       return None
-    ret_type = self.frame.allowed_returns
-    assert ret_type is not None
-    self._check_return(state.node, ret,
-                       ret_type.get_formal_type_parameter(abstract_utils.T))
-    return ret_type
+    generator_type = self.frame.allowed_returns
+    assert generator_type is not None
+    self._check_return(
+        state.node, yield_value,
+        generator_type.get_formal_type_parameter(abstract_utils.T))
+    return generator_type
 
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
-    state, ret = state.pop()
-    value = self.frame.yield_variable.AssignToNewVariable(state.node)
-    value.PasteVariable(ret, state.node)
-    self.frame.yield_variable = value
-    ret_type = self._check_frame_yield(state, ret)
-    if self.ctx.python_version >= (3, 11) and isinstance(op.prev, opcodes.SEND):
-      send_var = ret
-    elif ret_type:
-      send_var = self.init_class(
-          state.node, ret_type.get_formal_type_parameter(abstract_utils.T2))
+    state, yield_value = state.pop()
+    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
+    yield_variable.PasteVariable(yield_value, state.node)
+    self.frame.yield_variable = yield_variable
+    generator_type = self._check_frame_yield(state, yield_value)
+    if generator_type:
+      send_type = generator_type.get_formal_type_parameter(abstract_utils.T2)
+      send_var = self.init_class(state.node, send_type)
     else:
       send_var = self.ctx.new_unsolvable(state.node)
     return state.push(send_var)
@@ -3111,52 +3113,52 @@ class VirtualMachine:
       ret = self.ctx.new_unsolvable(state.node)
     return state.push(ret)
 
-  def _yield_from_value(self, state, var, yield_variable):
-    """Helper function for YIELD_FROM and SEND."""
-    result = self.ctx.program.NewVariable()
-    for b in var.bindings:
-      val = b.data
-      if val.full_name == "builtins.generator":
-        yield_variable.PasteVariable(
-            val.get_instance_type_parameter(abstract_utils.T), state.node)
-      if isinstance(val, (abstract.Generator,
-                          abstract.Coroutine, abstract.Unsolvable)):
-        ret_var = val.get_instance_type_parameter(abstract_utils.V)
-        result.PasteVariable(ret_var, state.node, {b})
-      elif (isinstance(val, abstract.Instance)
-            and isinstance(val.cls,
+  def _get_generator_yield(self, node, generator_var):
+    yield_var = self.frame.yield_variable.AssignToNewVariable(node)
+    for generator in generator_var.data:
+      if generator.full_name == "builtins.generator":
+        yield_value = generator.get_instance_type_parameter(abstract_utils.T)
+        yield_var.PasteVariable(yield_value, node)
+    return yield_var
+
+  def _get_generator_return(self, node, generator_var):
+    """Gets generator_var's return value."""
+    ret_var = self.ctx.program.NewVariable()
+    for b in generator_var.bindings:
+      generator = b.data
+      if isinstance(generator, (abstract.Generator,
+                                abstract.Coroutine, abstract.Unsolvable)):
+        ret = generator.get_instance_type_parameter(abstract_utils.V)
+        ret_var.PasteVariable(ret, node, {b})
+      elif (isinstance(generator, abstract.Instance)
+            and isinstance(generator.cls,
                            (abstract.ParameterizedClass, abstract.PyTDClass))
-            and val.cls.full_name in ("typing.Awaitable",
-                                      "builtins.coroutine",
-                                      "builtins.generator")):
-        if val.cls.full_name == "typing.Awaitable":
-          ret_var = val.get_instance_type_parameter(abstract_utils.T)
+            and generator.cls.full_name in ("typing.Awaitable",
+                                            "builtins.coroutine",
+                                            "builtins.generator")):
+        if generator.cls.full_name == "typing.Awaitable":
+          ret = generator.get_instance_type_parameter(abstract_utils.T)
         else:
-          ret_var = val.get_instance_type_parameter(abstract_utils.V)
-        if ret_var.bindings:
-          result.PasteVariable(ret_var, state.node, {b})
+          ret = generator.get_instance_type_parameter(abstract_utils.V)
+        if ret.bindings:
+          ret_var.PasteVariable(ret, node, {b})
         else:
-          result.AddBinding(self.ctx.convert.unsolvable, {b}, state.node)
+          ret_var.AddBinding(self.ctx.convert.unsolvable, {b}, node)
       else:
-        result.AddBinding(val, {b}, state.node)
-    return result
+        ret_var.AddBinding(generator, {b}, node)
+    if not ret_var.bindings:
+      ret_var.AddBinding(self.ctx.convert.unsolvable, [], node)
+    return ret_var
 
   def byte_YIELD_FROM(self, state, op):
     """Implementation of the YIELD_FROM opcode."""
-    state, unused_none_var = state.pop()
-    state, var = state.pop()
-    yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
-    result = self._yield_from_value(state, var, yield_variable)
-    if yield_variable.bindings:
-      self.frame.yield_variable = yield_variable
-      if self.frame.check_return:
-        assert self.frame.allowed_returns is not None
-        ret_type = self.frame.allowed_returns.get_formal_type_parameter(
-            abstract_utils.T)
-        self._check_return(state.node, yield_variable, ret_type)
-    if not result.bindings:
-      result.AddBinding(self.ctx.convert.unsolvable, [], state.node)
-    return state.push(result)
+    state, (generator, unused_send) = state.popn(2)
+    yield_var = self._get_generator_yield(state.node, generator)
+    if yield_var.bindings:
+      self.frame.yield_variable = yield_var
+      _ = self._check_frame_yield(state, yield_var)
+    ret_var = self._get_generator_return(state.node, generator)
+    return state.push(ret_var)
 
   def byte_LOAD_METHOD(self, state, op):
     """Implementation of the LOAD_METHOD opcode."""
@@ -3451,25 +3453,19 @@ class VirtualMachine:
 
   def byte_SEND(self, state, op):
     """Implementation of SEND opcode."""
-    state, var = state.pop()
-    state, recv = state.pop()
-    node, next_meth, _ = self._retrieve_attr(state.node, recv, "__next__")
-    if self._var_is_none(var) and next_meth:
-      state = state.change_cfg_node(node)
-      state, ret = self.call_function_with_state(state, next_meth, ())
-    else:
-      yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
-      ret = self._yield_from_value(state, recv, yield_variable)
-      if yield_variable.bindings:
-        self.frame.yield_variable = yield_variable
-        if self.frame.check_return:
-          assert self.frame.allowed_returns is not None
-          ret_type = self.frame.allowed_returns.get_formal_type_parameter(
-              abstract_utils.T)
-          self._check_return(state.node, yield_variable, ret_type)
-      if not ret.bindings:
-        ret.AddBinding(self.ctx.convert.unsolvable, [], state.node)
-    return state.push(ret)
+    # In Python 3.11, a SEND + YIELD_VALUE + JUMP_BACKWARD_NO_INTERRUPT sequence
+    # is used to implement `yield from` (previously implemented by the
+    # YIELD_FROM opcode). SEND gets a value from a generator, YIELD_VALUE yields
+    # the value, and JUMP_BACKWARD_NO_INTERRUPT jumps back to SEND, repeatedly,
+    # until the generator runs out of values. Then SEND pushes the generator's
+    # return value onto the stack and jumps past JUMP_BACKWARD_NO_INTERRUPT. See
+    # https://github.com/python/cpython/blob/c6d5628be950bdf2c31243b4cc0d9e0b658458dd/Python/ceval.c#L2577
+    # for the CPython source.
+    state, (generator, unused_send) = state.popn(2)
+    yield_var = self._get_generator_yield(state.node, generator)
+    ret_var = self._get_generator_return(state.node, generator)
+    self.store_jump(op.target, state.push(ret_var))
+    return state.push(generator).push(yield_var)
 
   def byte_POP_JUMP_FORWARD_IF_NOT_NONE(self, state, op):
     return vm_utils.jump_if(state, op, self.ctx,
