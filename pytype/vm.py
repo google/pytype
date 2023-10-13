@@ -18,7 +18,7 @@ import functools
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from pycnite import marshal as pyc_marshal
 
@@ -28,6 +28,7 @@ from pytype import constant_folding
 from pytype import datatypes
 from pytype import load_pytd
 from pytype import metrics
+from pytype import pattern_matching
 from pytype import preprocess
 from pytype import state as frame_state
 from pytype import vm_utils
@@ -49,13 +50,8 @@ from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
+
 log = logging.getLogger(__name__)
-
-# Type aliases
-
-# Tri-state boolean for match case returns.
-# True = always match, False = never match, None = sometimes match
-_MatchSuccessType = Optional[bool]
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -74,204 +70,6 @@ class LocalOp:
 
   def is_annotate(self):
     return self.op == self.Op.ANNOTATE
-
-
-class _EnumTracker:
-  """Track enum cases for exhaustiveness."""
-
-  def __init__(self, enum_cls):
-    self.enum_cls = enum_cls
-    if isinstance(enum_cls, abstract.PyTDClass):
-      # We don't construct a special class for pytd enums, so we have to get the
-      # enum members manually here.
-      self.members = []
-      for k, v in enum_cls.members.items():
-        if all(d.cls == enum_cls for d in v.data):
-          self.members.append(f"{enum_cls.full_name}.{k}")
-    else:
-      self.members = list(enum_cls.get_enum_members(qualified=True))
-    self.uncovered = set(self.members)
-    # The last case in an exhaustive enum match always succeeds.
-    self.implicit_default = None
-
-  def cover(self, enum_case):
-    assert enum_case.cls == self.enum_cls
-    self.uncovered.discard(enum_case.name)
-
-  def cover_all(self):
-    self.uncovered = set()
-
-
-class _TypeTracker:
-  """Track class type cases for exhaustiveness."""
-
-  def __init__(self, match_var):
-    self.match_var = match_var
-    self.could_contain_anything = False
-    self.types = []
-    for d in match_var.data:
-      if isinstance(d, abstract.Instance):
-        self.types.append(d.cls)
-      else:
-        self.could_contain_anything = True
-        break
-    self.uncovered = set(self.types)
-
-  def cover(self, case_var):
-    for d in case_var.data:
-      self.uncovered.discard(d)
-
-  @property
-  def complete(self):
-    return not (self.uncovered or self.could_contain_anything)
-
-
-class _BranchTracker:
-  """Track exhaustiveness in pattern matches."""
-
-  def __init__(self, director):
-    self.matches = director.matches
-    self._enum_tracker = {}
-    self._type_tracker = {}
-    self._active_ends = set()
-    # If we analyse the same match statement twice, the second time around we
-    # should not do exhaustiveness and redundancy checks since we have already
-    # tracked all the case branches.
-    self._seen_opcodes = set()
-
-  def _add_new_enum_match(self, match_val: abstract.Instance, match_line: int):
-    self._enum_tracker[match_line] = _EnumTracker(match_val.cls)
-    self._active_ends.add(self.matches.start_to_end[match_line])
-
-  def _is_enum_match(
-      self, match_val: abstract.BaseValue, case_val: abstract.BaseValue
-  ) -> bool:
-    if not (isinstance(match_val, abstract.Instance) and
-            isinstance(match_val.cls, abstract.Class) and
-            match_val.cls.is_enum):
-      return False
-    if not (isinstance(case_val, abstract.Instance) and
-            case_val.cls == match_val.cls):
-      return False
-    return True
-
-  def _get_enum_tracker(
-      self, match_val: abstract.Instance, match_line: int
-  ) -> _EnumTracker:
-    if match_line is None:
-      return None
-    if match_line not in self._enum_tracker:
-      self._add_new_enum_match(match_val, match_line)
-    enum_tracker = self._enum_tracker[match_line]
-    assert match_val.cls == enum_tracker.enum_cls
-    return enum_tracker
-
-  def _add_new_type_match(self, match_var: cfg.Variable, match_line: int):
-    self._type_tracker[match_line] = _TypeTracker(match_var)
-
-  def _get_type_tracker(self, match_var: cfg.Variable, case_line: int):
-    match_line = self.matches.match_cases[case_line]
-    if match_line not in self._type_tracker:
-      self._add_new_type_match(match_var, match_line)
-    return self._type_tracker[match_line]
-
-  def get_current_type_tracker(self, op: opcodes.Opcode):
-    line = self.get_current_match(op)
-    return self._type_tracker.get(line)
-
-  def get_current_match(self, op: opcodes.Opcode):
-    match_line = self.matches.match_cases[op.line]
-    return match_line
-
-  def _add_enum_branch(
-      self,
-      op: opcodes.Opcode,
-      match_val: abstract.Instance,
-      case_val: abstract.SimpleValue
-  ) -> Optional[bool]:
-    """Add a case branch for an enum match to the tracker."""
-    if op in self._seen_opcodes:
-      match_line = self.matches.match_cases.get(op.line)
-      enum_tracker = self._get_enum_tracker(match_val, match_line)
-      if not enum_tracker:
-        return None
-      if (enum_tracker.implicit_default and case_val and
-          case_val.cls == enum_tracker.implicit_default.cls):
-        return True
-      else:
-        return None
-    else:
-      self._seen_opcodes.add(op)
-    match_line = self.matches.match_cases.get(op.line)
-    enum_tracker = self._get_enum_tracker(match_val, match_line)
-    if not enum_tracker:
-      return None
-    if case_val.name in enum_tracker.uncovered:
-      enum_tracker.cover(case_val)
-      if enum_tracker.uncovered:
-        return None
-      else:
-        # This is the last remaining case, and will always succeed.
-        enum_tracker.implicit_default = case_val
-        return True
-    else:
-      # This has already been covered, and will never succeed.
-      return False
-
-  def add_cmp_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
-                     case_var: cfg.Variable) -> _MatchSuccessType:
-    """Add a compare-based match case branch to the tracker."""
-    try:
-      match_val = abstract_utils.get_atomic_value(match_var)
-      case_val = abstract_utils.get_atomic_value(case_var)
-    except abstract_utils.ConversionError:
-      return None
-    if self._is_enum_match(match_val, case_val):
-      return self._add_enum_branch(op, match_val, case_val)
-    else:
-      return None
-
-  def add_class_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
-                       case_var: cfg.Variable) -> _MatchSuccessType:
-    """Add a class-based match case branch to the tracker."""
-    type_tracker = self._get_type_tracker(match_var, op.line)
-    type_tracker.cover(case_var)
-    return type_tracker.complete or None
-
-  def add_default_branch(self, op: opcodes.Opcode) -> _MatchSuccessType:
-    """Add a default match case branch to the tracker."""
-    match_line = self.matches.match_cases.get(op.line)
-    if match_line is None:
-      return None
-    if match_line not in self._enum_tracker:
-      return None
-    self._enum_tracker[match_line].cover_all()
-    return True
-
-  def check_ending(self,
-                   op: opcodes.Opcode,
-                   implicit_return: bool = False) -> List[Tuple[int, Set[str]]]:
-    """Check if we have ended a match statement with leftover cases."""
-    if op.metadata.is_out_of_order:
-      return []
-    line = op.line
-    if implicit_return:
-      done = set()
-      if line in self.matches.match_cases:
-        start = self.matches.match_cases[line]
-        end = self.matches.start_to_end[start]
-        if end in self._active_ends:
-          done.add(end)
-    else:
-      done = {i for i in self._active_ends if line > i}
-    ret = []
-    for i in done:
-      for start in self.matches.end_to_starts[i]:
-        uncovered = self._enum_tracker[start].uncovered
-        if uncovered:
-          ret.append((start, uncovered))
-    self._active_ends -= done
-    return ret
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -762,7 +560,7 @@ class VirtualMachine:
     self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
     self.ctx.options.set_feature_flags(director.features)
-    self._branch_tracker = _BranchTracker(director)
+    self._branch_tracker = pattern_matching.BranchTracker(director.matches)
     code = process_blocks.merge_annotations(
         code, self._director.annotations, self._director.param_annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)

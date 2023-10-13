@@ -7,7 +7,7 @@ import io
 import logging
 import re
 import tokenize
-from typing import Mapping, Sequence, Tuple
+from typing import List, Mapping, Optional, Sequence, Tuple
 
 from pytype.ast import visitor
 
@@ -114,30 +114,30 @@ class _BlockReturns:
     """
 
 
+@dataclasses.dataclass
+class _MatchCase:
+  start: int
+  end: int
+  as_name: Optional[str]
+  is_underscore: bool
+  match_line: int
+
+
+@dataclasses.dataclass
+class _Match:
+  start: int
+  end: int
+  cases: List[_MatchCase]
+
+
 class _Matches:
   """Tracks branches of match statements."""
 
   def __init__(self):
-    self.start_to_end = {}
-    self.end_to_starts = collections.defaultdict(list)
-    self.match_cases = {}
-    self.defaults = set()
+    self.matches = []
 
   def add_match(self, start, end, cases):
-    self.start_to_end[start] = end
-    self.end_to_starts[end].append(start)
-    for case_start, case_end, is_underscore in cases:
-      for i in range(case_start, case_end + 1):
-        self.match_cases[i] = start
-      if is_underscore:
-        self.defaults.add(case_start)
-
-  def __repr__(self):
-    return f"""
-      Matches: {sorted(self.start_to_end.items())}
-      Cases: {self.match_cases}
-      Defaults: {self.defaults}
-    """
+    self.matches.append(_Match(start, end, cases))
 
 
 class _ParseVisitor(visitor.BaseVisitor):
@@ -312,10 +312,20 @@ class _ParseVisitor(visitor.BaseVisitor):
     end = node.end_lineno
     cases = []
     for c in node.cases:
-      is_underscore = isinstance(c.pattern, ast.MatchAs) and (
-          c.pattern is None or
-          (isinstance(c.pattern, ast.MatchAs) and c.pattern.pattern is None))
-      cases.append((c.pattern.lineno, c.pattern.end_lineno, is_underscore))
+      if isinstance(c.pattern, ast.MatchAs):
+        name = c.pattern and c.pattern.name
+        is_underscore = c.pattern is None or c.pattern.pattern is None
+      else:
+        name = None
+        is_underscore = c.pattern is None
+      match_case = _MatchCase(
+          start=c.pattern.lineno,
+          end=c.pattern.end_lineno,
+          as_name=name,
+          is_underscore=is_underscore,
+          match_line=start
+      )
+      cases.append(match_case)
     self.matches.add_match(start, end, cases)
 
   def generic_visit(self, node):
