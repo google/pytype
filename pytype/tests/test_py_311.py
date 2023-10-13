@@ -116,6 +116,15 @@ class TestPy311(test_base.BaseTest):
         assert_type(x, int)
     """)
 
+  def test_splat(self):
+    self.Check("""
+      def f(value, g):
+        converted = []
+        if isinstance(value, (dict, *tuple({}))):
+          converted.append(value)
+        return g(*converted)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
