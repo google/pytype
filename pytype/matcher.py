@@ -538,10 +538,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           [{p.full_name: obj_var for p in other_type_params}])
     assert not left.formal, left
 
-    if isinstance(left, abstract.TypeParameterInstance) and (
-        isinstance(left.instance, (abstract.CallableClass,
-                                   function.Signature)) or
-        left.instance is abstract_utils.DUMMY_CONTAINER):
+    if (isinstance(left, abstract.TypeParameterInstance) and
+        isinstance(left.instance, abstract_utils.DummyContainer)):
       if isinstance(other_type, abstract.TypeParameter):
         self._type_params.seen.add(other_type)
         new_subst = self._match_type_param_against_type_param(
@@ -561,7 +559,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           self._error_subst = self._merge_substs(subst, [{
               left.param.name: left_dummy, other_type.name: right_dummy}])
           return None
-      elif isinstance(left.instance, abstract.CallableClass):
+      elif (isinstance(left.instance, abstract_utils.DummyContainer) and
+            isinstance(left.instance.container, abstract.CallableClass)):
         # We're doing argument-matching against a callable. We flipped the
         # argument types to enforce contravariance, but if the expected type is
         # a type parameter, we need it on the right in order to fill in subst.
@@ -961,7 +960,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if new_subst is None:
         # Flip actual and expected, since argument types are contravariant.
         subst = self._instantiate_and_match(
-            expected_arg, actual_arg, subst, view, container=other_type)
+            expected_arg, actual_arg, subst, view,
+            container=abstract_utils.DummyContainer(other_type))
         if subst is None:
           return None
       else:
@@ -986,7 +986,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           break
       else:
         subst = self._instantiate_and_match(
-            ret_type, other_ret_type, subst, view, container=sig)
+            ret_type, other_ret_type, subst, view,
+            container=abstract_utils.DummyContainer(sig))
       if subst is None:
         return subst
     else:
@@ -1005,7 +1006,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           return None
       actual_arg = function.ParamSpecMatch(expected_arg, sig, self.ctx)
       subst = self._instantiate_and_match(
-          expected_arg, actual_arg, subst, view, container=other_type)
+          expected_arg, actual_arg, subst, view,
+          container=abstract_utils.DummyContainer(other_type))
     else:
       if sig.mandatory_param_count() > other_type.num_args:
         return None
@@ -1378,7 +1380,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if new_subst is None:
         # Flip actual and expected to enforce contravariance of argument types.
         subst = self._instantiate_and_match(
-            right_arg, left_arg, subst, view, container=other_type)
+            right_arg, left_arg, subst, view,
+            container=abstract_utils.DummyContainer(other_type))
       else:
         subst = new_subst
       if subst is None:
@@ -1411,7 +1414,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       sig = function.Signature.from_callable(left)
       left_arg = function.ParamSpecMatch(right_arg, sig, self.ctx)
       subst = self._instantiate_and_match(
-          right_arg, left_arg, subst, view, container=other_type)
+          right_arg, left_arg, subst, view,
+          container=abstract_utils.DummyContainer(other_type))
     else:
       if left.num_args != other_type.num_args:
         return None

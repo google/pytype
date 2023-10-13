@@ -814,6 +814,27 @@ class SetMethodsTest(test_base.BaseTest):
       assert_type(set.symmetric_difference(x, y), Set[Union[int, str]])
     """)
 
+  def test_functools_reduce(self):
+    # This is the functools.reduce type signature:
+    # def reduce(
+    #     function: Callable[[_T, _S], _T], sequence: Iterable[_S], initial: _T
+    # ) -> _T: ...
+    # `f1` does not error because the type used for `set.union` is
+    # Callable[[Set[str], Iterable[str], Set[str]]], leading to the TypeVars in
+    # reduce being filled in as _T=Set[str], _S=Iterable[str]. (Note that
+    # Set[str] is treated as Set[Iterable[str]].)
+    # `f2` errors because the type used for `set().union` is
+    # Callable[[Iterable[str], Iterable[str]], Set[str]], leading to the
+    # TypeVars being filled in as _T=Iterable[str] | Set[str], _S=Iterable[str].
+    self.CheckWithErrors("""
+      import functools
+      from typing import Set
+      def f1(x: Set[str]) -> Set[str]:
+        return functools.reduce(set.union, x, set())
+      def f2(x: Set[str]) -> Set[str]:
+        return functools.reduce(set().union, x, set())  # bad-return-type
+    """)
+
 
 class TypesNoneTypeTest(test_base.BaseTest):
   """Tests for types.NoneType."""
