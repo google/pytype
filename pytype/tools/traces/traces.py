@@ -23,6 +23,7 @@ _ATTR_OPS = frozenset((
 _BINMOD_OPS = frozenset((
     "BINARY_MODULO",
     "BINARY_OP",
+    "FORMAT_VALUE",
 ))
 
 _CALL_OPS = frozenset((

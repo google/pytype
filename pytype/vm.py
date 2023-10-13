@@ -2871,8 +2871,10 @@ class VirtualMachine:
     # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
     # push a new string onto the stack.
     state = state.pop_and_discard()
-    ret = abstract.Instance(self.ctx.convert.str_type, self.ctx)
-    return state.push(ret.to_variable(state.node))
+    ret = abstract.Instance(
+        self.ctx.convert.str_type, self.ctx).to_variable(state.node)
+    self.trace_opcode(None, "__mod__", ret)
+    return state.push(ret)
 
   def byte_BUILD_CONST_KEY_MAP(self, state, op):
     state, keys = state.pop()
