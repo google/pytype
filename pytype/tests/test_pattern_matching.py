@@ -475,6 +475,62 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, int | bool)
     """)
 
+  def test_as_capture(self):
+    self.Check("""
+      def f(x: str | float) -> str:
+        match x:
+          case str() as s:
+            return s
+        return ''
+    """)
+
+  def test_as_capture_with_exhaustiveness(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+
+      def f(x: A | B):
+        match x:
+          case A() as y:
+            assert_type(y, A)
+          case B() as y:
+            assert_type(y, B)
+          case _:
+            # This branch will not be entered
+            assert_type(1, str)
+    """)
+
+  def test_as_capture_narrowing(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() as y:
+            assert_type(y, A)
+          case B() as y:
+            assert_type(y, B)
+          case _:
+            assert_type(x, C)
+    """)
+
+  def test_as_capture_with_or_branches(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() | B() as y:
+            assert_type(x, A | B)
+            assert_type(y, A | B)
+          case _:
+            assert_type(x, C)
+    """)
+
   def test_posargs(self):
     ty = self.Infer("""
       class A:

@@ -231,11 +231,7 @@ class VirtualMachine:
       # narrows the type within its own branch, this negatively narrowed type
       # only applies to non-class-match branches.
       state = state.forward_cfg_node(node_label)
-      if type_tracker.could_contain_anything:
-        obj_var = match_var.AssignToNewVariable(state.node)
-      else:
-        narrowed = [x.instantiate(state.node) for x in type_tracker.uncovered]
-        obj_var = self.ctx.join_variables(state.node, narrowed)
+      obj_var = type_tracker.get_narrowed_match_var(state.node)
       return self._store_local_or_cellvar(state, name, obj_var)
     else:
       return state
@@ -560,7 +556,8 @@ class VirtualMachine:
     self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
     self.ctx.options.set_feature_flags(director.features)
-    self._branch_tracker = pattern_matching.BranchTracker(director.matches)
+    self._branch_tracker = pattern_matching.BranchTracker(
+        director.matches, self.ctx)
     code = process_blocks.merge_annotations(
         code, self._director.annotations, self._director.param_annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
@@ -958,13 +955,27 @@ class VirtualMachine:
             state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
 
-  def _pop_and_store(self, state, op, name, local):
-    """Pop a value off the stack and store it in a variable."""
-    state, orig_val = state.pop()
+  def _get_value_from_annotations(self, state, op, name, local, orig_val):
     annotations_dict = self.current_annotated_locals if local else None
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types=True)
     value = self._process_annotations(state.node, name, value)
+    return value
+
+  def _pop_and_store(self, state, op, name, local):
+    """Pop a value off the stack and store it in a variable."""
+    state, orig_val = state.pop()
+    assert self._branch_tracker is not None
+    if (self._branch_tracker.is_current_as_name(op, name) and
+        self._branch_tracker.get_current_type_tracker(op) is not None):
+      # If we are storing the as name in a case match, i.e.
+      #    case <class-expr> as <name>:
+      # we need to store the type of <class-expr>, not of the original match
+      # object (due to the way match statements are compiled into bytecode, the
+      # match object will be on the stack and retrieved as orig_val)
+      value = self._branch_tracker.instantiate_case_var(op, state.node)
+    else:
+      value = self._get_value_from_annotations(state, op, name, local, orig_val)
     state = state.forward_cfg_node(f"Store:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -3097,17 +3108,6 @@ class VirtualMachine:
     self.frame.cells[idx].PasteVariable(var)
     return state
 
-  def _make_instance_for_match(self, state, cls_var):
-    """Instantiate a type for match case narrowing."""
-    # This specifically handles the case where we match against an
-    # AnnotationContainer in MATCH_CLASS, and need to replace it with its base
-    # class when narrowing the matched variable.
-    ret = []
-    for v in cls_var.data:
-      cls = v.base_cls if isinstance(v, abstract.AnnotationContainer) else v
-      ret.append(self.init_class(state.node, cls))
-    return self.ctx.join_variables(state.node, ret)
-
   def byte_MATCH_CLASS(self, state, op):
     """Implementation of the MATCH_CLASS opcode."""
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
@@ -3129,7 +3129,8 @@ class VirtualMachine:
       success = success or complete
       var_name = self._var_names.get(obj_var.id)
       if var_name:
-        narrowed_type = self._make_instance_for_match(state, cls_var)
+        narrowed_type = self._branch_tracker.instantiate_case_var(
+            op, state.node)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     if self.ctx.python_version == (3, 10):
       state = state.push(vals)

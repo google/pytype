@@ -307,6 +307,15 @@ class _ParseVisitor(visitor.BaseVisitor):
   def visit_AsyncWith(self, node):
     self._visit_with(node)
 
+  def _is_underscore(self, node):
+    """Check if a match case is the default `case _`."""
+    if node.pattern is None:
+      return True
+    elif not isinstance(node.pattern, ast.MatchAs):
+      return False
+    else:
+      return self._is_underscore(node.pattern)
+
   def visit_Match(self, node):
     start = node.lineno
     end = node.end_lineno
@@ -314,10 +323,9 @@ class _ParseVisitor(visitor.BaseVisitor):
     for c in node.cases:
       if isinstance(c.pattern, ast.MatchAs):
         name = c.pattern and c.pattern.name
-        is_underscore = c.pattern is None or c.pattern.pattern is None
       else:
         name = None
-        is_underscore = c.pattern is None
+      is_underscore = self._is_underscore(c)
       match_case = _MatchCase(
           start=c.pattern.lineno,
           end=c.pattern.end_lineno,

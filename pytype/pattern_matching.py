@@ -25,6 +25,7 @@ class _Matches:
     self.end_to_starts = collections.defaultdict(list)
     self.match_cases = {}
     self.defaults = set()
+    self.as_names = {}
     self.matches = []
 
     for m in ast_matches.matches:
@@ -38,6 +39,8 @@ class _Matches:
         self.match_cases[i] = start
       if c.is_underscore:
         self.defaults.add(c.start)
+      if c.as_name:
+        self.as_names[c.end] = c.as_name
 
   def __repr__(self):
     return f"""
@@ -76,9 +79,11 @@ class _EnumTracker:
 class _TypeTracker:
   """Track class type cases for exhaustiveness."""
 
-  def __init__(self, match_var):
+  def __init__(self, match_var, ctx):
     self.match_var = match_var
+    self.ctx = ctx
     self.could_contain_anything = False
+    # Types of the current match var, as narrowed by preceding cases.
     self.types = []
     for d in match_var.data:
       if isinstance(d, abstract.Instance):
@@ -86,29 +91,41 @@ class _TypeTracker:
       else:
         self.could_contain_anything = True
         break
+    # Types of the current case var, as expanded by MATCH_CLASS opcodes
+    self.case_types = collections.defaultdict(set)
     self.uncovered = set(self.types)
 
-  def cover(self, case_var):
+  def cover(self, line, case_var):
     for d in case_var.data:
       self.uncovered.discard(d)
+      self.case_types[line].add(d)
 
   @property
   def complete(self):
     return not (self.uncovered or self.could_contain_anything)
 
+  def get_narrowed_match_var(self, node):
+    if self.could_contain_anything:
+      return self.match_var.AssignToNewVariable(node)
+    else:
+      narrowed = [x.instantiate(node) for x in self.uncovered]
+      return self.ctx.join_variables(node, narrowed)
+
 
 class BranchTracker:
   """Track exhaustiveness in pattern matches."""
 
-  def __init__(self, ast_matches):
+  def __init__(self, ast_matches, ctx):
     self.matches = _Matches(ast_matches)
     self._enum_tracker = {}
     self._type_tracker = {}
+    self._match_types = {}
     self._active_ends = set()
     # If we analyse the same match statement twice, the second time around we
     # should not do exhaustiveness and redundancy checks since we have already
     # tracked all the case branches.
     self._seen_opcodes = set()
+    self.ctx = ctx
 
   def _add_new_enum_match(self, match_val: abstract.Instance, match_line: int):
     self._enum_tracker[match_line] = _EnumTracker(match_val.cls)
@@ -138,7 +155,23 @@ class BranchTracker:
     return enum_tracker
 
   def _add_new_type_match(self, match_var: cfg.Variable, match_line: int):
-    self._type_tracker[match_line] = _TypeTracker(match_var)
+    self._type_tracker[match_line] = _TypeTracker(match_var, self.ctx)
+
+  def _make_instance_for_match(self, node, types):
+    """Instantiate a type for match case narrowing."""
+    # This specifically handles the case where we match against an
+    # AnnotationContainer in MATCH_CLASS, and need to replace it with its base
+    # class when narrowing the matched variable.
+    ret = []
+    for v in types:
+      cls = v.base_cls if isinstance(v, abstract.AnnotationContainer) else v
+      ret.append(self.ctx.vm.init_class(node, cls))
+    return self.ctx.join_variables(node, ret)
+
+  def instantiate_case_var(self, op, node):
+    tracker = self.get_current_type_tracker(op)
+    assert tracker is not None
+    return self._make_instance_for_match(node, tracker.case_types[op.line])
 
   def _get_type_tracker(
       self, match_var: cfg.Variable, case_line: int
@@ -155,6 +188,11 @@ class BranchTracker:
   def get_current_match(self, op: opcodes.Opcode):
     match_line = self.matches.match_cases[op.line]
     return match_line
+
+  def is_current_as_name(self, op: opcodes.Opcode, name: str):
+    if op.line not in self.matches.match_cases:
+      return None
+    return self.matches.as_names.get(op.line) == name
 
   def _add_enum_branch(
       self,
@@ -208,7 +246,7 @@ class BranchTracker:
                        case_var: cfg.Variable) -> _MatchSuccessType:
     """Add a class-based match case branch to the tracker."""
     type_tracker = self._get_type_tracker(match_var, op.line)
-    type_tracker.cover(case_var)
+    type_tracker.cover(op.line, case_var)
     return type_tracker.complete or None
 
   def add_default_branch(self, op: opcodes.Opcode) -> _MatchSuccessType:
@@ -245,5 +283,3 @@ class BranchTracker:
           ret.append((start, uncovered))
     self._active_ends -= done
     return ret
-
-
