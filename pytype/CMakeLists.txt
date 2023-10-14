@@ -367,6 +367,7 @@ py_library(
   DEPS
     pytype.abstract.abstract
     pytype.pyc.pyc
+    pytype.pytd.pytd
     pytype.typegraph.cfg
 )
 

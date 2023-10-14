@@ -531,6 +531,35 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, C)
     """)
 
+  def test_as_capture_with_mixed_match_types(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+
+      def g(x):
+        return x
+
+      def f(x: A | B | int):
+        match x:
+          case A():
+            a = 1
+          case y if g(y):
+            assert_type(y, B | int)
+            a = y
+          case y if y == 1:
+            # This does not narrow the type
+            assert_type(y, B | int)
+            a = y
+          case 1 as y:
+            # This does narrow the type
+            assert_type(y, int)
+            a = y
+          case _:
+            assert_type(x, B | int)
+            a = None
+        return a
+    """)
+
   def test_posargs(self):
     ty = self.Infer("""
       class A:

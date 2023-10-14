@@ -2,11 +2,12 @@
 
 import collections
 
-from typing import List, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple, cast
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.pyc import opcodes
+from pytype.pytd import slots
 from pytype.typegraph import cfg
 
 
@@ -100,6 +101,12 @@ class _TypeTracker:
       self.uncovered.discard(d)
       self.case_types[line].add(d)
 
+  def cover_from_cmp(self, line, case_var):
+    # If we compare `match_var == constant`, add the type of `constant` to the
+    # current case so that instantiate_case_var can retrieve it.
+    for d in case_var.data:
+      self.case_types[line].add(d.cls)
+
   @property
   def complete(self):
     return not (self.uncovered or self.could_contain_anything)
@@ -171,7 +178,13 @@ class BranchTracker:
   def instantiate_case_var(self, op, node):
     tracker = self.get_current_type_tracker(op)
     assert tracker is not None
-    return self._make_instance_for_match(node, tracker.case_types[op.line])
+    if tracker.case_types[op.line]:
+      # We have matched on one or more classes in this case.
+      return self._make_instance_for_match(node, tracker.case_types[op.line])
+    else:
+      # We have not matched on a type, just bound the current match var to a
+      # variable.
+      return tracker.get_narrowed_match_var(node)
 
   def _get_type_tracker(
       self, match_var: cfg.Variable, case_line: int
@@ -233,8 +246,22 @@ class BranchTracker:
                      case_var: cfg.Variable) -> _MatchSuccessType:
     """Add a compare-based match case branch to the tracker."""
     try:
-      match_val = abstract_utils.get_atomic_value(match_var)
       case_val = abstract_utils.get_atomic_value(case_var)
+    except abstract_utils.ConversionError:
+      return None
+
+    # If this is part of a case statement and the match includes class matching,
+    # check if we need to include the compared value as a type case.
+    # (We need to do this whether or not the match_var has a concrete value
+    # because even an ambigious cmp match will require the type to be set within
+    # the case branch).
+    op = cast(opcodes.OpcodeWithArg, op)
+    if (op.arg == slots.CMP_EQ and op.line in self.matches.match_cases):
+      if tracker := self.get_current_type_tracker(op):
+        tracker.cover_from_cmp(op.line, case_var)
+
+    try:
+      match_val = abstract_utils.get_atomic_value(match_var)
     except abstract_utils.ConversionError:
       return None
     if self._is_enum_match(match_val, case_val):
