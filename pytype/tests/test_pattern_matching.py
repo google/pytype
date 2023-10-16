@@ -560,6 +560,22 @@ class MatchClassTest(test_base.BaseTest):
         return a
     """)
 
+  def test_as_capture_default(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() | B() as y:
+            assert_type(x, A | B)
+            assert_type(y, A | B)
+          case _ as z:
+            assert_type(x, C)
+            assert_type(z, C)
+    """)
+
   def test_posargs(self):
     ty = self.Infer("""
       class A:
