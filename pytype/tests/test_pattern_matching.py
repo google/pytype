@@ -1263,6 +1263,23 @@ class MatchCoverageTest(test_base.BaseTest):
           pass
     """, skip_repeat_calls=False)
 
+  def test_multiple_enums(self):
+    """Skip tracking if matching several enums at once."""
+    # Regression test for a crash
+    self.Check("""
+      import enum
+      class A(enum.Enum):
+        X = 'x'
+        Y = 'y'
+      class B(enum.Enum):
+        XX = 'xx'
+        YY = 'yy'
+      def f(a: A, b: B):
+        match (a, b):
+          case (A.X, B.XX):
+            print('bar')
+    """)
+
   def test_pytd_enum_basic(self):
     with self.DepTree([("foo.pyi", """
       import enum

@@ -68,6 +68,9 @@ class _EnumTracker:
     self.uncovered = set(self.members)
     # The last case in an exhaustive enum match always succeeds.
     self.implicit_default = None
+    # Invalidate the tracker if we run into code that matches enums but is not a
+    # simple match against a single enum value.
+    self.is_valid = True
 
   def cover(self, enum_case):
     assert enum_case.cls == self.enum_cls
@@ -75,6 +78,9 @@ class _EnumTracker:
 
   def cover_all(self):
     self.uncovered = set()
+
+  def invalidate(self):
+    self.is_valid = False
 
 
 class _TypeTracker:
@@ -153,12 +159,16 @@ class BranchTracker:
   def _get_enum_tracker(
       self, match_val: abstract.Instance, match_line: Optional[int]
   ) -> Optional[_EnumTracker]:
+    """Get the enum tracker for a match line."""
     if match_line is None:
       return None
     if match_line not in self._enum_tracker:
       self._add_new_enum_match(match_val, match_line)
     enum_tracker = self._enum_tracker[match_line]
-    assert match_val.cls == enum_tracker.enum_cls
+    if match_val.cls != enum_tracker.enum_cls:
+      # We are matching a tuple or structure with different enums in it.
+      enum_tracker.invalidate()
+      return None
     return enum_tracker
 
   def _add_new_type_match(self, match_var: cfg.Variable, match_line: int):
@@ -228,7 +238,7 @@ class BranchTracker:
       self._seen_opcodes.add(op)
     match_line = self.matches.match_cases.get(op.line)
     enum_tracker = self._get_enum_tracker(match_val, match_line)
-    if not enum_tracker:
+    if not enum_tracker or not enum_tracker.is_valid:
       return None
     if case_val.name in enum_tracker.uncovered:
       enum_tracker.cover(case_val)
@@ -305,8 +315,9 @@ class BranchTracker:
     ret = []
     for i in done:
       for start in self.matches.end_to_starts[i]:
-        uncovered = self._enum_tracker[start].uncovered
-        if uncovered:
-          ret.append((start, uncovered))
+        tracker = self._enum_tracker[start]
+        if tracker.is_valid:
+          if uncovered := tracker.uncovered:
+            ret.append((start, uncovered))
     self._active_ends -= done
     return ret
