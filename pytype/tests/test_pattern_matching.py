@@ -475,6 +475,20 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, int | bool)
     """)
 
+  def test_multiple_type_narrowing(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      def f(x: A | B, y: A | B):
+        match x, y:
+          case A(), B():
+            assert_type(x, A)
+            assert_type(y, B)
+          case _:
+            assert_type(x, B)
+            assert_type(y, A)
+    """)
+
   def test_as_capture(self):
     self.Check("""
       def f(x: str | float) -> str:
@@ -682,6 +696,30 @@ class MatchClassTest(test_base.BaseTest):
         z: bool
 
       def f(x: A) -> bool: ...
+    """)
+
+  def test_posargs_multiple_matches(self):
+    self.Check("""
+      class A:
+        __match_args__ = ('x', 'y')
+        x: int = ...
+        y: str = ...
+
+      class B:
+        __match_args__ = ('x', 'y')
+        x: int = ...
+        y: str = ...
+
+      def f(x: A | B, y: A | B):
+        match x, y:
+          case A(a, b), B(c, d):
+            assert_type(a, int)
+            assert_type(b, str)
+            assert_type(c, int)
+            assert_type(d, str)
+          case _:
+            assert_type(x)
+            assert_type(y)
     """)
 
   def test_builtin(self):
