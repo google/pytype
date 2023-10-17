@@ -86,17 +86,7 @@ class _Matches:
   """Tracks branches of match statements."""
 
   def __init__(self):
-    self.start_to_end = {}
-    self.end_to_starts = collections.defaultdict(list)
-    self.match_cases = {}
-    self.defaults = set()
-
-  def __repr__(self):
-    return f"""
-      Matches: {sorted(self.start_to_end.items())}
-      Cases: {self.match_cases}
-      Defaults: {self.defaults}
-    """
+    self.matches = []
 
 
 class _ParseVisitor(libcst.CSTVisitor):
