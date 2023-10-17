@@ -607,6 +607,22 @@ class TypeVarTest(test_base.BaseTest):
           return y
       """)
 
+  def test_bad_typevar_in_pyi(self):
+    # TODO(rechen): We should report an error for the stray `T` in foo.C.f. For
+    # now, just make sure this doesn't crash pytype.
+    with self.DepTree([("foo.pyi", """
+      from typing import Callable, TypeVar
+      T = TypeVar('T')
+      class C:
+        f: Callable[..., T]
+    """)]):
+      self.assertNoCrash(self.Check, """
+        import foo
+        class C(foo.C):
+          def g(self):
+            return self.f(0)
+      """)
+
 
 class GenericTypeAliasTest(test_base.BaseTest):
   """Tests for generic type aliases ("type macros")."""
