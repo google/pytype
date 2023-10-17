@@ -109,6 +109,45 @@ def get_absolute_name(prefix, relative_name):
   return prefix + name
 
 
+def get_relative_name(prefix: str, absolute_name: str) -> str:
+  """Transfoms an absolute name to a relative one based on the given prefix.
+
+  Args:
+    prefix: A dotted name, e.g. foo.bar.baz
+    absolute_name: A fully-qualified name, e.g. foo.bar.baz.x
+
+  Returns:
+    The absolute name with the prefix removed, with a leading dot added
+      for each segment of the prefix not present in the absolute name.
+      e.g. foo.bar.baz + foo.bar.hello.world -> ..hello.world
+    If the prefix is disjoint from the absolute name, the absolute name is
+      returned verbatim.
+      e.g. foo.bar.baz + hello.world -> hello.world
+    If the given absolute name has one or more leading dots, it is returned
+      verbatim.
+      e.g. foo.bar + ..hello.world -> ..hello.world
+  """
+  if absolute_name.startswith("."):
+    return absolute_name
+  prefix_path: list[str] = prefix.split(".") if prefix else []
+  name_path: list[str] = absolute_name.split(".") if absolute_name else []
+
+  num_match = 0
+  for prefix_seg, name_seg in zip(prefix_path, name_path):
+    if prefix_seg != name_seg:
+      break
+    num_match += 1
+  # No prefix segments matched - the name is disjoint with the prefix.
+  if not num_match:
+    return absolute_name
+
+  name = ".".join(name_path[num_match:])
+  ndots = len(prefix_path) - num_match
+  if ndots > 0:
+    name = "." * (ndots + 1) + name
+  return name
+
+
 def get_package_name(module_name, is_package=False):
   """Figure out a package name for a module."""
   if module_name is None:
