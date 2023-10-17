@@ -98,6 +98,7 @@ py_library(
     .load_pytd
     .matcher
     .output
+    .pattern_matching
     .state
     .tracer_vm
     .vm
@@ -360,6 +361,18 @@ py_library(
 
 py_library(
   NAME
+    pattern_matching
+  SRCS
+    pattern_matching.py
+  DEPS
+    pytype.abstract.abstract
+    pytype.pyc.pyc
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
     preprocess
   SRCS
     preprocess.py
@@ -434,6 +447,7 @@ py_library(
     .datatypes
     .load_pytd
     .metrics
+    .pattern_matching
     .preprocess
     .state
     .vm_utils

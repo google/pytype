@@ -18,7 +18,7 @@ import functools
 import itertools
 import logging
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from pycnite import marshal as pyc_marshal
 
@@ -28,6 +28,7 @@ from pytype import constant_folding
 from pytype import datatypes
 from pytype import load_pytd
 from pytype import metrics
+from pytype import pattern_matching
 from pytype import preprocess
 from pytype import state as frame_state
 from pytype import vm_utils
@@ -49,13 +50,8 @@ from pytype.pytd import visitors
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
 
+
 log = logging.getLogger(__name__)
-
-# Type aliases
-
-# Tri-state boolean for match case returns.
-# True = always match, False = never match, None = sometimes match
-_MatchSuccessType = Optional[bool]
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -74,204 +70,6 @@ class LocalOp:
 
   def is_annotate(self):
     return self.op == self.Op.ANNOTATE
-
-
-class _EnumTracker:
-  """Track enum cases for exhaustiveness."""
-
-  def __init__(self, enum_cls):
-    self.enum_cls = enum_cls
-    if isinstance(enum_cls, abstract.PyTDClass):
-      # We don't construct a special class for pytd enums, so we have to get the
-      # enum members manually here.
-      self.members = []
-      for k, v in enum_cls.members.items():
-        if all(d.cls == enum_cls for d in v.data):
-          self.members.append(f"{enum_cls.full_name}.{k}")
-    else:
-      self.members = list(enum_cls.get_enum_members(qualified=True))
-    self.uncovered = set(self.members)
-    # The last case in an exhaustive enum match always succeeds.
-    self.implicit_default = None
-
-  def cover(self, enum_case):
-    assert enum_case.cls == self.enum_cls
-    self.uncovered.discard(enum_case.name)
-
-  def cover_all(self):
-    self.uncovered = set()
-
-
-class _TypeTracker:
-  """Track class type cases for exhaustiveness."""
-
-  def __init__(self, match_var):
-    self.match_var = match_var
-    self.could_contain_anything = False
-    self.types = []
-    for d in match_var.data:
-      if isinstance(d, abstract.Instance):
-        self.types.append(d.cls)
-      else:
-        self.could_contain_anything = True
-        break
-    self.uncovered = set(self.types)
-
-  def cover(self, case_var):
-    for d in case_var.data:
-      self.uncovered.discard(d)
-
-  @property
-  def complete(self):
-    return not (self.uncovered or self.could_contain_anything)
-
-
-class _BranchTracker:
-  """Track exhaustiveness in pattern matches."""
-
-  def __init__(self, director):
-    self.matches = director.matches
-    self._enum_tracker = {}
-    self._type_tracker = {}
-    self._active_ends = set()
-    # If we analyse the same match statement twice, the second time around we
-    # should not do exhaustiveness and redundancy checks since we have already
-    # tracked all the case branches.
-    self._seen_opcodes = set()
-
-  def _add_new_enum_match(self, match_val: abstract.Instance, match_line: int):
-    self._enum_tracker[match_line] = _EnumTracker(match_val.cls)
-    self._active_ends.add(self.matches.start_to_end[match_line])
-
-  def _is_enum_match(
-      self, match_val: abstract.BaseValue, case_val: abstract.BaseValue
-  ) -> bool:
-    if not (isinstance(match_val, abstract.Instance) and
-            isinstance(match_val.cls, abstract.Class) and
-            match_val.cls.is_enum):
-      return False
-    if not (isinstance(case_val, abstract.Instance) and
-            case_val.cls == match_val.cls):
-      return False
-    return True
-
-  def _get_enum_tracker(
-      self, match_val: abstract.Instance, match_line: int
-  ) -> _EnumTracker:
-    if match_line is None:
-      return None
-    if match_line not in self._enum_tracker:
-      self._add_new_enum_match(match_val, match_line)
-    enum_tracker = self._enum_tracker[match_line]
-    assert match_val.cls == enum_tracker.enum_cls
-    return enum_tracker
-
-  def _add_new_type_match(self, match_var: cfg.Variable, match_line: int):
-    self._type_tracker[match_line] = _TypeTracker(match_var)
-
-  def _get_type_tracker(self, match_var: cfg.Variable, case_line: int):
-    match_line = self.matches.match_cases[case_line]
-    if match_line not in self._type_tracker:
-      self._add_new_type_match(match_var, match_line)
-    return self._type_tracker[match_line]
-
-  def get_current_type_tracker(self, op: opcodes.Opcode):
-    line = self.get_current_match(op)
-    return self._type_tracker.get(line)
-
-  def get_current_match(self, op: opcodes.Opcode):
-    match_line = self.matches.match_cases[op.line]
-    return match_line
-
-  def _add_enum_branch(
-      self,
-      op: opcodes.Opcode,
-      match_val: abstract.Instance,
-      case_val: abstract.SimpleValue
-  ) -> Optional[bool]:
-    """Add a case branch for an enum match to the tracker."""
-    if op in self._seen_opcodes:
-      match_line = self.matches.match_cases.get(op.line)
-      enum_tracker = self._get_enum_tracker(match_val, match_line)
-      if not enum_tracker:
-        return None
-      if (enum_tracker.implicit_default and case_val and
-          case_val.cls == enum_tracker.implicit_default.cls):
-        return True
-      else:
-        return None
-    else:
-      self._seen_opcodes.add(op)
-    match_line = self.matches.match_cases.get(op.line)
-    enum_tracker = self._get_enum_tracker(match_val, match_line)
-    if not enum_tracker:
-      return None
-    if case_val.name in enum_tracker.uncovered:
-      enum_tracker.cover(case_val)
-      if enum_tracker.uncovered:
-        return None
-      else:
-        # This is the last remaining case, and will always succeed.
-        enum_tracker.implicit_default = case_val
-        return True
-    else:
-      # This has already been covered, and will never succeed.
-      return False
-
-  def add_cmp_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
-                     case_var: cfg.Variable) -> _MatchSuccessType:
-    """Add a compare-based match case branch to the tracker."""
-    try:
-      match_val = abstract_utils.get_atomic_value(match_var)
-      case_val = abstract_utils.get_atomic_value(case_var)
-    except abstract_utils.ConversionError:
-      return None
-    if self._is_enum_match(match_val, case_val):
-      return self._add_enum_branch(op, match_val, case_val)
-    else:
-      return None
-
-  def add_class_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
-                       case_var: cfg.Variable) -> _MatchSuccessType:
-    """Add a class-based match case branch to the tracker."""
-    type_tracker = self._get_type_tracker(match_var, op.line)
-    type_tracker.cover(case_var)
-    return type_tracker.complete or None
-
-  def add_default_branch(self, op: opcodes.Opcode) -> _MatchSuccessType:
-    """Add a default match case branch to the tracker."""
-    match_line = self.matches.match_cases.get(op.line)
-    if match_line is None:
-      return None
-    if match_line not in self._enum_tracker:
-      return None
-    self._enum_tracker[match_line].cover_all()
-    return True
-
-  def check_ending(self,
-                   op: opcodes.Opcode,
-                   implicit_return: bool = False) -> List[Tuple[int, Set[str]]]:
-    """Check if we have ended a match statement with leftover cases."""
-    if op.metadata.is_out_of_order:
-      return []
-    line = op.line
-    if implicit_return:
-      done = set()
-      if line in self.matches.match_cases:
-        start = self.matches.match_cases[line]
-        end = self.matches.start_to_end[start]
-        if end in self._active_ends:
-          done.add(end)
-    else:
-      done = {i for i in self._active_ends if line > i}
-    ret = []
-    for i in done:
-      for start in self.matches.end_to_starts[i]:
-        uncovered = self._enum_tracker[start].uncovered
-        if uncovered:
-          ret.append((start, uncovered))
-    self._active_ends -= done
-    return ret
 
 
 _opcode_counter = metrics.MapCounter("vm_opcode")
@@ -406,15 +204,29 @@ class VirtualMachine:
   def is_at_maximum_depth(self):
     return len(self.frames) > self._maximum_depth
 
+  def _is_match_case_op(self, op):
+    """Should we handle case matching for this opcode."""
+    assert self._branch_tracker is not None
+    # A case statement generates multiple opcodes on the same line. Since the
+    # director matches on line numbers, we only trigger the case handler on a
+    # specific opcode (which varies depending on the type of match)
+    opname = op.__class__.__name__
+    # Opcodes generated by class and sequence matches.
+    is_match = opname.startswith("MATCH_")
+    # Opcodes generated by various matches against constant literals.
+    is_cmp_match = opname in ("COMPARE_OP", "IS_OP", "CONTAINS_OP")
+    # `case _` generates a NOP if the match is not captured. If it is, we need
+    # to look for the opcode before the STORE_FAST, since the match itself does
+    # not generate any specific opcode, just stack manipulations.
+    is_default_match = opname == "NOP" or (
+        isinstance(op.next, opcodes.STORE_FAST) and
+        op.line in self._branch_tracker.matches.defaults)
+    return is_match or is_cmp_match or is_default_match
+
   def _handle_match_case(self, state, op):
     """Track type narrowing and default cases in a match statement."""
     assert self._branch_tracker is not None
-    opname = op.__class__.__name__
-    if not (opname.startswith("MATCH_") or
-            opname in ("COMPARE_OP", "IS_OP", "CONTAINS_OP", "NOP")):
-      # A case statement generates multiple opcodes on the same line. Since the
-      # director matches on line numbers, we only trigger this handler on the
-      # MATCH_* or COMPARE opcode (or NOP for the default case)
+    if not self._is_match_case_op(op):
       return state
     if op.line in self._branch_tracker.matches.defaults:
       node_label = "MatchDefault"
@@ -433,11 +245,7 @@ class VirtualMachine:
       # narrows the type within its own branch, this negatively narrowed type
       # only applies to non-class-match branches.
       state = state.forward_cfg_node(node_label)
-      if type_tracker.could_contain_anything:
-        obj_var = match_var.AssignToNewVariable(state.node)
-      else:
-        narrowed = [x.instantiate(state.node) for x in type_tracker.uncovered]
-        obj_var = self.ctx.join_variables(state.node, narrowed)
+      obj_var = type_tracker.get_narrowed_match_var(state.node)
       return self._store_local_or_cellvar(state, name, obj_var)
     else:
       return state
@@ -762,7 +570,8 @@ class VirtualMachine:
     self.ctx.errorlog.set_error_filter(director.filter_error)
     self._director = director
     self.ctx.options.set_feature_flags(director.features)
-    self._branch_tracker = _BranchTracker(director)
+    self._branch_tracker = pattern_matching.BranchTracker(
+        director.matches, self.ctx)
     code = process_blocks.merge_annotations(
         code, self._director.annotations, self._director.param_annotations)
     visitor = vm_utils.FindIgnoredTypeComments(self._director.type_comments)
@@ -1160,13 +969,27 @@ class VirtualMachine:
             state.node, name, typ, orig_val, self.frames, allow_none=True)
     return value
 
-  def _pop_and_store(self, state, op, name, local):
-    """Pop a value off the stack and store it in a variable."""
-    state, orig_val = state.pop()
+  def _get_value_from_annotations(self, state, op, name, local, orig_val):
     annotations_dict = self.current_annotated_locals if local else None
     value = self._apply_annotation(
         state, op, name, orig_val, annotations_dict, check_types=True)
     value = self._process_annotations(state.node, name, value)
+    return value
+
+  def _pop_and_store(self, state, op, name, local):
+    """Pop a value off the stack and store it in a variable."""
+    state, orig_val = state.pop()
+    assert self._branch_tracker is not None
+    if (self._branch_tracker.is_current_as_name(op, name) and
+        self._branch_tracker.get_current_type_tracker(op) is not None):
+      # If we are storing the as name in a case match, i.e.
+      #    case <class-expr> as <name>:
+      # we need to store the type of <class-expr>, not of the original match
+      # object (due to the way match statements are compiled into bytecode, the
+      # match object will be on the stack and retrieved as orig_val)
+      value = self._branch_tracker.instantiate_case_var(op, state.node)
+    else:
+      value = self._get_value_from_annotations(state, op, name, local, orig_val)
     state = state.forward_cfg_node(f"Store:{name}")
     state = self._store_value(state, name, value, local)
     self.trace_opcode(op, name, value)
@@ -3062,8 +2885,10 @@ class VirtualMachine:
     # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
     # push a new string onto the stack.
     state = state.pop_and_discard()
-    ret = abstract.Instance(self.ctx.convert.str_type, self.ctx)
-    return state.push(ret.to_variable(state.node))
+    ret = abstract.Instance(
+        self.ctx.convert.str_type, self.ctx).to_variable(state.node)
+    self.trace_opcode(None, "__mod__", ret)
+    return state.push(ret)
 
   def byte_BUILD_CONST_KEY_MAP(self, state, op):
     state, keys = state.pop()
@@ -3299,17 +3124,6 @@ class VirtualMachine:
     self.frame.cells[idx].PasteVariable(var)
     return state
 
-  def _make_instance_for_match(self, state, cls_var):
-    """Instantiate a type for match case narrowing."""
-    # This specifically handles the case where we match against an
-    # AnnotationContainer in MATCH_CLASS, and need to replace it with its base
-    # class when narrowing the matched variable.
-    ret = []
-    for v in cls_var.data:
-      cls = v.base_cls if isinstance(v, abstract.AnnotationContainer) else v
-      ret.append(self.init_class(state.node, cls))
-    return self.ctx.join_variables(state.node, ret)
-
   def byte_MATCH_CLASS(self, state, op):
     """Implementation of the MATCH_CLASS opcode."""
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
@@ -3331,7 +3145,8 @@ class VirtualMachine:
       success = success or complete
       var_name = self._var_names.get(obj_var.id)
       if var_name:
-        narrowed_type = self._make_instance_for_match(state, cls_var)
+        narrowed_type = self._branch_tracker.instantiate_case_var(
+            op, state.node)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     if self.ctx.python_version == (3, 10):
       state = state.push(vals)

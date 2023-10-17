@@ -39,11 +39,6 @@ DYNAMIC_ATTRIBUTE_MARKERS = [
     "has_dynamic_attributes",
 ]
 
-# A dummy container object for use in instantiating type parameters.
-# A container is needed to preserve type parameter names for error messages
-# and for sub_(one_)annotation(s).
-DUMMY_CONTAINER = object()
-
 # Names defined on every module/class that should be ignored in most cases.
 TOP_LEVEL_IGNORE = frozenset({
     "__builtins__",
@@ -63,6 +58,20 @@ CLASS_LEVEL_IGNORE = frozenset({
     "__slots__",
     "__annotations__",
 })
+
+
+# A dummy container object for use in instantiating type parameters.
+# A container is needed to preserve type parameter names for error messages
+# and for sub_(one_)annotation(s). The matcher also uses function signatures and
+# callable types as dummy containers. We wrap them in DummyContainer instances
+# so that dummy containers have a consistent type. It's not strictly necessary
+# to keep the wrapped object around, but it makes debugging easier.
+class DummyContainer:
+  def __init__(self, container):
+    self.container = container
+
+
+DUMMY_CONTAINER = DummyContainer(None)
 
 
 class ConversionError(ValueError):

@@ -475,6 +475,107 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, int | bool)
     """)
 
+  def test_as_capture(self):
+    self.Check("""
+      def f(x: str | float) -> str:
+        match x:
+          case str() as s:
+            return s
+        return ''
+    """)
+
+  def test_as_capture_with_exhaustiveness(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+
+      def f(x: A | B):
+        match x:
+          case A() as y:
+            assert_type(y, A)
+          case B() as y:
+            assert_type(y, B)
+          case _:
+            # This branch will not be entered
+            assert_type(1, str)
+    """)
+
+  def test_as_capture_narrowing(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() as y:
+            assert_type(y, A)
+          case B() as y:
+            assert_type(y, B)
+          case _:
+            assert_type(x, C)
+    """)
+
+  def test_as_capture_with_or_branches(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() | B() as y:
+            assert_type(x, A | B)
+            assert_type(y, A | B)
+          case _:
+            assert_type(x, C)
+    """)
+
+  def test_as_capture_with_mixed_match_types(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+
+      def g(x):
+        return x
+
+      def f(x: A | B | int):
+        match x:
+          case A():
+            a = 1
+          case y if g(y):
+            assert_type(y, B | int)
+            a = y
+          case y if y == 1:
+            # This does not narrow the type
+            assert_type(y, B | int)
+            a = y
+          case 1 as y:
+            # This does narrow the type
+            assert_type(y, int)
+            a = y
+          case _:
+            assert_type(x, B | int)
+            a = None
+        return a
+    """)
+
+  def test_as_capture_default(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+      class C: pass
+
+      def f(x: A | B | C):
+        match x:
+          case A() | B() as y:
+            assert_type(x, A | B)
+            assert_type(y, A | B)
+          case _ as z:
+            assert_type(x, C)
+            assert_type(z, C)
+    """)
+
   def test_posargs(self):
     ty = self.Infer("""
       class A:
@@ -1177,6 +1278,23 @@ class MatchCoverageTest(test_base.BaseTest):
         def bar(self) -> None:
           pass
     """, skip_repeat_calls=False)
+
+  def test_multiple_enums(self):
+    """Skip tracking if matching several enums at once."""
+    # Regression test for a crash
+    self.Check("""
+      import enum
+      class A(enum.Enum):
+        X = 'x'
+        Y = 'y'
+      class B(enum.Enum):
+        XX = 'xx'
+        YY = 'yy'
+      def f(a: A, b: B):
+        match (a, b):
+          case (A.X, B.XX):
+            print('bar')
+    """)
 
   def test_pytd_enum_basic(self):
     with self.DepTree([("foo.pyi", """

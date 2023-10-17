@@ -16,6 +16,7 @@ _PYVER = sys.version_info[:2]
 _BINMOD_OP = "BINARY_OP" if _PYVER >= (3, 11) else "BINARY_MODULO"
 _CALLFUNC_OP = "CALL" if _PYVER >= (3, 11) else "CALL_FUNCTION"
 _CALLMETH_OP = "CALL" if _PYVER >= (3, 11) else "CALL_METHOD"
+_FORMAT_OP = "FORMAT_VALUE" if _PYVER >= (3, 11) else "BINARY_MODULO"
 
 
 class _NotImplementedVisitor(traces.MatchAstVisitor):
@@ -337,6 +338,16 @@ class MatchBinOpTest(MatchAstTestCase):
         'world'))
     """, ast.BinOp)
     self.assertTracesEqual(matches, [((1, 1), _BINMOD_OP, "__mod__", ("str",))])
+
+  def test_format_multiline_string(self):
+    matches = self._get_traces("""
+      ('%s'
+       '%s' %
+       (__any_object__,
+        __any_object__))
+    """, ast.BinOp)
+    self.assertTracesEqual(
+        matches, [((1, 1), _FORMAT_OP, "__mod__", ("str",))])
 
 
 class MatchLambdaTest(MatchAstTestCase):
