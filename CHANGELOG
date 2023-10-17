@@ -1,3 +1,19 @@
+Version 2023.10.17:
+
+Updates:
+* Remove the --overriding-parameter-count-checks flag. This flag's behavior is
+  now the default.
+* Support enum.StrEnum.
+* Support type narrowing for match cases with `as` captures.
+* Add basic support for Python 3.11.
+  * Pytype can now analyze code that does not use any new 3.11 features in 3.11.
+  * Support for new features will follow over the coming months.
+
+Bug fixes:
+* Improve `set` and `frozenset` methods.
+* Fix maximum recursion depth error.
+* Remove extraneous check in RenameModuleVisitor.
+
 Version 2023.10.05:
 
 Updates:
