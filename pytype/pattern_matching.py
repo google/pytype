@@ -2,7 +2,7 @@
 
 import collections
 
-from typing import List, Optional, Set, Tuple, cast
+from typing import Dict, List, Optional, Set, Tuple, cast
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -131,7 +131,8 @@ class BranchTracker:
   def __init__(self, ast_matches, ctx):
     self.matches = _Matches(ast_matches)
     self._enum_tracker = {}
-    self._type_tracker = {}
+    self._type_tracker: Dict[int, Dict[int, _TypeTracker]] = (
+        collections.defaultdict(dict))
     self._match_types = {}
     self._active_ends = set()
     # If we analyse the same match statement twice, the second time around we
@@ -172,7 +173,8 @@ class BranchTracker:
     return enum_tracker
 
   def _add_new_type_match(self, match_var: cfg.Variable, match_line: int):
-    self._type_tracker[match_line] = _TypeTracker(match_var, self.ctx)
+    self._type_tracker[match_line][match_var.id] = _TypeTracker(
+        match_var, self.ctx)
 
   def _make_instance_for_match(self, node, types):
     """Instantiate a type for match case narrowing."""
@@ -185,8 +187,8 @@ class BranchTracker:
       ret.append(self.ctx.vm.init_class(node, cls))
     return self.ctx.join_variables(node, ret)
 
-  def instantiate_case_var(self, op, node):
-    tracker = self.get_current_type_tracker(op)
+  def instantiate_case_var(self, op, match_var, node):
+    tracker = self.get_current_type_tracker(op, match_var)
     assert tracker is not None
     if tracker.case_types[op.line]:
       # We have matched on one or more classes in this case.
@@ -200,13 +202,19 @@ class BranchTracker:
       self, match_var: cfg.Variable, case_line: int
   ) -> _TypeTracker:
     match_line = self.matches.match_cases[case_line]
-    if match_line not in self._type_tracker:
+    if match_var.id not in self._type_tracker[match_line]:
       self._add_new_type_match(match_var, match_line)
-    return self._type_tracker[match_line]
+    return self._type_tracker[match_line][match_var.id]
 
-  def get_current_type_tracker(self, op: opcodes.Opcode):
+  def get_current_type_tracker(
+      self, op: opcodes.Opcode, match_var: cfg.Variable
+  ):
     line = self.get_current_match(op)
-    return self._type_tracker.get(line)
+    return self._type_tracker[line].get(match_var.id)
+
+  def get_current_type_trackers(self, op: opcodes.Opcode):
+    line = self.get_current_match(op)
+    return list(self._type_tracker[line].values())
 
   def get_current_match(self, op: opcodes.Opcode):
     match_line = self.matches.match_cases[op.line]
@@ -267,7 +275,7 @@ class BranchTracker:
     # the case branch).
     op = cast(opcodes.OpcodeWithArg, op)
     if (op.arg == slots.CMP_EQ and op.line in self.matches.match_cases):
-      if tracker := self.get_current_type_tracker(op):
+      if tracker := self.get_current_type_tracker(op, match_var):
         tracker.cover_from_cmp(op.line, case_var)
 
     try:

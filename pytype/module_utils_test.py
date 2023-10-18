@@ -21,6 +21,20 @@ class ModuleUtilsTest(unittest.TestCase):
     for prefix, name, expected in test_cases:
       self.assertEqual(module_utils.get_absolute_name(prefix, name), expected)
 
+  def test_get_relative_name(self):
+    test_cases = [
+        ("x.y", "x.y.a.b", "a.b"),
+        ("x.y", "x.a.b", "..a.b"),
+        ("x.y.z", "x.a.b", "...a.b"),
+        ("x.y", "a.b", "a.b"),
+        ("x.y", "y.a.b", "y.a.b"),
+        ("x.y", "..x.y.a.b", "..x.y.a.b"),
+        ("", "a.b", "a.b"),
+        ("x.y", "", ""),
+    ]
+    for prefix, name, expected in test_cases:
+      self.assertEqual(module_utils.get_relative_name(prefix, name), expected)
+
   def test_path_to_module_name(self):
     self.assertIsNone(
         module_utils.path_to_module_name(

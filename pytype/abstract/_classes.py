@@ -17,6 +17,7 @@ from pytype.abstract import mixin
 from pytype.pyc import opcodes
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
+from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
 from pytype.typegraph import cfg
 
@@ -556,13 +557,21 @@ class PyTDClass(
       try:
         self._convert_member(name, c)
       except self.ctx.convert.TypeParameterError:
-        # Constant c cannot be converted without type parameter substitutions,
-        # so it must be an instance attribute.
+        # Add type parameter substitutions for instance attributes.
         subst = datatypes.AliasingDict()
         for itm in self.pytd_cls.template:
           subst[itm.full_name] = self.ctx.convert.constant_to_value(
               itm.type_param, {}).instantiate(
                   self.ctx.root_node, container=instance)
+        # Set all other type parameters to Any. See
+        # test_recursive_types:PyiTest.test_callable for a case in which it is
+        # not an error to have an unsubstituted type parameter here.
+        collector = visitors.CollectTypeParameters()
+        c.Visit(collector)
+        for type_param in collector.params:
+          name = type_param.full_name
+          if name not in subst:
+            subst[name] = self.ctx.new_unsolvable(self.ctx.root_node)
         return self._convert_member(name, c, subst)
 
   def has_protocol_base(self):

@@ -233,22 +233,22 @@ class VirtualMachine:
       self._branch_tracker.add_default_branch(op)
     else:
       node_label = "MatchCase"
-    type_tracker = self._branch_tracker.get_current_type_tracker(op)
-    if not type_tracker:
+    type_trackers = self._branch_tracker.get_current_type_trackers(op)
+    if not type_trackers:
       return state
-    match_var = type_tracker.match_var
-    name = self._var_names.get(match_var.id)
-    if name and not isinstance(op, opcodes.MATCH_CLASS):
-      # The match statement generates a linear "main path" through the cfg
-      # (since it checks every branch sequentially), so if we have MATCH_CLASS
-      # branches we narrow the type as we progress. Since MATCH_CLASS positively
-      # narrows the type within its own branch, this negatively narrowed type
-      # only applies to non-class-match branches.
-      state = state.forward_cfg_node(node_label)
-      obj_var = type_tracker.get_narrowed_match_var(state.node)
-      return self._store_local_or_cellvar(state, name, obj_var)
-    else:
-      return state
+    for type_tracker in type_trackers:
+      match_var = type_tracker.match_var
+      name = self._var_names.get(match_var.id)
+      if name and not isinstance(op, opcodes.MATCH_CLASS):
+        # The match statement generates a linear "main path" through the cfg
+        # (since it checks every branch sequentially), so if we have MATCH_CLASS
+        # branches we narrow the type as we progress. Since MATCH_CLASS
+        # positively narrows the type within its own branch, this negatively
+        # narrowed type only applies to non-class-match branches.
+        state = state.forward_cfg_node(node_label)
+        obj_var = type_tracker.get_narrowed_match_var(state.node)
+        state = self._store_local_or_cellvar(state, name, obj_var)
+    return state
 
   def run_instruction(
       self, op: opcodes.Opcode, state: frame_state.FrameState
@@ -981,13 +981,14 @@ class VirtualMachine:
     state, orig_val = state.pop()
     assert self._branch_tracker is not None
     if (self._branch_tracker.is_current_as_name(op, name) and
-        self._branch_tracker.get_current_type_tracker(op) is not None):
+        self._branch_tracker.get_current_type_tracker(op, orig_val)):
       # If we are storing the as name in a case match, i.e.
       #    case <class-expr> as <name>:
       # we need to store the type of <class-expr>, not of the original match
       # object (due to the way match statements are compiled into bytecode, the
       # match object will be on the stack and retrieved as orig_val)
-      value = self._branch_tracker.instantiate_case_var(op, state.node)
+      value = self._branch_tracker.instantiate_case_var(
+          op, orig_val, state.node)
     else:
       value = self._get_value_from_annotations(state, op, name, local, orig_val)
     state = state.forward_cfg_node(f"Store:{name}")
@@ -3146,7 +3147,7 @@ class VirtualMachine:
       var_name = self._var_names.get(obj_var.id)
       if var_name:
         narrowed_type = self._branch_tracker.instantiate_case_var(
-            op, state.node)
+            op, obj_var, state.node)
         state = self._store_local_or_cellvar(state, var_name, narrowed_type)
     if self.ctx.python_version == (3, 10):
       state = state.push(vals)

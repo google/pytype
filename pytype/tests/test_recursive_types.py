@@ -542,6 +542,21 @@ class PyiTest(test_base.BaseTest):
             return cls()
       """)
 
+  def test_callable(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Callable, Sequence, TypeVar
+      T = TypeVar('T')
+      X = T | Sequence[X[T]]
+      class C:
+        f: Callable[..., X]
+    """)]):
+      self.Check("""
+        import foo
+        class C(foo.C):
+          def g(self):
+            return self.f()
+      """)
+
 
 class PickleTest(PyiTest):
   """Test recursive types defined in pickled pyi files."""
