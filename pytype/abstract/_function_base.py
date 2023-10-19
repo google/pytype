@@ -210,17 +210,23 @@ class BoundFunction(_base.BaseValue):
     inst = abstract_utils.get_atomic_value(
         self._callself, default=self.ctx.convert.unsolvable)
     if self.underlying.should_set_self_annot():
-      self._self_annot = abstract_utils.get_generic_type(inst)
-      # TODO(b/224600845): Support typing.Self in generic classes.
-      if not self._self_annot and self._has_self_type_param():
-        # TODO(b/224600845): Support classmethods.
-        self._self_annot = self.ctx.convert.lookup_value("typing", "Self")
+      self._self_annot = self._get_self_annot(inst)
     if isinstance(inst, _instance_base.SimpleValue):
       self.alias_map = inst.instance_type_parameters.aliases
     elif isinstance(inst, _typing.TypeParameterInstance):
       self.alias_map = inst.instance.instance_type_parameters.aliases
     else:
       self.alias_map = None
+
+  def _get_self_annot(self, callself):
+    if not self._has_self_type_param():
+      return abstract_utils.get_generic_type(callself)
+    self_type = self.ctx.convert.lookup_value("typing", "Self")
+    if "classmethod" in self.underlying.decorators:
+      return _classes.ParameterizedClass(
+          self.ctx.convert.type_type, {abstract_utils.T: self_type}, self.ctx)
+    else:
+      return self_type
 
   def _has_self_type_param(self):
     if not isinstance(self.underlying, SignedFunction):
