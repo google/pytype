@@ -4,7 +4,7 @@ import collections
 import itertools
 import logging
 import re
-from typing import Callable, List, Optional, Set, cast
+from typing import Callable, List, Optional, Set, TypeVar, cast
 
 from pytype import datatypes
 from pytype import module_utils
@@ -17,6 +17,10 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import pytd_visitors
 from pytype.pytd.parse import parser_constants  # pylint: disable=g-importing-member
+
+
+_N = TypeVar("_N", bound=pytd.Node)
+_T = TypeVar("_T", bound=pytd.Type)
 
 
 class ContainerError(Exception):
@@ -1329,6 +1333,114 @@ class AddNamePrefix(Visitor):
     return self._VisitNamedNode(node)
 
   def VisitModule(self, node):
+    return self._VisitNamedNode(node)
+
+
+class RemoveNamePrefix(Visitor):
+  """Visitor which removes the fully-qualified-names added by AddNamePrefix."""
+
+  def __init__(self):
+    super().__init__()
+    self.cls_stack: list[pytd.Class] = []
+    self.classes: set[str] = set()
+    self.prefix = None
+    self.name = None
+
+  def _removeprefix(self, s: str, prefix: str) -> str:
+    """Removes the given prefix from the string, if present."""
+    if not s.startswith(prefix):
+      return s
+    return s[len(prefix) :]
+
+  def _SuperClassString(self) -> str:
+    classes = ".".join(
+        cls.name.rsplit(".", 1)[-1] for cls in self.cls_stack[:-1]
+    )
+    if classes:
+      classes = classes + "."
+    return self.prefix + classes
+
+  def EnterTypeDeclUnit(self, node: pytd.TypeDeclUnit) -> None:
+    self.name = node.name
+    self.prefix = node.name + "."
+    self.classes = {
+        self._removeprefix(cls.name, self._SuperClassString())
+        for cls in node.classes
+    }
+
+  def EnterClass(self, cls: pytd.Class) -> None:
+    self.cls_stack.append(cls)
+
+  def LeaveClass(self, cls: pytd.Class) -> None:
+    assert self.cls_stack[-1] is cls
+    self.cls_stack.pop()
+
+  def VisitClassType(self, node: pytd.ClassType) -> pytd.ClassType:
+    if node.cls is not None:
+      raise ValueError("RemoveNamePrefix visitor called after resolving")
+    return self._VisitType(node)
+
+  def VisitLateType(self, node: pytd.LateType) -> pytd.LateType:
+    return self._VisitType(node)
+
+  def VisitNamedType(self, node: pytd.NamedType) -> pytd.NamedType:
+    return self._VisitType(node)
+
+  def _VisitType(self, node: _T) -> _T:
+    """Unprefix a pytd.Type."""
+    if not node.name:
+      return node
+    name = self._removeprefix(node.name, self.prefix)
+    if name.split(".")[0] in self.classes:
+      # We need to check just the first part, in case we have a class constant
+      # like Foo.BAR, or some similarly nested name.
+      return node.Replace(name=name)
+    if self.cls_stack:
+      name = self._removeprefix(node.name, self._SuperClassString())
+      if name == self.cls_stack[-1].name:
+        # We're referencing a class from within itself.
+        return node.Replace(name=name)
+      elif "." in name:
+        prefix = name.rsplit(".", 1)[0]
+        if prefix == self.cls_stack[-1].name:
+          # The parser leaves aliases to nested classes as
+          # ImmediateOuter.Nested, so we need to preserve the outer class.
+          return node.Replace(name=name)
+    return node
+
+  def VisitClass(self, node: pytd.Class) -> pytd.Class:
+    name = self._removeprefix(node.name, self._SuperClassString())
+    return node.Replace(name=name)
+
+  def VisitTypeParameter(self, node: pytd.TypeParameter) -> pytd.TypeParameter:
+    if not node.scope:
+      return node
+    # If the type parameter's scope was the module name, set it back to its
+    # original value of None.
+    if node.scope == self.name:
+      return node.Replace(scope=None)
+    scope = self._removeprefix(node.scope, self.prefix)
+    return node.Replace(scope=scope)
+
+  def _VisitNamedNode(self, node: _N) -> _N:
+    if self.cls_stack:
+      return node
+    else:
+      # global constant. Rename to its relative name.
+      return node.Replace(
+          name=module_utils.get_relative_name(self.name, node.name)
+      )
+
+  def VisitFunction(self, node: pytd.Function) -> pytd.Function:
+    return self._VisitNamedNode(node)
+
+  def VisitConstant(self, node: pytd.Constant) -> pytd.Constant:
+    return self._VisitNamedNode(node)
+
+  def VisitAlias(self, node: pytd.Alias) -> pytd.Alias:
+    return self._VisitNamedNode(node)
+
+  def VisitModule(self, node: pytd.Module) -> pytd.Module:
     return self._VisitNamedNode(node)
 
 
