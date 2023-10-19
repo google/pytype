@@ -206,17 +206,30 @@ class BoundFunction(_base.BaseValue):
 
     # If the function belongs to `ParameterizedClass`, we will annotate the
     # `self` when do argument matching
-    self.replace_self_annot = None
+    self._self_annot = None
     inst = abstract_utils.get_atomic_value(
         self._callself, default=self.ctx.convert.unsolvable)
-    if self.underlying.should_replace_self_annot():
-      self.replace_self_annot = abstract_utils.get_generic_type(inst)
+    if self.underlying.should_set_self_annot():
+      self._self_annot = abstract_utils.get_generic_type(inst)
+      # TODO(b/224600845): Support typing.Self in generic classes.
+      if not self._self_annot and self._has_self_type_param():
+        # TODO(b/224600845): Support classmethods.
+        self._self_annot = self.ctx.convert.lookup_value("typing", "Self")
     if isinstance(inst, _instance_base.SimpleValue):
       self.alias_map = inst.instance_type_parameters.aliases
     elif isinstance(inst, _typing.TypeParameterInstance):
       self.alias_map = inst.instance.instance_type_parameters.aliases
     else:
       self.alias_map = None
+
+  def _has_self_type_param(self):
+    if not isinstance(self.underlying, SignedFunction):
+      return False
+    for annot in self.underlying.signature.annotations.values():
+      if any(param.full_name == "typing.Self"
+             for param in self.ctx.annotation_utils.get_type_parameters(annot)):
+        return True
+    return False
 
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self
@@ -237,15 +250,15 @@ class BoundFunction(_base.BaseValue):
     if self.argcount(node) >= 0:
       args = args.replace(posargs=(self._callself,) + args.posargs)
     try:
-      if self.replace_self_annot:
-        replace_self_annot = True
+      if self._self_annot:
+        should_set_self_annot = True
       else:
         # If a function is recursively calling itself and has set the `self`
         # annotation for the previous call, we want to clear it for this one.
-        replace_self_annot = (isinstance(self.underlying, SignedFunction) and
-                              self.underlying.has_self_annot)
-      if replace_self_annot:
-        context = self.underlying.set_self_annot(self.replace_self_annot)
+        should_set_self_annot = (isinstance(self.underlying, SignedFunction) and
+                                 self.underlying.has_self_annot)
+      if should_set_self_annot:
+        context = self.underlying.set_self_annot(self._self_annot)
       else:
         context = contextlib.nullcontext()
       with context:

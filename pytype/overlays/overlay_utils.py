@@ -160,7 +160,11 @@ def add_base_class(node, cls, base_cls):
 def not_supported_yet(name, ctx, module, details=None):
   pytd_type = ctx.loader.lookup_pytd(module, name)
   ctx.errorlog.not_supported_yet(ctx.vm.frames, pytd_type.name, details=details)
+  if isinstance(pytd_type, pytd.Alias):
+    type_to_convert = pytd_type.type
+  else:
+    type_to_convert = pytd_type
   try:
-    return ctx.convert.constant_to_value(pytd_type, node=ctx.root_node)
+    return ctx.convert.constant_to_value(type_to_convert, node=ctx.root_node)
   except NotImplementedError:
     return ctx.convert.unsolvable

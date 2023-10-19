@@ -535,7 +535,13 @@ class Converter(utils.ContextWeakrefMixin):
       else:
         context = contextlib.nullcontext()
       with context:
-        value = self._constant_to_value(pyval, subst, get_node)
+        try:
+          value = self._constant_to_value(pyval, subst, get_node)
+        except NotImplementedError:
+          # We delete the cache entry so that future calls still raise
+          # NotImplementedError, rather than reporting a recursion error.
+          del self._convert_cache[key]
+          raise
       if not need_node[0] or node is self.ctx.root_node:
         # Values that contain a non-root node cannot be cached. Otherwise,
         # we'd introduce bugs such as the following:
