@@ -203,6 +203,8 @@ class PrintVisitor(base_visitor.Visitor):
   def _FormatTypeParams(self, type_params):
     formatted_type_params = []
     for t in type_params:
+      if t.full_name == "typing.Self":
+        continue
       args = [f"'{t.name}'"]
       args += [self.Print(c) for c in t.constraints]
       if t.bound:
@@ -290,6 +292,8 @@ class PrintVisitor(base_visitor.Visitor):
     for t in self.old_node.type_params:
       if isinstance(t, pytd.ParamSpec):
         self._FromTyping("ParamSpec")
+      elif t.full_name == "typing.Self":
+        self._imports.add("typing.Self", "Self")
       else:
         self._FromTyping("TypeVar")
     imports = self._imports.to_import_statements()

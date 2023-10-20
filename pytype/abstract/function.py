@@ -137,12 +137,12 @@ class Signature:
   def posonly_params(self):
     return self.param_names[:self.posonly_count]
 
-  def add_scope(self, module):
+  def add_scope(self, cls):
     """Add scope for type parameters in annotations."""
     annotations = {}
     for key, val in self.annotations.items():
       annotations[key] = val.ctx.annotation_utils.add_scope(
-          val, self.excluded_types, module)
+          val, self.excluded_types, cls)
     self.annotations = annotations
 
   def _postprocess_annotation(self, name, annotation):

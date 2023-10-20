@@ -137,8 +137,6 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     return self._first_opcode
 
   def update_method_type_params(self):
-    if not self.template:
-      return
     # For function type parameters check
     methods = []
     # members of self._undecorated_methods that will be ignored for updating

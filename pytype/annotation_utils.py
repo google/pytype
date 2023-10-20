@@ -179,7 +179,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       for _, typ in annot.get_inner_types():
         yield from self.get_late_annotations(typ)
 
-  def add_scope(self, annot, types, module, seen=None):
+  def add_scope(self, annot, types, cls, seen=None):
     """Add scope for type parameters.
 
     In original type class, all type parameters that should be added a scope
@@ -188,7 +188,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     Args:
       annot: The type class.
       types: A type name list that should be added a scope.
-      module: Module name.
+      cls: The class that type parameters should be scoped to.
       seen: Already seen types.
 
     Returns:
@@ -196,16 +196,21 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     """
     if seen is None:
       seen = {annot}
-    elif annot in seen:
+    elif annot in seen or not annot.formal:
       return annot
     else:
       seen.add(annot)
     if isinstance(annot, abstract.TypeParameter):
       if annot.name in types:
-        return annot.with_module(module)
-      return annot
+        return annot.with_module(cls.full_name)
+      elif annot.full_name == "typing.Self":
+        bound_annot = annot.copy()
+        bound_annot.bound = cls
+        return bound_annot
+      else:
+        return annot
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.add_scope(typ, types, module, seen))
+      inner_types = [(key, self.add_scope(typ, types, cls, seen))
                      for key, typ in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot
@@ -221,7 +226,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       seen: A seen set.
     """
     seen = seen or set()
-    if annot in seen:
+    if annot in seen or not annot.formal:
       return []
     if isinstance(annot, mixin.NestedAnnotation):
       # We track parameterized classes to avoid recursion errors when a class
@@ -247,7 +252,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     stack = [val]
     while stack:
       annot = stack.pop()
-      if annot in seen:
+      if annot in seen or not annot.formal:
         continue
       seen.add(annot)
       if annot.full_name == "typing.Callable":

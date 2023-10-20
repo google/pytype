@@ -1272,4 +1272,5 @@ py_test(
     test_typing_self.py
   DEPS
     .test_base
+    pytype.pytd.pytd
 )
