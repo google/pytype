@@ -384,8 +384,8 @@ class YIELD_FROM(Opcode):
   __slots__ = ()
 
 
-# TODO(b/265374890): GET_AWAITABLE gains an argument in Python 3.11, but
-# unconditionally adding the argument causes tests in earlier versions to fail.
+# NOTE: GET_AWAITABLE gains an argument in Python 3.11, but adding the argument
+# here causes tests in earlier versions to fail.
 class GET_AWAITABLE(Opcode):
   __slots__ = ()
 

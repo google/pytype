@@ -356,7 +356,6 @@ class Frame(utils.ContextWeakrefMixin):
     )
 
   def copy_free_vars(self, n):
-    # TODO(b/290796661): Should we be using PasteVariable here instead?
     offset = len(self.cells) - len(self.f_code.freevars)
     for i in range(n):
       self.cells[i + offset] = self.closure[i]

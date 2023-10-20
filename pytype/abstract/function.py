@@ -191,8 +191,7 @@ class Signature:
       c.update(params)
     bare_alias_errors = set()
     for param, count in c.items():
-      if param.name in self.excluded_types:
-        # skip all the type parameters in `excluded_types`
+      if param.full_name == "typing.Self" or param.name in self.excluded_types:
         continue
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):

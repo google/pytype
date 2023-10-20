@@ -357,7 +357,7 @@ class BaseValue(utils.ContextWeakrefMixin):
   def is_late_annotation(self):
     return False
 
-  def should_replace_self_annot(self):
+  def should_set_self_annot(self):
     # To do argument matching for custom generic classes, the 'self' annotation
     # needs to be replaced with a generic type.
 

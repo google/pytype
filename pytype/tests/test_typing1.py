@@ -479,24 +479,24 @@ class NotSupportedYetTest(test_base.BaseTest):
         |
         -> Yes: Do not log any errors.
 
-  These tests currently use Self (added in 3.11) as the unsupported
+  These tests currently use TypeVarTuple (added in 3.11) as the unsupported
   construct and Final (added in 3.8) as the supported construct. Replace them as
   needed as pytype's supported features and runtime versions change.
   """
 
   def test_unsupported_extension(self):
     errors = self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet[e]
+      from typing_extensions import TypeVarTuple  # not-supported-yet[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"typing_extensions.Self not supported yet$"})
+        errors, {"e": r"typing_extensions.TypeVarTuple not supported yet$"})
 
   def test_unsupported_construct(self):
     errors = self.CheckWithErrors("""
-      from typing import Self  # not-supported-yet[e]
+      from typing import TypeVarTuple  # not-supported-yet[e]
     """)
     self.assertErrorRegexes(
-        errors, {"e": r"typing.Self not supported yet$"})
+        errors, {"e": r"typing.TypeVarTuple not supported yet$"})
 
   def test_supported_extension(self):
     self.Check("""

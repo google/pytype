@@ -3174,8 +3174,6 @@ class VirtualMachine:
     del op
     return state.pop_and_discard()
 
-  # TODO(b/265374890): Implement these Python 3.11 opcodes.
-
   def byte_CACHE(self, state, op):
     # No stack or type effects
     del op
@@ -3191,7 +3189,7 @@ class VirtualMachine:
   def byte_PUSH_EXC_INFO(self, state, op):
     del op
     state, top = state.pop()
-    exc = self.ctx.new_unsolvable(state.node)  # TODO(b/265374890)
+    exc = self.ctx.new_unsolvable(state.node)
     state = state.push(exc)
     return state.push(top)
 

@@ -952,6 +952,160 @@ class TestVisitors(parser_test_base.ParserTest):
         """).strip())
 
 
+class RemoveNamePrefixTest(parser_test_base.ParserTest):
+  """Tests for RemoveNamePrefix."""
+
+  def test_remove_name_prefix(self):
+    src = textwrap.dedent("""
+      from typing import TypeVar
+      def f(a: T) -> T: ...
+      T = TypeVar("T")
+      class X(Generic[T]):
+        pass
+    """)
+    expected = textwrap.dedent("""
+      from typing import TypeVar
+
+      T = TypeVar('T')
+
+      class X(Generic[T]): ...
+
+      def f(a: T) -> T: ...
+    """).strip()
+    tree = self.Parse(src)
+
+    # type parameters
+    t = tree.Lookup("T").Replace(scope="foo")
+
+    # classes
+    x = tree.Lookup("X")
+    x_template = x.template[0]
+    x_type_param = x_template.type_param.Replace(scope="foo.X")
+    x_template = x_template.Replace(type_param=x_type_param)
+    x = x.Replace(name="foo.X", template=(x_template,))
+
+    # functions
+    f = tree.Lookup("f")
+    f_sig = f.signatures[0]
+    f_param = f_sig.params[0]
+    f_type_param = f_param.type.Replace(scope="foo.f")
+    f_param = f_param.Replace(type=f_type_param)
+    f_template = f_sig.template[0].Replace(type_param=f_type_param)
+    f_sig = f_sig.Replace(
+        params=(f_param,), return_type=f_type_param, template=(f_template,)
+    )
+    f = f.Replace(name="foo.f", signatures=(f_sig,))
+
+    tree = tree.Replace(
+        classes=(x,), functions=(f,), type_params=(t,), name="foo"
+    )
+    tree = tree.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(expected, pytd_utils.Print(tree))
+
+  def test_remove_name_prefix_twice(self):
+    src = textwrap.dedent("""
+      from typing import Any, TypeVar
+      x = ...  # type: Any
+      T = TypeVar("T")
+      class X(Generic[T]): ...
+    """)
+    expected_one = textwrap.dedent("""
+      from typing import Any, TypeVar
+
+      foo.x: Any
+
+      T = TypeVar('T')
+
+      class foo.X(Generic[T]): ...
+    """).strip()
+    expected_two = textwrap.dedent("""
+      from typing import Any, TypeVar
+
+      x: Any
+
+      T = TypeVar('T')
+
+      class X(Generic[T]): ...
+    """).strip()
+    tree = self.Parse(src)
+
+    # constants
+    x = tree.Lookup("x").Replace(name="foo.foo.x")
+
+    # type parameters
+    t = tree.Lookup("T").Replace(scope="foo.foo")
+
+    # classes
+    x_cls = tree.Lookup("X")
+    x_template = x_cls.template[0]
+    x_type_param = x_template.type_param.Replace(scope="foo.foo.X")
+    x_template = x_template.Replace(type_param=x_type_param)
+    x_cls = x_cls.Replace(name="foo.foo.X", template=(x_template,))
+
+    tree = tree.Replace(
+        classes=(x_cls,), constants=(x,), type_params=(t,), name="foo"
+    )
+    tree = tree.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(expected_one, pytd_utils.Print(tree))
+    tree = tree.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(expected_two, pytd_utils.Print(tree))
+
+  def test_remove_name_prefix_on_class_type(self):
+    src = textwrap.dedent("""
+        x = ...  # type: y
+        class Y: ...
+    """)
+    expected = textwrap.dedent("""
+        x: Y
+
+        class Y: ...
+    """).strip()
+    tree = self.Parse(src)
+
+    # constants
+    x = tree.Lookup("x").Replace(name="foo.x", type=pytd.ClassType("foo.Y"))
+
+    # classes
+    y = tree.Lookup("Y").Replace(name="foo.Y")
+
+    tree = tree.Replace(classes=(y,), constants=(x,), name="foo")
+    tree = tree.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(expected, pytd_utils.Print(tree))
+
+  def test_remove_name_prefix_on_nested_class(self):
+    src = textwrap.dedent("""
+      class A:
+        class B:
+          class C: ...
+          D = A.B.C
+    """)
+    expected = textwrap.dedent("""
+      from typing import Type
+
+      class A:
+          class B:
+              class C: ...
+              D: Type[A.B.C]
+    """).strip()
+    tree = self.Parse(src)
+
+    # classes
+    a = tree.Lookup("A")
+    b = a.Lookup("B")
+    c = b.Lookup("C").Replace(name="foo.A.B.C")
+    d = b.Lookup("D")
+    d_type = d.type
+    d_generic = d.type.parameters[0].Replace(name="foo.A.B.C")
+    d_type = d_type.Replace(parameters=(d_generic,))
+    d = d.Replace(type=d_type)
+    b = b.Replace(classes=(c,), constants=(d,), name="foo.A.B")
+    a = a.Replace(classes=(b,), name="foo.A")
+
+    tree = tree.Replace(classes=(a,), name="foo")
+    tree = tree.Visit(visitors.RemoveNamePrefix())
+    self.assertMultiLineEqual(expected, pytd_utils.Print(tree))
+
+
 class ReplaceModulesWithAnyTest(unittest.TestCase):
 
   def test_any_replacement(self):

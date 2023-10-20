@@ -639,7 +639,7 @@ class PropertyInstance(abstract.Function, mixin.HasSlots):
     with contextlib.ExitStack() as stack:
       if generic:
         for f in self.fget.data:
-          if f.should_replace_self_annot():
+          if f.should_set_self_annot():
             stack.enter_context(f.set_self_annot(t))
       return function.call_function(self.ctx, node, self.fget,
                                     function.Args((obj,)))
