@@ -11,8 +11,8 @@ class SelfTest(test_base.BaseTest):
   """Tests for typing.Self."""
 
   def test_instance_method_return(self):
-    self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet
+    self.Check("""
+      from typing_extensions import Self
       class A:
         def f(self) -> Self:
           return self
@@ -23,9 +23,9 @@ class SelfTest(test_base.BaseTest):
     """)
 
   def test_parameterized_return(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import List
-      from typing_extensions import Self  # not-supported-yet
+      from typing_extensions import Self
       class A:
         def f(self) -> List[Self]:
           return [self]
@@ -37,7 +37,7 @@ class SelfTest(test_base.BaseTest):
 
   def test_parameter(self):
     errors = self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet
+      from typing_extensions import Self
       class A:
         def f(self, other: Self) -> bool:
           return False
@@ -50,8 +50,8 @@ class SelfTest(test_base.BaseTest):
         errors, {"e": ["Expected", "B", "Actual", "int"]})
 
   def test_nested_class(self):
-    self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet
+    self.Check("""
+      from typing_extensions import Self
       class A:
         class B:
           def f(self) -> Self:
@@ -64,8 +64,8 @@ class SelfTest(test_base.BaseTest):
 
   @test_utils.skipBeforePy((3, 11), "typing.Self is new in 3.11")
   def test_import_from_typing(self):
-    self.CheckWithErrors("""
-      from typing import Self  # not-supported-yet
+    self.Check("""
+      from typing import Self
       class A:
         def f(self) -> Self:
           return self
@@ -76,8 +76,8 @@ class SelfTest(test_base.BaseTest):
     """)
 
   def test_classmethod(self):
-    self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet
+    self.Check("""
+      from typing_extensions import Self
       class A:
         @classmethod
         def build(cls) -> Self:
@@ -89,8 +89,8 @@ class SelfTest(test_base.BaseTest):
     """)
 
   def test_new(self):
-    self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet
+    self.Check("""
+      from typing_extensions import Self
       class A:
         def __new__(cls) -> Self:
           return super().__new__(cls)
@@ -101,9 +101,9 @@ class SelfTest(test_base.BaseTest):
     """)
 
   def test_generic_class(self):
-    self.CheckWithErrors("""
+    self.Check("""
       from typing import Generic, TypeVar
-      from typing_extensions import Self  # not-supported-yet
+      from typing_extensions import Self
       T = TypeVar('T')
       class A(Generic[T]):
         def copy(self) -> Self:
@@ -122,7 +122,7 @@ class SelfTest(test_base.BaseTest):
     #   `Foo` or any of `Foo`'s subclasses.
     self.CheckWithErrors("""
       from typing import Protocol, TypeVar
-      from typing_extensions import Self  # not-supported-yet
+      from typing_extensions import Self
       T = TypeVar('T')
       class MyProtocol(Protocol[T]):
         def f(self) -> Self:
@@ -150,7 +150,7 @@ class SelfTest(test_base.BaseTest):
   def test_protocol_classmethod(self):
     self.CheckWithErrors("""
       from typing import Protocol, TypeVar
-      from typing_extensions import Self  # not-supported-yet
+      from typing_extensions import Self
       T = TypeVar('T')
       class MyProtocol(Protocol[T]):
         @classmethod
@@ -172,7 +172,7 @@ class SelfTest(test_base.BaseTest):
 
   def test_signature_mismatch(self):
     self.CheckWithErrors("""
-      from typing_extensions import Self  # not-supported-yet
+      from typing_extensions import Self
       class Foo:
         def f(self) -> Self:
           return self
@@ -338,8 +338,8 @@ class SelfReingestTest(test_base.BaseTest):
   """Tests for outputting typing.Self to a stub and reading the stub back in."""
 
   def test_output(self):
-    ty, _ = self.InferWithErrors("""
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+    ty = self.Infer("""
+      from typing_extensions import Self
       class A:
         def f(self) -> Self:
           return self
@@ -356,7 +356,7 @@ class SelfReingestTest(test_base.BaseTest):
 
   def test_instance_method_return(self):
     with self.DepTree([("foo.py", """
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         def f(self) -> Self:
           return self
@@ -372,7 +372,7 @@ class SelfReingestTest(test_base.BaseTest):
   def test_parameterized_return(self):
     with self.DepTree([("foo.py", """
       from typing import List
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         def f(self) -> List[Self]:
           return [self]
@@ -387,7 +387,7 @@ class SelfReingestTest(test_base.BaseTest):
 
   def test_parameter(self):
     with self.DepTree([("foo.py", """
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         def f(self, other: Self) -> bool:
           return False
@@ -404,7 +404,7 @@ class SelfReingestTest(test_base.BaseTest):
 
   def test_nested_class(self):
     with self.DepTree([("foo.py", """
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         class B:
           def f(self) -> Self:
@@ -421,7 +421,7 @@ class SelfReingestTest(test_base.BaseTest):
   @test_utils.skipBeforePy((3, 11), "typing.Self is new in 3.11")
   def test_import_from_typing(self):
     with self.DepTree([("foo.py", """
-      from typing import Self  # pytype: disable=not-supported-yet
+      from typing import Self
       class A:
         def f(self) -> Self:
           return self
@@ -436,7 +436,7 @@ class SelfReingestTest(test_base.BaseTest):
 
   def test_classmethod(self):
     with self.DepTree([("foo.py", """
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         @classmethod
         def build(cls) -> Self:
@@ -452,7 +452,7 @@ class SelfReingestTest(test_base.BaseTest):
 
   def test_new(self):
     with self.DepTree([("foo.py", """
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         def __new__(cls) -> Self:
           return super().__new__(cls)
@@ -468,7 +468,7 @@ class SelfReingestTest(test_base.BaseTest):
   def test_generic_class(self):
     with self.DepTree([("foo.py", """
       from typing import Generic, TypeVar
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       T = TypeVar('T')
       class A(Generic[T]):
         def copy(self) -> Self:
@@ -487,7 +487,7 @@ class SelfReingestTest(test_base.BaseTest):
   def test_protocol(self):
     with self.DepTree([("foo.py", """
       from typing import Protocol, TypeVar
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       T = TypeVar('T')
       class MyProtocol(Protocol[T]):
         def f(self) -> Self:
@@ -495,7 +495,7 @@ class SelfReingestTest(test_base.BaseTest):
     """)]):
       self.CheckWithErrors("""
         import foo
-        from typing_extensions import Self  # not-supported-yet
+        from typing_extensions import Self
         class Ok:
           def f(self) -> Self:
             return self
@@ -510,7 +510,7 @@ class SelfReingestTest(test_base.BaseTest):
 
   def test_signature_mismatch(self):
     with self.DepTree([("foo.py", """
-      from typing_extensions import Self  # pytype: disable=not-supported-yet
+      from typing_extensions import Self
       class A:
         def f(self) -> Self:
           return self
@@ -524,6 +524,36 @@ class SelfReingestTest(test_base.BaseTest):
           def f(self) -> int:  # signature-mismatch
             return 0
       """)
+
+
+class IllegalLocationTest(test_base.BaseTest):
+  """Tests for typing.Self in illegal locations."""
+
+  def test_function_annotation_not_in_class(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Self
+      def f(x) -> Self:  # invalid-annotation[e]
+        return x
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["'typing.Self' outside of a class"]})
+
+  def test_variable_annotation(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Self
+      class C:
+        x: Self  # not-supported-yet
+        y = ...  # type: Self  # not-supported-yet
+    """)
+
+  def test_variable_annotation_not_in_class(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import Self
+      x: Self  # invalid-annotation[e1]
+      y = ...  # type: Self  # invalid-annotation[e2]
+    """)
+    self.assertErrorSequences(errors, {"e1": ["'Self' not in scope"],
+                                       "e2": ["'Self' not in scope"]})
 
 
 if __name__ == "__main__":

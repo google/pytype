@@ -436,23 +436,38 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         if not allowed_type_params.intersection([x.name, x.full_name]):
           illegal_params.append(x.name)
       if illegal_params:
-        details = "TypeVar(s) %s not in scope" % ", ".join(
-            repr(p) for p in utils.unique_list(illegal_params))
-        if self.ctx.vm.frame.func:
-          method = self.ctx.vm.frame.func.data
-          if isinstance(method, abstract.BoundFunction):
-            desc = "class"
-            frame_name = method.name.rsplit(".", 1)[0]
-          else:
-            desc = "class" if method.is_class_builder else "method"
-            frame_name = method.name
-          details += f" for {desc} {frame_name!r}"
-        if "AnyStr" in illegal_params:
-          str_type = "Union[str, bytes]"
-          details += (f"\nNote: For all string types, use {str_type}.")
-        self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
+        self._log_illegal_params(illegal_params, stack, typ, name)
         return self.ctx.convert.unsolvable
     return typ
+
+  def _log_illegal_params(self, illegal_params, stack, typ, name):
+    if self.ctx.vm.frame.func:
+      method = self.ctx.vm.frame.func.data
+      if isinstance(method, abstract.BoundFunction):
+        desc = "class"
+        frame_name = method.name.rsplit(".", 1)[0]
+      else:
+        desc = "class" if method.is_class_builder else "method"
+        frame_name = method.name
+    else:
+      desc, frame_name = None, None
+    out_of_scope_params = []
+    for param in utils.unique_list(illegal_params):
+      if param == "Self" and desc == "class":
+        self.ctx.errorlog.not_supported_yet(
+            stack, "Using typing.Self in a variable annotation")
+      else:
+        out_of_scope_params.append(param)
+    if not out_of_scope_params:
+      return
+    details = "TypeVar(s) %s not in scope" % ", ".join(
+        repr(p) for p in out_of_scope_params)
+    if desc:
+      details += f" for {desc} {frame_name!r}"
+    if "AnyStr" in out_of_scope_params:
+      str_type = "Union[str, bytes]"
+      details += (f"\nNote: For all string types, use {str_type}.")
+    self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""
