@@ -202,7 +202,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       seen.add(annot)
     if isinstance(annot, abstract.TypeParameter):
       if annot.name in types:
-        return annot.with_module(cls.full_name)
+        return annot.with_scope(cls.full_name)
       elif annot.full_name == "typing.Self":
         bound_annot = annot.copy()
         bound_annot.bound = cls
@@ -344,7 +344,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           for cls in v_cls.mro:
             if cls.name == defining_cls_name:
               # Normalize type parameter names by dropping the scope.
-              type_params.extend(p.with_module(None) for p in cls.template)
+              type_params.extend(p.with_scope(None) for p in cls.template)
               defining_classes.append(cls)
               break
         self_substs = tuple(

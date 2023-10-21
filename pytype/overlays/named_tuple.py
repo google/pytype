@@ -541,7 +541,7 @@ class NamedTupleClass(abstract.InterpreterClass):
       cls = ival.cls
       long = cls.full_name
       for t in cls.template:
-        short = t.module
+        short = t.scope
         param = t.name
         ival.instance_type_parameters.add_alias(
             f"{short}.{param}", f"{long}.{param}", lambda x, y, z: x or y)

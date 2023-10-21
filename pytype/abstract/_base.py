@@ -442,7 +442,7 @@ def _compute_template(val: Any):
             val, "Cannot inherit from Generic[...] multiple times")
       for item in base.template:
         param = base.formal_type_parameters.get(item.name)
-        template.append(param.with_module(val.full_name))
+        template.append(param.with_scope(val.full_name))
 
   if template:
     # All type parameters in the base classes should appear in
@@ -453,7 +453,7 @@ def _compute_template(val: Any):
           for item in base.template:
             param = base.formal_type_parameters.get(item.name)
             if _isinstance(base, "TypeParameter"):
-              t = param.with_module(val.full_name)
+              t = param.with_scope(val.full_name)
               if t not in template:
                 raise abstract_utils.GenericTypeError(
                     val, "Generic should contain all the type variables")
@@ -466,7 +466,7 @@ def _compute_template(val: Any):
         for item in base.template:
           param = base.formal_type_parameters.get(item.name)
           if _isinstance(param, "TypeParameter"):
-            seq.append(param.with_module(val.full_name))
+            seq.append(param.with_scope(val.full_name))
         seqs.append(seq)
     try:
       template.extend(mro.MergeSequences(seqs))
