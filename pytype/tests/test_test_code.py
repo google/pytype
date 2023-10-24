@@ -62,8 +62,23 @@ class AssertionTest(test_base.BaseTest):
           assert_type(x, str)
     """)
 
+  def test_narrowed_type_from_assert_isinstance(self):
+    # assertIsInstance should narrow the original var's bindings if possible.
+    self.Check("""
+      import unittest
+      from typing import Union
+      class A:
+        pass
+      class B(A):
+        pass
+      class FooTest(unittest.TestCase):
+        def test_foo(self, x: Union[A, B, int]):
+          self.assertIsInstance(x, A)
+          assert_type(x, Union[A, B])
+    """)
+
   def test_new_type_from_assert_isinstance(self):
-    # assertIsInstance should create a var with a new type even if it is not in
+    # assertIsInstance should create a var with a new type if it is not in
     # the original var's bindings.
     self.Check("""
       import unittest
