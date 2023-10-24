@@ -272,7 +272,7 @@ class AnnotationContainer(AnnotationClass):
       # usually, the parameterized class inherits the base class's template.
       # Protocol[T, ...] is a shorthand for Protocol, Generic[T, ...].
       template_params = [
-          param.with_module(base_cls.full_name)
+          param.with_scope(base_cls.full_name)
           for param in typing.cast(Tuple[TypeParameter, ...], processed_inner)]
     else:
       template_params = None
@@ -348,7 +348,11 @@ class _TypeVariableInstance(_base.BaseValue):
     super().__init__(param.name, ctx)
     self.cls = self.param = param
     self.instance = instance
-    self.module = param.module
+    self.scope = param.scope
+
+  @property
+  def full_name(self):
+    return f"{self.scope}.{self.name}" if self.scope else self.name
 
   def call(self, node, func, args, alias_map=None):
     var = self.instance.get_instance_type_parameter(self.name)
@@ -391,7 +395,7 @@ class _TypeVariable(_base.BaseValue):
                bound=None,
                covariant=False,
                contravariant=False,
-               module=None):
+               scope=None):
     super().__init__(name, ctx)
     # TODO(b/217789659): PEP-612 does not mention constraints, but ParamSpecs
     # ignore all the extra parameters anyway..
@@ -399,18 +403,27 @@ class _TypeVariable(_base.BaseValue):
     self.bound = bound
     self.covariant = covariant
     self.contravariant = contravariant
-    self.module = module
+    self.scope = scope
+
+  @_base.BaseValue.module.setter
+  def module(self, module):
+    super(_TypeVariable, _TypeVariable).module.fset(self, module)
+    self.scope = module
+
+  @property
+  def full_name(self):
+    return f"{self.scope}.{self.name}" if self.scope else self.name
 
   def is_generic(self):
     return not self.constraints and not self.bound
 
   def copy(self):
     return self.__class__(self.name, self.ctx, self.constraints, self.bound,
-                          self.covariant, self.contravariant, self.module)
+                          self.covariant, self.contravariant, self.scope)
 
-  def with_module(self, module):
+  def with_scope(self, scope):
     res = self.copy()
-    res.module = module
+    res.scope = scope
     return res
 
   def __eq__(self, other):
@@ -420,7 +433,7 @@ class _TypeVariable(_base.BaseValue):
               self.bound == other.bound and
               self.covariant == other.covariant and
               self.contravariant == other.contravariant and
-              self.module == other.module)
+              self.scope == other.scope)
     return NotImplemented
 
   def __ne__(self, other):
@@ -433,7 +446,7 @@ class _TypeVariable(_base.BaseValue):
   def __repr__(self):
     return ("{!s}({!r}, constraints={!r}, bound={!r}, module={!r})"
             .format(self.__class__.__name__, self.name, self.constraints,
-                    self.bound, self.module))
+                    self.bound, self.scope))
 
   def instantiate(self, node, container=None):
     var = self.ctx.program.NewVariable()

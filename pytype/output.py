@@ -271,7 +271,7 @@ class Converter(utils.ContextWeakrefMixin):
       return pytd.AnythingType()
 
   def _type_variable_to_pytd_type(self, node, v, seen, view):
-    if (v.module in self._scopes or
+    if (v.scope in self._scopes or
         isinstance(v.instance, abstract_utils.DummyContainer)):
       if isinstance(v, abstract.TYPE_VARIABLE_INSTANCES):
         return self._type_variable_to_def(node, v.param, v.param.name)

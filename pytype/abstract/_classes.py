@@ -137,8 +137,6 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     return self._first_opcode
 
   def update_method_type_params(self):
-    if not self.template:
-      return
     # For function type parameters check
     methods = []
     # members of self._undecorated_methods that will be ignored for updating
@@ -168,7 +166,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       # in current generic class
       inner_cls_types = self.collect_inner_cls_types()
       for cls, item in inner_cls_types:
-        nitem = item.with_module(self.full_name)
+        nitem = item.with_scope(self.full_name)
         if nitem in self.template:
           raise abstract_utils.GenericTypeError(
               self, ("Generic class [%s] and its nested generic class [%s] "
@@ -189,7 +187,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
         mbr = abstract_utils.get_atomic_value(
             mbr, default=self.ctx.convert.unsolvable)
         if isinstance(mbr, InterpreterClass) and mbr.template:
-          templates.update([(mbr, item.with_module(None))
+          templates.update([(mbr, item.with_scope(None))
                             for item in mbr.template])
           templates.update(mbr.collect_inner_cls_types(max_depth - 1))
     return templates

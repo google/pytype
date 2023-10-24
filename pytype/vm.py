@@ -3021,12 +3021,27 @@ class VirtualMachine:
     return self._store_new_var_in_local(state, var, out)
 
   def _set_type_from_assert_isinstance(self, state, var, class_spec):
+    """Set type of var from an assertIsInstance(var, class_spec) call."""
     # TODO(mdemello): If we want to cast var to typ via an assertion, should
-    # we check that at least one binding of var is compatible with typ?
+    # we require that at least one binding of var is compatible with typ?
     classes = []
     abstract_utils.flatten(class_spec, classes)
+    ret = []
+    # First try to narrow `var` based on `classes`.
+    for c in classes:
+      m = self.ctx.matcher(state.node).compute_one_match(
+          var, c, keep_all_views=True, match_all_views=False)
+      if m.success:
+        for matched in m.good_matches:
+          d = matched.view[var]
+          if isinstance(d.data, abstract.Instance):
+            ret.append(d.data.cls)
+
+    # If we don't have bindings from `classes` in `var`, instantiate the
+    # original class spec.
+    ret = ret or classes
     instance = self.init_class(
-        state.node, self.ctx.convert.merge_values(classes))
+        state.node, self.ctx.convert.merge_values(ret))
     return self._store_new_var_in_local(state, var, instance)
 
   def _check_test_assert(self, state, func, args):

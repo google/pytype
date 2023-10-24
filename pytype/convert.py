@@ -834,7 +834,7 @@ class Converter(utils.ContextWeakrefMixin):
           self.ctx,
           constraints=constraints,
           bound=bound,
-          module=pyval.scope)
+          scope=pyval.scope)
     elif isinstance(pyval, (pytd.ParamSpecArgs, pytd.ParamSpecKwargs)):
       # TODO(b/217789659): Support these.
       return self.unsolvable

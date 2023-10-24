@@ -219,23 +219,23 @@ class BoundFunction(_base.BaseValue):
       self.alias_map = None
 
   def _get_self_annot(self, callself):
-    if not self._has_self_type_param():
+    self_type = self._get_self_type_param()
+    if not self_type:
       return abstract_utils.get_generic_type(callself)
-    self_type = self.ctx.convert.lookup_value("typing", "Self")
     if "classmethod" in self.underlying.decorators:
       return _classes.ParameterizedClass(
           self.ctx.convert.type_type, {abstract_utils.T: self_type}, self.ctx)
     else:
       return self_type
 
-  def _has_self_type_param(self):
+  def _get_self_type_param(self):
     if not isinstance(self.underlying, SignedFunction):
-      return False
+      return None
     for annot in self.underlying.signature.annotations.values():
-      if any(param.full_name == "typing.Self"
-             for param in self.ctx.annotation_utils.get_type_parameters(annot)):
-        return True
-    return False
+      for param in self.ctx.annotation_utils.get_type_parameters(annot):
+        if param.full_name == "typing.Self":
+          return param
+    return None
 
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self
@@ -666,7 +666,7 @@ class SignedFunction(Function):
   def update_signature_scope(self, cls):
     self.signature.excluded_types.update(
         [t.name for t in cls.template])
-    self.signature.add_scope(cls.full_name)
+    self.signature.add_scope(cls)
 
 
 class SimpleFunction(SignedFunction):

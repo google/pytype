@@ -137,12 +137,12 @@ class Signature:
   def posonly_params(self):
     return self.param_names[:self.posonly_count]
 
-  def add_scope(self, module):
+  def add_scope(self, cls):
     """Add scope for type parameters in annotations."""
     annotations = {}
     for key, val in self.annotations.items():
       annotations[key] = val.ctx.annotation_utils.add_scope(
-          val, self.excluded_types, module)
+          val, self.excluded_types, cls)
     self.annotations = annotations
 
   def _postprocess_annotation(self, name, annotation):
@@ -164,8 +164,8 @@ class Signature:
   def del_annotation(self, name):
     del self.annotations[name]  # Raises KeyError if annotation does not exist.
 
-  def check_type_parameter_count(self, stack, opcode):
-    """Check the count of type parameters in function."""
+  def check_type_parameters(self, stack, opcode, is_attribute_of_class):
+    """Check type parameters in function."""
     if not self.annotations:
       return
     c = collections.Counter()
@@ -191,7 +191,12 @@ class Signature:
       c.update(params)
     bare_alias_errors = set()
     for param, count in c.items():
-      if param.full_name == "typing.Self" or param.name in self.excluded_types:
+      if param.name in self.excluded_types:
+        continue
+      if param.full_name == "typing.Self":
+        if not is_attribute_of_class and not self.name.endswith(".__new__"):
+          ctx.errorlog.invalid_annotation(
+              stack, param, "Cannot use 'typing.Self' outside of a class")
         continue
       if count == 1 and not (param.constraints or param.bound or
                              param.covariant or param.contravariant):

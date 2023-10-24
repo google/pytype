@@ -179,7 +179,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       for _, typ in annot.get_inner_types():
         yield from self.get_late_annotations(typ)
 
-  def add_scope(self, annot, types, module, seen=None):
+  def add_scope(self, annot, types, cls, seen=None):
     """Add scope for type parameters.
 
     In original type class, all type parameters that should be added a scope
@@ -188,7 +188,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     Args:
       annot: The type class.
       types: A type name list that should be added a scope.
-      module: Module name.
+      cls: The class that type parameters should be scoped to.
       seen: Already seen types.
 
     Returns:
@@ -196,16 +196,21 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     """
     if seen is None:
       seen = {annot}
-    elif annot in seen:
+    elif annot in seen or not annot.formal:
       return annot
     else:
       seen.add(annot)
     if isinstance(annot, abstract.TypeParameter):
       if annot.name in types:
-        return annot.with_module(module)
-      return annot
+        return annot.with_scope(cls.full_name)
+      elif annot.full_name == "typing.Self":
+        bound_annot = annot.copy()
+        bound_annot.bound = cls
+        return bound_annot
+      else:
+        return annot
     elif isinstance(annot, mixin.NestedAnnotation):
-      inner_types = [(key, self.add_scope(typ, types, module, seen))
+      inner_types = [(key, self.add_scope(typ, types, cls, seen))
                      for key, typ in annot.get_inner_types()]
       return annot.replace(inner_types)
     return annot
@@ -221,7 +226,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       seen: A seen set.
     """
     seen = seen or set()
-    if annot in seen:
+    if annot in seen or not annot.formal:
       return []
     if isinstance(annot, mixin.NestedAnnotation):
       # We track parameterized classes to avoid recursion errors when a class
@@ -247,7 +252,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     stack = [val]
     while stack:
       annot = stack.pop()
-      if annot in seen:
+      if annot in seen or not annot.formal:
         continue
       seen.add(annot)
       if annot.full_name == "typing.Callable":
@@ -339,7 +344,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
           for cls in v_cls.mro:
             if cls.name == defining_cls_name:
               # Normalize type parameter names by dropping the scope.
-              type_params.extend(p.with_module(None) for p in cls.template)
+              type_params.extend(p.with_scope(None) for p in cls.template)
               defining_classes.append(cls)
               break
         self_substs = tuple(
@@ -431,23 +436,38 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         if not allowed_type_params.intersection([x.name, x.full_name]):
           illegal_params.append(x.name)
       if illegal_params:
-        details = "TypeVar(s) %s not in scope" % ", ".join(
-            repr(p) for p in utils.unique_list(illegal_params))
-        if self.ctx.vm.frame.func:
-          method = self.ctx.vm.frame.func.data
-          if isinstance(method, abstract.BoundFunction):
-            desc = "class"
-            frame_name = method.name.rsplit(".", 1)[0]
-          else:
-            desc = "class" if method.is_class_builder else "method"
-            frame_name = method.name
-          details += f" for {desc} {frame_name!r}"
-        if "AnyStr" in illegal_params:
-          str_type = "Union[str, bytes]"
-          details += (f"\nNote: For all string types, use {str_type}.")
-        self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
+        self._log_illegal_params(illegal_params, stack, typ, name)
         return self.ctx.convert.unsolvable
     return typ
+
+  def _log_illegal_params(self, illegal_params, stack, typ, name):
+    if self.ctx.vm.frame.func:
+      method = self.ctx.vm.frame.func.data
+      if isinstance(method, abstract.BoundFunction):
+        desc = "class"
+        frame_name = method.name.rsplit(".", 1)[0]
+      else:
+        desc = "class" if method.is_class_builder else "method"
+        frame_name = method.name
+    else:
+      desc, frame_name = None, None
+    out_of_scope_params = []
+    for param in utils.unique_list(illegal_params):
+      if param == "Self" and desc == "class":
+        self.ctx.errorlog.not_supported_yet(
+            stack, "Using typing.Self in a variable annotation")
+      else:
+        out_of_scope_params.append(param)
+    if not out_of_scope_params:
+      return
+    details = "TypeVar(s) %s not in scope" % ", ".join(
+        repr(p) for p in out_of_scope_params)
+    if desc:
+      details += f" for {desc} {frame_name!r}"
+    if "AnyStr" in out_of_scope_params:
+      str_type = "Union[str, bytes]"
+      details += (f"\nNote: For all string types, use {str_type}.")
+    self.ctx.errorlog.invalid_annotation(stack, typ, details, name)
 
   def eval_multi_arg_annotation(self, node, func, annot, stack):
     """Evaluate annotation for multiple arguments (from a type comment)."""

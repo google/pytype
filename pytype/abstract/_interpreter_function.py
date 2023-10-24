@@ -267,7 +267,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     all_type_parameters = []
     for annot in self.signature.annotations.values():
       params = self.ctx.annotation_utils.get_type_parameters(annot)
-      all_type_parameters.extend(itm.with_module(None) for itm in params)
+      all_type_parameters.extend(itm.with_scope(None) for itm in params)
 
     if all_type_parameters:
       for key, value in last_frame.f_locals.pyval.items():
@@ -277,7 +277,7 @@ class InterpreterFunction(_function_base.SignedFunction):
             key == value.name):
           # `value` is a nested class definition.
           inner_cls_types = value.collect_inner_cls_types()
-          inner_cls_types.update([(value, item.with_module(None))
+          inner_cls_types.update([(value, item.with_scope(None))
                                   for item in value.template])
           # Report errors in a deterministic order.
           for cls, item in sorted(inner_cls_types, key=lambda typ: typ[1].name):

@@ -1,3 +1,14 @@
+Version 2023.10.24:
+
+Updates:
+* Add support for typing.Self in method type annotations.
+
+Bug fixes:
+* Support pattern matching against a tuple of match variables.
+* Fix crash caused by use of a recursive type in a callable.
+* When setting a type from assertIsInstance narrow the original type if
+  possible.
+
 Version 2023.10.17:
 
 Updates:

@@ -528,8 +528,8 @@ class CallTracer(vm.VirtualMachine):
         if self._should_analyze_as_interpreter_function(value.data):
           node = self.analyze_function(node, value)
     for func, opcode in self.functions_type_params_check:
-      func.signature.check_type_parameter_count(
-          self.simple_stack(opcode), opcode)
+      func.signature.check_type_parameters(
+          self.simple_stack(opcode), opcode, func.is_attribute_of_class)
     return node
 
   def analyze(self, node, defs, maximum_depth):

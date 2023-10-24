@@ -619,13 +619,19 @@ def get_re_builder(member):
   return build_re_member
 
 
+def build_self(ctx, module):
+  pyval = ctx.loader.lookup_pytd(module, "Self")
+  if isinstance(pyval, pytd.Alias):
+    pyval = pyval.type
+  return ctx.convert.constant_to_value(pyval)
+
+
 # name -> lowest_supported_version
 _unsupported_members = {
     "LiteralString": (3, 11),
     "Never": (3, 11),
     "Required": (3, 11),
     "NotRequired": (3, 11),
-    "Self": (3, 11),
     "TypeVarTuple": (3, 11),
     "Unpack": (3, 11),
     "assert_never": (3, 11),
@@ -654,6 +660,7 @@ typing_overlay = {
     "Optional": (_builder("Optional", Optional), None),
     "ParamSpec": (ParamSpec.make, (3, 10)),
     "Pattern": (get_re_builder("Pattern"), None),
+    "Self": (build_self, (3, 11)),
     "Tuple": (_builder("Tuple", Tuple), None),
     "TypeGuard": (_builder_from_name("TypeGuard"), (3, 10)),
     "TypeVar": (TypeVar.make, None),
