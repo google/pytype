@@ -184,6 +184,78 @@ class SelfTest(test_base.BaseTest):
           return 0
     """)
 
+  def test_class_attribute(self):
+    self.Check("""
+      from typing_extensions import Self
+      class Foo:
+        x: Self
+      class Bar(Foo):
+        pass
+      assert_type(Foo.x, Foo)
+      assert_type(Foo().x, Foo)
+      assert_type(Bar.x, Bar)
+      assert_type(Bar().x, Bar)
+    """)
+
+  def test_instance_attribute(self):
+    self.Check("""
+      from typing_extensions import Self
+      class Foo:
+        def __init__(self, x: Self):
+          self.x = x
+          self.y: Self = __any_object__
+      class Bar(Foo):
+        pass
+      assert_type(Foo(__any_object__).x, Foo)
+      assert_type(Foo(__any_object__).y, Foo)
+      assert_type(Bar(__any_object__).x, Bar)
+      assert_type(Bar(__any_object__).y, Bar)
+    """)
+
+  def test_cast(self):
+    self.Check("""
+      from typing import cast
+      from typing_extensions import Self
+      class Foo:
+        def f(self):
+          return cast(Self, __any_object__)
+      class Bar(Foo):
+        pass
+      assert_type(Foo().f(), Foo)
+      assert_type(Bar().f(), Bar)
+    """)
+
+  def test_generic_attribute(self):
+    self.Check("""
+      from typing import Generic, TypeVar
+      from typing_extensions import Self
+      T = TypeVar('T')
+      class C(Generic[T]):
+        x: Self
+      class D(C[T]):
+        pass
+      assert_type(C[int].x, C[int])
+      assert_type(C[int]().x, C[int])
+      assert_type(D[str].x, D[str])
+      assert_type(D[str]().x, D[str])
+    """)
+
+  def test_attribute_mismatch(self):
+    self.CheckWithErrors("""
+      from typing import Protocol
+      from typing_extensions import Self
+      class C(Protocol):
+        x: Self
+      class Ok:
+        x: 'Ok'
+      class Bad:
+        x: int
+      def f(c: C):
+        pass
+      f(Ok())
+      f(Bad())  # wrong-arg-types
+    """)
+
 
 class SelfPyiTest(test_base.BaseTest):
   """Tests for typing.Self usage in type stubs."""
@@ -333,6 +405,59 @@ class SelfPyiTest(test_base.BaseTest):
             return 0
       """)
 
+  def test_attribute(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Self
+      class A:
+        x: Self
+    """)]):
+      self.Check("""
+        import foo
+        class B(foo.A):
+          pass
+        assert_type(foo.A.x, foo.A)
+        assert_type(foo.A().x, foo.A)
+        assert_type(B.x, B)
+        assert_type(B().x, B)
+      """)
+
+  def test_generic_attribute(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Generic, Self, TypeVar
+      T = TypeVar('T')
+      class A(Generic[T]):
+        x: Self
+    """)]):
+      self.Check("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T')
+        class B(foo.A[T]):
+          pass
+        assert_type(foo.A[str].x, foo.A[str])
+        assert_type(foo.A[int]().x, foo.A[int])
+        assert_type(B[int].x, B[int])
+        assert_type(B[str]().x, B[str])
+      """)
+
+  def test_attribute_mismatch(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Protocol, Self
+      class C(Protocol):
+        x: Self
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        class Ok:
+          x: 'Ok'
+        class Bad:
+          x: str
+        def f(c: foo.C):
+          pass
+        f(Ok())
+        f(Bad())  # wrong-arg-types
+      """)
+
 
 class SelfReingestTest(test_base.BaseTest):
   """Tests for outputting typing.Self to a stub and reading the stub back in."""
@@ -353,6 +478,22 @@ class SelfReingestTest(test_base.BaseTest):
           def f(self) -> Self: ...""")
     actual = pytd_utils.Print(ty)
     self.assertMultiLineEqual(expected, actual)
+
+  def test_attribute_output(self):
+    ty = self.Infer("""
+      from typing_extensions import Self
+      class A:
+        x: Self
+        def __init__(self):
+          self.y: Self = __any_object__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Self
+      class A:
+        x: Self
+        y: Self
+        def __init__(self) -> None: ...
+    """)
 
   def test_instance_method_return(self):
     with self.DepTree([("foo.py", """
@@ -537,14 +678,6 @@ class IllegalLocationTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(
         errors, {"e": ["'typing.Self' outside of a class"]})
-
-  def test_variable_annotation(self):
-    self.CheckWithErrors("""
-      from typing_extensions import Self
-      class C:
-        x: Self  # not-supported-yet
-        y = ...  # type: Self  # not-supported-yet
-    """)
 
   def test_variable_annotation_not_in_class(self):
     errors = self.CheckWithErrors("""

@@ -247,6 +247,7 @@ def make_instance(
   cache_key = (ctx.root_node, underlying, subclass_name)
   if cache_key in _INSTANCE_CACHE:
     return node, _INSTANCE_CACHE[cache_key]
+  _INSTANCE_CACHE[cache_key] = ctx.convert.unsolvable  # recursion handling
 
   instance_class = {"Config": Config, "Partial": Partial}[subclass_name]
   # Create the specialized class Config[underlying] or Partial[underlying]

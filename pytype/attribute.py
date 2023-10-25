@@ -450,6 +450,13 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           node, typ, [subst], instantiate_unbound=False)
     else:
       return typ, None
+    if typ.formal and valself:
+      if isinstance(valself.data, abstract.Class):
+        self_var = valself.data.instantiate(node)
+      else:
+        self_var = valself.AssignToNewVariable(node)
+      typ = self.ctx.annotation_utils.sub_one_annotation(
+          node, typ, [{"typing.Self": self_var}], instantiate_unbound=False)
     _, attr = self.ctx.annotation_utils.init_annotation(node, name, typ)
     return typ, attr
 
@@ -540,9 +547,6 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
     if isinstance(obj, mixin.LazyMembers):
       if not valself:
         subst = None
-      elif isinstance(valself.data, abstract.ParameterizedClass):
-        subst = {f"{valself.data.full_name}.{k}": v.instantiate(node)
-                 for k, v in valself.data.formal_type_parameters.items()}
       elif isinstance(valself.data, abstract.Instance):
         # We need to rebind the parameter values at the root because that's the
         # node at which load_lazy_attribute() converts pyvals.
@@ -559,6 +563,13 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
             #   class Child(Base): ...  # equivalent to `class Child(Base[Any])`
             # When this happens, parameter values are implicitly set to Any.
             subst[k] = self.ctx.new_unsolvable(self.ctx.root_node)
+        subst[f"{obj.full_name}.Self"] = valself.AssignToNewVariable()
+      elif isinstance(valself.data, abstract.Class):
+        subst = {f"{obj.full_name}.Self":
+                 valself.data.instantiate(self.ctx.root_node)}
+        if isinstance(valself.data, abstract.ParameterizedClass):
+          for k, v in valself.data.formal_type_parameters.items():
+            subst[f"{valself.data.full_name}.{k}"] = v.instantiate(node)
       else:
         subst = None
       member = obj.load_lazy_attribute(name, subst)

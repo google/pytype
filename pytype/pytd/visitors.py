@@ -1755,7 +1755,8 @@ class AdjustTypeParameters(Visitor):
 
   def VisitTypeParameter(self, node):
     """Add scopes to type parameters, track unbound params."""
-    if self.constant_name and not self._IsBoundTypeParam(node):
+    if (self.constant_name and node.name != "Self" and
+        not self._IsBoundTypeParam(node)):
       raise ContainerError("Unbound type parameter {} in {}".format(
           node.name, self._GetFullName(self.constant_name)))
     scope = self._GetScope(node.name)

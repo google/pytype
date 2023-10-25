@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue Oct 10 01:57:19 PM PDT 2023 -->
+<!-- Added by: rechen, at: Wed Oct 25 03:33:16 PM PDT 2023 -->
 
 <!--te-->
 
@@ -82,7 +82,7 @@ Feature                                                                         
 [PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        |
 [PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
 [PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
-[PEP 673 -- Self Type][673]                                                             | 3.11    | 🟡        | [#1283][self]
+[PEP 673 -- Self Type][673]                                                             | 3.11    | ✅        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
 [PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | 🟡        |
 [PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
