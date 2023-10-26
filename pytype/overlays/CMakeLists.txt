@@ -320,6 +320,7 @@ py_library(
     .named_tuple
     .overlay
     .overlay_utils
+    .special_builtins
     .typed_dict
     pytype.utils
     pytype.abstract.abstract

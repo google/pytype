@@ -16,6 +16,7 @@ from pytype.abstract import function
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
+from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
 from pytype.pytd import pep484
 from pytype.pytd import pytd
@@ -627,7 +628,6 @@ _unsupported_members = {
     "TypeVarTuple": (3, 11),
     "Unpack": (3, 11),
     "assert_never": (3, 11),
-    "assert_type": (3, 11),
     "reveal_type": (3, 11),
 }
 
@@ -658,6 +658,9 @@ typing_overlay = {
     "TypedDict": (overlay.drop_module(typed_dict.TypedDictBuilder), (3, 8)),
     "Union": (overlay.drop_module(Union), None),
     "TYPE_CHECKING": (overlay.drop_module(build_typechecking), None),
+    "assert_type": (
+        overlay.add_name("assert_type", special_builtins.AssertType.make_alias),
+        (3, 11)),
     "cast": (overlay.add_name("cast", Cast.make), None),
     "clear_overloads": (_builder_from_name("clear_overloads"), (3, 11)),
     "dataclass_transform": (overlay.add_name(

@@ -718,8 +718,8 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(c, int)
             assert_type(d, str)
           case _:
-            assert_type(x)
-            assert_type(y)
+            assert_type(x, B)
+            assert_type(y, A)
     """)
 
   def test_builtin(self):
