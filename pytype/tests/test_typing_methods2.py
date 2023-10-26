@@ -52,6 +52,32 @@ class TypingMethodsTest(test_base.BaseTest):
         bytes(x)
       """, pythonpath=[d.path])
 
+  def test_assert_never(self):
+    self.Check("""
+      from typing import Union
+      from typing_extensions import assert_never
+      def int_or_str(arg: Union[int, str]) -> None:
+        if isinstance(arg, int):
+          pass
+        elif isinstance(arg, str):
+          pass
+        else:
+          assert_never("oops!")
+    """)
+
+  def test_assert_never_failure(self):
+    errors = self.CheckWithErrors("""
+      from typing import Union
+      from typing_extensions import assert_never
+      def int_or_str(arg: Union[int, str]) -> None:
+        if isinstance(arg, int):
+          pass
+        else:
+          assert_never("oops!")  # wrong-arg-types[e]
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Expected", "empty", "Actual", "str"]})
+
 
 if __name__ == "__main__":
   test_base.main()

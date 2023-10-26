@@ -627,8 +627,6 @@ _unsupported_members = {
     "NotRequired": (3, 11),
     "TypeVarTuple": (3, 11),
     "Unpack": (3, 11),
-    "assert_never": (3, 11),
-    "reveal_type": (3, 11),
 }
 
 
@@ -658,6 +656,7 @@ typing_overlay = {
     "TypedDict": (overlay.drop_module(typed_dict.TypedDictBuilder), (3, 8)),
     "Union": (overlay.drop_module(Union), None),
     "TYPE_CHECKING": (overlay.drop_module(build_typechecking), None),
+    "assert_never": (_builder_from_name("assert_never"), (3, 11)),
     "assert_type": (
         overlay.add_name("assert_type", special_builtins.AssertType.make_alias),
         (3, 11)),
@@ -669,6 +668,9 @@ typing_overlay = {
     "is_typeddict": (
         overlay.add_name("is_typeddict", typed_dict.IsTypedDict.make), (3, 10)),
     "overload": (overlay.add_name("overload", Overload.make), None),
+    "reveal_type": (
+        overlay.add_name("reveal_type", special_builtins.RevealType.make_alias),
+        (3, 11)),
     **{k: (overlay.add_name(k, overlay_utils.not_supported_yet), v)
        for k, v in _unsupported_members.items()}
 }
