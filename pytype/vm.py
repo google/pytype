@@ -130,7 +130,7 @@ class VirtualMachine:
     # Note that we don't need to scope this to the frame because we don't reuse
     # variable ids.
     self._var_names = {}
-    self._branch_tracker = None
+    self._branch_tracker: pattern_matching.BranchTracker = None
 
     # Locals attached to the block graph
     self.block_env = block_environment.Environment()
@@ -206,7 +206,6 @@ class VirtualMachine:
 
   def _is_match_case_op(self, op):
     """Should we handle case matching for this opcode."""
-    assert self._branch_tracker is not None
     # A case statement generates multiple opcodes on the same line. Since the
     # director matches on line numbers, we only trigger the case handler on a
     # specific opcode (which varies depending on the type of match)
@@ -225,7 +224,6 @@ class VirtualMachine:
 
   def _handle_match_case(self, state, op):
     """Track type narrowing and default cases in a match statement."""
-    assert self._branch_tracker is not None
     if not self._is_match_case_op(op):
       return state
     if op.line in self._branch_tracker.matches.defaults:
@@ -265,7 +263,6 @@ class VirtualMachine:
     Raises:
       VirtualMachineError: if a fatal error occurs.
     """
-    assert self._branch_tracker is not None
     _opcode_counter.inc(op.name)
     self.frame.current_opcode = op
     self._importing = "IMPORT" in op.__class__.__name__
@@ -979,7 +976,6 @@ class VirtualMachine:
   def _pop_and_store(self, state, op, name, local):
     """Pop a value off the stack and store it in a variable."""
     state, orig_val = state.pop()
-    assert self._branch_tracker is not None
     if (self._branch_tracker.is_current_as_name(op, name) and
         self._branch_tracker.get_current_type_tracker(op, orig_val)):
       # If we are storing the as name in a case match, i.e.
@@ -1156,7 +1152,6 @@ class VirtualMachine:
     # DELETE_SUBSCR on the concrete keys and binds the remaining dict to `rest`
     # (3.10 had a specific COPY_DICT_WITHOUT_KEYS opcode to handle this but it
     # was removed in 3.11).
-    assert self._branch_tracker is not None
     if not (self.ctx.python_version == (3, 11) and
             op.line in self._branch_tracker.matches.match_cases):
       return state
@@ -1828,8 +1823,8 @@ class VirtualMachine:
 
   def _compare_op(self, state, op_arg, op):
     """Pops and compares the top two stack values and pushes a boolean."""
-    assert self._branch_tracker is not None
     state, (x, y) = state.popn(2)
+    self._branch_tracker.register_match_type(op)
     match_enum = self._branch_tracker.add_cmp_branch(op, x, y)
     if match_enum is not None:
       # The match always succeeds/fails.
@@ -3103,7 +3098,7 @@ class VirtualMachine:
     return state.push(length.instantiate(state.node))
 
   def byte_MATCH_MAPPING(self, state, op):
-    del op
+    self._branch_tracker.register_match_type(op)
     obj_var = state.top()
     is_map = vm_utils.match_mapping(state.node, obj_var, self.ctx)
     ret = self.ctx.convert.bool_values[is_map]
@@ -3111,7 +3106,7 @@ class VirtualMachine:
     return state.push(ret.to_variable(state.node))
 
   def byte_MATCH_SEQUENCE(self, state, op):
-    del op
+    self._branch_tracker.register_match_type(op)
     obj_var = state.top()
     is_seq = vm_utils.match_sequence(obj_var)
     ret = self.ctx.convert.bool_values[is_seq]
@@ -3120,7 +3115,7 @@ class VirtualMachine:
 
   def byte_MATCH_KEYS(self, state, op):
     """Implementation of the MATCH_KEYS opcode."""
-    del op
+    self._branch_tracker.register_match_type(op)
     obj_var, keys_var = state.topn(2)
     ret = vm_utils.match_keys(state.node, obj_var, keys_var, self.ctx)
     vals = ret or self.ctx.convert.none.to_variable(state.node)
@@ -3143,6 +3138,7 @@ class VirtualMachine:
   def byte_MATCH_CLASS(self, state, op):
     """Implementation of the MATCH_CLASS opcode."""
     # NOTE: 3.10 specific; stack effects change somewhere en route to 3.12
+    self._branch_tracker.register_match_type(op)
     posarg_count = op.arg
     state, keys_var = state.pop()
     state, (obj_var, cls_var) = state.popn(2)
@@ -3153,7 +3149,6 @@ class VirtualMachine:
     success = ret.success
     vals = ret.values or self.ctx.convert.none.to_variable(state.node)
     if ret.matched:
-      assert self._branch_tracker is not None
       # Narrow the type of the match variable since we are in a case branch
       # where it has matched the given class. The branch tracker will store the
       # original (unnarrowed) type, since the new variable shadows it.

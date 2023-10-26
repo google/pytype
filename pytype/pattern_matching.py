@@ -1,6 +1,7 @@
 """Support for pattern matching."""
 
 import collections
+import enum
 
 from typing import Dict, List, Optional, Set, Tuple, cast
 
@@ -16,6 +17,23 @@ from pytype.typegraph import cfg
 # Tri-state boolean for match case returns.
 # True = always match, False = never match, None = sometimes match
 _MatchSuccessType = Optional[bool]
+
+
+class _MatchTypes(enum.Enum):
+  """Track match types based on generated opcode."""
+
+  CLASS = enum.auto()
+  SEQUENCE = enum.auto()
+  KEYS = enum.auto()
+  MAPPING = enum.auto()
+  CMP = enum.auto()
+
+  @classmethod
+  def make(cls, op: opcodes.Opcode):
+    if op.name.startswith("MATCH_"):
+      return cls[op.name[len("MATCH_"):]]
+    else:
+      return cls.CMP
 
 
 class _Matches:
@@ -133,7 +151,8 @@ class BranchTracker:
     self._enum_tracker = {}
     self._type_tracker: Dict[int, Dict[int, _TypeTracker]] = (
         collections.defaultdict(dict))
-    self._match_types = {}
+    self._match_types: Dict[int, Set[_MatchTypes]] = (
+        collections.defaultdict(set))
     self._active_ends = set()
     # If we analyse the same match statement twice, the second time around we
     # should not do exhaustiveness and redundancy checks since we have already
@@ -166,7 +185,8 @@ class BranchTracker:
     if match_line not in self._enum_tracker:
       self._add_new_enum_match(match_val, match_line)
     enum_tracker = self._enum_tracker[match_line]
-    if match_val.cls != enum_tracker.enum_cls:
+    if (match_val.cls != enum_tracker.enum_cls or
+        self._match_types[match_line] != {_MatchTypes.CMP}):
       # We are matching a tuple or structure with different enums in it.
       enum_tracker.invalidate()
       return None
@@ -224,6 +244,12 @@ class BranchTracker:
     if op.line not in self.matches.match_cases:
       return None
     return self.matches.as_names.get(op.line) == name
+
+  def register_match_type(self, op: opcodes.Opcode):
+    if op.line not in self.matches.match_cases:
+      return
+    match_line = self.matches.match_cases[op.line]
+    self._match_types[match_line].add(_MatchTypes.make(op))
 
   def _add_enum_branch(
       self,

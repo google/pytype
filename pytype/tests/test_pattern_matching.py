@@ -1334,6 +1334,28 @@ class MatchCoverageTest(test_base.BaseTest):
             print('bar')
     """)
 
+  def test_enum_in_tuple(self):
+    """Skip tracking if matching an enum in a tuple."""
+    # Python unpacks the tuple and compiles to a simple enum cmp in some cases.
+    # Check that we do not track exhaustive or redundant matches for this case.
+    self.Check("""
+      import enum
+
+      class Side(enum.Enum):
+        RIGHT = enum.auto()
+        LEFT = enum.auto()
+        CUSTOM = enum.auto()
+
+      def actuate_phrase(side: Side, assistant: bool):
+        match (side, assistant):
+          case (Side.LEFT | Side.RIGHT, _):
+            return 'preset side'
+          case (Side.CUSTOM, True):
+            return 'custom true'
+          case (Side.CUSTOM, False):  # should not be redundant
+            return 'custom false'
+    """)
+
   def test_pytd_enum_basic(self):
     with self.DepTree([("foo.pyi", """
       import enum
