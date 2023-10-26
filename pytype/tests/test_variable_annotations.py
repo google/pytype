@@ -87,13 +87,13 @@ class VariableAnnotationsFeatureTest(test_base.BaseTest):
         "e1": r"Name \'abc\' is not defined", "e2": r"Not a type",
         "e3": r"'T' not in scope", "e4": r"Must be constant"})
 
-  def test_noreturn(self):
+  def test_never(self):
     errors = self.CheckWithErrors("""
       from typing import NoReturn
       x: NoReturn = 0  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Annotation: NoReturn", "Assignment: int"]})
+        errors, {"e": ["Annotation: Never", "Assignment: int"]})
 
   def test_uninitialized_class_annotation(self):
     ty = self.Infer("""

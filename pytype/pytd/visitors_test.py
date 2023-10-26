@@ -924,15 +924,15 @@ class TestVisitors(parser_test_base.ParserTest):
           def __new__(cls) -> A: ...
     """).strip())
 
-  def test_print_no_return(self):
+  def test_print_never(self):
     src = textwrap.dedent("""
       def f() -> nothing: ...
     """)
     self.assertMultiLineEqual(pytd_utils.Print(self.Parse(src)),
                               textwrap.dedent("""
-      from typing import NoReturn
+      from typing import Never
 
-      def f() -> NoReturn: ...""").lstrip())
+      def f() -> Never: ...""").lstrip())
 
   def test_print_multiline_signature(self):
     src = textwrap.dedent("""

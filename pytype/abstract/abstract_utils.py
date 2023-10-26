@@ -111,7 +111,7 @@ class AsInstance:
 
 
 class AsReturnValue(AsInstance):
-  """Specially mark return values, to handle NoReturn properly."""
+  """Specially mark return values, to handle Never properly."""
 
 
 # For lazy evaluation of ParameterizedClass.formal_type_parameters

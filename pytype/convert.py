@@ -84,7 +84,7 @@ class Converter(utils.ContextWeakrefMixin):
     self.ctx.converter_minimally_initialized = True
 
     self.empty = abstract.Empty(self.ctx)
-    self.no_return = typing_overlay.NoReturn(self.ctx)
+    self.never = typing_overlay.Never(self.ctx)
 
     # Now fill primitive_classes with the real values using constant_to_value.
     primitive_classes = [
@@ -441,7 +441,7 @@ class Converter(utils.ContextWeakrefMixin):
         return self.unsolvable.to_variable(node)
       elif (isinstance(pyval, abstract_utils.AsReturnValue) and
             isinstance(cls, pytd.NothingType)):
-        return self.no_return.to_variable(node)
+        return self.never.to_variable(node)
       elif isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
         param, = cls.parameters
         return self.constant_to_var(abstract_utils.AsInstance(param), subst,

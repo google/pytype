@@ -436,15 +436,15 @@ class MatcherTest(MatcherTestBase):
     self.assertMatch(left1, right)
     self.assertNoMatch(left2, right)
 
-  def test_no_return(self):
-    self.assertMatch(self.ctx.convert.no_return, self.ctx.convert.no_return)
+  def test_never(self):
+    self.assertMatch(self.ctx.convert.never, self.ctx.convert.never)
 
-  def test_empty_against_no_return(self):
-    self.assertMatch(self.ctx.convert.empty, self.ctx.convert.no_return)
+  def test_empty_against_never(self):
+    self.assertMatch(self.ctx.convert.empty, self.ctx.convert.never)
 
-  def test_no_return_against_class(self):
+  def test_never_against_class(self):
     right = self._convert_type("int")
-    self.assertNoMatch(self.ctx.convert.no_return, right)
+    self.assertNoMatch(self.ctx.convert.never, right)
 
   def test_empty_against_parameterized_iterable(self):
     left = self.ctx.convert.empty

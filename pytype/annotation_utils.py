@@ -593,7 +593,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
             abstract.FinalAnnotation,
             function.ParamSpecMatch,
             typing_overlay.Final,
-            typing_overlay.NoReturn,
+            typing_overlay.Never,
         ),
     ):
       return annotation

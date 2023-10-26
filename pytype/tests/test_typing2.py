@@ -535,7 +535,7 @@ class TypingTest(test_base.BaseTest):
           raise ValueError()  # bad-return-type[e]
     """)
     self.assertErrorSequences(
-        errors, {"e": ["Expected: NoReturn", "Actually returned: None"]})
+        errors, {"e": ["Expected: Never", "Actually returned: None"]})
 
   def test_noreturn(self):
     errors = self.CheckWithErrors("""
@@ -561,10 +561,10 @@ class TypingTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {
         "e1": ["Expected: List[nothing]", "Actually returned: List[None]"],
-        "e2": ["Expected: (x: NoReturn)", "Actually passed: (x: int)"],
+        "e2": ["Expected: (x: Never)", "Actually passed: (x: int)"],
         "e3": ["Expected: (x: List[nothing])",
                "Actually passed: (x: List[int])"],
-        "e4": ["Allowed", "_T: NoReturn", "New", "_T: int"],
+        "e4": ["Allowed", "_T: Never", "New", "_T: int"],
     })
 
   def test_noreturn_pyi(self):

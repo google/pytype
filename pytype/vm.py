@@ -280,7 +280,7 @@ class VirtualMachine:
     if bytecode_fn is None:
       raise VirtualMachineError(f"Unknown opcode: {op.name}")
     state = bytecode_fn(state, op)
-    if state.why in ("reraise", "NoReturn"):
+    if state.why in ("reraise", "Never"):
       state = state.set_why("exception")
     implicit_return = (
         op.name == "RETURN_VALUE" and
@@ -367,12 +367,12 @@ class VirtualMachine:
       node = self.ctx.join_cfg_nodes(return_nodes)
       if not can_return:
         assert not frame.return_variable.bindings
-        # We purposely don't check NoReturn against this function's
+        # We purposely don't check Never against this function's
         # annotated return type. Raising an error in an unimplemented function
         # and documenting the intended return type in an annotation is a
         # common pattern.
         self._set_frame_return(node, frame,
-                               self.ctx.convert.no_return.to_variable(node))
+                               self.ctx.convert.never.to_variable(node))
     return node, frame.return_variable
 
   def push_frame(self, frame):
@@ -675,9 +675,9 @@ class VirtualMachine:
         funcv,
         args,
         fallback_to_unsolvable,
-        allow_noreturn=True)
-    if ret.data == [self.ctx.convert.no_return]:
-      state = state.set_why("NoReturn")
+        allow_never=True)
+    if ret.data == [self.ctx.convert.never]:
+      state = state.set_why("Never")
     state = state.change_cfg_node(node)
     if len(funcv.data) == 1:
       # Check for test assertions that narrow the type of a variable.

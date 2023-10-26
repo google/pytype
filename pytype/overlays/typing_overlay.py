@@ -365,13 +365,13 @@ class Cast(abstract.PyTDFunction):
     return super().call(node, func, args)
 
 
-class NoReturn(abstract.Singleton):
-  """Implements typing.NoReturn as a singleton."""
+class Never(abstract.Singleton):
+  """Implements typing.Never as a singleton."""
 
   def __init__(self, ctx):
-    super().__init__("NoReturn", ctx)
-    # Sets cls to Type so that runtime usages of NoReturn don't cause pytype to
-    # think that NoReturn is being used illegally in type annotations.
+    super().__init__("Never", ctx)
+    # Sets cls to Type so that runtime usages of Never don't cause pytype to
+    # think that Never is being used illegally in type annotations.
     self.cls = ctx.convert.type_type
 
 
@@ -603,8 +603,8 @@ def build_any(ctx):
   return ctx.convert.unsolvable
 
 
-def build_noreturn(ctx):
-  return ctx.convert.no_return
+def build_never(ctx):
+  return ctx.convert.never
 
 
 def build_typechecking(ctx):
@@ -619,17 +619,9 @@ def get_re_builder(member):
   return build_re_member
 
 
-def build_self(ctx, module):
-  pyval = ctx.loader.lookup_pytd(module, "Self")
-  if isinstance(pyval, pytd.Alias):
-    pyval = pyval.type
-  return ctx.convert.constant_to_value(pyval)
-
-
 # name -> lowest_supported_version
 _unsupported_members = {
     "LiteralString": (3, 11),
-    "Never": (3, 11),
     "Required": (3, 11),
     "NotRequired": (3, 11),
     "TypeVarTuple": (3, 11),
@@ -637,8 +629,6 @@ _unsupported_members = {
     "assert_never": (3, 11),
     "assert_type": (3, 11),
     "reveal_type": (3, 11),
-    "get_overloads": (3, 11),
-    "clear_overloads": (3, 11),
 }
 
 
@@ -655,12 +645,13 @@ typing_overlay = {
     "Literal": (_builder("Literal", Literal), (3, 8)),
     "Match": (get_re_builder("Match"), None),
     "NamedTuple": (named_tuple.NamedTupleClassBuilder, None),
+    "Never": (overlay.drop_module(build_never), (3, 11)),
     "NewType": (overlay.add_name("NewType", NewType.make), None),
-    "NoReturn": (overlay.drop_module(build_noreturn), None),
+    "NoReturn": (overlay.drop_module(build_never), None),
     "Optional": (_builder("Optional", Optional), None),
     "ParamSpec": (ParamSpec.make, (3, 10)),
     "Pattern": (get_re_builder("Pattern"), None),
-    "Self": (build_self, (3, 11)),
+    "Self": (_builder_from_name("Self"), (3, 11)),
     "Tuple": (_builder("Tuple", Tuple), None),
     "TypeGuard": (_builder_from_name("TypeGuard"), (3, 10)),
     "TypeVar": (TypeVar.make, None),
@@ -668,8 +659,10 @@ typing_overlay = {
     "Union": (overlay.drop_module(Union), None),
     "TYPE_CHECKING": (overlay.drop_module(build_typechecking), None),
     "cast": (overlay.add_name("cast", Cast.make), None),
+    "clear_overloads": (_builder_from_name("clear_overloads"), (3, 11)),
     "dataclass_transform": (overlay.add_name(
         "dataclass_transform", DataclassTransformBuilder.make), (3, 11)),
+    "get_overloads": (_builder_from_name("get_overloads"), (3, 11)),
     "is_typeddict": (
         overlay.add_name("is_typeddict", typed_dict.IsTypedDict.make), (3, 10)),
     "overload": (overlay.add_name("overload", Overload.make), None),

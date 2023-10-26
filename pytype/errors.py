@@ -578,8 +578,8 @@ class ErrorLog(ErrorLogBase):
             v.to_type(node) for v in actual.data))
       else:
         full_actual = bad_actual
-    # typing.NoReturn is a prettier alias for nothing.
-    fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
+    # typing.Never is a prettier alias for nothing.
+    fmt = lambda ret: "Never" if ret == "nothing" else ret
     error_details = self._prepare_errorlog_details(bad)
     return (fmt(expected), fmt(bad_actual), fmt(full_actual), error_details)
 
