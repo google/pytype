@@ -561,6 +561,8 @@ class PyTDClass(
           subst[itm.full_name] = self.ctx.convert.constant_to_value(
               itm.type_param, {}).instantiate(
                   self.ctx.root_node, container=instance)
+        subst[f"{self.full_name}.Self"] = instance.to_variable(
+            self.ctx.root_node)
         # Set all other type parameters to Any. See
         # test_recursive_types:PyiTest.test_callable for a case in which it is
         # not an error to have an unsubstituted type parameter here.

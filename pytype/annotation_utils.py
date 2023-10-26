@@ -325,12 +325,18 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       d.from_annotation = name
     return node, value
 
+  def _in_class_frame(self):
+    frame = self.ctx.vm.frame
+    if not frame.func:
+      return False
+    return (isinstance(frame.func.data, abstract.BoundFunction) or
+            frame.func.data.is_attribute_of_class)
+
   def extract_and_init_annotation(self, node, name, var):
     """Extracts an annotation from var and instantiates it."""
     frame = self.ctx.vm.frame
     substs = frame.substs
-    if frame.func and (isinstance(frame.func.data, abstract.BoundFunction) or
-                       frame.func.data.is_attribute_of_class):
+    if self._in_class_frame():
       self_var = frame.first_arg
       if self_var:
         # self_var is an instance of (a subclass of) the class on which
@@ -370,7 +376,14 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                                                  instantiate_unbound=False)
     else:
       substituted_type = typ
-    _, value = self.init_annotation(node, name, substituted_type)
+    if typ.formal and self._in_class_frame():
+      class_substs = abstract_utils.combine_substs(
+          substs, [{"typing.Self": self.ctx.vm.frame.first_arg}])
+      type_for_value = self.sub_one_annotation(node, typ, class_substs,
+                                               instantiate_unbound=False)
+    else:
+      type_for_value = substituted_type
+    _, value = self.init_annotation(node, name, type_for_value)
     return substituted_type, value
 
   def apply_annotation(self, node, op, name, value):
@@ -431,6 +444,10 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     if typ.formal and allowed_type_params is not None:
       allowed_type_params = (allowed_type_params |
                              self.get_callable_type_parameter_names(typ))
+      if (self.ctx.vm.frame.func and
+          (isinstance(self.ctx.vm.frame.func.data, abstract.BoundFunction) or
+           self.ctx.vm.frame.func.data.is_class_builder)):
+        allowed_type_params.add("typing.Self")
       illegal_params = []
       for x in self.get_type_parameters(typ):
         if not allowed_type_params.intersection([x.name, x.full_name]):
@@ -441,6 +458,9 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
     return typ
 
   def _log_illegal_params(self, illegal_params, stack, typ, name):
+    out_of_scope_params = utils.unique_list(illegal_params)
+    details = "TypeVar(s) %s not in scope" % ", ".join(
+        repr(p) for p in out_of_scope_params)
     if self.ctx.vm.frame.func:
       method = self.ctx.vm.frame.func.data
       if isinstance(method, abstract.BoundFunction):
@@ -449,20 +469,6 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
       else:
         desc = "class" if method.is_class_builder else "method"
         frame_name = method.name
-    else:
-      desc, frame_name = None, None
-    out_of_scope_params = []
-    for param in utils.unique_list(illegal_params):
-      if param == "Self" and desc == "class":
-        self.ctx.errorlog.not_supported_yet(
-            stack, "Using typing.Self in a variable annotation")
-      else:
-        out_of_scope_params.append(param)
-    if not out_of_scope_params:
-      return
-    details = "TypeVar(s) %s not in scope" % ", ".join(
-        repr(p) for p in out_of_scope_params)
-    if desc:
       details += f" for {desc} {frame_name!r}"
     if "AnyStr" in out_of_scope_params:
       str_type = "Union[str, bytes]"
