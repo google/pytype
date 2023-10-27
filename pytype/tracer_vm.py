@@ -407,7 +407,7 @@ class CallTracer(vm.VirtualMachine):
     # which can happen if the method is decorated, for example - then we look up
     # the method before any decorators were applied and use that instead.
     undecorated_method = cls.get_undecorated_method(method_name, node)
-    if undecorated_method.data:
+    if undecorated_method:
       return node, bind(node, undecorated_method)
     else:
       return node, bound_method
@@ -477,6 +477,13 @@ class CallTracer(vm.VirtualMachine):
           name = unwrapped.data[0].name if unwrapped else v.name
           self.ctx.errorlog.ignored_abstractmethod(
               self.ctx.vm.simple_stack(cls.get_first_opcode()), cls.name, name)
+      is_method_or_nested_class = any(
+          isinstance(m, (abstract.FUNCTION_TYPES, abstract.InterpreterClass))
+          for m in methodvar.data)
+      if (self.ctx.options.bind_decorated_methods and
+          not is_method_or_nested_class and
+          (undecorated_method := cls.get_undecorated_method(name, node))):
+        methodvar = undecorated_method
       b = self._bind_method(node, methodvar, instance)
       node = self.analyze_method_var(node, name, b, val)
     return node

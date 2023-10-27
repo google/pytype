@@ -80,6 +80,7 @@ class BaseTest(unittest.TestCase):
     super().setUp()
     self.options = config.Options.create(
         python_version=self.python_version,
+        bind_decorated_methods=True,
         overriding_renamed_parameter_count_checks=True,
         strict_parameter_checks=True,
         strict_undefined_checks=True,
