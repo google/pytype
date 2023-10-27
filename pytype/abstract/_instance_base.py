@@ -111,8 +111,7 @@ class SimpleValue(_base.BaseValue):
     node, var = self.ctx.attribute_handler.get_attribute(
         node, obj, "__call__", obj_binding)
     if var is not None and var.bindings:
-      return function.call_function(self.ctx, node, var, args,
-                                    allow_noreturn=True)
+      return function.call_function(self.ctx, node, var, args, allow_never=True)
     else:
       raise function.NotCallable(self)
 

@@ -505,7 +505,7 @@ class PrintVisitor(base_visitor.Visitor):
   def VisitSignature(self, node):
     """Visit a signature, producing a string."""
     if node.return_type == "nothing":
-      return_type = self._FromTyping("NoReturn")  # a prettier alias for nothing
+      return_type = self._FromTyping("Never")  # a prettier alias for nothing
     else:
       return_type = node.return_type
     ret = f" -> {return_type}"

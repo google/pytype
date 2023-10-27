@@ -284,17 +284,17 @@ class TestExceptions(test_base.BaseTest):
       def foo() -> Union[complex, int]: ...
     """)
 
-  def test_no_return(self):
+  def test_never(self):
     ty = self.Infer("""
       def f():
         raise ValueError()
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import NoReturn
-      def f() -> NoReturn: ...
+      from typing import Never
+      def f() -> Never: ...
     """)
 
-  def test_no_return_chain(self):
+  def test_never_chain(self):
     ty = self.Infer("""
       def f():
         raise ValueError()
@@ -302,12 +302,12 @@ class TestExceptions(test_base.BaseTest):
         f()
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import NoReturn
-      def f() -> NoReturn: ...
-      def g() -> NoReturn: ...
+      from typing import Never
+      def f() -> Never: ...
+      def g() -> Never: ...
     """)
 
-  def test_try_except_noreturn(self):
+  def test_try_except_never(self):
     ty = self.Infer("""
       def f():
         try:
@@ -316,8 +316,8 @@ class TestExceptions(test_base.BaseTest):
           raise ValueError(str(e))
     """)
     self.assertTypesMatchPytd(ty, """
-      from typing import NoReturn
-      def f() -> NoReturn: ...
+      from typing import Never
+      def f() -> Never: ...
     """)
 
   def test_callable_noreturn(self):

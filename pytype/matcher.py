@@ -602,11 +602,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # and likely needs a lot more work
       new_subst = {other_type.full_name: left.instantiate(self._node)}
       return self._merge_substs(subst, [new_subst])
-    elif (isinstance(other_type, typing_overlay.NoReturn) or
-          isinstance(left, typing_overlay.NoReturn)):
-      # `NoReturn` can only matches itself, `Any`, or `abstract.TypeParameter`.
+    elif (isinstance(other_type, typing_overlay.Never) or
+          isinstance(left, typing_overlay.Never)):
+      # `Never` can only matches itself, `Any`, or `abstract.TypeParameter`.
       # For the latter case, it will be used in byte code `STORE_ANNOTATION`
-      # to store the `NoReturn` annotation in a dict.
+      # to store the `Never` annotation in a dict.
       if (left == other_type or
           isinstance(other_type, abstract.AMBIGUOUS_OR_EMPTY) or
           isinstance(left, abstract.AMBIGUOUS_OR_EMPTY)):

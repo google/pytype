@@ -68,8 +68,6 @@ class Context:
         "object": self.convert.object_type,
         # for more pretty branching tests.
         "__random__": self.convert.primitive_class_instances[bool],
-        # for debugging
-        "reveal_type": special_builtins.RevealType(self),
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,
@@ -93,6 +91,7 @@ class Context:
         special_builtins.IsInstance,
         special_builtins.IsSubclass,
         special_builtins.Next,
+        special_builtins.RevealType,
         special_builtins.Round,
     ):
       instance = cls.make(self)

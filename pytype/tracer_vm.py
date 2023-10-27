@@ -638,7 +638,7 @@ class CallTracer(vm.VirtualMachine):
               if isinstance(option, abstract.Empty):
                 d = pytd.AnythingType()
               else:
-                assert isinstance(option, typing_overlay.NoReturn)
+                assert isinstance(option, typing_overlay.Never)
           if isinstance(d, pytd.Type) and not isinstance(d, pytd.TypeParameter):
             data.append(pytd.Constant(name, d))
           else:

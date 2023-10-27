@@ -532,11 +532,10 @@ class Object(BuiltinClass):
     return super().get_special_attribute(node, name, valself)
 
 
-class RevealType(abstract.BaseValue):
+class RevealType(BuiltinFunction):
   """For debugging. reveal_type(x) prints the type of "x"."""
 
-  def __init__(self, ctx):
-    super().__init__("reveal_type", ctx)
+  _NAME = "reveal_type"
 
   def call(self, node, func, args, alias_map=None):
     for a in args.posargs:
@@ -553,10 +552,7 @@ class AssertType(BuiltinFunction):
   _NAME = "assert_type"
 
   def call(self, node, func, args, alias_map=None):
-    if len(args.posargs) == 1:
-      a, = args.posargs
-      t = None
-    elif len(args.posargs) == 2:
+    if len(args.posargs) == 2:
       a, t = args.posargs
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)

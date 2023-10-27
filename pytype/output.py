@@ -258,7 +258,7 @@ class Converter(utils.ContextWeakrefMixin):
       # We generate the full definition because, if this type parameter is
       # imported, we will need the definition in order to declare it later.
       return self._type_variable_to_def(node, v, v.name)
-    elif isinstance(v, typing_overlay.NoReturn):
+    elif isinstance(v, typing_overlay.Never):
       return pytd.NothingType()
     elif isinstance(v, abstract.Concatenate):
       params = tuple(
@@ -305,7 +305,7 @@ class Converter(utils.ContextWeakrefMixin):
     Returns:
       A PyTD type.
     """
-    if isinstance(v, (abstract.Empty, typing_overlay.NoReturn)):
+    if isinstance(v, (abstract.Empty, typing_overlay.Never)):
       return pytd.NothingType()
     elif isinstance(v, abstract.TYPE_VARIABLE_INSTANCES):
       return self._type_variable_to_pytd_type(node, v, seen, view)
@@ -547,7 +547,7 @@ class Converter(utils.ContextWeakrefMixin):
         if isinstance(seen_return.data, abstract.Empty):
           ret = pytd.AnythingType()
         else:
-          assert isinstance(seen_return.data, typing_overlay.NoReturn)
+          assert isinstance(seen_return.data, typing_overlay.Never)
     return ret
 
   def _function_call_combination_to_signature(

@@ -180,7 +180,7 @@ def assert_type(__x, __t) -> None:  # pylint: disable=invalid-name
   Usage example:
 
   ```
-  import pytype_extensinos
+  import pytype_extensions
   assert_type = pytype_extensions.assert_type
 
   x = 3

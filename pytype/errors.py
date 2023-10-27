@@ -578,8 +578,8 @@ class ErrorLog(ErrorLogBase):
             v.to_type(node) for v in actual.data))
       else:
         full_actual = bad_actual
-    # typing.NoReturn is a prettier alias for nothing.
-    fmt = lambda ret: "NoReturn" if ret == "nothing" else ret
+    # typing.Never is a prettier alias for nothing.
+    fmt = lambda ret: "Never" if ret == "nothing" else ret
     error_details = self._prepare_errorlog_details(bad)
     return (fmt(expected), fmt(bad_actual), fmt(full_actual), error_details)
 
@@ -1250,15 +1250,9 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, self._var_to_printed_type(var, node))
 
   @_error_name("assert-type")
-  def assert_type(self, stack, node, var, typ=None):
+  def assert_type(self, stack, node, var, typ):
     """Check that a variable type matches its expected value."""
     actual = self._var_to_printed_type(var, node)
-
-    # assert_type(x) checks that x is not Any
-    if typ is None:
-      if actual in ("Any", "typing.Any"):
-        self.error(stack, f"Asserted type was {actual}")
-      return
 
     try:
       expected = abstract_utils.get_atomic_python_constant(typ, str)

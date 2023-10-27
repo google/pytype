@@ -345,15 +345,13 @@ class AssertTypeTest(test_base.BaseTest):
       class A: pass
       def f(x: int, y: str, z):
         assert_type(x, int)
-        assert_type(y, int)  # assert-type[e1]
-        assert_type(z)  # assert-type[e2]
+        assert_type(y, int)  # assert-type[e]
         if __random__:
           x = A()
         assert_type(x, Union[A, int])
     """)
     self.assertErrorSequences(errors, {
-        "e1": ["Expected", "int", "Actual", "str"],
-        "e2": ["type was Any"]
+        "e": ["Expected", "int", "Actual", "str"],
     })
 
   def test_assert_type_str(self):
@@ -361,15 +359,13 @@ class AssertTypeTest(test_base.BaseTest):
       class A: pass
       def f(x: int, y: str, z):
         assert_type(x, 'int')
-        assert_type(y, 'int')  # assert-type[e1]
-        assert_type(z)  # assert-type[e2]
+        assert_type(y, 'int')  # assert-type[e]
         if __random__:
           x = A()
         assert_type(x, 'Union[A, int]')
     """)
     self.assertErrorSequences(errors, {
-        "e1": ["Expected", "int", "Actual", "str"],
-        "e2": ["type was Any"]
+        "e": ["Expected", "int", "Actual", "str"],
     })
 
   def test_assert_type_import(self):
@@ -383,15 +379,13 @@ class AssertTypeTest(test_base.BaseTest):
         class A: pass
         def f(x: int, y: str, z):
           assert_type(x, int)
-          assert_type(y, int)  # assert-type[e1]
-          assert_type(z)  # assert-type[e2]
+          assert_type(y, int)  # assert-type[e]
           if __random__:
             x = A()
           assert_type(x, Union[A, int])
       """, pythonpath=[d.path])
       self.assertErrorSequences(errors, {
-          "e1": ["Expected", "int", "Actual", "str"],
-          "e2": ["type was Any"]
+          "e": ["Expected", "int", "Actual", "str"],
       })
 
   def test_combine_containers(self):

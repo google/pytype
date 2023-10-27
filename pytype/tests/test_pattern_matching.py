@@ -718,8 +718,8 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(c, int)
             assert_type(d, str)
           case _:
-            assert_type(x)
-            assert_type(y)
+            assert_type(x, B)
+            assert_type(y, A)
     """)
 
   def test_builtin(self):
@@ -1332,6 +1332,28 @@ class MatchCoverageTest(test_base.BaseTest):
         match (a, b):
           case (A.X, B.XX):
             print('bar')
+    """)
+
+  def test_enum_in_tuple(self):
+    """Skip tracking if matching an enum in a tuple."""
+    # Python unpacks the tuple and compiles to a simple enum cmp in some cases.
+    # Check that we do not track exhaustive or redundant matches for this case.
+    self.Check("""
+      import enum
+
+      class Side(enum.Enum):
+        RIGHT = enum.auto()
+        LEFT = enum.auto()
+        CUSTOM = enum.auto()
+
+      def actuate_phrase(side: Side, assistant: bool):
+        match (side, assistant):
+          case (Side.LEFT | Side.RIGHT, _):
+            return 'preset side'
+          case (Side.CUSTOM, True):
+            return 'custom true'
+          case (Side.CUSTOM, False):  # should not be redundant
+            return 'custom false'
     """)
 
   def test_pytd_enum_basic(self):

@@ -1013,7 +1013,7 @@ def _splats_to_any(seq, ctx):
 
 def call_function(
     ctx, node, func_var, args, fallback_to_unsolvable=True,
-    allow_noreturn=False, strict_filter=True):
+    allow_never=False, strict_filter=True):
   """Call a function.
 
   Args:
@@ -1022,7 +1022,7 @@ def call_function(
     func_var: A variable of the possible functions to call.
     args: The arguments to pass. See function.Args.
     fallback_to_unsolvable: If the function call fails, create an unknown.
-    allow_noreturn: Whether typing.NoReturn is allowed in the return type.
+    allow_never: Whether typing.Never is allowed in the return type.
     strict_filter: Whether function bindings should be strictly filtered.
   Returns:
     A tuple (CFGNode, Variable). The Variable is the return value.
@@ -1035,7 +1035,7 @@ def call_function(
   result = ctx.program.NewVariable()
   nodes = []
   error = None
-  has_noreturn = False
+  has_never = False
   for funcb in func_var.bindings:
     func = funcb.data
     one_result = None
@@ -1046,14 +1046,14 @@ def call_function(
                         funcb.IsVisible(node)):
         error = e
     else:
-      if ctx.convert.no_return in one_result.data:
-        if allow_noreturn:
-          # Make sure NoReturn was the only thing returned.
+      if ctx.convert.never in one_result.data:
+        if allow_never:
+          # Make sure Never was the only thing returned.
           assert len(one_result.data) == 1
-          has_noreturn = True
+          has_never = True
         else:
           for b in one_result.bindings:
-            if b.data != ctx.convert.no_return:
+            if b.data != ctx.convert.never:
               result.PasteBinding(b)
       else:
         result.PasteVariable(one_result, new_node, {funcb})
@@ -1061,7 +1061,7 @@ def call_function(
   if nodes:
     node = ctx.join_cfg_nodes(nodes)
     if not result.bindings:
-      v = ctx.convert.no_return if has_noreturn else ctx.convert.unsolvable
+      v = ctx.convert.never if has_never else ctx.convert.unsolvable
       result.AddBinding(v, [], node)
   elif (isinstance(error, FailedFunctionCall) and
         all(func.name.endswith(".__init__") for func in func_var.data)):
