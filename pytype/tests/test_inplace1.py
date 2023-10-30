@@ -89,6 +89,25 @@ class InplaceTest(test_base.BaseTest,
     self._check_inplace("^", ["x=1", "y=2"], "int")
     self._check_inplace("^", ["x={1}", "y={2}"], "set[int]")
 
+  def test_setitem_and_iadd(self):
+    self.Check("""
+      from typing import Dict, TypeVar
+      T = TypeVar('T')
+      class Item:
+        pass
+      class ItemDict(Dict[Item, T]):
+        def __setitem__(self, k: Item, v: T):
+          if not v.id:
+            raise ValueError()
+          super().__setitem__(k, v)
+        def __iadd__(self, other: 'ItemDict'):
+          for k, v in other.items():
+            self[k] += v
+          return self
+        def Add(self, value: T):
+          super().__setitem__(value.id, value)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
