@@ -1,3 +1,17 @@
+Version 2023.10.31:
+
+Updates:
+* Happy Halloween!
+* typing.Self: support Self in variable annotations.
+* 3.11: Implement typing features Never, clear_overloads, get_overloads,
+  assert_type, reveal_type, and assert_never.
+* Add feature flag --bind-decorated-methods to bind 'self' correctly in
+  decorated methods.
+
+Bug fixes:
+* Fix some corner cases in invalidating an enum tracker.
+* Use equality check rather than identity check for recursion detection.
+
 Version 2023.10.24:
 
 Updates:
