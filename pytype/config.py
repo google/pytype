@@ -234,6 +234,8 @@ _OPT_IN_FEATURES = [
 
 
 FEATURE_FLAGS = [
+    _flag("--bind-decorated-methods", False,
+          "Bind 'self' in methods with non-transparent decorators."),
     _flag("--overriding-renamed-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods with "
           "renamed arguments."),

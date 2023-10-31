@@ -308,9 +308,12 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
           return True
     return False
 
-  def get_undecorated_method(self, name, node):
+  def get_undecorated_method(
+      self, name: str, node: cfg.CFGNode) -> Optional[cfg.Variable]:
+    if name not in self._undecorated_methods:
+      return None
     return self.ctx.program.NewVariable(
-        self._undecorated_methods.get(name, ()), (), node)
+        self._undecorated_methods[name], (), node)
 
 
 class PyTDClass(

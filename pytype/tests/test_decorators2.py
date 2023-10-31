@@ -344,6 +344,17 @@ class DecoratorsTest(test_base.BaseTest):
           pass
     """)
 
+  def test_self_in_decorated_method(self):
+    self.Check("""
+      from typing import Any
+      def decorate(f) -> Any:
+        return f
+      class C:
+        @decorate
+        def f(self):
+          assert_type(self, C)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
