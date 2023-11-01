@@ -1,5 +1,6 @@
 """Abstract class representations."""
 
+import itertools
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -126,7 +127,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     self.is_dynamic = self.compute_is_dynamic()
     self._undecorated_methods = undecorated_methods or {}
     log.info("Created class: %r", self)
-    self.type_param_check()
+    self._type_param_check()
+    self._override_check()
     self._first_opcode = first_opcode
 
   def _get_class(self):
@@ -158,7 +160,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     for m in methods:
       m.update_signature_scope(self)
 
-  def type_param_check(self):
+  def _type_param_check(self):
     """Throw exception for invalid type parameters."""
     self.update_method_type_params()
     if self.template:
@@ -178,6 +180,43 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       if t.full_name in self.all_formal_type_parameters:
         raise abstract_utils.GenericTypeError(
             self, f"Conflicting value for TypeVar {t.full_name}")
+
+  def _override_check(self):
+    """Checks for @typing.override errors."""
+    for name, member in self.members.items():
+      member_data = [
+          m for m in member.data
+          if _isinstance(m, ("InterpreterClass", "InterpreterFunction"))]
+      if not member_data:
+        continue
+
+      # Get line number for error reporting.
+      member = member_data[0]
+      if isinstance(member, InterpreterClass):
+        opcode = member.get_first_opcode()
+      else:
+        opcode = member.def_opcode
+      stack = self.ctx.vm.simple_stack(opcode)
+
+      if any("override" in m.decorators or "typing.override" in m.decorators
+             for m in member_data):
+        base = self._get_defining_base_class(name)
+        if not base:
+          # 'name' is marked as an override but not defined in a base class.
+          self.ctx.errorlog.no_overridden_attribute(stack, name)
+      elif self.ctx.options.require_override_decorator:
+        base = self._get_defining_base_class(name)
+        if base:
+          # 'name' is defined in a base class but not marked as an override.
+          self.ctx.errorlog.missing_override_decorator(
+              stack, name, base.full_name)
+
+  def _get_defining_base_class(self, attr):
+    """Gets first base class, if any, that defines the given attribute."""
+    for base in itertools.chain.from_iterable(b.data for b in self._bases):
+      if isinstance(base, class_mixin.Class) and attr in base:
+        return base
+    return None
 
   def collect_inner_cls_types(self, max_depth=5):
     """Collect all the type parameters from nested classes."""
@@ -640,14 +679,14 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     self.is_dynamic = self.base_cls.is_dynamic
     class_mixin.Class.init_mixin(self, base_cls.cls)
     mixin.NestedAnnotation.init_mixin(self)
-    self.type_param_check()
+    self._type_param_check()
 
   def __repr__(self):
     return "ParameterizedClass(cls={!r} params={})".format(
         self.base_cls,
         self._formal_type_parameters)
 
-  def type_param_check(self):
+  def _type_param_check(self):
     """Throw exception for invalid type parameters."""
     # It will cause infinite recursion if `formal_type_parameters` is
     # `LazyFormalTypeParameters`

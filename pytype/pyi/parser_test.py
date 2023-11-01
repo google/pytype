@@ -1144,6 +1144,20 @@ class FunctionTest(parser_test_base.ParserTestBase):
                      3,
                      "Too many decorators for foo")
 
+  def test_override_decorator(self):
+    # We ignore typing.override in pyi files.
+    self.check("""
+      from typing import Any
+      from typing_extensions import override
+
+      class A:
+          def f(self) -> Any: ...
+
+      class B(A):
+          @override
+          def f(self) -> Any: ...
+    """)
+
   def test_module_getattr(self):
     self.check("""
       def __getattr__(name) -> int: ...

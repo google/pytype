@@ -230,6 +230,9 @@ _OPT_IN_FEATURES = [
     # to True and are therefore left as opt-in features for users to enable.
     _flag("--no-return-any", False,
           "Do not allow Any as a return type."),
+    _flag("--require-override-decorator", False,
+          "Require decoration with @typing.override when overriding a method "
+          "or nested class attribute of a parent class."),
 ]
 
 

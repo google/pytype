@@ -1467,6 +1467,18 @@ class ErrorLog(ErrorLogBase):
     msg = "Dataclass error"
     self.error(stack, msg, details=details)
 
+  @_error_name("override-error")
+  def no_overridden_attribute(self, stack, attr):
+    msg = f"Attribute {attr!r} not found on any parent class"
+    self.error(stack, msg)
+
+  @_error_name("override-error")
+  def missing_override_decorator(self, stack, attr, parent):
+    parent_attr = f"{parent}.{attr}"
+    msg = (f"Missing @typing.override decorator for {attr!r}, which overrides "
+           f"{parent_attr!r}")
+    self.error(stack, msg)
+
 
 def get_error_names_set():
   return _ERROR_NAMES

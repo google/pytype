@@ -1177,5 +1177,92 @@ class OverridingTest(test_base.BaseTest):
     """)
 
 
+class TypingOverrideTest(test_base.BaseTest):
+  """Tests for @typing.override."""
+
+  def test_valid_override(self):
+    self.Check("""
+      from typing_extensions import override
+      class A:
+        def f(self):
+          pass
+      class B(A):
+        @override
+        def f(self):
+          pass
+    """)
+
+  def test_invalid_override(self):
+    errors = self.CheckWithErrors("""
+      from typing_extensions import override
+      class A:
+        def f(self):
+          pass
+      class B(A):
+        @override
+        def g(self):  # override-error[e]
+          pass
+    """)
+    self.assertErrorSequences(
+        errors, {"e": ["Attribute 'g' not found on any parent class"]})
+
+  def test_multiple_inheritance(self):
+    self.CheckWithErrors("""
+      from typing_extensions import override
+      class A:
+        def f(self):
+          pass
+      class B:
+        def g(self):
+          pass
+      class C(A, B):
+        @override
+        def f(self):
+          pass
+        @override
+        def g(self):
+          pass
+        @override
+        def h(self):  # override-error
+          pass
+    """)
+
+  def test_nested_class(self):
+    self.CheckWithErrors("""
+      from typing_extensions import override
+      class A:
+        class B:
+          pass
+      class C(A):
+        @override
+        class B:
+          pass
+        @override
+        class B2:  # override-error
+          pass
+    """)
+
+  def test_strict_mode(self):
+    errors = self.CheckWithErrors("""
+      # pytype: features=require-override-decorator
+      from typing_extensions import override
+      class A:
+        def f(self):
+          pass
+        def g(self):
+          pass
+      class B(A):
+        @override
+        def f(self):
+          pass
+        def g(self):  # override-error[e]
+          pass
+        def h(self):
+          pass
+    """)
+    self.assertErrorSequences(errors, {"e": [
+        "Missing @typing.override decorator for 'g', which overrides 'A.g'"]})
+
+
 if __name__ == "__main__":
   test_base.main()

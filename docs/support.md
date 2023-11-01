@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Wed Oct 25 03:33:16 PM PDT 2023 -->
+<!-- Added by: rechen, at: Wed Nov  1 01:00:07 PM PDT 2023 -->
 
 <!--te-->
 
@@ -86,7 +86,7 @@ Feature                                                                         
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
 [PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | 🟡        |
 [PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
-[PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ❌        |
+[PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ✅        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
