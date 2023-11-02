@@ -61,6 +61,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
    * [not-instantiable](#not-instantiable)
    * [not-supported-yet](#not-supported-yet)
    * [not-writable](#not-writable)
+   * [override-error](#override-error)
    * [paramspec-error](#paramspec-error)
    * [pyi-error](#pyi-error)
    * [python-compiler-error](#python-compiler-error)
@@ -77,7 +78,7 @@ See [Silencing Errors][silencing-errors] for a more detailed example.
    * [wrong-keyword-args](#wrong-keyword-args)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 16 07:27:45 PM PDT 2023 -->
+<!-- Added by: rechen, at: Thu Nov  2 01:55:50 PM PDT 2023 -->
 
 <!--te-->
 
@@ -131,15 +132,15 @@ string representation. The latter form is useful when you want to assert a type
 without importing it, e.g.
 
 ```python
-from typing import List
+from collections.abc import Sequence
 
-assert_type(x, List[int])
+assert_type(x, Sequence[int])
 ```
 
 versus
 
 ```python
-assert_type(x, 'List[int]')
+assert_type(x, 'Sequence[int]')
 ```
 
 `assert_type` can also be used without an `expected` argument to assert that a
@@ -156,7 +157,7 @@ attribute is declared in a method other than `__new__` or `__init__`:
 
 <!-- bad -->
 ```python
-class A(object):
+class A:
   def make_foo(self):
     self.foo = 42
   def consume_foo(self):
@@ -167,7 +168,7 @@ To make pytype aware of `foo`, declare its type with a variable annotation:
 
 <!-- good -->
 ```python
-class A(object):
+class A:
   foo: int
 ```
 
@@ -233,7 +234,7 @@ that's not a string.
 
 <!-- bad -->
 ```python
-class Foo(object):
+class Foo:
   __slots__ = (1, 2, 3)
 ```
 
@@ -283,7 +284,7 @@ Example:
 
 <!-- bad -->
 ```python
-a: List[int] = [1, 2]
+a: list[int] = [1, 2]
 a.append("hello")  # <-- contained type is now `int | str`
 ```
 
@@ -327,7 +328,7 @@ The abc.abstractmethod decorator was used in a non-abstract class. Example:
 <!-- bad -->
 ```python
 import abc
-class A(object):  # ignored-abstractmethod
+class A:  # ignored-abstractmethod
   @abc.abstractmethod
   def f(self):
     pass
@@ -350,7 +351,7 @@ A Python 2 metaclass declaration was found. Example:
 
 <!-- bad -->
 ```python
-class A(object):
+class A:
   __metaclass__ = Meta
 ```
 
@@ -418,14 +419,14 @@ Other examples:
 
 <!-- bad -->
 ```python
-from typing import List, Union
+from typing import Union
 
-condition = ...  # type: bool
+condition: bool = ...
 class _Foo: ...
 def Foo():
   return _Foo()
 
-def f(x: List[int, str]):  # bad: too many parameters for List
+def f(x: list[int, str]):  # bad: too many parameters for List
   pass
 def f(x: Foo):  # bad: not a type
   pass
@@ -444,26 +445,26 @@ import attr
 import typing
 
 v = typing.cast("A", None)  # invalid-annotation
-class A(object):
+class A:
   pass
 
 @attr.s
-class Foo(object):
+class Foo:
   v = attr.ib(type=zip)  # invalid-annotation
 ```
 
-The solutions are to use a type comment and to fix the type:
+The solutions are to use a variable annotation and to fix the type:
 
 <!-- good -->
 ```python
 import attr
 
-v = None  # type: "A"
-class A(object):
+v: "A" = None
+class A:
   pass
 
 @attr.s
-class Foo(object):
+class Foo:
   v = attr.ib(type=list)
 ```
 
@@ -632,7 +633,7 @@ Often, the culprit is cyclic inheritance:
 
 <!-- bad -->
 ```python
-class A(object):
+class A:
   pass
 class B(object, A):  # mro-error
   pass
@@ -640,19 +641,20 @@ class B(object, A):  # mro-error
 
 ## name-error
 
-This name does not exist in the current namespace. Note that types like `List`,
-`Dict`, etc., need to be imported from the typing module:
+This name does not exist in the current namespace. Note that abstract types like
+`Sequence`, `Callable`, etc., need to be imported from the collections.abc
+module:
 
 <!-- bad -->
 ```python
-MyListType = List[str]  # name-error
+MySequenceType = Sequence[str]  # name-error
 ```
 
 <!-- good -->
 ```python
-from typing import List
+from collections.abc import Sequence
 
-MyListType = List[str]
+MySequenceType = Sequence[str]
 ```
 
 Note that a name from an outer namespace cannot be referenced if you redefine it
@@ -734,10 +736,42 @@ attribute isn't writable:
 
 <!-- bad -->
 ```python
-class Foo(object):
+class Foo:
   __slots__ = ("x", "y")
 
 Foo().z = 42  # not-writable
+```
+
+## override-error
+
+This error is reported when `@typing.override` is used to decorate a
+non-overriding method:
+
+<!-- bad -->
+```python
+import typing
+class Parent:
+  def new_foo(self):
+    pass
+class Child(Parent):
+  @typing.override
+  def foo(self):  # override-error
+    pass
+```
+
+If you enable the `require-override-decorator` feature, then you'll also get
+this error when the decorator is forgotten:
+
+<!-- bad -->
+```python
+# pytype: features=require-override-decorator
+
+class Parent:
+  def foo(self):
+    pass
+class Child(Parent):
+  def foo(self):  # override-error
+    pass
 ```
 
 ## paramspec-error
@@ -811,7 +845,7 @@ The error message displays the type of the expression passed to it. Example:
 <!-- good -->
 ```python
 import os
-reveal_type(os.path.join("hello", u"world"))  # reveal-type: unicode
+reveal_type(os.path.join("hello", u"world"))  # reveal-type: str
 ```
 
 This feature is implemented as an error to ensure that `reveal_type()` calls are
@@ -870,7 +904,7 @@ to a class or function. Example:
 <!-- bad -->
 ```python
 from typing import AnyStr
-x = ...  # type: AnyStr  # unbound-type-param
+x: AnyStr = ...
 ```
 
 Unbound type parameters are meaningless as types. If you want to take advantage
@@ -879,7 +913,7 @@ directly. So the above example should be rewritten as:
 
 <!-- good -->
 ```python
-x = ...  # type: str | unicode
+x: str | bytes = ...
 ```
 
 ## unsupported-operands

@@ -668,6 +668,7 @@ typing_overlay = {
     "is_typeddict": (
         overlay.add_name("is_typeddict", typed_dict.IsTypedDict.make), (3, 10)),
     "overload": (overlay.add_name("overload", Overload.make), None),
+    "override": (_builder_from_name("override"), (3, 12)),
     "reveal_type": (
         overlay.add_name("reveal_type", special_builtins.RevealType.make_alias),
         (3, 11)),
