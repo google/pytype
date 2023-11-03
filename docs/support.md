@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Wed Nov  1 01:00:07 PM PDT 2023 -->
+<!-- Added by: rechen, at: Fri Nov  3 11:19:00 AM PDT 2023 -->
 
 <!--te-->
 
@@ -79,7 +79,7 @@ Feature                                                                         
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]                                   | 3.10    | ✅        |
 [PEP 612 -- Parameter Specification Variables][612]                                     | 3.10    | 🟡        | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
-[PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        |
+[PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        | [#1525][variadic-generics]
 [PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
 [PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ✅        |
@@ -205,3 +205,4 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [pytype-typing-faq]: https://google.github.io/pytype/typing_faq.html
 [self]: https://github.com/google/pytype/issues/1283
 [type-guards]: https://github.com/google/pytype/issues/916
+[variadic-generics]: https://github.com/google/pytype/issues/1525
