@@ -61,13 +61,15 @@ class Unknown(_base.BaseValue):
       return v.to_type(node)
 
   @classmethod
-  def _make_params(cls, node, args):
+  def _make_params(cls, node, args, kwargs):
     """Convert a list of types/variables to pytd parameters."""
-    def _make_param(i, p):
-      return pytd.Parameter("_%d" % (i + 1), cls._to_pytd(node, p),
+    def _make_param(name, p):
+      return pytd.Parameter(name, cls._to_pytd(node, p),
                             kind=pytd.ParameterKind.REGULAR, optional=False,
                             mutated_type=None)
-    return tuple(_make_param(i, p) for i, p in enumerate(args))
+    pos_params = tuple(_make_param(f"_{i+1}", p) for i, p in enumerate(args))
+    key_params = tuple(_make_param(name, p) for name, p in kwargs.items())
+    return pos_params + key_params
 
   def get_special_attribute(self, node, name, valself):
     del node, valself
@@ -109,15 +111,15 @@ class Unknown(_base.BaseValue):
                                  pytd.ParameterKind.REGULAR, False, None),)
     starargs = None
     starstarargs = None
-    def _make_sig(args, ret):
-      return pytd.Signature(self_param + self._make_params(node, args),
+    def _make_sig(args, kwargs, ret):
+      return pytd.Signature(self_param + self._make_params(node, args, kwargs),
                             starargs,
                             starstarargs,
                             return_type=Unknown._to_pytd(node, ret),
                             exceptions=(),
                             template=())
     calls = tuple(pytd_utils.OrderedSet(
-        _make_sig(args, ret) for args, _, ret in self._calls))
+        _make_sig(args, kwargs, ret) for args, kwargs, ret in self._calls))
     if calls:
       methods = (pytd.Function("__call__", calls, pytd.MethodKind.METHOD),)
     else:

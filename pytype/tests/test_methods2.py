@@ -174,6 +174,25 @@ class TestMethodsPy3(test_base.BaseTest):
       assert_type(b, Type[A])
     """)
 
+  def test_signature_inference(self):
+    ty = self.Infer("""
+      class C:
+        def __init__(self, fn1, fn2):
+          self._fn1 = fn1
+          self._fn2 = fn2
+        def f(self, x):
+          self._fn1(x)
+          self._fn2(x=x)
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Any
+      class C:
+        def __init__(self, fn1, fn2) -> None: ...
+        def f(self, x) -> None: ...
+        def _fn1(self, _1) -> Any: ...
+        def _fn2(self, x) -> Any: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

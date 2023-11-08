@@ -1,5 +1,6 @@
 """Implementation of types from the fiddle library."""
 
+import re
 from typing import Any, Dict, Tuple
 
 from pytype.abstract import abstract
@@ -61,6 +62,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     self.set_native_slot("__getitem__", self.getitem_slot)
     # For consistency with the rest of the overlay
     self.fiddle_type_name = name
+    self.module = module
 
   def __repr__(self):
     return f"Fiddle{self.name}"
@@ -148,7 +150,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     """Specialize the generic class with the value of index_var."""
 
     underlying = index_var.data[0]
-    ret = BuildableType(self.name, underlying, self.ctx)
+    ret = BuildableType(self.name, underlying, self.ctx, module=self.module)
     return node, ret.to_variable(node)
 
   def get_own_new(self, node, value) -> Tuple[Node, Variable]:
@@ -159,8 +161,10 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
 class BuildableType(abstract.ParameterizedClass):
   """Base generic class for fiddle.Config and fiddle.Partial."""
 
-  def __init__(self, fiddle_type_name, underlying, ctx, template=None):
-    base_cls = BuildableBuilder(fiddle_type_name, ctx, "fiddle")
+  def __init__(
+      self, fiddle_type_name, underlying, ctx, template=None, module="fiddle"
+  ):
+    base_cls = BuildableBuilder(fiddle_type_name, ctx, module)
 
     if isinstance(underlying, abstract.Function):
       # We don't support functions for now, but falling back to Any here gets us
@@ -215,7 +219,7 @@ def _convert_type(typ, subst, ctx):
   if isinstance(typ, abstract.TypeParameter) and typ.name in subst:
     # TODO(mdemello): Handle typevars in unions.
     typ = subst[typ.name]
-  new_typ = BuildableType("Config", typ, ctx)
+  new_typ = BuildableType("Config", typ, ctx, module="fiddle")
   return abstract.Union([new_typ, typ], ctx)
 
 
@@ -252,7 +256,7 @@ def make_instance(
   instance_class = {"Config": Config, "Partial": Partial}[subclass_name]
   # Create the specialized class Config[underlying] or Partial[underlying]
   try:
-    cls = BuildableType(subclass_name, underlying, ctx)
+    cls = BuildableType(subclass_name, underlying, ctx, module="fiddle")
   except KeyError:
     # We are in the middle of constructing the fiddle ast; fiddle.Config doesn't
     # exist yet
@@ -274,14 +278,15 @@ def is_fiddle_buildable_pytd(cls: pytd.Class) -> bool:
   # We need the awkward check for the full name because while fiddle reexports
   # the class as fiddle.Config, we expand that in inferred pyi files to
   # fiddle._src.config.Config
-  return cls.name.startswith("fiddle.") and (
-      cls.name.endswith(".Config") or cls.name.endswith(".Partial"))
+  fiddle = re.fullmatch(r"fiddle\.(.+\.)?(Config|Partial)", cls.name)
+  pax = re.fullmatch(r"(.+\.)?pax_fiddle.(Pax)?(Config|Partial)", cls.name)
+  return bool(fiddle or pax)
 
 
 def get_fiddle_buildable_subclass(cls: pytd.Class) -> str:
-  if cls.name.endswith(".Config"):
+  if re.search(r"\.(Pax)?Config$", cls.name):
     return "Config"
-  if cls.name.endswith(".Partial"):
+  if re.search(r"\.(Pax)?Partial$", cls.name):
     return "Partial"
   raise ValueError(f"Unexpected {cls.name} when computing fiddle Buildable "
                    "subclass; allowed suffixes are `.Config`, and `.Partial`.")
