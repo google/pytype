@@ -94,8 +94,8 @@ class Converter(utils.ContextWeakrefMixin):
     self.primitive_classes = {
         v: self.constant_to_value(v) for v in primitive_classes
     }
-    self.primitive_class_names = [
-        ".".join(self._type_to_name(x)) for x in self.primitive_classes]
+    self.primitive_classes_by_name = {
+        ".".join(self._type_to_name(x)): x for x in self.primitive_classes}
     self.none = abstract.ConcreteValue(None, self.primitive_classes[NoneType],
                                        self.ctx)
     self.true = abstract.ConcreteValue(True, self.primitive_classes[bool],
@@ -930,6 +930,10 @@ class Converter(utils.ContextWeakrefMixin):
             mycls = self.constant_to_value(cls, subst, self.ctx.root_node)
             if isinstance(mycls, typed_dict.TypedDictClass):
               instance = mycls.instantiate_value(self.ctx.root_node, None)
+            elif (isinstance(mycls, abstract.PyTDClass) and
+                  mycls.pytd_cls.name in self.primitive_classes_by_name):
+              instance = self.primitive_class_instances[
+                  self.primitive_classes_by_name[mycls.pytd_cls.name]]
             else:
               instance = abstract.Instance(mycls, self.ctx)
           log.info("New pytd instance for %s: %r", cls.name, instance)

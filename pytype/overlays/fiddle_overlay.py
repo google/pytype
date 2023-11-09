@@ -278,8 +278,8 @@ def is_fiddle_buildable_pytd(cls: pytd.Class) -> bool:
   # We need the awkward check for the full name because while fiddle reexports
   # the class as fiddle.Config, we expand that in inferred pyi files to
   # fiddle._src.config.Config
-  fiddle = re.fullmatch(r"fiddle\.(.+\.)?(Config|Partial)", cls.name)
-  pax = re.fullmatch(r"(.+\.)?pax_fiddle.(Pax)?(Config|Partial)", cls.name)
+  fiddle = re.fullmatch(r"fiddle\.(.+\.)*(Config|Partial)", cls.name)
+  pax = re.fullmatch(r"(.+\.)*pax_fiddle.(Pax)?(Config|Partial)", cls.name)
   return bool(fiddle or pax)
 
 

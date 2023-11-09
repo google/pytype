@@ -451,6 +451,16 @@ class SplitTestPy3(test_base.BaseTest):
           return a.Get()
     """)
 
+  def test_frametype(self):
+    self.Check("""
+      import inspect
+      current = inspect.currentframe()
+      assert current is not None
+      caller = current.f_back
+      assert caller is not None
+      code = caller.f_code
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
