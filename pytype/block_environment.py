@@ -33,7 +33,11 @@ class Environment:
         if b in self.block_locals and b != block and b not in self._dead_ends]
     n_inc = len(incoming)
     if n_inc == 0:
-      frame_locals = {k: [v] for k, v in frame.f_locals.pyval.items()}
+      try:
+        f_locals = frame.f_locals.pyval.items()
+      except AttributeError:
+        f_locals = ()
+      frame_locals = {k: [v] for k, v in f_locals}
       local.update(frame_locals)
     elif n_inc == 1:
       inc, = incoming

@@ -770,11 +770,15 @@ class VirtualMachine:
       name: str, discard_concrete_values: bool = False
   ) -> Tuple[frame_state.FrameState, cfg.Variable]:
     """Load an item out of locals, globals, or builtins."""
-    store.load_lazy_attribute(name)
-    try:
-      member = store.members[name]
-    except KeyError:
-      return state, self._load_annotation(state.node, name, store)
+    if isinstance(store, mixin.LazyMembers):
+      store.load_lazy_attribute(name)
+      try:
+        member = store.members[name]
+      except KeyError:
+        return state, self._load_annotation(state.node, name, store)
+    else:
+      assert store == self.ctx.convert.unsolvable
+      return state, self.ctx.new_unsolvable(state.node)
     bindings = member.Bindings(state.node)
     if (not bindings and self._late_annotations_stack and member.bindings and
         all(isinstance(v, abstract.Module) for v in member.data)):
