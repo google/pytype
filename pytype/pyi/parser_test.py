@@ -2017,13 +2017,19 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
       class A:
           @property
           def name(self, bad_arg): ...
-      """, 1, "@property needs 1 param(s), got 2")
+      """, 1, "@property must have 1 param(s), but actually has 2")
 
     self.check_error("""
       class A:
           @name.setter
           def name(self): ...
-      """, 1, "@name.setter needs 2 param(s), got 1")
+      """, 1, "@name.setter must have 2 param(s), but actually has 1")
+
+    self.check("""
+      class A:
+        @property
+        def name(self, optional_arg: str = ...): ...
+    """, expected=parser_test_base.IGNORE)
 
     self.check_error("""
       class A:
