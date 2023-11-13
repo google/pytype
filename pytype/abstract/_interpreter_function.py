@@ -115,17 +115,18 @@ class InterpreterFunction(_function_base.SignedFunction):
     """
     annotations = annotations or {}
     overloads = ctx.vm.frame.overloads[name]
+    if f_locals == ctx.convert.unsolvable:
+      local_members = {}
+    else:
+      local_members = f_locals.members
     key = (name, code,
            _hash_all_dicts(
                (f_globals.members, set(code.names)),
-               (f_locals.members,
-                set(f_locals.members) - set(code.varnames)), ({
-                    key: ctx.program.NewVariable([value], [], ctx.root_node)
-                    for key, value in annotations.items()
-                }, None), (dict(
-                    enumerate(
-                        ctx.program.NewVariable([f], [], ctx.root_node)
-                        for f in overloads)), None),
+               (local_members, set(local_members) - set(code.varnames)),
+               ({key: ctx.program.NewVariable([value], [], ctx.root_node)
+                 for key, value in annotations.items()}, None),
+               (dict(enumerate(ctx.program.NewVariable([f], [], ctx.root_node)
+                               for f in overloads)), None),
                (dict(enumerate(defaults)), None),
                (dict(enumerate(closure or ())), None)))
     if key not in cls._function_cache:
@@ -382,11 +383,14 @@ class InterpreterFunction(_function_base.SignedFunction):
     if (self.ctx.options.skip_repeat_calls and
         ("self" not in callargs or not self.ctx.callself_stack or
          callargs["self"].data != self.ctx.callself_stack[-1].data)):
+      if frame.f_locals == self.ctx.convert.unsolvable:
+        local_members = {}
+      else:
+        local_members = frame.f_locals.members
       callkey = _hash_all_dicts(
           (callargs, None),
           (frame.f_globals.members, set(self.code.names)),
-          (frame.f_locals.members,
-           set(frame.f_locals.members) - set(self.code.varnames)))
+          (local_members, set(local_members) - set(self.code.varnames)))
     else:
       # Make the callkey the number of times this function has been called so
       # that no call has the same key as a previous one.

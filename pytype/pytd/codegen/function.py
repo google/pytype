@@ -232,12 +232,15 @@ class _DecoratedFunction:
 
   def add_property(self, decorator, sig):
     prop = self.prop_names[decorator]
-    if prop.arity == len(sig.params):
+    if prop.arity == len([s for s in sig.params if not s.optional]):
       assert self.properties is not None
       self.properties.set(prop.type, sig, self.name)
     else:
-      raise TypeError("Property decorator @%s needs %d param(s), got %d" %
-                      (decorator, prop.arity, len(sig.params)))
+      raise TypeError(
+          f"Function '{self.name}' decorated by property decorator"
+          f" @{decorator} must have {prop.arity} param(s), but actually has"
+          f" {len(sig.params)}"
+      )
 
   def add_overload(self, fn: NameAndSig):
     """Add an overloaded signature to a function."""

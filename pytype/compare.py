@@ -38,7 +38,7 @@ def _is_primitive(ctx, value):
   if _is_primitive_constant(ctx, value):
     return True
   elif isinstance(value, abstract.Instance):
-    return value.full_name in ctx.convert.primitive_class_names
+    return value.full_name in ctx.convert.primitive_classes_by_name
   return False
 
 
