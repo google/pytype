@@ -173,6 +173,8 @@ def _convert_annotated(x):
   """Convert everything to a string to store it in pytd.Annotated."""
   if isinstance(x, types.Pyval):
     return x.repr_str()
+  elif isinstance(x, astlib.AST):
+    return astlib.unparse(x)
   elif isinstance(x, dict):
     return metadata.to_string(x)
   elif isinstance(x, tuple):

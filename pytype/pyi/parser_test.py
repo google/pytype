@@ -2846,6 +2846,19 @@ class AnnotatedTest(parser_test_base.ParserTestBase):
           y: Annotated[int, {'tag': 'call', 'fn': 'unit', 'posargs': ('s',), 'kwargs': {'exp': 9}}]
     """)
 
+  def test_name(self):
+    self.check("""
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, Signal]
+    """, """
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, Signal]
+    """)
+
 
 class ErrorTest(test_base.UnitTest):
   """Test parser errors."""
