@@ -723,7 +723,7 @@ class PrintVisitor(base_visitor.Visitor):
         assert isinstance(param, (pytd.NothingType, pytd.TypeParameter)), param
       parameters = ("...",) + parameters[1:]
     return (self.MaybeCapitalize(node.base_type) +
-            "[" + ", ".join(parameters) + "]")
+            "[" + ", ".join(str(p) for p in parameters) + "]")
 
   def VisitCallableType(self, node):
     typ = self.MaybeCapitalize(node.base_type)
