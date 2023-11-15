@@ -142,6 +142,22 @@ class MockTest(test_base.BaseTest):
           other_mock.return_value.__enter__ = lambda x: x
     """)
 
+  def test_decorated_setup(self):
+    self.Check("""
+      from typing import Any
+      import unittest
+      from unittest import mock
+
+      random_module: Any
+
+      class FooTest(unittest.TestCase):
+        @mock.patch.object(random_module, 'attr')
+        def setUp(self):
+          self.x = 42
+        def test_something(self):
+          assert_type(self.x, int)
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
