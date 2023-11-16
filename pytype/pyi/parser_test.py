@@ -6,6 +6,7 @@ from pytype.pyi import parser
 from pytype.pyi import parser_test_base
 from pytype.pytd import pytd
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 import unittest
 
@@ -2844,6 +2845,20 @@ class AnnotatedTest(parser_test_base.ParserTestBase):
       class Foo:
           x: Annotated[int, {'tag': 'Deprecated', 'reason': 'use new api'}]
           y: Annotated[int, {'tag': 'call', 'fn': 'unit', 'posargs': ('s',), 'kwargs': {'exp': 9}}]
+    """)
+
+  @test_utils.skipBeforePy((3, 9), "requires ast.unparse, new in 3.9")
+  def test_name(self):
+    self.check("""
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, Signal]
+    """, """
+      from typing_extensions import Annotated
+
+      class Foo:
+          x: Annotated[int, Signal]
     """)
 
 

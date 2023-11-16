@@ -401,7 +401,8 @@ class CallTracer(vm.VirtualMachine):
     cls = valself.data.cls
     bound_method = bind(node, method) if obj == cls else method
     if (not isinstance(cls, abstract.InterpreterClass) or
-        any(isinstance(m, abstract.FUNCTION_TYPES) for m in bound_method.data)):
+        any(isinstance(m, abstract.INTERPRETER_FUNCTION_TYPES)
+            for m in bound_method.data)):
       return node, bound_method
     # If the method is not something that pytype recognizes as a function -
     # which can happen if the method is decorated, for example - then we look up

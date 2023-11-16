@@ -260,40 +260,57 @@ class PyTDFunction(_function_base.Function):
         name = mutation.name
         values = mutation.value
         if obj.from_annotation:
-          params = obj.get_instance_type_parameter(name)
-          ps = {v for v in params.data if should_check(v)}
-          if ps:
-            filtered_values = self.ctx.program.NewVariable()
-            # check if the container type is being broadened.
-            new = []
-            short_name = name.rsplit(".", 1)[-1]
-            for b in values.bindings:
-              if not should_check(b.data) or b.data in ps:
-                filtered_values.PasteBinding(b)
-                continue
-              new_view = datatypes.AccessTrackingDict.merge(
-                  combined_view, view, {values: b})
-              if not compatible_with(values, ps, new_view):
-                combination = [b]
-                bad_param = b.data.get_instance_type_parameter(short_name)
-                if bad_param in new_view:
-                  combination.append(new_view[bad_param])
-                if not node.HasCombination(combination):
-                  # Since HasCombination is expensive, we don't use it to
-                  # pre-filter bindings, but once we think we have an error, we
-                  # should double-check that the binding is actually visible. We
-                  # also drop non-visible bindings from filtered_values.
-                  continue
-                filtered_values.PasteBinding(b)
-                new.append(b.data)
-            # By updating filtered_mutations only when ps is non-empty, we
-            # filter out mutations to parameters with type Any.
-            filtered_mutations.append(
-                function.Mutation(obj, name, filtered_values))
-            if new:
-              errors[obj][short_name] = (params, values, obj.from_annotation)
+          # We should check for parameter mismatches only if the class is
+          # generic. Consider:
+          #   class A(tuple[int, int]): ...
+          #   class B(tuple): ...
+          # Although pytype computes mutations for tuple.__new__ for both
+          # classes, the second implicitly inherits from tuple[Any, ...], so
+          # there are no restrictions on the container contents.
+          check_params = False
+          for cls in obj.cls.mro:
+            if isinstance(cls, _classes.ParameterizedClass):
+              check_params = True
+              break
+            elif cls.template:
+              break
         else:
+          check_params = False
+        if not check_params:
           filtered_mutations.append(function.Mutation(obj, name, values))
+          continue
+        params = obj.get_instance_type_parameter(name)
+        ps = {v for v in params.data if should_check(v)}
+        if ps:
+          filtered_values = self.ctx.program.NewVariable()
+          # check if the container type is being broadened.
+          new = []
+          short_name = name.rsplit(".", 1)[-1]
+          for b in values.bindings:
+            if not should_check(b.data) or b.data in ps:
+              filtered_values.PasteBinding(b)
+              continue
+            new_view = datatypes.AccessTrackingDict.merge(
+                combined_view, view, {values: b})
+            if not compatible_with(values, ps, new_view):
+              combination = [b]
+              bad_param = b.data.get_instance_type_parameter(short_name)
+              if bad_param in new_view:
+                combination.append(new_view[bad_param])
+              if not node.HasCombination(combination):
+                # Since HasCombination is expensive, we don't use it to
+                # pre-filter bindings, but once we think we have an error, we
+                # should double-check that the binding is actually visible. We
+                # also drop non-visible bindings from filtered_values.
+                continue
+              filtered_values.PasteBinding(b)
+              new.append(b.data)
+          # By updating filtered_mutations only when ps is non-empty, we
+          # filter out mutations to parameters with type Any.
+          filtered_mutations.append(
+              function.Mutation(obj, name, filtered_values))
+          if new:
+            errors[obj][short_name] = (params, values, obj.from_annotation)
 
       all_mutations = filtered_mutations
 

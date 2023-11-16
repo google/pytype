@@ -253,6 +253,33 @@ class TupleTestPython3Feature(test_base.BaseTest):
       f((0, 0))  # ok
     """)
 
+  def test_imported_tuple_subclass_with_new(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeVar
+      _T = TypeVar('_T', bound=C)
+      class C(tuple):
+        def __new__(
+            cls: type[_T], x: str | list[tuple[int, tuple[int, int]]]
+        ) -> _T: ...
+    """)]):
+      ty = self.Infer("""
+        import foo
+        class A:
+          def __init__(self, c: foo.C):
+            self.c = foo.C('+'.join([f'{x}{y}' for x, y in c]))
+        class B:
+          def __init__(self, c: foo.C = foo.C([(0, (1, 2))])):
+            pass
+      """)
+      self.assertTypesMatchPytd(ty, """
+        import foo
+        class A:
+          c: foo.C
+          def __init__(self, c: foo.C) -> None: ...
+        class B:
+          def __init__(self, c: foo.C = ...) -> None: ...
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
