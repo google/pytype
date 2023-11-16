@@ -173,7 +173,9 @@ def _convert_annotated(x):
   """Convert everything to a string to store it in pytd.Annotated."""
   if isinstance(x, types.Pyval):
     return x.repr_str()
-  elif isinstance(x, astlib.AST):
+  # TODO(rechen): ast.unparse is new in Python 3.9, so we can drop the hasattr
+  # check once pytype stops supporting 3.8.
+  elif isinstance(x, astlib.AST) and hasattr(astlib, "unparse"):
     return astlib.unparse(x)
   elif isinstance(x, dict):
     return metadata.to_string(x)
