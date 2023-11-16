@@ -248,8 +248,6 @@ FEATURE_FLAGS = [
           "Variables initialized as None retain their None binding."),
     _flag("--use-fiddle-overlay", False,
           "Support the third-party fiddle library."),
-    _flag("--use-pax-fiddle-overlay", False,
-          "Support the third-party pax_fiddle library."),
 ] + _OPT_IN_FEATURES
 
 

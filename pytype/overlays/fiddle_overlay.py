@@ -24,6 +24,14 @@ Variable = Any
 _INSTANCE_CACHE: Dict[Tuple[Node, abstract.Class, str], abstract.Instance] = {}
 
 
+_CLASS_ALIASES = {
+    "Config": "Config",
+    "PaxConfig": "Config",
+    "Partial": "Partial",
+    "PaxPartial": "Partial"
+}
+
+
 class FiddleOverlay(overlay.Overlay):
   """A custom overlay for the 'fiddle' module."""
 
@@ -61,7 +69,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     mixin.HasSlots.init_mixin(self)
     self.set_native_slot("__getitem__", self.getitem_slot)
     # For consistency with the rest of the overlay
-    self.fiddle_type_name = name
+    self.fiddle_type_name = _CLASS_ALIASES[name]
     self.module = module
 
   def __repr__(self):
@@ -150,7 +158,9 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     """Specialize the generic class with the value of index_var."""
 
     underlying = index_var.data[0]
-    ret = BuildableType(self.name, underlying, self.ctx, module=self.module)
+    ret = BuildableType(
+        self.fiddle_type_name, underlying, self.ctx, module=self.module
+    )
     return node, ret.to_variable(node)
 
   def get_own_new(self, node, value) -> Tuple[Node, Variable]:
@@ -177,12 +187,16 @@ class BuildableType(abstract.ParameterizedClass):
     super().__init__(base_cls, formal_type_parameters, ctx, template)  # pytype: disable=wrong-arg-types
     self.fiddle_type_name = fiddle_type_name
     self.underlying = underlying
+    self.module = module
 
   def replace(self, inner_types):
     inner_types = dict(inner_types)
     new_underlying = inner_types[abstract_utils.T]
     typ = self.__class__
-    return typ(self.fiddle_type_name, new_underlying, self.ctx, self.template)
+    return typ(
+        self.fiddle_type_name, new_underlying, self.ctx, self.template,
+        self.module
+    )
 
   def instantiate(self, node, container=None):
     _, ret = make_instance(
@@ -244,6 +258,7 @@ def make_instance(
 ) -> Tuple[Node, abstract.BaseValue]:
   """Generate a Buildable instance from an underlying template class."""
 
+  subclass_name = _CLASS_ALIASES[subclass_name]
   if subclass_name not in ("Config", "Partial"):
     raise ValueError(f"Unexpected instance class: {subclass_name}")
 
