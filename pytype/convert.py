@@ -981,7 +981,7 @@ class Converter(utils.ContextWeakrefMixin):
           underlying = self.constant_to_value(param, subst, node)
           subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
           try:
-            return fiddle_overlay.BuildableType(
+            return fiddle_overlay.BuildableType.make(
                 subclass_name, underlying, self.ctx)
           except KeyError:
             # We are in the middle of constructing the fiddle ast so
