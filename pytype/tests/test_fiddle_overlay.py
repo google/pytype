@@ -149,6 +149,26 @@ class TestDataclassConfig(test_base.BaseTest):
         c = fiddle.{self.buildable_type_name}(Parent, child_data, child_regular)
       """)
 
+  def test_dataclass_with_fiddle_member(self):
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check(f"""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class DataClass:
+          x: int
+          y: str
+
+        @dataclasses.dataclass
+        class Parent:
+          child_data: DataClass
+          child_config: fiddle.Config[DataClass]
+
+        child_data = fiddle.Config(DataClass, x=1, y='y')
+        c = fiddle.{self.buildable_type_name}(Parent, child_data, child_data)
+      """)
+
   def test_nested_object_assignment(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
       self.Check(f"""

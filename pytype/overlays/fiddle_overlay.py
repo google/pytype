@@ -73,7 +73,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     self.module = module
 
   def __repr__(self):
-    return f"Fiddle{self.name}"
+    return f"FiddleBuildableBuilder[{self.name}]"
 
   def _match_pytd_init(self, node, init_var, args):
     init = init_var.data[0]
@@ -119,7 +119,16 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
             # If the underlying type is a function, do not try to instantiate it
             return self.ctx.new_unsolvable(node)
           else:
-            return d.underlying.instantiate(node)
+            # Match either Config[A] or A
+            # TODO(mdemello): This is to prevent issues when a dataclass field
+            # has type Config[A] rather than A, in which case blindly unwrapping
+            # an arg of type Config[A] is wrong. We should ideally do arg-by-arg
+            # matching here instead of trying to construct function args without
+            # reference to the signature we are matching.
+            return self.ctx.join_variables(node, [
+                arg_var,
+                d.underlying.instantiate(node)
+            ])
       return arg_var
     new_args = (underlying.instantiate(node),)
     new_args += tuple(unwrap(arg) for arg in args[1:])
