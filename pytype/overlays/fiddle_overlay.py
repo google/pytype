@@ -73,7 +73,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     self.module = module
 
   def __repr__(self):
-    return f"Fiddle{self.name}"
+    return f"FiddleBuildableBuilder[{self.name}]"
 
   def _match_pytd_init(self, node, init_var, args):
     init = init_var.data[0]
@@ -119,7 +119,16 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
             # If the underlying type is a function, do not try to instantiate it
             return self.ctx.new_unsolvable(node)
           else:
-            return d.underlying.instantiate(node)
+            # Match either Config[A] or A
+            # TODO(mdemello): This is to prevent issues when a dataclass field
+            # has type Config[A] rather than A, in which case blindly unwrapping
+            # an arg of type Config[A] is wrong. We should ideally do arg-by-arg
+            # matching here instead of trying to construct function args without
+            # reference to the signature we are matching.
+            return self.ctx.join_variables(node, [
+                arg_var,
+                d.underlying.instantiate(node)
+            ])
       return arg_var
     new_args = (underlying.instantiate(node),)
     new_args += tuple(unwrap(arg) for arg in args[1:])
@@ -158,7 +167,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
     """Specialize the generic class with the value of index_var."""
 
     underlying = index_var.data[0]
-    ret = BuildableType(
+    ret = BuildableType.make(
         self.fiddle_type_name, underlying, self.ctx, module=self.module
     )
     return node, ret.to_variable(node)
@@ -172,28 +181,37 @@ class BuildableType(abstract.ParameterizedClass):
   """Base generic class for fiddle.Config and fiddle.Partial."""
 
   def __init__(
-      self, fiddle_type_name, underlying, ctx, template=None, module="fiddle"
+      self, base_cls, underlying, ctx, template=None, module="fiddle"
   ):
-    base_cls = BuildableBuilder(fiddle_type_name, ctx, module)
-
     if isinstance(underlying, abstract.Function):
       # We don't support functions for now, but falling back to Any here gets us
       # as much of the functionality as possible.
+      formal_type_parameters = {abstract_utils.T: ctx.convert.unsolvable}
+    elif isinstance(underlying, abstract.ConcreteValue):
+      # We should not hit this case but there are some complex cases where we
+      # handle __getitem__ wrong.
       formal_type_parameters = {abstract_utils.T: ctx.convert.unsolvable}
     else:
       # Classes and TypeVars
       formal_type_parameters = {abstract_utils.T: underlying}
 
     super().__init__(base_cls, formal_type_parameters, ctx, template)  # pytype: disable=wrong-arg-types
-    self.fiddle_type_name = fiddle_type_name
+    self.fiddle_type_name = base_cls.fiddle_type_name
     self.underlying = underlying
     self.module = module
+
+  @classmethod
+  def make(
+      cls, fiddle_type_name, underlying, ctx, template=None, module="fiddle"
+  ):
+    base_cls = BuildableBuilder(fiddle_type_name, ctx, module)
+    return cls(base_cls, underlying, ctx, template, module)
 
   def replace(self, inner_types):
     inner_types = dict(inner_types)
     new_underlying = inner_types[abstract_utils.T]
     typ = self.__class__
-    return typ(
+    return typ.make(
         self.fiddle_type_name, new_underlying, self.ctx, self.template,
         self.module
     )
@@ -207,11 +225,23 @@ class BuildableType(abstract.ParameterizedClass):
     return f"{self.fiddle_type_name}Type[{self.underlying}]"
 
 
-class Buildable(abstract.Instance):
+class Buildable(abstract.Instance, mixin.HasSlots):
+  """Base class for Config and Partial instances."""
+
   def __init__(self, fiddle_type_name, cls, ctx, container=None):
     super().__init__(cls, ctx, container)
     self.fiddle_type_name = fiddle_type_name
     self.underlying = None
+    mixin.HasSlots.init_mixin(self)
+    self.set_native_slot("__getitem__", self.getitem_slot)
+
+  def getitem_slot(self, node, slice_var) -> Tuple[Node, abstract.Instance]:
+    # We need to set this here otherwise we walk up the chain and call
+    # getitem_slot on BuildableBuilder, which tries to create an
+    # AnnotationContainer.
+    # TODO(mdemello): This probably needs to delegate to
+    # vm_utils._call_binop_on_bindings with the lhs set to self.underlying.
+    return node, self.ctx.new_unsolvable(node)
 
 
 class Config(Buildable):
@@ -233,7 +263,7 @@ def _convert_type(typ, subst, ctx):
   if isinstance(typ, abstract.TypeParameter) and typ.name in subst:
     # TODO(mdemello): Handle typevars in unions.
     typ = subst[typ.name]
-  new_typ = BuildableType("Config", typ, ctx, module="fiddle")
+  new_typ = BuildableType.make("Config", typ, ctx, module="fiddle")
   return abstract.Union([new_typ, typ], ctx)
 
 
@@ -271,7 +301,7 @@ def make_instance(
   instance_class = {"Config": Config, "Partial": Partial}[subclass_name]
   # Create the specialized class Config[underlying] or Partial[underlying]
   try:
-    cls = BuildableType(subclass_name, underlying, ctx, module="fiddle")
+    cls = BuildableType.make(subclass_name, underlying, ctx, module="fiddle")
   except KeyError:
     # We are in the middle of constructing the fiddle ast; fiddle.Config doesn't
     # exist yet
