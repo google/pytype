@@ -2044,6 +2044,20 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
       def name(self): ...
       """, None, "Module-level functions with property decorators: name")
 
+  def test_property_setter_with_default_value(self):
+    self.check("""
+      class A:
+          @property
+          def x(self) -> int: ...
+          @x.setter
+          def x(self, value=...) -> None: ...
+    """, """
+      from typing import Annotated
+
+      class A:
+          x: Annotated[int, 'property']
+    """)
+
   def test_property_clash(self):
     self.check_error("""
       class A:

@@ -232,7 +232,11 @@ class _DecoratedFunction:
 
   def add_property(self, decorator, sig):
     prop = self.prop_names[decorator]
-    if prop.arity == len([s for s in sig.params if not s.optional]):
+    min_params = max_params = 0
+    for param in sig.params:
+      min_params += int(not param.optional)
+      max_params += 1
+    if min_params <= prop.arity <= max_params:
       assert self.properties is not None
       self.properties.set(prop.type, sig, self.name)
     else:
