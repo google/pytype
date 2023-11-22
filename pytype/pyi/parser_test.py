@@ -1123,7 +1123,7 @@ class FunctionTest(parser_test_base.ParserTestBase):
       @coroutine
       def foo() -> int: ...""",
                      None,
-                     "Overloaded signatures for foo disagree on "
+                     "Overloaded signatures for 'foo' disagree on "
                      "coroutine decorators")
 
     self.check_error("""
@@ -1143,7 +1143,7 @@ class FunctionTest(parser_test_base.ParserTestBase):
       @staticmethod
       def foo() -> int: ...""",
                      3,
-                     "Too many decorators for foo")
+                     "'foo' can be decorated with at most one of")
 
   def test_override_decorator(self):
     # We ignore typing.override in pyi files.
@@ -2037,12 +2037,26 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
           @property
           @staticmethod
           def name(self): ...
-      """, 4, "Too many decorators for name")
+      """, 4, "'name' can be decorated with at most one of")
 
     self.check_error("""
       @property
       def name(self): ...
       """, None, "Module-level functions with property decorators: name")
+
+  def test_property_setter_with_default_value(self):
+    self.check("""
+      class A:
+          @property
+          def x(self) -> int: ...
+          @x.setter
+          def x(self, value=...) -> None: ...
+    """, """
+      from typing import Annotated
+
+      class A:
+          x: Annotated[int, 'property']
+    """)
 
   def test_property_clash(self):
     self.check_error("""
@@ -2052,7 +2066,15 @@ class PropertyDecoratorTest(parser_test_base.ParserTestBase):
 
           @property
           def name(self) -> int: ...
-      """, 1, "Invalid property decorators for method `name`")
+      """, 1, "Invalid property decorators for 'name'")
+
+  def test_too_many_property_decorators(self):
+    self.check_error("""
+      class A:
+          @property
+          @name.setter
+          def name(self) -> str: ...
+    """, 1, "conflicting decorators property, name.setter")
 
   def test_abstract_property(self):
     self.check("""
@@ -2106,22 +2128,24 @@ class MergeSignaturesTest(parser_test_base.ParserTestBase):
     self.assertEqual(len(foo.signatures), 2)
 
   def test_method_and_property_error(self):
+    e = "Overloaded signatures for 'name' disagree on property decorators"
     self.check_error("""
       class A:
           @property
           def name(self): ...
 
           def name(self): ...
-      """, 1, "Overloaded signatures for name disagree on decorators")
+      """, 1, e)
 
   def test_overloaded_signatures_disagree(self):
+    e = "Overloaded signatures for 'foo' disagree on staticmethod decorators"
     self.check_error("""
       class A:
           @staticmethod
           def foo(x: int): ...
           @classmethod
           def foo(x: str): ...
-      """, 1, "Overloaded signatures for foo disagree on decorators")
+      """, 1, e)
 
   def test_classmethod(self):
     ast = self.check("""
@@ -2185,13 +2209,13 @@ class MergeSignaturesTest(parser_test_base.ParserTestBase):
     self.assertEqual(True, ast.Lookup("A").Lookup("foo").is_abstract)
 
   def test_abstractmethod_conflict(self):
+    e = "Overloaded signatures for 'foo' disagree on abstractmethod decorators"
     self.check_error("""
       class A:
           @abstractmethod
           def foo(x: int) -> str: ...
           def foo(x: int, y: int) -> str: ...
-      """, 1, "Overloaded signatures for foo disagree on "
-                     "abstractmethod decorators")
+      """, 1, e)
 
 
 class AnyTest(parser_test_base.ParserTestBase):

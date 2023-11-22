@@ -11,18 +11,15 @@ class OverloadedDecoratorError(Exception):
   """Inconsistent decorators on an overloaded function."""
 
   def __init__(self, name, typ):
-    msg = "Overloaded signatures for {} disagree on {}decorators".format(
-        name, (typ + " " if typ else ""))
+    msg = f"Overloaded signatures for '{name}' disagree on {typ} decorators"
     super().__init__(msg)
 
 
 class PropertyDecoratorError(Exception):
   """Inconsistent property decorators on an overloaded function."""
 
-  def __init__(self, name):
-    msg = (f"Invalid property decorators for method `{name}` "
-           "(need at most one each of @property, "
-           f"@{name}.setter and @{name}.deleter)")
+  def __init__(self, name, explanation):
+    msg = f"Invalid property decorators for '{name}': {explanation}"
     super().__init__(msg)
 
 
@@ -54,7 +51,7 @@ class NameAndSig:
 
   name: str
   signature: pytd.Signature
-  decorator: Optional[str] = None
+  decorators: Tuple[pytd.Alias, ...] = ()
   is_abstract: bool = False
   is_coroutine: bool = False
   is_final: bool = False
@@ -160,14 +157,6 @@ def generate_init(
 # Method signature merging
 
 
-def _alias_name(alias: Optional[pytd.Alias]):
-  return alias and alias.name
-
-
-def _type_name(alias: Optional[pytd.Alias]):
-  return alias and alias.type.name
-
-
 @dataclasses.dataclass
 class _Property:
   type: str
@@ -194,8 +183,14 @@ class _Properties:
   def set(self, prop, sig, name):
     assert hasattr(self, prop), prop
     if getattr(self, prop):
-      raise PropertyDecoratorError(name)
+      msg = (f"need at most one each of @property, @{name}.setter, and "
+             f"@{name}.deleter")
+      raise PropertyDecoratorError(name, msg)
     setattr(self, prop, sig)
+
+
+def _has_decorator(fn, dec):
+  return any(d.type.name == dec for d in fn.decorators)
 
 
 @dataclasses.dataclass
@@ -207,7 +202,7 @@ class _DecoratedFunction:
   is_abstract: bool = False
   is_coroutine: bool = False
   is_final: bool = False
-  decorator: Optional[str] = None
+  decorators: Tuple[pytd.Alias, ...] = ()
   properties: Optional[_Properties] = dataclasses.field(init=False)
   prop_names: Dict[str, _Property] = dataclasses.field(init=False)
 
@@ -219,20 +214,30 @@ class _DecoratedFunction:
         is_abstract=fn.is_abstract,
         is_coroutine=fn.is_coroutine,
         is_final=fn.is_final,
-        decorator=fn.decorator)
+        decorators=fn.decorators)
 
   def __post_init__(self):
     self.prop_names = _property_decorators(self.name)
-    decorator_name = _alias_name(self.decorator)
-    if decorator_name in self.prop_names:
+    prop_decorators = [d for d in self.decorators if d.name in self.prop_names]
+    if prop_decorators:
       self.properties = _Properties()
-      self.add_property(decorator_name, self.sigs[0])
+      self.add_property(prop_decorators, self.sigs[0])
     else:
       self.properties = None
 
-  def add_property(self, decorator, sig):
+  def add_property(self, decorators, sig):
+    """Add a property overload."""
+    assert decorators
+    if len(decorators) > 1:
+      msg = "conflicting decorators " + ", ".join(d.name for d in decorators)
+      raise PropertyDecoratorError(self.name, msg)
+    decorator = decorators[0].name
     prop = self.prop_names[decorator]
-    if prop.arity == len([s for s in sig.params if not s.optional]):
+    min_params = max_params = 0
+    for param in sig.params:
+      min_params += int(not param.optional)
+      max_params += 1
+    if min_params <= prop.arity <= max_params:
       assert self.properties is not None
       self.properties.set(prop.type, sig, self.name)
     else:
@@ -242,32 +247,32 @@ class _DecoratedFunction:
           f" {len(sig.params)}"
       )
 
-  def add_overload(self, fn: NameAndSig):
+  def add_overload(self, fn: NameAndSig) -> None:
     """Add an overloaded signature to a function."""
-    # Check for decorator consistency. Note that we currently limit pyi files to
-    # one decorator per function, other than @abstractmethod and @coroutine
-    # which are special-cased.
-    fn_name = _alias_name(fn.decorator)
-    if (self.properties and fn_name in self.prop_names):
-      # For properties, we can have at most one of setter, getter and deleter,
-      # and no other overloads
-      self.add_property(fn_name, fn.signature)
-      # For properties, it's fine if, e.g., the getter is abstract but the
-      # setter is not, so we skip the @abstractmethod and  @coroutine
-      # consistency checks.
-      return
-    elif _type_name(self.decorator) == _type_name(fn.decorator):
-      # For other decorators, we can have multiple overloads but they need to
-      # all have the same decorator
-      self.sigs.append(fn.signature)
+    if self.properties:
+      prop_decorators = [d for d in fn.decorators if d.name in self.prop_names]
+      if not prop_decorators:
+        raise OverloadedDecoratorError(self.name, "property")
+      self.add_property(prop_decorators, fn.signature)
     else:
-      raise OverloadedDecoratorError(self.name, None)
-    # @abstractmethod and @coroutine can be combined with other decorators, but
-    # they need to be consistent for all overloads
-    if self.is_abstract != fn.is_abstract:
-      raise OverloadedDecoratorError(self.name, "abstractmethod")
+      self.sigs.append(fn.signature)
+    self._check_overload_consistency(fn)
+
+  def _check_overload_consistency(self, fn: NameAndSig) -> None:
+    """Check if the new overload is consistent with existing."""
+    # Some decorators need to be consistent for all overloads.
     if self.is_coroutine != fn.is_coroutine:
       raise OverloadedDecoratorError(self.name, "coroutine")
+    if self.is_final != fn.is_final:
+      raise OverloadedDecoratorError(self.name, "final")
+    if (_has_decorator(self, "staticmethod") !=
+        _has_decorator(fn, "staticmethod")):
+      raise OverloadedDecoratorError(self.name, "staticmethod")
+    if _has_decorator(self, "classmethod") != _has_decorator(fn, "classmethod"):
+      raise OverloadedDecoratorError(self.name, "classmethod")
+    # It's okay for some property overloads to be abstract and others not.
+    if not self.properties and self.is_abstract != fn.is_abstract:
+      raise OverloadedDecoratorError(self.name, "abstractmethod")
 
 
 def merge_method_signatures(
@@ -282,8 +287,15 @@ def merge_method_signatures(
       functions[fn.name].add_overload(fn)
   methods = []
   for name, fn in functions.items():
-    is_staticmethod = _type_name(fn.decorator) == "staticmethod"
-    is_classmethod = _type_name(fn.decorator) == "classmethod"
+    decorators = []
+    is_staticmethod = is_classmethod = False
+    for decorator in fn.decorators:
+      if decorator.type.name == "staticmethod":
+        is_staticmethod = True
+      elif decorator.type.name == "classmethod":
+        is_classmethod = True
+      else:
+        decorators.append(decorator)
     if name == "__new__" or is_staticmethod:
       kind = pytd.MethodKind.STATICMETHOD
     elif name == "__init_subclass__" or is_classmethod:
@@ -312,9 +324,6 @@ def merge_method_signatures(
       flags |= pytd.MethodFlag.COROUTINE
     if fn.is_final:
       flags |= pytd.MethodFlag.FINAL
-    if fn.decorator and not is_staticmethod and not is_classmethod:
-      decorators = (fn.decorator,)
-    else:
-      decorators = ()
-    methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags, decorators))
+    methods.append(pytd.Function(name, tuple(fn.sigs), kind, flags,
+                                 tuple(decorators)))
   return methods
