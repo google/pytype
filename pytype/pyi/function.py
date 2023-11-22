@@ -80,11 +80,10 @@ class NameAndSig(pytd_function.NameAndSig):
     name = function.name
 
     decorators = cast(List[pytd.Alias], function.decorator_list)
-    # TODO(mdemello): do we need this limitation?
-    if len(decorators) > 1:
-      raise _ParseError(f"Too many decorators for {name}: " +
-                        ", ".join(d.name for d in decorators))
-    decorator, = decorators if decorators else (None,)
+    mutually_exclusive = {"property", "staticmethod", "classmethod"}
+    if len({d.type.name for d in decorators} & mutually_exclusive) > 1:
+      raise _ParseError(f"'{name}' can be decorated with at most one of "
+                        "property, staticmethod, and classmethod")
 
     exceptions = []
     mutators = []
@@ -126,7 +125,7 @@ class NameAndSig(pytd_function.NameAndSig):
       if not mutator.successful:
         raise _ParseError(f"No parameter named {mutator.name!r}")
 
-    return cls(name, sig, decorator, props.abstract, props.coroutine,
+    return cls(name, sig, tuple(decorators), props.abstract, props.coroutine,
                props.final, props.overload)
 
 
