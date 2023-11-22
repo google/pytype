@@ -1,3 +1,21 @@
+Version 2023.11.21:
+
+Updates:
+* Add support for typing_extensions.override.
+* Add support for the pax fiddle library.
+* Enable --use-enum-overlay by default.
+
+Bug fixes:
+* Take arguments passed by keyword into account in Unknown.to_type().
+* Don't create extra copies of `None` in convert.py.
+* Allow frame locals to be an Unsolvable (Any).
+* When making properties, check their arity against require arg count.
+* Allow arbitrary AST nodes in typing.Annotated.
+* Fix crash caused by assuming parameter names are strings.
+* Fix corner case in which decorated setUp method wasn't being analyzed.
+* Add missing buffer methods to memoryview.
+* Allow functions in pyi files to have any number of decorators.
+
 Version 2023.10.31:
 
 Updates:
