@@ -136,6 +136,14 @@ class DictTest(test_base.BaseTest):
         kwargs.update(a=0, b='1')
     """)
 
+  def test_any(self):
+    self.Check("""
+      from typing import Dict
+      def do_something(d: Dict) -> None:
+        d['a'] = 0
+        d['b'] = d['b'].split(':')
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
