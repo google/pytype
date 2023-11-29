@@ -12,7 +12,7 @@ def build_class(node, props, kwargs, ctx):
     base = abstract_utils.get_atomic_value(base, default=None)
     if not isinstance(base, class_mixin.Class):
       continue
-    if base.is_enum and ctx.options.use_enum_overlay:
+    if base.is_enum:
       enum_base = abstract_utils.get_atomic_value(
           ctx.vm.loaded_overlays["enum"].members["Enum"])
       return enum_base.make_class(node, props)

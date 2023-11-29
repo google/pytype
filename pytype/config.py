@@ -242,8 +242,6 @@ FEATURE_FLAGS = [
     _flag("--overriding-renamed-parameter-count-checks", False,
           "Enable parameter count checks for overriding methods with "
           "renamed arguments."),
-    _flag("--use-enum-overlay", True,
-          "Use the enum overlay for more precise enum checking."),
     _flag("--strict-none-binding", False,
           "Variables initialized as None retain their None binding."),
     _flag("--use-fiddle-overlay", False,

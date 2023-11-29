@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Fri Nov  3 11:19:00 AM PDT 2023 -->
+<!-- Added by: rechen, at: Tue Nov 28 03:37:40 PM PST 2023 -->
 
 <!--te-->
 
@@ -53,14 +53,12 @@ Note: pytype supports all language and stdlib features in its supported versions
 unless noted otherwise. This section lists features that are difficult to type
 for which pytype has or intends to add custom support.
 
-| Feature                      | Supports | Issues                             |
-| ---------------------------- | :------: | :--------------------------------: |
-| Control Flow Analysis ("Type | ✅        |                                    |
-: Narrowing")                  :          :                                    :
-| collections.namedtuple       | ✅        |                                    |
-| Dataclasses                  | ✅        |                                    |
-| Enums                        | ✅        | Requires `--use-enum-overlay` flag |
-:                              :          : externally                         :
+Feature                                  | Supports | Issues
+---------------------------------------- | :------: | :----:
+Control Flow Analysis ("Type Narrowing") | ✅        |
+collections.namedtuple                   | ✅        |
+Dataclasses                              | ✅        |
+Enums                                    | ✅        |
 
 ### Typing
 

@@ -86,7 +86,6 @@ class BaseTest(unittest.TestCase):
         strict_undefined_checks=True,
         strict_primitive_comparisons=True,
         strict_none_binding=True,
-        use_enum_overlay=True,
         use_fiddle_overlay=True,
         validate_version=False,
     )
