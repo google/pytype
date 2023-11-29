@@ -1448,13 +1448,13 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("incomplete-match")
   def incomplete_match(self, stack, line, cases, details=None):
-    cases = ", ".join(cases)
-    msg = f"The enum match is missing the following cases: {cases}"
+    cases = ", ".join(str(x) for x in cases)
+    msg = f"The match is missing the following cases: {cases}"
     self.error(stack, msg, details=details, lineno=line)
 
   @_error_name("redundant-match")
   def redundant_match(self, stack, case, details=None):
-    msg = f"This enum case has already been covered: {case}."
+    msg = f"This case has already been covered: {case}."
     self.error(stack, msg, details=details)
 
   @_error_name("paramspec-error")

@@ -1835,7 +1835,13 @@ class VirtualMachine:
       ret = self.ctx.convert.bool_values[match_enum].to_variable(state.node)
       if match_enum is False:  # pylint: disable=g-bool-id-comparison
         case_val = abstract_utils.get_atomic_value(y)
-        self.ctx.errorlog.redundant_match(self.frames, case_val.name)
+        if isinstance(case_val, abstract.ConcreteValue):
+          # This is a Literal match
+          name = repr(case_val.pyval)
+        else:
+          # This is an enum match
+          name = case_val.name
+        self.ctx.errorlog.redundant_match(self.frames, name)
       return state.push(ret)
 
     # Explicit, redundant, switch statement, to make it easier to address the
