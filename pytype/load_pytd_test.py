@@ -556,7 +556,7 @@ class ImportPathsTest(_LoaderTest):
 
   def test_import_typevar(self):
     # Regression test for the loader crashing with a
-    # ""Duplicate top level items: 'T', 'T'" error.
+    # "Duplicate top level items: 'T', 'T'" error.
     self._import(a="""
       from typing import TypeVar
       T = TypeVar('T')

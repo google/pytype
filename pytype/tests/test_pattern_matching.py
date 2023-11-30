@@ -955,7 +955,7 @@ class MatchFeaturesTest(test_base.BaseTest):
 
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
-class MatchCoverageTest(test_base.BaseTest):
+class EnumMatchCoverageTest(test_base.BaseTest):
   """Test exhaustive coverage of enums."""
 
   def test_exhaustive(self):
@@ -1499,6 +1499,222 @@ class MatchCoverageTest(test_base.BaseTest):
             print("I'm feeling the blues :(")
         # This line compiles to a return statement after every case branch.
         return color
+    """)
+
+
+@test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
+class LiteralMatchCoverageTest(test_base.BaseTest):
+  """Test exhaustive coverage of literals."""
+
+  def test_exhaustive(self):
+    ty = self.Infer("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case "b" | "c":
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]) -> int | str: ...
+    """)
+
+  def test_default(self):
+    ty = self.Infer("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case _:
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]) -> int | str: ...
+    """)
+
+  def test_default_with_capture(self):
+    ty = self.Infer("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case _ as foo:
+            return foo
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]) -> int | str: ...
+    """)
+
+  def test_nonexhaustive(self):
+    ty, err = self.InferWithErrors("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:  # incomplete-match[e]
+          case "a":
+            return 10
+          case "b":
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]) -> int | str | None: ...
+    """)
+    self.assertErrorSequences(err, {"e": ["missing", "cases", "c"]})
+
+  def test_unused_after_exhaustive(self):
+    ty = self.Infer("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case "b" | "c":
+            return 20
+          case _:
+            return 'a'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]) -> int: ...
+    """)
+
+  def test_nested(self):
+    ty = self.Infer("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case "b" | "c":
+            match y:
+              case "a":
+                return 10
+              case "b":
+                return 'a'
+              case _:
+                return None
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int | str | None: ...
+    """)
+
+  def test_multiple(self):
+    ty, _ = self.InferWithErrors("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]):
+        match x:  # incomplete-match
+          case "a":
+            return 10
+          case "b":
+            return 20
+        match y:
+          case "a":
+            return 'a'
+          case "b" | "c":
+            return 'b'
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int | str: ...
+    """)
+
+  def test_redundant(self):
+    ty, _ = self.InferWithErrors("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case "b":
+            return 20
+          case "a":  # redundant-match
+            return '10'
+          case "c":
+            return 20
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int: ...
+    """)
+
+  def test_incomplete_and_redundant(self):
+    ty, _ = self.InferWithErrors("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]):
+        match x:  # incomplete-match
+          case "a":
+            return 10
+          case "b":
+            return 20
+          case "a":  # redundant-match
+            return '10'
+    """)
+    self.assertTypesMatchPytd(
+        ty, """
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"], y: Literal["a", "b", "c"]) -> int | None: ...
+    """)
+
+  def test_partially_redundant(self):
+    err = self.CheckWithErrors("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case "b":
+            return 20
+          case "a" | "c":  # redundant-match[e]
+            return '10'
+    """)
+    self.assertErrorSequences(err, {"e": ["already been covered", "a"]})
+
+  def call_function_with_match(self):
+    ty = self.Infer("""
+      from typing import Literal
+
+      def f(x: Literal["a", "b", "c"]):
+        match x:
+          case "a":
+            return 10
+          case "b" | "c":
+            return 'a'
+
+      a = f("a")
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Literal
+
+      a: int | str
+
+      def f(x: Literal["a", "b", "c"]) -> int | str: ...
     """)
 
 

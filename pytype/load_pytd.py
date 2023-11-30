@@ -279,7 +279,8 @@ class _Resolver:
         mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
             module_map, self_name=name, module_alias_map=all_aliases))
       except KeyError as e:
-        raise BadDependencyError(str(e), name) from e
+        key = "".join(str(arg) for arg in e.args)
+        raise BadDependencyError(key, name) from e
     return mod_ast
 
   def resolve_module_alias(self, name, *, lookup_ast=None,
