@@ -7,7 +7,7 @@ from pytype.tests import test_utils
 class PYITest(test_base.BaseTest):
   """Tests for PYI."""
 
-  def test_unneccessary_any_import(self):
+  def test_unnecessary_any_import(self):
     ty = self.Infer("""
         import typing
         def foo(**kwargs: typing.Any) -> int: return 1
@@ -153,7 +153,6 @@ class PYITestPython3Feature(test_base.BaseTest):
       """)
 
   def test_literal_in_dataclass(self):
-    self.options.tweak(use_enum_overlay=False)
     with self.DepTree([("foo.pyi", """
       import enum
       class Base: ...

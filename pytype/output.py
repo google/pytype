@@ -813,7 +813,7 @@ class Converter(utils.ContextWeakrefMixin):
           # replace any parameter not in the class or function template with
           # its upper value.
           methods[name] = method.Visit(visitors.DropMutableParameters())
-        elif v.is_enum and self.ctx.options.use_enum_overlay:
+        elif v.is_enum:
           if (any(
               isinstance(enum_member, abstract.Instance) and
               enum_member.cls == v for enum_member in member.data)):

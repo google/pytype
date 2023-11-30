@@ -52,18 +52,15 @@ class EnumOverlay(overlay.Overlay):
   """An overlay for the enum std lib module."""
 
   def __init__(self, ctx):
-    if ctx.options.use_enum_overlay:
-      member_map = {
-          "Enum": overlay.add_name("Enum", EnumBuilder),
-          "EnumMeta": EnumMeta,
-          "EnumType": EnumMeta,
-          "IntEnum": overlay.add_name("IntEnum", EnumBuilder),
-          "StrEnum": overlay.add_name("StrEnum", EnumBuilder),
-          **{name: overlay.add_name(name, overlay_utils.not_supported_yet)
-             for name in _unsupported},
-      }
-    else:
-      member_map = {}
+    member_map = {
+        "Enum": overlay.add_name("Enum", EnumBuilder),
+        "EnumMeta": EnumMeta,
+        "EnumType": EnumMeta,
+        "IntEnum": overlay.add_name("IntEnum", EnumBuilder),
+        "StrEnum": overlay.add_name("StrEnum", EnumBuilder),
+        **{name: overlay.add_name(name, overlay_utils.not_supported_yet)
+           for name in _unsupported},
+    }
 
     super().__init__(ctx, "enum", member_map, ctx.loader.import_name("enum"))
 

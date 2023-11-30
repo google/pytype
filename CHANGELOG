@@ -1,3 +1,13 @@
+Version 2023.11.29:
+
+Updates:
+* Remove the --use-enum-overlay flag. It has been enabled by default since the
+  last release.
+
+Bug fixes:
+* Mark typing.Required as generic.
+* Fix container mutation bug.
+
 Version 2023.11.21:
 
 Updates:
