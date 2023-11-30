@@ -153,6 +153,14 @@ class _TypeTracker:
     # current case so that instantiate_case_var can retrieve it.
     for d in case_var.data:
       self.case_types[line].add(d.cls)
+      if isinstance(d, abstract.ConcreteValue) and d.pyval is None:
+        # Need to special-case `case None` since it's compiled differently.
+        self.uncovered.discard(d.cls)
+
+  def cover_from_none(self, line):
+    cls = self.ctx.convert.none_type
+    self.case_types[line].add(cls)
+    self.uncovered.discard(cls)
 
   @property
   def complete(self):
@@ -380,10 +388,26 @@ class BranchTracker:
       # This has already been covered, and will never succeed.
       return False
 
-  def add_cmp_branch(self, op: opcodes.OpcodeWithArg, match_var: cfg.Variable,
-                     case_var: cfg.Variable) -> _MatchSuccessType:
+  def add_none_branch(self, op: opcodes.Opcode, match_var: cfg.Variable):
+    if op.line in self.matches.match_cases:
+      if tracker := self.get_current_type_tracker(op, match_var):
+        tracker.cover_from_none(op.line)
+        if tracker.uncovered:
+          return None
+        else:
+          # This is the last remaining case, and will always succeed.
+          tracker.implicit_default = self.ctx.convert.none_type
+          return True
+
+  def add_cmp_branch(
+      self,
+      op: opcodes.OpcodeWithArg,
+      cmp_type: int,
+      match_var: cfg.Variable,
+      case_var: cfg.Variable
+  ) -> _MatchSuccessType:
     """Add a compare-based match case branch to the tracker."""
-    if op.arg != slots.CMP_EQ:
+    if cmp_type not in (slots.CMP_EQ, slots.CMP_IS):
       return None
 
     try:
@@ -400,6 +424,12 @@ class BranchTracker:
     if op.line in self.matches.match_cases:
       if tracker := self.get_current_type_tracker(op, match_var):
         tracker.cover_from_cmp(op.line, case_var)
+        if tracker.uncovered:
+          return None
+        else:
+          # This is the last remaining case, and will always succeed.
+          tracker.implicit_default = case_val
+          return True
 
     if all(isinstance(x, abstract.ConcreteValue) for x in match_var.data):
       # We are matching a union of concrete values, i.e. a Literal

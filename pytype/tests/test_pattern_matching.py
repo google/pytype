@@ -448,6 +448,22 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, D)
     """)
 
+  def test_type_narrowing_none(self):
+    self.Check("""
+      class A: pass
+      class B: pass
+
+      def f(x: A | B | None):
+        match x:
+          case A() | B():
+            assert_type(x, A | B)
+          case None:
+            assert_type(x, None)
+          case _:
+            # This branch will not be entered
+            assert_type(1, str)
+    """)
+
   def test_type_narrowing_mixed(self):
     self.Check("""
       class A: pass
