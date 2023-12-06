@@ -3214,9 +3214,34 @@ class VirtualMachine:
     state = state.push(exc)
     return state.push(top)
 
+  def _exc_type_to_group(self, node, exc_type):
+    """Creates an ExceptionGroup from an exception type."""
+    exc_group_base = self.ctx.convert.lookup_value("builtins", "ExceptionGroup")
+    flattened_exc_type = []
+    # In `except* exc_type`, exc_type can be a single exception class or a tuple
+    # of exception classes.
+    for v in exc_type.data:
+      if isinstance(v, abstract.Tuple):
+        for element in v.pyval:
+          flattened_exc_type.extend(element.data)
+      elif (isinstance(v.cls, abstract.ParameterizedClass) and
+            v.cls.base_cls == self.ctx.convert.tuple_type):
+        flattened_exc_type.extend(
+            v.get_instance_type_parameter(abstract_utils.T).data)
+      elif v.cls == self.ctx.convert.tuple_type:
+        flattened_exc_type.append(self.ctx.convert.unsolvable)
+      else:
+        flattened_exc_type.append(v)
+    exc_group_type = abstract.ParameterizedClass(
+        exc_group_base,
+        {abstract_utils.T: self.ctx.convert.merge_values(flattened_exc_type)},
+        self.ctx)
+    return exc_group_type.instantiate(node)
+
   def byte_CHECK_EG_MATCH(self, state, op):
     del op
-    return state
+    state, exc_type = state.pop()
+    return state.push(self._exc_type_to_group(state.node, exc_type))
 
   def byte_BEFORE_WITH(self, state, op):
     del op

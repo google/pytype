@@ -5,7 +5,7 @@ from typing import (
     AbstractSet, Any, AsyncGenerator, Awaitable, BinaryIO, Callable,
     Concatenate, Coroutine, Dict, FrozenSet, Generator, Generic, Hashable, IO,
     ItemsView, Iterable, Iterator, KeysView, List, Literal, Mapping,
-    MutableSequence, Optional, overload, ParamSpec, Protocol, Reversible,
+    MutableSequence, Optional, overload, ParamSpec, Protocol, Reversible, Self,
     Sequence, Set, Sized, SupportsAbs, SupportsBytes, SupportsComplex,
     SupportsFloat, SupportsIndex, SupportsInt, TextIO, Tuple, Type, Union,
     ValuesView)
@@ -1480,3 +1480,63 @@ def open(
     newline: Optional[str] = ...,
     closefd: bool = ...,
 ) -> IO: ...
+
+if sys.version_info >= (3, 11):
+    class BaseExceptionGroup(BaseException, Generic[_T]):
+        def __new__(cls, __message: str, __exceptions: Sequence[_T]) -> Self: ...
+        def __init__(self, __message: str, __exceptions: Sequence[_T]) -> None: ...
+        @property
+        def message(self) -> str: ...
+        @property
+        def exceptions(self) -> tuple[_T | BaseExceptionGroup[_T], ...]: ...
+        @overload
+        def subgroup(
+            self, __condition: type[_T2] | tuple[type[_T2], ...]
+        ) -> ExceptionGroup[_T2] | None: ...
+        @overload
+        def subgroup(
+            self, __condition: type[_T3] | tuple[type[_T3], ...]
+        ) -> BaseExceptionGroup[_T3] | None: ...
+        @overload
+        def subgroup(
+            self, __condition: Callable[[_T | Self], bool]
+        ) -> BaseExceptionGroup[_T] | None: ...
+        @overload
+        def split(
+            self, __condition: type[_T2] | tuple[type[_T2], ...]
+        ) -> tuple[ExceptionGroup[_T2] | None, BaseExceptionGroup[_T] | None]: ...
+        @overload
+        def split(
+            self, __condition: type[_T3] | tuple[type[_T3], ...]
+        ) -> tuple[BaseExceptionGroup[_T3] | None, BaseExceptionGroup[_T] | None]: ...
+        @overload
+        def split(
+            self, __condition: Callable[[_T | Self], bool]
+        ) -> tuple[BaseExceptionGroup[_T] | None, BaseExceptionGroup[_T] | None]: ...
+        # In reality it is `NonEmptySequence`:
+        @overload
+        def derive(self, __excs: Sequence[_T2]) -> ExceptionGroup[_T2]: ...
+        @overload
+        def derive(self, __excs: Sequence[_T3]) -> BaseExceptionGroup[_T3]: ...
+        def __class_getitem__(cls, __item: Any) -> Any: ...
+
+    class ExceptionGroup(BaseExceptionGroup[_T], Exception):
+        def __new__(cls, __message: str, __exceptions: Sequence[_T]) -> Self: ...
+        def __init__(self, __message: str, __exceptions: Sequence[_T]) -> None: ...
+        @property
+        def exceptions(self) -> tuple[_T | ExceptionGroup[_T], ...]: ...
+        # We accept a narrower type, but that's OK.
+        @overload  # type: ignore[override]
+        def subgroup(
+            self, __condition: type[_T2] | tuple[type[_T2], ...]
+        ) -> ExceptionGroup[_T2] | None: ...
+        @overload
+        def subgroup(self, __condition: Callable[[_T | Self], bool]) -> ExceptionGroup[_T] | None: ...
+        @overload  # type: ignore[override]
+        def split(
+            self, __condition: type[_T2] | tuple[type[_T2], ...]
+        ) -> tuple[ExceptionGroup[_T2] | None, ExceptionGroup[_T] | None]: ...
+        @overload
+        def split(
+            self, __condition: Callable[[_T | Self], bool]
+        ) -> tuple[ExceptionGroup[_T] | None, ExceptionGroup[_T] | None]: ...
