@@ -1,6 +1,5 @@
 """Abstract class representations."""
 
-import itertools
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
@@ -213,7 +212,7 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
 
   def _get_defining_base_class(self, attr):
     """Gets first base class, if any, that defines the given attribute."""
-    for base in itertools.chain.from_iterable(b.data for b in self._bases):
+    for base in self.mro[1:]:
       if isinstance(base, class_mixin.Class) and attr in base:
         return base
     return None

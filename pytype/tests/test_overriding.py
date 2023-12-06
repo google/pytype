@@ -1242,6 +1242,27 @@ class TypingOverrideTest(test_base.BaseTest):
           pass
     """)
 
+  def test_grandparent(self):
+    self.CheckWithErrors("""
+      from typing_extensions import override
+
+      class Base:
+        def f(self) -> int:
+          return 0
+
+      class Parent(Base):
+        pass
+
+      class Child(Parent):
+        @override
+        def f(self) -> int:
+          return 5
+
+        @override
+        def g(self) -> int:  # override-error
+          return 5
+    """)
+
   def test_strict_mode(self):
     errors = self.CheckWithErrors("""
       # pytype: features=require-override-decorator
