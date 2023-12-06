@@ -277,10 +277,16 @@ class _ParseVisitor(visitor.BaseVisitor):
         _VariableAnnotation(node.lineno, node.end_lineno, name, annotation))
     self._process_structured_comments(LineRange.from_node(node))
 
-  def visit_Try(self, node):
+  def _visit_try(self, node):
     for handler in node.handlers:
       if handler.type:
         self._process_structured_comments(LineRange.from_node(handler.type))
+
+  def visit_Try(self, node):
+    self._visit_try(node)
+
+  def visit_TryStar(self, node):
+    self._visit_try(node)
 
   def _visit_with(self, node):
     item = node.items[-1]

@@ -125,6 +125,55 @@ class TestPy311(test_base.BaseTest):
         return g(*converted)
     """)
 
+  def test_exception_group(self):
+    self.Check("""
+      def f():
+        if __random__:
+          raise ExceptionGroup("oops", [ValueError()])
+      def g():
+        try:
+          f()
+        except* ValueError as e:
+          assert_type(e, ExceptionGroup[ValueError])
+          assert_type(e.exceptions,
+                      tuple[ValueError | ExceptionGroup[ValueError], ...])
+    """)
+
+  def test_exception_group_multiple_match(self):
+    self.Check("""
+      ErrorType1 = ValueError | TypeError
+      def f():
+        if __random__:
+          raise ExceptionGroup("oops", __any_object__)
+      def g():
+        try:
+          f()
+        except* (ValueError, TypeError) as e1:
+          assert_type(e1, ExceptionGroup[ErrorType1])
+        except* KeyError as e2:
+          assert_type(e2, ExceptionGroup[KeyError])
+    """)
+
+  def test_exception_group_abstract_match(self):
+    self.Check("""
+      from typing import Any
+      EXC_MATCH_1: tuple[type[ValueError], ...] = __any_object__
+      EXC_MATCH_2: tuple = __any_object__
+      EXC_MATCH_3: Any = __any_object__
+      def f():
+        if __random__:
+          raise ExceptionGroup("oops", __any_object__)
+      def g():
+        try:
+          f()
+        except* EXC_MATCH_1 as e1:
+          assert_type(e1, ExceptionGroup[ValueError])
+        except* EXC_MATCH_2 as e2:
+          assert_type(e2, ExceptionGroup[Any])
+        except* EXC_MATCH_3 as e3:
+          assert_type(e3, ExceptionGroup[Any])
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
