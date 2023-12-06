@@ -25,7 +25,7 @@
    * [What does ... mean in a type annotation?](#what-does--mean-in-a-type-annotation)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue Aug  8 10:30:53 AM PDT 2023 -->
+<!-- Added by: rechen, at: Tue Dec  5 01:23:50 PM PST 2023 -->
 
 <!--te-->
 
@@ -145,14 +145,32 @@ If pytype is taking a long time on a file, the easiest workaround is to
 `skip-file` directive. Otherwise, there are a few things you can try to speed up
 the analysis:
 
-* Split up the file. Anecdotally, pytype gets noticeable slower once a file
-  grows past ~1500 lines.
-* Annotate the return types of functions to speed up inference.
-* Simplify function inputs (e.g., by reducing the number of types in unions) to
-  speed up checking.
-* Avoid large concrete data structures (e.g., a module-level dict of a hundred
-  constants). pytype tracks individual values for some builtin data structures,
-  which can quickly get unwieldy.
+*   Split up the file. Anecdotally, pytype gets noticeable slower once a file
+    grows past ~1500 lines.
+*   Annotate the return types of functions to speed up inference.
+*   Simplify function inputs (e.g., by reducing the number of types in unions)
+    to speed up checking.
+*   Add type annotations to large concrete data structures (e.g., a module-level
+    dict of a hundred constants). pytype tracks individual values for some
+    builtin data structures, which can quickly get unwieldy. Adding a type
+    annotation will force pytype to treat the data structure as an abstract
+    instance of its type:
+
+    <!-- bad -->
+```python
+    # Depending on the size of the dictionary and the complexity of the contents,
+    # pytype may time out analyzing it.
+    MY_HUGE_DICT = {...}
+    ```
+
+    <!-- good -->
+```python
+    from typing import Any, Mapping
+    # Pytype can use the type annotation rather than inferring a type from the
+    # value, considerably speeding up analysis. Replace `Any` with more precise
+    # types if possible.
+    MY_HUGE_DICT: Mapping[Any, Any] = {...}
+    ```
 
 ## How do I disable all pytype checks for a particular file?
 
