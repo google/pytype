@@ -116,6 +116,9 @@ class FillInLocalPointers(Visitor):
         continue
       seen.add(cur_node)
       for prefix, cls in self._Lookup(cur_node):
+        if (isinstance(cls, pytd.Alias) and
+            isinstance(cls.type, pytd.NothingType)):
+          continue
         if isinstance(cls, pytd.Alias) and isinstance(cls.type, pytd.ClassType):
           if cls.type.cls:
             cls = cls.type.cls
