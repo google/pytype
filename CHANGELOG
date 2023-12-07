@@ -1,3 +1,15 @@
+Version 2023.12.07:
+
+Updates:
+* 3.11: support ExceptionGroup.
+* Update typeshed pin to commit 0b36e65 from Nov 29.
+* Add a flag, --none-is-not-bool, to disable treatment of None as a bool.
+
+Bug fixes:
+* Remove extraneous quotes around part of error message.
+* Fix pattern matching with `case None` branches.
+* Support @override for methods anywhere in the MRO.
+
 Version 2023.11.29:
 
 Updates:

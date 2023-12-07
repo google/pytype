@@ -243,11 +243,11 @@ class AnnotationTest(test_base.BaseTest):
         def bar(self, x: float, default=...) -> str: ...
     """)
 
-  def test_compat_bool(self):
-    self.Check("""
+  def test_nocompat_bool(self):
+    self.CheckWithErrors("""
       def bar(x: bool) -> bool:
-        return None
-      bar(None)
+        return None  # bad-return-type
+      bar(None)  # wrong-arg-types
     """)
 
   def test_compat_float(self):

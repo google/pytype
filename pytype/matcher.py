@@ -22,12 +22,6 @@ from pytype.typegraph import cfg
 
 log = logging.getLogger(__name__)
 
-
-_COMPATIBLE_BUILTINS = [
-    ("builtins." + compatible_builtin, "builtins." + builtin)
-    for compatible_builtin, builtin in pep484.COMPAT_ITEMS
-]
-
 _SubstType = datatypes.AliasingDict[str, cfg.Variable]
 _ViewType = datatypes.AccessTrackingDict[cfg.Variable, cfg.Binding]
 
@@ -251,6 +245,13 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     self._error_subst = None
     self._type_params = _TypeParams()
     self._paramspecs = {}
+
+    compat_items = pep484.get_compat_items(
+        none_matches_bool=not ctx.options.none_is_not_bool)
+    self._compatible_builtins = [
+        ("builtins." + compatible_builtin, "builtins." + builtin)
+        for compatible_builtin, builtin in compat_items]
+
     self._reset_errors()
 
   def _reset_errors(self):
@@ -1721,7 +1722,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   def _satisfies_single_type(self, values):
     """Enforce that the variable contains only one concrete type."""
     class_names = {v.cls.full_name for v in values}
-    for compat_name, name in _COMPATIBLE_BUILTINS:
+    for compat_name, name in self._compatible_builtins:
       if {compat_name, name} <= class_names:
         class_names.remove(compat_name)
     # We require all occurrences to be of the same type, no subtyping allowed.
@@ -1734,7 +1735,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     for v in values:
       object_in_values |= v.cls == self.ctx.convert.object_type
       superclasses = {c.full_name for c in v.cls.mro or v.cls.default_mro()}
-      for compat_name, name in _COMPATIBLE_BUILTINS:
+      for compat_name, name in self._compatible_builtins:
         if compat_name in superclasses:
           superclasses.add(name)
       if common_classes is None:
@@ -1789,5 +1790,6 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       return True
     name1 = self._get_full_name(base_cls)
     name2 = self._get_full_name(other_type)
-    return (name1 == name2 or
-            allow_compat_builtins and (name1, name2) in _COMPATIBLE_BUILTINS)
+    return (
+        name1 == name2 or
+        allow_compat_builtins and (name1, name2) in self._compatible_builtins)

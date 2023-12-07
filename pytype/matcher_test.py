@@ -16,7 +16,8 @@ class MatcherTestBase(test_base.UnitTest):
 
   def setUp(self):
     super().setUp()
-    options = config.Options.create(python_version=self.python_version)
+    options = config.Options.create(python_version=self.python_version,
+                                    none_is_not_bool=True)
     self.ctx = test_utils.make_context(options)
     self.matcher = self.ctx.matcher(self.ctx.root_node)
 
@@ -143,10 +144,9 @@ class MatcherTest(MatcherTestBase):
     self.assertMatch(left, right)
 
   def test_none_against_bool(self):
-    # See pep484.COMPAT_ITEMS.
     left = self._convert_type("None", as_instance=True)
     right = self._convert_type("bool")
-    self.assertMatch(left, right)
+    self.assertNoMatch(left, right)
 
   def test_homogeneous_tuple(self):
     left = self._convert_type("Tuple[int, ...]", as_instance=True)
