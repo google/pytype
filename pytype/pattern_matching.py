@@ -489,7 +489,8 @@ class BranchTracker:
         elif start in self._literal_tracker:
           tracker = self._literal_tracker[start]
         else:
-          assert False
+          # We have nested matches, one of which is not an enum
+          continue
         if tracker.is_valid:
           if uncovered := tracker.uncovered:
             ret.append((start, uncovered))
