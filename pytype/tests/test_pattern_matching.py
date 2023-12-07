@@ -1160,6 +1160,24 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       def f(x: Color, y: Color) -> int | str | None: ...
     """)
 
+  def test_nested_mixed(self):
+    self.CheckWithErrors("""
+      from enum import Enum
+      class Color(Enum):
+        RED = 0
+        GREEN = 1
+        BLUE = 2
+
+      def f(x: Color, y: str):
+        match x:  # incomplete-match
+          case Color.RED:
+            return 10
+          case Color.GREEN:
+            match y:
+              case "bold":
+                return 10
+    """)
+
   def test_multiple(self):
     ty, _ = self.InferWithErrors("""
       from enum import Enum
