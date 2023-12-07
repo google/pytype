@@ -16,10 +16,7 @@ ALL_TYPING_NAMES = ["AbstractSet", "AnyStr", "AsyncGenerator", "BinaryIO",
 
 
 # Pairs of a type and a more generalized type.
-COMPAT_ITEMS = [
-    ("NoneType", "bool"),
-    # pep484 allows None as an alias for NoneType in type annotations.
-    ("None", "bool"),
+_COMPAT_ITEMS = [
     ("int", "float"),
     ("int", "complex"),
     ("float", "complex"),
@@ -36,6 +33,12 @@ TYPING_TO_BUILTIN = {t: t.lower() for t in [
 
 
 BUILTIN_TO_TYPING = {v: k for k, v in TYPING_TO_BUILTIN.items()}
+
+
+def get_compat_items(none_matches_bool=False):
+  # pep484 allows None as an alias for NoneType in type annotations.
+  extra = [("NoneType", "bool"), ("None", "bool")] if none_matches_bool else []
+  return _COMPAT_ITEMS + extra
 
 
 class ConvertTypingToNative(base_visitor.Visitor):
