@@ -26,7 +26,7 @@ into a proper enum.
 import collections
 import contextlib
 import logging
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -65,17 +65,7 @@ class EnumOverlay(overlay.Overlay):
     super().__init__(ctx, "enum", member_map, ctx.loader.import_name("enum"))
 
 
-class _DelGetAttributeMixin:
-
-  _member_map: Dict[str, Any]
-
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    if "__getattribute__" in self._member_map:
-      del self._member_map["__getattribute__"]
-
-
-class EnumBuilder(_DelGetAttributeMixin, abstract.PyTDClass):
+class EnumBuilder(abstract.PyTDClass):
   """Overlays enum.Enum."""
 
   def __init__(self, name, ctx, module):
@@ -288,7 +278,7 @@ class EnumCmpEQ(abstract.SimpleFunction):
     return node, self.ctx.convert.build_bool(node, this.cls == other.cls)
 
 
-class EnumMeta(_DelGetAttributeMixin, abstract.PyTDClass):
+class EnumMeta(abstract.PyTDClass):
   """Wrapper for enum.EnumMeta.
 
   EnumMeta is essentially a container for the functions that drive a lot of the
