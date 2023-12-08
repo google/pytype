@@ -1,3 +1,9 @@
+Version 2023.12.08:
+
+Bug fixes:
+* Fix a crash with nested pattern matches.
+* Allow typing.Unpack to be parameterized.
+
 Version 2023.12.07:
 
 Updates:
