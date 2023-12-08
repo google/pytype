@@ -1180,6 +1180,11 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
                                  fiddle_overlay.BuildableType)):
       return self._match_fiddle_instance(
           left.cls, left, other_type, subst, view)
+    elif (isinstance(other_type, abstract.PyTDClass) and
+          fiddle_overlay.is_fiddle_buildable_pytd(other_type.pytd_cls)):
+      # Handle a plain `fiddle.Config` imported from a pyi file.
+      return self._match_fiddle_instance_against_bare_type(
+          left.cls, left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
         self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
@@ -1294,7 +1299,22 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         return None
     return subst
 
+  def _match_fiddle_instance_against_bare_type(
+      self, left, instance, other_type, subst, view
+  ):
+    """Match a fiddle instance against an unsubscripted buildable pytd type."""
+    if not isinstance(instance, fiddle_overlay.Buildable):
+      return None
+    assert isinstance(other_type, abstract.PyTDClass)
+    # This is a plain fiddle.Config we have imported from a pyi file and not
+    # subscripted, so it is still a PyTDClass
+    if instance.fiddle_type_name == other_type.name:
+      return subst
+    else:
+      return None
+
   def _match_fiddle_instance(self, left, instance, other_type, subst, view):
+    """Match a fiddle instance against an buildable type."""
     if not isinstance(instance, fiddle_overlay.Buildable):
       return None
     elif instance.fiddle_type_name != other_type.fiddle_type_name:

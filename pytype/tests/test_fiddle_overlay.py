@@ -334,6 +334,30 @@ class TestDataclassConfig(test_base.BaseTest):
           return a
       """)
 
+  def test_bare_type_in_pyi(self):
+    """Check that we can match fiddle.Config against fiddle.Config[A]."""
+
+    with self.DepTree([
+        ("fiddle.pyi", _FIDDLE_PYI),
+        ("foo.pyi", f"""
+         import fiddle
+         def f(x: fiddle.{self.buildable_type_name}): ...
+         """),
+    ]):
+      self.Check(f"""
+        import dataclasses
+        import fiddle
+        import foo
+
+        @dataclasses.dataclass
+        class Simple:
+          x: int
+          y: str
+
+        c = fiddle.{self.buildable_type_name}(Simple, 1, "2")
+        foo.f(c)
+      """)
+
   def test_generic_dataclass(self):
     with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
       self.CheckWithErrors(f"""
