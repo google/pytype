@@ -1241,7 +1241,7 @@ class StripExternalNamePrefix(Visitor):
     return node.Replace(name=new_name)
 
 
-class AddNamePrefix(Visitor):
+class ResolveLocalNames(Visitor):
   """Visitor for making names fully qualified.
 
   This will change
@@ -1252,6 +1252,10 @@ class AddNamePrefix(Visitor):
     class baz.Foo:
       pass
     def bar(x: baz.Foo) -> baz.Foo
+
+  References to nested classes will be full resolved, e.g. if C is nested in
+  B is nested in A, then `x: C` becomes `x: foo.A.B.C`.
+  References to attributes of Any-typed constants will be resolved to Any.
   """
 
   def __init__(self):
@@ -1266,6 +1270,8 @@ class AddNamePrefix(Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self.classes = {cls.name for cls in node.classes}
+    self.any_constants = {const.name for const in node.constants
+                          if const.type == pytd.AnythingType()}
     self.name = node.name
     self.prefix = node.name + "."
 
@@ -1287,10 +1293,17 @@ class AddNamePrefix(Visitor):
       # This is an external type; do not prefix it. StripExternalNamePrefix will
       # remove it later.
       return node
-    if node.name.split(".")[0] in self.classes:
+    target = node.name.split(".")[0]
+    if target in self.classes:
       # We need to check just the first part, in case we have a class constant
       # like Foo.BAR, or some similarly nested name.
       return node.Replace(name=self.prefix + node.name)
+    if target in self.any_constants:
+      # If we have a constant in module `foo` that's Any, i.e.
+      #   mod: Any
+      #   x: mod.Thing
+      # We resolve `mod.Thing` to Any.
+      return pytd.AnythingType()
     if self.cls_stack:
       if node.name == self.cls_stack[-1].name:
         # We're referencing a class from within itself.

@@ -239,8 +239,12 @@ class TestVisitors(parser_test_base.ParserTest):
       B = A
     """)
     src2 = "from foo import *"
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertEqual("bar", ast2.name)
@@ -252,7 +256,9 @@ class TestVisitors(parser_test_base.ParserTest):
       class A: ...
     """)
     src2 = "from foo import *"
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
     ast2 = self.Parse(src2)
     name = ast2.name
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
@@ -267,9 +273,15 @@ class TestVisitors(parser_test_base.ParserTest):
       from foo import *
       from bar import *
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
-    ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
+    ast3 = (
+        self.Parse(src3).Replace(name="baz").Visit(visitors.ResolveLocalNames())
+    )
     ast3 = ast3.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
     self.assertSetEqual({a.name for a in ast3.aliases}, {"baz.A", "baz.B"})
@@ -281,9 +293,15 @@ class TestVisitors(parser_test_base.ParserTest):
       from foo import *
       from bar import *
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
-    ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
+    ast3 = (
+        self.Parse(src3).Replace(name="baz").Visit(visitors.ResolveLocalNames())
+    )
     self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
@@ -294,8 +312,12 @@ class TestVisitors(parser_test_base.ParserTest):
       class A:
         x = ...  # type: int
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
@@ -310,9 +332,15 @@ class TestVisitors(parser_test_base.ParserTest):
       from foo import *
       from bar import *
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
-    ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
+    ast3 = (
+        self.Parse(src3).Replace(name="baz").Visit(visitors.ResolveLocalNames())
+    )
     ast3 = ast3.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
     self.assertMultiLineEqual(pytd_utils.Print(ast3), textwrap.dedent("""
@@ -328,8 +356,12 @@ class TestVisitors(parser_test_base.ParserTest):
       from foo import *
       def __getattr__(name) -> Any: ...
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
@@ -345,9 +377,15 @@ class TestVisitors(parser_test_base.ParserTest):
       from foo import *
       from bar import *
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
-    ast3 = self.Parse(src3).Replace(name="baz").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
+    ast3 = (
+        self.Parse(src3).Replace(name="baz").Visit(visitors.ResolveLocalNames())
+    )
     self.assertRaises(KeyError, ast3.Visit, visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2, "baz": ast3}, self_name="baz"))
 
@@ -357,8 +395,12 @@ class TestVisitors(parser_test_base.ParserTest):
       from foo import *
       def __getattr__(name) -> str: ...
     """)
-    ast1 = self.Parse(src1).Replace(name="foo").Visit(visitors.AddNamePrefix())
-    ast2 = self.Parse(src2).Replace(name="bar").Visit(visitors.AddNamePrefix())
+    ast1 = (
+        self.Parse(src1).Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    )
+    ast2 = (
+        self.Parse(src2).Replace(name="bar").Visit(visitors.ResolveLocalNames())
+    )
     ast2 = ast2.Visit(visitors.LookupExternalTypes(
         {"foo": ast1, "bar": ast2}, self_name="bar"))
     self.assertMultiLineEqual(pytd_utils.Print(ast2), textwrap.dedent("""
@@ -565,7 +607,7 @@ class TestVisitors(parser_test_base.ParserTest):
     self.assertIsNone(tree.Lookup("T").scope)
     self.assertEqual("X",
                      tree.Lookup("X").template[0].type_param.scope)
-    tree = tree.Replace(name="foo").Visit(visitors.AddNamePrefix())
+    tree = tree.Replace(name="foo").Visit(visitors.ResolveLocalNames())
     self.assertIsNotNone(tree.Lookup("foo.f"))
     self.assertIsNotNone(tree.Lookup("foo.X"))
     self.assertEqual("foo", tree.Lookup("foo.T").scope)
@@ -580,8 +622,8 @@ class TestVisitors(parser_test_base.ParserTest):
       class X(Generic[T]): ...
     """)
     tree = self.Parse(src)
-    tree = tree.Replace(name="foo").Visit(visitors.AddNamePrefix())
-    tree = tree.Replace(name="foo").Visit(visitors.AddNamePrefix())
+    tree = tree.Replace(name="foo").Visit(visitors.ResolveLocalNames())
+    tree = tree.Replace(name="foo").Visit(visitors.ResolveLocalNames())
     self.assertIsNotNone(tree.Lookup("foo.foo.x"))
     self.assertEqual("foo.foo", tree.Lookup("foo.foo.T").scope)
     self.assertEqual("foo.foo.X",
@@ -596,7 +638,7 @@ class TestVisitors(parser_test_base.ParserTest):
     x = tree.Lookup("x")
     x = x.Replace(type=pytd.ClassType("Y"))
     tree = tree.Replace(constants=(x,), name="foo")
-    tree = tree.Visit(visitors.AddNamePrefix())
+    tree = tree.Visit(visitors.ResolveLocalNames())
     self.assertEqual("foo.Y", tree.Lookup("foo.x").type.name)
 
   def test_add_name_prefix_on_nested_class_alias(self):
@@ -614,8 +656,14 @@ class TestVisitors(parser_test_base.ParserTest):
               class foo.A.B.C: ...
               D: Type[foo.A.B.C]
     """).strip()
-    self.assertMultiLineEqual(expected, pytd_utils.Print(
-        self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
+    self.assertMultiLineEqual(
+        expected,
+        pytd_utils.Print(
+            self.Parse(src)
+            .Replace(name="foo")
+            .Visit(visitors.ResolveLocalNames())
+        ),
+    )
 
   def test_add_name_prefix_on_nested_class_outside_ref(self):
     src = textwrap.dedent("""
@@ -643,8 +691,14 @@ class TestVisitors(parser_test_base.ParserTest):
 
       def foo.f(x: foo.A.B) -> foo.A.B: ...
     """).strip()
-    self.assertMultiLineEqual(expected, pytd_utils.Print(
-        self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
+    self.assertMultiLineEqual(
+        expected,
+        pytd_utils.Print(
+            self.Parse(src)
+            .Replace(name="foo")
+            .Visit(visitors.ResolveLocalNames())
+        ),
+    )
 
   def test_add_name_prefix_on_nested_class_method(self):
     src = textwrap.dedent("""
@@ -657,8 +711,14 @@ class TestVisitors(parser_test_base.ParserTest):
           class foo.A.B:
               def copy(self) -> foo.A.B: ...
     """).strip()
-    self.assertMultiLineEqual(expected, pytd_utils.Print(
-        self.Parse(src).Replace(name="foo").Visit(visitors.AddNamePrefix())))
+    self.assertMultiLineEqual(
+        expected,
+        pytd_utils.Print(
+            self.Parse(src)
+            .Replace(name="foo")
+            .Visit(visitors.ResolveLocalNames())
+        ),
+    )
 
   def test_print_merge_types(self):
     src = textwrap.dedent("""
