@@ -1270,8 +1270,12 @@ class ResolveLocalNames(Visitor):
 
   def EnterTypeDeclUnit(self, node):
     self.classes = {cls.name for cls in node.classes}
+     # TODO(b/293451396): In certain weird cases, a local module named "typing"
+     # may get mixed up with the stdlib typing module. We end up doing the right
+     # thing in the end, but in the meantime, "typing" may get mapped to Any.
     self.any_constants = {const.name for const in node.constants
-                          if const.type == pytd.AnythingType()}
+                          if const.type == pytd.AnythingType()
+                          and const.name != "typing"}
     self.name = node.name
     self.prefix = node.name + "."
 
