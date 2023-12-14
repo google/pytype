@@ -744,7 +744,7 @@ def post_process_ast(ast, src, name=None):
 
   if name:
     ast = ast.Replace(name=name)
-    ast = ast.Visit(visitors.AddNamePrefix())
+    ast = ast.Visit(visitors.ResolveLocalNames())
   else:
     # If there's no unique name, hash the sourcecode.
     ast = ast.Replace(name=hashlib.md5(src.encode("utf-8")).hexdigest())

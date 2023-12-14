@@ -333,6 +333,14 @@ class PrintVisitor(base_visitor.Visitor):
     if self.class_names or node.value:
       return False
     full_typing_name = f"typing.{node.name}"
+    # TODO(b/315507078): This is only necessary while these three classes
+    # are aliases of typing members.
+    if full_typing_name in (
+        "typing.ChainMap",
+        "typing.Counter",
+        "typing.OrderedDict",
+    ):
+      return False
     if node.type == f"Type[{full_typing_name}]":
       self._imports.add(full_typing_name, node.name)
       self._imports.decrement_typing_count("Type")

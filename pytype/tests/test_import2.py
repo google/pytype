@@ -98,6 +98,22 @@ class ImportTest(test_base.BaseTest):
           return Component(foos=foos)
       """, module_name="loaders")
 
+  def test_import_any(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Any
+      dep: Any
+      x: dep.Thing
+      class A(dep.Base):
+        def get(self) -> dep.Got: ...
+    """)]):
+      self.Check("""
+        from typing import Any
+        import foo
+        assert_type(foo.dep, Any)
+        assert_type(foo.x, Any)
+        assert_type(foo.A(), foo.A)
+        assert_type(foo.A().get(), Any)
+      """)
 
 if __name__ == "__main__":
   test_base.main()
