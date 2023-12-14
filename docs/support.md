@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue Nov 28 03:37:40 PM PST 2023 -->
+<!-- Added by: rechen, at: Thu Dec 14 10:25:15 AM PST 2023 -->
 
 <!--te-->
 
@@ -79,10 +79,10 @@ Feature                                                                         
 [PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
 [PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        | [#1525][variadic-generics]
 [PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
-[PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        |
+[PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        | [#1551][typed-dict-requirements]
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ✅        |
-[PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        |
-[PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | 🟡        |
+[PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        | [#1552][literal-string]
+[PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | 🟡        | [#1553][dataclass-transform]
 [PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
 [PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ✅        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
@@ -190,10 +190,12 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [698]: https://peps.python.org/pep-0698/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
+[dataclass-transform]: https://github.com/google/pytype/issues/1553
 [ellipsis-issue]: https://github.com/python/typing/issues/276
 [experimental-ellipsis-commit]: https://github.com/google/pytype/commit/9f3f21e7a5bcedf6584bb41fd228878498182991
 [faq-noniterable-strings]: https://google.github.io/pytype/faq.html#why-doesnt-str-match-against-string-iterables
 [generic-aliases]: https://github.com/google/pytype/issues/793
+[literal-string]: https://github.com/google/pytype/issues/1552
 [packaging]: https://github.com/google/pytype/issues/151
 [param-spec]: https://github.com/google/pytype/issues/786
 [py27]: https://github.com/google/pytype/issues/545
@@ -203,4 +205,5 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [pytype-typing-faq]: https://google.github.io/pytype/typing_faq.html
 [self]: https://github.com/google/pytype/issues/1283
 [type-guards]: https://github.com/google/pytype/issues/916
+[typed-dict-requirements]: https://github.com/google/pytype/issues/1551
 [variadic-generics]: https://github.com/google/pytype/issues/1525
