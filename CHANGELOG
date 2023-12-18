@@ -1,3 +1,15 @@
+Version 2023.12.18:
+
+Bug fixes:
+* Prevent `ChainMap`, `Counter` and `OrderedDict` from being dropped if they're
+  only imported.
+* Fix matching against a plain fiddle.Config in pyi signatures.
+* Remove no-longer-necessary `__getattribute__`s from enum.pytd.
+* Resolve attribute access on Any constants in pytd to just the constant.
+* Don't let `typing` be treated as a replaceable Any.
+* FIX: Only call match_fiddle_instance_against_bare_type if we have a fiddle
+  instance.
+
 Version 2023.12.08:
 
 Bug fixes:

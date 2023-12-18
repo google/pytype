@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Thu Dec 14 10:25:15 AM PST 2023 -->
+<!-- Added by: rechen, at: Mon Dec 18 11:42:58 AM PST 2023 -->
 
 <!--te-->
 
@@ -66,19 +66,19 @@ Feature                                                                         
 --------------------------------------------------------------------------------------- | :-----: | :------: | :----:
 [PEP 484 -- Type Hints][484]                                                            | 3.5     | ✅        |
 [PEP 526 -- Syntax for Variable Annotations][526]                                       | 3.6     | ✅        |
-[PEP 544 -- Protocols][544]                                                             | 3.8     | ✅        |
 [PEP 561 -- Distributing and Packaging Type Information][561]                           | 3.7     | ❌        | [#151][packaging]
 [PEP 563 -- Postponed Evaluation of Annotations][563]                                   | 3.7     | ✅        |
-[PEP 585 -- Type Hinting Generics in Standard Collections][585]                         | 3.9     | ✅        |
+[PEP 544 -- Protocols][544]                                                             | 3.8     | ✅        |
 [PEP 586 -- Literal Types][586]                                                         | 3.8     | ✅        |
 [PEP 589 -- TypedDict][589]                                                             | 3.8     | ✅        |
 [PEP 591 -- Adding a Final Qualifier to Typing][591]                                    | 3.8     | ✅        |
+[PEP 585 -- Type Hinting Generics in Standard Collections][585]                         | 3.9     | ✅        |
 [PEP 593 -- Flexible Function and Variable Annotations][593]                            | 3.9     | ✅        |
 [PEP 604 -- Allow Writing Union Types as X \| Y][604]                                   | 3.10    | ✅        |
 [PEP 612 -- Parameter Specification Variables][612]                                     | 3.10    | 🟡        | [#786][param-spec]
 [PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
-[PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        | [#1525][variadic-generics]
 [PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
+[PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        | [#1525][variadic-generics]
 [PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        | [#1551][typed-dict-requirements]
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ✅        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        | [#1552][literal-string]
