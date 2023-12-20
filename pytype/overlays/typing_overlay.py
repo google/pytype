@@ -18,7 +18,6 @@ from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
 from pytype.overlays import special_builtins
 from pytype.overlays import typed_dict
-from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
@@ -48,7 +47,7 @@ class TypingOverlay(overlay.Overlay):
     for cls in ast.classes:
       _, name = cls.name.rsplit(".", 1)
       if name not in member_map and _is_typing_container(cls):
-        member_map[name] = (_builder(name, TypingContainer), None)
+        member_map[name] = (_builder(name, overlay_utils.TypingContainer), None)
     super().__init__(ctx, "typing", member_map, ast)
 
   # pytype: disable=signature-mismatch  # overriding-parameter-type-checks
@@ -100,7 +99,7 @@ def _builder_from_name(name):
     del module  # unused
     pytd_val = ctx.loader.lookup_pytd("typing", name)
     if isinstance(pytd_val, pytd.Class) and _is_typing_container(pytd_val):
-      return TypingContainer(name, ctx)
+      return overlay_utils.TypingContainer(name, ctx)
     pytd_type = pytd.ToType(pytd_val, True, True, True)
     return ctx.convert.constant_to_value(pytd_type)
   return resolve
@@ -149,20 +148,7 @@ class Final(abstract.AnnotationClass):
     return self.ctx.new_unsolvable(node)
 
 
-class TypingContainer(abstract.AnnotationContainer):
-
-  def __init__(self, name, ctx):
-    if name in pep484.TYPING_TO_BUILTIN:
-      module = "builtins"
-      pytd_name = pep484.TYPING_TO_BUILTIN[name]
-    else:
-      module = "typing"
-      pytd_name = name
-    base = ctx.convert.lookup_value(module, pytd_name)
-    super().__init__(name, ctx, base)
-
-
-class Tuple(TypingContainer):
+class Tuple(overlay_utils.TypingContainer):
   """Implementation of typing.Tuple."""
 
   def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
@@ -177,7 +163,7 @@ class Tuple(TypingContainer):
       return template, inner, abstract.TupleClass
 
 
-class Callable(TypingContainer):
+class Callable(overlay_utils.TypingContainer):
   """Implementation of typing.Callable[...]."""
 
   def getitem_slot(self, node, slice_var):
@@ -482,7 +468,7 @@ class FinalDecorator(abstract.PyTDFunction):
     return False
 
 
-class Generic(TypingContainer):
+class Generic(overlay_utils.TypingContainer):
   """Implementation of typing.Generic."""
 
   def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
@@ -501,7 +487,7 @@ class Optional(abstract.AnnotationClass):
     return abstract.Union((self.ctx.convert.none_type,) + inner, self.ctx)
 
 
-class Literal(TypingContainer):
+class Literal(overlay_utils.TypingContainer):
   """Implementation of typing.Literal."""
 
   def _build_value(self, node, inner, ellipses):
@@ -623,8 +609,6 @@ def get_re_builder(member):
 # name -> lowest_supported_version
 _unsupported_members = {
     "LiteralString": (3, 11),
-    "Required": (3, 11),
-    "NotRequired": (3, 11),
     "TypeVarTuple": (3, 11),
     "Unpack": (3, 11),
 }
@@ -646,9 +630,11 @@ typing_overlay = {
     "Never": (overlay.drop_module(build_never), (3, 11)),
     "NewType": (overlay.add_name("NewType", NewType.make), None),
     "NoReturn": (overlay.drop_module(build_never), None),
+    "NotRequired": (_builder("NotRequired", typed_dict.NotRequired), (3, 11)),
     "Optional": (_builder("Optional", Optional), None),
     "ParamSpec": (ParamSpec.make, (3, 10)),
     "Pattern": (get_re_builder("Pattern"), None),
+    "Required": (_builder("Required", typed_dict.Required), (3, 11)),
     "Self": (_builder_from_name("Self"), (3, 11)),
     "Tuple": (_builder("Tuple", Tuple), None),
     "TypeGuard": (_builder_from_name("TypeGuard"), (3, 10)),

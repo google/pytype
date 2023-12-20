@@ -1020,6 +1020,10 @@ class Converter(utils.ContextWeakrefMixin):
       typ = pytd_utils.JoinTypes(
           self.value_instance_to_pytd_type(node, p, None, set(), {})
           for p in var.data)
+      if v.props.total and k not in v.props.required:
+        typ = pytd.GenericType(pytd.NamedType("typing.NotRequired"), (typ,))
+      elif not v.props.total and k in v.props.required:
+        typ = pytd.GenericType(pytd.NamedType("typing.Required"), (typ,))
       constants.append(pytd.Constant(k, typ))
     return pytd.Class(name=name,
                       keywords=tuple(keywords),

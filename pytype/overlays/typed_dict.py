@@ -8,7 +8,18 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import classgen
+from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
+
+
+def _is_required(value: abstract.BaseValue) -> Optional[bool]:
+  name = value.full_name
+  if name == "typing.Required":
+    return True
+  elif name == "typing.NotRequired":
+    return False
+  else:
+    return None
 
 
 class TypedDictKeyMissing(function.DictKeyMissing):
@@ -36,8 +47,29 @@ class TypedDictProperties:
     return self.keys - self.required
 
   def add(self, k, v, total):
-    self.fields[k] = v  # pylint: disable=unsupported-assignment-operation
-    if total:
+    """Adds key and value."""
+    values = []
+    all_requiredness = set()
+    for value in v.data:
+      req = _is_required(value)
+      if req is None:
+        values.append(value)
+        all_requiredness.add(None)
+      elif isinstance(value, abstract.ParameterizedClass):
+        values.append(value.formal_type_parameters[abstract_utils.T])
+        all_requiredness.add(req)
+      else:
+        values.append(value.ctx.convert.unsolvable)
+        all_requiredness.add(req)
+    if (len(all_requiredness) == 1 and
+        (requiredness := next(iter(all_requiredness))) is not None):
+      final_v = v.program.NewVariable(values, [], v.program.entrypoint)
+      required = requiredness
+    else:
+      final_v = v
+      required = total
+    self.fields[k] = final_v  # pylint: disable=unsupported-assignment-operation
+    if required:
       self.required.add(k)
 
   def check_keys(self, keys):
@@ -86,9 +118,11 @@ class TypedDictBuilder(abstract.PyTDClass):
                                   self.ctx.convert.bool_type)
     else:
       total = True
-    required = set(fields) if total else set()
     props = TypedDictProperties(
-        name=name, fields=fields, required=required, total=total)
+        name=name, fields={}, required=set(), total=total)
+    # Force Required/NotRequired evaluation
+    for k, v in fields.items():
+      props.add(k, v, total)
     return props
 
   def _validate_bases(self, cls_name, bases):
@@ -360,3 +394,31 @@ class IsTypedDict(abstract.PyTDFunction):
     else:
       boolval = None
     return node, self.ctx.convert.bool_values[boolval].to_variable(node)
+
+
+class _TypedDictItemRequiredness(overlay_utils.TypingContainer):
+  """typing.(Not)Required."""
+
+  _REQUIREDNESS = None
+
+  def _get_value_info(self, inner, ellipses, allowed_ellipses=frozenset()):
+    template, processed_inner, abstract_class = super()._get_value_info(
+        inner, ellipses, allowed_ellipses)
+    for annotation in processed_inner:
+      req = _is_required(annotation)
+      if req not in (None, self._REQUIREDNESS):
+        error = "Cannot mark a TypedDict item as both Required and NotRequired"
+        self.ctx.errorlog.invalid_annotation(
+            stack=self.ctx.vm.frames, annot=self.name,
+            details=error)
+    return template, processed_inner, abstract_class
+
+
+class Required(_TypedDictItemRequiredness):
+
+  _REQUIREDNESS = True
+
+
+class NotRequired(_TypedDictItemRequiredness):
+
+  _REQUIREDNESS = False
