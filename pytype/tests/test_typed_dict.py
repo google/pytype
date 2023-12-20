@@ -954,8 +954,7 @@ class ItemRequirednessTest(test_base.BaseTest):
 
   def test_annotated(self):
     self.Check("""
-      from typing import Annotated
-      from typing_extensions import NotRequired, TypedDict
+      from typing_extensions import Annotated, NotRequired, TypedDict
       class X(TypedDict):
         k1: Annotated[NotRequired[str], 'HELLO']
         k2: NotRequired[Annotated[int, 'WORLD']]
