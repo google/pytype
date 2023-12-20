@@ -336,10 +336,15 @@ class _FoldConstants:
               other_elts = tuple(_Constant(('prim', e), v, None, other.op)
                                  for (_, e), v in zip(other_et, other.value))
             elif other_tag == 'prim':
-              assert other_et == str
-              other_et = {other.typ}
-              other_elts = tuple(_Constant(('prim', str), v, None, other.op)
-                                 for v in other.value)
+              if other_et == str:
+                other_et = {other.typ}
+                other_elts = tuple(_Constant(('prim', str), v, None, other.op)
+                                   for v in other.value)
+              else:
+                # We have some malformed code, e.g. [*42]
+                name = other_et.__name__
+                msg = f'Value after * must be an iterable, not {name}'
+                raise ConstantError(msg, op)
             else:
               other_elts = other.elements
             typ = (tag, et | set(other_et))
