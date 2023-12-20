@@ -297,6 +297,7 @@ py_library(
     typed_dict.py
   DEPS
     .classgen
+    .overlay_utils
     pytype.abstract.abstract
     pytype.pytd.pytd
 )

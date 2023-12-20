@@ -2,6 +2,7 @@
 
 from pytype.abstract import abstract
 from pytype.abstract import function
+from pytype.pytd import pep484
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 
@@ -37,6 +38,19 @@ class Param:
 
   def __repr__(self):
     return f"Param({self.name}, {self.typ!r}, {self.default!r})"
+
+
+class TypingContainer(abstract.AnnotationContainer):
+
+  def __init__(self, name, ctx):
+    if name in pep484.TYPING_TO_BUILTIN:
+      module = "builtins"
+      pytd_name = pep484.TYPING_TO_BUILTIN[name]
+    else:
+      module = "typing"
+      pytd_name = name
+    base = ctx.convert.lookup_value(module, pytd_name)
+    super().__init__(name, ctx, base)
 
 
 def make_method(ctx,

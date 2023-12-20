@@ -903,5 +903,121 @@ class IsTypedDictTest(test_base.BaseTest):
     """)
 
 
+class ItemRequirednessTest(test_base.BaseTest):
+  """Tests for typing.(Not)Required."""
+
+  def test_required(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Required, TypedDict
+      class X(TypedDict, total=False):
+        k1: int
+        k2: Required[str]
+      x1: X = {'k2': 'ok'}
+      x2: X = {'k1': 1, 'k2': 'ok'}
+      x3: X = {'k1': 0}  # annotation-type-mismatch
+    """)
+
+  def test_not_required(self):
+    self.CheckWithErrors("""
+      from typing_extensions import NotRequired, TypedDict
+      class X(TypedDict):
+        k1: str
+        k2: NotRequired[int]
+      x1: X = {'k1': 'ok'}
+      x2: X = {'k1': 'ok', 'k2': 1}
+      x3: X = {'k2': 0}  # annotation-type-mismatch
+    """)
+
+  def test_malformed(self):
+    self.CheckWithErrors("""
+      from typing_extensions import NotRequired, Required, TypedDict
+      class X(TypedDict):
+        k1: Required[...]  # invalid-annotation
+        k2: NotRequired[...]  # invalid-annotation
+        k3: Required[int, str]  # invalid-annotation
+        k4: NotRequired[str, int]  # invalid-annotation
+        k5: Required[NotRequired[int]]  # invalid-annotation
+        k6: NotRequired[Required[str]]  # invalid-annotation
+    """)
+
+  @test_utils.skipBeforePy((3, 11), "typing.(Not)Required is new in 3.11.")
+  def test_typing_import(self):
+    self.CheckWithErrors("""
+      from typing import NotRequired, Required, TypedDict
+      class X(TypedDict, total=False):
+        k1: NotRequired[int]
+        k2: Required[str]
+      x1: X = {'k1': 1, 'k2': 'ok'}
+      x2: X = {'k2': 'ok'}
+      x3: X = {'k1': 0}  # annotation-type-mismatch
+    """)
+
+  def test_annotated(self):
+    self.Check("""
+      from typing_extensions import Annotated, NotRequired, TypedDict
+      class X(TypedDict):
+        k1: Annotated[NotRequired[str], 'HELLO']
+        k2: NotRequired[Annotated[int, 'WORLD']]
+      x1: X = {'k1': 'ok', 'k2': 1}
+      x2: X = {'k1': 'ok'}
+      x3: X = {'k2': 1}
+      x4: X = {}
+    """)
+
+  def test_unparameterized(self):
+    self.CheckWithErrors("""
+      from typing_extensions import Required, TypedDict
+      class X(TypedDict, total=False):
+        k1: Required  # treated as Required[Any]
+      class Anything:
+        pass
+      x1: X = {'k1': Anything()}
+      x2: X = {}  # annotation-type-mismatch
+    """)
+
+  def test_functional_syntax(self):
+    self.CheckWithErrors("""
+      from typing_extensions import NotRequired, Required, TypedDict
+      X = TypedDict('X', {'k1': Required[str], 'k2': NotRequired[int]})
+      x1: X = {'k1': 'ok'}
+      x2: X = {'k1': 'ok', 'k2': 1}
+      x3: X = {'k2': 0}  # annotation-type-mismatch
+    """)
+
+  def test_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import NotRequired, Required, TypedDict
+      class X(TypedDict):
+        k1: Required[str]
+        k2: NotRequired[int]
+    """)]):
+      self.CheckWithErrors("""
+        import foo
+        x1: foo.X = {'k1': 'ok'}
+        x2: foo.X = {'k1': 'ok', 'k2': 1}
+        x3: foo.X = {'k2': 0}  # annotation-type-mismatch
+      """)
+
+  def test_output(self):
+    ty = self.Infer("""
+      from typing_extensions import NotRequired, Required, TypedDict
+      class X1(TypedDict):
+        k1: Required[str]
+        k2: NotRequired[int]
+      class X2(TypedDict, total=False):
+        k1: Required[str]
+        k2: NotRequired[int]
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import NotRequired, Required, TypedDict
+      class X1(TypedDict):
+        k1: str
+        k2: NotRequired[int]
+      class X2(TypedDict, total=False):
+        k1: Required[str]
+        k2: int
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()
