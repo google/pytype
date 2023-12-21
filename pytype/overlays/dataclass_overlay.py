@@ -22,6 +22,7 @@ class DataclassOverlay(overlay.Overlay):
     member_map = {
         "dataclass": Dataclass.make,
         "field": FieldFunction.make,
+        "replace": Replace.make,
     }
     ast = ctx.loader.import_name("dataclasses")
     super().__init__(ctx, "dataclasses", member_map, ast)
@@ -220,3 +221,60 @@ def match_initvar(var):
 def match_classvar(var):
   """Unpack the type parameter from ClassVar[T]."""
   return abstract_utils.match_type_container(var, "typing.ClassVar")
+
+
+class Replace(abstract.PyTDFunction):
+  """Implements dataclasses.replace."""
+
+  @classmethod
+  def make(cls, ctx, module="dataclasses"):
+    return super().make("replace", ctx, module)
+
+  def _match_args_sequentially(self, node, args, alias_map, match_all_views):
+    ret = super()._match_args_sequentially(
+        node, args, alias_map, match_all_views
+    )
+    # _match_args_sequentially has succeeded, so we know we have 1 posarg (the
+    # object) and some number of named args (the new fields).
+    (obj,) = args.posargs
+    if len(obj.data) != 1:
+      return ret
+    obj = abstract_utils.get_atomic_value(obj)
+    if obj.cls == self.ctx.convert.unsolvable:
+      return ret
+    if not abstract_utils.is_dataclass(obj.cls):
+      bad = abstract_utils.BadType("__obj", obj.cls)
+      sig = self.signatures[0].signature
+      raise function.WrongArgTypes(sig, args, self.ctx, bad)
+    invalid_names = tuple(
+        name for name in args.namedargs.keys() if name not in obj.cls
+    )
+    if invalid_names:
+      # pylint: disable=line-too-long
+      # If we use the signature of replace() in the error message, it will be
+      # very confusing to users:
+      #   Invalid keyword arguments (y, z) to function dataclasses.replace [wrong-keyword-args]
+      #            Expected: (__obj, **changes)
+      #     Actually passed: (__obj, y, z)
+      # Instead, we construct a fake signature that shows the expected fields:
+      #   Invalid keyword arguments (y, z) to function dataclasses.replace [wrong-keyword-args]
+      #            Expected: (__obj: Test, *, x)
+      #     Actually passed: (__obj: Test, y, z)
+      # We also cheat a little bit by making sure the type of the object is
+      # included in the signature, pointing users towards more info.
+      # pylint: enable=line-too-long
+      fields = obj.cls.metadata["__dataclass_fields__"]
+      s = self.signatures[0].signature
+      sig = function.Signature(
+          name=s.name,
+          param_names=(f"__obj: {obj.cls.full_name}",),
+          posonly_count=s.posonly_count,
+          varargs_name=s.varargs_name,
+          kwonly_params=tuple(f.name for f in fields),
+          defaults=s.defaults,
+          kwargs_name=None,
+          annotations={},  # not used when printing errors.
+          postprocess_annotations=False,
+      )
+      raise function.WrongKeywordArgs(sig, args, self.ctx, invalid_names)
+    return ret
