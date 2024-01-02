@@ -736,6 +736,9 @@ class LateAnnotation:
       return super().__setattr__(name, value)
     return self._type.__setattr__(name, value)
 
+  def __contains__(self, name):
+    return self.resolved and name in self._type
+
   def resolve(self, node, f_globals, f_locals):
     """Resolve the late annotation."""
     if self.resolved:

@@ -1316,6 +1316,22 @@ class TestPyiDataclass(test_base.BaseTest):
         dataclasses.replace(x, y=1, z=2)  # wrong-keyword-args
       """)
 
+  def test_replace_late_annotation(self):
+    # Regression test: LateAnnotations (like `z: Z`) should behave
+    # like their underlying types once resolved. The dataclass overlay
+    # relies on this behavior.
+    self.Check("""
+      from __future__ import annotations
+      import dataclasses
+      @dataclasses.dataclass
+      class A:
+        z: Z
+        def do(self):
+          return dataclasses.replace(self.z, name="A")
+      @dataclasses.dataclass
+      class Z:
+        name: str
+    """)
 
 if __name__ == "__main__":
   test_base.main()
