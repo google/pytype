@@ -2885,6 +2885,19 @@ class AnnotatedTest(parser_test_base.ParserTestBase):
           x: Annotated[int, Signal]
     """)
 
+  def test_attribute_access_and_call(self):
+    self.check("""
+      from typing import Annotated, Any
+      a: Any
+      def f() -> Annotated[list[int], a.b.C(3)]: ...
+    """, """
+      from typing import Annotated, Any, List
+
+      a: Any
+
+      def f() -> Annotated[List[int], {'tag': 'call', 'fn': 'a.b.C', 'posargs': (3,), 'kwargs': {}}]: ...
+    """)
+
 
 class ErrorTest(test_base.UnitTest):
   """Test parser errors."""
