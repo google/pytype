@@ -1333,5 +1333,20 @@ class TestPyiDataclass(test_base.BaseTest):
         name: str
     """)
 
+  def test_replace_as_method_with_kwargs(self):
+    # This is a weird case where replace is added as a method, then called
+    # with kwargs. This makes pytype unable to see that `self` is the object
+    # being modified, and also caused a crash when the dataclass overlay tries
+    # to unpack the object being modified from the args.
+    self.Check("""
+      import dataclasses
+      @dataclasses.dataclass
+      class WithKwargs:
+        replace = dataclasses.replace
+        def do(self, **kwargs):
+            return self.replace(**kwargs)
+    """)
+
+
 if __name__ == "__main__":
   test_base.main()

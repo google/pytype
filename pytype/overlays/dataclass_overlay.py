@@ -234,6 +234,18 @@ class Replace(abstract.PyTDFunction):
     ret = super()._match_args_sequentially(
         node, args, alias_map, match_all_views
     )
+    if not args.posargs:
+      # This is a weird case where pytype thinks the call can succeed, but
+      # there's no concrete `__obj` in the posargs.
+      # This can happen when `dataclasses.replace` is called with **kwargs:
+      #   @dataclasses.dataclass
+      #   class A:
+      #     replace = dataclasses.replace
+      #     def do(self, **kwargs):
+      #       return self.replace(**kwargs)
+      # (Yes, this is a simplified example of real code.)
+      # Since **kwargs is opaque magic, we can't do more type checking.
+      return ret
     # _match_args_sequentially has succeeded, so we know we have 1 posarg (the
     # object) and some number of named args (the new fields).
     (obj,) = args.posargs
