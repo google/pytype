@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Mon Dec 18 11:42:58 AM PST 2023 -->
+<!-- Added by: rechen, at: Wed Jan  3 02:26:12 PM PST 2024 -->
 
 <!--te-->
 
@@ -79,10 +79,11 @@ Feature                                                                         
 [PEP 613 -- Explicit Type Aliases][613]                                                 | 3.10    | ✅        |
 [PEP 647 -- User-Defined Type Guards][647]                                              | 3.10    | ✅        |
 [PEP 646 -- Variadic Generics][646]                                                     | 3.11    | ❌        | [#1525][variadic-generics]
-[PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ❌        | [#1551][typed-dict-requirements]
+[PEP 655 -- Marking individual TypedDict items as required or potentially-missing][655] | 3.11    | ✅        |
 [PEP 673 -- Self Type][673]                                                             | 3.11    | ✅        |
 [PEP 675 -- Arbitrary Literal String Type][675]                                         | 3.11    | ❌        | [#1552][literal-string]
 [PEP 681 -- Data Class Transforms][681]                                                 | 3.11    | 🟡        | [#1553][dataclass-transform]
+[PEP 692 -- Using TypedDict for more precise **kwargs typing][692]                      | 3.12    | ❌        | [#1558][typeddict-unpack]
 [PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
 [PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ✅        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
@@ -186,6 +187,7 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [673]: https://www.python.org/dev/peps/pep-0673
 [675]: https://peps.python.org/pep-0675/
 [681]: https://peps.python.org/pep-0681/
+[692]: https://peps.python.org/pep-0692/
 [695]: https://peps.python.org/pep-0695/
 [698]: https://peps.python.org/pep-0698/
 [annotated]: https://github.com/google/pytype/issues/791
@@ -205,5 +207,5 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [pytype-typing-faq]: https://google.github.io/pytype/typing_faq.html
 [self]: https://github.com/google/pytype/issues/1283
 [type-guards]: https://github.com/google/pytype/issues/916
-[typed-dict-requirements]: https://github.com/google/pytype/issues/1551
+[typeddict-unpack]: https://github.com/google/pytype/issues/1558
 [variadic-generics]: https://github.com/google/pytype/issues/1525

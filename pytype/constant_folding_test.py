@@ -84,6 +84,11 @@ class TestFolding(test_base.UnitTest):
         (1, ("list", str), ["a", "b", "c"], [str, str, str])
     ])
 
+  @test_utils.skipBeforePy((3, 9), "Test for new LIST_EXTEND opcode in 3.9")
+  def test_bad_extend(self):
+    with self.assertRaises(constant_folding.ConstantError):
+      self._process("a = [1, 2, *3]")
+
   def test_map(self):
     actual = self._process("a = {'x': 1, 'y': '2'}")
     self.assertCountEqual(actual, [

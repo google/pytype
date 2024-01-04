@@ -187,6 +187,18 @@ class ParamSpecTest(test_base.BaseTest):
       assert_type(b, bool)
     """)
 
+  def test_use_as_protocol_parameter(self):
+    self.Check("""
+      from typing import ParamSpec, Protocol, TypeVar
+
+      P = ParamSpec('P')
+      T = TypeVar('T')
+
+      class CallLogger(Protocol[P, T]):
+        def args(self, *args: P.args, **kwargs: P.kwargs) -> None:
+          pass
+    """)
+
 
 _DECORATOR_PYI = """
   from typing import TypeVar, ParamSpec, Callable, List

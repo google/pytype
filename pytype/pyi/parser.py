@@ -279,7 +279,11 @@ class _MetadataVisitor(visitor.BaseVisitor):
   def visit_Call(self, node):
     posargs = tuple(evaluator.literal_eval(x) for x in node.args)
     kwargs = {x.arg: evaluator.literal_eval(x.value) for x in node.keywords}
-    return (node.func.id, posargs, kwargs)
+    if isinstance(node.func, astlib.Attribute):
+      func_name = _attribute_to_name(node.func)
+    else:
+      func_name = node.func
+    return (func_name.id, posargs, kwargs)
 
   def visit_Dict(self, node):
     return evaluator.literal_eval(node)

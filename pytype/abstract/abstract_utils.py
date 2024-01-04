@@ -727,16 +727,20 @@ def get_type_parameter_substitutions(
   return subst
 
 
+def is_type_variable(val: _BaseValueType):
+  """Check if a value is a type variable (TypeVar or ParamSpec)."""
+  return _isinstance(val, ("TypeParameter", "ParamSpec"))
+
+
 def build_generic_template(
     type_params: Sequence[_BaseValueType], base_type: _BaseValueType
 ) -> Tuple[Sequence[str], Sequence[_TypeParamType]]:
   """Build a typing.Generic template from a sequence of type parameters."""
-  if not all(_isinstance(item, "TypeParameter") for item in type_params):
+  if not all(is_type_variable(item) for item in type_params):
     base_type.ctx.errorlog.invalid_annotation(
         base_type.ctx.vm.frames, base_type,
         "Parameters to Generic[...] must all be type variables")
-    type_params = [item for item in type_params
-                   if _isinstance(item, "TypeParameter")]
+    type_params = [item for item in type_params if is_type_variable(item)]
 
   template = [item.name for item in type_params]
 

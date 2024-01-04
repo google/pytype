@@ -784,6 +784,24 @@ class TestDataclass(test_base.BaseTest):
         def __init__(self, b: int, a: str = ...) -> None: ...
     """)
 
+  def test_replace_wrong_keyword_args(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass
+      class Test:
+        x: int
+      x = Test(1)
+      dataclasses.replace(x, y=1, z=2)  # wrong-keyword-args
+    """)
+
+  def test_replace_not_a_dataclass(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      class Test:
+        pass
+      dataclasses.replace(Test(), y=1, z=2)  # wrong-arg-types
+    """)
+
 
 class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""
@@ -1282,6 +1300,52 @@ class TestPyiDataclass(test_base.BaseTest):
 
         b = B(1, '1')
       """)
+
+  def test_replace_wrong_keyword_args(self):
+    with self.DepTree([("foo.pyi", """
+        import dataclasses
+        @dataclasses.dataclass
+        class Test:
+            x: int
+            def __init__(self, x: int) -> None: ...
+    """)]):
+      self.CheckWithErrors("""
+        import dataclasses
+        import foo
+        x = foo.Test(1)
+        dataclasses.replace(x, y=1, z=2)  # wrong-keyword-args
+      """)
+
+  def test_replace_late_annotation(self):
+    # Regression test: LateAnnotations (like `z: Z`) should behave
+    # like their underlying types once resolved. The dataclass overlay
+    # relies on this behavior.
+    self.Check("""
+      from __future__ import annotations
+      import dataclasses
+      @dataclasses.dataclass
+      class A:
+        z: Z
+        def do(self):
+          return dataclasses.replace(self.z, name="A")
+      @dataclasses.dataclass
+      class Z:
+        name: str
+    """)
+
+  def test_replace_as_method_with_kwargs(self):
+    # This is a weird case where replace is added as a method, then called
+    # with kwargs. This makes pytype unable to see that `self` is the object
+    # being modified, and also caused a crash when the dataclass overlay tries
+    # to unpack the object being modified from the args.
+    self.Check("""
+      import dataclasses
+      @dataclasses.dataclass
+      class WithKwargs:
+        replace = dataclasses.replace
+        def do(self, **kwargs):
+            return self.replace(**kwargs)
+    """)
 
 
 if __name__ == "__main__":
