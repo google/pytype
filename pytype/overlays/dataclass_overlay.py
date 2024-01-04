@@ -252,12 +252,15 @@ class Replace(abstract.PyTDFunction):
     if len(obj.data) != 1:
       return ret
     obj = abstract_utils.get_atomic_value(obj)
-    if obj.cls == self.ctx.convert.unsolvable:
+    # There are some cases where the user knows that obj will be a dataclass
+    # instance, but we don't. These instances are commonly false positives, so
+    # we should ignore them.
+    # (Consider a generic function where an `obj: T` is passed to replace().)
+    if (
+        obj.cls == self.ctx.convert.unsolvable
+        or not abstract_utils.is_dataclass(obj.cls)
+    ):
       return ret
-    if not abstract_utils.is_dataclass(obj.cls):
-      bad = abstract_utils.BadType("__obj", obj.cls)
-      sig = self.signatures[0].signature
-      raise function.WrongArgTypes(sig, args, self.ctx, bad)
     invalid_names = tuple(
         name for name in args.namedargs.keys() if name not in obj.cls
     )
