@@ -576,8 +576,17 @@ class dict(Dict[_K, _V]):
       def __or__(self, other: Mapping[_K2, _V2]) -> Dict[Union[_K, _K2], Union[_V, _V2]]: ...
       def __ror__(self, other: Mapping[_K2, _V2]) -> Dict[Union[_K, _K2], Union[_V, _V2]]: ...
       # __ior__ is equivalent to update.
+      # It should be able to accept "an iterable...of iterables of length 2".
+      # That's not something the type system can express, except for tuples.
+      @overload
       def __ior__(self, other: dict[_K2, _V2]) -> Dict[Union[_K, _K2], Union[_V, _V2]]:
           self = dict[Union[_K, _K2], Union[_V, _V2]]
+      @overload
+      def __ior__(self, other: Iterable[Tuple[_K2, _V2]]) -> Dict[Union[_K, _K2], Union[_V, _V2]]:
+          self = dict[Union[_K, _K2], Union[_V, _V2]]
+      @overload
+      def __ior__(self, other: _SupportsKeysAndGetItem | Iterable[tuple[Any, Any]]) -> Dict[Any, Any]:
+          self = dict[Any, Any]
 
 class listiterator(Iterator[_T]):
     __slots__ = []
