@@ -1176,6 +1176,19 @@ class OverridingTest(test_base.BaseTest):
           return "0"
     """)
 
+  def test_noreturn(self):
+    # NoReturn is the bottom type, so it is considered a subtype of int (and all
+    # other types).
+    self.Check("""
+      from typing import NoReturn
+      class A:
+        def f(self) -> int:
+          return 0
+      class B(A):
+        def f(self) -> NoReturn:
+          raise ValueError()
+    """)
+
 
 class TypingOverrideTest(test_base.BaseTest):
   """Tests for @typing.override."""
