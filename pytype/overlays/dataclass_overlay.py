@@ -261,8 +261,9 @@ class Replace(abstract.PyTDFunction):
         or not abstract_utils.is_dataclass(obj.cls)
     ):
       return ret
+    field_names = {f.name for f in obj.cls.metadata["__dataclass_fields__"]}
     invalid_names = tuple(
-        name for name in args.namedargs.keys() if name not in obj.cls
+        name for name in args.namedargs.keys() if name not in field_names
     )
     if invalid_names:
       # pylint: disable=line-too-long
