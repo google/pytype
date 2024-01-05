@@ -92,12 +92,18 @@ class DictTest(test_base.BaseTest):
       b = {'a': 1}
       b |= {1: 'a'}
       c: Dict[str, int] = {'a': 1} | {1: 'a'}  # annotation-type-mismatch
+      d = {}
+      d |= (('1', '2'), ('3', '4'))
+      e = {}
+      e |= [(1, 2), (3, '4')]
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       a: Dict[str, int]
       b: Dict[Union[str, int], Union[str, int]]
       c: Dict[str, int]
+      d: Dict[str, str]
+      e: Dict[int, Union[int, str]]
     """)
 
   def test_reverse_views(self):

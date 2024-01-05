@@ -1347,6 +1347,20 @@ class TestPyiDataclass(test_base.BaseTest):
             return self.replace(**kwargs)
     """)
 
+  def test_replace_subclass(self):
+    self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass
+      class Base:
+        name: str
+      @dataclasses.dataclass
+      class Sub(Base):
+        index: int
+      a = Sub(name="a", index=0)
+      dataclasses.replace(a, name="b", index=2)
+      dataclasses.replace(a, name="c", idx=3)  # wrong-keyword-args
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
