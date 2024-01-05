@@ -1,3 +1,16 @@
+Version 2024.01.05:
+
+Updates:
+* Support typing.Required and typing.NotRequired.
+* Detect bad calls to `dataclasses.replace`.
+
+Bug fixes:
+* Do not crash if we encounter a malformed splat in a constant list.
+* Allow ParamSpecs as generic class parameters.
+* Fix crash caused by incorrect assumption about the type of an ast node.
+* Allow NoReturn to match anything in @override checks.
+* Expand the types that `dict.__ior__` accepts.
+
 Version 2023.12.18:
 
 Bug fixes:
