@@ -21,7 +21,7 @@ class _PathFinder:
   def __init__(self, options: config.Options):
     self.options = options
 
-  def find_import(self, module_name: str) -> Tuple[Optional[str], bool]:
+  def find_import(self, module_name: str) -> Optional[Tuple[str, bool]]:
     """Search through pythonpath for a module.
 
     Loops over self.options.pythonpath, taking care of the semantics for
@@ -34,7 +34,7 @@ class _PathFinder:
     Returns:
       - (path, file_exists) if we find a path (file_exists will be false if we
         have found a directory where we need to create an __init__.pyi)
-      - (None, None) if we cannot find a full path
+      - None if we cannot find a full path
     """
     module_name_split = module_name.split(".")
     for searchdir in self.options.pythonpath:
@@ -58,7 +58,7 @@ class _PathFinder:
         if full_path is not None:
           log.debug("Found module %r in path %r", module_name, path)
           return full_path, True
-    return None, None
+    return None
 
   def get_pyi_path(self, path: str) -> Optional[str]:
     """Get a pyi file from path if it exists."""
@@ -87,9 +87,10 @@ class ModuleLoader(base.ModuleLoader):
 
   def find_import(self, module_name: str) -> Optional[base.ModuleInfo]:
     """See if the loader can find a file to import for the module."""
-    full_path, file_exists = self._path_finder.find_import(module_name)
-    if full_path is None:
+    found_import = self._path_finder.find_import(module_name)
+    if found_import is None:
       return None
+    full_path, file_exists = found_import
     return base.ModuleInfo(module_name, full_path, file_exists)
 
   def _load_pyi(self, mod_info: base.ModuleInfo):
