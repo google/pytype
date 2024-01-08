@@ -18,9 +18,11 @@ from pytype import context
 from pytype import file_utils
 from pytype import load_pytd
 from pytype import state as frame_state
+from pytype import utils
 from pytype.file_utils import makedirs
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
+from pytype.pytd import slots
 
 import unittest
 
@@ -296,7 +298,8 @@ class ErrorMatcher:
   See tests/test_base_test.py for usage examples.
   """
 
-  ERROR_RE = re.compile(r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?$")
+  ERROR_RE = re.compile(r"^(?P<code>(\w+-)+\w+)(\[(?P<mark>.+)\])?"
+                        r"((?P<cmp>([!=]=|[<>]=?))(?P<version>\d+\.\d+))?$")
 
   def __init__(self, src):
     # errorlog and marks are set by assert_errors_match_expected()
@@ -372,24 +375,37 @@ class ErrorMatcher:
     matchers = {k: SequenceMatcher(v) for k, v in expected_sequences.items()}
     self._assert_error_messages(matchers)
 
+  def _parse_comment(self, comment):
+    comment = comment.strip()
+    error_match = self.ERROR_RE.fullmatch(comment)
+    if not error_match:
+      return None
+    version_cmp = error_match.group("cmp")
+    if version_cmp:
+      version = utils.version_from_string(error_match.group("version"))
+      actual_version = sys.version_info[:2]
+      if not slots.COMPARES[version_cmp](actual_version, version):
+        return None
+    return error_match.group("code"), error_match.group("mark")
+
   def _parse_comments(self, src):
     """Parse comments."""
     src = io.StringIO(src)
     expected = collections.defaultdict(list)
     used_marks = set()
     for tok, s, (line, _), _, _ in tokenize.generate_tokens(src.readline):
-      if tok == tokenize.COMMENT:
-        for comment in s.split("#"):
-          comment = comment.strip()
-          match = self.ERROR_RE.match(comment)
-          if not match:
-            continue
-          mark = match.group("mark")
-          if mark:
-            if mark in used_marks:
-              self._fail(f"Mark {mark} already used")
-            used_marks.add(mark)
-          expected[line].append((match.group("code"), mark))
+      if tok != tokenize.COMMENT:
+        continue
+      for comment in s.split("#"):
+        parsed_comment = self._parse_comment(comment)
+        if parsed_comment is None:
+          continue
+        code, mark = parsed_comment
+        if mark:
+          if mark in used_marks:
+            self._fail(f"Mark {mark} already used")
+          used_marks.add(mark)
+        expected[line].append((code, mark))
     return expected
 
 
