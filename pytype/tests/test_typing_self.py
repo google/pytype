@@ -256,6 +256,31 @@ class SelfTest(test_base.BaseTest):
       f(Bad())  # wrong-arg-types
     """)
 
+  def test_method_with_callable_annotated_decorator(self):
+    self.Check("""
+      from typing import Callable
+      from typing_extensions import Self
+      def decorate(f) -> Callable[['C'], 'C']:
+        return f
+      class C:
+        @decorate
+        def f(self) -> Self:
+          return self
+    """)
+
+  def test_method_with_identity_annotated_decorator(self):
+    self.Check("""
+      from typing import Callable, TypeVar
+      from typing_extensions import Self
+      T = TypeVar('T', bound='C')
+      def decorate(f) -> Callable[[T], T]:
+        return f
+      class C:
+        @decorate
+        def f(self) -> Self:
+          return self
+    """)
+
 
 class SelfPyiTest(test_base.BaseTest):
   """Tests for typing.Self usage in type stubs."""
