@@ -355,6 +355,15 @@ class DecoratorsTest(test_base.BaseTest):
           assert_type(self, C)
     """)
 
+  def test_self_in_contextmanager(self):
+    self.CheckWithErrors("""
+      import contextlib
+      class Foo:
+        @contextlib.contextmanager
+        def ctx(self):
+          print(self.attribute_error)  # attribute-error
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()

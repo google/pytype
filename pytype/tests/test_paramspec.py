@@ -243,7 +243,7 @@ class PyiParamSpecTest(test_base.BaseTest):
 
   def test_method_decoration(self):
     with self.DepTree([("foo.pyi", _DECORATOR_PYI)]):
-      ty, _ = self.InferWithErrors("""
+      ty = self.Infer("""
         import foo
 
         class A:
@@ -251,7 +251,7 @@ class PyiParamSpecTest(test_base.BaseTest):
 
         class B:
           @foo.decorator
-          def h(a: A, b: str) -> int:
+          def h(a: 'B', b: str) -> int:
             return 10
       """)
     self.assertTypesMatchPytd(ty, """
@@ -261,7 +261,7 @@ class PyiParamSpecTest(test_base.BaseTest):
       class A: ...
 
       class B:
-        def h(a: A, b: str) -> List[int]: ...
+        def h(a: B, b: str) -> List[int]: ...
    """)
 
   def test_multiple_decorators(self):
@@ -402,7 +402,7 @@ class PyiParamSpecTest(test_base.BaseTest):
 
         class B:
           @foo.decorator
-          def h(a: A, b: str, *args, **kwargs) -> int:
+          def h(a: 'B', b: str, *args, **kwargs) -> int:
             return 10
 
         @foo.decorator
@@ -420,7 +420,7 @@ class PyiParamSpecTest(test_base.BaseTest):
       class A: ...
 
       class B:
-        def h(a: A, b: str, *args, **kwargs) -> List[int]: ...
+        def h(a: B, b: str, *args, **kwargs) -> List[int]: ...
 
       def s(*args) -> List[int]: ...
       def k(**kwargs) -> List[int]: ...

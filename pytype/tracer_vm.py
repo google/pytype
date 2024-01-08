@@ -33,6 +33,11 @@ _SKIP_FUNCTION_RE = re.compile(r"<(?!lambda)\w+>$")
 _InstanceCacheType = Dict[abstract.InterpreterClass,
                           Dict[Any, Union["_InitClassState", cfg.Variable]]]
 
+_METHOD_TYPES = abstract.INTERPRETER_FUNCTION_TYPES + (
+    special_builtins.StaticMethodInstance,
+    special_builtins.ClassMethodInstance,
+)
+
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class _CallRecord:
@@ -401,8 +406,7 @@ class CallTracer(vm.VirtualMachine):
     cls = valself.data.cls
     bound_method = bind(node, method) if obj == cls else method
     if (not isinstance(cls, abstract.InterpreterClass) or
-        any(isinstance(m, abstract.INTERPRETER_FUNCTION_TYPES)
-            for m in bound_method.data)):
+        any(isinstance(m, _METHOD_TYPES) for m in bound_method.data)):
       return node, bound_method
     # If the method is not something that pytype recognizes as a function -
     # which can happen if the method is decorated, for example - then we look up
@@ -479,7 +483,7 @@ class CallTracer(vm.VirtualMachine):
           self.ctx.errorlog.ignored_abstractmethod(
               self.ctx.vm.simple_stack(cls.get_first_opcode()), cls.name, name)
       is_method_or_nested_class = any(
-          isinstance(m, (abstract.FUNCTION_TYPES, abstract.InterpreterClass))
+          isinstance(m, (_METHOD_TYPES, abstract.InterpreterClass))
           for m in methodvar.data)
       if (self.ctx.options.bind_decorated_methods and
           not is_method_or_nested_class and
