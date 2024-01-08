@@ -456,6 +456,12 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _match_type_param_against_type_param(self, t1, t2, subst, view):
     """Match a TypeVar against another TypeVar."""
+    if t1.full_name == "typing.Self" and not t1.bound:
+      # We're matching a Self instance before it's been bound to its containing
+      # class. We know it should be bound but not to what, so `Any` is the best
+      # we can do.
+      t1 = t1.copy()
+      t1.bound = self.ctx.convert.unsolvable
     if t2.constraints:
       assert not t2.bound  # constraints and bounds are mutually exclusive
       # We only check the constraints for t1, not the bound. We wouldn't know
