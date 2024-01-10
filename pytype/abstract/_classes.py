@@ -464,11 +464,15 @@ class PyTDClass(
     # InitVar attributes to generate __init__, so the fields we want to add to
     # the subclass __init__ are the init params rather than the full list of
     # class attributes.
-    # We also need to use the list of class constants to restore names of the
-    # form `_foo`, which get replaced by `foo` in __init__.
     init = next(x for x in self.pytd_cls.methods if x.name == "__init__")
-    protected = {x.name[1:]: x.name for x in self.pytd_cls.constants
-                 if x.name.startswith("_")}
+    # attr strips the leading underscores off of fields when generating the
+    # __init__ argument for fields. This behavior may not be shared by other
+    # libraries, such as dataclasses.
+    if decorator.startswith("attr."):
+      protected = {x.name[1:]: x.name for x in self.pytd_cls.constants
+                   if x.name.startswith("_")}
+    else:
+      protected = {}
     params = []
     for p in init.signatures[0].params[1:]:
       if p.name in protected:
