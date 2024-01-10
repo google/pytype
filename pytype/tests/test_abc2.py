@@ -183,9 +183,9 @@ class AbstractMethodTests(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       import abc
       class Foo(abc.ABC):
-        @abc.abstractmethod
+        @abc.abstractmethod  # wrong-arg-types[e]>=3.11
         @property
-        def f(self) -> str:  # wrong-arg-types[e]
+        def f(self) -> str:  # wrong-arg-types[e]<3.11
           return 'a'
 
         @property

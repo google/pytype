@@ -231,12 +231,10 @@ class TestDataclass(test_base.BaseTest):
     """)
 
   def test_bad_default_param_order(self):
-    # Note: explicitly inheriting from object keeps the line number of the error
-    # stable between Python versions.
     self.CheckWithErrors("""
       import dataclasses
-      @dataclasses.dataclass()
-      class Foo(object):  # invalid-function-definition
+      @dataclasses.dataclass()  # invalid-function-definition>=3.11
+      class Foo:  # invalid-function-definition<3.11
         x: int = 10
         y: str
     """)
@@ -730,8 +728,8 @@ class TestDataclass(test_base.BaseTest):
     self.CheckWithErrors("""
       import dataclasses
 
-      @dataclasses.dataclass
-      class A():  # dataclass-error
+      @dataclasses.dataclass  # dataclass-error>=3.11
+      class A:  # dataclass-error<3.11
         a1: int
         _a: dataclasses.KW_ONLY
         a2: int = dataclasses.field(default_factory=lambda: 0)
