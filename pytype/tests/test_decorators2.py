@@ -235,9 +235,9 @@ class DecoratorsTest(test_base.BaseTest):
         def __call__(self, func):
           return func
       class Foo:
-        @classmethod
-        @Decorate  # forgot to instantiate Decorate
-        def bar(cls):  # wrong-arg-count[e]  # not-callable
+        @classmethod  # not-callable>=3.11
+        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e]>=3.11
+        def bar(cls):  # wrong-arg-count[e]<3.11  # not-callable<3.11
           pass
       Foo.bar()
     """)
@@ -248,9 +248,9 @@ class DecoratorsTest(test_base.BaseTest):
       class Decorate:
         pass  # forgot to define __call__
       class Foo:
-        @classmethod
-        @Decorate  # forgot to instantiate Decorate
-        def bar(cls):  # wrong-arg-count[e1]  # not-callable
+        @classmethod  # not-callable>=3.11
+        @Decorate  # forgot to instantiate Decorate  # wrong-arg-count[e1]>=3.11
+        def bar(cls):  # wrong-arg-count[e1]<3.11  # not-callable<3.11
           pass
       Foo.bar()
     """)

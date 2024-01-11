@@ -433,39 +433,11 @@ class VirtualMachine:
     else:
       return ()
 
-  def _in_3_11_decoration(self):
-    """Are we in a Python 3.11 decorator call?"""
-    if not (self.ctx.python_version == (3, 11) and
-            isinstance(self.current_opcode, opcodes.CALL) and
-            self.current_line in self._director.decorated_functions):
-      return False
-    prev = self.current_opcode
-    # Skip past the PRECALL opcode.
-    for _ in range(2):
-      prev = prev.prev
-      if not prev:
-        return False
-    # `prev` is the last loaded argument. For this call to be a decorator call,
-    # the last argument must be the decorated object or another decorator.
-    return (prev.line != self.current_line and
-            any(prev.line in d for d in (self._director.decorators,
-                                         self._director.decorated_functions)))
-
   def stack(self, func=None):
     """Get a frame stack for the given function for error reporting."""
     if (isinstance(func, abstract.INTERPRETER_FUNCTION_TYPES) and
         not self.current_opcode):
       return self.simple_stack(func.get_first_opcode())
-    elif self._in_3_11_decoration():
-      # TODO(b/241431224): In Python 3.10, the line number of the CALL opcode
-      # for a decorator is at the function definition line, while in 3.11, the
-      # opcode is at the decorator line. For a smoother transition from 3.10 to
-      # 3.11, we adjust the error line number for a bad decorator call to match
-      # 3.10. The 3.11 line number is more sensible, so we should stop making
-      # this adjustment once we're out of the transition period.
-      adjusted_opcode = self.current_opcode.at_line(
-          self._director.decorated_functions[self.current_line])
-      return self.simple_stack(adjusted_opcode)
     else:
       return self.frames
 

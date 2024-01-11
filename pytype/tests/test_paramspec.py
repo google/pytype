@@ -345,8 +345,8 @@ class PyiParamSpecTest(test_base.BaseTest):
         def h(a: int, b: str) -> int:
           return 10
 
-        @foo.mismatched
-        def k(a: int, b: str) -> int:  # wrong-arg-types[e]
+        @foo.mismatched  # wrong-arg-types[e]>=3.11
+        def k(a: int, b: str) -> int:  # wrong-arg-types[e]<3.11
           return 10
       """)
     self.assertTypesMatchPytd(ty, """

@@ -730,9 +730,9 @@ class MethodsTest(test_base.BaseTest):
       def f(x):
         return 42
       class A:
-        @classmethod
+        @classmethod  # not-callable[e]>=3.11
         @f
-        def myclassmethod(*args):  # not-callable[e]
+        def myclassmethod(*args):  # not-callable[e]<3.11
           return 3
     """)
     self.assertTypesMatchPytd(ty, """

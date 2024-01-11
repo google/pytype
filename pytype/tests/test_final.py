@@ -160,8 +160,8 @@ class TestFinalDecoratorValidity(test_base.BaseTest):
   def test_invalid(self):
     err = self.CheckWithErrors("""
       from typing_extensions import final
-      @final
-      def f(x):  # final-error[e]
+      @final  # final-error[e]>=3.11
+      def f(x):  # final-error[e]<3.11
         pass
     """)
     self.assertErrorSequences(err, {"e": ["Cannot apply @final", "f"]})
