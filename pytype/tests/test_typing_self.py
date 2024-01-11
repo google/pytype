@@ -281,6 +281,17 @@ class SelfTest(test_base.BaseTest):
           return self
     """)
 
+  def test_signature_compatibility(self):
+    self.Check("""
+      from typing_extensions import Self
+      class Parent:
+        def add(self, other: Self) -> Self:
+          return self
+      class Child(Parent):
+        def add(self, other: Self) -> Self:
+          return self
+    """)
+
 
 class SelfPyiTest(test_base.BaseTest):
   """Tests for typing.Self usage in type stubs."""

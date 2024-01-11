@@ -414,7 +414,8 @@ def _check_signature_compatible(method_signature, base_signature,
     """Return True iff this_type is a subclass of that_type."""
     if this_type == ctx.convert.never:
       return True  # Never is the bottom type, so it matches everything
-    this_type_instance = this_type.instantiate(ctx.root_node, None)
+    this_type_instance = this_type.instantiate(
+        ctx.root_node, container=abstract_utils.DUMMY_CONTAINER)
     return matcher.compute_one_match(this_type_instance, that_type).success
 
   check_result = (
