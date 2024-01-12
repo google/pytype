@@ -97,7 +97,7 @@ class Dataclass(classgen.Decorator):
         continue
       kind = ""
       init = True
-      kw_only = False
+      kw_only = sticky_kwonly
       assert typ
       if match_classvar(typ):
         continue
@@ -112,8 +112,8 @@ class Dataclass(classgen.Decorator):
           field = orig.data[0]
           orig = field.default
           init = field.init
-          if self.ctx.python_version >= (3, 10):
-            kw_only = sticky_kwonly if field.kw_only is None else field.kw_only
+          if field.kw_only is not None:
+            kw_only = field.kw_only
 
       if orig and orig.data == [self.ctx.convert.none]:
         # vm._apply_annotation mostly takes care of checking that the default

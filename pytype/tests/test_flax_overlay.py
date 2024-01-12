@@ -266,6 +266,34 @@ class TestLinenModule(test_base.BaseTest):
           def replace(self: _TBaz, **kwargs) -> _TBaz: ...
       """)
 
+  @test_utils.skipBeforePy((3, 10), "KW_ONLY is new in 3.10")
+  def test_kwonly(self):
+    with test_utils.Tempdir() as d:
+      self._setup_linen_pyi(d)
+      ty = self.Infer("""
+        import dataclasses
+        from flax import linen as nn
+        class C(nn.Module):
+          _: dataclasses.KW_ONLY
+          x: int = 0
+          y: str
+      """, pythonpath=[d.path])
+    self.assertTypesMatchPytd(ty, """
+      import dataclasses
+      from flax import linen as nn
+      from typing import Any, TypeVar
+
+      _TC = TypeVar('_TC', bound=C)
+
+      @dataclasses.dataclass
+      class C(nn.module.Module):
+        x: int = ...
+        y: str
+        _: dataclasses.KW_ONLY
+        def __init__(self, *, x: int = ..., y: str, name: str = ..., parent: Any = ...) -> None: ...
+        def replace(self: _TC, **kwargs) -> _TC: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
