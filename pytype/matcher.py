@@ -1466,7 +1466,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     for k, v in left.pyval.items():
       if k not in fields:
         continue
-      typ = abstract_utils.get_atomic_value(fields[k])
+      typ = fields[k]
       match_result = self.compute_one_match(v, typ)
       if not match_result.success:
         bad.append((k, match_result.bad_matches))

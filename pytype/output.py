@@ -1016,10 +1016,8 @@ class Converter(utils.ContextWeakrefMixin):
       keywords.append(("total", pytd.Literal(False)))
     bases = (pytd.NamedType("typing.TypedDict"),)
     constants = []
-    for k, var in v.props.fields.items():
-      typ = pytd_utils.JoinTypes(
-          self.value_instance_to_pytd_type(node, p, None, set(), {})
-          for p in var.data)
+    for k, val in v.props.fields.items():
+      typ = self.value_instance_to_pytd_type(node, val, None, set(), {})
       if v.props.total and k not in v.props.required:
         typ = pytd.GenericType(pytd.NamedType("typing.NotRequired"), (typ,))
       elif not v.props.total and k in v.props.required:
