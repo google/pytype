@@ -2,7 +2,7 @@
 
 import dataclasses
 
-from typing import Any, Dict, Optional, Set
+from typing import Dict, Optional, Set
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -34,7 +34,7 @@ class TypedDictProperties:
   """Collection of typed dict properties passed between various stages."""
 
   name: str
-  fields: Dict[str, Any]
+  fields: Dict[str, abstract.BaseValue]
   required: Set[str]
   total: bool
 
@@ -48,27 +48,15 @@ class TypedDictProperties:
 
   def add(self, k, v, total):
     """Adds key and value."""
-    values = []
-    all_requiredness = set()
-    for value in v.data:
-      req = _is_required(value)
-      if req is None:
-        values.append(value)
-        all_requiredness.add(None)
-      elif isinstance(value, abstract.ParameterizedClass):
-        values.append(value.formal_type_parameters[abstract_utils.T])
-        all_requiredness.add(req)
-      else:
-        values.append(value.ctx.convert.unsolvable)
-        all_requiredness.add(req)
-    if (len(all_requiredness) == 1 and
-        (requiredness := next(iter(all_requiredness))) is not None):
-      final_v = v.program.NewVariable(values, [], v.program.entrypoint)
-      required = requiredness
+    req = _is_required(v)
+    if req is None:
+      value = v
+    elif isinstance(v, abstract.ParameterizedClass):
+      value = v.formal_type_parameters[abstract_utils.T]
     else:
-      final_v = v
-      required = total
-    self.fields[k] = final_v  # pylint: disable=unsupported-assignment-operation
+      value = v.ctx.convert.unsolvable
+    required = total if req is None else req
+    self.fields[k] = value  # pylint: disable=unsupported-assignment-operation
     if required:
       self.required.add(k)
 
@@ -122,7 +110,12 @@ class TypedDictBuilder(abstract.PyTDClass):
         name=name, fields={}, required=set(), total=total)
     # Force Required/NotRequired evaluation
     for k, v in fields.items():
-      props.add(k, v, total)
+      try:
+        value = abstract_utils.get_atomic_value(v)
+      except abstract_utils.ConversionError:
+        self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, v.data, k)
+        value = self.ctx.convert.unsolvable
+      props.add(k, value, total)
     return props
 
   def _validate_bases(self, cls_name, bases):
@@ -182,8 +175,14 @@ class TypedDictBuilder(abstract.PyTDClass):
         ordering=classgen.Ordering.FIRST_ANNOTATE,
         ctx=self.ctx)
     for k, local in cls_locals.items():
-      assert local.typ
-      props.add(k, local.typ, total)
+      var = local.typ
+      assert var
+      try:
+        typ = abstract_utils.get_atomic_value(var)
+      except abstract_utils.ConversionError:
+        self.ctx.errorlog.ambiguous_annotation(self.ctx.vm.frames, var.data, k)
+        typ = self.ctx.convert.unsolvable
+      props.add(k, typ, total)
 
     # Process base classes and generate the __init__ signature.
     self._validate_bases(cls_name, bases)
@@ -207,7 +206,7 @@ class TypedDictBuilder(abstract.PyTDClass):
         name=name, fields={}, required=set(), total=total)
 
     for c in pytd_cls.constants:
-      typ = self.ctx.convert.constant_to_var(c.type)
+      typ = self.ctx.convert.constant_to_value(c.type)
       props.add(c.name, typ, total)
 
     # Process base classes and generate the __init__ signature.
@@ -239,8 +238,7 @@ class TypedDictClass(abstract.PyTDClass):
     sig = function.Signature.from_param_names(
         f"{props.name}.__init__", props.fields.keys(),
         kind=pytd.ParameterKind.KWONLY)
-    sig.annotations = {k: abstract_utils.get_atomic_value(v)
-                       for k, v in props.fields.items()}
+    sig.annotations = dict(props.fields)
     sig.defaults = {k: self.ctx.new_unsolvable(self.ctx.root_node)
                     for k in props.optional}
     return abstract.SimpleFunction(sig, self.ctx)
@@ -256,8 +254,7 @@ class TypedDictClass(abstract.PyTDClass):
   def instantiate_value(self, node, container):
     args = function.Args(())
     for name, typ in self.props.fields.items():
-      args.namedargs[name] = self.ctx.join_variables(
-          node, [t.instantiate(node) for t in typ.data])
+      args.namedargs[name] = typ.instantiate(node)
     return self._new_instance(container, node, args)
 
   def instantiate(self, node, container=None):
@@ -301,7 +298,7 @@ class TypedDict(abstract.Dict):
 
   def _check_str_key_value(self, node, name, value_var):
     self._check_str_key(name)
-    typ = abstract_utils.get_atomic_value(self.fields[name])
+    typ = self.fields[name]
     bad = self.ctx.matcher(node).compute_one_match(value_var, typ).bad_matches
     for match in bad:
       self.ctx.errorlog.annotation_type_mismatch(

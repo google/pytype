@@ -385,6 +385,14 @@ class TypedDictTest(test_base.BaseTest):
           return __any_object__
       """)
 
+  def test_duplicate_key(self):
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      class TD(TypedDict):  # invalid-annotation
+        x: int
+        x: str
+    """)
+
 
 class TypedDictFunctionalTest(test_base.BaseTest):
   """Tests for typing.TypedDict functional constructor."""
@@ -456,6 +464,16 @@ class TypedDictFunctionalTest(test_base.BaseTest):
       from typing import TypedDict
       class X(TypedDict, total=False):
         name: str
+    """)
+
+  def test_ambiguous_field_type(self):
+    self.CheckWithErrors("""
+      from typing_extensions import TypedDict
+      if __random__:
+        v = str
+      else:
+        v = int
+      X = TypedDict('X', {'k': v})  # invalid-annotation
     """)
 
 
