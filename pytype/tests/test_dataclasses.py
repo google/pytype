@@ -781,6 +781,18 @@ class TestDataclass(test_base.BaseTest):
         def __init__(self, *, x: int = ..., y: str) -> None: ...
     """)
 
+  @test_utils.skipBeforePy((3, 10), "KW_ONLY is new in 3.10")
+  def test_kwonly_and_kwargs(self):
+    self.Check("""
+      import dataclasses
+      @dataclasses.dataclass
+      class C:
+        _: dataclasses.KW_ONLY
+        x: int
+      def f(**kwargs):
+        return C(**kwargs)
+    """)
+
   def test_star_import(self):
     with self.DepTree([("foo.pyi", """
       import dataclasses
