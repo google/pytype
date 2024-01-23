@@ -474,7 +474,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # constraints even if t1 is bounded.
       if not t1.constraints:
         return None  # t1 is unconstrained, t2 has constraints
-      if set(t1.constraints) - set(t2.constraints):
+      if any(c not in t2.constraints for c in t1.constraints):
         return None  # t1 is more permissive than t2
     elif t2.bound:
       if t1.bound:
