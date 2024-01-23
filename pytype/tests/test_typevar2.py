@@ -1057,6 +1057,23 @@ class TypeVarTestPy3(test_base.BaseTest):
       f("oops")  # wrong-arg-types
     """)
 
+  @test_utils.skipBeforePy((3, 9), "subscripting builtins.dict is new in 3.9")
+  def test_builtin_dict_constraint(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import TypeVar
+      T = TypeVar('T', int, dict[str, int])
+      class C:
+        def f(self, x: T) -> T: ...
+    """)]):
+      self.Check("""
+        import foo
+        from typing import TypeVar
+        T = TypeVar('T', int, dict[str, int])
+        class C(foo.C):
+          def f(self, x: T) -> T:
+            return x
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

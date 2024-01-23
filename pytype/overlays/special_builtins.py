@@ -781,6 +781,11 @@ class Dict(BuiltinClass):
     else:
       return super().call(node, func, args, alias_map)
 
+  def get_special_attribute(self, node, name, valself):
+    # For doing something like getting the __getitem__ attribute to subscript
+    # dict, we want to use the real dict type.
+    return self.ctx.convert.dict_type.get_special_attribute(node, name, valself)
+
 
 class Type(BuiltinClass, mixin.HasSlots):
 
