@@ -525,7 +525,9 @@ class SignedFunction(Function):
       raise function.WrongKeywordArgs(sig, args, self.ctx, posonly_kws)
     callargs.update(positional)
     callargs.update(kws)
-    for key, kwonly in self.get_nondefault_params():
+    for key, kwonly in itertools.chain(
+        self.get_nondefault_params(),
+        ((key, True) for key in sig.kwonly_params)):
       if key not in callargs:
         if args.starstarargs or (args.starargs and not kwonly):
           # We assume that because we have *args or **kwargs, we can use these
@@ -533,9 +535,6 @@ class SignedFunction(Function):
           callargs[key] = self.ctx.new_unsolvable(node)
         else:
           raise function.MissingParameter(sig, args, self.ctx, key)
-    for key in sig.kwonly_params:
-      if key not in callargs:
-        raise function.MissingParameter(sig, args, self.ctx, key)
     if sig.varargs_name:
       varargs_name = sig.varargs_name
       extraneous = posargs[self.argcount(node):]

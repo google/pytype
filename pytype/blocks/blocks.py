@@ -161,6 +161,9 @@ class OrderedCode:
     for insn in bytecode:
       insn.code = self
 
+  def __repr__(self):
+    return f"OrderedCode({self.qualname}, version={self.python_version})"
+
   @property
   def co_consts(self):
     # The blocks/pyc code mixes CodeType and OrderedCode objects when
