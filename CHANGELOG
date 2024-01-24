@@ -1,3 +1,21 @@
+Version 2024.01.24:
+
+Updates:
+* Stop doing suboptimal line number adjustment for 3.10/3.11 consistency.
+
+Bug fixes:
+* Fix a couple of --none-is-not-bool issues.
+* --bind-decorated-methods: Don't treat SimpleFunction as a full-fledged method.
+* Fix bad matching of typing.Self against other TypeVars.
+* Don't do attr-demangling on non-attr classes.
+* Fix interaction between signature compatibility checks and typing.Self.
+* Fix [invalid-function-definition] error caused by ignoring
+  dataclasses.KW_ONLY.
+* Report an error when a TypedDict key has an ambiguous type.
+* Fix bug caused by bad ParameterizedClass hashing.
+* Make sure we consistently use the same `dict` class for types.
+* Don't raise MissingParameter on keyword-only params when **kwargs is present.
+
 Version 2024.01.05:
 
 Updates:
