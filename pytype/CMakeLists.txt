@@ -79,6 +79,15 @@ py_library(
 
 py_library(
   NAME
+    imports_map_loader
+  SRCS
+    imports_map_loader.py
+  DEPS
+    pytype.platform_utils.platform_utils
+)
+
+py_library(
+  NAME
     libvm
   DEPS
     .__version__
@@ -272,15 +281,6 @@ py_library(
     file_utils
   SRCS
     file_utils.py
-  DEPS
-    pytype.platform_utils.platform_utils
-)
-
-py_library(
-  NAME
-    imports_map_loader
-  SRCS
-    imports_map_loader.py
   DEPS
     pytype.platform_utils.platform_utils
 )
