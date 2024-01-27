@@ -454,7 +454,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
         func1(foo.f1())
         func1(foo.f2())
         func2(foo.f1())
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Any, Awaitable, Coroutine, List

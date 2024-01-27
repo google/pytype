@@ -44,7 +44,7 @@ class MapTest(test_base.BaseTest):
       lst1 = []
       lst2 = [x for x in lst1]
       lst3 = map(str, lst2)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Iterator
       lst1 : List[nothing]
@@ -297,7 +297,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       f = u",".join([u"foo"])
       g = ",".join([u"foo", "bar"])
       h = u",".join([u"foo", "bar"])
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       b : str
       d : str
@@ -313,7 +313,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       a = "prefix_suffix"
       b = a.removeprefix("prefix_")
       c = a.removesuffix("_suffix")
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       a : str
       b : str
@@ -332,7 +332,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     ty = self.Infer("""
       b = bytearray()
       x2 = b.join([b"x"])
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       b : bytearray
       x2 : bytearray
@@ -343,7 +343,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       a = next(iter([1, 2, 3]))
       b = next(iter([1, 2, 3]), default = 4)
       c = next(iter([1, 2, 3]), "hello")
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       a : int
@@ -358,7 +358,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       b = m.keys() - {1, 2, 3}
       c = m.keys() | {1, 2, 3}
       d = m.keys() ^ {1, 2, 3}
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Set, Union
       m : Dict[str, None]
@@ -459,31 +459,24 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       """)
 
   def test_dict(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Dict, List, Union
       def t_testDict():
         d = {}
         d['a'] = 3
         d[3j] = 1.0
-        return _i1_(list(_i2_(d).values()))[0]
-      def _i1_(x):
-        return x
-      def _i2_(x):
-        return x
-      t_testDict()
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Dict, List, Union
-      def t_testDict() -> Union[float, int]: ...
-      # _i1_, _i2_ capture the more precise definitions of the ~dict, ~list
-      def _i1_(x: List[float]) -> List[Union[float, int]]: ...
-      def _i2_(x: dict[Union[complex, str], Union[float, int]]) -> Dict[Union[complex, str], Union[float, int]]: ...
+        assert_type(d, Dict[Union[complex, str], Union[float, int]])
+        d2 = list(d.values())
+        assert_type(d2, List[Union[float, int]])
+        return d2[0]
+      assert_type(t_testDict(), Union[float, int])
     """)
 
   def test_list_init(self):
     ty = self.Infer("""
       l3 = list({"a": 1}.keys())
       l4 = list({"a": 1}.values())
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       l3 : List[str]
@@ -494,7 +487,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     ty = self.Infer("""
       t3 = tuple({"a": 1}.keys())
       t4 = tuple({"a": 1}.values())
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       t3 : Tuple[str, ...]
@@ -504,7 +497,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
   def test_items(self):
     ty = self.Infer("""
       lst = list({"a": 1}.items())
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Tuple
       lst : List[Tuple[str, int]]

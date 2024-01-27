@@ -16,7 +16,7 @@ class SliceTest(test_base.BaseTest):
       e = x[:2:3]
       f = x[1::3]
       g = x[1:2:]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       x = ...  # type: List[int]
@@ -30,16 +30,11 @@ class SliceTest(test_base.BaseTest):
     """)
 
   def test_slice_getitem(self):
-    ty = self.Infer("""
+    self.Check("""
       class Foo:
         def __getitem__(self, s):
           return s
-      Foo()[:]
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Tuple
-      class Foo:
-        def __getitem__(self, s: slice) -> slice: ...
+      assert_type(Foo()[:], slice)
     """)
 
 

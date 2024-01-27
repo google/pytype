@@ -268,7 +268,7 @@ class DecoratorsTest(test_base.BaseTest):
           def f(self, x=None):
             pass
         A().f(42)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Any, Callable

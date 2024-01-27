@@ -33,7 +33,7 @@ class TupleTest(test_base.BaseTest):
       v4 = t[0:1]
       v5 = t[0:2:2]
       v6 = t[:][0]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       t = ...  # type: Tuple[str, int]
@@ -84,7 +84,7 @@ class TupleTest(test_base.BaseTest):
       w = v.setdefault("", ([], []))
       w[1].append(42)
       u = w[2]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       v = ...  # type: dict[str, tuple[list[nothing], list[int]]]
       w = ...  # type: tuple[list[nothing], list[int]]

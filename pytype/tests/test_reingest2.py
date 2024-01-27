@@ -12,7 +12,7 @@ class ReingestTest(test_base.BaseTest):
       T = TypeVar("T", bound=float)
       def f(x: T) -> T: return x
     """
-    with self.DepTree([("foo.py", foo, dict(deep=False))]):
+    with self.DepTree([("foo.py", foo)]):
       _, errors = self.InferWithErrors("""
         import foo
         foo.f("")  # wrong-arg-types[e]

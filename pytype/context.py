@@ -32,14 +32,12 @@ class Context:
       options: config.Options,
       loader: load_pytd.Loader,
       generate_unknowns: bool = False,
-      store_all_calls: bool = False,
   ):
     # Inputs
     self.options = options
     self.python_version: Tuple[int, int] = self.options.python_version
     self.loader = loader
     self.generate_unknowns = generate_unknowns
-    self.store_all_calls = store_all_calls
 
     # Typegraph
     self.program = cfg.Program()

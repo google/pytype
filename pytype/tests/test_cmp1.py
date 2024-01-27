@@ -7,17 +7,16 @@ class InTest(test_base.BaseTest):
   """Test for "x in y". Also test overloading of this operator."""
 
   def test_concrete(self):
-    ty, errors = self.InferWithErrors("""
+    errors = self.CheckWithErrors("""
       def f(x, y):
         return x in y  # unsupported-operands[e]
-      f(1, [1])
-      f(1, [2])
-      f("x", "x")
-      f("y", "x")
-      f("y", (1,))
+      assert_type(f(1, [1]), bool)
+      assert_type(f(1, [2]), bool)
+      assert_type(f("x", "x"), bool)
+      assert_type(f("y", "x"), bool)
+      assert_type(f("y", (1,)), bool)
       f("y", object())
     """)
-    self.assertTypesMatchPytd(ty, "def f(x, y) -> bool: ...")
     self.assertErrorRegexes(errors, {"e": r"'in'.*object"})
 
   def test_deep(self):
@@ -179,19 +178,12 @@ class CmpTest(test_base.BaseTest):
   OPS = ["<", "<=", ">", ">="]
 
   def _test_concrete(self, op):
-    ty, errors = self.InferWithErrors(f"""
+    errors = self.CheckWithErrors(f"""
       def f(x, y):
         return x {op} y  # unsupported-operands[e]
-      f(1, 2)
+      assert_type(f(1, 2), bool)
       f(1, "a")  # <- error raised from here but in line 2
-      f(object(), "x")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import overload
-      @overload
-      def f(x: int, y: int) -> bool: ...
-      @overload
-      def f(x: object, y: str) -> bool: ...
+      assert_type(f(object(), "x"), bool)
     """)
     self.assertErrorRegexes(errors, {"e": "Types.*int.*str"})
     self.assertErrorRegexes(errors, {"e": "Called from.*line 4"})
@@ -226,21 +218,12 @@ class EqTest(test_base.BaseTest):
   """Test for "x == y". Also test overloading."""
 
   def test_concrete(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y):
         return x == y
-      f(1, 2)
-      f(1, "a")
-      f(object(), "x")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import overload
-      @overload
-      def f(x: int, y: int) -> bool: ...
-      @overload
-      def f(x: int, y: str) -> bool: ...
-      @overload
-      def f(x: object, y: str) -> bool: ...
+      assert_type(f(1, 2), bool)
+      assert_type(f(1, "a"), bool)
+      assert_type(f(object(), "x"), bool)
     """)
 
   def test_overloaded(self):
@@ -258,21 +241,12 @@ class EqTest(test_base.BaseTest):
     """)
 
   def test_class(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y):
         return x.__class__ == y.__class__
-      f(1, 2)
-      f(1, "a")
-      f(object(), "x")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import overload
-      @overload
-      def f(x: int, y: int) -> bool: ...
-      @overload
-      def f(x: int, y: str) -> bool: ...
-      @overload
-      def f(x: object, y: str) -> bool: ...
+      assert_type(f(1, 2), bool)
+      assert_type(f(1, "a"), bool)
+      assert_type(f(object(), "x"), bool)
     """)
 
   def test_primitive_against_unknown(self):
@@ -286,21 +260,12 @@ class NeTest(test_base.BaseTest):
   """Test for "x != y". Also test overloading."""
 
   def test_concrete(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y):
         return x != y
-      f(1, 2)
-      f(1, "a")
-      f(object(), "x")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import overload
-      @overload
-      def f(x: int, y: int) -> bool: ...
-      @overload
-      def f(x: int, y: str) -> bool: ...
-      @overload
-      def f(x: object, y: str) -> bool: ...
+      assert_type(f(1, 2), bool)
+      assert_type(f(1, "a"), bool)
+      assert_type(f(object(), "x"), bool)
     """)
 
   def test_overloaded(self):

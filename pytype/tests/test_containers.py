@@ -8,31 +8,26 @@ class ContainerTest(test_base.BaseTest):
   """Tests for containers."""
 
   def test_tuple_pass_through(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Tuple
       def f(x):
         return x
-      f((3, "str"))
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: tuple[int, str]) -> tuple[int, str]: ...
+      assert_type(f((3, "str")), Tuple[int, str])
     """)
 
   def test_tuple(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x[0]
-      f((3, "str"))
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: tuple[int, str]) -> int: ...")
+      assert_type(f((3, "str")), int)
+    """)
 
   def test_tuple_swap(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Tuple
       def f(x):
         return (x[1], x[0])
-      f((3, "str"))
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: tuple[int, str]) -> tuple[str, int]: ...
+      assert_type(f((3, "str")), Tuple[str, int])
     """)
 
   def test_empty_tuple(self):
@@ -143,7 +138,7 @@ class ContainerTest(test_base.BaseTest):
         x = 3.1
       l = []
       l.append(x)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, List, Union
       x = ...  # type: Union[int, float]
@@ -532,7 +527,7 @@ class ContainerTest(test_base.BaseTest):
       c = mymap['foobar']  # unrecognized values are treated as Any
       mymap[str()] = 3j
       b2 = mymap['b']
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Union
       mymap = ...  # type: Dict[str, Union[int, float, complex]]

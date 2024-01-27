@@ -296,7 +296,7 @@ class ErrorTest(test_base.BaseTest):
       errors = self.CheckWithErrors("""
         import foo
         foo.f([""])  # wrong-arg-types[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorSequences(errors, {"e": ["List[int]", "List[str]"]})
 
   def test_too_many_args(self):
@@ -304,7 +304,7 @@ class ErrorTest(test_base.BaseTest):
       def f():
         pass
       f(3)  # wrong-arg-count[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"0.*1"})
 
   def test_too_few_args(self):
@@ -312,7 +312,7 @@ class ErrorTest(test_base.BaseTest):
       def f(x):
         pass
       f()  # missing-parameter[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"x.*f"})
 
   def test_duplicate_keyword(self):
@@ -320,7 +320,7 @@ class ErrorTest(test_base.BaseTest):
       def f(x, y):
         pass
       f(3, x=3)  # duplicate-keyword-argument[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"f.*x"})
 
   def test_bad_import(self):
@@ -375,7 +375,7 @@ class ErrorTest(test_base.BaseTest):
       """)
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"SupportsInt is not a container"})
 
   def test_bad_type_parameter_order(self):
@@ -390,7 +390,7 @@ class ErrorTest(test_base.BaseTest):
       """)
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"Illegal.*order.*a\.C"})
 
   def test_duplicate_type_parameter(self):
@@ -402,7 +402,7 @@ class ErrorTest(test_base.BaseTest):
       """)
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"T"})
 
   def test_duplicate_generic_base_class(self):
@@ -415,7 +415,7 @@ class ErrorTest(test_base.BaseTest):
       """)
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"inherit.*Generic"})
 
   def test_type_parameter_in_module_constant(self):
@@ -427,7 +427,7 @@ class ErrorTest(test_base.BaseTest):
       """)
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"a.*T.*a\.x"})
 
   def test_type_parameter_in_class_attribute(self):
@@ -442,7 +442,7 @@ class ErrorTest(test_base.BaseTest):
         import a
         def f():
           return a.A.x  # unbound-type-param[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"x.*A.*T"})
 
   def test_unbound_type_parameter_in_instance_attribute(self):
@@ -455,7 +455,7 @@ class ErrorTest(test_base.BaseTest):
       """)
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"a.*T.*a\.A\.x"})
 
   def test_print_union_arg(self):
@@ -467,21 +467,21 @@ class ErrorTest(test_base.BaseTest):
       errors = self.CheckWithErrors("""
         import a
         x = a.f(4.2)  # wrong-arg-types[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       pattern = ["Expected", "Union[int, str]", "Actually passed"]
       self.assertErrorSequences(errors, {"e": pattern})
 
   def test_print_type_arg(self):
     errors = self.CheckWithErrors("""
       hex(int)  # wrong-arg-types[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"Actually passed.*Type\[int\]"})
 
   def test_delete_from_set(self):
     errors = self.CheckWithErrors("""
       s = {1}
       del s[1]  # unsupported-operands[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"item deletion"})
 
   def test_bad_reference(self):
@@ -491,7 +491,7 @@ class ErrorTest(test_base.BaseTest):
         for foo in []:
           pass
         return x
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"foo"})
     # Make sure we recovered from the error and got the right return type
     self.assertTypesMatchPytd(ty, """
@@ -503,7 +503,7 @@ class ErrorTest(test_base.BaseTest):
     errors = self.CheckWithErrors("""
       x = 42
       x.y = 42  # not-writable[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"y.*int"})
 
   def test_invalid_parameters_on_method(self):
@@ -535,7 +535,7 @@ class ErrorTest(test_base.BaseTest):
         foo.f(1, 2, y=3)
         foo.f(1, x=1)  # duplicate-keyword-argument
         # foo.f(y=1, y=2)  # caught by compiler
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
 
   def test_invalid_parameters_details(self):
     errors = self.CheckWithErrors("""
@@ -562,7 +562,7 @@ class ErrorTest(test_base.BaseTest):
       class B(A):
         def f(self):
           return super(self, B).f()  # should be super(B, self)  # wrong-arg-types[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"cls: type.*cls: B"})
 
   @test_base.skip("Need to type-check second argument to super")
@@ -573,7 +573,7 @@ class ErrorTest(test_base.BaseTest):
       class B(A):
         def __init__(self):
           super(B, A).__init__()  # A cannot be the second argument to super  # wrong-arg-types[e]
-    """, deep=True)
+    """)
     self.assertErrorSequences(errors, {"e": ["Type[B]", "Type[A]"]})
 
   def test_bad_name_import(self):
@@ -585,7 +585,7 @@ class ErrorTest(test_base.BaseTest):
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
         x = a.x
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": "Rumpelstiltskin"})
 
   def test_bad_name_import_from(self):
@@ -597,7 +597,7 @@ class ErrorTest(test_base.BaseTest):
       errors = self.CheckWithErrors("""
         import a  # pyi-error[e]
         x = a.x
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": "Rumpelstiltskin"})
 
   def test_match_type(self):
@@ -614,7 +614,7 @@ class ErrorTest(test_base.BaseTest):
         x = a.f(a.A)
         y = a.f(a.B)
         z = a.f(a.C)  # wrong-arg-types[e]
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       error = ["Expected", "Type[a.A]", "Actual", "Type[a.C]"]
       self.assertErrorSequences(errors, {"e": error})
       self.assertTypesMatchPytd(ty, """
@@ -637,7 +637,7 @@ class ErrorTest(test_base.BaseTest):
       errors = self.CheckWithErrors("""
         import a
         x = a.f(a.B)  # wrong-arg-types[e]
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       expected_error = ["Expected", "Type[a.A[int]]", "Actual", "Type[a.B]"]
       self.assertErrorSequences(errors, {"e": expected_error})
 
@@ -683,7 +683,7 @@ class ErrorTest(test_base.BaseTest):
         class C(b.B):
           def __init__(self):
             f = open(self.x, 'r')  # attribute-error[e]
-      """, pythonpath=[d.path], deep=True)
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"x.*C"})
 
   def test_dont_timeout_on_complex(self):
@@ -701,7 +701,7 @@ class ErrorTest(test_base.BaseTest):
       x = x + x
       x = x + x
       x = x + x
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       x = ...  # type: Any

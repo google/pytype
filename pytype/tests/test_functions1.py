@@ -288,29 +288,21 @@ class TestFunctions(test_base.BaseTest):
         """, pythonpath=[d.path])
 
   def test_pass_through_args(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(a, b):
         return a * b
       def g(*args, **kwargs):
         return f(*args, **kwargs)
-      g(1, 2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(a: int, b: int) -> int: ...
-      def g(*args, **kwargs) -> int: ...
+      assert_type(g(1, 2), int)
     """)
 
   def test_pass_through_kwargs(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(a, b):
         return a * b
       def g(*args, **kwargs):
         return f(*args, **kwargs)
-      g(a=1, b=2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(a: int, b: int) -> int: ...
-      def g(*args, **kwargs) -> int: ...
+      assert_type(g(a=1, b=2), int)
     """)
 
   def test_pass_through_named_args_and_kwargs(self):
@@ -351,7 +343,7 @@ class TestFunctions(test_base.BaseTest):
     _, errors = self.InferWithErrors("""
       def f(x):
         return max(foo=repr(__any_object__))  # wrong-keyword-args[e]
-    """, deep=True, maximum_depth=1)
+    """, maximum_depth=1)
     self.assertErrorRegexes(errors, {"e": r"foo.*max"})
 
   def test_multiple_signatures_with_type_parameter(self):
@@ -572,7 +564,7 @@ class TestFunctions(test_base.BaseTest):
     ty = self.Infer("""
       v1, = (object.__new__,)
       v2 = type(object.__new__)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable, Type
       v1 = ...  # type: Callable
@@ -612,7 +604,7 @@ class TestFunctions(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         v1, v2 = foo.f(42j)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Union
@@ -688,7 +680,7 @@ class TestFunctions(test_base.BaseTest):
         a.b.__defaults__ = ('3',)
         a.b(1, 2)
         c = a.b
-        """, deep=False, pythonpath=[d.path])
+        """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         def c(x: int, y: int, z: int = ...): ...

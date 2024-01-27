@@ -390,7 +390,7 @@ class PytypeTest(test_base.UnitTest):
     self._infer_types_and_check_errors("complex.py", [])
     self.assertInferredPyiEquals(filename="complex.pyi")
 
-  def test_check_main(self):
+  def test_check_deep(self):
     self._setup_checking(self._make_py_file("""
       def f():
         name_error
@@ -398,10 +398,9 @@ class PytypeTest(test_base.UnitTest):
         "".foobar
       g()
     """))
-    self.pytype_args["--main"] = self.INCLUDE
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._run_pytype(self.pytype_args)
-    self.assertHasErrors("attribute-error")
+    self.assertHasErrors("name-error", "attribute-error")
 
   def test_infer_to_file(self):
     self.pytype_args[self._data_path("simple.py")] = self.INCLUDE

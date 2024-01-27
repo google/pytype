@@ -537,7 +537,7 @@ class SplitTest(test_base.BaseTest):
         v1 = x["b"]
       if "a" not in x:
         v2 = x["b"]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       x = ...  # type: Dict[str, Union[int, complex]]
@@ -600,7 +600,7 @@ class SplitTest(test_base.BaseTest):
         v1 = z
       if x != y:
         v2 = z
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       x = ...  # type: Dict[str, int]
@@ -623,7 +623,7 @@ class SplitTest(test_base.BaseTest):
         v1 = z
       if x != y:
         v2 = z
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple, Union
       x: Tuple[int, ...]
@@ -646,7 +646,7 @@ class SplitTest(test_base.BaseTest):
         v1 = z
       if x != y:
         v2 = z
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       x = ...  # type: str
@@ -679,7 +679,7 @@ class SplitTest(test_base.BaseTest):
         x = {"a": 1, "b": 42}
       else:
         x = {"b": 42j}
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       x = ...  # type: Dict[str, Union[int, complex]]

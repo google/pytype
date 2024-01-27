@@ -253,12 +253,12 @@ class TypingTest(test_base.BaseTest):
     ty = self.Infer("""
       import typing
       def f() -> typing.Any:
-        pass
+        return __any_object__
       class Any:
         pass
       def g() -> Any:
-        pass
-    """, deep=False)
+        return __any_object__
+    """)
     self.assertTypesMatchPytd(ty, """
       import typing
       def f() -> typing.Any: ...
@@ -295,7 +295,7 @@ class TypingTest(test_base.BaseTest):
         return g(y, z)  # wrong-arg-types[e]
       v1 = f(__any_object__, 42, 3.14)  # ok
       v2 = f(__any_object__, 42, "hello world")
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable, TypeVar, Union
       T = TypeVar("T")
@@ -310,7 +310,7 @@ class TypingTest(test_base.BaseTest):
       from typing import Callable
       f = ...  # type: Callable[..., int]
       v = f()
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Callable
       f = ...  # type: Callable[..., int]
@@ -718,7 +718,7 @@ class TypingTestPython3Feature(test_base.BaseTest):
         x = foo.f()[0]
         y = foo.f()[1]
         z = foo.f()[2]  # out of bounds, fall back to the combined element type
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Union
@@ -732,7 +732,7 @@ class TypingTestPython3Feature(test_base.BaseTest):
     python = [
         "from typing import *  # pytype: disable=not-supported-yet",
     ] + pep484.ALL_TYPING_NAMES
-    ty = self.Infer("\n".join(python), deep=False)
+    ty = self.Infer("\n".join(python))
     self.assertTypesMatchPytd(ty, "")
 
   def test_callable_func_name(self):

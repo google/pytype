@@ -603,7 +603,7 @@ class InterpreterFunction(_function_base.SignedFunction):
     # Recompute the calllkey so that side effects are taken into account.
     callkey_post = self._hash_call(callargs, frame)
     self._call_cache[callkey_post] = ret, self.ctx.vm.remaining_depth()
-    if self._store_call_records or self.ctx.store_all_calls:
+    if self._store_call_records:
       self._call_records.append((callargs, ret, node_after_call))
     self.last_frame = frame
     return node_after_call, typeguard_return or ret

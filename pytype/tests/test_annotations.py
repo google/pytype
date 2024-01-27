@@ -30,8 +30,8 @@ class AnnotationTest(test_base.BaseTest):
   def test_only_annotations(self):
     ty = self.Infer("""
       def bar(p1: str, p2: complex) -> int:
-         pass
-    """, deep=False)
+         return 0
+    """)
     self.assertTypesMatchPytd(ty, """
       def bar(p1: str, p2: complex) -> int: ...
     """)
@@ -279,7 +279,7 @@ class AnnotationTest(test_base.BaseTest):
       def f(x: Any):
         pass
       x = f(3)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> None: ...
       x = ...  # type: None
@@ -293,7 +293,7 @@ class AnnotationTest(test_base.BaseTest):
       keys({"foo": 3})
       keys({})  # ok
       keys({3: 3})  # wrong-arg-types
-    """, deep=True)
+    """)
 
   def test_sequence(self):
     self.InferWithErrors("""
@@ -304,7 +304,7 @@ class AnnotationTest(test_base.BaseTest):
       f((1,2,3))
       f({1,2,3})  # wrong-arg-types
       f(1)  # wrong-arg-types
-    """, deep=True)
+    """)
 
   def test_optional(self):
     self.InferWithErrors("""
@@ -314,7 +314,7 @@ class AnnotationTest(test_base.BaseTest):
       f(1)
       f(None)
       f("foo")  # wrong-arg-types
-    """, deep=True)
+    """)
 
   def test_set(self):
     self.InferWithErrors("""
@@ -325,7 +325,7 @@ class AnnotationTest(test_base.BaseTest):
       f(set())  # ok
       f({})  # {} isn't a set  # wrong-arg-types
       f({3})  # wrong-arg-types
-    """, deep=True)
+    """)
 
   def test_frozenset(self):
     self.InferWithErrors("""
@@ -335,7 +335,7 @@ class AnnotationTest(test_base.BaseTest):
       f(frozenset(["foo"]))  # ok
       f(frozenset())  # ok
       f(frozenset([3]))  # wrong-arg-types
-    """, deep=True)
+    """)
 
   def test_generic_and_typevar(self):
     self.assertNoCrash(self.Check, """
@@ -435,7 +435,7 @@ class AnnotationTest(test_base.BaseTest):
       class FooBar: pass
       def f() -> FooBar:
         return 3  # bad-return-type[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"Expected: FooBar"})
 
   def test_unknown_argument(self):
@@ -677,7 +677,7 @@ class AnnotationTest(test_base.BaseTest):
         return kwargs["x"]
       v1 = f()
       v2 = g()
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A: ...
       def f(*args: A) -> A: ...
@@ -709,7 +709,7 @@ class AnnotationTest(test_base.BaseTest):
         return [None]
       v1 = f().x  # attribute-error[e]
       v2 = g()[0]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       class A:
@@ -838,7 +838,7 @@ class AnnotationTest(test_base.BaseTest):
         x[True] = 42  # container-type-mismatch[e]
         return x
       v = f({"a": "b"})
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Union
       def f(x: Dict[str, str]) -> Dict[Union[str, bool], Union[str, int]]: ...
@@ -849,10 +849,10 @@ class AnnotationTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import List
       def f(x: List["A"]) -> int:
-        pass
+        return 0
       class A:
         pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
 
@@ -867,10 +867,10 @@ class AnnotationTest(test_base.BaseTest):
       TypeA = "A"
       ListA = "List[A]"
       def f(x: "ListA") -> int:
-        pass
+        return 0
       class A:
         pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       ListA = ...  # type: str
@@ -884,8 +884,8 @@ class AnnotationTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import List
       def f(x: "List[\\"int\\"]") -> int:
-        pass
-    """, deep=False)
+        return 0
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       def f(x: List[int]) -> int: ...
@@ -894,10 +894,10 @@ class AnnotationTest(test_base.BaseTest):
   def test_duplicate_identifier(self):
     ty = self.Infer("""
       t = int
-      def f(x: t) -> int: pass
-      def g(x: "t") -> int: pass
+      def f(x: t) -> int: return 0
+      def g(x: "t") -> int: return 0
       t = float
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Type
       t: Type[float]
@@ -1191,7 +1191,7 @@ class TestAnnotationsPython3Feature(test_base.BaseTest):
   def test_variable_annotations(self):
     ty = self.Infer("""
       a: int = 42
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       a: int
     """)

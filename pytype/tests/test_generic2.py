@@ -109,7 +109,7 @@ class GenericBasicTest(test_base.BaseTest):
       """)
       _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(errors, {"e": r"Duplicate.*T.*a.A"})
 
   def test_multi_generic_error(self):
@@ -123,7 +123,7 @@ class GenericBasicTest(test_base.BaseTest):
       """)
       _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(
           errors, {"e": r"Cannot inherit.*Generic.*multiple times"})
 
@@ -138,7 +138,7 @@ class GenericBasicTest(test_base.BaseTest):
       """)
       _, errors = self.InferWithErrors("""
         import a  # pyi-error[e]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(
           errors, {"e": r"V.*are not listed in Generic.*a.A"})
 
@@ -388,7 +388,7 @@ class GenericBasicTest(test_base.BaseTest):
         o.fun1("5", "5")  # wrong-arg-types[e1]
         o.fun2("5", "5")  # wrong-arg-types[e2]
         o.fun3("5", "5")  # wrong-arg-types[e3]
-      """, deep=True, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertErrorRegexes(
           errors, {"e1": r"int.*str", "e2": r"int.*str", "e3": r"int.*str"})
 

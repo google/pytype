@@ -19,18 +19,20 @@ class SliceTest(test_base.BaseTest):
       e = x[:2:3]
       f = x[1::3]
       g = x[1:2:]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
+      from typing import TypeVar
+      _T0 = TypeVar('_T0')
       class Foo:
-        def __getitem__(self, index: slice) -> slice: ...
-      x = ...  # type: Foo
-      a = ...  # type: slice
-      b = ...  # type: slice
-      c = ...  # type: slice
-      d = ...  # type: slice
-      e = ...  # type: slice
-      f = ...  # type: slice
-      g = ...  # type: slice
+        def __getitem__(self, index: _T0) -> _T0: ...
+      x: Foo
+      a: slice
+      b: slice
+      c: slice
+      d: slice
+      e: slice
+      f: slice
+      g: slice
     """)
 
 

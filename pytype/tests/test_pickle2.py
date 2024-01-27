@@ -22,7 +22,7 @@ class PickleTest(test_base.BaseTest):
       ty = self.Infer("""
         import u
         r = u.f()
-      """, deep=False, pythonpath=[""], imports_map={"u": u})
+      """, pythonpath=[""], imports_map={"u": u})
       self.assertTypesMatchPytd(ty, """
         from typing import OrderedDict
         import u

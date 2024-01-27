@@ -51,7 +51,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.x
-      """, deep=False, pythonpath=[d.path], module_name="b.main")
+      """, pythonpath=[d.path], module_name="b.main")
       self.assertTypesMatchPytd(ty, """
         import a
         x = ...  # type: int

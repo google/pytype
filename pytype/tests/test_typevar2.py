@@ -101,7 +101,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f({})
       w = f({"test": 42})
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Dict, Tuple, TypeVar
       K = TypeVar("K")
@@ -120,7 +120,7 @@ class TypeVarTest(test_base.BaseTest):
         return __any_object__
       v = f("", 42)
       w = f(3.14, False)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar, Union
       S = TypeVar("S")
@@ -259,7 +259,7 @@ class TypeVarTest(test_base.BaseTest):
       else:
         x = 3
       v = id(x) if x else 42
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Optional, TypeVar
       v = ...  # type: int
@@ -340,7 +340,7 @@ class TypeVarTest(test_base.BaseTest):
       T = TypeVar("T", bound=str)
       def f() -> Optional[T]:
         return 42 if __random__ else None  # bad-return-type[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"Optional\[str\].*int"})
 
   def test_unicode_literals(self):

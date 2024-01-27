@@ -379,10 +379,6 @@ DEBUG_OPTIONS = [
         dest="check_preconditions", default=False,
         help=("Enable checking of preconditions.")),
     _Arg(
-        "-m", "--main", action="store_true",
-        dest="main_only", default=False,
-        help=("Only analyze the main method and everything called from it")),
-    _Arg(
         "--metrics", type=str, action="store",
         dest="metrics", default=None,
         help="Write a metrics report to the specified file."),

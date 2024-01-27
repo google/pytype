@@ -11,7 +11,7 @@ class TypingTest(test_base.BaseTest):
     ty = self.Infer("""
       import typing
       x = typing.__all__
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       import typing
       from typing import List
@@ -82,7 +82,7 @@ class TypingTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import List
       MyType = List[str]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       MyType = List[str]
@@ -114,7 +114,7 @@ class TypingTest(test_base.BaseTest):
       from typing import Iterable
       class Foo(Iterable):
         pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable
       class Foo(Iterable): ...

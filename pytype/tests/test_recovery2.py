@@ -15,7 +15,7 @@ class RecoveryTests(test_base.BaseTest):
       @decorator
       def g(x: int) -> None:
         x.upper()  # attribute-error
-    """, deep=True)
+    """)
 
   def test_complex_init(self):
     """Test that we recover when __init__ triggers a utils.TooComplexError."""
@@ -34,7 +34,7 @@ class RecoveryTests(test_base.BaseTest):
           pass
         def foo(self, x: other_module.X) -> None:  # name-error[e]
           pass
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"other_module"})
 
 

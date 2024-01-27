@@ -82,16 +82,13 @@ def _set_verbosity_from(posarg):
 @_set_verbosity_from(posarg=2)
 def _call(analyze_types, src, options, loader, *, ctx=None):
   """Helper function to call analyze.check/infer_types."""
-  # 'deep' tells the analyzer whether to analyze functions not called from main.
-  deep = not options.main_only
   loader = loader or load_pytd.create_loader(options)
   return analyze_types(
       src=src,
       filename=options.input,
       options=options,
       loader=loader,
-      ctx=ctx,
-      deep=deep)
+      ctx=ctx)
 
 
 def check_py(src, options=None, loader=None, ctx=None):
@@ -153,9 +150,8 @@ def check_or_generate_pyi(options, loader=None, ctx=None) -> AnalysisResult:
   Returns:
     A tuple, (errors.ErrorLog, PYI Ast as string or None, AST or None).
   """
-  deep = not options.main_only
   loader = loader or load_pytd.create_loader(options)
-  ctx = ctx or analyze.make_context(options, loader, deep)
+  ctx = ctx or analyze.make_context(options, loader)
   errorlog = errors.ErrorLog()
   result = pytd_builtins.DEFAULT_SRC
   ast = pytd_builtins.GetDefaultAst(

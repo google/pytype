@@ -68,7 +68,7 @@ class MatchTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         x = a.f(a.B())
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         x = ...  # type: str

@@ -15,7 +15,7 @@ class ReingestTest(test_base.BaseTest):
           pass
       class A(Container):
         pass
-    """, deep=False)
+    """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
@@ -29,7 +29,7 @@ class ReingestTest(test_base.BaseTest):
       class Union:
         pass
       x = {"Union": Union}
-    """, deep=False)
+    """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(ty))
       self.Check("""
@@ -83,7 +83,7 @@ class ReingestTest(test_base.BaseTest):
     foo = self.Infer("""
       import collections
       X = collections.namedtuple("X", ["a", "b"])
-    """, deep=False)
+    """)
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", pytd_utils.Print(foo))
       self.Check("""

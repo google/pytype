@@ -179,7 +179,7 @@ class NamedTupleTest(test_base.BaseTest):
         import foo
         v = None  # type: foo.X
         a, b = v
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
 
       self.assertTypesMatchPytd(ty, """
         import foo
@@ -203,7 +203,7 @@ class NamedTupleTest(test_base.BaseTest):
         a: float
         b: str
         a, b = v  # annotation-type-mismatch # annotation-type-mismatch
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
 
   def test_is_tuple_type_and_superclasses(self):
     """Test that a NamedTuple (function syntax) behaves like a tuple."""

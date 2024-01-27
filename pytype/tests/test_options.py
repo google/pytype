@@ -81,16 +81,18 @@ class OptionsTest(test_base.BaseTest):
         return g3(x)
       def g3(x):
         return 1
-      f1(__any_object__)
-      g1(__any_object__)
-    """, deep=False, init_maximum_depth=2)
+      x1 = f1(__any_object__)
+      x2 = g1(__any_object__)
+    """, init_maximum_depth=2)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       def f1(x) -> int: ...
       def f2(x) -> int: ...
-      def g1(x) -> Any: ...
-      def g2(x) -> Any: ...  # not analyzed
-      def g3(x) -> Any: ...  # not analyzed
+      def g1(x) -> int: ...
+      def g2(x) -> int: ...
+      def g3(x) -> int: ...
+      x1: int
+      x2: Any  # exceeded max depth
     """)
 
   def test_max_depth_for_init(self):
@@ -117,7 +119,7 @@ class OptionsTest(test_base.BaseTest):
       f4(my_set)
       for foo in my_set:
         foo.get_bar()
-    """, deep=False, maximum_depth=3, init_maximum_depth=4)
+    """, maximum_depth=3, init_maximum_depth=4)
 
 
 if __name__ == "__main__":

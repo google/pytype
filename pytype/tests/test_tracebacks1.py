@@ -21,7 +21,7 @@ class TracebackTest(test_base.BaseTest):
       def g(x):
         f("hello", x)
       g("world")
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"Called from.*:\n  line 4, in g"})
 
   def test_different_tracebacks(self):

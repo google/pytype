@@ -1315,7 +1315,6 @@ def process_file(options, source_text=None, generate_callgraphs=False,
     ctx = context.Context(
         options=options,
         generate_unknowns=options.protocols,
-        store_all_calls=True,
         loader=loader)
     with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
       ret = analyze.infer_types(

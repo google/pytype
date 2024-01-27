@@ -14,7 +14,7 @@ class TupleTest(test_base.BaseTest):
       def f(x: Tuple[str, int]):
         return x
       v1, v2 = f(__any_object__)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Tuple
       def f(x: Tuple[str, int]) -> Tuple[str, int]: ...
@@ -213,13 +213,13 @@ class TupleTestPython3Feature(test_base.BaseTest):
         def __getitem__(self, pos):
           return Foo.mytuple.__getitem__(pos)
       r = [x for x in Foo()]  # Py 3 does not leak 'x'
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
-      from typing import List, Tuple, Union
+      from typing import Any, List, Tuple, Union
       class Foo:
-        mytuple = ...  # type: Tuple[int, str, complex]
-        def __getitem__(self, pos: int) -> Union[int, str, complex]: ...
-      r = ...  # type: List[Union[int, str, complex]]
+        mytuple: Tuple[int, str, complex]
+        def __getitem__(self, pos) -> Any: ...
+      r: List[Union[int, str, complex]]
     """)
 
   def test_bad_unpacking_with_slurp(self):

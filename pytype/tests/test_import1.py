@@ -168,7 +168,7 @@ class ImportTest(test_base.BaseTest):
       import nonexistant_path.to.my_module  # doesn't exist
       def foo():
         return path.to.my_module.qqsv()
-      """, deep=True, report_errors=False,
+      """, report_errors=False,
                       pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
@@ -715,7 +715,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         d = foo.MyOrderedDict()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import OrderedDict
@@ -734,7 +734,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""
         import bar
         d = bar.mypow
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import SupportsFloat
         import bar
@@ -750,7 +750,7 @@ class ImportTest(test_base.BaseTest):
         import mymath
         from mymath import half_tau as x
         y = mymath.half_tau
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import mymath
         x = ...  # type: float
@@ -768,7 +768,7 @@ class ImportTest(test_base.BaseTest):
       imports_map = self.build_imports_map(imports_map_filename)
       ty = self.Infer("""
         from foo import bar
-      """, deep=False, imports_map=imports_map,
+      """, imports_map=imports_map,
                       pythonpath=[""])
       self.assertTypesMatchPytd(ty, """
         bar = ...  # type: int
@@ -785,7 +785,7 @@ class ImportTest(test_base.BaseTest):
         import b
         foo = b.Foo()
         bar = b.f(foo)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import b
         from typing import Any
@@ -842,7 +842,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         x = foo.f("")
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         import foo
@@ -886,7 +886,7 @@ class ImportTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         A = a.factory()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         A = ...  # type: type
@@ -910,7 +910,7 @@ class ImportTest(test_base.BaseTest):
       b = sys.stderr
       c = foobar.rumplestiltskin
       d = path.curdir
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       sys = ...  # type: Any

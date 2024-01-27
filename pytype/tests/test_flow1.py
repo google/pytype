@@ -18,7 +18,7 @@ class FlowTest(test_base.BaseTest):
         x = 3
       else:
         x = 3.1
-    """, deep=False, show_library_calls=True)
+    """, show_library_calls=True)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       x = ...  # type: Union[int, float]
@@ -115,18 +115,17 @@ class FlowTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f() -> int | None: ...")
 
   def test_simple_with(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         y = 1
         with __any_object__:
           y = 2
         return x
-      f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(1), int)
+    """)
 
   def test_nested_with(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         y = 1
         with __any_object__:
@@ -134,9 +133,8 @@ class FlowTest(test_base.BaseTest):
           with __any_object__:
             pass
         return x
-      f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(1), int)
+    """)
 
   def test_null_flow(self):
     ty = self.Infer("""
@@ -145,7 +143,7 @@ class FlowTest(test_base.BaseTest):
           return 0
         return len(x)
       f(__any_object__)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f(x) -> int: ...
     """)
@@ -328,7 +326,7 @@ class FlowTest(test_base.BaseTest):
     ty = self.Infer("""
     for seq in [[1, 2, 3]]:
         seq.append("foo")
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, Union
       seq = ...  # type: List[Union[int, str]]
@@ -341,7 +339,7 @@ class FlowTest(test_base.BaseTest):
           func = None
         except:
           func()  # name-error[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"func"})
 
   def test_nested_break(self):

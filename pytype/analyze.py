@@ -31,8 +31,7 @@ class Analysis:
   errorlog: errors.ErrorLog
 
 
-def _make_check_context(options, loader, deep, **kwargs):
-  del deep  # unused
+def _make_check_context(options, loader, **kwargs):
   return context.Context(
       options=options,
       generate_unknowns=False,
@@ -40,30 +39,28 @@ def _make_check_context(options, loader, deep, **kwargs):
       **kwargs)
 
 
-def check_types(src, filename, options, loader, deep=True,
+def check_types(src, filename, options, loader,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 maximum_depth=None, ctx=None, **kwargs):
   """Verify the Python code."""
   if not ctx:
-    ctx = _make_check_context(options, loader, deep, **kwargs)
+    ctx = _make_check_context(options, loader, **kwargs)
   loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
-  if deep:
-    if maximum_depth is None:
-      maximum_depth = (
-          QUICK_CHECK_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
-    ctx.vm.analyze(loc, defs, maximum_depth=maximum_depth)
+  if maximum_depth is None:
+    maximum_depth = (
+        QUICK_CHECK_MAXIMUM_DEPTH if options.quick else MAXIMUM_DEPTH)
+  ctx.vm.analyze(loc, defs, maximum_depth=maximum_depth)
   snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, ctx.program)
   return Analysis(None, None, ctx.errorlog)
 
 
-def _make_infer_context(options, loader, deep, **kwargs):
+def _make_infer_context(options, loader, **kwargs):
   return context.Context(
       options=options,
       generate_unknowns=options.protocols,
-      store_all_calls=not deep,
       loader=loader,
       **kwargs)
 
@@ -72,7 +69,6 @@ def infer_types(src,
                 options,
                 loader,
                 filename=None,
-                deep=True,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 show_library_calls=False,
                 maximum_depth=None,
@@ -85,8 +81,6 @@ def infer_types(src,
     options: config.Options object
     loader: A load_pytd.Loader instance to load PYI information.
     filename: Filename of the program we're parsing.
-    deep: If True, analyze all functions, even the ones not called by the main
-      execution flow.
     init_maximum_depth: Depth of analysis during module loading.
     show_library_calls: If True, call traces are kept in the output.
     maximum_depth: Depth of the analysis. Default: unlimited.
@@ -99,24 +93,21 @@ def infer_types(src,
     AssertionError: In case of a bad parameter combination.
   """
   if not ctx:
-    ctx = _make_infer_context(options, loader, deep, **kwargs)
+    ctx = _make_infer_context(options, loader, **kwargs)
   loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:infer_types:tracer")
-  if deep:
-    if maximum_depth is None:
-      if not options.quick:
-        maximum_depth = MAXIMUM_DEPTH
-      elif options.analyze_annotated:
-        # Since there's no point in analyzing annotated functions for inference,
-        # the presence of this option means that the user wants checking, too.
-        maximum_depth = QUICK_CHECK_MAXIMUM_DEPTH
-      else:
-        maximum_depth = QUICK_INFER_MAXIMUM_DEPTH
-    ctx.exitpoint = ctx.vm.analyze(loc, defs, maximum_depth)
-  else:
-    ctx.exitpoint = loc
+  if maximum_depth is None:
+    if not options.quick:
+      maximum_depth = MAXIMUM_DEPTH
+    elif options.analyze_annotated:
+      # Since there's no point in analyzing annotated functions for inference,
+      # the presence of this option means that the user wants checking, too.
+      maximum_depth = QUICK_CHECK_MAXIMUM_DEPTH
+    else:
+      maximum_depth = QUICK_INFER_MAXIMUM_DEPTH
+  ctx.exitpoint = ctx.vm.analyze(loc, defs, maximum_depth)
   snapshotter.take_snapshot("analyze:infer_types:post")
   ast = ctx.vm.compute_types(defs)
   ast = ctx.loader.resolve_ast(ast)
@@ -158,7 +149,7 @@ def _maybe_output_debug(options, program):
         fi.write(text)
 
 
-def make_context(options, loader, deep, **kwargs):
+def make_context(options, loader, **kwargs):
   """Create a context to pass to infer_types or check_types."""
   factory = _make_check_context if options.check else _make_infer_context
-  return factory(options, loader, deep, **kwargs)
+  return factory(options, loader, **kwargs)

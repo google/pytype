@@ -216,7 +216,7 @@ class GenericTest(test_base.BaseTest):
         v1 = a.C().f()
         v2 = a.C().g()
         v3 = a.C().h()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any, Tuple
         import a
@@ -244,7 +244,7 @@ class GenericTest(test_base.BaseTest):
         import a
         v = a.C().f()
         w = a.C().g()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         v = ...  # type: str
@@ -271,7 +271,7 @@ class GenericTest(test_base.BaseTest):
         v = a.C()
         v.f()
         v.g()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         # T1, T2, and T3 are all set to Any due to T1 being an alias for both
@@ -557,7 +557,7 @@ class GenericTest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         v = a.A()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
         import a
@@ -902,7 +902,7 @@ class GenericTest(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         v = list(foo.Foo())
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Union
@@ -1030,7 +1030,7 @@ class GenericTest(test_base.BaseTest):
         a = foo.A()
         a.to_str()
         a.to_int()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         a = ...  # type: foo.A[int]

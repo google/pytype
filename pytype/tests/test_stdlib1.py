@@ -42,7 +42,7 @@ class StdlibTests(test_base.BaseTest):
     ty = self.Infer("""
       import os
       x = list(os.walk("/tmp"))
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       import os
       from typing import List, Tuple
@@ -53,7 +53,7 @@ class StdlibTests(test_base.BaseTest):
     ty = self.Infer("""
       import struct
       x = struct.Struct("b")
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       import struct
       x = ...  # type: struct.Struct
@@ -62,7 +62,7 @@ class StdlibTests(test_base.BaseTest):
   def test_warning(self):
     ty = self.Infer("""
       import warnings
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       import warnings
     """)

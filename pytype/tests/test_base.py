@@ -150,14 +150,14 @@ class BaseTest(unittest.TestCase):
         **self._GetPythonpathArgs(pythonpath, imports_map))
     return {"src": code, "options": self.options, "loader": self.loader}
 
-  def InferWithErrors(self, code, deep=True, pythonpath=(), module_name=None,
+  def InferWithErrors(self, code, pythonpath=(), module_name=None,
                       analyze_annotated=True, quick=False, imports_map=None,
                       **kwargs):
     """Runs inference on code expected to have type errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
-    ret = analyze.infer_types(deep=deep, **kwargs)
+    ret = analyze.infer_types(**kwargs)
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
@@ -169,13 +169,12 @@ class BaseTest(unittest.TestCase):
     matcher.assert_errors_match_expected(errorlog)
     return pytd_utils.CanonicalOrdering(unit), matcher
 
-  def CheckWithErrors(self, code, deep=True, pythonpath=(),
-                      analyze_annotated=True, quick=False, imports_map=None,
-                      **kwargs):
+  def CheckWithErrors(self, code, pythonpath=(), analyze_annotated=True,
+                      quick=False, imports_map=None, **kwargs):
     """Check and match errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
-    ret = analyze.check_types(filename="<inline>", deep=deep, **kwargs)
+    ret = analyze.check_types(filename="<inline>", **kwargs)
     errorlog = ret.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
@@ -215,12 +214,11 @@ class BaseTest(unittest.TestCase):
         module_name, textwrap.dedent(src), self.loader)
     return pickle_utils.StoreAst(ast)
 
-  def Infer(self, srccode, pythonpath=(), deep=True,
-            report_errors=True, analyze_annotated=True, pickle=False,
-            module_name=None, **kwargs):
+  def Infer(self, srccode, pythonpath=(), report_errors=True,
+            analyze_annotated=True, pickle=False, module_name=None, **kwargs):
     """Runs inference on srccode."""
     types, builtins_pytd = self._InferAndVerify(
-        _Format(srccode), pythonpath=pythonpath, deep=deep,
+        _Format(srccode), pythonpath=pythonpath,
         analyze_annotated=analyze_annotated, module_name=module_name,
         report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,

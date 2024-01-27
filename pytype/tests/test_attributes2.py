@@ -179,7 +179,7 @@ class TestAttributesPython3FeatureTest(test_base.BaseTest):
       args = {A(): ""}
       for x, y in sorted(args.items()):
         z = x.values
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       class A:
