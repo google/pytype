@@ -14,9 +14,9 @@ toplevel_py_binary(
   NAME
     pytype-single
   SRCS
-    single.py
+    main.py
   MAIN
-    single.py
+    main.py
   DEPS
     .pytype_main_deps
 )

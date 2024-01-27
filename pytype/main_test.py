@@ -10,7 +10,7 @@ import textwrap
 
 from pytype import config
 from pytype import file_utils
-from pytype import single
+from pytype import main as pytype_main
 from pytype import utils
 from pytype.imports import builtin_stubs
 from pytype.imports import typeshed
@@ -198,7 +198,7 @@ class PytypeTest(test_base.UnitTest):
     with open(infile, "w") as f:
       f.write("def f(x): pass")
     options = config.Options.create(infile, output=outfile)
-    single._run_pytype(options)
+    pytype_main._run_pytype(options)
     self.assertTrue(path_utils.isfile(outfile))
 
   @test_base.skip("flaky; see b/195678773")
