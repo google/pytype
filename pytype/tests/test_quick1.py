@@ -1,6 +1,5 @@
 """Tests for --quick."""
 
-from pytype.pytd import escape
 from pytype.tests import test_base
 
 
@@ -24,21 +23,6 @@ class QuickTest(test_base.BaseTest):
         def __init__(self, elements: Any) -> None: ...
         def bar(self) -> Any: ...
     """)
-
-  def test_arg_unknowns(self):
-    # test that even with --quick, we still generate ~unknowns for parameters.
-    ty = self.Infer("""
-      def f(x):
-        return 42
-    """, quick=True, show_library_calls=True)
-    f = ty.Lookup("f")
-    self.assertEqual(len(f.signatures), 1)
-    s = f.signatures[0]
-    self.assertEqual(len(s.params), 1)
-    p = s.params[0]
-    self.assertTrue(escape.is_unknown(p.type.name))
-    # Lookup that a class with same _unknown_ name as the param type exists.
-    _ = ty.Lookup(p.type.name)
 
   def test_closure(self):
     ty = self.Infer("""

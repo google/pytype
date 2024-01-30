@@ -280,7 +280,7 @@ class BuiltinTests(test_base.BaseTest):
         return x
       def g(args):
         f(*tuple(args))
-    """, show_library_calls=True)
+    """)
 
   def test_open(self):
     ty = self.Infer("""
@@ -314,7 +314,7 @@ class BuiltinTests(test_base.BaseTest):
       def args():
         return ' '.join(sys.argv)
       args()
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       import sys
       def args() -> str: ...

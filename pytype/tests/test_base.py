@@ -132,7 +132,7 @@ class BaseTest(unittest.TestCase):
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
       ret = analyze.check_types(
           src, filename, loader=self.loader, options=self.options, **kwargs)
-      errorlog = ret.errorlog
+      errorlog = ret.context.errorlog
     except directors.SkipFileError:
       errorlog = None
     if report_errors and errorlog:
@@ -157,13 +157,13 @@ class BaseTest(unittest.TestCase):
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
-    ret = analyze.infer_types(**kwargs)
+    ret = analyze.infer_types(filename="<inline>", **kwargs)
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
     unit = optimize.Optimize(unit, ret.builtins, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
-    errorlog = ret.errorlog
+    errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
     matcher.assert_errors_match_expected(errorlog)
@@ -175,7 +175,7 @@ class BaseTest(unittest.TestCase):
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     ret = analyze.check_types(filename="<inline>", **kwargs)
-    errorlog = ret.errorlog
+    errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
     matcher.assert_errors_match_expected(errorlog)
@@ -214,13 +214,13 @@ class BaseTest(unittest.TestCase):
         module_name, textwrap.dedent(src), self.loader)
     return pickle_utils.StoreAst(ast)
 
-  def Infer(self, srccode, pythonpath=(), report_errors=True,
+  def Infer(self, srccode, pythonpath=(), report_errors=True, filename=None,
             analyze_annotated=True, pickle=False, module_name=None, **kwargs):
     """Runs inference on srccode."""
     types, builtins_pytd = self._InferAndVerify(
         _Format(srccode), pythonpath=pythonpath,
         analyze_annotated=analyze_annotated, module_name=module_name,
-        report_errors=report_errors, **kwargs)
+        report_errors=report_errors, filename=filename, **kwargs)
     types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
@@ -230,8 +230,8 @@ class BaseTest(unittest.TestCase):
       return types
 
   def _InferAndVerify(
-      self, src, pythonpath, module_name, report_errors, analyze_annotated,
-      imports_map=None, quick=False, **kwargs):
+      self, src, pythonpath, module_name, report_errors, filename,
+      analyze_annotated, imports_map=None, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -242,6 +242,7 @@ class BaseTest(unittest.TestCase):
       module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
+      filename: The filename.
       analyze_annotated: Whether to analyze functions with return annotations.
       imports_map: --imports_info data
       quick: Try to run faster, by avoiding costly computations.
@@ -259,8 +260,8 @@ class BaseTest(unittest.TestCase):
     if test_utils.ErrorMatcher(src).expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
     ret = analyze.infer_types(
-        src, options=self.options, loader=self.loader, **kwargs)
-    errorlog = ret.errorlog
+        src, filename, options=self.options, loader=self.loader, **kwargs)
+    errorlog = ret.context.errorlog
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())

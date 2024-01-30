@@ -218,7 +218,7 @@ class ClassesTest(test_base.BaseTest):
           x = 3
         l = Foo()
         return l.x
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int: ...
     """)
@@ -262,7 +262,7 @@ class ClassesTest(test_base.BaseTest):
 
         def get_x(self):
           return self.x
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
         class A:
           x = ...  # type: int

@@ -14,7 +14,7 @@ class InheritanceTest(test_base.BaseTest):
           return self.lineno
       class Leaf(Base):
         lineno = 0
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Base:
         pass

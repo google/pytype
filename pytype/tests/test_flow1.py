@@ -18,7 +18,7 @@ class FlowTest(test_base.BaseTest):
         x = 3
       else:
         x = 3.1
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       x = ...  # type: Union[int, float]

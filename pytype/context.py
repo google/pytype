@@ -31,13 +31,12 @@ class Context:
       self,
       options: config.Options,
       loader: load_pytd.Loader,
-      generate_unknowns: bool = False,
   ):
     # Inputs
     self.options = options
-    self.python_version: Tuple[int, int] = self.options.python_version
+    self.python_version: Tuple[int, int] = options.python_version
     self.loader = loader
-    self.generate_unknowns = generate_unknowns
+    self.generate_unknowns = not options.check and options.protocols
 
     # Typegraph
     self.program = cfg.Program()

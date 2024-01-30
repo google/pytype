@@ -15,7 +15,7 @@ class DecoratorsTest(test_base.BaseTest):
             pass
           # python-dateutil uses the old way of using @staticmethod:
           list = staticmethod(list)
-    """, show_library_calls=True)
+    """)
 
   def test_staticmethod(self):
     ty = self.Infer("""
@@ -24,7 +24,7 @@ class DecoratorsTest(test_base.BaseTest):
           def list():
             pass
           list = staticmethod(list)
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       class tzwinbase:
         @staticmethod

@@ -8,7 +8,6 @@ from typing import Optional
 from pytype import context
 from pytype import convert_structural
 from pytype import debug
-from pytype import errors
 from pytype import metrics
 from pytype.abstract import abstract_utils
 from pytype.pytd import pytd
@@ -26,25 +25,16 @@ QUICK_INFER_MAXIMUM_DEPTH = 1  # during quick inference
 
 @dataclasses.dataclass
 class Analysis:
+  context: context.Context
   ast: Optional[pytd.TypeDeclUnit]
   builtins: Optional[pytd.TypeDeclUnit]
-  errorlog: errors.ErrorLog
-
-
-def _make_check_context(options, loader, **kwargs):
-  return context.Context(
-      options=options,
-      generate_unknowns=False,
-      loader=loader,
-      **kwargs)
 
 
 def check_types(src, filename, options, loader,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                maximum_depth=None, ctx=None, **kwargs):
+                maximum_depth=None):
   """Verify the Python code."""
-  if not ctx:
-    ctx = _make_check_context(options, loader, **kwargs)
+  ctx = context.Context(options, loader)
   loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
@@ -54,46 +44,30 @@ def check_types(src, filename, options, loader,
   ctx.vm.analyze(loc, defs, maximum_depth=maximum_depth)
   snapshotter.take_snapshot("analyze:check_types:post")
   _maybe_output_debug(options, ctx.program)
-  return Analysis(None, None, ctx.errorlog)
-
-
-def _make_infer_context(options, loader, **kwargs):
-  return context.Context(
-      options=options,
-      generate_unknowns=options.protocols,
-      loader=loader,
-      **kwargs)
+  return Analysis(ctx, None, None)
 
 
 def infer_types(src,
+                filename,
                 options,
                 loader,
-                filename=None,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH,
-                show_library_calls=False,
-                maximum_depth=None,
-                ctx=None,
-                **kwargs):
+                maximum_depth=None):
   """Given Python source return its types.
 
   Args:
     src: A string containing Python source code.
+    filename: Filename of the program we're parsing.
     options: config.Options object
     loader: A load_pytd.Loader instance to load PYI information.
-    filename: Filename of the program we're parsing.
     init_maximum_depth: Depth of analysis during module loading.
-    show_library_calls: If True, call traces are kept in the output.
     maximum_depth: Depth of the analysis. Default: unlimited.
-    ctx: An instance of context.Context, in case the caller wants to
-      instantiate and retain the abstract context used for type inference.
-    **kwargs: Additional parameters to pass to context.Context
   Returns:
     A tuple of (ast: TypeDeclUnit, builtins: TypeDeclUnit)
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
-  if not ctx:
-    ctx = _make_infer_context(options, loader, **kwargs)
+  ctx = context.Context(options, loader)
   loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
@@ -128,14 +102,14 @@ def infer_types(src,
     log.info("=========== PyTD to solve =============\n%s",
              pytd_utils.Print(ast))
     ast = convert_structural.convert_pytd(ast, builtins_pytd, protocols_pytd)
-  elif not show_library_calls:
+  else:
     log.info("Solving is turned off. Discarding call traces.")
     # Rename remaining "~unknown" to "?"
     ast = ast.Visit(visitors.RemoveUnknownClasses())
     # Remove "~list" etc.:
     ast = convert_structural.extract_local(ast)
   _maybe_output_debug(options, ctx.program)
-  return Analysis(ast, builtins_pytd, ctx.errorlog)
+  return Analysis(ctx, ast, builtins_pytd)
 
 
 def _maybe_output_debug(options, program):
@@ -147,9 +121,3 @@ def _maybe_output_debug(options, program):
     else:
       with options.open_function(options.output_debug, "w") as fi:
         fi.write(text)
-
-
-def make_context(options, loader, **kwargs):
-  """Create a context to pass to infer_types or check_types."""
-  factory = _make_check_context if options.check else _make_infer_context
-  return factory(options, loader, **kwargs)

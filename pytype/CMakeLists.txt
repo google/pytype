@@ -148,7 +148,6 @@ py_library(
     .context
     .convert_structural
     .debug
-    .errors
     .metrics
     pytype.abstract.abstract
     pytype.pytd.pytd
@@ -297,7 +296,6 @@ py_library(
     .config
     .constant_folding
     .context
-    .errors
     .load_pytd
     pytype.directors.directors
     pytype.imports.imports
