@@ -18,7 +18,8 @@ from pytype.typegraph import cfg
 # True = always match, False = never match, None = sometimes match
 _MatchSuccessType = Optional[bool]
 
-# Value held in an Option; enum members are stored as strings
+# Value held in an Option; enum members are stored as strings since pytd enums
+# do not generate a special class.
 _Value = Union[str, abstract.BaseValue]
 
 
@@ -85,7 +86,7 @@ class _OptionSet:
     if isinstance(val, abstract.ConcreteValue):
       self._options[cls].values.add(val)
     else:
-      self._options[cls].indefinite = True
+      self.add_type(cls)
 
   def add_type(self, cls):
     """Add an class to the match options."""
@@ -93,7 +94,7 @@ class _OptionSet:
       self._options[cls] = _Option(cls)
     vals = _get_class_values(cls)
     if vals is not None:
-      self._options[cls].values |= vals
+      self._options[cls].values.update(vals)
     else:
       self._options[cls].indefinite = True
 
@@ -103,6 +104,8 @@ class _OptionSet:
     if cls not in self._options:
       return []
     opt = self._options[cls]
+    if cls.is_enum:
+      val = val.name
     if val in opt.values:
       opt.values.remove(val)
       return [val]
@@ -240,36 +243,11 @@ class _Matches:
     """
 
 
-class _EnumTracker:
-  """Track enum cases for exhaustiveness."""
-
-  def __init__(self, enum_cls):
-    self.enum_cls = enum_cls
-    self.members = _get_enum_members(enum_cls)
-    self.uncovered = set(self.members)
-    # The last case in an exhaustive enum match always succeeds.
-    self.implicit_default = None
-    # Invalidate the tracker if we run into code that matches enums but is not a
-    # simple match against a single enum value.
-    self.is_valid = True
-
-  def cover(self, enum_case):
-    assert enum_case.cls == self.enum_cls
-    self.uncovered.discard(enum_case.name)
-
-  def cover_all(self):
-    self.uncovered = set()
-
-  def invalidate(self):
-    self.is_valid = False
-
-
 class BranchTracker:
   """Track exhaustiveness in pattern matches."""
 
   def __init__(self, ast_matches, ctx):
     self.matches = _Matches(ast_matches)
-    self._enum_tracker = {}
     self._option_tracker: Dict[int, Dict[int, _OptionTracker]] = (
         collections.defaultdict(dict))
     self._match_types: Dict[int, Set[_MatchTypes]] = (
@@ -293,13 +271,14 @@ class BranchTracker:
       self._active_ends.add(self.matches.start_to_end[match_line])
     return self._option_tracker[match_line][match_var.id]
 
-  def _add_new_enum_match(self, match_val: abstract.Instance, match_line: int):
-    self._enum_tracker[match_line] = _EnumTracker(match_val.cls)
-    self._active_ends.add(self.matches.start_to_end[match_line])
-
   def _is_enum_match(
-      self, match_val: abstract.BaseValue, case_val: abstract.BaseValue
+      self, match_var: cfg.Variable, case_val: abstract.BaseValue
   ) -> bool:
+    """Is the current case part of an enum match?"""
+    try:
+      match_val = abstract_utils.get_atomic_value(match_var)
+    except abstract_utils.ConversionError:
+      return False
     if not (isinstance(match_val, abstract.Instance) and
             isinstance(match_val.cls, abstract.Class) and
             match_val.cls.is_enum):
@@ -309,21 +288,9 @@ class BranchTracker:
       return False
     return True
 
-  def _get_enum_tracker(
-      self, match_val: abstract.Instance, match_line: Optional[int]
-  ) -> Optional[_EnumTracker]:
-    """Get the enum tracker for a match line."""
-    if match_line is None:
-      return None
-    if match_line not in self._enum_tracker:
-      self._add_new_enum_match(match_val, match_line)
-    enum_tracker = self._enum_tracker[match_line]
-    if (match_val.cls != enum_tracker.enum_cls or
-        self._match_types[match_line] != {_MatchTypes.CMP}):
-      # We are matching a tuple or structure with different enums in it.
-      enum_tracker.invalidate()
-      return None
-    return enum_tracker
+  def _is_literal_match(self, match_var: cfg.Variable) -> bool:
+    """Is the current case part of a literal match?"""
+    return all(isinstance(x, abstract.ConcreteValue) for x in match_var.data)
 
   def _make_instance_for_match(self, node, types):
     """Instantiate a type for match case narrowing."""
@@ -372,41 +339,6 @@ class BranchTracker:
     match_line = self.matches.match_cases[op.line]
     self._match_types[match_line].add(_MatchTypes.make(op))
 
-  def _add_enum_branch(
-      self,
-      op: opcodes.Opcode,
-      match_val: abstract.Instance,
-      case_val: abstract.SimpleValue
-  ) -> Optional[bool]:
-    """Add a case branch for an enum match to the tracker."""
-    if op in self._seen_opcodes:
-      match_line = self.matches.match_cases.get(op.line)
-      enum_tracker = self._get_enum_tracker(match_val, match_line)
-      if not enum_tracker:
-        return None
-      if (enum_tracker.implicit_default and case_val and
-          case_val.cls == enum_tracker.implicit_default.cls):
-        return True
-      else:
-        return None
-    else:
-      self._seen_opcodes.add(op)
-    match_line = self.matches.match_cases.get(op.line)
-    enum_tracker = self._get_enum_tracker(match_val, match_line)
-    if not enum_tracker or not enum_tracker.is_valid:
-      return None
-    if case_val.name in enum_tracker.uncovered:
-      enum_tracker.cover(case_val)
-      if enum_tracker.uncovered:
-        return None
-      else:
-        # This is the last remaining case, and will always succeed.
-        enum_tracker.implicit_default = case_val
-        return True
-    else:
-      # This has already been covered, and will never succeed.
-      return False
-
   def add_none_branch(self, op: opcodes.Opcode, match_var: cfg.Variable):
     if op.line in self.matches.match_cases:
       if tracker := self.get_current_type_tracker(op, match_var):
@@ -445,47 +377,34 @@ class BranchTracker:
     # because even an ambigious cmp match will require the type to be set within
     # the case branch).
     op = cast(opcodes.OpcodeWithArg, op)
-    if op.line in self.matches.match_cases:
-      if tracker := self.get_current_type_tracker(op, match_var):
-        ret = tracker.cover_from_cmp(op.line, case_var)
-        if match_type != {_MatchTypes.CMP}:
-          # We only do exhaustiveness tracking for pure CMP matches
-          tracker.invalidate()
-          return None
-        elif tracker.is_complete:
-          # This is the last remaining case, and will always succeed.
-          tracker.implicit_default = case_val
-          return True
-        elif ret:
-          return None
-        else:
-          return False
+    if op.line not in self.matches.match_cases:
+      return None
+    tracker = self.get_current_type_tracker(op, match_var)
 
-    # Check for a CMP match over literal values, which we handle as a class
-    # match since we can track it exhaustively.
-    # TODO(mdemello): Merge into the block above.
-    if all(isinstance(x, abstract.ConcreteValue) for x in match_var.data):
+    # If we are not part of a class match, check if we have an exhaustive match
+    # (enum or union of literals) that we are tracking.
+    if (not tracker and
+        (self._is_literal_match(match_var) or
+         self._is_enum_match(match_var, case_val))):
       tracker = self._get_option_tracker(match_var, op.line)
-      ret = tracker.cover(op.line, case_var)
-      if match_type != {_MatchTypes.CMP}:
-        tracker.invalidate()
-        return None
-      elif tracker.is_complete:
-        return True
-      elif ret:
-        return None
-      else:
-        return False
 
-    try:
-      match_val = abstract_utils.get_atomic_value(match_var)
-    except abstract_utils.ConversionError:
+    # If none of the above apply we cannot do any sort of tracking.
+    if not tracker:
       return None
 
-    if self._is_enum_match(match_val, case_val):
-      return self._add_enum_branch(op, match_val, case_val)
+    ret = tracker.cover_from_cmp(op.line, case_var)
+    if match_type != {_MatchTypes.CMP}:
+      # We only do exhaustiveness tracking for pure CMP matches
+      tracker.invalidate()
+      return None
+    elif tracker.is_complete:
+      # This is the last remaining case, and will always succeed.
+      tracker.implicit_default = case_val
+      return True
+    elif ret:
+      return None
     else:
-      return None
+      return False
 
   def add_class_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
                        case_var: cfg.Variable) -> _MatchSuccessType:
@@ -499,11 +418,12 @@ class BranchTracker:
     match_line = self.matches.match_cases.get(op.line)
     if match_line is None:
       return None
-    if match_line in self._enum_tracker:
-      self._enum_tracker[match_line].cover_all()
+    if match_line in self._option_tracker:
+      for opt in self._option_tracker[match_line].values():
+        opt.invalidate()
+      return True
     else:
       return None
-    return True
 
   def check_ending(self,
                    op: opcodes.Opcode,
@@ -524,19 +444,11 @@ class BranchTracker:
     ret = []
     for i in done:
       for start in self.matches.end_to_starts[i]:
-        if start in self._enum_tracker:
-          tracker = self._enum_tracker[start]
-        else:
-          trackers = self._option_tracker[start]
-          for tracker in trackers.values():
-            if tracker.is_valid:
-              for o in tracker.options:
-                if not o.is_empty and not o.indefinite:
-                  ret.append((start, o.values))
-          # We have nested matches, one of which is not an enum
-          continue
-        if tracker.is_valid:
-          if uncovered := tracker.uncovered:
-            ret.append((start, uncovered))
+        trackers = self._option_tracker[start]
+        for tracker in trackers.values():
+          if tracker.is_valid:
+            for o in tracker.options:
+              if not o.is_empty and not o.indefinite:
+                ret.append((start, o.values))
     self._active_ends -= done
     return ret
