@@ -30,12 +30,11 @@ class Analysis:
   ast_deps: Optional[pytd.TypeDeclUnit]
 
 
-def check_types(src, filename, options, loader,
-                init_maximum_depth=INIT_MAXIMUM_DEPTH,
+def check_types(src, options, loader, init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 maximum_depth=None):
   """Verify the Python code."""
   ctx = context.Context(options, loader)
-  loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
+  loc, defs = ctx.vm.run_program(src, options.input, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
   if maximum_depth is None:
@@ -48,7 +47,6 @@ def check_types(src, filename, options, loader,
 
 
 def infer_types(src,
-                filename,
                 options,
                 loader,
                 init_maximum_depth=INIT_MAXIMUM_DEPTH,
@@ -57,7 +55,6 @@ def infer_types(src,
 
   Args:
     src: A string containing Python source code.
-    filename: Filename of the program we're parsing.
     options: config.Options object
     loader: A load_pytd.Loader instance to load PYI information.
     init_maximum_depth: Depth of analysis during module loading.
@@ -68,7 +65,7 @@ def infer_types(src,
     AssertionError: In case of a bad parameter combination.
   """
   ctx = context.Context(options, loader)
-  loc, defs = ctx.vm.run_program(src, filename, init_maximum_depth)
+  loc, defs = ctx.vm.run_program(src, options.input, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:infer_types:tracer")

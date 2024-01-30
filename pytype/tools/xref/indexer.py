@@ -1314,7 +1314,6 @@ def process_file(options, source_text=None, generate_callgraphs=False,
     with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
       ret = analyze.infer_types(
           src=src,
-          filename=options.input,
           options=options,
           loader=loader)
       pytd_module = ret.ast

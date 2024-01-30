@@ -34,27 +34,25 @@ class Analysis:
 
 def check_types(
     src: str,
-    filename: str,
     options: config.Options,
     loader: load_pytd.Loader,
     init_maximum_depth: int = _INIT_MAXIMUM_DEPTH,
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Check types for the given source code."""
-  del src, filename, options, loader, init_maximum_depth, maximum_depth
+  del src, options, loader, init_maximum_depth, maximum_depth
   return Analysis(Context(), None, None)
 
 
 def infer_types(
     src: str,
-    filename: str,
     options: config.Options,
     loader: load_pytd.Loader,
     init_maximum_depth: int = _INIT_MAXIMUM_DEPTH,
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Infer types for the given source code."""
-  del src, filename, options, loader, init_maximum_depth, maximum_depth
+  del src, options, loader, init_maximum_depth, maximum_depth
   ast = pytd.TypeDeclUnit("inferred + unknowns", (), (), (), (), ())
   deps = pytd.TypeDeclUnit("<all>", (), (), (), (), ())
   return Analysis(Context(), ast, deps)

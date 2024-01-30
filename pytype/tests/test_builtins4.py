@@ -146,7 +146,7 @@ class BuiltinTests(test_base.BaseTest):
       def foo(s: str) -> str:
         return s
       foo(__file__)
-      """, filename="foobar.py")
+    """)
 
   def test_super(self):
     with test_utils.Tempdir() as d:

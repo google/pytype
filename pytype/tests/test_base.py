@@ -120,8 +120,7 @@ class BaseTest(unittest.TestCase):
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
-            report_errors=True, filename=None, quick=False, imports_map=None,
-            **kwargs):
+            report_errors=True, quick=False, imports_map=None, **kwargs):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(
         skip_repeat_calls=skip_repeat_calls, quick=quick,
@@ -131,7 +130,7 @@ class BaseTest(unittest.TestCase):
       if test_utils.ErrorMatcher(code).expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
       ret = analyze.check_types(
-          src, filename, loader=self.loader, options=self.options, **kwargs)
+          src, loader=self.loader, options=self.options, **kwargs)
       errorlog = ret.context.errorlog
     except directors.SkipFileError:
       errorlog = None
@@ -157,7 +156,7 @@ class BaseTest(unittest.TestCase):
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
-    ret = analyze.infer_types(filename="<inline>", **kwargs)
+    ret = analyze.infer_types(**kwargs)
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
@@ -174,7 +173,7 @@ class BaseTest(unittest.TestCase):
     """Check and match errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
-    ret = analyze.check_types(filename="<inline>", **kwargs)
+    ret = analyze.check_types(**kwargs)
     errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
@@ -189,10 +188,10 @@ class BaseTest(unittest.TestCase):
         self.fail(
             "Cannot assert errors with InferFromFile(); use InferWithErrors()")
       self.ConfigureOptions(
+          input=filename,
           module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
-      ret = analyze.infer_types(code, options=self.options, loader=self.loader,
-                                filename=filename)
+      ret = analyze.infer_types(code, options=self.options, loader=self.loader)
       unit = ret.ast
       assert unit is not None
       unit.Visit(visitors.VerifyVisitor())
@@ -214,13 +213,13 @@ class BaseTest(unittest.TestCase):
         module_name, textwrap.dedent(src), self.loader)
     return pickle_utils.StoreAst(ast)
 
-  def Infer(self, srccode, pythonpath=(), report_errors=True, filename=None,
+  def Infer(self, srccode, pythonpath=(), report_errors=True,
             analyze_annotated=True, pickle=False, module_name=None, **kwargs):
     """Runs inference on srccode."""
     types, deps = self._InferAndVerify(
         _Format(srccode), pythonpath=pythonpath,
         analyze_annotated=analyze_annotated, module_name=module_name,
-        report_errors=report_errors, filename=filename, **kwargs)
+        report_errors=report_errors, **kwargs)
     types = optimize.Optimize(types, deps, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
@@ -230,8 +229,8 @@ class BaseTest(unittest.TestCase):
       return types
 
   def _InferAndVerify(
-      self, src, pythonpath, module_name, report_errors, filename,
-      analyze_annotated, imports_map=None, quick=False, **kwargs):
+      self, src, pythonpath, module_name, report_errors, analyze_annotated,
+      imports_map=None, quick=False, **kwargs):
     """Infer types for the source code treating it as a module.
 
     Used by Infer().
@@ -242,7 +241,6 @@ class BaseTest(unittest.TestCase):
       module_name: Name of the module we're analyzing. E.g. "foo.bar.mymodule".
       report_errors: Whether to fail if the type inferencer reports any errors
         in the program.
-      filename: The filename.
       analyze_annotated: Whether to analyze functions with return annotations.
       imports_map: --imports_info data
       quick: Try to run faster, by avoiding costly computations.
@@ -260,7 +258,7 @@ class BaseTest(unittest.TestCase):
     if test_utils.ErrorMatcher(src).expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
     ret = analyze.infer_types(
-        src, filename, options=self.options, loader=self.loader, **kwargs)
+        src, options=self.options, loader=self.loader, **kwargs)
     errorlog = ret.context.errorlog
     unit = ret.ast
     assert unit is not None

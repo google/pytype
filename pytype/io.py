@@ -82,7 +82,6 @@ def _call(analyze_types, src, options, loader):
   loader = loader or load_pytd.create_loader(options)
   return analyze_types(
       src=src,
-      filename=options.input,
       options=options,
       loader=loader)
 

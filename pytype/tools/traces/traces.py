@@ -79,7 +79,6 @@ def trace(src, options=None):
     loader = load_pytd.create_loader(options)
     ret = analyze.infer_types(
         src=src,
-        filename=options.input,
         options=options,
         loader=loader)
     pytd_module = ret.ast

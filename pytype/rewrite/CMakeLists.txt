@@ -20,6 +20,18 @@ py_library(
     pytype.pytd.pytd
 )
 
+py_test(
+  NAME
+    analyze_test
+  SRCS
+    analyze_test.py
+  DEPS
+    .analyze
+    pytype.config
+    pytype.load_pytd
+    pytype.pytd.pytd
+)
+
 py_library(
   NAME
     variables
