@@ -27,7 +27,7 @@ QUICK_INFER_MAXIMUM_DEPTH = 1  # during quick inference
 class Analysis:
   context: context.Context
   ast: Optional[pytd.TypeDeclUnit]
-  builtins: Optional[pytd.TypeDeclUnit]
+  ast_deps: Optional[pytd.TypeDeclUnit]
 
 
 def check_types(src, filename, options, loader,
@@ -95,13 +95,13 @@ def infer_types(src,
     protocols_pytd = ctx.loader.import_name("protocols")
   else:
     protocols_pytd = None
-  builtins_pytd = ctx.loader.concat_all()
+  deps_pytd = ctx.loader.concat_all()
   # Insert type parameters, where appropriate
   ast = ast.Visit(visitors.CreateTypeParametersForSignatures())
   if options.protocols:
     log.info("=========== PyTD to solve =============\n%s",
              pytd_utils.Print(ast))
-    ast = convert_structural.convert_pytd(ast, builtins_pytd, protocols_pytd)
+    ast = convert_structural.convert_pytd(ast, deps_pytd, protocols_pytd)
   else:
     log.info("Solving is turned off. Discarding call traces.")
     # Rename remaining "~unknown" to "?"
@@ -109,7 +109,7 @@ def infer_types(src,
     # Remove "~list" etc.:
     ast = convert_structural.extract_local(ast)
   _maybe_output_debug(options, ctx.program)
-  return Analysis(ctx, ast, builtins_pytd)
+  return Analysis(ctx, ast, deps_pytd)
 
 
 def _maybe_output_debug(options, program):

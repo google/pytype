@@ -161,7 +161,7 @@ class BaseTest(unittest.TestCase):
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
-    unit = optimize.Optimize(unit, ret.builtins, lossy=False, use_abcs=False,
+    unit = optimize.Optimize(unit, ret.ast_deps, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
     errorlog = ret.context.errorlog
     src = kwargs["src"]
@@ -217,11 +217,11 @@ class BaseTest(unittest.TestCase):
   def Infer(self, srccode, pythonpath=(), report_errors=True, filename=None,
             analyze_annotated=True, pickle=False, module_name=None, **kwargs):
     """Runs inference on srccode."""
-    types, builtins_pytd = self._InferAndVerify(
+    types, deps = self._InferAndVerify(
         _Format(srccode), pythonpath=pythonpath,
         analyze_annotated=analyze_annotated, module_name=module_name,
         report_errors=report_errors, filename=filename, **kwargs)
-    types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
+    types = optimize.Optimize(types, deps, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
     if pickle:
@@ -269,7 +269,7 @@ class BaseTest(unittest.TestCase):
       errorlog.print_to_stderr()
       self.fail(
           f"Inferencer found {len(errorlog)} errors:\n{errorlog}")
-    return unit, ret.builtins
+    return unit, ret.ast_deps
 
   def assertTypesMatchPytd(self, ty, pytd_src):
     """Parses pytd_src and compares with ty."""

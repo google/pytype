@@ -28,6 +28,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.rewrite import analyze as rewrite_analyze
 
 
 log = logging.getLogger(__name__)
@@ -89,8 +90,12 @@ def _call(analyze_types, src, options, loader):
 def check_py(src, options=None, loader=None):
   """Check the types of a string of source code."""
   options = options or config.Options.create()
+  if options.use_rewrite:
+    check_types = rewrite_analyze.check_types
+  else:
+    check_types = analyze.check_types
   with config.verbosity_from(options):
-    return _call(analyze.check_types, src, options, loader)
+    return _call(check_types, src, options, loader)
 
 
 def generate_pyi(src, options=None, loader=None):
@@ -109,12 +114,16 @@ def generate_pyi(src, options=None, loader=None):
     UsageError: If the input filepath is invalid.
   """
   options = options or config.Options.create()
+  if options.use_rewrite:
+    infer_types = rewrite_analyze.infer_types
+  else:
+    infer_types = analyze.infer_types
   with config.verbosity_from(options):
-    ret = _call(analyze.infer_types, src, options, loader)
+    ret = _call(infer_types, src, options, loader)
     mod = ret.ast
     mod.Visit(visitors.VerifyVisitor())
     mod = optimize.Optimize(mod,
-                            ret.builtins,
+                            ret.ast_deps,
                             lossy=False,
                             use_abcs=False,
                             max_union=7,

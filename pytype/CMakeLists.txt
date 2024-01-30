@@ -302,6 +302,7 @@ py_library(
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
+    pytype.rewrite.rewrite
 )
 
 py_library(
