@@ -10,6 +10,7 @@ import dataclasses
 from typing import Dict, Optional
 
 from pytype.blocks import blocks
+from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
 
 
@@ -18,15 +19,15 @@ class BlockState:
   """State of a bytecode block."""
 
   locals_: Dict[str, variables.Variable]
-  condition: variables.Condition = variables.TRUE
+  condition: conditions.Condition = conditions.TRUE
 
   def merge_into(self, other: Optional['BlockState']) -> 'BlockState':
     """Merges 'self' into 'other'."""
     if not other:
       return BlockState(locals_=dict(self.locals_), condition=self.condition)
-    if self.locals_ or self.condition is not variables.TRUE:
-      raise NotImplementedError(
-          'Merging of locals and conditions not implemented yet')
+    other.condition = conditions.Or(self.condition, other.condition)
+    if self.locals_:
+      raise NotImplementedError('Merging of locals not implemented yet')
     return other
 
 

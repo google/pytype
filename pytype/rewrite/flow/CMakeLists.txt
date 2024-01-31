@@ -4,8 +4,25 @@ py_library(
   NAME
     flow
   DEPS
+    .conditions
     .variables
     .vm_base
+)
+
+py_library(
+  NAME
+    conditions
+  SRCS
+    conditions.py
+)
+
+py_test(
+  NAME
+    conditions_test
+  SRCS
+    conditions_test.py
+  DEPS
+    .conditions
 )
 
 py_library(
@@ -13,6 +30,8 @@ py_library(
     variables
   SRCS
     variables.py
+  DEPS
+    .conditions
 )
 
 py_test(
@@ -30,6 +49,7 @@ py_library(
   SRCS
     vm_base.py
   DEPS
+    .conditions
     .variables
     pytype.blocks.blocks
 )
@@ -40,6 +60,7 @@ py_test(
   SRCS
     vm_base_test.py
   DEPS
+    .conditions
     .vm_base
     pytype.blocks.blocks
     pytype.pyc.pyc

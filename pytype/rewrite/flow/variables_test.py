@@ -6,10 +6,6 @@ from typing_extensions import assert_type
 import unittest
 
 
-class ConditionTest(unittest.TestCase):
-  pass
-
-
 class BindingTest(unittest.TestCase):
 
   def test_type(self):
