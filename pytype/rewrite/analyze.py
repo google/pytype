@@ -1,17 +1,22 @@
 """Check and infer types."""
 
 import dataclasses
+import logging
 from typing import Optional
 
 from pytype import config
 from pytype import errors
 from pytype import load_pytd
+from pytype.blocks import blocks
+from pytype.pyc import pyc
 from pytype.pytd import pytd
-
+from pytype.rewrite import vm
 
 # How deep to follow call chains:
 _INIT_MAXIMUM_DEPTH = 4  # during module loading
 _MAXIMUM_DEPTH = 3  # during analysis of function bodies
+
+log = logging.getLogger(__name__)
 
 
 class Context:
@@ -40,7 +45,7 @@ def check_types(
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Check types for the given source code."""
-  del src, options, loader, init_maximum_depth, maximum_depth
+  _analyze(src, options, loader, init_maximum_depth, maximum_depth)
   return Analysis(Context(), None, None)
 
 
@@ -52,7 +57,41 @@ def infer_types(
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Infer types for the given source code."""
-  del src, options, loader, init_maximum_depth, maximum_depth
-  ast = pytd.TypeDeclUnit("inferred + unknowns", (), (), (), (), ())
-  deps = pytd.TypeDeclUnit("<all>", (), (), (), (), ())
+  _analyze(src, options, loader, init_maximum_depth, maximum_depth)
+  ast = pytd.TypeDeclUnit('inferred + unknowns', (), (), (), (), ())
+  deps = pytd.TypeDeclUnit('<all>', (), (), (), (), ())
   return Analysis(Context(), ast, deps)
+
+
+def _analyze(
+    src: str,
+    options: config.Options,
+    loader: load_pytd.Loader,
+    init_maximum_depth: int,
+    maximum_depth: int,
+) -> None:
+  """Analyze the given source code."""
+  del loader, init_maximum_depth, maximum_depth
+  code = _get_bytecode(src, options)
+  # TODO(b/241479600): Populate globals from builtins.
+  globals_ = {}
+  module_vm = vm.VM(code, initial_locals=globals_, globals_=globals_)
+  try:
+    module_vm.run()
+  except NotImplementedError as e:
+    # TODO(b/241479600): stop catching NotImplementedError once enough of
+    # implementation is finished to pass smoke tests.
+    log.error('NotImplementedError: %s', e)
+  # TODO(b/241479600): Analyze classes and functions.
+
+
+def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
+  code = pyc.compile_src(
+      src=src,
+      python_version=options.python_version,
+      python_exe=options.python_exe,
+      filename=options.input,
+      mode='exec',
+  )
+  ordered_code, unused_block_graph = blocks.process_code(code)
+  return ordered_code

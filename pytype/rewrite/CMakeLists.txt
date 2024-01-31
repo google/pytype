@@ -5,7 +5,7 @@ py_library(
     rewrite
   DEPS
     .analyze
-    .variables
+    .vm
 )
 
 py_library(
@@ -14,9 +14,12 @@ py_library(
   SRCS
     analyze.py
   DEPS
+    .vm
     pytype.config
     pytype.errors
     pytype.load_pytd
+    pytype.blocks.blocks
+    pytype.pyc.pyc
     pytype.pytd.pytd
 )
 
@@ -34,16 +37,12 @@ py_test(
 
 py_library(
   NAME
-    variables
+    vm
   SRCS
-    variables.py
+    vm.py
+  DEPS
+    pytype.blocks.blocks
+    pytype.rewrite.flow.flow
 )
 
-py_test(
-  NAME
-    variables_test
-  SRCS
-    variables_test.py
-  DEPS
-    .variables
-)
+add_subdirectory(flow)
