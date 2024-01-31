@@ -1,9 +1,10 @@
 """Support for pattern matching."""
 
 import collections
+import dataclasses
 import enum
 
-from typing import Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Dict, List, Optional, Set, Union, cast
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -45,6 +46,29 @@ def _get_enum_members(enum_cls: abstract.Class) -> List[str]:
     return members
   else:
     return list(enum_cls.get_enum_members(qualified=True))
+
+
+def _is_enum_match(
+    match_var: cfg.Variable, case_val: abstract.BaseValue
+) -> bool:
+  """Is the current case part of an enum match?"""
+  try:
+    match_val = abstract_utils.get_atomic_value(match_var)
+  except abstract_utils.ConversionError:
+    return False
+  if not (isinstance(match_val, abstract.Instance) and
+          isinstance(match_val.cls, abstract.Class) and
+          match_val.cls.is_enum):
+    return False
+  if not (isinstance(case_val, abstract.Instance) and
+          case_val.cls == match_val.cls):
+    return False
+  return True
+
+
+def _is_literal_match(match_var: cfg.Variable) -> bool:
+  """Is the current case part of a literal match?"""
+  return all(isinstance(x, abstract.ConcreteValue) for x in match_var.data)
 
 
 class _Option:
@@ -137,8 +161,6 @@ class _OptionTracker:
     self.could_contain_anything: bool = False
     # The types of the match var within each case branch
     self.cases: Dict[int, _OptionSet] = collections.defaultdict(_OptionSet)
-    # The last case in an exhaustive match always succeeds.
-    self.implicit_default: Optional[abstract.BaseValue] = None
     self.is_valid: bool = True
 
     for d in match_var.data:
@@ -243,6 +265,13 @@ class _Matches:
     """
 
 
+@dataclasses.dataclass
+class IncompleteMatch:
+  """A list of uncovered cases, for error reporting."""
+  line: int
+  cases: Set[str]
+
+
 class BranchTracker:
   """Track exhaustiveness in pattern matches."""
 
@@ -253,10 +282,6 @@ class BranchTracker:
     self._match_types: Dict[int, Set[_MatchTypes]] = (
         collections.defaultdict(set))
     self._active_ends = set()
-    # If we analyse the same match statement twice, the second time around we
-    # should not do exhaustiveness and redundancy checks since we have already
-    # tracked all the case branches.
-    self._seen_opcodes = set()
     self.ctx = ctx
 
   def _get_option_tracker(
@@ -270,27 +295,6 @@ class BranchTracker:
           _OptionTracker(match_var, self.ctx))
       self._active_ends.add(self.matches.start_to_end[match_line])
     return self._option_tracker[match_line][match_var.id]
-
-  def _is_enum_match(
-      self, match_var: cfg.Variable, case_val: abstract.BaseValue
-  ) -> bool:
-    """Is the current case part of an enum match?"""
-    try:
-      match_val = abstract_utils.get_atomic_value(match_var)
-    except abstract_utils.ConversionError:
-      return False
-    if not (isinstance(match_val, abstract.Instance) and
-            isinstance(match_val.cls, abstract.Class) and
-            match_val.cls.is_enum):
-      return False
-    if not (isinstance(case_val, abstract.Instance) and
-            case_val.cls == match_val.cls):
-      return False
-    return True
-
-  def _is_literal_match(self, match_var: cfg.Variable) -> bool:
-    """Is the current case part of a literal match?"""
-    return all(isinstance(x, abstract.ConcreteValue) for x in match_var.data)
 
   def _make_instance_for_match(self, node, types):
     """Instantiate a type for match case narrowing."""
@@ -347,7 +351,6 @@ class BranchTracker:
           return None
         else:
           # This is the last remaining case, and will always succeed.
-          tracker.implicit_default = self.ctx.convert.none_type
           return True
 
   def add_cmp_branch(
@@ -383,10 +386,9 @@ class BranchTracker:
 
     # If we are not part of a class match, check if we have an exhaustive match
     # (enum or union of literals) that we are tracking.
-    if (not tracker and
-        (self._is_literal_match(match_var) or
-         self._is_enum_match(match_var, case_val))):
-      tracker = self._get_option_tracker(match_var, op.line)
+    if not tracker:
+      if _is_literal_match(match_var) or _is_enum_match(match_var, case_val):
+        tracker = self._get_option_tracker(match_var, op.line)
 
     # If none of the above apply we cannot do any sort of tracking.
     if not tracker:
@@ -399,7 +401,6 @@ class BranchTracker:
       return None
     elif tracker.is_complete:
       # This is the last remaining case, and will always succeed.
-      tracker.implicit_default = case_val
       return True
     elif ret:
       return None
@@ -420,14 +421,18 @@ class BranchTracker:
       return None
     if match_line in self._option_tracker:
       for opt in self._option_tracker[match_line].values():
+        # We no longer check for exhaustive or redundant matches once we hit a
+        # default case.
         opt.invalidate()
       return True
     else:
       return None
 
-  def check_ending(self,
-                   op: opcodes.Opcode,
-                   implicit_return: bool = False) -> List[Tuple[int, Set[str]]]:
+  def check_ending(
+      self,
+      op: opcodes.Opcode,
+      implicit_return: bool = False
+  ) -> List[IncompleteMatch]:
     """Check if we have ended a match statement with leftover cases."""
     if op.metadata.is_out_of_order:
       return []
@@ -449,6 +454,6 @@ class BranchTracker:
           if tracker.is_valid:
             for o in tracker.options:
               if not o.is_empty and not o.indefinite:
-                ret.append((start, o.values))
+                ret.append(IncompleteMatch(start, o.values))
     self._active_ends -= done
     return ret
