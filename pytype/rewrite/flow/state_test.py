@@ -66,7 +66,7 @@ class WithConditionTest(unittest.TestCase):
     x = b2._locals['x']
     self.assertEqual(len(x.bindings), 1)
     self.assertEqual(x.bindings[0], variables.Binding(42, condition))
-    self.assertEmpty(b2._locals_with_block_condition)
+    self.assertFalse(b2._locals_with_block_condition)
 
 
 class MergeIntoTest(unittest.TestCase):
@@ -75,7 +75,7 @@ class MergeIntoTest(unittest.TestCase):
     b1 = state.BlockState({})
     b2 = b1.merge_into(None)
     self.assertIsNot(b1, b2)
-    self.assertEmpty(b2._locals)
+    self.assertFalse(b2._locals)
     self.assertIs(b2._condition, conditions.TRUE)
 
   def test_merge_into_other(self):
@@ -84,7 +84,7 @@ class MergeIntoTest(unittest.TestCase):
     b1 = state.BlockState({}, c1)
     b2 = state.BlockState({}, c2)
     b3 = b1.merge_into(b2)
-    self.assertEmpty(b3._locals)
+    self.assertFalse(b3._locals)
     self.assertEqual(b3._condition, conditions.Or(c1, c2))
 
   def test_same_variable(self):
@@ -108,7 +108,7 @@ class MergeIntoTest(unittest.TestCase):
     self.assertEqual(len(x.bindings), 1)
     self.assertEqual(x.bindings[0], variables.Binding(42, condition))
     self.assertIs(b3._condition, conditions.TRUE)
-    self.assertEmpty(b3._locals_with_block_condition)
+    self.assertFalse(b3._locals_with_block_condition)
 
   def test_add_block_condition_other(self):
     condition = FakeCondition('a')
@@ -120,7 +120,7 @@ class MergeIntoTest(unittest.TestCase):
     self.assertEqual(len(x.bindings), 1)
     self.assertEqual(x.bindings[0], variables.Binding(42, condition))
     self.assertIs(b3._condition, conditions.TRUE)
-    self.assertEmpty(b3._locals_with_block_condition)
+    self.assertFalse(b3._locals_with_block_condition)
 
   def test_noadd_block_condition(self):
     condition1 = FakeCondition('a')

@@ -460,6 +460,7 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, D)
     """)
 
+  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
   def test_type_narrowing_none(self):
     self.Check("""
       class A: pass
