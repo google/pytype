@@ -7,28 +7,11 @@ byte_{opcode_name} method implementing each opcode.
 """
 
 import dataclasses
-from typing import Dict, Optional
+from typing import Dict
 
 from pytype.blocks import blocks
-from pytype.rewrite.flow import conditions
+from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
-
-
-@dataclasses.dataclass
-class _BlockState:
-  """State of a bytecode block."""
-
-  locals_: Dict[str, variables.Variable]
-  condition: conditions.Condition = conditions.TRUE
-
-  def merge_into(self, other: Optional['_BlockState']) -> '_BlockState':
-    """Merges 'self' into 'other'."""
-    if not other:
-      return _BlockState(locals_=dict(self.locals_), condition=self.condition)
-    other.condition = conditions.Or(self.condition, other.condition)
-    if self.locals_:
-      raise NotImplementedError('Merging of locals not implemented yet')
-    return other
 
 
 @dataclasses.dataclass
@@ -56,11 +39,11 @@ class VmBase:
     self._initial_locals = initial_locals  # locally scoped names before VM runs
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
-    self._states: Dict[int, _BlockState] = {}  # block id to state
+    self._states: Dict[int, state.BlockState] = {}  # block id to state
     # Initialize the state of the first block.
-    self._states[self._code.order[0].id] = _BlockState(
+    self._states[self._code.order[0].id] = state.BlockState(
         locals_=dict(self._initial_locals))
-    self._current_state: _BlockState = None  # state of the current block
+    self._current_state: state.BlockState = None  # state of the current block
 
   def step(self) -> None:
     """Runs one opcode."""
@@ -93,5 +76,6 @@ class VmBase:
       self._current_step.block += 1
       self._current_step.opcode = 0
 
-  def _merge_state_into(self, state: _BlockState, block_id: int) -> None:
-    self._states[block_id] = state.merge_into(self._states.get(block_id))
+  def _merge_state_into(
+      self, from_state: state.BlockState, block_id: int) -> None:
+    self._states[block_id] = from_state.merge_into(self._states.get(block_id))

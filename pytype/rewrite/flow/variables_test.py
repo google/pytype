@@ -1,5 +1,6 @@
 from typing import Union
 
+from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
 from typing_extensions import assert_type
 
@@ -51,6 +52,18 @@ class VariableTest(unittest.TestCase):
     var = variables.Variable((variables.Binding(0), variables.Binding('')))
     with self.assertRaisesRegex(ValueError, 'Too many bindings'):
       var.get_atomic_value()
+
+  def test_with_true_condition(self):
+    var = variables.Variable.from_value(0)
+    var2 = var.with_condition(conditions.TRUE)
+    self.assertIs(var2, var)
+
+  def test_with_condition(self):
+    var = variables.Variable.from_value(0)
+    var2 = var.with_condition(conditions.FALSE)
+    self.assertEqual(len(var2.bindings), 1)
+    self.assertEqual(var2.bindings[0].value, 0)
+    self.assertIs(var2.bindings[0].condition, conditions.FALSE)
 
 
 if __name__ == '__main__':
