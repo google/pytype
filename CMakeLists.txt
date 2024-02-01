@@ -17,9 +17,8 @@ set(PYTYPE_OUT_BIN_DIR ${PROJECT_BINARY_DIR}/bin)
 file(MAKE_DIRECTORY ${PYTYPE_OUT_BIN_DIR})
 
 add_subdirectory(pybind11)
-
 add_subdirectory(pytype)
-
+add_subdirectory(pytype_extensions)
 add_subdirectory(third_party)
 
 # Add the "googletest" directory at the end as it defines its own CMake rules
