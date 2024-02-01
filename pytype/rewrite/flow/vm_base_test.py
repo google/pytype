@@ -47,11 +47,13 @@ class TestVM(vm_base.VmBase):
     super().__init__(*args, **kwargs)
     self.seen_opcodes = []
 
+  # pylint: disable=invalid-name
   def byte_FAKE_OP(self, op):
     self.seen_opcodes.append(('FAKE_OP', op.index))
 
   def byte_FAKE_OP_NO_NEXT(self, op):
     self.seen_opcodes.append(('FAKE_OP_NO_NEXT', op.index))
+  # pylint: enable=invalid-name
 
 
 class VmBaseTest(unittest.TestCase):
