@@ -345,13 +345,13 @@ class BranchTracker:
 
   def add_none_branch(self, op: opcodes.Opcode, match_var: cfg.Variable):
     if op.line in self.matches.match_cases:
-      if tracker := self.get_current_type_tracker(op, match_var):
-        tracker.cover_from_none(op.line)
-        if not tracker.is_complete:
-          return None
-        else:
-          # This is the last remaining case, and will always succeed.
-          return True
+      tracker = self._get_option_tracker(match_var, op.line)
+      tracker.cover_from_none(op.line)
+      if not tracker.is_complete:
+        return None
+      else:
+        # This is the last remaining case, and will always succeed.
+        return True
 
   def add_cmp_branch(
       self,

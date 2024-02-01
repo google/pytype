@@ -415,6 +415,18 @@ class MatchClassTest(test_base.BaseTest):
       c: bool
     """)
 
+  def test_none_as_type(self):
+    self.Check("""
+      def f(x: str | int | None) -> int:
+        match x:
+          case None:
+            return 10
+          case int():
+            return 15
+          case str():
+            return 20
+    """)
+
   def test_type_narrowing(self):
     self.Check("""
       class A: pass
@@ -448,7 +460,6 @@ class MatchClassTest(test_base.BaseTest):
             assert_type(x, D)
     """)
 
-  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
   def test_type_narrowing_none(self):
     self.Check("""
       class A: pass

@@ -12,7 +12,7 @@ class BlockStateTest(unittest.TestCase):
     b1 = vm_base._BlockState({})
     b2 = b1.merge_into(None)
     self.assertIsNot(b1, b2)
-    self.assertFalse(b2.locals_)
+    self.assertEmpty(b2.locals_)
     self.assertIs(b2.condition, conditions.TRUE)
 
   def test_merge_into_other(self):
@@ -47,13 +47,11 @@ class TestVM(vm_base.VmBase):
     super().__init__(*args, **kwargs)
     self.seen_opcodes = []
 
-  # pylint: disable=invalid-name
   def byte_FAKE_OP(self, op):
     self.seen_opcodes.append(('FAKE_OP', op.index))
 
   def byte_FAKE_OP_NO_NEXT(self, op):
     self.seen_opcodes.append(('FAKE_OP_NO_NEXT', op.index))
-  # pylint: enable=invalid-name
 
 
 class VmBaseTest(unittest.TestCase):
