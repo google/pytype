@@ -12,7 +12,7 @@ class BlockStateTest(unittest.TestCase):
     b1 = vm_base._BlockState({})
     b2 = b1.merge_into(None)
     self.assertIsNot(b1, b2)
-    self.assertEmpty(b2.locals_)
+    self.assertFalse(b2.locals_)
     self.assertIs(b2.condition, conditions.TRUE)
 
   def test_merge_into_other(self):
