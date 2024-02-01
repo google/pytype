@@ -263,6 +263,8 @@ EXPERIMENTAL_FLAGS = [
           "Emit errors for comparisons between incompatible primitive types."),
     _flag("--strict-undefined-checks", False,
           "Check that variables are defined in all possible code paths."),
+    _Arg("-R", "--use-rewrite", action="store_true", dest="use_rewrite",
+         default=False, help="FOR TESTING ONLY. Use pytype/rewrite/."),
 ]
 
 
@@ -378,10 +380,6 @@ DEBUG_OPTIONS = [
         "--check_preconditions", action="store_true",
         dest="check_preconditions", default=False,
         help=("Enable checking of preconditions.")),
-    _Arg(
-        "-m", "--main", action="store_true",
-        dest="main_only", default=False,
-        help=("Only analyze the main method and everything called from it")),
     _Arg(
         "--metrics", type=str, action="store",
         dest="metrics", default=None,

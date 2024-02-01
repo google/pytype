@@ -467,7 +467,7 @@ class TestAttributes(test_base.BaseTest):
       class MyClass2:
         def __getattribute__(self, name):
           return object.__getattribute__(self, name)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class MyClass1:
@@ -699,7 +699,7 @@ class TestAttributes(test_base.BaseTest):
           return self.bar
       x = A() if __random__ else B()
       a = x.foo
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Annotated, Union
       a = ...  # type: int

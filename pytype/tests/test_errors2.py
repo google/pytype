@@ -308,7 +308,7 @@ class ErrorTest(test_base.BaseTest):
         f = f
     """)
     e, = errors.errorlog
-    self.assertEqual(e.filename, "<inline>")
+    self.assertEqual(e.filename, "dummpy_input_file")
     self.assertEqual(e.methodname, "f")
 
   def test_starargs(self):

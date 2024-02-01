@@ -844,7 +844,7 @@ class MergeTypeParameters(TypeParameterScope):
 
 
 def Optimize(node,
-             builtins=None,
+             deps=None,
              lossy=False,
              use_abcs=False,
              max_union=7,
@@ -857,7 +857,7 @@ def Optimize(node,
   Arguments:
     node: A pytd node to be optimized. It won't be modified - this function
         will return a new node.
-    builtins: Definitions of all of the external types in node.
+    deps: Definitions of all of the external types in node.
     lossy: Allow optimizations that change the meaning of the pytd.
     use_abcs: Use abstract base classes to represent unions like
         e.g. "Union[float, int]" as "Real".
@@ -878,8 +878,8 @@ def Optimize(node,
   node = node.Visit(CombineReturnsAndExceptions())
   node = node.Visit(CombineContainers())
   node = node.Visit(SimplifyContainers())
-  if builtins:
-    superclasses = builtins.Visit(visitors.ExtractSuperClassesByName())
+  if deps:
+    superclasses = deps.Visit(visitors.ExtractSuperClassesByName())
     superclasses.update(node.Visit(visitors.ExtractSuperClassesByName()))
     if use_abcs:
       superclasses.update(abc_hierarchy.GetSuperClasses())
@@ -896,6 +896,6 @@ def Optimize(node,
     node = node.Visit(MergeTypeParameters())
     node = node.Visit(visitors.AdjustSelf())
   node = node.Visit(SimplifyContainers())
-  if builtins and can_do_lookup:
-    node = visitors.LookupClasses(node, builtins, ignore_late_types=True)
+  if deps and can_do_lookup:
+    node = visitors.LookupClasses(node, deps, ignore_late_types=True)
   return node

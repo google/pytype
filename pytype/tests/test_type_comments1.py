@@ -12,7 +12,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x):
         # type: (...) -> int
         return x
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x) -> int: ...
     """)
@@ -23,7 +23,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x):
         # type: (...) -> Dict[int, int]
         return x
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict
       def foo(x) -> Dict[int, int]: ...
@@ -34,8 +34,8 @@ class FunctionCommentTest(test_base.BaseTest):
     ty = self.Infer("""
       def foo():
         # type: (  ) -> int
-        return x
-    """, deep=False)
+        return 0
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo() -> int: ...
     """)
@@ -46,7 +46,7 @@ class FunctionCommentTest(test_base.BaseTest):
       def foo(x):
         # type: ( int ) -> int
         return x
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int) -> int: ...
     """)
@@ -55,8 +55,8 @@ class FunctionCommentTest(test_base.BaseTest):
     ty = self.Infer("""
       def foo(x, y, z):
         # type: (int, str, float) -> None
-        return x
-    """, deep=False)
+        pass
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: float) -> None: ...
     """)
@@ -67,8 +67,8 @@ class FunctionCommentTest(test_base.BaseTest):
               y,
               z):
         # type: (int, str, float) -> None
-        return x
-    """, deep=False)
+        pass
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: float) -> None: ...
     """)
@@ -100,8 +100,8 @@ class FunctionCommentTest(test_base.BaseTest):
     ty = self.Infer("""
       def foo(x, y, z):
         # type: (int, str, None) -> None
-        return x
-    """, deep=False)
+        return z
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(x: int, y: str, z: None) -> None: ...
     """)
@@ -116,7 +116,7 @@ class FunctionCommentTest(test_base.BaseTest):
         def g(self, x):
           # type: (Foo, int) -> None
           pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo:
         def f(self, x: int) -> None: ...
@@ -135,7 +135,7 @@ class FunctionCommentTest(test_base.BaseTest):
         def g(cls, x):
           # type: (Foo, int) -> None
           pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo:
         @classmethod
@@ -371,7 +371,7 @@ class AssignmentCommentTest(test_base.BaseTest):
   def test_bad_comment(self):
     ty, errors = self.InferWithErrors("""
       X = None  # type: abc def  # invalid-annotation[e]
-    """, deep=True)
+    """)
     if self.python_version >= (3, 10):
       error_reason = "invalid syntax"
     else:
@@ -385,7 +385,7 @@ class AssignmentCommentTest(test_base.BaseTest):
   def test_conversion_error(self):
     ty, errors = self.InferWithErrors("""
       X = None  # type: 1 if __random__ else 2  # invalid-annotation[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"X.*Must be constant"})
     self.assertTypesMatchPytd(ty, """
       from typing import Any
@@ -395,7 +395,7 @@ class AssignmentCommentTest(test_base.BaseTest):
   def test_name_error_inside_comment(self):
     _, errors = self.InferWithErrors("""
       X = None  # type: Foo  # name-error[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"Foo"})
 
   def test_warn_on_ignored_type_comment(self):
@@ -403,7 +403,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       X = []
       X[0] = None  # type: str  # ignored-type-comment[e1]
       # type: int  # ignored-type-comment[e2]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e1": r"str", "e2": r"int"})
 
   def test_attribute_initialization(self):
@@ -413,7 +413,7 @@ class AssignmentCommentTest(test_base.BaseTest):
           self.x = 42
       a = None  # type: A
       x = a.x
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class A:
         x = ...  # type: int
@@ -425,7 +425,7 @@ class AssignmentCommentTest(test_base.BaseTest):
   def test_none_to_none_type(self):
     ty = self.Infer("""
       x = None  # type: None
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: None
     """)
@@ -542,7 +542,7 @@ class AssignmentCommentTest(test_base.BaseTest):
       ]
 
       ]  # type: list[list[int]]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       a = ...  # type: list[list[int]]
     """)
@@ -551,14 +551,14 @@ class AssignmentCommentTest(test_base.BaseTest):
     _, errors = self.InferWithErrors("""
       def f():
         x = None  # type: Any  # invalid-annotation[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"not defined$"})
 
   def test_type_comment_invalid_syntax(self):
     _, errors = self.InferWithErrors("""
       def f():
         x = None  # type: y = 1  # invalid-annotation[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"invalid syntax$"})
 
   def test_discarded_type_comment(self):
@@ -568,7 +568,7 @@ class AssignmentCommentTest(test_base.BaseTest):
         def hello_world():
           # type: () -> str
           return 'hello world'
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def hello_world() -> str: ...
     """)

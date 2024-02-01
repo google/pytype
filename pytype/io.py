@@ -16,7 +16,6 @@ from pytype import analyze
 from pytype import config
 from pytype import constant_folding
 from pytype import context
-from pytype import errors
 from pytype import load_pytd
 from pytype import utils
 from pytype.directors import directors
@@ -29,6 +28,7 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.rewrite import analyze as rewrite_analyze
 
 
 log = logging.getLogger(__name__)
@@ -42,12 +42,9 @@ ERROR_DOC_URL = "https://google.github.io/pytype/errors.html"
 class AnalysisResult:
   """Preserve all state and results from running pytype."""
 
-  options: config.Options
-  loader: load_pytd.Loader
   context: context.Context
-  errorlog: errors.ErrorLog
-  pyi: Optional[str]
   ast: Optional[pytd.TypeDeclUnit]
+  pyi: Optional[str]
 
 
 def read_source_file(input_filename, open_function=open):
@@ -80,51 +77,52 @@ def _set_verbosity_from(posarg):
 
 
 @_set_verbosity_from(posarg=2)
-def _call(analyze_types, src, options, loader, *, ctx=None):
+def _call(analyze_types, src, options, loader):
   """Helper function to call analyze.check/infer_types."""
-  # 'deep' tells the analyzer whether to analyze functions not called from main.
-  deep = not options.main_only
   loader = loader or load_pytd.create_loader(options)
   return analyze_types(
       src=src,
-      filename=options.input,
       options=options,
-      loader=loader,
-      ctx=ctx,
-      deep=deep)
+      loader=loader)
 
 
-def check_py(src, options=None, loader=None, ctx=None):
+def check_py(src, options=None, loader=None):
   """Check the types of a string of source code."""
   options = options or config.Options.create()
+  if options.use_rewrite:
+    check_types = rewrite_analyze.check_types
+  else:
+    check_types = analyze.check_types
   with config.verbosity_from(options):
-    ret = _call(analyze.check_types, src, options, loader, ctx=ctx)
-  return ret.errorlog
+    return _call(check_types, src, options, loader)
 
 
-def generate_pyi(src, options=None, loader=None, ctx=None):
+def generate_pyi(src, options=None, loader=None):
   """Run the inferencer on a string of source code, producing output.
 
   Args:
     src: The source code.
     options: config.Options object.
     loader: A load_pytd.Loader instance.
-    ctx: A context
 
   Returns:
-    A tuple, (errors.ErrorLog, PYI Ast as string, TypeDeclUnit).
+    A tuple, (analyze.Analysis, pyi ast as string).
 
   Raises:
     CompileError: If we couldn't parse the input file.
     UsageError: If the input filepath is invalid.
   """
   options = options or config.Options.create()
+  if options.use_rewrite:
+    infer_types = rewrite_analyze.infer_types
+  else:
+    infer_types = analyze.infer_types
   with config.verbosity_from(options):
-    ret = _call(analyze.infer_types, src, options, loader, ctx=ctx)
+    ret = _call(infer_types, src, options, loader)
     mod = ret.ast
     mod.Visit(visitors.VerifyVisitor())
     mod = optimize.Optimize(mod,
-                            ret.builtins,
+                            ret.ast_deps,
                             lossy=False,
                             use_abcs=False,
                             max_union=7,
@@ -138,65 +136,70 @@ def generate_pyi(src, options=None, loader=None, ctx=None):
   result += "\n"
   if options.quick:
     result = "# (generated with --quick)\n\n" + result
-  return ret.errorlog, result, mod
+  ret.ast = mod
+  return ret, result
 
 
 @_set_verbosity_from(posarg=0)
-def check_or_generate_pyi(options, loader=None, ctx=None) -> AnalysisResult:
+def check_or_generate_pyi(options) -> AnalysisResult:
   """Returns results from running pytype.
 
   Args:
     options: config.Options object.
-    loader: load_pytd.Loader object.
-    ctx: A context
 
   Returns:
-    A tuple, (errors.ErrorLog, PYI Ast as string or None, AST or None).
+    An AnalysisResult.
   """
-  deep = not options.main_only
-  loader = loader or load_pytd.create_loader(options)
-  ctx = ctx or analyze.make_context(options, loader, deep)
-  errorlog = errors.ErrorLog()
-  result = pytd_builtins.DEFAULT_SRC
-  ast = pytd_builtins.GetDefaultAst(
-      parser.PyiOptions.from_toplevel_options(options))
+  loader = load_pytd.create_loader(options)
+  compiler_error = None
+  other_error_info = ""
   try:
     src = read_source_file(options.input, options.open_function)
     if options.check:
-      errorlog = check_py(src=src, options=options, loader=loader, ctx=ctx)
-      result, ast = None, None
+      ctx = check_py(src=src, options=options, loader=loader).context
+      ast, result = None, None
     else:
-      errorlog, result, ast = generate_pyi(
-          src=src, options=options, loader=loader, ctx=ctx)
+      ret, result = generate_pyi(src=src, options=options, loader=loader)
+      ctx = ret.context
+      ast = ret.ast
   except utils.UsageError:
     raise
   except pyc.CompileError as e:
-    errorlog.python_compiler_error(options.input, e.lineno, e.error)
+    compiler_error = (options.input, e.lineno, e.error)
   except constant_folding.ConstantError as e:
-    errorlog.python_compiler_error(options.input, e.lineno, e.message)
+    compiler_error = (options.input, e.lineno, e.message)
   except IndentationError as e:
-    errorlog.python_compiler_error(options.input, e.lineno, e.msg)
+    compiler_error = (options.input, e.lineno, e.msg)
   except libcst.ParserSyntaxError as e:
     # TODO(rechen): We can get rid of this branch once we delete
     # directors.parser_libcst.
-    errorlog.python_compiler_error(options.input, e.raw_line, e.message)
+    compiler_error = (options.input, e.raw_line, e.message)
   except SyntaxError as e:
-    errorlog.python_compiler_error(options.input, e.lineno, e.msg)
+    compiler_error = (options.input, e.lineno, e.msg)
   except directors.SkipFileError:
-    result += "# skip-file found, file not analyzed"
+    other_error_info = "# skip-file found, file not analyzed"
   except Exception as e:  # pylint: disable=broad-except
     if options.nofail:
       log.warning("***Caught exception: %s", str(e), exc_info=True)
       if not options.check:
-        result += (
+        other_error_info = (
             "# Caught error in pytype: " + str(e).replace("\n", "\n#")
             + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
     else:
       prefix = str(e.args[0]) if e.args else ""
       e.args = (f"{prefix}\nFile: {options.input}",) + e.args[1:]
       raise
+  else:
+    return AnalysisResult(ctx, ast, result)
 
-  return AnalysisResult(options, loader, ctx, errorlog, result, ast)
+  # check_py/generate_pyi has raised an exception.
+  ctx = context.Context(options, loader)
+  if compiler_error:
+    ctx.errorlog.python_compiler_error(*compiler_error)
+  ast = pytd_builtins.GetDefaultAst(
+      parser.PyiOptions.from_toplevel_options(options))
+  result = pytd_builtins.DEFAULT_SRC + other_error_info
+  return AnalysisResult(ctx, ast, result)
 
 
 def _write_pyi_output(options, contents, filename):
@@ -221,9 +224,8 @@ def process_one_file(options):
   """
 
   log.info("Process %s => %s", options.input, options.output)
-  loader = load_pytd.create_loader(options)
   try:
-    ret = check_or_generate_pyi(options, loader)
+    ret = check_or_generate_pyi(options)
   except utils.UsageError:
     logging.exception("")
     return 1
@@ -239,8 +241,8 @@ def process_one_file(options):
     # Write out the pickle file.
     if options.pickle_output:
       log.info("write pickle %r => %r", options.input, options.output)
-      write_pickle(ret.ast, options, loader)
-  exit_status = handle_errors(ret.errorlog, options)
+      write_pickle(ret.ast, options, ret.context.loader)
+  exit_status = handle_errors(ret.context.errorlog, options)
 
   # Touch output file upon success.
   if options.touch and not exit_status:

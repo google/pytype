@@ -11,7 +11,7 @@ class TypeVarTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import TypeVar
       T = TypeVar("T")
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import TypeVar
       T = TypeVar("T")
@@ -22,7 +22,7 @@ class TypeVarTest(test_base.BaseTest):
       d.create_file("a.pyi", """T = TypeVar("T")""")
       ty = self.Infer("""
         from a import T
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import TypeVar
         T = TypeVar("T")
@@ -62,7 +62,7 @@ class TypeVarTest(test_base.BaseTest):
       S = TypeVar("S", int, float, covariant=True)  # pytype: disable=not-supported-yet
       T = TypeVar("T", int, float)
       U = TypeVar("U", List[int], List[float])
-    """, deep=False)
+    """)
     # The "covariant" keyword is ignored for now.
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar
@@ -384,7 +384,7 @@ class TypeVarTest(test_base.BaseTest):
       V = TypeVar("V", "Foo", "List[Foo]")
       class Foo:
         pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List, TypeVar
       S = TypeVar("S", int, float)
@@ -465,7 +465,7 @@ class TypeVarTest(test_base.BaseTest):
       constraints = (int, str)
       kwargs = {"covariant": True}
       T = TypeVar("T", *constraints, **kwargs)  # pytype: disable=not-supported-yet
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Dict, Tuple, Type, TypeVar
       T = TypeVar("T", int, str)

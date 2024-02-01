@@ -111,7 +111,7 @@ class ClassesTest(test_base.BaseTest):
       from typing import List
       class Foo(List[str]): ...
       v = Foo()[0]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import List
       class Foo(List[str]): ...

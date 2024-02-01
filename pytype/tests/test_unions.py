@@ -33,7 +33,7 @@ class UnionTest(test_base.BaseTest):
           x.__class__ = float  # not-writable[e1]
           x.__class__ = str  # not-writable[e2]
         return type(x)()
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int: ...
     """)

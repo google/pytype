@@ -219,7 +219,6 @@ py_test(
     test_quick1.py
   DEPS
     .test_base
-    pytype.pytd.pytd
 )
 
 py_test(

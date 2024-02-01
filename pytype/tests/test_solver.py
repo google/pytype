@@ -333,7 +333,7 @@ class SolverTests(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         x = foo.f(1, y=2j)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         x = ...  # type: complex

@@ -120,8 +120,7 @@ class BaseTest(unittest.TestCase):
   # For historical reasons (byterun), this method name is snakecase:
   # pylint: disable=invalid-name
   def Check(self, code, pythonpath=(), skip_repeat_calls=True,
-            report_errors=True, filename=None, quick=False, imports_map=None,
-            **kwargs):
+            report_errors=True, quick=False, imports_map=None, **kwargs):
     """Run an inference smoke test for the given code."""
     self.ConfigureOptions(
         skip_repeat_calls=skip_repeat_calls, quick=quick,
@@ -131,8 +130,8 @@ class BaseTest(unittest.TestCase):
       if test_utils.ErrorMatcher(code).expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
       ret = analyze.check_types(
-          src, filename, loader=self.loader, options=self.options, **kwargs)
-      errorlog = ret.errorlog
+          src, loader=self.loader, options=self.options, **kwargs)
+      errorlog = ret.context.errorlog
     except directors.SkipFileError:
       errorlog = None
     if report_errors and errorlog:
@@ -150,33 +149,32 @@ class BaseTest(unittest.TestCase):
         **self._GetPythonpathArgs(pythonpath, imports_map))
     return {"src": code, "options": self.options, "loader": self.loader}
 
-  def InferWithErrors(self, code, deep=True, pythonpath=(), module_name=None,
+  def InferWithErrors(self, code, pythonpath=(), module_name=None,
                       analyze_annotated=True, quick=False, imports_map=None,
                       **kwargs):
     """Runs inference on code expected to have type errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
-    ret = analyze.infer_types(deep=deep, **kwargs)
+    ret = analyze.infer_types(**kwargs)
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
-    unit = optimize.Optimize(unit, ret.builtins, lossy=False, use_abcs=False,
+    unit = optimize.Optimize(unit, ret.ast_deps, lossy=False, use_abcs=False,
                              max_union=7, remove_mutable=False)
-    errorlog = ret.errorlog
+    errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
     matcher.assert_errors_match_expected(errorlog)
     return pytd_utils.CanonicalOrdering(unit), matcher
 
-  def CheckWithErrors(self, code, deep=True, pythonpath=(),
-                      analyze_annotated=True, quick=False, imports_map=None,
-                      **kwargs):
+  def CheckWithErrors(self, code, pythonpath=(), analyze_annotated=True,
+                      quick=False, imports_map=None, **kwargs):
     """Check and match errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
-    ret = analyze.check_types(filename="<inline>", deep=deep, **kwargs)
-    errorlog = ret.errorlog
+    ret = analyze.check_types(**kwargs)
+    errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
     matcher.assert_errors_match_expected(errorlog)
@@ -190,10 +188,10 @@ class BaseTest(unittest.TestCase):
         self.fail(
             "Cannot assert errors with InferFromFile(); use InferWithErrors()")
       self.ConfigureOptions(
+          input=filename,
           module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
-      ret = analyze.infer_types(code, options=self.options, loader=self.loader,
-                                filename=filename)
+      ret = analyze.infer_types(code, options=self.options, loader=self.loader)
       unit = ret.ast
       assert unit is not None
       unit.Visit(visitors.VerifyVisitor())
@@ -215,15 +213,14 @@ class BaseTest(unittest.TestCase):
         module_name, textwrap.dedent(src), self.loader)
     return pickle_utils.StoreAst(ast)
 
-  def Infer(self, srccode, pythonpath=(), deep=True,
-            report_errors=True, analyze_annotated=True, pickle=False,
-            module_name=None, **kwargs):
+  def Infer(self, srccode, pythonpath=(), report_errors=True,
+            analyze_annotated=True, pickle=False, module_name=None, **kwargs):
     """Runs inference on srccode."""
-    types, builtins_pytd = self._InferAndVerify(
-        _Format(srccode), pythonpath=pythonpath, deep=deep,
+    types, deps = self._InferAndVerify(
+        _Format(srccode), pythonpath=pythonpath,
         analyze_annotated=analyze_annotated, module_name=module_name,
         report_errors=report_errors, **kwargs)
-    types = optimize.Optimize(types, builtins_pytd, lossy=False, use_abcs=False,
+    types = optimize.Optimize(types, deps, lossy=False, use_abcs=False,
                               max_union=7, remove_mutable=False)
     types = pytd_utils.CanonicalOrdering(types)
     if pickle:
@@ -262,7 +259,7 @@ class BaseTest(unittest.TestCase):
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
     ret = analyze.infer_types(
         src, options=self.options, loader=self.loader, **kwargs)
-    errorlog = ret.errorlog
+    errorlog = ret.context.errorlog
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
@@ -270,7 +267,7 @@ class BaseTest(unittest.TestCase):
       errorlog.print_to_stderr()
       self.fail(
           f"Inferencer found {len(errorlog)} errors:\n{errorlog}")
-    return unit, ret.builtins
+    return unit, ret.ast_deps
 
   def assertTypesMatchPytd(self, ty, pytd_src):
     """Parses pytd_src and compares with ty."""

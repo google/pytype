@@ -407,9 +407,9 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def uses_kwargs(x, **mykwargs) -> Any: ...
     """
     self.assertTypesMatchPytd(
-        self.Infer(src, deep=False), output)
+        self.Infer(src), output)
     self.assertTypesMatchPytd(
-        self.Infer(src, deep=True), output)
+        self.Infer(src), output)
 
   def test_make_function2(self):
     ty = self.Infer("""
@@ -426,15 +426,15 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def f(a = 2, *args, b:int = 1, **kwargs):
         x = 0
         def g(i:int = 3) -> int:
-          print(x)
+          return x
         return g
 
       y = f(2)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Callable
 
-      def f(a: int = ..., *args, b: int = ..., **kwargs) -> Callable[Any, int]: ...
+      def f(a=..., *args, b: int = ..., **kwargs) -> Callable[Any, int]: ...
       def y(i: int = ...) -> int: ...
     """)
 
@@ -461,10 +461,10 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def foo(a, b, c, d=0, e=0, f=0, g=0, *myargs,
               u, v, x, y=0, z=0, **mykwargs):
         return 3
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c, d=..., e=..., f=..., g=..., *myargs,
-              u, v, x, y=..., z=..., **mykwargs): ...
+              u, v, x, y=..., z=..., **mykwargs) -> int: ...
     """)
 
   def test_defaults_and_annotations(self):
@@ -472,10 +472,10 @@ class TestFunctionsPython3Feature(test_base.BaseTest):
       def foo(a, b, c:int, d=0, e=0, f=0, g=0, *myargs,
               u:str, v, x:float=0, y=0, z=0, **mykwargs):
         return 3
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def foo(a, b, c:int, d=..., e=..., f=..., g=..., *myargs,
-              u:str, v, x:float=..., y=..., z=..., **mykwargs): ...
+              u:str, v, x:float=..., y=..., z=..., **mykwargs) -> int: ...
     """)
 
   def test_namedtuple_defaults(self):

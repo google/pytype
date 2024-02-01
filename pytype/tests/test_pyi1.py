@@ -82,7 +82,7 @@ class PYITest(test_base.BaseTest):
       ty = self.Infer("""
         import classes
         x = classes.B().foo()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import classes
         x = ...  # type: classes.A
@@ -97,7 +97,7 @@ class PYITest(test_base.BaseTest):
       ty = self.Infer("""
         import vague
         x = vague.foo + vague.bar
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import vague
         from typing import Any
@@ -122,7 +122,7 @@ class PYITest(test_base.BaseTest):
         x = a.u(1, 2)
         y = a.v(1, 2)
         z = a.w(1, 2)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import decorated
         a = ...  # type: decorated.A
@@ -144,7 +144,7 @@ class PYITest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         u = a.A().w(a.A.v)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         u = ...  # type: int
@@ -158,7 +158,7 @@ class PYITest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         u = a.parse("True")
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         u = ...  # type: int
@@ -194,7 +194,7 @@ class PYITest(test_base.BaseTest):
       ty = self.Infer("""
         import a
         u = a.f([1, 2, 3])
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import a
         u = ...  # type: int
@@ -230,18 +230,18 @@ class PYITest(test_base.BaseTest):
         def bar():
           pass
         x = foo.process_function(bar)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Any
-        def bar() -> Any: ...   # 'Any' because deep=False
-        x = ...  # type: NoneType
+        def bar() -> None: ...
+        x: None
       """)
 
   def test_hex(self):
     ty = self.Infer("""
       x = hex(4)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
     """)
@@ -483,7 +483,7 @@ class PYITest(test_base.BaseTest):
         import a
         x = a.x - a.x
         y = a.x - a.y
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import FrozenSet
         import a
@@ -527,7 +527,7 @@ class PYITest(test_base.BaseTest):
       ty = self.Infer("""
         import foo
         v = foo.Foo().__enter__()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         v = ...  # type: foo.Foo
@@ -608,7 +608,7 @@ class PYITest(test_base.BaseTest):
         import bar
         v1 = bar.Foo()
         v2 = bar.f("")
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import bar
         v1 = ...  # type: foo.Foo

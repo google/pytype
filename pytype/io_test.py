@@ -59,20 +59,20 @@ class IOTest(unittest.TestCase):
     self.assertTrue(any("in calling_function" in x for x in trace))
 
   def test_check_py(self):
-    errorlog = io.check_py("undefined_var")
+    errorlog = io.check_py("undefined_var").context.errorlog
     error, = errorlog.unique_sorted_errors()
     self.assertEqual(error.name, "name-error")
 
   def test_check_py_with_options(self):
     options = config.Options.create(disable="name-error")
-    errorlog = io.check_py("undefined_var", options)
+    errorlog = io.check_py("undefined_var", options).context.errorlog
     self.assertFalse(errorlog.unique_sorted_errors())
 
   def test_generate_pyi(self):
-    errorlog, pyi_string, pytd_ast = io.generate_pyi("x = 42")
-    self.assertFalse(errorlog.unique_sorted_errors())
+    ret, pyi_string = io.generate_pyi("x = 42")
+    self.assertFalse(ret.context.errorlog.unique_sorted_errors())
     self.assertEqual(pyi_string, "x: int\n")
-    self.assertIsInstance(pytd_ast, pytd.TypeDeclUnit)
+    self.assertIsInstance(ret.ast, pytd.TypeDeclUnit)
 
   def test_generate_pyi_with_options(self):
     with self._tmpfile("x: int") as pyi:
@@ -81,12 +81,12 @@ class IOTest(unittest.TestCase):
           f"{pyi_name} {pyi.name}") as imports_map:
         src = "import {mod}; y = {mod}.x".format(mod=pyi_name)
         options = config.Options.create(imports_map=imports_map.name)
-        _, pyi_string, _ = io.generate_pyi(src, options)
+        _, pyi_string = io.generate_pyi(src, options)
     self.assertEqual(pyi_string,
                      f"import {pyi_name}\n\ny: int\n")
 
   def test_generate_pyi__overload_order(self):
-    _, pyi_string, _ = io.generate_pyi(textwrap.dedent("""
+    _, pyi_string = io.generate_pyi(textwrap.dedent("""
       from typing import Any, overload
       @overload
       def f(x: None) -> None: ...

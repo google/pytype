@@ -14,9 +14,9 @@ toplevel_py_binary(
   NAME
     pytype-single
   SRCS
-    single.py
+    main.py
   MAIN
-    single.py
+    main.py
   DEPS
     .pytype_main_deps
 )
@@ -148,7 +148,6 @@ py_library(
     .context
     .convert_structural
     .debug
-    .errors
     .metrics
     pytype.abstract.abstract
     pytype.pytd.pytd
@@ -297,13 +296,13 @@ py_library(
     .config
     .constant_folding
     .context
-    .errors
     .load_pytd
     pytype.directors.directors
     pytype.imports.imports
     pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
+    pytype.rewrite.rewrite
 )
 
 py_library(

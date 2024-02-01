@@ -56,27 +56,23 @@ class ClassesTest(test_base.BaseTest):
     """)
 
   def test_class_name(self):
-    ty = self.Infer("""
+    self.Check("""
       class MyClass:
         def __init__(self, name):
-          pass
+          self.name = name
       def f():
         factory = MyClass
         return factory("name")
-      f()
-    """, deep=False, show_library_calls=True)
-    self.assertTypesMatchPytd(ty, """
-    class MyClass:
-      def __init__(self, name: str) -> NoneType: ...
-
-    def f() -> MyClass: ...
+      cls = f()
+      assert_type(cls, MyClass)
+      assert_type(cls.name, str)
     """)
 
   def test_inherit_from_unknown(self):
     ty = self.Infer("""
       class A(__any_object__):
         pass
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
     from typing import Any
     class A(Any):
@@ -222,7 +218,7 @@ class ClassesTest(test_base.BaseTest):
           x = 3
         l = Foo()
         return l.x
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       def f() -> int: ...
     """)
@@ -266,7 +262,7 @@ class ClassesTest(test_base.BaseTest):
 
         def get_x(self):
           return self.x
-    """, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
         class A:
           x = ...  # type: int
@@ -621,7 +617,7 @@ class ClassesTest(test_base.BaseTest):
         name1 = A.x.name
         enum2 = B.x
         name2 = B.x.name
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import menum
         from typing import Any
@@ -683,7 +679,7 @@ class ClassesTest(test_base.BaseTest):
       class A: pass
       B = A
       x = B()
-    """, deep=False)
+    """)
     # We don't care whether the type of x is inferred as A or B, but we want it
     # to always be the same.
     self.assertTypesMatchPytd(ty, """
@@ -989,7 +985,7 @@ class ClassesTest(test_base.BaseTest):
           self.instance_attr = self.attr
         def f(self):
           return self.instance_attr
-    """, deep=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class Foo:
@@ -1104,7 +1100,7 @@ class ClassesTest(test_base.BaseTest):
       class Foo:
         def __new__(cls, x):
           return super(Foo, cls).__new__(cls, x)  # wrong-arg-count[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def test_super_init_wrong_arg_count(self):
@@ -1112,7 +1108,7 @@ class ClassesTest(test_base.BaseTest):
       class Foo:
         def __init__(self, x):
           super(Foo, self).__init__(x)  # wrong-arg-count[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"1.*2"})
 
   def test_super_new_missing_parameter(self):
@@ -1123,7 +1119,7 @@ class ClassesTest(test_base.BaseTest):
           return super(Foo, cls).__new__()  # missing-parameter[e]
         def __init__(self, x):
           pass
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"cls.*__new__"})
 
   def test_new_kwarg(self):
@@ -1137,7 +1133,7 @@ class ClassesTest(test_base.BaseTest):
       class Bar:
         def __new__(cls):
           return super(Bar, cls).__new__(cls, x=42)  # wrong-keyword-args[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"x.*__new__"})
 
   def test_init_kwarg(self):
@@ -1151,7 +1147,7 @@ class ClassesTest(test_base.BaseTest):
       class Bar:
         def __init__(self):
           super(Bar, self).__init__(x=42)  # wrong-keyword-args[e]
-    """, deep=True)
+    """)
     self.assertErrorRegexes(errors, {"e": r"x.*__init__"})
 
   def test_alias_inner_class(self):
@@ -1195,7 +1191,7 @@ class ClassesTest(test_base.BaseTest):
   def test_instantiate_with_abstract_dict(self):
     ty = self.Infer("""
       X = type("", (), dict())
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class X: ...
     """)

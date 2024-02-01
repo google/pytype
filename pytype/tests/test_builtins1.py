@@ -10,13 +10,10 @@ class BuiltinTests(test_base.BaseTest):
   """Tests for builtin methods and classes."""
 
   def test_repr1(self):
-    ty = self.Infer("""
+    self.Check("""
       def t_testRepr1(x):
         return repr(x)
-      t_testRepr1(4)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def t_testRepr1(x: int) -> str: ...
+      assert_type(t_testRepr1(4), str)
     """)
 
   @test_base.skip("b/238794928: Function inference will be removed.")
@@ -27,7 +24,7 @@ class BuiltinTests(test_base.BaseTest):
       t_testRepr2(4)
       t_testRepr2(1.234)
       t_testRepr2('abc')
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def t_testRepr2(x: Union[float, int, str]) -> str: ...
@@ -38,20 +35,17 @@ class BuiltinTests(test_base.BaseTest):
       def t_testRepr3(x):
         return repr(x)
       t_testRepr3(__any_object__())
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       def t_testRepr3(x) -> str: ...
     """)
 
   def test_eval_solve(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Any
       def t_testEval(x):
         return eval(x)
-      t_testEval(4)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      def t_testEval(x: int) -> Any: ...
+      assert_type(t_testEval(4), Any)
     """)
 
   def test_isinstance1(self):
@@ -118,20 +112,13 @@ class BuiltinTests(test_base.BaseTest):
     self.assertErrorRegexes(errors, {"e": r"Iterable.*int"})
 
   def test_dict_defaults(self):
-    ty = self.Infer("""
+    self.Check("""
+    from typing import Dict
     def t_testDictDefaults(x):
       d = {}
       res = d.setdefault(x, str(x))
-      _i_(d)
       return res
-    def _i_(x):
-      return x
-    t_testDictDefaults(3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def t_testDictDefaults(x: int) -> str: ...
-      # _i_ captures the more precise definition of the dict
-      def _i_(x: dict[int, str]) -> dict[int, str]: ...
+    assert_type(t_testDictDefaults(3), str)
     """)
 
   def test_dict_get(self):
@@ -181,7 +168,7 @@ class BuiltinTests(test_base.BaseTest):
     z = __any_object__
     t_testListInit2(__any_object__, z)
     z + 1
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       z = ...  # type: Any
@@ -190,46 +177,37 @@ class BuiltinTests(test_base.BaseTest):
     """)
 
   def test_list_init3(self):
-    ty = self.Infer("""
+    self.Check("""
     def t_testListInit3(x, i):
       return x[i]
-    t_testListInit3([1,2,3,'abc'], 0)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import List, Union
-      def t_testListInit3(x: List[Union[int, str]], i: int) -> int: ...
+    assert_type(t_testListInit3([1,2,3,'abc'], 0), int)
     """)
 
   def test_list_init4(self):
-    ty = self.Infer("""
+    self.Check("""
+    from typing import Any
     def t_testListInit4(x):
-      return _i_(list(x))[0]
+      l = _i_(list(x))
+      assert_type(l, list)
+      return l[0]
     def _i_(x):
       return x
-    t_testListInit4(__any_object__)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import Any
-      def t_testListInit4(x) -> Any: ...
-      def _i_(x: list) -> list: ...
+    assert_type(t_testListInit4(__any_object__), Any)
     """)
 
   def test_abs_int(self):
-    ty = self.Infer("""
+    self.Check("""
       def t_testAbsInt(x):
         return abs(x)
-      t_testAbsInt(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def t_testAbsInt(x: int) -> int: ...
-  """)
+      assert_type(t_testAbsInt(1), int)
+    """)
 
   def test_abs(self):
     ty = self.Infer("""
       def t_testAbs(x):
         return abs(x)
       t_testAbs(__any_object__)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       # Since SupportsAbs.__abs__ returns a type parameter, the return type
@@ -247,7 +225,7 @@ class BuiltinTests(test_base.BaseTest):
           return 42
       x = Foo() if __random__ else Bar()
       y = abs(x)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any, Union
       x = ...  # type: Union[Bar, Foo]
@@ -275,7 +253,7 @@ class BuiltinTests(test_base.BaseTest):
       t_testCmpMulti(1, 2)
       t_testCmpMulti(1, 2.0)
       t_testCmpMulti(1.0, 2)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Union
       def t_testCmpMulti(x: Union[float, int], y: int) -> int: ...
@@ -283,23 +261,17 @@ class BuiltinTests(test_base.BaseTest):
     """)
 
   def test_cmp_str(self):
-    ty = self.Infer("""
+    self.Check("""
       def t_testCmpStr(x, y):
         return cmp(x, y)
-      t_testCmpStr("abc", "def")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def t_testCmpStr(x: str, y: str) -> int: ...
+      assert_type(t_testCmpStr("abc", "def"), int)
     """)
 
   def test_cmp_str2(self):
-    ty = self.Infer("""
+    self.Check("""
       def t_testCmpStr2(x, y):
         return cmp(x, y)
-      t_testCmpStr2("abc", __any_object__)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def t_testCmpStr2(x: str, y) -> int: ...
+      assert_type(t_testCmpStr2("abc", __any_object__), int)
     """)
 
   def test_tuple(self):
@@ -308,7 +280,7 @@ class BuiltinTests(test_base.BaseTest):
         return x
       def g(args):
         f(*tuple(args))
-    """, show_library_calls=True)
+    """)
 
   def test_open(self):
     ty = self.Infer("""
@@ -342,7 +314,7 @@ class BuiltinTests(test_base.BaseTest):
       def args():
         return ' '.join(sys.argv)
       args()
-    """, deep=False, show_library_calls=True)
+    """)
     self.assertTypesMatchPytd(ty, """
       import sys
       def args() -> str: ...

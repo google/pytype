@@ -10,7 +10,6 @@ from typing import Any, List, Optional, Type, TypeVar
 
 from pytype import analyze
 from pytype import config
-from pytype import context
 from pytype import io
 from pytype import load_pytd
 from pytype import module_utils
@@ -1312,18 +1311,11 @@ def process_file(options, source_text=None, generate_callgraphs=False,
   with config.verbosity_from(options):
     loader = load_pytd.create_loader(options)
     src = source_text or io.read_source_file(options.input)
-    ctx = context.Context(
-        options=options,
-        generate_unknowns=options.protocols,
-        store_all_calls=True,
-        loader=loader)
     with io.wrap_pytype_exceptions(PytypeError, filename=options.input):
       ret = analyze.infer_types(
           src=src,
-          filename=options.input,
           options=options,
-          loader=loader,
-          ctx=ctx)
+          loader=loader)
       pytd_module = ret.ast
   # pylint: disable=unexpected-keyword-arg
   ast_root_node = astlib.parse(src, options.input,
@@ -1333,18 +1325,18 @@ def process_file(options, source_text=None, generate_callgraphs=False,
   # TODO(mdemello): Get from args
   module_name = "module"
   src_code = source.Code(
-      src, ctx.vm.opcode_traces, VmTrace, filename=options.input)
+      src, ret.context.vm.opcode_traces, VmTrace, filename=options.input)
   ix = Indexer(
       ast=astlib,
       src=src_code,
-      loader=ctx.loader,
+      loader=loader,
       module_name=module_name,
       pytd_module=pytd_module)
   ix.index(ast_root_node)
   ix.finalize()
 
   # Make the vm available via indexer.vm for post-finalize() functions.
-  ix.vm = ctx.vm
+  ix.vm = ret.context.vm
 
   # Use the indexer as a single object to hold data for calling processes.
   if generate_callgraphs:

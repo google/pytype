@@ -35,6 +35,13 @@ class LiteralValueError(Exception):
   pass
 
 
+class MissingModuleError(KeyError):
+
+  def __init__(self, module):
+    self.module = module
+    super().__init__(f"Unknown module {module}")
+
+
 # All public elements of pytd_visitors are aliased here so that we can maintain
 # the conceptually simpler illusion of having a single visitors module.
 ALL_NODE_NAMES = base_visitor.ALL_NODE_NAMES
@@ -434,7 +441,7 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     if module_name in self._module_map:
       return self._module_map[module_name], cls_prefix
     else:
-      raise KeyError(f"Unknown module {name}")
+      raise MissingModuleError(name)
 
   def _IsLocalName(self, prefix):
     if prefix == self.name:

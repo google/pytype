@@ -5,7 +5,6 @@ import re
 
 from pytype import analyze
 from pytype import config
-from pytype import context
 from pytype import load_pytd
 from pytype.ast import visitor
 from pytype.pytd import pytd
@@ -78,19 +77,13 @@ def trace(src, options=None):
   options = options or config.Options.create()
   with config.verbosity_from(options):
     loader = load_pytd.create_loader(options)
-    ctx = context.Context(
-        options=options,
-        generate_unknowns=options.protocols,
-        loader=loader)
     ret = analyze.infer_types(
         src=src,
-        filename=options.input,
         options=options,
-        loader=loader,
-        ctx=ctx)
+        loader=loader)
     pytd_module = ret.ast
     raw_traces = []
-    for op, symbol, data in ctx.vm.opcode_traces:
+    for op, symbol, data in ret.context.vm.opcode_traces:
       raw_traces.append(
           (op, symbol, tuple(_to_pytd(d, loader, pytd_module) for d in data)))
   return source.Code(src, raw_traces, TypeTrace, options.input)

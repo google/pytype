@@ -197,7 +197,7 @@ class ProtocolTest(test_base.BaseTest):
       def f(s: Iterable[T2]) -> Iterator[T2]:
         return iter(s)
       next(f(Bar()))
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable, Iterator, TypeVar
       T = TypeVar("T")
@@ -217,7 +217,7 @@ class ProtocolTest(test_base.BaseTest):
       def f(s: Iterable[T]) -> Iterator[T]:
         return iter(s)
       next(f(Bar()))
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterable, Iterator, TypeVar
       class Bar:

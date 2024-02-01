@@ -10,7 +10,7 @@ import textwrap
 
 from pytype import config
 from pytype import file_utils
-from pytype import single
+from pytype import main as pytype_main
 from pytype import utils
 from pytype.imports import builtin_stubs
 from pytype.imports import typeshed
@@ -198,7 +198,7 @@ class PytypeTest(test_base.UnitTest):
     with open(infile, "w") as f:
       f.write("def f(x): pass")
     options = config.Options.create(infile, output=outfile)
-    single._run_pytype(options)
+    pytype_main._run_pytype(options)
     self.assertTrue(path_utils.isfile(outfile))
 
   @test_base.skip("flaky; see b/195678773")
@@ -390,7 +390,7 @@ class PytypeTest(test_base.UnitTest):
     self._infer_types_and_check_errors("complex.py", [])
     self.assertInferredPyiEquals(filename="complex.pyi")
 
-  def test_check_main(self):
+  def test_check_deep(self):
     self._setup_checking(self._make_py_file("""
       def f():
         name_error
@@ -398,10 +398,9 @@ class PytypeTest(test_base.UnitTest):
         "".foobar
       g()
     """))
-    self.pytype_args["--main"] = self.INCLUDE
     self.pytype_args["--output-errors-csv"] = self.errors_csv
     self._run_pytype(self.pytype_args)
-    self.assertHasErrors("attribute-error")
+    self.assertHasErrors("name-error", "attribute-error")
 
   def test_infer_to_file(self):
     self.pytype_args[self._data_path("simple.py")] = self.INCLUDE

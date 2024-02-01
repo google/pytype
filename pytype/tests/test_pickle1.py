@@ -25,13 +25,13 @@ class PickleTest(test_base.BaseTest):
   def test_type(self):
     pickled = self.Infer("""
       x = type
-    """, deep=False, pickle=True, module_name="foo")
+    """, pickle=True, module_name="foo")
     with test_utils.Tempdir() as d:
       u = d.create_file("u.pickled", pickled)
       ty = self.Infer("""
         import u
         r = u.x
-      """, deep=False, pythonpath=[""], imports_map={"u": u})
+      """, pythonpath=[""], imports_map={"u": u})
       self.assertTypesMatchPytd(ty, """
         import u
         from typing import Type
@@ -43,7 +43,7 @@ class PickleTest(test_base.BaseTest):
       import datetime
       a = 42
       timedelta = datetime.timedelta  # copy class
-    """, deep=False, pickle=True, module_name="foo")
+    """, pickle=True, module_name="foo")
     self._verifyDeps(pickled_foo, ["builtins"], ["datetime"])
     with test_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
@@ -57,7 +57,7 @@ class PickleTest(test_base.BaseTest):
       ty = self.Infer("""
         import bar
         r = bar.timedelta(0)
-      """, deep=False, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
+      """, pythonpath=[""], imports_map={"foo": foo, "bar": bar})
       self._verifyDeps(ty, ["datetime"], [])
       self.assertTypesMatchPytd(ty, """
         import datetime
@@ -69,7 +69,7 @@ class PickleTest(test_base.BaseTest):
     with test_utils.Tempdir() as d:
       pickled_foo = self.Infer("""
         class X: pass
-      """, deep=False, pickle=True, module_name="foo")
+      """, pickle=True, module_name="foo")
       self._verifyDeps(pickled_foo, ["builtins"], [])
       foo = d.create_file("foo.pickled", pickled_foo)
       pickled_bar = self.Infer("""
@@ -77,30 +77,29 @@ class PickleTest(test_base.BaseTest):
         def f():
           return foo.X()
       """, pickle=True, pythonpath=[""],
-                               imports_map={"foo": foo}, module_name="bar",
-                               deep=True)
+                               imports_map={"foo": foo}, module_name="bar")
       bar = d.create_file("bar.pickled", pickled_bar)
       self._verifyDeps(pickled_bar, [], ["foo"])
       self.Infer("""
         import bar
         f = bar.f
-      """, deep=False, imports_map={"foo": foo, "bar": bar})
+      """, imports_map={"foo": foo, "bar": bar})
 
   def test_file_change(self):
     with test_utils.Tempdir() as d:
       pickled_xy = self.Infer("""
         class X: pass
         class Y: pass
-      """, deep=False, pickle=True, module_name="foo")
+      """, pickle=True, module_name="foo")
       pickled_x = self.Infer("""
         class X: pass
-      """, deep=False, pickle=True, module_name="foo")
+      """, pickle=True, module_name="foo")
       foo = d.create_file("foo.pickled", pickled_xy)
       pickled_bar = self.Infer("""
         import foo
         class A(foo.X): pass
         class B(foo.Y): pass
-      """, deep=False, pickle=True, imports_map={"foo": foo}, module_name="bar")
+      """, pickle=True, imports_map={"foo": foo}, module_name="bar")
       self._verifyDeps(pickled_bar, [], ["foo"])
       bar = d.create_file("bar.pickled", pickled_bar)
       # Now, replace the old foo.pickled with a version that doesn't have Y
@@ -110,26 +109,26 @@ class PickleTest(test_base.BaseTest):
         import bar
         a = bar.A()
         b = bar.B()
-      """, deep=False, imports_map={"foo": foo, "bar": bar})
+      """, imports_map={"foo": foo, "bar": bar})
       # Also try deleting the file.
       d.delete_file("foo.pickled")
       self.Infer("""
         import bar
         a = bar.A()
         b = bar.B()
-      """, deep=False, imports_map={"foo": foo, "bar": bar})
+      """, imports_map={"foo": foo, "bar": bar})
 
   def test_file_rename(self):
     with test_utils.Tempdir() as d:
       pickled_other_foo = self.Infer("""
         class Foo: pass
-      """, deep=False, pickle=True, module_name="bar")
+      """, pickle=True, module_name="bar")
       other_foo = d.create_file("empty.pickled", pickled_other_foo)
       pickled_foo = self.Infer("""
         class Foo:
           def __init__(self): pass
         x = Foo()
-      """, deep=False, pickle=True, module_name="foo")
+      """, pickle=True, module_name="foo")
       foo = d.create_file("foo.pickled", pickled_foo)
       self.Infer("""
         import bar

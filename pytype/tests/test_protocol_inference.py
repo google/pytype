@@ -9,7 +9,7 @@ class ProtocolInferenceTest(test_base.BaseTest):
 
   def setUp(self):
     super().setUp()
-    self.options.tweak(protocols=True)
+    self.options.tweak(check=False, protocols=True)
 
   def test_multiple_signatures_with_type_parameter(self):
     with test_utils.Tempdir() as d:

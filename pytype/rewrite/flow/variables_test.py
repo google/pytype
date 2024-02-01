@@ -1,13 +1,9 @@
 from typing import Union
 
-from pytype.rewrite import variables
+from pytype.rewrite.flow import variables
 from typing_extensions import assert_type
 
 import unittest
-
-
-class ConditionTest(unittest.TestCase):
-  pass
 
 
 class BindingTest(unittest.TestCase):

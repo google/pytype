@@ -26,7 +26,7 @@ class TypingMethodsTest(test_base.BaseTest):
         e = [x for x in m.items()]
         f = [x for x in m.keys()]
         g = [x for x in m.values()]
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Tuple, Union
         import foo

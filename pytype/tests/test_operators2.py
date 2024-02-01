@@ -74,7 +74,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
     ty = self.Infer("""
       t_testCallAny = __any_object__
       t_testCallAny()  # error because there's no "def f()..."
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       t_testCallAny = ...  # type: Any
@@ -86,7 +86,7 @@ class OperatorsWithAnyTests(test_base.BaseTest):
       def t_testSys():
         return sys
       t_testSys()
-      """, deep=False)
+      """)
     self.assertEqual(ty.Lookup("t_testSys").signatures[0].exceptions,
                      self.nameerror)
 

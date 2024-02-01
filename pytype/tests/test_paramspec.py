@@ -58,7 +58,7 @@ class ParamSpecTest(test_base.BaseTest):
     ty = self.Infer("""
       from typing import ParamSpec
       S = ParamSpec("S", bound=float, covariant=True)
-    """, deep=False)
+    """)
     # The "covariant" keyword is ignored for now.
     self.assertTypesMatchPytd(ty, """
       from typing import ParamSpec

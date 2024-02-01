@@ -14,7 +14,7 @@ class NamedtupleTests(test_base.BaseTest):
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
       assert_type(a, X)
-      """, deep=False)
+      """)
 
   def test_pytd(self):
     ty = self.Infer("""
@@ -22,7 +22,7 @@ class NamedtupleTests(test_base.BaseTest):
 
       X = collections.namedtuple("X", ["y", "z"])
       a = X(y=1, z=2)
-      """, deep=False)
+      """)
     self.assertTypesMatchPytd(ty, """
       import collections
       from typing import Any, NamedTuple
@@ -40,7 +40,7 @@ class NamedtupleTests(test_base.BaseTest):
 
         F = collections.namedtuple("F", [])
         a = F()
-        """, deep=False)
+        """)
 
   def test_str_args(self):
     self.Check("""
@@ -49,7 +49,7 @@ class NamedtupleTests(test_base.BaseTest):
         S = collections.namedtuple("S", "a b c")
         b = S(1, 2, 3)
         c = (b.a, b.b, b.c)
-    """, deep=False)
+    """)
 
   def test_str_args2(self):
     self.Check("""
@@ -83,7 +83,7 @@ class NamedtupleTests(test_base.BaseTest):
         S = collections.namedtuple("S", "abc def ghi abc", rename=True)
         a = S(1, 2, 3, 4)
         b = a._3
-        """, deep=False)
+        """)
 
   def test_bad_initialize(self):
     self.CheckWithErrors("""
@@ -298,7 +298,7 @@ class NamedtupleTests(test_base.BaseTest):
       X = collections.namedtuple("_", [])
       Y = collections.namedtuple("_", [])
       Z = collections.namedtuple("_", "a")
-    """, deep=False)
+    """)
 
   def test_subclass(self):
     self.Check("""

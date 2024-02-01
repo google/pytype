@@ -17,7 +17,7 @@ class ProtocolTest(test_base.BaseTest):
         def __iter__(self):
           return iter(__any_object__)
       v = list(A())
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       from typing import Any
       class A:

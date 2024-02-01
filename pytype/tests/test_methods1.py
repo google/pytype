@@ -8,28 +8,26 @@ class MethodsTest(test_base.BaseTest):
   """Tests for methods."""
 
   def test_flow_and_replacement_sanity(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         if x:
           x = 42
           y = x
           x = 1
         return x + 4
-      f(4)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(4), int)
+    """)
 
   def test_multiple_returns(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         if x:
           return 1
         else:
           return 1.5
-      f(0)
-      f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int | float: ...")
+      assert_type(f(0), float)
+      assert_type(f(1), int)
+    """)
 
   def test_loops_sanity(self):
     ty = self.Infer("""
@@ -45,27 +43,19 @@ class MethodsTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
 
   def test_add_int(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x + 1
-      f(3.2)
-      f(3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      from typing import overload
-      @overload
-      def f(x: float) -> float: ...
-      @overload
-      def f(x: int) -> int: ...
+      assert_type(f(3.2), float)
+      assert_type(f(3), int)
     """)
 
   def test_conjugate(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y):
         return x.conjugate()
-      f(int(), int())
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: int) -> int: ...")
+      assert_type(f(int(), int()), int)
+    """)
 
   def test_class_sanity(self):
     ty = self.Infer("""
@@ -83,54 +73,49 @@ class MethodsTest(test_base.BaseTest):
       x1 = a.get_x()
       a.set_x(1.2)
       x2 = a.get_x()
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
-      from typing import Union
-      a = ...  # type: A
-      x1 = ...  # type: int
-      x2 = ...  # type: float
-      y = ...  # type: int
+      from typing import Any, Union
+      a: A
+      x1: int
+      x2: float
+      y: int
       class A:
-        x = ...  # type: float
+        x: Any
         def __init__(self) -> None : ...
-        def get_x(self) -> Union[float, int]: ...
-        def set_x(self, x: float) -> None: ...
+        def get_x(self) -> int: ...
+        def set_x(self, x) -> None: ...
     """)
 
   def test_boolean_op(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y):
         return 1 < x < 10
         return 1 > x > 10
-      f(1, 2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: int) -> bool: ...")
+      assert_type(f(1, 2), bool)
+    """)
 
   def test_is(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(a, b):
         return a is b
-      f(1, 2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(a: int, b: int) -> bool: ...")
+      assert_type(f(1, 2), bool)
+    """)
 
   def test_is_not(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(a, b):
         return a is not b
-      f(1, 2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(a: int, b: int) -> bool: ...")
+      assert_type(f(1, 2), bool)
+    """)
 
-  def test_slice(self):
-    ty = self.Infer("""
+  def test_unpack(self):
+    self.Check("""
+      from typing import Tuple
       def f(x):
         a, b = x
         return (a, b)
-      f((1, 2))
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: tuple[int, int]) -> tuple[int, int]: ...
+      assert_type(f((1, 2)), Tuple[int, int])
     """)
 
   def test_convert(self):
@@ -150,28 +135,25 @@ class MethodsTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f(x) -> bool: ...")
 
   def test_positive(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return +x
-      f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(1), int)
+    """)
 
   def test_negative(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return -x
-      f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(1), int)
+    """)
 
   def test_invert(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return ~x
-      f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(1), int)
+    """)
 
   def test_inheritance(self):
     ty = self.Infer("""
@@ -361,13 +343,12 @@ class MethodsTest(test_base.BaseTest):
     """)
 
   def test_closure(self):
-    ty = self.Infer("""
+    self.Check("""
        def f(x, y):
          closure = lambda: x + y
          return closure()
-       f(1, 2)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: int) -> int: ...")
+       assert_type(f(1, 2), int)
+    """)
 
   def test_deep_closure(self):
     ty = self.Infer("""
@@ -395,15 +376,14 @@ class MethodsTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f() -> int: ...")
 
   def test_closure_binding_arguments(self):
-    ty = self.Infer("""
+    self.Check("""
        def f(x):
          y = 1
          def g(z):
            return x + y + z
          return g(1)
-       f(1)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+       assert_type(f(1), int)
+    """)
 
   def test_closure_on_multi_type(self):
     ty = self.Infer("""
@@ -418,54 +398,42 @@ class MethodsTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, "def f() -> int | float: ...")
 
   def test_call_kwargs(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y=3):
         return x + y
-      f(40, **{"y": 2})
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: int = ...) -> int: ...")
+      assert_type(f(40, **{"y": 2}), int)
+    """)
 
   def test_call_args(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x
       args = (3,)
-      f(*args)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: int) -> int: ...
-      args: tuple[int]
+      assert_type(f(*args), int)
     """)
 
   def test_call_args_kwargs(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x
       args = (3,)
       kwargs = {}
-      f(*args, **kwargs)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: int) -> int: ...
-      args: tuple[int]
-      kwargs: dict[nothing, nothing]
+      assert_type(f(*args, **kwargs), int)
     """)
 
   def test_call_positional_as_keyword(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(named):
         return named
-      f(named=3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(named: int) -> int: ...")
+      assert_type(f(named=3), int)
+    """)
 
   def test_two_keywords(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x, y):
         return x if x else y
-      f(x=3, y=4)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: int) -> int: ...")
+      assert_type(f(x=3, y=4), int)
+    """)
 
   def test_two_distinct_keyword_params(self):
     f = """
@@ -473,64 +441,53 @@ class MethodsTest(test_base.BaseTest):
         return x if x else y
     """
 
-    ty = self.Infer(f + """
-      f(x=3, y="foo")
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: str) -> int: ...")
+    self.Check(f + """
+      assert_type(f(x=3, y="foo"), int)
+    """)
 
-    ty = self.Infer(f + """
-      f(y="foo", x=3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int, y: str) -> int: ...")
+    self.Check(f + """
+      assert_type(f(y="foo", x=3), int)
+    """)
 
   def test_starstar(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x
-      f(**{"x": 3})
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(x: int) -> int: ...")
+      assert_type(f(**{"x": 3}), int)
+    """)
 
   def test_starstar2(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x
       kwargs = {}
       kwargs['x'] = 3
-      f(**kwargs)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: int) -> int: ...
-      kwargs: dict[str, int]
+      assert_type(f(**kwargs), int)
     """)
 
   def test_starstar3(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(x):
         return x
       kwargs = dict(x=3)
-      f(**kwargs)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: int) -> int: ...
-      kwargs: dict[str, int]
+      assert_type(f(**kwargs), int)
     """)
 
   def test_starargs_type(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Tuple
       def f(*args, **kwds):
         return args
-      f(3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(*args, **kwds) -> tuple[int]: ...")
+      assert_type(f(3), Tuple[int])
+    """)
 
   def test_starargs_type2(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Tuple
       def f(nr, *args):
         return args
-      f("foo", 4)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(nr: str, *args) -> tuple[int]: ...")
+      assert_type(f("foo", 4), Tuple[int])
+    """)
 
   def test_starargs_deep(self):
     ty = self.Infer("""
@@ -559,41 +516,34 @@ class MethodsTest(test_base.BaseTest):
     """)
 
   def test_empty_starargs_type(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Tuple
       def f(nr, *args):
         return args
-      f(3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, "def f(nr: int, *args) -> tuple[()]: ...")
+      assert_type(f(3), Tuple[()])
+    """)
 
   def test_starstar_kwargs_type(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Dict
       def f(*args, **kwargs):
         return kwargs
-      f(foo=3, bar=4)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(*args, **kwargs) -> dict[str, int]: ...
+      assert_type(f(foo=3, bar=4), Dict[str, int])
     """)
 
   def test_starstar_kwargs_type2(self):
-    ty = self.Infer("""
+    self.Check("""
+      from typing import Dict
       def f(x, y, **kwargs):
         return kwargs
-      f("foo", "bar", z=3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(x: str, y: str, **kwargs) -> dict[str, int]: ...
+      assert_type(f("foo", "bar", z=3), Dict[str, int])
     """)
 
   def test_empty_starstar_kwargs_type(self):
-    ty = self.Infer("""
+    self.Check("""
       def f(nr, **kwargs):
         return kwargs
-      f(3)
-    """, deep=False)
-    self.assertTypesMatchPytd(ty, """
-      def f(nr: int, **kwargs) -> dict[nothing, nothing]: ...
+      assert_type(f(3), "Dict[nothing, nothing]")
     """)
 
   def test_starstar_deep(self):
@@ -973,7 +923,7 @@ class MethodsTest(test_base.BaseTest):
   def test_json(self):
     ty = self.Infer("""
       import json
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
     import json
     """)
@@ -981,7 +931,7 @@ class MethodsTest(test_base.BaseTest):
   def test_new(self):
     ty = self.Infer("""
       x = str.__new__(str)
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       x = ...  # type: str
     """)

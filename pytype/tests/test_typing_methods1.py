@@ -87,7 +87,7 @@ class TypingMethodsTest(test_base.BaseTest):
         x.write("foo")
         x.writelines(["foo", "bar"])
         x.close()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(
           ty, """
         import foo
@@ -131,7 +131,7 @@ class TypingMethodsTest(test_base.BaseTest):
           d = "foo" in seq
           e = iter(seq)
           f = reversed(seq)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Iterator, List, Sequence, Tuple, Union
@@ -167,7 +167,7 @@ class TypingMethodsTest(test_base.BaseTest):
           g = seq.remove("foo")
           seq[0:5] = [1,2,3]
           b = seq.extend([1,2,3])
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Iterator, List, Sequence, Union
@@ -200,7 +200,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = q.pop()
         cl = q.popleft()
         d = q.rotate(3)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import Deque
@@ -234,7 +234,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = m.setdefault("baz", 3j)
         m.update({4j: 2.1})
         m.update([(1, 2), (3, 4)])
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Tuple, Union
         import foo
@@ -264,7 +264,7 @@ class TypingMethodsTest(test_base.BaseTest):
         d = x - x
         e = x ^ x
         f = x.isdisjoint([1,2,3])
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import AbstractSet
@@ -303,7 +303,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = x | {1,2,3}
         d = x ^ {1,2,3}
         e = 3 in x
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         from typing import MutableSet, Union
@@ -352,7 +352,7 @@ class TypingMethodsTest(test_base.BaseTest):
         c = m1.group(0)
         d = m1.start()
         e = m1.end()
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         import foo
         import re

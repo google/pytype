@@ -113,7 +113,7 @@ class MatchTest(test_base.BaseTest):
         import foo
 
         def g1(): pass
-        def g2() -> int: pass
+        def g2() -> int: return 0
         v1 = foo.f1(g1)
         v2 = foo.f1(g2)
 
@@ -121,14 +121,14 @@ class MatchTest(test_base.BaseTest):
         def g4(x: int): pass
         w1 = foo.f2(g3)
         w2 = foo.f2(g4)
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
-        from typing import Any, List
+        from typing import List
         import foo
-        def g1() -> Any: ...
+        def g1() -> None: ...
         def g2() -> int: ...
-        def g3(x) -> Any: ...
-        def g4(x: int) -> Any: ...
+        def g3(x) -> None: ...
+        def g4(x: int) -> None: ...
 
         v1 = ...  # type: list
         v2 = ...  # type: List[int]
@@ -186,7 +186,7 @@ class MatchTest(test_base.BaseTest):
         @foo.decorate
         def f() -> Generator[Optional[str], None, None]:
           yield "hello world"
-      """, deep=False, pythonpath=[d.path])
+      """, pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import List, Optional
         import foo

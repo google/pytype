@@ -189,7 +189,7 @@ class StdlibTestsFeatures(test_base.BaseTest,
       f(tempfile.TemporaryFile("wb", suffix=".foo"))
       f(tempfile.NamedTemporaryFile("wb", suffix=".foo"))
       f(tempfile.SpooledTemporaryFile(1048576, "wb", suffix=".foo"))
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       import os
       import tempfile

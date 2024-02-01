@@ -109,7 +109,7 @@ class RecoveryTests(test_base.BaseTest):
         @decorator
         def f():
           name_error  # name-error
-    """, deep=True)
+    """)
 
   def test_assert_in_constructor(self):
     self.Check("""

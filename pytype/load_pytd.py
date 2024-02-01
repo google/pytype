@@ -271,17 +271,23 @@ class _Resolver:
     """Resolves external types in mod_ast."""
     name = mod_name or mod_ast.name
     try:
-      mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
+      return mod_ast.Visit(visitors.LookupExternalTypes(
           module_map, self_name=name, module_alias_map=aliases[name]))
-    except KeyError:
-      all_aliases = _merge_aliases(aliases)
+    except KeyError as e:
+      key_error = e
+    all_aliases = _merge_aliases(aliases)
+    new_aliases = dict(aliases[name])
+    while isinstance(key_error, visitors.MissingModuleError):
+      if key_error.module not in all_aliases:
+        break
+      new_aliases[key_error.module] = all_aliases[key_error.module]
       try:
-        mod_ast = mod_ast.Visit(visitors.LookupExternalTypes(
-            module_map, self_name=name, module_alias_map=all_aliases))
+        return mod_ast.Visit(visitors.LookupExternalTypes(
+            module_map, self_name=name, module_alias_map=new_aliases))
       except KeyError as e:
-        key = "".join(str(arg) for arg in e.args)
-        raise BadDependencyError(key, name) from e
-    return mod_ast
+        key_error = e
+    key = "".join(str(arg) for arg in key_error.args)
+    raise BadDependencyError(key, name) from key_error
 
   def resolve_module_alias(self, name, *, lookup_ast=None,
                            lookup_ast_name=None):

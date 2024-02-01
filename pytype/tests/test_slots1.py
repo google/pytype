@@ -59,7 +59,7 @@ class SlotsTest(test_base.BaseTest):
     ty = self.Infer("""
       class Foo:
         __slots__ = ["foo", "bar"]
-    """, deep=False)
+    """)
     self.assertTypesMatchPytd(ty, """
       class Foo:
         __slots__ = ["foo", "bar"]
