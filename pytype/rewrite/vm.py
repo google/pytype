@@ -22,5 +22,20 @@ class VM(vm_base.VmBase):
 
   def run(self) -> None:
     assert not self._stack
-    super().run()
+    while True:
+      try:
+        self.step()
+      except vm_base.VmConsumedError:
+        break
     assert not self._stack
+
+  def byte_RESUME(self, opcode):
+    del opcode  # unused
+
+  def byte_LOAD_CONST(self, opcode):
+    constant = opcode.argval
+    # TODO(b/241479600): Wrap this in an abstract value.
+    self._stack.append(variables.Variable.from_value(constant))
+
+  def byte_RETURN_VALUE(self, opcode):
+    unused_return_value = self._stack.pop()

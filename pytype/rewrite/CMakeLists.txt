@@ -45,4 +45,16 @@ py_library(
     pytype.rewrite.flow.flow
 )
 
+py_test(
+  NAME
+    vm_test
+  SRCS
+    vm_test.py
+  DEPS
+    .vm
+    pytype.pyc.pyc
+    pytype.rewrite.tests.test_utils
+)
+
 add_subdirectory(flow)
+add_subdirectory(tests)

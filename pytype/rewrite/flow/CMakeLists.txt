@@ -62,7 +62,6 @@ py_test(
   DEPS
     .conditions
     .vm_base
-    pytype.blocks.blocks
     pytype.pyc.pyc
-    pytype_extensions.instrumentation_for_testing
+    pytype.rewrite.tests.test_utils
 )

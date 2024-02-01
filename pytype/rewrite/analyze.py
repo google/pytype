@@ -76,12 +76,7 @@ def _analyze(
   # TODO(b/241479600): Populate globals from builtins.
   globals_ = {}
   module_vm = vm.VM(code, initial_locals=globals_, globals_=globals_)
-  try:
-    module_vm.run()
-  except NotImplementedError as e:
-    # TODO(b/241479600): stop catching NotImplementedError once enough of
-    # implementation is finished to pass smoke tests.
-    log.error('NotImplementedError: %s', e)
+  module_vm.run()
   # TODO(b/241479600): Analyze classes and functions.
 
 
