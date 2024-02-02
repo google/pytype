@@ -415,6 +415,7 @@ class MatchClassTest(test_base.BaseTest):
       c: bool
     """)
 
+  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
   def test_none_as_type(self):
     self.Check("""
       def f(x: str | int | None) -> int:
