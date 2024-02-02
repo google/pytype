@@ -931,6 +931,22 @@ class MatchClassTest(test_base.BaseTest):
             return int(x)
     """)
 
+  def test_match_instances(self):
+    # Regression test: Do not report redundant-match for a match_var with
+    # indefinite values.
+    self.Check("""
+      def f(x: str) -> bool:
+        match x:
+          case "red":
+            return True
+          case "blue":
+            return True
+          case "green":
+            return True
+          case _:
+            return False
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):

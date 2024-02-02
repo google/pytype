@@ -135,7 +135,7 @@ class _OptionSet:
       opt.values.remove(val)
       return [val]
     else:
-      return []
+      return [val] if opt.indefinite else []
 
   def cover_type(self, val) -> List[_Value]:
     """Remove a class and any associated instances from the match options."""
