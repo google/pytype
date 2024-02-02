@@ -42,6 +42,16 @@ class Variable(Generic[_T]):
       raise ValueError(f'Too {desc} bindings for {varname}: {self.bindings}')
     return self.bindings[0].value
 
+  def with_condition(self, condition: conditions.Condition) -> 'Variable':
+    """Adds a condition, 'and'-ing it with any existing."""
+    if condition is conditions.TRUE:
+      return self
+    new_bindings = []
+    for b in self.bindings:
+      new_condition = conditions.And(b.condition, condition)
+      new_bindings.append(dataclasses.replace(b, condition=new_condition))
+    return dataclasses.replace(self, bindings=tuple(new_bindings))
+
   def __repr__(self):
     bindings = ' | '.join(repr(b) for b in self.bindings)
     if self.name:

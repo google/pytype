@@ -124,6 +124,7 @@ class _OptionSet:
 
   def cover_instance(self, val) -> List[_Value]:
     """Remove an instance from the match options."""
+    assert isinstance(val, abstract.Instance)
     cls = val.cls
     if cls not in self._options:
       return []
@@ -195,15 +196,22 @@ class _OptionTracker:
     return ret
 
   def cover_from_cmp(self, line, case_var) -> List[_Value]:
+    """Cover cases based on a CMP match."""
     ret = []
     # If we compare `match_var == constant`, add the type of `constant` to the
     # current case so that instantiate_case_var can retrieve it.
     for d in case_var.data:
-      ret += self.options.cover_instance(d)
-      self.cases[line].add_instance(d)
-      if isinstance(d, abstract.ConcreteValue) and d.pyval is None:
-        # Need to special-case `case None` since it's compiled differently.
-        ret += self.options.cover_type(d.cls)
+      if isinstance(d, abstract.Unsolvable):
+        # Set the case type to Any and invalidate the tracker; we do not know
+        # what we have matched against.
+        ret += self.cover_type(d)
+        self.invalidate()
+      else:
+        ret += self.options.cover_instance(d)
+        self.cases[line].add_instance(d)
+        if isinstance(d, abstract.ConcreteValue) and d.pyval is None:
+          # Need to special-case `case None` since it's compiled differently.
+          ret += self.options.cover_type(d.cls)
     return ret
 
   def cover_from_none(self, line) -> List[_Value]:
@@ -345,13 +353,13 @@ class BranchTracker:
 
   def add_none_branch(self, op: opcodes.Opcode, match_var: cfg.Variable):
     if op.line in self.matches.match_cases:
-      if tracker := self.get_current_type_tracker(op, match_var):
-        tracker.cover_from_none(op.line)
-        if not tracker.is_complete:
-          return None
-        else:
-          # This is the last remaining case, and will always succeed.
-          return True
+      tracker = self._get_option_tracker(match_var, op.line)
+      tracker.cover_from_none(op.line)
+      if not tracker.is_complete:
+        return None
+      else:
+        # This is the last remaining case, and will always succeed.
+        return True
 
   def add_cmp_branch(
       self,

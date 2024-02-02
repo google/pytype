@@ -1,28 +1,17 @@
+import dataclasses
+
 from pytype.pyc import opcodes
 from pytype.rewrite.flow import conditions
+from pytype.rewrite.flow import state
 from pytype.rewrite.flow import vm_base
 from pytype.rewrite.tests import test_utils
 
 import unittest
 
 
-class BlockStateTest(unittest.TestCase):
-
-  def test_merge_into_none(self):
-    b1 = vm_base._BlockState({})
-    b2 = b1.merge_into(None)
-    self.assertIsNot(b1, b2)
-    self.assertFalse(b2.locals_)
-    self.assertIs(b2.condition, conditions.TRUE)
-
-  def test_merge_into_other(self):
-    c1 = conditions.Condition()
-    c2 = conditions.Condition()
-    b1 = vm_base._BlockState({}, c1)
-    b2 = vm_base._BlockState({}, c2)
-    b3 = b1.merge_into(b2)
-    self.assertIs(b2, b3)
-    self.assertEqual(b3.condition, conditions.Or(c1, c2))
+@dataclasses.dataclass(frozen=True)
+class FakeCondition(conditions.Condition):
+  name: str
 
 
 # pylint: disable=invalid-name
@@ -84,34 +73,34 @@ class VmBaseTest(unittest.TestCase):
       vm.step()
 
   def test_merge_conditions(self):
-    c1 = conditions.Condition()
-    c2 = conditions.Condition()
+    c1 = FakeCondition('a')
+    c2 = FakeCondition('b')
     op0 = FAKE_OP(0)
     op1 = FAKE_OP_NO_NEXT(1)
     op0.next = op1
     code = test_utils.FakeOrderedCode([[op0], [op1]])
     vm = TestVM(code.Seal(), {})
-    vm._states[0] = vm_base._BlockState({}, c1)
-    vm._states[1] = vm_base._BlockState({}, c2)
+    vm._states[0] = state.BlockState({}, c1)
+    vm._states[1] = state.BlockState({}, c2)
     vm.step()
     # Since FAKE_OP merges into the next op, the condition on the second block
     # should have been updated to (c1 or c2).
-    condition = vm._states[1].condition
+    condition = vm._states[1]._condition
     self.assertEqual(condition, conditions.Or(c1, c2))
 
   def test_nomerge_conditions(self):
-    c1 = conditions.Condition()
-    c2 = conditions.Condition()
+    c1 = FakeCondition('a')
+    c2 = FakeCondition('b')
     op0 = FAKE_OP_NO_NEXT(0)
     op1 = FAKE_OP_NO_NEXT(1)
     code = test_utils.FakeOrderedCode([[op0], [op1]])
     vm = TestVM(code.Seal(), {})
-    vm._states[0] = vm_base._BlockState({}, c1)
-    vm._states[1] = vm_base._BlockState({}, c2)
+    vm._states[0] = state.BlockState({}, c1)
+    vm._states[1] = state.BlockState({}, c2)
     vm.step()
     # Since FAKE_OP_NO_NEXT does not merge into the next op, the condition on
     # the second block should remain as c2.
-    condition = vm._states[1].condition
+    condition = vm._states[1]._condition
     self.assertIs(condition, c2)
 
 
