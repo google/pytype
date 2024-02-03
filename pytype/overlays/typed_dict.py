@@ -350,7 +350,13 @@ class TypedDict(abstract.Dict):
       str_key = self._check_key(key_var)
     except TypedDictKeyMissing:
       return node, default_var or self.ctx.convert.none.to_variable(node)
-    return node, self.pyval[str_key]
+    if str_key in self.pyval:
+      return node, self.pyval[str_key]
+    else:
+      # If total=False the key might not be in self.pyval.
+      # TODO(mdemello): Should we return `self.props[key].typ | default | None`
+      # here, or just `default | None`?
+      return node, default_var or self.ctx.convert.none.to_variable(node)
 
   def merge_instance_type_parameter(self, node, name, value):
     _, _, short_name = name.rpartition(".")
