@@ -226,11 +226,12 @@ class AttrsBase(classgen.Decorator):
   def to_metadata(self):
     # For simplicity, we give all attrs decorators with the same behavior as
     # attr.s the same tag.
+    args = self._current_args or self.DEFAULT_ARGS
     return {
         "tag": "attr.s",
-        "init": self._current_args["init"],
-        "kw_only": self._current_args["kw_only"],
-        "auto_attribs": self._current_args["auto_attribs"]
+        "init": args["init"],
+        "kw_only": args["kw_only"],
+        "auto_attribs": args["auto_attribs"]
     }
 
 
