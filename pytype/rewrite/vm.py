@@ -1,41 +1,31 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
-from typing import Dict, List
+from typing import Dict, Optional
 
 from pytype.blocks import blocks
+from pytype.rewrite import frame
 from pytype.rewrite.flow import variables
-from pytype.rewrite.flow import vm_base
 
 
-class VM(vm_base.VmBase):
+class VmConsumedError(Exception):
+  """Raised when the VM has already been run."""
+
+
+class VirtualMachine:
   """Virtual machine."""
 
   def __init__(
       self,
       code: blocks.OrderedCode,
-      initial_locals: Dict[str, variables.Variable],
       globals_: Dict[str, variables.Variable],
   ):
-    super().__init__(code, initial_locals)
-    self._globals = globals_  # globally scoped names
-    self._stack: List[variables.Variable] = []  # data stack
+    self._code = code
+    self._globals = globals_
+    self._module_frame: Optional[frame.Frame] = None
 
-  def run(self) -> None:
-    assert not self._stack
-    while True:
-      try:
-        self.step()
-      except vm_base.VmConsumedError:
-        break
-    assert not self._stack
-
-  def byte_RESUME(self, opcode):
-    del opcode  # unused
-
-  def byte_LOAD_CONST(self, opcode):
-    constant = opcode.argval
-    # TODO(b/241479600): Wrap this in an abstract value.
-    self._stack.append(variables.Variable.from_value(constant))
-
-  def byte_RETURN_VALUE(self, opcode):
-    unused_return_value = self._stack.pop()
+  def run(self):
+    if self._module_frame:
+      raise VmConsumedError()
+    self._module_frame = frame.Frame(
+        self._code, initial_locals=self._globals, globals_=self._globals)
+    self._module_frame.run()

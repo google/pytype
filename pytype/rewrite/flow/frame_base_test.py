@@ -2,8 +2,8 @@ import dataclasses
 
 from pytype.pyc import opcodes
 from pytype.rewrite.flow import conditions
+from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import state
-from pytype.rewrite.flow import vm_base
 from pytype.rewrite.tests import test_utils
 
 import unittest
@@ -30,7 +30,7 @@ class FAKE_OP_NO_NEXT(opcodes.Opcode):
 # pylint: enable=invalid-name
 
 
-class TestVM(vm_base.VmBase):
+class TestFrame(frame_base.FrameBase):
 
   def __init__(self, *args, **kwargs):
     super().__init__(*args, **kwargs)
@@ -45,32 +45,33 @@ class TestVM(vm_base.VmBase):
   # pylint: enable=invalid-name
 
 
-class VmBaseTest(unittest.TestCase):
+class FrameBaseTest(unittest.TestCase):
 
   def test_one_block(self):
     op0 = FAKE_OP_NO_NEXT(0)
     code = test_utils.FakeOrderedCode([[op0]])
-    vm = TestVM(code.Seal(), {})
-    vm.step()
-    self.assertEqual(vm.seen_opcodes, [('FAKE_OP_NO_NEXT', 0)])
+    frame = TestFrame(code.Seal(), {})
+    frame.step()
+    self.assertEqual(frame.seen_opcodes, [('FAKE_OP_NO_NEXT', 0)])
 
   def test_two_blocks(self):
     op0 = FAKE_OP(0)
     op1 = FAKE_OP_NO_NEXT(1)
     op0.next = op1
     code = test_utils.FakeOrderedCode([[op0], [op1]])
-    vm = TestVM(code.Seal(), {})
-    vm.step()
-    vm.step()
-    self.assertEqual(vm.seen_opcodes, [('FAKE_OP', 0), ('FAKE_OP_NO_NEXT', 1)])
+    frame = TestFrame(code.Seal(), {})
+    frame.step()
+    frame.step()
+    self.assertEqual(frame.seen_opcodes,
+                     [('FAKE_OP', 0), ('FAKE_OP_NO_NEXT', 1)])
 
-  def test_vm_consumed(self):
+  def test_frame_consumed(self):
     op0 = FAKE_OP_NO_NEXT(0)
     code = test_utils.FakeOrderedCode([[op0]])
-    vm = TestVM(code.Seal(), {})
-    vm.step()
-    with self.assertRaises(vm_base.VmConsumedError):
-      vm.step()
+    frame = TestFrame(code.Seal(), {})
+    frame.step()
+    with self.assertRaises(frame_base.FrameConsumedError):
+      frame.step()
 
   def test_merge_conditions(self):
     c1 = FakeCondition('a')
@@ -79,13 +80,13 @@ class VmBaseTest(unittest.TestCase):
     op1 = FAKE_OP_NO_NEXT(1)
     op0.next = op1
     code = test_utils.FakeOrderedCode([[op0], [op1]])
-    vm = TestVM(code.Seal(), {})
-    vm._states[0] = state.BlockState({}, c1)
-    vm._states[1] = state.BlockState({}, c2)
-    vm.step()
+    frame = TestFrame(code.Seal(), {})
+    frame._states[0] = state.BlockState({}, c1)
+    frame._states[1] = state.BlockState({}, c2)
+    frame.step()
     # Since FAKE_OP merges into the next op, the condition on the second block
     # should have been updated to (c1 or c2).
-    condition = vm._states[1]._condition
+    condition = frame._states[1]._condition
     self.assertEqual(condition, conditions.Or(c1, c2))
 
   def test_nomerge_conditions(self):
@@ -94,13 +95,13 @@ class VmBaseTest(unittest.TestCase):
     op0 = FAKE_OP_NO_NEXT(0)
     op1 = FAKE_OP_NO_NEXT(1)
     code = test_utils.FakeOrderedCode([[op0], [op1]])
-    vm = TestVM(code.Seal(), {})
-    vm._states[0] = state.BlockState({}, c1)
-    vm._states[1] = state.BlockState({}, c2)
-    vm.step()
+    frame = TestFrame(code.Seal(), {})
+    frame._states[0] = state.BlockState({}, c1)
+    frame._states[1] = state.BlockState({}, c2)
+    frame.step()
     # Since FAKE_OP_NO_NEXT does not merge into the next op, the condition on
     # the second block should remain as c2.
-    condition = vm._states[1]._condition
+    condition = frame._states[1]._condition
     self.assertIs(condition, c2)
 
 

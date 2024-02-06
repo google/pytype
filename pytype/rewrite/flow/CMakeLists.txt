@@ -5,9 +5,9 @@ py_library(
     flow
   DEPS
     .conditions
+    .frame_base
     .state
     .variables
-    .vm_base
 )
 
 py_library(
@@ -68,9 +68,9 @@ py_test(
 
 py_library(
   NAME
-    vm_base
+    frame_base
   SRCS
-    vm_base.py
+    frame_base.py
   DEPS
     .state
     .variables
@@ -79,13 +79,13 @@ py_library(
 
 py_test(
   NAME
-    vm_base_test
+    frame_base_test
   SRCS
-    vm_base_test.py
+    frame_base_test.py
   DEPS
     .conditions
+    .frame_base
     .state
-    .vm_base
     pytype.pyc.pyc
     pytype.rewrite.tests.test_utils
 )

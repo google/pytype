@@ -5,6 +5,7 @@ py_library(
     rewrite
   DEPS
     .analyze
+    .frame
     .vm
 )
 
@@ -37,10 +38,32 @@ py_test(
 
 py_library(
   NAME
+    frame
+  SRCS
+    frame.py
+  DEPS
+    pytype.blocks.blocks
+    pytype.rewrite.flow.flow
+)
+
+py_test(
+  NAME
+    frame_test
+  SRCS
+    frame_test.py
+  DEPS
+    .frame
+    pytype.pyc.pyc
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
     vm
   SRCS
     vm.py
   DEPS
+    .frame
     pytype.blocks.blocks
     pytype.rewrite.flow.flow
 )

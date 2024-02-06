@@ -10,7 +10,7 @@ from pytype import load_pytd
 from pytype.blocks import blocks
 from pytype.pyc import pyc
 from pytype.pytd import pytd
-from pytype.rewrite import vm
+from pytype.rewrite import vm as vm_lib
 
 # How deep to follow call chains:
 _INIT_MAXIMUM_DEPTH = 4  # during module loading
@@ -75,8 +75,8 @@ def _analyze(
   code = _get_bytecode(src, options)
   # TODO(b/241479600): Populate globals from builtins.
   globals_ = {}
-  module_vm = vm.VM(code, initial_locals=globals_, globals_=globals_)
-  module_vm.run()
+  vm = vm_lib.VirtualMachine(code, globals_)
+  vm.run()
   # TODO(b/241479600): Analyze classes and functions.
 
 
