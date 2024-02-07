@@ -165,7 +165,10 @@ class _OptionTracker:
     self.is_valid: bool = True
 
     for d in match_var.data:
-      if isinstance(d, abstract.Instance):
+      if isinstance(d, abstract.Unsolvable):
+        self.is_valid = False
+        self.could_contain_anything = True
+      elif isinstance(d, abstract.Instance):
         self.options.add_instance(d)
       else:
         self.options.add_type(d)
