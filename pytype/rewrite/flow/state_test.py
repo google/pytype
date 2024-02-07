@@ -12,7 +12,7 @@ class FakeCondition(conditions.Condition):
   name: str
 
 
-class ReadWriteLocalTest(unittest.TestCase):
+class LocalsTest(unittest.TestCase):
 
   def test_store_local(self):
     b = state.BlockState({})
@@ -26,6 +26,15 @@ class ReadWriteLocalTest(unittest.TestCase):
     x = b.load_local('x')
     self.assertEqual(x.name, 'x')
     self.assertEqual(x.get_atomic_value(), 42)
+
+  def test_get_locals(self):
+    x = variables.Variable.from_value(42)
+    y = variables.Variable.from_value(None)
+    b = state.BlockState({'x': x})
+    locals_copy = b.get_locals()
+    locals_copy['y'] = y
+    self.assertEqual(locals_copy, {'x': x, 'y': y})
+    self.assertEqual(b._locals, {'x': x})
 
 
 class WithConditionTest(unittest.TestCase):

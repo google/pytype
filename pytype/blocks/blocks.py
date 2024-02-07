@@ -122,7 +122,7 @@ class OrderedCode:
   localsplus: Tuple[str, ...]
   exception_table: Tuple[Any, ...]
   order: List[Block]
-  python_version = Tuple[int, int]
+  python_version: Tuple[int, int]
 
   def __init__(self, code, bytecode, order):
     assert hasattr(code, "co_code")

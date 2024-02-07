@@ -27,7 +27,11 @@ class FrameConsumedError(Exception):
 
 
 class FrameBase:
-  """Virtual machine frame."""
+  """Virtual machine frame.
+
+  Attributes:
+    final_locals: The frame's `locals` dictionary after it finishes execution.
+  """
 
   def __init__(
       self, code: blocks.OrderedCode,
@@ -36,7 +40,11 @@ class FrameBase:
     # Sanity check: non-empty code
     assert code.order and all(block.code for block in code.order)
     self._code = code  # bytecode
-    self._initial_locals = initial_locals  # local names before frame runs
+
+    # Local names before and after frame runs
+    self._initial_locals = initial_locals
+    self.final_locals: Dict[str, variables.Variable] = None
+
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
     self._states: Dict[int, state.BlockState] = {}  # block id to state
@@ -72,6 +80,7 @@ class FrameBase:
       self._merge_state_into(self._current_state, opcode.next.index)
     if block is self._code.order[-1]:
       self._current_step.block = -1
+      self.final_locals = self._current_state.get_locals()
     else:
       self._current_step.block += 1
       self._current_step.opcode = 0

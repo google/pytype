@@ -4,9 +4,26 @@ py_library(
   NAME
     rewrite
   DEPS
+    .abstract
     .analyze
     .frame
     .vm
+)
+
+py_library(
+  NAME
+    abstract
+  SRCS
+    abstract.py
+)
+
+py_test(
+  NAME
+    abstract_test
+  SRCS
+    abstract_test.py
+  DEPS
+    .abstract
 )
 
 py_library(
@@ -42,6 +59,7 @@ py_library(
   SRCS
     frame.py
   DEPS
+    .abstract
     pytype.blocks.blocks
     pytype.rewrite.flow.flow
 )
@@ -52,8 +70,11 @@ py_test(
   SRCS
     frame_test.py
   DEPS
+    .abstract
     .frame
+    pytype.blocks.blocks
     pytype.pyc.pyc
+    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 

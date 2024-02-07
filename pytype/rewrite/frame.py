@@ -3,8 +3,31 @@
 from typing import Dict, List
 
 from pytype.blocks import blocks
+from pytype.rewrite import abstract
 from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
+
+
+class _DataStack:
+  """Data stack."""
+
+  def __init__(self):
+    self._stack: List[variables.Variable] = []
+
+  def push(self, var: variables.Variable) -> None:
+    self._stack.append(var)
+
+  def pop(self) -> variables.Variable:
+    return self._stack.pop()
+
+  def top(self):
+    return self._stack[-1]
+
+  def __bool__(self) -> bool:
+    return bool(self._stack)
+
+  def __len__(self) -> int:
+    return len(self._stack)
 
 
 class Frame(frame_base.FrameBase):
@@ -18,7 +41,7 @@ class Frame(frame_base.FrameBase):
   ):
     super().__init__(code, initial_locals)
     self._globals = globals_  # globally scoped names
-    self._stack: List[variables.Variable] = []  # data stack
+    self._stack = _DataStack()  # data stack
 
   def run(self) -> None:
     assert not self._stack
@@ -33,9 +56,13 @@ class Frame(frame_base.FrameBase):
     del opcode  # unused
 
   def byte_LOAD_CONST(self, opcode):
-    constant = opcode.argval
-    # TODO(b/241479600): Wrap this in an abstract value.
-    self._stack.append(variables.Variable.from_value(constant))
+    constant = abstract.PythonConstant(self._code.consts[opcode.arg])
+    self._stack.push(variables.Variable.from_value(constant))
 
   def byte_RETURN_VALUE(self, opcode):
     unused_return_value = self._stack.pop()
+
+  def byte_STORE_NAME(self, opcode):
+    name = opcode.argval
+    value = self._stack.pop()
+    self._current_state.store_local(name, value)

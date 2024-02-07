@@ -104,6 +104,13 @@ class FrameBaseTest(unittest.TestCase):
     condition = frame._states[1]._condition
     self.assertIs(condition, c2)
 
+  def test_final_locals(self):
+    op = FAKE_OP_NO_NEXT(0)
+    frame = TestFrame(test_utils.FakeOrderedCode([[op]]).Seal(), {})
+    self.assertIsNone(frame.final_locals)
+    frame.step()
+    self.assertEqual(frame.final_locals, {})
+
 
 if __name__ == '__main__':
   unittest.main()
