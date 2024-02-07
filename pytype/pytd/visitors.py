@@ -501,6 +501,25 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     module_name = module.name
     if module_name == self.name:  # dotted local reference
       return t
+    # It's possible that module_name.cls_prefix is actually an alias to another
+    # module. In that case, we need to unwrap the alias, so we can look up
+    # aliased_module.name.
+    if cls_prefix:
+      try:
+        # cls_prefix includes the trailing period.
+        maybe_alias = pytd.LookupItemRecursive(module, cls_prefix[:-1])
+      except KeyError:
+        pass
+      else:
+        if isinstance(maybe_alias, pytd.Alias) and isinstance(
+            maybe_alias.type, pytd.Module
+        ):
+          if maybe_alias.type.module_name not in self._module_map:
+            raise KeyError(
+                f"{t.name} refers to unknown module {maybe_alias.name}"
+            )
+          module = self._module_map[maybe_alias.type.module_name]
+          cls_prefix = ""
     name = cls_prefix + name
     try:
       if name == "*":
@@ -1506,6 +1525,9 @@ class CollectDependencies(Visitor):
 
   def EnterLateType(self, node):
     self._ProcessName(node.name, self.late_dependencies)
+
+  def EnterModule(self, node):
+    self._ProcessName(node.module_name, self.dependencies)
 
 
 def ExpandSignature(sig):
