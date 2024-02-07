@@ -206,12 +206,17 @@ class _OptionTracker:
         # what we have matched against.
         ret += self.cover_type(d)
         self.invalidate()
-      else:
+      elif isinstance(d, abstract.Instance):
         ret += self.options.cover_instance(d)
         self.cases[line].add_instance(d)
         if isinstance(d, abstract.ConcreteValue) and d.pyval is None:
           # Need to special-case `case None` since it's compiled differently.
           ret += self.options.cover_type(d.cls)
+      else:
+        # We do not handle whatever case this is; just invalidate the tracker
+        # TODO(mdemello): This is probably an error in the user's code; we
+        # should figure out a way to report it.
+        self.invalidate()
     return ret
 
   def cover_from_none(self, line) -> List[_Value]:
@@ -391,7 +396,6 @@ class BranchTracker:
     if op.line not in self.matches.match_cases:
       return None
     tracker = self.get_current_type_tracker(op, match_var)
-
     # If we are not part of a class match, check if we have an exhaustive match
     # (enum or union of literals) that we are tracking.
     if not tracker:
