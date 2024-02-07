@@ -451,11 +451,11 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator, Tuple, Union
-      a : Iterator[nothing]
-      b : Iterator[Tuple[Union[int, complex]]]
-      c : Iterator[nothing]
-      d : Iterator[nothing]
-      e : Iterator[Tuple[complex, int]]
+      a: zip[nothing]
+      b: zip[Tuple[Union[int, complex]]]
+      c: zip[nothing]
+      d: zip[nothing]
+      e: zip[Tuple[complex, int]]
       """)
 
   def test_dict(self):
@@ -615,7 +615,7 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
     self.assertTypesMatchPytd(ty, """
       from typing import Iterator, Tuple
       v1 : Iterator[int]
-      v2 : Iterator[Tuple[int, int]]
+      v2 : zip[Tuple[int, int]]
     """)
 
   def test_next(self):
