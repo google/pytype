@@ -7,11 +7,13 @@ byte_{opcode_name} method implementing each opcode.
 """
 
 import dataclasses
-from typing import Dict
+from typing import Dict, Generic, TypeVar
 
 from pytype.blocks import blocks
 from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
+
+_T = TypeVar('_T')
 
 
 @dataclasses.dataclass
@@ -26,7 +28,7 @@ class FrameConsumedError(Exception):
   """Raised when step() is called on a frame with no more opcodes to execute."""
 
 
-class FrameBase:
+class FrameBase(Generic[_T]):
   """Virtual machine frame.
 
   Attributes:
@@ -35,7 +37,7 @@ class FrameBase:
 
   def __init__(
       self, code: blocks.OrderedCode,
-      initial_locals: Dict[str, variables.Variable],
+      initial_locals: Dict[str, variables.Variable[_T]],
   ):
     # Sanity check: non-empty code
     assert code.order and all(block.code for block in code.order)
@@ -43,15 +45,15 @@ class FrameBase:
 
     # Local names before and after frame runs
     self._initial_locals = initial_locals
-    self.final_locals: Dict[str, variables.Variable] = None
+    self.final_locals: Dict[str, variables.Variable[_T]] = None
 
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
-    self._states: Dict[int, state.BlockState] = {}  # block id to state
+    self._states: Dict[int, state.BlockState[_T]] = {}  # block id to state
     # Initialize the state of the first block.
     self._states[self._code.order[0].id] = state.BlockState(
         locals_=dict(self._initial_locals))
-    self._current_state: state.BlockState = None  # state of the current block
+    self._current_state: state.BlockState[_T] = None  # state of current block
 
   def step(self) -> None:
     """Runs one opcode."""
@@ -86,5 +88,5 @@ class FrameBase:
       self._current_step.opcode = 0
 
   def _merge_state_into(
-      self, from_state: state.BlockState, block_id: int) -> None:
+      self, from_state: state.BlockState[_T], block_id: int) -> None:
     self._states[block_id] = from_state.merge_into(self._states.get(block_id))

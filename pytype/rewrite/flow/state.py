@@ -1,18 +1,20 @@
 """Bytecode block state."""
 
 import dataclasses
-from typing import Dict, Optional, Set
+from typing import Dict, Generic, Optional, Set, TypeVar
 
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
 
+_T = TypeVar('_T')
 
-class BlockState:
+
+class BlockState(Generic[_T]):
   """State of a bytecode block."""
 
   def __init__(
       self,
-      locals_: Dict[str, variables.Variable],
+      locals_: Dict[str, variables.Variable[_T]],
       condition: conditions.Condition = conditions.TRUE,
       locals_with_block_condition: Optional[Set[str]] = None,
   ):
@@ -29,17 +31,17 @@ class BlockState:
     return (f'BlockState(locals={self._locals}, condition={self._condition}, '
             f'locals_with_block_condition={self._locals_with_block_condition})')
 
-  def load_local(self, name: str) -> variables.Variable:
+  def load_local(self, name: str) -> variables.Variable[_T]:
     return dataclasses.replace(self._locals[name], name=name)
 
-  def store_local(self, name: str, var: variables.Variable) -> None:
+  def store_local(self, name: str, var: variables.Variable[_T]) -> None:
     self._locals[name] = var
     self._locals_with_block_condition.add(name)
 
-  def get_locals(self) -> Dict[str, variables.Variable]:
+  def get_locals(self) -> Dict[str, variables.Variable[_T]]:
     return dict(self._locals)  # make a copy so callers can't modify _locals
 
-  def with_condition(self, condition: conditions.Condition) -> 'BlockState':
+  def with_condition(self, condition: conditions.Condition) -> 'BlockState[_T]':
     """Creates a new state with the given condition 'and'-ed in."""
     condition = conditions.And(self._condition, condition)
     new_locals = {}
@@ -54,7 +56,7 @@ class BlockState:
         locals_with_block_condition=set(self._locals_with_block_condition),
     )
 
-  def merge_into(self, other: Optional['BlockState']) -> 'BlockState':
+  def merge_into(self, other: Optional['BlockState[_T]']) -> 'BlockState[_T]':
     """Merges 'self' into 'other', 'or'-ing conditions."""
     if not other:
       return BlockState(

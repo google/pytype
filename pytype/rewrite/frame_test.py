@@ -1,5 +1,6 @@
 import sys
 import textwrap
+from typing import Dict
 
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
@@ -8,6 +9,7 @@ from pytype.rewrite import abstract
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.flow import variables
 from pytype.rewrite.tests import test_utils
+from typing_extensions import assert_type
 
 import unittest
 
@@ -49,18 +51,24 @@ class FrameTest(unittest.TestCase):
     self.assertEqual(frame.final_locals['x'].get_atomic_value(),
                      abstract.PythonConstant(42))
 
+  def test_typing(self):
+    code = _parse('')
+    frame = frame_lib.Frame(code, {}, {})
+    assert_type(frame.final_locals,
+                Dict[str, variables.Variable[abstract.BaseValue]])
+
 
 class StackTest(unittest.TestCase):
 
   def test_push(self):
     s = frame_lib._DataStack()
-    var = variables.Variable.from_value(5)
+    var = variables.Variable.from_value(abstract.PythonConstant(5))
     s.push(var)
     self.assertEqual(s._stack, [var])
 
   def test_pop(self):
     s = frame_lib._DataStack()
-    var = variables.Variable.from_value(5)
+    var = variables.Variable.from_value(abstract.PythonConstant(5))
     s.push(var)
     popped = s.pop()
     self.assertEqual(popped, var)
@@ -68,7 +76,7 @@ class StackTest(unittest.TestCase):
 
   def test_top(self):
     s = frame_lib._DataStack()
-    var = variables.Variable.from_value(5)
+    var = variables.Variable.from_value(abstract.PythonConstant(5))
     s.push(var)
     top = s.top()
     self.assertEqual(top, var)
@@ -77,13 +85,13 @@ class StackTest(unittest.TestCase):
   def test_bool(self):
     s = frame_lib._DataStack()
     self.assertFalse(s)
-    s.push(variables.Variable.from_value(5))
+    s.push(variables.Variable.from_value(abstract.PythonConstant(5)))
     self.assertTrue(s)
 
   def test_len(self):
     s = frame_lib._DataStack()
     self.assertEqual(len(s), 0)  # pylint: disable=g-generic-assert
-    s.push(variables.Variable.from_value(5))
+    s.push(variables.Variable.from_value(abstract.PythonConstant(5)))
     self.assertEqual(len(s), 1)
 
 

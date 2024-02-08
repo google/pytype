@@ -12,32 +12,32 @@ class _DataStack:
   """Data stack."""
 
   def __init__(self):
-    self._stack: List[variables.Variable] = []
+    self._stack: List[variables.Variable[abstract.BaseValue]] = []
 
-  def push(self, var: variables.Variable) -> None:
+  def push(self, var: variables.Variable[abstract.BaseValue]) -> None:
     self._stack.append(var)
 
-  def pop(self) -> variables.Variable:
+  def pop(self) -> variables.Variable[abstract.BaseValue]:
     return self._stack.pop()
 
   def top(self):
     return self._stack[-1]
 
-  def __bool__(self) -> bool:
+  def __bool__(self):
     return bool(self._stack)
 
-  def __len__(self) -> int:
+  def __len__(self):
     return len(self._stack)
 
 
-class Frame(frame_base.FrameBase):
+class Frame(frame_base.FrameBase[abstract.BaseValue]):
   """Virtual machine frame."""
 
   def __init__(
       self,
       code: blocks.OrderedCode,
-      initial_locals: Dict[str, variables.Variable],
-      globals_: Dict[str, variables.Variable],
+      initial_locals: Dict[str, variables.Variable[abstract.BaseValue]],
+      globals_: Dict[str, variables.Variable[abstract.BaseValue]],
   ):
     super().__init__(code, initial_locals)
     self._globals = globals_  # globally scoped names

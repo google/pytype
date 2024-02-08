@@ -84,6 +84,7 @@ py_library(
   SRCS
     vm.py
   DEPS
+    .abstract
     .frame
     pytype.blocks.blocks
     pytype.rewrite.flow.flow

@@ -3,6 +3,7 @@
 from typing import Dict, Optional
 
 from pytype.blocks import blocks
+from pytype.rewrite import abstract
 from pytype.rewrite import frame
 from pytype.rewrite.flow import variables
 
@@ -17,7 +18,7 @@ class VirtualMachine:
   def __init__(
       self,
       code: blocks.OrderedCode,
-      globals_: Dict[str, variables.Variable],
+      globals_: Dict[str, variables.Variable[abstract.BaseValue]],
   ):
     self._code = code
     self._globals = globals_

@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Tuple, Union
 
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
@@ -64,6 +64,12 @@ class VariableTest(unittest.TestCase):
     self.assertEqual(len(var2.bindings), 1)
     self.assertEqual(var2.bindings[0].value, 0)
     self.assertIs(var2.bindings[0].condition, conditions.FALSE)
+
+  def test_values(self):
+    var = variables.Variable.from_value(0)
+    values = var.values
+    assert_type(values, Tuple[int, ...])
+    self.assertEqual(values, (0,))
 
 
 if __name__ == '__main__':

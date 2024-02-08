@@ -34,6 +34,10 @@ class Variable(Generic[_T]):
   def from_value(cls, value: _T2) -> 'Variable[_T2]':
     return cls((Binding(value),))
 
+  @property
+  def values(self) -> Tuple[_T, ...]:
+    return tuple(b.value for b in self.bindings)
+
   def get_atomic_value(self) -> _T:
     """Gets this variable's value if there's exactly one, errors otherwise."""
     if len(self.bindings) != 1:
@@ -42,7 +46,7 @@ class Variable(Generic[_T]):
       raise ValueError(f'Too {desc} bindings for {varname}: {self.bindings}')
     return self.bindings[0].value
 
-  def with_condition(self, condition: conditions.Condition) -> 'Variable':
+  def with_condition(self, condition: conditions.Condition) -> 'Variable[_T]':
     """Adds a condition, 'and'-ing it with any existing."""
     if condition is conditions.TRUE:
       return self

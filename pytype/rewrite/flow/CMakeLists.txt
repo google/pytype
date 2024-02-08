@@ -28,6 +28,31 @@ py_test(
 
 py_library(
   NAME
+    frame_base
+  SRCS
+    frame_base.py
+  DEPS
+    .state
+    .variables
+    pytype.blocks.blocks
+)
+
+py_test(
+  NAME
+    frame_base_test
+  SRCS
+    frame_base_test.py
+  DEPS
+    .conditions
+    .frame_base
+    .state
+    .variables
+    pytype.pyc.pyc
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
     state
   SRCS
     state.py
@@ -64,28 +89,4 @@ py_test(
   DEPS
     .conditions
     .variables
-)
-
-py_library(
-  NAME
-    frame_base
-  SRCS
-    frame_base.py
-  DEPS
-    .state
-    .variables
-    pytype.blocks.blocks
-)
-
-py_test(
-  NAME
-    frame_base_test
-  SRCS
-    frame_base_test.py
-  DEPS
-    .conditions
-    .frame_base
-    .state
-    pytype.pyc.pyc
-    pytype.rewrite.tests.test_utils
 )
