@@ -993,6 +993,20 @@ class TestAttrsNextGenApi(test_base.BaseTest):
         def __init__(self) -> None: ...
     """)
 
+  def test_infer_define(self):
+    ty = self.Infer("""
+      from attrs import define
+    """)
+    self.assertTypesMatchPytd(ty, """
+      from typing import Annotated, Callable
+      define: Annotated[
+          Callable,
+          'pytype_metadata',
+          {'tag': 'attr.s', 'init': True, 'kw_only': False,
+           'auto_attribs': None}
+      ]
+    """)
+
 
 class TestPyiAttrs(test_base.BaseTest):
   """Tests for @attr.s in pyi files."""

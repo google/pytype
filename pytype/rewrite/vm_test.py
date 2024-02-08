@@ -7,19 +7,21 @@ import unittest
 
 class VmTest(unittest.TestCase):
 
-  def test_run_no_crash(self):
-    code = test_utils.FakeOrderedCode([[opcodes.LOAD_CONST(0, 0, None, None),
-                                        opcodes.RETURN_VALUE(1, 0)]])
-    vm = vm_lib.VM(code.Seal(), {}, {})
+  def test_run_module_frame(self):
+    block = [opcodes.LOAD_CONST(0, 0, 0, None), opcodes.RETURN_VALUE(0, 0)]
+    code = test_utils.FakeOrderedCode([block], [None])
+    vm = vm_lib.VirtualMachine(code.Seal(), {})
+    self.assertIsNone(vm._module_frame)
     vm.run()
+    self.assertIsNotNone(vm._module_frame)
 
-  def test_load_const(self):
-    code = test_utils.FakeOrderedCode([[opcodes.LOAD_CONST(0, 0, None, 42),
-                                        opcodes.RETURN_VALUE(1, 0)]])
-    vm = vm_lib.VM(code.Seal(), {}, {})
-    vm.step()
-    self.assertEqual(len(vm._stack), 1)
-    self.assertEqual(vm._stack[0].get_atomic_value(), 42)
+  def test_vm_consumed(self):
+    block = [opcodes.LOAD_CONST(0, 0, 0, None), opcodes.RETURN_VALUE(0, 0)]
+    code = test_utils.FakeOrderedCode([block], [None])
+    vm = vm_lib.VirtualMachine(code.Seal(), {})
+    vm.run()
+    with self.assertRaises(vm_lib.VmConsumedError):
+      vm.run()
 
 
 if __name__ == '__main__':

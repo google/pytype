@@ -36,6 +36,9 @@ class BlockState:
     self._locals[name] = var
     self._locals_with_block_condition.add(name)
 
+  def get_locals(self) -> Dict[str, variables.Variable]:
+    return dict(self._locals)  # make a copy so callers can't modify _locals
+
   def with_condition(self, condition: conditions.Condition) -> 'BlockState':
     """Creates a new state with the given condition 'and'-ed in."""
     condition = conditions.And(self._condition, condition)

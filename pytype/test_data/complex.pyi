@@ -1,7 +1,7 @@
-from typing import Any, Iterator
+from typing import Any
 
 v = ...  # type: list
 w = ...  # type: list
 x = ...  # type: list
 y = ...  # type: list
-z = ...  # type: Iterator[tuple]
+z = ...  # type: zip[tuple]

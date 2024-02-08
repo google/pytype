@@ -428,6 +428,25 @@ class MatchClassTest(test_base.BaseTest):
             return 20
     """)
 
+  def test_type_as_value(self):
+    # Regression test for a crash
+    with self.DepTree([("foo.pyi", """
+      class A:
+        pass
+    """)]):
+      self.Check("""
+        import foo
+
+        def f(x):
+          match x:
+            case int():
+              return 10
+            case foo.A:
+              return 20
+            case _:
+              return 30
+      """)
+
   def test_type_narrowing(self):
     self.Check("""
       class A: pass
@@ -929,6 +948,22 @@ class MatchClassTest(test_base.BaseTest):
             return x.y
           case str():
             return int(x)
+    """)
+
+  def test_match_instances(self):
+    # Regression test: Do not report redundant-match for a match_var with
+    # indefinite values.
+    self.Check("""
+      def f(x: str) -> bool:
+        match x:
+          case "red":
+            return True
+          case "blue":
+            return True
+          case "green":
+            return True
+          case _:
+            return False
     """)
 
 

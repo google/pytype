@@ -1,8 +1,8 @@
-"""Base implementation of an abstract virtual machine for bytecode.
+"""Base implementation of a frame of an abstract virtual machine for bytecode.
 
-This module contains a VmBase class, which provides a base implementation of a
-VM that analyzes bytecode one instruction (i.e., opcode) at a time, tracking
-variables and conditions. Use VmBase by subclassing it and adding a
+This module contains a FrameBase class, which provides a base implementation of
+a frame that analyzes bytecode one instruction (i.e., opcode) at a time,
+tracking variables and conditions. Use FrameBase by subclassing it and adding a
 byte_{opcode_name} method implementing each opcode.
 """
 
@@ -16,18 +16,22 @@ from pytype.rewrite.flow import variables
 
 @dataclasses.dataclass
 class _Step:
-  """Block and opcode indices for a VM step."""
+  """Block and opcode indices for a frame step."""
 
   block: int
   opcode: int
 
 
-class VmConsumedError(Exception):
-  """Raised when step() is called on a VM with no more opcodes to execute."""
+class FrameConsumedError(Exception):
+  """Raised when step() is called on a frame with no more opcodes to execute."""
 
 
-class VmBase:
-  """Virtual machine."""
+class FrameBase:
+  """Virtual machine frame.
+
+  Attributes:
+    final_locals: The frame's `locals` dictionary after it finishes execution.
+  """
 
   def __init__(
       self, code: blocks.OrderedCode,
@@ -36,7 +40,11 @@ class VmBase:
     # Sanity check: non-empty code
     assert code.order and all(block.code for block in code.order)
     self._code = code  # bytecode
-    self._initial_locals = initial_locals  # locally scoped names before VM runs
+
+    # Local names before and after frame runs
+    self._initial_locals = initial_locals
+    self.final_locals: Dict[str, variables.Variable] = None
+
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
     self._states: Dict[int, state.BlockState] = {}  # block id to state
@@ -50,7 +58,7 @@ class VmBase:
     # Grab the current block and opcode.
     block_index = self._current_step.block
     if block_index == -1:
-      raise VmConsumedError()
+      raise FrameConsumedError()
     opcode_index = self._current_step.opcode
     block = self._code.order[block_index]
     opcode = block[opcode_index]
@@ -72,6 +80,7 @@ class VmBase:
       self._merge_state_into(self._current_state, opcode.next.index)
     if block is self._code.order[-1]:
       self._current_step.block = -1
+      self.final_locals = self._current_state.get_locals()
     else:
       self._current_step.block += 1
       self._current_step.opcode = 0

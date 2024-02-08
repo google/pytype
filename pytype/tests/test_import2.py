@@ -115,5 +115,27 @@ class ImportTest(test_base.BaseTest):
         assert_type(foo.A().get(), Any)
       """)
 
+  def test_alias_in_dep_of_dep(self):
+    # Regression test: `depofdep.Magic.HTMLParser` would be treated as the
+    # attribute HTMLParser on the class Magic in the module depofdep by
+    # visitors.LookupExternalTypes. In actuality, Magic is a pytd.Alias to a
+    # pytd.Module, not a class at all.
+    # The different import styles produce different ASTs, so we need to check
+    # that both are supported.
+    with self.DepTree([
+        ("depofdep.pyi", "import html.parser as Magic"),
+        ("dep.pyi", """
+         from depofdep import Magic
+         class A(Magic.HTMLParser): ..."""),
+    ]):
+      self.Check("import dep")
+    with self.DepTree([
+        ("depofdep.pyi", "from html import parser as Magic"),
+        ("dep.pyi", """
+         from depofdep import Magic
+         class A(Magic.HTMLParser): ..."""),
+    ]):
+      self.Check("import dep")
+
 if __name__ == "__main__":
   test_base.main()
