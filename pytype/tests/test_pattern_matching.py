@@ -1559,7 +1559,7 @@ class EnumMatchCoverageTest(test_base.BaseTest):
               raise ValueError('foo')
     """)
 
-  def test_optimized_bytecode_out_of_order(self):
+  def test_optimized_bytecode_out_of_order_1(self):
     """Regression test for a bug resulting from compiler optimisations."""
     # Compier optimisations that inline code can put blocks out of order, which
     # could potentially interfere with our checks for the end of a match block.
@@ -1582,6 +1582,34 @@ class EnumMatchCoverageTest(test_base.BaseTest):
             print("I'm feeling the blues :(")
         # This line compiles to a return statement after every case branch.
         return color
+    """)
+
+  def test_optimized_bytecode_out_of_order_2(self):
+    """Regression test for a bug resulting from compiler optimisations."""
+    # See comment in the previous test case.
+    self.Check("""
+      import enum
+
+      class A(enum.Enum):
+        RED = 1
+        GREEN = 2
+        BLUE = 3
+
+      def f(x: A):
+        ret = True
+        count = 0
+        while count < 10:
+          match x:
+            case A.RED:
+              ret = 10
+            case A.BLUE:
+              ret = 20
+            case _:
+              return ret
+          if ret:
+            break
+          else:
+            count += 1
     """)
 
 

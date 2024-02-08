@@ -308,7 +308,6 @@ class VirtualMachine:
     return_nodes = []
     finally_tracker = vm_utils.FinallyStateTracker()
     process_blocks.adjust_returns(frame.f_code, self._director.block_returns)
-    process_blocks.check_out_of_order(frame.f_code)
     for block in frame.f_code.order:
       state = frame.states.get(block[0])
       if not state:
