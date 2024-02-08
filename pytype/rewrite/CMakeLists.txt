@@ -15,6 +15,8 @@ py_library(
     abstract
   SRCS
     abstract.py
+  DEPS
+    pytype.blocks.blocks
 )
 
 py_test(
@@ -60,6 +62,7 @@ py_library(
     frame.py
   DEPS
     .abstract
+    .stack
     pytype.blocks.blocks
     pytype.rewrite.flow.flow
 )
@@ -80,6 +83,27 @@ py_test(
 
 py_library(
   NAME
+    stack
+  SRCS
+    stack.py
+  DEPS
+    .abstract
+    pytype.rewrite.flow.flow
+)
+
+py_test(
+  NAME
+    stack_test
+  SRCS
+    stack_test.py
+  DEPS
+    .abstract
+    .stack
+    pytype.rewrite.flow.flow
+)
+
+py_library(
+  NAME
     vm
   SRCS
     vm.py
@@ -96,6 +120,7 @@ py_test(
   SRCS
     vm_test.py
   DEPS
+    .abstract
     .vm
     pytype.pyc.pyc
     pytype.rewrite.tests.test_utils

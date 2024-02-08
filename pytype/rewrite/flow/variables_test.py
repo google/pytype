@@ -71,6 +71,18 @@ class VariableTest(unittest.TestCase):
     assert_type(values, Tuple[int, ...])
     self.assertEqual(values, (0,))
 
+  def test_with_name(self):
+    var = variables.Variable.from_value(0)
+    x = var.with_name('x')
+    self.assertEqual(x.name, 'x')
+    self.assertEqual(x.values, (0,))
+
+  def test_with_no_name(self):
+    x = variables.Variable(name='x', bindings=(variables.Binding(0),))
+    var = x.with_name(None)
+    self.assertIsNone(var.name)
+    self.assertEqual(var.values, (0,))
+
 
 if __name__ == '__main__':
   unittest.main()

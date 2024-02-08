@@ -1,6 +1,5 @@
 """Bytecode block state."""
 
-import dataclasses
 from typing import Dict, Generic, Optional, Set, TypeVar
 
 from pytype.rewrite.flow import conditions
@@ -32,7 +31,7 @@ class BlockState(Generic[_T]):
             f'locals_with_block_condition={self._locals_with_block_condition})')
 
   def load_local(self, name: str) -> variables.Variable[_T]:
-    return dataclasses.replace(self._locals[name], name=name)
+    return self._locals[name].with_name(name)
 
   def store_local(self, name: str, var: variables.Variable[_T]) -> None:
     self._locals[name] = var

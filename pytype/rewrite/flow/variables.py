@@ -56,6 +56,9 @@ class Variable(Generic[_T]):
       new_bindings.append(dataclasses.replace(b, condition=new_condition))
     return dataclasses.replace(self, bindings=tuple(new_bindings))
 
+  def with_name(self, name: Optional[str]) -> 'Variable[_T]':
+    return dataclasses.replace(self, name=name)
+
   def __repr__(self):
     bindings = ' | '.join(repr(b) for b in self.bindings)
     if self.name:
