@@ -898,6 +898,18 @@ class PYITest(test_base.BaseTest):
         import bad  # pyi-error
       """, pythonpath=[d.path])
 
+  def test_bad_external_type(self):
+    with self.DepTree([
+        ("dep_func.pyi", "def NotAClass(): ...\n"),
+        ("dep.pyi", """
+         import dep_func
+         def Bad() -> dep_func.NotAClass: ...
+        """),
+    ]):
+      self.CheckWithErrors("""
+        import dep  # pyi-error
+      """)
+
   def test_nonexistent_import(self):
     with test_utils.Tempdir() as d:
       d.create_file("bad.pyi", """
