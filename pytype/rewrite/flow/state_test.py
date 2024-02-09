@@ -1,8 +1,10 @@
 import dataclasses
+from typing import Any
 
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
+from typing_extensions import assert_type
 
 import unittest
 
@@ -35,6 +37,12 @@ class LocalsTest(unittest.TestCase):
     locals_copy['y'] = y
     self.assertEqual(locals_copy, {'x': x, 'y': y})
     self.assertEqual(b._locals, {'x': x})
+
+  def test_typing(self):
+    locals_ = {'x': variables.Variable.from_value(0)}
+    b = state.BlockState(locals_)
+    assert_type(b, state.BlockState[int])
+    assert_type(b.load_local('x'), variables.Variable[int])
 
 
 class WithConditionTest(unittest.TestCase):
@@ -194,7 +202,7 @@ class FlowTest(unittest.TestCase):
     #     y = 3.14  # jump_state
     #   ...  # join_state
     var = variables.Variable.from_value(42)
-    start_state = state.BlockState({'x': var})
+    start_state = state.BlockState[Any]({'x': var})
 
     jump_condition = FakeCondition('a')
     nojump_condition = conditions.Not(jump_condition)
@@ -234,7 +242,7 @@ class FlowTest(unittest.TestCase):
     #     ...  # nested_join_state
     #   else: ...  # jump_state
     var = variables.Variable.from_value(42)
-    start_state = state.BlockState({'x': var})
+    start_state = state.BlockState[Any]({'x': var})
 
     nojump_condition = FakeCondition('a')
     nojump_state = start_state.with_condition(nojump_condition)

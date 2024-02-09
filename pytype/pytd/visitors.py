@@ -548,7 +548,10 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
     if (isinstance(item, pytd.Constant) and
         item.name == "typing_extensions.TypedDict"):
       return self.to_type(pytd.NamedType("typing.TypedDict"))
-    return self.to_type(item)
+    try:
+      return self.to_type(item)
+    except NotImplementedError as e:
+      raise SymbolLookupError(f"{item} is not a type") from e
 
   def VisitClassType(self, t):
     new_type = self.VisitNamedType(t)
@@ -820,6 +823,12 @@ class LookupLocalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
           resolved_node = self.to_type(self._LookupItemRecursive(node.name))
         except KeyError:
           resolved_node = node  # lookup failures are handled later
+        except NotImplementedError as e:
+          # to_type() can raise NotImplementedError, but _LookupItemRecursive
+          # shouldn't return a pytd node that can't be turned into a type in
+          # this specific case. As such, it's impossible to test this case.
+          # But it's irresponsible to just crash on it, so here we are.
+          raise SymbolLookupError(f"{node.name} is not a type") from e
         else:
           if isinstance(resolved_node, pytd.ClassType):
             resolved_node.name = node.name

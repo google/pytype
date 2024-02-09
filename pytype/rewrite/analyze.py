@@ -44,8 +44,9 @@ def check_types(
     init_maximum_depth: int = _INIT_MAXIMUM_DEPTH,
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
-  """Check types for the given source code."""
-  _analyze(src, options, loader, init_maximum_depth, maximum_depth)
+  """Checks types for the given source code."""
+  vm = _make_vm(src, options, loader, init_maximum_depth, maximum_depth)
+  vm.analyze_all_defs()
   return Analysis(Context(), None, None)
 
 
@@ -56,28 +57,27 @@ def infer_types(
     init_maximum_depth: int = _INIT_MAXIMUM_DEPTH,
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
-  """Infer types for the given source code."""
-  _analyze(src, options, loader, init_maximum_depth, maximum_depth)
+  """Infers types for the given source code."""
+  vm = _make_vm(src, options, loader, init_maximum_depth, maximum_depth)
+  vm.infer_stub()
   ast = pytd.TypeDeclUnit('inferred + unknowns', (), (), (), (), ())
   deps = pytd.TypeDeclUnit('<all>', (), (), (), (), ())
   return Analysis(Context(), ast, deps)
 
 
-def _analyze(
+def _make_vm(
     src: str,
     options: config.Options,
     loader: load_pytd.Loader,
     init_maximum_depth: int,
     maximum_depth: int,
-) -> None:
-  """Analyze the given source code."""
+) -> vm_lib.VirtualMachine:
+  """Creates abstract virtual machine for given source code."""
   del loader, init_maximum_depth, maximum_depth
   code = _get_bytecode(src, options)
   # TODO(b/241479600): Populate globals from builtins.
-  globals_ = {}
-  vm = vm_lib.VirtualMachine(code, globals_)
-  vm.run()
-  # TODO(b/241479600): Analyze classes and functions.
+  initial_globals = {}
+  return vm_lib.VirtualMachine(code, initial_globals)
 
 
 def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:

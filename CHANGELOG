@@ -1,3 +1,24 @@
+Version 2024.02.09:
+
+Updates:
+* Remove 'deep' and 'store_all_calls' options.
+* Remove duplicate pytype inputs and outputs.
+
+Bug fixes:
+* Fix module resolution bug in load_pytd.
+* Pattern matching:
+  * Fix a corner case in pattern matching where the first case is None.
+  * Fix a corner case when comparing to Any in a case statement.
+  * Fix a false redundant-match when matching instances of a nonexhaustive type.
+  * Do not attempt to track matching if we don't recognise a CMP as an instance.
+  * Do not attempt to track matches if the match variable contains an Any.
+  * Rework the check for an out-of-order opcode in a match block.
+* Fix a crash when calling get() on a TypedDict instance.
+* Don't crash when inferring a type for an uncalled attrs.define.
+* Handle aliased imports in type stubs better.
+* Teach pytype that zip is actually a class.
+* Catch bad external types in type annotations.
+
 Version 2024.01.24:
 
 Updates:

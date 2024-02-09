@@ -4,7 +4,9 @@ from pytype.pyc import opcodes
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import state
+from pytype.rewrite.flow import variables
 from pytype.rewrite.tests import test_utils
+from typing_extensions import assert_type
 
 import unittest
 
@@ -110,6 +112,13 @@ class FrameBaseTest(unittest.TestCase):
     self.assertIsNone(frame.final_locals)
     frame.step()
     self.assertEqual(frame.final_locals, {})
+
+  def test_typing(self):
+    code = test_utils.FakeOrderedCode([[FAKE_OP_NO_NEXT(0)]]).Seal()
+    initial_locals = {'x': variables.Variable.from_value(0)}
+    frame = frame_base.FrameBase(code, initial_locals)
+    assert_type(frame, frame_base.FrameBase[int])
+    assert_type(frame._current_state, state.BlockState[int])
 
 
 if __name__ == '__main__':

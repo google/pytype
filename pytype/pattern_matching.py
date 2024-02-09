@@ -252,12 +252,12 @@ class _Matches:
   """Tracks branches of match statements."""
 
   def __init__(self, ast_matches):
-    self.start_to_end = {}
+    self.start_to_end = {}  # match_line : match_end_line
     self.end_to_starts = collections.defaultdict(list)
-    self.match_cases = {}
-    self.defaults = set()
-    self.as_names = {}
-    self.matches = []
+    self.match_cases = {}  # opcode_line : match_line
+    self.defaults = set()  # lines with defaults
+    self.as_names = {}  # case_end_line : case_as_name
+    self.unseen_cases = {}  # match_line : num_unseen_cases
 
     for m in ast_matches.matches:
       self._add_match(m.start, m.end, m.cases)
@@ -265,6 +265,7 @@ class _Matches:
   def _add_match(self, start, end, cases):
     self.start_to_end[start] = end
     self.end_to_starts[end].append(start)
+    self.unseen_cases[start] = len(cases)
     for c in cases:
       for i in range(c.start, c.end + 1):
         self.match_cases[i] = start
@@ -272,6 +273,10 @@ class _Matches:
         self.defaults.add(c.start)
       if c.as_name:
         self.as_names[c.end] = c.as_name
+
+  def register_case(self, match_line, case_line):
+    assert self.match_cases[case_line] == match_line
+    self.unseen_cases[match_line] -= 1
 
   def __repr__(self):
     return f"""
@@ -301,10 +306,9 @@ class BranchTracker:
     self.ctx = ctx
 
   def _get_option_tracker(
-      self, match_var: cfg.Variable, case_line: int
+      self, match_var: cfg.Variable, match_line: int
   ) -> _OptionTracker:
     """Get the option tracker for a match line."""
-    match_line = self.matches.match_cases[case_line]
     if (match_line not in self._option_tracker or
         match_var.id not in self._option_tracker[match_line]):
       self._option_tracker[match_line][match_var.id] = (
@@ -323,8 +327,16 @@ class BranchTracker:
       ret.append(self.ctx.vm.init_class(node, cls))
     return self.ctx.join_variables(node, ret)
 
+  def _register_case_branch(self, op: opcodes.Opcode) -> Optional[int]:
+    match_line = self.matches.match_cases.get(op.line)
+    if match_line is None:
+      return None
+    self.matches.register_case(match_line, op.line)
+    return match_line
+
   def instantiate_case_var(self, op, match_var, node):
-    tracker = self._get_option_tracker(match_var, op.line)
+    match_line = self.matches.match_cases[op.line]
+    tracker = self._get_option_tracker(match_var, match_line)
     if tracker.cases[op.line]:
       # We have matched on one or more classes in this case.
       types = [x.typ for x in tracker.cases[op.line]]
@@ -360,14 +372,16 @@ class BranchTracker:
     self._match_types[match_line].add(_MatchTypes.make(op))
 
   def add_none_branch(self, op: opcodes.Opcode, match_var: cfg.Variable):
-    if op.line in self.matches.match_cases:
-      tracker = self._get_option_tracker(match_var, op.line)
-      tracker.cover_from_none(op.line)
-      if not tracker.is_complete:
-        return None
-      else:
-        # This is the last remaining case, and will always succeed.
-        return True
+    match_line = self._register_case_branch(op)
+    if not match_line:
+      return None
+    tracker = self._get_option_tracker(match_var, match_line)
+    tracker.cover_from_none(op.line)
+    if not tracker.is_complete:
+      return None
+    else:
+      # This is the last remaining case, and will always succeed.
+      return True
 
   def add_cmp_branch(
       self,
@@ -377,12 +391,13 @@ class BranchTracker:
       case_var: cfg.Variable
   ) -> _MatchSuccessType:
     """Add a compare-based match case branch to the tracker."""
+    match_line = self._register_case_branch(op)
+    if not match_line:
+      return None
+
     if cmp_type not in (slots.CMP_EQ, slots.CMP_IS):
       return None
 
-    match_line = self.matches.match_cases.get(op.line)
-    if not match_line:
-      return None
     match_type = self._match_types[match_line]
 
     try:
@@ -403,7 +418,7 @@ class BranchTracker:
     # (enum or union of literals) that we are tracking.
     if not tracker:
       if _is_literal_match(match_var) or _is_enum_match(match_var, case_val):
-        tracker = self._get_option_tracker(match_var, op.line)
+        tracker = self._get_option_tracker(match_var, match_line)
 
     # If none of the above apply we cannot do any sort of tracking.
     if not tracker:
@@ -425,23 +440,24 @@ class BranchTracker:
   def add_class_branch(self, op: opcodes.Opcode, match_var: cfg.Variable,
                        case_var: cfg.Variable) -> _MatchSuccessType:
     """Add a class-based match case branch to the tracker."""
-    tracker = self._get_option_tracker(match_var, op.line)
+    match_line = self._register_case_branch(op)
+    if not match_line:
+      return None
+    tracker = self._get_option_tracker(match_var, match_line)
     tracker.cover(op.line, case_var)
     return tracker.is_complete or None
 
   def add_default_branch(self, op: opcodes.Opcode) -> _MatchSuccessType:
     """Add a default match case branch to the tracker."""
-    match_line = self.matches.match_cases.get(op.line)
-    if match_line is None:
+    match_line = self._register_case_branch(op)
+    if not match_line or match_line not in self._option_tracker:
       return None
-    if match_line in self._option_tracker:
-      for opt in self._option_tracker[match_line].values():
-        # We no longer check for exhaustive or redundant matches once we hit a
-        # default case.
-        opt.invalidate()
-      return True
-    else:
-      return None
+
+    for opt in self._option_tracker[match_line].values():
+      # We no longer check for exhaustive or redundant matches once we hit a
+      # default case.
+      opt.invalidate()
+    return True
 
   def check_ending(
       self,
@@ -449,8 +465,6 @@ class BranchTracker:
       implicit_return: bool = False
   ) -> List[IncompleteMatch]:
     """Check if we have ended a match statement with leftover cases."""
-    if op.metadata.is_out_of_order:
-      return []
     line = op.line
     if implicit_return:
       done = set()
@@ -464,6 +478,10 @@ class BranchTracker:
     ret = []
     for i in done:
       for start in self.matches.end_to_starts[i]:
+        if self.matches.unseen_cases[start] > 0:
+          # We have executed some opcode out of order and thus gone past the end
+          # of the match block before seeing all case branches.
+          continue
         trackers = self._option_tracker[start]
         for tracker in trackers.values():
           if tracker.is_valid:
