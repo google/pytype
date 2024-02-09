@@ -15,6 +15,7 @@ disable=
   arguments-differ,
   arguments-out-of-order,
   assigning-non-slot,
+  assignment-from-no-return,
   attribute-defined-outside-init,
   bad-mcs-classmethod-argument,
   bad-option-value,
