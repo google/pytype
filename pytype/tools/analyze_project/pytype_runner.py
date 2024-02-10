@@ -52,7 +52,7 @@ def _get_executable(binary, module=None):
     return [sys.executable, '-m', module or binary]
   else:
     return [binary]
-PYTYPE_SINGLE = _get_executable('pytype-single', 'pytype.single')
+PYTYPE_SINGLE = _get_executable('pytype-single', 'pytype.main')
 
 
 def resolved_file_to_module(f):
