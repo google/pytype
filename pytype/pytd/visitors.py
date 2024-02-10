@@ -1536,7 +1536,12 @@ class CollectDependencies(Visitor):
     self._ProcessName(node.name, self.late_dependencies)
 
   def EnterModule(self, node):
-    self._ProcessName(node.module_name, self.dependencies)
+    # Most module nodes look like:
+    # Module(name='foo_module.bar_module', module_name='bar_module').
+    # We don't care about these. Nodes that don't follow this pattern are
+    # aliased modules, which we need to record.
+    if not node.name.endswith("." + node.module_name):
+      self._ProcessName(node.module_name, self.dependencies)
 
 
 def ExpandSignature(sig):
