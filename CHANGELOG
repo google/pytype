@@ -1,3 +1,10 @@
+Version 2024.02.13:
+
+Bug fixes:
+* Fix: pytype.single -> pytype.main.
+* Catch UnicodeDecodeError when attempting to read excluded files.
+* Add protocol overload to definition of builtins.divmod.
+
 Version 2024.02.09:
 
 Updates:

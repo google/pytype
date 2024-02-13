@@ -768,6 +768,15 @@ class BuiltinPython3FeatureTest(test_base.BaseTest):
       print(x[C()])
     """)
 
+  def test_divmod(self):
+    self.Check("""
+      import datetime
+      from typing import Tuple
+      assert_type(divmod(1, 2), Tuple[int, int])
+      assert_type(divmod(datetime.timedelta(1), datetime.timedelta(2)),
+                  Tuple[int, datetime.timedelta])
+    """)
+
 
 class SetMethodsTest(test_base.BaseTest):
   """Tests for methods of the `set` class."""
