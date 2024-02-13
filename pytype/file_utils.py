@@ -148,6 +148,9 @@ def is_file_script(filename, directory=None):
   # of course we assume that they start with a shebang
   file_path = expand_path(filename, directory)
   if path_utils.isfile(file_path):
-    with open(file_path, "r") as file:
-      line = file.readline().rstrip().lower()
+    with open(file_path, "r") as fi:
+      try:
+        line = fi.readline().rstrip().lower()
+      except UnicodeDecodeError:
+        return False
       return re.fullmatch(r"#!.+python3?", line) is not None
