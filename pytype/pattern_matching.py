@@ -257,7 +257,7 @@ class _Matches:
     self.match_cases = {}  # opcode_line : match_line
     self.defaults = set()  # lines with defaults
     self.as_names = {}  # case_end_line : case_as_name
-    self.unseen_cases = {}  # match_line : num_unseen_cases
+    self.unseen_cases = {}  # match_line : {unseen_cases}
 
     for m in ast_matches.matches:
       self._add_match(m.start, m.end, m.cases)
@@ -265,7 +265,7 @@ class _Matches:
   def _add_match(self, start, end, cases):
     self.start_to_end[start] = end
     self.end_to_starts[end].append(start)
-    self.unseen_cases[start] = len(cases)
+    self.unseen_cases[start] = {c.start for c in cases}
     for c in cases:
       for i in range(c.start, c.end + 1):
         self.match_cases[i] = start
@@ -276,7 +276,7 @@ class _Matches:
 
   def register_case(self, match_line, case_line):
     assert self.match_cases[case_line] == match_line
-    self.unseen_cases[match_line] -= 1
+    self.unseen_cases[match_line].discard(case_line)
 
   def __repr__(self):
     return f"""
@@ -478,7 +478,7 @@ class BranchTracker:
     ret = []
     for i in done:
       for start in self.matches.end_to_starts[i]:
-        if self.matches.unseen_cases[start] > 0:
+        if self.matches.unseen_cases[start]:
           # We have executed some opcode out of order and thus gone past the end
           # of the match block before seeing all case branches.
           continue

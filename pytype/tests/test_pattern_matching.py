@@ -1612,6 +1612,29 @@ class EnumMatchCoverageTest(test_base.BaseTest):
             count += 1
     """)
 
+  def test_optimized_bytecode_out_of_order_3(self):
+    """Regression test for a bug resulting from compiler optimisations."""
+    # See comment in the previous test case.
+    self.Check("""
+      import enum
+
+      class A(enum.Enum):
+        RED = 1
+        GREEN = 2
+        BLUE = 3
+
+      def f(xs: list[A]) -> list[str]:
+        ret = []
+        for x in xs:
+          match x:
+            case A.RED | A.BLUE:
+              add = str(x)
+            case _:
+              raise ValueError("green is unsupported")
+          ret.append(add)
+        return ret
+    """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class LiteralMatchCoverageTest(test_base.BaseTest):
