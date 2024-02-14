@@ -292,6 +292,20 @@ class SelfTest(test_base.BaseTest):
           return self
     """)
 
+  def test_overload(self):
+    self.Check("""
+      from typing import overload
+      from typing_extensions import Self
+      class C:
+        @overload
+        def f(self, other: Self) -> Self: ...
+        def f(self, other):
+          return other
+      class D(C):
+        pass
+      assert_type(D().f(__any_object__), D)
+    """)
+
 
 class SelfPyiTest(test_base.BaseTest):
   """Tests for typing.Self usage in type stubs."""

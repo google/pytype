@@ -219,7 +219,10 @@ class BoundFunction(_base.BaseValue):
       self.alias_map = None
 
   def _get_self_annot(self, callself):
-    self_type = self._get_self_type_param()
+    if isinstance(self.underlying, SignedFunction):
+      self_type = self.underlying.get_self_type_param()
+    else:
+      self_type = None
     if not self_type:
       return abstract_utils.get_generic_type(callself)
     if "classmethod" in self.underlying.decorators:
@@ -227,15 +230,6 @@ class BoundFunction(_base.BaseValue):
           self.ctx.convert.type_type, {abstract_utils.T: self_type}, self.ctx)
     else:
       return self_type
-
-  def _get_self_type_param(self):
-    if not isinstance(self.underlying, SignedFunction):
-      return None
-    for annot in self.underlying.signature.annotations.values():
-      for param in self.ctx.annotation_utils.get_type_parameters(annot):
-        if param.full_name == "typing.Self":
-          return param
-    return None
 
   def argcount(self, node):
     return self.underlying.argcount(node) - 1  # account for self
@@ -467,6 +461,13 @@ class SignedFunction(Function):
       elif annot_class:
         del self.signature.annotations[self_name]
       self._has_self_annot = old_has_self_annot
+
+  def get_self_type_param(self):
+    for annot in self.signature.annotations.values():
+      for param in self.ctx.annotation_utils.get_type_parameters(annot):
+        if param.full_name == "typing.Self":
+          return param
+    return None
 
   def argcount(self, _):
     return len(self.signature.param_names)

@@ -691,6 +691,8 @@ class InterpreterFunction(_function_base.SignedFunction):
             details="Cannot annotate self argument of __init__",
             name=self_name)
         self.signature.del_annotation(self_name)
+    for f in self._all_overloads:
+      f.is_attribute_of_class = True
     return super().property_get(callself, is_class)
 
   def is_coroutine(self):
@@ -710,3 +712,24 @@ class InterpreterFunction(_function_base.SignedFunction):
     if [op.name for op in ops] != empty_body_ops:
       return False
     return self.code.consts[ops[-2].arg] is None
+
+  def get_self_type_param(self):
+    if (param := super().get_self_type_param()):
+      return param
+    if self.is_overload:
+      return None
+    for f in self._all_overloads:
+      if (param := f.get_self_type_param()):
+        return param
+    return None
+
+  @contextlib.contextmanager
+  def set_self_annot(self, annot_class):
+    if self.is_overload or not self._active_overloads:
+      with super().set_self_annot(annot_class):
+        yield
+      return
+    with contextlib.ExitStack() as stack:
+      for f in self._active_overloads:
+        stack.enter_context(f.set_self_annot(annot_class))
+      yield
