@@ -8,5 +8,6 @@ py_library(
   DEPS
     pytype.blocks.blocks
     pytype.pyc.pyc
+    pytype.rewrite.flow.flow
     pytype_extensions.instrumentation_for_testing
 )

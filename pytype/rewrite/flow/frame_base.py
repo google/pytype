@@ -7,6 +7,7 @@ byte_{opcode_name} method implementing each opcode.
 """
 
 import dataclasses
+import logging
 from typing import Dict, Generic, TypeVar
 
 from pytype.blocks import blocks
@@ -14,6 +15,8 @@ from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
 
 _T = TypeVar('_T')
+
+log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -72,6 +75,7 @@ class FrameBase(Generic[_T]):
       op_impl = getattr(self, f'byte_{opname}')
     except AttributeError as e:
       raise NotImplementedError(f'Opcode {opname} not implemented') from e
+    log.info(str(opcode))
     op_impl(opcode)
     # Update current block and opcode.
     if opcode is not block[-1]:
