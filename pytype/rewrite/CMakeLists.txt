@@ -17,6 +17,7 @@ py_library(
     abstract.py
   DEPS
     pytype.blocks.blocks
+    pytype.rewrite.flow.flow
 )
 
 py_test(
@@ -26,6 +27,7 @@ py_test(
     abstract_test.py
   DEPS
     .abstract
+    pytype.rewrite.flow.flow
 )
 
 py_library(

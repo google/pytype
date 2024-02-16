@@ -2,15 +2,12 @@
 
 import sys
 import textwrap
-from typing import Sequence, Type, TypeVar
+from typing import Sequence
 
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
-from pytype.rewrite.flow import variables
 from pytype_extensions import instrumentation_for_testing as i4t
-
-_T = TypeVar('_T')
 
 
 class FakeOrderedCode(i4t.ProductionType[blocks.OrderedCode]):
@@ -30,9 +27,3 @@ def parse(src: str) -> blocks.OrderedCode:
   )
   ordered_code, unused_block_graph = blocks.process_code(code)
   return ordered_code
-
-
-def var_get(typ: Type[_T], var: variables.Variable) -> _T:
-  value = var.get_atomic_value()
-  assert isinstance(value, typ)
-  return value

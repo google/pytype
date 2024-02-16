@@ -39,7 +39,7 @@ class VmTest(unittest.TestCase):
     vm._run_module()
 
     def get_const(var):
-      return test_utils.var_get(abstract.PythonConstant, var).constant
+      return var.get_atomic_value(abstract.PythonConstant).constant
 
     x = get_const(vm._module_frame.load_global('x'))
     y = get_const(vm._module_frame.load_global('y'))
@@ -83,8 +83,8 @@ class VmTest(unittest.TestCase):
     vm._run_module()
     with self.assertRaises(KeyError):
       vm._module_frame.load_global('x')
-    y = test_utils.var_get(abstract.PythonConstant,
-                           vm._module_frame.load_global('y'))
+    y = vm._module_frame.load_global('y').get_atomic_value(
+        abstract.PythonConstant)
     self.assertEqual(y.constant, 5)
 
   def test_analyze_function_with_nonlocal(self):

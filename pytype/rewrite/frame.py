@@ -17,6 +17,8 @@ log = logging.getLogger(__name__)
 _AbstractVariable = variables.Variable[abstract.BaseValue]
 _VarDict = Dict[str, _AbstractVariable]
 
+_var = variables.Variable.from_value  # convenience alias
+
 
 class _Scope(enum.Enum):
   ENCLOSING = enum.auto()
@@ -215,21 +217,37 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       var = self.final_locals[name]
       frame.store_global(name, var)
 
-  def _call_function(self, func_var: _AbstractVariable) -> None:
+  def _call_function(
+      self,
+      func_var: _AbstractVariable,
+      args: Sequence[_AbstractVariable],
+  ) -> None:
+    if args and not all(v is abstract.BUILD_CLASS
+                        for v in func_var.values):
+      raise NotImplementedError('CALL not fully implemented')
+    ret_values = []
     for func in func_var.values:
-      if not isinstance(func, abstract.Function):
+      if isinstance(func, abstract.Function):
+        frame = self.make_child_frame(func)
+        frame.run()
+        dummy_ret = abstract.PythonConstant(None)
+        ret_values.append(dummy_ret)
+      elif func is abstract.BUILD_CLASS:
+        class_body, name = args
+        cls = abstract.Class(abstract.get_atomic_constant(name, str),
+                             class_body.get_atomic_value(abstract.Function))
+        ret_values.append(cls)
+      else:
         raise NotImplementedError('CALL not fully implemented')
-      frame = self.make_child_frame(func)
-      frame.run()
-    dummy_ret = variables.Variable.from_value(abstract.PythonConstant(None))
-    self._stack.push(dummy_ret)
+    self._stack.push(
+        variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
 
   def byte_RESUME(self, opcode):
     del opcode  # unused
 
   def byte_LOAD_CONST(self, opcode):
     constant = abstract.PythonConstant(self._code.consts[opcode.arg])
-    self._stack.push(variables.Variable.from_value(constant))
+    self._stack.push(_var(constant))
 
   def byte_RETURN_VALUE(self, opcode):
     unused_return_value = self._stack.pop()
@@ -250,24 +268,24 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if opcode.arg not in (0, pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS):
       raise NotImplementedError('MAKE_FUNCTION not fully implemented')
     if self._code.python_version >= (3, 11):
-      code = self._stack.pop().get_atomic_value().constant
+      code = abstract.get_atomic_constant(self._stack.pop(), blocks.OrderedCode)
       name = code.qualname
     else:
-      name = self._stack.pop().get_atomic_value().constant
-      code = self._stack.pop().get_atomic_value().constant
+      name = abstract.get_atomic_constant(self._stack.pop(), str)
+      code = abstract.get_atomic_constant(self._stack.pop(), blocks.OrderedCode)
     if opcode.arg & pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS:
-      freevars = self._stack.pop().get_atomic_value().constant
+      freevars = abstract.get_atomic_constant(self._stack.pop())
       enclosing_scope = tuple(freevar.name for freevar in freevars)
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
     func = abstract.Function(name, code, enclosing_scope)
     self._functions.append(func)
-    self._stack.push(variables.Variable.from_value(func))
+    self._stack.push(_var(func))
 
   def byte_PUSH_NULL(self, opcode):
     del opcode  # unused
-    self._stack.push(variables.Variable.from_value(abstract.NULL))
+    self._stack.push(_var(abstract.NULL))
 
   def byte_LOAD_NAME(self, opcode):
     name = opcode.argval
@@ -297,19 +315,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     del opcode  # unused
 
   def byte_CALL(self, opcode):
-    if opcode.arg:
-      raise NotImplementedError('CALL not fully implemented')
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
     if sentinel.values != (abstract.NULL,):
       raise NotImplementedError('CALL not fully implemented')
-    func_var, *unused_args = rest
-    self._call_function(func_var)
+    func_var, *args = rest
+    self._call_function(func_var, args)
 
   def byte_CALL_FUNCTION(self, opcode):
-    if opcode.arg:
-      raise NotImplementedError('CALL_FUNCTION not fully implemented')
+    args = self._stack.popn(opcode.arg)
     func_var = self._stack.pop()
-    self._call_function(func_var)
+    self._call_function(func_var, args)
 
   def byte_POP_TOP(self, opcode):
     del opcode  # unused
@@ -327,5 +342,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_BUILD_TUPLE(self, opcode):
     count = opcode.arg
     elements = self._stack.popn(count)
-    self._stack.push(
-        variables.Variable.from_value(abstract.PythonConstant(tuple(elements))))
+    self._stack.push(_var(abstract.PythonConstant(tuple(elements))))
+
+  def byte_LOAD_BUILD_CLASS(self, opcode):
+    self._stack.push(_var(abstract.BUILD_CLASS))

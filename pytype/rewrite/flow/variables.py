@@ -1,7 +1,7 @@
 """Variables, bindings, and conditions."""
 
 import dataclasses
-from typing import Generic, Optional, Tuple, TypeVar
+from typing import Generic, Optional, Tuple, Type, TypeVar, get_origin, overload
 
 from pytype.rewrite.flow import conditions
 
@@ -38,13 +38,27 @@ class Variable(Generic[_T]):
   def values(self) -> Tuple[_T, ...]:
     return tuple(b.value for b in self.bindings)
 
-  def get_atomic_value(self) -> _T:
+  def display_name(self) -> str:
+    return f'variable {self.name}' if self.name else 'anonymous variable'
+
+  @overload
+  def get_atomic_value(self, typ: Type[_T2]) -> _T2: ...
+
+  @overload
+  def get_atomic_value(self, typ: None = ...) -> _T: ...
+
+  def get_atomic_value(self, typ=None):
     """Gets this variable's value if there's exactly one, errors otherwise."""
     if len(self.bindings) != 1:
       desc = 'many' if len(self.bindings) > 1 else 'few'
-      varname = f'variable {self.name}' if self.name else 'anonymous variable'
-      raise ValueError(f'Too {desc} bindings for {varname}: {self.bindings}')
-    return self.bindings[0].value
+      raise ValueError(
+          f'Too {desc} bindings for {self.display_name()}: {self.bindings}')
+    value = self.bindings[0].value
+    if typ and not isinstance(value, (runtime_type := get_origin(typ) or typ)):
+      raise ValueError(
+          f'Wrong type for {self.display_name()}: expected '
+          f'{runtime_type.__name__}, got {value.__class__.__name__}')
+    return value
 
   def with_condition(self, condition: conditions.Condition) -> 'Variable[_T]':
     """Adds a condition, 'and'-ing it with any existing."""

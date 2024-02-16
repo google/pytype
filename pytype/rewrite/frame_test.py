@@ -217,14 +217,14 @@ class FrameTest(unittest.TestCase):
           y = x
     """)
     module_frame.run()
-    f = test_utils.var_get(abstract.Function, module_frame.final_locals['f'])
+    f = module_frame.final_locals['f'].get_atomic_value(abstract.Function)
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
-    g = test_utils.var_get(abstract.Function, f_frame.final_locals['g'])
+    g = f_frame.final_locals['g'].get_atomic_value(abstract.Function)
     g_frame = f_frame.make_child_frame(g)
     g_frame.run()
     self.assertEqual(set(g_frame.final_locals), {'y'})
-    y = test_utils.var_get(abstract.PythonConstant, g_frame.final_locals['y'])
+    y = g_frame.final_locals['y'].get_atomic_value(abstract.PythonConstant)
     self.assertIsNone(y.constant)
     self.assertTrue(f_frame.load_local('x'))
     with self.assertRaises(KeyError):
@@ -243,12 +243,18 @@ class FrameTest(unittest.TestCase):
         g()
     """)
     module_frame.run()
-    f = test_utils.var_get(abstract.Function, module_frame.final_locals['f'])
+    f = module_frame.final_locals['f'].get_atomic_value(abstract.Function)
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
     self.assertEqual(set(f_frame.final_locals), {'x', 'g'})
-    x = test_utils.var_get(abstract.PythonConstant, f_frame.final_locals['x'])
+    x = f_frame.final_locals['x'].get_atomic_value(abstract.PythonConstant)
     self.assertEqual(x.constant, 5)
+
+  def test_class(self):
+    module_frame = _make_frame('class C: ...')
+    module_frame.run()
+    cls = module_frame.load_local('C').get_atomic_value(abstract.Class)
+    self.assertEqual(cls.name, 'C')
 
 
 if __name__ == '__main__':
