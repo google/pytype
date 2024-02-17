@@ -79,7 +79,6 @@ py_test(
     .frame
     pytype.blocks.blocks
     pytype.pyc.pyc
-    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 

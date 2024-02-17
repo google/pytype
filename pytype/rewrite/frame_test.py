@@ -3,7 +3,6 @@ from typing import Dict, cast
 from pytype.pyc import opcodes
 from pytype.rewrite import abstract
 from pytype.rewrite import frame as frame_lib
-from pytype.rewrite.flow import variables
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
 
@@ -134,8 +133,7 @@ class FrameTest(unittest.TestCase):
 
   def test_typing(self):
     frame = _make_frame('')
-    assert_type(frame.final_locals,
-                Dict[str, variables.Variable[abstract.BaseValue]])
+    assert_type(frame.final_locals, Dict[str, abstract.BaseValue])
 
   def test_load_const(self):
     block = [opcodes.LOAD_CONST(0, 0, 0, 42), opcodes.RETURN_VALUE(1, 0)]
@@ -149,9 +147,8 @@ class FrameTest(unittest.TestCase):
   def test_store_local(self):
     frame = _make_frame('x = 42')
     frame.run()
-    expected_x = abstract.PythonConstant(42).to_variable()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'], expected_x)
+    self.assertEqual(frame.final_locals['x'], abstract.PythonConstant(42))
 
   def test_store_global(self):
     frame = _make_frame("""
@@ -159,15 +156,14 @@ class FrameTest(unittest.TestCase):
       x = 42
     """)
     frame.run()
-    expected_x = abstract.PythonConstant(42).to_variable()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'], expected_x)
+    self.assertEqual(frame.final_locals['x'], abstract.PythonConstant(42))
 
   def test_function(self):
     frame = _make_frame('def f(): pass')
     frame.run()
     self.assertIn('f', frame.final_locals)
-    func = frame.final_locals['f'].get_atomic_value()
+    func = frame.final_locals['f']
     self.assertIsInstance(func, abstract.Function)
     self.assertEqual(func.name, 'f')
     self.assertCountEqual(frame.functions, [func])
@@ -179,8 +175,7 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='__main__')
     module_frame.run()
-    f = cast(abstract.Function,
-             module_frame.final_locals['f'].get_atomic_value())
+    f = cast(abstract.Function, module_frame.final_locals['f'])
     f_frame = module_frame.make_child_frame(f)
     self.assertIn('x', f_frame._initial_globals)
     self.assertIn('f', f_frame._initial_globals)
@@ -193,8 +188,7 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='f')
     f_frame.run()
-    g = cast(abstract.Function,
-             f_frame.final_locals['g'].get_atomic_value())
+    g = cast(abstract.Function, f_frame.final_locals['g'])
     g_frame = f_frame.make_child_frame(g)
     self.assertIn('x', g_frame._initial_globals)
 
@@ -230,21 +224,16 @@ class FrameTest(unittest.TestCase):
           y = x
     """)
     module_frame.run()
-    f = module_frame.final_locals['f'].get_atomic_value(abstract.Function)
+    f = cast(abstract.Function, module_frame.final_locals['f'])
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
-    g = f_frame.final_locals['g'].get_atomic_value(abstract.Function)
+    g = cast(abstract.Function, f_frame.final_locals['g'])
     g_frame = f_frame.make_child_frame(g)
     g_frame.run()
     self.assertIn('y', g_frame.final_locals)
-    y = g_frame.final_locals['y'].get_atomic_value(abstract.PythonConstant)
+    y = cast(abstract.PythonConstant, g_frame.final_locals['y'])
     self.assertIsNone(y.constant)
-    self.assertTrue(f_frame.load_local('x'))
-    with self.assertRaises(KeyError):
-      f_frame.load_enclosing('x')
-    self.assertTrue(g_frame.load_enclosing('x'))
-    with self.assertRaises(KeyError):
-      g_frame.load_local('x')
+    self.assertIn('x', g_frame._initial_enclosing)
 
   def test_write_enclosing(self):
     module_frame = _make_frame("""
@@ -256,18 +245,18 @@ class FrameTest(unittest.TestCase):
         g()
     """)
     module_frame.run()
-    f = module_frame.final_locals['f'].get_atomic_value(abstract.Function)
+    f = cast(abstract.Function, module_frame.final_locals['f'])
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
     self.assertIn('x', f_frame.final_locals)
     self.assertIn('g', f_frame.final_locals)
-    x = f_frame.final_locals['x'].get_atomic_value(abstract.PythonConstant)
+    x = cast(abstract.PythonConstant, f_frame.final_locals['x'])
     self.assertEqual(x.constant, 5)
 
   def test_class(self):
     module_frame = _make_frame('class C: ...')
     module_frame.run()
-    cls = module_frame.load_local('C').get_atomic_value(abstract.Class)
+    cls = cast(abstract.Class, module_frame.final_locals['C'])
     self.assertEqual(cls.name, 'C')
 
   def test_class_body(self):
@@ -276,9 +265,10 @@ class FrameTest(unittest.TestCase):
         def f(self): ...
     """)
     module_frame.run()
-    cls = module_frame.load_local('C').get_atomic_value(abstract.Class)
+    cls = cast(abstract.Class, module_frame.final_locals['C'])
     self.assertIn('f', cls.members)
-    f = cls.members['f'].get_atomic_value(abstract.Function)
+    f = cls.members['f']
+    self.assertIsInstance(f, abstract.Function)
     self.assertEqual(f.name, 'C.f')
 
 

@@ -35,7 +35,9 @@ class FrameBase(Generic[_T]):
   """Virtual machine frame.
 
   Attributes:
-    final_locals: The frame's `locals` dictionary after it finishes execution.
+    _final_locals: The frame's `locals` dictionary after it finishes execution.
+      This is a protected attribute so that subclasses can choose whether and
+      how to expose control flow information.
   """
 
   def __init__(
@@ -48,7 +50,7 @@ class FrameBase(Generic[_T]):
 
     # Local names before and after frame runs
     self._initial_locals = initial_locals
-    self.final_locals: Dict[str, variables.Variable[_T]] = None
+    self._final_locals: Dict[str, variables.Variable[_T]] = None
 
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
@@ -86,7 +88,7 @@ class FrameBase(Generic[_T]):
       self._merge_state_into(self._current_state, opcode.next.index)
     if block is self._code.order[-1]:
       self._current_step.block = -1
-      self.final_locals = self._current_state.get_locals()
+      self._final_locals = self._current_state.get_locals()
     else:
       self._current_step.block += 1
       self._current_step.opcode = 0

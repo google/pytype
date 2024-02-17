@@ -54,7 +54,13 @@ class _ShadowedNonlocals:
 
 
 class Frame(frame_base.FrameBase[abstract.BaseValue]):
-  """Virtual machine frame."""
+  """Virtual machine frame.
+
+  Attributes:
+    name: The name of the frame.
+    final_locals: The final `locals` dictionary after the frame finishes
+      executing, with Variables flattened to BaseValues.
+  """
 
   def __init__(
       self,
@@ -90,6 +96,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._shadowed_nonlocals = _ShadowedNonlocals()
     # All functions created during execution
     self._functions: List[abstract.Function] = []
+    # Final values of locals, unwrapped from variables
+    self.final_locals: Dict[str, abstract.BaseValue] = None
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -127,9 +135,13 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         break
     assert not self._stack
     log.info('Finished running frame: %s', self.name)
-    if self._f_back:
+    if self._f_back and self._f_back.final_locals is None:
       log.info('Resuming frame: %s', self._f_back.name)
       self._merge_nonlocals_into(self._f_back)
+    # Set the current state to None so that the load_* and store_* methods
+    # cannot be used to modify finalized locals.
+    self._current_state = None
+    self.final_locals = self._final_locals_as_values()
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
     self._current_state.store_local(name, var)
@@ -188,9 +200,18 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       return self.load_enclosing(name)
 
   def make_child_frame(self, func: abstract.Function) -> 'Frame':
-    current_locals = self._current_state.get_locals()
-    initial_enclosing = {name: self.load_deref(name)
-                         for name in func.enclosing_scope}
+    if self._final_locals:
+      current_locals = {
+          name: val.to_variable() for name, val in self.final_locals.items()}
+    else:
+      current_locals = self._current_state.get_locals()
+    initial_enclosing = {}
+    for name in func.enclosing_scope:
+      if name in current_locals:
+        assert not self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL)
+        initial_enclosing[name] = current_locals[name]
+      else:
+        initial_enclosing[name] = self._initial_enclosing[name]
     if self._is_module_frame:
       # The module frame's locals are the most up-to-date globals.
       initial_globals = current_locals
@@ -209,10 +230,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def _merge_nonlocals_into(self, frame: 'Frame') -> None:
     for name in self._shadowed_nonlocals.get_names(_Scope.ENCLOSING):
-      var = self.final_locals[name]
+      var = self._final_locals[name]
       frame.store_deref(name, var)
     for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
-      var = self.final_locals[name]
+      var = self._final_locals[name]
       frame.store_global(name, var)
 
   def _call_function(
@@ -242,6 +263,18 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         raise NotImplementedError('CALL not fully implemented')
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
+
+  def _final_locals_as_values(self) -> Dict[str, abstract.BaseValue]:
+    final_values = {}
+    for name, var in self._final_locals.items():
+      values = var.values
+      if len(values) > 1:
+        raise NotImplementedError('Multiple bindings not yet supported')
+      elif values:
+        final_values[name] = values[0]
+      else:
+        raise NotImplementedError('Empty variable not yet supported')
+    return final_values
 
   def byte_RESUME(self, opcode):
     del opcode  # unused

@@ -38,8 +38,7 @@ class VirtualMachine:
 
   def infer_stub(self):
     self._run_module()
-    for var in self._module_frame.final_locals.values():
-      for value in var.values:
-        if isinstance(value, abstract.Function):
-          function_frame = self._module_frame.make_child_frame(value)
-          function_frame.run()
+    for value in self._module_frame.final_locals:
+      if isinstance(value, abstract.Function):
+        function_frame = self._module_frame.make_child_frame(value)
+        function_frame.run()

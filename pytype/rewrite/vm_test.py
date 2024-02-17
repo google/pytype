@@ -1,4 +1,4 @@
-from typing import TypeVar
+from typing import TypeVar, cast
 
 from pytype.pyc import opcodes
 from pytype.rewrite import abstract
@@ -38,12 +38,12 @@ class VmTest(unittest.TestCase):
     """)
     vm._run_module()
 
-    def get_const(var):
-      return var.get_atomic_value(abstract.PythonConstant).constant
+    def get_const(val):
+      return cast(abstract.PythonConstant, val).constant
 
-    x = get_const(vm._module_frame.load_global('x'))
-    y = get_const(vm._module_frame.load_global('y'))
-    z = get_const(vm._module_frame.load_global('z'))
+    x = get_const(vm._module_frame.final_locals['x'])
+    y = get_const(vm._module_frame.final_locals['y'])
+    z = get_const(vm._module_frame.final_locals['z'])
     self.assertEqual(x, 42)
     self.assertIsNone(y)
     self.assertEqual(z, 42)
@@ -82,9 +82,8 @@ class VmTest(unittest.TestCase):
     """)
     vm._run_module()
     with self.assertRaises(KeyError):
-      vm._module_frame.load_global('x')
-    y = vm._module_frame.load_global('y').get_atomic_value(
-        abstract.PythonConstant)
+      _ = vm._module_frame.final_locals['x']
+    y = cast(abstract.PythonConstant, vm._module_frame.final_locals['y'])
     self.assertEqual(y.constant, 5)
 
   def test_analyze_function_with_nonlocal(self):

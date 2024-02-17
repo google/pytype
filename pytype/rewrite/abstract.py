@@ -10,7 +10,6 @@ _T = TypeVar('_T')
 
 # Type aliases
 _AbstractVariable = variables.Variable['BaseValue']
-_VarDict = Dict[str, _AbstractVariable]
 
 
 class BaseValue:
@@ -50,7 +49,7 @@ class Function(BaseValue):
 
 class Class(BaseValue):
 
-  def __init__(self, name: str, members: _VarDict):
+  def __init__(self, name: str, members: Dict[str, BaseValue]):
     self.name = name
     self.members = members
 
