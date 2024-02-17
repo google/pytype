@@ -101,7 +101,6 @@ py_test(
   DEPS
     .abstract
     .stack
-    pytype.rewrite.flow.flow
 )
 
 py_library(

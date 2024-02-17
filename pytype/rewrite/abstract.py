@@ -1,15 +1,22 @@
 """Abstract representations of Python values."""
 
-from typing import Any, Generic, Tuple, Type, TypeVar, get_origin, overload
+from typing import Any, Dict, Generic, Tuple, Type, TypeVar, get_origin, overload
 
 from pytype.blocks import blocks
 from pytype.rewrite.flow import variables
+from typing_extensions import Self
 
 _T = TypeVar('_T')
 
+# Type aliases
+_AbstractVariable = variables.Variable['BaseValue']
+_VarDict = Dict[str, _AbstractVariable]
+
 
 class BaseValue:
-  pass
+
+  def to_variable(self: Self) -> variables.Variable[Self]:
+    return variables.Variable.from_value(self)
 
 
 class PythonConstant(BaseValue, Generic[_T]):
@@ -43,9 +50,9 @@ class Function(BaseValue):
 
 class Class(BaseValue):
 
-  def __init__(self, name: str, body: Function):
+  def __init__(self, name: str, members: _VarDict):
     self.name = name
-    self.body = body
+    self.members = members
 
   def __repr__(self):
     return f'Class({self.name})'
@@ -68,13 +75,11 @@ BUILD_CLASS = _BuildClass()
 
 
 @overload
-def get_atomic_constant(
-    var: variables.Variable[BaseValue], typ: Type[_T]) -> _T: ...
+def get_atomic_constant(var: _AbstractVariable, typ: Type[_T]) -> _T: ...
 
 
 @overload
-def get_atomic_constant(
-    var: variables.Variable[BaseValue], typ: None = ...) -> Any: ...
+def get_atomic_constant(var: _AbstractVariable, typ: None = ...) -> Any: ...
 
 
 def get_atomic_constant(var, typ=None):

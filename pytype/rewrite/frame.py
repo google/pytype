@@ -17,8 +17,6 @@ log = logging.getLogger(__name__)
 _AbstractVariable = variables.Variable[abstract.BaseValue]
 _VarDict = Dict[str, _AbstractVariable]
 
-_var = variables.Variable.from_value  # convenience alias
-
 
 class _Scope(enum.Enum):
   ENCLOSING = enum.auto()
@@ -234,8 +232,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         ret_values.append(dummy_ret)
       elif func is abstract.BUILD_CLASS:
         class_body, name = args
-        cls = abstract.Class(abstract.get_atomic_constant(name, str),
-                             class_body.get_atomic_value(abstract.Function))
+        frame = self.make_child_frame(
+            class_body.get_atomic_value(abstract.Function))
+        frame.run()
+        members = frame.final_locals
+        cls = abstract.Class(abstract.get_atomic_constant(name, str), members)
         ret_values.append(cls)
       else:
         raise NotImplementedError('CALL not fully implemented')
@@ -247,7 +248,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_LOAD_CONST(self, opcode):
     constant = abstract.PythonConstant(self._code.consts[opcode.arg])
-    self._stack.push(_var(constant))
+    self._stack.push(constant.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
     unused_return_value = self._stack.pop()
@@ -281,11 +282,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       enclosing_scope = ()
     func = abstract.Function(name, code, enclosing_scope)
     self._functions.append(func)
-    self._stack.push(_var(func))
+    self._stack.push(func.to_variable())
 
   def byte_PUSH_NULL(self, opcode):
     del opcode  # unused
-    self._stack.push(_var(abstract.NULL))
+    self._stack.push(abstract.NULL.to_variable())
 
   def byte_LOAD_NAME(self, opcode):
     name = opcode.argval
@@ -342,7 +343,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_BUILD_TUPLE(self, opcode):
     count = opcode.arg
     elements = self._stack.popn(count)
-    self._stack.push(_var(abstract.PythonConstant(tuple(elements))))
+    self._stack.push(abstract.PythonConstant(tuple(elements)).to_variable())
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
-    self._stack.push(_var(abstract.BUILD_CLASS))
+    self._stack.push(abstract.BUILD_CLASS.to_variable())

@@ -12,7 +12,15 @@ import unittest
 
 def _make_frame(src: str, name: str = '__main__') -> frame_lib.Frame:
   code = test_utils.parse(src)
-  return frame_lib.Frame(name, code)
+  # TODO(b/324464265): Globals should be populated by the frame creation code,
+  # not here in the test.
+  if name == '__main__':
+    initial_locals = initial_globals = {
+        '__name__': abstract.BaseValue().to_variable()}
+  else:
+    initial_locals = initial_globals = {}
+  return frame_lib.Frame(name, code, initial_locals=initial_locals,
+                         initial_globals=initial_globals)
 
 
 class ShadowedNonlocalsTest(unittest.TestCase):
@@ -35,7 +43,7 @@ class LoadStoreTest(unittest.TestCase):
   def test_store_local_in_module_frame(self):
     frame = _make_frame('', name='__main__')
     frame.step()
-    var = variables.Variable.from_value(abstract.PythonConstant(5))
+    var = abstract.PythonConstant(5).to_variable()
     frame.store_local('x', var)
     stored = frame.load_local('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -44,7 +52,7 @@ class LoadStoreTest(unittest.TestCase):
   def test_store_local_in_nonmodule_frame(self):
     frame = _make_frame('', name='f')
     frame.step()
-    var = variables.Variable.from_value(abstract.PythonConstant(5))
+    var = abstract.PythonConstant(5).to_variable()
     frame.store_local('x', var)
     stored = frame.load_local('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -54,7 +62,7 @@ class LoadStoreTest(unittest.TestCase):
   def test_store_global_in_module_frame(self):
     frame = _make_frame('', name='__main__')
     frame.step()
-    var = variables.Variable.from_value(abstract.PythonConstant(5))
+    var = abstract.PythonConstant(5).to_variable()
     frame.store_global('x', var)
     stored = frame.load_global('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -63,7 +71,7 @@ class LoadStoreTest(unittest.TestCase):
   def test_store_global_in_nonmodule_frame(self):
     frame = _make_frame('', name='f')
     frame.step()
-    var = variables.Variable.from_value(abstract.PythonConstant(5))
+    var = abstract.PythonConstant(5).to_variable()
     frame.store_global('x', var)
     stored = frame.load_global('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -72,7 +80,7 @@ class LoadStoreTest(unittest.TestCase):
 
   def test_overwrite_global_in_module_frame(self):
     code = test_utils.parse('')
-    var = variables.Variable.from_value(abstract.PythonConstant(5))
+    var = abstract.PythonConstant(5).to_variable()
     frame = frame_lib.Frame(
         '__main__', code, initial_locals={'x': var}, initial_globals={'x': var})
     frame.step()
@@ -80,7 +88,7 @@ class LoadStoreTest(unittest.TestCase):
     self.assertEqual(frame.load_global('x'), var.with_name('x'))
     self.assertEqual(frame.load_local('x'), var.with_name('x'))
 
-    var2 = variables.Variable.from_value(abstract.PythonConstant(10))
+    var2 = abstract.PythonConstant(10).to_variable()
     frame.store_global('x', var2)
 
     self.assertEqual(frame.load_global('x'), var2.with_name('x'))
@@ -88,7 +96,7 @@ class LoadStoreTest(unittest.TestCase):
 
   def test_overwrite_global_in_nonmodule_frame(self):
     code = test_utils.parse('')
-    var = variables.Variable.from_value(abstract.PythonConstant(5))
+    var = abstract.PythonConstant(5).to_variable()
     frame = frame_lib.Frame('f', code, initial_globals={'x': var})
     frame.step()
 
@@ -96,7 +104,7 @@ class LoadStoreTest(unittest.TestCase):
     with self.assertRaises(KeyError):
       frame.load_local('x')
 
-    var2 = variables.Variable.from_value(abstract.PythonConstant(10))
+    var2 = abstract.PythonConstant(10).to_variable()
     frame.store_global('x', var2)
 
     self.assertEqual(frame.load_global('x'), var2.with_name('x'))
@@ -107,7 +115,7 @@ class LoadStoreTest(unittest.TestCase):
     code = test_utils.parse('')
     frame = frame_lib.Frame('f', code)
     frame.step()
-    x = variables.Variable.from_value(abstract.PythonConstant(5))
+    x = abstract.PythonConstant(5).to_variable()
     frame.store_enclosing('x', x)
     with self.assertRaises(KeyError):
       frame.load_local('x')
@@ -141,8 +149,9 @@ class FrameTest(unittest.TestCase):
   def test_store_local(self):
     frame = _make_frame('x = 42')
     frame.run()
-    expected_x = variables.Variable.from_value(abstract.PythonConstant(42))
-    self.assertEqual(frame.final_locals, {'x': expected_x})
+    expected_x = abstract.PythonConstant(42).to_variable()
+    self.assertIn('x', frame.final_locals)
+    self.assertEqual(frame.final_locals['x'], expected_x)
 
   def test_store_global(self):
     frame = _make_frame("""
@@ -150,13 +159,14 @@ class FrameTest(unittest.TestCase):
       x = 42
     """)
     frame.run()
-    expected_x = variables.Variable.from_value(abstract.PythonConstant(42))
-    self.assertEqual(frame.final_locals, {'x': expected_x})
+    expected_x = abstract.PythonConstant(42).to_variable()
+    self.assertIn('x', frame.final_locals)
+    self.assertEqual(frame.final_locals['x'], expected_x)
 
   def test_function(self):
     frame = _make_frame('def f(): pass')
     frame.run()
-    self.assertEqual(set(frame.final_locals), {'f'})
+    self.assertIn('f', frame.final_locals)
     func = frame.final_locals['f'].get_atomic_value()
     self.assertIsInstance(func, abstract.Function)
     self.assertEqual(func.name, 'f')
@@ -172,7 +182,8 @@ class FrameTest(unittest.TestCase):
     f = cast(abstract.Function,
              module_frame.final_locals['f'].get_atomic_value())
     f_frame = module_frame.make_child_frame(f)
-    self.assertEqual(set(f_frame._initial_globals), {'x', 'f'})
+    self.assertIn('x', f_frame._initial_globals)
+    self.assertIn('f', f_frame._initial_globals)
 
   def test_copy_globals_from_nonmodule_frame(self):
     f_frame = _make_frame("""
@@ -185,7 +196,7 @@ class FrameTest(unittest.TestCase):
     g = cast(abstract.Function,
              f_frame.final_locals['g'].get_atomic_value())
     g_frame = f_frame.make_child_frame(g)
-    self.assertEqual(set(g_frame._initial_globals), {'x'})
+    self.assertIn('x', g_frame._initial_globals)
 
   def test_copy_globals_from_inner_frame_to_module(self):
     module_frame = _make_frame("""
@@ -195,7 +206,8 @@ class FrameTest(unittest.TestCase):
       f()
     """, name='__main__')
     module_frame.run()
-    self.assertEqual(set(module_frame.final_locals), {'f', 'x'})
+    self.assertIn('f', module_frame.final_locals)
+    self.assertIn('x', module_frame.final_locals)
 
   def test_copy_globals_from_inner_frame_to_outer(self):
     f_frame = _make_frame("""
@@ -205,7 +217,8 @@ class FrameTest(unittest.TestCase):
       g()
     """, name='f')
     f_frame.run()
-    self.assertEqual(set(f_frame.final_locals), {'g', 'x'})
+    self.assertIn('g', f_frame.final_locals)
+    self.assertIn('x', f_frame.final_locals)
     self.assertCountEqual(
         f_frame._shadowed_nonlocals.get_names(frame_lib._Scope.GLOBAL), {'x'})
 
@@ -223,7 +236,7 @@ class FrameTest(unittest.TestCase):
     g = f_frame.final_locals['g'].get_atomic_value(abstract.Function)
     g_frame = f_frame.make_child_frame(g)
     g_frame.run()
-    self.assertEqual(set(g_frame.final_locals), {'y'})
+    self.assertIn('y', g_frame.final_locals)
     y = g_frame.final_locals['y'].get_atomic_value(abstract.PythonConstant)
     self.assertIsNone(y.constant)
     self.assertTrue(f_frame.load_local('x'))
@@ -246,7 +259,8 @@ class FrameTest(unittest.TestCase):
     f = module_frame.final_locals['f'].get_atomic_value(abstract.Function)
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
-    self.assertEqual(set(f_frame.final_locals), {'x', 'g'})
+    self.assertIn('x', f_frame.final_locals)
+    self.assertIn('g', f_frame.final_locals)
     x = f_frame.final_locals['x'].get_atomic_value(abstract.PythonConstant)
     self.assertEqual(x.constant, 5)
 
@@ -255,6 +269,17 @@ class FrameTest(unittest.TestCase):
     module_frame.run()
     cls = module_frame.load_local('C').get_atomic_value(abstract.Class)
     self.assertEqual(cls.name, 'C')
+
+  def test_class_body(self):
+    module_frame = _make_frame("""
+      class C:
+        def f(self): ...
+    """)
+    module_frame.run()
+    cls = module_frame.load_local('C').get_atomic_value(abstract.Class)
+    self.assertIn('f', cls.members)
+    f = cls.members['f'].get_atomic_value(abstract.Function)
+    self.assertEqual(f.name, 'C.f')
 
 
 if __name__ == '__main__':
