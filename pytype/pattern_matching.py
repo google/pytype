@@ -207,7 +207,7 @@ class _OptionTracker:
       if isinstance(d, abstract.Unsolvable):
         # Set the case type to Any and invalidate the tracker; we do not know
         # what we have matched against.
-        ret += self.cover_type(d)
+        ret += self.options.cover_type(d)
         self.invalidate()
       elif isinstance(d, abstract.Instance):
         ret += self.options.cover_instance(d)
