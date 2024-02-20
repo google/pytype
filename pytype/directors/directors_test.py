@@ -851,6 +851,41 @@ class DisableDirectivesTest(DirectorTestCase):
     self.assertDisables(2, 3, 4, 5)
 
 
+class PragmaDirectivesTest(DirectorTestCase):
+  """Test pragmas."""
+
+  def test_valid(self):
+    self._create("""
+      def f(x) -> str: # pytype: pragma=cache-return
+        ...
+    """)
+    self.assertTrue(self._director.has_pragma("cache-return", 2))
+    self.assertFalse(self._director.has_pragma("cache-return", 3))
+
+  def test_invalid(self):
+    self._create("""
+      def f(x) -> str: # pytype: pragma=bad-pragma
+        ...
+    """)
+    self.assertFalse(self._director.has_pragma("bad-pragma", 2))
+    err = self._errorlog.unique_sorted_errors()[0]
+    self.assertEqual(err.name, "invalid-directive")
+    self.assertRegex(err.message, "Unknown pytype pragmas")
+    self.assertRegex(err.message, ".*bad-pragma")
+
+  def test_line_range(self):
+    # We currently do not adjust line numbers for pragmas
+    self._create("""
+      def f(
+        x # pytype: pragma=cache-return
+      ) -> str:
+        ...
+    """)
+    self.assertFalse(self._director.has_pragma("cache-return", 2))
+    self.assertTrue(self._director.has_pragma("cache-return", 3))
+    self.assertFalse(self._director.has_pragma("cache-return", 4))
+
+
 class GlobalDirectivesTest(DirectorTestCase):
   """Test global directives."""
 
