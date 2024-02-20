@@ -174,6 +174,8 @@ class InterpreterFunction(_function_base.SignedFunction):
     if name.endswith(".__init_subclass__"):
       # __init_subclass__ is automatically promoted to a classmethod
       self.is_classmethod = True
+    # Whether to cache the return value irrespective of call args
+    self.cache_return = False
 
   @contextlib.contextmanager
   def record_calls(self):
@@ -380,9 +382,15 @@ class InterpreterFunction(_function_base.SignedFunction):
   def _hash_call(self, callargs, frame):
     # Note that we ignore caching in __init__ calls, so that attributes are
     # set correctly.
-    if (self.ctx.options.skip_repeat_calls and
-        ("self" not in callargs or not self.ctx.callself_stack or
-         callargs["self"].data != self.ctx.callself_stack[-1].data)):
+    if self.cache_return:
+      # cache-return is a pragma, and overrides any other heuristics
+      # Return a fixed key that is unlikely to collide with the call-specific
+      # key computed in the next branch.
+      log.info("cache-return set for function %s", self.name)
+      callkey = 0x12345678
+    elif (self.ctx.options.skip_repeat_calls and
+          ("self" not in callargs or not self.ctx.callself_stack or
+           callargs["self"].data != self.ctx.callself_stack[-1].data)):
       if frame.f_locals == self.ctx.convert.unsolvable:
         local_members = {}
       else:
@@ -595,7 +603,11 @@ class InterpreterFunction(_function_base.SignedFunction):
                                                         annot,
                                                         callargs.get(name),
                                                         self.ctx)
+      # Log start and end of running the function frame, for quick profiling
+      indent = "  " * (len(self.ctx.vm.frames) - 1)
+      log.info("%s Start running frame for %r", indent, self.name)
       node2, ret = self.ctx.vm.run_frame(frame, node, annotated_locals)
+      log.info("%s Finished running frame for %r", indent, self.name)
       if self.is_coroutine():
         ret = _instances.Coroutine(self.ctx, ret, node2).to_variable(node2)
       node_after_call = node2
