@@ -1412,5 +1412,64 @@ class TestPyiDataclass(test_base.BaseTest):
       """)
 
 
+@test_utils.skipBeforePy((3, 10), "Pattern matching is new in 3.10.")
+class TestPatternMatch(test_base.BaseTest):
+  """Tests for pattern matching on dataclasses."""
+
+  def test_match(self):
+    self.Check("""
+      import dataclasses
+      @dataclasses.dataclass
+      class Point:
+        x: float
+        y: float
+      def f(x, y):
+        p = Point(x, y)
+        match p:
+          case Point(x, y):
+            print(f"({x}, {y})")
+          case _:
+            print("not matched")
+    """)
+
+  def test_match_with_pyi_dataclass(self):
+    with self.DepTree([("foo.pyi", """
+      import dataclasses
+      @dataclasses.dataclass
+      class Point:
+        x: float
+        y: float
+    """)]):
+      self.Check("""
+        import foo
+        def f(x, y):
+          p = foo.Point(x, y)
+          match p:
+            case foo.Point(x, y):
+              print(f"({x}, {y})")
+            case _:
+              print("not matched")
+      """)
+
+  def test_reingest(self):
+    with self.DepTree([("foo.py", """
+      import dataclasses
+      @dataclasses.dataclass
+      class Point:
+        x: float
+        y: float
+    """)]):
+      self.Check("""
+        import foo
+        def f(x, y):
+          p = foo.Point(x, y)
+          match p:
+            case foo.Point(x, y):
+              print(f"({x}, {y})")
+            case _:
+              print("not matched")
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()

@@ -640,3 +640,49 @@ class Class(metaclass=mixin.MixinMeta):  # pylint: disable=undefined-variable
         for member in member_var.data:
           if isinstance(member, Class):
             member.update_official_name(f"{name}.{member.name}")
+
+  def _convert_str_tuple(self, field_name):
+    """Convert __slots__ and similar fields from a Variable to a tuple."""
+    field_var = self.members.get(field_name)
+    if field_var is None:
+      return None
+    if len(field_var.bindings) != 1:
+      # Ambiguous slots
+      return None  # Treat "unknown __slots__" and "no __slots__" the same.
+    val = field_var.data[0]
+    if isinstance(val, mixin.PythonConstant):
+      if isinstance(val.pyval, (list, tuple)):
+        entries = val.pyval
+      else:
+        return None  # Happens e.g. __slots__ = {"foo", "bar"}. Not an error.
+    else:
+      return None  # Happens e.g. for __slots__ = dir(Foo)
+    try:
+      names = [abstract_utils.get_atomic_python_constant(v) for v in entries]
+    except abstract_utils.ConversionError:
+      return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
+    # Slot names should be strings.
+    for s in names:
+      if not isinstance(s, str):
+        self.ctx.errorlog.bad_slots(self.ctx.vm.frames,
+                                    f"Invalid {field_name} entry: {str(s)!r}")
+        return None
+    return tuple(self._mangle(s) for s in names)
+
+  def _mangle(self, name):
+    """Do name-mangling on an attribute name.
+
+    See https://goo.gl/X85fHt.  Python automatically converts a name like
+    "__foo" to "_ClassName__foo" in the bytecode. (But "forgets" to do so in
+    other places, e.g. in the strings of __slots__.)
+
+    Arguments:
+      name: The name of an attribute of the current class. E.g. "__foo".
+
+    Returns:
+      The mangled name. E.g. "_MyClass__foo".
+    """
+    if name.startswith("__") and not name.endswith("__"):
+      return "_" + self.name + name
+    else:
+      return name

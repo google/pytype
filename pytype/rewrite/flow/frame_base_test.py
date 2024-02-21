@@ -109,9 +109,9 @@ class FrameBaseTest(unittest.TestCase):
   def test_final_locals(self):
     op = FAKE_OP_NO_NEXT(0)
     frame = TestFrame(test_utils.FakeOrderedCode([[op]]).Seal(), {})
-    self.assertIsNone(frame.final_locals)
+    self.assertIsNone(frame._final_locals)
     frame.step()
-    self.assertEqual(frame.final_locals, {})
+    self.assertEqual(frame._final_locals, {})
 
   def test_typing(self):
     code = test_utils.FakeOrderedCode([[FAKE_OP_NO_NEXT(0)]]).Seal()

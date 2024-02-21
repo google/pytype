@@ -121,8 +121,8 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
     # instances created by analyze.py for the purpose of analyzing this class,
     # a subset of 'instances'. Filled through register_canonical_instance.
     self.canonical_instances = set()
-    self.slots = self._convert_str_tuple(members, "__slots__")
-    self.match_args = self._convert_str_tuple(members, "__match_args__") or ()
+    self.slots = self._convert_str_tuple("__slots__")
+    self.match_args = self._convert_str_tuple("__match_args__") or ()
     self.is_dynamic = self.compute_is_dynamic()
     self._undecorated_methods = undecorated_methods or {}
     log.info("Created class: %r", self)
@@ -259,52 +259,6 @@ class InterpreterClass(_instance_base.SimpleValue, class_mixin.Class):
       return any(_isinstance(v, "Function") and v.is_abstract for v in var.data)
     return {name for name, var in self.members.items() if _can_be_abstract(var)}
 
-  def _mangle(self, name):
-    """Do name-mangling on an attribute name.
-
-    See https://goo.gl/X85fHt.  Python automatically converts a name like
-    "__foo" to "_ClassName__foo" in the bytecode. (But "forgets" to do so in
-    other places, e.g. in the strings of __slots__.)
-
-    Arguments:
-      name: The name of an attribute of the current class. E.g. "__foo".
-
-    Returns:
-      The mangled name. E.g. "_MyClass__foo".
-    """
-    if name.startswith("__") and not name.endswith("__"):
-      return "_" + self.name + name
-    else:
-      return name
-
-  def _convert_str_tuple(self, members, field_name):
-    """Convert __slots__ and similar fields from a Variable to a tuple."""
-    field_var = members.get(field_name)
-    if field_var is None:
-      return None
-    if len(field_var.bindings) != 1:
-      # Ambiguous slots
-      return None  # Treat "unknown __slots__" and "no __slots__" the same.
-    val = field_var.data[0]
-    if isinstance(val, mixin.PythonConstant):
-      if isinstance(val.pyval, (list, tuple)):
-        entries = val.pyval
-      else:
-        return None  # Happens e.g. __slots__ = {"foo", "bar"}. Not an error.
-    else:
-      return None  # Happens e.g. for __slots__ = dir(Foo)
-    try:
-      names = [abstract_utils.get_atomic_python_constant(v) for v in entries]
-    except abstract_utils.ConversionError:
-      return None  # Happens e.g. for __slots__ = ["x" if b else "y"]
-    # Slot names should be strings.
-    for s in names:
-      if not isinstance(s, str):
-        self.ctx.errorlog.bad_slots(self.ctx.vm.frames,
-                                    f"Invalid {field_name} entry: {str(s)!r}")
-        return None
-    return tuple(self._mangle(s) for s in names)
-
   def register_instance(self, instance):
     self.instances.add(instance)
 
@@ -401,9 +355,11 @@ class PyTDClass(
           subst=datatypes.AliasingDict(),
           node=self.ctx.root_node)
     self.slots = pytd_cls.slots
-    # TODO(mdemello): Store __match_args__ from pyi files in pytd.Class
-    self.match_args = ()
     mixin.LazyMembers.init_mixin(self, mm)
+    if self.load_lazy_attribute("__match_args__"):
+      self.match_args = self._convert_str_tuple("__match_args__")
+    else:
+      self.match_args = ()
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
     self.decorators = [x.type.name for x in pytd_cls.decorators]

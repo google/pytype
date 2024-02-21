@@ -1,4 +1,4 @@
-from typing import Tuple, Union
+from typing import List, Tuple, Union
 
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
@@ -47,6 +47,29 @@ class VariableTest(unittest.TestCase):
     var = variables.Variable(())
     with self.assertRaisesRegex(ValueError, 'Too few bindings'):
       var.get_atomic_value()
+
+  def test_get_atomic_value_with_type(self):
+    var: variables.Variable[int] = variables.Variable.from_value(True)
+    val = var.get_atomic_value(bool)
+    assert_type(var, variables.Variable[int])
+    assert_type(val, bool)
+    self.assertEqual(val, True)
+
+  def test_get_atomic_value_with_wrong_type(self):
+    var = variables.Variable.from_value(0)
+    with self.assertRaisesRegex(ValueError, 'expected str, got int'):
+      var.get_atomic_value(str)
+
+  def test_get_atomic_value_with_parameterized_type(self):
+    var = variables.Variable.from_value([0])
+    val = var.get_atomic_value(List[int])
+    assert_type(val, List[int])
+    self.assertEqual(val, [0])
+
+  def test_get_atomic_value_with_wrong_parameterized_type(self):
+    var = variables.Variable.from_value(0)
+    with self.assertRaisesRegex(ValueError, 'expected list, got int'):
+      var.get_atomic_value(List[int])
 
   def test_get_atomic_value_multiple_bindings(self):
     var = variables.Variable((variables.Binding(0), variables.Binding('')))

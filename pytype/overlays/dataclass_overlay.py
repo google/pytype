@@ -162,6 +162,8 @@ class Dataclass(classgen.Decorator):
       # Fix up type parameters in methods added by the decorator.
       cls.update_method_type_params()
 
+    cls.match_args = tuple(attr.name for attr in attrs)
+
 
 class FieldInstance(abstract.SimpleValue):
   """Return value of a field() call."""

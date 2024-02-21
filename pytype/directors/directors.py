@@ -5,6 +5,8 @@ import collections
 import logging
 import sys
 
+from typing import Set
+
 from pytype import config
 from pytype.directors import annotations
 
@@ -25,6 +27,8 @@ parse_src = parser.parse_src
 _ALL_ERRORS = "*"  # Wildcard for disabling all errors.
 
 _ALLOWED_FEATURES = frozenset(x.flag for x in config.FEATURE_FLAGS)
+
+_PRAGMAS = frozenset({"cache-return"})
 
 _FUNCTION_CALL_ERRORS = frozenset((
     # A function call may implicitly access a magic method attribute.
@@ -194,6 +198,8 @@ class Director:
     # Map from error name to lines for which that error is disabled.  Note
     # that _ALL_ERRORS is essentially a wildcard name (it matches all names).
     self._disables = collections.defaultdict(_LineSet)
+    # Map from pragma to lines for which that pragma is set
+    self._pragmas = collections.defaultdict(_LineSet)
     # Function line number -> decorators map.
     self._decorators = collections.defaultdict(list)
     # Decorator line number -> decorated function line number map.
@@ -236,6 +242,9 @@ class Director:
   @property
   def decorated_functions(self):
     return self._decorated_functions
+
+  def has_pragma(self, pragma, line):
+    return pragma in self._pragmas and line in self._pragmas[pragma]
 
   def _parse_src_tree(self, src_tree):
     """Parse a source file, extracting directives from comments."""
@@ -326,53 +335,76 @@ class Director:
       except ValueError as e:
         raise _DirectiveError("Invalid directive syntax.") from e
       # Additional commands may be added in the future.  For now, only
-      # "disable", "enable", and "features" are supported.
+      # "disable", "enable", "pragma", and "features" are supported.
+      values = set(values)
       if command == "disable":
-        disable = True
+        self._process_disable(
+            line, line_range, open_ended, values, disable=True)
       elif command == "enable":
-        disable = False
+        self._process_disable(
+            line, line_range, open_ended, values, disable=False)
+      elif command == "pragma":
+        self._process_pragmas(line, line_range, values)
       elif command == "features":
-        features = set(values)
-        invalid = features - _ALLOWED_FEATURES
-        if invalid:
-          raise _DirectiveError(f"Unknown pytype features: {','.join(invalid)}")
-        self.features |= features
+        self._process_features(values)
         continue
       else:
         raise _DirectiveError(f"Unknown pytype directive: '{command}'")
-      if not values:
-        raise _DirectiveError(
-            "Disable/enable must specify one or more error names.")
 
-      def keep(error_name):
-        if isinstance(line_range, parser.Call):
-          return error_name in _FUNCTION_CALL_ERRORS
-        else:
-          return True
+  def _process_features(self, features: Set[str]):
+    invalid = features - _ALLOWED_FEATURES
+    if invalid:
+      raise _DirectiveError(f"Unknown pytype features: {','.join(invalid)}")
+    self.features |= features
 
-      for error_name in values:
-        if (error_name == _ALL_ERRORS or
-            self._errorlog.is_valid_error_name(error_name)):
-          if not keep(error_name):
-            # Skip the directive if we are in a line range that is irrelevant to
-            # it. (Every directive is also recorded in a base LineRange that is
-            # never skipped.)
-            continue
-          lines = self._disables[error_name]
-          if open_ended:
-            lines.start_range(line, disable)
-          else:
-            final_line = self._adjust_line_number_for_pytype_directive(
-                line, error_name, line_range)
-            if final_line != line:
-              # Set the disable on the original line so that, even if we mess up
-              # adjusting the line number, silencing an error by adding a
-              # disable to the exact line the error is reported on always works.
-              lines.set_line(line, disable)
-            lines.set_line(final_line, disable)
+  def _process_pragmas(
+      self, line: int, line_range: parser.LineRange, pragmas: Set[str]):
+    del line_range  # unused
+    invalid = pragmas - _PRAGMAS
+    if invalid:
+      raise _DirectiveError(f"Unknown pytype pragmas: {','.join(invalid)}")
+    for pragma in pragmas:
+      lines = self._pragmas[pragma]
+      lines.set_line(line, True)
+
+  def _process_disable(
+      self, line: int, line_range: parser.LineRange, open_ended: bool,
+      values: Set[str], *, disable: bool):
+    """Process enable/disable directives."""
+
+    def keep(error_name):
+      if isinstance(line_range, parser.Call):
+        return error_name in _FUNCTION_CALL_ERRORS
+      else:
+        return True
+
+    if not values:
+      raise _DirectiveError(
+          "Disable/enable must specify one or more error names.")
+
+    for error_name in values:
+      if (error_name == _ALL_ERRORS or
+          self._errorlog.is_valid_error_name(error_name)):
+        if not keep(error_name):
+          # Skip the directive if we are in a line range that is irrelevant to
+          # it. (Every directive is also recorded in a base LineRange that is
+          # never skipped.)
+          continue
+        lines = self._disables[error_name]
+        if open_ended:
+          lines.start_range(line, disable)
         else:
-          self._errorlog.invalid_directive(
-              self._filename, line, f"Invalid error name: '{error_name}'")
+          final_line = self._adjust_line_number_for_pytype_directive(
+              line, error_name, line_range)
+          if final_line != line:
+            # Set the disable on the original line so that, even if we mess up
+            # adjusting the line number, silencing an error by adding a
+            # disable to the exact line the error is reported on always works.
+            lines.set_line(line, disable)
+          lines.set_line(final_line, disable)
+      else:
+        self._errorlog.invalid_directive(
+            self._filename, line, f"Invalid error name: '{error_name}'")
 
   def _adjust_line_number_for_pytype_directive(
       self, line: int, error_class: str, line_range: parser.LineRange):

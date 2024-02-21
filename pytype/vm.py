@@ -2571,14 +2571,16 @@ class VirtualMachine:
     state, defaults, kw_defaults, annot, free_vars = (
         self._get_extra_function_args(state, op.arg))
     globs = self.get_globals_dict()
-    fn = vm_utils.make_function(
+    func_var = vm_utils.make_function(
         name, state.node, code, globs, defaults, kw_defaults, annotations=annot,
         closure=free_vars, opcode=op, ctx=self.ctx)
-    fn.data[0].decorators = self._director.decorators[op.line]
-    vm_utils.process_function_type_comment(state.node, op, fn.data[0], self.ctx)
-    self.trace_opcode(op, fn.data[0].name, fn)
-    self.trace_functiondef(fn)
-    return state.push(fn)
+    func = func_var.data[0]
+    func.decorators = self._director.decorators[op.line]
+    func.cache_return = self._director.has_pragma("cache-return", op.line)
+    vm_utils.process_function_type_comment(state.node, op, func, self.ctx)
+    self.trace_opcode(op, func.name, func_var)
+    self.trace_functiondef(func_var)
+    return state.push(func_var)
 
   def byte_MAKE_CLOSURE(self, state, op):
     """Make a function that binds local variables."""

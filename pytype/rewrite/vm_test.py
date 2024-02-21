@@ -1,4 +1,4 @@
-from typing import Type, TypeVar
+from typing import TypeVar, cast
 
 from pytype.pyc import opcodes
 from pytype.rewrite import abstract
@@ -12,12 +12,6 @@ _T = TypeVar('_T')
 
 def _make_vm(src: str) -> vm_lib.VirtualMachine:
   return vm_lib.VirtualMachine(test_utils.parse(src), {})
-
-
-def _get(typ: Type[_T], var) -> _T:
-  v = var.get_atomic_value()
-  assert isinstance(v, typ)
-  return v
 
 
 class VmTest(unittest.TestCase):
@@ -44,12 +38,12 @@ class VmTest(unittest.TestCase):
     """)
     vm._run_module()
 
-    def get_const(var):
-      return _get(abstract.PythonConstant, var).constant
+    def get_const(val):
+      return cast(abstract.PythonConstant, val).constant
 
-    x = get_const(vm._module_frame.load_global('x'))
-    y = get_const(vm._module_frame.load_global('y'))
-    z = get_const(vm._module_frame.load_global('z'))
+    x = get_const(vm._module_frame.final_locals['x'])
+    y = get_const(vm._module_frame.final_locals['y'])
+    z = get_const(vm._module_frame.final_locals['z'])
     self.assertEqual(x, 42)
     self.assertIsNone(y)
     self.assertEqual(z, 42)
@@ -72,27 +66,35 @@ class VmTest(unittest.TestCase):
     """)
     vm.infer_stub()
 
-  def test_run_function(self):
+  def test_propagate_nonlocal(self):
     vm = _make_vm("""
-      x = None
-
       def f():
-        global x
-        x = 42
-
-      def g():
+        x = None
+        def g():
+          def h():
+            nonlocal x
+            x = 5
+          h()
+        g()
+        global y
         y = x
+      f()
     """)
     vm._run_module()
-    f = _get(abstract.Function, vm._module_frame.final_locals['f'])
-    g = _get(abstract.Function, vm._module_frame.final_locals['g'])
-    f_frame = vm._run_function(f)
-    g_frame = vm._run_function(g)
+    with self.assertRaises(KeyError):
+      _ = vm._module_frame.final_locals['x']
+    y = cast(abstract.PythonConstant, vm._module_frame.final_locals['y'])
+    self.assertEqual(y.constant, 5)
 
-    self.assertEqual(f_frame.load_global('x').get_atomic_value(),
-                     abstract.PythonConstant(42))
-    self.assertEqual(g_frame.load_local('y').get_atomic_value(),
-                     abstract.PythonConstant(None))
+  def test_analyze_function_with_nonlocal(self):
+    # Just make sure this doesn't crash.
+    vm = _make_vm("""
+      def f():
+        x = None
+        def g():
+          return x
+    """)
+    vm.analyze_all_defs()
 
 
 if __name__ == '__main__':

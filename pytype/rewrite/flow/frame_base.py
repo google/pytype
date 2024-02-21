@@ -7,6 +7,7 @@ byte_{opcode_name} method implementing each opcode.
 """
 
 import dataclasses
+import logging
 from typing import Dict, Generic, TypeVar
 
 from pytype.blocks import blocks
@@ -14,6 +15,8 @@ from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
 
 _T = TypeVar('_T')
+
+log = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -32,7 +35,9 @@ class FrameBase(Generic[_T]):
   """Virtual machine frame.
 
   Attributes:
-    final_locals: The frame's `locals` dictionary after it finishes execution.
+    _final_locals: The frame's `locals` dictionary after it finishes execution.
+      This is a protected attribute so that subclasses can choose whether and
+      how to expose control flow information.
   """
 
   def __init__(
@@ -45,7 +50,7 @@ class FrameBase(Generic[_T]):
 
     # Local names before and after frame runs
     self._initial_locals = initial_locals
-    self.final_locals: Dict[str, variables.Variable[_T]] = None
+    self._final_locals: Dict[str, variables.Variable[_T]] = None
 
     self._current_step = _Step(0, 0)  # current block and opcode indices
 
@@ -72,6 +77,7 @@ class FrameBase(Generic[_T]):
       op_impl = getattr(self, f'byte_{opname}')
     except AttributeError as e:
       raise NotImplementedError(f'Opcode {opname} not implemented') from e
+    log.info(str(opcode))
     op_impl(opcode)
     # Update current block and opcode.
     if opcode is not block[-1]:
@@ -82,7 +88,7 @@ class FrameBase(Generic[_T]):
       self._merge_state_into(self._current_state, opcode.next.index)
     if block is self._code.order[-1]:
       self._current_step.block = -1
-      self.final_locals = self._current_state.get_locals()
+      self._final_locals = self._current_state.get_locals()
     else:
       self._current_step.block += 1
       self._current_step.opcode = 0
