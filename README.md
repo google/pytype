@@ -6,7 +6,23 @@
 <!--* freshness: { owner: 'rechen' reviewed: '2023-05-19' } *-->
 
 Pytype checks and infers types for your Python code - without requiring type
-annotations. Pytype can:
+annotations.
+
+## Table of Contents
+
+* [Overview](#overview)
+* [Capabilities](#capabilities)
+* [Quickstart](#quickstart)
+* [Requirements](#requirements)
+* [Installing](#installing)
+* [Installing on WSL](#installing-on-wsl)
+* [Usage](#usage)
+    * [Config File](#config-file)
+    * [Subtools](#subtools)
+* [2023 Roadmap](#2023-roadmap)
+* [Disclaimer](#disclaimer)
+
+## Overview
 
 * Lint plain Python code, flagging common mistakes such as misspelled attribute
 names, incorrect function calls, and [much more][error-classes], even across
@@ -25,7 +41,8 @@ well-typed and error-free.
 For more information, check out the [user guide][user-guide], [FAQ][faq], or
 [supported features][supported-features].
 
-## How is pytype different from other type checkers?
+## Capabilities
+How is pytype different from other type checkers?
 
 1. Pytype uses **inference** instead of gradual typing. This means it will
 infer types on code even when the code has no type hints on it. So it can
