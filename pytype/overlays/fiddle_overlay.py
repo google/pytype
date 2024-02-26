@@ -115,7 +115,7 @@ class BuildableBuilder(abstract.PyTDClass, mixin.HasSlots):
       # bother with the rest of the bindings (assume strict arg matching)
       for d in arg_var.data:
         if isinstance(d, Buildable):
-          if isinstance(d.underlying, abstract.Function):
+          if isinstance(d.underlying, abstract.FUNCTION_TYPES):
             # If the underlying type is a function, do not try to instantiate it
             return self.ctx.new_unsolvable(node)
           else:
@@ -183,7 +183,7 @@ class BuildableType(abstract.ParameterizedClass):
   def __init__(
       self, base_cls, underlying, ctx, template=None, module="fiddle"
   ):
-    if isinstance(underlying, abstract.Function):
+    if isinstance(underlying, abstract.FUNCTION_TYPES):
       # We don't support functions for now, but falling back to Any here gets us
       # as much of the functionality as possible.
       formal_type_parameters = {abstract_utils.T: ctx.convert.unsolvable}

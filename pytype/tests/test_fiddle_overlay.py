@@ -548,6 +548,26 @@ class TestFunctionConfig(test_base.BaseTest):
         b = fiddle.Config(Simple, 1, 2, 3)  # no arg checking yet
       """)
 
+  def test_method(self):
+    # Treat methods the same way as functions.
+    with self.DepTree([("fiddle.pyi", _FIDDLE_PYI)]):
+      self.Check("""
+        import dataclasses
+        import fiddle
+
+        @dataclasses.dataclass
+        class DataClass:
+          x: int
+
+          @classmethod
+          def make(cls, x: int):
+            return cls(x)
+
+        a = fiddle.Config(DataClass.make, 1)
+        b = fiddle.Config(DataClass.make, "1")  # no type checking yet
+        b = fiddle.Config(DataClass.make, 1, 2, 3)  # no arg checking yet
+      """)
+
   def test_matching(self):
     # We should still recognise the Config class even if we currently treat it
     # as Config[Any]
