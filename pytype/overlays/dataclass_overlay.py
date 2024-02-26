@@ -163,6 +163,11 @@ class Dataclass(classgen.Decorator):
       cls.update_method_type_params()
 
     cls.match_args = tuple(attr.name for attr in attrs)
+    match_args_params = {i: attr.typ for i, attr in enumerate(attrs)}
+    match_args_params[abstract_utils.T] = attr_types
+    match_args_typ = abstract.TupleClass(
+        self.ctx.convert.tuple_type, match_args_params, self.ctx)
+    classgen.add_member(node, cls, "__match_args__", match_args_typ)
 
 
 class FieldInstance(abstract.SimpleValue):
