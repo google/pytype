@@ -966,6 +966,22 @@ class MatchClassTest(test_base.BaseTest):
             return False
     """)
 
+  def test_pytd(self):
+    with self.DepTree([("foo.pyi", """
+      from typing import Literal
+      class C:
+        __match_args__: tuple[Literal["a"], Literal["b"]]
+    """)]):
+      self.Check("""
+      import foo
+      def f(x):
+        match x:
+          case foo.C(a1, a2):
+            pass
+          case _:
+            pass
+      """)
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):

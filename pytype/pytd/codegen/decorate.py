@@ -124,11 +124,15 @@ def add_generated_init(cls: pytd.Class) -> pytd.Class:
   return add_init_from_fields(cls, fields)
 
 
+def get_field_type_union(cls: pytd.Class):
+  fields = get_attributes(cls)
+  return pytd_utils.JoinTypes(x.type for x in fields)
+
+
 def add_attrs_attrs(cls: pytd.Class) -> pytd.Class:
   if "__attrs_attrs__" in (x.name for x in cls.constants):
     return cls
-  fields = get_attributes(cls)
-  types = pytd_utils.JoinTypes(x.type for x in fields)
+  types = get_field_type_union(cls)
   params = pytd.GenericType(pytd.LateType("attr.Attribute"), (types,))
   aa = pytd.GenericType(pytd.LateType("builtins.tuple"), (params,))
   attrs_attrs = pytd.Constant("__attrs_attrs__", aa)
@@ -142,24 +146,20 @@ def decorate_attrs(cls: pytd.Class) -> pytd.Class:
 
 
 def add_dataclass_fields(cls: pytd.Class) -> pytd.Class:
-  """Add dataclass attributes to cls."""
   if "__dataclass_fields__" in (x.name for x in cls.constants):
     return cls
-  fields = get_attributes(cls)
-  types = pytd_utils.JoinTypes(x.type for x in fields)
+  types = get_field_type_union(cls)
   k = pytd.LateType("builtins.str")
   v = pytd.GenericType(pytd.LateType("dataclasses.Field"), (types,))
   df = pytd.GenericType(pytd.LateType("builtins.dict"), (k, v))
   dataclass_fields = pytd.Constant("__dataclass_fields__", df)
-  match_args = pytd.Constant("__match_args__", pytd.TupleType(
-      pytd.LateType("builtins.tuple"),
-      tuple(pytd.Literal(field.name) for field in fields)))
-  constants = cls.constants + (dataclass_fields, match_args)
+  constants = cls.constants + (dataclass_fields,)
   return cls.Replace(constants=constants)
 
 
 def decorate_dataclass(cls: pytd.Class) -> pytd.Class:
-  return add_dataclass_fields(add_generated_init(cls))
+  cls = add_generated_init(cls)
+  return add_dataclass_fields(cls)
 
 
 def process_class(cls: pytd.Class) -> pytd.Class:
