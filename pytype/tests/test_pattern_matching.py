@@ -1867,6 +1867,32 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
       def f(x: Literal["a", "b", "c"]) -> int | str: ...
     """)
 
+  def test_literal_vs_enum_values(self):
+    # Regression test for a false positive in a corner case
+    with self.DepTree([("foo.py", """
+      import enum
+      class Color(enum.Enum):
+        RED = 'red'
+        GREEN = 'green'
+        BLUE = 'blue'
+    """)]):
+      self.Check("""
+        from typing import Literal
+        import foo
+
+        Keys = Literal['red', 'green', 'blue']
+
+        def f(x: Keys):
+          match x:
+            case foo.Color.RED.value:
+              return 10
+            case foo.Color.GREEN.value:
+              return 20
+            # We do not check redundant or incomplete matches here because
+            # the literal strings for Color.RED.value etc are not preserved
+            # in the pyi file.
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
