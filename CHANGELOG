@@ -1,3 +1,18 @@
+Version 2024.02.27:
+
+Updates:
+* Add support for pragmas to pytype.
+* Implement the cache-return pragma.
+
+Bug fixes:
+* Track the set of case lines we have encountered, not just the number of them.
+* Fix interaction between Self and overload.
+* Typo fix in cover_from_cmp.
+* Add __match_args__ to dataclasses.
+* Add missing __reduce__ method to builtins.object.
+* Fix a bug in how we resolve aliases in pyi files.
+* Don't crash when using a method as a fiddle config type constructor.
+
 Version 2024.02.13:
 
 Bug fixes:
