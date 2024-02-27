@@ -356,15 +356,18 @@ class PyTDClass(
           node=self.ctx.root_node)
     self.slots = pytd_cls.slots
     mixin.LazyMembers.init_mixin(self, mm)
-    if self.load_lazy_attribute("__match_args__"):
-      self.match_args = self._convert_str_tuple("__match_args__")
-    else:
-      self.match_args = ()
     self.is_dynamic = self.compute_is_dynamic()
     class_mixin.Class.init_mixin(self, metaclass)
     self.decorators = [x.type.name for x in pytd_cls.decorators]
     if self.decorators:
       self._populate_decorator_metadata()
+    if "__dataclass_fields__" in self.metadata:
+      self.match_args = tuple(
+          attr.name for attr in self.metadata["__dataclass_fields__"])
+    elif self.load_lazy_attribute("__match_args__"):
+      self.match_args = self._convert_str_tuple("__match_args__") or ()
+    else:
+      self.match_args = ()
 
   @classmethod
   def make(cls, name, pytd_cls, ctx):

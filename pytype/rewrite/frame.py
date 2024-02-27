@@ -2,8 +2,9 @@
 
 import enum
 import logging
-from typing import Dict, FrozenSet, List, Optional, Sequence, Set
+from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Set
 
+import immutabledict
 from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
 from pytype.rewrite import abstract
@@ -97,7 +98,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # All functions created during execution
     self._functions: List[abstract.Function] = []
     # Final values of locals, unwrapped from variables
-    self.final_locals: Dict[str, abstract.BaseValue] = None
+    self.final_locals: Mapping[str, abstract.BaseValue] = None
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -264,7 +265,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
 
-  def _final_locals_as_values(self) -> Dict[str, abstract.BaseValue]:
+  def _final_locals_as_values(self) -> Mapping[str, abstract.BaseValue]:
     final_values = {}
     for name, var in self._final_locals.items():
       values = var.values
@@ -274,7 +275,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         final_values[name] = values[0]
       else:
         raise NotImplementedError('Empty variable not yet supported')
-    return final_values
+    return immutabledict.immutabledict(final_values)
 
   def byte_RESUME(self, opcode):
     del opcode  # unused

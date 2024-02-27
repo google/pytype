@@ -4,6 +4,8 @@
 # path. You may set this option multiple times.
 ignore=test_data
 
+ignore-pattern=.*\.pyi
+
 [MESSAGES CONTROL]
 
 # Disable the message, report, category or checker with the given id(s). You
@@ -27,6 +29,7 @@ disable=
   consider-using-enumerate,
   consider-using-f-string,
   consider-using-in,
+  consider-using-max-builtin,
   consider-using-ternary,
   cyclic-import,
   deprecated-method,

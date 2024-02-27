@@ -1,7 +1,8 @@
 """Bytecode block state."""
 
-from typing import Dict, Generic, Optional, Set, TypeVar
+from typing import Dict, Generic, Mapping, Optional, Set, TypeVar
 
+import immutabledict
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import variables
 
@@ -37,8 +38,8 @@ class BlockState(Generic[_T]):
     self._locals[name] = var
     self._locals_with_block_condition.add(name)
 
-  def get_locals(self) -> Dict[str, variables.Variable[_T]]:
-    return dict(self._locals)  # make a copy so callers can't modify _locals
+  def get_locals(self) -> Mapping[str, variables.Variable[_T]]:
+    return immutabledict.immutabledict(self._locals)
 
   def with_condition(self, condition: conditions.Condition) -> 'BlockState[_T]':
     """Creates a new state with the given condition 'and'-ed in."""

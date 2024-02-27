@@ -973,6 +973,7 @@ class Converter(utils.ContextWeakrefMixin):
       fields = v.metadata["__dataclass_fields__"]
       fields_with_defaults = {f.name for f in fields if f.default}
       skip.add("__dataclass_fields__")
+      skip.add("__match_args__")
     elif abstract_utils.is_attrs(v):
       fields = v.metadata["__attrs_attrs__"]
       fields_with_defaults = {f.name for f in fields if f.default}

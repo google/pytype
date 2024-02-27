@@ -536,6 +536,14 @@ class LookupExternalTypes(_RemoveTypeParametersFromGenericAny, _ToTypeVisitor):
         item = self._ResolveUsingStarImport(module, name)
         if item is None:
           raise KeyError(f"No {name} in module {module_name}") from e
+    if isinstance(item, pytd.Alias):
+      # This is a workaround for aliases that reference other aliases not being
+      # fully resolved before LookupExternalTypes() runs.
+      lookup_local = LookupLocalTypes()
+      lookup_local.unit = module
+      new_item = item.Visit(lookup_local)
+      if lookup_local.local_names:
+        item = new_item
     if not self._in_generic_type and isinstance(item, pytd.Alias):
       # If `item` contains type parameters and is not inside a GenericType, then
       # we replace the parameters with Any.

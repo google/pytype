@@ -1411,6 +1411,25 @@ class TestPyiDataclass(test_base.BaseTest):
         dataclasses.replace(foo.A(1), x=2)
       """)
 
+  def test_dataclass_protocol(self):
+    with self.DepTree([("foo.pyi", """
+      import dataclasses
+      from typing import Protocol
+      @dataclasses.dataclass
+      class Foo(Protocol):
+        x: str
+    """)]):
+      self.Check("""
+        import dataclasses
+        import foo
+        @dataclasses.dataclass
+        class Bar:
+          x: str
+        def f(foo: foo.Foo):
+          pass
+        f(Bar(x=''))
+      """)
+
 
 @test_utils.skipBeforePy((3, 10), "Pattern matching is new in 3.10.")
 class TestPatternMatch(test_base.BaseTest):

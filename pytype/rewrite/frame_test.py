@@ -1,4 +1,4 @@
-from typing import Dict, cast
+from typing import Mapping, cast
 
 from pytype.pyc import opcodes
 from pytype.rewrite import abstract
@@ -133,7 +133,7 @@ class FrameTest(unittest.TestCase):
 
   def test_typing(self):
     frame = _make_frame('')
-    assert_type(frame.final_locals, Dict[str, abstract.BaseValue])
+    assert_type(frame.final_locals, Mapping[str, abstract.BaseValue])
 
   def test_load_const(self):
     block = [opcodes.LOAD_CONST(0, 0, 0, 42), opcodes.RETURN_VALUE(1, 0)]
