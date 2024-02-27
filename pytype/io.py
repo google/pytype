@@ -97,7 +97,11 @@ def check_py(src, options=None, loader=None):
     return _call(check_types, src, options, loader)
 
 
-def generate_pyi(src, options=None, loader=None):
+def generate_pyi_ast(
+    src: str,
+    options: config.Options | None = None,
+    loader: load_pytd.Loader | None = None,
+) -> analyze.Analysis:
   """Run the inferencer on a string of source code, producing output.
 
   Args:
@@ -106,7 +110,7 @@ def generate_pyi(src, options=None, loader=None):
     loader: A load_pytd.Loader instance.
 
   Returns:
-    A tuple, (analyze.Analysis, pyi ast as string).
+    An analyze.Analysis object containing the inferencer results.
 
   Raises:
     CompileError: If we couldn't parse the input file.
@@ -128,7 +132,26 @@ def generate_pyi(src, options=None, loader=None):
                             max_union=7,
                             remove_mutable=False)
     mod = pytd_utils.CanonicalOrdering(mod)
-    result = pytd_utils.Print(mod)
+  ret.ast = mod
+  return ret
+
+
+def _output_ast(
+    ast: pytd.TypeDeclUnit,
+    options: config.Options | None = None,
+) -> str:
+  """Transforms the given analysis result into a pyi representation.
+
+  Args:
+    ast: pytd.TypeDeclUnit to output in pyi format.
+    options: config.Options object.
+
+  Returns:
+    A pyi representation of the given AST as a string.
+  """
+  options = options or config.Options.create()
+  with config.verbosity_from(options):
+    result = pytd_utils.Print(ast)
     log.info("=========== pyi optimized =============")
     log.info("\n%s", result)
     log.info("========================================")
@@ -136,8 +159,27 @@ def generate_pyi(src, options=None, loader=None):
   result += "\n"
   if options.quick:
     result = "# (generated with --quick)\n\n" + result
-  ret.ast = mod
-  return ret, result
+  return result
+
+
+def generate_pyi(src, options=None, loader=None):
+  """Run the inferencer on a string of source code, producing output.
+
+  Args:
+    src: The source code.
+    options: config.Options object.
+    loader: A load_pytd.Loader instance.
+
+  Returns:
+    A tuple, (analyze.Analysis, pyi ast as string).
+
+  Raises:
+    CompileError: If we couldn't parse the input file.
+    UsageError: If the input filepath is invalid.
+  """
+  options = options or config.Options.create()
+  ret = generate_pyi_ast(src, options, loader)
+  return ret, _output_ast(ret.ast, options)
 
 
 @_set_verbosity_from(posarg=0)
