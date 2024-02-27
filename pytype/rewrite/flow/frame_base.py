@@ -8,7 +8,7 @@ byte_{opcode_name} method implementing each opcode.
 
 import dataclasses
 import logging
-from typing import Dict, Generic, TypeVar
+from typing import Dict, Generic, Mapping, TypeVar
 
 from pytype.blocks import blocks
 from pytype.rewrite.flow import state
@@ -50,7 +50,7 @@ class FrameBase(Generic[_T]):
 
     # Local names before and after frame runs
     self._initial_locals = initial_locals
-    self._final_locals: Dict[str, variables.Variable[_T]] = None
+    self._final_locals: Mapping[str, variables.Variable[_T]] = None
 
     self._current_step = _Step(0, 0)  # current block and opcode indices
 

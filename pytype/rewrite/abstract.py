@@ -1,6 +1,6 @@
 """Abstract representations of Python values."""
 
-from typing import Any, Dict, Generic, Tuple, Type, TypeVar, get_origin, overload
+from typing import Any, Generic, Mapping, Tuple, Type, TypeVar, get_origin, overload
 
 from pytype.blocks import blocks
 from pytype.rewrite.flow import variables
@@ -49,7 +49,7 @@ class Function(BaseValue):
 
 class Class(BaseValue):
 
-  def __init__(self, name: str, members: Dict[str, BaseValue]):
+  def __init__(self, name: str, members: Mapping[str, BaseValue]):
     self.name = name
     self.members = members
 

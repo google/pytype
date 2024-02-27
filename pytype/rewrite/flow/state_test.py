@@ -1,6 +1,7 @@
 import dataclasses
 from typing import Any
 
+import immutabledict
 from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
@@ -31,12 +32,8 @@ class LocalsTest(unittest.TestCase):
 
   def test_get_locals(self):
     x = variables.Variable.from_value(42)
-    y = variables.Variable.from_value(None)
     b = state.BlockState({'x': x})
-    locals_copy = b.get_locals()
-    locals_copy['y'] = y
-    self.assertEqual(locals_copy, {'x': x, 'y': y})
-    self.assertEqual(b._locals, {'x': x})
+    self.assertEqual(b.get_locals(), immutabledict.immutabledict({'x': x}))
 
   def test_typing(self):
     locals_ = {'x': variables.Variable.from_value(0)}
