@@ -69,6 +69,20 @@ class QuickTest(test_base.BaseTest):
     """, quick=True)
     self.assertErrorRegexes(errors, {"e": r"str.*int"})
 
+  def test_max_depth_and_property(self):
+    self.Check("""
+      class C:
+        def __init__(self):
+          self.f()
+        def f(self):
+          pass
+        @property
+        def x(self) -> int:
+          return 0
+        def g(self):
+          assert_type(self.x, int)
+    """, quick=True, maximum_depth=1)
+
 
 if __name__ == "__main__":
   test_base.main()
