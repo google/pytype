@@ -40,10 +40,11 @@ class EnumOverlayTest(test_base.BaseTest):
       """)
     self.assertTypesMatchPytd(ty, """
       import enum
+      from typing import Literal
       class Colors(enum.Enum):
-        BLUE: int
-        GREEN: int
-        RED: int
+          BLUE: Literal[3]
+          GREEN: Literal[2]
+          RED: Literal[1]
       """)
 
   def test_access_members_and_values(self):
@@ -1130,9 +1131,9 @@ class EnumOverlayTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import enum
-      from typing import Annotated
+      from typing import Annotated, Literal
       class M(enum.Enum):
-        A: int
+        A: Literal[1]
         combo: Annotated[str, 'property']
         str_v: Annotated[str, 'property']
         def __init__(self, val) -> None: ...
@@ -1228,9 +1229,9 @@ class EnumOverlayTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import enum
-      from typing import ClassVar
+      from typing import ClassVar, Literal
       class M(enum.Enum):
-        A: int
+        A: Literal[1]
         class_attr: ClassVar[int]
     """)
 

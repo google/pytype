@@ -830,7 +830,8 @@ class Converter(utils.ContextWeakrefMixin):
             node, attr_var = self.ctx.attribute_handler.get_attribute(
                 node, enum_member, "value")
             attr = abstract_utils.get_atomic_value(attr_var)
-            constants[name].add_type(attr.to_type(node))
+            with self.set_output_mode(Converter.OutputMode.LITERAL):
+              constants[name].add_type(attr.to_type(node))
           else:
             # i.e. this is an enum, and the current member is NOT an enum
             # member. Which means it's a ClassVar.
