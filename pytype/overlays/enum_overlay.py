@@ -671,8 +671,15 @@ class EnumMetaInit(abstract.SimpleFunction):
     # Of course, this can be moved later once custom __init__ is supported.
     self._mark_dynamic_enum(cls)
     if member_types:
+      # Convert Literals to their underlying types, to avoid raising type errors
+      # in code that passes a non-concrete value to an enum constructor.
+      typ = lambda t: pytd.LateType(f"builtins.{t.value.__class__.__name__}")
+      types = [
+          typ(t) if isinstance(t, pytd.Literal) else t
+          for t in member_types
+      ]
       member_type = self.ctx.convert.constant_to_value(
-          pytd_utils.JoinTypes(member_types))
+          pytd_utils.JoinTypes(types))
       # Only set the lookup-only __new__ on non-empty enums, since using a
       # non-empty enum for the functional API is a type error.
       # Note that this has to happen AFTER _mark_dynamic_enum.
