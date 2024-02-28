@@ -675,6 +675,16 @@ class NamedTupleTestPy3(test_base.BaseTest):
         y = x.__repr__()
       """)
 
+  def test_empty_namedtuple_iterable(self):
+    self.Check("""
+      from typing import NamedTuple, Iterable
+      class Empty(NamedTuple):
+        pass
+      def f(x: Iterable[int]) -> None:
+        pass
+      f(Empty())
+    """)
+
 
 class NamedTupleFunctionSubclassTest(test_base.BaseTest):
   """Tests for subclassing an anonymous NamedTuple in a different module."""
