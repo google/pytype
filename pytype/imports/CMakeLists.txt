@@ -77,6 +77,15 @@ py_library(
     pytype.pytd.pytd
 )
 
+py_library(
+  NAME
+    serde_utils_api
+  SRCS
+    pickle_utils.py
+  DEPS
+    pytype.pytd.pytd
+)
+
 py_test(
   NAME
     builtin_stubs_test
@@ -88,16 +97,6 @@ py_test(
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
-    pytype.tests.test_base
-)
-
-py_test(
-  NAME
-    pickle_utils_test
-  SRCS
-    pickle_utils_test.py
-  DEPS
-    .pickle_utils
     pytype.tests.test_base
 )
 

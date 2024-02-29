@@ -3,8 +3,6 @@
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import attrs
-
 from pytype import datatypes
 from pytype.abstract import _base
 from pytype.abstract import _instance_base
@@ -435,7 +433,7 @@ class PyTDClass(
     params = []
     for p in init.signatures[0].params[1:]:
       if p.name in protected:
-        params.append(attrs.evolve(p, name=protected[p.name]))
+        params.append(p.Replace(name=protected[p.name]))
       else:
         params.append(p)
     with self.ctx.allow_recursive_convert():

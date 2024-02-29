@@ -631,6 +631,7 @@ py_test(
     test_pickle2.py
   DEPS
     .test_base
+    pytype.imports.imports
 )
 
 py_test(

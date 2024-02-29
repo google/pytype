@@ -48,7 +48,7 @@ def _pickle(src_path: str) -> Optional[bytes]:
           file=sys.stderr)
     return None
 
-  return pickle_utils.StoreAst(ast)
+  return pickle_utils.Serialize(ast)
 
 
 def main() -> None:
@@ -62,7 +62,7 @@ def main() -> None:
       data = f.read()
 
   try:
-    out: serialize_ast.SerializableAst = pickle_utils.LoadAst(data)
+    out: serialize_ast.SerializableAst = pickle_utils.DecodeAst(data)
   except _ParseError as e:
     print(e)
     sys.exit(1)

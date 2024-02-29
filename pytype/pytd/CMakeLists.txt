@@ -405,6 +405,7 @@ py_test(
     pytype.api
     pytype.imports.imports
     pytype.platform_utils.platform_utils
+    pytype.pytd.pytd
     pytype.tests.test_base
 )
 

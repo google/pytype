@@ -206,7 +206,7 @@ class _ModuleMap:
         seen.add(m)
       if not m.pickle:
         continue
-      loaded_ast = pickle_utils.LoadAst(m.pickle)
+      loaded_ast = pickle_utils.DecodeAst(m.pickle)
       deps = [d for d, _ in loaded_ast.dependencies if d != loaded_ast.ast.name]
       loaded_ast = serialize_ast.EnsureAstName(loaded_ast, m.module_name)
       assert m.module_name in self._modules
@@ -365,20 +365,15 @@ class Loader:
     # We assume that the Loader is in a consistent state here. In particular, we
     # assume that for every module in _modules, all the transitive dependencies
     # have been loaded.
-    # pylint: disable=g-complex-comprehension
-    items = tuple(
-        (name, pickle_utils.StoreAst(
-            module.ast, open_function=self.options.open_function,
-            src_path=module.filename))
-        for name, module in sorted(self._modules.items()))
-    # pylint: enable=g-complex-comprehension
+    items = pickle_utils.PrepareModuleBundle(
+        ((name, m.filename, m.ast) for name, m in sorted(self._modules.items()))
+    )
     # Preparing an ast for pickling clears its class pointers, making it
     # unsuitable for reuse, so we have to discard the builtins cache.
     builtin_stubs.InvalidateCache()
-    # Now pickle the pickles. We keep the "inner" modules as pickles as a
-    # performance optimization - unpickling is slow.
-    pickle_utils.SavePickle(items, filename, compress=True,
-                            open_function=self.options.open_function)
+    pickle_utils.Save(
+        items, filename, compress=True, open_function=self.options.open_function
+    )
 
   def _resolve_external_and_local_types(self, mod_ast, lookup_ast=None):
     dependencies = self._resolver.collect_dependencies(mod_ast)
@@ -747,12 +742,18 @@ class PickledPyiLoader(Loader):
   @classmethod
   def load_from_pickle(cls, filename, options, missing_modules=()):
     """Load a pytd module from a pickle file."""
-    items = pickle_utils.LoadPickle(filename, compress=True,
-                                    open_function=options.open_function)
+    items = pickle_utils.LoadBuiltins(
+        filename, compress=True, open_function=options.open_function
+    )
     modules = {
-        name: Module(name, filename=None, ast=None, pickle=pickle,
-                     has_unresolved_pointers=False)
-        for name, pickle in items
+        name: Module(
+            name,
+            filename=None,
+            ast=None,
+            pickle=raw.copy(),
+            has_unresolved_pointers=False,
+        )
+        for name, raw in items
     }
     return cls(options, modules=modules, missing_modules=missing_modules)
 

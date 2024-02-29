@@ -1,57 +1,37 @@
 """Internal representation of pytd nodes.
 
-All pytd nodes should be frozen attrs inheriting from node.Node (aliased
-to Node in this module). Nodes representing types should also inherit from Type.
-
-Since we use frozen classes, setting attributes in __post_init__ needs to be
-done via
-  object.__setattr__(self, 'attr', value)
+All pytd nodes should be frozen msgspec.Structs inheriting from node.Node
+(aliased to Node in this module). Nodes representing types should inherit from
+Type.
 
 NOTE: The way we introspect on the types of the fields requires forward
 references to be simple classes, hence use
   x: Union['Foo', 'Bar']
 rather than
   x: 'Union[Foo, Bar]'
+
+pytd_test.py tests the construction and runtime usage of these classes.
+To test how these classes serialize, see serialize_ast_test.py.
 """
+
+from __future__ import annotations
 
 import enum
 import itertools
 
-import typing
-from typing import Any, Optional, Tuple, TypeVar, Union
-
-import attrs
+from typing import Any, Dict, Generator, Optional, Tuple, Union
 
 from pytype.pytd.parse import node
 
 # Alias node.Node for convenience.
 Node = node.Node
 
-_TypeT = TypeVar('_TypeT', bound='Type')
+
+class Type(Node):
+  """Each type class below should inherit from this marker."""
 
 
-class Type:
-  """Each type class below should inherit from this mixin."""
-  name: Optional[str]
-
-  # We type-annotate many things as pytd.Type when we'd really want them to be
-  # Intersection[pytd.Type, pytd.parse.node.Node], so we need to copy some type
-  # signatures from Node here.
-  if typing.TYPE_CHECKING:
-
-    def Replace(self: _TypeT, **kwargs) -> _TypeT:
-      del kwargs  # unused
-      return self
-
-    def Visit(self: _TypeT, visitor, *args, **kwargs) -> _TypeT:
-      del visitor, args, kwargs  # unused
-      return self
-
-  __slots__ = ()
-
-
-@attrs.frozen(slots=False, eq=False)
-class TypeDeclUnit(Node):
+class TypeDeclUnit(Node, eq=False):
   """Module node. Holds module contents (constants / classes / functions).
 
   Attributes:
@@ -62,18 +42,22 @@ class TypeDeclUnit(Node):
     classes: Iterable of classes defined in this type decl unit.
     aliases: Iterable of aliases (or imports) for types in other modules.
   """
-  name: Optional[str]
-  constants: Tuple['Constant', ...]
-  type_params: Tuple['TypeParameter', ...]
-  classes: Tuple['Class', ...]
-  functions: Tuple['Function', ...]
-  aliases: Tuple['Alias', ...]
+  name: str
+  constants: Tuple[Constant, ...]
+  type_params: Tuple[TypeParameterU, ...]
+  classes: Tuple[Class, ...]
+  functions: Tuple[Function, ...]
+  aliases: Tuple[Alias, ...]
+  # _name2item is the lookup cache. It should not be treated as a child or used
+  # in equality or hash operations.
+  _name2item: Dict[str, Any] = {}
 
   def _InitCache(self):
     # TODO(b/159053187): Put constants, functions, classes and aliases into a
     # combined dict.
-    self.PopulateLookupCache(
-        self.constants, self.functions, self.classes, self.aliases)
+    for x in (self.constants, self.functions, self.classes, self.aliases):
+      for item in x:
+        self._name2item[item.name] = item
     for x in self.type_params:
       self._name2item[x.full_name] = x
 
@@ -91,43 +75,47 @@ class TypeDeclUnit(Node):
     Raises:
       KeyError: if this identifier doesn't exist.
     """
-    try:
-      return self._name2item[name]
-    except AttributeError:
+    if not self._name2item:
       self._InitCache()
-      return self._name2item[name]
+    return self._name2item[name]
 
   def Get(self, name):
     """Version of Lookup that returns None instead of raising."""
-    try:
-      return self._name2item.get(name)
-    except AttributeError:
+    if not self._name2item:
       self._InitCache()
-      return self._name2item.get(name)
+    return self._name2item.get(name)
 
   def __contains__(self, name):
     return bool(self.Get(name))
+
+  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
+    for name, child in super().IterChildren():
+      if name == '_name2item':
+        continue
+      yield name, child
+
+  def Replace(self, **kwargs):
+    if '_name2item' not in kwargs:
+      kwargs['_name2item'] = {}
+    return super().Replace(**kwargs)
 
   # The hash/eq/ne values are used for caching and speed things up quite a bit.
 
   def __hash__(self):
     return id(self)
 
-  def __eq__(self, other):
-    return id(self) == id(other)
 
-  def __ne__(self, other):
-    return id(self) != id(other)
-
-
-@attrs.frozen(cache_hash=True)
 class Constant(Node):
   name: str
-  type: Type
-  value: Any = None
+  type: TypeU
+  # Value may be any value allowed in a Literal (int, str, bool, None),
+  # a tuple[str, ...] (used to hold `__all__`) or Any (i.e. AnythingType).
+  # (bytes is excluded because it serializes the same as str.)
+  # We can't use just `value: Any` because msgspec isn't able to decode
+  # AnythingType in that case, since it's indistinguishable from a dict.
+  value: Optional[Union[AnythingType, int, str, bool, tuple[str, ...]]] = None
 
 
-@attrs.frozen(cache_hash=True)
 class Alias(Node):
   """An alias (symbolic link) for a class implemented in some other module.
 
@@ -136,17 +124,15 @@ class Alias(Node):
   will create a local alias "z" for "x.y".
   """
   name: str
-  type: Union[Type, Constant, 'Function', 'Module']
+  type: Union[TypeU, Constant, Function, Module]
 
 
-@attrs.frozen(cache_hash=True)
 class Module(Node):
   """A module imported into the current module, possibly with an alias."""
   name: str
   module_name: str
 
 
-@attrs.frozen(slots=False, cache_hash=True)
 class Class(Node):
   """Represents a class declaration.
 
@@ -163,19 +149,24 @@ class Class(Node):
     template: Tuple of pytd.TemplateItem instances.
   """
   name: str
-  keywords: Tuple[Tuple[str, Type], ...]
-  bases: Tuple[Union['Class', Type], ...]
+  keywords: Tuple[Tuple[str, TypeU], ...]
+  bases: Tuple[Union['Class', TypeU], ...]
   methods: Tuple['Function', ...]
   constants: Tuple[Constant, ...]
   classes: Tuple['Class', ...]
   decorators: Tuple[Alias, ...]
   slots: Optional[Tuple[str, ...]]
   template: Tuple['TemplateItem', ...]
+  # _name2item is the lookup cache. It should not be treated as a child or used
+  # in equality or hash operations.
+  _name2item: Dict[str, Any] = {}
 
   def _InitCache(self):
     # TODO(b/159053187): Put constants, functions, classes and aliases into a
     # combined dict.
-    self.PopulateLookupCache(self.methods, self.constants, self.classes)
+    for x in (self.methods, self.constants, self.classes):
+      for item in x:
+        self._name2item[item.name] = item
 
   def Lookup(self, name):
     """Convenience function: Look up a given name in the class namespace.
@@ -192,22 +183,37 @@ class Class(Node):
       KeyError: if this identifier doesn't exist in this class.
     """
     # TODO(b/159053187): Remove this. Make methods and constants dictionaries.
-    try:
-      return self._name2item[name]
-    except AttributeError:
+    if not self._name2item:
       self._InitCache()
-      return self._name2item[name]
+    return self._name2item[name]
 
   def Get(self, name):
     """Version of Lookup that returns None instead of raising."""
-    try:
-      return self._name2item.get(name)
-    except AttributeError:
+    if not self._name2item:
       self._InitCache()
-      return self._name2item.get(name)
+    return self._name2item.get(name)
 
   def __contains__(self, name):
     return bool(self.Get(name))
+
+  def __hash__(self):
+    # _name2item is a dict, so it can't be hashed. This worked in the previous
+    # version by pretending that _name2item didn't exist.
+    # We could also delete the cache on self, but making a new instance should
+    # be cheaper than recomputing the cache.
+    nohash = self.Replace(_name2item=None)
+    return super(Class, nohash).__hash__()
+
+  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
+    for name, child in super().IterChildren():
+      if name == '_name2item':
+        continue
+      yield name, child
+
+  def Replace(self, **kwargs):
+    if '_name2item' not in kwargs:
+      kwargs['_name2item'] = {}
+    return super().Replace(**kwargs)
 
   @property
   def metaclass(self):
@@ -236,7 +242,6 @@ class MethodFlag(enum.Flag):
     return cls.ABSTRACT if is_abstract else cls.NONE
 
 
-@attrs.frozen(cache_hash=True)
 class Function(Node):
   """A function or a method, defined by one or more PyTD signatures.
 
@@ -270,7 +275,6 @@ class Function(Node):
     return self.Replace(flags=new_flags)
 
 
-@attrs.frozen(cache_hash=True)
 class Signature(Node):
   """Represents an individual signature of a function.
 
@@ -289,13 +293,9 @@ class Signature(Node):
   params: Tuple['Parameter', ...]
   starargs: Optional['Parameter']
   starstarargs: Optional['Parameter']
-  return_type: Type
-  exceptions: Tuple[Type, ...]
+  return_type: TypeU
+  exceptions: Tuple[TypeU, ...]
   template: Tuple['TemplateItem', ...]
-
-  @property
-  def name(self):
-    return None
 
   @property
   def has_optional(self):
@@ -308,7 +308,6 @@ class ParameterKind(enum.Enum):
   KWONLY = 'kwonly'
 
 
-@attrs.frozen(cache_hash=True)
 class Parameter(Node):
   """Represents a parameter of a function definition.
 
@@ -321,14 +320,13 @@ class Parameter(Node):
       if the type is mutated, None otherwise.
   """
   name: str
-  type: Type
+  type: TypeU
   kind: ParameterKind
   optional: bool
-  mutated_type: Optional[Type]
+  mutated_type: Optional[TypeU]
 
 
-@attrs.frozen(cache_hash=True)
-class TypeParameter(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class TypeParameter(Type):
   """Represents a type parameter.
 
   A type parameter is a bound variable in the context of a function or class
@@ -338,12 +336,14 @@ class TypeParameter(Node, Type):  # pytype: disable=signature-mismatch  # overri
 
   Attributes:
     name: Name of the parameter. E.g. "T".
+    constraints: The valid types for the TypeParameter. Exclusive with bound.
+    bound: The upper bound for the TypeParameter. Exclusive with constraints.
     scope: Fully-qualified name of the class or function this parameter is
       bound to. E.g. "mymodule.MyClass.mymethod", or None.
   """
   name: str
-  constraints: Tuple[Type, ...] = attrs.field(factory=tuple)
-  bound: Optional[Type] = None
+  constraints: Tuple[TypeU, ...] = ()
+  bound: Optional[TypeU] = None
   scope: Optional[str] = None
 
   def __lt__(self, other):
@@ -372,7 +372,6 @@ class TypeParameter(Node, Type):  # pytype: disable=signature-mismatch  # overri
       return AnythingType()
 
 
-@attrs.frozen(cache_hash=True)
 class ParamSpec(TypeParameter):
   """ParamSpec is a specific case of TypeParameter."""
 
@@ -386,19 +385,16 @@ class ParamSpec(TypeParameter):
       return None
 
 
-@attrs.frozen(cache_hash=True)
 class ParamSpecArgs(Node):
   """ParamSpec.args special form."""
   name: str
 
 
-@attrs.frozen(cache_hash=True)
 class ParamSpecKwargs(Node):
   """ParamSpec.kwargs special form."""
   name: str
 
 
-@attrs.frozen(cache_hash=True)
 class TemplateItem(Node):
   """Represents template name for generic types.
 
@@ -414,7 +410,7 @@ class TemplateItem(Node):
     type_param: the TypeParameter instance used. This is the actual instance
       that's used wherever this type parameter appears, e.g. within a class.
   """
-  type_param: TypeParameter
+  type_param: TypeParameterU
 
   @property
   def name(self):
@@ -442,8 +438,7 @@ class TemplateItem(Node):
 # corresponding AST representations.
 
 
-@attrs.frozen(cache_hash=True)
-class NamedType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class NamedType(Type):
   """A type specified by name and, optionally, the module it is in."""
   name: str
 
@@ -451,30 +446,32 @@ class NamedType(Node, Type):  # pytype: disable=signature-mismatch  # overriding
     return self.name
 
 
-@attrs.mutable(init=False, slots=False, eq=False)
-class ClassType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class ClassType(Type, frozen=False, eq=False):
   """A type specified through an existing class node."""
   # This type is different from normal nodes:
   # (a) It's mutable, and there are functions
   #     (parse/visitors.py:FillInLocalPointers) that modify a tree in place.
-  # (b) The cls pointer is not treated as a regular attr field.
-  # (c) Visitors will not process the "children" of this node. Since we point
+  # (b) Visitors will not process the "children" of this node. Since we point
   #     to classes that are back at the top of the tree, that would generate
   #     cycles.
 
-  name: str = attrs.field()
+  name: str
+  # This should be Type, or even Class. Unfortunately, doing so breaks
+  # base_visitor:_GetAncestorMap by making ClassType an ancestor of all the
+  # Type subclasses. This is undesirable, because the cls pointer should be
+  # treated as if it doesn't exist.
+  cls: Optional[Any] = None
 
-  # We do not want cls to be a child node, but we do want it to be an optional
-  # arg to __init__ and accessible via self.cls
-  cls = None
-
-  def __init__(self, name, cls=None):
-    self.name = name
-    self.cls = cls
+  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
+    # It is very important that visitors do not follow the cls pointer. To avoid
+    # this, we claim that `name` is the only child.
+    yield 'name', self.name
 
   def __eq__(self, other):
-    return (self.__class__ == other.__class__ and
-            self.name == other.name)
+    return (self.__class__ == other.__class__ and self.name == other.name)
+
+  def __ne__(self, other):
+    return not self == other
 
   def __hash__(self):
     return hash((self.__class__.__name__, self.name))
@@ -488,8 +485,7 @@ class ClassType(Node, Type):  # pytype: disable=signature-mismatch  # overriding
         cls='<unresolved>' if self.cls is None else '')
 
 
-@attrs.frozen(cache_hash=True)
-class LateType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class LateType(Type):
   """A type we have yet to resolve."""
   name: str
   recursive: bool = False
@@ -498,29 +494,19 @@ class LateType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-
     return self.name
 
 
-@attrs.frozen(cache_hash=True)
-class AnythingType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class AnythingType(Type):
   """A type we know nothing about yet (? in pytd)."""
-
-  @property
-  def name(self):
-    return None
 
   def __bool__(self):
     return True
 
 
-@attrs.frozen(cache_hash=True)
-class NothingType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class NothingType(Type):
   """An "impossible" type, with no instances (nothing in pytd).
 
   Also known as the "uninhabited" type, or, in type systems, the "bottom" type.
   For representing empty lists, and functions that never return.
   """
-
-  @property
-  def name(self):
-    return None
 
   def __bool__(self):
     return True
@@ -537,22 +523,18 @@ def _FlattenTypes(type_list) -> Tuple[Type, ...]:
   return unique
 
 
-@attrs.frozen(eq=False)
-class _SetOfTypes(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class _SetOfTypes(Type, frozen=False, eq=False):
   """Super class for shared behavior of UnionType and IntersectionType."""
+  # NOTE: This class is not frozen so that we can flatten types after
+  # initialization. It should still be treated as a frozen type.
   # NOTE: type_list is kept as a tuple, to preserve the original order
   #       even though in most respects it acts like a frozenset.
   #       It also flattens the input, such that printing without
   #       parentheses gives the same result.
-  type_list: Tuple[Type, ...] = attrs.field(converter=_FlattenTypes)
+  type_list: Tuple[TypeU, ...] = ()
 
-  @property
-  def name(self):
-    return None
-
-  def __hash__(self):
-    # See __eq__ - order doesn't matter, so use frozenset
-    return hash(frozenset(self.type_list))
+  def __post_init__(self):
+    self.type_list = _FlattenTypes(self.type_list)
 
   def __eq__(self, other):
     if self is other:
@@ -565,19 +547,19 @@ class _SetOfTypes(Node, Type):  # pytype: disable=signature-mismatch  # overridi
   def __ne__(self, other):
     return not self == other
 
+  def __hash__(self):
+    return hash(self.type_list)
+
 
 class UnionType(_SetOfTypes):
   """A union type that contains all types in self.type_list."""
-  __slots__ = ()
 
 
 class IntersectionType(_SetOfTypes):
   """An intersection type."""
-  __slots__ = ()
 
 
-@attrs.frozen(cache_hash=True)
-class GenericType(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
+class GenericType(Type):
   """Generic type. Takes a base type and type parameters.
 
   This is used for homogeneous tuples, lists, dictionaries, user classes, etc.
@@ -587,7 +569,7 @@ class GenericType(Node, Type):  # pytype: disable=signature-mismatch  # overridi
     parameters: Type parameters. Tuple of instances of Type.
   """
   base_type: Union[NamedType, ClassType, LateType]
-  parameters: Tuple[Type, ...]
+  parameters: Tuple[TypeU, ...]
 
   @property
   def name(self):
@@ -606,7 +588,6 @@ class TupleType(GenericType):
   A tuple with length len(self.parameters), whose item type is specified at
   each index.
   """
-  __slots__ = ()
 
 
 class CallableType(GenericType):
@@ -616,7 +597,6 @@ class CallableType(GenericType):
   the individual argument types, in the order of the arguments, and the last
   parameter is the return type.
   """
-  __slots__ = ()
 
   @property
   def args(self):
@@ -632,7 +612,6 @@ class CallableType(GenericType):
 
 class Concatenate(GenericType):
   """Concatenate params and ParamSpec."""
-  __slots__ = ()
 
   @property
   def args(self):
@@ -643,27 +622,60 @@ class Concatenate(GenericType):
     return self.parameters[-1]
 
 
-@attrs.frozen(cache_hash=True)
-class Literal(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
-  value: Union[int, str, Type, Constant]
-
-  @property
-  def name(self):
-    return None
+class Literal(Type):
+  value: Union[int, str, bool, TypeU, Constant]
 
 
-@attrs.frozen(cache_hash=True)
-class Annotated(Node, Type):  # pytype: disable=signature-mismatch  # overriding-return-type-checks
-  base_type: Type
+class Annotated(Type):
+  base_type: TypeU
   annotations: Tuple[str, ...]
-
-  @property
-  def name(self):
-    return None
 
 
 # Types that can be a base type of GenericType:
 GENERIC_BASE_TYPE = (NamedType, ClassType)
+
+
+# msgspec will not deserialize subclasses. That is, for a class like:
+#   class Example(msgspec.Struct):
+#     typ: Type
+# then **ONLY** pytd.Type is allowed in that field, not any of its subclasses.
+# Instead, a union of all possible types must be used instead.
+# For convenience, we define those unions below.
+# If you add a new subclass of one of the base classes, you MUST add it to the
+# appropriate Union.
+
+# All subclasses of TypeParameter.
+TypeParameterU = Union[TypeParameter, ParamSpec]
+
+# All subclasses of _SetOfType.
+SetOfTypesU = Union[UnionType, IntersectionType]
+
+# All subclasses of GenericType.
+GenericTypeU = Union[GenericType, TupleType, CallableType, Concatenate]
+
+# All subclasses of Type.
+TypeU = Union[
+    NamedType,
+    ClassType,
+    LateType,
+    AnythingType,
+    NothingType,
+    Literal,
+    Annotated,
+    # These are all Type subclasses too.
+    TypeParameterU,
+    SetOfTypesU,
+    GenericTypeU,
+
+    # TODO(tsudol): There's something weird going on here where msgspec cannot
+    # see that Parameter.type can be ParamSpecArg or ParamSpecKwargs when it's
+    # in the annotation, e.g.:
+    #   `type: Union[ParamSpecArgs, ParamSpecKwargs, TypeU]`
+    # So for now, add it to the TypeU union. This was uncovered by :main_test,
+    # so a dedicated test case would be good to write. Perhaps hypothesis/fuzz?
+    ParamSpecArgs,
+    ParamSpecKwargs,
+]
 
 
 def IsContainer(t: Class) -> bool:

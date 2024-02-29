@@ -313,9 +313,13 @@ def write_pickle(ast, options, loader=None):
     ast2 = ast2.Visit(visitors.ClearClassPointers())
     if not pytd_utils.ASTeq(ast1, ast2):
       raise AssertionError()
-  pickle_utils.StoreAst(ast, options.output, options.open_function,
-                        src_path=options.input,
-                        metadata=options.pickle_metadata)
+  pickle_utils.SerializeAndSave(
+      ast,
+      filename=options.output,
+      src_path=options.input,
+      metadata=options.pickle_metadata,
+      open_function=options.open_function,
+  )
 
 
 def print_error_doc_url(errorlog):

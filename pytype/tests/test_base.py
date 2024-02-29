@@ -206,12 +206,12 @@ class BaseTest(unittest.TestCase):
   def _PickleAst(self, ast, module_name):
     assert module_name
     ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
-    return pickle_utils.StoreAst(ast)
+    return pickle_utils.Serialize(ast)
 
   def _PickleSource(self, src, module_name):
     ast = serialize_ast.SourceToExportableAst(
         module_name, textwrap.dedent(src), self.loader)
-    return pickle_utils.StoreAst(ast)
+    return pickle_utils.Serialize(ast)
 
   def Infer(self, srccode, pythonpath=(), report_errors=True,
             analyze_annotated=True, pickle=False, module_name=None, **kwargs):

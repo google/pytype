@@ -767,7 +767,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
 
   def _pickle_modules(self, loader, tempdir, *modules):
     for module in modules:
-      pickle_utils.StoreAst(
+      pickle_utils.SerializeAndSave(
           loader._modules[module.module_name].ast,
           self._get_path(tempdir, module.file_name + ".pickled"))
 
@@ -785,7 +785,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
       loader, ast = self._load_ast(tempdir=d, module=module1)
       self._pickle_modules(loader, d, module1, module2)
       pickled_ast_filename = self._get_path(d, module1.file_name + ".pickled")
-      result = pickle_utils.StoreAst(ast, pickled_ast_filename)
+      result = pickle_utils.SerializeAndSave(ast, pickled_ast_filename)
       self.assertIsNone(result)
 
       loaded_ast = self._load_pickled_module(d, module1)

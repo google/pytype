@@ -13,8 +13,6 @@ signatures against new inference results.
 import logging
 from typing import Dict, Optional, Union
 
-import attrs
-
 from pytype import utils
 from pytype.pytd import booleq
 from pytype.pytd import escape
@@ -67,7 +65,6 @@ def get_all_subclasses(asts):
   return utils.invert_dict(hierarchy)
 
 
-@attrs.frozen(slots=True, cache_hash=True)
 class StrictType(node.Node):
   """A type that doesn't allow sub- or superclasses to match.
 
