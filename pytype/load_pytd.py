@@ -448,6 +448,13 @@ class Loader:
       self.add_module_prefixes(module_name)
     return module.ast
 
+  def remove_name(self, module_name: str) -> None:
+    """Removes a module from the cache, if it is present."""
+    if module_name in self._modules:
+      del self._modules[module_name]
+    if module_name in self._import_name_cache:
+      del self._import_name_cache[module_name]
+
   def _try_import_prefix(self, name: str) -> Optional[_AST]:
     """Try importing all prefixes of name, returning the first valid module."""
     prefix = name

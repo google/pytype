@@ -229,6 +229,37 @@ class ImportPathsTest(_LoaderTest):
               "target",
               path_utils.join(loader.options.pythonpath[0], "target.pyi")))
 
+  def test_cache(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def get_bar() -> bar.Bar: ...")
+      d.create_file("bar.pyi", "class Bar:\n  pass")
+      loader = load_pytd.Loader(config.Options.create(
+          module_name="base", python_version=self.python_version,
+          pythonpath=d.path))
+
+      loader.import_name("bar")
+      d.delete_file("bar.pyi")
+
+      foo = loader.import_name("foo")
+      f, = foo.Lookup("foo.get_bar").signatures
+      self.assertEqual("bar.Bar", f.return_type.cls.name)
+
+  def test_remove(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def get_bar() -> bar.Bar: ...")
+      d.create_file("bar.pyi", "class Bar:\n  pass")
+      loader = load_pytd.Loader(config.Options.create(
+          module_name="base", python_version=self.python_version,
+          pythonpath=d.path))
+
+      bar = loader.import_name("bar")
+      self.assertTrue(bar.Lookup("bar.Bar"))
+      d.delete_file("bar.pyi")
+      loader.remove_name("bar")
+
+      with self.assertRaisesRegex(load_pytd.BadDependencyError, "bar"):
+        loader.import_name("foo")
+
   def test_relative(self):
     with test_utils.Tempdir() as d:
       d.create_file("__init__.pyi", "base = ...  # type: str")
