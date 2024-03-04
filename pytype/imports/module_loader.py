@@ -103,7 +103,7 @@ class ModuleLoader(base.ModuleLoader):
 
   def _load_pickle(self, mod_info: base.ModuleInfo):
     """Load and unpickle a serialized pytd AST."""
-    return pickle_utils.LoadPickle(
+    return pickle_utils.LoadAst(
         mod_info.filename, open_function=self.options.open_function)
 
   def load_ast(self, mod_info: base.ModuleInfo):

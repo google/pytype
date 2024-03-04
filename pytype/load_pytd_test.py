@@ -229,6 +229,37 @@ class ImportPathsTest(_LoaderTest):
               "target",
               path_utils.join(loader.options.pythonpath[0], "target.pyi")))
 
+  def test_cache(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def get_bar() -> bar.Bar: ...")
+      d.create_file("bar.pyi", "class Bar:\n  pass")
+      loader = load_pytd.Loader(config.Options.create(
+          module_name="base", python_version=self.python_version,
+          pythonpath=d.path))
+
+      loader.import_name("bar")
+      d.delete_file("bar.pyi")
+
+      foo = loader.import_name("foo")
+      f, = foo.Lookup("foo.get_bar").signatures
+      self.assertEqual("bar.Bar", f.return_type.cls.name)
+
+  def test_remove(self):
+    with test_utils.Tempdir() as d:
+      d.create_file("foo.pyi", "def get_bar() -> bar.Bar: ...")
+      d.create_file("bar.pyi", "class Bar:\n  pass")
+      loader = load_pytd.Loader(config.Options.create(
+          module_name="base", python_version=self.python_version,
+          pythonpath=d.path))
+
+      bar = loader.import_name("bar")
+      self.assertTrue(bar.Lookup("bar.Bar"))
+      d.delete_file("bar.pyi")
+      loader.remove_name("bar")
+
+      with self.assertRaisesRegex(load_pytd.BadDependencyError, "bar"):
+        loader.import_name("foo")
+
   def test_relative(self):
     with test_utils.Tempdir() as d:
       d.create_file("__init__.pyi", "base = ...  # type: str")
@@ -767,7 +798,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
 
   def _pickle_modules(self, loader, tempdir, *modules):
     for module in modules:
-      pickle_utils.StoreAst(
+      pickle_utils.SerializeAndSave(
           loader._modules[module.module_name].ast,
           self._get_path(tempdir, module.file_name + ".pickled"))
 
@@ -785,7 +816,7 @@ class PickledPyiLoaderTest(test_base.UnitTest):
       loader, ast = self._load_ast(tempdir=d, module=module1)
       self._pickle_modules(loader, d, module1, module2)
       pickled_ast_filename = self._get_path(d, module1.file_name + ".pickled")
-      result = pickle_utils.StoreAst(ast, pickled_ast_filename)
+      result = pickle_utils.SerializeAndSave(ast, pickled_ast_filename)
       self.assertIsNone(result)
 
       loaded_ast = self._load_pickled_module(d, module1)

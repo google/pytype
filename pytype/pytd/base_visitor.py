@@ -3,6 +3,8 @@
 import re
 from typing import Any
 
+import msgspec
+
 from pytype.pytd import pytd
 from pytype.typegraph import cfg_utils
 
@@ -31,7 +33,7 @@ def _FindNodeClasses():
     value = getattr(pytd, name)
     if (isinstance(value, type) and
         issubclass(value, pytd.Node) and
-        value is not pytd.Node):
+        value is not pytd.Node and value is not pytd.Type):
       yield _NodeClassInfo(value)
 
 
@@ -59,8 +61,7 @@ def _GetChildTypes(node_classes, cls: Any):
     else:
       types.add(t)
 
-  # Directly accessing __attrs_attrs__ is faster than calling attr.fields.
-  for field in cls.__attrs_attrs__:  # pytype: disable=attribute-error
+  for field in msgspec.structs.fields(cls):
     AddType(field.type)
 
   # Verify that all late types have been converted.
@@ -91,7 +92,7 @@ def _GetAncestorMap():
           # This means we have a child type that is unknown. If it is a node
           # then make sure _FindNodeClasses() can discover it. If it is not a
           # node, then add the typename to _IGNORED_TYPES.
-          raise AssertionError(f"Unknown child type: {allowed}")
+          raise AssertionError(f"Unknown child type on {info.name}: {allowed}")
 
     predecessors = cfg_utils.compute_predecessors(node_classes.values())
     # Convert predecessors keys and values to use names instead of info objects.

@@ -16,6 +16,18 @@ class TestPytd(unittest.TestCase):
     self.float = pytd.ClassType("float")
     self.list = pytd.ClassType("list")
 
+  def test_class_type_equality(self):
+    i = pytd.ClassType("int")
+    i.cls = self.int
+    self.assertEqual(i, self.int)
+    self.assertIsInstance(i, pytd.ClassType)
+    self.assertIsInstance(self.int, pytd.ClassType)
+
+  def test_iter(self):
+    n = pytd.NamedType("int")
+    fields = list(n)
+    self.assertEqual(fields, [n.name])
+
   def test_union_type_eq(self):
     u1 = pytd.UnionType((self.int, self.float))
     u2 = pytd.UnionType((self.float, self.int))

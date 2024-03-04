@@ -5,7 +5,9 @@ serializing it to disk. Further users only need to read the serialized data from
 disk, which is faster to digest than a pyi file.
 """
 
-from typing import List, NamedTuple, Optional, Set, Tuple
+from typing import List, Optional, Set, Tuple
+
+import msgspec
 
 from pytype import utils
 from pytype.pyi import parser
@@ -58,16 +60,22 @@ class UndoModuleAliasesVisitor(visitors.Visitor):
     return node
 
 
-class SerializableTupleClass(NamedTuple):
-  ast: pytd.TypeDeclUnit
-  dependencies: List[Tuple[str, Set[str]]]
-  late_dependencies: List[Tuple[str, Set[str]]]
-  class_type_nodes: Optional[List[pytd.ClassType]]
-  src_path: Optional[str]
-  metadata: List[str]
+class ClearLookupCache(visitors.Visitor):
+  """Visitor to clear out the lookup caches of TypeDeclUnits and Classes.
+
+  The lookup caches of TypeDeclUnits and Classes do not need to be serialized.
+  Ideally, these would be private fields but those are not yet implemented.
+  (https://github.com/jcrist/msgspec/issues/199)
+  """
+
+  def LeaveClass(self, node):
+    node._name2item.clear()  # pylint: disable=protected-access
+
+  def LeaveTypeDeclUnit(self, node):
+    node._name2item.clear()  # pylint: disable=protected-access
 
 
-class SerializableAst(SerializableTupleClass):
+class SerializableAst(msgspec.Struct):
   """The data pickled to disk to save an ast.
 
   Attributes:
@@ -87,11 +95,41 @@ class SerializableAst(SerializableTupleClass):
     src_path: Optionally, the filepath of the original source file.
     metadata: A list of arbitrary string-encoded metadata.
   """
-  Replace = SerializableTupleClass._replace  # pylint: disable=no-member,invalid-name
+  ast: pytd.TypeDeclUnit
+  dependencies: List[Tuple[str, Set[str]]]
+  late_dependencies: List[Tuple[str, Set[str]]]
+  src_path: Optional[str]
+  metadata: List[str]
+  class_type_nodes: Optional[List[pytd.ClassType]] = None
+
+  def __post_init__(self):
+    # TODO(tsudol): I do not believe we actually use self.class_type_nodes for
+    # anything besides filling in pointers. That is, it's ALWAYS the list of ALL
+    # ClassType nodes in the AST. So the attribute doesn't need to exist.
+    # This would require rewriting chunks of serialize_ast_test, which tests the
+    # extra behavior around class_type_node that's never used anywhere.
+    indexer = FindClassTypesVisitor()
+    self.ast.Visit(indexer)
+    if self.class_type_nodes:
+      names = {ct.name for ct in self.class_type_nodes}
+      self.class_type_nodes = [
+          c for c in indexer.class_type_nodes if c.name in names
+      ]
+    else:
+      self.class_type_nodes = indexer.class_type_nodes
+
+  def Replace(self, **kwargs):
+    return msgspec.structs.replace(self, **kwargs)
 
 
-def SerializeAst(ast, src_path=None, metadata=None):
-  """Loads and stores an ast to disk.
+# ModuleBundle is the type used when serializing builtins, i.e. when pytype is
+# invoked with --precompile_builtins. It comprises a tuple of tuples of module
+# name (strings) and encoded SerializableAst (msgspec.Raw).
+ModuleBundle = Tuple[Tuple[str, msgspec.Raw], ...]
+
+
+def SerializeAst(ast, src_path=None, metadata=None) -> SerializableAst:
+  """Prepares an AST for serialization.
 
   Args:
     ast: The pytd.TypeDeclUnit to save to disk.
@@ -113,15 +151,16 @@ def SerializeAst(ast, src_path=None, metadata=None):
 
   # Clean external references
   ast.Visit(visitors.ClearClassPointers())
-  indexer = FindClassTypesVisitor()
-  ast.Visit(indexer)
   ast = ast.Visit(visitors.CanonicalOrderingVisitor())
+
+  # Clear out the Lookup caches.
+  ast.Visit(ClearLookupCache())
 
   metadata = metadata or []
 
   return SerializableAst(
       ast, sorted(dependencies.items()), sorted(late_dependencies.items()),
-      sorted(indexer.class_type_nodes), src_path=src_path, metadata=metadata,
+      src_path=src_path, metadata=metadata,
   )
 
 
@@ -183,6 +222,7 @@ def ProcessAst(serializable_ast, module_map):
   # external references are resolved.
   serializable_ast = _LookupClassReferences(
       serializable_ast, module_map, serializable_ast.ast.name)
+  serializable_ast = serializable_ast.Replace(class_type_nodes=None)
   serializable_ast = FillLocalReferences(serializable_ast, {
       "": serializable_ast.ast,
       serializable_ast.ast.name: serializable_ast.ast})

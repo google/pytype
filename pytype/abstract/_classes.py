@@ -3,8 +3,6 @@
 import logging
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import attrs
-
 from pytype import datatypes
 from pytype.abstract import _base
 from pytype.abstract import _instance_base
@@ -435,7 +433,7 @@ class PyTDClass(
     params = []
     for p in init.signatures[0].params[1:]:
       if p.name in protected:
-        params.append(attrs.evolve(p, name=protected[p.name]))
+        params.append(p.Replace(name=protected[p.name]))
       else:
         params.append(p)
     with self.ctx.allow_recursive_convert():
@@ -684,7 +682,8 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
         for name, val in self.formal_type_parameters.items():
           # The 'is not True' check is to prevent us from incorrectly caching
           # the hash when val.resolved == LateAnnotation._RESOLVING.
-          if val.is_late_annotation() and val.resolved is not True:  # pylint: disable=g-bool-id-comparison
+          if (val.is_late_annotation() and
+              val.resolved is not True):  # pylint: disable=g-bool-id-comparison  # pytype: disable=attribute-error
             cache = False
           items.append((name, val.full_name))
       hashval = hash((self.base_cls, tuple(items)))
@@ -716,9 +715,9 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
     return self.base_cls.members
 
   @property
-  def formal_type_parameters(self):
+  def formal_type_parameters(self) -> Dict[Union[str, int], _base.BaseValue]:
     self._load_formal_type_parameters()
-    return self._formal_type_parameters
+    return self._formal_type_parameters  # pytype: disable=bad-return-type
 
   def _load_formal_type_parameters(self):
     if self._formal_type_parameters_loaded:

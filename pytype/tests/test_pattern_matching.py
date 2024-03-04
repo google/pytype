@@ -1062,9 +1062,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color) -> int | str: ...
     """)
@@ -1091,9 +1091,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color) -> int | str: ...
     """)
@@ -1120,9 +1120,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color) -> int | Color: ...
     """)
@@ -1149,9 +1149,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color) -> int | str | None: ...
     """)
@@ -1182,9 +1182,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color) -> int: ...
     """)
@@ -1218,9 +1218,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color, y: Color) -> int | str | None: ...
     """)
@@ -1270,9 +1270,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color, y: Color) -> int | str: ...
     """)
@@ -1304,9 +1304,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       _TColor = TypeVar('_TColor', bound=Color)
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
           def red(self: _TColor) -> _TColor: ...
 
@@ -1340,9 +1340,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color, y: Color) -> int: ...
     """)
@@ -1372,9 +1372,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       Enum: Type[enum.Enum]
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color, y: Color) -> int | None: ...
     """)
@@ -1541,9 +1541,9 @@ class EnumMatchCoverageTest(test_base.BaseTest):
       a: int | str
 
       class Color(enum.Enum):
-          BLUE: int
-          GREEN: int
-          RED: int
+          BLUE: Literal[2]
+          GREEN: Literal[1]
+          RED: Literal[0]
 
       def f(x: Color) -> int | str: ...
     """)
@@ -1866,6 +1866,35 @@ class LiteralMatchCoverageTest(test_base.BaseTest):
 
       def f(x: Literal["a", "b", "c"]) -> int | str: ...
     """)
+
+  def test_literal_vs_indefinite_value(self):
+    # Regression test for a false positive in a corner case
+    with self.DepTree([("foo.py", """
+      import enum
+      class Color(enum.Enum):
+        RED = 'red'
+        GREEN = 'green'
+        BLUE = 'blue'
+        OCTARINE: str
+    """)]):
+      self.Check("""
+        from typing import Literal
+        import foo
+
+        Keys = Literal['red', 'green', 'blue']
+
+        def f(x: Keys):
+          match x:
+            case foo.Color.RED.value:
+              return 10
+            case foo.Color.GREEN.value:
+              return 20
+            case foo.Color.OCTARINE.value:
+              return 80
+            # We do not check redundant or incomplete matches here because
+            # the nonspecific `str` value means we no longer know exactly which
+            # cases have been covered.
+      """)
 
 
 if __name__ == "__main__":

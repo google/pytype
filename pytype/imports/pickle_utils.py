@@ -1,84 +1,178 @@
-"""Pickle file loading and saving."""
+"""Pickle file loading and saving.
+
+This file is tested by serialize_ast_test.py.
+"""
+
+# We now use msgspec for serialization, which prompted a rewrite of this file's
+# API. In the new API, only serialize_ast.SerializableAst and
+# serialize_ast.ModuleBundle may be directly serialized and deserialized.
+# There are methods for handling pytd.TypeDeclUnit objects, which will be
+# turned into SerializableAst objects before serialization, and will be
+# deserialized as SerializableAst objects.
+# - Turn an object into binary data: (i.e. in-memory serialization.)
+#   - Old: SavePickle(filename=None), or StoreAst(filename=None) for
+#   pytd.TypeDeclUnit.
+#   - New: Encode(), or Serialize() for pytd.TypeDeclUnit.
+# - Turn binary data into an object:
+#   - Old: LoadAst()
+#   - New: DecodeAst() for SerializableAst, DecodeBuiltins() for ModuleBundle.
+# - Turn an object into binary data and save it to a file:
+#   - Old: SavePickle(filename=str), StoreAst(filename=str) for
+#   pytd.TypeDeclUnit.
+#   - New: Save() for SerializableAst and ModuleBundle, SerializeAndSave() for
+#   pytd.TypeDeclUnit.
+# - Load binary data from a file and turn it into an object:
+#   - Old: LoadPickle()
+#   - New: LoadAst() for SerializeAst, LoadBuiltins() for ModuleBundle.
+# - There is also PrepareModuleBundle, which takes an iterable of (typically
+# builtin) modules to be encoded in one file.
 
 import gzip
-import pickle
+import os
 import sys
+from typing import Iterable, Optional, Tuple, TypeVar, Union
 
+import msgspec
+
+from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
 
-
-_PICKLE_PROTOCOL = pickle.HIGHEST_PROTOCOL
-_PICKLE_RECURSION_LIMIT_AST = 40000
-
-
-def LoadAst(data):
-  """Load data that has been read from a pickled file."""
-  # This exists to consolidate all uses of pickle into one module.
-  return pickle.loads(data)
+# In Python 3.8 and below, os.PathLike isn't subscriptable.
+if sys.version_info[:2] >= (3, 9):
+  _StrPathLike = os.PathLike[str]
+else:
+  _StrPathLike = os.PathLike
+Path = Union[str, _StrPathLike]
 
 
 class LoadPickleError(Exception):
   """Errors when loading a pickled pytd file."""
 
-  def __init__(self, filename):
-    self.filename = filename
-    msg = f"Error loading pickle file: {filename}"
+  def __init__(self, filename: Path):
+    self.filename = os.fspath(filename)
+    msg = f"Error loading pickle file: {self.filename}"
     super().__init__(msg)
 
+Encoder = msgspec.msgpack.Encoder()
+AstDecoder = msgspec.msgpack.Decoder(type=serialize_ast.SerializableAst)
+BuiltinsDecoder = msgspec.msgpack.Decoder(type=serialize_ast.ModuleBundle)
 
-def _LoadPickle(f, filename):
-  """Load a pickle file, raising a custom exception on failure."""
+_DecT = TypeVar(
+    "_DecT", serialize_ast.SerializableAst, serialize_ast.ModuleBundle
+)
+_Dec = msgspec.msgpack.Decoder
+_Serializable = Union[serialize_ast.SerializableAst, serialize_ast.ModuleBundle]
+
+
+def _Load(
+    dec: "_Dec[_DecT]", filename: Path, compress: bool = False,
+    open_function=open,
+) -> _DecT:
+  """Loads a serialized file.
+
+  Args:
+    dec: The msgspec.Decoder to use.
+    filename: The file to read.
+    compress: if True, the file will be opened using gzip.
+    open_function: The function to open the file with.
+
+  Returns:
+    The decoded object.
+
+  Raises:
+    LoadPickleError, if there is an OSError, gzip error, or msgspec error.
+  """
   try:
-    return pickle.load(f)
-  except Exception as e:  # pylint: disable=broad-except
+    with open_function(filename, "rb") as fi:
+      if compress:
+        with gzip.GzipFile(fileobj=fi) as zfi:
+          data = zfi.read()
+      else:
+        data = fi.read()
+    return dec.decode(data)
+  except (
+      OSError,
+      gzip.BadGzipFile,
+      msgspec.DecodeError,
+      msgspec.ValidationError,
+  ) as e:
     raise LoadPickleError(filename) from e
 
 
-def LoadPickle(filename, compress=False, open_function=open):
-  with open_function(filename, "rb") as fi:
-    if compress:
-      with gzip.GzipFile(fileobj=fi) as zfi:
-        return _LoadPickle(zfi, filename)
-    else:
-      return _LoadPickle(fi, filename)
+def DecodeAst(data: bytes) -> serialize_ast.SerializableAst:
+  return AstDecoder.decode(data)
 
 
-def SavePickle(data, filename=None, compress=False, open_function=open):
-  """Pickle the data."""
-  recursion_limit = sys.getrecursionlimit()
-  sys.setrecursionlimit(_PICKLE_RECURSION_LIMIT_AST)
-  assert not compress or filename, "gzip only supported with a filename"
-  try:
-    if compress:
-      with open_function(filename, mode="wb") as fi:
-        # We blank the filename and set the mtime explicitly to produce
-        # deterministic gzip files.
-        with gzip.GzipFile(filename="", mode="wb",
-                           fileobj=fi, mtime=1.0) as zfi:
-          pickle.dump(data, zfi, _PICKLE_PROTOCOL)
-    elif filename is not None:
-      with open_function(filename, "wb") as fi:
-        pickle.dump(data, fi, _PICKLE_PROTOCOL)
-    else:
-      return pickle.dumps(data, _PICKLE_PROTOCOL)
-  finally:
-    sys.setrecursionlimit(recursion_limit)
+def LoadAst(
+    filename: Path, compress: bool = False, open_function=open
+) -> serialize_ast.SerializableAst:
+  return _Load(AstDecoder, filename, compress, open_function)
 
 
-def StoreAst(
-    ast, filename=None, open_function=open, src_path=None, metadata=None):
-  """Loads and stores an ast to disk.
+def DecodeBuiltins(data: bytes) -> serialize_ast.ModuleBundle:
+  return BuiltinsDecoder.decode(data)
+
+
+def LoadBuiltins(
+    filename: Path, compress: bool = False, open_function=open
+) -> serialize_ast.ModuleBundle:
+  return _Load(BuiltinsDecoder, filename, compress, open_function)
+
+
+def Encode(obj: _Serializable) -> bytes:
+  return Encoder.encode(obj)
+
+
+def Save(
+    obj: _Serializable,
+    filename: Path,
+    compress: bool = False,
+    open_function=open,
+) -> None:
+  """Saves a serializable object to a file.
 
   Args:
-    ast: The pytd.TypeDeclUnit to save to disk.
-    filename: The filename for the pickled output. If this is None, this
-      function instead returns the pickled string.
-    open_function: A custom file opening function.
-    src_path: Optionally, the filepath of the original source file.
-    metadata: A list of arbitrary string-encoded metadata.
-
-  Returns:
-    The pickled string, if no filename was given. (None otherwise.)
+    obj: The object to serialize.
+    filename: filename to write to.
+    compress: if True, the data will be compressed using gzip. The given
+      filename will be used, unaltered.
+    open_function: The function to use to open files. Defaults to the builtin
+      open() function.
   """
+  with open_function(filename, "wb") as fi:
+    if compress:
+      # We blank the filename and set the mtime explicitly to produce
+      # deterministic gzip files.
+      with gzip.GzipFile(filename="", mode="wb", fileobj=fi, mtime=1.0) as zfi:
+        zfi.write(Encode(obj))
+    else:
+      fi.write(Encode(obj))
+
+
+def Serialize(
+    ast: pytd.TypeDeclUnit, src_path: Optional[str] = None, metadata=None
+) -> bytes:
   out = serialize_ast.SerializeAst(ast, src_path, metadata)
-  return SavePickle(out, filename, open_function=open_function)
+  return Encode(out)
+
+
+def SerializeAndSave(
+    ast: pytd.TypeDeclUnit,
+    filename: Path,
+    *,
+    compress: bool = False,
+    open_function=open,
+    src_path: Optional[str] = None,
+    metadata=None,
+) -> None:
+  out = serialize_ast.SerializeAst(ast, src_path, metadata)
+  Save(out, filename, compress, open_function)
+
+
+def PrepareModuleBundle(
+    modules: Iterable[Tuple[str, str, pytd.TypeDeclUnit]]
+) -> serialize_ast.ModuleBundle:
+  raw = lambda ast, filename: msgspec.Raw(Serialize(ast, src_path=filename))
+  return tuple(
+      ((name, raw(module, filename)) for name, filename, module in modules)
+  )

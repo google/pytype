@@ -311,10 +311,13 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
       if attr:
         # If the attribute is a method, then we allow it to take precedence over
         # the possible unknown instance attribute, since otherwise method lookup
-        # on classes with _HAS_DYNAMIC_ATTRIBUTES would always return Any.
-        if (is_unknown_instance_attribute and
-            any(isinstance(v, abstract.FUNCTION_TYPES) for v in attr.data)):
-          is_unknown_instance_attribute = False
+        # on classes with _HAS_DYNAMIC_ATTRIBUTES would always return Any. We
+        # look up the attribute a second time, using a lookup method that leaves
+        # properties as methods, so that properties are not replaced with Any.
+        if is_unknown_instance_attribute:
+          attr2 = self._lookup_from_mro(node, cls, name, valself, ())
+          if any(isinstance(v, abstract.FUNCTION_TYPES) for v in attr2.data):
+            is_unknown_instance_attribute = False
       elif not is_unknown_instance_attribute:
         # Fall back to __getattr__ if the attribute doesn't otherwise exist.
         node, attr = self._get_attribute_computed(

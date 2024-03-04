@@ -1,7 +1,5 @@
 """Tests for loading and saving pickled files."""
 
-import pickle
-
 from pytype.imports import pickle_utils
 from pytype.pytd import visitors
 from pytype.tests import test_base
@@ -13,7 +11,7 @@ class PickleTest(test_base.BaseTest):
 
   def _verifyDeps(self, module, immediate_deps, late_deps):
     if isinstance(module, bytes):
-      data = pickle.loads(module)
+      data = pickle_utils.DecodeAst(module)
       self.assertCountEqual(dict(data.dependencies), immediate_deps)
       self.assertCountEqual(dict(data.late_dependencies), late_deps)
     else:
@@ -47,11 +45,16 @@ class PickleTest(test_base.BaseTest):
     self._verifyDeps(pickled_foo, ["builtins"], ["datetime"])
     with test_utils.Tempdir() as d:
       foo = d.create_file("foo.pickled", pickled_foo)
-      pickled_bar = self.Infer("""
+      pickled_bar = self.Infer(
+          """
         import foo
         timedelta = foo.timedelta  # copy class
-      """, pickle=True, pythonpath=[""],
-                               imports_map={"foo": foo}, module_name="bar")
+      """,
+          pickle=True,
+          pythonpath=[""],
+          imports_map={"foo": foo},
+          module_name="bar",
+      )
       self._verifyDeps(pickled_bar, ["builtins"], ["datetime"])
       bar = d.create_file("bar.pickled", pickled_bar)
       ty = self.Infer("""
@@ -190,22 +193,6 @@ class PickleTest(test_base.BaseTest):
         class B(foo.A):  # final-error
           pass
       """)
-
-  def test_exception(self):
-    old = pickle.load
-    def load_with_error(*args, **kwargs):
-      raise ValueError("error!")
-    foo = """
-      class A: pass
-    """
-    pickle.load = load_with_error
-    with self.DepTree([("foo.py", foo, {"pickle": True})]):
-      with self.assertRaises(pickle_utils.LoadPickleError):
-        self.Check("""
-          import foo
-          x = foo.A()
-        """)
-    pickle.load = old
 
 
 if __name__ == "__main__":

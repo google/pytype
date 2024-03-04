@@ -12,36 +12,39 @@ documentation in the various visitor methods below for details.
 For examples of visitors, see pytd/visitors.py
 """
 
-from typing import Any, Dict, Optional
+from typing import Any, ClassVar, Type, TYPE_CHECKING
 
-import attrs
+import msgspec
 
 from pytype import metrics
 
+if TYPE_CHECKING:
+  _Struct: Type[Any]
+else:
+  _Struct = msgspec.Struct
 
-class Node:
+
+class Node(
+    _Struct,
+    frozen=True,
+    tag=True,
+    tag_field="_struct_type",
+    kw_only=True,
+    omit_defaults=True,
+    cache_hash=True,
+):
   """Base Node class."""
 
-  __slots__ = ()
-
-  _name2item: Dict[str, Any]  # Lookup cache used by module and class nodes
-  name: Optional[str]
-
-  def PopulateLookupCache(self, *members):
-    # Instances are typically frozen attrs
-    object.__setattr__(self, "_name2item", {})
-    for x in members:
-      for item in x:
-        self._name2item[item.name] = item
+  # We pretend that `name` is a ClassVar so that msgspec treats it as a struct
+  # field only when it is defined in a subclass.
+  name: ClassVar[str] = ""
 
   def __iter__(self):
-    # Directly accessing __attrs_attrs__ is faster than calling attrs.fields.
-    for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
-      yield getattr(self, field.name)
+    for name in self.__struct_fields__:
+      yield getattr(self, name)
 
   def _ToTuple(self):
-    """Returns a tuple of the fields of self as a sort key."""
-    # attrs.astuple does a recursive conversion, which is not what we want
+    """Returns a tuple of the stringified fields of self as a sort key."""
     return tuple((x.__class__.__name__, str(x)) for x in self)
 
   def __lt__(self, other):
@@ -69,9 +72,8 @@ class Node:
     return self == other or self > other
 
   def IterChildren(self):
-    # Directly accessing __attrs_attrs__ is faster than calling attrs.fields.
-    for field in self.__attrs_attrs__:  # pytype: disable=attribute-error
-      yield field.name, getattr(self, field.name)
+    for name in self.__struct_fields__:
+      yield name, getattr(self, name)
 
   def Visit(self, visitor, *args, **kwargs):
     """Visitor interface for transforming a tree of nodes to a new tree.
@@ -99,8 +101,8 @@ class Node:
     """
     return _Visit(self, visitor, *args, **kwargs)
 
-  def Replace(self, *args, **kwargs):
-    return attrs.evolve(self, *args, **kwargs)
+  def Replace(self, **kwargs):
+    return msgspec.structs.replace(self, **kwargs)
 
 
 # The set of visitor names currently being processed.

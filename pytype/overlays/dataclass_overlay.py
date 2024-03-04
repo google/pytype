@@ -268,36 +268,19 @@ class Replace(abstract.PyTDFunction):
         or not abstract_utils.is_dataclass(obj.cls)
     ):
       return ret
-    field_names = {f.name for f in obj.cls.metadata["__dataclass_fields__"]}
-    invalid_names = tuple(
-        name for name in args.namedargs.keys() if name not in field_names
-    )
-    if invalid_names:
-      # pylint: disable=line-too-long
-      # If we use the signature of replace() in the error message, it will be
-      # very confusing to users:
-      #   Invalid keyword arguments (y, z) to function dataclasses.replace [wrong-keyword-args]
-      #            Expected: (__obj, **changes)
-      #     Actually passed: (__obj, y, z)
-      # Instead, we construct a fake signature that shows the expected fields:
-      #   Invalid keyword arguments (y, z) to function dataclasses.replace [wrong-keyword-args]
-      #            Expected: (__obj: Test, *, x)
-      #     Actually passed: (__obj: Test, y, z)
-      # We also cheat a little bit by making sure the type of the object is
-      # included in the signature, pointing users towards more info.
-      # pylint: enable=line-too-long
-      fields = obj.cls.metadata["__dataclass_fields__"]
-      s = self.signatures[0].signature
-      sig = function.Signature(
-          name=s.name,
-          param_names=(f"__obj: {obj.cls.full_name}",),
-          posonly_count=s.posonly_count,
-          varargs_name=s.varargs_name,
-          kwonly_params=tuple(f.name for f in fields),
-          defaults=s.defaults,
-          kwargs_name=None,
-          annotations={},  # not used when printing errors.
-          postprocess_annotations=False,
-      )
-      raise function.WrongKeywordArgs(sig, args, self.ctx, invalid_names)
+    # Construct a `dataclasses.replace` method to match against.
+    fields = obj.cls.metadata["__dataclass_fields__"]
+    # 0 or more fields can be replaced, so we give every field a default.
+    default = self.ctx.new_unsolvable(node)
+    replace = abstract.SimpleFunction.build(
+        name=self.name,
+        param_names=["obj"],
+        posonly_count=1,
+        varargs_name=None,
+        kwonly_params=[f.name for f in fields],
+        kwargs_name=None,
+        defaults={f.name: default for f in fields},
+        annotations={f.name: f.typ for f in fields},
+        ctx=self.ctx)
+    _ = replace.match_and_map_args(node, args, alias_map)
     return ret

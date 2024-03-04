@@ -40,10 +40,11 @@ class EnumOverlayTest(test_base.BaseTest):
       """)
     self.assertTypesMatchPytd(ty, """
       import enum
+      from typing import Literal
       class Colors(enum.Enum):
-        BLUE: int
-        GREEN: int
-        RED: int
+          BLUE: Literal[3]
+          GREEN: Literal[2]
+          RED: Literal[1]
       """)
 
   def test_access_members_and_values(self):
@@ -334,7 +335,7 @@ class EnumOverlayTest(test_base.BaseTest):
       x = M(1)
     """)
 
-  def test_value_looku_no_members_pytd(self):
+  def test_value_lookup_no_members_pytd(self):
     with test_utils.Tempdir() as d:
       d.create_file("foo.pyi", """
         import enum
@@ -346,6 +347,22 @@ class EnumOverlayTest(test_base.BaseTest):
         x = foo.M  # to force foo.M to be loaded by the overlay.
         y = foo.M(1)
       """, pythonpath=[d.path])
+
+  def test_reingest_literal_members(self):
+    with self.DepTree([("foo.py", """
+      import enum
+      class A(enum.Enum):
+        FOO = 1
+        BAR = 2
+    """)]):
+      self.Check("""
+        from typing import Literal
+        from foo import A
+        def f(x: Literal[1]): ...
+        def g(x: int):
+          a = A(x)  # this should take a non-concrete int
+        b = f(A.FOO.value)  # this should preserve the concrete pyval
+      """)
 
   @test_base.skip("Stricter equality disabled due to b/195136939")
   def test_enum_eq(self):
@@ -1130,9 +1147,9 @@ class EnumOverlayTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import enum
-      from typing import Annotated
+      from typing import Annotated, Literal
       class M(enum.Enum):
-        A: int
+        A: Literal[1]
         combo: Annotated[str, 'property']
         str_v: Annotated[str, 'property']
         def __init__(self, val) -> None: ...
@@ -1228,9 +1245,9 @@ class EnumOverlayTest(test_base.BaseTest):
     """)
     self.assertTypesMatchPytd(ty, """
       import enum
-      from typing import ClassVar
+      from typing import ClassVar, Literal
       class M(enum.Enum):
-        A: int
+        A: Literal[1]
         class_attr: ClassVar[int]
     """)
 

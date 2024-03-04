@@ -7,8 +7,6 @@ from typing import Optional
 from pytype import config
 from pytype import errors
 from pytype import load_pytd
-from pytype.blocks import blocks
-from pytype.pyc import pyc
 from pytype.pytd import pytd
 from pytype.rewrite import vm as vm_lib
 
@@ -45,7 +43,8 @@ def check_types(
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Checks types for the given source code."""
-  vm = _make_vm(src, options, loader, init_maximum_depth, maximum_depth)
+  del loader, init_maximum_depth, maximum_depth
+  vm = vm_lib.VirtualMachine.from_source(src, options)
   vm.analyze_all_defs()
   return Analysis(Context(), None, None)
 
@@ -58,35 +57,9 @@ def infer_types(
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Infers types for the given source code."""
-  vm = _make_vm(src, options, loader, init_maximum_depth, maximum_depth)
+  del loader, init_maximum_depth, maximum_depth
+  vm = vm_lib.VirtualMachine.from_source(src, options)
   vm.infer_stub()
   ast = pytd.TypeDeclUnit('inferred + unknowns', (), (), (), (), ())
   deps = pytd.TypeDeclUnit('<all>', (), (), (), (), ())
   return Analysis(Context(), ast, deps)
-
-
-def _make_vm(
-    src: str,
-    options: config.Options,
-    loader: load_pytd.Loader,
-    init_maximum_depth: int,
-    maximum_depth: int,
-) -> vm_lib.VirtualMachine:
-  """Creates abstract virtual machine for given source code."""
-  del loader, init_maximum_depth, maximum_depth
-  code = _get_bytecode(src, options)
-  # TODO(b/241479600): Populate globals from builtins.
-  initial_globals = {}
-  return vm_lib.VirtualMachine(code, initial_globals)
-
-
-def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
-  code = pyc.compile_src(
-      src=src,
-      python_version=options.python_version,
-      python_exe=options.python_exe,
-      filename=options.input,
-      mode='exec',
-  )
-  ordered_code, unused_block_graph = blocks.process_code(code)
-  return ordered_code

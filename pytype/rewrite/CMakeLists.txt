@@ -40,8 +40,6 @@ py_library(
     pytype.config
     pytype.errors
     pytype.load_pytd
-    pytype.blocks.blocks
-    pytype.pyc.pyc
     pytype.pytd.pytd
 )
 
@@ -55,6 +53,25 @@ py_test(
     pytype.config
     pytype.load_pytd
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    convert
+  SRCS
+    convert.py
+  DEPS
+    .abstract
+    pytype.rewrite.flow.flow
+)
+
+py_test(
+  NAME
+    convert_test
+  SRCS
+    convert_test.py
+  DEPS
+    .convert
 )
 
 py_library(
@@ -76,6 +93,7 @@ py_test(
     frame_test.py
   DEPS
     .abstract
+    .convert
     .frame
     pytype.blocks.blocks
     pytype.pyc.pyc
@@ -109,8 +127,11 @@ py_library(
     vm.py
   DEPS
     .abstract
+    .convert
     .frame
+    pytype.config
     pytype.blocks.blocks
+    pytype.pyc.pyc
     pytype.rewrite.flow.flow
 )
 
@@ -122,6 +143,7 @@ py_test(
   DEPS
     .abstract
     .vm
+    pytype.config
     pytype.pyc.pyc
     pytype.rewrite.tests.test_utils
 )

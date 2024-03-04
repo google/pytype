@@ -555,7 +555,7 @@ def _build_namedtuple(props, node, ctx):
   if props.fields and props.fields[0].typ:
     field_types_union = abstract.Union([f.typ for f in props.fields], ctx)
   else:
-    field_types_union = ctx.convert.none_type
+    field_types_union = ctx.convert.unsolvable
 
   members = {f.name: f.typ.instantiate(node) for f in props.fields}
 

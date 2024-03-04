@@ -83,6 +83,10 @@ class _Option:
   def is_empty(self) -> bool:
     return not(self.values or self.indefinite)
 
+  def __repr__(self):
+    indef = "*" if self.indefinite else ""
+    return f"<Option: {self.typ}: {self.values}{indef}>"
+
 
 class _OptionSet:
   """Holds a set of options."""
@@ -135,6 +139,12 @@ class _OptionSet:
       opt.values.remove(val)
       return [val]
     else:
+      if (not cls.is_enum and
+          not isinstance(val, abstract.ConcreteValue) and
+          opt.values):
+        # We have passed in an indefinite value to a match var with concrete
+        # values; we can no longer be sure which values of the type are covered.
+        opt.indefinite = True
       return [val] if opt.indefinite else []
 
   def cover_type(self, val) -> List[_Value]:

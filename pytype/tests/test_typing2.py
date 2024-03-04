@@ -860,7 +860,7 @@ class LiteralTest(test_base.BaseTest):
       from typing import Literal
       x: Literal[Color.RED]
       class Color(enum.Enum):
-        RED: str
+        RED: Literal["RED"]
     """)
 
   @test_base.skip("Pytype loads N.A and treats it as a literal.")

@@ -242,8 +242,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       func_var: _AbstractVariable,
       args: Sequence[_AbstractVariable],
   ) -> None:
-    if args and not all(v is abstract.BUILD_CLASS
-                        for v in func_var.values):
+    if args and not func_var.has_atomic_value(abstract.BUILD_CLASS):
       raise NotImplementedError('CALL not fully implemented')
     ret_values = []
     for func in func_var.values:
@@ -351,7 +350,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
-    if sentinel.values != (abstract.NULL,):
+    if not sentinel.has_atomic_value(abstract.NULL):
       raise NotImplementedError('CALL not fully implemented')
     func_var, *args = rest
     self._call_function(func_var, args)

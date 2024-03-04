@@ -877,6 +877,17 @@ class TestDataclass(test_base.BaseTest):
       dataclasses.replace(a, name="c", idx=3)  # wrong-keyword-args
     """)
 
+  def test_replace_wrong_type(self):
+    errors = self.CheckWithErrors("""
+      import dataclasses
+      @dataclasses.dataclass
+      class C:
+        name: str
+      dataclasses.replace(C('x'), name=42)  # wrong-arg-types[e]
+    """)
+    self.assertErrorSequences(errors, {
+        "e": ["Expected", "str", "Actual", "int"]})
+
 
 class TestPyiDataclass(test_base.BaseTest):
   """Tests for @dataclasses in pyi files."""

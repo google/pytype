@@ -1,7 +1,6 @@
 """Tests for loading and saving pickled files."""
 
-import pickle
-
+from pytype.imports import pickle_utils
 from pytype.tests import test_base
 from pytype.tests import test_utils
 
@@ -37,7 +36,7 @@ class PickleTest(test_base.BaseTest):
         class Foo(Foo):
           pass
     """, module_name="foo", pickle=True)
-    ast = pickle.loads(ty).ast
+    ast = pickle_utils.DecodeAst(ty).ast
     base, = ast.Lookup("foo.Bar").Lookup("foo.Bar.Foo").bases
     self.assertEqual(base.name, "foo.Foo")
 

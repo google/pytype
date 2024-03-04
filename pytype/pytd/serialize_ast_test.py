@@ -1,9 +1,9 @@
-import pickle
-
+"""Tests for serialization of pytd classes."""
 from pytype import config
 from pytype import load_pytd
 from pytype.imports import pickle_utils
 from pytype.platform_utils import path_utils
+from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
@@ -20,9 +20,9 @@ class SerializeAstTest(test_base.UnitTest):
       src_path=None, metadata=None):
     if not (ast and loader):
       ast, loader = self._get_ast(temp_dir=temp_dir, module_name=module_name)
-    pickle_utils.StoreAst(
+    pickle_utils.SerializeAndSave(
         ast,
-        pickled_ast_filename,
+        filename=pickled_ast_filename,
         src_path=src_path,
         metadata=metadata)
     module_map = {name: module.ast
@@ -60,8 +60,8 @@ class SerializeAstTest(test_base.UnitTest):
     loader = load_pytd.Loader(config.Options.create(
         python_version=self.python_version, pythonpath=temp_dir.path))
     ast = loader.load_file(module_name, pyi_filename)
-    # pickle_utils.StoreAst sorts the ast for determinism, so we should do the
-    # same to the original ast to do pre- and post-pickling comparisons.
+    # pickle_utils sorts the ast for determinism, so we should do the same to
+    # the original ast to do pre- and post-pickling comparisons.
     loader._modules[module_name].ast = ast = ast.Visit(
         visitors.CanonicalOrderingVisitor())
     return ast, loader
@@ -86,7 +86,7 @@ class SerializeAstTest(test_base.UnitTest):
       pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       del module_map[module_name]
-      serialized_ast = pickle_utils.LoadPickle(pickled_ast_filename)
+      serialized_ast = pickle_utils.LoadAst(pickled_ast_filename)
 
       # The sorted makes the testcase more deterministic.
       serialized_ast = serialized_ast.Replace(class_type_nodes=sorted(
@@ -102,11 +102,10 @@ class SerializeAstTest(test_base.UnitTest):
       ast, _ = self._get_ast(temp_dir=d, module_name="foo.bar.module1")
       pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
 
-      result = pickle_utils.StoreAst(ast, pickled_ast_filename)
+      result = pickle_utils.SerializeAndSave(ast, pickled_ast_filename)
 
       self.assertIsNone(result)
-      with open(pickled_ast_filename, "rb") as fi:
-        serialized_ast = pickle.load(fi)
+      serialized_ast = pickle_utils.LoadAst(pickled_ast_filename)
       self.assertTrue(serialized_ast.ast)
       self.assertCountEqual(
           dict(serialized_ast.dependencies),
@@ -168,7 +167,7 @@ class SerializeAstTest(test_base.UnitTest):
           d, "module1", pickled_ast_filename, ast=ast, loader=loader)
       del module_map["module1"]
 
-      serialized_ast = pickle_utils.LoadPickle(pickled_ast_filename)
+      serialized_ast = pickle_utils.LoadAst(pickled_ast_filename)
       loaded_ast = serialize_ast.ProcessAst(
           serialized_ast, module_map)
       # Look up the "SomeClass" in "def func(a: SomeClass), then run
@@ -186,7 +185,7 @@ class SerializeAstTest(test_base.UnitTest):
       original_ast = module_map[module_name]
       del module_map[module_name]
       loaded_ast = serialize_ast.ProcessAst(
-          pickle_utils.LoadPickle(pickled_ast_filename),
+          pickle_utils.LoadAst(pickled_ast_filename),
           module_map)
 
       self.assertTrue(loaded_ast)
@@ -209,7 +208,7 @@ class SerializeAstTest(test_base.UnitTest):
       del module_map[module_name]
 
       loaded_ast = serialize_ast.ProcessAst(
-          pickle_utils.LoadPickle(pickled_ast_filename),
+          pickle_utils.LoadAst(pickled_ast_filename),
           module_map)
 
       self.assertTrue(loaded_ast)
@@ -227,7 +226,7 @@ class SerializeAstTest(test_base.UnitTest):
 
       with self.assertRaises(serialize_ast.UnrestorableDependencyError):
         serialize_ast.ProcessAst(
-            pickle_utils.LoadPickle(pickled_ast_filename),
+            pickle_utils.LoadAst(pickled_ast_filename),
             module_map)
 
   def test_unrestorable_dependency_error_without_module_index(self):
@@ -237,8 +236,7 @@ class SerializeAstTest(test_base.UnitTest):
       module_map = self._store_ast(d, module_name, pickled_ast_filename)
       module_map = {}  # Remove module2
 
-      loaded_ast = pickle_utils.LoadPickle(pickled_ast_filename)
-      loaded_ast.modified_class_types = None  # Remove the index
+      loaded_ast = pickle_utils.LoadAst(pickled_ast_filename)
       with self.assertRaises(serialize_ast.UnrestorableDependencyError):
         serialize_ast.ProcessAst(loaded_ast, module_map)
 
@@ -252,7 +250,7 @@ class SerializeAstTest(test_base.UnitTest):
       del module_map[original_module_name]
 
       new_module_name = "wurstbrot.module2"
-      serializable_ast = pickle_utils.LoadPickle(pickled_ast_filename)
+      serializable_ast = pickle_utils.LoadAst(pickled_ast_filename)
       serializable_ast = serialize_ast.EnsureAstName(
           serializable_ast, new_module_name, fix=True)
       loaded_ast = serialize_ast.ProcessAst(serializable_ast, module_map)
@@ -273,7 +271,7 @@ class SerializeAstTest(test_base.UnitTest):
       module_map = self._store_ast(
           d, original_module_name, pickled_ast_filename,
           src_path="module1/__init__.py")
-      serializable_ast = pickle_utils.LoadPickle(pickled_ast_filename)
+      serializable_ast = pickle_utils.LoadAst(pickled_ast_filename)
 
       expected_name = "module1"
       # Check that the module had the expected name before.
@@ -287,7 +285,7 @@ class SerializeAstTest(test_base.UnitTest):
     with test_utils.Tempdir() as d:
       foo = d.create_file("foo.pickle")
       module_map = self._store_ast(d, "foo", foo, ast=self._get_ast(d, "foo"))
-      p = pickle_utils.LoadPickle(foo)
+      p = pickle_utils.LoadAst(foo)
       ast = serialize_ast.ProcessAst(p, module_map)
       f, = (a for a in ast.aliases if a.name == "foo.f")
       signature, = f.type.signatures
@@ -299,8 +297,43 @@ class SerializeAstTest(test_base.UnitTest):
       pickled_ast_filename = path_utils.join(d.path, "module1.pyi.pickled")
       self._store_ast(
           d, module_name, pickled_ast_filename, metadata=["meta", "data"])
-      serialized_ast = pickle_utils.LoadPickle(pickled_ast_filename)
+      serialized_ast = pickle_utils.LoadAst(pickled_ast_filename)
       self.assertSequenceEqual(serialized_ast.metadata, ["meta", "data"])
+
+  def test_serialize_constants(self):
+    # This test explicitly enumerates the expected types in a Constant.
+    # The goal is to stop you from being clever about how Constant.value is
+    # defined in pytd.py.
+    consts = (
+        pytd.Constant("Anything", pytd.AnythingType(), pytd.AnythingType()),
+        pytd.Constant("int", pytd.NamedType("int"), 1),
+        pytd.Constant("str", pytd.NamedType("str"), "str"),
+        pytd.Constant("bytes", pytd.NamedType("bytes"), "bytes"),
+        pytd.Constant("True", pytd.NamedType("bool"), True),
+        pytd.Constant("False", pytd.NamedType("bool"), False),
+        pytd.Constant(
+            "__all__",
+            pytd.GenericType(
+                base_type=pytd.NamedType("tuple"),
+                parameters=(pytd.NamedType("str"),),
+            ),
+            ("a", "b"),
+        ),
+        pytd.Constant("none", pytd.NamedType("Something"), None),
+    )
+    # Serialization will put these in sorted order.
+    consts = tuple(sorted(consts))
+    ast = pytd.TypeDeclUnit(
+        "constants_test",
+        constants=consts,
+        type_params=(),
+        classes=(),
+        functions=(),
+        aliases=(),
+    )
+    enc = pickle_utils.Serialize(ast)
+    dec_ast = pickle_utils.DecodeAst(enc).ast
+    self.assertEqual(dec_ast.constants, consts)
 
 if __name__ == "__main__":
   unittest.main()
