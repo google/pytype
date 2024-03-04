@@ -404,9 +404,9 @@ class Loader:
       return existing
     if not mod_ast:
       mod_ast = self._module_loader.load_ast(mod_info)
-    return self._process_module(mod_info, mod_ast)
+    return self.process_module(mod_info, mod_ast)
 
-  def _process_module(self, mod_info, mod_ast):
+  def process_module(self, mod_info, mod_ast):
     """Create a module from a loaded ast and save it to the loader cache.
 
     Args:
