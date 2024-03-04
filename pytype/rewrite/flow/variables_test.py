@@ -106,6 +106,21 @@ class VariableTest(unittest.TestCase):
     self.assertIsNone(var.name)
     self.assertEqual(var.values, (0,))
 
+  def test_has_atomic_value(self):
+    x = variables.Variable.from_value(5)
+    self.assertTrue(x.has_atomic_value(5))
+    self.assertFalse(x.has_atomic_value(6))
+
+  def test_multiple_bindings_does_not_have_atomic_value(self):
+    x = variables.Variable(
+        bindings=(variables.Binding(5), variables.Binding(6)))
+    self.assertFalse(x.has_atomic_value(5))
+    self.assertFalse(x.has_atomic_value(6))
+
+  def test_empty_does_not_have_atomic_value(self):
+    x = variables.Variable(bindings=())
+    self.assertFalse(x.has_atomic_value(5))
+
 
 if __name__ == '__main__':
   unittest.main()

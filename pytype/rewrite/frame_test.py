@@ -1,7 +1,9 @@
+import sys
 from typing import Mapping, cast
 
 from pytype.pyc import opcodes
 from pytype.rewrite import abstract
+from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
@@ -11,11 +13,9 @@ import unittest
 
 def _make_frame(src: str, name: str = '__main__') -> frame_lib.Frame:
   code = test_utils.parse(src)
-  # TODO(b/324464265): Globals should be populated by the frame creation code,
-  # not here in the test.
   if name == '__main__':
-    initial_locals = initial_globals = {
-        '__name__': abstract.BaseValue().to_variable()}
+    initial_locals = initial_globals = convert.get_module_globals(
+        sys.version_info[:2])
   else:
     initial_locals = initial_globals = {}
   return frame_lib.Frame(name, code, initial_locals=initial_locals,

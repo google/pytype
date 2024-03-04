@@ -1,7 +1,7 @@
 """Variables, bindings, and conditions."""
 
 import dataclasses
-from typing import Generic, Optional, Tuple, Type, TypeVar, get_origin, overload
+from typing import Any, Generic, Optional, Tuple, Type, TypeVar, get_origin, overload
 
 from pytype.rewrite.flow import conditions
 
@@ -59,6 +59,9 @@ class Variable(Generic[_T]):
           f'Wrong type for {self.display_name()}: expected '
           f'{runtime_type.__name__}, got {value.__class__.__name__}')
     return value
+
+  def has_atomic_value(self, value: Any) -> bool:
+    return len(self.values) == 1 and self.values[0] == value
 
   def with_condition(self, condition: conditions.Condition) -> 'Variable[_T]':
     """Adds a condition, 'and'-ing it with any existing."""

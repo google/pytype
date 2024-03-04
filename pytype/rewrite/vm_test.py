@@ -1,5 +1,7 @@
+import textwrap
 from typing import TypeVar, cast
 
+from pytype import config
 from pytype.pyc import opcodes
 from pytype.rewrite import abstract
 from pytype.rewrite import vm as vm_lib
@@ -11,7 +13,8 @@ _T = TypeVar('_T')
 
 
 def _make_vm(src: str) -> vm_lib.VirtualMachine:
-  return vm_lib.VirtualMachine(test_utils.parse(src), {})
+  return vm_lib.VirtualMachine.from_source(textwrap.dedent(src),
+                                           config.Options.create())
 
 
 class VmTest(unittest.TestCase):
@@ -48,24 +51,6 @@ class VmTest(unittest.TestCase):
     self.assertIsNone(y)
     self.assertEqual(z, 42)
 
-  def test_analyze_functions(self):
-    # Just make sure this doesn't crash.
-    vm = _make_vm("""
-      def f():
-        def g():
-          pass
-    """)
-    vm.analyze_all_defs()
-
-  def test_infer_stub(self):
-    # Just make sure this doesn't crash.
-    vm = _make_vm("""
-      def f():
-        def g():
-          pass
-    """)
-    vm.infer_stub()
-
   def test_propagate_nonlocal(self):
     vm = _make_vm("""
       def f():
@@ -86,8 +71,20 @@ class VmTest(unittest.TestCase):
     y = cast(abstract.PythonConstant, vm._module_frame.final_locals['y'])
     self.assertEqual(y.constant, 5)
 
+
+# TODO(b/325338806): Use BaseTest.Check() for these tests. For now, we just make
+# sure the VM doesn't crash.
+class CheckTest(unittest.TestCase):
+
+  def test_analyze_functions(self):
+    vm = _make_vm("""
+      def f():
+        def g():
+          pass
+    """)
+    vm.analyze_all_defs()
+
   def test_analyze_function_with_nonlocal(self):
-    # Just make sure this doesn't crash.
     vm = _make_vm("""
       def f():
         x = None
@@ -95,6 +92,20 @@ class VmTest(unittest.TestCase):
           return x
     """)
     vm.analyze_all_defs()
+
+
+# TODO(b/325338806): Use BaseTest.Infer() for these tests. For now, we just make
+# sure the VM doesn't crash.
+class InferTest(unittest.TestCase):
+
+  def test_infer_stub(self):
+    # Just make sure this doesn't crash.
+    vm = _make_vm("""
+      def f():
+        def g():
+          pass
+    """)
+    vm.infer_stub()
 
 
 if __name__ == '__main__':
