@@ -88,7 +88,7 @@ class TypeDeclUnit(Node, eq=False):
   def __contains__(self, name):
     return bool(self.Get(name))
 
-  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
+  def IterChildren(self) -> Generator[Tuple[str, Any | None], None, None]:
     for name, child in super().IterChildren():
       if name == '_name2item':
         continue
@@ -113,7 +113,7 @@ class Constant(Node):
   # (bytes is excluded because it serializes the same as str.)
   # We can't use just `value: Any` because msgspec isn't able to decode
   # AnythingType in that case, since it's indistinguishable from a dict.
-  value: Optional[Union[AnythingType, int, str, bool, tuple[str, ...]]] = None
+  value: Optional[Union[AnythingType, int, str, bool, Tuple[str, ...]]] = None
 
 
 class Alias(Node):
@@ -150,13 +150,13 @@ class Class(Node):
   """
   name: str
   keywords: Tuple[Tuple[str, TypeU], ...]
-  bases: Tuple[Union['Class', TypeU], ...]
-  methods: Tuple['Function', ...]
+  bases: Tuple[Union[Class, TypeU], ...]
+  methods: Tuple[Function, ...]
   constants: Tuple[Constant, ...]
-  classes: Tuple['Class', ...]
+  classes: Tuple[Class, ...]
   decorators: Tuple[Alias, ...]
   slots: Optional[Tuple[str, ...]]
-  template: Tuple['TemplateItem', ...]
+  template: Tuple[TemplateItem, ...]
   # _name2item is the lookup cache. It should not be treated as a child or used
   # in equality or hash operations.
   _name2item: Dict[str, Any] = {}
@@ -204,7 +204,7 @@ class Class(Node):
     nohash = self.Replace(_name2item=None)
     return super(Class, nohash).__hash__()
 
-  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
+  def IterChildren(self) -> Generator[Tuple[str, Any | None], None, None]:
     for name, child in super().IterChildren():
       if name == '_name2item':
         continue
@@ -252,7 +252,7 @@ class Function(Node):
     flags: A bitfield of flags like is_abstract
   """
   name: str
-  signatures: Tuple['Signature', ...]
+  signatures: Tuple[Signature, ...]
   kind: MethodKind
   flags: MethodFlag = MethodFlag.NONE
   decorators: Tuple[Alias, ...] = ()
@@ -290,12 +290,12 @@ class Signature(Node):
     exceptions: List of exceptions for this function definition.
     template: names for bindings for bounded types in params/return_type
   """
-  params: Tuple['Parameter', ...]
-  starargs: Optional['Parameter']
-  starstarargs: Optional['Parameter']
+  params: Tuple[Parameter, ...]
+  starargs: Optional[Parameter]
+  starstarargs: Optional[Parameter]
   return_type: TypeU
   exceptions: Tuple[TypeU, ...]
-  template: Tuple['TemplateItem', ...]
+  template: Tuple[TemplateItem, ...]
 
   @property
   def has_optional(self):
@@ -462,7 +462,7 @@ class ClassType(Type, frozen=False, eq=False):
   # treated as if it doesn't exist.
   cls: Optional[Any] = None
 
-  def IterChildren(self) -> Generator[tuple[str, Any | None], None, None]:
+  def IterChildren(self) -> Generator[Tuple[str, Any | None], None, None]:
     # It is very important that visitors do not follow the cls pointer. To avoid
     # this, we claim that `name` is the only child.
     yield 'name', self.name

@@ -682,7 +682,8 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
         for name, val in self.formal_type_parameters.items():
           # The 'is not True' check is to prevent us from incorrectly caching
           # the hash when val.resolved == LateAnnotation._RESOLVING.
-          if val.is_late_annotation() and val.resolved is not True:  # pylint: disable=g-bool-id-comparison  # pytype: disable=attribute-error
+          if (val.is_late_annotation() and
+              val.resolved is not True):  # pylint: disable=g-bool-id-comparison  # pytype: disable=attribute-error
             cache = False
           items.append((name, val.full_name))
       hashval = hash((self.base_cls, tuple(items)))

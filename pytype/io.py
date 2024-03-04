@@ -99,8 +99,8 @@ def check_py(src, options=None, loader=None):
 
 def generate_pyi_ast(
     src: str,
-    options: config.Options | None = None,
-    loader: load_pytd.Loader | None = None,
+    options: Optional[config.Options] = None,
+    loader: Optional[load_pytd.Loader] = None,
 ) -> analyze.Analysis:
   """Run the inferencer on a string of source code, producing output.
 
@@ -138,7 +138,7 @@ def generate_pyi_ast(
 
 def _output_ast(
     ast: pytd.TypeDeclUnit,
-    options: config.Options | None = None,
+    options: Optional[config.Options] = None,
 ) -> str:
   """Transforms the given analysis result into a pyi representation.
 

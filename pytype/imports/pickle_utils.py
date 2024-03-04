@@ -29,6 +29,7 @@ This file is tested by serialize_ast_test.py.
 
 import gzip
 import os
+import sys
 from typing import Iterable, Optional, Tuple, TypeVar, Union
 
 import msgspec
@@ -36,8 +37,12 @@ import msgspec
 from pytype.pytd import pytd
 from pytype.pytd import serialize_ast
 
-
-Path = Union[str, os.PathLike[str]]
+# In Python 3.8 and below, os.PathLike isn't subscriptable.
+if sys.version_info[:2] >= (3, 9):
+  _StrPathLike = os.PathLike[str]
+else:
+  _StrPathLike = os.PathLike
+Path = Union[str, _StrPathLike]
 
 
 class LoadPickleError(Exception):
@@ -60,7 +65,8 @@ _Serializable = Union[serialize_ast.SerializableAst, serialize_ast.ModuleBundle]
 
 
 def _Load(
-    dec: _Dec[_DecT], filename: Path, compress: bool = False, open_function=open
+    dec: "_Dec[_DecT]", filename: Path, compress: bool = False,
+    open_function=open,
 ) -> _DecT:
   """Loads a serialized file.
 

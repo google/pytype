@@ -25,7 +25,7 @@ class TestPytd(unittest.TestCase):
 
   def test_iter(self):
     n = pytd.NamedType("int")
-    fields = [f for f in n]
+    fields = list(n)
     self.assertEqual(fields, [n.name])
 
   def test_union_type_eq(self):

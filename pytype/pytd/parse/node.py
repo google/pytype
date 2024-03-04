@@ -12,13 +12,20 @@ documentation in the various visitor methods below for details.
 For examples of visitors, see pytd/visitors.py
 """
 
+from typing import Any, ClassVar, Type, TYPE_CHECKING
+
 import msgspec
 
 from pytype import metrics
 
+if TYPE_CHECKING:
+  _Struct: Type[Any]
+else:
+  _Struct = msgspec.Struct
+
 
 class Node(
-    msgspec.Struct,
+    _Struct,
     frozen=True,
     tag=True,
     tag_field="_struct_type",
@@ -28,7 +35,9 @@ class Node(
 ):
   """Base Node class."""
 
-  name: str = ""
+  # We pretend that `name` is a ClassVar so that msgspec treats it as a struct
+  # field only when it is defined in a subclass.
+  name: ClassVar[str] = ""
 
   def __iter__(self):
     for name in self.__struct_fields__:
