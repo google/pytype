@@ -7,8 +7,8 @@ from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Set
 import immutabledict
 from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
-from pytype.rewrite import abstract
 from pytype.rewrite import stack
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
 

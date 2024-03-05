@@ -1,5 +1,5 @@
-from pytype.rewrite import abstract
 from pytype.rewrite import stack
+from pytype.rewrite.abstract import abstract
 
 import unittest
 

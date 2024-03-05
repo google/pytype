@@ -2,9 +2,9 @@ import sys
 from typing import Mapping, cast
 
 from pytype.pyc import opcodes
-from pytype.rewrite import abstract
 from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
 

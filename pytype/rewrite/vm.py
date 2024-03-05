@@ -5,9 +5,9 @@ from typing import Dict
 from pytype import config
 from pytype.blocks import blocks
 from pytype.pyc import pyc
-from pytype.rewrite import abstract
 from pytype.rewrite import convert
 from pytype.rewrite import frame
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
 

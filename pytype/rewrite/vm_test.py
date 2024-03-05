@@ -3,8 +3,8 @@ from typing import TypeVar, cast
 
 from pytype import config
 from pytype.pyc import opcodes
-from pytype.rewrite import abstract
 from pytype.rewrite import vm as vm_lib
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 
 import unittest
