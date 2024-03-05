@@ -328,6 +328,8 @@ class BoundFunction(_base.BaseValue):
   def get_special_attribute(self, node, name, valself):
     if name == "__self__":
       return self.callself
+    elif name == "__func__":
+      return self.underlying.to_variable(node)
     return super().get_special_attribute(node, name, valself)
 
 

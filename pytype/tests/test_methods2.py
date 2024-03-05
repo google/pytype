@@ -193,6 +193,19 @@ class TestMethodsPy3(test_base.BaseTest):
         def _fn2(self, x) -> Any: ...
     """)
 
+  def test_func(self):
+    ty = self.Infer("""
+      class Foo:
+        def f(self):
+          pass
+      f = Foo().f.__func__
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def f(self) -> None: ...
+      def f(self: Foo) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
