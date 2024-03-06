@@ -50,6 +50,17 @@ py_library(
     pytype.blocks.blocks
 )
 
+py_test(
+  NAME
+    functions_test
+  SRCS
+    functions_test.py
+  DEPS
+    .base
+    .functions
+    pytype.rewrite.tests.test_utils
+)
+
 py_library(
   NAME
     utils
@@ -57,7 +68,6 @@ py_library(
     utils.py
   DEPS
     .base
-    pytype.rewrite.flow.flow
 )
 
 py_test(

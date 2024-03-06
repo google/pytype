@@ -164,7 +164,7 @@ class FrameTest(unittest.TestCase):
     frame.run()
     self.assertIn('f', frame.final_locals)
     func = frame.final_locals['f']
-    self.assertIsInstance(func, abstract.Function)
+    self.assertIsInstance(func, abstract.InterpreterFunction)
     self.assertEqual(func.name, 'f')
     self.assertCountEqual(frame.functions, [func])
 
@@ -175,7 +175,7 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='__main__')
     module_frame.run()
-    f = cast(abstract.Function, module_frame.final_locals['f'])
+    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
     f_frame = module_frame.make_child_frame(f)
     self.assertIn('x', f_frame._initial_globals)
     self.assertIn('f', f_frame._initial_globals)
@@ -188,7 +188,7 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='f')
     f_frame.run()
-    g = cast(abstract.Function, f_frame.final_locals['g'])
+    g = cast(abstract.InterpreterFunction, f_frame.final_locals['g'])
     g_frame = f_frame.make_child_frame(g)
     self.assertIn('x', g_frame._initial_globals)
 
@@ -224,10 +224,10 @@ class FrameTest(unittest.TestCase):
           y = x
     """)
     module_frame.run()
-    f = cast(abstract.Function, module_frame.final_locals['f'])
+    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
-    g = cast(abstract.Function, f_frame.final_locals['g'])
+    g = cast(abstract.InterpreterFunction, f_frame.final_locals['g'])
     g_frame = f_frame.make_child_frame(g)
     g_frame.run()
     self.assertIn('y', g_frame.final_locals)
@@ -245,7 +245,7 @@ class FrameTest(unittest.TestCase):
         g()
     """)
     module_frame.run()
-    f = cast(abstract.Function, module_frame.final_locals['f'])
+    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
     f_frame = module_frame.make_child_frame(f)
     f_frame.run()
     self.assertIn('x', f_frame.final_locals)
@@ -268,7 +268,7 @@ class FrameTest(unittest.TestCase):
     cls = cast(abstract.Class, module_frame.final_locals['C'])
     self.assertIn('f', cls.members)
     f = cls.members['f']
-    self.assertIsInstance(f, abstract.Function)
+    self.assertIsInstance(f, abstract.InterpreterFunction)
     self.assertEqual(f.name, 'C.f')
 
 

@@ -93,6 +93,14 @@ class CheckTest(unittest.TestCase):
     """)
     vm.analyze_all_defs()
 
+  def test_function_parameter(self):
+    vm = _make_vm("""
+      def f(x):
+        return x
+      f(0)
+    """)
+    vm.analyze_all_defs()
+
 
 # TODO(b/325338806): Use BaseTest.Infer() for these tests. For now, we just make
 # sure the VM doesn't crash.

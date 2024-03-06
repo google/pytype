@@ -7,11 +7,12 @@ from pytype.rewrite.abstract import utils as _utils
 
 BaseValue = _base.BaseValue
 PythonConstant = _base.PythonConstant
+ANY = _base.ANY
 NULL = _base.NULL
 
 Class = _classes.Class
 BUILD_CLASS = _classes.BUILD_CLASS
 
-Function = _functions.Function
+InterpreterFunction = _functions.InterpreterFunction
 
 get_atomic_constant = _utils.get_atomic_constant

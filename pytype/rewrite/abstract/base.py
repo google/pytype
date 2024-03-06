@@ -44,4 +44,7 @@ class Singleton(BaseValue):
     return self.name
 
 
+ANY = Singleton('ANY')
 NULL = Singleton('NULL')
+
+AbstractVariableType = variables.Variable[BaseValue]

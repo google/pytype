@@ -12,5 +12,5 @@ def get_module_globals(
   del python_version  # not yet used
   # TODO(b/241479600): Populate from builtins.pytd.
   return {
-      '__name__': abstract.BaseValue().to_variable(),
+      '__name__': abstract.ANY.to_variable(),
   }
