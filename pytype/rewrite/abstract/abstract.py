@@ -11,6 +11,7 @@ ANY = _base.ANY
 NULL = _base.NULL
 
 Class = _classes.Class
+InterpreterClass = _classes.InterpreterClass
 BUILD_CLASS = _classes.BUILD_CLASS
 
 InterpreterFunction = _functions.InterpreterFunction

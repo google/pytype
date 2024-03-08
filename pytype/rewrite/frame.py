@@ -90,8 +90,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack = stack.DataStack()  # data stack
     # Names of nonlocals shadowed in the current frame
     self._shadowed_nonlocals = _ShadowedNonlocals()
-    # All functions created during execution
+    # All functions and classes created during execution
     self._functions: List[abstract.InterpreterFunction] = []
+    self._classes: List[abstract.InterpreterClass] = []
     # Final values of locals, unwrapped from variables
     self.final_locals: Mapping[str, abstract.BaseValue] = None
 
@@ -116,6 +117,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   @property
   def functions(self) -> Sequence[abstract.InterpreterFunction]:
     return tuple(self._functions)
+
+  @property
+  def classes(self) -> Sequence[abstract.InterpreterClass]:
+    return tuple(self._classes)
 
   @property
   def _is_module_frame(self) -> bool:
@@ -254,13 +259,24 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         frame = self.make_child_frame(
             class_body.get_atomic_value(abstract.InterpreterFunction))
         frame.run()
-        members = frame.final_locals
-        cls = abstract.Class(abstract.get_atomic_constant(name, str), members)
+        cls = self._make_class(abstract.get_atomic_constant(name, str), frame)
+        self._classes.append(cls)
         ret_values.append(cls)
       else:
         raise NotImplementedError('CALL not fully implemented')
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
+
+  def _make_class(self, name: str, class_body: 'Frame'):
+    cls = abstract.InterpreterClass(
+        name=name,
+        members=class_body.final_locals,
+        functions=class_body.functions,
+        classes=class_body.classes,
+    )
+    for setup_method_name in cls.setup_methods:
+      del setup_method_name  # TODO(b/324475548): Get and call this method.
+    return cls
 
   def _final_locals_as_values(self) -> Mapping[str, abstract.BaseValue]:
     final_values = {}
@@ -312,7 +328,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       enclosing_scope = ()
     func = abstract.InterpreterFunction(name, code, enclosing_scope)
-    self._functions.append(func)
+    if not (self._stack and
+            self._stack.top().has_atomic_value(abstract.BUILD_CLASS)):
+      # BUILD_CLASS makes and immediately calls a function that creates the
+      # class body; we don't need to store this function for later analysis.
+      self._functions.append(func)
     self._stack.push(func.to_variable())
 
   def byte_PUSH_NULL(self, opcode):

@@ -38,6 +38,7 @@ py_library(
     classes.py
   DEPS
     .base
+    .functions
 )
 
 py_library(

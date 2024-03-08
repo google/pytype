@@ -1,6 +1,6 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
-from typing import Dict
+from typing import Dict, Sequence
 
 from pytype import config
 from pytype.blocks import blocks
@@ -38,19 +38,21 @@ class VirtualMachine:
   def analyze_all_defs(self):
     """Analyzes all class and function definitions."""
     self._run_module()
-    function_frames = []
-
-    def queue(frame):
-      for f in frame.functions:
+    parent_frames = [self._module_frame]
+    while parent_frames:
+      parent_frame = parent_frames.pop(0)
+      for f in parent_frame.functions:
         for sig in f.signatures:
-          function_frames.append(
-              frame.make_child_frame(f, sig.make_fake_args()))
-
-    queue(self._module_frame)
-    while function_frames:
-      func_frame = function_frames.pop(0)
-      func_frame.run()
-      queue(func_frame)
+          func_frame = parent_frame.make_child_frame(f, sig.make_fake_args())
+          func_frame.run()
+          parent_frames.append(func_frame)
+      classes = _collect_classes(parent_frame)
+      for cls in classes:
+        for f in cls.functions:
+          for sig in f.signatures:
+            func_frame = parent_frame.make_child_frame(f, sig.make_fake_args())
+            func_frame.run()
+            parent_frames.append(func_frame)
 
   def infer_stub(self):
     self._run_module()
@@ -60,6 +62,9 @@ class VirtualMachine:
           function_frame = self._module_frame.make_child_frame(
               value, sig.make_fake_args())
           function_frame.run()
+      elif isinstance(value, abstract.InterpreterClass):
+        for name, member in value.members:
+          del name, member  # TODO(b/324475548): infer the type of 'member'.
 
 
 def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
@@ -72,3 +77,14 @@ def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
   )
   ordered_code, unused_block_graph = blocks.process_code(code)
   return ordered_code
+
+
+def _collect_classes(
+    frame: frame_lib.Frame) -> Sequence[abstract.InterpreterClass]:
+  all_classes = []
+  new_classes = list(frame.classes)
+  while new_classes:
+    cls = new_classes.pop(0)
+    all_classes.append(cls)
+    new_classes.extend(cls.classes)
+  return all_classes

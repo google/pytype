@@ -256,7 +256,7 @@ class FrameTest(unittest.TestCase):
   def test_class(self):
     module_frame = _make_frame('class C: ...')
     module_frame.run()
-    cls = cast(abstract.Class, module_frame.final_locals['C'])
+    cls = cast(abstract.InterpreterClass, module_frame.final_locals['C'])
     self.assertEqual(cls.name, 'C')
 
   def test_class_body(self):
@@ -265,7 +265,7 @@ class FrameTest(unittest.TestCase):
         def f(self): ...
     """)
     module_frame.run()
-    cls = cast(abstract.Class, module_frame.final_locals['C'])
+    cls = cast(abstract.InterpreterClass, module_frame.final_locals['C'])
     self.assertIn('f', cls.members)
     f = cls.members['f']
     self.assertIsInstance(f, abstract.InterpreterFunction)
