@@ -930,6 +930,7 @@ class Mutation:
 
 
 class _ReturnType(abc.ABC):
+  """Wrapper for a function return type."""
 
   @property
   @abc.abstractmethod
@@ -938,6 +939,10 @@ class _ReturnType(abc.ABC):
 
   @abc.abstractmethod
   def instantiate_parameter(self, node, param_name):
+    ...
+
+  @abc.abstractmethod
+  def get_parameter(self, node, param_name):
     ...
 
 
@@ -955,6 +960,9 @@ class AbstractReturnType(_ReturnType):
   def instantiate_parameter(self, node, param_name):
     param = self._type.get_formal_type_parameter(param_name)
     return self._ctx.vm.init_class(node, param)
+
+  def get_parameter(self, node, param_name):
+    return self._type.get_formal_type_parameter(param_name)
 
 
 class PyTDReturnType(_ReturnType):
@@ -1003,6 +1011,10 @@ class PyTDReturnType(_ReturnType):
     if not ret.bindings and isinstance(self._type, pytd.TypeParameter):
       ret.AddBinding(self._ctx.convert.empty, [], node)
     return node, ret
+
+  def get_parameter(self, node, param_name):
+    t = self._ctx.convert.constant_to_value(self._type, self._subst, node)
+    return t.get_formal_type_parameter(param_name)
 
 
 def _splats_to_any(seq, ctx):
@@ -1174,7 +1186,7 @@ def has_visible_namedarg(node, args, names):
 
 
 def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
-  """Returns a variable of the return value of a typeguard function.
+  """Returns a variable of the return value of a type guard function.
 
   Args:
     node: The current node.
@@ -1185,17 +1197,35 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
   """
   frame = ctx.vm.frame
   if not hasattr(frame, "f_locals"):
-    return None  # no need to apply TypeGuard if we're in a dummy frame
-  if ret.name != "typing.TypeGuard":
+    return None  # no need to apply the type guard if we're in a dummy frame
+  if ret.name == "typing.TypeIs":
+    match_result = ctx.matcher(node).compute_one_match(
+        first_arg, ret.get_parameter(node, abstract_utils.T))
+    matched = [m.view[first_arg] for m in match_result.good_matches]
+    unmatched = [m.view[first_arg] for m in match_result.bad_matches]
+  elif ret.name == "typing.TypeGuard":
+    matched = []
+    unmatched = first_arg.bindings
+  else:
     return None
+  if matched:
+    # When a TypeIs function is applied to a variable with matching bindings, it
+    # behaves like isinstance(), narrowing in both positive and negative cases.
+    typeis_return = ctx.program.NewVariable()
+    for b in matched:
+      typeis_return.AddBinding(ctx.convert.true, {b}, node)
+    for b in unmatched:
+      typeis_return.AddBinding(ctx.convert.false, {b}, node)
+    return typeis_return
 
-  # Get the local/global variable that first_arg comes from, and add new
-  # bindings for the TypeGuard type.
+  # We have either a TypeIs function that does not match any existing bindings,
+  # or a TypeGuard function. Get the local/global variable that first_arg comes
+  # from, and add new bindings for the type guard type.
   target_name = ctx.vm.get_var_name(first_arg)
   if not target_name:
     desc = f" function {func_name!r}" if func_name else ""
     ctx.errorlog.not_supported_yet(
-        ctx.vm.frames, f"Calling TypeGuard{desc} with an arbitrary expression",
+        ctx.vm.frames, f"Calling {ret.name}{desc} with an arbitrary expression",
         "Please assign the expression to a local variable.")
     return None
   target = frame.lookup_name(target_name)
@@ -1209,7 +1239,7 @@ def handle_typeguard(node, ret: _ReturnType, first_arg, ctx, func_name=None):
       target.PasteBinding(b, node)
 
   # Create a boolean return variable with True bindings for values that
-  # originate from the TypeGuard type and False for the rest.
+  # originate from the type guard type and False for the rest.
   typeguard_return = ctx.program.NewVariable()
   for b in target.bindings:
     boolvals = {b.data not in old_data} | {b.data in new_instance.data}

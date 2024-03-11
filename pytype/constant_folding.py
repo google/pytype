@@ -365,6 +365,11 @@ class _FoldConstants:
           elements = stack.fold_args(2, op)
           if elements:
             map1, map2 = elements.elements
+            if map2.typ[0] != 'map':
+              # We have some malformed code, e.g. {**42}
+              name = map2.typ[1].__name__
+              msg = f'Value after ** must be an mapping, not {name}'
+              raise ConstantError(msg, op)
             tag1, (kt1, vt1) = map1.typ
             tag2, (kt2, vt2) = map2.typ
             assert tag1 == tag2 == 'map'

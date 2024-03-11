@@ -2,7 +2,7 @@
 
 from typing import Dict, Tuple
 
-from pytype.rewrite import abstract
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
 
@@ -12,5 +12,5 @@ def get_module_globals(
   del python_version  # not yet used
   # TODO(b/241479600): Populate from builtins.pytd.
   return {
-      '__name__': abstract.BaseValue().to_variable(),
+      '__name__': abstract.ANY.to_variable(),
   }

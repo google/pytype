@@ -2,7 +2,7 @@
 
 from typing import List, Sequence
 
-from pytype.rewrite import abstract
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
 

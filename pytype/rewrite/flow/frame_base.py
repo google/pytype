@@ -42,7 +42,7 @@ class FrameBase(Generic[_T]):
 
   def __init__(
       self, code: blocks.OrderedCode,
-      initial_locals: Dict[str, variables.Variable[_T]],
+      initial_locals: Mapping[str, variables.Variable[_T]],
   ):
     # Sanity check: non-empty code
     assert code.order and all(block.code for block in code.order)

@@ -4,30 +4,9 @@ py_library(
   NAME
     rewrite
   DEPS
-    .abstract
     .analyze
     .frame
     .vm
-)
-
-py_library(
-  NAME
-    abstract
-  SRCS
-    abstract.py
-  DEPS
-    pytype.blocks.blocks
-    pytype.rewrite.flow.flow
-)
-
-py_test(
-  NAME
-    abstract_test
-  SRCS
-    abstract_test.py
-  DEPS
-    .abstract
-    pytype.rewrite.flow.flow
 )
 
 py_library(
@@ -61,7 +40,7 @@ py_library(
   SRCS
     convert.py
   DEPS
-    .abstract
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
 )
 
@@ -80,9 +59,9 @@ py_library(
   SRCS
     frame.py
   DEPS
-    .abstract
     .stack
     pytype.blocks.blocks
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
 )
 
@@ -92,11 +71,11 @@ py_test(
   SRCS
     frame_test.py
   DEPS
-    .abstract
     .convert
     .frame
     pytype.blocks.blocks
     pytype.pyc.pyc
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )
 
@@ -106,7 +85,7 @@ py_library(
   SRCS
     stack.py
   DEPS
-    .abstract
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
 )
 
@@ -116,8 +95,8 @@ py_test(
   SRCS
     stack_test.py
   DEPS
-    .abstract
     .stack
+    pytype.rewrite.abstract.abstract
 )
 
 py_library(
@@ -126,12 +105,12 @@ py_library(
   SRCS
     vm.py
   DEPS
-    .abstract
     .convert
     .frame
     pytype.config
     pytype.blocks.blocks
     pytype.pyc.pyc
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
 )
 
@@ -141,12 +120,13 @@ py_test(
   SRCS
     vm_test.py
   DEPS
-    .abstract
     .vm
     pytype.config
     pytype.pyc.pyc
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )
 
+add_subdirectory(abstract)
 add_subdirectory(flow)
 add_subdirectory(tests)

@@ -1,13 +1,13 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
-from typing import Dict
+from typing import Dict, Sequence
 
 from pytype import config
 from pytype.blocks import blocks
 from pytype.pyc import pyc
-from pytype.rewrite import abstract
 from pytype.rewrite import convert
-from pytype.rewrite import frame
+from pytype.rewrite import frame as frame_lib
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
 
@@ -21,7 +21,7 @@ class VirtualMachine:
   ):
     self._code = code
     self._initial_globals = initial_globals
-    self._module_frame: frame.Frame = None
+    self._module_frame: frame_lib.Frame = None
 
   @classmethod
   def from_source(cls, src: str, options: config.Options) -> 'VirtualMachine':
@@ -31,26 +31,40 @@ class VirtualMachine:
 
   def _run_module(self) -> None:
     assert not self._module_frame
-    self._module_frame = frame.Frame.make_module_frame(
+    self._module_frame = frame_lib.Frame.make_module_frame(
         self._code, self._initial_globals)
     self._module_frame.run()
 
   def analyze_all_defs(self):
+    """Analyzes all class and function definitions."""
     self._run_module()
-    function_frames = [self._module_frame.make_child_frame(f)
-                       for f in self._module_frame.functions]
-    while function_frames:
-      func_frame = function_frames.pop(0)
-      func_frame.run()
-      function_frames.extend(func_frame.make_child_frame(f)
-                             for f in func_frame.functions)
+    parent_frames = [self._module_frame]
+    while parent_frames:
+      parent_frame = parent_frames.pop(0)
+      for f in parent_frame.functions:
+        for sig in f.signatures:
+          func_frame = parent_frame.make_child_frame(f, sig.make_fake_args())
+          func_frame.run()
+          parent_frames.append(func_frame)
+      classes = _collect_classes(parent_frame)
+      for cls in classes:
+        for f in cls.functions:
+          for sig in f.signatures:
+            func_frame = parent_frame.make_child_frame(f, sig.make_fake_args())
+            func_frame.run()
+            parent_frames.append(func_frame)
 
   def infer_stub(self):
     self._run_module()
     for value in self._module_frame.final_locals:
-      if isinstance(value, abstract.Function):
-        function_frame = self._module_frame.make_child_frame(value)
-        function_frame.run()
+      if isinstance(value, abstract.InterpreterFunction):
+        for sig in value.signatures:
+          function_frame = self._module_frame.make_child_frame(
+              value, sig.make_fake_args())
+          function_frame.run()
+      elif isinstance(value, abstract.InterpreterClass):
+        for name, member in value.members:
+          del name, member  # TODO(b/324475548): infer the type of 'member'.
 
 
 def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
@@ -63,3 +77,14 @@ def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
   )
   ordered_code, unused_block_graph = blocks.process_code(code)
   return ordered_code
+
+
+def _collect_classes(
+    frame: frame_lib.Frame) -> Sequence[abstract.InterpreterClass]:
+  all_classes = []
+  new_classes = list(frame.classes)
+  while new_classes:
+    cls = new_classes.pop(0)
+    all_classes.append(cls)
+    new_classes.extend(cls.classes)
+  return all_classes

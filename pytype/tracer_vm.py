@@ -772,7 +772,7 @@ class CallTracer(vm.VirtualMachine):
   def _check_return(self, node, actual, formal):
     if not self.ctx.options.report_errors:
       return True
-    if formal.full_name == "typing.TypeGuard":
+    if formal.full_name in abstract_utils.TYPE_GUARDS:
       expected = self.ctx.convert.bool_type
     else:
       expected = formal

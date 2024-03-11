@@ -551,38 +551,39 @@ class EnumMetaInit(abstract.SimpleFunction):
         # creating the class -- pytype complains about recursive types.
         member = abstract.Instance(cls, self.ctx)
         member_var = member.to_variable(node)
-      # This makes literal enum equality checks easier. We could check the name
-      # attribute that we set below, but it's easier to compare these strings.
-      # Use the fully qualified name to be consistent with how literal enums
-      # are parsed from type stubs.
-      member.name = f"{cls.full_name}.{name}"
-      if "_value_" not in member.members:
-        if base_type:
-          args = function.Args(
-              posargs=(),
+      if isinstance(member, abstract.SimpleValue):
+        # This makes literal enum equality checks easier. We could check the
+        # name attribute that we set below, but it's easier to compare these
+        # strings. Use the fully qualified name to be consistent with how
+        # literal enums are parsed from type stubs.
+        member.name = f"{cls.full_name}.{name}"
+        if "_value_" not in member.members:
+          if base_type:
+            args = function.Args(
+                posargs=(),
+                starargs=self._value_to_starargs(node, value, base_type))
+            node, value = base_type.call(node, base_type.to_binding(node), args)
+          member.members["_value_"] = value
+        if "__init__" in cls:
+          init_args = function.Args(
+              posargs=(member_var,),
               starargs=self._value_to_starargs(node, value, base_type))
-          node, value = base_type.call(node, base_type.to_binding(node), args)
-        member.members["_value_"] = value
-      if "__init__" in cls:
-        init_args = function.Args(
-            posargs=(member_var,),
-            starargs=self._value_to_starargs(node, value, base_type))
-        node, init = self.ctx.attribute_handler.get_attribute(
-            node, cls, "__init__", cls.to_binding(node))
-        node, _ = function.call_function(self.ctx, node, init, init_args)
-      member.members["value"] = member.members["_value_"]
-      member.members["name"] = self.ctx.convert.build_string(node, name)
-      for attr_name in member.members:
-        if attr_name in ("name", "value"):
-          continue
-        member_attrs[attr_name].extend(member.members[attr_name].data)
+          node, init = self.ctx.attribute_handler.get_attribute(
+              node, cls, "__init__", cls.to_binding(node))
+          node, _ = function.call_function(self.ctx, node, init, init_args)
+        member.members["value"] = member.members["_value_"]
+        member.members["name"] = self.ctx.convert.build_string(node, name)
+        for attr_name in member.members:
+          if attr_name in ("name", "value"):
+            continue
+          member_attrs[attr_name].extend(member.members[attr_name].data)
       cls.members[name] = member.to_variable(node)
       member_types.extend(value.data)
     # After processing enum members, there's some work to do on the enum itself.
     # If cls has a __new__, save it for later. (See _get_member_new above.)
     # It needs to be marked as a classmethod, or else pytype will try to
     # pass an instance of cls instead of cls when analyzing it.
-    if "__new__" in cls:
+    if "__new__" in cls.members:
       saved_new = cls.members["__new__"]
       if not any(isinstance(x, special_builtins.ClassMethodInstance)
                  for x in saved_new.data):

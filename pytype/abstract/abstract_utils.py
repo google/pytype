@@ -59,6 +59,8 @@ CLASS_LEVEL_IGNORE = frozenset({
     "__annotations__",
 })
 
+TYPE_GUARDS = {"typing.TypeGuard", "typing.TypeIs"}
+
 
 # A dummy container object for use in instantiating type parameters.
 # A container is needed to preserve type parameter names for error messages

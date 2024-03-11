@@ -65,6 +65,10 @@ class TestFolding(test_base.UnitTest):
     actual = self._fold(code)
     return actual
 
+  def check_folding_error(self, src):
+    with self.assertRaises(constant_folding.ConstantError):
+      self._process(src)
+
   def test_basic(self):
     actual = self._process("a = [1, 2, 3]")
     self.assertCountEqual(actual, [
@@ -198,9 +202,13 @@ class TestFolding(test_base.UnitTest):
     """)
     self.assertCountEqual(actual, [(x, str, "", None) for x in (4, 6, 7)])
 
-  def test_type_error(self):
-    with self.assertRaises(constant_folding.ConstantError):
-      self._process("x = {[1, 2]}")
+  @test_utils.skipBeforePy((3, 9), "Depends on 3.9+ bytecode")
+  def test_errors(self):
+    # Check that malformed constants raise a ConstantFoldingError rather than
+    # crash pytype.
+    self.check_folding_error("{[1, 2]}")
+    self.check_folding_error("[*42]")
+    self.check_folding_error("{**42}")
 
 
 class TypeBuilderTestBase(test_base.UnitTest):

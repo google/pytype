@@ -3,8 +3,8 @@ from typing import TypeVar, cast
 
 from pytype import config
 from pytype.pyc import opcodes
-from pytype.rewrite import abstract
 from pytype.rewrite import vm as vm_lib
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 
 import unittest
@@ -90,6 +90,22 @@ class CheckTest(unittest.TestCase):
         x = None
         def g():
           return x
+    """)
+    vm.analyze_all_defs()
+
+  def test_function_parameter(self):
+    vm = _make_vm("""
+      def f(x):
+        return x
+      f(0)
+    """)
+    vm.analyze_all_defs()
+
+  def test_class(self):
+    vm = _make_vm("""
+      class C:
+        def __init__(self):
+          pass
     """)
     vm.analyze_all_defs()
 

@@ -2,21 +2,23 @@
 
 import enum
 import logging
-from typing import Dict, FrozenSet, List, Mapping, Optional, Sequence, Set
+from typing import FrozenSet, List, Mapping, Optional, Sequence, Set
 
 import immutabledict
 from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
-from pytype.rewrite import abstract
 from pytype.rewrite import stack
+from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
 
 log = logging.getLogger(__name__)
 
+_EMPTY_MAP = immutabledict.immutabledict()
+
 # Type aliases
 _AbstractVariable = variables.Variable[abstract.BaseValue]
-_VarDict = Dict[str, _AbstractVariable]
+_VarMap = Mapping[str, _AbstractVariable]
 
 
 class _Scope(enum.Enum):
@@ -68,18 +70,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       name: str,
       code: blocks.OrderedCode,
       *,
-      initial_locals: Optional[_VarDict] = None,
-      initial_enclosing: Optional[_VarDict] = None,
-      initial_globals: Optional[_VarDict] = None,
+      initial_locals: _VarMap = _EMPTY_MAP,
+      initial_enclosing: _VarMap = _EMPTY_MAP,
+      initial_globals: _VarMap = _EMPTY_MAP,
       f_back: Optional['Frame'] = None,
   ):
-    if initial_locals is None:
-      initial_locals = {}
-    if initial_enclosing is None:
-      initial_enclosing = {}
-    if initial_globals is None:
-      initial_globals = {}
-
     super().__init__(code, initial_locals)
     self.name = name  # name of the frame
 
@@ -95,8 +90,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack = stack.DataStack()  # data stack
     # Names of nonlocals shadowed in the current frame
     self._shadowed_nonlocals = _ShadowedNonlocals()
-    # All functions created during execution
-    self._functions: List[abstract.Function] = []
+    # All functions and classes created during execution
+    self._functions: List[abstract.InterpreterFunction] = []
+    self._classes: List[abstract.InterpreterClass] = []
     # Final values of locals, unwrapped from variables
     self.final_locals: Mapping[str, abstract.BaseValue] = None
 
@@ -107,7 +103,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def make_module_frame(
       cls,
       code: blocks.OrderedCode,
-      initial_globals: _VarDict,
+      initial_globals: _VarMap,
   ) -> 'Frame':
     return cls(
         name='__main__',
@@ -119,8 +115,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     )
 
   @property
-  def functions(self) -> Sequence[abstract.Function]:
+  def functions(self) -> Sequence[abstract.InterpreterFunction]:
     return tuple(self._functions)
+
+  @property
+  def classes(self) -> Sequence[abstract.InterpreterClass]:
+    return tuple(self._classes)
 
   @property
   def _is_module_frame(self) -> bool:
@@ -200,7 +200,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     except KeyError:
       return self.load_enclosing(name)
 
-  def make_child_frame(self, func: abstract.Function) -> 'Frame':
+  def make_child_frame(
+      self,
+      func: abstract.InterpreterFunction,
+      initial_locals: Mapping[str, _AbstractVariable] = _EMPTY_MAP,
+  ) -> 'Frame':
     if self._final_locals:
       current_locals = {
           name: val.to_variable() for name, val in self.final_locals.items()}
@@ -223,7 +227,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     return Frame(
         name=func.name,
         code=func.code,
-        initial_locals={},
+        initial_locals=initial_locals,
         initial_enclosing=initial_enclosing,
         initial_globals=initial_globals,
         f_back=self,
@@ -242,27 +246,38 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       func_var: _AbstractVariable,
       args: Sequence[_AbstractVariable],
   ) -> None:
-    if args and not func_var.has_atomic_value(abstract.BUILD_CLASS):
-      raise NotImplementedError('CALL not fully implemented')
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, abstract.Function):
-        frame = self.make_child_frame(func)
+      if isinstance(func, abstract.InterpreterFunction):
+        mapped_args = func.map_args(args)
+        frame = self.make_child_frame(func, mapped_args)
         frame.run()
         dummy_ret = abstract.PythonConstant(None)
         ret_values.append(dummy_ret)
       elif func is abstract.BUILD_CLASS:
         class_body, name = args
         frame = self.make_child_frame(
-            class_body.get_atomic_value(abstract.Function))
+            class_body.get_atomic_value(abstract.InterpreterFunction))
         frame.run()
-        members = frame.final_locals
-        cls = abstract.Class(abstract.get_atomic_constant(name, str), members)
+        cls = self._make_class(abstract.get_atomic_constant(name, str), frame)
+        self._classes.append(cls)
         ret_values.append(cls)
       else:
         raise NotImplementedError('CALL not fully implemented')
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
+
+  def _make_class(self, name: str, class_body: 'Frame'):
+    cls = abstract.InterpreterClass(
+        name=name,
+        members=class_body.final_locals,
+        functions=class_body.functions,
+        classes=class_body.classes,
+    )
+    for setup_method_name in cls.setup_methods:
+      # TODO(b/324475548): Get and call this method.
+      del setup_method_name  # pylint: disable=modified-iterating-list
+    return cls
 
   def _final_locals_as_values(self) -> Mapping[str, abstract.BaseValue]:
     final_values = {}
@@ -313,8 +328,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
-    func = abstract.Function(name, code, enclosing_scope)
-    self._functions.append(func)
+    func = abstract.InterpreterFunction(name, code, enclosing_scope)
+    if not (self._stack and
+            self._stack.top().has_atomic_value(abstract.BUILD_CLASS)):
+      # BUILD_CLASS makes and immediately calls a function that creates the
+      # class body; we don't need to store this function for later analysis.
+      self._functions.append(func)
     self._stack.push(func.to_variable())
 
   def byte_PUSH_NULL(self, opcode):
