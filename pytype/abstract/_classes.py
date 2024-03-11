@@ -883,7 +883,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     ret = self.ctx.annotation_utils.sub_one_annotation(
         node, self.formal_type_parameters[abstract_utils.RET],
         [m.subst for m in matches])
-    if args and ret.full_name == "typing.TypeGuard":
+    if args and ret.full_name in abstract_utils.TYPE_GUARDS:
       typeguard_return = function.handle_typeguard(
           node, function.AbstractReturnType(ret, self.ctx), args[0], self.ctx)
     else:

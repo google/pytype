@@ -523,7 +523,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
                                            name)
       return None
     elif (name is not None and name != "return" and
-          annotation.full_name == "typing.TypeGuard"):
+          annotation.full_name in abstract_utils.TYPE_GUARDS):
       self.ctx.errorlog.invalid_annotation(
           stack, annotation,
           f"{annotation.name} is only allowed as a return annotation", name)
@@ -573,7 +573,8 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
         processed = self._process_one_annotation(node, typ, inner_name, stack)
         if processed is None:
           return None
-        elif name == inner_name and processed.full_name == "typing.TypeGuard":
+        elif (name == inner_name and
+              processed.full_name in abstract_utils.TYPE_GUARDS):
           self.ctx.errorlog.invalid_annotation(
               stack, typ, f"{processed.name} is not allowed as inner type",
               name)

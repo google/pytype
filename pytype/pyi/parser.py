@@ -446,7 +446,7 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
               pytd.NamedType("builtins.type"), (pytd.NamedType(n),))
         # We convert known special forms to their corresponding types and
         # otherwise treat them as unknown types.
-        if name in {"Final", "Protocol", "Self", "TypeGuard"}:
+        if name in {"Final", "Protocol", "Self", "TypeGuard", "TypeIs"}:
           typ = type_of(f"typing.{name}")
         elif name == "LiteralString":
           # TODO(b/303083512): Support LiteralString.

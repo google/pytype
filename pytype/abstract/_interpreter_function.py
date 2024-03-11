@@ -15,6 +15,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
 
 log = logging.getLogger(__name__)
@@ -203,14 +204,34 @@ class InterpreterFunction(_function_base.SignedFunction):
       if not _matches_async_generator(ret_type):
         self.ctx.errorlog.bad_yield_annotation(
             self.ctx.vm.frames, self.signature.name, ret_type, is_async=True)
-    elif ret_type.full_name == "typing.TypeGuard":
+    elif ret_type.full_name in abstract_utils.TYPE_GUARDS:
+      valid = True
       if self.signature.mandatory_param_count() < 1:
+        guard = ret_type.full_name
         self.ctx.errorlog.invalid_function_definition(
             self.ctx.vm.frames,
-            "A TypeGuard function must have at least one required parameter")
+            f"A {guard} function must have at least one required parameter")
+        valid = False
       if not isinstance(ret_type, _classes.ParameterizedClass):
         self.ctx.errorlog.invalid_annotation(
             self.ctx.vm.frames, ret_type, "Expected 1 parameter, got 0")
+        valid = False
+      if (valid and ret_type.name == "TypeIs" and
+          self.signature.param_names[0] in self.signature.annotations):
+        # Check that the TypeIs parameter is consistent with the function's
+        # input type.
+        guard_type = ret_type.formal_type_parameters[abstract_utils.T]
+        guard_var = guard_type.instantiate(self.ctx.root_node)
+        input_type = self.signature.annotations[self.signature.param_names[0]]
+        m = self.ctx.matcher(self.ctx.root_node).compute_one_match(
+            guard_var, input_type)
+        if not m.success:
+          guard_pytd = pytd_utils.Print(guard_type.get_instance_type())
+          input_pytd = pytd_utils.Print(input_type.get_instance_type())
+          self.ctx.errorlog.invalid_function_definition(
+              self.ctx.vm.frames,
+              f"TypeIs[{guard_pytd}] is not consistent with input type "
+              f"{input_pytd}")
 
   def _build_signature(self, name, annotations):
     """Build a function.Signature object representing this function."""

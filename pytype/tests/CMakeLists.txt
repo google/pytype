@@ -1231,6 +1231,15 @@ py_test(
 
 py_test(
   NAME
+    test_typeis
+  SRCS
+    test_typeis.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_complex_function
   SRCS
     test_complex_function.py

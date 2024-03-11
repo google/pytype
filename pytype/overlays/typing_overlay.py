@@ -183,11 +183,13 @@ class Callable(overlay_utils.TypingContainer):
             ("First argument to Callable must be a list"
              " of argument types or ellipsis."))
       inner[0] = self.ctx.convert.unsolvable
-    if inner and getattr(inner[-1], "full_name", None) == "typing.TypeGuard":
+    if (inner and
+        getattr(inner[-1], "full_name", None) in abstract_utils.TYPE_GUARDS):
       if isinstance(inner[0], list) and len(inner[0]) < 1:
+        guard = inner[-1].full_name  # pytype: disable=attribute-error
         self.ctx.errorlog.invalid_annotation(
             self.ctx.vm.frames, args,
-            "A TypeGuard function must have at least one required parameter")
+            f"A {guard} function must have at least one required parameter")
       if not isinstance(inner[-1], abstract.ParameterizedClass):
         self.ctx.errorlog.invalid_annotation(
             self.ctx.vm.frames, inner[-1], "Expected 1 parameter, got 0")
@@ -638,6 +640,7 @@ typing_overlay = {
     "Self": (_builder_from_name("Self"), (3, 11)),
     "Tuple": (_builder("Tuple", Tuple), None),
     "TypeGuard": (_builder_from_name("TypeGuard"), (3, 10)),
+    "TypeIs": (_builder_from_name("TypeIs"), (3, 13)),
     "TypeVar": (TypeVar.make, None),
     "TypedDict": (overlay.drop_module(typed_dict.TypedDictBuilder), (3, 8)),
     "Union": (overlay.drop_module(Union), None),
