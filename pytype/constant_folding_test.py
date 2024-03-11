@@ -202,6 +202,7 @@ class TestFolding(test_base.UnitTest):
     """)
     self.assertCountEqual(actual, [(x, str, "", None) for x in (4, 6, 7)])
 
+  @test_utils.skipBeforePy((3, 9), "Depends on 3.9+ bytecode")
   def test_errors(self):
     # Check that malformed constants raise a ConstantFoldingError rather than
     # crash pytype.
