@@ -1,3 +1,22 @@
+Version 2024.03.11:
+
+Updates:
+* Split generate_pyi into separate components for ast and pyi generation.
+* Replace `pickle` with `msgspec`.
+* Support PEP 742 (TypeIs).
+* Update typeshed pin to commit c35b3bc from Mar 8.
+* Support typing_extensions.Unpack usage in typeshed.
+
+Bug fixes:
+* Fix a corner case with an indefinite case in a match with concrete values.
+* Check types as well for dataclasses.replace.
+* Export enum values as Literals where possible.
+* Remove mystery 'None' from overlays/named_tuple.
+* Still do property lookups when maybe_missing_members is set.
+* Fix crash in enum_overlay.
+* Recognize __func__ attribute on methods.
+* Fix a crash when constant-folding an invalid map literal.
+
 Version 2024.02.27:
 
 Updates:
