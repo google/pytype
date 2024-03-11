@@ -13,7 +13,7 @@ class SignatureTest(unittest.TestCase):
         pass
     """)
     func_code = module_code.consts[0]
-    signature = functions.Signature.from_code(func_code.qualname, func_code)
+    signature = functions.Signature.from_code('f', func_code)
     self.assertEqual(repr(signature), 'def f(x, /, *args, y, **kwargs)')
 
   def test_map_args(self):
@@ -38,7 +38,7 @@ class InterpreterFunctionTest(unittest.TestCase):
     """)
     func_code = module_code.consts[0]
     f = functions.InterpreterFunction(
-        name=func_code.qualname, code=func_code, enclosing_scope=())
+        name='f', code=func_code, enclosing_scope=())
     self.assertEqual(len(f.signatures), 1)
     self.assertEqual(repr(f.signatures[0]), 'def f(x, /, *args, y, **kwargs)')
 
