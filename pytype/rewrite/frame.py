@@ -275,7 +275,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         classes=class_body.classes,
     )
     for setup_method_name in cls.setup_methods:
-      del setup_method_name  # TODO(b/324475548): Get and call this method.
+      # TODO(b/324475548): Get and call this method.
+      del setup_method_name  # pylint: disable=modified-iterating-list
     return cls
 
   def _final_locals_as_values(self) -> Mapping[str, abstract.BaseValue]:
