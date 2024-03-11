@@ -4,7 +4,7 @@ import ast as astlib
 import collections
 import itertools
 
-from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from pytype import utils
 from pytype.pyi import classdef
@@ -583,6 +583,14 @@ class Definitions:
       processed_parameters.append(processed)
     return tuple(processed_parameters)
 
+  def _is_unpack(self, sequence: Sequence[pytd.Node]) -> bool:
+    if len(sequence) != 1:
+      return False
+    node, = sequence
+    if not isinstance(node, pytd.GenericType):
+      return False
+    return self._matches_named_type(node.base_type, "typing.Unpack")
+
   def _parameterized_type(self, base_type: Any, parameters):
     """Return a parameterized type."""
     if self._matches_named_type(base_type, "typing.Literal"):
@@ -593,6 +601,9 @@ class Definitions:
     arg_is_paramspec = False
     is_callable = False
     if self._matches_named_type(base_type, "builtins.tuple"):
+      # Temporary hack: until pytype supports Unpack, we treat it like Any.
+      if self._is_unpack(parameters):
+        parameters = (pytd.AnythingType(), self.ELLIPSIS)
       if len(parameters) == 2 and parameters[1] is self.ELLIPSIS:
         parameters = parameters[:1]
         builder = pytd.GenericType
@@ -602,11 +613,15 @@ class Definitions:
       assert parameters
       builder = pytd.Concatenate
     elif self._matches_named_type(base_type, "typing.Callable"):
-      if parameters[0] is self.ELLIPSIS:
-        parameters = (pytd.AnythingType(),) + parameters[1:]
-      if parameters and isinstance(parameters[0], pytd.NamedType):
-        if parameters[0].name in self.paramspec_names:
-          arg_is_paramspec = True
+      first_param = parameters[0]
+      # Temporary hack: until pytype supports Unpack, we treat it like Any.
+      if isinstance(first_param, list) and self._is_unpack(first_param):
+        first_param = self.ELLIPSIS
+      if first_param is self.ELLIPSIS:
+        parameters = (pytd.AnythingType(),) + parameters[1:]  # pytype: disable=unsupported-operands
+      elif (isinstance(first_param, pytd.NamedType) and
+            first_param.name in self.paramspec_names):
+        arg_is_paramspec = True
       is_callable = True
       builder = pytdgen.pytd_callable
     elif pytdgen.is_any(base_type):
@@ -654,7 +669,7 @@ class Definitions:
 
     Args:
       name: The name of the type.
-      parameters: List of type parameters.
+      parameters: Sequence of type parameters.
 
     Returns:
       A pytd type node.

@@ -86,6 +86,7 @@ py_library(
   DEPS
     .types
     pytype.pytd.pytd_for_parser
+    pytype.pytd.parse.parse
 )
 
 py_library(

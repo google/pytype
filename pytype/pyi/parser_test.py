@@ -3486,5 +3486,45 @@ class GetAttrInAnnotationTest(parser_test_base.ParserTestBase):
     """)
 
 
+class UnpackTest(parser_test_base.ParserTestBase):
+
+  def test_starargs(self):
+    self.check("""
+      from typing_extensions import TypeVarTuple, Unpack
+      _Ts = TypeVarTuple('_Ts')
+      def f(*args: Unpack[_Ts]): ...
+    """, """
+      from typing import Any
+      from typing_extensions import TypeVarTuple, TypeVarTuple as _Ts, Unpack
+
+      def f(*args) -> Any: ...
+    """)
+
+  def test_callable(self):
+    self.check("""
+      from typing import Any, Callable
+      from typing_extensions import TypeVarTuple, Unpack
+      _Ts = TypeVarTuple('_Ts')
+      f: Callable[[Unpack[_Ts]], Any]
+    """, """
+      from typing import Any, Callable
+      from typing_extensions import TypeVarTuple, TypeVarTuple as _Ts, Unpack
+
+      f: Callable[..., Any]
+    """)
+
+  def test_tuple(self):
+    self.check("""
+      from typing_extensions import TypeVarTuple, Unpack
+      _Ts = TypeVarTuple('_Ts')
+      def f(x: tuple[Unpack[_Ts]]): ...
+    """, """
+      from typing import Any, Tuple
+      from typing_extensions import TypeVarTuple, TypeVarTuple as _Ts, Unpack
+
+      def f(x: Tuple[Any, ...]) -> Any: ...
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()
