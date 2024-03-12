@@ -900,6 +900,9 @@ def show_constant(val: _BaseValueType) -> str:
   Returns:
     A string of the pretty-printed constant.
   """
+  # TODO(mdemello): This is duplicated in pretty_printer.py. Modules within
+  # abstract/ need to use the version in abstract_utils until we rework the code
+  # structure a bit.
   def _ellipsis_printer(v):
     if _isinstance(v, "PythonConstant"):
       return v.str_of_constant(_ellipsis_printer)

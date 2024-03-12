@@ -12,6 +12,7 @@ from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
 from pytype import matcher
+from pytype import pretty_printer
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -1047,7 +1048,7 @@ class ErrorLog(ErrorLogBase):
     if name:
       return f"'{name}: {typ}'"
     elif len(var.data) == 1 and hasattr(val, "pyval"):
-      name = abstract_utils.show_constant(val)
+      name = pretty_printer.show_constant(val)
       return f"'{name}: {typ}'"
     else:
       return f"'{typ}'"
