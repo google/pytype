@@ -10,10 +10,11 @@ PythonConstant = _base.PythonConstant
 ANY = _base.ANY
 NULL = _base.NULL
 
-Class = _classes.Class
+BaseClass = _classes.BaseClass
 InterpreterClass = _classes.InterpreterClass
 BUILD_CLASS = _classes.BUILD_CLASS
 
+Args = _functions.Args
 InterpreterFunction = _functions.InterpreterFunction
 
 get_atomic_constant = _utils.get_atomic_constant

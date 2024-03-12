@@ -41,6 +41,16 @@ py_library(
     .functions
 )
 
+py_test(
+  NAME
+    classes_test
+  SRCS
+    classes_test.py
+  DEPS
+    .base
+    .classes
+)
+
 py_library(
   NAME
     functions

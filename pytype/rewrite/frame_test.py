@@ -10,6 +10,8 @@ from typing_extensions import assert_type
 
 import unittest
 
+_FrameFunction = abstract.InterpreterFunction[frame_lib.Frame]
+
 
 def _make_frame(src: str, name: str = '__main__') -> frame_lib.Frame:
   code = test_utils.parse(src)
@@ -175,8 +177,8 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='__main__')
     module_frame.run()
-    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
-    f_frame = module_frame.make_child_frame(f)
+    f = cast(_FrameFunction, module_frame.final_locals['f'])
+    f_frame = module_frame.make_child_frame(f, {})
     self.assertIn('x', f_frame._initial_globals)
     self.assertIn('f', f_frame._initial_globals)
 
@@ -188,8 +190,8 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='f')
     f_frame.run()
-    g = cast(abstract.InterpreterFunction, f_frame.final_locals['g'])
-    g_frame = f_frame.make_child_frame(g)
+    g = cast(_FrameFunction, f_frame.final_locals['g'])
+    g_frame = f_frame.make_child_frame(g, {})
     self.assertIn('x', g_frame._initial_globals)
 
   def test_copy_globals_from_inner_frame_to_module(self):
@@ -224,11 +226,11 @@ class FrameTest(unittest.TestCase):
           y = x
     """)
     module_frame.run()
-    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
-    f_frame = module_frame.make_child_frame(f)
+    f = cast(_FrameFunction, module_frame.final_locals['f'])
+    f_frame = module_frame.make_child_frame(f, {})
     f_frame.run()
-    g = cast(abstract.InterpreterFunction, f_frame.final_locals['g'])
-    g_frame = f_frame.make_child_frame(g)
+    g = cast(_FrameFunction, f_frame.final_locals['g'])
+    g_frame = f_frame.make_child_frame(g, {})
     g_frame.run()
     self.assertIn('y', g_frame.final_locals)
     y = cast(abstract.PythonConstant, g_frame.final_locals['y'])
@@ -245,8 +247,8 @@ class FrameTest(unittest.TestCase):
         g()
     """)
     module_frame.run()
-    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
-    f_frame = module_frame.make_child_frame(f)
+    f = cast(_FrameFunction, module_frame.final_locals['f'])
+    f_frame = module_frame.make_child_frame(f, {})
     f_frame.run()
     self.assertIn('x', f_frame.final_locals)
     self.assertIn('g', f_frame.final_locals)
