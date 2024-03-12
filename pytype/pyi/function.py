@@ -10,6 +10,7 @@ from pytype.pyi import types
 from pytype.pytd import pytd
 from pytype.pytd import visitors
 from pytype.pytd.codegen import function as pytd_function
+from pytype.pytd.parse import parser_constants
 
 _ParseError = types.ParseError
 
@@ -163,6 +164,11 @@ def _pytd_star_param(arg: astlib.arg) -> Optional[pytd.Parameter]:
   """Return a pytd.Parameter for a *args argument."""
   if not arg:
     return None
+  # Temporary hack: until pytype supports Unpack, treat it as Any.
+  unpack = parser_constants.EXTERNAL_NAME_PREFIX + "typing_extensions.Unpack"
+  if (isinstance(arg.annotation, pytd.GenericType) and
+      arg.annotation.base_type.name == unpack):
+    arg.annotation = pytd.AnythingType()
   return pytd_function.pytd_star_param(arg.arg, arg.annotation)  # pytype: disable=wrong-arg-types
 
 
