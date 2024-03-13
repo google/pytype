@@ -511,8 +511,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
-    obj_values = obj.ctx.convert.merge_values([obj])
-    obj_repr = self._pp.print_as_actual_type(obj_values)
+    obj_repr = self._pp.print_as_actual_type(obj)
     self.error(stack, f"Can't assign attribute {attr_name!r} on {obj_repr}",
                keyword=attr_name, keyword_context=obj_repr)
 
