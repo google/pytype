@@ -14,7 +14,6 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import typed_dict as typed_dict_overlay
-from pytype.pytd import pytd_utils
 from pytype.pytd import slots
 
 # Usually we call the logger "log" but that name is used quite often here.
@@ -490,71 +489,6 @@ class ErrorLogBase:
 class ErrorLog(ErrorLogBase):
   """ErrorLog with convenience functions."""
 
-  def _iter_sig(self, sig):
-    """Iterate through a function.Signature object. Focus on a bad parameter."""
-    for name in sig.posonly_params:
-      yield "", name
-    if sig.posonly_params:
-      yield ("/", "")
-    for name in sig.param_names[sig.posonly_count:]:
-      yield "", name
-    if sig.varargs_name is not None:
-      yield "*", sig.varargs_name
-    elif sig.kwonly_params:
-      yield ("*", "")
-    for name in sorted(sig.kwonly_params):
-      yield "", name
-    if sig.kwargs_name is not None:
-      yield "**", sig.kwargs_name
-
-  def _iter_expected(self, sig, bad_param):
-    """Yield the prefix, name and type information for expected parameters."""
-    for prefix, name in self._iter_sig(sig):
-      suffix = " = ..." if name in sig.defaults else ""
-      if bad_param and name == bad_param.name:
-        type_str = self._pp.print_as_expected_type(bad_param.typ)
-        suffix = ": " + type_str + suffix
-      yield prefix, name, suffix
-
-  def _iter_actual(self, sig, passed_args, bad_param, literal):
-    """Yield the prefix, name and type information for actual parameters."""
-    # We want to display the passed_args in the order they're defined in the
-    # signature, unless there are starargs or starstarargs.
-    # Map param names to their position in the list, then sort the list of
-    # passed args so it's in the same order as the params.
-    keys = {param: n for n, (_, param) in enumerate(self._iter_sig(sig))}
-    def key_f(arg):
-      arg_name = arg[0]
-      # starargs are given anonymous names, which won't be found in the sig.
-      # Instead, use the same name as the varags param itself, if present.
-      if arg_name not in keys and pytd_utils.ANON_PARAM.match(arg_name):
-        return keys.get(sig.varargs_name, len(keys)+1)
-      return keys.get(arg_name, len(keys)+1)
-    for name, arg in sorted(passed_args, key=key_f):
-      if bad_param and name == bad_param.name:
-        suffix = ": " + self._pp.print_as_actual_type(arg, literal=literal)
-      else:
-        suffix = ""
-      yield "", name, suffix
-
-  def _print_args(self, arg_iter, bad_param):
-    """Pretty-print a list of arguments. Focus on a bad parameter."""
-    # (foo, bar, broken : type, ...)
-    printed_params = []
-    found = False
-    for prefix, name, suffix in arg_iter:
-      if bad_param and name == bad_param.name:
-        printed_params.append(prefix + name + suffix)
-        found = True
-      elif found:
-        printed_params.append("...")
-        break
-      elif pytd_utils.ANON_PARAM.match(name):
-        printed_params.append(prefix + "_")
-      else:
-        printed_params.append(prefix + name)
-    return ", ".join(printed_params)
-
   @_error_name("pyi-error")
   def pyi_error(self, stack, name, error):
     self.error(stack, f"Couldn't import pyi for {name!r}", str(error),
@@ -617,19 +551,14 @@ class ErrorLog(ErrorLogBase):
 
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
-    sig = bad_call.sig
-    passed_args = bad_call.passed_args
-    bad_param = bad_call.bad_param
-    expected = self._print_args(self._iter_expected(sig, bad_param), bad_param)
-    literal = "Literal[" in expected
-    actual = self._print_args(
-        self._iter_actual(sig, passed_args, bad_param, literal), bad_param)
-    details = "".join([
-        "       Expected: (", expected, ")\n",
-        "Actually passed: (", actual,
-        ")"])
-    if bad_param and bad_param.error_details:
-      details += "".join(self._pp.print_error_details(bad_param.error_details))
+    ret = pretty_printer.BadCallPrinter(self._pp, bad_call).print_call_details()
+    details = "".join(
+        [
+            "       Expected: (", ret.expected, ")\n",
+            "Actually passed: (", ret.actual,
+            ")"
+        ] + ret.error_details
+    )
     self.error(stack, message, details, bad_call=bad_call)
 
   @_error_name("wrong-arg-count")
@@ -792,15 +721,16 @@ class ErrorLog(ErrorLogBase):
   @_error_name("bad-return-type")
   def bad_return_type(self, stack, node, bad):
     """Logs a [bad-return-type] error."""
-    expected, bad_actual, full_actual, error_details = (
-        self._pp.print_as_return_types(node, bad))
-    if full_actual == bad_actual:
+
+    ret = pretty_printer.MatcherErrorPrinter(self._pp).print_return_types(
+        node, bad)
+    if ret.full_actual == ret.bad_actual:
       message = "bad return type"
     else:
-      message = f"bad option {bad_actual!r} in return type"
-    details = ["         Expected: ", expected, "\n",
-               "Actually returned: ", full_actual]
-    details.extend(error_details)
+      message = f"bad option {ret.bad_actual!r} in return type"
+    details = ["         Expected: ", ret.expected, "\n",
+               "Actually returned: ", ret.full_actual]
+    details.extend(ret.error_details)
     self.error(stack, message, "".join(details))
 
   @_error_name("bad-return-type")
@@ -824,13 +754,13 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, bad, details=None):
-    expected, actual, _, error_details = (
-        self._pp.print_as_return_types(node, bad))
-    full_details = ["       Expected: ", expected, "\n",
-                    "Actually passed: ", actual]
+    ret = pretty_printer.MatcherErrorPrinter(self._pp).print_return_types(
+        node, bad)
+    full_details = ["       Expected: ", ret.expected, "\n",
+                    "Actually passed: ", ret.bad_actual]
     if details:
       full_details.append("\n" + details)
-    full_details.extend(error_details)
+    full_details.extend(ret.error_details)
     self.error(
         stack, "Invalid instantiation of generic class", "".join(full_details))
 
@@ -1119,7 +1049,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-signature-mutation")
   def invalid_signature_mutation(self, stack, func_name, sig):
-    sig = self._pp.print_pytd(sig)
+    sig = self._pp.print_pytd_signature(sig)
     msg = "Invalid self type mutation in pyi method signature"
     details = f"{func_name}{sig}"
     self.error(stack, msg, details)
