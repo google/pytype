@@ -57,6 +57,7 @@ py_library(
   DEPS
     ._utils
     .debug
+    .error_printer
     .pretty_printer
     pytype.abstract.abstract
     pytype.overlays.overlays
@@ -120,7 +121,19 @@ py_library(
   SRCS
     pretty_printer.py
   DEPS
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    error_printer
+  SRCS
+    error_printer.py
+  DEPS
     .matcher
+    .pretty_printer
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd

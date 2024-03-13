@@ -8,10 +8,10 @@ import sys
 from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
+from pytype import error_printer
 from pytype import pretty_printer
 from pytype import utils
 from pytype.abstract import abstract
-from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import slots
@@ -550,7 +550,7 @@ class ErrorLog(ErrorLogBase):
 
   def _invalid_parameters(self, stack, message, bad_call):
     """Log an invalid parameters error."""
-    ret = pretty_printer.BadCallPrinter(self._pp, bad_call).print_call_details()
+    ret = error_printer.BadCallPrinter(self._pp, bad_call).print_call_details()
     details = "".join(
         [
             "       Expected: (", ret.expected, ")\n",
@@ -721,7 +721,7 @@ class ErrorLog(ErrorLogBase):
   def bad_return_type(self, stack, node, bad):
     """Logs a [bad-return-type] error."""
 
-    ret = pretty_printer.MatcherErrorPrinter(self._pp).print_return_types(
+    ret = error_printer.MatcherErrorPrinter(self._pp).print_return_types(
         node, bad)
     if ret.full_actual == ret.bad_actual:
       message = "bad return type"
@@ -753,7 +753,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("bad-concrete-type")
   def bad_concrete_type(self, stack, node, bad, details=None):
-    ret = pretty_printer.MatcherErrorPrinter(self._pp).print_return_types(
+    ret = error_printer.MatcherErrorPrinter(self._pp).print_return_types(
         node, bad)
     full_details = ["       Expected: ", ret.expected, "\n",
                     "Actually passed: ", ret.bad_actual]
@@ -950,23 +950,10 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, self._pp.print_var_as_type(var, node))
 
   @_error_name("assert-type")
-  def assert_type(self, stack, node, var, typ):
+  def assert_type(self, stack, actual: str, expected: str):
     """Check that a variable type matches its expected value."""
-    actual = self._pp.print_var_as_type(var, node)
-
-    try:
-      expected = abstract_utils.get_atomic_python_constant(typ, str)
-    except abstract_utils.ConversionError:
-      # NOTE: Converting types to strings is provided as a fallback, but is not
-      # really supported, since there are issues around name resolution.
-      ctx = typ.data[0].ctx
-      typ = ctx.annotation_utils.extract_annotation(node, typ, "assert_type",
-                                                    ctx.vm.simple_stack())
-      node, instance = ctx.vm.init_class_and_forward_node(node, typ)
-      expected = self._pp.print_var_as_type(instance, node)
-    if actual != expected:
-      details = f"Expected: {expected}\n  Actual: {actual}"
-      self.error(stack, actual, details=details)
+    details = f"Expected: {expected}\n  Actual: {actual}"
+    self.error(stack, actual, details=details)
 
   @_error_name("annotation-type-mismatch")
   def annotation_type_mismatch(
@@ -983,7 +970,8 @@ class ErrorLog(ErrorLogBase):
     if actual_string == "None":
       annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
     additional_details = f"\n\n{details}" if details else ""
-    additional_details += "".join(self._pp.print_error_details(error_details))
+    pp = error_printer.MatcherErrorPrinter(self._pp)
+    additional_details += "".join(pp.print_error_details(error_details))
     details = (f"Annotation: {annot_string}\n" +
                f"Assignment: {actual_string}" +
                additional_details)

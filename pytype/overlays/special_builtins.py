@@ -2,6 +2,7 @@
 
 import contextlib
 
+from pytype import pretty_printer
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
@@ -553,10 +554,24 @@ class AssertType(BuiltinFunction):
 
   def call(self, node, func, args, alias_map=None):
     if len(args.posargs) == 2:
-      a, t = args.posargs
+      var, typ = args.posargs
     else:
       raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
-    self.ctx.errorlog.assert_type(self.ctx.vm.frames, node, a, t)
+
+    # Convert both args to strings and compare them
+    pp = pretty_printer.PrettyPrinter()
+    actual = pp.print_var_as_type(var, node)
+    try:
+      expected = abstract_utils.get_atomic_python_constant(typ, str)
+    except abstract_utils.ConversionError:
+      # NOTE: Converting types to strings is provided as a fallback, but is not
+      # really supported, since there are issues around name resolution.
+      typ = self.ctx.annotation_utils.extract_annotation(
+          node, typ, "assert_type", self.ctx.vm.simple_stack())
+      node, instance = self.ctx.vm.init_class_and_forward_node(node, typ)
+      expected = pp.print_var_as_type(instance, node)
+    if actual != expected:
+      self.ctx.errorlog.assert_type(self.ctx.vm.frames, actual, expected)
     return node, self.ctx.convert.build_none(node)
 
 
