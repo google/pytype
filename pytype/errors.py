@@ -1146,6 +1146,11 @@ class ErrorLog(ErrorLogBase):
            f" ({posargs} given)")
     self.error(stack, msg, details=details)
 
+  @_error_name("match-error")
+  def bad_class_match(self, stack, obj, details=None):
+    msg = (f"Invalid constructor pattern in match case (not a class): {obj}")
+    self.error(stack, msg, details=details)
+
   @_error_name("incomplete-match")
   def incomplete_match(self, stack, line, cases, details=None):
     cases = ", ".join(str(x) for x in cases)

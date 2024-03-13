@@ -334,6 +334,9 @@ class BranchTracker:
     ret = []
     for v in types:
       cls = v.base_cls if isinstance(v, abstract.AnnotationContainer) else v
+      if not isinstance(cls, (abstract.Class, abstract.AMBIGUOUS)):
+        self.ctx.errorlog.bad_class_match(self.ctx.vm.frames, cls)
+        return self.ctx.new_unsolvable(node)
       ret.append(self.ctx.vm.init_class(node, cls))
     return self.ctx.join_variables(node, ret)
 
