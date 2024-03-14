@@ -430,6 +430,13 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     func_var = self._stack.pop()
     self._call_function(func_var, abstract.Args(posargs=args))
 
+  def byte_CALL_METHOD(self, opcode):
+    args = self._stack.popn(opcode.arg)
+    func_var = self._stack.pop()
+    # pop the NULL off the stack (see LOAD_METHOD)
+    self._stack.pop_and_discard()
+    self._call_function(func_var, abstract.Args(posargs=args))
+
   def byte_POP_TOP(self, opcode):
     del opcode  # unused
     self._stack.pop_and_discard()
