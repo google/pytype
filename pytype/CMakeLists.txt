@@ -57,7 +57,8 @@ py_library(
   DEPS
     ._utils
     .debug
-    .matcher
+    .error_printer
+    .pretty_printer
     pytype.abstract.abstract
     pytype.overlays.overlays
     pytype.pytd.pytd
@@ -112,6 +113,31 @@ py_library(
     .tracer_vm
     .vm
     pytype.directors.directors
+)
+
+py_library(
+  NAME
+    pretty_printer
+  SRCS
+    pretty_printer.py
+  DEPS
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    error_printer
+  SRCS
+    error_printer.py
+  DEPS
+    .matcher
+    .pretty_printer
+    pytype.abstract.abstract
+    pytype.overlays.overlays
+    pytype.pytd.pytd
+    pytype.typegraph.cfg
 )
 
 filegroup(
@@ -717,6 +743,19 @@ py_test(
   DEPS
     .debug
     pytype.typegraph.cfg
+)
+
+py_test(
+  NAME
+    pretty_printer_test
+  SRCS
+    pretty_printer_test.py
+  DEPS
+    .config
+    .pretty_printer
+    pytype.abstract.abstract
+    pytype.pytd.pytd
+    pytype.tests.test_base
 )
 
 py_library(

@@ -982,6 +982,17 @@ class MatchClassTest(test_base.BaseTest):
             pass
       """)
 
+  def test_non_class(self):
+    err = self.CheckWithErrors("""
+      def f(x: str, y: str):
+        match x:
+          case y.lower():  # match-error[e]
+            print("hello")
+          case _:
+            print("world")
+    """)
+    self.assertErrorSequences(err, {"e": ["not a class", "str.lower"]})
+
 
 @test_utils.skipBeforePy((3, 10), "New syntax in 3.10")
 class MatchFeaturesTest(test_base.BaseTest):

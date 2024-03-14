@@ -19,6 +19,7 @@ _EMPTY_MAP = immutabledict.immutabledict()
 # Type aliases
 _AbstractVariable = variables.Variable[abstract.BaseValue]
 _VarMap = Mapping[str, _AbstractVariable]
+_FrameFunction = abstract.InterpreterFunction['Frame']
 
 
 class _Scope(enum.Enum):
@@ -91,7 +92,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Names of nonlocals shadowed in the current frame
     self._shadowed_nonlocals = _ShadowedNonlocals()
     # All functions and classes created during execution
-    self._functions: List[abstract.InterpreterFunction] = []
+    self._functions: List[_FrameFunction] = []
     self._classes: List[abstract.InterpreterClass] = []
     # Final values of locals, unwrapped from variables
     self.final_locals: Mapping[str, abstract.BaseValue] = None
@@ -115,7 +116,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     )
 
   @property
-  def functions(self) -> Sequence[abstract.InterpreterFunction]:
+  def functions(self) -> Sequence[_FrameFunction]:
     return tuple(self._functions)
 
   @property
@@ -142,7 +143,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Set the current state to None so that the load_* and store_* methods
     # cannot be used to modify finalized locals.
     self._current_state = None
-    self.final_locals = self._final_locals_as_values()
+    self._finalize_locals()
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
     self._current_state.store_local(name, var)
@@ -202,8 +203,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def make_child_frame(
       self,
-      func: abstract.InterpreterFunction,
-      initial_locals: Mapping[str, _AbstractVariable] = _EMPTY_MAP,
+      func: _FrameFunction,
+      initial_locals: Mapping[str, _AbstractVariable],
   ) -> 'Frame':
     if self._final_locals:
       current_locals = {
@@ -233,6 +234,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         f_back=self,
     )
 
+  def get_return_value(self) -> abstract.BaseValue:
+    # TODO(b/241479600): Return union of values from byte_RETURN_VALUE ops.
+    return abstract.PythonConstant(None)
+
   def _merge_nonlocals_into(self, frame: 'Frame') -> None:
     for name in self._shadowed_nonlocals.get_names(_Scope.ENCLOSING):
       var = self._final_locals[name]
@@ -244,22 +249,25 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def _call_function(
       self,
       func_var: _AbstractVariable,
-      args: Sequence[_AbstractVariable],
+      args: abstract.Args,
   ) -> None:
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, abstract.InterpreterFunction):
-        mapped_args = func.map_args(args)
-        frame = self.make_child_frame(func, mapped_args)
-        frame.run()
-        dummy_ret = abstract.PythonConstant(None)
-        ret_values.append(dummy_ret)
+      if isinstance(func, (abstract.InterpreterFunction,
+                           abstract.InterpreterClass,
+                           abstract.BoundFunction)):
+        frame = func.call(args)
+        ret_values.append(frame.get_return_value())
       elif func is abstract.BUILD_CLASS:
-        class_body, name = args
-        frame = self.make_child_frame(
-            class_body.get_atomic_value(abstract.InterpreterFunction))
-        frame.run()
-        cls = self._make_class(abstract.get_atomic_constant(name, str), frame)
+        class_body, name = args.posargs
+        builder = class_body.get_atomic_value(_FrameFunction)
+        frame = builder.call(abstract.Args())
+        cls = abstract.InterpreterClass(
+            name=abstract.get_atomic_constant(name, str),
+            members=dict(frame.final_locals),
+            functions=frame.functions,
+            classes=frame.classes,
+        )
         self._classes.append(cls)
         ret_values.append(cls)
       else:
@@ -267,19 +275,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
 
-  def _make_class(self, name: str, class_body: 'Frame'):
-    cls = abstract.InterpreterClass(
-        name=name,
-        members=class_body.final_locals,
-        functions=class_body.functions,
-        classes=class_body.classes,
-    )
-    for setup_method_name in cls.setup_methods:
-      # TODO(b/324475548): Get and call this method.
-      del setup_method_name  # pylint: disable=modified-iterating-list
-    return cls
-
-  def _final_locals_as_values(self) -> Mapping[str, abstract.BaseValue]:
+  def _finalize_locals(self) -> None:
     final_values = {}
     for name, var in self._final_locals.items():
       values = var.values
@@ -289,7 +285,39 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         final_values[name] = values[0]
       else:
         raise NotImplementedError('Empty variable not yet supported')
-    return immutabledict.immutabledict(final_values)
+    # We've stored SET_ATTR results as local values. Now actually perform the
+    # attribute setting.
+    # TODO(b/241479600): If we're deep in a stack of method calls, we should
+    # instead merge the attribute values into the parent frame so that any
+    # conditions on the bindings are preserved.
+    for name, value in final_values.items():
+      target_name, dot, attr_name = name.rpartition('.')
+      if not dot or target_name not in self._final_locals:
+        continue
+      for target in self._final_locals[target_name].values:
+        target.set_attribute(attr_name, value)
+    self.final_locals = immutabledict.immutabledict(final_values)
+
+  def _load_attr(
+      self, target_var: _AbstractVariable, attr_name: str) -> _AbstractVariable:
+    if target_var.name:
+      name = f'{target_var.name}.{attr_name}'
+    else:
+      name = None
+    try:
+      # Check if we've stored the attribute in the current frame.
+      return self.load_local(name)
+    except KeyError as e:
+      # We're loading an attribute without a locally stored value.
+      attr_bindings = []
+      for target in target_var.values:
+        attr = target.get_attribute(attr_name)
+        if not attr:
+          raise NotImplementedError('Attribute error') from e
+        # TODO(b/241479600): If there's a condition on the target binding, we
+        # should copy it.
+        attr_bindings.append(variables.Binding(attr))
+      return variables.Variable(tuple(attr_bindings), name)
 
   def byte_RESUME(self, opcode):
     del opcode  # unused
@@ -313,6 +341,14 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_STORE_DEREF(self, opcode):
     self.store_deref(opcode.argval, self._stack.pop())
 
+  def byte_STORE_ATTR(self, opcode):
+    attr_name = opcode.argval
+    attr, target = self._stack.popn(2)
+    if not target.name:
+      raise NotImplementedError('Missing target name')
+    full_name = f'{target.name}.{attr_name}'
+    self.store_local(full_name, attr)
+
   def byte_MAKE_FUNCTION(self, opcode):
     if opcode.arg not in (0, pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS):
       raise NotImplementedError('MAKE_FUNCTION not fully implemented')
@@ -328,7 +364,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
-    func = abstract.InterpreterFunction(name, code, enclosing_scope)
+    func = abstract.InterpreterFunction(name, code, enclosing_scope, self)
     if not (self._stack and
             self._stack.top().has_atomic_value(abstract.BUILD_CLASS)):
       # BUILD_CLASS makes and immediately calls a function that creates the
@@ -364,6 +400,21 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     name = opcode.argval
     self._stack.push(self.load_global(name))
 
+  def byte_LOAD_ATTR(self, opcode):
+    attr_name = opcode.argval
+    target_var = self._stack.pop()
+    self._stack.push(self._load_attr(target_var, attr_name))
+
+  def byte_LOAD_METHOD(self, opcode):
+    method_name = opcode.argval
+    instance_var = self._stack.pop()
+    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
+    # this opcode should push two values onto the stack: either the unbound
+    # method and its `self` or NULL and the bound method. Since we always
+    # retrieve a bound method, we push the NULL
+    self._stack.push(abstract.NULL.to_variable())
+    self._stack.push(self._load_attr(instance_var, method_name))
+
   def byte_PRECALL(self, opcode):
     del opcode  # unused
 
@@ -372,12 +423,19 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if not sentinel.has_atomic_value(abstract.NULL):
       raise NotImplementedError('CALL not fully implemented')
     func_var, *args = rest
-    self._call_function(func_var, args)
+    self._call_function(func_var, abstract.Args(posargs=args))
 
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
     func_var = self._stack.pop()
-    self._call_function(func_var, args)
+    self._call_function(func_var, abstract.Args(posargs=args))
+
+  def byte_CALL_METHOD(self, opcode):
+    args = self._stack.popn(opcode.arg)
+    func_var = self._stack.pop()
+    # pop the NULL off the stack (see LOAD_METHOD)
+    self._stack.pop_and_discard()
+    self._call_function(func_var, abstract.Args(posargs=args))
 
   def byte_POP_TOP(self, opcode):
     del opcode  # unused

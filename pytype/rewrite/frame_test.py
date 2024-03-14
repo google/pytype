@@ -1,5 +1,5 @@
 import sys
-from typing import Mapping, cast
+from typing import Mapping, Type, TypeVar, cast, get_origin
 
 from pytype.pyc import opcodes
 from pytype.rewrite import convert
@@ -9,6 +9,9 @@ from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
 
 import unittest
+
+_FrameFunction = abstract.InterpreterFunction[frame_lib.Frame]
+_T = TypeVar('_T')
 
 
 def _make_frame(src: str, name: str = '__main__') -> frame_lib.Frame:
@@ -20,6 +23,12 @@ def _make_frame(src: str, name: str = '__main__') -> frame_lib.Frame:
     initial_locals = initial_globals = {}
   return frame_lib.Frame(name, code, initial_locals=initial_locals,
                          initial_globals=initial_globals)
+
+
+def _get(frame: frame_lib.Frame, name: str, typ: Type[_T]) -> _T:
+  val = cast(_T, frame.final_locals[name])
+  assert isinstance(val, get_origin(typ) or typ)
+  return val
 
 
 class ShadowedNonlocalsTest(unittest.TestCase):
@@ -175,8 +184,8 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='__main__')
     module_frame.run()
-    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
-    f_frame = module_frame.make_child_frame(f)
+    f = _get(module_frame, 'f', _FrameFunction)
+    f_frame = module_frame.make_child_frame(f, {})
     self.assertIn('x', f_frame._initial_globals)
     self.assertIn('f', f_frame._initial_globals)
 
@@ -188,8 +197,8 @@ class FrameTest(unittest.TestCase):
         pass
     """, name='f')
     f_frame.run()
-    g = cast(abstract.InterpreterFunction, f_frame.final_locals['g'])
-    g_frame = f_frame.make_child_frame(g)
+    g = _get(f_frame, 'g', _FrameFunction)
+    g_frame = f_frame.make_child_frame(g, {})
     self.assertIn('x', g_frame._initial_globals)
 
   def test_copy_globals_from_inner_frame_to_module(self):
@@ -224,14 +233,14 @@ class FrameTest(unittest.TestCase):
           y = x
     """)
     module_frame.run()
-    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
-    f_frame = module_frame.make_child_frame(f)
+    f = _get(module_frame, 'f', _FrameFunction)
+    f_frame = module_frame.make_child_frame(f, {})
     f_frame.run()
-    g = cast(abstract.InterpreterFunction, f_frame.final_locals['g'])
-    g_frame = f_frame.make_child_frame(g)
+    g = _get(f_frame, 'g', _FrameFunction)
+    g_frame = f_frame.make_child_frame(g, {})
     g_frame.run()
     self.assertIn('y', g_frame.final_locals)
-    y = cast(abstract.PythonConstant, g_frame.final_locals['y'])
+    y = _get(g_frame, 'y', abstract.PythonConstant)
     self.assertIsNone(y.constant)
     self.assertIn('x', g_frame._initial_enclosing)
 
@@ -245,18 +254,18 @@ class FrameTest(unittest.TestCase):
         g()
     """)
     module_frame.run()
-    f = cast(abstract.InterpreterFunction, module_frame.final_locals['f'])
-    f_frame = module_frame.make_child_frame(f)
+    f = _get(module_frame, 'f', _FrameFunction)
+    f_frame = module_frame.make_child_frame(f, {})
     f_frame.run()
     self.assertIn('x', f_frame.final_locals)
     self.assertIn('g', f_frame.final_locals)
-    x = cast(abstract.PythonConstant, f_frame.final_locals['x'])
+    x = _get(f_frame, 'x', abstract.PythonConstant)
     self.assertEqual(x.constant, 5)
 
   def test_class(self):
     module_frame = _make_frame('class C: ...')
     module_frame.run()
-    cls = cast(abstract.InterpreterClass, module_frame.final_locals['C'])
+    cls = _get(module_frame, 'C', abstract.InterpreterClass)
     self.assertEqual(cls.name, 'C')
 
   def test_class_body(self):
@@ -265,11 +274,66 @@ class FrameTest(unittest.TestCase):
         def f(self): ...
     """)
     module_frame.run()
-    cls = cast(abstract.InterpreterClass, module_frame.final_locals['C'])
+    cls = _get(module_frame, 'C', abstract.InterpreterClass)
     self.assertIn('f', cls.members)
     f = cls.members['f']
     self.assertIsInstance(f, abstract.InterpreterFunction)
     self.assertEqual(f.name, 'C.f')
+
+  def test_instance_attribute(self):
+    module_frame = _make_frame("""
+      class C:
+        def __init__(self):
+          self.x = 3
+    """)
+    module_frame.run()
+    cls = _get(module_frame, 'C', abstract.InterpreterClass)
+    instance = cls.instantiate()
+    self.assertEqual(instance.get_attribute('x'), abstract.PythonConstant(3))
+
+  def test_read_instance_attribute(self):
+    module_frame = _make_frame("""
+      class C:
+        def __init__(self):
+          self.x = 3
+        def read(self):
+          x = self.x
+    """)
+    module_frame.run()
+    cls = _get(module_frame, 'C', abstract.InterpreterClass)
+    instance = cls.instantiate()
+    read = cast(abstract.InterpreterFunction, cls.members['read'])
+    frame, = read.bind_to(instance).analyze()
+    self.assertIn('x', frame.final_locals)
+    self.assertEqual(frame.final_locals['x'], abstract.PythonConstant(3))
+
+  def test_write_and_read_instance_attribute(self):
+    module_frame = _make_frame("""
+      class C:
+        def write_and_read(self):
+          self.x = 3
+          x = self.x
+    """)
+    module_frame.run()
+    cls = _get(module_frame, 'C', abstract.InterpreterClass)
+    instance = cls.instantiate()
+    write_and_read = cast(abstract.InterpreterFunction,
+                          cls.members['write_and_read'])
+    frame, = write_and_read.bind_to(instance).analyze()
+    self.assertIn('x', frame.final_locals)
+    self.assertEqual(frame.final_locals['x'], abstract.PythonConstant(3))
+
+  def test_modify_instance(self):
+    module_frame = _make_frame("""
+      class C:
+        def f(self):
+          self.x = 3
+      c = C()
+      c.f()
+    """)
+    module_frame.run()
+    c = _get(module_frame, 'c', abstract.MutableInstance)
+    self.assertEqual(c.get_attribute('x'), abstract.PythonConstant(3))
 
 
 if __name__ == '__main__':

@@ -80,6 +80,7 @@ disable=
   use-dict-literal,
   useless-import-alias,
   useless-object-inheritance,
+  useless-return,
   useless-super-delegation,
   wrong-import-order,
 

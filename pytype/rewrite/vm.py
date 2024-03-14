@@ -42,26 +42,18 @@ class VirtualMachine:
     while parent_frames:
       parent_frame = parent_frames.pop(0)
       for f in parent_frame.functions:
-        for sig in f.signatures:
-          func_frame = parent_frame.make_child_frame(f, sig.make_fake_args())
-          func_frame.run()
-          parent_frames.append(func_frame)
+        parent_frames.extend(f.analyze())
       classes = _collect_classes(parent_frame)
       for cls in classes:
+        instance = cls.instantiate()
         for f in cls.functions:
-          for sig in f.signatures:
-            func_frame = parent_frame.make_child_frame(f, sig.make_fake_args())
-            func_frame.run()
-            parent_frames.append(func_frame)
+          parent_frames.extend(f.bind_to(instance).analyze())
 
   def infer_stub(self):
     self._run_module()
     for value in self._module_frame.final_locals:
       if isinstance(value, abstract.InterpreterFunction):
-        for sig in value.signatures:
-          function_frame = self._module_frame.make_child_frame(
-              value, sig.make_fake_args())
-          function_frame.run()
+        _ = value.analyze()
       elif isinstance(value, abstract.InterpreterClass):
         for name, member in value.members:
           del name, member  # TODO(b/324475548): infer the type of 'member'.
