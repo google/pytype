@@ -12,6 +12,7 @@ class FakeFrame:
 
   def __init__(self):
     self.child_frames = []
+    self.final_locals = {}
 
   def make_child_frame(self, func, initial_locals):
     self.child_frames.append((func, initial_locals))

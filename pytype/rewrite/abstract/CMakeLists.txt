@@ -49,6 +49,7 @@ py_test(
   DEPS
     .base
     .classes
+    .functions
 )
 
 py_library(

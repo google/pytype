@@ -143,7 +143,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Set the current state to None so that the load_* and store_* methods
     # cannot be used to modify finalized locals.
     self._current_state = None
-    self.final_locals = self._final_locals_as_values()
+    self._finalize_locals()
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
     self._current_state.store_local(name, var)
@@ -253,7 +253,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   ) -> None:
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, abstract.InterpreterFunction):
+      if isinstance(func, (abstract.InterpreterFunction,
+                           abstract.InterpreterClass,
+                           abstract.BoundFunction)):
         frame = func.call(args)
         ret_values.append(frame.get_return_value())
       elif func is abstract.BUILD_CLASS:
@@ -262,7 +264,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         frame = builder.call(abstract.Args())
         cls = abstract.InterpreterClass(
             name=abstract.get_atomic_constant(name, str),
-            members=frame.final_locals,
+            members=dict(frame.final_locals),
             functions=frame.functions,
             classes=frame.classes,
         )
@@ -273,7 +275,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
 
-  def _final_locals_as_values(self) -> Mapping[str, abstract.BaseValue]:
+  def _finalize_locals(self) -> None:
     final_values = {}
     for name, var in self._final_locals.items():
       values = var.values
@@ -283,7 +285,39 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         final_values[name] = values[0]
       else:
         raise NotImplementedError('Empty variable not yet supported')
-    return immutabledict.immutabledict(final_values)
+    # We've stored SET_ATTR results as local values. Now actually perform the
+    # attribute setting.
+    # TODO(b/241479600): If we're deep in a stack of method calls, we should
+    # instead merge the attribute values into the parent frame so that any
+    # conditions on the bindings are preserved.
+    for name, value in final_values.items():
+      target_name, dot, attr_name = name.rpartition('.')
+      if not dot or target_name not in self._final_locals:
+        continue
+      for target in self._final_locals[target_name].values:
+        target.set_attribute(attr_name, value)
+    self.final_locals = immutabledict.immutabledict(final_values)
+
+  def _load_attr(
+      self, target_var: _AbstractVariable, attr_name: str) -> _AbstractVariable:
+    if target_var.name:
+      name = f'{target_var.name}.{attr_name}'
+    else:
+      name = None
+    try:
+      # Check if we've stored the attribute in the current frame.
+      return self.load_local(name)
+    except KeyError as e:
+      # We're loading an attribute without a locally stored value.
+      attr_bindings = []
+      for target in target_var.values:
+        attr = target.get_attribute(attr_name)
+        if not attr:
+          raise NotImplementedError('Attribute error') from e
+        # TODO(b/241479600): If there's a condition on the target binding, we
+        # should copy it.
+        attr_bindings.append(variables.Binding(attr))
+      return variables.Variable(tuple(attr_bindings), name)
 
   def byte_RESUME(self, opcode):
     del opcode  # unused
@@ -306,6 +340,14 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_STORE_DEREF(self, opcode):
     self.store_deref(opcode.argval, self._stack.pop())
+
+  def byte_STORE_ATTR(self, opcode):
+    attr_name = opcode.argval
+    attr, target = self._stack.popn(2)
+    if not target.name:
+      raise NotImplementedError('Missing target name')
+    full_name = f'{target.name}.{attr_name}'
+    self.store_local(full_name, attr)
 
   def byte_MAKE_FUNCTION(self, opcode):
     if opcode.arg not in (0, pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS):
@@ -357,6 +399,21 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_LOAD_GLOBAL(self, opcode):
     name = opcode.argval
     self._stack.push(self.load_global(name))
+
+  def byte_LOAD_ATTR(self, opcode):
+    attr_name = opcode.argval
+    target_var = self._stack.pop()
+    self._stack.push(self._load_attr(target_var, attr_name))
+
+  def byte_LOAD_METHOD(self, opcode):
+    method_name = opcode.argval
+    instance_var = self._stack.pop()
+    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
+    # this opcode should push two values onto the stack: either the unbound
+    # method and its `self` or NULL and the bound method. Since we always
+    # retrieve a bound method, we push the NULL
+    self._stack.push(abstract.NULL.to_variable())
+    self._stack.push(self._load_attr(instance_var, method_name))
 
   def byte_PRECALL(self, opcode):
     del opcode  # unused

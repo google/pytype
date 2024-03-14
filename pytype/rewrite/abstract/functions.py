@@ -222,6 +222,9 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
 
 
 class _Frame(Protocol):
+  """Protocol for a VM frame."""
+
+  final_locals: Mapping[str, base.BaseValue]
 
   def make_child_frame(
       self,

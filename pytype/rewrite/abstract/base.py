@@ -1,6 +1,6 @@
 """Base abstract representation of Python values."""
 
-from typing import Generic, Set, TypeVar
+from typing import Generic, Optional, Set, TypeVar
 
 from pytype.rewrite.flow import variables
 from typing_extensions import Self
@@ -12,6 +12,13 @@ class BaseValue:
 
   def to_variable(self: Self) -> variables.Variable[Self]:
     return variables.Variable.from_value(self)
+
+  def get_attribute(self, name: str) -> Optional['BaseValue']:
+    del name  # unused
+    return None
+
+  def set_attribute(self, name: str, value: 'BaseValue') -> None:
+    del name, value  # unused
 
 
 class PythonConstant(BaseValue, Generic[_T]):
