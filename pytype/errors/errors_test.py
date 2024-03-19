@@ -6,8 +6,8 @@ import io
 import textwrap
 from unittest import mock
 
-from pytype import errors
 from pytype import state as frame_state
+from pytype.errors import errors
 from pytype.platform_utils import path_utils
 from pytype.tests import test_utils
 
@@ -291,8 +291,9 @@ class ErrorLogBaseTest(unittest.TestCase):
 
 
 class ErrorDocTest(unittest.TestCase):
+  dirname = path_utils.dirname
   ERROR_FILE_PATH = path_utils.join(
-      path_utils.dirname(errors.__file__), "../docs/errors.md")
+      dirname(dirname(errors.__file__)), "../docs/errors.md")
 
   def _check_and_get_documented_errors(self):
     with open(self.ERROR_FILE_PATH) as f:

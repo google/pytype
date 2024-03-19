@@ -2,7 +2,7 @@
 
 import os
 
-from pytype import errors
+from pytype.errors import errors
 from pytype.pytd import pytd_utils
 from pytype.tests import test_base
 

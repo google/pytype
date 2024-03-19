@@ -17,8 +17,8 @@ py_library(
   DEPS
     .vm
     pytype.config
-    pytype.errors
     pytype.load_pytd
+    pytype.errors.errors
     pytype.pytd.pytd
 )
 
