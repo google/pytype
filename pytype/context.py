@@ -8,7 +8,6 @@ from pytype import annotation_utils
 from pytype import attribute
 from pytype import config
 from pytype import convert
-from pytype import errors
 from pytype import load_pytd
 from pytype import matcher
 from pytype import output
@@ -17,6 +16,7 @@ from pytype import vm_utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import errors
 from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils

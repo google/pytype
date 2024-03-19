@@ -3,8 +3,8 @@
 import sys
 import textwrap
 
-from pytype import errors
 from pytype.directors import directors
+from pytype.errors import errors
 import unittest
 
 _TEST_FILENAME = "my_file.py"

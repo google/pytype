@@ -8,11 +8,11 @@ import sys
 from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
-from pytype import error_printer
 from pytype import pretty_printer
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import function
+from pytype.errors import error_printer
 from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import slots
 

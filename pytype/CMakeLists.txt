@@ -5,9 +5,9 @@ py_library(
     api
   DEPS
     .config
-    .errors
     .io
     .load_pytd
+    pytype.errors.errors
 )
 
 toplevel_py_binary(
@@ -41,27 +41,12 @@ py_library(
   DEPS
     ._utils
     .datatypes
-    .errors
     .file_utils
     .imports_map_loader
     .module_utils
+    pytype.errors.errors
     pytype.pyc.pyc
     pytype.typegraph.cfg_utils
-)
-
-py_library(
-  NAME
-    errors
-  SRCS
-    errors.py
-  DEPS
-    ._utils
-    .debug
-    .error_printer
-    .pretty_printer
-    pytype.abstract.abstract
-    pytype.overlays.overlays
-    pytype.pytd.pytd
 )
 
 py_library(
@@ -102,7 +87,6 @@ py_library(
     .convert
     .convert_structural
     .debug
-    .errors
     .imports_map_loader
     .io
     .load_pytd
@@ -113,6 +97,7 @@ py_library(
     .tracer_vm
     .vm
     pytype.directors.directors
+    pytype.errors.errors
 )
 
 py_library(
@@ -122,20 +107,6 @@ py_library(
     pretty_printer.py
   DEPS
     pytype.abstract.abstract
-    pytype.pytd.pytd
-    pytype.typegraph.cfg
-)
-
-py_library(
-  NAME
-    error_printer
-  SRCS
-    error_printer.py
-  DEPS
-    .matcher
-    .pretty_printer
-    pytype.abstract.abstract
-    pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
 )
@@ -253,13 +224,13 @@ py_library(
     .attribute
     .config
     .convert
-    .errors
     .load_pytd
     .matcher
     .output
     .tracer_vm
     .vm_utils
     pytype.abstract.abstract
+    pytype.errors.errors
     pytype.overlays.overlays
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
@@ -512,8 +483,8 @@ py_test(
     typegraph_metrics_test.py
   DEPS
     .context
-    .errors
     .vm
+    pytype.errors.errors
     pytype.tests.test_base
     pytype.typegraph.cfg
 )
@@ -600,9 +571,9 @@ py_test(
     .compare
     .config
     .context
-    .errors
     .load_pytd
     pytype.abstract.abstract
+    pytype.errors.errors
     pytype.pytd.pytd
     pytype.tests.test_base
 )
@@ -638,9 +609,9 @@ py_test(
   DEPS
     .config
     .context
-    .errors
     .load_pytd
     pytype.abstract.abstract
+    pytype.errors.errors
     pytype.tests.test_base
 )
 
@@ -662,12 +633,12 @@ py_test(
     .config
     .constant_folding
     .context
-    .errors
     .load_pytd
     .state
     pytype.abstract.abstract
     pytype.blocks.blocks
     pytype.directors.directors
+    pytype.errors.errors
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.tests.test_base
@@ -776,6 +747,7 @@ add_subdirectory(abstract)
 add_subdirectory(ast)
 add_subdirectory(blocks)
 add_subdirectory(directors)
+add_subdirectory(errors)
 add_subdirectory(imports)
 add_subdirectory(inspect)
 add_subdirectory(overlays)

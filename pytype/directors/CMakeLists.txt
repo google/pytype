@@ -62,5 +62,5 @@ py_test(
     directors_test.py
   DEPS
     .directors
-    pytype.errors
+    pytype.errors.errors
 )

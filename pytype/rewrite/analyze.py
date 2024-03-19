@@ -5,8 +5,8 @@ import logging
 from typing import Optional
 
 from pytype import config
-from pytype import errors
 from pytype import load_pytd
+from pytype.errors import errors
 from pytype.pytd import pytd
 from pytype.rewrite import vm as vm_lib
 

@@ -12,11 +12,11 @@ import sys
 from typing import List, overload
 
 from pytype import datatypes
-from pytype import errors
 from pytype import file_utils
 from pytype import imports_map_loader
 from pytype import module_utils
 from pytype import utils
+from pytype.errors import errors
 from pytype.pyc import compiler
 from pytype.typegraph import cfg_utils
 
