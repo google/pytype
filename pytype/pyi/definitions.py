@@ -468,11 +468,13 @@ class Definitions:
       raise _ParseError(f"{tvar.kind} name needs to be {tvar.name!r} "
                         f"(not {name!r})")
     bound = tvar.bound
-    if isinstance(bound, str):
-      bound = pytd.NamedType(bound)
     constraints = tuple(tvar.constraints) if tvar.constraints else ()
+    if isinstance(tvar.default, list):
+      default = tuple(tvar.default)
+    else:
+      default = tvar.default
     self.type_params.append(pytd_type(
-        name=name, constraints=constraints, bound=bound))
+        name=name, constraints=constraints, bound=bound, default=default))
 
   def add_import(self, from_package, import_list):
     """Add an import.

@@ -552,8 +552,7 @@ class TestVisitors(parser_test_base.ParserTest):
     """)
     a = ast.Lookup("A")
     self.assertEqual(
-        (pytd.TemplateItem(pytd.TypeParameter("T", (), None, "A")),),
-        a.template)
+        (pytd.TemplateItem(pytd.TypeParameter("T", scope="A")),), a.template)
 
   def test_adjust_type_parameters_with_duplicates_in_generic(self):
     src = textwrap.dedent("""

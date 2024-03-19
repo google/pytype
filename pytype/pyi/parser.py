@@ -8,7 +8,7 @@ import keyword
 import re
 import sys
 import tokenize
-from typing import Any, List, Optional, Tuple, cast
+from typing import Any, List, Optional, Tuple, Union, cast
 
 from pytype.ast import debug
 from pytype.pyi import conditions
@@ -61,6 +61,7 @@ class _TypeVariable:
   name: str
   bound: Optional[pytd.Type]
   constraints: List[pytd.Type]
+  default: Optional[Union[pytd.Type, List[pytd.Type]]]
 
   @classmethod
   def from_call(cls, kind: str, node: astlib.Call):
@@ -72,18 +73,20 @@ class _TypeVariable:
     if not types.Pyval.is_str(name):
       raise ParseError(f"Bad arguments to {kind}")
     bound = None
-    # 'bound' is the only keyword argument we currently use.
+    default = None
     # TODO(rechen): We should enforce the PEP 484 guideline that
     # len(constraints) != 1. However, this guideline is currently violated
     # in typeshed (see https://github.com/python/typeshed/pull/806).
     kws = {x.arg for x in node.keywords}
-    extra = kws - {"bound", "covariant", "contravariant"}
+    extra = kws - {"bound", "covariant", "contravariant", "default"}
     if extra:
       raise ParseError(f"Unrecognized keyword(s): {', '.join(extra)}")
     for kw in node.keywords:
       if kw.arg == "bound":
         bound = kw.value
-    return cls(kind, name.value, bound, constraints)
+      elif kw.arg == "default":
+        default = kw.value
+    return cls(kind, name.value, bound, constraints, default)
 
 #------------------------------------------------------
 # Main tree visitor and generator code
@@ -674,6 +677,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
     for kw in node.keywords:
       if kw.arg == "bound":
         kw.value = self.annotation_visitor.visit(kw.value)
+      elif kw.arg == "default":
+        kw.value = self.annotation_visitor.visit(kw.value)
 
   def _convert_typed_dict_args(self, node: astlib.Call):
     for fields in node.args[1:]:
@@ -682,7 +687,8 @@ class _GeneratePytdVisitor(visitor.BaseVisitor):
   def enter_Call(self, node):
     node.func = self.annotation_visitor.visit(node.func)
     func = node.func.name or ""
-    if self.defs.matches_type(func, ("typing.TypeVar", "typing.ParamSpec")):
+    if self.defs.matches_type(func, ("typing.TypeVar", "typing.ParamSpec",
+                                     "typing.TypeVarTuple")):
       self._convert_typevar_args(node)
     elif self.defs.matches_type(func, "typing.NamedTuple"):
       self._convert_typing_namedtuple_args(node)
