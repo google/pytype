@@ -209,6 +209,11 @@ class PrintVisitor(base_visitor.Visitor):
       args += [self.Print(c) for c in t.constraints]
       if t.bound:
         args.append(f"bound={self.Print(t.bound)}")
+      if isinstance(t.default, tuple):
+        args.append(
+            f"default=[{', '.join(self.Print(d) for d in t.default)}]")
+      elif t.default:
+        args.append(f"default={self.Print(t.default)}")
       if isinstance(t, pytd.ParamSpec):
         typename = self._LookupTypingMember("ParamSpec")
       else:

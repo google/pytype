@@ -3526,5 +3526,30 @@ class UnpackTest(parser_test_base.ParserTestBase):
     """)
 
 
+class TypeParameterDefaultTest(parser_test_base.ParserTestBase):
+
+  def test_typevar(self):
+    self.check("""
+      from typing_extensions import TypeVar
+
+      T = TypeVar('T', default=int)
+    """)
+
+  def test_paramspec(self):
+    self.check("""
+      from typing_extensions import ParamSpec
+
+      P = ParamSpec('P', default=[str, int])
+    """)
+
+  def test_typevartuple(self):
+    self.check("""
+      from typing_extensions import TypeVarTuple, Unpack
+      Ts = TypeVarTuple('Ts', default=Unpack[tuple[str, int]])
+    """, """
+      from typing_extensions import TypeVarTuple, TypeVarTuple as Ts, Unpack
+    """)
+
+
 if __name__ == "__main__":
   unittest.main()

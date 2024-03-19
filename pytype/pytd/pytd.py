@@ -344,6 +344,7 @@ class TypeParameter(Type):
   name: str
   constraints: Tuple[TypeU, ...] = ()
   bound: Optional[TypeU] = None
+  default: Optional[Union[TypeU, Tuple[TypeU, ...]]] = None
   scope: Optional[str] = None
 
   def __lt__(self, other):
