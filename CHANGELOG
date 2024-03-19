@@ -1,3 +1,11 @@
+Version 2024.03.19:
+
+Updates:
+* Add 'default' field to pytd.TypeParameter.
+
+Bug fixes:
+* Raise an error when a non-class is passed to a class match case.
+
 Version 2024.03.11:
 
 Updates:
