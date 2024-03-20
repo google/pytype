@@ -18,6 +18,7 @@ py_library(
   SRCS
     base.py
   DEPS
+    pytype.utils
     pytype.rewrite.flow.flow
 )
 

@@ -268,6 +268,10 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
   def __repr__(self):
     return f'InterpreterFunction({self.name})'
 
+  @property
+  def _attrs(self):
+    return (self.name, self.code)
+
   def call_with_mapped_args(self, mapped_args: MappedArgs[_FrameT]) -> _FrameT:
     parent_frame = mapped_args.frame or self._parent_frame
     frame = parent_frame.make_child_frame(self, mapped_args.argdict)
@@ -288,6 +292,10 @@ class BoundFunction(BaseFunction[_HasReturnT]):
 
   def __repr__(self):
     return f'BoundFunction({self.callself!r}, {self.underlying!r})'
+
+  @property
+  def _attrs(self):
+    return (self.callself, self.underlying)
 
   @property
   def name(self):

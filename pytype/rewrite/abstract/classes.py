@@ -4,6 +4,7 @@ import dataclasses
 
 from typing import Dict, List, Optional, Protocol, Sequence
 
+import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 
@@ -42,6 +43,10 @@ class BaseClass(base.BaseValue):
 
   def __repr__(self):
     return f'BaseClass({self.name})'
+
+  @property
+  def _attrs(self):
+    return (self.name, immutabledict.immutabledict(self.members))
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     return self.members.get(name)
@@ -103,6 +108,10 @@ class MutableInstance(base.BaseValue):
   def __repr__(self):
     return f'MutableInstance({self.cls.name})'
 
+  @property
+  def _attrs(self):
+    return (self.cls, immutabledict.immutabledict(self.members))
+
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     if name in self.members:
       return self.members[name]
@@ -129,6 +138,12 @@ class FrozenInstance(base.BaseValue):
 
   def __init__(self, instance: MutableInstance):
     self._underlying = instance
+
+  def __repr__(self):
+    return f'FrozenInstance({self._underlying.cls.name})'
+
+  def _attrs(self):
+    return (self._underlying,)
 
   @property
   def cls(self):
