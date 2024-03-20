@@ -4,6 +4,7 @@ from pytype import config
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import special_builtins
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
@@ -301,7 +302,7 @@ class FunctionTest(AbstractTestBase):
     arg = self._ctx.convert.primitive_class_instances[int].to_variable(
         self._ctx.root_node)
     self.assertRaises(
-        function.WrongArgTypes, self._call_pytd_function, f, (arg,))
+        error_types.WrongArgTypes, self._call_pytd_function, f, (arg,))
 
   def test_simple_call(self):
     f = self._make_pytd_function(
@@ -737,15 +738,15 @@ class SimpleFunctionTest(AbstractTestBase):
     f = self._make_func(
         param_names=("test",), annotations={"test": self._ctx.convert.str_type})
     args = function.Args((self._ctx.convert.build_int(self._ctx.root_node),))
-    self.assertRaises(function.WrongArgTypes, f.call, self._ctx.root_node, f,
+    self.assertRaises(error_types.WrongArgTypes, f.call, self._ctx.root_node, f,
                       args)
 
   def test_call_with_no_args(self):
     f = self._simple_sig(
         [self._ctx.convert.str_type, self._ctx.convert.int_type])
     args = function.Args(())
-    self.assertRaises(function.MissingParameter, f.call, self._ctx.root_node, f,
-                      args)
+    self.assertRaises(error_types.MissingParameter, f.call, self._ctx.root_node,
+                      f, args)
 
   def test_call_with_multiple_arg_bindings(self):
     f = self._simple_sig([self._ctx.convert.str_type])
@@ -782,7 +783,7 @@ class SimpleFunctionTest(AbstractTestBase):
         (self._ctx.convert.build_string(self._ctx.root_node, ""),
          self._ctx.convert.build_int(self._ctx.root_node)))
     args = function.Args(posargs=(), starargs=starargs)
-    self.assertRaises(function.WrongArgTypes, f.call, self._ctx.root_node, f,
+    self.assertRaises(error_types.WrongArgTypes, f.call, self._ctx.root_node, f,
                       args)
 
   def test_call_with_multiple_varargs_bindings(self):
@@ -820,7 +821,7 @@ class SimpleFunctionTest(AbstractTestBase):
     kwargs = kwargs.to_variable(self._ctx.root_node)
     args = function.Args(
         posargs=(), namedargs={}, starstarargs=kwargs)
-    self.assertRaises(function.WrongArgTypes, f.call, self._ctx.root_node, f,
+    self.assertRaises(error_types.WrongArgTypes, f.call, self._ctx.root_node, f,
                       args)
 
   def test_call_with_kwonly_args(self):
@@ -854,8 +855,8 @@ class SimpleFunctionTest(AbstractTestBase):
                  self._ctx.convert.build_int(self._ctx.root_node)),
         namedargs={},
         starstarargs=kwargs)
-    self.assertRaises(function.MissingParameter, f.call, self._ctx.root_node, f,
-                      args)
+    self.assertRaises(error_types.MissingParameter, f.call, self._ctx.root_node,
+                      f, args)
 
   def test_call_with_all_args(self):
     f = self._make_func(
@@ -905,8 +906,8 @@ class SimpleFunctionTest(AbstractTestBase):
     f.call(self._ctx.root_node, f, args)
     args = function.Args(
         posargs=(self._ctx.convert.build_int(self._ctx.root_node),))
-    self.assertRaises(function.MissingParameter, f.call, self._ctx.root_node, f,
-                      args)
+    self.assertRaises(error_types.MissingParameter, f.call, self._ctx.root_node,
+                      f, args)
 
   def test_call_with_bad_default(self):
     f = self._make_func(
@@ -919,7 +920,7 @@ class SimpleFunctionTest(AbstractTestBase):
     args = function.Args(
         posargs=(self._ctx.convert.build_int(self._ctx.root_node),
                  self._ctx.convert.build_int(self._ctx.root_node)))
-    self.assertRaises(function.WrongArgTypes, f.call, self._ctx.root_node, f,
+    self.assertRaises(error_types.WrongArgTypes, f.call, self._ctx.root_node, f,
                       args)
 
   def test_call_with_duplicate_keyword(self):
@@ -928,15 +929,15 @@ class SimpleFunctionTest(AbstractTestBase):
         posargs=(self._ctx.convert.build_int(self._ctx.root_node),
                  self._ctx.convert.build_int(self._ctx.root_node)),
         namedargs={"_1": self._ctx.convert.build_int(self._ctx.root_node)})
-    self.assertRaises(function.DuplicateKeyword, f.call, self._ctx.root_node, f,
-                      args)
+    self.assertRaises(error_types.DuplicateKeyword, f.call, self._ctx.root_node,
+                      f, args)
 
   def test_call_with_wrong_arg_count(self):
     f = self._simple_sig([self._ctx.convert.int_type])
     args = function.Args(
         posargs=(self._ctx.convert.build_int(self._ctx.root_node),
                  self._ctx.convert.build_int(self._ctx.root_node)))
-    self.assertRaises(function.WrongArgCount, f.call, self._ctx.root_node, f,
+    self.assertRaises(error_types.WrongArgCount, f.call, self._ctx.root_node, f,
                       args)
 
   def test_change_defaults(self):

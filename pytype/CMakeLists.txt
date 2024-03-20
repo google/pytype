@@ -109,6 +109,7 @@ py_library(
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 filegroup(
@@ -173,6 +174,7 @@ py_library(
     ._utils
     .datatypes
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.overlays.overlays
     pytype.typegraph.cfg
 )
@@ -314,6 +316,7 @@ py_library(
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_library(
@@ -470,6 +473,7 @@ py_library(
     pytype.abstract.abstract
     pytype.blocks.blocks
     pytype.directors.directors
+    pytype.errors.error_types
     pytype.overlays.overlays
     pytype.pyc.pyc
     pytype.pytd.pytd
@@ -574,6 +578,7 @@ py_test(
     .load_pytd
     pytype.abstract.abstract
     pytype.errors.errors
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.tests.test_base
 )
@@ -587,6 +592,7 @@ py_test(
     .config
     pytype.abstract.abstract
     pytype.tests.test_base
+    pytype.types.types
 )
 
 py_test(

@@ -7,6 +7,7 @@ from typing import Dict, Optional, Set
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
@@ -22,7 +23,7 @@ def _is_required(value: abstract.BaseValue) -> Optional[bool]:
     return None
 
 
-class TypedDictKeyMissing(function.DictKeyMissing):
+class TypedDictKeyMissing(error_types.DictKeyMissing):
 
   def __init__(self, typed_dict: "TypedDict", key: Optional[str]):
     super().__init__(key)
@@ -93,11 +94,11 @@ class TypedDictBuilder(abstract.PyTDClass):
       return abstract_utils.get_atomic_python_constant(var, pyval_type)
     except abstract_utils.ConversionError as e:
       bad = abstract_utils.BadType(name, typ)
-      raise function.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
+      raise error_types.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
 
   def _extract_args(self, args):
     if len(args.posargs) != 2:
-      raise function.WrongArgCount(self.fn_sig, args, self.ctx)
+      raise error_types.WrongArgCount(self.fn_sig, args, self.ctx)
     name = self._extract_param(args, 0, "name", str, self.ctx.convert.str_type)
     fields = self._extract_param(
         args, 1, "fields", dict, self.ctx.convert.dict_type)

@@ -11,8 +11,8 @@ from pytype import debug
 from pytype import pretty_printer
 from pytype import utils
 from pytype.abstract import abstract
-from pytype.abstract import function
 from pytype.errors import error_printer
+from pytype.errors import error_types
 from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import slots
 
@@ -680,31 +680,31 @@ class ErrorLog(ErrorLogBase):
   def invalid_function_call(self, stack, error):
     """Log an invalid function call."""
     # Make sure method names are prefixed with the class name.
-    if (isinstance(error, function.InvalidParameters) and
+    if (isinstance(error, error_types.InvalidParameters) and
         "." not in error.name and error.bad_call.sig.param_names and
         error.bad_call.sig.param_names[0] in ("self", "cls") and
         error.bad_call.passed_args):
       error.name = f"{error.bad_call.passed_args[0][1].full_name}.{error.name}"
-    if isinstance(error, function.WrongArgCount):
+    if isinstance(error, error_types.WrongArgCount):
       self.wrong_arg_count(stack, error.name, error.bad_call)
-    elif isinstance(error, function.WrongArgTypes):
+    elif isinstance(error, error_types.WrongArgTypes):
       self.wrong_arg_types(stack, error.name, error.bad_call)
-    elif isinstance(error, function.WrongKeywordArgs):
+    elif isinstance(error, error_types.WrongKeywordArgs):
       self.wrong_keyword_args(
           stack, error.name, error.bad_call, error.extra_keywords)
-    elif isinstance(error, function.MissingParameter):
+    elif isinstance(error, error_types.MissingParameter):
       self.missing_parameter(
           stack, error.name, error.bad_call, error.missing_parameter)
-    elif isinstance(error, function.NotCallable):
+    elif isinstance(error, error_types.NotCallable):
       self.not_callable(stack, error.obj)
-    elif isinstance(error, function.DuplicateKeyword):
+    elif isinstance(error, error_types.DuplicateKeyword):
       self.duplicate_keyword(
           stack, error.name, error.bad_call, error.duplicate)
-    elif isinstance(error, function.UndefinedParameterError):
+    elif isinstance(error, error_types.UndefinedParameterError):
       self.name_error(stack, error.name)
     elif isinstance(error, typed_dict_overlay.TypedDictKeyMissing):
       self.typed_dict_error(stack, error.typed_dict, error.name)
-    elif isinstance(error, function.DictKeyMissing):
+    elif isinstance(error, error_types.DictKeyMissing):
       # We don't report DictKeyMissing because the false positive rate is high.
       pass
     else:

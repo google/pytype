@@ -13,9 +13,10 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
+from pytype.types import types
 
 
-def show_constant(val: abstract.BaseValue) -> str:
+def show_constant(val: types.BaseValue) -> str:
   """Pretty-print a value if it is a constant.
 
   Recurses into a constant, printing the underlying Python value for constants
@@ -64,16 +65,16 @@ class PrettyPrinter:
       return name[:start] + name[start+1:].replace("_DOT_", ".")
     return name
 
-  def join_printed_types(self, types: Iterable[str]) -> str:
+  def join_printed_types(self, typs: Iterable[str]) -> str:
     """Pretty-print the union of the printed types."""
-    types = set(types)  # dedup
-    if len(types) == 1:
-      return next(iter(types))
-    elif types:
+    typs = set(typs)  # dedup
+    if len(typs) == 1:
+      return next(iter(typs))
+    elif typs:
       literal_contents = set()
       optional = False
       new_types = []
-      for t in types:
+      for t in typs:
         if t.startswith("Literal["):
           literal_contents.update(t[len("Literal["):-1].split(", "))
         elif t == "None":
@@ -102,7 +103,7 @@ class PrettyPrinter:
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       return self.print_pytd(generic)
 
-  def print_as_expected_type(self, t: abstract.BaseValue, instance=None) -> str:
+  def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
     """Print abstract value t as a pytd type."""
     convert = t.ctx.pytd_convert
     if isinstance(t, (abstract.Unknown, abstract.Unsolvable,

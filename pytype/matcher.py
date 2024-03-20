@@ -3,7 +3,7 @@ import collections
 import contextlib
 import dataclasses
 import logging
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple, cast
 
 from pytype import datatypes
 from pytype import utils
@@ -18,6 +18,7 @@ from pytype.overlays import typing_overlay
 from pytype.pytd import pep484
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
+from pytype.types import types
 
 
 log = logging.getLogger(__name__)
@@ -284,7 +285,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     )
 
   def _get_bad_type(
-      self, name: Optional[str], expected: abstract.BaseValue
+      self, name: Optional[str], expected: types.BaseValue
   ) -> abstract_utils.BadType:
     return abstract_utils.BadType(
         name=name,
@@ -296,7 +297,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
   # in compute_one_match, which didn't play nicely with overloads. Instead,
   # enforcement should be pushed to callers of compute_matches.
   def compute_matches(
-      self, args: List[function.Arg], match_all_views: bool,
+      self, args: List[types.Arg], match_all_views: bool,
       keep_all_views: bool = False,
       alias_map: Optional[datatypes.UnionFind] = None) -> List[GoodMatch]:
     """Compute information about type parameters using one-way unification.
@@ -332,8 +333,9 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           bad_param = match_result.bad_matches[0].expected
         raise self.MatchError(bad_param)
       if keep_all_views or any(m.subst for m in match_result.good_matches):
+        typ = cast(abstract.BaseValue, arg.typ)
         matches = self._merge_matches(
-            arg.name, arg.typ, matches, match_result.good_matches,
+            arg.name, typ, matches, match_result.good_matches,
             keep_all_views, has_self)
     return matches if matches else [GoodMatch.default()]
 
@@ -1618,10 +1620,10 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     parameters = {}
     for param in cls.template:
       param_value = value.get_instance_type_parameter(param.name)
-      types = list(filter(None, (self._get_type(v) for v in param_value.data)))
-      if not types:
+      typs = list(filter(None, (self._get_type(v) for v in param_value.data)))
+      if not typs:
         break
-      parameters[param.name] = self.ctx.convert.merge_values(types)
+      parameters[param.name] = self.ctx.convert.merge_values(typs)
     else:
       # If 'value' provides non-empty values for all of its class's parameters,
       # then we construct a ParameterizedClass so that the parameter values are

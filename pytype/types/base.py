@@ -2,15 +2,36 @@
 
 from typing import Any
 
+from pytype.pytd import pytd
+
 
 # Base datatypes
 
 
+# NOTE: This cannot inherit from abc.ABC due to a conflict with the custom
+# metaclasses we use in some of our abstract classes.
 class BaseValue:
   """The base class for abstract values.
 
   A BaseValue is pytype's internal representation of a python object.
   """
+  name: str
+  cls: 'BaseValue'
+
+  @property
+  def ctx(self) -> Any:
+    """All abstract objects contain a reference to the VM context."""
+    raise NotImplementedError()
+
+  def get_instance_type(self, *args, **kwargs) -> pytd.Type:
+    """Get the pytd type an instance of us would have."""
+    raise NotImplementedError()
+
+  def is_late_annotation(self) -> bool:
+    raise NotImplementedError()
+
+  def is_concrete(self) -> bool:
+    raise NotImplementedError()
 
 
 # Pytype wraps values in Variables, which contain bindings of named python

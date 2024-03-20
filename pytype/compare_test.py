@@ -4,7 +4,7 @@ from pytype import compare
 from pytype import config
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.pytd import pytd
 from pytype.pytd import slots
 from pytype.tests import test_base
@@ -264,7 +264,7 @@ class DictTest(CompareTestBase):
 
   def test_bad_pop(self):
     self._d.set_str_item(self._node, "a", self._var)
-    self.assertRaises(function.DictKeyMissing, self._d.pop_slot, self._node,
+    self.assertRaises(error_types.DictKeyMissing, self._d.pop_slot, self._node,
                       self._convert.build_string(self._node, "b"))
     self.assertTruthy(self._d)
 

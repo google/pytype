@@ -8,7 +8,7 @@ from typing import List
 from pytype import matcher
 from pytype import pretty_printer
 from pytype.abstract import abstract
-from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
@@ -30,16 +30,16 @@ class BadCall:
 
 
 class BadCallPrinter:
-  """Print the details of an abstract.function.BadCall."""
+  """Print the details of a BadCall."""
 
   def __init__(
-      self, pp: pretty_printer.PrettyPrinter, bad_call: function.BadCall
+      self, pp: pretty_printer.PrettyPrinter, bad_call: error_types.BadCall
   ):
     self.bad_call = bad_call
     self._pp = pp
 
   def _iter_sig(self):
-    """Iterate through a function.Signature object. Focus on a bad parameter."""
+    """Iterate through a Signature object. Focus on a bad parameter."""
     sig = self.bad_call.sig
     for name in sig.posonly_params:
       yield "", name
@@ -61,7 +61,7 @@ class BadCallPrinter:
     bad_param = self.bad_call.bad_param
     sig = self.bad_call.sig
     for prefix, name in self._iter_sig():
-      suffix = " = ..." if name in sig.defaults else ""
+      suffix = " = ..." if sig.has_default(name) else ""
       if bad_param and name == bad_param.name:
         type_str = self._pp.print_as_expected_type(bad_param.typ)
         suffix = ": " + type_str + suffix

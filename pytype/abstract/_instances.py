@@ -9,6 +9,7 @@ from pytype.abstract import _instance_base
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.errors import error_types
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
@@ -506,7 +507,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
             results.append(self.pyval[name])
           except KeyError as e:
             unresolved = True
-            raise function.DictKeyMissing(name) from e
+            raise error_types.DictKeyMissing(name) from e
     node, ret = self.call_pytd(node, "__getitem__", name_var)
     if unresolved or not self.is_concrete:
       # We *do* know the overall type of the values through the "V" type
@@ -591,7 +592,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
       try:
         return node, self.pyval.pop(str_key)
       except KeyError as e:
-        raise function.DictKeyMissing(str_key) from e
+        raise error_types.DictKeyMissing(str_key) from e
 
   def _set_params_to_any(self, node):
     self.is_concrete = False
@@ -603,7 +604,7 @@ class Dict(_instance_base.Instance, mixin.HasSlots, mixin.PythonDict):
   def _set_params_to_any_on_failure(self, node):
     try:
       yield
-    except function.FailedFunctionCall:
+    except error_types.FailedFunctionCall:
       self._set_params_to_any(node)
       raise
 

@@ -9,6 +9,7 @@ import logging
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
 
 log = logging.getLogger(__name__)
 
@@ -26,7 +27,7 @@ class AddMetaclassInstance(abstract.BaseValue):
     if len(args.posargs) != 1:
       sig = function.Signature.from_param_names(
           f"{self.module}.add_metaclass", ("cls",))
-      raise function.WrongArgCount(sig, args, self.ctx)
+      raise error_types.WrongArgCount(sig, args, self.ctx)
     cls_var = args.posargs[0]
     for b in cls_var.bindings:
       cls = b.data

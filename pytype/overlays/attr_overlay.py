@@ -9,6 +9,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
@@ -469,7 +470,7 @@ class Attrib(classgen.FieldConstructor):
               abstract_utils.RET: anyt
           }, self.ctx)
       bad_param = abstract_utils.BadType("converter", wanted_type)
-      raise function.WrongArgTypes(self.sig, args, self.ctx, bad_param)
+      raise error_types.WrongArgTypes(self.sig, args, self.ctx, bad_param)
     return valid_sigs[0]
 
   def _call_converter_function(self, node, converter_var, args):
@@ -508,7 +509,7 @@ class Attrib(classgen.FieldConstructor):
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "factory" in args.namedargs:
       # attr.ib(factory=x) is syntactic sugar for attr.ib(default=Factory(x)).
-      raise function.DuplicateKeyword(self.sig, args, self.ctx, "default")
+      raise error_types.DuplicateKeyword(self.sig, args, self.ctx, "default")
     elif "default" in args.namedargs:
       default_var = args.namedargs["default"]
     elif "factory" in args.namedargs:

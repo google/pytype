@@ -5,17 +5,19 @@ import collections
 import dataclasses
 import itertools
 import logging
-from typing import Any, Dict, Optional, Sequence, Tuple, TypeVar, cast
+from typing import Any, Dict, Optional, Tuple, TypeVar, cast
 
 import attrs
 
 from pytype import datatypes
 from pytype.abstract import _base
 from pytype.abstract import abstract_utils
+from pytype.errors import error_types
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -72,7 +74,7 @@ def _print(t):
 _SigT = TypeVar("_SigT", bound="Signature")
 
 
-class Signature:
+class Signature(types.Signature):
   """Representation of a Python function signature.
 
   Attributes:
@@ -108,12 +110,8 @@ class Signature:
       annotations: Dict[str, _base.BaseValue],
       postprocess_annotations: bool = True,
   ) -> None:
-    self.name = name
-    self.param_names = param_names
-    self.posonly_count = posonly_count
-    self.varargs_name = varargs_name
-    self.kwonly_params = kwonly_params
-    self.kwargs_name = kwargs_name
+    super().__init__(name, param_names, posonly_count, varargs_name,
+                     kwonly_params, kwargs_name)
     self.defaults = defaults
     self.annotations = annotations
     self.excluded_types = set()
@@ -133,9 +131,8 @@ class Signature:
   def has_param_annotations(self):
     return bool(self.annotations.keys() - {"return"})
 
-  @property
-  def posonly_params(self):
-    return self.param_names[:self.posonly_count]
+  def has_default(self, name):
+    return name in self.defaults
 
   def add_scope(self, cls):
     """Add scope for type parameters in annotations."""
@@ -751,22 +748,6 @@ class Args:
                for arg in (self.starargs, self.starstarargs))
 
 
-class ReturnValueMixin:
-  """Mixin for exceptions that hold a return node and variable."""
-
-  def __init__(self):
-    super().__init__()
-    self.return_node = None
-    self.return_variable = None
-
-  def set_return(self, node, var):
-    self.return_node = node
-    self.return_variable = var
-
-  def get_return(self, state):
-    return state.change_cfg_node(self.return_node), self.return_variable
-
-
 class ParamSpecMatch(_base.BaseValue):
   """Match a paramspec against a sig."""
 
@@ -783,133 +764,6 @@ class ParamSpecMatch(_base.BaseValue):
       return self.paramspec.args
     else:
       return ()
-
-
-# These names are chosen to match pytype error classes.
-# pylint: disable=g-bad-exception-name
-class FailedFunctionCall(Exception, ReturnValueMixin):
-  """Exception for failed function calls."""
-
-  def __init__(self):
-    super().__init__()
-    self.name = "<no name>"
-
-  def __gt__(self, other):
-    return other is None
-
-  def __le__(self, other):
-    return not self.__gt__(other)
-
-
-class NotCallable(FailedFunctionCall):
-  """For objects that don't have __call__."""
-
-  def __init__(self, obj):
-    super().__init__()
-    self.obj = obj
-
-
-class UndefinedParameterError(FailedFunctionCall):
-  """Function called with an undefined variable."""
-
-  def __init__(self, name):
-    super().__init__()
-    self.name = name
-
-
-class DictKeyMissing(Exception, ReturnValueMixin):
-  """When retrieving a key that does not exist in a dict."""
-
-  def __init__(self, name):
-    super().__init__()
-    self.name = name
-
-  def __gt__(self, other):
-    return other is None
-
-  def __le__(self, other):
-    return not self.__gt__(other)
-
-
-@dataclasses.dataclass(eq=True, frozen=True)
-class BadCall:
-  sig: Signature
-  passed_args: Sequence[Tuple[str, _base.BaseValue]]
-  bad_param: Optional[abstract_utils.BadType]
-
-
-@dataclasses.dataclass(eq=True, frozen=True)
-class Arg:
-  name: str
-  value: cfg.Variable
-  typ: _base.BaseValue
-
-
-class InvalidParameters(FailedFunctionCall):
-  """Exception for functions called with an incorrect parameter combination."""
-
-  def __init__(self, sig, passed_args, ctx, bad_param=None):
-    super().__init__()
-    self.name = sig.name
-    passed_args = [(name, ctx.convert.merge_values(arg.data))
-                   for name, arg, _ in sig.iter_args(passed_args)]
-    self.bad_call = BadCall(sig=sig, passed_args=passed_args,
-                            bad_param=bad_param)
-
-
-class WrongArgTypes(InvalidParameters):
-  """For functions that were called with the wrong types."""
-
-  def __init__(self, sig, passed_args, ctx, bad_param):
-    if not sig.has_param(bad_param.name):
-      sig = sig.insert_varargs_and_kwargs(
-          name for name, *_ in sig.iter_args(passed_args))
-    super().__init__(sig, passed_args, ctx, bad_param)
-
-  def __gt__(self, other):
-    if other is None:
-      return True
-    if not isinstance(other, WrongArgTypes):
-      # WrongArgTypes should take precedence over other FailedFunctionCall
-      # subclasses but not over unrelated errors like DictKeyMissing.
-      return isinstance(other, FailedFunctionCall)
-    # The signature that has fewer *args/**kwargs tends to be more precise.
-    def starcount(err):
-      return (bool(err.bad_call.sig.varargs_name) +
-              bool(err.bad_call.sig.kwargs_name))
-    return starcount(self) < starcount(other)
-
-  def __le__(self, other):
-    return not self.__gt__(other)
-
-
-class WrongArgCount(InvalidParameters):
-  """E.g. if a function expecting 4 parameters is called with 3."""
-
-
-class WrongKeywordArgs(InvalidParameters):
-  """E.g. an arg "x" is passed to a function that doesn't have an "x" param."""
-
-  def __init__(self, sig, passed_args, ctx, extra_keywords):
-    super().__init__(sig, passed_args, ctx)
-    self.extra_keywords = tuple(extra_keywords)
-
-
-class DuplicateKeyword(InvalidParameters):
-  """E.g. an arg "x" is passed to a function as both a posarg and a kwarg."""
-
-  def __init__(self, sig, passed_args, ctx, duplicate):
-    super().__init__(sig, passed_args, ctx)
-    self.duplicate = duplicate
-
-
-class MissingParameter(InvalidParameters):
-  """E.g. a function requires parameter 'x' but 'x' isn't passed."""
-
-  def __init__(self, sig, passed_args, ctx, missing_parameter):
-    super().__init__(sig, passed_args, ctx)
-    self.missing_parameter = missing_parameter
-# pylint: enable=g-bad-exception-name
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1053,7 +907,7 @@ def call_function(
     one_result = None
     try:
       new_node, one_result = func.call(node, funcb, args)
-    except (DictKeyMissing, FailedFunctionCall) as e:
+    except (error_types.DictKeyMissing, error_types.FailedFunctionCall) as e:
       if e > error and ((not strict_filter and len(func_var.bindings) == 1) or
                         funcb.IsVisible(node)):
         error = e
@@ -1075,7 +929,7 @@ def call_function(
     if not result.bindings:
       v = ctx.convert.never if has_never else ctx.convert.unsolvable
       result.AddBinding(v, [], node)
-  elif (isinstance(error, FailedFunctionCall) and
+  elif (isinstance(error, error_types.FailedFunctionCall) and
         all(func.name.endswith(".__init__") for func in func_var.data)):
     # If the function failed with a FailedFunctionCall exception, try calling
     # it again with fake arguments. This allows for calls to __init__ to
@@ -1127,7 +981,7 @@ def match_all_args(ctx, node, func, args):
       where new_args = args with all incorrectly typed values set to Any
             errors = a list of [(type mismatch error, arg name, value)]
 
-  Reraises any error that is not function.InvalidParameters
+  Reraises any error that is not InvalidParameters
   """
   positional_names = func.get_positional_names()
   needs_checking = True
@@ -1135,19 +989,19 @@ def match_all_args(ctx, node, func, args):
   while needs_checking:
     try:
       func.match_args(node, args)
-    except FailedFunctionCall as e:
-      if isinstance(e, WrongKeywordArgs):
+    except error_types.FailedFunctionCall as e:
+      if isinstance(e, error_types.WrongKeywordArgs):
         errors.append((e, e.extra_keywords[0], None))
         for i in e.extra_keywords:
           args = args.delete_namedarg(i)
-      elif isinstance(e, DuplicateKeyword):
+      elif isinstance(e, error_types.DuplicateKeyword):
         errors.append((e, e.duplicate, None))
         args = args.delete_namedarg(e.duplicate)
-      elif isinstance(e, MissingParameter):
+      elif isinstance(e, error_types.MissingParameter):
         errors.append((e, e.missing_parameter, None))
         args = args.replace_namedarg(
             e.missing_parameter, ctx.new_unsolvable(node))
-      elif isinstance(e, WrongArgTypes):
+      elif isinstance(e, error_types.WrongArgTypes):
         arg_name = e.bad_call.bad_param.name
         for name, value in e.bad_call.passed_args:
           if name != arg_name:

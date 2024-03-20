@@ -14,6 +14,8 @@ from pytype.abstract import _singletons
 from pytype.abstract import _typing
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -69,7 +71,7 @@ class Function(_instance_base.SimpleValue):
         # cellvar before it is assigned to in the outer scope.
         name = self._get_cell_variable_name(a)
         assert name is not None, "Closure variable lookup failed."
-        raise function.UndefinedParameterError(name)
+        raise error_types.UndefinedParameterError(name)
     return self._match_args_sequentially(node, args, alias_map, match_all_views)
 
   def _match_args_sequentially(self, node, args, alias_map, match_all_views):
@@ -168,7 +170,7 @@ class NativeFunction(Function):
         # empty, then we can be certain of a WrongArgCount error.
         argnames = tuple("_" + str(i) for i in range(expected_argcount))
         sig = function.Signature.from_param_names(self.name, argnames)
-        raise function.WrongArgCount(sig, args, self.ctx)
+        raise error_types.WrongArgCount(sig, args, self.ctx)
       assert actual_argcount < expected_argcount
       # Assume that starargs or starstarargs fills in the missing arguments.
       # Instead of guessing where these arguments should go, overwrite all of
@@ -182,7 +184,7 @@ class NativeFunction(Function):
       argnames = tuple(
           "_" + str(i) for i in range(len(posargs) + len(namedargs)))
       sig = function.Signature.from_param_names(self.name, argnames)
-      raise function.DuplicateKeyword(sig, args, self.ctx, "self")
+      raise error_types.DuplicateKeyword(sig, args, self.ctx, "self")
     return self.func(node, *posargs, **namedargs)
 
   def get_positional_names(self):
@@ -264,7 +266,7 @@ class BoundFunction(_base.BaseValue):
       with context:
         node, ret = self.underlying.call(node, func, args,
                                          alias_map=self.alias_map)
-    except function.InvalidParameters as e:
+    except error_types.InvalidParameters as e:
       if self._callself and self._callself.bindings:
         if "." in e.name:
           # match_args will try to prepend the parent's name to the error name.
@@ -513,19 +515,19 @@ class SignedFunction(Function):
     posonly_names = set(sig.posonly_params)
     for key in set(positional) - posonly_names:
       if key in kws:
-        raise function.DuplicateKeyword(sig, args, self.ctx, key)
+        raise error_types.DuplicateKeyword(sig, args, self.ctx, key)
     kwnames = set(kws)
     extra_kws = kwnames.difference(sig.param_names + sig.kwonly_params)
     if extra_kws and not sig.kwargs_name:
       if function.has_visible_namedarg(node, args, extra_kws):
-        raise function.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
+        raise error_types.WrongKeywordArgs(sig, args, self.ctx, extra_kws)
     posonly_kws = kwnames & posonly_names
     # If a function has a **kwargs parameter, then keyword arguments with the
     # same name as a positional-only argument are allowed, e.g.:
     #   def f(x, /, **kwargs): ...
     #   f(0, x=1)  # ok
     if posonly_kws and not sig.kwargs_name:
-      raise function.WrongKeywordArgs(sig, args, self.ctx, posonly_kws)
+      raise error_types.WrongKeywordArgs(sig, args, self.ctx, posonly_kws)
     callargs.update(positional)
     callargs.update(kws)
     for key, kwonly in itertools.chain(
@@ -537,7 +539,7 @@ class SignedFunction(Function):
           # to fill in any parameters we might be missing.
           callargs[key] = self.ctx.new_unsolvable(node)
         else:
-          raise function.MissingParameter(sig, args, self.ctx, key)
+          raise error_types.MissingParameter(sig, args, self.ctx, key)
     if sig.varargs_name:
       varargs_name = sig.varargs_name
       extraneous = posargs[self.argcount(node):]
@@ -548,7 +550,7 @@ class SignedFunction(Function):
       else:
         callargs[varargs_name] = self.ctx.convert.build_tuple(node, extraneous)
     elif len(posargs) > self.argcount(node):
-      raise function.WrongArgCount(sig, args, self.ctx)
+      raise error_types.WrongArgCount(sig, args, self.ctx)
     if sig.kwargs_name:
       kwargs_name = sig.kwargs_name
       # Build a **kwargs dictionary out of the extraneous parameters
@@ -599,13 +601,14 @@ class SignedFunction(Function):
         # The annotation is Tuple or Dict, but the passed arg only has to be
         # Iterable or Mapping.
         formal = self.ctx.convert.widen_type(formal)
-      args_to_match.append(function.Arg(name, arg, formal))
+      args_to_match.append(types.Arg(name, arg, formal))
     matcher = self.ctx.matcher(node)
     try:
       matches = matcher.compute_matches(
           args_to_match, match_all_views, alias_map=alias_map)
     except matcher.MatchError as e:
-      raise function.WrongArgTypes(self.signature, args, self.ctx, e.bad_type)
+      raise error_types.WrongArgTypes(
+          self.signature, args, self.ctx, e.bad_type)
     return [m.subst for m in matches]
 
   def get_first_opcode(self):

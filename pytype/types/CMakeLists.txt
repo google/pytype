@@ -23,6 +23,8 @@ py_library(
     base
   SRCS
     base.py
+  DEPS
+    pytype.pytd.pytd
 )
 
 py_library(

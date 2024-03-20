@@ -12,12 +12,14 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.errors import error_types
 from pytype.pyc import opcodes
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.pytd.codegen import decorate
 from pytype.typegraph import cfg
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -798,7 +800,7 @@ class ParameterizedClass(  # pytype: disable=signature-mismatch
 
   def call(self, node, func, args, alias_map=None):
     if not self._is_callable():
-      raise function.NotCallable(self)
+      raise error_types.NotCallable(self)
     else:
       return class_mixin.Class.call(self, node, func, args)
 
@@ -860,22 +862,22 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
   def call_slot(self, node, *args, **kwargs):
     """Implementation of CallableClass.__call__."""
     if kwargs:
-      raise function.WrongKeywordArgs(
+      raise error_types.WrongKeywordArgs(
           function.Signature.from_callable(self),
           function.Args(posargs=args, namedargs=kwargs), self.ctx,
           kwargs.keys())
     if len(args) != self.num_args:
-      raise function.WrongArgCount(
+      raise error_types.WrongArgCount(
           function.Signature.from_callable(self), function.Args(posargs=args),
           self.ctx)
-    match_args = [function.Arg(function.argname(i), args[i],
-                               self.formal_type_parameters[i])
+    match_args = [types.Arg(function.argname(i), args[i],
+                            self.formal_type_parameters[i])
                   for i in range(self.num_args)]
     matcher = self.ctx.matcher(node)
     try:
       matches = matcher.compute_matches(match_args, match_all_views=False)
     except matcher.MatchError as e:
-      raise function.WrongArgTypes(
+      raise error_types.WrongArgTypes(
           function.Signature.from_callable(self),
           function.Args(posargs=args),
           self.ctx,

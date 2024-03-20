@@ -12,7 +12,7 @@ from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
-from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import named_tuple
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
@@ -252,9 +252,9 @@ class _TypeVariable(abstract.PyTDFunction, abc.ABC):
   def _get_typeparam_name(self, node, args):
     try:
       self.match_args(node, args)
-    except function.InvalidParameters as e:
+    except error_types.InvalidParameters as e:
       raise TypeVarError("wrong arguments", e.bad_call) from e
-    except function.FailedFunctionCall as e:
+    except error_types.FailedFunctionCall as e:
       # It is currently impossible to get here, since the only
       # FailedFunctionCall that is not an InvalidParameters is NotCallable.
       raise TypeVarError("initialization failed") from e

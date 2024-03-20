@@ -2,13 +2,13 @@
 
 import abc
 import dataclasses
-from typing import Dict, List, Mapping, Optional, Tuple
+from typing import Dict, List, Optional, Tuple
 
 from pytype.types import base
 
 
-@dataclasses.dataclass(frozen=True)
-class Signature:
+@dataclasses.dataclass
+class Signature(abc.ABC):
   """Representation of a Python function signature.
 
   Attributes:
@@ -21,10 +21,7 @@ class Signature:
       E.g. ("x", "y") for "def f(a, *, x, y=2)". These do NOT appear in
       param_names. Ordered like in the source file.
     kwargs_name: Name of the kwargs parameter. (The "kwargs" in **kwargs)
-    defaults: Dictionary, name to value, for all parameters with default values.
-    annotations: A dictionary of type annotations. (string to type)
-    posonly_params: Tuple of positional-only parameters (i.e., the first
-      posonly_count names in param_names).
+    posonly_params: Tuple of positional-only parameters
   """
   name: str
   param_names: Tuple[str, ...]
@@ -32,8 +29,22 @@ class Signature:
   varargs_name: Optional[str]
   kwonly_params: Tuple[str, ...]
   kwargs_name: Optional[str]
-  defaults: Mapping[str, base.Variable]
-  annotations: Mapping[str, base.BaseValue]
+
+  @property
+  def posonly_params(self):
+    return self.param_names[:self.posonly_count]
+
+  @abc.abstractmethod
+  def has_default(self, name):
+    """Whether the named arg has a default value."""
+
+  @abc.abstractmethod
+  def insert_varargs_and_kwargs(self, args):
+    """Insert varargs and kwargs from args into the signature."""
+
+  @abc.abstractmethod
+  def iter_args(self, args):
+    """Iterates through the given args, attaching names and expected types."""
 
 
 @dataclasses.dataclass(eq=True, frozen=True)
@@ -56,7 +67,7 @@ class Args:
 
 @dataclasses.dataclass(eq=True, frozen=True)
 class Arg:
-  """A single function argument. Used for error handling."""
+  """A single function argument. Used in the matcher and for error handling."""
   name: str
   value: base.Variable
   typ: base.BaseValue

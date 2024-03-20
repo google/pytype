@@ -15,6 +15,7 @@ py_library(
     errors.py
   DEPS
     .error_printer
+    .error_types
     pytype._utils
     pytype.debug
     pytype.pretty_printer
@@ -35,4 +36,13 @@ py_library(
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
+)
+
+py_library(
+  NAME
+    error_types
+  SRCS
+    error_types.py
+  DEPS
+    pytype.types.types
 )

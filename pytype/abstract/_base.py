@@ -9,12 +9,13 @@ from typing import Any
 from pytype import utils
 from pytype.abstract import abstract_utils
 from pytype.pytd import mro
+from pytype.types import types
 
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _make = abstract_utils._make  # pylint: disable=protected-access
 
 
-class BaseValue(utils.ContextWeakrefMixin):
+class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
   """A single abstract value such as a type or function signature.
 
   This is the base class of the things that appear in Variables. It represents
