@@ -335,6 +335,21 @@ class FrameTest(unittest.TestCase):
     c = _get(module_frame, 'c', abstract.MutableInstance)
     self.assertEqual(c.get_attribute('x'), abstract.PythonConstant(3))
 
+  def test_overwrite_instance_attribute(self):
+    module_frame = _make_frame("""
+      class C:
+        def f(self):
+          self.x = 3
+        def g(self):
+          self.f()
+          self.x = None
+      c = C()
+      c.g()
+    """)
+    module_frame.run()
+    c = _get(module_frame, 'c', abstract.MutableInstance)
+    self.assertEqual(c.get_attribute('x'), abstract.PythonConstant(None))
+
 
 if __name__ == '__main__':
   unittest.main()

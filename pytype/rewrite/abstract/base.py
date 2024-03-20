@@ -1,6 +1,6 @@
 """Base abstract representation of Python values."""
 
-from typing import Generic, Optional, Set, TypeVar
+from typing import Generic, Optional, Sequence, Set, TypeVar
 
 from pytype.rewrite.flow import variables
 from typing_extensions import Self
@@ -49,6 +49,24 @@ class Singleton(BaseValue):
 
   def __repr__(self):
     return self.name
+
+
+class Union(BaseValue):
+  """Union of values."""
+
+  def __init__(self, options: Sequence[BaseValue]):
+    assert len(options) > 1
+    flattened_options = []
+    for o in options:
+      if isinstance(o, Union):
+        flattened_options.extend(o.options)
+      else:
+        flattened_options.append(o)
+    # TODO(b/324464329): Deduplicate options.
+    self.options = tuple(flattened_options)
+
+  def __repr__(self):
+    return ' | '.join(repr(o) for o in self.options)
 
 
 ANY = Singleton('ANY')

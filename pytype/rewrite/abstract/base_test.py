@@ -48,5 +48,20 @@ class SingletonTest(unittest.TestCase):
       _ = base.Singleton('TEST_SINGLETON')
 
 
+class UnionTest(unittest.TestCase):
+
+  def test_basic(self):
+    options = (base.PythonConstant(True), base.PythonConstant(False))
+    union = base.Union(options)
+    self.assertEqual(union.options, options)
+
+  def test_flatten(self):
+    union1 = base.Union((base.PythonConstant(True), base.PythonConstant(False)))
+    union2 = base.Union((union1, base.PythonConstant(5)))
+    self.assertEqual(union2.options, (base.PythonConstant(True),
+                                      base.PythonConstant(False),
+                                      base.PythonConstant(5)))
+
+
 if __name__ == '__main__':
   unittest.main()

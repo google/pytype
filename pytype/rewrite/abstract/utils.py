@@ -25,3 +25,13 @@ def get_atomic_constant(var, typ=None):
         f'Wrong constant type for {var.display_name()}: expected '
         f'{runtime_type.__name__}, got {constant.__class__.__name__}')
   return constant
+
+
+def flatten_variable(var: base.AbstractVariableType) -> base.BaseValue:
+  values = var.values
+  if len(values) > 1:
+    return base.Union(values)
+  elif values:
+    return values[0]
+  else:
+    return base.ANY

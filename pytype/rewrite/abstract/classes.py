@@ -135,7 +135,10 @@ class FrozenInstance(base.BaseValue):
     return self._underlying.cls
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
-    return self._underlying.get_attribute(name)
+    attr = self._underlying.get_attribute(name)
+    if isinstance(attr, functions_lib.BoundFunction):
+      return attr.underlying.bind_to(self)
+    return attr
 
 
 BUILD_CLASS = base.Singleton('BUILD_CLASS')

@@ -109,6 +109,17 @@ class CheckTest(unittest.TestCase):
     """)
     vm.analyze_all_defs()
 
+  def test_method_side_effect(self):
+    vm = _make_vm("""
+      class C:
+        def f(self):
+          self.x = 3
+        def g(self):
+          self.f()
+          return self.x
+    """)
+    vm.analyze_all_defs()
+
 
 # TODO(b/325338806): Use BaseTest.Infer() for these tests. For now, we just make
 # sure the VM doesn't crash.

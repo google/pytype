@@ -138,12 +138,17 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     assert not self._stack
     log.info('Finished running frame: %s', self.name)
     if self._f_back and self._f_back.final_locals is None:
-      log.info('Resuming frame: %s', self._f_back.name)
-      self._merge_nonlocals_into(self._f_back)
+      live_parent = self._f_back
+      log.info('Resuming frame: %s', live_parent.name)
+    else:
+      live_parent = None
+    self._merge_nonlocals_into(live_parent)
     # Set the current state to None so that the load_* and store_* methods
     # cannot be used to modify finalized locals.
     self._current_state = None
-    self._finalize_locals()
+    self.final_locals = immutabledict.immutabledict({
+        name: abstract.flatten_variable(var)
+        for name, var in self._final_locals.items()})
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
     self._current_state.store_local(name, var)
@@ -238,7 +243,33 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # TODO(b/241479600): Return union of values from byte_RETURN_VALUE ops.
     return abstract.PythonConstant(None)
 
-  def _merge_nonlocals_into(self, frame: 'Frame') -> None:
+  def _merge_nonlocals_into(self, frame: Optional['Frame']) -> None:
+    # Perform any STORE_ATTR operations recorded in locals.
+    for name, var in self._final_locals.items():
+      target_name, dot, attr_name = name.rpartition('.')
+      if not dot or target_name not in self._final_locals:
+        continue
+      # If the target is present on 'frame', then we merge the attribute values
+      # into the frame so that any conditions on the bindings are preserved.
+      # Otherwise, we store the attribute on the target.
+      target_var = self._final_locals[target_name]
+      if frame:
+        try:
+          frame_target_var = frame.load_local(target_name)
+        except KeyError:
+          store_on_target = True
+        else:
+          store_on_target = target_var.values != frame_target_var.values
+      else:
+        store_on_target = True
+      if store_on_target:
+        for target in target_var.values:
+          target.set_attribute(attr_name, abstract.flatten_variable(var))
+      else:
+        frame.store_local(name, var)
+    if not frame:
+      return
+    # Store nonlocals.
     for name in self._shadowed_nonlocals.get_names(_Scope.ENCLOSING):
       var = self._final_locals[name]
       frame.store_deref(name, var)
@@ -261,7 +292,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       elif func is abstract.BUILD_CLASS:
         class_body, name = args.posargs
         builder = class_body.get_atomic_value(_FrameFunction)
-        frame = builder.call(abstract.Args())
+        frame = builder.call(abstract.Args(frame=self))
         cls = abstract.InterpreterClass(
             name=abstract.get_atomic_constant(name, str),
             members=dict(frame.final_locals),
@@ -274,29 +305,6 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         raise NotImplementedError('CALL not fully implemented')
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
-
-  def _finalize_locals(self) -> None:
-    final_values = {}
-    for name, var in self._final_locals.items():
-      values = var.values
-      if len(values) > 1:
-        raise NotImplementedError('Multiple bindings not yet supported')
-      elif values:
-        final_values[name] = values[0]
-      else:
-        raise NotImplementedError('Empty variable not yet supported')
-    # We've stored SET_ATTR results as local values. Now actually perform the
-    # attribute setting.
-    # TODO(b/241479600): If we're deep in a stack of method calls, we should
-    # instead merge the attribute values into the parent frame so that any
-    # conditions on the bindings are preserved.
-    for name, value in final_values.items():
-      target_name, dot, attr_name = name.rpartition('.')
-      if not dot or target_name not in self._final_locals:
-        continue
-      for target in self._final_locals[target_name].values:
-        target.set_attribute(attr_name, value)
-    self.final_locals = immutabledict.immutabledict(final_values)
 
   def _load_attr(
       self, target_var: _AbstractVariable, attr_name: str) -> _AbstractVariable:
@@ -423,19 +431,19 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if not sentinel.has_atomic_value(abstract.NULL):
       raise NotImplementedError('CALL not fully implemented')
     func_var, *args = rest
-    self._call_function(func_var, abstract.Args(posargs=args))
+    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
 
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
     func_var = self._stack.pop()
-    self._call_function(func_var, abstract.Args(posargs=args))
+    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
 
   def byte_CALL_METHOD(self, opcode):
     args = self._stack.popn(opcode.arg)
     func_var = self._stack.pop()
     # pop the NULL off the stack (see LOAD_METHOD)
     self._stack.pop_and_discard()
-    self._call_function(func_var, abstract.Args(posargs=args))
+    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
 
   def byte_POP_TOP(self, opcode):
     del opcode  # unused

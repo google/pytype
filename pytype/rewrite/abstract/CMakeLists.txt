@@ -90,4 +90,5 @@ py_test(
   DEPS
     .base
     .utils
+    pytype.rewrite.flow.flow
 )

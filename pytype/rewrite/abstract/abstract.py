@@ -20,4 +20,5 @@ Args = _functions.Args
 BoundFunction = _functions.BoundFunction
 InterpreterFunction = _functions.InterpreterFunction
 
+flatten_variable = _utils.flatten_variable
 get_atomic_constant = _utils.get_atomic_constant
