@@ -10,6 +10,7 @@ from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import dataclass_overlay
 from pytype.overlays import fiddle_overlay
 from pytype.overlays import special_builtins
@@ -62,55 +63,6 @@ def _contains_literal(t) -> bool:
   return False
 
 
-class NonIterableStrError(Exception):
-  """Error for matching `str` against `Iterable[str]`/`Sequence[str]`/etc."""
-
-  def __init__(self, left_type, other_type):
-    super().__init__()
-    self.left_type = left_type
-    self.other_type = other_type
-
-
-class ProtocolError(Exception):
-
-  def __init__(self, left_type, other_type):
-    super().__init__()
-    self.left_type = left_type
-    self.other_type = other_type
-
-
-class ProtocolMissingAttributesError(ProtocolError):
-
-  def __init__(self, left_type, other_type, missing):
-    super().__init__(left_type, other_type)
-    self.missing = missing
-
-
-class ProtocolTypeError(ProtocolError):
-
-  def __init__(self, left_type, other_type, attribute, actual, expected):
-    super().__init__(left_type, other_type)
-    self.attribute_name = attribute
-    self.actual_type = actual
-    self.expected_type = expected
-
-
-class TypedDictError(Exception):
-
-  def __init__(self, bad, extra, missing):
-    super().__init__()
-    self.bad = bad
-    self.missing = missing
-    self.extra = extra
-
-
-@dataclasses.dataclass
-class ErrorDetails:
-  protocol: Optional[ProtocolError] = None
-  noniterable_str: Optional[NonIterableStrError] = None
-  typed_dict: Optional[TypedDictError] = None
-
-
 @dataclasses.dataclass(eq=True, frozen=True)
 class GoodMatch:
   """A correct type/actual value match."""
@@ -128,7 +80,7 @@ class BadMatch:
   """An expected type/actual value mismatch."""
 
   view: _ViewType
-  expected: abstract_utils.BadType
+  expected: error_types.BadType
   actual: cfg.Variable
 
   @property
@@ -227,14 +179,6 @@ class _TypeParams:
 class AbstractMatcher(utils.ContextWeakrefMixin):
   """Matcher for abstract values."""
 
-  # This class is nested inside AbstractMatcher because matcher.py can't be
-  # imported in many of the places that the matcher is used.
-  class MatchError(Exception):
-
-    def __init__(self, bad_type: abstract_utils.BadType, *args, **kwargs):
-      self.bad_type = bad_type
-      super().__init__(bad_type, *args, **kwargs)
-
   def __init__(self, node, ctx):
     super().__init__(ctx)
     self._node = node
@@ -278,7 +222,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _error_details(self):
     """Package up additional error details."""
-    return ErrorDetails(
+    return error_types.MatcherErrorDetails(
         protocol=self._protocol_error,
         noniterable_str=self._noniterable_str_error,
         typed_dict=self._typed_dict_error
@@ -286,8 +230,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
 
   def _get_bad_type(
       self, name: Optional[str], expected: types.BaseValue
-  ) -> abstract_utils.BadType:
-    return abstract_utils.BadType(
+  ) -> error_types.BadType:
+    return error_types.BadType(
         name=name,
         typ=self.ctx.annotation_utils.sub_one_annotation(
             self._node, expected, [self._error_subst or {}]),
@@ -331,7 +275,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           bad_param = self._get_bad_type(arg.name, arg.typ)
         else:
           bad_param = match_result.bad_matches[0].expected
-        raise self.MatchError(bad_param)
+        raise error_types.MatchError(bad_param)
       if keep_all_views or any(m.subst for m in match_result.good_matches):
         typ = cast(abstract.BaseValue, arg.typ)
         matches = self._merge_matches(
@@ -1070,7 +1014,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         combined_matches.insert(combined_view, combined_subst)
         matched = True
     if not matched:
-      raise self.MatchError(bad_param)
+      raise error_types.MatchError(bad_param)
     return [GoodMatch(view, datatypes.HashableDict(subst))
             for view, subst in combined_matches.unique()]
 
@@ -1201,7 +1145,8 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
           left.cls, left, other_type, subst, view)
     elif isinstance(other_type, abstract.Class):
       if not self._satisfies_noniterable_str(left.cls, other_type):
-        self._noniterable_str_error = NonIterableStrError(left.cls, other_type)
+        self._noniterable_str_error = error_types.NonIterableStrError(
+            left.cls, other_type)
         return None
       base = self.match_from_mro(left.cls, other_type)
       if base is None:
@@ -1473,7 +1418,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       if not match_result.success:
         bad.append((k, match_result.bad_matches))
     if missing or extra or bad:
-      self._typed_dict_error = TypedDictError(bad, extra, missing)
+      self._typed_dict_error = error_types.TypedDictError(bad, extra, missing)
       return False
     return True
 
@@ -1530,7 +1475,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
     left_attributes = self._get_attribute_names(left)
     missing = other_type.protocol_attributes - left_attributes
     if missing:  # not all protocol attributes are implemented by 'left'
-      self._protocol_error = ProtocolMissingAttributesError(
+      self._protocol_error = error_types.ProtocolMissingAttributesError(
           left.cls, other_type, missing)
       return None
     key = (left.cls, other_type)
@@ -1728,7 +1673,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
         # This binding of left_attribute has not matched any binding of
         # protocol_attribute_var.
         bad_left, bad_right = zip(*bad_matches)
-        self._protocol_error = ProtocolTypeError(
+        self._protocol_error = error_types.ProtocolTypeError(
             left.cls,
             other_type,
             attribute,

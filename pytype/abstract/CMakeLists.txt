@@ -202,7 +202,6 @@ py_library(
     abstract_utils.py
   DEPS
     pytype.utils
-    pytype.errors.error_types
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.typegraph.cfg

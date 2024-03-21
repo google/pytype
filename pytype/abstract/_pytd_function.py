@@ -623,7 +623,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     try:
       matches = matcher.compute_matches(
           args_to_match, match_all_views, keep_all_views)
-    except matcher.MatchError as e:
+    except error_types.MatchError as e:
       raise error_types.WrongArgTypes(
           self.signature, args, self.ctx, e.bad_type)
     if log.isEnabledFor(logging.DEBUG):

@@ -469,7 +469,7 @@ class Attrib(classgen.FieldConstructor):
               abstract_utils.ARGS: anyt,
               abstract_utils.RET: anyt
           }, self.ctx)
-      bad_param = abstract_utils.BadType("converter", wanted_type)
+      bad_param = error_types.BadType("converter", wanted_type)
       raise error_types.WrongArgTypes(self.sig, args, self.ctx, bad_param)
     return valid_sigs[0]
 

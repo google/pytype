@@ -5,6 +5,7 @@ import textwrap
 from pytype import config
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
+from pytype.errors import error_types
 from pytype.tests import test_base
 from pytype.tests import test_utils
 from pytype.types import types
@@ -495,7 +496,7 @@ class TypeVarTest(MatcherTestBase):
     x_val = abstract.TypeParameter("T", self.ctx)
     args = [types.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
                       typ=self.ctx.convert.int_type)]
-    with self.assertRaises(self.matcher.MatchError):
+    with self.assertRaises(error_types.MatchError):
       self.matcher.compute_matches(args, match_all_views=True)
 
   def test_compute_one_match(self):

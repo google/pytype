@@ -463,7 +463,7 @@ class Super(BuiltinClass):
       elif any(base.full_name == "builtins.type" for base in cls.data.cls.mro):
         cls_data = self.ctx.convert.unsolvable
       else:
-        bad = abstract_utils.BadType(name="cls", typ=self.ctx.convert.type_type)
+        bad = error_types.BadType(name="cls", typ=self.ctx.convert.type_type)
         raise error_types.WrongArgTypes(
             self._SIGNATURE, args, self.ctx, bad_param=bad)
       for obj in super_objects:

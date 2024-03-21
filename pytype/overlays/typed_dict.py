@@ -93,7 +93,7 @@ class TypedDictBuilder(abstract.PyTDClass):
     try:
       return abstract_utils.get_atomic_python_constant(var, pyval_type)
     except abstract_utils.ConversionError as e:
-      bad = abstract_utils.BadType(name, typ)
+      bad = error_types.BadType(name, typ)
       raise error_types.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
 
   def _extract_args(self, args):

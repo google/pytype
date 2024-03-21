@@ -6,7 +6,6 @@ import logging
 from typing import Any, Collection, Dict, Iterable, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from pytype import datatypes
-from pytype.errors import error_types
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 from pytype.pytd import pytd
@@ -197,9 +196,6 @@ class Local:
       return values[0]
     else:
       return None
-
-
-BadType = error_types.BadType
 
 
 # The _isinstance and _make methods should be used only in pytype.abstract

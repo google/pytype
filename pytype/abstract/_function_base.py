@@ -606,7 +606,7 @@ class SignedFunction(Function):
     try:
       matches = matcher.compute_matches(
           args_to_match, match_all_views, alias_map=alias_map)
-    except matcher.MatchError as e:
+    except error_types.MatchError as e:
       raise error_types.WrongArgTypes(
           self.signature, args, self.ctx, e.bad_type)
     return [m.subst for m in matches]

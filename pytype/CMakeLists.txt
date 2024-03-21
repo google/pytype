@@ -313,6 +313,7 @@ py_library(
     ._utils
     .datatypes
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
@@ -591,6 +592,7 @@ py_test(
   DEPS
     .config
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.tests.test_base
     pytype.types.types
 )

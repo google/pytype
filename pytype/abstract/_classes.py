@@ -876,7 +876,7 @@ class CallableClass(ParameterizedClass, mixin.HasSlots):  # pytype: disable=sign
     matcher = self.ctx.matcher(node)
     try:
       matches = matcher.compute_matches(match_args, match_all_views=False)
-    except matcher.MatchError as e:
+    except error_types.MatchError as e:
       raise error_types.WrongArgTypes(
           function.Signature.from_callable(self),
           function.Args(posargs=args),

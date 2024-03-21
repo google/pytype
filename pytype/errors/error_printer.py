@@ -129,18 +129,18 @@ class MatcherErrorPrinter:
   def __init__(self, pp: pretty_printer.PrettyPrinter):
     self._pp = pp
 
-  def _print_protocol_error(self, error: matcher.ProtocolError) -> str:
+  def _print_protocol_error(self, error: error_types.ProtocolError) -> str:
     """Pretty-print the protocol error."""
     convert = error.left_type.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       left = self._pp.print_pytd(error.left_type.get_instance_type())
       protocol = self._pp.print_pytd(error.other_type.get_instance_type())
-    if isinstance(error, matcher.ProtocolMissingAttributesError):
+    if isinstance(error, error_types.ProtocolMissingAttributesError):
       missing = ", ".join(sorted(error.missing))
       return (f"Attributes of protocol {protocol} are not implemented on "
               f"{left}: {missing}")
     else:
-      assert isinstance(error, matcher.ProtocolTypeError)
+      assert isinstance(error, error_types.ProtocolTypeError)
       actual, expected = error.actual_type, error.expected_type
       if (isinstance(actual, abstract.Function) and
           isinstance(expected, abstract.Function)):
@@ -167,7 +167,7 @@ class MatcherErrorPrinter:
         "default. Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables")
 
   def _print_typed_dict_error(self, error) -> str:
-    """Pretty-print the matcher.TypedDictError instance."""
+    """Pretty-print the TypedDictError instance."""
     ret = ""
     if error.missing:
       ret += "\nTypedDict missing keys: " + ", ".join(error.missing)
@@ -183,7 +183,7 @@ class MatcherErrorPrinter:
     return ret
 
   def print_error_details(
-      self, error_details: matcher.ErrorDetails
+      self, error_details: error_types.MatcherErrorDetails
   ) -> List[str]:
     printers = [
         (error_details.protocol, self._print_protocol_error),

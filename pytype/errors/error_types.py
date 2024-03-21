@@ -2,7 +2,7 @@
 
 import dataclasses
 
-from typing import Any, Sequence, Tuple, Optional
+from typing import Sequence, Tuple, Optional
 
 from pytype.types import types
 
@@ -27,8 +27,11 @@ class ReturnValueMixin:
 class BadType:
   name: Optional[str]
   typ: types.BaseValue
-  # Should be matcher.ErrorDetails but can't use due to circular dep.
-  error_details: Optional[Any] = None
+  error_details: Optional["MatcherErrorDetails"] = None
+
+
+# --------------------------------------------------------
+# Function call errors
 
 
 # These names are chosen to match pytype error classes.
@@ -149,3 +152,63 @@ class MissingParameter(InvalidParameters):
     super().__init__(sig, passed_args, ctx)
     self.missing_parameter = missing_parameter
 # pylint: enable=g-bad-exception-name
+
+
+# --------------------------------------------------------
+# Matcher errors
+
+
+class MatchError(Exception):
+
+  def __init__(self, bad_type: BadType, *args, **kwargs):
+    self.bad_type = bad_type
+    super().__init__(bad_type, *args, **kwargs)
+
+
+class NonIterableStrError(Exception):
+  """Error for matching `str` against `Iterable[str]`/`Sequence[str]`/etc."""
+
+  def __init__(self, left_type, other_type):
+    super().__init__()
+    self.left_type = left_type
+    self.other_type = other_type
+
+
+class ProtocolError(Exception):
+
+  def __init__(self, left_type, other_type):
+    super().__init__()
+    self.left_type = left_type
+    self.other_type = other_type
+
+
+class ProtocolMissingAttributesError(ProtocolError):
+
+  def __init__(self, left_type, other_type, missing):
+    super().__init__(left_type, other_type)
+    self.missing = missing
+
+
+class ProtocolTypeError(ProtocolError):
+
+  def __init__(self, left_type, other_type, attribute, actual, expected):
+    super().__init__(left_type, other_type)
+    self.attribute_name = attribute
+    self.actual_type = actual
+    self.expected_type = expected
+
+
+class TypedDictError(Exception):
+
+  def __init__(self, bad, extra, missing):
+    super().__init__()
+    self.bad = bad
+    self.missing = missing
+    self.extra = extra
+
+
+@dataclasses.dataclass
+class MatcherErrorDetails:
+  protocol: Optional[ProtocolError] = None
+  noniterable_str: Optional[NonIterableStrError] = None
+  typed_dict: Optional[TypedDictError] = None
