@@ -1,6 +1,6 @@
 """Utilities for working with abstract values."""
 
-from typing import Any, Type, TypeVar, get_origin, overload
+from typing import Any, Sequence, Type, TypeVar, get_origin, overload
 
 from pytype.rewrite.abstract import base
 
@@ -27,8 +27,7 @@ def get_atomic_constant(var, typ=None):
   return constant
 
 
-def flatten_variable(var: base.AbstractVariableType) -> base.BaseValue:
-  values = var.values
+def join_values(values: Sequence[base.BaseValue]) -> base.BaseValue:
   if len(values) > 1:
     return base.Union(values)
   elif values:

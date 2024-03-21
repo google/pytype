@@ -7,6 +7,7 @@ from pytype.rewrite.abstract import utils as _utils
 
 BaseValue = _base.BaseValue
 PythonConstant = _base.PythonConstant
+Union = _base.Union
 ANY = _base.ANY
 NULL = _base.NULL
 
@@ -20,5 +21,5 @@ Args = _functions.Args
 BoundFunction = _functions.BoundFunction
 InterpreterFunction = _functions.InterpreterFunction
 
-flatten_variable = _utils.flatten_variable
 get_atomic_constant = _utils.get_atomic_constant
+join_values = _utils.join_values

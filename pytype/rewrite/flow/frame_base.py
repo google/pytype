@@ -18,6 +18,8 @@ _T = TypeVar('_T')
 
 log = logging.getLogger(__name__)
 
+_FINAL = -1
+
 
 @dataclasses.dataclass
 class _Step:
@@ -64,7 +66,7 @@ class FrameBase(Generic[_T]):
     """Runs one opcode."""
     # Grab the current block and opcode.
     block_index = self._current_step.block
-    if block_index == -1:
+    if block_index == _FINAL:
       raise FrameConsumedError()
     opcode_index = self._current_step.opcode
     block = self._code.order[block_index]
@@ -83,12 +85,15 @@ class FrameBase(Generic[_T]):
     if opcode is not block[-1]:
       self._current_step.opcode += 1
       return
-    if opcode.carry_on_to_next() and not opcode.has_known_jump():
+    if not opcode.carry_on_to_next():
+      # Update the frame's final state.
+      self._merge_state_into(self._current_state, _FINAL)
+    elif not opcode.has_known_jump():
       # Merge the current state into the next.
       self._merge_state_into(self._current_state, opcode.next.index)
     if block is self._code.order[-1]:
-      self._current_step.block = -1
-      self._final_locals = self._current_state.get_locals()
+      self._current_step.block = _FINAL
+      self._final_locals = self._states[_FINAL].get_locals()
     else:
       self._current_step.block += 1
       self._current_step.opcode = 0

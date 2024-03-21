@@ -39,7 +39,7 @@ class BaseClass(base.BaseValue):
     # classmethod called to create a class instance
     self.constructor = '__new__'
     # instance methods called on an instance immediately after creation
-    self.initializers = ['__init__', '__post_init__']
+    self.initializers = ['__init__']
 
   def __repr__(self):
     return f'BaseClass({self.name})'
@@ -122,8 +122,9 @@ class MutableInstance(base.BaseValue):
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
-      raise NotImplementedError(f'Attribute already set: {name}')
-    self.members[name] = value
+      self.members[name] = base.Union((self.members[name], value))
+    else:
+      self.members[name] = value
 
   def freeze(self) -> 'FrozenInstance':
     return FrozenInstance(self)

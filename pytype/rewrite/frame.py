@@ -9,6 +9,7 @@ from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.flow import conditions
 from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
 
@@ -78,6 +79,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   ):
     super().__init__(code, initial_locals)
     self.name = name  # name of the frame
+    # Final values of locals, unwrapped from variables
+    self.final_locals: Mapping[str, abstract.BaseValue] = None
 
     # Sanity checks: a module frame should have the same locals and globals. A
     # frame should have an enclosing scope only if it has a parent (f_back).
@@ -94,8 +97,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # All functions and classes created during execution
     self._functions: List[_FrameFunction] = []
     self._classes: List[abstract.InterpreterClass] = []
-    # Final values of locals, unwrapped from variables
-    self.final_locals: Mapping[str, abstract.BaseValue] = None
+    # All variables returned via RETURN_VALUE
+    self._returns: List[_AbstractVariable] = []
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -147,7 +150,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # cannot be used to modify finalized locals.
     self._current_state = None
     self.final_locals = immutabledict.immutabledict({
-        name: abstract.flatten_variable(var)
+        name: abstract.join_values(var.values)
         for name, var in self._final_locals.items()})
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
@@ -240,8 +243,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     )
 
   def get_return_value(self) -> abstract.BaseValue:
-    # TODO(b/241479600): Return union of values from byte_RETURN_VALUE ops.
-    return abstract.PythonConstant(None)
+    values = sum((ret.values for ret in self._returns), ())
+    return abstract.join_values(values)
 
   def _merge_nonlocals_into(self, frame: Optional['Frame']) -> None:
     # Perform any STORE_ATTR operations recorded in locals.
@@ -264,7 +267,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         store_on_target = True
       if store_on_target:
         for target in target_var.values:
-          target.set_attribute(attr_name, abstract.flatten_variable(var))
+          target.set_attribute(attr_name, abstract.join_values(var.values))
       else:
         frame.store_local(name, var)
     if not frame:
@@ -335,7 +338,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(constant.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
-    unused_return_value = self._stack.pop()
+    self._returns.append(self._stack.pop())
 
   def byte_STORE_NAME(self, opcode):
     self.store_local(opcode.argval, self._stack.pop())
@@ -465,3 +468,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
     self._stack.push(abstract.BUILD_CLASS.to_variable())
+
+  def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode):
+    unused_var = self._stack.pop()
+    # TODO(b/324465215): Construct the real conditions for this jump.
+    jump_state = self._current_state.with_condition(conditions.Condition())
+    self._merge_state_into(jump_state, opcode.argval)
+    nojump_state = self._current_state.with_condition(conditions.Condition())
+    self._merge_state_into(nojump_state, opcode.next.index)

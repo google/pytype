@@ -350,6 +350,54 @@ class FrameTest(unittest.TestCase):
     c = _get(module_frame, 'c', abstract.MutableInstance)
     self.assertEqual(c.get_attribute('x'), abstract.PythonConstant(None))
 
+  def test_instance_attribute_multiple_options(self):
+    module_frame = _make_frame("""
+      class C:
+        def __init__(self, rand):
+          if rand:
+            self.x = 3
+          else:
+            self.x = None
+    """)
+    module_frame.run()
+    instance = _get(module_frame, 'C', abstract.InterpreterClass).instantiate()
+    self.assertEqual(instance.get_attribute('x'),
+                     abstract.Union((abstract.PythonConstant(3),
+                                     abstract.PythonConstant(None))))
+
+  def test_multiple_initializers(self):
+    module_frame = _make_frame("""
+      class C:
+        def __init__(self, rand):
+          if rand:
+            self.x = 3
+        def custom_init(self, rand):
+          if rand:
+            self.x = None
+    """)
+    module_frame.run()
+    cls = _get(module_frame, 'C', abstract.InterpreterClass)
+    cls.initializers.append('custom_init')
+    instance = cls.instantiate()
+    self.assertEqual(instance.get_attribute('x'),
+                     abstract.Union((abstract.PythonConstant(3),
+                                     abstract.PythonConstant(None))))
+
+  def test_return(self):
+    module_frame = _make_frame("""
+      def f(rand):
+        if rand:
+          return 3
+        else:
+          return None
+    """)
+    module_frame.run()
+    f = _get(module_frame, 'f', abstract.InterpreterFunction)
+    f_frame, = f.analyze()
+    self.assertEqual(f_frame.get_return_value(),
+                     abstract.Union((abstract.PythonConstant(3),
+                                     abstract.PythonConstant(None))))
+
 
 if __name__ == '__main__':
   unittest.main()
