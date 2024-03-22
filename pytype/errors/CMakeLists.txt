@@ -19,8 +19,8 @@ py_library(
     pytype._utils
     pytype.debug
     pytype.pretty_printer
-    pytype.abstract.abstract
     pytype.pytd.pytd
+    pytype.types.types
 )
 
 py_library(
@@ -34,6 +34,7 @@ py_library(
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_library(

@@ -2,6 +2,7 @@
 
 import collections
 import dataclasses
+import enum
 
 from typing import List
 
@@ -10,7 +11,9 @@ from pytype import pretty_printer
 from pytype.abstract import abstract
 from pytype.errors import error_types
 from pytype.pytd import pytd_utils
+from pytype.pytd import slots
 from pytype.typegraph import cfg
+from pytype.types import types
 
 
 @dataclasses.dataclass
@@ -26,6 +29,18 @@ class BadCall:
   expected: str
   actual: str
   error_details: List[str]
+
+
+class BadAttrType(enum.Enum):
+  OBJECT = 0
+  SYMBOL = 1
+  MODULE = 2
+
+
+@dataclasses.dataclass
+class BadAttr:
+  obj: str
+  obj_type: BadAttrType
 
 
 class BadCallPrinter:
@@ -234,3 +249,20 @@ class MatcherErrorPrinter:
     return BadReturn(
         fmt(expected), fmt(bad_actual), fmt(full_actual), error_details
     )
+
+
+class AttributeErrorPrinter:
+  """Pretty printer for attribute errors."""
+
+  def __init__(self, pp: pretty_printer.PrettyPrinter):
+    self._pp = pp
+
+  def print_receiver(self, obj: types.BaseValue, attr_name: str):
+    if attr_name in slots.SYMBOL_MAPPING:
+      obj_repr = self._pp.print_as_actual_type(obj)
+      return BadAttr(obj_repr, BadAttrType.SYMBOL)
+    elif isinstance(obj, abstract.Module):
+      return BadAttr(obj.name, BadAttrType.MODULE)
+    else:
+      obj_repr = self._pp.print_as_actual_type(obj)
+      return BadAttr(obj_repr, BadAttrType.OBJECT)

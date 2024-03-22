@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 
 
-class Function(_instance_base.SimpleValue):
+class Function(_instance_base.SimpleValue, types.Function):
   """Base class for function objects (NativeFunction, InterpreterFunction).
 
   Attributes:
@@ -37,6 +37,7 @@ class Function(_instance_base.SimpleValue):
     self.is_attribute_of_class = False
     self.is_classmethod = False
     self.is_abstract = False
+    self.is_overload = False
     self.is_method = "." in name
     self.decorators = []
     self.members["func_name"] = self.ctx.convert.build_string(

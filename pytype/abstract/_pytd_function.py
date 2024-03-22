@@ -317,8 +317,15 @@ class PyTDFunction(_function_base.Function):
       for obj, errs in errors.items():
         names = {name for _, _, name in errs.values()}
         name = list(names)[0] if len(names) == 1 else None
-        self.ctx.errorlog.container_type_mismatch(self.ctx.vm.frames, obj, errs,
-                                                  name)
+        # Find the container class
+        for base in obj.cls.mro:
+          if _isinstance(base, "ParameterizedClass"):
+            cls = base
+            break
+        else:
+          assert False, f"{obj.cls.full_name} is not a container"
+        self.ctx.errorlog.container_type_mismatch(
+            self.ctx.vm.frames, cls, errs, name)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar

@@ -73,19 +73,13 @@ class Arg:
   typ: base.BaseValue
 
 
-class Function(base.BaseValue, abc.ABC):
+class Function(base.BaseValue):
   """Base class for representation of python functions."""
 
-  @property
-  @abc.abstractmethod
-  def name(self) -> str:
-    """Function name (or placeholder for anonymous functions)."""
+  is_overload: bool
+  name: str
+  decorators: List[str]
 
-  @abc.abstractmethod
   def signatures(self) -> List[Signature]:
     """All signatures of this function."""
-
-  @property
-  @abc.abstractmethod
-  def decorators(self) -> List[str]:
-    """Function decorators."""
+    raise NotImplementedError()
