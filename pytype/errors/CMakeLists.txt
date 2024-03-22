@@ -20,7 +20,6 @@ py_library(
     pytype.debug
     pytype.pretty_printer
     pytype.abstract.abstract
-    pytype.overlays.overlays
     pytype.pytd.pytd
 )
 
@@ -33,7 +32,6 @@ py_library(
     pytype.matcher
     pytype.pretty_printer
     pytype.abstract.abstract
-    pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.typegraph.cfg
 )

@@ -9,7 +9,6 @@ from pytype import matcher
 from pytype import pretty_printer
 from pytype.abstract import abstract
 from pytype.errors import error_types
-from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
 
@@ -215,8 +214,6 @@ class MatcherErrorPrinter:
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       expected = self._pp.print_pytd(formal.get_instance_type(node))
-      if isinstance(formal, typed_dict_overlay.TypedDictClass):
-        expected = expected + "(TypedDict)"
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
     else:

@@ -23,13 +23,6 @@ def _is_required(value: abstract.BaseValue) -> Optional[bool]:
     return None
 
 
-class TypedDictKeyMissing(error_types.DictKeyMissing):
-
-  def __init__(self, typed_dict: "TypedDict", key: Optional[str]):
-    super().__init__(key)
-    self.typed_dict = typed_dict
-
-
 @dataclasses.dataclass
 class TypedDictProperties:
   """Collection of typed dict properties passed between various stages."""
@@ -294,7 +287,7 @@ class TypedDict(abstract.Dict):
 
   def _check_str_key(self, name):
     if name not in self.fields:
-      raise TypedDictKeyMissing(self, name)
+      raise error_types.TypedDictKeyMissing(self, name)
     return name
 
   def _check_str_key_value(self, node, name, value_var):
@@ -313,7 +306,7 @@ class TypedDict(abstract.Dict):
     try:
       name = abstract_utils.get_atomic_python_constant(name_var, str)
     except abstract_utils.ConversionError as e:
-      raise TypedDictKeyMissing(self, None) from e
+      raise error_types.TypedDictKeyMissing(self, None) from e
     return self._check_str_key(name)
 
   def _check_value(self, node, name_var, value_var):
@@ -349,7 +342,7 @@ class TypedDict(abstract.Dict):
   def get_slot(self, node, key_var, default_var=None):
     try:
       str_key = self._check_key(key_var)
-    except TypedDictKeyMissing:
+    except error_types.TypedDictKeyMissing:
       return node, default_var or self.ctx.convert.none.to_variable(node)
     if str_key in self.pyval:
       return node, self.pyval[str_key]

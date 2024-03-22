@@ -30,12 +30,13 @@ class BadType:
   error_details: Optional["MatcherErrorDetails"] = None
 
 
+# These names are chosen to match pytype error classes.
+# pylint: disable=g-bad-exception-name
+#
 # --------------------------------------------------------
 # Function call errors
 
 
-# These names are chosen to match pytype error classes.
-# pylint: disable=g-bad-exception-name
 class FailedFunctionCall(Exception, ReturnValueMixin):
   """Exception for failed function calls."""
 
@@ -151,7 +152,17 @@ class MissingParameter(InvalidParameters):
   def __init__(self, sig, passed_args, ctx, missing_parameter):
     super().__init__(sig, passed_args, ctx)
     self.missing_parameter = missing_parameter
-# pylint: enable=g-bad-exception-name
+
+
+# --------------------------------------------------------
+# Typed dict errors
+
+
+class TypedDictKeyMissing(DictKeyMissing):
+
+  def __init__(self, typed_dict: types.BaseValue, key: Optional[str]):
+    super().__init__(key)
+    self.typed_dict = typed_dict
 
 
 # --------------------------------------------------------

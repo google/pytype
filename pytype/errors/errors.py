@@ -13,7 +13,6 @@ from pytype import utils
 from pytype.abstract import abstract
 from pytype.errors import error_printer
 from pytype.errors import error_types
-from pytype.overlays import typed_dict as typed_dict_overlay
 from pytype.pytd import slots
 
 # Usually we call the logger "log" but that name is used quite often here.
@@ -702,7 +701,7 @@ class ErrorLog(ErrorLogBase):
           stack, error.name, error.bad_call, error.duplicate)
     elif isinstance(error, error_types.UndefinedParameterError):
       self.name_error(stack, error.name)
-    elif isinstance(error, typed_dict_overlay.TypedDictKeyMissing):
+    elif isinstance(error, error_types.TypedDictKeyMissing):
       self.typed_dict_error(stack, error.typed_dict, error.name)
     elif isinstance(error, error_types.DictKeyMissing):
       # We don't report DictKeyMissing because the false positive rate is high.
@@ -963,8 +962,6 @@ class ErrorLog(ErrorLogBase):
     if annot is None:
       return
     annot_string = self._pp.print_as_expected_type(annot)
-    if isinstance(annot, typed_dict_overlay.TypedDictClass):
-      annot_string = annot_string + "(TypedDict)"
     literal = "Literal[" in annot_string
     actual_string = self._pp.print_as_actual_type(binding.data, literal=literal)
     if actual_string == "None":
