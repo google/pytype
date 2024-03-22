@@ -18,6 +18,7 @@ Some guiding princples:
 from pytype.types import base
 from pytype.types import classes
 from pytype.types import functions
+from pytype.types import instances
 
 
 BaseValue = base.BaseValue
@@ -30,3 +31,5 @@ Arg = functions.Arg
 Args = functions.Args
 Function = functions.Function
 Signature = functions.Signature
+
+Module = instances.Module

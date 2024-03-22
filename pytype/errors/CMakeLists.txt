@@ -31,7 +31,6 @@ py_library(
   DEPS
     pytype.matcher
     pytype.pretty_printer
-    pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.types.types

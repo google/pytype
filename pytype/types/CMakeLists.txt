@@ -16,6 +16,7 @@ py_library(
     .base
     .classes
     .functions
+    .instances
 )
 
 py_library(
@@ -42,6 +43,15 @@ py_library(
     functions
   SRCS
     functions.py
+  DEPS
+    .base
+)
+
+py_library(
+  NAME
+    instances
+  SRCS
+    instances.py
   DEPS
     .base
 )

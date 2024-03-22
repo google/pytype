@@ -13,6 +13,7 @@ from pytype.errors import error_types
 from pytype.pytd import pytd
 from pytype.typegraph import cfg
 from pytype.typegraph import cfg_utils
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 _make = abstract_utils._make  # pylint: disable=protected-access
@@ -63,7 +64,7 @@ class ConcreteValue(_instance_base.Instance, mixin.PythonConstant):
     return hash((type(self), id(self.pyval)))
 
 
-class Module(_instance_base.Instance, mixin.LazyMembers):
+class Module(_instance_base.Instance, mixin.LazyMembers, types.Module):
   """Represents an (imported) module."""
 
   def __init__(self, ctx, name, member_map, ast):

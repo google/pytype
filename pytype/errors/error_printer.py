@@ -8,7 +8,6 @@ from typing import List
 
 from pytype import matcher
 from pytype import pretty_printer
-from pytype.abstract import abstract
 from pytype.errors import error_types
 from pytype.pytd import pytd_utils
 from pytype.pytd import slots
@@ -156,8 +155,8 @@ class MatcherErrorPrinter:
     else:
       assert isinstance(error, error_types.ProtocolTypeError)
       actual, expected = error.actual_type, error.expected_type
-      if (isinstance(actual, abstract.Function) and
-          isinstance(expected, abstract.Function)):
+      if (isinstance(actual, types.Function) and
+          isinstance(expected, types.Function)):
         # TODO(b/196434939): When matching a protocol like Sequence[int] the
         # protocol name will be Sequence[int] but the method signatures will be
         # displayed as f(self: Sequence[_T], ...).
@@ -261,7 +260,7 @@ class AttributeErrorPrinter:
     if attr_name in slots.SYMBOL_MAPPING:
       obj_repr = self._pp.print_as_actual_type(obj)
       return BadAttr(obj_repr, BadAttrType.SYMBOL)
-    elif isinstance(obj, abstract.Module):
+    elif isinstance(obj, types.Module):
       return BadAttr(obj.name, BadAttrType.MODULE)
     else:
       obj_repr = self._pp.print_as_actual_type(obj)

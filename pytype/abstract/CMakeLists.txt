@@ -113,6 +113,7 @@ py_library(
     pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
+    pytype.types.types
 )
 
 py_library(
