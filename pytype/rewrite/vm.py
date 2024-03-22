@@ -1,6 +1,6 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
-from typing import Dict, Sequence
+from typing import Dict, Optional, Sequence
 
 from pytype import config
 from pytype.blocks import blocks
@@ -24,7 +24,10 @@ class VirtualMachine:
     self._module_frame: frame_lib.Frame = None
 
   @classmethod
-  def from_source(cls, src: str, options: config.Options) -> 'VirtualMachine':
+  def from_source(
+      cls, src: str, options: Optional[config.Options] = None
+  ) -> 'VirtualMachine':
+    options = options or config.Options.create()
     code = _get_bytecode(src, options)
     initial_globals = convert.get_module_globals(options.python_version)
     return cls(code, initial_globals)

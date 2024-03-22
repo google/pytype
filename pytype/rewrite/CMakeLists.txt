@@ -121,7 +121,6 @@ py_test(
     vm_test.py
   DEPS
     .vm
-    pytype.config
     pytype.pyc.pyc
     pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils

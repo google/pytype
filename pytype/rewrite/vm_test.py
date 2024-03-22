@@ -1,7 +1,6 @@
 import textwrap
 from typing import TypeVar, cast
 
-from pytype import config
 from pytype.pyc import opcodes
 from pytype.rewrite import vm as vm_lib
 from pytype.rewrite.abstract import abstract
@@ -13,8 +12,7 @@ _T = TypeVar('_T')
 
 
 def _make_vm(src: str) -> vm_lib.VirtualMachine:
-  return vm_lib.VirtualMachine.from_source(textwrap.dedent(src),
-                                           config.Options.create())
+  return vm_lib.VirtualMachine.from_source(textwrap.dedent(src))
 
 
 class VmTest(unittest.TestCase):

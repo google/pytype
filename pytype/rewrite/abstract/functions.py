@@ -140,6 +140,7 @@ class Signature:
     )
 
   def __repr__(self):
+    # TODO(b/241479600): Incorporate defaults and annotations.
     params = list(self.param_names)
     if self.posonly_count:
       params.insert(self.posonly_count, '/')

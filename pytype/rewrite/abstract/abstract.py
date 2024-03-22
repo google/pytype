@@ -12,12 +12,14 @@ ANY = _base.ANY
 NULL = _base.NULL
 
 BaseClass = _classes.BaseClass
+BaseInstance = _classes.BaseInstance
 FrozenInstance = _classes.FrozenInstance
 InterpreterClass = _classes.InterpreterClass
 MutableInstance = _classes.MutableInstance
 BUILD_CLASS = _classes.BUILD_CLASS
 
 Args = _functions.Args
+BaseFunction = _functions.BaseFunction
 BoundFunction = _functions.BoundFunction
 InterpreterFunction = _functions.InterpreterFunction
 

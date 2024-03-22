@@ -1,8 +1,9 @@
 """Abstract representations of classes."""
 
+import abc
 import dataclasses
 
-from typing import Dict, List, Optional, Protocol, Sequence
+from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
 import immutabledict
 from pytype.rewrite.abstract import base
@@ -98,15 +99,17 @@ class InterpreterClass(BaseClass):
     return f'InterpreterClass({self.name})'
 
 
-class MutableInstance(base.BaseValue):
+class BaseInstance(base.BaseValue):
   """Instance of a class."""
 
-  def __init__(self, cls: BaseClass):
-    self.cls = cls
-    self.members: Dict[str, base.BaseValue] = {}
+  members: Mapping[str, base.BaseValue]
 
-  def __repr__(self):
-    return f'MutableInstance({self.cls.name})'
+  def __init__(self, cls: BaseClass, members):
+    self.cls = cls
+    self.members = members
+
+  @abc.abstractmethod
+  def set_attribute(self, name: str, value: base.BaseValue) -> None: ...
 
   @property
   def _attrs(self):
@@ -120,6 +123,18 @@ class MutableInstance(base.BaseValue):
       return cls_attribute.bind_to(self)
     return cls_attribute
 
+
+class MutableInstance(BaseInstance):
+  """Instance of a class."""
+
+  members: Dict[str, base.BaseValue]
+
+  def __init__(self, cls: BaseClass):
+    super().__init__(cls, {})
+
+  def __repr__(self):
+    return f'MutableInstance({self.cls.name})'
+
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
       self.members[name] = base.Union((self.members[name], value))
@@ -130,7 +145,7 @@ class MutableInstance(base.BaseValue):
     return FrozenInstance(self)
 
 
-class FrozenInstance(base.BaseValue):
+class FrozenInstance(BaseInstance):
   """Frozen instance of a class.
 
   This is used by BaseClass.instantiate() to create a snapshot of an instance
@@ -138,23 +153,16 @@ class FrozenInstance(base.BaseValue):
   """
 
   def __init__(self, instance: MutableInstance):
-    self._underlying = instance
+    super().__init__(
+        instance.cls, immutabledict.immutabledict(instance.members))
 
   def __repr__(self):
-    return f'FrozenInstance({self._underlying.cls.name})'
+    return f'FrozenInstance({self.cls.name})'
 
-  def _attrs(self):
-    return (self._underlying,)
-
-  @property
-  def cls(self):
-    return self._underlying.cls
-
-  def get_attribute(self, name: str) -> Optional[base.BaseValue]:
-    attr = self._underlying.get_attribute(name)
-    if isinstance(attr, functions_lib.BoundFunction):
-      return attr.underlying.bind_to(self)
-    return attr
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    # The VM may try to set an attribute on a frozen instance in the process of
+    # analyzing a class's methods. This is fine; we just ignore it.
+    del name, value
 
 
 BUILD_CLASS = base.Singleton('BUILD_CLASS')
