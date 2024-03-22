@@ -7,6 +7,7 @@ from pytype.blocks import blocks
 from pytype.pyc import pyc
 from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
+from pytype.rewrite import output
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
@@ -54,12 +55,12 @@ class VirtualMachine:
 
   def infer_stub(self):
     self._run_module()
-    for value in self._module_frame.final_locals:
-      if isinstance(value, abstract.InterpreterFunction):
-        _ = value.analyze()
-      elif isinstance(value, abstract.InterpreterClass):
-        for name, member in value.members:
-          del name, member  # TODO(b/324475548): infer the type of 'member'.
+    for value in self._module_frame.final_locals.values():
+      try:
+        pytd_node = output.to_pytd_def(value)
+      except NotImplementedError:
+        pytd_node = output.to_pytd_type(value)
+      del pytd_node  # TODO(b/325339842): use this
 
 
 def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
