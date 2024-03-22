@@ -2,12 +2,15 @@
 
 import abc
 import dataclasses
+import logging
 
 from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
 import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
+
+log = logging.getLogger(__name__)
 
 
 class _HasMembers(Protocol):
@@ -162,7 +165,8 @@ class FrozenInstance(BaseInstance):
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # The VM may try to set an attribute on a frozen instance in the process of
     # analyzing a class's methods. This is fine; we just ignore it.
-    del name, value
+    log.info('Ignoring attribute set on %r: %s -> %r',
+             self, name, value)
 
 
 BUILD_CLASS = base.Singleton('BUILD_CLASS')

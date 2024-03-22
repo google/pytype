@@ -266,8 +266,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       else:
         store_on_target = True
       if store_on_target:
+        value = abstract.join_values(var.values)
         for target in target_var.values:
-          target.set_attribute(attr_name, abstract.join_values(var.values))
+          log.info('Storing attribute on %r: %s -> %r',
+                   target, attr_name, value)
+          target.set_attribute(attr_name, value)
       else:
         frame.store_local(name, var)
     if not frame:

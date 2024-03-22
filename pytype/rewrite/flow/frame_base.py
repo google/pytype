@@ -73,6 +73,8 @@ class FrameBase(Generic[_T]):
     opcode = block[opcode_index]
     # Grab the block's initial state.
     self._current_state = self._states[block.id]
+    if not opcode_index:
+      log.info('Entering block: %d', block.id)
     # Run the opcode.
     opname = opcode.__class__.__name__
     try:
@@ -85,6 +87,7 @@ class FrameBase(Generic[_T]):
     if opcode is not block[-1]:
       self._current_step.opcode += 1
       return
+    log.info('Exiting block: %d', block.id)
     if not opcode.carry_on_to_next():
       # Update the frame's final state.
       self._merge_state_into(self._current_state, _FINAL)
