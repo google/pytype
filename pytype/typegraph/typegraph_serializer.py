@@ -138,7 +138,8 @@ class TypegraphEncoder(json.JSONEncoder):
     }
 
   def _encode_binding_data(self, binding: cfg.Binding) -> str:
-    return pytd_utils.Print(binding.data.to_type()) if binding.data else "None"
+    data = binding.data
+    return pytd_utils.Print(data.to_pytd_type()) if data else "None"
 
   def _encode_binding(self, binding: cfg.Binding) -> Dict[str, Any]:
     return {

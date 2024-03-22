@@ -58,7 +58,7 @@ class Unknown(_base.BaseValue):
       # dependency among the Unknown instances.
       return pytd.NamedType(v.class_name)
     else:
-      return v.to_type(node)
+      return v.to_pytd_type(node)
 
   @classmethod
   def _make_params(cls, node, args, kwargs):

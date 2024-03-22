@@ -23,7 +23,7 @@ class BaseValue:
     """All abstract objects contain a reference to the VM context."""
     raise NotImplementedError()
 
-  def get_instance_type(self, *args, **kwargs) -> pytd.Type:
+  def to_pytd_instance(self, *args, **kwargs) -> pytd.Type:
     """Get the pytd type an instance of us would have."""
     raise NotImplementedError()
 

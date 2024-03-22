@@ -221,12 +221,12 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       instance: An instance of this class (as a BaseValue)
     """
 
-  def get_instance_type(self, node=None, instance=None, seen=None, view=None):
+  def to_pytd_instance(self, node=None, instance=None, seen=None, view=None):
     """Get the type an instance of us would have."""
     return self.ctx.pytd_convert.value_instance_to_pytd_type(
         node, self, instance, seen, view)
 
-  def to_type(self, node=None, seen=None, view=None):
+  def to_pytd_type(self, node=None, seen=None, view=None):
     """Get a PyTD type representing this object, as seen at a node."""
     return self.ctx.pytd_convert.value_to_pytd_type(node, self, seen, view)
 

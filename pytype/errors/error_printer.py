@@ -146,8 +146,8 @@ class MatcherErrorPrinter:
     """Pretty-print the protocol error."""
     convert = error.left_type.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
-      left = self._pp.print_pytd(error.left_type.get_instance_type())
-      protocol = self._pp.print_pytd(error.other_type.get_instance_type())
+      left = self._pp.print_pytd(error.left_type.to_pytd_instance())
+      protocol = self._pp.print_pytd(error.other_type.to_pytd_instance())
     if isinstance(error, error_types.ProtocolMissingAttributesError):
       missing = ", ".join(sorted(error.missing))
       return (f"Attributes of protocol {protocol} are not implemented on "
@@ -168,8 +168,8 @@ class MatcherErrorPrinter:
                 f">> {left} defines:\n{actual}")
       else:
         with convert.set_output_mode(convert.OutputMode.DETAILED):
-          actual = self._pp.print_pytd(error.actual_type.to_type())
-          expected = self._pp.print_pytd(error.expected_type.to_type())
+          actual = self._pp.print_pytd(error.actual_type.to_pytd_type())
+          expected = self._pp.print_pytd(error.expected_type.to_pytd_type())
         return (f"Attribute {error.attribute_name} of protocol {protocol} has "
                 f"wrong type in {left}: expected {expected}, got {actual}")
 
@@ -227,19 +227,19 @@ class MatcherErrorPrinter:
     formal = bad[0].expected.typ
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
-      expected = self._pp.print_pytd(formal.get_instance_type(node))
+      expected = self._pp.print_pytd(formal.to_pytd_instance(node))
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
     else:
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
       bad_actual = self._pp.print_pytd(pytd_utils.JoinTypes(
-          match.actual_binding.data.to_type(node, view=match.view)
+          match.actual_binding.data.to_pytd_type(node, view=match.view)
           for match in bad))
       actual = bad[0].actual
       if len(actual.bindings) > len(bad):
         full_actual = self._pp.print_pytd(pytd_utils.JoinTypes(
-            v.to_type(node) for v in actual.data))
+            v.to_pytd_type(node) for v in actual.data))
       else:
         full_actual = bad_actual
     # typing.Never is a prettier alias for nothing.

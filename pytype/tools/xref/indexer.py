@@ -1235,7 +1235,7 @@ class Indexer:
   def get_pytd(self, datum):
     if not datum:
       return pytd.AnythingType()
-    t = pytd_utils.JoinTypes(v.to_type() for v in datum).Visit(
+    t = pytd_utils.JoinTypes(v.to_pytd_type() for v in datum).Visit(
         visitors.RemoveUnknownClasses())
     return self.loader.resolve_pytd(t, self.pytd_module)
 

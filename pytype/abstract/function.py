@@ -69,7 +69,7 @@ def get_signatures(func):
 
 
 def _print(t):
-  return pytd_utils.Print(t.get_instance_type())
+  return pytd_utils.Print(t.to_pytd_instance())
 
 _SigT = TypeVar("_SigT", bound="Signature")
 

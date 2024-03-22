@@ -225,8 +225,8 @@ class PyTDTest(AbstractTestBase):
     self.assertEqual(pytd_cls.metaclass, pytd.UnionType(
         (pytd.NamedType("M1"), pytd.NamedType("M2"))))
 
-  def test_to_type_with_view1(self):
-    # to_type(<instance of List[int or unsolvable]>, view={T: int})
+  def test_to_pytd_type_with_view1(self):
+    # to_pytd_type(<instance of List[int or unsolvable]>, view={T: int})
     instance = abstract.List([], self._ctx)
     instance.merge_instance_type_parameter(
         self._ctx.root_node, abstract_utils.T,
@@ -238,26 +238,26 @@ class PyTDTest(AbstractTestBase):
             self._ctx.root_node)
     view = {
         instance.get_instance_type_parameter(abstract_utils.T): param_binding}
-    pytd_type = instance.to_type(self._ctx.root_node, seen=None, view=view)
+    pytd_type = instance.to_pytd_type(self._ctx.root_node, seen=None, view=view)
     self.assertEqual("builtins.list", pytd_type.name)
     self.assertSetEqual({"builtins.int"},
                         {t.name for t in pytd_type.parameters})
 
-  def test_to_type_with_view2(self):
-    # to_type(<tuple (int or str,)>, view={0: str})
+  def test_to_pytd_type_with_view2(self):
+    # to_pytd_type(<tuple (int or str,)>, view={0: str})
     param1 = self._ctx.convert.primitive_class_instances[int]
     param2 = self._ctx.convert.primitive_class_instances[str]
     param_var = param1.to_variable(self._ctx.root_node)
     str_binding = param_var.AddBinding(param2, [], self._ctx.root_node)
     instance = self._ctx.convert.tuple_to_value((param_var,))
     view = {param_var: str_binding}
-    pytd_type = instance.to_type(self._ctx.root_node, seen=None, view=view)
+    pytd_type = instance.to_pytd_type(self._ctx.root_node, seen=None, view=view)
     self.assertEqual(pytd_type.parameters[0],
                      pytd.NamedType("builtins.str"))
 
-  def test_to_type_with_view_and_empty_param(self):
+  def test_to_pytd_type_with_view_and_empty_param(self):
     instance = abstract.List([], self._ctx)
-    pytd_type = instance.to_type(self._ctx.root_node, seen=None, view={})
+    pytd_type = instance.to_pytd_type(self._ctx.root_node, seen=None, view={})
     self.assertEqual("builtins.list", pytd_type.name)
     self.assertSequenceEqual((pytd.NothingType(),), pytd_type.parameters)
 
@@ -266,7 +266,7 @@ class PyTDTest(AbstractTestBase):
     container = abstract.AnnotationContainer("List", self._ctx, cls)
     expected = pytd.GenericType(pytd.NamedType("builtins.list"),
                                 (pytd.AnythingType(),))
-    actual = container.get_instance_type(self._ctx.root_node)
+    actual = container.to_pytd_instance(self._ctx.root_node)
     self.assertEqual(expected, actual)
 
 

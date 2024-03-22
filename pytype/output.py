@@ -472,12 +472,12 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.SimpleFunction):
       return self._simple_func_to_def(node, v, name)
     elif isinstance(v, (abstract.ParameterizedClass, abstract.Union)):
-      return pytd.Alias(name, v.get_instance_type(node))
+      return pytd.Alias(name, v.to_pytd_instance(node))
     elif isinstance(v, abstract.PyTDClass) and v.module:
       # This happens if a module does e.g. "from x import y as z", i.e., copies
       # something from another module to the local namespace. We *could*
       # reproduce the entire class, but we choose a more dense representation.
-      return v.to_type(node)
+      return v.to_pytd_type(node)
     elif isinstance(v, typed_dict.TypedDictClass):
       return self._typed_dict_to_def(node, v, name)
     elif isinstance(v, abstract.PyTDClass):  # a namedtuple instance
@@ -497,7 +497,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.TYPE_VARIABLE_TYPES):
       return self._type_variable_to_def(node, v, name)
     elif isinstance(v, abstract.Unsolvable):
-      return pytd.Constant(name, v.to_type(node))
+      return pytd.Constant(name, v.to_pytd_type(node))
     else:
       raise NotImplementedError(v.__class__.__name__)
 
@@ -520,7 +520,7 @@ class Converter(utils.ContextWeakrefMixin):
         typ = None
       else:
         typ = a.typ
-      typ = typ and typ.get_instance_type(node)
+      typ = typ and typ.to_pytd_instance(node)
       yield a.name, typ
 
   def annotations_to_instance_types(self, node, annots):
@@ -529,7 +529,7 @@ class Converter(utils.ContextWeakrefMixin):
       for name, local in annots.annotated_locals.items():
         typ = local.get_type(node, name)
         if typ:
-          t = typ.get_instance_type(node)
+          t = typ.to_pytd_instance(node)
           if local.final:
             t = pytd.GenericType(pytd.NamedType("typing.Final"), (t,))
           yield name, t
@@ -538,11 +538,11 @@ class Converter(utils.ContextWeakrefMixin):
     """Get a function call's pytd return type."""
     if v.signature.has_return_annotation:
       if v.is_coroutine():
-        ret = abstract.Coroutine.make(self.ctx, v, node).to_type(node)
+        ret = abstract.Coroutine.make(self.ctx, v, node).to_pytd_type(node)
       else:
-        ret = v.signature.annotations["return"].get_instance_type(node)
+        ret = v.signature.annotations["return"].to_pytd_instance(node)
     else:
-      ret = seen_return.data.to_type(node)
+      ret = seen_return.data.to_pytd_type(node)
       if isinstance(ret, pytd.NothingType) and num_returns == 1:
         if isinstance(seen_return.data, abstract.Empty):
           ret = pytd.AnythingType()
@@ -556,9 +556,9 @@ class Converter(utils.ContextWeakrefMixin):
     params = []
     for i, (name, kind, optional) in enumerate(func.get_parameters()):
       if i < func.nonstararg_count and name in func.signature.annotations:
-        t = func.signature.annotations[name].get_instance_type(node_after)
+        t = func.signature.annotations[name].to_pytd_instance(node_after)
       else:
-        t = combination[name].data.to_type(node_after)
+        t = combination[name].data.to_pytd_type(node_after)
       # Python uses ".0" etc. for the names of parameters that are tuples,
       # like e.g. in: "def f((x,  y), z)".
       params.append(
@@ -568,7 +568,7 @@ class Converter(utils.ContextWeakrefMixin):
     if func.has_varargs():
       if func.signature.varargs_name in func.signature.annotations:
         annot = func.signature.annotations[func.signature.varargs_name]
-        typ = annot.get_instance_type(node_after)
+        typ = annot.to_pytd_instance(node_after)
       else:
         typ = pytd.NamedType("builtins.tuple")
       starargs = pytd.Parameter(func.signature.varargs_name, typ,
@@ -578,7 +578,7 @@ class Converter(utils.ContextWeakrefMixin):
     if func.has_kwargs():
       if func.signature.kwargs_name in func.signature.annotations:
         annot = func.signature.annotations[func.signature.kwargs_name]
-        typ = annot.get_instance_type(node_after)
+        typ = annot.to_pytd_instance(node_after)
       else:
         typ = pytd.NamedType("builtins.dict")
       starstarargs = pytd.Parameter(func.signature.kwargs_name, typ,
@@ -618,7 +618,7 @@ class Converter(utils.ContextWeakrefMixin):
 
     def get_parameter(p, kind):
       if p in sig.annotations:
-        param_type = sig.annotations[p].get_instance_type(node)
+        param_type = sig.annotations[p].to_pytd_instance(node)
       else:
         param_type = pytd.AnythingType()
       return pytd.Parameter(p, param_type, kind, p in sig.defaults, None)
@@ -636,19 +636,19 @@ class Converter(utils.ContextWeakrefMixin):
     if sig.varargs_name:
       star = pytd.Parameter(
           sig.varargs_name,
-          sig.annotations[sig.varargs_name].get_instance_type(node),
+          sig.annotations[sig.varargs_name].to_pytd_instance(node),
           pytd.ParameterKind.REGULAR, False, None)
     else:
       star = None
     if sig.kwargs_name:
       starstar = pytd.Parameter(
           sig.kwargs_name,
-          sig.annotations[sig.kwargs_name].get_instance_type(node),
+          sig.annotations[sig.kwargs_name].to_pytd_instance(node),
           pytd.ParameterKind.REGULAR, False, None)
     else:
       starstar = None
     if sig.has_return_annotation:
-      ret_type = sig.annotations["return"].get_instance_type(node)
+      ret_type = sig.annotations["return"].to_pytd_instance(node)
     else:
       ret_type = pytd.NamedType("builtins.NoneType")
     pytd_sig = pytd.Signature(
@@ -831,7 +831,7 @@ class Converter(utils.ContextWeakrefMixin):
                 node, enum_member, "value")
             attr = abstract_utils.get_atomic_value(attr_var)
             with self.set_output_mode(Converter.OutputMode.LITERAL):
-              constants[name].add_type(attr.to_type(node))
+              constants[name].add_type(attr.to_pytd_type(node))
           else:
             # i.e. this is an enum, and the current member is NOT an enum
             # member. Which means it's a ClassVar.
@@ -839,7 +839,7 @@ class Converter(utils.ContextWeakrefMixin):
             constants[name].add_type(
                 pytd.GenericType(
                     base_type=pytd.NamedType("typing.ClassVar"),
-                    parameters=((cls_member.to_type(node),))))
+                    parameters=((cls_member.to_pytd_type(node),))))
         else:
           cls = self.ctx.convert.merge_classes([value])
           node, attr = self.ctx.attribute_handler.get_attribute(
@@ -850,7 +850,7 @@ class Converter(utils.ContextWeakrefMixin):
             for typ in self._function_to_return_types(node, attr):
               constants[name].add_type(typ)
           else:
-            constants[name].add_type(value.to_type(node))
+            constants[name].add_type(value.to_pytd_type(node))
 
     # Instance-level attributes: all attributes from 'canonical' instances (that
     # is, ones created by analyze.py:analyze_class()) are added. Attributes from
@@ -867,7 +867,7 @@ class Converter(utils.ContextWeakrefMixin):
         if name in abstract_utils.CLASS_LEVEL_IGNORE or name in ignore:
           continue
         for value in member.FilteredData(self.ctx.exitpoint, strict=False):
-          typ = value.to_type(node)
+          typ = value.to_pytd_type(node)
           if pytd_utils.GetTypeParameters(typ):
             # This attribute's type comes from an annotation that contains a
             # type parameter; we do not want to merge in substituted values of
@@ -915,7 +915,7 @@ class Converter(utils.ContextWeakrefMixin):
     if metaclass is None:
       keywords = ()
     else:
-      metaclass = metaclass.get_instance_type(node)
+      metaclass = metaclass.to_pytd_instance(node)
       keywords = (("metaclass", metaclass),)
 
     # Some of the class's bases may not be in global scope, so they won't show
@@ -930,9 +930,9 @@ class Converter(utils.ContextWeakrefMixin):
         if b.official_name is None and isinstance(b, abstract.InterpreterClass):
           missing_bases.append(b)
         else:
-          bases.append(b.get_instance_type(node))
+          bases.append(b.to_pytd_instance(node))
       else:
-        bases.append(pytd_utils.JoinTypes(b.get_instance_type(node)
+        bases.append(pytd_utils.JoinTypes(b.to_pytd_instance(node)
                                           for b in basevar.data))
 
     # If a namedtuple was constructed via one of the functional forms, it will
@@ -1003,8 +1003,8 @@ class Converter(utils.ContextWeakrefMixin):
     return cls
 
   def _type_variable_to_def(self, node, v, name):
-    constraints = tuple(c.get_instance_type(node) for c in v.constraints)
-    bound = v.bound and v.bound.get_instance_type(node)
+    constraints = tuple(c.to_pytd_instance(node) for c in v.constraints)
+    bound = v.bound and v.bound.to_pytd_instance(node)
     if isinstance(v, abstract.TypeParameter):
       return pytd.TypeParameter(name, constraints=constraints, bound=bound)
     elif isinstance(v, abstract.ParamSpec):

@@ -33,3 +33,4 @@ Function = functions.Function
 Signature = functions.Signature
 
 Module = instances.Module
+PythonConstant = instances.PythonConstant

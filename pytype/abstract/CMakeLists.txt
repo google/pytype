@@ -249,6 +249,7 @@ py_library(
     .function
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_test(
