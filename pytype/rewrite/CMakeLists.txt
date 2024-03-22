@@ -132,7 +132,9 @@ py_library(
     .output
     pytype.config
     pytype.blocks.blocks
+    pytype.errors.errors
     pytype.pyc.pyc
+    pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
 )

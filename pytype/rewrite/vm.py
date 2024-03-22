@@ -1,10 +1,13 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
-from typing import Dict, Optional, Sequence
+from typing import Dict, Optional, Sequence, Tuple
 
 from pytype import config
 from pytype.blocks import blocks
+from pytype.errors import errors
 from pytype.pyc import pyc
+from pytype.pytd import pytd
+from pytype.pytd import pytd_utils
 from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite import output
@@ -23,6 +26,7 @@ class VirtualMachine:
     self._code = code
     self._initial_globals = initial_globals
     self._module_frame: frame_lib.Frame = None
+    self._errorlog = errors.ErrorLog()
 
   @classmethod
   def from_source(
@@ -39,7 +43,7 @@ class VirtualMachine:
         self._code, self._initial_globals)
     self._module_frame.run()
 
-  def analyze_all_defs(self):
+  def analyze_all_defs(self) -> errors.ErrorLog:
     """Analyzes all class and function definitions."""
     self._run_module()
     parent_frames = [self._module_frame]
@@ -52,15 +56,18 @@ class VirtualMachine:
         instance = cls.instantiate()
         for f in cls.functions:
           parent_frames.extend(f.bind_to(instance).analyze())
+    return self._errorlog
 
-  def infer_stub(self):
+  def infer_stub(self) -> Tuple[errors.ErrorLog, pytd.TypeDeclUnit]:
     self._run_module()
-    for value in self._module_frame.final_locals.values():
+    pytd_nodes = []
+    for name, value in self._module_frame.final_locals.items():
       try:
         pytd_node = output.to_pytd_def(value)
       except NotImplementedError:
-        pytd_node = output.to_pytd_type(value)
-      del pytd_node  # TODO(b/325339842): use this
+        pytd_node = pytd.Constant(name, output.to_pytd_type(value))
+      pytd_nodes.append(pytd_node)
+    return self._errorlog, pytd_utils.WrapTypeDeclUnit('inferred', pytd_nodes)
 
 
 def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:
