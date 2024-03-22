@@ -62,6 +62,8 @@ class VirtualMachine:
     self._run_module()
     pytd_nodes = []
     for name, value in self._module_frame.final_locals.items():
+      if name in output.IGNORED_MODULE_ATTRIBUTES:
+        continue
       try:
         pytd_node = output.to_pytd_def(value)
       except NotImplementedError:

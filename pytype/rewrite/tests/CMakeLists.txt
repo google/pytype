@@ -10,3 +10,12 @@ py_library(
     pytype.pyc.pyc
     pytype_extensions.instrumentation_for_testing
 )
+
+py_test(
+  NAME
+    test_basic
+  SRCS
+    test_basic.py
+  DEPS
+    pytype.tests.test_base
+)

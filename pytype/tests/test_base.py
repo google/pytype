@@ -6,6 +6,7 @@ import sys
 import textwrap
 from typing import Tuple
 
+# from absl import flags
 from pytype import analyze
 from pytype import config
 from pytype import load_pytd
@@ -18,6 +19,7 @@ from pytype.pytd import optimize
 from pytype.pytd import pytd_utils
 from pytype.pytd import serialize_ast
 from pytype.pytd import visitors
+from pytype.rewrite import analyze as rewrite_analyze
 from pytype.tests import test_utils
 
 import unittest
@@ -34,6 +36,8 @@ CAPTURE_STDOUT = ("-s" not in sys.argv)
 skip = unittest.skip
 skip_if = unittest.skipIf
 main = unittest.main
+
+_USE_REWRITE = False
 
 
 def _MatchLoaderConfig(options, loader):
@@ -88,6 +92,7 @@ class BaseTest(unittest.TestCase):
         strict_primitive_comparisons=True,
         strict_none_binding=True,
         use_fiddle_overlay=True,
+        use_rewrite=_USE_REWRITE,
         validate_version=False,
     )
 
@@ -98,6 +103,10 @@ class BaseTest(unittest.TestCase):
       # does not match the configuration in the current loader.
       self._loader = load_pytd.create_loader(self.options)
     return self._loader
+
+  @property
+  def analyze_lib(self):
+    return rewrite_analyze if self.options.use_rewrite else analyze
 
   def ConfigureOptions(self, **kwargs):
     assert "python_version" not in kwargs, (
@@ -129,7 +138,7 @@ class BaseTest(unittest.TestCase):
       src = _Format(code)
       if test_utils.ErrorMatcher(code).expected:
         self.fail("Cannot assert errors with Check(); use CheckWithErrors()")
-      ret = analyze.check_types(
+      ret = self.analyze_lib.check_types(
           src, loader=self.loader, options=self.options, **kwargs)
       errorlog = ret.context.errorlog
     except directors.SkipFileError:
@@ -156,7 +165,7 @@ class BaseTest(unittest.TestCase):
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
     self.ConfigureOptions(module_name=module_name)
-    ret = analyze.infer_types(**kwargs)
+    ret = self.analyze_lib.infer_types(**kwargs)
     unit = ret.ast
     assert unit is not None
     unit.Visit(visitors.VerifyVisitor())
@@ -173,7 +182,7 @@ class BaseTest(unittest.TestCase):
     """Check and match errors."""
     kwargs.update(self._SetUpErrorHandling(
         code, pythonpath, analyze_annotated, quick, imports_map))
-    ret = analyze.check_types(**kwargs)
+    ret = self.analyze_lib.check_types(**kwargs)
     errorlog = ret.context.errorlog
     src = kwargs["src"]
     matcher = test_utils.ErrorMatcher(src)
@@ -191,7 +200,8 @@ class BaseTest(unittest.TestCase):
           input=filename,
           module_name=module_utils.get_module_name(filename, pythonpath),
           pythonpath=pythonpath)
-      ret = analyze.infer_types(code, options=self.options, loader=self.loader)
+      ret = self.analyze_lib.infer_types(
+          code, options=self.options, loader=self.loader)
       unit = ret.ast
       assert unit is not None
       unit.Visit(visitors.VerifyVisitor())
@@ -257,7 +267,7 @@ class BaseTest(unittest.TestCase):
         **self._GetPythonpathArgs(pythonpath, imports_map))
     if test_utils.ErrorMatcher(src).expected:
       self.fail("Cannot assert errors with Infer(); use InferWithErrors()")
-    ret = analyze.infer_types(
+    ret = self.analyze_lib.infer_types(
         src, options=self.options, loader=self.loader, **kwargs)
     errorlog = ret.context.errorlog
     unit = ret.ast

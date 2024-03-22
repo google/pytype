@@ -4,7 +4,10 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.rewrite.abstract import abstract
 
-_IGNORED_CLASS_ATTRIBUTES = frozenset([
+IGNORED_MODULE_ATTRIBUTES = frozenset([
+    '__name__',
+])
+IGNORED_CLASS_ATTRIBUTES = frozenset([
     '__module__',
     '__qualname__',
 ])
@@ -37,7 +40,7 @@ def _class_to_pytd_def(val: abstract.BaseClass) -> pytd.Class:
   constants = []
   classes = []
   for member_name, member_val in val.members.items():
-    if member_name in _IGNORED_CLASS_ATTRIBUTES:
+    if member_name in IGNORED_CLASS_ATTRIBUTES:
       continue
     try:
       member_type = to_pytd_def(member_val)
