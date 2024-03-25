@@ -17,9 +17,10 @@ class PrettyPrinterTest(test_base.UnitTest):
     self._ctx = test_utils.make_context(options)
 
   def test_constant_printer(self):
+    pp = pretty_printer.PrettyPrinter()
     pyval = (1, 2, pytd.AnythingType(), 4)
     const = self._ctx.convert.constant_to_value(pyval)
-    ret = pretty_printer.show_constant(const)
+    ret = pp.show_constant(const)
     self.assertEqual(ret, "(1, 2, ..., 4)")
 
 

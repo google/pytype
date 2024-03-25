@@ -1028,7 +1028,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-signature-mutation")
   def invalid_signature_mutation(self, stack, func_name, sig):
-    sig = self._pp.print_pytd_signature(sig)
+    sig = self._pp.print_pytd(sig)
     msg = "Invalid self type mutation in pyi method signature"
     details = f"{func_name}{sig}"
     self.error(stack, msg, details)

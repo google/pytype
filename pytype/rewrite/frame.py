@@ -333,14 +333,6 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         attr_bindings.append(variables.Binding(attr))
       return variables.Variable(tuple(attr_bindings), name)
 
-  def _pop_jump_if_false(self, opcode):
-    unused_var = self._stack.pop()
-    # TODO(b/324465215): Construct the real conditions for this jump.
-    jump_state = self._current_state.with_condition(conditions.Condition())
-    self._merge_state_into(jump_state, opcode.argval)
-    nojump_state = self._current_state.with_condition(conditions.Condition())
-    self._merge_state_into(nojump_state, opcode.next.index)
-
   def byte_RESUME(self, opcode):
     del opcode  # unused
 
@@ -481,10 +473,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(abstract.BUILD_CLASS.to_variable())
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode):
-    self._pop_jump_if_false(opcode)
-
-  def byte_POP_JUMP_IF_FALSE(self, opcode):
-    self._pop_jump_if_false(opcode)
-
-  def byte_JUMP_FORWARD(self, opcode):
-    self._merge_state_into(self._current_state, opcode.argval)
+    unused_var = self._stack.pop()
+    # TODO(b/324465215): Construct the real conditions for this jump.
+    jump_state = self._current_state.with_condition(conditions.Condition())
+    self._merge_state_into(jump_state, opcode.argval)
+    nojump_state = self._current_state.with_condition(conditions.Condition())
+    self._merge_state_into(nojump_state, opcode.next.index)

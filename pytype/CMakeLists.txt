@@ -102,10 +102,21 @@ py_library(
 
 py_library(
   NAME
+    pretty_printer_base
+  SRCS
+    pretty_printer_base.py
+  DEPS
+    pytype.pytd.pytd
+    pytype.types.types
+)
+
+py_library(
+  NAME
     pretty_printer
   SRCS
     pretty_printer.py
   DEPS
+    .pretty_printer_base
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg

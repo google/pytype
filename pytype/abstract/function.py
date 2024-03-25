@@ -10,6 +10,7 @@ from typing import Any, Dict, Optional, Tuple, TypeVar, cast
 import attrs
 
 from pytype import datatypes
+from pytype import pretty_printer_base as pp
 from pytype.abstract import _base
 from pytype.abstract import abstract_utils
 from pytype.errors import error_types
@@ -473,7 +474,7 @@ class Signature(types.Signature):
       if len(values) > 1:
         return "..."
       else:
-        return abstract_utils.show_constant(values[0])
+        return pp.PrettyPrinterBase.show_constant(values[0])
     else:
       return None
 

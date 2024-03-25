@@ -85,9 +85,10 @@ class ImportPathsTest(_LoaderTest):
       self.assertEqual(module, expected)
 
   def test_builtin_sys(self):
-    with self._setup_loader() as loader:
-      ast = loader.import_name("sys")
-      self.assertTrue(ast.Lookup("sys.exit"))
+    loader = load_pytd.Loader(config.Options.create(
+        module_name="base", python_version=self.python_version))
+    ast = loader.import_name("sys")
+    self.assertTrue(ast.Lookup("sys.exit"))
 
   def test_basic(self):
     with test_utils.Tempdir() as d:
@@ -160,9 +161,10 @@ class ImportPathsTest(_LoaderTest):
         self.assertFalse(loader.import_name("baz"))
 
   def test_stdlib(self):
-    with self._setup_loader() as loader:
-      ast = loader.import_name("io")
-      self.assertTrue(ast.Lookup("io.StringIO"))
+    loader = load_pytd.Loader(config.Options.create(
+        module_name="base", python_version=self.python_version))
+    ast = loader.import_name("io")
+    self.assertTrue(ast.Lookup("io.StringIO"))
 
   def test_deep_dependency(self):
     with test_utils.Tempdir() as d:
@@ -283,8 +285,9 @@ class ImportPathsTest(_LoaderTest):
       self.assertTrue(path.Lookup("path.path"))
 
   def test_typeshed(self):
-    with self._setup_loader() as loader:
-      self.assertTrue(loader.import_name("urllib.request"))
+    loader = load_pytd.Loader(config.Options.create(
+        module_name="base", python_version=self.python_version))
+    self.assertTrue(loader.import_name("urllib.request"))
 
   def test_prefer_typeshed(self):
     with test_utils.Tempdir() as d:

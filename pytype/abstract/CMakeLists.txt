@@ -231,6 +231,7 @@ py_library(
   DEPS
     ._base
     .abstract_utils
+    pytype.pretty_printer_base
     pytype.utils
     pytype.errors.error_types
     pytype.pytd.pytd
