@@ -30,7 +30,7 @@ jobs:
       - name: Set up QEMU
         if: matrix.platform == 'manylinux2014_aarch64'
         id: qemu
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
       - name: Pull Docker image
         run: |
           DOCKER_IMAGE="quay.io/pypa/${{ matrix.platform }}"
@@ -64,7 +64,7 @@ jobs:
         with:
           submodules: recursive
       - name: Set up Python ${{ matrix.python_version }}
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python_version }}
       - name: Build MacOS wheels
