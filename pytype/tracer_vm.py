@@ -632,7 +632,7 @@ class CallTracer(vm.VirtualMachine):
           # It's ambiguous whether this is a type, a function or something
           # else, so encode it as a constant.
           combined_types = pytd_utils.JoinTypes(
-              t.to_type(self.ctx.exitpoint) for t in options)
+              t.to_pytd_type(self.ctx.exitpoint) for t in options)
           data.append(pytd.Constant(name, combined_types))
       elif options:
         for option in options:
@@ -645,7 +645,7 @@ class CallTracer(vm.VirtualMachine):
               d = option.to_pytd_def(self.ctx.exitpoint, name)
           except NotImplementedError:
             with self.ctx.pytd_convert.optimize_literals():
-              d = option.to_type(self.ctx.exitpoint)  # Type only
+              d = option.to_pytd_type(self.ctx.exitpoint)  # Type only
             if isinstance(d, pytd.NothingType):
               if isinstance(option, abstract.Empty):
                 d = pytd.AnythingType()
@@ -664,8 +664,8 @@ class CallTracer(vm.VirtualMachine):
   def _call_traces_to_function(call_traces, name_transform=lambda x: x):
     funcs = collections.defaultdict(pytd_utils.OrderedSet)
 
-    def to_type(node, arg):
-      return pytd_utils.JoinTypes(a.to_type(node) for a in arg.data)
+    def to_pytd_type(node, arg):
+      return pytd_utils.JoinTypes(a.to_pytd_type(node) for a in arg.data)
 
     for ct in call_traces:
       log.info("Generating pytd function for call trace: %r",
@@ -678,11 +678,11 @@ class CallTracer(vm.VirtualMachine):
           arg_names[i] = function.argname(i)
       arg_types = []
       for arg in ct.positional_arguments:
-        arg_types.append(to_type(ct.node, arg))
+        arg_types.append(to_pytd_type(ct.node, arg))
       kw_types = []
       for name, arg in ct.keyword_arguments:
-        kw_types.append((name, to_type(ct.node, arg)))
-      ret = pytd_utils.JoinTypes(t.to_type(ct.node)
+        kw_types.append((name, to_pytd_type(ct.node, arg)))
+      ret = pytd_utils.JoinTypes(t.to_pytd_type(ct.node)
                                  for t in ct.return_value.data)
       starargs = None
       starstarargs = None

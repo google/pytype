@@ -2,16 +2,17 @@
 
 import collections
 import dataclasses
+import enum
 
 from typing import List
 
 from pytype import matcher
 from pytype import pretty_printer
-from pytype.abstract import abstract
-from pytype.abstract import function
-from pytype.overlays import typed_dict as typed_dict_overlay
+from pytype.errors import error_types
 from pytype.pytd import pytd_utils
+from pytype.pytd import slots
 from pytype.typegraph import cfg
+from pytype.types import types
 
 
 @dataclasses.dataclass
@@ -29,17 +30,29 @@ class BadCall:
   error_details: List[str]
 
 
+class BadAttrType(enum.Enum):
+  OBJECT = 0
+  SYMBOL = 1
+  MODULE = 2
+
+
+@dataclasses.dataclass
+class BadAttr:
+  obj: str
+  obj_type: BadAttrType
+
+
 class BadCallPrinter:
-  """Print the details of an abstract.function.BadCall."""
+  """Print the details of a BadCall."""
 
   def __init__(
-      self, pp: pretty_printer.PrettyPrinter, bad_call: function.BadCall
+      self, pp: pretty_printer.PrettyPrinter, bad_call: error_types.BadCall
   ):
     self.bad_call = bad_call
     self._pp = pp
 
   def _iter_sig(self):
-    """Iterate through a function.Signature object. Focus on a bad parameter."""
+    """Iterate through a Signature object. Focus on a bad parameter."""
     sig = self.bad_call.sig
     for name in sig.posonly_params:
       yield "", name
@@ -61,7 +74,7 @@ class BadCallPrinter:
     bad_param = self.bad_call.bad_param
     sig = self.bad_call.sig
     for prefix, name in self._iter_sig():
-      suffix = " = ..." if name in sig.defaults else ""
+      suffix = " = ..." if sig.has_default(name) else ""
       if bad_param and name == bad_param.name:
         type_str = self._pp.print_as_expected_type(bad_param.typ)
         suffix = ": " + type_str + suffix
@@ -129,21 +142,21 @@ class MatcherErrorPrinter:
   def __init__(self, pp: pretty_printer.PrettyPrinter):
     self._pp = pp
 
-  def _print_protocol_error(self, error: matcher.ProtocolError) -> str:
+  def _print_protocol_error(self, error: error_types.ProtocolError) -> str:
     """Pretty-print the protocol error."""
     convert = error.left_type.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
-      left = self._pp.print_pytd(error.left_type.get_instance_type())
-      protocol = self._pp.print_pytd(error.other_type.get_instance_type())
-    if isinstance(error, matcher.ProtocolMissingAttributesError):
+      left = self._pp.print_pytd(error.left_type.to_pytd_instance())
+      protocol = self._pp.print_pytd(error.other_type.to_pytd_instance())
+    if isinstance(error, error_types.ProtocolMissingAttributesError):
       missing = ", ".join(sorted(error.missing))
       return (f"Attributes of protocol {protocol} are not implemented on "
               f"{left}: {missing}")
     else:
-      assert isinstance(error, matcher.ProtocolTypeError)
+      assert isinstance(error, error_types.ProtocolTypeError)
       actual, expected = error.actual_type, error.expected_type
-      if (isinstance(actual, abstract.Function) and
-          isinstance(expected, abstract.Function)):
+      if (isinstance(actual, types.Function) and
+          isinstance(expected, types.Function)):
         # TODO(b/196434939): When matching a protocol like Sequence[int] the
         # protocol name will be Sequence[int] but the method signatures will be
         # displayed as f(self: Sequence[_T], ...).
@@ -155,8 +168,8 @@ class MatcherErrorPrinter:
                 f">> {left} defines:\n{actual}")
       else:
         with convert.set_output_mode(convert.OutputMode.DETAILED):
-          actual = self._pp.print_pytd(error.actual_type.to_type())
-          expected = self._pp.print_pytd(error.expected_type.to_type())
+          actual = self._pp.print_pytd(error.actual_type.to_pytd_type())
+          expected = self._pp.print_pytd(error.expected_type.to_pytd_type())
         return (f"Attribute {error.attribute_name} of protocol {protocol} has "
                 f"wrong type in {left}: expected {expected}, got {actual}")
 
@@ -167,7 +180,7 @@ class MatcherErrorPrinter:
         "default. Learn more: https://github.com/google/pytype/blob/main/docs/faq.md#why-doesnt-str-match-against-string-iterables")
 
   def _print_typed_dict_error(self, error) -> str:
-    """Pretty-print the matcher.TypedDictError instance."""
+    """Pretty-print the TypedDictError instance."""
     ret = ""
     if error.missing:
       ret += "\nTypedDict missing keys: " + ", ".join(error.missing)
@@ -183,7 +196,7 @@ class MatcherErrorPrinter:
     return ret
 
   def print_error_details(
-      self, error_details: matcher.ErrorDetails
+      self, error_details: error_types.MatcherErrorDetails
   ) -> List[str]:
     printers = [
         (error_details.protocol, self._print_protocol_error),
@@ -214,21 +227,19 @@ class MatcherErrorPrinter:
     formal = bad[0].expected.typ
     convert = formal.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
-      expected = self._pp.print_pytd(formal.get_instance_type(node))
-      if isinstance(formal, typed_dict_overlay.TypedDictClass):
-        expected = expected + "(TypedDict)"
+      expected = self._pp.print_pytd(formal.to_pytd_instance(node))
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
     else:
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
       bad_actual = self._pp.print_pytd(pytd_utils.JoinTypes(
-          match.actual_binding.data.to_type(node, view=match.view)
+          match.actual_binding.data.to_pytd_type(node, view=match.view)
           for match in bad))
       actual = bad[0].actual
       if len(actual.bindings) > len(bad):
         full_actual = self._pp.print_pytd(pytd_utils.JoinTypes(
-            v.to_type(node) for v in actual.data))
+            v.to_pytd_type(node) for v in actual.data))
       else:
         full_actual = bad_actual
     # typing.Never is a prettier alias for nothing.
@@ -237,3 +248,20 @@ class MatcherErrorPrinter:
     return BadReturn(
         fmt(expected), fmt(bad_actual), fmt(full_actual), error_details
     )
+
+
+class AttributeErrorPrinter:
+  """Pretty printer for attribute errors."""
+
+  def __init__(self, pp: pretty_printer.PrettyPrinter):
+    self._pp = pp
+
+  def print_receiver(self, obj: types.BaseValue, attr_name: str):
+    if attr_name in slots.SYMBOL_MAPPING:
+      obj_repr = self._pp.print_as_actual_type(obj)
+      return BadAttr(obj_repr, BadAttrType.SYMBOL)
+    elif isinstance(obj, types.Module):
+      return BadAttr(obj.name, BadAttrType.MODULE)
+    else:
+      obj_repr = self._pp.print_as_actual_type(obj)
+      return BadAttr(obj_repr, BadAttrType.OBJECT)

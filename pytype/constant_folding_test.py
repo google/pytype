@@ -220,7 +220,7 @@ class TypeBuilderTestBase(test_base.UnitTest):
     self.ctx = test_utils.make_context(options)
 
   def assertPytd(self, val, expected):
-    pytd_tree = val.to_type()
+    pytd_tree = val.to_pytd_type()
     pytd_tree = pytd_tree.Visit(visitors.CanonicalOrderingVisitor())
     actual = pytd_utils.Print(pytd_tree)
     self.assertEqual(actual, expected)

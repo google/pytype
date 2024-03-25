@@ -9,6 +9,7 @@ import logging
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay
 
@@ -201,8 +202,8 @@ class FieldFunction(classgen.FieldConstructor):
   def _get_default_var(self, node, args):
     if "default" in args.namedargs and "default_factory" in args.namedargs:
       # The pyi signatures should prevent this; check left in for safety.
-      raise function.DuplicateKeyword(self.signatures[0].signature, args,
-                                      self.ctx, "default")
+      raise error_types.DuplicateKeyword(self.signatures[0].signature, args,
+                                         self.ctx, "default")
     elif "default" in args.namedargs:
       default_var = args.namedargs["default"]
     elif "default_factory" in args.namedargs:

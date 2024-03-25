@@ -22,6 +22,7 @@ py_library(
     pytype.platform_utils.platform_utils
     pytype.pyi.parser
     pytype.pytd.pytd
+    pytype.rewrite.rewrite
 )
 
 py_library(

@@ -45,12 +45,12 @@ class SignatureTest(unittest.TestCase):
     x = base.PythonConstant('x').to_variable()
     y = base.PythonConstant('y').to_variable()
     args = signature.map_args(functions.Args([x, y]))
-    self.assertEqual(args, {'x': x, 'y': y})
+    self.assertEqual(args.argdict, {'x': x, 'y': y})
 
   def test_fake_args(self):
     signature = functions.Signature('f', ('x', 'y'))
     args = signature.make_fake_args()
-    self.assertEqual(set(args), {'x', 'y'})
+    self.assertEqual(set(args.argdict), {'x', 'y'})
 
 
 class InterpreterFunctionTest(unittest.TestCase):

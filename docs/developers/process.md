@@ -9,9 +9,11 @@
    * [Running pytype locally](#running-pytype-locally)
    * [Debugging](#debugging)
    * [Profiling](#profiling)
+   * [Typegraph Rewrite](#typegraph-rewrite)
+      * [GitHub](#github-1)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue May 16 07:27:43 PM PDT 2023 -->
+<!-- Added by: rechen, at: Fri Mar 22 04:24:28 PM PDT 2024 -->
 
 <!--te-->
 
@@ -99,6 +101,17 @@ the [`pstats`][pstats] module.
 Note that numbers are not directly comparable between runs; differences of 100%
 for different machines on otherwise identical code have happened. The relative
 rank of functions in the profile is stable between runs.
+
+## Typegraph Rewrite
+
+Pytype's typegraph is being rewritten to improve performance and correctness.
+The new code lives in the pytype/rewrite/ directory. To run pytype's tests with
+the new code:
+
+### GitHub
+
+Open `pytype/tests/test_base.py` and change the value of the `_USE_REWRITE`
+module constant from `False` to `True`.
 
 <!-- General references -->
 [contributing-md]: https://github.com/google/pytype/blob/main/CONTRIBUTING.md

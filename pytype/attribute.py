@@ -8,6 +8,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.errors import error_types
 from pytype.overlays import overlay
 from pytype.overlays import special_builtins
 from pytype.typegraph import cfg
@@ -514,7 +515,7 @@ class AbstractAttributeHandler(utils.ContextWeakrefMixin):
           if isinstance(value, abstract.Property):
             try:
               node, value = value.call(node, None, None)
-            except function.FailedFunctionCall as error:
+            except error_types.FailedFunctionCall as error:
               # In normal circumstances, property calls should not fail. But in
               # case one ever does, handle the failure gracefully.
               self.ctx.errorlog.invalid_function_call(

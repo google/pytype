@@ -10,7 +10,13 @@ class BaseValueTest(unittest.TestCase):
   def test_to_variable(self):
 
     class C(base.BaseValue):
-      pass
+
+      def __repr__(self):
+        return 'C'
+
+      @property
+      def _attrs(self):
+        return (id(self),)
 
     c = C()
     var = c.to_variable()
@@ -46,6 +52,32 @@ class SingletonTest(unittest.TestCase):
     _ = base.Singleton('TEST_SINGLETON')
     with self.assertRaises(ValueError):
       _ = base.Singleton('TEST_SINGLETON')
+
+
+class UnionTest(unittest.TestCase):
+
+  def test_basic(self):
+    options = (base.PythonConstant(True), base.PythonConstant(False))
+    union = base.Union(options)
+    self.assertEqual(union.options, options)
+
+  def test_flatten(self):
+    union1 = base.Union((base.PythonConstant(True), base.PythonConstant(False)))
+    union2 = base.Union((union1, base.PythonConstant(5)))
+    self.assertEqual(union2.options, (base.PythonConstant(True),
+                                      base.PythonConstant(False),
+                                      base.PythonConstant(5)))
+
+  def test_deduplicate(self):
+    true = base.PythonConstant(True)
+    false = base.PythonConstant(False)
+    union = base.Union((true, false, true))
+    self.assertEqual(union.options, (true, false))
+
+  def test_order(self):
+    true = base.PythonConstant(True)
+    false = base.PythonConstant(False)
+    self.assertEqual(base.Union((true, false)), base.Union((false, true)))
 
 
 if __name__ == '__main__':

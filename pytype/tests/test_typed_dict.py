@@ -124,7 +124,7 @@ class TypedDictTest(test_base.BaseTest):
       a: A = {'x': '10', 'z': 20}  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(err, {"e": [
-        "Annotation: A(TypedDict)",
+        "Annotation: A",
         "extra keys", "z",
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
@@ -173,7 +173,7 @@ class TypedDictTest(test_base.BaseTest):
         return {'x': '10', 'z': 20}  # bad-return-type[e]
     """)
     self.assertErrorSequences(err, {"e": [
-        "Expected: A(TypedDict)",
+        "Expected: A",
         "extra keys", "z",
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})
@@ -427,7 +427,7 @@ class TypedDictFunctionalTest(test_base.BaseTest):
       a: A = {'x': '10', 'z': 20}  # annotation-type-mismatch[e]
     """)
     self.assertErrorSequences(err, {"e": [
-        "Annotation: A(TypedDict)",
+        "Annotation: A",
         "extra keys", "z",
         "type errors", "{'x': ...}", "expected int", "got str"
     ]})

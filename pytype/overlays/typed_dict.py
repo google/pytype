@@ -7,6 +7,7 @@ from typing import Dict, Optional, Set
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay_utils
 from pytype.pytd import pytd
@@ -20,13 +21,6 @@ def _is_required(value: abstract.BaseValue) -> Optional[bool]:
     return False
   else:
     return None
-
-
-class TypedDictKeyMissing(function.DictKeyMissing):
-
-  def __init__(self, typed_dict: "TypedDict", key: Optional[str]):
-    super().__init__(key)
-    self.typed_dict = typed_dict
 
 
 @dataclasses.dataclass
@@ -92,12 +86,12 @@ class TypedDictBuilder(abstract.PyTDClass):
     try:
       return abstract_utils.get_atomic_python_constant(var, pyval_type)
     except abstract_utils.ConversionError as e:
-      bad = abstract_utils.BadType(name, typ)
-      raise function.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
+      bad = error_types.BadType(name, typ)
+      raise error_types.WrongArgTypes(self.fn_sig, args, self.ctx, bad) from e
 
   def _extract_args(self, args):
     if len(args.posargs) != 2:
-      raise function.WrongArgCount(self.fn_sig, args, self.ctx)
+      raise error_types.WrongArgCount(self.fn_sig, args, self.ctx)
     name = self._extract_param(args, 0, "name", str, self.ctx.convert.str_type)
     fields = self._extract_param(
         args, 1, "fields", dict, self.ctx.convert.dict_type)
@@ -293,7 +287,7 @@ class TypedDict(abstract.Dict):
 
   def _check_str_key(self, name):
     if name not in self.fields:
-      raise TypedDictKeyMissing(self, name)
+      raise error_types.TypedDictKeyMissing(self, name)
     return name
 
   def _check_str_key_value(self, node, name, value_var):
@@ -312,7 +306,7 @@ class TypedDict(abstract.Dict):
     try:
       name = abstract_utils.get_atomic_python_constant(name_var, str)
     except abstract_utils.ConversionError as e:
-      raise TypedDictKeyMissing(self, None) from e
+      raise error_types.TypedDictKeyMissing(self, None) from e
     return self._check_str_key(name)
 
   def _check_value(self, node, name_var, value_var):
@@ -348,7 +342,7 @@ class TypedDict(abstract.Dict):
   def get_slot(self, node, key_var, default_var=None):
     try:
       str_key = self._check_key(key_var)
-    except TypedDictKeyMissing:
+    except error_types.TypedDictKeyMissing:
       return node, default_var or self.ctx.convert.none.to_variable(node)
     if str_key in self.pyval:
       return node, self.pyval[str_key]

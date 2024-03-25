@@ -9,12 +9,13 @@ from typing import Any
 from pytype import utils
 from pytype.abstract import abstract_utils
 from pytype.pytd import mro
+from pytype.types import types
 
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
 _make = abstract_utils._make  # pylint: disable=protected-access
 
 
-class BaseValue(utils.ContextWeakrefMixin):
+class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
   """A single abstract value such as a type or function signature.
 
   This is the base class of the things that appear in Variables. It represents
@@ -220,12 +221,12 @@ class BaseValue(utils.ContextWeakrefMixin):
       instance: An instance of this class (as a BaseValue)
     """
 
-  def get_instance_type(self, node=None, instance=None, seen=None, view=None):
+  def to_pytd_instance(self, node=None, instance=None, seen=None, view=None):
     """Get the type an instance of us would have."""
     return self.ctx.pytd_convert.value_instance_to_pytd_type(
         node, self, instance, seen, view)
 
-  def to_type(self, node=None, seen=None, view=None):
+  def to_pytd_type(self, node=None, seen=None, view=None):
     """Get a PyTD type representing this object, as seen at a node."""
     return self.ctx.pytd_convert.value_to_pytd_type(node, self, seen, view)
 

@@ -13,9 +13,10 @@ from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
+from pytype.types import types
 
 
-def show_constant(val: abstract.BaseValue) -> str:
+def show_constant(val: types.BaseValue) -> str:
   """Pretty-print a value if it is a constant.
 
   Recurses into a constant, printing the underlying Python value for constants
@@ -30,14 +31,17 @@ def show_constant(val: abstract.BaseValue) -> str:
     A string of the pretty-printed constant.
   """
   def _ellipsis_printer(v):
-    if isinstance(v, abstract.PythonConstant):
+    if isinstance(v, types.PythonConstant):
       return v.str_of_constant(_ellipsis_printer)
     return "..."
   return _ellipsis_printer(val)
 
 
-class PrettyPrinter:
-  """Pretty print types for errors."""
+class PrettyPrinterBase:
+  """Pretty printer methods depending only on pytd types.
+
+  Subclasses are expected to handle abstract->pytd conversion.
+  """
 
   def print_pytd(self, pytd_type: pytd.Type) -> str:
     """Print the name of the pytd type."""
@@ -64,16 +68,16 @@ class PrettyPrinter:
       return name[:start] + name[start+1:].replace("_DOT_", ".")
     return name
 
-  def join_printed_types(self, types: Iterable[str]) -> str:
+  def join_printed_types(self, typs: Iterable[str]) -> str:
     """Pretty-print the union of the printed types."""
-    types = set(types)  # dedup
-    if len(types) == 1:
-      return next(iter(types))
-    elif types:
+    typs = set(typs)  # dedup
+    if len(typs) == 1:
+      return next(iter(typs))
+    elif typs:
       literal_contents = set()
       optional = False
       new_types = []
-      for t in types:
+      for t in typs:
         if t.startswith("Literal["):
           literal_contents.update(t[len("Literal["):-1].split(", "))
         elif t == "None":
@@ -93,22 +97,29 @@ class PrettyPrinter:
     else:
       return "nothing"
 
+  def print_pytd_signature(self, sig: pytd.Signature) -> str:
+    return self.print_pytd(sig)
+
+
+class PrettyPrinter(PrettyPrinterBase):
+  """Pretty print types for errors."""
+
   def print_as_generic_type(self, t) -> str:
     convert = t.ctx.pytd_convert
     generic = pytd_utils.MakeClassOrContainerType(
-        t.get_instance_type().base_type,
+        t.to_pytd_instance().base_type,
         t.formal_type_parameters.keys(),
         False)
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       return self.print_pytd(generic)
 
-  def print_as_expected_type(self, t: abstract.BaseValue, instance=None) -> str:
+  def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
     """Print abstract value t as a pytd type."""
     convert = t.ctx.pytd_convert
     if isinstance(t, (abstract.Unknown, abstract.Unsolvable,
                       abstract.Class)) or t.is_late_annotation():
       with convert.set_output_mode(convert.OutputMode.DETAILED):
-        return self.print_pytd(t.get_instance_type(instance=instance))
+        return self.print_pytd(t.to_pytd_instance(instance=instance))
     elif isinstance(t, abstract.Union):
       return self.join_printed_types(
           self.print_as_expected_type(o) for o in t.options)
@@ -130,7 +141,7 @@ class PrettyPrinter:
     else:
       output_mode = convert.OutputMode.DETAILED
     with convert.set_output_mode(output_mode):
-      return self.print_pytd(t.to_type())
+      return self.print_pytd(t.to_pytd_type())
 
   def print_as_function_def(self, fn: abstract.Function) -> str:
     convert = fn.ctx.pytd_convert
@@ -139,9 +150,6 @@ class PrettyPrinter:
       pytd_def = convert.value_to_pytd_def(fn.ctx.root_node, fn, name)
     return pytd_utils.Print(pytd_def)
 
-  def print_pytd_signature(self, sig: pytd.Signature) -> str:
-    return self.print_pytd(sig)
-
   def print_var_as_type(self, var: cfg.Variable, node: cfg.CFGNode) -> str:
     """Print a pytype variable as a type."""
     if not var.bindings:
@@ -149,7 +157,7 @@ class PrettyPrinter:
     convert = var.data[0].ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       typ = pytd_utils.JoinTypes(
-          b.data.to_type()
+          b.data.to_pytd_type()
           for b in abstract_utils.expand_type_parameter_instances(var.bindings)
           if node.HasCombination([b]))
     return self.print_pytd(typ)

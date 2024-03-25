@@ -1,11 +1,16 @@
 """Abstract representations of classes."""
 
+import abc
 import dataclasses
+import logging
 
-from typing import Dict, List, Optional, Protocol, Sequence
+from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
+import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
+
+log = logging.getLogger(__name__)
 
 
 class _HasMembers(Protocol):
@@ -38,10 +43,14 @@ class BaseClass(base.BaseValue):
     # classmethod called to create a class instance
     self.constructor = '__new__'
     # instance methods called on an instance immediately after creation
-    self.initializers = ['__init__', '__post_init__']
+    self.initializers = ['__init__']
 
   def __repr__(self):
     return f'BaseClass({self.name})'
+
+  @property
+  def _attrs(self):
+    return (self.name, immutabledict.immutabledict(self.members))
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     return self.members.get(name)
@@ -93,15 +102,21 @@ class InterpreterClass(BaseClass):
     return f'InterpreterClass({self.name})'
 
 
-class MutableInstance(base.BaseValue):
+class BaseInstance(base.BaseValue):
   """Instance of a class."""
 
-  def __init__(self, cls: BaseClass):
-    self.cls = cls
-    self.members: Dict[str, base.BaseValue] = {}
+  members: Mapping[str, base.BaseValue]
 
-  def __repr__(self):
-    return f'MutableInstance({self.cls.name})'
+  def __init__(self, cls: BaseClass, members):
+    self.cls = cls
+    self.members = members
+
+  @abc.abstractmethod
+  def set_attribute(self, name: str, value: base.BaseValue) -> None: ...
+
+  @property
+  def _attrs(self):
+    return (self.cls, immutabledict.immutabledict(self.members))
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     if name in self.members:
@@ -111,16 +126,29 @@ class MutableInstance(base.BaseValue):
       return cls_attribute.bind_to(self)
     return cls_attribute
 
+
+class MutableInstance(BaseInstance):
+  """Instance of a class."""
+
+  members: Dict[str, base.BaseValue]
+
+  def __init__(self, cls: BaseClass):
+    super().__init__(cls, {})
+
+  def __repr__(self):
+    return f'MutableInstance({self.cls.name})'
+
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
-      raise NotImplementedError(f'Attribute already set: {name}')
-    self.members[name] = value
+      self.members[name] = base.Union((self.members[name], value))
+    else:
+      self.members[name] = value
 
   def freeze(self) -> 'FrozenInstance':
     return FrozenInstance(self)
 
 
-class FrozenInstance(base.BaseValue):
+class FrozenInstance(BaseInstance):
   """Frozen instance of a class.
 
   This is used by BaseClass.instantiate() to create a snapshot of an instance
@@ -128,14 +156,17 @@ class FrozenInstance(base.BaseValue):
   """
 
   def __init__(self, instance: MutableInstance):
-    self._underlying = instance
+    super().__init__(
+        instance.cls, immutabledict.immutabledict(instance.members))
 
-  @property
-  def cls(self):
-    return self._underlying.cls
+  def __repr__(self):
+    return f'FrozenInstance({self.cls.name})'
 
-  def get_attribute(self, name: str) -> Optional[base.BaseValue]:
-    return self._underlying.get_attribute(name)
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    # The VM may try to set an attribute on a frozen instance in the process of
+    # analyzing a class's methods. This is fine; we just ignore it.
+    log.info('Ignoring attribute set on %r: %s -> %r',
+             self, name, value)
 
 
 BUILD_CLASS = base.Singleton('BUILD_CLASS')

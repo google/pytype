@@ -9,6 +9,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay_utils
 from pytype.overlays import special_builtins
@@ -160,7 +161,8 @@ class _NamedTupleBuilderBase(abstract.PyTDFunction):
     except abstract_utils.ConversionError:
       raise _ArgsError()  # pylint: disable=raise-missing-from
     except _FieldMatchError as e:
-      raise function.WrongArgTypes(sig.signature, raw_args, self.ctx, e.param)
+      raise error_types.WrongArgTypes(
+          sig.signature, raw_args, self.ctx, e.param)
 
     props = NamedTupleProperties.from_field_names(
         args.name, args.field_names, self.ctx)
@@ -238,7 +240,7 @@ class CollectionsNamedTupleBuilder(_NamedTupleBuilderBase):
 class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
   """Factory for creating typing.NamedTuples via the function constructor."""
 
-  _fields_param: abstract_utils.BadType
+  _fields_param: error_types.BadType
 
   @classmethod
   def make(cls, ctx):
@@ -251,7 +253,7 @@ class NamedTupleFuncBuilder(_NamedTupleBuilderBase):
     fields_pyval = ctx.loader.lookup_pytd("typing", "_NamedTupleFields").type
     fields_type = ctx.convert.constant_to_value(fields_pyval, {}, ctx.root_node)
     # pylint: disable=protected-access
-    self._fields_param = abstract_utils.BadType(name="fields", typ=fields_type)
+    self._fields_param = error_types.BadType(name="fields", typ=fields_type)
     return self
 
   def _is_str_instance(self, val):

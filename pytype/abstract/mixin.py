@@ -8,6 +8,7 @@ from pytype.abstract import function
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -65,7 +66,7 @@ class MixinMeta(type):
     # pytype: enable=attribute-error
 
 
-class PythonConstant(metaclass=MixinMeta):
+class PythonConstant(types.PythonConstant, metaclass=MixinMeta):
   """A mix-in for storing actual Python constants, not just their types.
 
   This is used for things that are stored in cfg.Variable, but where we

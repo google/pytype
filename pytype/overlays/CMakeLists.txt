@@ -72,6 +72,7 @@ py_library(
     .overlay
     .overlay_utils
     pytype.abstract.abstract
+    pytype.errors.error_types
 )
 
 py_library(
@@ -108,6 +109,7 @@ py_library(
     .classgen
     .overlay
     pytype.abstract.abstract
+    pytype.errors.error_types
 )
 
 py_library(
@@ -121,6 +123,7 @@ py_library(
     .overlay_utils
     .special_builtins
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.typegraph.cfg
 )
@@ -177,6 +180,7 @@ py_library(
     metaclass.py
   DEPS
     pytype.abstract.abstract
+    pytype.errors.error_types
 )
 
 py_library(
@@ -190,6 +194,7 @@ py_library(
     .special_builtins
     pytype.utils
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.pytd.pytd
 )
 
@@ -268,6 +273,7 @@ py_library(
   DEPS
     pytype.pretty_printer
     pytype.abstract.abstract
+    pytype.errors.error_types
 )
 
 py_library(
@@ -300,6 +306,7 @@ py_library(
     .classgen
     .overlay_utils
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.pytd.pytd
 )
 
@@ -326,6 +333,7 @@ py_library(
     .typed_dict
     pytype.utils
     pytype.abstract.abstract
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.typegraph.cfg
 )

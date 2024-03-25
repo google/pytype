@@ -14,6 +14,7 @@ from pytype.abstract import _typing
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.typegraph import cfg_utils
@@ -226,8 +227,8 @@ class InterpreterFunction(_function_base.SignedFunction):
         m = self.ctx.matcher(self.ctx.root_node).compute_one_match(
             guard_var, input_type)
         if not m.success:
-          guard_pytd = pytd_utils.Print(guard_type.get_instance_type())
-          input_pytd = pytd_utils.Print(input_type.get_instance_type())
+          guard_pytd = pytd_utils.Print(guard_type.to_pytd_instance())
+          input_pytd = pytd_utils.Print(input_type.to_pytd_instance())
           self.ctx.errorlog.invalid_function_definition(
               self.ctx.vm.frames,
               f"TypeIs[{guard_pytd}] is not consistent with input type "
@@ -348,7 +349,7 @@ class InterpreterFunction(_function_base.SignedFunction):
         # match_args and _map_args both do some matching, so together they fully
         # type-check the arguments.
         substs, callargs = f.match_and_map_args(node, args, alias_map)
-      except function.FailedFunctionCall as e:
+      except error_types.FailedFunctionCall as e:
         if e > error:
           error = e
       else:
@@ -464,7 +465,7 @@ class InterpreterFunction(_function_base.SignedFunction):
   def call(self, node, func, args, alias_map=None, new_locals=False,
            frame_substs=()):
     if self.is_overload:
-      raise function.NotCallable(self)
+      raise error_types.NotCallable(self)
     args = self._fix_args_for_unannotated_contextmanager_exit(node, func, args)
     args = args.simplify(node, self.ctx, self.signature)
     sig, substs, callargs = self._find_matching_sig(node, args, alias_map)

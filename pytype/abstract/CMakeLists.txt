@@ -40,6 +40,7 @@ py_library(
     .abstract_utils
     pytype.utils
     pytype.pytd.pytd
+    pytype.types.types
 )
 
 py_library(
@@ -57,10 +58,12 @@ py_library(
     .function
     .mixin
     pytype.utils
+    pytype.errors.error_types
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.pytd.codegen.codegen
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_library(
@@ -77,6 +80,8 @@ py_library(
     ._typing
     .abstract_utils
     .function
+    pytype.errors.error_types
+    pytype.types.types
 )
 
 py_library(
@@ -90,6 +95,7 @@ py_library(
     .class_mixin
     .function
     pytype.utils
+    pytype.errors.error_types
 )
 
 py_library(
@@ -103,9 +109,11 @@ py_library(
     .abstract_utils
     .function
     .mixin
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
+    pytype.types.types
 )
 
 py_library(
@@ -122,6 +130,7 @@ py_library(
     .abstract_utils
     .class_mixin
     .function
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.typegraph.cfg_utils
 )
@@ -142,8 +151,10 @@ py_library(
     .function
     .mixin
     pytype.utils
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_library(
@@ -221,9 +232,11 @@ py_library(
     ._base
     .abstract_utils
     pytype.utils
+    pytype.errors.error_types
     pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.typegraph.cfg_utils
+    pytype.types.types
 )
 
 py_library(
@@ -236,6 +249,7 @@ py_library(
     .function
     pytype.pytd.pytd
     pytype.typegraph.cfg
+    pytype.types.types
 )
 
 py_test(
@@ -248,6 +262,7 @@ py_test(
     .abstract_utils
     .function
     pytype.config
+    pytype.errors.error_types
     pytype.overlays.overlays
     pytype.pytd.pytd
     pytype.tests.test_base

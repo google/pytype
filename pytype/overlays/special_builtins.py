@@ -8,6 +8,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.errors import error_types
 
 
 class TypeNew(abstract.PyTDFunction):
@@ -170,7 +171,7 @@ class ObjectPredicate(BuiltinFunction):
       node = self.ctx.connect_new_cfg_node(node, f"CallPredicate:{self.name}")
       result = self.ctx.program.NewVariable()
       self.run(node, args, result)
-    except function.InvalidParameters as ex:
+    except error_types.InvalidParameters as ex:
       self.ctx.errorlog.invalid_function_call(self.ctx.vm.frames, ex)
       result = self.ctx.new_unsolvable(node)
     return node, result
@@ -455,15 +456,15 @@ class Super(BuiltinClass):
       cls_var = args.posargs[0]
       super_objects = args.posargs[1].bindings if num_args == 2 else [None]
     else:
-      raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
+      raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
     for cls in cls_var.bindings:
       if isinstance(cls.data, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY)):
         cls_data = cls.data
       elif any(base.full_name == "builtins.type" for base in cls.data.cls.mro):
         cls_data = self.ctx.convert.unsolvable
       else:
-        bad = abstract_utils.BadType(name="cls", typ=self.ctx.convert.type_type)
-        raise function.WrongArgTypes(
+        bad = error_types.BadType(name="cls", typ=self.ctx.convert.type_type)
+        raise error_types.WrongArgTypes(
             self._SIGNATURE, args, self.ctx, bad_param=bad)
       for obj in super_objects:
         if obj:
@@ -556,7 +557,7 @@ class AssertType(BuiltinFunction):
     if len(args.posargs) == 2:
       var, typ = args.posargs
     else:
-      raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
+      raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
 
     # Convert both args to strings and compare them
     pp = pretty_printer.PrettyPrinter()
@@ -589,7 +590,8 @@ class Property(BuiltinClass):
     ret = dict(zip(self._KEYS, args.posargs))
     for k, v in args.namedargs.items():
       if k not in self._KEYS:
-        raise function.WrongKeywordArgs(self.signature(), args, self.ctx, [k])
+        raise error_types.WrongKeywordArgs(
+            self.signature(), args, self.ctx, [k])
       ret[k] = v
     return ret
 
@@ -728,7 +730,7 @@ class StaticMethod(BuiltinClass):
 
   def call(self, node, func, args, alias_map=None):
     if len(args.posargs) != 1:
-      raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
+      raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
     if not _check_method_decorator_arg(arg, "staticmethod", self.ctx):
       return node, self.ctx.new_unsolvable(node)
@@ -771,7 +773,7 @@ class ClassMethod(BuiltinClass):
 
   def call(self, node, func, args, alias_map=None):
     if len(args.posargs) != 1:
-      raise function.WrongArgCount(self._SIGNATURE, args, self.ctx)
+      raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
     arg = args.posargs[0]
     if not _check_method_decorator_arg(arg, "classmethod", self.ctx):
       return node, self.ctx.new_unsolvable(node)

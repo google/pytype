@@ -81,6 +81,28 @@ py_test(
 
 py_library(
   NAME
+    output
+  SRCS
+    output.py
+  DEPS
+    pytype.pytd.pytd
+    pytype.rewrite.abstract.abstract
+)
+
+py_test(
+  NAME
+    output_test
+  SRCS
+    output_test.py
+  DEPS
+    .output
+    .vm
+    pytype.pytd.pytd
+    pytype.rewrite.abstract.abstract
+)
+
+py_library(
+  NAME
     stack
   SRCS
     stack.py
@@ -107,9 +129,12 @@ py_library(
   DEPS
     .convert
     .frame
+    .output
     pytype.config
     pytype.blocks.blocks
+    pytype.errors.errors
     pytype.pyc.pyc
+    pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
 )
@@ -121,7 +146,6 @@ py_test(
     vm_test.py
   DEPS
     .vm
-    pytype.config
     pytype.pyc.pyc
     pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils

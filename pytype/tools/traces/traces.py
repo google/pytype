@@ -92,7 +92,7 @@ def trace(src, options=None):
 def _to_pytd(datum, loader, ast):
   if not datum:
     return pytd.AnythingType()
-  t = pytd_utils.JoinTypes(v.to_type() for v in datum).Visit(
+  t = pytd_utils.JoinTypes(v.to_pytd_type() for v in datum).Visit(
       visitors.RemoveUnknownClasses())
   return loader.resolve_pytd(t, ast)
 

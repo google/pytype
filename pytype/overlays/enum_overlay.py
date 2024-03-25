@@ -32,6 +32,7 @@ from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.overlays import classgen
 from pytype.overlays import overlay
 from pytype.overlays import overlay_utils
@@ -121,7 +122,7 @@ class EnumBuilder(abstract.PyTDClass):
     lookup_new = abstract.SimpleFunction(lookup_sig, self.ctx)
     try:
       return lookup_new.call(node, None, args, alias_map)
-    except function.FailedFunctionCall as e:
+    except error_types.FailedFunctionCall as e:
       log.info("Called Enum.__new__ as lookup, but failed:\n%s", e)
     api_new = abstract.SimpleFunction(api_sig, self.ctx)
     api_new.call(node, None, args, alias_map)

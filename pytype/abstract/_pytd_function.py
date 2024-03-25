@@ -17,11 +17,13 @@ from pytype.abstract import _typing
 from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
+from pytype.errors import error_types
 from pytype.pytd import optimize
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.pytd import visitors
 from pytype.typegraph import cfg
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -196,7 +198,7 @@ class PyTDFunction(_function_base.Function):
     ret_map = {}
     retvar = self.ctx.program.NewVariable()
     all_mutations = {}
-    # The following line may raise function.FailedFunctionCall
+    # The following line may raise error_types.FailedFunctionCall
     possible_calls = self.match_args(node, args, alias_map)
     # It's possible for the substitution dictionary computed for a particular
     # view of 'args' to contain references to variables not in the view because
@@ -315,8 +317,15 @@ class PyTDFunction(_function_base.Function):
       for obj, errs in errors.items():
         names = {name for _, _, name in errs.values()}
         name = list(names)[0] if len(names) == 1 else None
-        self.ctx.errorlog.container_type_mismatch(self.ctx.vm.frames, obj, errs,
-                                                  name)
+        # Find the container class
+        for base in obj.cls.mro:
+          if _isinstance(base, "ParameterizedClass"):
+            cls = base
+            break
+        else:
+          assert False, f"{obj.cls.full_name} is not a container"
+        self.ctx.errorlog.container_type_mismatch(
+            self.ctx.vm.frames, cls, errs, name)
 
     node = abstract_utils.apply_mutations(node, all_mutations.__iter__)
     return node, retvar
@@ -442,7 +451,7 @@ class PyTDFunction(_function_base.Function):
         arg_dict, matches = sig.substitute_formal_args(
             node, args, match_all_views,
             keep_all_views=sig is not self.signatures[-1])
-      except function.FailedFunctionCall as e:
+      except error_types.FailedFunctionCall as e:
         if e > error:
           # Add the name of the caller if possible.
           if hasattr(self, "parent"):
@@ -545,7 +554,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       arg_dict[name] = arg
     num_expected_posargs = len(self.signature.param_names)
     if len(args.posargs) > num_expected_posargs and not self.pytd_sig.starargs:
-      raise function.WrongArgCount(self.signature, args, self.ctx)
+      raise error_types.WrongArgCount(self.signature, args, self.ctx)
     # Extra positional args are passed via the *args argument.
     varargs_type = self.signature.annotations.get(self.signature.varargs_name)
     if isinstance(varargs_type, _classes.ParameterizedClass):
@@ -561,14 +570,14 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       if name in posonly_names:
         continue
       elif name in arg_dict:
-        raise function.DuplicateKeyword(self.signature, args, self.ctx, name)
+        raise error_types.DuplicateKeyword(self.signature, args, self.ctx, name)
       else:
         arg_dict[name] = arg
     kws = set(args.namedargs)
     extra_kwargs = kws - {p.name for p in self.pytd_sig.params}
     if extra_kwargs and not self.pytd_sig.starstarargs:
       if function.has_visible_namedarg(node, args, extra_kwargs):
-        raise function.WrongKeywordArgs(
+        raise error_types.WrongKeywordArgs(
             self.signature, args, self.ctx, extra_kwargs)
     posonly_kwargs = kws & posonly_names
     # If a function has a **kwargs parameter, then keyword arguments with the
@@ -576,7 +585,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     #   def f(x, /, **kwargs): ...
     #   f(0, x=1)  # ok
     if posonly_kwargs and not self.signature.kwargs_name:
-      raise function.WrongKeywordArgs(
+      raise error_types.WrongKeywordArgs(
           self.signature, args, self.ctx, posonly_kwargs)
     # Extra keyword args are passed via the **kwargs argument.
     kwargs_type = self.signature.annotations.get(self.signature.kwargs_name)
@@ -606,7 +615,7 @@ class PyTDSignature(utils.ContextWeakrefMixin):
       if p.name not in arg_dict:
         if (not p.optional and args.starargs is None and
             args.starstarargs is None):
-          raise function.MissingParameter(
+          raise error_types.MissingParameter(
               self.signature, args, self.ctx, p.name)
         # Assume the missing parameter is filled in by *args or **kwargs.
         arg_dict[p.name] = self.ctx.new_unsolvable(node)
@@ -615,14 +624,15 @@ class PyTDSignature(utils.ContextWeakrefMixin):
     """Substitute matching args into this signature. Used by PyTDFunction."""
     formal_args, arg_dict = self._map_args(node, args)
     self._fill_in_missing_parameters(node, args, arg_dict)
-    args_to_match = [function.Arg(name, arg_dict[name], formal)
+    args_to_match = [types.Arg(name, arg_dict[name], formal)
                      for name, formal in formal_args]
     matcher = self.ctx.matcher(node)
     try:
       matches = matcher.compute_matches(
           args_to_match, match_all_views, keep_all_views)
-    except matcher.MatchError as e:
-      raise function.WrongArgTypes(self.signature, args, self.ctx, e.bad_type)
+    except error_types.MatchError as e:
+      raise error_types.WrongArgTypes(
+          self.signature, args, self.ctx, e.bad_type)
     if log.isEnabledFor(logging.DEBUG):
       log.debug("Matched arguments against sig%s",
                 pytd_utils.Print(self.pytd_sig))

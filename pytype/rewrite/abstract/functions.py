@@ -27,17 +27,38 @@ _EMPTY_MAP = immutabledict.immutabledict()
 _ArgDict = Dict[str, base.AbstractVariableType]
 
 
+class _Frame(Protocol):
+  """Protocol for a VM frame."""
+
+  final_locals: Mapping[str, base.BaseValue]
+
+  def make_child_frame(
+      self,
+      func: 'InterpreterFunction',
+      initial_locals: Mapping[str, base.AbstractVariableType],
+  ) -> '_Frame': ...
+
+  def run(self) -> None: ...
+
+  def get_return_value(self) -> base.BaseValue: ...
+
+
+_FrameT = TypeVar('_FrameT', bound=_Frame)
+
+
 @dataclasses.dataclass
-class Args:
+class Args(Generic[_FrameT]):
   """Arguments to one function call."""
   posargs: Sequence[base.AbstractVariableType] = ()
+  frame: Optional[_FrameT] = None
 
 
 @dataclasses.dataclass
-class MappedArgs:
+class MappedArgs(Generic[_FrameT]):
   """Function call args that have been mapped to a signature and param names."""
   signature: 'Signature'
   argdict: _ArgDict
+  frame: Optional[_FrameT] = None
 
 
 class _HasReturn(Protocol):
@@ -119,6 +140,7 @@ class Signature:
     )
 
   def __repr__(self):
+    # TODO(b/241479600): Incorporate defaults and annotations.
     params = list(self.param_names)
     if self.posonly_count:
       params.insert(self.posonly_count, '/')
@@ -131,17 +153,19 @@ class Signature:
       params.append('**' + self.kwargs_name)
     return f'def {self.name}({", ".join(params)})'
 
-  def map_args(self, args: Args) -> _ArgDict:
+  def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Implement this properly, with error detection.
-    return dict(zip(self.param_names, args.posargs))
+    argdict = dict(zip(self.param_names, args.posargs))
+    return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
-  def make_fake_args(self) -> _ArgDict:
+  def make_fake_args(self) -> MappedArgs[_Frame]:
     names = list(self.param_names + self.kwonly_params)
     if self.varargs_name:
       names.append(self.varargs_name)
     if self.kwargs_name:
       names.append(self.kwargs_name)
-    return {name: base.ANY.to_variable() for name in names}
+    argdict = {name: base.ANY.to_variable() for name in names}
+    return MappedArgs(signature=self, argdict=argdict)
 
 
 class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
@@ -158,7 +182,7 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
     """The function's signatures."""
 
   @abc.abstractmethod
-  def call(self, args: Args) -> _HasReturnT:
+  def call(self, args: Args[_Frame]) -> _HasReturnT:
     """Calls this function with the given arguments.
 
     Args:
@@ -195,14 +219,15 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
   def signatures(self):
     return self._signatures
 
-  def map_args(self, args: Args) -> MappedArgs:
+  def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Handle arg mapping failure.
     for sig in self.signatures:
-      return MappedArgs(sig, sig.map_args(args))
+      return sig.map_args(args)
     raise NotImplementedError('No signature matched passed args')
 
   @abc.abstractmethod
-  def call_with_mapped_args(self, mapped_args: MappedArgs) -> _HasReturnT:
+  def call_with_mapped_args(
+      self, mapped_args: MappedArgs[_Frame]) -> _HasReturnT:
     """Calls this function with the given mapped arguments.
 
     Args:
@@ -213,31 +238,12 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
       get_return_value() method that retrieves the return value.
     """
 
-  def call(self, args: Args) -> _HasReturnT:
+  def call(self, args: Args[_Frame]) -> _HasReturnT:
     return self.call_with_mapped_args(self.map_args(args))
 
   def analyze(self) -> Sequence[_HasReturnT]:
-    return [self.call_with_mapped_args(MappedArgs(sig, sig.make_fake_args()))
+    return [self.call_with_mapped_args(sig.make_fake_args())
             for sig in self.signatures]
-
-
-class _Frame(Protocol):
-  """Protocol for a VM frame."""
-
-  final_locals: Mapping[str, base.BaseValue]
-
-  def make_child_frame(
-      self,
-      func: 'InterpreterFunction',
-      initial_locals: Mapping[str, base.AbstractVariableType],
-  ) -> '_Frame': ...
-
-  def run(self) -> None: ...
-
-  def get_return_value(self) -> base.BaseValue: ...
-
-
-_FrameT = TypeVar('_FrameT', bound=_Frame)
 
 
 class InterpreterFunction(SimpleFunction[_FrameT]):
@@ -263,8 +269,13 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
   def __repr__(self):
     return f'InterpreterFunction({self.name})'
 
-  def call_with_mapped_args(self, mapped_args: MappedArgs) -> _FrameT:
-    frame = self._parent_frame.make_child_frame(self, mapped_args.argdict)
+  @property
+  def _attrs(self):
+    return (self.name, self.code)
+
+  def call_with_mapped_args(self, mapped_args: MappedArgs[_FrameT]) -> _FrameT:
+    parent_frame = mapped_args.frame or self._parent_frame
+    frame = parent_frame.make_child_frame(self, mapped_args.argdict)
     frame.run()
     return frame
 
@@ -284,6 +295,10 @@ class BoundFunction(BaseFunction[_HasReturnT]):
     return f'BoundFunction({self.callself!r}, {self.underlying!r})'
 
   @property
+  def _attrs(self):
+    return (self.callself, self.underlying)
+
+  @property
   def name(self):
     return self.underlying.name
 
@@ -291,18 +306,19 @@ class BoundFunction(BaseFunction[_HasReturnT]):
   def signatures(self):
     raise NotImplementedError('BoundFunction.signatures')
 
-  def _bind_mapped_args(self, mapped_args: MappedArgs) -> MappedArgs:
+  def _bind_mapped_args(
+      self, mapped_args: MappedArgs[_FrameT]) -> MappedArgs[_FrameT]:
     argdict = dict(mapped_args.argdict)
     argdict[mapped_args.signature.param_names[0]] = self.callself.to_variable()
-    return MappedArgs(mapped_args.signature, argdict)
+    return MappedArgs(mapped_args.signature, argdict, mapped_args.frame)
 
-  def call(self, args: Args) -> _HasReturnT:
+  def call(self, args: Args[_Frame]) -> _HasReturnT:
     mapped_args = self._bind_mapped_args(self.underlying.map_args(args))
     return self.underlying.call_with_mapped_args(mapped_args)
 
   def analyze(self) -> Sequence[_HasReturnT]:
     return [
         self.underlying.call_with_mapped_args(
-            self._bind_mapped_args(MappedArgs(sig, sig.make_fake_args())))
+            self._bind_mapped_args(sig.make_fake_args()))
         for sig in self.underlying.signatures
     ]

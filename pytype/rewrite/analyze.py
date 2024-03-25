@@ -20,10 +20,8 @@ log = logging.getLogger(__name__)
 class Context:
   """Analysis context."""
 
-  def __init__(self):
-    # TODO(b/241479600): This is a placeholder to make everything compile and
-    # run for now, but we'll need to write a new version of errors.py.
-    self.errorlog = errors.ErrorLog()
+  def __init__(self, errorlog: errors.ErrorLog):
+    self.errorlog = errorlog
 
 
 @dataclasses.dataclass
@@ -45,8 +43,8 @@ def check_types(
   """Checks types for the given source code."""
   del loader, init_maximum_depth, maximum_depth
   vm = vm_lib.VirtualMachine.from_source(src, options)
-  vm.analyze_all_defs()
-  return Analysis(Context(), None, None)
+  errorlog = vm.analyze_all_defs()
+  return Analysis(Context(errorlog), None, None)
 
 
 def infer_types(
@@ -57,9 +55,8 @@ def infer_types(
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Infers types for the given source code."""
-  del loader, init_maximum_depth, maximum_depth
+  del init_maximum_depth, maximum_depth
   vm = vm_lib.VirtualMachine.from_source(src, options)
-  vm.infer_stub()
-  ast = pytd.TypeDeclUnit('inferred + unknowns', (), (), (), (), ())
-  deps = pytd.TypeDeclUnit('<all>', (), (), (), (), ())
-  return Analysis(Context(), ast, deps)
+  errorlog, ast = vm.infer_stub()
+  deps = loader.concat_all()
+  return Analysis(Context(errorlog), ast, deps)

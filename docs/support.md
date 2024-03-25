@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Wed Jan  3 02:26:12 PM PST 2024 -->
+<!-- Added by: rechen, at: Tue Mar 19 02:50:25 PM PDT 2024 -->
 
 <!--te-->
 
@@ -86,6 +86,10 @@ Feature                                                                         
 [PEP 692 -- Using TypedDict for more precise **kwargs typing][692]                      | 3.12    | ❌        | [#1558][typeddict-unpack]
 [PEP 695 -- Type Parameter Syntax][695]                                                 | 3.12    | ❌        |
 [PEP 698 -- Override Decorator for Static Typing][698]                                  | 3.12    | ✅        |
+[PEP 696 -- Type Defaults for Type Parameters][696]                                     | 3.13    | ❌        | [#1597][type-parameter-defaults]
+[PEP 702 -- Marking deprecations using the type system][702]                            | 3.13    | ❌        |
+[PEP 705 -- TypedDict: Read-only items][705]                                            | 3.13    | ❌        |
+[PEP 742 -- Narrowing types with TypeIs][742]                                           | TBD     | ✅        | open PEP, under consideration
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
@@ -189,7 +193,11 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [681]: https://peps.python.org/pep-0681/
 [692]: https://peps.python.org/pep-0692/
 [695]: https://peps.python.org/pep-0695/
+[696]: https://peps.python.org/pep-0696/
 [698]: https://peps.python.org/pep-0698/
+[702]: https://peps.python.org/pep-0702/
+[705]: https://peps.python.org/pep-0705/
+[742]: https://peps.python.org/pep-0742/
 [annotated]: https://github.com/google/pytype/issues/791
 [annotation-inheritance]: https://github.com/google/pytype/issues/81
 [dataclass-transform]: https://github.com/google/pytype/issues/1553
@@ -207,5 +215,6 @@ Tensorflow | 🟡        | Minimal, Google-internal
 [pytype-typing-faq]: https://google.github.io/pytype/typing_faq.html
 [self]: https://github.com/google/pytype/issues/1283
 [type-guards]: https://github.com/google/pytype/issues/916
+[type-parameter-defaults]: https://github.com/google/pytype/issues/1597
 [typeddict-unpack]: https://github.com/google/pytype/issues/1558
 [variadic-generics]: https://github.com/google/pytype/issues/1525

@@ -18,6 +18,7 @@ from pytype.abstract import abstract_utils
 from pytype.abstract import function
 from pytype.abstract import mixin
 from pytype.blocks import blocks
+from pytype.errors import error_types
 from pytype.overlays import metaclass
 from pytype.pyc import opcodes
 from pytype.pytd import mro
@@ -557,7 +558,7 @@ def _check_defaults(node, method, ctx):
   _, args = ctx.vm.create_method_arguments(node, method, use_defaults=True)
   try:
     _, errors = function.match_all_args(ctx, node, method, args)
-  except function.FailedFunctionCall as e:
+  except error_types.FailedFunctionCall as e:
     raise AssertionError("Unexpected argument matching error: %s" %
                          e.__class__.__name__) from e
   for e, arg_name, value in errors:
@@ -709,7 +710,10 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
         return function.call_function(
             ctx, node, attr_var, args, fallback_to_unsolvable=False,
             strict_filter=len(attr_var.bindings) > 1)
-      except (function.DictKeyMissing, function.FailedFunctionCall) as e:
+      except (
+          error_types.DictKeyMissing,
+          error_types.FailedFunctionCall
+      ) as e:
         # It's possible that this call failed because the function returned
         # NotImplemented.  See, e.g.,
         # test_operators.ReverseTest.check_reverse(), in which 1 {op} Bar() ends
@@ -766,7 +770,10 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
     for yval in y.bindings:
       try:
         node, ret = _call_binop_on_bindings(state.node, name, xval, yval, ctx)
-      except (function.DictKeyMissing, function.FailedFunctionCall) as e:
+      except (
+          error_types.DictKeyMissing,
+          error_types.FailedFunctionCall
+      ) as e:
         if (report_errors and e > error and
             state.node.HasCombination([xval, yval])):
           error = e
@@ -817,7 +824,7 @@ def call_inplace_operator(state, iname, x, y, ctx):
     try:
       state, ret = ctx.vm.call_function_with_state(state, attr, (y,),
                                                    fallback_to_unsolvable=False)
-    except function.FailedFunctionCall as e:
+    except error_types.FailedFunctionCall as e:
       ctx.errorlog.invalid_function_call(ctx.vm.frames, e)
       state, ret = e.get_return(state)
   return state, ret
@@ -1071,7 +1078,7 @@ class ClassMatch:
 
 
 def _match_builtin_class(
-    node, success: Optional[bool], cls: abstract.Class, keys: Tuple[str],
+    node, success: Optional[bool], cls: abstract.Class, keys: Tuple[str, ...],
     posarg_count: int, ctx
 ) -> ClassMatch:
   """Match a builtin class with a single posarg constructor."""

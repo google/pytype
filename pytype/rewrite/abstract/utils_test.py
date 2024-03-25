@@ -37,5 +37,21 @@ class GetAtomicConstantTest(unittest.TestCase):
       utils.get_atomic_constant(var, Tuple[str, ...])
 
 
+class JoinValuesTest(unittest.TestCase):
+
+  def test_empty(self):
+    self.assertEqual(utils.join_values([]), base.ANY)
+
+  def test_one_value(self):
+    a = base.PythonConstant('a')
+    self.assertEqual(utils.join_values([a]), a)
+
+  def test_multiple_values(self):
+    a = base.PythonConstant('a')
+    b = base.PythonConstant('b')
+    val = utils.join_values([a, b])
+    self.assertEqual(val, base.Union((a, b)))
+
+
 if __name__ == '__main__':
   unittest.main()

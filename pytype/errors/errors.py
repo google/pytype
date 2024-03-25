@@ -10,11 +10,10 @@ from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 from pytype import debug
 from pytype import pretty_printer
 from pytype import utils
-from pytype.abstract import abstract
-from pytype.abstract import function
 from pytype.errors import error_printer
-from pytype.overlays import typed_dict as typed_dict_overlay
+from pytype.errors import error_types
 from pytype.pytd import slots
+from pytype.types import types
 
 # Usually we call the logger "log" but that name is used quite often here.
 _log = logging.getLogger(__name__)
@@ -495,9 +494,8 @@ class ErrorLog(ErrorLogBase):
                keyword=name)
 
   @_error_name("attribute-error")
-  def _attribute_error(self, stack, binding, attr_name):
+  def _attribute_error(self, stack, binding, obj_repr, attr_name):
     """Log an attribute error."""
-    obj_repr = self._pp.print_as_actual_type(binding.data)
     if len(binding.variable.bindings) > 1:
       # Joining the printed types rather than merging them before printing
       # ensures that we print all of the options when 'Any' is among them.
@@ -516,20 +514,22 @@ class ErrorLog(ErrorLogBase):
                keyword=attr_name, keyword_context=obj_repr)
 
   @_error_name("module-attr")
-  def _module_attr(self, stack, binding, attr_name):
-    module_name = binding.data.name
+  def _module_attr(self, stack, module_name, attr_name):
     self.error(stack, f"No attribute {attr_name!r} on module {module_name!r}",
                keyword=attr_name, keyword_context=module_name)
 
   def attribute_error(self, stack, binding, attr_name):
-    if attr_name in slots.SYMBOL_MAPPING:
-      obj = self._pp.print_as_actual_type(binding.data)
-      details = f"No attribute {attr_name!r} on {obj}"
-      self._unsupported_operands(stack, attr_name, obj, details=details)
-    elif isinstance(binding.data, abstract.Module):
-      self._module_attr(stack, binding, attr_name)
+    ep = error_printer.AttributeErrorPrinter(self._pp)
+    recv = ep.print_receiver(binding.data, attr_name)
+    if recv.obj_type == error_printer.BadAttrType.SYMBOL:
+      details = f"No attribute {attr_name!r} on {recv.obj}"
+      self._unsupported_operands(stack, attr_name, recv.obj, details=details)
+    elif recv.obj_type == error_printer.BadAttrType.MODULE:
+      self._module_attr(stack, recv.obj, attr_name)
+    elif recv.obj_type == error_printer.BadAttrType.OBJECT:
+      self._attribute_error(stack, binding, recv.obj, attr_name)
     else:
-      self._attribute_error(stack, binding, attr_name)
+      assert False, recv.obj_type
 
   @_error_name("unbound-type-param")
   def unbound_type_param(self, stack, obj, attr_name, type_param_name):
@@ -633,7 +633,7 @@ class ErrorLog(ErrorLogBase):
   @_error_name("not-callable")
   def not_callable(self, stack, func, details=None):
     """Calling an object that isn't callable."""
-    if isinstance(func, abstract.InterpreterFunction) and func.is_overload:
+    if isinstance(func, types.Function) and func.is_overload:
       prefix = "@typing.overload-decorated "
     else:
       prefix = ""
@@ -680,31 +680,31 @@ class ErrorLog(ErrorLogBase):
   def invalid_function_call(self, stack, error):
     """Log an invalid function call."""
     # Make sure method names are prefixed with the class name.
-    if (isinstance(error, function.InvalidParameters) and
+    if (isinstance(error, error_types.InvalidParameters) and
         "." not in error.name and error.bad_call.sig.param_names and
         error.bad_call.sig.param_names[0] in ("self", "cls") and
         error.bad_call.passed_args):
       error.name = f"{error.bad_call.passed_args[0][1].full_name}.{error.name}"
-    if isinstance(error, function.WrongArgCount):
+    if isinstance(error, error_types.WrongArgCount):
       self.wrong_arg_count(stack, error.name, error.bad_call)
-    elif isinstance(error, function.WrongArgTypes):
+    elif isinstance(error, error_types.WrongArgTypes):
       self.wrong_arg_types(stack, error.name, error.bad_call)
-    elif isinstance(error, function.WrongKeywordArgs):
+    elif isinstance(error, error_types.WrongKeywordArgs):
       self.wrong_keyword_args(
           stack, error.name, error.bad_call, error.extra_keywords)
-    elif isinstance(error, function.MissingParameter):
+    elif isinstance(error, error_types.MissingParameter):
       self.missing_parameter(
           stack, error.name, error.bad_call, error.missing_parameter)
-    elif isinstance(error, function.NotCallable):
+    elif isinstance(error, error_types.NotCallable):
       self.not_callable(stack, error.obj)
-    elif isinstance(error, function.DuplicateKeyword):
+    elif isinstance(error, error_types.DuplicateKeyword):
       self.duplicate_keyword(
           stack, error.name, error.bad_call, error.duplicate)
-    elif isinstance(error, function.UndefinedParameterError):
+    elif isinstance(error, error_types.UndefinedParameterError):
       self.name_error(stack, error.name)
-    elif isinstance(error, typed_dict_overlay.TypedDictKeyMissing):
+    elif isinstance(error, error_types.TypedDictKeyMissing):
       self.typed_dict_error(stack, error.typed_dict, error.name)
-    elif isinstance(error, function.DictKeyMissing):
+    elif isinstance(error, error_types.DictKeyMissing):
       # We don't report DictKeyMissing because the false positive rate is high.
       pass
     else:
@@ -793,23 +793,23 @@ class ErrorLog(ErrorLogBase):
 
   def invalid_annotation(self,
                          stack,
-                         annot: Optional[Union[str, abstract.BaseValue]],
+                         annot: Optional[Union[str, types.BaseValue]],
                          details=None,
                          name=None):
-    if isinstance(annot, abstract.BaseValue):
+    if isinstance(annot, types.BaseValue):
       annot = self._pp.print_as_expected_type(annot)
     self._invalid_annotation(stack, annot, details, name)
 
   def _print_params_helper(self, param_or_params):
-    if isinstance(param_or_params, abstract.BaseValue):
+    if isinstance(param_or_params, types.BaseValue):
       return self._pp.print_as_expected_type(param_or_params)
     else:
       return "[{}]".format(
           ", ".join(self._print_params_helper(p) for p in param_or_params))
 
   def wrong_annotation_parameter_count(
-      self, stack, annot: abstract.BaseValue,
-      params: Sequence[abstract.BaseValue], expected_count: int,
+      self, stack, annot: types.BaseValue,
+      params: Sequence[types.BaseValue], expected_count: int,
       template: Optional[Iterable[str]] = None):
     """Log an error for an annotation with the wrong number of parameters."""
     base_type = self._pp.print_as_expected_type(annot)
@@ -834,7 +834,7 @@ class ErrorLog(ErrorLogBase):
   def ambiguous_annotation(
       self,
       stack,
-      options: Optional[Union[str, Iterable[abstract.BaseValue]]],
+      options: Optional[Union[str, Iterable[types.BaseValue]]],
       name=None):
     """Log an ambiguous annotation."""
     if isinstance(options, (str, type(None))):
@@ -963,8 +963,6 @@ class ErrorLog(ErrorLogBase):
     if annot is None:
       return
     annot_string = self._pp.print_as_expected_type(annot)
-    if isinstance(annot, typed_dict_overlay.TypedDictClass):
-      annot_string = annot_string + "(TypedDict)"
     literal = "Literal[" in annot_string
     actual_string = self._pp.print_as_actual_type(binding.data, literal=literal)
     if actual_string == "None":
@@ -994,21 +992,15 @@ class ErrorLog(ErrorLogBase):
     self.error(stack, err_msg, details=details)
 
   @_error_name("container-type-mismatch")
-  def container_type_mismatch(self, stack, obj, mutations, name):
+  def container_type_mismatch(self, stack, cls, mutations, name):
     """Invalid combination of annotation and mutation.
 
     Args:
       stack: the frame stack
-      obj: the container instance being mutated
+      cls: the container type
       mutations: a dict of {parameter name: (annotated types, new types)}
       name: the variable name (or None)
     """
-    for base in obj.cls.mro:
-      if isinstance(base, abstract.ParameterizedClass):
-        cls = base
-        break
-    else:
-      assert False, f"{obj.cls.full_name} is not a container"
     details = f"Container: {self._pp.print_as_generic_type(cls)}\n"
     allowed_contained = ""
     new_contained = ""

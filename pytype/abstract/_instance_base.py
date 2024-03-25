@@ -7,6 +7,7 @@ from pytype.abstract import _base
 from pytype.abstract import abstract_utils
 from pytype.abstract import class_mixin
 from pytype.abstract import function
+from pytype.errors import error_types
 
 log = logging.getLogger(__name__)
 _isinstance = abstract_utils._isinstance  # pylint: disable=protected-access
@@ -113,7 +114,7 @@ class SimpleValue(_base.BaseValue):
     if var is not None and var.bindings:
       return function.call_function(self.ctx, node, var, args, allow_never=True)
     else:
-      raise function.NotCallable(self)
+      raise error_types.NotCallable(self)
 
   def call(self, node, func, args, alias_map=None):
     return self._call_helper(node, self, func, args)

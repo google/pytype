@@ -198,14 +198,6 @@ class Local:
       return None
 
 
-@dataclasses.dataclass(eq=True, frozen=True)
-class BadType:
-  name: Optional[str]
-  typ: _BaseValueType
-  # Should be matcher.ErrorDetails but can't use due to circular dep.
-  error_details: Optional[Any] = None
-
-
 # The _isinstance and _make methods should be used only in pytype.abstract
 # submodules that are unable to reference abstract.py classes due to circular
 # dependencies. To prevent accidental misuse, the methods are marked private.

@@ -91,7 +91,7 @@ class AnnotationUtils(utils.ContextWeakrefMixin):
             param_strings = []
             for t in utils.unique_list(self.get_type_parameters(cur)):
               s = pytd_utils.Print(
-                  get_type_parameter_subst_fn(t).get_instance_type(node))
+                  get_type_parameter_subst_fn(t).to_pytd_instance(node))
               param_strings.append(s)
             expr = f"{cur.expr}[{', '.join(param_strings)}]"
             late_annot = abstract.LateAnnotation(expr, cur.stack, cur.ctx)

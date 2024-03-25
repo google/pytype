@@ -5,9 +5,10 @@ import textwrap
 from pytype import config
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
-from pytype.abstract import function
+from pytype.errors import error_types
 from pytype.tests import test_base
 from pytype.tests import test_utils
+from pytype.types import types
 
 import unittest
 
@@ -486,16 +487,16 @@ class TypeVarTest(MatcherTestBase):
 
   def test_compute_matches(self):
     x_val = abstract.TypeParameter("T", self.ctx)
-    args = [function.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
-                         typ=self.ctx.convert.unsolvable)]
+    args = [types.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
+                      typ=self.ctx.convert.unsolvable)]
     match, = self.matcher.compute_matches(args, match_all_views=True)
     self.assertEqual(match.subst, {})
 
   def test_compute_matches_no_match(self):
     x_val = abstract.TypeParameter("T", self.ctx)
-    args = [function.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
-                         typ=self.ctx.convert.int_type)]
-    with self.assertRaises(self.matcher.MatchError):
+    args = [types.Arg(name="x", value=x_val.to_variable(self.ctx.root_node),
+                      typ=self.ctx.convert.int_type)]
+    with self.assertRaises(error_types.MatchError):
       self.matcher.compute_matches(args, match_all_views=True)
 
   def test_compute_one_match(self):
