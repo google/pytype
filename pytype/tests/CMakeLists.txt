@@ -32,6 +32,7 @@ py_library(
     test_utils.py
   DEPS
     pytype.libvm
+    pytype.pretty_printer_base
     pytype.utils
     pytype.platform_utils.platform_utils
     pytype.pytd.pytd

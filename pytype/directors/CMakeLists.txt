@@ -63,4 +63,5 @@ py_test(
   DEPS
     .directors
     pytype.errors.errors
+    pytype.tests.test_utils
 )

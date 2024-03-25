@@ -240,6 +240,7 @@ py_library(
     .load_pytd
     .matcher
     .output
+    .pretty_printer
     .tracer_vm
     .vm_utils
     pytype.abstract.abstract

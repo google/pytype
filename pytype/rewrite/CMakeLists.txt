@@ -141,6 +141,7 @@ py_library(
     .convert
     .frame
     .output
+    .pretty_printer
     pytype.config
     pytype.blocks.blocks
     pytype.errors.errors

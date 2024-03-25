@@ -8,7 +8,7 @@ import sys
 from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
-from pytype import pretty_printer
+from pytype import pretty_printer_base
 from pytype import utils
 from pytype.errors import error_printer
 from pytype.errors import error_types
@@ -346,11 +346,11 @@ class Error:
 class ErrorLogBase:
   """A stream of errors."""
 
-  def __init__(self):
+  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
     self._errors = []
     # An error filter (initially None)
     self._filter = None
-    self._pp = pretty_printer.PrettyPrinter()
+    self._pp = pp
 
   def __len__(self):
     return len(self._errors)
@@ -1066,7 +1066,7 @@ class ErrorLog(ErrorLogBase):
 
   def _normalize_signature(self, signature):
     """If applicable, converts from `f(self: A, ...)` to `A.f(self, ...)`."""
-    self_name = signature.param_names[0]
+    self_name = signature.param_names and signature.param_names[0]
     if "." not in signature.name and self_name in signature.annotations:
       annotations = dict(signature.annotations)
       self_annot = annotations.pop(self_name)

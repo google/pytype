@@ -11,6 +11,7 @@ from pytype.pytd import pytd_utils
 from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite import output
+from pytype.rewrite import pretty_printer
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
@@ -26,7 +27,7 @@ class VirtualMachine:
     self._code = code
     self._initial_globals = initial_globals
     self._module_frame: frame_lib.Frame = None
-    self._errorlog = errors.ErrorLog()
+    self._errorlog = errors.ErrorLog(pretty_printer.PrettyPrinter())
 
   @classmethod
   def from_source(

@@ -1,5 +1,6 @@
 """Abstract-representation-independent base class for pretty printing."""
 
+import abc
 import re
 from typing import Iterable
 
@@ -11,7 +12,7 @@ from pytype.pytd import visitors
 from pytype.types import types
 
 
-class PrettyPrinterBase:
+class PrettyPrinterBase(abc.ABC):
   """Pretty printer methods depending only on pytd types.
 
   Subclasses are expected to handle abstract->pytd conversion.
@@ -92,3 +93,27 @@ class PrettyPrinterBase:
     else:
       # TODO(mdemello): change this to Never
       return "nothing"
+
+  @abc.abstractmethod
+  def print_as_generic_type(self, t: types.BaseValue) -> str:
+    """Print t as a generic type."""
+
+  @abc.abstractmethod
+  def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
+    """Print t as an expected type."""
+
+  @abc.abstractmethod
+  def print_as_actual_type(self, t, literal=False) -> str:
+    """Print t as an actual type."""
+
+  @abc.abstractmethod
+  def print_as_function_def(self, fn: types.Function) -> str:
+    """Print a function definition."""
+
+  @abc.abstractmethod
+  def print_var_as_type(self, var: types.Variable, *args) -> str:
+    """Print a pytype variable as a type."""
+
+  @abc.abstractmethod
+  def show_variable(self, var: types.Variable) -> str:
+    """Show variable as 'name: typ' or 'pyval: typ' if available."""

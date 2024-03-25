@@ -5,6 +5,7 @@ import textwrap
 
 from pytype.directors import directors
 from pytype.errors import errors
+from pytype.tests import test_utils
 import unittest
 
 _TEST_FILENAME = "my_file.py"
@@ -113,7 +114,7 @@ class DirectorTestCase(unittest.TestCase):
     self.num_lines = len(src.rstrip().splitlines())
     src = textwrap.dedent(src)
     src_tree = directors.parse_src(src, self.python_version)
-    self._errorlog = errors.ErrorLog()
+    self._errorlog = errors.ErrorLog(test_utils.FakePrettyPrinter())
     self._director = directors.Director(
         src_tree, self._errorlog, _TEST_FILENAME, disable)
 

@@ -54,7 +54,7 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
     with convert.set_output_mode(output_mode):
       return self.print_pytd(t.to_pytd_type())
 
-  def print_as_function_def(self, fn: abstract.Function) -> str:
+  def print_as_function_def(self, fn: types.Function) -> str:
     convert = fn.ctx.pytd_convert
     name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
     with convert.set_output_mode(convert.OutputMode.DETAILED):
