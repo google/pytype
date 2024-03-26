@@ -220,10 +220,8 @@ py_library(
     pytype.abstract.abstract
     pytype.blocks.blocks
     pytype.overlays.overlays
-    pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
-    pytype.pytd.parse.parse
     pytype.typegraph.cfg
 )
 

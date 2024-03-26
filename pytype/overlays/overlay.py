@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Optional
 
 from pytype import datatypes
 from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
 from pytype.typegraph import cfg
 
 # The first argument type is pytype.context.Context, but we can't import context
@@ -64,6 +65,21 @@ class Overlay(abstract.Module):
     items += [(name, item) for name, item in self.real_module.items()
               if name not in self._member_map]
     return items
+
+  def maybe_load_member(self, member_name):
+    """Try to lazily load a member by name."""
+    # We may encounter errors such as [recursion-error] from recursive loading
+    # of a TypingContainer or [not-supported-yet] for a typing feature in a
+    # too-low version. If there are errors, we discard the result.
+    with self.ctx.errorlog.checkpoint() as record:
+      member_var = self.load_lazy_attribute(member_name, store=False)
+    member = abstract_utils.get_atomic_value(member_var)
+    # AnnotationClass is a placeholder used in the construction of parameterized
+    # types, not a real type.
+    if record.errors or isinstance(member, abstract.AnnotationClass):
+      return None
+    self.members[member_name] = member_var
+    return member
 
 
 def add_name(name, builder):

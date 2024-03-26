@@ -8,7 +8,6 @@ from typing import Any, Dict
 import pycnite
 
 from pytype import datatypes
-from pytype import module_utils
 from pytype import utils
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -71,7 +70,6 @@ class Converter(utils.ContextWeakrefMixin):
     ctx.convert = self  # to make constant_to_value calls below work
 
     self._convert_cache: Dict[Any, Any] = {}
-    self._resolved_late_types = {}  # performance cache
 
     # Initialize primitive_classes to empty to allow constant_to_value to run.
     self.primitive_classes = ()
@@ -560,41 +558,9 @@ class Converter(utils.ContextWeakrefMixin):
         self._convert_cache[key] = value
       return value
 
-  def _load_late_type_module(self, late_type):
-    parts = late_type.name.split(".")
-    for i in range(len(parts)-1):
-      module_parts = module_utils.strip_init_suffix(parts[:-(i+1)])
-      ast = self.ctx.loader.import_name(".".join(module_parts))
-      if ast:
-        return ast, ".".join(parts[-(i+1):])
-    return None, late_type.name
-
   def _load_late_type(self, late_type):
     """Resolve a late type, possibly by loading a module."""
-    if late_type.name not in self._resolved_late_types:
-      ast = self.ctx.loader.import_name(late_type.name)
-      if ast:
-        t = pytd.Module(name=late_type.name, module_name=late_type.name)
-      else:
-        ast, attr_name = self._load_late_type_module(late_type)
-        if ast is None:
-          log.error(
-              "During dependency resolution, couldn't resolve late type %r",
-              late_type.name)
-          t = pytd.AnythingType()
-        else:
-          try:
-            cls = pytd.LookupItemRecursive(ast, attr_name)
-          except KeyError:
-            if "__getattr__" not in ast:
-              log.warning("Couldn't resolve %s", late_type.name)
-            t = pytd.AnythingType()
-          else:
-            t = pytd.ToType(cls, allow_functions=True)
-      if isinstance(t, pytd.LateType):
-        t = self._load_late_type(t)
-      self._resolved_late_types[late_type.name] = t
-    return self._resolved_late_types[late_type.name]
+    return self.ctx.loader.load_late_type(late_type)
 
   def _create_module(self, ast):
     if not ast:
@@ -687,18 +653,7 @@ class Converter(utils.ContextWeakrefMixin):
     overlay = self.ctx.vm.import_module(module, module, 0)
     if overlay.get_module(member_name) is not overlay:
       return None
-    # We may encounter errors such as [recursion-error] from recursive loading
-    # of a TypingContainer or [not-supported-yet] for a typing feature in a
-    # too-low version. If there are errors, we discard the result.
-    with self.ctx.errorlog.checkpoint() as record:
-      member_var = overlay.load_lazy_attribute(member_name, store=False)
-    member = abstract_utils.get_atomic_value(member_var)
-    # AnnotationClass is a placeholder used in the construction of parameterized
-    # types, not a real type.
-    if record.errors or isinstance(member, abstract.AnnotationClass):
-      return None
-    overlay.members[member_name] = member_var
-    return member
+    return overlay.maybe_load_member(member_name)
 
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a BaseValue that represents a python constant.
@@ -739,9 +694,8 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(pyval, (pycnite.types.CodeTypeBase, blocks.OrderedCode)):
       # TODO(mdemello): We should never be dealing with a raw pycnite CodeType
       # at this point.
-      return abstract.ConcreteValue(pyval,
-                                    self.primitive_classes[types.CodeType],
-                                    self.ctx)
+      return abstract.ConcreteValue(
+          pyval, self.primitive_classes[types.CodeType], self.ctx)
     elif pyval is super:
       return special_builtins.Super.make(self.ctx)
     elif pyval is object:
@@ -761,24 +715,21 @@ class Converter(utils.ContextWeakrefMixin):
       mod = self.ctx.loader.import_name(pyval.module_name)
       return self._create_module(mod)
     elif isinstance(pyval, pytd.Class):
-      val = self._special_constant_to_value(pyval.name)
-      if val:
+      if val := self._special_constant_to_value(pyval.name):
         return val
+      module, dot, base_name = pyval.name.rpartition(".")
+      if overlay_member := self._maybe_load_from_overlay(module, base_name):
+        return overlay_member
+      try:
+        cls = abstract.PyTDClass.make(base_name, pyval, self.ctx)
+      except mro.MROError as e:
+        self.ctx.errorlog.mro_error(self.ctx.vm.frames, base_name, e.mro_seqs)
+        cls = self.unsolvable
       else:
-        module, dot, base_name = pyval.name.rpartition(".")
-        overlay_member = self._maybe_load_from_overlay(module, base_name)
-        if overlay_member:
-          return overlay_member
-        try:
-          cls = abstract.PyTDClass.make(base_name, pyval, self.ctx)
-        except mro.MROError as e:
-          self.ctx.errorlog.mro_error(self.ctx.vm.frames, base_name, e.mro_seqs)
-          cls = self.unsolvable
-        else:
-          if dot:
-            cls.module = module
-          cls.call_metaclass_init(get_node())
-        return cls
+        if dot:
+          cls.module = module
+        cls.call_metaclass_init(get_node())
+      return cls
     elif isinstance(pyval, pytd.Function):
       f = self.convert_pytd_function(pyval)
       f.is_abstract = pyval.is_abstract
