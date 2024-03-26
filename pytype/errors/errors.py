@@ -343,14 +343,13 @@ class Error:
           traceback=None)
 
 
-class ErrorLogBase:
+class ErrorLog:
   """A stream of errors."""
 
-  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
+  def __init__(self):
     self._errors = []
     # An error filter (initially None)
     self._filter = None
-    self._pp = pp
 
   def __len__(self):
     return len(self._errors)
@@ -485,8 +484,12 @@ class ErrorLogBase:
     return f.getvalue()
 
 
-class ErrorLog(ErrorLogBase):
-  """ErrorLog with convenience functions."""
+class VmErrorLog(ErrorLog):
+  """ErrorLog with methods for adding specific pytype errors."""
+
+  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
+    super().__init__()
+    self._pp = pp
 
   @_error_name("pyi-error")
   def pyi_error(self, stack, name, error):

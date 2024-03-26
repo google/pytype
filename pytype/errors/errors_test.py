@@ -18,7 +18,7 @@ _MESSAGE = "an error message on 'here'"
 
 
 def make_errorlog():
-  return errors.ErrorLog(test_utils.FakePrettyPrinter())
+  return errors.VmErrorLog(test_utils.FakePrettyPrinter())
 
 
 class ErrorTest(unittest.TestCase):
@@ -162,7 +162,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(str(e), e.as_string())
 
 
-class ErrorLogBaseTest(unittest.TestCase):
+class ErrorLogTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_error(self):

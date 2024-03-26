@@ -27,7 +27,7 @@ class VirtualMachine:
     self._code = code
     self._initial_globals = initial_globals
     self._module_frame: frame_lib.Frame = None
-    self._errorlog = errors.ErrorLog(pretty_printer.PrettyPrinter())
+    self._errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter())
 
   @classmethod
   def from_source(
