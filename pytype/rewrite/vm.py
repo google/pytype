@@ -13,7 +13,6 @@ from pytype.rewrite import frame as frame_lib
 from pytype.rewrite import output
 from pytype.rewrite import pretty_printer
 from pytype.rewrite.abstract import abstract
-from pytype.rewrite.flow import variables
 
 
 class VirtualMachine:
@@ -22,7 +21,7 @@ class VirtualMachine:
   def __init__(
       self,
       code: blocks.OrderedCode,
-      initial_globals: Dict[str, variables.Variable[abstract.BaseValue]],
+      initial_globals: Dict[str, abstract.BaseValue],
   ):
     self._code = code
     self._initial_globals = initial_globals
@@ -40,8 +39,10 @@ class VirtualMachine:
 
   def _run_module(self) -> None:
     assert not self._module_frame
+    initial_global_vars = {name: val.to_variable()
+                           for name, val in self._initial_globals.items()}
     self._module_frame = frame_lib.Frame.make_module_frame(
-        self._code, self._initial_globals)
+        self._code, initial_global_vars)
     self._module_frame.run()
 
   def analyze_all_defs(self) -> errors.ErrorLog:
@@ -63,7 +64,7 @@ class VirtualMachine:
     self._run_module()
     pytd_nodes = []
     for name, value in self._module_frame.final_locals.items():
-      if name in output.IGNORED_MODULE_ATTRIBUTES:
+      if name in self._initial_globals and value == self._initial_globals[name]:
         continue
       try:
         pytd_node = output.to_pytd_def(value)

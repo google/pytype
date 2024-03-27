@@ -21,7 +21,12 @@ BUILD_CLASS = _classes.BUILD_CLASS
 Args = _functions.Args
 BaseFunction = _functions.BaseFunction
 BoundFunction = _functions.BoundFunction
+FrameType = _functions.FrameType
 InterpreterFunction = _functions.InterpreterFunction
+MappedArgs = _functions.MappedArgs
+Signature = _functions.Signature
+SimpleFunction = _functions.SimpleFunction
+SimpleReturn = _functions.SimpleReturn
 
 get_atomic_constant = _utils.get_atomic_constant
 join_values = _utils.join_values

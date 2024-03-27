@@ -3,14 +3,16 @@
 from typing import Dict, Tuple
 
 from pytype.rewrite.abstract import abstract
-from pytype.rewrite.flow import variables
+from pytype.rewrite.overlays import special_builtins
 
 
 def get_module_globals(
     python_version: Tuple[int, int],
-) -> Dict[str, variables.Variable[abstract.BaseValue]]:
+) -> Dict[str, abstract.BaseValue]:
   del python_version  # not yet used
   # TODO(b/241479600): Populate from builtins.pytd.
   return {
-      '__name__': abstract.ANY.to_variable(),
+      '__name__': abstract.ANY,
+      'assert_type': special_builtins.AssertType(),
+      'int': abstract.BaseClass('int', {}),
   }

@@ -41,7 +41,7 @@ py_library(
     convert.py
   DEPS
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.flow.flow
+    pytype.rewrite.overlays.overlays
 )
 
 py_test(
@@ -148,7 +148,6 @@ py_library(
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.flow.flow
 )
 
 py_test(
@@ -165,4 +164,5 @@ py_test(
 
 add_subdirectory(abstract)
 add_subdirectory(flow)
+add_subdirectory(overlays)
 add_subdirectory(tests)

@@ -27,7 +27,7 @@ _EMPTY_MAP = immutabledict.immutabledict()
 _ArgDict = Dict[str, base.AbstractVariableType]
 
 
-class _Frame(Protocol):
+class FrameType(Protocol):
   """Protocol for a VM frame."""
 
   final_locals: Mapping[str, base.BaseValue]
@@ -36,14 +36,14 @@ class _Frame(Protocol):
       self,
       func: 'InterpreterFunction',
       initial_locals: Mapping[str, base.AbstractVariableType],
-  ) -> '_Frame': ...
+  ) -> 'FrameType': ...
 
   def run(self) -> None: ...
 
   def get_return_value(self) -> base.BaseValue: ...
 
 
-_FrameT = TypeVar('_FrameT', bound=_Frame)
+_FrameT = TypeVar('_FrameT', bound=FrameType)
 
 
 @dataclasses.dataclass
@@ -67,6 +67,15 @@ class _HasReturn(Protocol):
 
 
 _HasReturnT = TypeVar('_HasReturnT', bound=_HasReturn)
+
+
+class SimpleReturn:
+
+  def __init__(self, return_value: base.BaseValue):
+    self._return_value = return_value
+
+  def get_return_value(self):
+    return self._return_value
 
 
 class Signature:
@@ -158,7 +167,7 @@ class Signature:
     argdict = dict(zip(self.param_names, args.posargs))
     return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
-  def make_fake_args(self) -> MappedArgs[_Frame]:
+  def make_fake_args(self) -> MappedArgs[FrameType]:
     names = list(self.param_names + self.kwonly_params)
     if self.varargs_name:
       names.append(self.varargs_name)
@@ -182,7 +191,7 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
     """The function's signatures."""
 
   @abc.abstractmethod
-  def call(self, args: Args[_Frame]) -> _HasReturnT:
+  def call(self, args: Args[FrameType]) -> _HasReturnT:
     """Calls this function with the given arguments.
 
     Args:
@@ -211,6 +220,9 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
     self._name = name
     self._signatures = signatures
 
+  def __repr__(self):
+    return f'SimpleFunction({self._name})'
+
   @property
   def name(self):
     return self._name
@@ -218,6 +230,10 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
   @property
   def signatures(self):
     return self._signatures
+
+  @property
+  def _attrs(self):
+    return (self._name, self._signatures)
 
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Handle arg mapping failure.
@@ -227,7 +243,7 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
 
   @abc.abstractmethod
   def call_with_mapped_args(
-      self, mapped_args: MappedArgs[_Frame]) -> _HasReturnT:
+      self, mapped_args: MappedArgs[FrameType]) -> _HasReturnT:
     """Calls this function with the given mapped arguments.
 
     Args:
@@ -238,7 +254,7 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
       get_return_value() method that retrieves the return value.
     """
 
-  def call(self, args: Args[_Frame]) -> _HasReturnT:
+  def call(self, args: Args[FrameType]) -> _HasReturnT:
     return self.call_with_mapped_args(self.map_args(args))
 
   def analyze(self) -> Sequence[_HasReturnT]:
@@ -312,7 +328,7 @@ class BoundFunction(BaseFunction[_HasReturnT]):
     argdict[mapped_args.signature.param_names[0]] = self.callself.to_variable()
     return MappedArgs(mapped_args.signature, argdict, mapped_args.frame)
 
-  def call(self, args: Args[_Frame]) -> _HasReturnT:
+  def call(self, args: Args[FrameType]) -> _HasReturnT:
     mapped_args = self._bind_mapped_args(self.underlying.map_args(args))
     return self.underlying.call_with_mapped_args(mapped_args)
 

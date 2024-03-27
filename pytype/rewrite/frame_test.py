@@ -17,8 +17,9 @@ _T = TypeVar('_T')
 def _make_frame(src: str, name: str = '__main__') -> frame_lib.Frame:
   code = test_utils.parse(src)
   if name == '__main__':
-    initial_locals = initial_globals = convert.get_module_globals(
-        sys.version_info[:2])
+    module_globals = convert.get_module_globals(sys.version_info[:2])
+    initial_locals = initial_globals = {
+        name: value.to_variable() for name, value in module_globals.items()}
   else:
     initial_locals = initial_globals = {}
   return frame_lib.Frame(name, code, initial_locals=initial_locals,

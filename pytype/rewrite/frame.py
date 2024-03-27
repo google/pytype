@@ -290,11 +290,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   ) -> None:
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, (abstract.InterpreterFunction,
+      if isinstance(func, (abstract.SimpleFunction,
                            abstract.InterpreterClass,
                            abstract.BoundFunction)):
-        frame = func.call(args)
-        ret_values.append(frame.get_return_value())
+        ret = func.call(args)
+        ret_values.append(ret.get_return_value())
       elif func is abstract.BUILD_CLASS:
         class_body, name = args.posargs
         builder = class_body.get_atomic_value(_FrameFunction)
