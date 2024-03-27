@@ -327,6 +327,52 @@ class _Resolver:
       return deps.dependencies
 
 
+class _LateTypeLoader:
+  """Resolves late types, loading modules as needed."""
+
+  def __init__(self, loader: "Loader"):
+    self._loader = loader
+    self._resolved_late_types = {}  # performance cache
+
+  def _load_late_type_module(self, late_type: pytd.LateType):
+    """Load the module of a late type from the qualified name."""
+    parts = late_type.name.split(".")
+    for i in range(len(parts)-1):
+      module_parts = module_utils.strip_init_suffix(parts[:-(i+1)])
+      if ast := self._loader.import_name(".".join(module_parts)):
+        return ast, ".".join(parts[-(i+1):])
+    return None, late_type.name
+
+  def _load_late_type(self, late_type: pytd.LateType):
+    """Resolve a late type, possibly by loading a module."""
+    if late_type.name not in self._resolved_late_types:
+      if ast := self._loader.import_name(late_type.name):
+        t = pytd.Module(name=late_type.name, module_name=late_type.name)
+      else:
+        ast, attr_name = self._load_late_type_module(late_type)
+        if ast is None:
+          msg = "During dependency resolution, couldn't resolve late type %r"
+          log.error(msg, late_type.name)
+          t = pytd.AnythingType()
+        else:
+          try:
+            cls = pytd.LookupItemRecursive(ast, attr_name)
+          except KeyError:
+            if "__getattr__" not in ast:
+              log.warning("Couldn't resolve %s", late_type.name)
+            t = pytd.AnythingType()
+          else:
+            t = pytd.ToType(cls, allow_functions=True)
+      if isinstance(t, pytd.LateType):
+        t = self._load_late_type(t)
+      self._resolved_late_types[late_type.name] = t
+    return self._resolved_late_types[late_type.name]
+
+  def load_late_type(self, late_type: pytd.LateType) -> pytd.Type:
+    """Convert a pytd.LateType to a pytd type."""
+    return self._load_late_type(late_type)
+
+
 class Loader:
   """A cache for loaded PyTD files.
 
@@ -349,6 +395,7 @@ class Loader:
     self._typeshed_loader = typeshed.TypeshedLoader(
         pyi_options, missing_modules)
     self._resolver = _Resolver(self.builtins)
+    self._late_type_loader = _LateTypeLoader(self)
     self._import_name_cache = {}  # performance cache
     self._aliases = collections.defaultdict(dict)
     self._prefixes = set()
@@ -741,6 +788,9 @@ class Loader:
     ast = self.import_name(module)
     assert ast, f"Module not found: {module}"
     return ast.Lookup(f"{module}.{name}")
+
+  def load_late_type(self, late_type: pytd.LateType):
+    return self._late_type_loader.load_late_type(late_type)
 
 
 class PickledPyiLoader(Loader):

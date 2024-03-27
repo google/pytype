@@ -102,10 +102,21 @@ py_library(
 
 py_library(
   NAME
+    pretty_printer_base
+  SRCS
+    pretty_printer_base.py
+  DEPS
+    pytype.pytd.pytd
+    pytype.types.types
+)
+
+py_library(
+  NAME
     pretty_printer
   SRCS
     pretty_printer.py
   DEPS
+    .pretty_printer_base
     pytype.abstract.abstract
     pytype.pytd.pytd
     pytype.typegraph.cfg
@@ -209,10 +220,8 @@ py_library(
     pytype.abstract.abstract
     pytype.blocks.blocks
     pytype.overlays.overlays
-    pytype.pyc.pyc
     pytype.pyi.parser
     pytype.pytd.pytd
-    pytype.pytd.parse.parse
     pytype.typegraph.cfg
 )
 
@@ -229,6 +238,7 @@ py_library(
     .load_pytd
     .matcher
     .output
+    .pretty_printer
     .tracer_vm
     .vm_utils
     pytype.abstract.abstract

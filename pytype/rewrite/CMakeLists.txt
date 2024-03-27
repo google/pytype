@@ -81,6 +81,17 @@ py_test(
 
 py_library(
   NAME
+    pretty_printer
+  SRCS
+    pretty_printer.py
+  DEPS
+    pytype.pretty_printer_base
+    pytype.rewrite.flow.flow
+    pytype.types.types
+)
+
+py_library(
+  NAME
     output
   SRCS
     output.py
@@ -130,6 +141,7 @@ py_library(
     .convert
     .frame
     .output
+    .pretty_printer
     pytype.config
     pytype.blocks.blocks
     pytype.errors.errors

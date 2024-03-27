@@ -18,7 +18,7 @@ py_library(
     .error_types
     pytype._utils
     pytype.debug
-    pytype.pretty_printer
+    pytype.pretty_printer_base
     pytype.pytd.pytd
     pytype.types.types
 )
@@ -30,7 +30,7 @@ py_library(
     error_printer.py
   DEPS
     pytype.matcher
-    pytype.pretty_printer
+    pytype.pretty_printer_base
     pytype.pytd.pytd
     pytype.typegraph.cfg
     pytype.types.types

@@ -17,6 +17,10 @@ _TEST_ERROR = "test-error"
 _MESSAGE = "an error message on 'here'"
 
 
+def make_errorlog():
+  return errors.VmErrorLog(test_utils.FakePrettyPrinter())
+
+
 class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
@@ -110,7 +114,7 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
     errorlog.error(op.to_stack(), message, details + "0")
@@ -132,7 +136,7 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv_with_traceback(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     stack = test_utils.fake_stack(2)
     errorlog.error(stack, "", "some\ndetails")
     with test_utils.Tempdir() as d:
@@ -158,11 +162,11 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(str(e), e.as_string())
 
 
-class ErrorLogBaseTest(unittest.TestCase):
+class ErrorLogTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_error(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.error(op.to_stack(), f"unknown attribute {'xyz'}")
     self.assertEqual(len(errorlog), 1)
@@ -174,7 +178,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_error_with_details(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     errorlog.error(None, "My message", "one\ntwo")
     self.assertEqual(textwrap.dedent("""
         My message [test-error]
@@ -184,7 +188,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_warn(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.warn(op.to_stack(), "unknown attribute %s", "xyz")
     self.assertEqual(len(errorlog), 1)
@@ -196,7 +200,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_has_error(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     self.assertFalse(errorlog.has_error())
     # A warning is part of the error log, but isn't severe.
     errorlog.warn(None, "A warning")
@@ -209,7 +213,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_no_traceback(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     stack = test_utils.fake_stack(2)
     errorlog.error(stack, "error")  # traceback
     errorlog.error(stack[-1:], "error")  # no traceback
@@ -220,7 +224,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_error_without_stack(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     stack = test_utils.fake_stack(1)
     errorlog.error(stack, "error_with_stack")
     errorlog.error([], "error_without_stack")
@@ -236,7 +240,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_duplicate_error_shorter_traceback(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     stack = test_utils.fake_stack(3)
     errorlog.error(stack, "error")  # longer traceback
     errorlog.error(stack[-2:], "error")  # shorter traceback
@@ -249,7 +253,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_unique_errors(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     current_frame = frame_state.SimpleFrame(
         test_utils.FakeOpcode("foo.py", 123, "foo"))
     backframe1 = frame_state.SimpleFrame(
@@ -265,7 +269,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_color_print_to_stderr(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.error(op.to_stack(), f"unknown attribute {'xyz'}")
     self.assertEqual(len(errorlog), 1)
@@ -278,7 +282,7 @@ class ErrorLogBaseTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_color_print_to_file(self):
-    errorlog = errors.ErrorLog()
+    errorlog = make_errorlog()
     op = test_utils.FakeOpcode("foo.py", 123, "foo")
     errorlog.error(op.to_stack(), f"unknown attribute {'xyz'}")
     self.assertEqual(len(errorlog), 1)

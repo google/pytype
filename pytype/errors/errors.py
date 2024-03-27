@@ -8,7 +8,7 @@ import sys
 from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
-from pytype import pretty_printer
+from pytype import pretty_printer_base
 from pytype import utils
 from pytype.errors import error_printer
 from pytype.errors import error_types
@@ -343,14 +343,13 @@ class Error:
           traceback=None)
 
 
-class ErrorLogBase:
+class ErrorLog:
   """A stream of errors."""
 
   def __init__(self):
     self._errors = []
     # An error filter (initially None)
     self._filter = None
-    self._pp = pretty_printer.PrettyPrinter()
 
   def __len__(self):
     return len(self._errors)
@@ -485,8 +484,12 @@ class ErrorLogBase:
     return f.getvalue()
 
 
-class ErrorLog(ErrorLogBase):
-  """ErrorLog with convenience functions."""
+class VmErrorLog(ErrorLog):
+  """ErrorLog with methods for adding specific pytype errors."""
+
+  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
+    super().__init__()
+    self._pp = pp
 
   @_error_name("pyi-error")
   def pyi_error(self, stack, name, error):
@@ -1028,7 +1031,7 @@ class ErrorLog(ErrorLogBase):
 
   @_error_name("invalid-signature-mutation")
   def invalid_signature_mutation(self, stack, func_name, sig):
-    sig = self._pp.print_pytd_signature(sig)
+    sig = self._pp.print_pytd(sig)
     msg = "Invalid self type mutation in pyi method signature"
     details = f"{func_name}{sig}"
     self.error(stack, msg, details)
@@ -1066,7 +1069,7 @@ class ErrorLog(ErrorLogBase):
 
   def _normalize_signature(self, signature):
     """If applicable, converts from `f(self: A, ...)` to `A.f(self, ...)`."""
-    self_name = signature.param_names[0]
+    self_name = signature.param_names and signature.param_names[0]
     if "." not in signature.name and self_name in signature.annotations:
       annotations = dict(signature.annotations)
       self_annot = annotations.pop(self_name)

@@ -1387,6 +1387,34 @@ class EnumOverlayTest(test_base.BaseTest):
       enum.ReprEnum  # not-supported-yet
     """)
 
+  def test_members_with_value_attribute(self):
+    with self.DepTree([("foo.py", """
+      import enum
+      from typing import List
+
+      class Attr:
+        def __init__(self, values: list[str]):
+          self.value = [v for v in values]
+        @classmethod
+        def make(cls, values: List[str]) -> 'Attr':
+          return cls(values)
+
+      class MyEnum(enum.Enum):
+        A = Attr(['a'])
+        B = Attr.make(['b'])
+
+        @property
+        def value_alias(self):
+          return self.value
+    """)]):
+      self.Check("""
+        import foo
+        assert_type(foo.MyEnum.A, foo.MyEnum)
+        assert_type(foo.MyEnum.A.value_alias, foo.Attr)
+        assert_type(foo.MyEnum.B, foo.MyEnum)
+        assert_type(foo.MyEnum.B.value_alias, foo.Attr)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()

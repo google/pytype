@@ -17,6 +17,7 @@ import pycnite.types
 from pytype import context
 from pytype import file_utils
 from pytype import load_pytd
+from pytype import pretty_printer_base
 from pytype import state as frame_state
 from pytype import utils
 from pytype.file_utils import makedirs
@@ -91,6 +92,28 @@ class FakeOpcode:
 def fake_stack(length):
   return [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
           for i in range(length)]
+
+
+class FakePrettyPrinter(pretty_printer_base.PrettyPrinterBase):
+  """Fake pretty printer for constructing an error log."""
+
+  def print_as_generic_type(self, t) -> str:
+    return ""
+
+  def print_as_expected_type(self, t, instance=None) -> str:
+    return ""
+
+  def print_as_actual_type(self, t, literal=False) -> str:
+    return ""
+
+  def print_as_function_def(self, fn) -> str:
+    return ""
+
+  def print_var_as_type(self, *args) -> str:
+    return ""
+
+  def show_variable(self, var) -> str:
+    return ""
 
 
 class OperatorsTestMixin:

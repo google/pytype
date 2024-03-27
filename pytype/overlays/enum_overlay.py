@@ -425,12 +425,21 @@ class EnumMetaInit(abstract.SimpleFunction):
                             abstract.ClassMethod, abstract.StaticMethod)):
         return True
       for attr_name in ("__get__", "__set__", "__delete__"):
-        _, attr = self.ctx.attribute_handler.get_attribute(
-            node, value, attr_name)
-        if attr is not None:
+        if self._value_definitely_has_attr(node, value, attr_name):
           return True
       return False
     return any(_check(value) for value in local.orig.data)
+
+  def _value_definitely_has_attr(self, node, value, attr_name) -> bool:
+    _, attr = self.ctx.attribute_handler.get_attribute(node, value, attr_name)
+    if attr is None:
+      return False
+    maybe_missing_members = getattr(value, "maybe_missing_members", False)
+    if maybe_missing_members and attr.data == [self.ctx.convert.unsolvable]:
+      # The attribute could be a missing member that was given a default value
+      # of Any.
+      return False
+    return True
 
   def _not_valid_member(self, node, name, local) -> bool:
     # Reject a class local if:

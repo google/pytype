@@ -11,6 +11,7 @@ from pytype import convert
 from pytype import load_pytd
 from pytype import matcher
 from pytype import output
+from pytype import pretty_printer
 from pytype import tracer_vm
 from pytype import vm_utils
 from pytype.abstract import abstract
@@ -47,7 +48,7 @@ class Context:
 
     # Helper classes/modules
     self.vm = tracer_vm.CallTracer(self)
-    self.errorlog = errors.ErrorLog()
+    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter())
     self.annotation_utils = annotation_utils.AnnotationUtils(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.converter_minimally_initialized = False

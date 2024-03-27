@@ -7,7 +7,7 @@ import enum
 from typing import List
 
 from pytype import matcher
-from pytype import pretty_printer
+from pytype import pretty_printer_base
 from pytype.errors import error_types
 from pytype.pytd import pytd_utils
 from pytype.pytd import slots
@@ -46,7 +46,9 @@ class BadCallPrinter:
   """Print the details of a BadCall."""
 
   def __init__(
-      self, pp: pretty_printer.PrettyPrinter, bad_call: error_types.BadCall
+      self,
+      pp: pretty_printer_base.PrettyPrinterBase,
+      bad_call: error_types.BadCall
   ):
     self.bad_call = bad_call
     self._pp = pp
@@ -139,7 +141,7 @@ class BadCallPrinter:
 class MatcherErrorPrinter:
   """Pretty printer for some specific matcher error types."""
 
-  def __init__(self, pp: pretty_printer.PrettyPrinter):
+  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
     self._pp = pp
 
   def _print_protocol_error(self, error: error_types.ProtocolError) -> str:
@@ -253,7 +255,7 @@ class MatcherErrorPrinter:
 class AttributeErrorPrinter:
   """Pretty printer for attribute errors."""
 
-  def __init__(self, pp: pretty_printer.PrettyPrinter):
+  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
     self._pp = pp
 
   def print_receiver(self, obj: types.BaseValue, attr_name: str):

@@ -878,30 +878,6 @@ def update_args_dict(
       args[k] = v
 
 
-def show_constant(val: _BaseValueType) -> str:
-  """Pretty-print a value if it is a constant.
-
-  Recurses into a constant, printing the underlying Python value for constants
-  and just using "..." for everything else (e.g., Variables). This is useful for
-  generating clear error messages that show the exact values related to an error
-  while preventing implementation details from leaking into the message.
-
-  Args:
-    val: an abstract value.
-
-  Returns:
-    A string of the pretty-printed constant.
-  """
-  # TODO(mdemello): This is duplicated in pretty_printer.py. Modules within
-  # abstract/ need to use the version in abstract_utils until we rework the code
-  # structure a bit.
-  def _ellipsis_printer(v):
-    if _isinstance(v, "PythonConstant"):
-      return v.str_of_constant(_ellipsis_printer)
-    return "..."
-  return _ellipsis_printer(val)
-
-
 def get_generic_type(val: _BaseValueType) -> Optional[_ParameterizedClassType]:
   """Gets the generic type of an abstract value.
 
