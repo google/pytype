@@ -131,7 +131,8 @@ class Module(abstract.PyTDClass):
     node, _ = dc.call(node, None, args)
     return node
 
-  def to_pytd_instance(self, node=None, instance=None, seen=None, view=None):
+  def to_pytd_type_of_instance(
+      self, node=None, instance=None, seen=None, view=None):
     """Get the type an instance of us would have."""
     # The class is imported as flax.linen.Module but aliases
     # flax.linen.module.Module internally

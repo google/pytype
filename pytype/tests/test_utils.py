@@ -14,6 +14,7 @@ import tokenize
 import pycnite.mapping
 import pycnite.types
 
+from pytype import config
 from pytype import context
 from pytype import file_utils
 from pytype import load_pytd
@@ -96,6 +97,10 @@ def fake_stack(length):
 
 class FakePrettyPrinter(pretty_printer_base.PrettyPrinterBase):
   """Fake pretty printer for constructing an error log."""
+
+  def __init__(self):
+    options = config.Options.create()
+    super().__init__(make_context(options))
 
   def print_as_generic_type(self, t) -> str:
     return ""

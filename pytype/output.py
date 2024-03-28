@@ -472,7 +472,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(v, abstract.SimpleFunction):
       return self._simple_func_to_def(node, v, name)
     elif isinstance(v, (abstract.ParameterizedClass, abstract.Union)):
-      return pytd.Alias(name, v.to_pytd_instance(node))
+      return pytd.Alias(name, v.to_pytd_type_of_instance(node))
     elif isinstance(v, abstract.PyTDClass) and v.module:
       # This happens if a module does e.g. "from x import y as z", i.e., copies
       # something from another module to the local namespace. We *could*
@@ -520,7 +520,7 @@ class Converter(utils.ContextWeakrefMixin):
         typ = None
       else:
         typ = a.typ
-      typ = typ and typ.to_pytd_instance(node)
+      typ = typ and typ.to_pytd_type_of_instance(node)
       yield a.name, typ
 
   def annotations_to_instance_types(self, node, annots):
@@ -529,7 +529,7 @@ class Converter(utils.ContextWeakrefMixin):
       for name, local in annots.annotated_locals.items():
         typ = local.get_type(node, name)
         if typ:
-          t = typ.to_pytd_instance(node)
+          t = typ.to_pytd_type_of_instance(node)
           if local.final:
             t = pytd.GenericType(pytd.NamedType("typing.Final"), (t,))
           yield name, t
@@ -540,7 +540,7 @@ class Converter(utils.ContextWeakrefMixin):
       if v.is_coroutine():
         ret = abstract.Coroutine.make(self.ctx, v, node).to_pytd_type(node)
       else:
-        ret = v.signature.annotations["return"].to_pytd_instance(node)
+        ret = v.signature.annotations["return"].to_pytd_type_of_instance(node)
     else:
       ret = seen_return.data.to_pytd_type(node)
       if isinstance(ret, pytd.NothingType) and num_returns == 1:
@@ -556,7 +556,8 @@ class Converter(utils.ContextWeakrefMixin):
     params = []
     for i, (name, kind, optional) in enumerate(func.get_parameters()):
       if i < func.nonstararg_count and name in func.signature.annotations:
-        t = func.signature.annotations[name].to_pytd_instance(node_after)
+        t = func.signature.annotations[name].to_pytd_type_of_instance(
+            node_after)
       else:
         t = combination[name].data.to_pytd_type(node_after)
       # Python uses ".0" etc. for the names of parameters that are tuples,
@@ -568,7 +569,7 @@ class Converter(utils.ContextWeakrefMixin):
     if func.has_varargs():
       if func.signature.varargs_name in func.signature.annotations:
         annot = func.signature.annotations[func.signature.varargs_name]
-        typ = annot.to_pytd_instance(node_after)
+        typ = annot.to_pytd_type_of_instance(node_after)
       else:
         typ = pytd.NamedType("builtins.tuple")
       starargs = pytd.Parameter(func.signature.varargs_name, typ,
@@ -578,7 +579,7 @@ class Converter(utils.ContextWeakrefMixin):
     if func.has_kwargs():
       if func.signature.kwargs_name in func.signature.annotations:
         annot = func.signature.annotations[func.signature.kwargs_name]
-        typ = annot.to_pytd_instance(node_after)
+        typ = annot.to_pytd_type_of_instance(node_after)
       else:
         typ = pytd.NamedType("builtins.dict")
       starstarargs = pytd.Parameter(func.signature.kwargs_name, typ,
@@ -618,7 +619,7 @@ class Converter(utils.ContextWeakrefMixin):
 
     def get_parameter(p, kind):
       if p in sig.annotations:
-        param_type = sig.annotations[p].to_pytd_instance(node)
+        param_type = sig.annotations[p].to_pytd_type_of_instance(node)
       else:
         param_type = pytd.AnythingType()
       return pytd.Parameter(p, param_type, kind, p in sig.defaults, None)
@@ -636,19 +637,19 @@ class Converter(utils.ContextWeakrefMixin):
     if sig.varargs_name:
       star = pytd.Parameter(
           sig.varargs_name,
-          sig.annotations[sig.varargs_name].to_pytd_instance(node),
+          sig.annotations[sig.varargs_name].to_pytd_type_of_instance(node),
           pytd.ParameterKind.REGULAR, False, None)
     else:
       star = None
     if sig.kwargs_name:
       starstar = pytd.Parameter(
           sig.kwargs_name,
-          sig.annotations[sig.kwargs_name].to_pytd_instance(node),
+          sig.annotations[sig.kwargs_name].to_pytd_type_of_instance(node),
           pytd.ParameterKind.REGULAR, False, None)
     else:
       starstar = None
     if sig.has_return_annotation:
-      ret_type = sig.annotations["return"].to_pytd_instance(node)
+      ret_type = sig.annotations["return"].to_pytd_type_of_instance(node)
     else:
       ret_type = pytd.NamedType("builtins.NoneType")
     pytd_sig = pytd.Signature(
@@ -915,7 +916,7 @@ class Converter(utils.ContextWeakrefMixin):
     if metaclass is None:
       keywords = ()
     else:
-      metaclass = metaclass.to_pytd_instance(node)
+      metaclass = metaclass.to_pytd_type_of_instance(node)
       keywords = (("metaclass", metaclass),)
 
     # Some of the class's bases may not be in global scope, so they won't show
@@ -930,9 +931,9 @@ class Converter(utils.ContextWeakrefMixin):
         if b.official_name is None and isinstance(b, abstract.InterpreterClass):
           missing_bases.append(b)
         else:
-          bases.append(b.to_pytd_instance(node))
+          bases.append(b.to_pytd_type_of_instance(node))
       else:
-        bases.append(pytd_utils.JoinTypes(b.to_pytd_instance(node)
+        bases.append(pytd_utils.JoinTypes(b.to_pytd_type_of_instance(node)
                                           for b in basevar.data))
 
     # If a namedtuple was constructed via one of the functional forms, it will
@@ -1003,8 +1004,8 @@ class Converter(utils.ContextWeakrefMixin):
     return cls
 
   def _type_variable_to_def(self, node, v, name):
-    constraints = tuple(c.to_pytd_instance(node) for c in v.constraints)
-    bound = v.bound and v.bound.to_pytd_instance(node)
+    constraints = tuple(c.to_pytd_type_of_instance(node) for c in v.constraints)
+    bound = v.bound and v.bound.to_pytd_type_of_instance(node)
     if isinstance(v, abstract.TypeParameter):
       return pytd.TypeParameter(name, constraints=constraints, bound=bound)
     elif isinstance(v, abstract.ParamSpec):

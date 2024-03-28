@@ -15,22 +15,9 @@ class BaseValue:
 
   A BaseValue is pytype's internal representation of a python object.
   """
-  name: str
-  cls: 'BaseValue'
 
-  @property
-  def ctx(self) -> Any:
-    """All abstract objects contain a reference to the VM context."""
-    raise NotImplementedError()
-
-  def to_pytd_instance(self, *args, **kwargs) -> pytd.Type:
+  def to_pytd_type_of_instance(self, *args, **kwargs) -> pytd.Type:
     """Get the pytd type an instance of us would have."""
-    raise NotImplementedError()
-
-  def is_late_annotation(self) -> bool:
-    raise NotImplementedError()
-
-  def is_concrete(self) -> bool:
     raise NotImplementedError()
 
 

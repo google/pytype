@@ -48,7 +48,7 @@ class Context:
 
     # Helper classes/modules
     self.vm = tracer_vm.CallTracer(self)
-    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter())
+    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self))
     self.annotation_utils = annotation_utils.AnnotationUtils(self)
     self.attribute_handler = attribute.AbstractAttributeHandler(self)
     self.converter_minimally_initialized = False

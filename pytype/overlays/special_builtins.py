@@ -560,7 +560,7 @@ class AssertType(BuiltinFunction):
       raise error_types.WrongArgCount(self._SIGNATURE, args, self.ctx)
 
     # Convert both args to strings and compare them
-    pp = pretty_printer.PrettyPrinter()
+    pp = pretty_printer.PrettyPrinter(self.ctx)
     actual = pp.print_var_as_type(var, node)
     try:
       expected = abstract_utils.get_atomic_python_constant(typ, str)

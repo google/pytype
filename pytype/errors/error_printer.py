@@ -146,10 +146,11 @@ class MatcherErrorPrinter:
 
   def _print_protocol_error(self, error: error_types.ProtocolError) -> str:
     """Pretty-print the protocol error."""
-    convert = error.left_type.ctx.pytd_convert
+    convert = self._pp.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
-      left = self._pp.print_pytd(error.left_type.to_pytd_instance())
-      protocol = self._pp.print_pytd(error.other_type.to_pytd_instance())
+      left = self._pp.print_pytd(error.left_type.to_pytd_type_of_instance())
+      protocol = self._pp.print_pytd(
+          error.other_type.to_pytd_type_of_instance())
     if isinstance(error, error_types.ProtocolMissingAttributesError):
       missing = ", ".join(sorted(error.missing))
       return (f"Attributes of protocol {protocol} are not implemented on "
@@ -227,9 +228,9 @@ class MatcherErrorPrinter:
   ) -> BadReturn:
     """Print the actual and expected values for a return type."""
     formal = bad[0].expected.typ
-    convert = formal.ctx.pytd_convert
+    convert = self._pp.ctx.pytd_convert
     with convert.set_output_mode(convert.OutputMode.DETAILED):
-      expected = self._pp.print_pytd(formal.to_pytd_instance(node))
+      expected = self._pp.print_pytd(formal.to_pytd_type_of_instance(node))
     if "Literal[" in expected:
       output_mode = convert.OutputMode.LITERAL
     else:

@@ -31,6 +31,7 @@ py_library(
   SRCS
     test_utils.py
   DEPS
+    pytype.config
     pytype.libvm
     pytype.pretty_printer_base
     pytype.utils

@@ -36,5 +36,5 @@ class Context:
     self.NULL = abstract.Singleton(self, 'NULL')
     # pylint: enable=invalid-name
 
-    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter())
+    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self))
     self.pytd_converter = output.PyTDConverter(self)

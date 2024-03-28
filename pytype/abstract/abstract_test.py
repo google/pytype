@@ -266,7 +266,7 @@ class PyTDTest(AbstractTestBase):
     container = abstract.AnnotationContainer("List", self._ctx, cls)
     expected = pytd.GenericType(pytd.NamedType("builtins.list"),
                                 (pytd.AnythingType(),))
-    actual = container.to_pytd_instance(self._ctx.root_node)
+    actual = container.to_pytd_type_of_instance(self._ctx.root_node)
     self.assertEqual(expected, actual)
 
 

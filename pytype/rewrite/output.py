@@ -81,7 +81,7 @@ class PyTDConverter:
 
     def get_pytd(param_name):
       if param_name in sig.annotations:
-        return self.to_pytd_instance_type(sig.annotations[param_name])
+        return self.to_pytd_type_of_instance(sig.annotations[param_name])
       else:
         return pytd.AnythingType()
 
@@ -124,7 +124,7 @@ class PyTDConverter:
       else:
         starstarargs = None
       if 'return' in sig.annotations:
-        ret_type = self.to_pytd_instance_type(sig.annotations['return'])
+        ret_type = self.to_pytd_type_of_instance(sig.annotations['return'])
       else:
         func_frame = val.call_with_mapped_args(sig.make_fake_args())
         ret_type = self.to_pytd_type(func_frame.get_return_value())
@@ -194,12 +194,12 @@ class PyTDConverter:
       raise NotImplementedError(
           f'to_pytd_type() not implemented for {val.__class__.__name__}: {val}')
 
-  def to_pytd_instance_type(self, val: abstract.BaseValue) -> pytd.Type:
+  def to_pytd_type_of_instance(self, val: abstract.BaseValue) -> pytd.Type:
     """Returns the type of an instance of the abstract value, as a pytd node.
 
     For example, if the abstract value is:
       InterpreterClass(C)
-    then to_pytd_instance_type() produces:
+    then to_pytd_type_of_instance() produces:
       pytd.NamedType(C)
 
     Args:
@@ -208,10 +208,11 @@ class PyTDConverter:
     if val is self._ctx.ANY:
       return pytd.AnythingType()
     elif isinstance(val, abstract.Union):
-      return pytd_utils.JoinTypes(self.to_pytd_instance_type(v)
+      return pytd_utils.JoinTypes(self.to_pytd_type_of_instance(v)
                                   for v in val.options)
     elif isinstance(val, abstract.BaseClass):
       return pytd.NamedType(val.name)
     else:
-      raise NotImplementedError('to_pytd_instance_type() not implemented for '
-                                f'{val.__class__.__name__}: {val}')
+      raise NotImplementedError(
+          'to_pytd_type_of_instance() not implemented for '
+          f'{val.__class__.__name__}: {val}')

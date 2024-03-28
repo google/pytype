@@ -177,19 +177,19 @@ class ToPytdInstanceTypeTest(OutputTestBase):
 
   def test_any(self):
     self.assertEqual(
-        self.ctx.pytd_converter.to_pytd_instance_type(self.ctx.ANY),
+        self.ctx.pytd_converter.to_pytd_type_of_instance(self.ctx.ANY),
         pytd.AnythingType())
 
   def test_class(self):
     cls = abstract.BaseClass(self.ctx, 'C', {})
     self.assertPytdEqual(
-        self.ctx.pytd_converter.to_pytd_instance_type(cls), 'C')
+        self.ctx.pytd_converter.to_pytd_type_of_instance(cls), 'C')
 
   def test_union(self):
     union = abstract.Union(self.ctx, (abstract.BaseClass(self.ctx, 'C', {}),
                                       abstract.BaseClass(self.ctx, 'D', {})))
-    self.assertPytdEqual(self.ctx.pytd_converter.to_pytd_instance_type(union),
-                         'Union[C, D]')
+    self.assertPytdEqual(
+        self.ctx.pytd_converter.to_pytd_type_of_instance(union), 'Union[C, D]')
 
 
 if __name__ == '__main__':

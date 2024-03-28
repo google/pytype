@@ -63,8 +63,8 @@ class BaseValue(abc.ABC):
   def to_pytd_type(self) -> pytd.Type:
     return self._ctx.pytd_converter.to_pytd_type(self)
 
-  def to_pytd_instance_type(self) -> pytd.Type:
-    return self._ctx.pytd_converter.to_pytd_instance_type(self)
+  def to_pytd_type_of_instance(self) -> pytd.Type:
+    return self._ctx.pytd_converter.to_pytd_type_of_instance(self)
 
 
 class PythonConstant(BaseValue, Generic[_T]):

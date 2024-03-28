@@ -18,6 +18,9 @@ class PrettyPrinterBase(abc.ABC):
   Subclasses are expected to handle abstract->pytd conversion.
   """
 
+  def __init__(self, ctx):
+    self.ctx = ctx
+
   @staticmethod
   def show_constant(val: types.BaseValue) -> str:
     """Pretty-print a value if it is a constant.
