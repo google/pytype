@@ -1189,6 +1189,20 @@ class OverridingTest(test_base.BaseTest):
           raise ValueError()
     """)
 
+  def test_multiple_inheritance(self):
+    self.Check("""
+      class Base:
+        def f(self):
+          pass
+      class Parent1(Base):
+        pass
+      class Parent2(Base):
+        def f(self, a=None):
+          pass
+      class Child(Parent1, Parent2):
+        pass
+    """)
+
 
 class TypingOverrideTest(test_base.BaseTest):
   """Tests for @typing.override."""

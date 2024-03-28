@@ -517,11 +517,17 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
     else:
       signature = method.signature
     class_signature_map[method_name] = signature
+
+  base_classes = []
   for base in bases:
     try:
       base_class = abstract_utils.get_atomic_value(base)
     except abstract_utils.ConversionError:
       continue
+    base_classes.append(base_class)
+  mro = [mro_class.full_name for mro_class in cls.mro]
+
+  for i, base_class in enumerate(base_classes):
     if isinstance(base_class, abstract.InterpreterClass):
       base_signature_map = ctx.method_signature_map[base_class]
     elif isinstance(base_class, abstract.ParameterizedClass):
@@ -546,8 +552,26 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
       _check_signature_compatible(class_method_signature, base_method_signature,
                                   stack, matcher, ctx)
 
+    # We filter out any methods inherited from a base class that comes after the
+    # next direct base class in the MRO, to avoid checking signature
+    # compatibility in the wrong direction.
+    if i < len(base_classes) - 1:
+      next_index = mro.index(base_classes[i + 1].full_name)
+      filtered_base_map = {}
+      for base_method_name, base_method_signature in base_signature_map.items():
+        full_method_name = base_method_signature.name
+        if "." in full_method_name:
+          defining_class = full_method_name.rsplit(".", 1)[0]
+          defining_index = mro.index(defining_class)
+          include = defining_index < next_index
+        else:
+          include = True
+        if include:
+          filtered_base_map[base_method_name] = base_method_signature
+    else:
+      filtered_base_map = base_signature_map
     # Methods defined in this class take precedence.
-    class_signature_map = {**base_signature_map, **class_signature_map}
+    class_signature_map = {**filtered_base_map, **class_signature_map}
 
   assert cls not in ctx.method_signature_map
   ctx.method_signature_map[cls] = class_signature_map
