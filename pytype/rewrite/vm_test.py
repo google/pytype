@@ -2,6 +2,7 @@ import textwrap
 from typing import TypeVar, cast
 
 from pytype.pyc import opcodes
+from pytype.rewrite import context
 from pytype.rewrite import vm as vm_lib
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
@@ -20,7 +21,7 @@ class VmTest(unittest.TestCase):
   def test_run_module_frame(self):
     block = [opcodes.LOAD_CONST(0, 0, 0, None), opcodes.RETURN_VALUE(0, 0)]
     code = test_utils.FakeOrderedCode([block], [None])
-    vm = vm_lib.VirtualMachine(code.Seal(), {})
+    vm = vm_lib.VirtualMachine(context.Context(), code.Seal(), {})
     self.assertIsNone(vm._module_frame)
     vm._run_module()
     self.assertIsNotNone(vm._module_frame)

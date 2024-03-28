@@ -30,7 +30,9 @@ class ClassCallReturn:
 class BaseClass(base.BaseValue):
   """Base representation of a class."""
 
-  def __init__(self, name: str, members: Dict[str, base.BaseValue]):
+  def __init__(self, ctx: base.ContextType, name: str,
+               members: Dict[str, base.BaseValue]):
+    super().__init__(ctx)
     self.name = name
     self.members = members
 
@@ -65,7 +67,7 @@ class BaseClass(base.BaseValue):
     if constructor:
       raise NotImplementedError('Custom __new__')
     else:
-      instance = MutableInstance(self)
+      instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -77,7 +79,7 @@ class BaseClass(base.BaseValue):
     if constructor:
       raise NotImplementedError('Custom __new__')
     else:
-      instance = MutableInstance(self)
+      instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -89,10 +91,11 @@ class InterpreterClass(BaseClass):
   """Class defined in the current module."""
 
   def __init__(
-      self, name: str, members: Dict[str, base.BaseValue],
+      self, ctx: base.ContextType, name: str,
+      members: Dict[str, base.BaseValue],
       functions: Sequence[functions_lib.InterpreterFunction],
       classes: Sequence['InterpreterClass']):
-    super().__init__(name, members)
+    super().__init__(ctx, name, members)
     # Functions and classes defined in this class's body. Unlike 'members',
     # ignores the effects of post-definition transformations like decorators.
     self.functions = functions
@@ -107,7 +110,8 @@ class BaseInstance(base.BaseValue):
 
   members: Mapping[str, base.BaseValue]
 
-  def __init__(self, cls: BaseClass, members):
+  def __init__(self, ctx: base.ContextType, cls: BaseClass, members):
+    super().__init__(ctx)
     self.cls = cls
     self.members = members
 
@@ -132,20 +136,20 @@ class MutableInstance(BaseInstance):
 
   members: Dict[str, base.BaseValue]
 
-  def __init__(self, cls: BaseClass):
-    super().__init__(cls, {})
+  def __init__(self, ctx: base.ContextType, cls: BaseClass):
+    super().__init__(ctx, cls, {})
 
   def __repr__(self):
     return f'MutableInstance({self.cls.name})'
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
-      self.members[name] = base.Union((self.members[name], value))
+      self.members[name] = base.Union(self._ctx, (self.members[name], value))
     else:
       self.members[name] = value
 
   def freeze(self) -> 'FrozenInstance':
-    return FrozenInstance(self)
+    return FrozenInstance(self._ctx, self)
 
 
 class FrozenInstance(BaseInstance):
@@ -155,9 +159,9 @@ class FrozenInstance(BaseInstance):
   whose members map cannot be further modified.
   """
 
-  def __init__(self, instance: MutableInstance):
+  def __init__(self, ctx: base.ContextType, instance: MutableInstance):
     super().__init__(
-        instance.cls, immutabledict.immutabledict(instance.members))
+        ctx, instance.cls, immutabledict.immutabledict(instance.members))
 
   def __repr__(self):
     return f'FrozenInstance({self.cls.name})'
@@ -167,6 +171,3 @@ class FrozenInstance(BaseInstance):
     # analyzing a class's methods. This is fine; we just ignore it.
     log.info('Ignoring attribute set on %r: %s -> %r',
              self, name, value)
-
-
-BUILD_CLASS = base.Singleton('BUILD_CLASS')

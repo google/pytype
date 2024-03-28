@@ -1,5 +1,6 @@
 import sys
 
+from pytype.rewrite import context
 from pytype.rewrite import convert
 
 import unittest
@@ -8,7 +9,8 @@ import unittest
 class GetModuleGlobalsTest(unittest.TestCase):
 
   def test_basic(self):
-    module_globals = convert.get_module_globals(sys.version_info[:2])
+    module_globals = convert.get_module_globals(
+        context.Context(), sys.version_info[:2])
     # Sanity check a random entry.
     self.assertIn('__name__', module_globals)
 

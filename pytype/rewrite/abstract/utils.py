@@ -27,10 +27,11 @@ def get_atomic_constant(var, typ=None):
   return constant
 
 
-def join_values(values: Sequence[base.BaseValue]) -> base.BaseValue:
+def join_values(
+    ctx: base.ContextType, values: Sequence[base.BaseValue]) -> base.BaseValue:
   if len(values) > 1:
-    return base.Union(values)
+    return base.Union(ctx, values)
   elif values:
     return values[0]
   else:
-    return base.ANY
+    return ctx.ANY

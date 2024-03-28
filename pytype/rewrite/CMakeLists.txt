@@ -15,10 +15,10 @@ py_library(
   SRCS
     analyze.py
   DEPS
+    .context
     .vm
     pytype.config
     pytype.load_pytd
-    pytype.errors.errors
     pytype.pytd.pytd
 )
 
@@ -29,9 +29,22 @@ py_test(
     analyze_test.py
   DEPS
     .analyze
+    .context
     pytype.config
     pytype.load_pytd
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    context
+  SRCS
+    context.py
+  DEPS
+    .output
+    .pretty_printer
+    pytype.errors.errors
+    pytype.rewrite.abstract.abstract
 )
 
 py_library(
@@ -50,6 +63,7 @@ py_test(
   SRCS
     convert_test.py
   DEPS
+    .context
     .convert
 )
 
@@ -59,6 +73,7 @@ py_library(
   SRCS
     frame.py
   DEPS
+    .context
     .stack
     pytype.blocks.blocks
     pytype.rewrite.abstract.abstract
@@ -71,6 +86,7 @@ py_test(
   SRCS
     frame_test.py
   DEPS
+    .context
     .convert
     .frame
     pytype.blocks.blocks
@@ -106,7 +122,7 @@ py_test(
   SRCS
     output_test.py
   DEPS
-    .output
+    .context
     .vm
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
@@ -130,6 +146,7 @@ py_test(
   DEPS
     .stack
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.abstract.test_utils
 )
 
 py_library(
@@ -138,13 +155,11 @@ py_library(
   SRCS
     vm.py
   DEPS
+    .context
     .convert
     .frame
-    .output
-    .pretty_printer
     pytype.config
     pytype.blocks.blocks
-    pytype.errors.errors
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
@@ -156,6 +171,7 @@ py_test(
   SRCS
     vm_test.py
   DEPS
+    .context
     .vm
     pytype.pyc.pyc
     pytype.rewrite.abstract.abstract

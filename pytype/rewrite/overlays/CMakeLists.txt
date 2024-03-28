@@ -24,4 +24,5 @@ py_test(
   DEPS
     .special_builtins
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.abstract.test_utils
 )

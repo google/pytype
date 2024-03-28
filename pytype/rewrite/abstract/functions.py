@@ -99,6 +99,7 @@ class Signature:
 
   def __init__(
       self,
+      ctx: base.ContextType,
       name: str,
       param_names: Tuple[str, ...],
       *,
@@ -109,6 +110,7 @@ class Signature:
       defaults: Mapping[str, base.BaseValue] = _EMPTY_MAP,
       annotations: Mapping[str, base.BaseValue] = _EMPTY_MAP,
   ):
+    self._ctx = ctx
     self.name = name
     self.param_names = param_names
     self.posonly_count = posonly_count
@@ -123,7 +125,9 @@ class Signature:
     return self.param_names[:self.posonly_count]
 
   @classmethod
-  def from_code(cls, name: str, code: blocks.OrderedCode) -> 'Signature':
+  def from_code(
+      cls, ctx: base.ContextType, name: str, code: blocks.OrderedCode,
+  ) -> 'Signature':
     """Builds a signature from a code object."""
     nonstararg_count = code.argcount + code.kwonlyargcount
     if code.has_varargs():
@@ -137,6 +141,7 @@ class Signature:
     else:
       kwargs_name = None
     return cls(
+        ctx=ctx,
         name=name,
         param_names=tuple(code.varnames[:code.argcount]),
         posonly_count=code.posonlyargcount,
@@ -173,7 +178,7 @@ class Signature:
       names.append(self.varargs_name)
     if self.kwargs_name:
       names.append(self.kwargs_name)
-    argdict = {name: base.ANY.to_variable() for name in names}
+    argdict = {name: self._ctx.ANY.to_variable() for name in names}
     return MappedArgs(signature=self, argdict=argdict)
 
 
@@ -216,7 +221,9 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
 class SimpleFunction(BaseFunction[_HasReturnT]):
   """Signature-based function implementation."""
 
-  def __init__(self, name: str, signatures: Tuple[Signature, ...]):
+  def __init__(self, ctx: base.ContextType, name: str,
+               signatures: Tuple[Signature, ...]):
+    super().__init__(ctx)
     self._name = name
     self._signatures = signatures
 
@@ -267,14 +274,16 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
 
   def __init__(
       self,
+      ctx: base.ContextType,
       name: str,
       code: blocks.OrderedCode,
       enclosing_scope: Tuple[str, ...],
       parent_frame: _FrameT,
   ):
     super().__init__(
+        ctx=ctx,
         name=name,
-        signatures=(Signature.from_code(name, code),),
+        signatures=(Signature.from_code(ctx, name, code),),
     )
     self.code = code
     self.enclosing_scope = enclosing_scope
@@ -296,14 +305,16 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     return frame
 
   def bind_to(self, callself: base.BaseValue) -> 'BoundFunction[_FrameT]':
-    return BoundFunction(callself, self)
+    return BoundFunction(self._ctx, callself, self)
 
 
 class BoundFunction(BaseFunction[_HasReturnT]):
   """Function bound to a self or cls object."""
 
   def __init__(
-      self, callself: base.BaseValue, underlying: SimpleFunction[_HasReturnT]):
+      self, ctx: base.ContextType, callself: base.BaseValue,
+      underlying: SimpleFunction[_HasReturnT]):
+    super().__init__(ctx)
     self.callself = callself
     self.underlying = underlying
 

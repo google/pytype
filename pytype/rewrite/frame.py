@@ -7,6 +7,7 @@ from typing import FrozenSet, List, Mapping, Optional, Sequence, Set
 import immutabledict
 from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
+from pytype.rewrite import context
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import conditions
@@ -69,6 +70,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def __init__(
       self,
+      ctx: context.Context,
       name: str,
       code: blocks.OrderedCode,
       *,
@@ -78,6 +80,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       f_back: Optional['Frame'] = None,
   ):
     super().__init__(code, initial_locals)
+    self._ctx = ctx
     self.name = name  # name of the frame
     # Final values of locals, unwrapped from variables
     self.final_locals: Mapping[str, abstract.BaseValue] = None
@@ -106,10 +109,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   @classmethod
   def make_module_frame(
       cls,
+      ctx: context.Context,
       code: blocks.OrderedCode,
       initial_globals: _VarMap,
   ) -> 'Frame':
     return cls(
+        ctx=ctx,
         name='__main__',
         code=code,
         initial_locals=initial_globals,
@@ -150,7 +155,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # cannot be used to modify finalized locals.
     self._current_state = None
     self.final_locals = immutabledict.immutabledict({
-        name: abstract.join_values(var.values)
+        name: abstract.join_values(self._ctx, var.values)
         for name, var in self._final_locals.items()})
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
@@ -234,6 +239,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
         initial_globals[name] = current_locals[name]
     return Frame(
+        ctx=self._ctx,
         name=func.name,
         code=func.code,
         initial_locals=initial_locals,
@@ -244,7 +250,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def get_return_value(self) -> abstract.BaseValue:
     values = sum((ret.values for ret in self._returns), ())
-    return abstract.join_values(values)
+    return abstract.join_values(self._ctx, values)
 
   def _merge_nonlocals_into(self, frame: Optional['Frame']) -> None:
     # Perform any STORE_ATTR operations recorded in locals.
@@ -266,7 +272,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       else:
         store_on_target = True
       if store_on_target:
-        value = abstract.join_values(var.values)
+        value = abstract.join_values(self._ctx, var.values)
         for target in target_var.values:
           log.info('Storing attribute on %r: %s -> %r',
                    target, attr_name, value)
@@ -295,11 +301,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
                            abstract.BoundFunction)):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
-      elif func is abstract.BUILD_CLASS:
+      elif func is self._ctx.BUILD_CLASS:
         class_body, name = args.posargs
         builder = class_body.get_atomic_value(_FrameFunction)
         frame = builder.call(abstract.Args(frame=self))
         cls = abstract.InterpreterClass(
+            ctx=self._ctx,
             name=abstract.get_atomic_constant(name, str),
             members=dict(frame.final_locals),
             functions=frame.functions,
@@ -345,7 +352,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     del opcode  # unused
 
   def byte_LOAD_CONST(self, opcode):
-    constant = abstract.PythonConstant(self._code.consts[opcode.arg])
+    constant = abstract.PythonConstant(self._ctx, self._code.consts[opcode.arg])
     self._stack.push(constant.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
@@ -386,9 +393,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
-    func = abstract.InterpreterFunction(name, code, enclosing_scope, self)
+    func = abstract.InterpreterFunction(
+        self._ctx, name, code, enclosing_scope, self)
     if not (self._stack and
-            self._stack.top().has_atomic_value(abstract.BUILD_CLASS)):
+            self._stack.top().has_atomic_value(self._ctx.BUILD_CLASS)):
       # BUILD_CLASS makes and immediately calls a function that creates the
       # class body; we don't need to store this function for later analysis.
       self._functions.append(func)
@@ -396,7 +404,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_PUSH_NULL(self, opcode):
     del opcode  # unused
-    self._stack.push(abstract.NULL.to_variable())
+    self._stack.push(self._ctx.NULL.to_variable())
 
   def byte_LOAD_NAME(self, opcode):
     name = opcode.argval
@@ -434,7 +442,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
-    self._stack.push(abstract.NULL.to_variable())
+    self._stack.push(self._ctx.NULL.to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
 
   def byte_PRECALL(self, opcode):
@@ -442,7 +450,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
-    if not sentinel.has_atomic_value(abstract.NULL):
+    if not sentinel.has_atomic_value(self._ctx.NULL):
       raise NotImplementedError('CALL not fully implemented')
     func_var, *args = rest
     self._call_function(func_var, abstract.Args(posargs=args, frame=self))
@@ -475,10 +483,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_BUILD_TUPLE(self, opcode):
     count = opcode.arg
     elements = self._stack.popn(count)
-    self._stack.push(abstract.PythonConstant(tuple(elements)).to_variable())
+    constant = abstract.PythonConstant(self._ctx, tuple(elements))
+    self._stack.push(constant.to_variable())
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
-    self._stack.push(abstract.BUILD_CLASS.to_variable())
+    self._stack.push(self._ctx.BUILD_CLASS.to_variable())
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode):
     self._pop_jump_if_false(opcode)
