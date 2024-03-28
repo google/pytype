@@ -23,7 +23,7 @@ def build_class(node, props, kwargs, ctx):
           node, props.bases, props.class_dict_var, total=kwargs.get("total"))
     elif "__dataclass_transform__" in base.metadata:
       node, cls_var = ctx.make_class(node, props)
-      return ctx.convert.apply_dataclass_transform(cls_var, node, ctx)
+      return ctx.convert.apply_dataclass_transform(cls_var, node)
   return node, None
 
 
@@ -82,10 +82,10 @@ class _TypedDictBuilder(_Builder):
                for b in c.mro)
 
   def make_base_class(self):
-    return self.convert.make_typed_dict_builder(self.ctx)
+    return self.convert.make_typed_dict_builder()
 
   def make_derived_class(self, name, pytd_cls):
-    return self.convert.make_typed_dict(name, pytd_cls, self.ctx)
+    return self.convert.make_typed_dict(name, pytd_cls)
 
 
 class _NamedTupleBuilder(_Builder):
@@ -105,10 +105,10 @@ class _NamedTupleBuilder(_Builder):
     return False
 
   def make_base_class(self):
-    return self.convert.make_namedtuple_builder(self.ctx)
+    return self.convert.make_namedtuple_builder()
 
   def make_derived_class(self, name, pytd_cls):
-    return self.convert.make_namedtuple(name, pytd_cls, self.ctx)
+    return self.convert.make_namedtuple(name, pytd_cls)
 
 
 _BUILDERS = (_TypedDictBuilder, _NamedTupleBuilder)

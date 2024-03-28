@@ -260,31 +260,31 @@ class Converter(utils.ContextWeakrefMixin):
     """Create a VM tuple from the given sequence."""
     return self.tuple_to_value(content).to_variable(node)
 
-  def make_typed_dict_builder(self, ctx):
+  def make_typed_dict_builder(self):
     """Make a typed dict builder."""
-    return typed_dict.TypedDictBuilder(ctx)
+    return typed_dict.TypedDictBuilder(self.ctx)
 
-  def make_typed_dict(self, name, pytd_cls, ctx):
+  def make_typed_dict(self, name, pytd_cls):
     """Make a typed dict from a pytd class."""
-    builder = typed_dict.TypedDictBuilder(ctx)
+    builder = typed_dict.TypedDictBuilder(self.ctx)
     return builder.make_class_from_pyi(name, pytd_cls)
 
-  def make_namedtuple_builder(self, ctx):
+  def make_namedtuple_builder(self):
     """Make a namedtuple builder."""
-    return named_tuple.NamedTupleClassBuilder(ctx)
+    return named_tuple.NamedTupleClassBuilder(self.ctx)
 
-  def make_namedtuple(self, name, pytd_cls, ctx):
+  def make_namedtuple(self, name, pytd_cls):
     """Make a namedtuple class from a pytd class."""
-    builder = named_tuple.NamedTupleClassBuilder(ctx)
+    builder = named_tuple.NamedTupleClassBuilder(self.ctx)
     return builder.make_class_from_pyi(name, pytd_cls)
 
-  def apply_dataclass_transform(self, cls_var, node, ctx):
+  def apply_dataclass_transform(self, cls_var, node):
     cls = abstract_utils.get_atomic_value(cls_var)
     # We need to propagate the metadata key since anything in the entire tree of
     # subclasses is a dataclass, even without a decorator.
     cls.metadata["__dataclass_transform__"] = True
     args = function.Args(posargs=(cls_var,))
-    return dataclass_overlay.Dataclass.make(ctx).call(node, None, args)
+    return dataclass_overlay.Dataclass.make(self.ctx).call(node, None, args)
 
   def get_maybe_abstract_instance(self, data):
     """Get an instance of the same type as the given data, abstract if possible.
