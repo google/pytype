@@ -8,7 +8,6 @@ from pytype.pyc import pyc
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.rewrite import context
-from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.abstract import abstract
 
@@ -34,7 +33,8 @@ class VirtualMachine:
     ctx = context.Context()
     options = options or config.Options.create()
     code = _get_bytecode(src, options)
-    initial_globals = convert.get_module_globals(ctx, options.python_version)
+    initial_globals = ctx.abstract_converter.get_module_globals(
+        options.python_version)
     return cls(ctx, code, initial_globals)
 
   def _run_module(self) -> None:

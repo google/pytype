@@ -2,8 +2,6 @@ import sys
 from typing import Mapping, Type, TypeVar, cast, get_origin
 
 from pytype.pyc import opcodes
-from pytype.rewrite import context
-from pytype.rewrite import convert
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
@@ -21,17 +19,13 @@ def _get(frame: frame_lib.Frame, name: str, typ: Type[_T]) -> _T:
   return val
 
 
-class FrameTestBase(unittest.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ctx = context.Context()
+class FrameTestBase(test_utils.ContextfulTestBase):
 
   def _make_frame(self, src: str, name: str = '__main__') -> frame_lib.Frame:
     code = test_utils.parse(src)
     if name == '__main__':
-      module_globals = convert.get_module_globals(self.ctx,
-                                                  sys.version_info[:2])
+      module_globals = (
+          self.ctx.abstract_converter.get_module_globals(sys.version_info[:2]))
       initial_locals = initial_globals = {
           name: value.to_variable() for name, value in module_globals.items()}
     else:

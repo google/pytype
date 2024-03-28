@@ -41,6 +41,7 @@ py_library(
   SRCS
     context.py
   DEPS
+    .convert
     .output
     .pretty_printer
     pytype.errors.errors
@@ -53,6 +54,7 @@ py_library(
   SRCS
     convert.py
   DEPS
+    pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
     pytype.rewrite.overlays.overlays
 )
@@ -63,8 +65,7 @@ py_test(
   SRCS
     convert_test.py
   DEPS
-    .context
-    .convert
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -86,8 +87,6 @@ py_test(
   SRCS
     frame_test.py
   DEPS
-    .context
-    .convert
     .frame
     pytype.blocks.blocks
     pytype.pyc.pyc
@@ -123,10 +122,10 @@ py_test(
   SRCS
     output_test.py
   DEPS
-    .context
     .vm
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -147,7 +146,7 @@ py_test(
   DEPS
     .stack
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.abstract.test_utils
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -157,7 +156,6 @@ py_library(
     vm.py
   DEPS
     .context
-    .convert
     .frame
     pytype.config
     pytype.blocks.blocks

@@ -28,7 +28,7 @@ class PyTDConverter:
     Args:
       val: The abstract value.
     """
-    if isinstance(val, abstract.BaseClass):
+    if isinstance(val, abstract.SimpleClass):
       return self._class_to_pytd_def(val)
     elif isinstance(val, abstract.InterpreterFunction):
       return self._function_to_pytd_def(val)
@@ -36,7 +36,7 @@ class PyTDConverter:
       raise NotImplementedError(
           f'to_pytd_def() not implemented for {val.__class__.__name__}: {val}')
 
-  def _class_to_pytd_def(self, val: abstract.BaseClass) -> pytd.Class:
+  def _class_to_pytd_def(self, val: abstract.SimpleClass) -> pytd.Class:
     """Converts an abstract class to a pytd.Class."""
     methods = []
     constants = []
@@ -159,7 +159,7 @@ class PyTDConverter:
       return pytd_utils.JoinTypes(self.to_pytd_type(v) for v in val.options)
     elif isinstance(val, abstract.PythonConstant):
       return pytd.NamedType(f'builtins.{val.constant.__class__.__name__}')
-    elif isinstance(val, abstract.BaseClass):
+    elif isinstance(val, abstract.SimpleClass):
       return pytd.GenericType(
           base_type=pytd.NamedType('builtins.type'),
           parameters=(pytd.NamedType(val.name),),
@@ -210,7 +210,7 @@ class PyTDConverter:
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type_of_instance(v)
                                   for v in val.options)
-    elif isinstance(val, abstract.BaseClass):
+    elif isinstance(val, abstract.SimpleClass):
       return pytd.NamedType(val.name)
     else:
       raise NotImplementedError(

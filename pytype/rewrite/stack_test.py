@@ -1,11 +1,11 @@
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
-from pytype.rewrite.abstract import test_utils
+from pytype.rewrite.tests import test_utils
 
 import unittest
 
 
-class DataStackTest(test_utils.AbstractTestBase):
+class DataStackTest(test_utils.ContextfulTestBase):
 
   def test_push(self):
     s = stack.DataStack()

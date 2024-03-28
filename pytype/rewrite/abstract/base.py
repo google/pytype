@@ -1,15 +1,13 @@
 """Base abstract representation of Python values."""
 
 import abc
-from typing import Any, Dict, Generic, Optional, Protocol, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Optional, Protocol, Sequence, Tuple
 
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.rewrite.flow import variables
 from pytype.types import types
 from typing_extensions import Self
-
-_T = TypeVar('_T')
 
 
 class ContextType(Protocol):
@@ -19,6 +17,7 @@ class ContextType(Protocol):
   NULL: 'Singleton'
 
   errorlog: Any
+  abstract_converter: Any
   pytd_converter: Any
 
 
@@ -66,20 +65,6 @@ class BaseValue(types.BaseValue, abc.ABC):
 
   def to_pytd_type_of_instance(self) -> pytd.Type:
     return self._ctx.pytd_converter.to_pytd_type_of_instance(self)
-
-
-class PythonConstant(BaseValue, Generic[_T]):
-
-  def __init__(self, ctx: ContextType, constant: _T):
-    super().__init__(ctx)
-    self.constant = constant
-
-  def __repr__(self):
-    return f'PythonConstant({self.constant!r})'
-
-  @property
-  def _attrs(self):
-    return (self.constant,)
 
 
 class Singleton(BaseValue):

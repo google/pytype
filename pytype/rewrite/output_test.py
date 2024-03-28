@@ -2,9 +2,9 @@ import textwrap
 
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
-from pytype.rewrite import context
 from pytype.rewrite import vm as vm_lib
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.tests import test_utils
 
 import unittest
 
@@ -15,11 +15,7 @@ def _make(src: str) -> abstract.BaseValue:
   return list(vm._module_frame.final_locals.values())[-1]
 
 
-class OutputTestBase(unittest.TestCase):
-
-  def setUp(self):
-    super().setUp()
-    self.ctx = context.Context()
+class OutputTestBase(test_utils.ContextfulTestBase):
 
   def assertPytdEqual(self, pytd_node, expected_str):
     actual_str = pytd_utils.Print(pytd_node).strip()
@@ -99,7 +95,8 @@ class FunctionToPytdDefTest(OutputTestBase):
       def f(x):
         pass
     """)
-    func.signatures[0].annotations['x'] = abstract.BaseClass(self.ctx, 'C', {})
+    func.signatures[0].annotations['x'] = (
+        abstract.SimpleClass(self.ctx, 'C', {}))
     pytd_func = self.ctx.pytd_converter.to_pytd_def(func)
     self.assertPytdEqual(pytd_func, 'def f(x: C) -> None: ...')
 
@@ -109,7 +106,7 @@ class FunctionToPytdDefTest(OutputTestBase):
         pass
     """)
     func.signatures[0].annotations['return'] = (
-        abstract.BaseClass(self.ctx, 'C', {}))
+        abstract.SimpleClass(self.ctx, 'C', {}))
     pytd_func = self.ctx.pytd_converter.to_pytd_def(func)
     self.assertPytdEqual(pytd_func, 'def f() -> C: ...')
 
@@ -137,17 +134,17 @@ class ToPytdTypeTest(OutputTestBase):
 
   def test_class(self):
     t = self.ctx.pytd_converter.to_pytd_type(
-        abstract.BaseClass(self.ctx, 'C', {}))
+        abstract.SimpleClass(self.ctx, 'C', {}))
     self.assertPytdEqual(t, 'Type[C]')
 
   def test_mutable_instance(self):
     instance = abstract.MutableInstance(
-        self.ctx, abstract.BaseClass(self.ctx, 'C', {}))
+        self.ctx, abstract.SimpleClass(self.ctx, 'C', {}))
     self.assertPytdEqual(self.ctx.pytd_converter.to_pytd_type(instance), 'C')
 
   def test_frozen_instance(self):
     instance = abstract.MutableInstance(
-        self.ctx, abstract.BaseClass(self.ctx, 'C', {})).freeze()
+        self.ctx, abstract.SimpleClass(self.ctx, 'C', {})).freeze()
     self.assertPytdEqual(self.ctx.pytd_converter.to_pytd_type(instance), 'C')
 
   def test_precise_callable(self):
@@ -181,13 +178,13 @@ class ToPytdInstanceTypeTest(OutputTestBase):
         pytd.AnythingType())
 
   def test_class(self):
-    cls = abstract.BaseClass(self.ctx, 'C', {})
+    cls = abstract.SimpleClass(self.ctx, 'C', {})
     self.assertPytdEqual(
         self.ctx.pytd_converter.to_pytd_type_of_instance(cls), 'C')
 
   def test_union(self):
-    union = abstract.Union(self.ctx, (abstract.BaseClass(self.ctx, 'C', {}),
-                                      abstract.BaseClass(self.ctx, 'D', {})))
+    union = abstract.Union(self.ctx, (abstract.SimpleClass(self.ctx, 'C', {}),
+                                      abstract.SimpleClass(self.ctx, 'D', {})))
     self.assertPytdEqual(
         self.ctx.pytd_converter.to_pytd_type_of_instance(union), 'Union[C, D]')
 

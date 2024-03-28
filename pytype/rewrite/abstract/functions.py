@@ -309,6 +309,13 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     return BoundFunction(self._ctx, callself, self)
 
 
+class PyTDFunction(SimpleFunction[SimpleReturn]):
+
+  def call_with_mapped_args(
+      self, mapped_args: MappedArgs[FrameType]) -> SimpleReturn:
+    return SimpleReturn(self._ctx.ANY)
+
+
 class BoundFunction(BaseFunction[_HasReturnT]):
   """Function bound to a self or cls object."""
 

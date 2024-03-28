@@ -6,10 +6,11 @@ context introduces circular dependencies that degrade the quality of typing,
 cross references, and other tooling.
 
 New Context attributes should also be added to the ContextType protocol in
-abstract/base.py and FakeContext in abstract/test_utils.py.
+abstract/base.py.
 """
 
 from pytype.errors import errors
+from pytype.rewrite import convert
 from pytype.rewrite import output
 from pytype.rewrite import pretty_printer
 from pytype.rewrite.abstract import abstract
@@ -26,6 +27,7 @@ class Context:
   NULL: abstract.Singleton
 
   errorlog: errors.VmErrorLog
+  abstract_converter: convert.AbstractConverter
   pytd_converter: output.PyTDConverter
 
   def __init__(self):
@@ -37,4 +39,5 @@ class Context:
     # pylint: enable=invalid-name
 
     self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self))
+    self.abstract_converter = convert.AbstractConverter(self)
     self.pytd_converter = output.PyTDConverter(self)

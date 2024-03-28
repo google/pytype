@@ -14,15 +14,6 @@ py_library(
 
 py_library(
   NAME
-    test_utils
-  SRCS
-    test_utils.py
-  DEPS
-    .base
-)
-
-py_library(
-  NAME
     base
   SRCS
     base.py
@@ -40,8 +31,9 @@ py_test(
     base_test.py
   DEPS
     .base
-    .test_utils
+    .classes
     pytype.rewrite.flow.flow
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -60,10 +52,9 @@ py_test(
   SRCS
     classes_test.py
   DEPS
-    .base
     .classes
     .functions
-    .test_utils
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -82,9 +73,8 @@ py_test(
   SRCS
     functions_test.py
   DEPS
-    .base
+    .classes
     .functions
-    .test_utils
     pytype.rewrite.tests.test_utils
 )
 
@@ -95,6 +85,7 @@ py_library(
     utils.py
   DEPS
     .base
+    .classes
 )
 
 py_test(
@@ -104,6 +95,7 @@ py_test(
     utils_test.py
   DEPS
     .base
-    .test_utils
+    .classes
     .utils
+    pytype.rewrite.tests.test_utils
 )

@@ -7,7 +7,17 @@ from typing import Sequence
 from pytype.blocks import blocks
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
+from pytype.rewrite import context
 from pytype_extensions import instrumentation_for_testing as i4t
+
+import unittest
+
+
+class ContextfulTestBase(unittest.TestCase):
+
+  def setUp(self):
+    super().setUp()
+    self.ctx = context.Context()
 
 
 class FakeOrderedCode(i4t.ProductionType[blocks.OrderedCode]):
