@@ -65,7 +65,7 @@ class Context:
         # The object type.
         "object": self.convert.object_type,
         # for more pretty branching tests.
-        "__random__": self.convert.primitive_class_instances[bool],
+        "__random__": self.convert.primitive_instances[bool],
         # boolean values.
         "True": self.convert.true,
         "False": self.convert.false,

@@ -1849,7 +1849,7 @@ class VirtualMachine:
       # Python version. In this case, always return a (boolean) value.
       # (https://docs.python.org/2/library/stdtypes.html#comparisons or
       # (https://docs.python.org/3/library/stdtypes.html#comparisons)
-      ret.AddBinding(self.ctx.convert.primitive_class_instances[bool], [],
+      ret.AddBinding(self.ctx.convert.primitive_instances[bool], [],
                      state.node)
     return state.push(ret)
 
@@ -2783,7 +2783,7 @@ class VirtualMachine:
         self.simple_stack(),
         allowed_type_params=self.frame.type_params)
     self._record_annotation(state.node, op, name, typ)
-    key = self.ctx.convert.primitive_class_instances[str]
+    key = self.ctx.convert.primitive_instances[str]
     state = self.store_subscr(
         state, annotations_var, key.to_variable(state.node), value)
     return self.store_local(state, "__annotations__", annotations_var)

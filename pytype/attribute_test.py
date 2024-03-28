@@ -121,7 +121,7 @@ class AttributeTest(test_base.UnitTest):
   def test_type_parameter_instance(self):
     t = abstract.TypeParameter(abstract_utils.T, self._ctx)
     t_instance = abstract.TypeParameterInstance(
-        t, self._ctx.convert.primitive_class_instances[str], self._ctx)
+        t, self._ctx.convert.primitive_instances[str], self._ctx)
     node, var = self._ctx.attribute_handler.get_attribute(
         self._ctx.root_node, t_instance, "upper")
     self.assertIs(node, self._ctx.root_node)
@@ -131,7 +131,7 @@ class AttributeTest(test_base.UnitTest):
   def test_type_parameter_instance_bad_attribute(self):
     t = abstract.TypeParameter(abstract_utils.T, self._ctx)
     t_instance = abstract.TypeParameterInstance(
-        t, self._ctx.convert.primitive_class_instances[str], self._ctx)
+        t, self._ctx.convert.primitive_instances[str], self._ctx)
     node, var = self._ctx.attribute_handler.get_attribute(
         self._ctx.root_node, t_instance, "rumpelstiltskin")
     self.assertIs(node, self._ctx.root_node)
@@ -146,12 +146,12 @@ class AttributeTest(test_base.UnitTest):
         self._ctx.root_node, t_instance, "real")
     self.assertIs(node, self._ctx.root_node)
     attr, = var.data
-    self.assertIs(attr, self._ctx.convert.primitive_class_instances[int])
+    self.assertIs(attr, self._ctx.convert.primitive_instances[int])
 
   def test_type_parameter_instance_set_attribute(self):
     t = abstract.TypeParameter(abstract_utils.T, self._ctx)
     t_instance = abstract.TypeParameterInstance(
-        t, self._ctx.convert.primitive_class_instances[str], self._ctx)
+        t, self._ctx.convert.primitive_instances[str], self._ctx)
     node = self._ctx.attribute_handler.set_attribute(
         self._ctx.root_node, t_instance, "rumpelstiltskin",
         self._ctx.new_unsolvable(self._ctx.root_node))

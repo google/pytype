@@ -40,6 +40,6 @@ def build_version_info(ctx):
     version.append(ctx.convert.constant_to_var(i))
   # micro, releaselevel, serial
   for t in (int, str, int):
-    version.append(ctx.convert.primitive_class_instances[t].to_variable(
+    version.append(ctx.convert.primitive_instances[t].to_variable(
         ctx.root_node))
   return VersionInfo(tuple(version), ctx)

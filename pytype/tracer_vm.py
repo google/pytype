@@ -81,7 +81,7 @@ class CallTracer(vm.VirtualMachine):
     return value.to_variable(node)
 
   def create_kwargs(self, node):
-    key_type = self.ctx.convert.primitive_class_instances[str].to_variable(node)
+    key_type = self.ctx.convert.primitive_instances[str].to_variable(node)
     value_type = self.ctx.convert.create_new_unknown(node)
     kwargs = abstract.Instance(self.ctx.convert.dict_type, self.ctx)
     kwargs.merge_instance_type_parameter(node, abstract_utils.K, key_type)

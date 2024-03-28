@@ -149,7 +149,7 @@ class TupleTest(CompareTestBase):
     tup1 = self._ctx.convert.tuple_to_value(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.constant_to_value(1).to_variable(self._node),
-         self._convert.primitive_class_instances[int].to_variable(self._node)))
+         self._convert.primitive_instances[int].to_variable(self._node)))
     tup2 = self._convert.constant_to_value((3, 1))
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
@@ -168,7 +168,7 @@ class TupleTest(CompareTestBase):
     tup1 = self._ctx.convert.tuple_to_value(
         (self._convert.constant_to_value(3).to_variable(self._node),
          self._convert.constant_to_value(1).to_variable(self._node),
-         self._convert.primitive_class_instances[int].to_variable(self._node)))
+         self._convert.primitive_instances[int].to_variable(self._node)))
     tup2 = self._convert.constant_to_value((4, 2))
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
@@ -186,7 +186,7 @@ class TupleTest(CompareTestBase):
   def test_cmp_rel__prefix_unknown(self):
     tup1 = self._ctx.convert.tuple_to_value(
         (self._convert.constant_to_value(3).to_variable(self._node),
-         self._convert.primitive_class_instances[int].to_variable(self._node)))
+         self._convert.primitive_instances[int].to_variable(self._node)))
     tup2 = self._convert.constant_to_value((3, 1))
     for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
       self.assertIsNone(compare.cmp_rel(self._ctx, op, tup1, tup2))
@@ -269,7 +269,7 @@ class DictTest(CompareTestBase):
     self.assertTruthy(self._d)
 
   def test_bad_pop_with_default(self):
-    val = self._convert.primitive_class_instances[int]
+    val = self._convert.primitive_instances[int]
     self._d.set_str_item(self._node, "a", val.to_variable(self._node))
     node, ret = self._d.pop_slot(self._node,
                                  self._convert.build_string(self._node, "b"),
@@ -279,9 +279,9 @@ class DictTest(CompareTestBase):
     self.assertListEqual(ret.data, [self._convert.none])
 
   def test_ambiguous_pop(self):
-    val = self._convert.primitive_class_instances[int]
+    val = self._convert.primitive_instances[int]
     self._d.set_str_item(self._node, "a", val.to_variable(self._node))
-    ambiguous_key = self._convert.primitive_class_instances[str]
+    ambiguous_key = self._convert.primitive_instances[str]
     node, ret = self._d.pop_slot(
         self._node, ambiguous_key.to_variable(self._node))
     self.assertAmbiguous(self._d)
@@ -289,9 +289,9 @@ class DictTest(CompareTestBase):
     self.assertListEqual(ret.data, [val])
 
   def test_ambiguous_pop_with_default(self):
-    val = self._convert.primitive_class_instances[int]
+    val = self._convert.primitive_instances[int]
     self._d.set_str_item(self._node, "a", val.to_variable(self._node))
-    ambiguous_key = self._convert.primitive_class_instances[str]
+    ambiguous_key = self._convert.primitive_instances[str]
     default_var = self._convert.none.to_variable(self._node)
     node, ret = self._d.pop_slot(
         self._node, ambiguous_key.to_variable(self._node), default_var)
@@ -300,8 +300,8 @@ class DictTest(CompareTestBase):
     self.assertSetEqual(set(ret.data), {val, self._convert.none})
 
   def test_ambiguous_dict_after_pop(self):
-    ambiguous_key = self._convert.primitive_class_instances[str]
-    val = self._convert.primitive_class_instances[int]
+    ambiguous_key = self._convert.primitive_instances[str]
+    val = self._convert.primitive_instances[int]
     node, _ = self._d.setitem_slot(
         self._node, ambiguous_key.to_variable(self._node),
         val.to_variable(self._node))
@@ -310,8 +310,8 @@ class DictTest(CompareTestBase):
     self.assertListEqual(ret.data, [val])
 
   def test_ambiguous_dict_after_pop_with_default(self):
-    ambiguous_key = self._convert.primitive_class_instances[str]
-    val = self._convert.primitive_class_instances[int]
+    ambiguous_key = self._convert.primitive_instances[str]
+    val = self._convert.primitive_instances[int]
     node, _ = self._d.setitem_slot(
         self._node, ambiguous_key.to_variable(self._node),
         val.to_variable(self._node))
