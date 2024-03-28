@@ -3,7 +3,7 @@
 import contextlib
 import logging
 import types
-from typing import Any, Dict
+from typing import Any, Dict, FrozenSet, Tuple
 
 import pycnite
 
@@ -690,6 +690,181 @@ class Converter(utils.ContextWeakrefMixin):
       return None
     return overlay.maybe_load_member(member_name)
 
+  def _frozenset_literal_to_value(self, pyval: FrozenSet[Any]):
+    """Convert a literal frozenset to an abstract value."""
+    instance = abstract.Instance(self.frozenset_type, self.ctx)
+    for element in pyval:
+      instance.merge_instance_type_parameter(
+          self.ctx.root_node, abstract_utils.T,
+          self.constant_to_var(element, {}))
+    return instance
+
+  def _tuple_literal_to_value(self, pyval: Tuple[Any, ...]):
+    """Convert a literal tuple to an abstract value."""
+    return self.tuple_to_value(
+        [self.constant_to_var(item, {}) for item in pyval])
+
+  def _pytd_class_to_value(self, pyval: pytd.Class, node):
+    """Convert a pytd.Class to an abstract value."""
+    if val := self._special_constant_to_value(pyval.name):
+      return val
+    module, dot, base_name = pyval.name.rpartition(".")
+    if overlay_member := self._maybe_load_from_overlay(module, base_name):
+      return overlay_member
+    try:
+      cls = abstract.PyTDClass.make(base_name, pyval, self.ctx)
+    except mro.MROError as e:
+      self.ctx.errorlog.mro_error(self.ctx.vm.frames, base_name, e.mro_seqs)
+      cls = self.unsolvable
+    else:
+      if dot:
+        cls.module = module
+      cls.call_metaclass_init(node)
+    return cls
+
+  def _pytd_class_to_instance_value(self, cls: pytd.Class, subst):
+    """Convert a pytd.Class to an abstract instance value."""
+    # We should not call this method for generic classes
+    assert not cls.template
+    # This key is also used in __init__
+    key = (abstract.Instance, cls)
+    if key not in self._convert_cache:
+      if cls.name in ["builtins.type", "builtins.property"]:
+        # An instance of "type" or of an anonymous property can be anything.
+        instance = self._create_new_unknown_value("type")
+      else:
+        mycls = self.constant_to_value(cls, subst)
+        if isinstance(mycls, typed_dict.TypedDictClass):
+          instance = mycls.instantiate_value(self.ctx.root_node, None)
+        elif (isinstance(mycls, abstract.PyTDClass) and
+              mycls.pytd_cls.name in self.primitive_classes_by_name):
+          instance = self.primitive_instances[
+              self.primitive_classes_by_name[mycls.pytd_cls.name]]
+        else:
+          instance = abstract.Instance(mycls, self.ctx)
+      log.info("New pytd instance for %s: %r", cls.name, instance)
+      self._convert_cache[key] = instance
+    return self._convert_cache[key]
+
+  def _pytd_generic_type_to_value(
+      self, pyval: pytd.GenericType, subst, get_node
+  ):
+    """Convert a pytd.GenericType to an abstract value."""
+    if isinstance(pyval.base_type, pytd.LateType):
+      actual = self._load_late_type(pyval.base_type)
+      if not isinstance(actual, pytd.ClassType):
+        return self.unsolvable
+      base = actual.cls
+    else:
+      assert isinstance(pyval.base_type, pytd.ClassType), pyval
+      base = pyval.base_type.cls
+    assert isinstance(base, pytd.Class), base
+    base_cls = self.constant_to_value(base, subst)
+    if not isinstance(base_cls, abstract.Class):
+      # base_cls can be, e.g., an unsolvable due to an mro error.
+      return self.unsolvable
+    if isinstance(pyval, pytd.TupleType):
+      abstract_class = abstract.TupleClass
+      template = list(range(len(pyval.parameters))) + [abstract_utils.T]
+      combined_parameter = pytd_utils.JoinTypes(pyval.parameters)
+      parameters = pyval.parameters + (combined_parameter,)
+    elif isinstance(pyval, pytd.CallableType):
+      abstract_class = abstract.CallableClass
+      template = list(range(len(pyval.args))) + [abstract_utils.ARGS,
+                                                 abstract_utils.RET]
+      parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
+    else:
+      if (self.ctx.options.use_fiddle_overlay and
+          fiddle_overlay.is_fiddle_buildable_pytd(pyval)):
+        # fiddle.Config[Foo] should call the constructor from the overlay, not
+        # create a generic PyTDClass.
+        node = get_node()
+        param, = pyval.parameters
+        underlying = self.constant_to_value(param, subst, node)
+        subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
+        try:
+          return fiddle_overlay.BuildableType.make(
+              subclass_name, underlying, self.ctx)
+        except KeyError:
+          # We are in the middle of constructing the fiddle ast so
+          # fiddle.Config does not exist yet. Continue constructing a generic
+          # class.
+          pass
+      abstract_class = abstract.ParameterizedClass
+      if pyval.name == "typing.Generic":
+        pyval_template = pyval.parameters
+      else:
+        pyval_template = base.template
+      template = tuple(t.name for t in pyval_template)
+      parameters = pyval.parameters
+    assert (pyval.name in ("typing.Generic", "typing.Protocol") or
+            len(parameters) <= len(template))
+    # Delay type parameter loading to handle recursive types.
+    # See the ParameterizedClass.formal_type_parameters() property.
+    type_parameters = abstract_utils.LazyFormalTypeParameters(
+        template, parameters, subst)
+    return abstract_class(base_cls, type_parameters, self.ctx)
+
+  def _pytd_generic_type_to_instance_value(
+      self, cls: pytd.GenericType, subst, get_node
+  ):
+    """Convert a pytd.GenericType to an abstract instance value."""
+    if isinstance(cls.base_type, pytd.LateType):
+      actual = self._load_late_type(cls.base_type)
+      if not isinstance(actual, pytd.ClassType):
+        return self.unsolvable
+      base_cls = actual.cls
+    else:
+      base_type = cls.base_type
+      assert isinstance(base_type, pytd.ClassType)
+      base_cls = base_type.cls
+    assert isinstance(base_cls, pytd.Class), base_cls
+    if base_cls.name == "builtins.type":
+      c, = cls.parameters
+      if isinstance(c, pytd.TypeParameter):
+        if not subst or c.full_name not in subst:
+          raise self.TypeParameterError(c.full_name)
+        # deformalize gets rid of any unexpected TypeVars, which can appear
+        # if something is annotated as Type[T].
+        return self.ctx.annotation_utils.deformalize(
+            self.merge_classes(subst[c.full_name].data))
+      else:
+        return self.constant_to_value(c, subst)
+    elif isinstance(cls, pytd.TupleType):
+      node = get_node()
+      content = tuple(
+          self.pytd_cls_to_instance_var(p, subst, node)
+          for p in cls.parameters)
+      return self.tuple_to_value(content)
+    elif isinstance(cls, pytd.CallableType):
+      clsval = self.constant_to_value(cls, subst)
+      return abstract.Instance(clsval, self.ctx)
+    elif (self.ctx.options.use_fiddle_overlay and
+          fiddle_overlay.is_fiddle_buildable_pytd(base_cls)):
+      # fiddle.Config[Foo] should call the constructor from the overlay, not
+      # create a generic PyTDClass.
+      node = get_node()
+      underlying = self.constant_to_value(cls.parameters[0], subst, node)
+      subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(base_cls)
+      _, ret = fiddle_overlay.make_instance(
+          subclass_name, underlying, node, self.ctx)
+      return ret
+    else:
+      clsval = self.constant_to_value(base_cls, subst)
+      instance = abstract.Instance(clsval, self.ctx)
+      num_params = len(cls.parameters)
+      assert num_params <= len(base_cls.template)
+      for i, formal in enumerate(base_cls.template):
+        if i < num_params:
+          node = get_node()
+          p = self.pytd_cls_to_instance_var(cls.parameters[i], subst, node)
+        else:
+          # An omitted type parameter implies `Any`.
+          node = self.ctx.root_node
+          p = self.unsolvable.to_variable(node)
+        instance.merge_instance_type_parameter(node, formal.name, p)
+      return instance
+
   def _constant_to_value(self, pyval, subst, get_node):
     """Create a BaseValue that represents a python constant.
 
@@ -720,12 +895,7 @@ class Converter(utils.ContextWeakrefMixin):
     elif pyval.__class__ in self.primitive_classes:
       return self.primitive_instances[pyval.__class__]
     elif pyval.__class__ is frozenset:
-      instance = abstract.Instance(self.frozenset_type, self.ctx)
-      for element in pyval:
-        instance.merge_instance_type_parameter(
-            self.ctx.root_node, abstract_utils.T,
-            self.constant_to_var(element, subst))
-      return instance
+      return self._frozenset_literal_to_value(pyval)
     elif isinstance(pyval, (pycnite.types.CodeTypeBase, blocks.OrderedCode)):
       # TODO(mdemello): We should never be dealing with a raw pycnite CodeType
       # at this point.
@@ -741,7 +911,56 @@ class Converter(utils.ContextWeakrefMixin):
       except (KeyError, AttributeError):
         log.debug("Failed to find pytd", exc_info=True)
         raise
-    elif isinstance(pyval, pytd.LateType):
+    elif isinstance(pyval, abstract_utils.AsInstance):
+      cls = pyval.cls
+      if isinstance(cls, pytd.LateType):
+        actual = self._load_late_type(cls)
+        if not isinstance(actual, pytd.ClassType):
+          return self.unsolvable
+        cls = actual.cls
+      if isinstance(cls, pytd.ClassType):
+        cls = cls.cls
+      if isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
+        param, = cls.parameters
+        return self.constant_to_value(abstract_utils.AsInstance(param), subst)
+      elif (isinstance(cls, pytd.GenericType) or
+            (isinstance(cls, pytd.Class) and cls.template)):
+        # If we're converting a generic Class, need to create a new instance of
+        # it. See test_classes.testGenericReinstantiated.
+        if isinstance(cls, pytd.Class):
+          params = tuple(t.type_param.upper_value for t in cls.template)
+          cls = pytd.GenericType(base_type=pytd.ClassType(cls.name, cls),
+                                 parameters=params)
+        return self._pytd_generic_type_to_instance_value(cls, subst, get_node)
+      elif isinstance(cls, pytd.Class):
+        return self._pytd_class_to_instance_value(cls, subst)
+      elif isinstance(cls, pytd.Literal):
+        return self._get_literal_value(cls.value, subst)
+      else:
+        return self.constant_to_value(cls, subst)
+    elif isinstance(pyval, pytd.Node):
+      return self._pytd_constant_to_value(pyval, subst, get_node)
+    elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
+      return self._tuple_literal_to_value(pyval)
+    else:
+      raise NotImplementedError(
+          f"Can't convert constant {type(pyval)} {pyval!r}")
+
+  def _pytd_constant_to_value(self, pyval: pytd.Node, subst, get_node):
+    """Convert a pytd type to an abstract value.
+
+    Args:
+      pyval: The PyTD value to convert.
+      subst: The current type parameters.
+      get_node: A getter function for the current node.
+
+    Returns:
+      A Value that represents the constant, or None if we couldn't convert.
+    Raises:
+      NotImplementedError: If we don't know how to convert a value.
+      TypeParameterError: If we can't find a substitution for a type parameter.
+    """
+    if isinstance(pyval, pytd.LateType):
       actual = self._load_late_type(pyval)
       return self._constant_to_value(actual, subst, get_node)
     elif isinstance(pyval, pytd.TypeDeclUnit):
@@ -750,21 +969,7 @@ class Converter(utils.ContextWeakrefMixin):
       mod = self.ctx.loader.import_name(pyval.module_name)
       return self._create_module(mod)
     elif isinstance(pyval, pytd.Class):
-      if val := self._special_constant_to_value(pyval.name):
-        return val
-      module, dot, base_name = pyval.name.rpartition(".")
-      if overlay_member := self._maybe_load_from_overlay(module, base_name):
-        return overlay_member
-      try:
-        cls = abstract.PyTDClass.make(base_name, pyval, self.ctx)
-      except mro.MROError as e:
-        self.ctx.errorlog.mro_error(self.ctx.vm.frames, base_name, e.mro_seqs)
-        cls = self.unsolvable
-      else:
-        if dot:
-          cls.module = module
-        cls.call_metaclass_init(get_node())
-      return cls
+      return self._pytd_class_to_value(pyval, get_node())
     elif isinstance(pyval, pytd.Function):
       f = self.convert_pytd_function(pyval)
       f.is_abstract = pyval.is_abstract
@@ -821,174 +1026,18 @@ class Converter(utils.ContextWeakrefMixin):
     elif isinstance(pyval, pytd.Concatenate):
       params = [self.constant_to_value(p, subst) for p in pyval.parameters]
       return abstract.Concatenate(params, self.ctx)
-    elif isinstance(pyval, abstract_utils.AsInstance):
-      cls = pyval.cls
-      if isinstance(cls, pytd.LateType):
-        actual = self._load_late_type(cls)
-        if not isinstance(actual, pytd.ClassType):
-          return self.unsolvable
-        cls = actual.cls
-      if isinstance(cls, pytd.ClassType):
-        cls = cls.cls
-      if isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
-        param, = cls.parameters
-        return self.constant_to_value(abstract_utils.AsInstance(param), subst)
-      elif isinstance(cls, pytd.GenericType) or (isinstance(cls, pytd.Class) and
-                                                 cls.template):
-        # If we're converting a generic Class, need to create a new instance of
-        # it. See test_classes.testGenericReinstantiated.
-        if isinstance(cls, pytd.Class):
-          params = tuple(t.type_param.upper_value for t in cls.template)
-          cls = pytd.GenericType(base_type=pytd.ClassType(cls.name, cls),
-                                 parameters=params)
-        if isinstance(cls.base_type, pytd.LateType):
-          actual = self._load_late_type(cls.base_type)
-          if not isinstance(actual, pytd.ClassType):
-            return self.unsolvable
-          base_cls = actual.cls
-        else:
-          base_type = cls.base_type
-          assert isinstance(base_type, pytd.ClassType)
-          base_cls = base_type.cls
-        assert isinstance(base_cls, pytd.Class), base_cls
-        if base_cls.name == "builtins.type":
-          c, = cls.parameters
-          if isinstance(c, pytd.TypeParameter):
-            if not subst or c.full_name not in subst:
-              raise self.TypeParameterError(c.full_name)
-            # deformalize gets rid of any unexpected TypeVars, which can appear
-            # if something is annotated as Type[T].
-            return self.ctx.annotation_utils.deformalize(
-                self.merge_classes(subst[c.full_name].data))
-          else:
-            return self.constant_to_value(c, subst)
-        elif isinstance(cls, pytd.TupleType):
-          node = get_node()
-          content = tuple(
-              self.pytd_cls_to_instance_var(p, subst, node)
-              for p in cls.parameters)
-          return self.tuple_to_value(content)
-        elif isinstance(cls, pytd.CallableType):
-          clsval = self.constant_to_value(cls, subst)
-          return abstract.Instance(clsval, self.ctx)
-        elif (self.ctx.options.use_fiddle_overlay and
-              fiddle_overlay.is_fiddle_buildable_pytd(base_cls)):
-          # fiddle.Config[Foo] should call the constructor from the overlay, not
-          # create a generic PyTDClass.
-          node = get_node()
-          underlying = self.constant_to_value(cls.parameters[0], subst, node)
-          subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(base_cls)
-          _, ret = fiddle_overlay.make_instance(
-              subclass_name, underlying, node, self.ctx)
-          return ret
-        else:
-          clsval = self.constant_to_value(base_cls, subst)
-          instance = abstract.Instance(clsval, self.ctx)
-          num_params = len(cls.parameters)
-          assert num_params <= len(base_cls.template)
-          for i, formal in enumerate(base_cls.template):
-            if i < num_params:
-              node = get_node()
-              p = self.pytd_cls_to_instance_var(cls.parameters[i], subst, node)
-            else:
-              # An omitted type parameter implies `Any`.
-              node = self.ctx.root_node
-              p = self.unsolvable.to_variable(node)
-            instance.merge_instance_type_parameter(node, formal.name, p)
-          return instance
-      elif isinstance(cls, pytd.Class):
-        assert not cls.template
-        # This key is also used in __init__
-        key = (abstract.Instance, cls)
-        if key not in self._convert_cache:
-          if cls.name in ["builtins.type", "builtins.property"]:
-            # An instance of "type" or of an anonymous property can be anything.
-            instance = self._create_new_unknown_value("type")
-          else:
-            mycls = self.constant_to_value(cls, subst)
-            if isinstance(mycls, typed_dict.TypedDictClass):
-              instance = mycls.instantiate_value(self.ctx.root_node, None)
-            elif (isinstance(mycls, abstract.PyTDClass) and
-                  mycls.pytd_cls.name in self.primitive_classes_by_name):
-              instance = self.primitive_instances[
-                  self.primitive_classes_by_name[mycls.pytd_cls.name]]
-            else:
-              instance = abstract.Instance(mycls, self.ctx)
-          log.info("New pytd instance for %s: %r", cls.name, instance)
-          self._convert_cache[key] = instance
-        return self._convert_cache[key]
-      elif isinstance(cls, pytd.Literal):
-        return self._get_literal_value(cls.value, subst)
-      else:
-        return self.constant_to_value(cls, subst)
     elif (isinstance(pyval, pytd.GenericType) and
           pyval.name == "typing.ClassVar"):
       param, = pyval.parameters
       return self.constant_to_value(param, subst)
     elif isinstance(pyval, pytd.GenericType):
-      if isinstance(pyval.base_type, pytd.LateType):
-        actual = self._load_late_type(pyval.base_type)
-        if not isinstance(actual, pytd.ClassType):
-          return self.unsolvable
-        base = actual.cls
-      else:
-        assert isinstance(pyval.base_type, pytd.ClassType), pyval
-        base = pyval.base_type.cls
-      assert isinstance(base, pytd.Class), base
-      base_cls = self.constant_to_value(base, subst)
-      if not isinstance(base_cls, abstract.Class):
-        # base_cls can be, e.g., an unsolvable due to an mro error.
-        return self.unsolvable
-      if isinstance(pyval, pytd.TupleType):
-        abstract_class = abstract.TupleClass
-        template = list(range(len(pyval.parameters))) + [abstract_utils.T]
-        combined_parameter = pytd_utils.JoinTypes(pyval.parameters)
-        parameters = pyval.parameters + (combined_parameter,)
-      elif isinstance(pyval, pytd.CallableType):
-        abstract_class = abstract.CallableClass
-        template = list(range(len(pyval.args))) + [abstract_utils.ARGS,
-                                                   abstract_utils.RET]
-        parameters = pyval.args + (pytd_utils.JoinTypes(pyval.args), pyval.ret)
-      else:
-        if (self.ctx.options.use_fiddle_overlay and
-            fiddle_overlay.is_fiddle_buildable_pytd(pyval)):
-          # fiddle.Config[Foo] should call the constructor from the overlay, not
-          # create a generic PyTDClass.
-          node = get_node()
-          param, = pyval.parameters
-          underlying = self.constant_to_value(param, subst, node)
-          subclass_name = fiddle_overlay.get_fiddle_buildable_subclass(pyval)
-          try:
-            return fiddle_overlay.BuildableType.make(
-                subclass_name, underlying, self.ctx)
-          except KeyError:
-            # We are in the middle of constructing the fiddle ast so
-            # fiddle.Config does not exist yet. Continue constructing a generic
-            # class.
-            pass
-        abstract_class = abstract.ParameterizedClass
-        if pyval.name == "typing.Generic":
-          pyval_template = pyval.parameters
-        else:
-          pyval_template = base.template
-        template = tuple(t.name for t in pyval_template)
-        parameters = pyval.parameters
-      assert (pyval.name in ("typing.Generic", "typing.Protocol") or
-              len(parameters) <= len(template))
-      # Delay type parameter loading to handle recursive types.
-      # See the ParameterizedClass.formal_type_parameters() property.
-      type_parameters = abstract_utils.LazyFormalTypeParameters(
-          template, parameters, subst)
-      return abstract_class(base_cls, type_parameters, self.ctx)
+      return self._pytd_generic_type_to_value(pyval, subst, get_node)
     elif isinstance(pyval, pytd.Literal):
       value = self._get_literal_value(pyval.value, subst)
       return abstract.LiteralClass(value, self.ctx)
     elif isinstance(pyval, pytd.Annotated):
       typ = self.constant_to_value(pyval.base_type, subst)
       return self._apply_metadata_annotations(typ, pyval.annotations)
-    elif pyval.__class__ is tuple:  # only match raw tuple, not namedtuple/Node
-      return self.tuple_to_value(
-          [self.constant_to_var(item, subst) for item in pyval])
     else:
-      raise NotImplementedError("Can't convert constant "
-                                f"{type(pyval)} {pyval!r}")
+      raise NotImplementedError(
+          f"Can't convert pytd constant {type(pyval)} {pyval!r}")
