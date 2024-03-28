@@ -30,6 +30,7 @@ py_library(
     pytype.utils
     pytype.pytd.pytd
     pytype.rewrite.flow.flow
+    pytype.types.types
 )
 
 py_test(

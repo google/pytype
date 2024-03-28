@@ -59,12 +59,12 @@ class BasicTest(test_base.BaseTest):
     """)
 
   def test_assert_type(self):
-    _ = self.CheckWithErrors("""
+    errors = self.CheckWithErrors("""
       assert_type(0, int)
       assert_type(0, "int")
-      assert_type(0, "str")  # TODO(b/241479600): assert-type error
+      assert_type(0, "str")  # assert-type[e]
     """)
-    # self.assertErrorSequences(errors, {'e': ['Expected: str', 'Actual: int']})
+    self.assertErrorSequences(errors, {'e': ['Expected: str', 'Actual: int']})
 
 
 if __name__ == '__main__':

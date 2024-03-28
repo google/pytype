@@ -410,12 +410,21 @@ class FrameTest(FrameTestBase):
           return None
     """)
     module_frame.run()
-    f = _get(module_frame, 'f', abstract.InterpreterFunction)
+    f = _get(module_frame, 'f', _FrameFunction)
     f_frame, = f.analyze()
     self.assertEqual(
         f_frame.get_return_value(),
         abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
                                   abstract.PythonConstant(self.ctx, None))))
+
+  def test_stack(self):
+    module_frame = self._make_frame('def f(): pass')
+    self.assertEqual(module_frame.stack, [module_frame])
+
+    module_frame.run()
+    f = _get(module_frame, 'f', _FrameFunction)
+    f_frame = module_frame.make_child_frame(f, {})
+    self.assertEqual(f_frame.stack, [module_frame, f_frame])
 
 
 if __name__ == '__main__':

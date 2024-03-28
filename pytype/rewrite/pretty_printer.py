@@ -1,6 +1,7 @@
 """A printer for human-readable output of types and variables."""
 
 from pytype import pretty_printer_base
+from pytype.pytd import pytd_utils
 from pytype.rewrite.flow import variables
 from pytype.types import types
 
@@ -13,7 +14,7 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
 
   def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
     """Print abstract value t as a pytd type."""
-    return repr(t)
+    return self.print_pytd(t.to_pytd_type_of_instance())
 
   def print_as_actual_type(self, t, literal=False) -> str:
     return repr(t)
@@ -24,7 +25,8 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
   def print_var_as_type(self, var: variables.Variable, node) -> str:
     """Print a pytype variable as a type."""
     del node  # not used in rewrite
-    return repr(var)
+    typ = pytd_utils.JoinTypes(v.to_pytd_type() for v in var.values)
+    return self.print_pytd(typ)
 
   def show_variable(self, var: variables.Variable) -> str:
     """Show variable as 'name: typ' or 'pyval: typ' if available."""

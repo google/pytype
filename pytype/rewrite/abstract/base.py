@@ -6,6 +6,7 @@ from typing import Any, Dict, Generic, Optional, Protocol, Sequence, Tuple, Type
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.rewrite.flow import variables
+from pytype.types import types
 from typing_extensions import Self
 
 _T = TypeVar('_T')
@@ -21,7 +22,7 @@ class ContextType(Protocol):
   pytd_converter: Any
 
 
-class BaseValue(abc.ABC):
+class BaseValue(types.BaseValue, abc.ABC):
   """Base class for abstract values."""
 
   def __init__(self, ctx: ContextType):

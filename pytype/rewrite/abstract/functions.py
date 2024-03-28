@@ -31,6 +31,7 @@ class FrameType(Protocol):
   """Protocol for a VM frame."""
 
   final_locals: Mapping[str, base.BaseValue]
+  stack: Sequence['FrameType']
 
   def make_child_frame(
       self,

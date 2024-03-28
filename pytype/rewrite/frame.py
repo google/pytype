@@ -135,6 +135,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def _is_module_frame(self) -> bool:
     return self.name == '__main__'
 
+  @property
+  def stack(self) -> Sequence['Frame']:
+    return (self._f_back.stack if self._f_back else []) + [self]
+
   def run(self) -> None:
     log.info('Running frame: %s', self.name)
     assert not self._stack
@@ -427,6 +431,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(self.load_deref(name))
 
   def byte_LOAD_GLOBAL(self, opcode):
+    if self._code.python_version >= (3, 11) and opcode.arg & 1:
+      # Compiler-generated marker that will be consumed in byte_CALL
+      # We are loading a global and calling it as a function.
+      self._stack.push(self._ctx.NULL.to_variable())
     name = opcode.argval
     self._stack.push(self.load_global(name))
 

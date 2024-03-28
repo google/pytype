@@ -102,6 +102,7 @@ py_library(
     pretty_printer.py
   DEPS
     pytype.pretty_printer_base
+    pytype.pytd.pytd
     pytype.rewrite.flow.flow
     pytype.types.types
 )

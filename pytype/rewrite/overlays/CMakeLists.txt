@@ -13,6 +13,7 @@ py_library(
   SRCS
     special_builtins.py
   DEPS
+    pytype.rewrite.pretty_printer
     pytype.rewrite.abstract.abstract
 )
 
@@ -23,6 +24,6 @@ py_test(
     special_builtins_test.py
   DEPS
     .special_builtins
+    pytype.rewrite.context
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.abstract.test_utils
 )
