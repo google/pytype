@@ -435,41 +435,13 @@ class Converter(utils.ContextWeakrefMixin):
       return self.constant_to_var(pyval.type, **kwargs)
     elif isinstance(pyval, abstract_utils.AsInstance):
       cls = pyval.cls
-      if isinstance(cls, pytd.AnythingType):
-        return self.unsolvable.to_variable(node)
-      elif (isinstance(pyval, abstract_utils.AsReturnValue) and
-            isinstance(cls, pytd.NothingType)):
+      if (isinstance(pyval, abstract_utils.AsReturnValue) and
+          isinstance(cls, pytd.NothingType)):
         return self.never.to_variable(node)
-      elif isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
-        param, = cls.parameters
-        return self.constant_to_var(abstract_utils.AsInstance(param), **kwargs)
-      var = self.ctx.program.NewVariable()
-      for t in pytd_utils.UnpackUnion(cls):
-        if isinstance(t, pytd.TypeParameter):
-          if not subst or t.full_name not in subst:
-            raise self.TypeParameterError(t.full_name)
-          else:
-            for v in subst[t.full_name].bindings:
-              for source_set in source_sets:
-                if discard_concrete_values:
-                  value = self.get_maybe_abstract_instance(v.data)
-                else:
-                  value = v.data
-                var.AddBinding(value, source_set + [v], node)
-        elif isinstance(t, pytd.NothingType):
-          pass
-        else:
-          if isinstance(t, pytd.Annotated):
-            typ = constant_to_value(abstract_utils.AsInstance(t.base_type))
-            value = self._apply_metadata_annotations(typ, t.annotations)
-          else:
-            value = constant_to_value(abstract_utils.AsInstance(t))
-          for source_set in source_sets:
-            var.AddBinding(value, source_set, node)
-      return var
+      else:
+        return self.pytd_cls_to_instance_var(cls, **kwargs)
     elif isinstance(pyval, pytd.Constant):
-      return self.constant_to_var(
-          abstract_utils.AsInstance(pyval.type), **kwargs)
+      return self.pytd_cls_to_instance_var(pyval.type, **kwargs)
     result = constant_to_value(pyval)
     if result is not None:
       return result.to_variable(node)
@@ -483,6 +455,73 @@ class Converter(utils.ContextWeakrefMixin):
       return self.build_tuple(self.ctx.root_node, content)
     raise ValueError(
         f"Cannot convert {pyval.__class__} to an abstract value")
+
+  def pytd_cls_to_instance_var(
+      self, cls, subst=None, node=None, source_sets=None,
+      discard_concrete_values=False
+  ):
+    """Convert a constant instance to a Variable.
+
+    This converts a constant to a cfg.Variable. Unlike constant_to_value, it
+    can handle things that need to be represented as a Variable with multiple
+    possible values (i.e., a union type), like pytd.Function.
+
+    Args:
+      cls: The pytd class to convert.
+      subst: The current type parameters.
+      node: The current CFG node. (For instances)
+      source_sets: An iterator over instances of SourceSet (or just tuples).
+      discard_concrete_values: Whether concrete values should be discarded from
+        type parameters.
+    Returns:
+      A cfg.Variable.
+    Raises:
+      TypeParameterError: if conversion is attempted on a type parameter without
+        a substitution.
+      ValueError: if pytype is not of a known type.
+    """
+    source_sets = source_sets or [[]]
+    node = node or self.ctx.root_node
+
+    # These args never change in recursive calls
+    kwargs = {
+        "subst": subst, "node": node, "source_sets": source_sets,
+        "discard_concrete_values": discard_concrete_values
+    }
+    def constant_to_instance_value(new_type):
+      # Call constant_to_value with the given subst and node
+      return self.constant_to_value(
+          abstract_utils.AsInstance(new_type), subst, node)
+
+    if isinstance(cls, pytd.AnythingType):
+      return self.unsolvable.to_variable(node)
+    elif isinstance(cls, pytd.GenericType) and cls.name == "typing.ClassVar":
+      param, = cls.parameters
+      return self.pytd_cls_to_instance_var(param, **kwargs)
+    var = self.ctx.program.NewVariable()
+    for t in pytd_utils.UnpackUnion(cls):
+      if isinstance(t, pytd.TypeParameter):
+        if not subst or t.full_name not in subst:
+          raise self.TypeParameterError(t.full_name)
+        else:
+          for v in subst[t.full_name].bindings:
+            for source_set in source_sets:
+              if discard_concrete_values:
+                value = self.get_maybe_abstract_instance(v.data)
+              else:
+                value = v.data
+              var.AddBinding(value, source_set + [v], node)
+      elif isinstance(t, pytd.NothingType):
+        pass
+      else:
+        if isinstance(t, pytd.Annotated):
+          typ = constant_to_instance_value(t.base_type)
+          value = self._apply_metadata_annotations(typ, t.annotations)
+        else:
+          value = constant_to_instance_value(t)
+        for source_set in source_sets:
+          var.AddBinding(value, source_set, node)
+    return var
 
   def constant_to_value(self, pyval, subst=None, node=None):
     """Like constant_to_var, but convert to an abstract.BaseValue.
@@ -826,7 +865,7 @@ class Converter(utils.ContextWeakrefMixin):
         elif isinstance(cls, pytd.TupleType):
           node = get_node()
           content = tuple(
-              self.constant_to_var(abstract_utils.AsInstance(p), subst, node)
+              self.pytd_cls_to_instance_var(p, subst, node)
               for p in cls.parameters)
           return self.tuple_to_value(content)
         elif isinstance(cls, pytd.CallableType):
@@ -850,8 +889,7 @@ class Converter(utils.ContextWeakrefMixin):
           for i, formal in enumerate(base_cls.template):
             if i < num_params:
               node = get_node()
-              p = self.constant_to_var(
-                  abstract_utils.AsInstance(cls.parameters[i]), subst, node)
+              p = self.pytd_cls_to_instance_var(cls.parameters[i], subst, node)
             else:
               # An omitted type parameter implies `Any`.
               node = self.ctx.root_node
