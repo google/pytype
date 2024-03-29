@@ -3,6 +3,7 @@
 from pytype.rewrite.abstract import base as _base
 from pytype.rewrite.abstract import classes as _classes
 from pytype.rewrite.abstract import functions as _functions
+from pytype.rewrite.abstract import internal as _internal
 from pytype.rewrite.abstract import utils as _utils
 
 BaseValue = _base.BaseValue
@@ -27,6 +28,9 @@ PyTDFunction = _functions.PyTDFunction
 Signature = _functions.Signature
 SimpleFunction = _functions.SimpleFunction
 SimpleReturn = _functions.SimpleReturn
+
+ConstKeyDict = _internal.ConstKeyDict
+Splat = _internal.Splat
 
 get_atomic_constant = _utils.get_atomic_constant
 join_values = _utils.join_values

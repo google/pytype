@@ -33,6 +33,10 @@ class FrameTestBase(test_utils.ContextfulTestBase):
     return frame_lib.Frame(self.ctx, name, code, initial_locals=initial_locals,
                            initial_globals=initial_globals)
 
+  def _const_var(self, const, name=None):
+    var = abstract.PythonConstant(self.ctx, const).to_variable()
+    return var.with_name(name)
+
 
 class ShadowedNonlocalsTest(unittest.TestCase):
 
@@ -419,6 +423,79 @@ class FrameTest(FrameTestBase):
     f = _get(module_frame, 'f', _FrameFunction)
     f_frame = module_frame.make_child_frame(f, {})
     self.assertEqual(f_frame.stack, [module_frame, f_frame])
+
+
+class BuildConstantsTest(FrameTestBase):
+
+  def _build_constant(self, code, typ=abstract.PythonConstant):
+    module_frame = self._make_frame(code)
+    module_frame.run()
+    return _get(module_frame, 'constant', typ)
+
+  def test_tuple(self):
+    constant = self._build_constant("""
+      a = 1
+      b = 2
+      c = 3
+      constant = (a, b, c)
+    """)
+    self.assertEqual(constant.constant, (
+        self._const_var(1, 'a'),
+        self._const_var(2, 'b'),
+        self._const_var(3, 'c'),
+    ))
+
+  def test_list(self):
+    constant = self._build_constant("""
+      a = 1
+      b = 2
+      c = 3
+      constant = [a, b, c]
+    """)
+    self.assertEqual(constant.constant, [
+        self._const_var(1, 'a'),
+        self._const_var(2, 'b'),
+        self._const_var(3, 'c'),
+    ])
+
+  def test_set(self):
+    constant = self._build_constant("""
+      a = 1
+      b = 2
+      c = 3
+      constant = {a, b, c}
+    """)
+    self.assertEqual(constant.constant, {
+        self._const_var(1, 'a'),
+        self._const_var(2, 'b'),
+        self._const_var(3, 'c'),
+    })
+
+  def test_map(self):
+    constant = self._build_constant("""
+      a = 1
+      b = 2
+      c = 3
+      constant = {a: 1, b: 2, c: 3}
+    """)
+    self.assertEqual(constant.constant, {
+        self._const_var(1, 'a'): self._const_var(1),
+        self._const_var(2, 'b'): self._const_var(2),
+        self._const_var(3, 'c'): self._const_var(3),
+    })
+
+  def test_const_key_map(self):
+    constant = self._build_constant("""
+      a = 1
+      b = 2
+      c = 3
+      constant = {'a': a, 'b': b, 'c': c}
+    """, typ=abstract.ConstKeyDict)
+    self.assertEqual(constant.constant, {
+        'a': self._const_var(1, 'a'),
+        'b': self._const_var(2, 'b'),
+        'c': self._const_var(3, 'c'),
+    })
 
 
 if __name__ == '__main__':

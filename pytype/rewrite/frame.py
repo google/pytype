@@ -2,7 +2,7 @@
 
 import enum
 import logging
-from typing import FrozenSet, List, Mapping, Optional, Sequence, Set
+from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
 import immutabledict
 from pycnite import marshal as pyc_marshal
@@ -488,11 +488,41 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_COPY_FREE_VARS(self, opcode):
     del opcode  # unused
 
-  def byte_BUILD_TUPLE(self, opcode):
+  def _build_collection_from_stack(self, opcode, typ: Type[Any]) -> None:
+    """Pop elements off the stack and build a python constant."""
     count = opcode.arg
     elements = self._stack.popn(count)
-    constant = abstract.PythonConstant(self._ctx, tuple(elements))
+    constant = abstract.PythonConstant(self._ctx, typ(elements))
     self._stack.push(constant.to_variable())
+
+  def byte_BUILD_TUPLE(self, opcode):
+    self._build_collection_from_stack(opcode, tuple)
+
+  def byte_BUILD_LIST(self, opcode):
+    self._build_collection_from_stack(opcode, list)
+
+  def byte_BUILD_SET(self, opcode):
+    self._build_collection_from_stack(opcode, set)
+
+  def byte_BUILD_MAP(self, opcode):
+    n_elts = opcode.arg
+    args = self._stack.popn(2 * n_elts)
+    ret = {args[2 * i]: args[2 * i + 1] for i in range(n_elts)}
+    ret = abstract.PythonConstant(self._ctx, ret)
+    self._stack.push(ret.to_variable())
+
+  def byte_BUILD_CONST_KEY_MAP(self, opcode):
+    n_elts = opcode.arg
+    keys = self._stack.pop()
+    # Note that `keys` is a tuple of raw python values; we do not convert them
+    # to abstract objects because they are used internally to construct function
+    # call args.
+    keys = abstract.get_atomic_constant(keys, tuple)
+    assert len(keys) == n_elts
+    vals = self._stack.popn(n_elts)
+    ret = dict(zip(keys, vals))
+    ret = abstract.ConstKeyDict(self._ctx, ret)
+    self._stack.push(ret.to_variable())
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
     self._stack.push(self._ctx.BUILD_CLASS.to_variable())
