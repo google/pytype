@@ -8,8 +8,8 @@ from pytype.rewrite.abstract import utils as _utils
 
 BaseValue = _base.BaseValue
 ContextType = _base.ContextType
-PythonConstant = _classes.PythonConstant
 Singleton = _base.Singleton
+Singletons = _base.Singletons
 Union = _base.Union
 
 SimpleClass = _classes.SimpleClass
@@ -17,6 +17,7 @@ BaseInstance = _classes.BaseInstance
 FrozenInstance = _classes.FrozenInstance
 InterpreterClass = _classes.InterpreterClass
 MutableInstance = _classes.MutableInstance
+PythonConstant = _classes.PythonConstant
 
 Args = _functions.Args
 BaseFunction = _functions.BaseFunction
@@ -24,7 +25,7 @@ BoundFunction = _functions.BoundFunction
 FrameType = _functions.FrameType
 InterpreterFunction = _functions.InterpreterFunction
 MappedArgs = _functions.MappedArgs
-PyTDFunction = _functions.PyTDFunction
+PytdFunction = _functions.PytdFunction
 Signature = _functions.Signature
 SimpleFunction = _functions.SimpleFunction
 SimpleReturn = _functions.SimpleReturn

@@ -35,4 +35,4 @@ def join_values(
   elif values:
     return values[0]
   else:
-    return ctx.ANY
+    return ctx.singles.Any

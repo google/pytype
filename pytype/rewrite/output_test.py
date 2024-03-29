@@ -124,7 +124,7 @@ class FunctionToPytdDefTest(OutputTestBase):
 class ToPytdTypeTest(OutputTestBase):
 
   def test_any(self):
-    self.assertEqual(self.ctx.pytd_converter.to_pytd_type(self.ctx.ANY),
+    self.assertEqual(self.ctx.pytd_converter.to_pytd_type(self.ctx.singles.Any),
                      pytd.AnythingType())
 
   def test_constant(self):
@@ -174,7 +174,7 @@ class ToPytdInstanceTypeTest(OutputTestBase):
 
   def test_any(self):
     self.assertEqual(
-        self.ctx.pytd_converter.to_pytd_type_of_instance(self.ctx.ANY),
+        self.ctx.pytd_converter.to_pytd_type_of_instance(self.ctx.singles.Any),
         pytd.AnythingType())
 
   def test_class(self):

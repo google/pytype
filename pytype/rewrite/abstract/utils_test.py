@@ -42,7 +42,7 @@ class GetAtomicConstantTest(test_utils.ContextfulTestBase):
 class JoinValuesTest(test_utils.ContextfulTestBase):
 
   def test_empty(self):
-    self.assertEqual(utils.join_values(self.ctx, []), self.ctx.ANY)
+    self.assertEqual(utils.join_values(self.ctx, []), self.ctx.singles.Any)
 
   def test_one_value(self):
     a = classes.PythonConstant(self.ctx, 'a')

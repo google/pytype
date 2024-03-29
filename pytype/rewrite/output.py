@@ -10,7 +10,7 @@ _IGNORED_CLASS_ATTRIBUTES = frozenset([
 ])
 
 
-class PyTDConverter:
+class PytdConverter:
   """Abstract -> pytd converter."""
 
   def __init__(self, ctx: abstract.ContextType):
@@ -153,7 +153,7 @@ class PyTDConverter:
     Args:
       val: The abstract value.
     """
-    if val is self._ctx.ANY:
+    if val is self._ctx.singles.Any:
       return pytd.AnythingType()
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type(v) for v in val.options)
@@ -205,7 +205,7 @@ class PyTDConverter:
     Args:
       val: The abstract value.
     """
-    if val is self._ctx.ANY:
+    if val is self._ctx.singles.Any:
       return pytd.AnythingType()
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type_of_instance(v)

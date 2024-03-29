@@ -65,6 +65,8 @@ py_test(
   SRCS
     convert_test.py
   DEPS
+    pytype.pytd.pytd
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )
 

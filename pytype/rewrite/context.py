@@ -22,22 +22,13 @@ class Context:
   # TODO(b/241479600): We have to duplicate the instance attributes here to work
   # around a weird bug in current pytype. Once rewrite/ is rolled out, this bug
   # will hopefully be gone and we can delete these duplicate declarations.
-  ANY: abstract.Singleton
-  BUILD_CLASS: abstract.Singleton
-  NULL: abstract.Singleton
-
+  singles: abstract.Singletons
   errorlog: errors.VmErrorLog
   abstract_converter: convert.AbstractConverter
-  pytd_converter: output.PyTDConverter
+  pytd_converter: output.PytdConverter
 
   def __init__(self):
-    # Singleton abstract values. Conceptually, they are constants.
-    # pylint: disable=invalid-name
-    self.ANY = abstract.Singleton(self, 'ANY')
-    self.BUILD_CLASS = abstract.Singleton(self, 'BUILD_CLASS')
-    self.NULL = abstract.Singleton(self, 'NULL')
-    # pylint: enable=invalid-name
-
+    self.singles = abstract.Singletons(self)
     self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self))
     self.abstract_converter = convert.AbstractConverter(self)
-    self.pytd_converter = output.PyTDConverter(self)
+    self.pytd_converter = output.PytdConverter(self)

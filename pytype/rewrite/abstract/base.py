@@ -1,6 +1,7 @@
 """Base abstract representation of Python values."""
 
 import abc
+import dataclasses
 from typing import Any, Dict, Optional, Protocol, Sequence, Tuple
 
 from pytype import utils
@@ -10,12 +11,26 @@ from pytype.types import types
 from typing_extensions import Self
 
 
+@dataclasses.dataclass(init=False)
+class Singletons:
+  """Singleton abstract values."""
+
+  # For readability, we give these the same name as the value they represent.
+  # pylint: disable=invalid-name
+  Any: 'Singleton'
+  __build_class__: 'Singleton'
+  Never: 'Singleton'
+  NULL: 'Singleton'
+  # pylint: enable=invalid-name
+
+  def __init__(self, ctx: 'ContextType'):
+    for field in dataclasses.fields(self):
+      setattr(self, field.name, Singleton(ctx, field.name))
+
+
 class ContextType(Protocol):
 
-  ANY: 'Singleton'
-  BUILD_CLASS: 'Singleton'
-  NULL: 'Singleton'
-
+  singles: Singletons
   errorlog: Any
   abstract_converter: Any
   pytd_converter: Any

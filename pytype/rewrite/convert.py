@@ -8,7 +8,7 @@ from pytype.rewrite.overlays import special_builtins
 
 
 class AbstractConverter:
-  """PyTD -> abstract converter."""
+  """Pytd -> abstract converter."""
 
   def __init__(self, ctx: abstract.ContextType):
     self._ctx = ctx
@@ -19,7 +19,7 @@ class AbstractConverter:
     """Gets a module's initial global namespace, including builtins."""
     del python_version  # not yet used
     return {
-        '__name__': self._ctx.ANY,
+        '__name__': self._ctx.singles.Any,
         'assert_type': special_builtins.AssertType(self._ctx),
         'int': abstract.SimpleClass(self._ctx, 'int', {}),
     }
@@ -29,9 +29,9 @@ class AbstractConverter:
     return abstract.SimpleClass(self._ctx, cls.name, {})
 
   def pytd_function_to_value(
-      self, func: pytd.Function) -> abstract.PyTDFunction:
+      self, func: pytd.Function) -> abstract.PytdFunction:
     """Converts a pytd function to an abstract function."""
-    return abstract.PyTDFunction(self._ctx, func.name, ())
+    return abstract.PytdFunction(self._ctx, func.name, ())
 
   def pytd_type_to_value(self, typ: pytd.Type) -> abstract.BaseValue:
     """Converts a pytd type to an abstract value.
@@ -44,8 +44,23 @@ class AbstractConverter:
       `pytd.ClassType(pytd.Class(int))`, this function returns
       `abstract.SimpleClass(int)`.
     """
-    del typ  # TODO(b/324464265): use me
-    return self._ctx.ANY
+    if isinstance(typ, pytd.ClassType):
+      return self.pytd_class_to_value(typ.cls)
+    elif isinstance(typ, pytd.AnythingType):
+      return self._ctx.singles.Any
+    elif isinstance(typ, pytd.NothingType):
+      return self._ctx.singles.Never
+    elif isinstance(typ, (pytd.LateType,
+                          pytd.Literal,
+                          pytd.Annotated,
+                          pytd.TypeParameter,
+                          pytd.UnionType,
+                          pytd.IntersectionType,
+                          pytd.GenericType)):
+      raise NotImplementedError(
+          f'Abstract conversion not yet implemented for {typ}')
+    else:
+      raise ValueError(f'Cannot convert {typ} to an abstract value')
 
   def raw_type_to_value(self, typ: Type[Any]) -> abstract.BaseValue:
     """Converts a raw type to an abstract value.

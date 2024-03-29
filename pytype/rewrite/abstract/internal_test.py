@@ -9,7 +9,7 @@ import unittest
 class ConstKeyDictTest(test_utils.ContextfulTestBase):
 
   def test_asserts_dict(self):
-    _ = internal.ConstKeyDict(self.ctx, {'a': self.ctx.ANY})
+    _ = internal.ConstKeyDict(self.ctx, {'a': self.ctx.singles.Any})
     with self.assertRaises(AssertionError):
       x: Any = ['a', 'b']
       _ = internal.ConstKeyDict(self.ctx, x)
