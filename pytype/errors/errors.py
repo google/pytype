@@ -969,7 +969,7 @@ class VmErrorLog(ErrorLog):
     literal = "Literal[" in annot_string
     actual_string = self._pp.print_as_actual_type(binding.data, literal=literal)
     if actual_string == "None":
-      annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
+      annot_string += f" (Did you mean '{annot_string} | None'?)"
     additional_details = f"\n\n{details}" if details else ""
     pp = error_printer.MatcherErrorPrinter(self._pp)
     additional_details += "".join(pp.print_error_details(error_details))
