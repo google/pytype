@@ -3,7 +3,7 @@
 import dataclasses
 import enum
 import logging
-from typing import Any, Mapping
+from typing import Any, Mapping, Optional
 
 from pytype.abstract import abstract
 from pytype.abstract import abstract_utils
@@ -559,11 +559,14 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
       next_index = mro.index(base_classes[i + 1].full_name)
       filtered_base_map = {}
       for base_method_name, base_method_signature in base_signature_map.items():
-        full_method_name = base_method_signature.name
-        if "." in full_method_name:
-          defining_class = full_method_name.rsplit(".", 1)[0]
-          defining_index = mro.index(defining_class)
-          include = defining_index < next_index
+        defining_class = _get_defining_class(base_method_signature)
+        if defining_class:
+          try:
+            defining_index = mro.index(defining_class)
+          except ValueError:
+            include = True
+          else:
+            include = defining_index < next_index
         else:
           include = True
         if include:
@@ -575,3 +578,12 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
 
   assert cls not in ctx.method_signature_map
   ctx.method_signature_map[cls] = class_signature_map
+
+
+def _get_defining_class(sig: function.Signature) -> Optional[str]:
+  if "self" in sig.annotations:
+    return sig.annotations["self"].full_name
+  elif "." in sig.name:
+    return sig.name.rsplit(".", 1)[0]
+  else:
+    return None
