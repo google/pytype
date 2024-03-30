@@ -98,23 +98,44 @@ class PrettyPrinterBase(abc.ABC):
       return "nothing"
 
   @abc.abstractmethod
-  def print_as_generic_type(self, t: types.BaseValue) -> str:
-    """Print t as a generic type."""
+  def print_generic_type(self, t: types.BaseValue) -> str:
+    """Returns a string of the generic type of t.
+
+    For example, if t is `[0]`, then this method returns "list[int]".
+
+    Args:
+      t: An abstract value.
+    """
 
   @abc.abstractmethod
-  def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
-    """Print t as an expected type."""
+  def print_type_of_instance(self, t: types.BaseValue, instance=None) -> str:
+    """Returns a string of the type of an instance of t.
+
+    For example, if t is `int`, then this method returns "int".
+
+    Args:
+      t: An abstract value.
+      instance: A specific instance of t to print.
+    """
 
   @abc.abstractmethod
-  def print_as_actual_type(self, t, literal=False) -> str:
-    """Print t as an actual type."""
+  def print_type(self, t, literal=False) -> str:
+    """Returns a string of the type of t.
+
+    For example, if t is `0`, then this method returns "int" with literal=False
+    or `Literal[0]` with literal=True.
+
+    Args:
+      t: An abstract value.
+      literal: Whether to print literals literally.
+    """
 
   @abc.abstractmethod
-  def print_as_function_def(self, fn: types.Function) -> str:
+  def print_function_def(self, fn: types.Function) -> str:
     """Print a function definition."""
 
   @abc.abstractmethod
-  def print_var_as_type(self, var: types.Variable, *args) -> str:
+  def print_var_type(self, var: types.Variable, *args) -> str:
     """Print a pytype variable as a type."""
 
   @abc.abstractmethod

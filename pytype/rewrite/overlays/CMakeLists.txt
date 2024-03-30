@@ -13,7 +13,6 @@ py_library(
   SRCS
     special_builtins.py
   DEPS
-    pytype.rewrite.pretty_printer
     pytype.rewrite.abstract.abstract
 )
 

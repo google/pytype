@@ -78,7 +78,7 @@ class BadCallPrinter:
     for prefix, name in self._iter_sig():
       suffix = " = ..." if sig.has_default(name) else ""
       if bad_param and name == bad_param.name:
-        type_str = self._pp.print_as_expected_type(bad_param.typ)
+        type_str = self._pp.print_type_of_instance(bad_param.typ)
         suffix = ": " + type_str + suffix
       yield prefix, name, suffix
 
@@ -101,7 +101,7 @@ class BadCallPrinter:
       return keys.get(arg_name, len(keys)+1)
     for name, arg in sorted(passed_args, key=key_f):
       if bad_param and name == bad_param.name:
-        suffix = ": " + self._pp.print_as_actual_type(arg, literal=literal)
+        suffix = ": " + self._pp.print_type(arg, literal=literal)
       else:
         suffix = ""
       yield "", name, suffix
@@ -163,8 +163,8 @@ class MatcherErrorPrinter:
         # TODO(b/196434939): When matching a protocol like Sequence[int] the
         # protocol name will be Sequence[int] but the method signatures will be
         # displayed as f(self: Sequence[_T], ...).
-        actual = self._pp.print_as_function_def(actual)
-        expected = self._pp.print_as_function_def(expected)
+        actual = self._pp.print_function_def(actual)
+        expected = self._pp.print_function_def(expected)
         return (f"\nMethod {error.attribute_name} of protocol {protocol} has "
                 f"the wrong signature in {left}:\n\n"
                 f">> {protocol} expects:\n{expected}\n\n"
@@ -193,8 +193,8 @@ class MatcherErrorPrinter:
       ret += "\nTypedDict type errors: "
       for k, bad in error.bad:
         for match in bad:
-          actual = self._pp.print_as_actual_type(match.actual_binding.data)
-          expected = self._pp.print_as_expected_type(match.expected.typ)
+          actual = self._pp.print_type(match.actual_binding.data)
+          expected = self._pp.print_type_of_instance(match.expected.typ)
           ret += f"\n  {{'{k}': ...}}: expected {expected}, got {actual}"
     return ret
 
@@ -261,10 +261,10 @@ class AttributeErrorPrinter:
 
   def print_receiver(self, obj: types.BaseValue, attr_name: str):
     if attr_name in slots.SYMBOL_MAPPING:
-      obj_repr = self._pp.print_as_actual_type(obj)
+      obj_repr = self._pp.print_type(obj)
       return BadAttr(obj_repr, BadAttrType.SYMBOL)
     elif isinstance(obj, types.Module):
       return BadAttr(obj.name, BadAttrType.MODULE)
     else:
-      obj_repr = self._pp.print_as_actual_type(obj)
+      obj_repr = self._pp.print_type(obj)
       return BadAttr(obj_repr, BadAttrType.OBJECT)

@@ -42,5 +42,32 @@ class PytdTypeToValueTest(ConverterTestBase):
     self.assertEqual(abstract_value, self.ctx.singles.Never)
 
 
+class PytdFunctionToValueTest(ConverterTestBase):
+
+  def test_basic(self):
+    pytd_param = pytd.Parameter(
+        name='x',
+        type=pytd.AnythingType(),
+        kind=pytd.ParameterKind.REGULAR,
+        optional=False,
+        mutated_type=None,
+    )
+    pytd_sig = pytd.Signature(
+        params=(pytd_param,),
+        starargs=None,
+        starstarargs=None,
+        return_type=pytd.AnythingType(),
+        exceptions=(),
+        template=(),
+    )
+    pytd_func = pytd.Function(
+        name='f', signatures=(pytd_sig,), kind=pytd.MethodKind.METHOD)
+    func = self.conv.pytd_function_to_value(pytd_func)
+    self.assertIsInstance(func, abstract.PytdFunction)
+    self.assertEqual(func.name, 'f')
+    self.assertEqual(len(func.signatures), 1)
+    self.assertEqual(repr(func.signatures[0]), 'def f(x: Any) -> Any')
+
+
 if __name__ == '__main__':
   unittest.main()

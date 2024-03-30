@@ -66,6 +66,7 @@ py_library(
   DEPS
     .base
     pytype.blocks.blocks
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -76,6 +77,7 @@ py_test(
   DEPS
     .classes
     .functions
+    pytype.pytd.parse.parser_test_base
     pytype.rewrite.tests.test_utils
 )
 

@@ -107,6 +107,9 @@ class Singleton(BaseValue):
   def _attrs(self):
     return (self.name,)
 
+  def instantiate(self) -> 'Singleton':
+    return self
+
 
 class Union(BaseValue):
   """Union of values."""

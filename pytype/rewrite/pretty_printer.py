@@ -9,20 +9,20 @@ from pytype.types import types
 class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
   """Pretty print types for errors."""
 
-  def print_as_generic_type(self, t) -> str:
+  def print_generic_type(self, t) -> str:
     return repr(t)
 
-  def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
+  def print_type_of_instance(self, t: types.BaseValue, instance=None) -> str:
     """Print abstract value t as a pytd type."""
     return self.print_pytd(t.to_pytd_type_of_instance())
 
-  def print_as_actual_type(self, t, literal=False) -> str:
+  def print_type(self, t, literal=False) -> str:
     return repr(t)
 
-  def print_as_function_def(self, fn: types.Function) -> str:
+  def print_function_def(self, fn: types.Function) -> str:
     return repr(fn)
 
-  def print_var_as_type(self, var: variables.Variable, node) -> str:
+  def print_var_type(self, var: variables.Variable, node) -> str:
     """Print a pytype variable as a type."""
     del node  # not used in rewrite
     typ = pytd_utils.JoinTypes(v.to_pytd_type() for v in var.values)

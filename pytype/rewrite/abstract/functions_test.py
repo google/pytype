@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from pytype.pytd.parse import parser_test_base
 from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions
 from pytype.rewrite.tests import test_utils
@@ -32,7 +33,12 @@ def _get_const(src: str):
   return module_code.consts[0]
 
 
-class SignatureTest(test_utils.ContextfulTestBase):
+class SignatureTest(parser_test_base.ParserTest,
+                    test_utils.ContextfulTestBase):
+
+  def from_pytd(self, pytd_string):
+    pytd_sig, = self.ParseWithBuiltins(pytd_string).Lookup('f').signatures
+    return functions.Signature.from_pytd(self.ctx, 'f', pytd_sig)
 
   def test_from_code(self):
     func_code = _get_const("""
@@ -40,7 +46,7 @@ class SignatureTest(test_utils.ContextfulTestBase):
         pass
     """)
     signature = functions.Signature.from_code(self.ctx, 'f', func_code)
-    self.assertEqual(repr(signature), 'def f(x, /, *args, y, **kwargs)')
+    self.assertEqual(repr(signature), 'def f(x, /, *args, y, **kwargs) -> Any')
 
   def test_map_args(self):
     signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
@@ -54,6 +60,23 @@ class SignatureTest(test_utils.ContextfulTestBase):
     args = signature.make_fake_args()
     self.assertEqual(set(args.argdict), {'x', 'y'})
 
+  def test_from_pytd_basic(self):
+    sig = self.from_pytd('def f(): ...')
+    self.assertEqual(repr(sig), 'def f() -> Any')
+
+  def test_from_pytd_with_annotations(self):
+    sig = self.from_pytd('def f(x: int) -> str: ...')
+    self.assertEqual(repr(sig), 'def f(x: int) -> str')
+
+  def test_from_pytd_with_defaults(self):
+    sig = self.from_pytd('def f(x=0, y=...) -> str: ...')
+    self.assertEqual(repr(sig), 'def f(x: int = ..., y: Any = ...) -> str')
+
+  def test_from_pytd_with_special_args(self):
+    sig = self.from_pytd('def f(x, /, *args, y, **kwargs): ...')
+    self.assertEqual(
+        repr(sig), 'def f(x: Any, /, *args: tuple, y, **kwargs: dict) -> Any')
+
 
 class InterpreterFunctionTest(test_utils.ContextfulTestBase):
 
@@ -66,7 +89,8 @@ class InterpreterFunctionTest(test_utils.ContextfulTestBase):
         ctx=self.ctx, name='f', code=func_code, enclosing_scope=(),
         parent_frame=FakeFrame(self.ctx))
     self.assertEqual(len(f.signatures), 1)
-    self.assertEqual(repr(f.signatures[0]), 'def f(x, /, *args, y, **kwargs)')
+    self.assertEqual(repr(f.signatures[0]),
+                     'def f(x, /, *args, y, **kwargs) -> Any')
 
   def test_map_args(self):
     func_code = _get_const('def f(x): ...')

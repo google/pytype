@@ -15,7 +15,7 @@ from pytype.types import types
 class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
   """Pretty print types for errors."""
 
-  def print_as_generic_type(self, t) -> str:
+  def print_generic_type(self, t) -> str:
     convert = self.ctx.pytd_convert
     generic = pytd_utils.MakeClassOrContainerType(
         t.to_pytd_type_of_instance().base_type,
@@ -24,7 +24,7 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       return self.print_pytd(generic)
 
-  def print_as_expected_type(self, t: types.BaseValue, instance=None) -> str:
+  def print_type_of_instance(self, t: types.BaseValue, instance=None) -> str:
     """Print abstract value t as a pytd type."""
     assert isinstance(t, abstract.BaseValue)
     convert = self.ctx.pytd_convert
@@ -34,19 +34,19 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
         return self.print_pytd(t.to_pytd_type_of_instance(instance=instance))
     elif isinstance(t, abstract.Union):
       return self.join_printed_types(
-          self.print_as_expected_type(o) for o in t.options)
+          self.print_type_of_instance(o) for o in t.options)
     elif t.is_concrete:
       typ = typing.cast(abstract.PythonConstant, t)
       return re.sub(
           r"(\\n|\s)+", " ",
-          typ.str_of_constant(self.print_as_expected_type))
+          typ.str_of_constant(self.print_type_of_instance))
     elif (isinstance(t, (abstract.AnnotationClass, abstract.Singleton)) or
           t.cls == t):
       return t.name
     else:
-      return f"<instance of {self.print_as_expected_type(t.cls, t)}>"
+      return f"<instance of {self.print_type_of_instance(t.cls, t)}>"
 
-  def print_as_actual_type(self, t, literal=False) -> str:
+  def print_type(self, t, literal=False) -> str:
     convert = self.ctx.pytd_convert
     if literal:
       output_mode = convert.OutputMode.LITERAL
@@ -55,14 +55,14 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
     with convert.set_output_mode(output_mode):
       return self.print_pytd(t.to_pytd_type())
 
-  def print_as_function_def(self, fn: types.Function) -> str:
+  def print_function_def(self, fn: types.Function) -> str:
     convert = self.ctx.pytd_convert
     name = fn.name.rsplit(".", 1)[-1]  # We want `def bar()` not `def Foo.bar()`
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       pytd_def = convert.value_to_pytd_def(self.ctx.root_node, fn, name)
     return pytd_utils.Print(pytd_def)
 
-  def print_var_as_type(self, var: cfg.Variable, node: cfg.CFGNode) -> str:
+  def print_var_type(self, var: cfg.Variable, node: cfg.CFGNode) -> str:
     """Print a pytype variable as a type."""
     if not var.bindings:
       return "nothing"
@@ -81,7 +81,7 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
     val = var.data[0]
     name = self.ctx.vm.get_var_name(var)
     typ = self.join_printed_types(
-        self.print_as_actual_type(t) for t in var.data)
+        self.print_type(t) for t in var.data)
     if name:
       return f"'{name}: {typ}'"
     elif len(var.data) == 1 and hasattr(val, "pyval"):

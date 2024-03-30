@@ -31,7 +31,10 @@ class AbstractConverter:
   def pytd_function_to_value(
       self, func: pytd.Function) -> abstract.PytdFunction:
     """Converts a pytd function to an abstract function."""
-    return abstract.PytdFunction(self._ctx, func.name, ())
+    signatures = tuple(
+        abstract.Signature.from_pytd(self._ctx, func.name, pytd_sig)
+        for pytd_sig in func.signatures)
+    return abstract.PytdFunction(self._ctx, func.name, signatures)
 
   def pytd_type_to_value(self, typ: pytd.Type) -> abstract.BaseValue:
     """Converts a pytd type to an abstract value.

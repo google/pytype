@@ -21,6 +21,7 @@ from typing import Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, 
 
 import immutabledict
 from pytype.blocks import blocks
+from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
 
 _EMPTY_MAP = immutabledict.immutabledict()
@@ -154,19 +155,75 @@ class Signature:
         annotations={},
     )
 
+  @classmethod
+  def from_pytd(
+      cls, ctx: base.ContextType, name: str, pytd_sig: pytd.Signature,
+  ) -> 'Signature':
+    """Builds a signature from a pytd signature."""
+    param_names = []
+    posonly_count = 0
+    kwonly_params = []
+    for p in pytd_sig.params:
+      if p.kind == pytd.ParameterKind.KWONLY:
+        kwonly_params.append(p.name)
+        continue
+      param_names.append(p.name)
+      posonly_count += p.kind == pytd.ParameterKind.POSONLY
+
+    defaults = {
+        p.name: ctx.abstract_converter.pytd_type_to_value(p.type).instantiate()
+        for p in pytd_sig.params if p.optional}
+
+    pytd_annotations = [
+        (p.name, p.type)
+        for p in pytd_sig.params + (pytd_sig.starargs, pytd_sig.starstarargs)
+        if p is not None]
+    pytd_annotations.append(('return', pytd_sig.return_type))
+    annotations = {name: ctx.abstract_converter.pytd_type_to_value(typ)
+                   for name, typ in pytd_annotations}
+
+    return cls(
+        ctx=ctx,
+        name=name,
+        param_names=tuple(param_names),
+        posonly_count=posonly_count,
+        varargs_name=pytd_sig.starargs and pytd_sig.starargs.name,
+        kwonly_params=tuple(kwonly_params),
+        kwargs_name=pytd_sig.starstarargs and pytd_sig.starstarargs.name,
+        defaults=defaults,
+        annotations=annotations,
+    )
+
   def __repr__(self):
-    # TODO(b/241479600): Incorporate defaults and annotations.
-    params = list(self.param_names)
+    pp = self._ctx.errorlog.pretty_printer
+
+    def fmt(param_name):
+      if param_name in self.annotations:
+        typ = pp.print_type_of_instance(self.annotations[param_name])
+        s = f'{param_name}: {typ}'
+      else:
+        s = param_name
+      if param_name in self.defaults:
+        default = pp.show_constant(self.defaults[param_name])
+        return f'{s} = {default}'
+      else:
+        return s
+
+    params = [fmt(param_name) for param_name in self.param_names]
     if self.posonly_count:
       params.insert(self.posonly_count, '/')
     if self.varargs_name:
-      params.append('*' + self.varargs_name)
+      params.append('*' + fmt(self.varargs_name))
     elif self.kwonly_params:
       params.append('*')
     params.extend(self.kwonly_params)
     if self.kwargs_name:
-      params.append('**' + self.kwargs_name)
-    return f'def {self.name}({", ".join(params)})'
+      params.append('**' + fmt(self.kwargs_name))
+    if 'return' in self.annotations:
+      ret = pp.print_type_of_instance(self.annotations['return'])
+    else:
+      ret = 'Any'
+    return f'def {self.name}({", ".join(params)}) -> {ret}'
 
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Implement this properly, with error detection.

@@ -271,7 +271,6 @@ py_library(
   SRCS
     special_builtins.py
   DEPS
-    pytype.pretty_printer
     pytype.abstract.abstract
     pytype.errors.error_types
 )
