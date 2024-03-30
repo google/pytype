@@ -9,6 +9,7 @@ py_library(
     .base
     .classes
     .functions
+    .instances
     .internal
     .utils
 )
@@ -83,6 +84,28 @@ py_test(
 
 py_library(
   NAME
+    instances
+  SRCS
+    instances.py
+  DEPS
+    .base
+    .classes
+)
+
+py_test(
+  NAME
+    instances_test
+  SRCS
+    instances_test.py
+  DEPS
+    .base
+    .classes
+    .instances
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
     internal
   SRCS
     internal.py
@@ -96,6 +119,7 @@ py_test(
   SRCS
     internal_test.py
   DEPS
+    .classes
     .internal
     pytype.rewrite.tests.test_utils
 )

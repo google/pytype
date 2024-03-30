@@ -7,13 +7,17 @@ import immutabledict
 from pytype.rewrite.abstract import base
 
 
+# Type aliases
+_Variable = base.AbstractVariableType
+
+
 class ConstKeyDict(base.BaseValue):
   """Dictionary with constant literal keys.
 
   Used by the python interpreter to construct function args.
   """
 
-  def __init__(self, ctx: base.ContextType, constant: Dict[Any, Any]):
+  def __init__(self, ctx: base.ContextType, constant: Dict[Any, _Variable]):
     super().__init__(ctx)
     assert isinstance(constant, dict), constant
     self.constant = constant
@@ -33,7 +37,7 @@ class Splat(base.BaseValue):
   (x, *ys, z) in starargs) and let the function arg matcher unpack them.
   """
 
-  def __init__(self, ctx: base.ContextType, iterable: Sequence[Any]):
+  def __init__(self, ctx: base.ContextType, iterable: Sequence[_Variable]):
     super().__init__(ctx)
     self.iterable = tuple(iterable)
 

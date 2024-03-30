@@ -3,6 +3,7 @@
 from pytype.rewrite.abstract import base as _base
 from pytype.rewrite.abstract import classes as _classes
 from pytype.rewrite.abstract import functions as _functions
+from pytype.rewrite.abstract import instances as _instances
 from pytype.rewrite.abstract import internal as _internal
 from pytype.rewrite.abstract import utils as _utils
 
@@ -29,6 +30,9 @@ PytdFunction = _functions.PytdFunction
 Signature = _functions.Signature
 SimpleFunction = _functions.SimpleFunction
 SimpleReturn = _functions.SimpleReturn
+
+Dict = _instances.Dict
+List = _instances.List
 
 ConstKeyDict = _internal.ConstKeyDict
 Splat = _internal.Splat
