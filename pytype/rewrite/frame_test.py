@@ -1,4 +1,3 @@
-import sys
 from typing import Mapping, Type, TypeVar, cast, get_origin
 
 from pytype.pyc import opcodes
@@ -24,8 +23,7 @@ class FrameTestBase(test_utils.ContextfulTestBase):
   def _make_frame(self, src: str, name: str = '__main__') -> frame_lib.Frame:
     code = test_utils.parse(src)
     if name == '__main__':
-      module_globals = (
-          self.ctx.abstract_converter.get_module_globals(sys.version_info[:2]))
+      module_globals = self.ctx.abstract_loader.get_module_globals()
       initial_locals = initial_globals = {
           name: value.to_variable() for name, value in module_globals.items()}
     else:

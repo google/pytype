@@ -1,5 +1,3 @@
-import sys
-
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
@@ -13,14 +11,6 @@ class ConverterTestBase(test_utils.PytdTestBase,
   def setUp(self):
     super().setUp()
     self.conv = self.ctx.abstract_converter
-
-
-class GetModuleGlobalsTest(ConverterTestBase):
-
-  def test_basic(self):
-    module_globals = self.conv.get_module_globals(sys.version_info[:2])
-    # Sanity check a random entry.
-    self.assertIn('__name__', module_globals)
 
 
 class PytdTypeToValueTest(ConverterTestBase):

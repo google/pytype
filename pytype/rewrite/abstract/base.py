@@ -4,6 +4,8 @@ import abc
 import dataclasses
 from typing import Any, Dict, Optional, Protocol, Sequence, Tuple
 
+from pytype import config
+from pytype import load_pytd
 from pytype import utils
 from pytype.pytd import pytd
 from pytype.rewrite.flow import variables
@@ -30,9 +32,13 @@ class Singletons:
 
 class ContextType(Protocol):
 
+  options: config.Options
+  pytd_loader: load_pytd.Loader
+
   singles: Singletons
   errorlog: Any
   abstract_converter: Any
+  abstract_loader: Any
   pytd_converter: Any
 
 

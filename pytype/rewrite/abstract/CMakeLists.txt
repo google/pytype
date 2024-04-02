@@ -20,6 +20,8 @@ py_library(
   SRCS
     base.py
   DEPS
+    pytype.config
+    pytype.load_pytd
     pytype.utils
     pytype.pytd.pytd
     pytype.rewrite.flow.flow

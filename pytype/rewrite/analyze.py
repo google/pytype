@@ -34,9 +34,10 @@ def check_types(
     maximum_depth: int = _MAXIMUM_DEPTH,
 ) -> Analysis:
   """Checks types for the given source code."""
-  del loader, init_maximum_depth, maximum_depth
-  vm = vm_lib.VirtualMachine.from_source(src, options)
-  ctx = vm.analyze_all_defs()
+  del init_maximum_depth, maximum_depth
+  ctx = context.Context(options, loader)
+  vm = vm_lib.VirtualMachine.from_source(src, ctx)
+  vm.analyze_all_defs()
   return Analysis(ctx, None, None)
 
 
@@ -49,7 +50,8 @@ def infer_types(
 ) -> Analysis:
   """Infers types for the given source code."""
   del init_maximum_depth, maximum_depth
-  vm = vm_lib.VirtualMachine.from_source(src, options)
-  ctx, ast = vm.infer_stub()
+  ctx = context.Context(options, loader)
+  vm = vm_lib.VirtualMachine.from_source(src, ctx)
+  ast = vm.infer_stub()
   deps = loader.concat_all()
   return Analysis(ctx, ast, deps)

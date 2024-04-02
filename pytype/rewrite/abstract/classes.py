@@ -143,7 +143,7 @@ class PythonConstant(BaseInstance, Generic[_T]):
   """Representation of a Python constant."""
 
   def __init__(self, ctx: base.ContextType, constant: _T):
-    cls = ctx.abstract_converter.raw_type_to_value(type(constant))
+    cls = ctx.abstract_loader.raw_type_to_value(type(constant))
     super().__init__(ctx, cls, {})
     self.constant = constant
 

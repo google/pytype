@@ -1,6 +1,6 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
-from typing import Dict, Optional, Sequence, Tuple
+from typing import Dict, Optional, Sequence
 
 from pytype import config
 from pytype.blocks import blocks
@@ -28,13 +28,11 @@ class VirtualMachine:
 
   @classmethod
   def from_source(
-      cls, src: str, options: Optional[config.Options] = None
+      cls, src: str, ctx: Optional[context.Context] = None,
   ) -> 'VirtualMachine':
-    ctx = context.Context()
-    options = options or config.Options.create()
-    code = _get_bytecode(src, options)
-    initial_globals = ctx.abstract_converter.get_module_globals(
-        options.python_version)
+    ctx = ctx or context.Context()
+    code = _get_bytecode(src, ctx.options)
+    initial_globals = ctx.abstract_loader.get_module_globals()
     return cls(ctx, code, initial_globals)
 
   def _run_module(self) -> None:
@@ -45,7 +43,7 @@ class VirtualMachine:
         self._ctx, self._code, initial_global_vars)
     self._module_frame.run()
 
-  def analyze_all_defs(self) -> context.Context:
+  def analyze_all_defs(self) -> None:
     """Analyzes all class and function definitions."""
     self._run_module()
     parent_frames = [self._module_frame]
@@ -58,9 +56,8 @@ class VirtualMachine:
         instance = cls.instantiate()
         for f in cls.functions:
           parent_frames.extend(f.bind_to(instance).analyze())
-    return self._ctx
 
-  def infer_stub(self) -> Tuple[context.Context, pytd.TypeDeclUnit]:
+  def infer_stub(self) -> pytd.TypeDeclUnit:
     """Infers a type stub."""
     self._run_module()
     pytd_nodes = []
@@ -72,8 +69,7 @@ class VirtualMachine:
       except NotImplementedError:
         pytd_node = pytd.Constant(name, value.to_pytd_type())
       pytd_nodes.append(pytd_node)
-    inferred = pytd_utils.WrapTypeDeclUnit('inferred', pytd_nodes)
-    return self._ctx, inferred
+    return pytd_utils.WrapTypeDeclUnit('inferred', pytd_nodes)
 
 
 def _get_bytecode(src: str, options: config.Options) -> blocks.OrderedCode:

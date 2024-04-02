@@ -42,8 +42,11 @@ py_library(
     context.py
   DEPS
     .convert
+    .load_abstract
     .output
     .pretty_printer
+    pytype.config
+    pytype.load_pytd
     pytype.errors.errors
     pytype.rewrite.abstract.abstract
 )
@@ -56,7 +59,6 @@ py_library(
   DEPS
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.overlays.overlays
 )
 
 py_test(
@@ -98,14 +100,22 @@ py_test(
 
 py_library(
   NAME
-    pretty_printer
+    load_abstract
   SRCS
-    pretty_printer.py
+    load_abstract.py
   DEPS
-    pytype.pretty_printer_base
-    pytype.pytd.pytd
-    pytype.rewrite.flow.flow
-    pytype.types.types
+    pytype.load_pytd
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.overlays.overlays
+)
+
+py_test(
+  NAME
+    load_abstract_test
+  SRCS
+    load_abstract_test.py
+  DEPS
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -128,6 +138,18 @@ py_test(
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
+    pretty_printer
+  SRCS
+    pretty_printer.py
+  DEPS
+    pytype.pretty_printer_base
+    pytype.pytd.pytd
+    pytype.rewrite.flow.flow
+    pytype.types.types
 )
 
 py_library(
