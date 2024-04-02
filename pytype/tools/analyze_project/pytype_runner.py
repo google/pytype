@@ -146,19 +146,26 @@ def _module_to_output_path(mod):
 
 
 def escape_ninja_path(path: str):
-  """escape `:` in absolute path on windows."""
-  if sys.platform == 'win32':
-    new_path = ''
-    last_char = None
-    for ch in path:
-      if last_char != '$' and ch == ':':
-        new_path += '$:'
-      else:
-        new_path += ch
-      last_char = ch
-    return new_path
-  else:
-    return path
+  """escape colon, dollar sign, space, and new line, for ninja
+  ( as described in https://ninja-build.org/manual.html#ref_lexer );
+  thus, this function should only ever be used once,
+  called on a path string to turn it into a ninja path string
+  (if you call it on a ninja path string, it will render the variables inert)
+  in order to allow for path strings that contain these four characters"""
+  new_path = ''
+  for ch in path:
+    if ch == ':':
+      new_path += '$:'
+    elif ch == '$':
+      new_path += '$$'
+    elif ch == ' ':
+      new_path += '$ '
+    elif ch == '\n':
+      new_path += '$\n'
+    else:
+      new_path += ch
+    last_char = ch
+  return new_path
 
 
 def get_imports_map(deps, module_to_imports_map, module_to_output):
@@ -338,7 +345,7 @@ class PytypeRunner:
     logging.info('%s %s\n  imports: %s\n  deps: %s\n  output: %s',
                  action, module.name, imports, deps, output)
     if deps:
-      deps = ' | ' +  escape_ninja_path(' '.join(deps))
+      deps = ' | ' + ' '.join([escape_ninja_path(dep) for dep in deps])
     else:
       deps = ''
     with open(self.ninja_file, 'a') as f:
