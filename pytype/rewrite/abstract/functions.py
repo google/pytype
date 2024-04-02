@@ -279,11 +279,17 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
 class SimpleFunction(BaseFunction[_HasReturnT]):
   """Signature-based function implementation."""
 
-  def __init__(self, ctx: base.ContextType, name: str,
-               signatures: Tuple[Signature, ...]):
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      name: str,
+      signatures: Tuple[Signature, ...],
+      module: Optional[str] = None,
+  ):
     super().__init__(ctx)
     self._name = name
     self._signatures = signatures
+    self.module = module
 
   def __repr__(self):
     return f'SimpleFunction({self._name})'

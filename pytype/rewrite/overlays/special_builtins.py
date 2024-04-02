@@ -9,7 +9,8 @@ class AssertType(abstract.SimpleFunction[abstract.SimpleReturn]):
   def __init__(self, ctx: abstract.ContextType):
     signature = abstract.Signature(
         ctx=ctx, name='assert_type', param_names=('variable', 'type'))
-    super().__init__(ctx=ctx, name='assert_type', signatures=(signature,))
+    super().__init__(
+        ctx=ctx, name='assert_type', signatures=(signature,), module='builtins')
 
   def call_with_mapped_args(
       self, mapped_args: abstract.MappedArgs[abstract.FrameType],

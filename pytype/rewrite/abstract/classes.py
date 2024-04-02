@@ -32,11 +32,17 @@ class ClassCallReturn:
 class SimpleClass(base.BaseValue):
   """Class with a name and members."""
 
-  def __init__(self, ctx: base.ContextType, name: str,
-               members: Dict[str, base.BaseValue]):
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      name: str,
+      members: Dict[str, base.BaseValue],
+      module: Optional[str] = None,
+  ):
     super().__init__(ctx)
     self.name = name
     self.members = members
+    self.module = module
 
     # These methods are attributes of individual classes so that they can be
     # easily customized. For example, unittest.TestCase would want to add

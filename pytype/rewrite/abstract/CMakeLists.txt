@@ -78,7 +78,6 @@ py_test(
   DEPS
     .classes
     .functions
-    pytype.pytd.parse.parser_test_base
     pytype.rewrite.tests.test_utils
 )
 

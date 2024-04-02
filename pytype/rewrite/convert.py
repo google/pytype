@@ -30,7 +30,8 @@ class AbstractConverter:
     return {
         '__name__': self._ctx.singles.Any,
         'assert_type': special_builtins.AssertType(self._ctx),
-        'int': abstract.SimpleClass(self._ctx, 'int', {}),
+        'int': abstract.SimpleClass(
+            self._ctx, name='int', module='builtins', members={}),
     }
 
   def pytd_class_to_value(self, cls: pytd.Class) -> abstract.SimpleClass:
@@ -38,8 +39,13 @@ class AbstractConverter:
     if cls in self._cache.classes:
       return self._cache.classes[cls]
     # TODO(b/324464265): Handle keywords, bases, decorators, slots, template
+    module, _, name = cls.name.rpartition('.')
     members = {}
-    abstract_class = abstract.SimpleClass(self._ctx, cls.name, members)
+    abstract_class = abstract.SimpleClass(
+        ctx=self._ctx,
+        name=name,
+        members=members,
+        module=module or None)
     # Cache the class early so that references to it in its members don't cause
     # infinite recursion.
     self._cache.classes[cls] = abstract_class
@@ -62,10 +68,16 @@ class AbstractConverter:
     """Converts a pytd function to an abstract function."""
     if func in self._cache.funcs:
       return self._cache.funcs[func]
+    module, _, name = func.name.rpartition('.')
     signatures = tuple(
-        abstract.Signature.from_pytd(self._ctx, func.name, pytd_sig)
+        abstract.Signature.from_pytd(self._ctx, name, pytd_sig)
         for pytd_sig in func.signatures)
-    abstract_func = abstract.PytdFunction(self._ctx, func.name, signatures)
+    abstract_func = abstract.PytdFunction(
+        ctx=self._ctx,
+        name=name,
+        signatures=signatures,
+        module=module or None,
+    )
     self._cache.funcs[func] = abstract_func
     return abstract_func
 
@@ -114,4 +126,4 @@ class AbstractConverter:
       The abstract representation of the type. For example, when passed `int`,
       this function returns `abstract.SimpleClass(int)`.
     """
-    return abstract.SimpleClass(self._ctx, typ.__name__, {})
+    return abstract.SimpleClass(self._ctx, typ.__name__, {}, typ.__module__)

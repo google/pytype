@@ -1,6 +1,5 @@
 from typing import Sequence
 
-from pytype.pytd.parse import parser_test_base
 from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions
 from pytype.rewrite.tests import test_utils
@@ -33,11 +32,11 @@ def _get_const(src: str):
   return module_code.consts[0]
 
 
-class SignatureTest(parser_test_base.ParserTest,
+class SignatureTest(test_utils.PytdTestBase,
                     test_utils.ContextfulTestBase):
 
   def from_pytd(self, pytd_string):
-    pytd_sig, = self.ParseWithBuiltins(pytd_string).Lookup('f').signatures
+    pytd_sig, = self.build_pytd(pytd_string).signatures
     return functions.Signature.from_pytd(self.ctx, 'f', pytd_sig)
 
   def test_from_code(self):

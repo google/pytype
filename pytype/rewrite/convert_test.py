@@ -1,14 +1,13 @@
 import sys
 
 from pytype.pytd import pytd
-from pytype.pytd.parse import parser_test_base
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 
 import unittest
 
 
-class ConverterTestBase(parser_test_base.ParserTest,
+class ConverterTestBase(test_utils.PytdTestBase,
                         test_utils.ContextfulTestBase):
 
   def setUp(self):
@@ -27,7 +26,7 @@ class GetModuleGlobalsTest(ConverterTestBase):
 class PytdTypeToValueTest(ConverterTestBase):
 
   def test_class_type(self):
-    pytd_class = self.ParseWithBuiltins('class X: ...').Lookup('X')
+    pytd_class = self.build_pytd('class X: ...')
     pytd_class_type = pytd.ClassType(name='X', cls=pytd_class)
     abstract_class = self.conv.pytd_type_to_value(pytd_class_type)
     self.assertIsInstance(abstract_class, abstract.SimpleClass)
@@ -45,24 +44,32 @@ class PytdTypeToValueTest(ConverterTestBase):
 class PytdFunctionToValueTest(ConverterTestBase):
 
   def test_basic(self):
-    pytd_func = self.ParseWithBuiltins("""
+    pytd_func = self.build_pytd("""
       from typing import Any
       def f(x: Any) -> Any: ...
-    """).Lookup('f')
+    """)
     func = self.conv.pytd_function_to_value(pytd_func)
     self.assertIsInstance(func, abstract.PytdFunction)
     self.assertEqual(func.name, 'f')
+    self.assertEqual(func.module, '<test>')
     self.assertEqual(len(func.signatures), 1)
     self.assertEqual(repr(func.signatures[0]), 'def f(x: Any) -> Any')
 
 
 class PytdClassToValueTest(ConverterTestBase):
 
+  def test_empty_body(self):
+    pytd_cls = self.build_pytd('class C: ...')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    self.assertEqual(cls.name, 'C')
+    self.assertEqual(cls.module, '<test>')
+    self.assertFalse(cls.members)
+
   def test_method(self):
-    pytd_cls = self.ParseWithBuiltins("""
+    pytd_cls = self.build_pytd("""
       class C:
         def f(self, x) -> None: ...
-    """).Lookup('C')
+    """)
     cls = self.conv.pytd_class_to_value(pytd_cls)
     self.assertEqual(cls.name, 'C')
     self.assertEqual(set(cls.members), {'f'})
@@ -71,22 +78,22 @@ class PytdClassToValueTest(ConverterTestBase):
     self.assertEqual(repr(f.signatures[0]), 'def f(self: C, x: Any) -> None')
 
   def test_constant(self):
-    pytd_cls = self.ParseWithBuiltins("""
+    pytd_cls = self.build_pytd("""
       class C:
         CONST: int
-    """).Lookup('C')
+    """)
     cls = self.conv.pytd_class_to_value(pytd_cls)
     self.assertEqual(cls.name, 'C')
     self.assertEqual(set(cls.members), {'CONST'})
     const = cls.members['CONST']
     self.assertIsInstance(const, abstract.FrozenInstance)
-    self.assertEqual(const.cls.name, 'builtins.int')
+    self.assertEqual(const.cls.name, 'int')
 
   def test_nested_class(self):
-    pytd_cls = self.ParseWithBuiltins("""
+    pytd_cls = self.build_pytd("""
       class C:
         class D: ...
-    """).Lookup('C')
+    """)
     cls = self.conv.pytd_class_to_value(pytd_cls)
     self.assertEqual(cls.name, 'C')
     self.assertEqual(set(cls.members), {'D'})
