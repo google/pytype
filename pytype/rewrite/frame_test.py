@@ -424,6 +424,31 @@ class FrameTest(FrameTestBase):
     f_frame = module_frame.make_child_frame(f, {})
     self.assertEqual(f_frame.stack, [module_frame, f_frame])
 
+  def test_stack_ops(self):
+    """Basic smoke test for the stack manipulation ops."""
+    # These just pass through to the underlying DataStack, which is well tested,
+    # so we don't bother checking the stack contents here.
+    block = [
+        opcodes.LOAD_CONST(1, 0, 0, 1),  # 1
+        opcodes.LOAD_CONST(2, 0, 1, 2),  # 2
+        opcodes.LOAD_CONST(3, 0, 2, 3),  # 3
+        opcodes.DUP_TOP(4, 0),           # 4
+        opcodes.DUP_TOP_TWO(5, 0),       # 6
+        opcodes.ROT_TWO(6, 0),           # 6
+        opcodes.ROT_THREE(7, 0),         # 6
+        opcodes.ROT_FOUR(8, 0),          # 6
+        opcodes.ROT_N(9, 0, 2, 2),       # 6
+        opcodes.POP_TOP(10, 0),          # 5
+        opcodes.POP_TOP(11, 0),          # 4
+        opcodes.POP_TOP(12, 0),          # 3
+        opcodes.POP_TOP(13, 0),          # 2
+        opcodes.POP_TOP(14, 0),          # 1
+        opcodes.RETURN_VALUE(15, 0),     # 0
+    ]
+    code = test_utils.FakeOrderedCode([block], [1, 2, 3])
+    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
+    frame.run()  # Should not crash
+
 
 class BuildConstantsTest(FrameTestBase):
 

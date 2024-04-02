@@ -476,10 +476,6 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.pop_and_discard()
     self._call_function(func_var, abstract.Args(posargs=args, frame=self))
 
-  def byte_POP_TOP(self, opcode):
-    del opcode  # unused
-    self._stack.pop_and_discard()
-
   # Pytype tracks variables in enclosing scopes by name rather than emulating
   # the runtime's approach with cells and freevars, so we can ignore the opcodes
   # that deal with the latter.
@@ -488,6 +484,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_COPY_FREE_VARS(self, opcode):
     del opcode  # unused
+
+  def byte_LOAD_BUILD_CLASS(self, opcode):
+    self._stack.push(self._ctx.singles.__build_class__.to_variable())
+
+  # ---------------------------------------------------------------
+  # Build and extend collections
 
   def _build_collection_from_stack(
       self, opcode,
@@ -557,8 +559,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     target.setitem(key, val)
 
-  def byte_LOAD_BUILD_CLASS(self, opcode):
-    self._stack.push(self._ctx.singles.__build_class__.to_variable())
+  # ---------------------------------------------------------------
+  # Branches and jumps
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode):
     self._pop_jump_if_false(opcode)
@@ -568,3 +570,35 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_JUMP_FORWARD(self, opcode):
     self._merge_state_into(self._current_state, opcode.argval)
+
+  # ---------------------------------------------------------------
+  # Stack manipulation
+
+  def byte_POP_TOP(self, opcode):
+    del opcode  # unused
+    self._stack.pop_and_discard()
+
+  def byte_DUP_TOP(self, opcode):
+    del opcode  # unused
+    self._stack.push(self._stack.top())
+
+  def byte_DUP_TOP_TWO(self, opcode):
+    del opcode  # unused
+    a, b = self._stack.popn(2)
+    for v in (a, b, a, b):
+      self._stack.push(v)
+
+  def byte_ROT_TWO(self, opcode):
+    del opcode  # unused
+    self._stack.rotn(2)
+
+  def byte_ROT_THREE(self, opcode):
+    del opcode  # unused
+    self._stack.rotn(3)
+
+  def byte_ROT_FOUR(self, opcode):
+    del opcode  # unused
+    self._stack.rotn(4)
+
+  def byte_ROT_N(self, opcode):
+    self._stack.rotn(opcode.arg)
