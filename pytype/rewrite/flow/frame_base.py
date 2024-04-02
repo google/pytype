@@ -107,6 +107,11 @@ class FrameBase(Generic[_T]):
       self._current_step.block += 1
       self._current_step.opcode = 0
 
+  def stepn(self, n: int) -> None:
+    """Runs n opcodes."""
+    for _ in range(n):
+      self.step()
+
   def _merge_state_into(
       self, from_state: state.BlockState[_T], block_id: int) -> None:
     self._states[block_id] = from_state.merge_into(self._states.get(block_id))

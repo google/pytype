@@ -498,5 +498,55 @@ class BuildConstantsTest(FrameTestBase):
     })
 
 
+class ComprehensionAccumulatorTest(FrameTestBase):
+  """Test accumulating results in a comprehension."""
+
+  def test_list_append(self):
+    block = [
+        opcodes.BUILD_LIST(0, 0, 0, None),
+        opcodes.LOAD_CONST(1, 0, 0, 1),
+        opcodes.LOAD_CONST(2, 0, 1, 2),
+        opcodes.LIST_APPEND(3, 0, 2, None),
+        opcodes.NOP(4, 0)
+    ]
+    code = test_utils.FakeOrderedCode([block], [1, 2])
+    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
+    frame.stepn(4)
+    target_var = frame._stack.peek(2)
+    target = abstract.get_atomic_constant(target_var)
+    self.assertEqual(target, [self._const_var(2)])
+
+  def test_set_add(self):
+    block = [
+        opcodes.BUILD_SET(0, 0, 0, None),
+        opcodes.LOAD_CONST(1, 0, 0, 1),
+        opcodes.LOAD_CONST(2, 0, 1, 2),
+        opcodes.SET_ADD(3, 0, 2, None),
+        opcodes.NOP(4, 0)
+    ]
+    code = test_utils.FakeOrderedCode([block], [1, 2])
+    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
+    frame.stepn(4)
+    target_var = frame._stack.peek(2)
+    target = abstract.get_atomic_constant(target_var)
+    self.assertEqual(target, {self._const_var(2)})
+
+  def test_map_add(self):
+    block = [
+        opcodes.BUILD_MAP(0, 0, 0, None),
+        opcodes.LOAD_CONST(1, 0, 0, 1),
+        opcodes.LOAD_CONST(2, 0, 1, 2),
+        opcodes.LOAD_CONST(3, 0, 2, 3),
+        opcodes.MAP_ADD(4, 0, 2, None),
+        opcodes.NOP(5, 0)
+    ]
+    code = test_utils.FakeOrderedCode([block], [1, 2, 3])
+    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
+    frame.stepn(5)
+    target_var = frame._stack.peek(2)
+    target = abstract.get_atomic_constant(target_var)
+    self.assertEqual(target, {self._const_var(2): self._const_var(3)})
+
+
 if __name__ == '__main__':
   unittest.main()
