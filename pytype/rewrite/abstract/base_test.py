@@ -62,6 +62,16 @@ class UnionTest(test_utils.ContextfulTestBase):
     self.assertEqual(base.Union(self.ctx, (true, false)),
                      base.Union(self.ctx, (false, true)))
 
+  def test_instantiate(self):
+    class_x = classes.SimpleClass(self.ctx, 'X', {})
+    class_y = classes.SimpleClass(self.ctx, 'Y', {})
+    union = base.Union(self.ctx, (class_x, class_y))
+    union_instance = union.instantiate()
+    instance_x = classes.MutableInstance(self.ctx, class_x).freeze()
+    instance_y = classes.MutableInstance(self.ctx, class_y).freeze()
+    self.assertEqual(union_instance,
+                     base.Union(self.ctx, (instance_x, instance_y)))
+
 
 if __name__ == '__main__':
   unittest.main()

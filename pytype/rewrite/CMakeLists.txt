@@ -66,6 +66,7 @@ py_test(
     convert_test.py
   DEPS
     pytype.pytd.pytd
+    pytype.pytd.parse.parser_test_base
     pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )

@@ -1,13 +1,15 @@
 import sys
 
 from pytype.pytd import pytd
+from pytype.pytd.parse import parser_test_base
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 
 import unittest
 
 
-class ConverterTestBase(test_utils.ContextfulTestBase):
+class ConverterTestBase(parser_test_base.ParserTest,
+                        test_utils.ContextfulTestBase):
 
   def setUp(self):
     super().setUp()
@@ -25,9 +27,7 @@ class GetModuleGlobalsTest(ConverterTestBase):
 class PytdTypeToValueTest(ConverterTestBase):
 
   def test_class_type(self):
-    pytd_class = pytd.Class(
-        name='X', keywords=(), bases=(), methods=(), constants=(), classes=(),
-        decorators=(), slots=None, template=())
+    pytd_class = self.ParseWithBuiltins('class X: ...').Lookup('X')
     pytd_class_type = pytd.ClassType(name='X', cls=pytd_class)
     abstract_class = self.conv.pytd_type_to_value(pytd_class_type)
     self.assertIsInstance(abstract_class, abstract.SimpleClass)
@@ -45,28 +45,54 @@ class PytdTypeToValueTest(ConverterTestBase):
 class PytdFunctionToValueTest(ConverterTestBase):
 
   def test_basic(self):
-    pytd_param = pytd.Parameter(
-        name='x',
-        type=pytd.AnythingType(),
-        kind=pytd.ParameterKind.REGULAR,
-        optional=False,
-        mutated_type=None,
-    )
-    pytd_sig = pytd.Signature(
-        params=(pytd_param,),
-        starargs=None,
-        starstarargs=None,
-        return_type=pytd.AnythingType(),
-        exceptions=(),
-        template=(),
-    )
-    pytd_func = pytd.Function(
-        name='f', signatures=(pytd_sig,), kind=pytd.MethodKind.METHOD)
+    pytd_func = self.ParseWithBuiltins("""
+      from typing import Any
+      def f(x: Any) -> Any: ...
+    """).Lookup('f')
     func = self.conv.pytd_function_to_value(pytd_func)
     self.assertIsInstance(func, abstract.PytdFunction)
     self.assertEqual(func.name, 'f')
     self.assertEqual(len(func.signatures), 1)
     self.assertEqual(repr(func.signatures[0]), 'def f(x: Any) -> Any')
+
+
+class PytdClassToValueTest(ConverterTestBase):
+
+  def test_method(self):
+    pytd_cls = self.ParseWithBuiltins("""
+      class C:
+        def f(self, x) -> None: ...
+    """).Lookup('C')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    self.assertEqual(cls.name, 'C')
+    self.assertEqual(set(cls.members), {'f'})
+    f = cls.members['f']
+    self.assertIsInstance(f, abstract.PytdFunction)
+    self.assertEqual(repr(f.signatures[0]), 'def f(self: C, x: Any) -> None')
+
+  def test_constant(self):
+    pytd_cls = self.ParseWithBuiltins("""
+      class C:
+        CONST: int
+    """).Lookup('C')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    self.assertEqual(cls.name, 'C')
+    self.assertEqual(set(cls.members), {'CONST'})
+    const = cls.members['CONST']
+    self.assertIsInstance(const, abstract.FrozenInstance)
+    self.assertEqual(const.cls.name, 'builtins.int')
+
+  def test_nested_class(self):
+    pytd_cls = self.ParseWithBuiltins("""
+      class C:
+        class D: ...
+    """).Lookup('C')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    self.assertEqual(cls.name, 'C')
+    self.assertEqual(set(cls.members), {'D'})
+    nested_class = cls.members['D']
+    self.assertIsInstance(nested_class, abstract.SimpleClass)
+    self.assertEqual(nested_class.name, 'D')
 
 
 if __name__ == '__main__':

@@ -72,6 +72,10 @@ class BaseValue(types.BaseValue, abc.ABC):
   def set_attribute(self, name: str, value: 'BaseValue') -> None:
     del name, value  # unused
 
+  def instantiate(self) -> 'BaseValue':
+    """Creates an instance of this value."""
+    raise ValueError(f'{self!r} is not instantiable')
+
   def to_pytd_def(self) -> pytd.Node:
     return self._ctx.pytd_converter.to_pytd_def(self)
 
@@ -131,5 +135,8 @@ class Union(BaseValue):
   @property
   def _attrs(self):
     return (frozenset(self.options),)
+
+  def instantiate(self):
+    return Union(self._ctx, tuple(o.instantiate() for o in self.options))
 
 AbstractVariableType = variables.Variable[BaseValue]
