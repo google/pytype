@@ -359,6 +359,44 @@ class ImportPathsTest(_LoaderTest):
       self.assertEqual("empty1", empty1.name)
       self.assertEqual("empty2", empty2.name)
 
+  def test_unused_imports_map_paths(self):
+    with test_utils.Tempdir() as d:
+      foo_path = d.create_file("foo.pyi", "class Foo: ...")
+      bar_path = d.create_file("bar.pyi", "bar: foo.Foo = ...")
+      baz_path = d.create_file("baz.pyi", "class Baz: ...")
+      imports_map = {
+          "foo": foo_path,
+          "bar": bar_path,
+          "baz": baz_path,
+          file_utils.replace_separator("aliased/baz"): baz_path,
+      }
+      loader = load_pytd.Loader(
+          config.Options.create(
+              module_name="base",
+              python_version=self.python_version,
+              pythonpath="",
+          )
+      )
+      loader.options.tweak(imports_map=imports_map)
+      self.assertEqual(
+          {foo_path, bar_path, baz_path},
+          loader.get_unused_imports_map_paths(),
+      )
+
+      _ = loader.import_name("bar")
+      # Importing bar will access its upstream dependency foo.
+      self.assertEqual(
+          {baz_path},
+          loader.get_unused_imports_map_paths(),
+      )
+      _ = loader.import_name("foo")
+      self.assertEqual(
+          {baz_path},
+          loader.get_unused_imports_map_paths(),
+      )
+      _ = loader.import_name("aliased.baz")
+      self.assertEmpty(loader.get_unused_imports_map_paths())
+
   def test_package_relative_import(self):
     with test_utils.Tempdir() as d:
       d.create_file(file_utils.replace_separator("pkg/foo.pyi"), "class X: ...")

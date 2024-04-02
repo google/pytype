@@ -1,8 +1,7 @@
 """Load module type information from the filesystem."""
 
 import logging
-
-from typing import Optional, Tuple
+from typing import Optional, Set, Tuple
 
 from pytype import config
 from pytype import file_utils
@@ -20,6 +19,7 @@ class _PathFinder:
 
   def __init__(self, options: config.Options):
     self.options = options
+    self.accessed_imports_paths: Set[str] = set()
 
   def find_import(self, module_name: str) -> Optional[Tuple[str, bool]]:
     """Search through pythonpath for a module.
@@ -62,6 +62,13 @@ class _PathFinder:
 
   def get_pyi_path(self, path: str) -> Optional[str]:
     """Get a pyi file from path if it exists."""
+    path = self._get_pyi_path_no_access_audit(path)
+    if path is not None:
+      self.accessed_imports_paths.add(path)
+    return path
+
+  def _get_pyi_path_no_access_audit(self, path: str) -> Optional[str]:
+    """Get a pyi file, without recording that it was accessed."""
     if self.options.imports_map is not None:
       if path in self.options.imports_map:
         full_path = self.options.imports_map[path]
@@ -117,3 +124,12 @@ class ModuleLoader(base.ModuleLoader):
                 module_name, module_name, self.options.pythonpath,
                 f"{len(self.options.imports_map)} items" if
                 self.options.imports_map is not None else "none")
+
+  def get_unused_imports_map_paths(self) -> Set[str]:
+    if not self.options.imports_map:
+      return set()
+    return {
+        path
+        for path in self.options.imports_map.values()
+        if path not in self._path_finder.accessed_imports_paths
+    }

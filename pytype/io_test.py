@@ -7,10 +7,12 @@ import textwrap
 import traceback
 
 from pytype import config
+from pytype import file_utils
 from pytype import io
 from pytype.platform_utils import path_utils
 from pytype.platform_utils import tempfile as compatible_tempfile
 from pytype.pytd import pytd
+from pytype.tests import test_utils
 
 import unittest
 
@@ -134,6 +136,40 @@ class IOTest(unittest.TestCase):
     options = config.Options.create(
         output="/dev/null" if sys.platform != "win32" else "NUL")
     io.write_pickle(ast, options)  # just make sure we don't crash
+
+  def test_unused_imports_info_files(self):
+    with test_utils.Tempdir() as d, file_utils.cd(d.path):
+      d.create_file("common/foo.pyi", "from common import bar\nx: bar.Bar")
+      d.create_file("common/bar.pyi", "class Bar: pass")
+      d.create_file("common/baz.pyi", "class Baz: pass")
+      d.create_file("aaa/other.pyi", "class Other: pass")
+      imports_info = d.create_file(
+          "imports_info",
+          textwrap.dedent(
+              """
+              common/foo common/foo.pyi
+              common/bar common/bar.pyi
+              common/baz common/baz.pyi
+              aaa/other aaa/other.pyi
+              """,
+          ),
+      )
+      module = d.create_file("m.py", "from common import foo; print(foo.x)")
+      unused_imports_info_files = path_utils.join(d.path, "unused_imports_info")
+      options = config.Options.create(
+          module,
+          imports_map=imports_info,
+          unused_imports_info_files=unused_imports_info_files,
+      )
+      ret = io.process_one_file(options)
+      self.assertEqual(0, ret)
+      self.assertTrue(
+          path_utils.exists(unused_imports_info_files),
+          f"{unused_imports_info_files} does not exist",
+      )
+      with options.open_function(unused_imports_info_files) as f:
+        content = f.read()
+      self.assertEqual(content, "aaa/other.pyi\ncommon/baz.pyi\n")
 
 
 if __name__ == "__main__":
