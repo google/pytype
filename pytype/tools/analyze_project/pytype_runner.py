@@ -146,12 +146,17 @@ def _module_to_output_path(mod):
 
 
 def escape_ninja_path(path: str):
-  """escape colon, dollar sign, space, and new line, for ninja
-  ( as described in https://ninja-build.org/manual.html#ref_lexer );
-  thus, this function should only ever be used once,
-  called on a path string to turn it into a ninja path string
-  (if you call it on a ninja path string, it will render the variables inert)
-  in order to allow for path strings that contain these four characters"""
+  """Returns the path with special characters escaped.
+
+  Escape colon, dollar sign, space, and new line, for ninja
+  (as described in https://ninja-build.org/manual.html#ref_lexer).
+  This function should only ever be used once, called on a path string to turn
+  it into a ninja path string. (If you call it on a ninja path string, it will
+  render the variables inert.)
+
+  Args:
+    path: The path.
+  """
   new_path = ''
   for ch in path:
     if ch == ':':
