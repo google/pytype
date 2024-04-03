@@ -25,6 +25,7 @@ class ConstKeyDict(base.BaseValue):
   def __repr__(self):
     return f"ConstKeyDict({self.constant!r})"
 
+  @property
   def _attrs(self):
     return (immutabledict.immutabledict(self.constant),)
 
@@ -44,5 +45,6 @@ class Splat(base.BaseValue):
   def __repr__(self):
     return f"splat({self.iterable!r})"
 
+  @property
   def _attrs(self):
     return (self.iterable,)
