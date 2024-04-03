@@ -395,7 +395,7 @@ class ImportPathsTest(_LoaderTest):
           loader.get_unused_imports_map_paths(),
       )
       _ = loader.import_name("aliased.baz")
-      self.assertEmpty(loader.get_unused_imports_map_paths())
+      self.assertFalse(loader.get_unused_imports_map_paths())
 
   def test_package_relative_import(self):
     with test_utils.Tempdir() as d:
