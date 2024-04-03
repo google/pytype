@@ -17,7 +17,7 @@ of pytype.
       * [Third-Party Libraries](#third-party-libraries)
 
 <!-- Created by https://github.com/ekalinin/github-markdown-toc -->
-<!-- Added by: rechen, at: Tue Mar 19 02:50:25 PM PDT 2024 -->
+<!-- Added by: rechen, at: Wed Apr  3 02:22:17 PM PDT 2024 -->
 
 <!--te-->
 
@@ -89,7 +89,7 @@ Feature                                                                         
 [PEP 696 -- Type Defaults for Type Parameters][696]                                     | 3.13    | ❌        | [#1597][type-parameter-defaults]
 [PEP 702 -- Marking deprecations using the type system][702]                            | 3.13    | ❌        |
 [PEP 705 -- TypedDict: Read-only items][705]                                            | 3.13    | ❌        |
-[PEP 742 -- Narrowing types with TypeIs][742]                                           | TBD     | ✅        | open PEP, under consideration
+[PEP 742 -- Narrowing types with TypeIs][742]                                           | 3.13    | ✅        |
 Custom Recursive Types                                                                  | 3.6     | ✅        |
 Generic Type Aliases                                                                    | 3.6     | ✅        |
 Type Annotation Inheritance                                                             | 3.6     | ❌        | [#81][annotation-inheritance]
