@@ -5,7 +5,6 @@ import logging
 from typing import Dict as _Dict, List as _List, Set as _Set
 
 from pytype.rewrite.abstract import base
-from pytype.rewrite.abstract import classes
 
 log = logging.getLogger(__name__)
 
@@ -13,7 +12,7 @@ log = logging.getLogger(__name__)
 _Variable = base.AbstractVariableType
 
 
-class List(classes.PythonConstant[_List[_Variable]]):
+class List(base.PythonConstant[_List[_Variable]]):
   """Representation of a Python list."""
 
   def __init__(self, ctx: base.ContextType, constant: _List[_Variable]):
@@ -27,7 +26,7 @@ class List(classes.PythonConstant[_List[_Variable]]):
     self.constant.append(val)
 
 
-class Dict(classes.PythonConstant[_Dict[_Variable, _Variable]]):
+class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
   """Representation of a Python dict."""
 
   def __init__(
@@ -43,7 +42,7 @@ class Dict(classes.PythonConstant[_Dict[_Variable, _Variable]]):
     self.constant[key] = val
 
 
-class Set(classes.PythonConstant[_Set[_Variable]]):
+class Set(base.PythonConstant[_Set[_Variable]]):
   """Representation of a Python set."""
 
   def __init__(self, ctx: base.ContextType, constant: _Set[_Variable]):

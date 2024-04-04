@@ -31,6 +31,28 @@ class BaseValueTest(test_utils.ContextfulTestBase):
     self.assertEqual(var.name, 'NamedVariable')
 
 
+class PythonConstantTest(test_utils.ContextfulTestBase):
+
+  def test_equal(self):
+    c1 = base.PythonConstant(self.ctx, 'a')
+    c2 = base.PythonConstant(self.ctx, 'a')
+    self.assertEqual(c1, c2)
+
+  def test_not_equal(self):
+    c1 = base.PythonConstant(self.ctx, 'a')
+    c2 = base.PythonConstant(self.ctx, 'b')
+    self.assertNotEqual(c1, c2)
+
+  def test_constant_type(self):
+    c = base.PythonConstant(self.ctx, 'a')
+    assert_type(c.constant, str)
+
+  def test_get_type_from_variable(self):
+    var = base.PythonConstant(self.ctx, True).to_variable()
+    const = var.get_atomic_value(base.PythonConstant[int]).constant
+    assert_type(const, int)
+
+
 class SingletonTest(test_utils.ContextfulTestBase):
 
   def test_duplicate(self):
@@ -42,28 +64,28 @@ class SingletonTest(test_utils.ContextfulTestBase):
 class UnionTest(test_utils.ContextfulTestBase):
 
   def test_basic(self):
-    options = (classes.PythonConstant(self.ctx, True),
-               classes.PythonConstant(self.ctx, False))
+    options = (base.PythonConstant(self.ctx, True),
+               base.PythonConstant(self.ctx, False))
     union = base.Union(self.ctx, options)
     self.assertEqual(union.options, options)
 
   def test_flatten(self):
-    union1 = base.Union(self.ctx, (classes.PythonConstant(self.ctx, True),
-                                   classes.PythonConstant(self.ctx, False)))
-    union2 = base.Union(self.ctx, (union1, classes.PythonConstant(self.ctx, 5)))
-    self.assertEqual(union2.options, (classes.PythonConstant(self.ctx, True),
-                                      classes.PythonConstant(self.ctx, False),
-                                      classes.PythonConstant(self.ctx, 5)))
+    union1 = base.Union(self.ctx, (base.PythonConstant(self.ctx, True),
+                                   base.PythonConstant(self.ctx, False)))
+    union2 = base.Union(self.ctx, (union1, base.PythonConstant(self.ctx, 5)))
+    self.assertEqual(union2.options, (base.PythonConstant(self.ctx, True),
+                                      base.PythonConstant(self.ctx, False),
+                                      base.PythonConstant(self.ctx, 5)))
 
   def test_deduplicate(self):
-    true = classes.PythonConstant(self.ctx, True)
-    false = classes.PythonConstant(self.ctx, False)
+    true = base.PythonConstant(self.ctx, True)
+    false = base.PythonConstant(self.ctx, False)
     union = base.Union(self.ctx, (true, false, true))
     self.assertEqual(union.options, (true, false))
 
   def test_order(self):
-    true = classes.PythonConstant(self.ctx, True)
-    false = classes.PythonConstant(self.ctx, False)
+    true = base.PythonConstant(self.ctx, True)
+    false = base.PythonConstant(self.ctx, False)
     self.assertEqual(base.Union(self.ctx, (true, false)),
                      base.Union(self.ctx, (false, true)))
 

@@ -1,7 +1,6 @@
 from typing import Dict, List
 
 from pytype.rewrite.abstract import base
-from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import instances
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
@@ -15,7 +14,7 @@ _Variable = base.AbstractVariableType
 class ListTest(test_utils.ContextfulTestBase):
 
   def test_constant_type(self):
-    a = classes.PythonConstant(self.ctx, "a").to_variable()
+    a = base.PythonConstant(self.ctx, "a").to_variable()
     c = instances.List(self.ctx, [a])
     assert_type(c.constant, List[_Variable])
 
@@ -23,8 +22,8 @@ class ListTest(test_utils.ContextfulTestBase):
 class DictTest(test_utils.ContextfulTestBase):
 
   def test_constant_type(self):
-    a = classes.PythonConstant(self.ctx, "a").to_variable()
-    b = classes.PythonConstant(self.ctx, "1").to_variable()
+    a = base.PythonConstant(self.ctx, "a").to_variable()
+    b = base.PythonConstant(self.ctx, "1").to_variable()
     c = instances.Dict(self.ctx, {a: b})
     assert_type(c.constant, Dict[_Variable, _Variable])
 

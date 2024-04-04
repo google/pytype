@@ -32,8 +32,7 @@ class FrameTestBase(test_utils.ContextfulTestBase):
                            initial_globals=initial_globals)
 
   def _const_var(self, const, name=None):
-    var = abstract.PythonConstant(self.ctx, const).to_variable()
-    return var.with_name(name)
+    return abstract.PythonConstant(self.ctx, const).to_variable(name)
 
 
 class ShadowedNonlocalsTest(unittest.TestCase):

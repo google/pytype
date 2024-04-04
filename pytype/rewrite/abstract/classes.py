@@ -4,15 +4,13 @@ import abc
 import dataclasses
 import logging
 
-from typing import Dict, Generic, List, Mapping, Optional, Protocol, Sequence, TypeVar
+from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
 import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 
 log = logging.getLogger(__name__)
-
-_T = TypeVar('_T')
 
 
 class _HasMembers(Protocol):
@@ -137,21 +135,6 @@ class BaseInstance(base.BaseValue):
     if isinstance(cls_attribute, functions_lib.SimpleFunction):
       return cls_attribute.bind_to(self)
     return cls_attribute
-
-
-class PythonConstant(base.BaseValue, Generic[_T]):
-  """Representation of a Python constant."""
-
-  def __init__(self, ctx: base.ContextType, constant: _T):
-    super().__init__(ctx)
-    self.constant = constant
-
-  def __repr__(self):
-    return f'PythonConstant({self.constant!r})'
-
-  @property
-  def _attrs(self):
-    return (self.constant,)
 
 
 class MutableInstance(BaseInstance):

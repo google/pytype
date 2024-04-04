@@ -2,7 +2,7 @@
 
 import abc
 import dataclasses
-from typing import Any, Dict, Optional, Protocol, Sequence, Tuple
+from typing import Any, Dict, Generic, Optional, Protocol, Sequence, Tuple, TypeVar
 
 from pytype import config
 from pytype import load_pytd
@@ -11,6 +11,8 @@ from pytype.pytd import pytd
 from pytype.rewrite.flow import variables
 from pytype.types import types
 from typing_extensions import Self
+
+_T = TypeVar('_T')
 
 
 @dataclasses.dataclass(init=False)
@@ -91,6 +93,21 @@ class BaseValue(types.BaseValue, abc.ABC):
 
   def to_pytd_type_of_instance(self) -> pytd.Type:
     return self._ctx.pytd_converter.to_pytd_type_of_instance(self)
+
+
+class PythonConstant(BaseValue, Generic[_T]):
+  """Representation of a Python constant."""
+
+  def __init__(self, ctx: ContextType, constant: _T):
+    super().__init__(ctx)
+    self.constant = constant
+
+  def __repr__(self):
+    return f'PythonConstant({self.constant!r})'
+
+  @property
+  def _attrs(self):
+    return (self.constant,)
 
 
 class Singleton(BaseValue):

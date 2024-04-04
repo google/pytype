@@ -9,6 +9,7 @@ from pytype.rewrite.abstract import utils as _utils
 
 BaseValue = _base.BaseValue
 ContextType = _base.ContextType
+PythonConstant = _base.PythonConstant
 Singleton = _base.Singleton
 Singletons = _base.Singletons
 Union = _base.Union
@@ -18,7 +19,6 @@ BaseInstance = _classes.BaseInstance
 FrozenInstance = _classes.FrozenInstance
 InterpreterClass = _classes.InterpreterClass
 MutableInstance = _classes.MutableInstance
-PythonConstant = _classes.PythonConstant
 
 Args = _functions.Args
 BaseFunction = _functions.BaseFunction
