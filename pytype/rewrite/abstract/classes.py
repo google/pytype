@@ -139,12 +139,11 @@ class BaseInstance(base.BaseValue):
     return cls_attribute
 
 
-class PythonConstant(BaseInstance, Generic[_T]):
+class PythonConstant(base.BaseValue, Generic[_T]):
   """Representation of a Python constant."""
 
   def __init__(self, ctx: base.ContextType, constant: _T):
-    cls = ctx.abstract_loader.raw_type_to_value(type(constant))
-    super().__init__(ctx, cls, {})
+    super().__init__(ctx)
     self.constant = constant
 
   def __repr__(self):
@@ -153,10 +152,6 @@ class PythonConstant(BaseInstance, Generic[_T]):
   @property
   def _attrs(self):
     return (self.constant,)
-
-  def set_attribute(self, name: str, value: base.BaseValue) -> None:
-    # TODO(b/241479600): Log an error.
-    raise NotImplementedError('Cannot set attribute on a constant')
 
 
 class MutableInstance(BaseInstance):

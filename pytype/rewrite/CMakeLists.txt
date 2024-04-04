@@ -105,6 +105,7 @@ py_library(
     load_abstract.py
   DEPS
     pytype.load_pytd
+    pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
     pytype.rewrite.overlays.overlays
 )
@@ -115,6 +116,7 @@ py_test(
   SRCS
     load_abstract_test.py
   DEPS
+    pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )
 

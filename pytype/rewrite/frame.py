@@ -202,10 +202,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     return self._initial_enclosing[name].with_name(name)
 
   def load_global(self, name) -> _AbstractVariable:
-    if (self._is_module_frame or
-        self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL)):
+    if self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL):
       return self._current_state.load_local(name)
-    return self._initial_globals[name].with_name(name)
+    try:
+      if self._is_module_frame:
+        return self._current_state.load_local(name)
+      else:
+        return self._initial_globals[name].with_name(name)
+    except KeyError:
+      builtin = self._ctx.abstract_loader.load_builtin_by_name(name)
+      return builtin.to_variable(name)
 
   def load_deref(self, name) -> _AbstractVariable:
     # When a name from a parent frame is referenced in a child frame, we make a

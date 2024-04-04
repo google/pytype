@@ -68,8 +68,9 @@ class BaseValue(types.BaseValue, abc.ABC):
   def __hash__(self):
     return hash((self.__class__, self._ctx) + self._attrs)
 
-  def to_variable(self: Self) -> variables.Variable[Self]:
-    return variables.Variable.from_value(self)
+  def to_variable(
+      self: Self, name: Optional[str] = None) -> variables.Variable[Self]:
+    return variables.Variable.from_value(self, name=name)
 
   def get_attribute(self, name: str) -> Optional['BaseValue']:
     del name  # unused

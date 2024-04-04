@@ -7,23 +7,28 @@ from typing_extensions import assert_type
 import unittest
 
 
+class FakeValue(base.BaseValue):
+
+  def __repr__(self):
+    return 'FakeValue'
+
+  @property
+  def _attrs(self):
+    return (id(self),)
+
+
 class BaseValueTest(test_utils.ContextfulTestBase):
 
   def test_to_variable(self):
+    v = FakeValue(self.ctx)
+    var = v.to_variable()
+    assert_type(var, variables.Variable[FakeValue])
+    self.assertEqual(var.get_atomic_value(), v)
+    self.assertIsNone(var.name)
 
-    class C(base.BaseValue):
-
-      def __repr__(self):
-        return 'C'
-
-      @property
-      def _attrs(self):
-        return (id(self),)
-
-    c = C(self.ctx)
-    var = c.to_variable()
-    assert_type(var, variables.Variable[C])
-    self.assertEqual(var.get_atomic_value(), c)
+  def test_name(self):
+    var = FakeValue(self.ctx).to_variable('NamedVariable')
+    self.assertEqual(var.name, 'NamedVariable')
 
 
 class SingletonTest(test_utils.ContextfulTestBase):
