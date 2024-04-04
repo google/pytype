@@ -3,25 +3,40 @@
 from pytype.rewrite.abstract import base as _base
 from pytype.rewrite.abstract import classes as _classes
 from pytype.rewrite.abstract import functions as _functions
+from pytype.rewrite.abstract import instances as _instances
+from pytype.rewrite.abstract import internal as _internal
 from pytype.rewrite.abstract import utils as _utils
 
 BaseValue = _base.BaseValue
-PythonConstant = _base.PythonConstant
+ContextType = _base.ContextType
+Singleton = _base.Singleton
+Singletons = _base.Singletons
 Union = _base.Union
-ANY = _base.ANY
-NULL = _base.NULL
 
-BaseClass = _classes.BaseClass
+SimpleClass = _classes.SimpleClass
 BaseInstance = _classes.BaseInstance
 FrozenInstance = _classes.FrozenInstance
 InterpreterClass = _classes.InterpreterClass
 MutableInstance = _classes.MutableInstance
-BUILD_CLASS = _classes.BUILD_CLASS
+PythonConstant = _classes.PythonConstant
 
 Args = _functions.Args
 BaseFunction = _functions.BaseFunction
 BoundFunction = _functions.BoundFunction
+FrameType = _functions.FrameType
 InterpreterFunction = _functions.InterpreterFunction
+MappedArgs = _functions.MappedArgs
+PytdFunction = _functions.PytdFunction
+Signature = _functions.Signature
+SimpleFunction = _functions.SimpleFunction
+SimpleReturn = _functions.SimpleReturn
+
+Dict = _instances.Dict
+List = _instances.List
+Set = _instances.Set
+
+ConstKeyDict = _internal.ConstKeyDict
+Splat = _internal.Splat
 
 get_atomic_constant = _utils.get_atomic_constant
 join_values = _utils.join_values

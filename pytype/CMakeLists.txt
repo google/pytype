@@ -531,9 +531,11 @@ py_test(
     io_test.py
   DEPS
     .config
+    .file_utils
     .io
     pytype.platform_utils.platform_utils
     pytype.pytd.pytd
+    pytype.tests.test_utils
 )
 
 py_test(

@@ -2,11 +2,12 @@
 
 import enum
 import logging
-from typing import FrozenSet, List, Mapping, Optional, Sequence, Set
+from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
 import immutabledict
 from pycnite import marshal as pyc_marshal
 from pytype.blocks import blocks
+from pytype.rewrite import context
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import conditions
@@ -69,6 +70,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def __init__(
       self,
+      ctx: context.Context,
       name: str,
       code: blocks.OrderedCode,
       *,
@@ -78,6 +80,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       f_back: Optional['Frame'] = None,
   ):
     super().__init__(code, initial_locals)
+    self._ctx = ctx
     self.name = name  # name of the frame
     # Final values of locals, unwrapped from variables
     self.final_locals: Mapping[str, abstract.BaseValue] = None
@@ -106,10 +109,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   @classmethod
   def make_module_frame(
       cls,
+      ctx: context.Context,
       code: blocks.OrderedCode,
       initial_globals: _VarMap,
   ) -> 'Frame':
     return cls(
+        ctx=ctx,
         name='__main__',
         code=code,
         initial_locals=initial_globals,
@@ -129,6 +134,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   @property
   def _is_module_frame(self) -> bool:
     return self.name == '__main__'
+
+  @property
+  def stack(self) -> Sequence['Frame']:
+    return (self._f_back.stack if self._f_back else []) + [self]
 
   def run(self) -> None:
     log.info('Running frame: %s', self.name)
@@ -150,7 +159,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # cannot be used to modify finalized locals.
     self._current_state = None
     self.final_locals = immutabledict.immutabledict({
-        name: abstract.join_values(var.values)
+        name: abstract.join_values(self._ctx, var.values)
         for name, var in self._final_locals.items()})
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
@@ -234,6 +243,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
         initial_globals[name] = current_locals[name]
     return Frame(
+        ctx=self._ctx,
         name=func.name,
         code=func.code,
         initial_locals=initial_locals,
@@ -244,7 +254,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def get_return_value(self) -> abstract.BaseValue:
     values = sum((ret.values for ret in self._returns), ())
-    return abstract.join_values(values)
+    return abstract.join_values(self._ctx, values)
 
   def _merge_nonlocals_into(self, frame: Optional['Frame']) -> None:
     # Perform any STORE_ATTR operations recorded in locals.
@@ -266,7 +276,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       else:
         store_on_target = True
       if store_on_target:
-        value = abstract.join_values(var.values)
+        value = abstract.join_values(self._ctx, var.values)
         for target in target_var.values:
           log.info('Storing attribute on %r: %s -> %r',
                    target, attr_name, value)
@@ -290,16 +300,17 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   ) -> None:
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, (abstract.InterpreterFunction,
+      if isinstance(func, (abstract.SimpleFunction,
                            abstract.InterpreterClass,
                            abstract.BoundFunction)):
-        frame = func.call(args)
-        ret_values.append(frame.get_return_value())
-      elif func is abstract.BUILD_CLASS:
+        ret = func.call(args)
+        ret_values.append(ret.get_return_value())
+      elif func is self._ctx.singles.__build_class__:
         class_body, name = args.posargs
         builder = class_body.get_atomic_value(_FrameFunction)
         frame = builder.call(abstract.Args(frame=self))
         cls = abstract.InterpreterClass(
+            ctx=self._ctx,
             name=abstract.get_atomic_constant(name, str),
             members=dict(frame.final_locals),
             functions=frame.functions,
@@ -345,7 +356,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     del opcode  # unused
 
   def byte_LOAD_CONST(self, opcode):
-    constant = abstract.PythonConstant(self._code.consts[opcode.arg])
+    constant = abstract.PythonConstant(self._ctx, self._code.consts[opcode.arg])
     self._stack.push(constant.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
@@ -386,17 +397,19 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
-    func = abstract.InterpreterFunction(name, code, enclosing_scope, self)
-    if not (self._stack and
-            self._stack.top().has_atomic_value(abstract.BUILD_CLASS)):
-      # BUILD_CLASS makes and immediately calls a function that creates the
+    func = abstract.InterpreterFunction(
+        self._ctx, name, code, enclosing_scope, self)
+    if not (
+        self._stack and
+        self._stack.top().has_atomic_value(self._ctx.singles.__build_class__)):
+      # Class building makes and immediately calls a function that creates the
       # class body; we don't need to store this function for later analysis.
       self._functions.append(func)
     self._stack.push(func.to_variable())
 
   def byte_PUSH_NULL(self, opcode):
     del opcode  # unused
-    self._stack.push(abstract.NULL.to_variable())
+    self._stack.push(self._ctx.singles.NULL.to_variable())
 
   def byte_LOAD_NAME(self, opcode):
     name = opcode.argval
@@ -419,6 +432,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(self.load_deref(name))
 
   def byte_LOAD_GLOBAL(self, opcode):
+    if self._code.python_version >= (3, 11) and opcode.arg & 1:
+      # Compiler-generated marker that will be consumed in byte_CALL
+      # We are loading a global and calling it as a function.
+      self._stack.push(self._ctx.singles.NULL.to_variable())
     name = opcode.argval
     self._stack.push(self.load_global(name))
 
@@ -434,7 +451,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
-    self._stack.push(abstract.NULL.to_variable())
+    self._stack.push(self._ctx.singles.NULL.to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
 
   def byte_PRECALL(self, opcode):
@@ -442,7 +459,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
-    if not sentinel.has_atomic_value(abstract.NULL):
+    if not sentinel.has_atomic_value(self._ctx.singles.NULL):
       raise NotImplementedError('CALL not fully implemented')
     func_var, *args = rest
     self._call_function(func_var, abstract.Args(posargs=args, frame=self))
@@ -459,10 +476,6 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.pop_and_discard()
     self._call_function(func_var, abstract.Args(posargs=args, frame=self))
 
-  def byte_POP_TOP(self, opcode):
-    del opcode  # unused
-    self._stack.pop_and_discard()
-
   # Pytype tracks variables in enclosing scopes by name rather than emulating
   # the runtime's approach with cells and freevars, so we can ignore the opcodes
   # that deal with the latter.
@@ -472,13 +485,82 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_COPY_FREE_VARS(self, opcode):
     del opcode  # unused
 
-  def byte_BUILD_TUPLE(self, opcode):
+  def byte_LOAD_BUILD_CLASS(self, opcode):
+    self._stack.push(self._ctx.singles.__build_class__.to_variable())
+
+  # ---------------------------------------------------------------
+  # Build and extend collections
+
+  def _build_collection_from_stack(
+      self, opcode,
+      typ: Type[Any],
+      factory: Type[abstract.PythonConstant] = abstract.PythonConstant
+  ) -> None:
+    """Pop elements off the stack and build a python constant."""
     count = opcode.arg
     elements = self._stack.popn(count)
-    self._stack.push(abstract.PythonConstant(tuple(elements)).to_variable())
+    constant = factory(self._ctx, typ(elements))
+    self._stack.push(constant.to_variable())
 
-  def byte_LOAD_BUILD_CLASS(self, opcode):
-    self._stack.push(abstract.BUILD_CLASS.to_variable())
+  def byte_BUILD_TUPLE(self, opcode):
+    self._build_collection_from_stack(opcode, tuple)
+
+  def byte_BUILD_LIST(self, opcode):
+    self._build_collection_from_stack(opcode, list, factory=abstract.List)
+
+  def byte_BUILD_SET(self, opcode):
+    self._build_collection_from_stack(opcode, set, factory=abstract.Set)
+
+  def byte_BUILD_MAP(self, opcode):
+    n_elts = opcode.arg
+    args = self._stack.popn(2 * n_elts)
+    ret = {args[2 * i]: args[2 * i + 1] for i in range(n_elts)}
+    ret = abstract.Dict(self._ctx, ret)
+    self._stack.push(ret.to_variable())
+
+  def byte_BUILD_CONST_KEY_MAP(self, opcode):
+    n_elts = opcode.arg
+    keys = self._stack.pop()
+    # Note that `keys` is a tuple of raw python values; we do not convert them
+    # to abstract objects because they are used internally to construct function
+    # call args.
+    keys = abstract.get_atomic_constant(keys, tuple)
+    assert len(keys) == n_elts
+    vals = self._stack.popn(n_elts)
+    ret = dict(zip(keys, vals))
+    ret = abstract.ConstKeyDict(self._ctx, ret)
+    self._stack.push(ret.to_variable())
+
+  def byte_LIST_APPEND(self, opcode):
+    # Used by the compiler e.g. for [x for x in ...]
+    count = opcode.arg
+    val = self._stack.pop()
+    # LIST_APPEND peeks back `count` elements in the stack and modifies the list
+    # stored there.
+    target_var = self._stack.peek(count)
+    # We should only have one binding; the target is generated by the compiler.
+    target = target_var.get_atomic_value()
+    target.append(val)
+
+  def byte_SET_ADD(self, opcode):
+    # Used by the compiler e.g. for {x for x in ...}
+    count = opcode.arg
+    val = self._stack.pop()
+    target_var = self._stack.peek(count)
+    target = target_var.get_atomic_value()
+    target.add(val)
+
+  def byte_MAP_ADD(self, opcode):
+    # Used by the compiler e.g. for {x, y for x, y in ...}
+    count = opcode.arg
+    # The value is at the top of the stack, followed by the key.
+    key, val = self._stack.popn(2)
+    target_var = self._stack.peek(count)
+    target = target_var.get_atomic_value()
+    target.setitem(key, val)
+
+  # ---------------------------------------------------------------
+  # Branches and jumps
 
   def byte_POP_JUMP_FORWARD_IF_FALSE(self, opcode):
     self._pop_jump_if_false(opcode)
@@ -488,3 +570,35 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_JUMP_FORWARD(self, opcode):
     self._merge_state_into(self._current_state, opcode.argval)
+
+  # ---------------------------------------------------------------
+  # Stack manipulation
+
+  def byte_POP_TOP(self, opcode):
+    del opcode  # unused
+    self._stack.pop_and_discard()
+
+  def byte_DUP_TOP(self, opcode):
+    del opcode  # unused
+    self._stack.push(self._stack.top())
+
+  def byte_DUP_TOP_TWO(self, opcode):
+    del opcode  # unused
+    a, b = self._stack.popn(2)
+    for v in (a, b, a, b):
+      self._stack.push(v)
+
+  def byte_ROT_TWO(self, opcode):
+    del opcode  # unused
+    self._stack.rotn(2)
+
+  def byte_ROT_THREE(self, opcode):
+    del opcode  # unused
+    self._stack.rotn(3)
+
+  def byte_ROT_FOUR(self, opcode):
+    del opcode  # unused
+    self._stack.rotn(4)
+
+  def byte_ROT_N(self, opcode):
+    self._stack.rotn(opcode.arg)

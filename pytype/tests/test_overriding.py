@@ -530,6 +530,31 @@ class OverridingTest(test_base.BaseTest):
         pass
     """)
 
+  def test_multiple_inheritance_signature_order(self):
+    self.Check("""
+      class Base:
+        def f(self):
+          pass
+      class Parent1(Base):
+        pass
+      class Parent2(Base):
+        def f(self, a=None):
+          pass
+      class Child(Parent1, Parent2):
+        pass
+    """)
+
+  def test_multiple_inheritance_override_dunder_method(self):
+    self.Check("""
+      class Parent1:
+        pass
+      class Parent2:
+        def __eq__(self, other, extra=None):
+          return False
+      class Child(Parent1, Parent2):
+        pass
+    """)
+
   def test_generic_type_match(self):
     self.Check("""
       from typing import Callable, Sequence

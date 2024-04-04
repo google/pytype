@@ -788,11 +788,8 @@ class PyTDSignature(utils.ContextWeakrefMixin):
               log.info("Mutating %s to %s",
                        tparam.name,
                        pytd_utils.Print(type_actual))
-              type_actual_val = self.ctx.convert.constant_to_var(
-                  abstract_utils.AsInstance(type_actual),
-                  subst,
-                  node,
-                  discard_concrete_values=True)
+              type_actual_val = self.ctx.convert.pytd_cls_to_instance_var(
+                  type_actual, subst, node, discard_concrete_values=True)
               mutations.append(
                   function.Mutation(arg, tparam.full_name, type_actual_val))
     if self.name == "__new__":

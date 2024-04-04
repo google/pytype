@@ -251,7 +251,7 @@ class AnnotationContainer(AnnotationClass):
         if i in ellipses:
           printed_params.append("...")
         else:
-          typ = param.to_pytd_instance(node)
+          typ = param.to_pytd_type_of_instance(node)
           annot, typing_imports = pytd_utils.MakeTypeAnnotation(typ)
           printed_params.append(annot)
           added_typing_imports.update(typing_imports)

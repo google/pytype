@@ -46,9 +46,9 @@ class IsInstanceTest(AbstractTestBase):
     super().setUp()
     self._is_instance = special_builtins.IsInstance.make(self._ctx)
     # Easier access to some primitive instances.
-    self._bool = self._ctx.convert.primitive_class_instances[bool]
-    self._int = self._ctx.convert.primitive_class_instances[int]
-    self._str = self._ctx.convert.primitive_class_instances[str]
+    self._bool = self._ctx.convert.primitive_instances[bool]
+    self._int = self._ctx.convert.primitive_instances[int]
+    self._str = self._ctx.convert.primitive_instances[str]
     # Values that represent primitive classes.
     self._obj_class = self._ctx.convert.primitive_classes[object]
     self._int_class = self._ctx.convert.primitive_classes[int]
@@ -234,7 +234,7 @@ class PyTDTest(AbstractTestBase):
                                       self._ctx.root_node))
     param_binding = instance.get_instance_type_parameter(
         abstract_utils.T).AddBinding(
-            self._ctx.convert.primitive_class_instances[int], [],
+            self._ctx.convert.primitive_instances[int], [],
             self._ctx.root_node)
     view = {
         instance.get_instance_type_parameter(abstract_utils.T): param_binding}
@@ -245,8 +245,8 @@ class PyTDTest(AbstractTestBase):
 
   def test_to_pytd_type_with_view2(self):
     # to_pytd_type(<tuple (int or str,)>, view={0: str})
-    param1 = self._ctx.convert.primitive_class_instances[int]
-    param2 = self._ctx.convert.primitive_class_instances[str]
+    param1 = self._ctx.convert.primitive_instances[int]
+    param2 = self._ctx.convert.primitive_instances[str]
     param_var = param1.to_variable(self._ctx.root_node)
     str_binding = param_var.AddBinding(param2, [], self._ctx.root_node)
     instance = self._ctx.convert.tuple_to_value((param_var,))
@@ -266,7 +266,7 @@ class PyTDTest(AbstractTestBase):
     container = abstract.AnnotationContainer("List", self._ctx, cls)
     expected = pytd.GenericType(pytd.NamedType("builtins.list"),
                                 (pytd.AnythingType(),))
-    actual = container.to_pytd_instance(self._ctx.root_node)
+    actual = container.to_pytd_type_of_instance(self._ctx.root_node)
     self.assertEqual(expected, actual)
 
 
@@ -299,7 +299,7 @@ class FunctionTest(AbstractTestBase):
   def test_call_with_bad_arg(self):
     f = self._make_pytd_function(
         (self._ctx.loader.lookup_pytd("builtins", "str"),))
-    arg = self._ctx.convert.primitive_class_instances[int].to_variable(
+    arg = self._ctx.convert.primitive_instances[int].to_variable(
         self._ctx.root_node)
     self.assertRaises(
         error_types.WrongArgTypes, self._call_pytd_function, f, (arg,))
@@ -307,7 +307,7 @@ class FunctionTest(AbstractTestBase):
   def test_simple_call(self):
     f = self._make_pytd_function(
         (self._ctx.loader.lookup_pytd("builtins", "str"),))
-    arg = self._ctx.convert.primitive_class_instances[str].to_variable(
+    arg = self._ctx.convert.primitive_instances[str].to_variable(
         self._ctx.root_node)
     node, ret = self._call_pytd_function(f, (arg,))
     self.assertIs(node, self._ctx.root_node)
@@ -318,9 +318,9 @@ class FunctionTest(AbstractTestBase):
     f = self._make_pytd_function(
         (self._ctx.loader.lookup_pytd("builtins", "str"),))
     arg = self._ctx.program.NewVariable()
-    arg.AddBinding(self._ctx.convert.primitive_class_instances[str], [],
+    arg.AddBinding(self._ctx.convert.primitive_instances[str], [],
                    self._ctx.root_node)
-    arg.AddBinding(self._ctx.convert.primitive_class_instances[int], [],
+    arg.AddBinding(self._ctx.convert.primitive_instances[int], [],
                    self._ctx.root_node)
     node, ret = self._call_pytd_function(f, (arg,))
     self.assertIs(node, self._ctx.root_node)
@@ -331,7 +331,7 @@ class FunctionTest(AbstractTestBase):
     f = self._make_pytd_function(
         (self._ctx.loader.lookup_pytd("builtins", "str"),))
     node = self._ctx.root_node.ConnectNew()
-    arg = self._ctx.convert.primitive_class_instances[str].to_variable(node)
+    arg = self._ctx.convert.primitive_instances[str].to_variable(node)
     node, ret = self._call_pytd_function(f, (arg,))
     self.assertIs(node, self._ctx.root_node)
     self.assertFalse(ret.bindings)
@@ -534,7 +534,7 @@ class FunctionTest(AbstractTestBase):
         annotations={},
     )
     # f(1, 2, y=3, z=4)
-    int_inst = self._ctx.convert.primitive_class_instances[int]
+    int_inst = self._ctx.convert.primitive_instances[int]
     int_binding = int_inst.to_binding(self._node)
     arg_dict = {
         "x": int_binding, "_1": int_binding, "y": int_binding, "z": int_binding}
@@ -751,9 +751,9 @@ class SimpleFunctionTest(AbstractTestBase):
   def test_call_with_multiple_arg_bindings(self):
     f = self._simple_sig([self._ctx.convert.str_type])
     arg = self._ctx.program.NewVariable()
-    arg.AddBinding(self._ctx.convert.primitive_class_instances[str], [],
+    arg.AddBinding(self._ctx.convert.primitive_instances[str], [],
                    self._ctx.root_node)
-    arg.AddBinding(self._ctx.convert.primitive_class_instances[int], [],
+    arg.AddBinding(self._ctx.convert.primitive_instances[int], [],
                    self._ctx.root_node)
     args = function.Args((arg,))
     node, ret = f.call(self._ctx.root_node, f, args)
@@ -790,9 +790,9 @@ class SimpleFunctionTest(AbstractTestBase):
     f = self._make_func(
         varargs_name="arg", annotations={"arg": self._ctx.convert.str_type})
     arg = self._ctx.program.NewVariable()
-    arg.AddBinding(self._ctx.convert.primitive_class_instances[str], [],
+    arg.AddBinding(self._ctx.convert.primitive_instances[str], [],
                    self._ctx.root_node)
-    arg.AddBinding(self._ctx.convert.primitive_class_instances[int], [],
+    arg.AddBinding(self._ctx.convert.primitive_instances[int], [],
                    self._ctx.root_node)
     starargs = self._ctx.convert.build_tuple(self._ctx.root_node, (arg,))
     args = function.Args(posargs=(), starargs=starargs)
@@ -872,7 +872,7 @@ class SimpleFunctionTest(AbstractTestBase):
         })
     posargs = (self._ctx.convert.build_string(self._ctx.root_node, "1"),
                self._ctx.convert.build_int(self._ctx.root_node))
-    float_inst = self._ctx.convert.primitive_class_instances[float]
+    float_inst = self._ctx.convert.primitive_instances[float]
     stararg = self._ctx.convert.build_tuple(
         self._ctx.root_node, (float_inst.to_variable(self._ctx.root_node),))
     namedargs = {}

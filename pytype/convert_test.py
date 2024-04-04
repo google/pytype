@@ -75,7 +75,7 @@ class ConvertTest(test_base.UnitTest):
 
   def test_convert_long(self):
     val = self._ctx.convert.constant_to_value(2**64, {}, self._ctx.root_node)
-    self.assertIs(val, self._ctx.convert.primitive_class_instances[int])
+    self.assertIs(val, self._ctx.convert.primitive_instances[int])
 
   def test_heterogeneous_tuple(self):
     ast = self._load_ast("a", """
@@ -97,13 +97,13 @@ class ConvertTest(test_base.UnitTest):
                             ], self._ctx))])
     self.assertIsInstance(instance, abstract.Tuple)
     self.assertListEqual([v.data for v in instance.pyval],
-                         [[self._ctx.convert.primitive_class_instances[str]],
-                          [self._ctx.convert.primitive_class_instances[int]]])
+                         [[self._ctx.convert.primitive_instances[str]],
+                          [self._ctx.convert.primitive_instances[int]]])
     # The order of option elements in Union is random
     self.assertCountEqual(
         instance.get_instance_type_parameter(abstract_utils.T).data, [
-            self._ctx.convert.primitive_class_instances[str],
-            self._ctx.convert.primitive_class_instances[int]
+            self._ctx.convert.primitive_instances[str],
+            self._ctx.convert.primitive_instances[int]
         ])
 
   def test_build_bool(self):
@@ -111,7 +111,7 @@ class ConvertTest(test_base.UnitTest):
     t_bool = self._ctx.convert.build_bool(self._ctx.root_node, True)
     f_bool = self._ctx.convert.build_bool(self._ctx.root_node, False)
     self.assertEqual(any_bool.data,
-                     [self._ctx.convert.primitive_class_instances[bool]])
+                     [self._ctx.convert.primitive_instances[bool]])
     self.assertEqual(t_bool.data, [self._ctx.convert.true])
     self.assertEqual(f_bool.data, [self._ctx.convert.false])
 
@@ -145,11 +145,11 @@ class ConvertTest(test_base.UnitTest):
         [(name, set(var.data))
          for name, var in instance.instance_type_parameters.items()],
         [(abstract_utils.full_type_name(instance, abstract_utils.ARGS), {
-            self._ctx.convert.primitive_class_instances[int],
-            self._ctx.convert.primitive_class_instances[bool]
+            self._ctx.convert.primitive_instances[int],
+            self._ctx.convert.primitive_instances[bool]
         }),
          (abstract_utils.full_type_name(instance, abstract_utils.RET),
-          {self._ctx.convert.primitive_class_instances[str]})])
+          {self._ctx.convert.primitive_instances[str]})])
 
   def test_callable_no_args(self):
     ast = self._load_ast("a", """
@@ -188,7 +188,7 @@ class ConvertTest(test_base.UnitTest):
         [(abstract_utils.full_type_name(
             instance, abstract_utils.ARGS), [self._ctx.convert.unsolvable]),
          (abstract_utils.full_type_name(instance, abstract_utils.RET),
-          [self._ctx.convert.primitive_class_instances[int]])])
+          [self._ctx.convert.primitive_instances[int]])])
 
   def test_function_with_starargs(self):
     ast = self._load_ast("a", """
@@ -198,7 +198,7 @@ class ConvertTest(test_base.UnitTest):
         ast.Lookup("a.f"), {}, self._ctx.root_node)
     sig, = f.signatures
     annot = sig.signature.annotations["args"]
-    self.assertEqual(pytd_utils.Print(annot.to_pytd_instance()),
+    self.assertEqual(pytd_utils.Print(annot.to_pytd_type_of_instance()),
                      "Tuple[int, ...]")
 
   def test_function_with_starstarargs(self):
@@ -209,7 +209,7 @@ class ConvertTest(test_base.UnitTest):
         ast.Lookup("a.f"), {}, self._ctx.root_node)
     sig, = f.signatures
     annot = sig.signature.annotations["kwargs"]
-    self.assertEqual(pytd_utils.Print(annot.to_pytd_instance()),
+    self.assertEqual(pytd_utils.Print(annot.to_pytd_type_of_instance()),
                      "Dict[str, int]")
 
   def test_mro(self):
@@ -231,12 +231,12 @@ class ConvertTest(test_base.UnitTest):
     x = ast.Lookup("a.x").type
     tup = self._ctx.convert.constant_to_value(x, {}, self._ctx.root_node)
     widened_tup = self._ctx.convert.widen_type(tup)
-    self.assertEqual(pytd_utils.Print(widened_tup.to_pytd_instance()),
+    self.assertEqual(pytd_utils.Print(widened_tup.to_pytd_type_of_instance()),
                      "Iterable[int]")
     y = ast.Lookup("a.y").type
     dct = self._ctx.convert.constant_to_value(y, {}, self._ctx.root_node)
     widened_dct = self._ctx.convert.widen_type(dct)
-    self.assertEqual(pytd_utils.Print(widened_dct.to_pytd_instance()),
+    self.assertEqual(pytd_utils.Print(widened_dct.to_pytd_type_of_instance()),
                      "Mapping[str, int]")
 
   def test_abstract_method_round_trip(self):
@@ -325,7 +325,7 @@ class ConvertTest(test_base.UnitTest):
     pyval = ast.Lookup("a.X").Lookup("v").type
     v = self._ctx.convert.constant_to_value(
         abstract_utils.AsInstance(pyval), {}, self._ctx.root_node)
-    self.assertEqual(v, self._ctx.convert.primitive_class_instances[int])
+    self.assertEqual(v, self._ctx.convert.primitive_instances[int])
 
   def test_constant_name(self):
     # Test that we create a string name without crashing.

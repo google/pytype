@@ -1,6 +1,6 @@
 from typing import Sequence
 
-from pytype.rewrite.abstract import base
+from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
@@ -10,9 +10,11 @@ import unittest
 
 class FakeFrame:
 
-  def __init__(self):
+  def __init__(self, ctx):
+    self.ctx = ctx
     self.child_frames = []
     self.final_locals = {}
+    self.stack = [self]
 
   def make_child_frame(self, func, initial_locals):
     self.child_frames.append((func, initial_locals))
@@ -22,7 +24,7 @@ class FakeFrame:
     pass
 
   def get_return_value(self):
-    return base.ANY
+    return self.ctx.singles.Any
 
 
 def _get_const(src: str):
@@ -30,30 +32,52 @@ def _get_const(src: str):
   return module_code.consts[0]
 
 
-class SignatureTest(unittest.TestCase):
+class SignatureTest(test_utils.PytdTestBase,
+                    test_utils.ContextfulTestBase):
+
+  def from_pytd(self, pytd_string):
+    pytd_sig, = self.build_pytd(pytd_string).signatures
+    return functions.Signature.from_pytd(self.ctx, 'f', pytd_sig)
 
   def test_from_code(self):
     func_code = _get_const("""
       def f(x, /, *args, y, **kwargs):
         pass
     """)
-    signature = functions.Signature.from_code('f', func_code)
-    self.assertEqual(repr(signature), 'def f(x, /, *args, y, **kwargs)')
+    signature = functions.Signature.from_code(self.ctx, 'f', func_code)
+    self.assertEqual(repr(signature), 'def f(x, /, *args, y, **kwargs) -> Any')
 
   def test_map_args(self):
-    signature = functions.Signature('f', ('x', 'y'))
-    x = base.PythonConstant('x').to_variable()
-    y = base.PythonConstant('y').to_variable()
+    signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
+    x = classes.PythonConstant(self.ctx, 'x').to_variable()
+    y = classes.PythonConstant(self.ctx, 'y').to_variable()
     args = signature.map_args(functions.Args([x, y]))
     self.assertEqual(args.argdict, {'x': x, 'y': y})
 
   def test_fake_args(self):
-    signature = functions.Signature('f', ('x', 'y'))
+    signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
     args = signature.make_fake_args()
     self.assertEqual(set(args.argdict), {'x', 'y'})
 
+  def test_from_pytd_basic(self):
+    sig = self.from_pytd('def f(): ...')
+    self.assertEqual(repr(sig), 'def f() -> Any')
 
-class InterpreterFunctionTest(unittest.TestCase):
+  def test_from_pytd_with_annotations(self):
+    sig = self.from_pytd('def f(x: int) -> str: ...')
+    self.assertEqual(repr(sig), 'def f(x: int) -> str')
+
+  def test_from_pytd_with_defaults(self):
+    sig = self.from_pytd('def f(x=0, y=...) -> str: ...')
+    self.assertEqual(repr(sig), 'def f(x: int = ..., y: Any = ...) -> str')
+
+  def test_from_pytd_with_special_args(self):
+    sig = self.from_pytd('def f(x, /, *args, y, **kwargs): ...')
+    self.assertEqual(
+        repr(sig), 'def f(x: Any, /, *args: tuple, y, **kwargs: dict) -> Any')
+
+
+class InterpreterFunctionTest(test_utils.ContextfulTestBase):
 
   def test_init(self):
     func_code = _get_const("""
@@ -61,25 +85,27 @@ class InterpreterFunctionTest(unittest.TestCase):
         pass
     """)
     f = functions.InterpreterFunction(
-        name='f', code=func_code, enclosing_scope=(),
-        parent_frame=FakeFrame())
+        ctx=self.ctx, name='f', code=func_code, enclosing_scope=(),
+        parent_frame=FakeFrame(self.ctx))
     self.assertEqual(len(f.signatures), 1)
-    self.assertEqual(repr(f.signatures[0]), 'def f(x, /, *args, y, **kwargs)')
+    self.assertEqual(repr(f.signatures[0]),
+                     'def f(x, /, *args, y, **kwargs) -> Any')
 
   def test_map_args(self):
     func_code = _get_const('def f(x): ...')
     f = functions.InterpreterFunction(
-        name='f', code=func_code, enclosing_scope=(), parent_frame=FakeFrame())
-    x = base.PythonConstant(0).to_variable()
+        ctx=self.ctx, name='f', code=func_code, enclosing_scope=(),
+        parent_frame=FakeFrame(self.ctx))
+    x = classes.PythonConstant(self.ctx, 0).to_variable()
     mapped_args = f.map_args(functions.Args(posargs=(x,)))
     self.assertEqual(mapped_args.signature, f.signatures[0])
     self.assertEqual(mapped_args.argdict, {'x': x})
 
   def test_call_with_mapped_args(self):
     f = functions.InterpreterFunction(
-        name='f', code=_get_const('def f(x): ...'), enclosing_scope=(),
-        parent_frame=FakeFrame())
-    x = base.PythonConstant(0).to_variable()
+        ctx=self.ctx, name='f', code=_get_const('def f(x): ...'),
+        enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
+    x = classes.PythonConstant(self.ctx, 0).to_variable()
     mapped_args = functions.MappedArgs(f.signatures[0], {'x': x})
     frame = f.call_with_mapped_args(mapped_args)
     assert_type(frame, FakeFrame)
@@ -87,29 +113,29 @@ class InterpreterFunctionTest(unittest.TestCase):
 
   def test_call(self):
     f = functions.InterpreterFunction(
-        name='f', code=_get_const('def f(): ...'), enclosing_scope=(),
-        parent_frame=FakeFrame())
+        ctx=self.ctx, name='f', code=_get_const('def f(): ...'),
+        enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
     frame = f.call(functions.Args())
     assert_type(frame, FakeFrame)
     self.assertIsInstance(frame, FakeFrame)
 
   def test_analyze(self):
     f = functions.InterpreterFunction(
-        name='f', code=_get_const('def f(): ...'), enclosing_scope=(),
-        parent_frame=FakeFrame())
+        ctx=self.ctx, name='f', code=_get_const('def f(): ...'),
+        enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
     frames = f.analyze()
     assert_type(frames, Sequence[FakeFrame])
     self.assertEqual(len(frames), 1)
     self.assertIsInstance(frames[0], FakeFrame)
 
 
-class BoundFunctionTest(unittest.TestCase):
+class BoundFunctionTest(test_utils.ContextfulTestBase):
 
   def test_call(self):
     f = functions.InterpreterFunction(
-        name='f', code=_get_const('def f(self): ...'), enclosing_scope=(),
-        parent_frame=FakeFrame())
-    callself = base.PythonConstant(42)
+        ctx=self.ctx, name='f', code=_get_const('def f(self): ...'),
+        enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
+    callself = classes.PythonConstant(self.ctx, 42)
     bound_f = f.bind_to(callself)
     frame = bound_f.call(functions.Args())
     assert_type(frame, FakeFrame)
@@ -118,9 +144,9 @@ class BoundFunctionTest(unittest.TestCase):
 
   def test_analyze(self):
     f = functions.InterpreterFunction(
-        name='f', code=_get_const('def f(self): ...'), enclosing_scope=(),
-        parent_frame=FakeFrame())
-    callself = base.PythonConstant(42)
+        ctx=self.ctx, name='f', code=_get_const('def f(self): ...'),
+        enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
+    callself = classes.PythonConstant(self.ctx, 42)
     bound_f = f.bind_to(callself)
     frames = bound_f.analyze()
     assert_type(frames, Sequence[FakeFrame])

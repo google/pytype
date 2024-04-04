@@ -5,7 +5,7 @@ import dataclasses
 import logging
 import os
 
-from typing import Dict, Iterable, List, Optional
+from typing import Dict, Iterable, List, Optional, Set
 
 from pytype import file_utils
 from pytype import module_utils
@@ -791,6 +791,9 @@ class Loader:
 
   def load_late_type(self, late_type: pytd.LateType):
     return self._late_type_loader.load_late_type(late_type)
+
+  def get_unused_imports_map_paths(self) -> Set[str]:
+    return self._module_loader.get_unused_imports_map_paths()
 
 
 class PickledPyiLoader(Loader):

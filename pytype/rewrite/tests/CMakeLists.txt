@@ -8,6 +8,8 @@ py_library(
   DEPS
     pytype.blocks.blocks
     pytype.pyc.pyc
+    pytype.pytd.parse.parser_test_base
+    pytype.rewrite.context
     pytype_extensions.instrumentation_for_testing
 )
 

@@ -11,6 +11,7 @@ import logging
 from typing import Dict, Generic, Mapping, TypeVar
 
 from pytype.blocks import blocks
+from pytype.pyc import opcodes
 from pytype.rewrite.flow import state
 from pytype.rewrite.flow import variables
 
@@ -40,6 +41,7 @@ class FrameBase(Generic[_T]):
     _final_locals: The frame's `locals` dictionary after it finishes execution.
       This is a protected attribute so that subclasses can choose whether and
       how to expose control flow information.
+    current_opcode: The current opcode.
   """
 
   def __init__(
@@ -61,6 +63,10 @@ class FrameBase(Generic[_T]):
     self._states[self._code.order[0].id] = state.BlockState(
         locals_=dict(self._initial_locals))
     self._current_state: state.BlockState[_T] = None  # state of current block
+
+  @property
+  def current_opcode(self) -> opcodes.Opcode:
+    return self._code.order[self._current_step.block][self._current_step.opcode]
 
   def step(self) -> None:
     """Runs one opcode."""
@@ -100,6 +106,11 @@ class FrameBase(Generic[_T]):
     else:
       self._current_step.block += 1
       self._current_step.opcode = 0
+
+  def stepn(self, n: int) -> None:
+    """Runs n opcodes."""
+    for _ in range(n):
+      self.step()
 
   def _merge_state_into(
       self, from_state: state.BlockState[_T], block_id: int) -> None:

@@ -314,6 +314,12 @@ INFRASTRUCTURE_OPTIONS = [
         help=("Information for mapping import .pyi to files. "
               "This options is incompatible with --pythonpath.")),
     _Arg(
+        "--unused_imports_info_files", type=str, action="store",
+        dest="unused_imports_info_files", default=None,
+        help=("File to write unused files provided by --imports_info. "
+              "The paths written are relative to the current directory. "
+              "This option is incompatible with --pythonpath.")),
+    _Arg(
         "-M", "--module-name", action="store",
         dest="module_name", default=None,
         help=("Name of the module we're analyzing. For __init__.py files the "
@@ -735,6 +741,10 @@ class Postprocessor:
     else:
       # This option sets imports_map first, before _store_imports_map.
       self.output_options.imports_map = None
+
+  @uses(["-pythonpath", "imports_map"])
+  def _store_unused_imports_info_files(self, unused_imports_info_files):
+    self.output_options.unused_imports_info_files = unused_imports_info_files
 
   @uses(["report_errors"])
   def _store_output_errors_csv(self, output_errors_csv):

@@ -572,7 +572,7 @@ def build_folded_type(ctx, state, const):
     if const.value:
       return state, ctx.convert.constant_to_var(const.value)
     else:
-      val = ctx.convert.primitive_class_instances[params]
+      val = ctx.convert.primitive_instances[params]
       return state, val.to_variable(state.node)
   elif tag == 'list':
     return collect_list(state, params, const.elements)

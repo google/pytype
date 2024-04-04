@@ -3,6 +3,7 @@
 from typing import Any, Sequence, Type, TypeVar, get_origin, overload
 
 from pytype.rewrite.abstract import base
+from pytype.rewrite.abstract import classes
 
 _T = TypeVar('_T')
 
@@ -18,7 +19,7 @@ def get_atomic_constant(var: base.AbstractVariableType, typ: None = ...) -> Any:
 
 
 def get_atomic_constant(var, typ=None):
-  value = var.get_atomic_value(base.PythonConstant)
+  value = var.get_atomic_value(classes.PythonConstant)
   constant = value.constant
   if typ and not isinstance(constant, (runtime_type := get_origin(typ) or typ)):
     raise ValueError(
@@ -27,10 +28,11 @@ def get_atomic_constant(var, typ=None):
   return constant
 
 
-def join_values(values: Sequence[base.BaseValue]) -> base.BaseValue:
+def join_values(
+    ctx: base.ContextType, values: Sequence[base.BaseValue]) -> base.BaseValue:
   if len(values) > 1:
-    return base.Union(values)
+    return base.Union(ctx, values)
   elif values:
     return values[0]
   else:
-    return base.ANY
+    return ctx.singles.Any

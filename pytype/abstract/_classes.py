@@ -505,8 +505,7 @@ class PyTDClass(
     subst = subst or datatypes.AliasingDict()
     node = self.ctx.root_node
     if isinstance(member, pytd.Constant):
-      return self.ctx.convert.constant_to_var(
-          abstract_utils.AsInstance(member.type), subst, node)
+      return self.ctx.convert.pytd_cls_to_instance_var(member.type, subst, node)
     elif isinstance(member, pytd.Function):
       c = self.ctx.convert.constant_to_value(member, subst=subst, node=node)
       c.parent = self
@@ -529,8 +528,7 @@ class PyTDClass(
     return value
 
   def instantiate(self, node, container=None):
-    return self.ctx.convert.constant_to_var(
-        abstract_utils.AsInstance(self.pytd_cls), {}, node)
+    return self.ctx.convert.pytd_cls_to_instance_var(self.pytd_cls, {}, node)
 
   def __repr__(self):
     return f"PyTDClass({self.name})"

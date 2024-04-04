@@ -9,6 +9,8 @@ py_library(
     .base
     .classes
     .functions
+    .instances
+    .internal
     .utils
 )
 
@@ -18,8 +20,12 @@ py_library(
   SRCS
     base.py
   DEPS
+    pytype.config
+    pytype.load_pytd
     pytype.utils
+    pytype.pytd.pytd
     pytype.rewrite.flow.flow
+    pytype.types.types
 )
 
 py_test(
@@ -29,7 +35,9 @@ py_test(
     base_test.py
   DEPS
     .base
+    .classes
     pytype.rewrite.flow.flow
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -48,9 +56,9 @@ py_test(
   SRCS
     classes_test.py
   DEPS
-    .base
     .classes
     .functions
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -61,6 +69,7 @@ py_library(
   DEPS
     .base
     pytype.blocks.blocks
+    pytype.pytd.pytd
 )
 
 py_test(
@@ -69,8 +78,50 @@ py_test(
   SRCS
     functions_test.py
   DEPS
-    .base
+    .classes
     .functions
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
+    instances
+  SRCS
+    instances.py
+  DEPS
+    .base
+    .classes
+)
+
+py_test(
+  NAME
+    instances_test
+  SRCS
+    instances_test.py
+  DEPS
+    .base
+    .classes
+    .instances
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
+    internal
+  SRCS
+    internal.py
+  DEPS
+    .base
+)
+
+py_test(
+  NAME
+    internal_test
+  SRCS
+    internal_test.py
+  DEPS
+    .classes
+    .internal
     pytype.rewrite.tests.test_utils
 )
 
@@ -81,6 +132,7 @@ py_library(
     utils.py
   DEPS
     .base
+    .classes
 )
 
 py_test(
@@ -90,5 +142,7 @@ py_test(
     utils_test.py
   DEPS
     .base
+    .classes
     .utils
+    pytype.rewrite.tests.test_utils
 )

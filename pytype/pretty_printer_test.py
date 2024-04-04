@@ -17,7 +17,7 @@ class PrettyPrinterTest(test_base.UnitTest):
     self._ctx = test_utils.make_context(options)
 
   def test_constant_printer(self):
-    pp = pretty_printer.PrettyPrinter()
+    pp = pretty_printer.PrettyPrinter(self._ctx)
     pyval = (1, 2, pytd.AnythingType(), 4)
     const = self._ctx.convert.constant_to_value(pyval)
     ret = pp.show_constant(const)

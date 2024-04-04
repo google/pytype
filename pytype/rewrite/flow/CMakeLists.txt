@@ -35,6 +35,7 @@ py_library(
     .state
     .variables
     pytype.blocks.blocks
+    pytype.pyc.pyc
 )
 
 py_test(

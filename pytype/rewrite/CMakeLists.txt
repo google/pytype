@@ -15,10 +15,10 @@ py_library(
   SRCS
     analyze.py
   DEPS
+    .context
     .vm
     pytype.config
     pytype.load_pytd
-    pytype.errors.errors
     pytype.pytd.pytd
 )
 
@@ -29,9 +29,26 @@ py_test(
     analyze_test.py
   DEPS
     .analyze
+    .context
     pytype.config
     pytype.load_pytd
     pytype.pytd.pytd
+)
+
+py_library(
+  NAME
+    context
+  SRCS
+    context.py
+  DEPS
+    .convert
+    .load_abstract
+    .output
+    .pretty_printer
+    pytype.config
+    pytype.load_pytd
+    pytype.errors.errors
+    pytype.rewrite.abstract.abstract
 )
 
 py_library(
@@ -40,8 +57,8 @@ py_library(
   SRCS
     convert.py
   DEPS
+    pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.flow.flow
 )
 
 py_test(
@@ -50,7 +67,9 @@ py_test(
   SRCS
     convert_test.py
   DEPS
-    .convert
+    pytype.pytd.pytd
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -59,6 +78,7 @@ py_library(
   SRCS
     frame.py
   DEPS
+    .context
     .stack
     pytype.blocks.blocks
     pytype.rewrite.abstract.abstract
@@ -71,7 +91,6 @@ py_test(
   SRCS
     frame_test.py
   DEPS
-    .convert
     .frame
     pytype.blocks.blocks
     pytype.pyc.pyc
@@ -81,13 +100,22 @@ py_test(
 
 py_library(
   NAME
-    pretty_printer
+    load_abstract
   SRCS
-    pretty_printer.py
+    load_abstract.py
   DEPS
-    pytype.pretty_printer_base
-    pytype.rewrite.flow.flow
-    pytype.types.types
+    pytype.load_pytd
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.overlays.overlays
+)
+
+py_test(
+  NAME
+    load_abstract_test
+  SRCS
+    load_abstract_test.py
+  DEPS
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -106,10 +134,22 @@ py_test(
   SRCS
     output_test.py
   DEPS
-    .output
     .vm
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
+    pretty_printer
+  SRCS
+    pretty_printer.py
+  DEPS
+    pytype.pretty_printer_base
+    pytype.pytd.pytd
+    pytype.rewrite.flow.flow
+    pytype.types.types
 )
 
 py_library(
@@ -130,6 +170,7 @@ py_test(
   DEPS
     .stack
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
@@ -138,17 +179,13 @@ py_library(
   SRCS
     vm.py
   DEPS
-    .convert
+    .context
     .frame
-    .output
-    .pretty_printer
     pytype.config
     pytype.blocks.blocks
-    pytype.errors.errors
     pytype.pyc.pyc
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.flow.flow
 )
 
 py_test(
@@ -157,6 +194,7 @@ py_test(
   SRCS
     vm_test.py
   DEPS
+    .context
     .vm
     pytype.pyc.pyc
     pytype.rewrite.abstract.abstract
@@ -165,4 +203,5 @@ py_test(
 
 add_subdirectory(abstract)
 add_subdirectory(flow)
+add_subdirectory(overlays)
 add_subdirectory(tests)

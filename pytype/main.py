@@ -57,9 +57,30 @@ def _generate_builtins_pickle(options):
   loader.save_to_pickle(options.generate_builtins)
 
 
+def _fix_spaces(argv):
+  """Returns argv with unescaped spaces in paths fixed.
+
+  This is needed for the analyze_project tool, which uses ninja to run pytype
+  over single files. ninja does not escape spaces, so a path with a space is
+  interpreted as multiple paths. Detect this case and merge the paths.
+
+  Args:
+    argv: Command line arguments.
+  """
+  escaped_argv = []
+  prev_arg = None
+  for arg in argv:
+    if prev_arg and not prev_arg.startswith("-") and not arg.startswith("-"):
+      escaped_argv[-1] += " " + arg
+    else:
+      escaped_argv.append(arg)
+    prev_arg = arg
+  return escaped_argv
+
+
 def main():
   try:
-    options = config.Options(sys.argv[1:], command_line=True)
+    options = config.Options(_fix_spaces(sys.argv[1:]), command_line=True)
   except utils.UsageError as e:
     print(str(e), file=sys.stderr)
     sys.exit(1)

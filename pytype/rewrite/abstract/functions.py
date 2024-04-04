@@ -21,29 +21,31 @@ from typing import Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, 
 
 import immutabledict
 from pytype.blocks import blocks
+from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
 
 _EMPTY_MAP = immutabledict.immutabledict()
 _ArgDict = Dict[str, base.AbstractVariableType]
 
 
-class _Frame(Protocol):
+class FrameType(Protocol):
   """Protocol for a VM frame."""
 
   final_locals: Mapping[str, base.BaseValue]
+  stack: Sequence['FrameType']
 
   def make_child_frame(
       self,
       func: 'InterpreterFunction',
       initial_locals: Mapping[str, base.AbstractVariableType],
-  ) -> '_Frame': ...
+  ) -> 'FrameType': ...
 
   def run(self) -> None: ...
 
   def get_return_value(self) -> base.BaseValue: ...
 
 
-_FrameT = TypeVar('_FrameT', bound=_Frame)
+_FrameT = TypeVar('_FrameT', bound=FrameType)
 
 
 @dataclasses.dataclass
@@ -69,6 +71,15 @@ class _HasReturn(Protocol):
 _HasReturnT = TypeVar('_HasReturnT', bound=_HasReturn)
 
 
+class SimpleReturn:
+
+  def __init__(self, return_value: base.BaseValue):
+    self._return_value = return_value
+
+  def get_return_value(self):
+    return self._return_value
+
+
 class Signature:
   """Representation of a Python function signature.
 
@@ -90,6 +101,7 @@ class Signature:
 
   def __init__(
       self,
+      ctx: base.ContextType,
       name: str,
       param_names: Tuple[str, ...],
       *,
@@ -100,6 +112,7 @@ class Signature:
       defaults: Mapping[str, base.BaseValue] = _EMPTY_MAP,
       annotations: Mapping[str, base.BaseValue] = _EMPTY_MAP,
   ):
+    self._ctx = ctx
     self.name = name
     self.param_names = param_names
     self.posonly_count = posonly_count
@@ -114,7 +127,9 @@ class Signature:
     return self.param_names[:self.posonly_count]
 
   @classmethod
-  def from_code(cls, name: str, code: blocks.OrderedCode) -> 'Signature':
+  def from_code(
+      cls, ctx: base.ContextType, name: str, code: blocks.OrderedCode,
+  ) -> 'Signature':
     """Builds a signature from a code object."""
     nonstararg_count = code.argcount + code.kwonlyargcount
     if code.has_varargs():
@@ -128,6 +143,7 @@ class Signature:
     else:
       kwargs_name = None
     return cls(
+        ctx=ctx,
         name=name,
         param_names=tuple(code.varnames[:code.argcount]),
         posonly_count=code.posonlyargcount,
@@ -139,32 +155,88 @@ class Signature:
         annotations={},
     )
 
+  @classmethod
+  def from_pytd(
+      cls, ctx: base.ContextType, name: str, pytd_sig: pytd.Signature,
+  ) -> 'Signature':
+    """Builds a signature from a pytd signature."""
+    param_names = []
+    posonly_count = 0
+    kwonly_params = []
+    for p in pytd_sig.params:
+      if p.kind == pytd.ParameterKind.KWONLY:
+        kwonly_params.append(p.name)
+        continue
+      param_names.append(p.name)
+      posonly_count += p.kind == pytd.ParameterKind.POSONLY
+
+    defaults = {
+        p.name: ctx.abstract_converter.pytd_type_to_value(p.type).instantiate()
+        for p in pytd_sig.params if p.optional}
+
+    pytd_annotations = [
+        (p.name, p.type)
+        for p in pytd_sig.params + (pytd_sig.starargs, pytd_sig.starstarargs)
+        if p is not None]
+    pytd_annotations.append(('return', pytd_sig.return_type))
+    annotations = {name: ctx.abstract_converter.pytd_type_to_value(typ)
+                   for name, typ in pytd_annotations}
+
+    return cls(
+        ctx=ctx,
+        name=name,
+        param_names=tuple(param_names),
+        posonly_count=posonly_count,
+        varargs_name=pytd_sig.starargs and pytd_sig.starargs.name,
+        kwonly_params=tuple(kwonly_params),
+        kwargs_name=pytd_sig.starstarargs and pytd_sig.starstarargs.name,
+        defaults=defaults,
+        annotations=annotations,
+    )
+
   def __repr__(self):
-    # TODO(b/241479600): Incorporate defaults and annotations.
-    params = list(self.param_names)
+    pp = self._ctx.errorlog.pretty_printer
+
+    def fmt(param_name):
+      if param_name in self.annotations:
+        typ = pp.print_type_of_instance(self.annotations[param_name])
+        s = f'{param_name}: {typ}'
+      else:
+        s = param_name
+      if param_name in self.defaults:
+        default = pp.show_constant(self.defaults[param_name])
+        return f'{s} = {default}'
+      else:
+        return s
+
+    params = [fmt(param_name) for param_name in self.param_names]
     if self.posonly_count:
       params.insert(self.posonly_count, '/')
     if self.varargs_name:
-      params.append('*' + self.varargs_name)
+      params.append('*' + fmt(self.varargs_name))
     elif self.kwonly_params:
       params.append('*')
     params.extend(self.kwonly_params)
     if self.kwargs_name:
-      params.append('**' + self.kwargs_name)
-    return f'def {self.name}({", ".join(params)})'
+      params.append('**' + fmt(self.kwargs_name))
+    if 'return' in self.annotations:
+      ret = pp.print_type_of_instance(self.annotations['return'])
+    else:
+      ret = 'Any'
+    return f'def {self.name}({", ".join(params)}) -> {ret}'
 
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Implement this properly, with error detection.
     argdict = dict(zip(self.param_names, args.posargs))
     return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
-  def make_fake_args(self) -> MappedArgs[_Frame]:
+  def make_fake_args(self) -> MappedArgs[FrameType]:
     names = list(self.param_names + self.kwonly_params)
     if self.varargs_name:
       names.append(self.varargs_name)
     if self.kwargs_name:
       names.append(self.kwargs_name)
-    argdict = {name: base.ANY.to_variable() for name in names}
+    argdict = {name: self._ctx.singles.Any.to_variable() for name in names}
     return MappedArgs(signature=self, argdict=argdict)
 
 
@@ -182,7 +254,7 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
     """The function's signatures."""
 
   @abc.abstractmethod
-  def call(self, args: Args[_Frame]) -> _HasReturnT:
+  def call(self, args: Args[FrameType]) -> _HasReturnT:
     """Calls this function with the given arguments.
 
     Args:
@@ -207,9 +279,20 @@ class BaseFunction(base.BaseValue, abc.ABC, Generic[_HasReturnT]):
 class SimpleFunction(BaseFunction[_HasReturnT]):
   """Signature-based function implementation."""
 
-  def __init__(self, name: str, signatures: Tuple[Signature, ...]):
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      name: str,
+      signatures: Tuple[Signature, ...],
+      module: Optional[str] = None,
+  ):
+    super().__init__(ctx)
     self._name = name
     self._signatures = signatures
+    self.module = module
+
+  def __repr__(self):
+    return f'SimpleFunction({self._name})'
 
   @property
   def name(self):
@@ -219,6 +302,10 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
   def signatures(self):
     return self._signatures
 
+  @property
+  def _attrs(self):
+    return (self._name, self._signatures)
+
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Handle arg mapping failure.
     for sig in self.signatures:
@@ -227,7 +314,7 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
 
   @abc.abstractmethod
   def call_with_mapped_args(
-      self, mapped_args: MappedArgs[_Frame]) -> _HasReturnT:
+      self, mapped_args: MappedArgs[FrameType]) -> _HasReturnT:
     """Calls this function with the given mapped arguments.
 
     Args:
@@ -238,7 +325,7 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
       get_return_value() method that retrieves the return value.
     """
 
-  def call(self, args: Args[_Frame]) -> _HasReturnT:
+  def call(self, args: Args[FrameType]) -> _HasReturnT:
     return self.call_with_mapped_args(self.map_args(args))
 
   def analyze(self) -> Sequence[_HasReturnT]:
@@ -251,14 +338,16 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
 
   def __init__(
       self,
+      ctx: base.ContextType,
       name: str,
       code: blocks.OrderedCode,
       enclosing_scope: Tuple[str, ...],
       parent_frame: _FrameT,
   ):
     super().__init__(
+        ctx=ctx,
         name=name,
-        signatures=(Signature.from_code(name, code),),
+        signatures=(Signature.from_code(ctx, name, code),),
     )
     self.code = code
     self.enclosing_scope = enclosing_scope
@@ -280,14 +369,23 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     return frame
 
   def bind_to(self, callself: base.BaseValue) -> 'BoundFunction[_FrameT]':
-    return BoundFunction(callself, self)
+    return BoundFunction(self._ctx, callself, self)
+
+
+class PytdFunction(SimpleFunction[SimpleReturn]):
+
+  def call_with_mapped_args(
+      self, mapped_args: MappedArgs[FrameType]) -> SimpleReturn:
+    return SimpleReturn(self._ctx.singles.Any)
 
 
 class BoundFunction(BaseFunction[_HasReturnT]):
   """Function bound to a self or cls object."""
 
   def __init__(
-      self, callself: base.BaseValue, underlying: SimpleFunction[_HasReturnT]):
+      self, ctx: base.ContextType, callself: base.BaseValue,
+      underlying: SimpleFunction[_HasReturnT]):
+    super().__init__(ctx)
     self.callself = callself
     self.underlying = underlying
 
@@ -312,7 +410,7 @@ class BoundFunction(BaseFunction[_HasReturnT]):
     argdict[mapped_args.signature.param_names[0]] = self.callself.to_variable()
     return MappedArgs(mapped_args.signature, argdict, mapped_args.frame)
 
-  def call(self, args: Args[_Frame]) -> _HasReturnT:
+  def call(self, args: Args[FrameType]) -> _HasReturnT:
     mapped_args = self._bind_mapped_args(self.underlying.map_args(args))
     return self.underlying.call_with_mapped_args(mapped_args)
 

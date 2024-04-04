@@ -484,7 +484,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       # some sort of runtime processing of type annotations. We replace all type
       # parameters with 'object' so that they don't match concrete types like
       # 'int' but still match things like 'Any'.
-      obj_var = self.ctx.convert.primitive_class_instances[object].to_variable(
+      obj_var = self.ctx.convert.primitive_instances[object].to_variable(
           self._node)
       left_type_params = self.ctx.annotation_utils.get_type_parameters(left)
       left = self.ctx.annotation_utils.sub_one_annotation(

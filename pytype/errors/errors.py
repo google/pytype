@@ -491,6 +491,10 @@ class VmErrorLog(ErrorLog):
     super().__init__()
     self._pp = pp
 
+  @property
+  def pretty_printer(self) -> pretty_printer_base.PrettyPrinterBase:
+    return self._pp
+
   @_error_name("pyi-error")
   def pyi_error(self, stack, name, error):
     self.error(stack, f"Couldn't import pyi for {name!r}", str(error),
@@ -503,7 +507,7 @@ class VmErrorLog(ErrorLog):
       # Joining the printed types rather than merging them before printing
       # ensures that we print all of the options when 'Any' is among them.
       details = "In %s" % self._pp.join_printed_types(
-          self._pp.print_as_actual_type(v) for v in binding.variable.data)
+          self._pp.print_type(v) for v in binding.variable.data)
     else:
       details = None
     self.error(
@@ -512,7 +516,7 @@ class VmErrorLog(ErrorLog):
 
   @_error_name("not-writable")
   def not_writable(self, stack, obj, attr_name):
-    obj_repr = self._pp.print_as_actual_type(obj)
+    obj_repr = self._pp.print_type(obj)
     self.error(stack, f"Can't assign attribute {attr_name!r} on {obj_repr}",
                keyword=attr_name, keyword_context=obj_repr)
 
@@ -587,8 +591,8 @@ class VmErrorLog(ErrorLog):
       if arg_name == bad_call.bad_param.name:
         # maybe_left_operand is something like `dict`, but we want a more
         # precise type like `Dict[str, int]`.
-        left_operand = self._pp.print_as_actual_type(bad_call.passed_args[0][1])
-        right_operand = self._pp.print_as_actual_type(arg_value)
+        left_operand = self._pp.print_type(bad_call.passed_args[0][1])
+        right_operand = self._pp.print_type(arg_value)
         return f, left_operand, right_operand
     return None
 
@@ -598,7 +602,7 @@ class VmErrorLog(ErrorLog):
     if operation:
       operator, left_operand, right_operand = operation
       operator_name = _function_name(operator, capitalize=True)
-      expected_right_operand = self._pp.print_as_expected_type(
+      expected_right_operand = self._pp.print_type_of_instance(
           bad_call.bad_param.typ)
       details = (f"{operator_name} on {left_operand} expects "
                  f"{expected_right_operand}")
@@ -716,7 +720,7 @@ class VmErrorLog(ErrorLog):
   @_error_name("base-class-error")
   def base_class_error(self, stack, base_var, details=None):
     base_cls = self._pp.join_printed_types(
-        self._pp.print_as_expected_type(t) for t in base_var.data)
+        self._pp.print_type_of_instance(t) for t in base_var.data)
     self.error(stack, f"Invalid base class: {base_cls}",
                details=details, keyword=base_cls)
 
@@ -746,7 +750,7 @@ class VmErrorLog(ErrorLog):
   @_error_name("bad-yield-annotation")
   def bad_yield_annotation(self, stack, name, annot, is_async):
     func = ("async " if is_async else "") + f"generator function {name}"
-    actual = self._pp.print_as_expected_type(annot)
+    actual = self._pp.print_type_of_instance(annot)
     message = f"Bad return type {actual!r} for {func}"
     if is_async:
       details = "Expected AsyncGenerator, AsyncIterable or AsyncIterator"
@@ -800,12 +804,12 @@ class VmErrorLog(ErrorLog):
                          details=None,
                          name=None):
     if isinstance(annot, types.BaseValue):
-      annot = self._pp.print_as_expected_type(annot)
+      annot = self._pp.print_type_of_instance(annot)
     self._invalid_annotation(stack, annot, details, name)
 
   def _print_params_helper(self, param_or_params):
     if isinstance(param_or_params, types.BaseValue):
-      return self._pp.print_as_expected_type(param_or_params)
+      return self._pp.print_type_of_instance(param_or_params)
     else:
       return "[{}]".format(
           ", ".join(self._print_params_helper(p) for p in param_or_params))
@@ -815,7 +819,7 @@ class VmErrorLog(ErrorLog):
       params: Sequence[types.BaseValue], expected_count: int,
       template: Optional[Iterable[str]] = None):
     """Log an error for an annotation with the wrong number of parameters."""
-    base_type = self._pp.print_as_expected_type(annot)
+    base_type = self._pp.print_type_of_instance(annot)
     full_type = base_type + self._print_params_helper(params)
     if template:
       templated_type = f"{base_type}[{', '.join(template)}]"
@@ -844,7 +848,7 @@ class VmErrorLog(ErrorLog):
       desc = options
     else:
       desc = " or ".join(
-          sorted(self._pp.print_as_expected_type(o) for o in options))
+          sorted(self._pp.print_type_of_instance(o) for o in options))
     self._invalid_annotation(stack, desc, "Must be constant", name)
 
   @_error_name("invalid-annotation")
@@ -950,7 +954,7 @@ class VmErrorLog(ErrorLog):
 
   @_error_name("reveal-type")
   def reveal_type(self, stack, node, var):
-    self.error(stack, self._pp.print_var_as_type(var, node))
+    self.error(stack, self._pp.print_var_type(var, node))
 
   @_error_name("assert-type")
   def assert_type(self, stack, actual: str, expected: str):
@@ -965,11 +969,11 @@ class VmErrorLog(ErrorLog):
     """Invalid combination of annotation and assignment."""
     if annot is None:
       return
-    annot_string = self._pp.print_as_expected_type(annot)
+    annot_string = self._pp.print_type_of_instance(annot)
     literal = "Literal[" in annot_string
-    actual_string = self._pp.print_as_actual_type(binding.data, literal=literal)
+    actual_string = self._pp.print_type(binding.data, literal=literal)
     if actual_string == "None":
-      annot_string += f" (Did you mean 'typing.Optional[{annot_string}]'?)"
+      annot_string += f" (Did you mean '{annot_string} | None'?)"
     additional_details = f"\n\n{details}" if details else ""
     pp = error_printer.MatcherErrorPrinter(self._pp)
     additional_details += "".join(pp.print_error_details(error_details))
@@ -980,7 +984,7 @@ class VmErrorLog(ErrorLog):
       # Joining the printed types rather than merging them before printing
       # ensures that we print all of the options when 'Any' is among them.
       # We don't need to print this if there is only 1 unique type.
-      print_types = {self._pp.print_as_actual_type(v, literal=literal)
+      print_types = {self._pp.print_type(v, literal=literal)
                      for v in binding.variable.data}
       if len(print_types) > 1:
         details += ("\nIn assignment of type: "
@@ -1004,20 +1008,20 @@ class VmErrorLog(ErrorLog):
       mutations: a dict of {parameter name: (annotated types, new types)}
       name: the variable name (or None)
     """
-    details = f"Container: {self._pp.print_as_generic_type(cls)}\n"
+    details = f"Container: {self._pp.print_generic_type(cls)}\n"
     allowed_contained = ""
     new_contained = ""
     for formal in cls.formal_type_parameters.keys():
       if formal in mutations:
         params, values, _ = mutations[formal]
-        allowed_content = self._pp.print_as_expected_type(
+        allowed_content = self._pp.print_type_of_instance(
             cls.get_formal_type_parameter(formal))
         new_content = self._pp.join_printed_types(
-            sorted(self._pp.print_as_actual_type(v)
+            sorted(self._pp.print_type(v)
                    for v in set(values.data) - set(params.data)))
         allowed_contained += f"  {formal}: {allowed_content}\n"
         new_contained += f"  {formal}: {new_content}\n"
-    annotation = self._pp.print_as_expected_type(cls)
+    annotation = self._pp.print_type_of_instance(cls)
     details += ("Allowed contained types (from annotation %s):\n%s"
                 "New contained types:\n%s") % (
                     annotation, allowed_contained, new_contained)
@@ -1102,7 +1106,7 @@ class VmErrorLog(ErrorLog):
   @_error_name("final-error")
   def subclassing_final_class(self, stack, base_var, details=None):
     base_cls = self._pp.join_printed_types(
-        self._pp.print_as_expected_type(t) for t in base_var.data)
+        self._pp.print_type_of_instance(t) for t in base_var.data)
     self.error(stack, f"Cannot subclass final class: {base_cls}",
                details=details, keyword=base_cls)
 
@@ -1110,7 +1114,7 @@ class VmErrorLog(ErrorLog):
   def bad_final_decorator(self, stack, obj, details=None):
     name = getattr(obj, "name", None)
     if not name:
-      typ = self._pp.print_as_expected_type(obj)
+      typ = self._pp.print_type_of_instance(obj)
       name = f"object of type {typ}"
     msg = f"Cannot apply @final decorator to {name}"
     details = "@final can only be applied to classes and methods."

@@ -1,20 +1,25 @@
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.tests import test_utils
 
 import unittest
 
 
-class DataStackTest(unittest.TestCase):
+class DataStackTest(test_utils.ContextfulTestBase):
+
+  def _var(self, val):
+    return abstract.PythonConstant(self.ctx, val).to_variable()
 
   def test_push(self):
     s = stack.DataStack()
-    var = abstract.PythonConstant(5).to_variable()
+    var = self._var(5)
     s.push(var)
     self.assertEqual(s._stack, [var])
 
   def test_pop(self):
     s = stack.DataStack()
-    var = abstract.PythonConstant(5).to_variable()
+    var = self._var(5)
+    var = abstract.PythonConstant(self.ctx, 5).to_variable()
     s.push(var)
     popped = s.pop()
     self.assertEqual(popped, var)
@@ -22,7 +27,7 @@ class DataStackTest(unittest.TestCase):
 
   def test_top(self):
     s = stack.DataStack()
-    var = abstract.PythonConstant(5).to_variable()
+    var = self._var(5)
     s.push(var)
     top = s.top()
     self.assertEqual(top, var)
@@ -31,19 +36,19 @@ class DataStackTest(unittest.TestCase):
   def test_bool(self):
     s = stack.DataStack()
     self.assertFalse(s)
-    s.push(abstract.PythonConstant(5).to_variable())
+    s.push(self._var(5))
     self.assertTrue(s)
 
   def test_len(self):
     s = stack.DataStack()
     self.assertEqual(len(s), 0)  # pylint: disable=g-generic-assert
-    s.push(abstract.PythonConstant(5).to_variable())
+    s.push(self._var(5))
     self.assertEqual(len(s), 1)
 
   def test_popn(self):
     s = stack.DataStack()
-    var1 = abstract.PythonConstant(1).to_variable()
-    var2 = abstract.PythonConstant(2).to_variable()
+    var1 = self._var(1)
+    var2 = self._var(2)
     s.push(var1)
     s.push(var2)
     popped1, popped2 = s.popn(2)
@@ -63,14 +68,14 @@ class DataStackTest(unittest.TestCase):
 
   def test_pop_and_discard(self):
     s = stack.DataStack()
-    s.push(abstract.PythonConstant(5).to_variable())
+    s.push(self._var(5))
     ret = s.pop_and_discard()
     self.assertIsNone(ret)
     self.assertFalse(s)
 
   def test_peek(self):
     s = stack.DataStack()
-    var = abstract.PythonConstant(5).to_variable()
+    var = self._var(5)
     s.push(var)
     peeked = s.peek(1)
     self.assertEqual(peeked, var)
@@ -82,6 +87,27 @@ class DataStackTest(unittest.TestCase):
       s.peek(0)
     with self.assertRaises(IndexError):
       s.peek(1)
+
+  def test_rotn(self):
+    s = stack.DataStack()
+    data = [self._var(x) for x in (0, 1, 2, 3, 4, 5)]
+    for d in data:
+      s.push(d)
+    s.rotn(3)
+    new = [data[x] for x in (0, 1, 2, 5, 3, 4)]
+    self.assertEqual(s._stack, new)
+
+  def test_rotn_error(self):
+    s = stack.DataStack()
+    data = [self._var(x) for x in (0, 1, 2, 3, 4, 5)]
+    for d in data:
+      s.push(d)
+    with self.assertRaises(IndexError):
+      s.rotn(0)
+    with self.assertRaises(IndexError):
+      s.rotn(1)
+    with self.assertRaises(IndexError):
+      s.rotn(8)
 
 
 if __name__ == '__main__':

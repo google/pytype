@@ -4,13 +4,15 @@ import abc
 import dataclasses
 import logging
 
-from typing import Dict, List, Mapping, Optional, Protocol, Sequence
+from typing import Dict, Generic, List, Mapping, Optional, Protocol, Sequence, TypeVar
 
 import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 
 log = logging.getLogger(__name__)
+
+_T = TypeVar('_T')
 
 
 class _HasMembers(Protocol):
@@ -27,12 +29,20 @@ class ClassCallReturn:
     return self.instance
 
 
-class BaseClass(base.BaseValue):
-  """Base representation of a class."""
+class SimpleClass(base.BaseValue):
+  """Class with a name and members."""
 
-  def __init__(self, name: str, members: Dict[str, base.BaseValue]):
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      name: str,
+      members: Dict[str, base.BaseValue],
+      module: Optional[str] = None,
+  ):
+    super().__init__(ctx)
     self.name = name
     self.members = members
+    self.module = module
 
     # These methods are attributes of individual classes so that they can be
     # easily customized. For example, unittest.TestCase would want to add
@@ -46,7 +56,7 @@ class BaseClass(base.BaseValue):
     self.initializers = ['__init__']
 
   def __repr__(self):
-    return f'BaseClass({self.name})'
+    return f'SimpleClass({self.name})'
 
   @property
   def _attrs(self):
@@ -65,7 +75,7 @@ class BaseClass(base.BaseValue):
     if constructor:
       raise NotImplementedError('Custom __new__')
     else:
-      instance = MutableInstance(self)
+      instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -77,7 +87,7 @@ class BaseClass(base.BaseValue):
     if constructor:
       raise NotImplementedError('Custom __new__')
     else:
-      instance = MutableInstance(self)
+      instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -85,14 +95,15 @@ class BaseClass(base.BaseValue):
     return ClassCallReturn(instance)
 
 
-class InterpreterClass(BaseClass):
+class InterpreterClass(SimpleClass):
   """Class defined in the current module."""
 
   def __init__(
-      self, name: str, members: Dict[str, base.BaseValue],
+      self, ctx: base.ContextType, name: str,
+      members: Dict[str, base.BaseValue],
       functions: Sequence[functions_lib.InterpreterFunction],
       classes: Sequence['InterpreterClass']):
-    super().__init__(name, members)
+    super().__init__(ctx, name, members)
     # Functions and classes defined in this class's body. Unlike 'members',
     # ignores the effects of post-definition transformations like decorators.
     self.functions = functions
@@ -107,7 +118,8 @@ class BaseInstance(base.BaseValue):
 
   members: Mapping[str, base.BaseValue]
 
-  def __init__(self, cls: BaseClass, members):
+  def __init__(self, ctx: base.ContextType, cls: SimpleClass, members):
+    super().__init__(ctx)
     self.cls = cls
     self.members = members
 
@@ -127,37 +139,57 @@ class BaseInstance(base.BaseValue):
     return cls_attribute
 
 
+class PythonConstant(BaseInstance, Generic[_T]):
+  """Representation of a Python constant."""
+
+  def __init__(self, ctx: base.ContextType, constant: _T):
+    cls = ctx.abstract_loader.raw_type_to_value(type(constant))
+    super().__init__(ctx, cls, {})
+    self.constant = constant
+
+  def __repr__(self):
+    return f'PythonConstant({self.constant!r})'
+
+  @property
+  def _attrs(self):
+    return (self.constant,)
+
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    # TODO(b/241479600): Log an error.
+    raise NotImplementedError('Cannot set attribute on a constant')
+
+
 class MutableInstance(BaseInstance):
   """Instance of a class."""
 
   members: Dict[str, base.BaseValue]
 
-  def __init__(self, cls: BaseClass):
-    super().__init__(cls, {})
+  def __init__(self, ctx: base.ContextType, cls: SimpleClass):
+    super().__init__(ctx, cls, {})
 
   def __repr__(self):
     return f'MutableInstance({self.cls.name})'
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
-      self.members[name] = base.Union((self.members[name], value))
+      self.members[name] = base.Union(self._ctx, (self.members[name], value))
     else:
       self.members[name] = value
 
   def freeze(self) -> 'FrozenInstance':
-    return FrozenInstance(self)
+    return FrozenInstance(self._ctx, self)
 
 
 class FrozenInstance(BaseInstance):
   """Frozen instance of a class.
 
-  This is used by BaseClass.instantiate() to create a snapshot of an instance
+  This is used by SimpleClass.instantiate() to create a snapshot of an instance
   whose members map cannot be further modified.
   """
 
-  def __init__(self, instance: MutableInstance):
+  def __init__(self, ctx: base.ContextType, instance: MutableInstance):
     super().__init__(
-        instance.cls, immutabledict.immutabledict(instance.members))
+        ctx, instance.cls, immutabledict.immutabledict(instance.members))
 
   def __repr__(self):
     return f'FrozenInstance({self.cls.name})'
@@ -167,6 +199,3 @@ class FrozenInstance(BaseInstance):
     # analyzing a class's methods. This is fine; we just ignore it.
     log.info('Ignoring attribute set on %r: %s -> %r',
              self, name, value)
-
-
-BUILD_CLASS = base.Singleton('BUILD_CLASS')

@@ -227,8 +227,8 @@ class InterpreterFunction(_function_base.SignedFunction):
         m = self.ctx.matcher(self.ctx.root_node).compute_one_match(
             guard_var, input_type)
         if not m.success:
-          guard_pytd = pytd_utils.Print(guard_type.to_pytd_instance())
-          input_pytd = pytd_utils.Print(input_type.to_pytd_instance())
+          guard_pytd = pytd_utils.Print(guard_type.to_pytd_type_of_instance())
+          input_pytd = pytd_utils.Print(input_type.to_pytd_type_of_instance())
           self.ctx.errorlog.invalid_function_definition(
               self.ctx.vm.frames,
               f"TypeIs[{guard_pytd}] is not consistent with input type "
