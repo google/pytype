@@ -4,6 +4,7 @@ import collections
 import importlib
 import itertools
 import logging
+import re
 import subprocess
 import sys
 from typing import Iterable, Sequence, Tuple
@@ -148,30 +149,16 @@ def _module_to_output_path(mod):
 def escape_ninja_path(path: str):
   """Returns the path with special characters escaped.
 
-  Escape colon, dollar sign, space, and new line, for ninja
+  Escape new line, space, colon, and dollar sign, for ninja
   (as described in https://ninja-build.org/manual.html#ref_lexer).
   This function should only ever be used once, called on a path string to turn
   it into a ninja path string. (If you call it on a ninja path string, it will
-  render the variables inert.)
+  render the ninja variables inert.)
 
   Args:
     path: The path.
   """
-  new_path = ''
-  for ch in path:
-    if ch == ':':
-      new_path += '$:'
-    elif ch == '$':
-      new_path += '$$'
-    elif ch == ' ':
-      new_path += '$ '
-    elif ch == '\n':
-      new_path += '$\n'
-    else:
-      new_path += ch
-    last_char = ch
-  return new_path
-
+  return re.sub(r'(?P<char>[\n :$])', r'$\g<char>', path)
 
 def get_imports_map(deps, module_to_imports_map, module_to_output):
   """Get a short path -> full path map for the given deps."""
@@ -350,7 +337,7 @@ class PytypeRunner:
     logging.info('%s %s\n  imports: %s\n  deps: %s\n  output: %s',
                  action, module.name, imports, deps, output)
     if deps:
-      deps = ' | ' + ' '.join([escape_ninja_path(dep) for dep in deps])
+      deps = ' | ' + ' '.join(escape_ninja_path(dep) for dep in deps)
     else:
       deps = ''
     with open(self.ninja_file, 'a') as f:
