@@ -151,7 +151,7 @@ def escape_ninja_path(path: str):
 
   Escape new line, space, colon, and dollar sign, for ninja
   (as described in https://ninja-build.org/manual.html#ref_lexer).
-  This function should only ever be used once, called on a path string to turn
+  This function should be called on an unescaped path string to turn
   it into a ninja path string. (If you call it on a ninja path string, it will
   render the ninja variables inert.)
 
