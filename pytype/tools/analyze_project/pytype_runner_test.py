@@ -3,7 +3,7 @@
 import collections
 import dataclasses
 import re
-from typing import Sequence
+import sys
 
 from pytype import config as pytype_config
 from pytype import file_utils
@@ -37,7 +37,7 @@ class ExpectedBuildStatement:
   output: str
   action: str
   input: str
-  deps: Sequence[str]
+  deps: str
   imports: str
   module: str
 
@@ -465,7 +465,13 @@ class TestNinjaPathEscape(TestBase):
 
   def test_escape(self):
     escaped = pytype_runner.escape_ninja_path('C:/xyz')
-    self.assertEqual(escaped, 'C$:/xyz')
+    if sys.platform == 'win32':
+      self.assertEqual(escaped, 'C$:/xyz')
+    else:
+      self.assertEqual(escaped, 'C:/xyz')
+
+  def test_already_escaped(self):
+    self.assertEqual(pytype_runner.escape_ninja_path('C$:/xyz'), 'C$:/xyz')
 
 
 class TestNinjaPreamble(TestBase):
@@ -586,17 +592,12 @@ class TestNinjaBody(TestBase):
     self.conf = self.parser.config_from_defaults()
 
   def assertBuildStatementMatches(self, build_statement, expected):
-    if expected.deps:
-      deps = ' | ' + ' '.join(pytype_runner.escape_ninja_path(d)
-                              for d in expected.deps)
-    else:
-      deps = ''
     self.assertEqual(
         build_statement[0], 'build {output}: {action} {input}{deps}'.format(
             output=pytype_runner.escape_ninja_path(expected.output),
             action=expected.action,
             input=pytype_runner.escape_ninja_path(expected.input),
-            deps=deps))
+            deps=pytype_runner.escape_ninja_path(expected.deps)))
     self.assertEqual(
         set(build_statement[1:]), {
             f'  imports = {pytype_runner.escape_ninja_path(expected.imports)}',
@@ -619,7 +620,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'bar.pyi'),
             action=Action.INFER,
             input='bar.py',
-            deps=[],
+            deps='',
             imports=path_utils.join(runner.imports_dir, 'bar.imports'),
             module='bar'))
     self.assertBuildStatementMatches(
@@ -628,7 +629,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi'),
             action=Action.CHECK,
             input='foo.py',
-            deps=[path_utils.join(runner.pyi_dir, 'bar.pyi')],
+            deps=' | ' + path_utils.join(runner.pyi_dir, 'bar.pyi'),
             imports=path_utils.join(runner.imports_dir, 'foo.imports'),
             module='foo'))
 
@@ -650,7 +651,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi'),
             action=Action.CHECK,
             input='foo.py',
-            deps=[],
+            deps='',
             imports=path_utils.join(runner.imports_dir, 'foo.imports'),
             module='foo'))
     short_bar_path, bar_path = imports_info.split(' ')
@@ -674,7 +675,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'bar.pyi-1'),
             action=Action.INFER,
             input='bar.py',
-            deps=[],
+            deps='',
             imports=path_utils.join(runner.imports_dir, 'bar.imports-1'),
             module='bar'))
     self.assertBuildStatementMatches(
@@ -683,7 +684,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi-1'),
             action=Action.INFER,
             input='foo.py',
-            deps=[],
+            deps='',
             imports=path_utils.join(runner.imports_dir, 'foo.imports-1'),
             module='foo'))
     self.assertBuildStatementMatches(
@@ -692,9 +693,9 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'bar.pyi'),
             action=Action.INFER,
             input='bar.py',
-            deps=[
+            deps=' | {} {}'.format(
                 path_utils.join(runner.pyi_dir, 'bar.pyi-1'),
-                path_utils.join(runner.pyi_dir, 'foo.pyi-1')],
+                path_utils.join(runner.pyi_dir, 'foo.pyi-1')),
             imports=path_utils.join(runner.imports_dir, 'bar.imports'),
             module='bar'))
     self.assertBuildStatementMatches(
@@ -703,9 +704,9 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi'),
             action=Action.CHECK,
             input='foo.py',
-            deps=[
+            deps=' | {} {}'.format(
                 path_utils.join(runner.pyi_dir, 'bar.pyi'),
-                path_utils.join(runner.pyi_dir, 'foo.pyi-1')],
+                path_utils.join(runner.pyi_dir, 'foo.pyi-1')),
             imports=path_utils.join(runner.imports_dir, 'foo.imports'),
             module='foo'))
 
@@ -726,7 +727,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi-1'),
             action=Action.INFER,
             input='foo.py',
-            deps=[],
+            deps='',
             imports=path_utils.join(runner.imports_dir, 'foo.imports-1'),
             module='foo'))
     self.assertBuildStatementMatches(
@@ -735,7 +736,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'bar.pyi-1'),
             action=Action.INFER,
             input='bar.py',
-            deps=[],
+            deps='',
             imports=path_utils.join(runner.imports_dir, 'bar.imports-1'),
             module='bar'))
     self.assertBuildStatementMatches(
@@ -744,9 +745,9 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi'),
             action=Action.CHECK,
             input='foo.py',
-            deps=[
+            deps=' | {} {}'.format(
                 path_utils.join(runner.pyi_dir, 'foo.pyi-1'),
-                path_utils.join(runner.pyi_dir, 'bar.pyi-1')],
+                path_utils.join(runner.pyi_dir, 'bar.pyi-1')),
             imports=path_utils.join(runner.imports_dir, 'foo.imports'),
             module='foo'))
 
