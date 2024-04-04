@@ -34,18 +34,15 @@ class AbstractConverter:
     # Cache the class early so that references to it in its members don't cause
     # infinite recursion.
     self._cache.classes[cls] = abstract_class
-    # TODO(b/324464265): For now, don't convert the bodies of builtin classes
-    # because they contain lots of stuff the converter doesn't yet support.
-    if not cls.name.startswith('builtins.'):
-      for method in cls.methods:
-        abstract_class.members[method.name] = (
-            self.pytd_function_to_value(method))
-      for constant in cls.constants:
-        constant_type = self.pytd_type_to_value(constant.type)
-        abstract_class.members[constant.name] = constant_type.instantiate()
-      for nested_class in cls.classes:
-        abstract_class.members[nested_class.name] = (
-            self.pytd_class_to_value(nested_class))
+    for method in cls.methods:
+      abstract_class.members[method.name] = (
+          self.pytd_function_to_value(method))
+    for constant in cls.constants:
+      constant_type = self.pytd_type_to_value(constant.type)
+      abstract_class.members[constant.name] = constant_type.instantiate()
+    for nested_class in cls.classes:
+      abstract_class.members[nested_class.name] = (
+          self.pytd_class_to_value(nested_class))
     return abstract_class
 
   def pytd_function_to_value(
@@ -89,13 +86,23 @@ class AbstractConverter:
       return self._ctx.singles.Any
     elif isinstance(typ, pytd.NothingType):
       return self._ctx.singles.Never
-    elif isinstance(typ, (pytd.LateType,
-                          pytd.Literal,
-                          pytd.Annotated,
-                          pytd.TypeParameter,
-                          pytd.UnionType,
-                          pytd.IntersectionType,
-                          pytd.GenericType)):
+    elif isinstance(typ, pytd.UnionType):
+      return abstract.Union(
+          self._ctx, tuple(self._pytd_type_to_value(t) for t in typ.type_list))
+    # TODO(b/324464265): Everything from this point onward is a dummy
+    # implementation that needs to be replaced by a real one.
+    elif isinstance(typ, pytd.GenericType):
+      return self._pytd_type_to_value(typ.base_type)
+    elif isinstance(typ, pytd.TypeParameter):
+      return self._ctx.singles.Any
+    elif isinstance(typ, pytd.Literal):
+      return self._ctx.abstract_loader.load_raw_type(type(typ.value))
+    elif isinstance(typ, pytd.Annotated):
+      # We discard the Annotated wrapper for now, but we will need to keep track
+      # of it because Annotated is a special form that can be used in generic
+      # type aliases.
+      return self._pytd_type_to_value(typ.base_type)
+    elif isinstance(typ, (pytd.LateType, pytd.IntersectionType)):
       raise NotImplementedError(
           f'Abstract conversion not yet implemented for {typ}')
     else:

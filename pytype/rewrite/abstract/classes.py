@@ -58,10 +58,15 @@ class SimpleClass(base.BaseValue):
 
   @property
   def _attrs(self):
-    return (self.name, immutabledict.immutabledict(self.members))
+    return (self.module, self.name)
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     return self.members.get(name)
+
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    # SimpleClass is used to model imported classes, which we treat as frozen.
+    log.info('Ignoring attribute set on %r: %s -> %r',
+             self, name, value)
 
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
@@ -71,9 +76,8 @@ class SimpleClass(base.BaseValue):
         _ = setup_method.bind_to(self).analyze()
     constructor = self.get_attribute(self.constructor)
     if constructor:
-      raise NotImplementedError('Custom __new__')
-    else:
-      instance = MutableInstance(self._ctx, self)
+      log.error('Custom __new__ not yet implemented')
+    instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -83,9 +87,8 @@ class SimpleClass(base.BaseValue):
   def call(self, args: functions_lib.Args) -> ClassCallReturn:
     constructor = self.get_attribute(self.constructor)
     if constructor:
-      raise NotImplementedError('Custom __new__')
-    else:
-      instance = MutableInstance(self._ctx, self)
+      log.error('Custom __new__ not yet implemented')
+    instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -110,6 +113,10 @@ class InterpreterClass(SimpleClass):
   def __repr__(self):
     return f'InterpreterClass({self.name})'
 
+  @property
+  def _attrs(self):
+    return (self.name, immutabledict.immutabledict(self.members))
+
 
 class BaseInstance(base.BaseValue):
   """Instance of a class."""
@@ -123,10 +130,6 @@ class BaseInstance(base.BaseValue):
 
   @abc.abstractmethod
   def set_attribute(self, name: str, value: base.BaseValue) -> None: ...
-
-  @property
-  def _attrs(self):
-    return (self.cls, immutabledict.immutabledict(self.members))
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     if name in self.members:
@@ -147,6 +150,10 @@ class MutableInstance(BaseInstance):
 
   def __repr__(self):
     return f'MutableInstance({self.cls.name})'
+
+  @property
+  def _attrs(self):
+    return (self.cls, immutabledict.immutabledict(self.members))
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
@@ -171,6 +178,12 @@ class FrozenInstance(BaseInstance):
 
   def __repr__(self):
     return f'FrozenInstance({self.cls.name})'
+
+  @property
+  def _attrs(self):
+    # Since a FrozenInstance is the canonical instance of its class and cannot
+    # change, the hash of the class is enough to uniquely identify it.
+    return (self.cls,)
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # The VM may try to set an attribute on a frozen instance in the process of
