@@ -17,12 +17,15 @@ methods to implement `call` and `analyze`.
 
 import abc
 import dataclasses
+import logging
 from typing import Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
 
 import immutabledict
 from pytype.blocks import blocks
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
+
+log = logging.getLogger(__name__)
 
 _EMPTY_MAP = immutabledict.immutabledict()
 _ArgDict = Dict[str, base.AbstractVariableType]
@@ -292,11 +295,18 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
     self.module = module
 
   def __repr__(self):
-    return f'SimpleFunction({self._name})'
+    return f'SimpleFunction({self.full_name})'
 
   @property
   def name(self):
     return self._name
+
+  @property
+  def full_name(self):
+    if self.module:
+      return f'{self.module}.{self._name}'
+    else:
+      return self._name
 
   @property
   def signatures(self):
@@ -363,6 +373,8 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     return (self.name, self.code)
 
   def call_with_mapped_args(self, mapped_args: MappedArgs[_FrameT]) -> _FrameT:
+    log.info('Calling function:\n  Sig:  %s\n  Args: %s',
+             mapped_args.signature, mapped_args.argdict)
     parent_frame = mapped_args.frame or self._parent_frame
     frame = parent_frame.make_child_frame(self, mapped_args.argdict)
     frame.run()

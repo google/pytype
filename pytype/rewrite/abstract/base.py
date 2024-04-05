@@ -47,6 +47,11 @@ class ContextType(Protocol):
 class BaseValue(types.BaseValue, abc.ABC):
   """Base class for abstract values."""
 
+  # For convenience, we want the 'name' attribute to be available on all values.
+  # Setting it as a class attribute gives subclasses the most flexibility in how
+  # to define it.
+  name = ''
+
   def __init__(self, ctx: ContextType):
     self._ctx = ctx
 
@@ -63,6 +68,10 @@ class BaseValue(types.BaseValue, abc.ABC):
     The attributes must be hashable. Do not include the type of `self` or
     `self._ctx`.
     """
+
+  @property
+  def full_name(self):
+    return self.name
 
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self._attrs == other._attrs

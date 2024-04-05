@@ -54,11 +54,18 @@ class SimpleClass(base.BaseValue):
     self.initializers = ['__init__']
 
   def __repr__(self):
-    return f'SimpleClass({self.name})'
+    return f'SimpleClass({self.full_name})'
 
   @property
   def _attrs(self):
     return (self.module, self.name)
+
+  @property
+  def full_name(self):
+    if self.module:
+      return f'{self.module}.{self.name}'
+    else:
+      return self.name
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     return self.members.get(name)
@@ -70,6 +77,7 @@ class SimpleClass(base.BaseValue):
 
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
+    log.info('Instantiating class %s', self.full_name)
     for setup_method_name in self.setup_methods:
       setup_method = self.get_attribute(setup_method_name)
       if isinstance(setup_method, functions_lib.InterpreterFunction):

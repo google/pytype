@@ -1,5 +1,6 @@
 """An abstract virtual machine for type analysis of python bytecode."""
 
+import logging
 from typing import Dict, Optional, Sequence
 
 from pytype import config
@@ -10,6 +11,8 @@ from pytype.pytd import pytd_utils
 from pytype.rewrite import context
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.abstract import abstract
+
+log = logging.getLogger(__name__)
 
 
 class VirtualMachine:
@@ -45,17 +48,21 @@ class VirtualMachine:
 
   def analyze_all_defs(self) -> None:
     """Analyzes all class and function definitions."""
+    log.info('Running module-level code')
     self._run_module()
     parent_frames = [self._module_frame]
     while parent_frames:
       parent_frame = parent_frames.pop(0)
       for f in parent_frame.functions:
+        log.info('Analyzing %s', f.full_name)
         parent_frames.extend(f.analyze())
       classes = _collect_classes(parent_frame)
       for cls in classes:
         instance = cls.instantiate()
         for f in cls.functions:
-          parent_frames.extend(f.bind_to(instance).analyze())
+          method = f.bind_to(instance)
+          log.info('Analyzing %s', method.full_name)
+          parent_frames.extend(method.analyze())
 
   def infer_stub(self) -> pytd.TypeDeclUnit:
     """Infers a type stub."""
@@ -64,6 +71,7 @@ class VirtualMachine:
     for name, value in self._module_frame.final_locals.items():
       if name in self._initial_globals and value == self._initial_globals[name]:
         continue
+      log.info("Inferring type of '%s: %s'", name, value)
       try:
         pytd_node = value.to_pytd_def()
       except NotImplementedError:

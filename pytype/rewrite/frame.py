@@ -324,6 +324,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
             functions=frame.functions,
             classes=frame.classes,
         )
+        log.info('Created class: %s', cls.name)
         self._classes.append(cls)
         ret_values.append(cls)
       else:
@@ -407,6 +408,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       enclosing_scope = ()
     func = abstract.InterpreterFunction(
         self._ctx, name, code, enclosing_scope, self)
+    log.info('Created function: %s', func.name)
     if not (
         self._stack and
         self._stack.top().has_atomic_value(self._ctx.singles.__build_class__)):
