@@ -12,6 +12,7 @@ class FakeFrame:
 
   def __init__(self, ctx):
     self.ctx = ctx
+    self.name = ''
     self.child_frames = []
     self.final_locals = {}
     self.stack = [self]
@@ -51,7 +52,7 @@ class SignatureTest(test_utils.PytdTestBase,
     signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
     x = base.PythonConstant(self.ctx, 'x').to_variable()
     y = base.PythonConstant(self.ctx, 'y').to_variable()
-    args = signature.map_args(functions.Args([x, y]))
+    args = signature.map_args(functions.Args((x, y)))
     self.assertEqual(args.argdict, {'x': x, 'y': y})
 
   def test_fake_args(self):

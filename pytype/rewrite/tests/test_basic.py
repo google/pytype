@@ -66,6 +66,21 @@ class BasicTest(test_base.BaseTest):
     """)
     self.assertErrorSequences(errors, {'e': ['Expected: str', 'Actual: int']})
 
+  def test_infer_class_body(self):
+    ty = self.Infer("""
+      class C:
+        def __init__(self):
+          self.x = 3
+        def f(self):
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class C:
+        x: int
+        def __init__(self) -> None: ...
+        def f(self) -> int: ...
+    """)
+
 
 if __name__ == '__main__':
   test_base.main()

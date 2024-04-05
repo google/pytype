@@ -388,6 +388,19 @@ class FrameTest(FrameTestBase):
         abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
                                   abstract.PythonConstant(self.ctx, None))))
 
+  def test_method_parameter(self):
+    module_frame = self._make_frame("""
+      class C:
+        def f(self, x):
+          self.x = x
+      c = C()
+      c.f(0)
+    """)
+    module_frame.run()
+    instance = _get(module_frame, 'c', abstract.MutableInstance)
+    self.assertEqual(instance.get_attribute('x'),
+                     abstract.PythonConstant(self.ctx, 0))
+
   def test_multiple_initializers(self):
     module_frame = self._make_frame("""
       class C:

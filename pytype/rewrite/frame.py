@@ -471,20 +471,20 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
     if not sentinel.has_atomic_value(self._ctx.singles.NULL):
       raise NotImplementedError('CALL not fully implemented')
-    func_var, *args = rest
-    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
+    func, *args = rest
+    self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
 
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
-    func_var = self._stack.pop()
-    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
+    func = self._stack.pop()
+    self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
 
   def byte_CALL_METHOD(self, opcode):
     args = self._stack.popn(opcode.arg)
-    func_var = self._stack.pop()
+    func = self._stack.pop()
     # pop the NULL off the stack (see LOAD_METHOD)
     self._stack.pop_and_discard()
-    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
+    self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
 
   # Pytype tracks variables in enclosing scopes by name rather than emulating
   # the runtime's approach with cells and freevars, so we can ignore the opcodes

@@ -69,7 +69,7 @@ class VirtualMachine:
     self._run_module()
     pytd_nodes = []
     for name, value in self._module_frame.final_locals.items():
-      if name in self._initial_globals and value == self._initial_globals[name]:
+      if name in self._initial_globals:
         continue
       log.info("Inferring type of '%s: %s'", name, value)
       try:
