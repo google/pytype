@@ -1,6 +1,5 @@
 """A frame of an abstract VM for type analysis of python bytecode."""
 
-import enum
 import logging
 from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
@@ -24,11 +23,6 @@ _VarMap = Mapping[str, _AbstractVariable]
 _FrameFunction = abstract.InterpreterFunction['Frame']
 
 
-class _Scope(enum.Enum):
-  ENCLOSING = enum.auto()
-  GLOBAL = enum.auto()
-
-
 class _ShadowedNonlocals:
   """Tracks shadowed nonlocal names."""
 
@@ -42,21 +36,17 @@ class _ShadowedNonlocals:
   def add_global(self, name: str) -> None:
     self._globals.add(name)
 
-  def has_scope(self, name: str, scope: _Scope) -> bool:
-    if scope is _Scope.ENCLOSING:
-      return name in self._enclosing
-    elif scope is _Scope.GLOBAL:
-      return name in self._globals
-    else:
-      raise ValueError(f'Unrecognized scope: {scope}')
+  def has_enclosing(self, name: str):
+    return name in self._enclosing
 
-  def get_names(self, scope: _Scope) -> FrozenSet[str]:
-    if scope is _Scope.ENCLOSING:
-      return frozenset(self._enclosing)
-    elif scope is _Scope.GLOBAL:
-      return frozenset(self._globals)
-    else:
-      raise NotImplementedError(f'Unrecognized scope: {scope}')
+  def has_global(self, name: str):
+    return name in self._globals
+
+  def get_global_names(self) -> FrozenSet[str]:
+    return frozenset(self._globals)
+
+  def get_enclosing_names(self) -> FrozenSet[str]:
+    return frozenset(self._enclosing)
 
 
 class Frame(frame_base.FrameBase[abstract.BaseValue]):
@@ -189,20 +179,29 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       self.store_local(name, var)
 
+  def _shadows_enclosing(self, name: str) -> bool:
+    """Does name shadow a variable from the enclosing scope?"""
+    return self._shadowed_nonlocals.has_enclosing(name)
+
+  def _shadows_global(self, name: str) -> bool:
+    """Does name shadow a variable from the global scope?"""
+    if self._is_module_frame:
+      # This is the global scope, and so `name` cannot shadow anything.
+      return False
+    return self._shadowed_nonlocals.has_global(name)
+
   def load_local(self, name) -> _AbstractVariable:
-    if (self._shadowed_nonlocals.has_scope(name, _Scope.ENCLOSING) or
-        (not self._is_module_frame and
-         self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL))):
+    if self._shadows_enclosing(name) or self._shadows_global(name):
       raise KeyError(name)
     return self._current_state.load_local(name)
 
   def load_enclosing(self, name) -> _AbstractVariable:
-    if self._shadowed_nonlocals.has_scope(name, _Scope.ENCLOSING):
+    if self._shadows_enclosing(name):
       return self._current_state.load_local(name)
     return self._initial_enclosing[name].with_name(name)
 
   def load_global(self, name) -> _AbstractVariable:
-    if self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL):
+    if self._shadows_global(name):
       return self._current_state.load_local(name)
     try:
       if self._is_module_frame:
@@ -210,8 +209,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       else:
         return self._initial_globals[name].with_name(name)
     except KeyError:
-      builtin = self._ctx.abstract_loader.load_builtin_by_name(name)
-      return builtin.to_variable(name)
+      return self.load_builtin(name)
+
+  def load_builtin(self, name) -> _AbstractVariable:
+    builtin = self._ctx.abstract_loader.load_builtin_by_name(name)
+    return builtin.to_variable(name)
 
   def load_deref(self, name) -> _AbstractVariable:
     # When a name from a parent frame is referenced in a child frame, we make a
@@ -237,7 +239,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     initial_enclosing = {}
     for name in func.enclosing_scope:
       if name in current_locals:
-        assert not self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL)
+        assert not self._shadows_global(name)
         initial_enclosing[name] = current_locals[name]
       else:
         initial_enclosing[name] = self._initial_enclosing[name]
@@ -246,7 +248,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       initial_globals = current_locals
     else:
       initial_globals = dict(self._initial_globals)
-      for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
+      for name in self._shadowed_nonlocals.get_global_names():
         initial_globals[name] = current_locals[name]
     return Frame(
         ctx=self._ctx,
@@ -292,10 +294,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if not frame:
       return
     # Store nonlocals.
-    for name in self._shadowed_nonlocals.get_names(_Scope.ENCLOSING):
+    for name in self._shadowed_nonlocals.get_enclosing_names():
       var = self._final_locals[name]
       frame.store_deref(name, var)
-    for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
+    for name in self._shadowed_nonlocals.get_global_names():
       var = self._final_locals[name]
       frame.store_global(name, var)
 

@@ -51,14 +51,14 @@ class ShadowedNonlocalsTest(unittest.TestCase):
   def test_enclosing(self):
     sn = frame_lib._ShadowedNonlocals()
     sn.add_enclosing('x')
-    self.assertTrue(sn.has_scope('x', frame_lib._Scope.ENCLOSING))
-    self.assertCountEqual(sn.get_names(frame_lib._Scope.ENCLOSING), {'x'})
+    self.assertTrue(sn.has_enclosing('x'))
+    self.assertCountEqual(sn.get_enclosing_names(), {'x'})
 
   def test_global(self):
     sn = frame_lib._ShadowedNonlocals()
     sn.add_global('x')
-    self.assertTrue(sn.has_scope('x', frame_lib._Scope.GLOBAL))
-    self.assertCountEqual(sn.get_names(frame_lib._Scope.GLOBAL), {'x'})
+    self.assertTrue(sn.has_global('x'))
+    self.assertCountEqual(sn.get_global_names(), {'x'})
 
 
 class LoadStoreTest(FrameTestBase):
@@ -241,7 +241,7 @@ class FrameTest(FrameTestBase):
     self.assertIn('g', f_frame.final_locals)
     self.assertIn('x', f_frame.final_locals)
     self.assertCountEqual(
-        f_frame._shadowed_nonlocals.get_names(frame_lib._Scope.GLOBAL), {'x'})
+        f_frame._shadowed_nonlocals.get_global_names(), {'x'})
 
   def test_read_enclosing(self):
     module_frame = self._make_frame("""
