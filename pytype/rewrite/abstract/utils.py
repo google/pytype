@@ -34,4 +34,4 @@ def join_values(
   elif values:
     return values[0]
   else:
-    return ctx.singles.Any
+    return ctx.consts['Any']

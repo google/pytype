@@ -11,7 +11,7 @@ class ConstKeyDictTest(test_utils.ContextfulTestBase):
 
   def test_asserts_dict(self):
     _ = internal.ConstKeyDict(self.ctx, {
-        'a': self.ctx.singles.Any.to_variable()
+        'a': self.ctx.consts['Any'].to_variable()
     })
     with self.assertRaises(AssertionError):
       x: Any = ['a', 'b']

@@ -26,4 +26,4 @@ class AssertType(abstract.SimpleFunction[abstract.SimpleReturn]):
     if actual != expected:
       stack = frame.stack if (frame := mapped_args.frame) else None
       self._ctx.errorlog.assert_type(stack, actual, expected)
-    return abstract.SimpleReturn(abstract.PythonConstant(self._ctx, None))
+    return abstract.SimpleReturn(self._ctx.consts['None'])

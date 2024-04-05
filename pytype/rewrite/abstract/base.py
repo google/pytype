@@ -1,8 +1,7 @@
 """Base abstract representation of Python values."""
 
 import abc
-import dataclasses
-from typing import Any, Dict, Generic, Optional, Protocol, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
 
 from pytype import config
 from pytype import load_pytd
@@ -15,33 +14,16 @@ from typing_extensions import Self
 _T = TypeVar('_T')
 
 
-@dataclasses.dataclass(init=False)
-class Singletons:
-  """Singleton abstract values."""
-
-  # For readability, we give these the same name as the value they represent.
-  # pylint: disable=invalid-name
-  Any: 'Singleton'
-  __build_class__: 'Singleton'
-  Never: 'Singleton'
-  NULL: 'Singleton'
-  # pylint: enable=invalid-name
-
-  def __init__(self, ctx: 'ContextType'):
-    for field in dataclasses.fields(self):
-      setattr(self, field.name, Singleton(ctx, field.name))
-
-
 class ContextType(Protocol):
 
   options: config.Options
   pytd_loader: load_pytd.Loader
 
-  singles: Singletons
   errorlog: Any
   abstract_converter: Any
   abstract_loader: Any
   pytd_converter: Any
+  consts: Mapping[str, 'BaseValue']
 
 
 class BaseValue(types.BaseValue, abc.ABC):
@@ -106,6 +88,18 @@ class BaseValue(types.BaseValue, abc.ABC):
 
 class PythonConstant(BaseValue, Generic[_T]):
   """Representation of a Python constant."""
+
+  _INSTANCES: Dict[Tuple[ContextType, Any], 'PythonConstant'] = {}
+
+  def __new__(cls, ctx: ContextType, constant: _T):
+    if cls is not PythonConstant:
+      return super().__new__(cls)
+    key = (ctx, constant)
+    if key in cls._INSTANCES:
+      return cls._INSTANCES[key]
+    self = super().__new__(cls)
+    cls._INSTANCES[key] = self
+    return self
 
   def __init__(self, ctx: ContextType, constant: _T):
     super().__init__(ctx)

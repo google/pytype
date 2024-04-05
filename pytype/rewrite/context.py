@@ -9,7 +9,7 @@ New Context attributes should also be added to the ContextType protocol in
 abstract/base.py.
 """
 
-from typing import Optional
+from typing import Mapping, Optional
 
 from pytype import config
 from pytype import load_pytd
@@ -30,11 +30,11 @@ class Context:
   options: config.Options
   pytd_loader: load_pytd.Loader
 
-  singles: abstract.Singletons
   errorlog: errors.VmErrorLog
   abstract_converter: convert.AbstractConverter
   abstract_loader: load_abstract.AbstractLoader
   pytd_converter: output.PytdConverter
+  consts: Mapping[str, abstract.BaseValue]
 
   def __init__(
       self,
@@ -44,8 +44,10 @@ class Context:
     self.options = options or config.Options.create()
     self.pytd_loader = pytd_loader or load_pytd.create_loader(self.options)
 
-    self.singles = abstract.Singletons(self)
     self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self))
     self.abstract_converter = convert.AbstractConverter(self)
     self.abstract_loader = load_abstract.AbstractLoader(self, self.pytd_loader)
     self.pytd_converter = output.PytdConverter(self)
+
+    # We access these all the time, so create a convenient alias.
+    self.consts = self.abstract_loader.consts

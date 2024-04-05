@@ -101,6 +101,7 @@ py_test(
   DEPS
     .base
     .instances
+    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 

@@ -83,9 +83,9 @@ class AbstractConverter:
     if isinstance(typ, pytd.ClassType):
       return self.pytd_class_to_value(typ.cls)
     elif isinstance(typ, pytd.AnythingType):
-      return self._ctx.singles.Any
+      return self._ctx.consts['Any']
     elif isinstance(typ, pytd.NothingType):
-      return self._ctx.singles.Never
+      return self._ctx.consts['Never']
     elif isinstance(typ, pytd.UnionType):
       return abstract.Union(
           self._ctx, tuple(self._pytd_type_to_value(t) for t in typ.type_list))
@@ -94,7 +94,7 @@ class AbstractConverter:
     elif isinstance(typ, pytd.GenericType):
       return self._pytd_type_to_value(typ.base_type)
     elif isinstance(typ, pytd.TypeParameter):
-      return self._ctx.singles.Any
+      return self._ctx.consts['Any']
     elif isinstance(typ, pytd.Literal):
       return self._ctx.abstract_loader.load_raw_type(type(typ.value))
     elif isinstance(typ, pytd.Annotated):

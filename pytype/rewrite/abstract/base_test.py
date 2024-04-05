@@ -52,6 +52,11 @@ class PythonConstantTest(test_utils.ContextfulTestBase):
     const = var.get_atomic_value(base.PythonConstant[int]).constant
     assert_type(const, int)
 
+  def test_duplicate(self):
+    c1 = base.PythonConstant(self.ctx, None)
+    c2 = base.PythonConstant(self.ctx, None)
+    self.assertIs(c1, c2)
+
 
 class SingletonTest(test_utils.ContextfulTestBase):
 

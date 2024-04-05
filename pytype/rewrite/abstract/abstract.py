@@ -11,7 +11,6 @@ BaseValue = _base.BaseValue
 ContextType = _base.ContextType
 PythonConstant = _base.PythonConstant
 Singleton = _base.Singleton
-Singletons = _base.Singletons
 Union = _base.Union
 
 SimpleClass = _classes.SimpleClass

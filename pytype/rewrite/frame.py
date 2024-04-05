@@ -313,7 +313,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
                            abstract.BoundFunction)):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
-      elif func is self._ctx.singles.__build_class__:
+      elif func is self._ctx.consts['__build_class__']:
         class_body, name = args.posargs
         builder = class_body.get_atomic_value(_FrameFunction)
         frame = builder.call(abstract.Args(frame=self))
@@ -409,9 +409,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     func = abstract.InterpreterFunction(
         self._ctx, name, code, enclosing_scope, self)
     log.info('Created function: %s', func.name)
-    if not (
-        self._stack and
-        self._stack.top().has_atomic_value(self._ctx.singles.__build_class__)):
+    if not (self._stack and
+            self._stack.top().has_atomic_value(
+                self._ctx.consts['__build_class__'])):
       # Class building makes and immediately calls a function that creates the
       # class body; we don't need to store this function for later analysis.
       self._functions.append(func)
@@ -419,7 +419,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_PUSH_NULL(self, opcode):
     del opcode  # unused
-    self._stack.push(self._ctx.singles.NULL.to_variable())
+    self._stack.push(self._ctx.consts['NULL'].to_variable())
 
   def byte_LOAD_NAME(self, opcode):
     name = opcode.argval
@@ -445,7 +445,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if self._code.python_version >= (3, 11) and opcode.arg & 1:
       # Compiler-generated marker that will be consumed in byte_CALL
       # We are loading a global and calling it as a function.
-      self._stack.push(self._ctx.singles.NULL.to_variable())
+      self._stack.push(self._ctx.consts['NULL'].to_variable())
     name = opcode.argval
     self._stack.push(self.load_global(name))
 
@@ -461,7 +461,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
-    self._stack.push(self._ctx.singles.NULL.to_variable())
+    self._stack.push(self._ctx.consts['NULL'].to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
 
   def byte_PRECALL(self, opcode):
@@ -469,7 +469,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
-    if not sentinel.has_atomic_value(self._ctx.singles.NULL):
+    if not sentinel.has_atomic_value(self._ctx.consts['NULL']):
       raise NotImplementedError('CALL not fully implemented')
     func, *args = rest
     self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
@@ -496,7 +496,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     del opcode  # unused
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
-    self._stack.push(self._ctx.singles.__build_class__.to_variable())
+    self._stack.push(self._ctx.consts['__build_class__'].to_variable())
 
   # ---------------------------------------------------------------
   # Build and extend collections

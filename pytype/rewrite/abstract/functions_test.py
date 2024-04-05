@@ -25,7 +25,7 @@ class FakeFrame:
     pass
 
   def get_return_value(self):
-    return self.ctx.singles.Any
+    return self.ctx.consts['Any']
 
 
 def _get_const(src: str):
