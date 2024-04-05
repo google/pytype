@@ -41,6 +41,15 @@ class SimpleClass(base.BaseValue):
     self.name = name
     self.members = members
     self.module = module
+    self._canonical_instance: Optional['FrozenInstance'] = None
+
+    if isinstance((init := members.get('__init__')),
+                  functions_lib.SimpleFunction):
+      # An __init__ method is required to return None.
+      for sig in init.signatures:
+        if 'return' not in sig.annotations:
+          sig.annotations['return'] = (
+              ctx.abstract_loader.load_raw_type(type(None)))
 
     # These methods are attributes of individual classes so that they can be
     # easily customized. For example, unittest.TestCase would want to add
@@ -78,6 +87,9 @@ class SimpleClass(base.BaseValue):
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
     log.info('Instantiating class %s', self.full_name)
+    if self._canonical_instance:
+      log.info('Reusing cached instance of class %s', self.full_name)
+      return self._canonical_instance
     for setup_method_name in self.setup_methods:
       setup_method = self.get_attribute(setup_method_name)
       if isinstance(setup_method, functions_lib.InterpreterFunction):
@@ -90,7 +102,8 @@ class SimpleClass(base.BaseValue):
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
         _ = initializer.bind_to(instance).analyze()
-    return instance.freeze()
+    self._canonical_instance = frozen_instance = instance.freeze()
+    return frozen_instance
 
   def call(self, args: functions_lib.Args) -> ClassCallReturn:
     constructor = self.get_attribute(self.constructor)

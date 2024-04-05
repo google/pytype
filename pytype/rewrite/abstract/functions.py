@@ -368,6 +368,7 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     # A function saves a pointer to the frame it's defined in so that it has all
     # the context needed to call itself.
     self._parent_frame = parent_frame
+    self._call_cache = {}
 
   def __repr__(self):
     return f'InterpreterFunction({self.name})'
@@ -380,8 +381,19 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     log.info('Calling function:\n  Sig:  %s\n  Args: %s',
              mapped_args.signature, mapped_args.argdict)
     parent_frame = mapped_args.frame or self._parent_frame
+    if parent_frame.final_locals is None:
+      k = None
+    else:
+      # If the parent frame has finished running, then the context of this call
+      # will not change, so we can cache the return value.
+      k = (parent_frame.name, immutabledict.immutabledict(mapped_args.argdict))
+      if k in self._call_cache:
+        log.info('Reusing cached return value of function %s', self.name)
+        return self._call_cache[k]
     frame = parent_frame.make_child_frame(self, mapped_args.argdict)
     frame.run()
+    if k:
+      self._call_cache[k] = frame
     return frame
 
   def bind_to(self, callself: base.BaseValue) -> 'BoundFunction[_FrameT]':

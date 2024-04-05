@@ -59,7 +59,10 @@ class VirtualMachine:
       classes = _collect_classes(parent_frame)
       for cls in classes:
         instance = cls.instantiate()
+        skip = cls.setup_methods + [cls.constructor] + cls.initializers
         for f in cls.functions:
+          if f.name.rsplit('.')[-1] in skip:
+            continue
           method = f.bind_to(instance)
           log.info('Analyzing %s', method.full_name)
           parent_frames.extend(method.analyze())
