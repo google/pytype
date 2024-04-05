@@ -361,8 +361,26 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     nojump_state = self._current_state.with_condition(conditions.Condition())
     self._merge_state_into(nojump_state, opcode.next.index)
 
-  def byte_RESUME(self, opcode):
+  # ---------------------------------------------------------------
+  # Opcodes with no typing effects
+
+  def byte_NOP(self, opcode):
     del opcode  # unused
+
+  def byte_PRINT_EXPR(self, opcode):
+    del opcode  # unused
+    self._stack.pop_and_discard()
+
+  def byte_PRECALL(self, opcode):
+    # Internal cpython use
+    del opcode  # unused
+
+  def byte_RESUME(self, opcode):
+    # Internal cpython use
+    del opcode  # unused
+
+  # ---------------------------------------------------------------
+  # Load and store operations
 
   def byte_LOAD_CONST(self, opcode):
     constant = abstract.PythonConstant(self._ctx, self._code.consts[opcode.arg])
@@ -463,9 +481,6 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # retrieve a bound method, we push the NULL
     self._stack.push(self._ctx.consts['NULL'].to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
-
-  def byte_PRECALL(self, opcode):
-    del opcode  # unused
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
