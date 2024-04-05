@@ -34,6 +34,17 @@ class FrameTestBase(test_utils.ContextfulTestBase):
   def _const_var(self, const, name=None):
     return abstract.PythonConstant(self.ctx, const).to_variable(name)
 
+  def run_block(self, block: str, *, consts=()) -> frame_lib.Frame:
+    """Run a block of opcodes without checking frame exit conditions."""
+    code = test_utils.assemble_block(block, consts=consts)
+    blk = code.order[0].code
+    n = len(blk)
+    # Add a NOP at the end so there is always an opcode.next
+    blk.append(opcodes.NOP(n, blk[-1].line))
+    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
+    frame.stepn(n)
+    return frame
+
 
 class ShadowedNonlocalsTest(unittest.TestCase):
 
@@ -524,47 +535,35 @@ class ComprehensionAccumulatorTest(FrameTestBase):
   """Test accumulating results in a comprehension."""
 
   def test_list_append(self):
-    block = [
-        opcodes.BUILD_LIST(0, 0, 0, None),
-        opcodes.LOAD_CONST(1, 0, 0, 1),
-        opcodes.LOAD_CONST(2, 0, 1, 2),
-        opcodes.LIST_APPEND(3, 0, 2, None),
-        opcodes.NOP(4, 0)
-    ]
-    code = test_utils.FakeOrderedCode([block], [1, 2])
-    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
-    frame.stepn(4)
+    frame = self.run_block("""
+      BUILD_LIST 0
+      LOAD_CONST 0
+      LOAD_CONST 1
+      LIST_APPEND 2
+    """, consts=[1, 2])
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, [self._const_var(2)])
 
   def test_set_add(self):
-    block = [
-        opcodes.BUILD_SET(0, 0, 0, None),
-        opcodes.LOAD_CONST(1, 0, 0, 1),
-        opcodes.LOAD_CONST(2, 0, 1, 2),
-        opcodes.SET_ADD(3, 0, 2, None),
-        opcodes.NOP(4, 0)
-    ]
-    code = test_utils.FakeOrderedCode([block], [1, 2])
-    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
-    frame.stepn(4)
+    frame = self.run_block("""
+      BUILD_SET 0
+      LOAD_CONST 0
+      LOAD_CONST 1
+      SET_ADD 2
+    """, consts=[1, 2])
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, {self._const_var(2)})
 
   def test_map_add(self):
-    block = [
-        opcodes.BUILD_MAP(0, 0, 0, None),
-        opcodes.LOAD_CONST(1, 0, 0, 1),
-        opcodes.LOAD_CONST(2, 0, 1, 2),
-        opcodes.LOAD_CONST(3, 0, 2, 3),
-        opcodes.MAP_ADD(4, 0, 2, None),
-        opcodes.NOP(5, 0)
-    ]
-    code = test_utils.FakeOrderedCode([block], [1, 2, 3])
-    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
-    frame.stepn(5)
+    frame = self.run_block("""
+      BUILD_MAP 0
+      LOAD_CONST 0
+      LOAD_CONST 1
+      LOAD_CONST 2
+      MAP_ADD 2
+    """, consts=[1, 2, 3])
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, {self._const_var(2): self._const_var(3)})

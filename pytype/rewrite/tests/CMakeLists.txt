@@ -21,3 +21,13 @@ py_test(
   DEPS
     pytype.tests.test_base
 )
+
+py_test(
+  NAME
+    test_utils_test
+  SRCS
+    test_utils_test.py
+  DEPS
+    .test_utils
+    pytype.pyc.pyc
+)
