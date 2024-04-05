@@ -33,6 +33,7 @@ SimpleReturn = _functions.SimpleReturn
 Dict = _instances.Dict
 List = _instances.List
 Set = _instances.Set
+Tuple = _instances.Tuple
 
 ConstKeyDict = _internal.ConstKeyDict
 Splat = _internal.Splat

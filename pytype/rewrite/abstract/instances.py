@@ -2,7 +2,7 @@
 
 import logging
 
-from typing import Dict as _Dict, List as _List, Set as _Set
+from typing import Dict as _Dict, List as _List, Set as _Set, Tuple as _Tuple
 
 from pytype.rewrite.abstract import base
 
@@ -54,3 +54,16 @@ class Set(base.PythonConstant[_Set[_Variable]]):
 
   def add(self, val: _Variable):
     self.constant.add(val)
+
+
+class Tuple(base.PythonConstant[_Tuple[_Variable, ...]]):
+  """Representation of a Python tuple."""
+
+  def __init__(self, ctx: base.ContextType, constant: _Tuple[_Variable, ...]):
+    assert isinstance(constant, tuple), constant
+    super().__init__(ctx, constant)
+
+  def __repr__(self):
+    return f'Tuple({self.constant!r})'
+
+

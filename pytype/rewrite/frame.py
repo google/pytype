@@ -528,7 +528,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(constant.to_variable())
 
   def byte_BUILD_TUPLE(self, opcode):
-    self._build_collection_from_stack(opcode, tuple)
+    self._build_collection_from_stack(opcode, tuple, factory=abstract.Tuple)
 
   def byte_BUILD_LIST(self, opcode):
     self._build_collection_from_stack(opcode, list, factory=abstract.List)
