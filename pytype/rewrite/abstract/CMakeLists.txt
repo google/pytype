@@ -78,6 +78,7 @@ py_test(
   SRCS
     functions_test.py
   DEPS
+    .classes
     .functions
     pytype.rewrite.tests.test_utils
 )

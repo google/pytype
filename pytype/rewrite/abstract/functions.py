@@ -240,7 +240,10 @@ class Signature:
       names.append(self.varargs_name)
     if self.kwargs_name:
       names.append(self.kwargs_name)
-    argdict = {name: self._ctx.consts.Any.to_variable() for name in names}
+    argdict = {}
+    for name in names:
+      typ = self.annotations.get(name, self._ctx.consts.Any)
+      argdict[name] = typ.instantiate().to_variable()
     return MappedArgs(signature=self, argdict=argdict)
 
 
@@ -404,7 +407,8 @@ class PytdFunction(SimpleFunction[SimpleReturn]):
 
   def call_with_mapped_args(
       self, mapped_args: MappedArgs[FrameType]) -> SimpleReturn:
-    return SimpleReturn(self._ctx.consts.Any)
+    ret = mapped_args.signature.annotations['return'].instantiate()
+    return SimpleReturn(ret)
 
 
 class BoundFunction(BaseFunction[_HasReturnT]):

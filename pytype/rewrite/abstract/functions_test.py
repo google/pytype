@@ -1,5 +1,6 @@
 from typing import Sequence
 
+from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
@@ -55,9 +56,15 @@ class SignatureTest(test_utils.PytdTestBase,
     self.assertEqual(args.argdict, {'x': x, 'y': y})
 
   def test_fake_args(self):
-    signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
+    annotations = {'x': self.ctx.abstract_loader.load_raw_type(int)}
+    signature = functions.Signature(self.ctx, 'f', ('x', 'y'),
+                                    annotations=annotations)
     args = signature.make_fake_args()
     self.assertEqual(set(args.argdict), {'x', 'y'})
+    x = args.argdict['x'].get_atomic_value()
+    self.assertIsInstance(x, classes.FrozenInstance)
+    self.assertEqual(x.cls.name, 'int')
+    self.assertEqual(args.argdict['y'].get_atomic_value(), self.ctx.consts.Any)
 
   def test_from_pytd_basic(self):
     sig = self.from_pytd('def f(): ...')
@@ -127,6 +134,18 @@ class InterpreterFunctionTest(test_utils.ContextfulTestBase):
     assert_type(frames, Sequence[FakeFrame])
     self.assertEqual(len(frames), 1)
     self.assertIsInstance(frames[0], FakeFrame)
+
+
+class PytdFunctionTest(test_utils.PytdTestBase,
+                       test_utils.ContextfulTestBase):
+
+  def test_return(self):
+    pytd_func = self.build_pytd('def f() -> int: ...')
+    func = self.ctx.abstract_converter.pytd_function_to_value(pytd_func)
+    args = functions.MappedArgs(signature=func.signatures[0], argdict={})
+    ret = func.call_with_mapped_args(args).get_return_value()
+    self.assertIsInstance(ret, classes.FrozenInstance)
+    self.assertEqual(ret.cls.name, 'int')
 
 
 class BoundFunctionTest(test_utils.ContextfulTestBase):
