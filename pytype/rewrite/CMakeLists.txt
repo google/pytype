@@ -48,7 +48,6 @@ py_library(
     pytype.config
     pytype.load_pytd
     pytype.errors.errors
-    pytype.rewrite.abstract.abstract
 )
 
 py_library(
@@ -171,7 +170,6 @@ py_test(
     stack_test.py
   DEPS
     .stack
-    pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )
 

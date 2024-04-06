@@ -28,14 +28,14 @@ class LoadBuiltinByNameTest(test_utils.ContextfulTestBase):
 
   def test_constant(self):
     ellipsis = self.ctx.abstract_loader.load_builtin_by_name('Ellipsis')
-    self.assertIsInstance(ellipsis, abstract.FrozenInstance)
-    self.assertEqual(ellipsis.cls.name, 'ellipsis')
+    self.assertIsInstance(ellipsis, abstract.PythonConstant)
+    self.assertEqual(ellipsis.constant, Ellipsis)
 
   def test_none(self):
     self.assertIs(self.ctx.abstract_loader.load_builtin_by_name('None'),
-                  self.ctx.consts['None'])
+                  self.ctx.consts[None])
     self.assertIs(self.ctx.abstract_loader.load_builtin_by_name('NoneType'),
-                  self.ctx.consts['None'])
+                  self.ctx.consts[None])
 
 
 class LoadRawTypeTest(test_utils.ContextfulTestBase):
@@ -54,7 +54,7 @@ class LoadRawTypeTest(test_utils.ContextfulTestBase):
 
   def test_nonetype(self):
     t = self.ctx.abstract_loader.load_raw_type(type(None))
-    self.assertIs(t, self.ctx.consts['None'])
+    self.assertIs(t, self.ctx.consts[None])
 
 
 if __name__ == '__main__':

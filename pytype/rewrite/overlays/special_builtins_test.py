@@ -10,11 +10,10 @@ class AssertTypeTest(unittest.TestCase):
   def test_types_match(self):
     ctx = context.Context()
     assert_type_func = special_builtins.AssertType(ctx)
-    var = abstract.PythonConstant(ctx, 0).to_variable()
+    var = ctx.consts[0].to_variable()
     typ = abstract.SimpleClass(ctx, 'int', {}).to_variable()
     ret = assert_type_func.call(abstract.Args(posargs=(var, typ)))
-    self.assertEqual(ret.get_return_value(),
-                     abstract.PythonConstant(ctx, None))
+    self.assertEqual(ret.get_return_value(), ctx.consts[None])
 
 
 if __name__ == '__main__':

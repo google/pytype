@@ -56,7 +56,6 @@ py_test(
   SRCS
     classes_test.py
   DEPS
-    .base
     .classes
     .functions
     pytype.rewrite.tests.test_utils
@@ -79,7 +78,6 @@ py_test(
   SRCS
     functions_test.py
   DEPS
-    .base
     .functions
     pytype.rewrite.tests.test_utils
 )
@@ -101,7 +99,6 @@ py_test(
   DEPS
     .base
     .instances
-    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 
@@ -120,7 +117,6 @@ py_test(
   SRCS
     internal_test.py
   DEPS
-    .base
     .internal
     pytype.rewrite.tests.test_utils
 )

@@ -48,7 +48,7 @@ class SimpleClass(base.BaseValue):
       # An __init__ method is required to return None.
       for sig in init.signatures:
         if 'return' not in sig.annotations:
-          sig.annotations['return'] = ctx.consts['None']
+          sig.annotations['return'] = ctx.consts[None]
 
     # These methods are attributes of individual classes so that they can be
     # easily customized. For example, unittest.TestCase would want to add

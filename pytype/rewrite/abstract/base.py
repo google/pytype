@@ -1,7 +1,7 @@
 """Base abstract representation of Python values."""
 
 import abc
-from typing import Any, Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
+from typing import Any, Generic, Optional, Protocol, Sequence, Tuple, TypeVar
 
 from pytype import config
 from pytype import load_pytd
@@ -23,7 +23,7 @@ class ContextType(Protocol):
   abstract_converter: Any
   abstract_loader: Any
   pytd_converter: Any
-  consts: Mapping[str, 'BaseValue']
+  consts: Any
 
 
 class BaseValue(types.BaseValue, abc.ABC):
@@ -61,8 +61,7 @@ class BaseValue(types.BaseValue, abc.ABC):
   def __hash__(self):
     return hash((self.__class__, self._ctx) + self._attrs)
 
-  def to_variable(
-      self: Self, name: Optional[str] = None) -> variables.Variable[Self]:
+  def to_variable(self, name: Optional[str] = None) -> variables.Variable[Self]:
     return variables.Variable.from_value(self, name=name)
 
   def get_attribute(self, name: str) -> Optional['BaseValue']:
@@ -87,21 +86,18 @@ class BaseValue(types.BaseValue, abc.ABC):
 
 
 class PythonConstant(BaseValue, Generic[_T]):
-  """Representation of a Python constant."""
+  """Representation of a Python constant.
 
-  _INSTANCES: Dict[Tuple[ContextType, Any], 'PythonConstant'] = {}
+  DO NOT INSTANTIATE THIS CLASS DIRECTLY! Doing so will create extra copies of
+  constants, potentially causing subtle bugs. Instead, fetch the canonical
+  instance of the constant using ctx.consts[constant].
+  """
 
-  def __new__(cls, ctx: ContextType, constant: _T):
-    if cls is not PythonConstant:
-      return super().__new__(cls)
-    key = (ctx, constant)
-    if key in cls._INSTANCES:
-      return cls._INSTANCES[key]
-    self = super().__new__(cls)
-    cls._INSTANCES[key] = self
-    return self
-
-  def __init__(self, ctx: ContextType, constant: _T):
+  def __init__(
+      self, ctx: ContextType, constant: _T, allow_direct_instantiation=False):
+    if self.__class__ is PythonConstant and not allow_direct_instantiation:
+      raise ValueError('Do not instantiate PythonConstant directly. Use '
+                       'ctx.consts[constant] instead.')
     super().__init__(ctx)
     self.constant = constant
 
@@ -114,20 +110,19 @@ class PythonConstant(BaseValue, Generic[_T]):
 
 
 class Singleton(BaseValue):
-  """Singleton value."""
+  """Singleton value.
 
-  _INSTANCES: Dict[Tuple[ContextType, str], 'Singleton'] = {}
+  DO NOT INSTANTIATE THIS CLASS DIRECTLY! Doing so will create extra copies of
+  singletons, potentially causing subtle bugs. Instead, fetch the canonical
+  instance of the singleton using ctx.consts.singles[name].
+  """
+
   name: str
 
-  def __new__(cls, ctx: ContextType, name: str):
-    key = (ctx, name)
-    if key in cls._INSTANCES:
-      return cls._INSTANCES[key]
-    self = super().__new__(cls)
-    cls._INSTANCES[key] = self
-    return self
-
-  def __init__(self, ctx, name):
+  def __init__(self, ctx, name, allow_direct_instantiation=False):
+    if self.__class__ is Singleton and not allow_direct_instantiation:
+      raise ValueError('Do not instantiate Singleton directly. Use '
+                       'ctx.consts.singles[name] instead.')
     super().__init__(ctx)
     self.name = name
 

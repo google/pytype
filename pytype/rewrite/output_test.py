@@ -114,7 +114,7 @@ class FunctionToPytdDefTest(OutputTestBase):
       def f(x):
         pass
     """)
-    func.signatures[0].defaults['x'] = abstract.PythonConstant(self.ctx, 0)
+    func.signatures[0].defaults['x'] = self.ctx.consts[0]
     pytd_func = self.ctx.pytd_converter.to_pytd_def(func)
     self.assertPytdEqual(pytd_func, 'def f(x = ...) -> None: ...')
   # pytype: enable=attribute-error
@@ -123,13 +123,11 @@ class FunctionToPytdDefTest(OutputTestBase):
 class ToPytdTypeTest(OutputTestBase):
 
   def test_any(self):
-    self.assertEqual(
-        self.ctx.pytd_converter.to_pytd_type(self.ctx.consts['Any']),
-        pytd.AnythingType())
+    self.assertEqual(self.ctx.pytd_converter.to_pytd_type(self.ctx.consts.Any),
+                     pytd.AnythingType())
 
   def test_constant(self):
-    t = self.ctx.pytd_converter.to_pytd_type(
-        abstract.PythonConstant(self.ctx, 0))
+    t = self.ctx.pytd_converter.to_pytd_type(self.ctx.consts[0])
     self.assertPytdEqual(t, 'int')
 
   def test_class(self):
@@ -164,8 +162,8 @@ class ToPytdTypeTest(OutputTestBase):
                          'Callable[..., int]')
 
   def test_union(self):
-    union = abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 0),
-                                      abstract.PythonConstant(self.ctx, None)))
+    union = abstract.Union(
+        self.ctx, (self.ctx.consts[0], self.ctx.consts[None]))
     self.assertPytdEqual(self.ctx.pytd_converter.to_pytd_type(union),
                          'Optional[int]')
 
@@ -173,8 +171,7 @@ class ToPytdTypeTest(OutputTestBase):
 class ToPytdInstanceTypeTest(OutputTestBase):
 
   def test_any(self):
-    t = self.ctx.pytd_converter.to_pytd_type_of_instance(
-        self.ctx.consts['Any'])
+    t = self.ctx.pytd_converter.to_pytd_type_of_instance(self.ctx.consts.Any)
     self.assertEqual(t, pytd.AnythingType())
 
   def test_class(self):

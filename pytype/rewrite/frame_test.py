@@ -32,7 +32,7 @@ class FrameTestBase(test_utils.ContextfulTestBase):
                            initial_globals=initial_globals)
 
   def _const_var(self, const, name=None):
-    return abstract.PythonConstant(self.ctx, const).to_variable(name)
+    return self.ctx.consts[const].to_variable(name)
 
   def run_block(self, block: str, *, consts=()) -> frame_lib.Frame:
     """Run a block of opcodes without checking frame exit conditions."""
@@ -66,7 +66,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_local_in_module_frame(self):
     frame = self._make_frame('', name='__main__')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_local('x', var)
     stored = frame.load_local('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -75,7 +75,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_local_in_nonmodule_frame(self):
     frame = self._make_frame('', name='f')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_local('x', var)
     stored = frame.load_local('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -85,7 +85,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_global_in_module_frame(self):
     frame = self._make_frame('', name='__main__')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_global('x', var)
     stored = frame.load_global('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -94,7 +94,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_global_in_nonmodule_frame(self):
     frame = self._make_frame('', name='f')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_global('x', var)
     stored = frame.load_global('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -103,7 +103,7 @@ class LoadStoreTest(FrameTestBase):
 
   def test_overwrite_global_in_module_frame(self):
     code = test_utils.parse('')
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame = frame_lib.Frame(
         self.ctx, '__main__', code, initial_locals={'x': var},
         initial_globals={'x': var})
@@ -112,7 +112,7 @@ class LoadStoreTest(FrameTestBase):
     self.assertEqual(frame.load_global('x'), var.with_name('x'))
     self.assertEqual(frame.load_local('x'), var.with_name('x'))
 
-    var2 = abstract.PythonConstant(self.ctx, 10).to_variable()
+    var2 = self._const_var(10)
     frame.store_global('x', var2)
 
     self.assertEqual(frame.load_global('x'), var2.with_name('x'))
@@ -120,7 +120,7 @@ class LoadStoreTest(FrameTestBase):
 
   def test_overwrite_global_in_nonmodule_frame(self):
     code = test_utils.parse('')
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame = frame_lib.Frame(self.ctx, 'f', code, initial_globals={'x': var})
     frame.step()
 
@@ -128,7 +128,7 @@ class LoadStoreTest(FrameTestBase):
     with self.assertRaises(KeyError):
       frame.load_local('x')
 
-    var2 = abstract.PythonConstant(self.ctx, 10).to_variable()
+    var2 = self._const_var(10)
     frame.store_global('x', var2)
 
     self.assertEqual(frame.load_global('x'), var2.with_name('x'))
@@ -139,7 +139,7 @@ class LoadStoreTest(FrameTestBase):
     code = test_utils.parse('')
     frame = frame_lib.Frame(self.ctx, 'f', code)
     frame.step()
-    x = abstract.PythonConstant(self.ctx, 5).to_variable()
+    x = self._const_var(5)
     frame.store_enclosing('x', x)
     with self.assertRaises(KeyError):
       frame.load_local('x')
@@ -167,14 +167,13 @@ class FrameTest(FrameTestBase):
     frame.step()
     self.assertEqual(len(frame._stack), 1)
     constant = frame._stack.top().get_atomic_value()
-    self.assertEqual(constant, abstract.PythonConstant(self.ctx, 42))
+    self.assertEqual(constant, self.ctx.consts[42])
 
   def test_store_local(self):
     frame = self._make_frame('x = 42')
     frame.run()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 42))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[42])
 
   def test_store_global(self):
     frame = self._make_frame("""
@@ -183,8 +182,7 @@ class FrameTest(FrameTestBase):
     """)
     frame.run()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 42))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[42])
 
   def test_function(self):
     frame = self._make_frame('def f(): pass')
@@ -307,8 +305,7 @@ class FrameTest(FrameTestBase):
     module_frame.run()
     cls = _get(module_frame, 'C', abstract.InterpreterClass)
     instance = cls.instantiate()
-    self.assertEqual(instance.get_attribute('x'),
-                     abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[3])
 
   def test_read_instance_attribute(self):
     module_frame = self._make_frame("""
@@ -324,8 +321,7 @@ class FrameTest(FrameTestBase):
     read = cast(abstract.InterpreterFunction, cls.members['read'])
     frame, = read.bind_to(instance).analyze()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[3])
 
   def test_write_and_read_instance_attribute(self):
     module_frame = self._make_frame("""
@@ -341,8 +337,7 @@ class FrameTest(FrameTestBase):
                           cls.members['write_and_read'])
     frame, = write_and_read.bind_to(instance).analyze()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[3])
 
   def test_modify_instance(self):
     module_frame = self._make_frame("""
@@ -354,7 +349,7 @@ class FrameTest(FrameTestBase):
     """)
     module_frame.run()
     c = _get(module_frame, 'c', abstract.MutableInstance)
-    self.assertEqual(c.get_attribute('x'), abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(c.get_attribute('x'), self.ctx.consts[3])
 
   def test_overwrite_instance_attribute(self):
     module_frame = self._make_frame("""
@@ -369,8 +364,7 @@ class FrameTest(FrameTestBase):
     """)
     module_frame.run()
     c = _get(module_frame, 'c', abstract.MutableInstance)
-    self.assertEqual(c.get_attribute('x'),
-                     abstract.PythonConstant(self.ctx, None))
+    self.assertEqual(c.get_attribute('x'), self.ctx.consts[None])
 
   def test_instance_attribute_multiple_options(self):
     module_frame = self._make_frame("""
@@ -385,8 +379,7 @@ class FrameTest(FrameTestBase):
     instance = _get(module_frame, 'C', abstract.InterpreterClass).instantiate()
     self.assertEqual(
         instance.get_attribute('x'),
-        abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
-                                  abstract.PythonConstant(self.ctx, None))))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
 
   def test_method_parameter(self):
     module_frame = self._make_frame("""
@@ -398,8 +391,7 @@ class FrameTest(FrameTestBase):
     """)
     module_frame.run()
     instance = _get(module_frame, 'c', abstract.MutableInstance)
-    self.assertEqual(instance.get_attribute('x'),
-                     abstract.PythonConstant(self.ctx, 0))
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[0])
 
   def test_multiple_initializers(self):
     module_frame = self._make_frame("""
@@ -417,8 +409,7 @@ class FrameTest(FrameTestBase):
     instance = cls.instantiate()
     self.assertEqual(
         instance.get_attribute('x'),
-        abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
-                                  abstract.PythonConstant(self.ctx, None))))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
 
   def test_return(self):
     module_frame = self._make_frame("""
@@ -433,8 +424,7 @@ class FrameTest(FrameTestBase):
     f_frame, = f.analyze()
     self.assertEqual(
         f_frame.get_return_value(),
-        abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
-                                  abstract.PythonConstant(self.ctx, None))))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
 
   def test_stack(self):
     module_frame = self._make_frame('def f(): pass')

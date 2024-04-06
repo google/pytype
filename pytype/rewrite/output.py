@@ -167,7 +167,7 @@ class PytdConverter:
     Args:
       val: The abstract value.
     """
-    if val is self._ctx.consts['Any']:
+    if val is self._ctx.consts.Any:
       return pytd.AnythingType()
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type(v) for v in val.options)
@@ -219,9 +219,9 @@ class PytdConverter:
     Args:
       val: The abstract value.
     """
-    if val is self._ctx.consts['Any']:
+    if val is self._ctx.consts.Any:
       return pytd.AnythingType()
-    elif val is self._ctx.consts['None']:
+    elif val is self._ctx.consts[None]:
       return pytd.NamedType('builtins.NoneType')
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type_of_instance(v)
