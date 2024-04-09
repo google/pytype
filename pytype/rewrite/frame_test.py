@@ -28,11 +28,17 @@ class FrameTestBase(test_utils.ContextfulTestBase):
           name: value.to_variable() for name, value in module_globals.items()}
     else:
       initial_locals = initial_globals = {}
+    self._kw_names = ()
     return frame_lib.Frame(self.ctx, name, code, initial_locals=initial_locals,
                            initial_globals=initial_globals)
 
   def _const_var(self, const, name=None):
     return self.ctx.consts[const].to_variable(name)
+
+  def assertConstantVar(self, var, expected):
+    val = var.get_atomic_value()
+    self.assertIsInstance(val, abstract.PythonConstant)
+    self.assertEqual(val.constant, expected)
 
   def run_block(self, block: str, *, consts=()) -> frame_lib.Frame:
     """Run a block of opcodes without checking frame exit conditions."""
@@ -43,6 +49,13 @@ class FrameTestBase(test_utils.ContextfulTestBase):
     blk.append(opcodes.NOP(n, blk[-1].line))
     frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
     frame.stepn(n)
+    return frame
+
+  def run_frame_until(self, code: str, *, condition) -> frame_lib.Frame:
+    """Run a block of opcodes until condition is met."""
+    frame = self._make_frame(code)
+    while not condition(frame):
+      frame.step()
     return frame
 
 
@@ -580,7 +593,13 @@ class FunctionTest(FrameTestBase):
     module_frame.run()
     return _get(module_frame, name, _FrameFunction)
 
-  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def _run_until_call(self, code):
+    def cond(frame):
+      return frame.current_opcode.name.startswith('CALL')
+    frame = self.run_frame_until(code, condition=cond)
+    return frame
+
+  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
   def test_make_function(self):
     f = self._make_function("""
       def f(x, /, y, z, *, a, b, c):
@@ -601,6 +620,20 @@ class FunctionTest(FrameTestBase):
     self.assertEqual(f.name, 'f')
     sig = f.signatures[0]
     self.assertEqual(repr(sig), 'def f(x, /, y, *, a, b) -> Any')
+
+  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
+  def test_function_call_kwargs(self):
+    frame = self._run_until_call("""
+      def f(x, *, y):
+        pass
+      f(1, y=2)
+    """)
+    self.assertEqual(frame._kw_names, ('y',))
+    oparg = frame.current_opcode.arg  # pytype: disable=attribute-error
+    _, _, *args = frame._stack.popn(oparg + 2)
+    callargs = frame._make_function_args(args)
+    self.assertConstantVar(callargs.posargs[0], 1)
+    self.assertConstantVar(callargs.kwargs['y'], 2)
 
 
 if __name__ == '__main__':
