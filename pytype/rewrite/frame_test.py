@@ -599,7 +599,7 @@ class FunctionTest(FrameTestBase):
     frame = self.run_frame_until(code, condition=cond)
     return frame
 
-  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
   def test_make_function(self):
     f = self._make_function("""
       def f(x, /, y, z, *, a, b, c):
@@ -621,7 +621,7 @@ class FunctionTest(FrameTestBase):
     sig = f.signatures[0]
     self.assertEqual(repr(sig), 'def f(x, /, y, *, a, b) -> Any')
 
-  @test_utils.skipBeforePy((3, 11), "Relies on 3.11+ bytecode")
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
   def test_function_call_kwargs(self):
     frame = self._run_until_call("""
       def f(x, *, y):
