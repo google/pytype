@@ -1,6 +1,7 @@
 """Implementation of special members of types and asyncio module."""
 
 from pytype.abstract import abstract
+from pytype.abstract import abstract_utils
 from pytype.overlays import overlay
 
 
@@ -44,4 +45,13 @@ class CoroutineDecorator(abstract.PyTDFunction):
           (self.module == "asyncio" or
            self.module == "types" and code.has_generator())):
         code.set_iterable_coroutine()
+      if funcv.signature.has_return_annotation:
+        ret = funcv.signature.annotations["return"]
+        params = {
+            param: ret.get_formal_type_parameter(param)
+            for param in (abstract_utils.T, abstract_utils.T2, abstract_utils.V)
+        }
+        coroutine_type = abstract.ParameterizedClass(
+            self.ctx.convert.coroutine_type, params, self.ctx)
+        funcv.signature.annotations["return"] = coroutine_type
     return node, func_var

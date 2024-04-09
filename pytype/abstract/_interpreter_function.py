@@ -168,6 +168,19 @@ class InterpreterFunction(_function_base.SignedFunction):
     self.nonstararg_count = self.code.argcount + self.code.kwonlyargcount
     signature = self._build_signature(name, annotations)
     super().__init__(signature, ctx)
+    if not self.code.has_coroutine():
+      # Sanity check: has_iterable_coroutine() is set by the types.coroutine
+      # decorator, so it should always be False at function creation time.
+      assert not self.code.has_iterable_coroutine()
+    elif signature.has_return_annotation:
+      params = {
+          abstract_utils.T: ctx.convert.unsolvable,
+          abstract_utils.T2: ctx.convert.unsolvable,
+          abstract_utils.V: signature.annotations["return"],
+      }
+      coroutine_type = _classes.ParameterizedClass(
+          ctx.convert.coroutine_type, params, ctx)
+      signature.annotations["return"] = coroutine_type
     self._check_signature()
     self._update_signature_scope_from_closure()
     self.last_frame = None  # for BuildClass
@@ -496,7 +509,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       if "return" not in annotations:
         return node, self.ctx.new_unsolvable(node)
       ret = self.ctx.vm.init_class(node, annotations["return"])
-      if self.is_coroutine():
+      if self.is_unannotated_coroutine():
         ret = _instances.Coroutine(self.ctx, ret, node).to_variable(node)
       return node, ret
 
@@ -630,7 +643,7 @@ class InterpreterFunction(_function_base.SignedFunction):
       log.info("%s Start running frame for %r", indent, self.name)
       node2, ret = self.ctx.vm.run_frame(frame, node, annotated_locals)
       log.info("%s Finished running frame for %r", indent, self.name)
-      if self.is_coroutine():
+      if self.is_unannotated_coroutine():
         ret = _instances.Coroutine(self.ctx, ret, node2).to_variable(node2)
       node_after_call = node2
     self._inner_cls_check(frame)
@@ -731,6 +744,9 @@ class InterpreterFunction(_function_base.SignedFunction):
 
   def is_coroutine(self):
     return self.code.has_coroutine() or self.code.has_iterable_coroutine()
+
+  def is_unannotated_coroutine(self):
+    return self.is_coroutine() and not self.signature.has_return_annotation
 
   def has_empty_body(self):
     # TODO(mdemello): Optimise this.

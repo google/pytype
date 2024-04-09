@@ -210,5 +210,31 @@ class AsyncGeneratorFeatureTest(test_base.BaseTest):
       def func() -> Coroutine[Any, Any, str]: ...
     """)
 
+  def test_callable(self):
+    self.Check("""
+      from typing import Awaitable, Callable
+      async def f1(a: str) -> str:
+        return a
+      async def f2(fun: Callable[[str], Awaitable[str]]) -> str:
+        return await fun('a')
+      async def f3() -> None:
+        await f2(f1)
+    """)
+
+  def test_callable_with_imported_func(self):
+    with self.DepTree([("foo.py", """
+      async def f1(a: str) -> str:
+        return a
+    """)]):
+      self.Check("""
+        import foo
+        from typing import Awaitable, Callable
+        async def f2(fun: Callable[[str], Awaitable[str]]) -> str:
+          return await fun('a')
+        async def f3() -> None:
+          await f2(foo.f1)
+      """)
+
+
 if __name__ == "__main__":
   test_base.main()

@@ -176,6 +176,17 @@ class GeneratorFeatureTest(test_base.BaseTest):
     self.assertErrorRegexes(
         errors, {"e1": r"Awaitable.*int", "e2": r"y: str.*y: int"})
 
+  def test_generator_based_coroutine_bad_annotation(self):
+    self.CheckWithErrors("""
+      import types
+      from typing import Generator
+
+      @types.coroutine
+      def f() -> Generator[str, None, str]:
+        yield 1  # bad-return-type
+        return 123  # bad-return-type
+    """)
+
   def test_awaitable_pyi(self):
     ty = self.Infer("""
       from typing import Awaitable, Generator
@@ -226,7 +237,7 @@ class GeneratorFeatureTest(test_base.BaseTest):
 
 
       def c1() -> Coroutine[Any, Any, int]: ...
-      def c2() -> Coroutine[Any, Any, int]: ...
+      def c2() -> Coroutine[int, None, int]: ...
       def f1() -> Coroutine[Any, Any, None]: ...
       def f2(x: Awaitable[int]) -> Coroutine[Any, Any, int]: ...
       def f3() -> Coroutine[Any, Any, None]: ...

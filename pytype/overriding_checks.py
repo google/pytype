@@ -504,15 +504,9 @@ def check_overriding_members(cls, bases, members, matcher, ctx):
 
   class_signature_map = {}
   for method_name, method in class_method_map.items():
-    if method.is_coroutine():
+    if method.is_unannotated_coroutine():
       annotations = dict(method.signature.annotations)
-      coroutine_params = {
-          abstract_utils.T: ctx.convert.unsolvable,
-          abstract_utils.T2: ctx.convert.unsolvable,
-          abstract_utils.V: annotations.get("return", ctx.convert.unsolvable),
-      }
-      annotations["return"] = abstract.ParameterizedClass(
-          ctx.convert.coroutine_type, coroutine_params, ctx)
+      annotations["return"] = ctx.convert.coroutine_type
       signature = method.signature._replace(annotations=annotations)
     else:
       signature = method.signature
