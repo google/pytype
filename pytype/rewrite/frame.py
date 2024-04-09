@@ -392,8 +392,15 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # Load and store operations
 
   def byte_LOAD_CONST(self, opcode):
-    constant = self._ctx.consts[self._code.consts[opcode.arg]]
-    self._stack.push(constant.to_variable())
+    const = self._code.consts[opcode.arg]
+    if isinstance(const, tuple):
+      # Tuple literals with all primitive elements are stored as a single raw
+      # constant; we need to wrap each element in a variable for consistency
+      # with tuples created via BUILD_TUPLE
+      val = self._ctx.abstract_loader.build_tuple(const)
+    else:
+      val = self._ctx.consts[const]
+    self._stack.push(val.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
     self._returns.append(self._stack.pop())
@@ -615,6 +622,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # to abstract objects because they are used internally to construct function
     # call args.
     keys = abstract.get_atomic_constant(keys, tuple)
+    # Unpack the keys into raw strings.
+    keys = [abstract.get_atomic_constant(k, str) for k in keys]
     assert len(keys) == n_elts
     vals = self._stack.popn(n_elts)
     ret = dict(zip(keys, vals))

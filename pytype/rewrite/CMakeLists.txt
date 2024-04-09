@@ -116,6 +116,7 @@ py_test(
     load_abstract_test.py
   DEPS
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 

@@ -1,6 +1,6 @@
 """Loads abstract representations of imported objects."""
 
-from typing import Any as _Any, Dict, Type
+from typing import Any as _Any, Dict, Tuple, Type
 
 from pytype import load_pytd
 from pytype.pytd import pytd
@@ -98,3 +98,13 @@ class AbstractLoader:
       return self.consts[None]
     pytd_node = self._pytd_loader.lookup_pytd(typ.__module__, typ.__name__)
     return self._load_pytd_node(pytd_node)
+
+  def build_tuple(self, const: Tuple[_Any, ...]) -> abstract.Tuple:
+    """Convert a raw constant tuple to an abstract value."""
+    ret = []
+    for e in const:
+      if isinstance(e, tuple):
+        ret.append(self.build_tuple(e).to_variable())
+      else:
+        ret.append(self.consts[e].to_variable())
+    return abstract.Tuple(self._ctx, tuple(ret))

@@ -1,6 +1,7 @@
 import numbers
 
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.flow import variables
 from pytype.rewrite.tests import test_utils
 
 import unittest
@@ -55,6 +56,31 @@ class LoadRawTypeTest(test_utils.ContextfulTestBase):
   def test_nonetype(self):
     t = self.ctx.abstract_loader.load_raw_type(type(None))
     self.assertIs(t, self.ctx.consts[None])
+
+
+class LoadTupleTest(test_utils.ContextfulTestBase):
+
+  def assertPythonConstant(self, val, expected):
+    self.assertIsInstance(val, abstract.PythonConstant)
+    self.assertEqual(val.constant, expected)
+
+  def test_basic(self):
+    const = (1, 2, 3)
+    t = self.ctx.abstract_loader.build_tuple(const)
+    self.assertIsInstance(t, abstract.Tuple)
+    self.assertIsInstance(t.constant, tuple)
+    self.assertPythonConstant(t.constant[0].values[0], 1)
+
+  def test_nested(self):
+    const = (1, (2, 3, 4), 5)
+    t = self.ctx.abstract_loader.build_tuple(const)
+    self.assertIsInstance(t, abstract.Tuple)
+    self.assertIsInstance(t.constant, tuple)
+    self.assertIsInstance(t.constant[0], variables.Variable)
+    inner = t.constant[1].values[0]
+    self.assertIsInstance(inner, abstract.Tuple)
+    self.assertIsInstance(inner.constant, tuple)
+    self.assertPythonConstant(inner.constant[0].values[0], 2)
 
 
 if __name__ == '__main__':

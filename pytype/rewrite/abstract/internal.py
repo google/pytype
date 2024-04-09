@@ -17,7 +17,7 @@ class ConstKeyDict(base.BaseValue):
   Used by the python interpreter to construct function args.
   """
 
-  def __init__(self, ctx: base.ContextType, constant: Dict[Any, _Variable]):
+  def __init__(self, ctx: base.ContextType, constant: Dict[str, _Variable]):
     super().__init__(ctx)
     assert isinstance(constant, dict), constant
     self.constant = constant
