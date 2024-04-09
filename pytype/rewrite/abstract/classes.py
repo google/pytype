@@ -85,10 +85,10 @@ class SimpleClass(base.BaseValue):
 
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
-    log.info('Instantiating class %s', self.full_name)
     if self._canonical_instance:
-      log.info('Reusing cached instance of class %s', self.full_name)
+      log.info('Getting cached instance of class %s', self.full_name)
       return self._canonical_instance
+    log.info('Instantiating class %s', self.full_name)
     for setup_method_name in self.setup_methods:
       setup_method = self.get_attribute(setup_method_name)
       if isinstance(setup_method, functions_lib.InterpreterFunction):

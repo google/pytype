@@ -162,20 +162,6 @@ class Coroutine(_instance_base.Instance):
     self.merge_instance_type_parameter(
         node, abstract_utils.V, ret_var.AssignToNewVariable(node))
 
-  @classmethod
-  def make(cls, ctx, func, node):
-    """Get return type of coroutine function."""
-    assert func.signature.has_return_annotation
-    ret_val = func.signature.annotations["return"]
-    if func.code.has_coroutine():
-      ret_var = ret_val.instantiate(node)
-    elif func.code.has_iterable_coroutine():
-      ret_var = ret_val.get_formal_type_parameter(
-          abstract_utils.V).instantiate(node)
-    else:
-      assert False, f"Function {func.name} is not a coroutine"
-    return cls(ctx, ret_var, node)
-
 
 class Iterator(_instance_base.Instance, mixin.HasSlots):
   """A representation of instances of iterators."""

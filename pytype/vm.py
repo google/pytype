@@ -2733,13 +2733,18 @@ class VirtualMachine:
     """Get and check the return value."""
     state, var = state.pop()
     if self.frame.check_return:
-      if self.frame.f_code.has_generator():
+      if (self.frame.f_code.has_generator() or
+          self.frame.f_code.has_coroutine() or
+          self.frame.f_code.has_iterable_coroutine()):
         ret_type = self.frame.allowed_returns
         assert ret_type is not None
-        self._check_return(state.node, var,
-                           ret_type.get_formal_type_parameter(abstract_utils.V))
+        allowed_return = ret_type.get_formal_type_parameter(abstract_utils.V)
       elif not self.frame.f_code.has_async_generator():
-        self._check_return(state.node, var, self.frame.allowed_returns)
+        allowed_return = self.frame.allowed_returns
+      else:
+        allowed_return = None
+      if allowed_return:
+        self._check_return(state.node, var, allowed_return)
     if (self.ctx.options.no_return_any and
         any(d == self.ctx.convert.unsolvable for d in var.data)):
       self.ctx.errorlog.any_return_type(self.frames)

@@ -19,7 +19,7 @@ py_test(
   SRCS
     test_basic.py
   DEPS
-    pytype.rewrite.tests.test_utils
+    .test_utils
     pytype.tests.test_base
 )
 
