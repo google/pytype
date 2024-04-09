@@ -3,7 +3,6 @@
 import collections
 import dataclasses
 import re
-import sys
 from typing import Sequence
 
 from pytype import config as pytype_config
