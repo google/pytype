@@ -19,6 +19,7 @@ py_test(
   SRCS
     test_basic.py
   DEPS
+    .test_utils
     pytype.tests.test_base
 )
 
