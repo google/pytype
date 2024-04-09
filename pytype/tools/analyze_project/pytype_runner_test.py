@@ -629,7 +629,7 @@ class TestNinjaBody(TestBase):
             output=path_utils.join(runner.pyi_dir, 'foo.pyi'),
             action=Action.CHECK,
             input='foo.py',
-            deps=deps=[path_utils.join(runner.pyi_dir, 'bar.pyi')],
+            deps=[path_utils.join(runner.pyi_dir, 'bar.pyi')],
             imports=path_utils.join(runner.imports_dir, 'foo.imports'),
             module='foo'))
 
