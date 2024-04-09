@@ -56,6 +56,7 @@ _FrameT = TypeVar('_FrameT', bound=FrameType)
 class Args(Generic[_FrameT]):
   """Arguments to one function call."""
   posargs: Tuple[base.AbstractVariableType, ...] = ()
+  kwargs: Mapping[str, base.AbstractVariableType] = _EMPTY_MAP
   frame: Optional[_FrameT] = None
 
 
@@ -232,6 +233,7 @@ class Signature:
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Implement this properly, with error detection.
     argdict = dict(zip(self.param_names, args.posargs))
+    argdict.update(args.kwargs)
     return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
   def make_fake_args(self) -> MappedArgs[FrameType]:

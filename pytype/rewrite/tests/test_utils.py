@@ -46,6 +46,29 @@ class FakeOrderedCode(i4t.ProductionType[blocks.OrderedCode]):
     self.consts = consts
 
 
+# pylint: disable=invalid-name
+# Use camel-case to match the unittest.skip* methods.
+def skipIfPy(*versions, reason):
+  return unittest.skipIf(sys.version_info[:2] in versions, reason)
+
+
+def skipUnlessPy(*versions, reason):
+  return unittest.skipUnless(sys.version_info[:2] in versions, reason)
+
+
+def skipBeforePy(version, reason):
+  return unittest.skipIf(sys.version_info[:2] < version, reason)
+
+
+def skipFromPy(version, reason):
+  return unittest.skipUnless(sys.version_info[:2] < version, reason)
+
+
+def skipOnWin32(reason):
+  return unittest.skipIf(sys.platform == 'win32', reason)
+# pylint: enable=invalid-name
+
+
 def parse(src: str) -> blocks.OrderedCode:
   code = pyc.compile_src(
       src=textwrap.dedent(src),

@@ -31,6 +31,13 @@ class BasicTest(test_base.BaseTest):
       f(0)
     """)
 
+  def test_function_kwargs(self):
+    self.Check("""
+      def f(x, *, y):
+        return x
+      f(0, y=1)
+    """)
+
   def test_class(self):
     self.Check("""
       class C:

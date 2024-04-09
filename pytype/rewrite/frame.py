@@ -22,6 +22,9 @@ _AbstractVariable = variables.Variable[abstract.BaseValue]
 _VarMap = Mapping[str, _AbstractVariable]
 _FrameFunction = abstract.InterpreterFunction['Frame']
 
+# This enum will be used frequently, so alias it
+_Flags = pyc_marshal.Flags
+
 
 class _ShadowedNonlocals:
   """Tracks shadowed nonlocal names."""
@@ -92,6 +95,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._classes: List[abstract.InterpreterClass] = []
     # All variables returned via RETURN_VALUE
     self._returns: List[_AbstractVariable] = []
+    # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
+    self._kw_names = ()
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -409,21 +414,54 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     full_name = f'{target.name}.{attr_name}'
     self.store_local(full_name, attr)
 
+  def _unpack_function_annotations(self, packed_annot):
+    if self._code.python_version >= (3, 10):
+      # In Python 3.10+, packed_annot is a tuple of variables:
+      # (param_name1, param_type1, param_name2, param_type2, ...)
+      annot_seq = abstract.get_atomic_constant(packed_annot, tuple)
+      double_num_annots = len(annot_seq)
+      assert not double_num_annots % 2
+      annot = {}
+      for i in range(double_num_annots // 2):
+        name = abstract.get_atomic_constant(annot_seq[i*2], str)
+        annot[name] = annot_seq[i*2 + 1]
+    else:
+      # Pre-3.10, packed_annot was a name->param_type dictionary.
+      annot = abstract.get_atomic_constant(packed_annot, dict)
+    return annot
+
   def byte_MAKE_FUNCTION(self, opcode):
-    if opcode.arg not in (0, pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS):
-      raise NotImplementedError('MAKE_FUNCTION not fully implemented')
+    # Aliases for readability
+    pop_const = lambda t: abstract.get_atomic_constant(self._stack.pop(), t)
+    arg = opcode.arg
+    # Get name and code object
     if self._code.python_version >= (3, 11):
-      code = abstract.get_atomic_constant(self._stack.pop(), blocks.OrderedCode)
+      code = pop_const(blocks.OrderedCode)
       name = code.qualname
     else:
-      name = abstract.get_atomic_constant(self._stack.pop(), str)
-      code = abstract.get_atomic_constant(self._stack.pop(), blocks.OrderedCode)
-    if opcode.arg & pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS:
-      freevars = abstract.get_atomic_constant(self._stack.pop())
+      name = pop_const(str)
+      code = pop_const(blocks.OrderedCode)
+    # Free vars
+    if arg & _Flags.MAKE_FUNCTION_HAS_FREE_VARS:
+      freevars = pop_const(tuple)
       enclosing_scope = tuple(freevar.name for freevar in freevars)
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
+    # Annotations
+    annot = {}
+    if arg & _Flags.MAKE_FUNCTION_HAS_ANNOTATIONS:
+      packed_annot = self._stack.pop()
+      annot = self._unpack_function_annotations(packed_annot)
+    # Defaults
+    pos_defaults, kw_defaults = (), {}
+    if arg & _Flags.MAKE_FUNCTION_HAS_POS_DEFAULTS:
+      pos_defaults = pop_const(tuple)
+    if arg & _Flags.MAKE_FUNCTION_HAS_KW_DEFAULTS:
+      packed_kw_def = self._stack.pop()
+      kw_defaults = packed_kw_def.get_atomic_value(abstract.ConstKeyDict)
+    # Make function
+    del annot, pos_defaults, kw_defaults  # TODO(b/241479600): Use these
     func = abstract.InterpreterFunction(
         self._ctx, name, code, enclosing_scope, self)
     log.info('Created function: %s', func.name)
@@ -482,24 +520,47 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
 
+  # ---------------------------------------------------------------
+  # Function and method calls
+
+  def byte_KW_NAMES(self, opcode):
+    # Stores a list of kw names to be retrieved by CALL
+    self._kw_names = opcode.argval
+
+  def _make_function_args(self, args):
+    """Unpack args into posargs and kwargs (3.11+)."""
+    if self._kw_names:
+      n_kw = len(self._kw_names)
+      posargs = tuple(args[:-n_kw])
+      kw_vals = args[-n_kw:]
+      kwargs = immutabledict.immutabledict(zip(self._kw_names, kw_vals))
+    else:
+      posargs = tuple(args)
+      kwargs = _EMPTY_MAP
+    self._kw_names = ()
+    return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
+
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
     if not sentinel.has_atomic_value(self._ctx.consts.singles['NULL']):
       raise NotImplementedError('CALL not fully implemented')
     func, *args = rest
-    self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
+    callargs = self._make_function_args(args)
+    self._call_function(func, callargs)
 
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
-    self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
+    callargs = abstract.Args(posargs=tuple(args), frame=self)
+    self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
     # pop the NULL off the stack (see LOAD_METHOD)
     self._stack.pop_and_discard()
-    self._call_function(func, abstract.Args(posargs=tuple(args), frame=self))
+    callargs = abstract.Args(posargs=tuple(args), frame=self)
+    self._call_function(func, callargs)
 
   # Pytype tracks variables in enclosing scopes by name rather than emulating
   # the runtime's approach with cells and freevars, so we can ignore the opcodes

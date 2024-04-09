@@ -572,5 +572,36 @@ class ComprehensionAccumulatorTest(FrameTestBase):
     self.assertEqual(target, {self._const_var(2): self._const_var(3)})
 
 
+class FunctionTest(FrameTestBase):
+  """Test making and calling functions."""
+
+  def _make_function(self, code, name):
+    module_frame = self._make_frame(code, name='__main__')
+    module_frame.run()
+    return _get(module_frame, name, _FrameFunction)
+
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_make_function(self):
+    f = self._make_function("""
+      def f(x, /, y, z, *, a, b, c):
+        pass
+    """, 'f')
+    self.assertIsInstance(f, abstract.InterpreterFunction)
+    self.assertEqual(f.name, 'f')
+    sig = f.signatures[0]
+    self.assertEqual(repr(sig), 'def f(x, /, y, z, *, a, b, c) -> Any')
+
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_function_annotations(self):
+    f = self._make_function("""
+      def f(x: int, /, y: str, *, a: int, b: int = 1):
+        pass
+    """, 'f')
+    self.assertIsInstance(f, abstract.InterpreterFunction)
+    self.assertEqual(f.name, 'f')
+    sig = f.signatures[0]
+    self.assertEqual(repr(sig), 'def f(x, /, y, *, a, b) -> Any')
+
+
 if __name__ == '__main__':
   unittest.main()
