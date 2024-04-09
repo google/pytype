@@ -140,6 +140,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     while True:
       try:
         self.step()
+        self._log_stack()
       except frame_base.FrameConsumedError:
         break
     assert not self._stack
@@ -156,6 +157,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self.final_locals = immutabledict.immutabledict({
         name: abstract.join_values(self._ctx, var.values)
         for name, var in self._final_locals.items()})
+
+  def _log_stack(self):
+    log.debug('stack: %r', self._stack)
 
   def store_local(self, name: str, var: _AbstractVariable) -> None:
     self._current_state.store_local(name, var)
