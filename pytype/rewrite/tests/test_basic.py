@@ -1,5 +1,4 @@
 """Basic functional tests."""
-from pytype.rewrite.tests import test_utils
 from pytype.tests import test_base
 
 
@@ -32,7 +31,6 @@ class BasicTest(test_base.BaseTest):
       f(0)
     """)
 
-  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
   def test_function_kwargs(self):
     self.Check("""
       def f(x, *, y):
