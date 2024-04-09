@@ -28,12 +28,35 @@ class FrameTestBase(test_utils.ContextfulTestBase):
           name: value.to_variable() for name, value in module_globals.items()}
     else:
       initial_locals = initial_globals = {}
+    self._kw_names = ()
     return frame_lib.Frame(self.ctx, name, code, initial_locals=initial_locals,
                            initial_globals=initial_globals)
 
   def _const_var(self, const, name=None):
-    var = abstract.PythonConstant(self.ctx, const).to_variable()
-    return var.with_name(name)
+    return self.ctx.consts[const].to_variable(name)
+
+  def assertConstantVar(self, var, expected):
+    val = var.get_atomic_value()
+    self.assertIsInstance(val, abstract.PythonConstant)
+    self.assertEqual(val.constant, expected)
+
+  def run_block(self, block: str, *, consts=()) -> frame_lib.Frame:
+    """Run a block of opcodes without checking frame exit conditions."""
+    code = test_utils.assemble_block(block, consts=consts)
+    blk = code.order[0].code
+    n = len(blk)
+    # Add a NOP at the end so there is always an opcode.next
+    blk.append(opcodes.NOP(n, blk[-1].line))
+    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
+    frame.stepn(n)
+    return frame
+
+  def run_frame_until(self, code: str, *, condition) -> frame_lib.Frame:
+    """Run a block of opcodes until condition is met."""
+    frame = self._make_frame(code)
+    while not condition(frame):
+      frame.step()
+    return frame
 
 
 class ShadowedNonlocalsTest(unittest.TestCase):
@@ -41,14 +64,14 @@ class ShadowedNonlocalsTest(unittest.TestCase):
   def test_enclosing(self):
     sn = frame_lib._ShadowedNonlocals()
     sn.add_enclosing('x')
-    self.assertTrue(sn.has_scope('x', frame_lib._Scope.ENCLOSING))
-    self.assertCountEqual(sn.get_names(frame_lib._Scope.ENCLOSING), {'x'})
+    self.assertTrue(sn.has_enclosing('x'))
+    self.assertCountEqual(sn.get_enclosing_names(), {'x'})
 
   def test_global(self):
     sn = frame_lib._ShadowedNonlocals()
     sn.add_global('x')
-    self.assertTrue(sn.has_scope('x', frame_lib._Scope.GLOBAL))
-    self.assertCountEqual(sn.get_names(frame_lib._Scope.GLOBAL), {'x'})
+    self.assertTrue(sn.has_global('x'))
+    self.assertCountEqual(sn.get_global_names(), {'x'})
 
 
 class LoadStoreTest(FrameTestBase):
@@ -56,7 +79,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_local_in_module_frame(self):
     frame = self._make_frame('', name='__main__')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_local('x', var)
     stored = frame.load_local('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -65,7 +88,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_local_in_nonmodule_frame(self):
     frame = self._make_frame('', name='f')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_local('x', var)
     stored = frame.load_local('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -75,7 +98,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_global_in_module_frame(self):
     frame = self._make_frame('', name='__main__')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_global('x', var)
     stored = frame.load_global('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -84,7 +107,7 @@ class LoadStoreTest(FrameTestBase):
   def test_store_global_in_nonmodule_frame(self):
     frame = self._make_frame('', name='f')
     frame.step()
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame.store_global('x', var)
     stored = frame.load_global('x')
     self.assertEqual(stored, var.with_name('x'))
@@ -93,7 +116,7 @@ class LoadStoreTest(FrameTestBase):
 
   def test_overwrite_global_in_module_frame(self):
     code = test_utils.parse('')
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame = frame_lib.Frame(
         self.ctx, '__main__', code, initial_locals={'x': var},
         initial_globals={'x': var})
@@ -102,7 +125,7 @@ class LoadStoreTest(FrameTestBase):
     self.assertEqual(frame.load_global('x'), var.with_name('x'))
     self.assertEqual(frame.load_local('x'), var.with_name('x'))
 
-    var2 = abstract.PythonConstant(self.ctx, 10).to_variable()
+    var2 = self._const_var(10)
     frame.store_global('x', var2)
 
     self.assertEqual(frame.load_global('x'), var2.with_name('x'))
@@ -110,7 +133,7 @@ class LoadStoreTest(FrameTestBase):
 
   def test_overwrite_global_in_nonmodule_frame(self):
     code = test_utils.parse('')
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self._const_var(5)
     frame = frame_lib.Frame(self.ctx, 'f', code, initial_globals={'x': var})
     frame.step()
 
@@ -118,7 +141,7 @@ class LoadStoreTest(FrameTestBase):
     with self.assertRaises(KeyError):
       frame.load_local('x')
 
-    var2 = abstract.PythonConstant(self.ctx, 10).to_variable()
+    var2 = self._const_var(10)
     frame.store_global('x', var2)
 
     self.assertEqual(frame.load_global('x'), var2.with_name('x'))
@@ -129,7 +152,7 @@ class LoadStoreTest(FrameTestBase):
     code = test_utils.parse('')
     frame = frame_lib.Frame(self.ctx, 'f', code)
     frame.step()
-    x = abstract.PythonConstant(self.ctx, 5).to_variable()
+    x = self._const_var(5)
     frame.store_enclosing('x', x)
     with self.assertRaises(KeyError):
       frame.load_local('x')
@@ -157,14 +180,13 @@ class FrameTest(FrameTestBase):
     frame.step()
     self.assertEqual(len(frame._stack), 1)
     constant = frame._stack.top().get_atomic_value()
-    self.assertEqual(constant, abstract.PythonConstant(self.ctx, 42))
+    self.assertEqual(constant, self.ctx.consts[42])
 
   def test_store_local(self):
     frame = self._make_frame('x = 42')
     frame.run()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 42))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[42])
 
   def test_store_global(self):
     frame = self._make_frame("""
@@ -173,8 +195,7 @@ class FrameTest(FrameTestBase):
     """)
     frame.run()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 42))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[42])
 
   def test_function(self):
     frame = self._make_frame('def f(): pass')
@@ -231,7 +252,7 @@ class FrameTest(FrameTestBase):
     self.assertIn('g', f_frame.final_locals)
     self.assertIn('x', f_frame.final_locals)
     self.assertCountEqual(
-        f_frame._shadowed_nonlocals.get_names(frame_lib._Scope.GLOBAL), {'x'})
+        f_frame._shadowed_nonlocals.get_global_names(), {'x'})
 
   def test_read_enclosing(self):
     module_frame = self._make_frame("""
@@ -297,8 +318,7 @@ class FrameTest(FrameTestBase):
     module_frame.run()
     cls = _get(module_frame, 'C', abstract.InterpreterClass)
     instance = cls.instantiate()
-    self.assertEqual(instance.get_attribute('x'),
-                     abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[3])
 
   def test_read_instance_attribute(self):
     module_frame = self._make_frame("""
@@ -314,8 +334,7 @@ class FrameTest(FrameTestBase):
     read = cast(abstract.InterpreterFunction, cls.members['read'])
     frame, = read.bind_to(instance).analyze()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[3])
 
   def test_write_and_read_instance_attribute(self):
     module_frame = self._make_frame("""
@@ -331,8 +350,7 @@ class FrameTest(FrameTestBase):
                           cls.members['write_and_read'])
     frame, = write_and_read.bind_to(instance).analyze()
     self.assertIn('x', frame.final_locals)
-    self.assertEqual(frame.final_locals['x'],
-                     abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(frame.final_locals['x'], self.ctx.consts[3])
 
   def test_modify_instance(self):
     module_frame = self._make_frame("""
@@ -344,7 +362,7 @@ class FrameTest(FrameTestBase):
     """)
     module_frame.run()
     c = _get(module_frame, 'c', abstract.MutableInstance)
-    self.assertEqual(c.get_attribute('x'), abstract.PythonConstant(self.ctx, 3))
+    self.assertEqual(c.get_attribute('x'), self.ctx.consts[3])
 
   def test_overwrite_instance_attribute(self):
     module_frame = self._make_frame("""
@@ -359,8 +377,7 @@ class FrameTest(FrameTestBase):
     """)
     module_frame.run()
     c = _get(module_frame, 'c', abstract.MutableInstance)
-    self.assertEqual(c.get_attribute('x'),
-                     abstract.PythonConstant(self.ctx, None))
+    self.assertEqual(c.get_attribute('x'), self.ctx.consts[None])
 
   def test_instance_attribute_multiple_options(self):
     module_frame = self._make_frame("""
@@ -375,8 +392,19 @@ class FrameTest(FrameTestBase):
     instance = _get(module_frame, 'C', abstract.InterpreterClass).instantiate()
     self.assertEqual(
         instance.get_attribute('x'),
-        abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
-                                  abstract.PythonConstant(self.ctx, None))))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
+
+  def test_method_parameter(self):
+    module_frame = self._make_frame("""
+      class C:
+        def f(self, x):
+          self.x = x
+      c = C()
+      c.f(0)
+    """)
+    module_frame.run()
+    instance = _get(module_frame, 'c', abstract.MutableInstance)
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[0])
 
   def test_multiple_initializers(self):
     module_frame = self._make_frame("""
@@ -394,8 +422,7 @@ class FrameTest(FrameTestBase):
     instance = cls.instantiate()
     self.assertEqual(
         instance.get_attribute('x'),
-        abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
-                                  abstract.PythonConstant(self.ctx, None))))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
 
   def test_return(self):
     module_frame = self._make_frame("""
@@ -410,8 +437,7 @@ class FrameTest(FrameTestBase):
     f_frame, = f.analyze()
     self.assertEqual(
         f_frame.get_return_value(),
-        abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 3),
-                                  abstract.PythonConstant(self.ctx, None))))
+        abstract.Union(self.ctx, (self.ctx.consts[3], self.ctx.consts[None])))
 
   def test_stack(self):
     module_frame = self._make_frame('def f(): pass')
@@ -525,50 +551,89 @@ class ComprehensionAccumulatorTest(FrameTestBase):
   """Test accumulating results in a comprehension."""
 
   def test_list_append(self):
-    block = [
-        opcodes.BUILD_LIST(0, 0, 0, None),
-        opcodes.LOAD_CONST(1, 0, 0, 1),
-        opcodes.LOAD_CONST(2, 0, 1, 2),
-        opcodes.LIST_APPEND(3, 0, 2, None),
-        opcodes.NOP(4, 0)
-    ]
-    code = test_utils.FakeOrderedCode([block], [1, 2])
-    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
-    frame.stepn(4)
+    frame = self.run_block("""
+      BUILD_LIST 0
+      LOAD_CONST 0
+      LOAD_CONST 1
+      LIST_APPEND 2
+    """, consts=[1, 2])
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, [self._const_var(2)])
 
   def test_set_add(self):
-    block = [
-        opcodes.BUILD_SET(0, 0, 0, None),
-        opcodes.LOAD_CONST(1, 0, 0, 1),
-        opcodes.LOAD_CONST(2, 0, 1, 2),
-        opcodes.SET_ADD(3, 0, 2, None),
-        opcodes.NOP(4, 0)
-    ]
-    code = test_utils.FakeOrderedCode([block], [1, 2])
-    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
-    frame.stepn(4)
+    frame = self.run_block("""
+      BUILD_SET 0
+      LOAD_CONST 0
+      LOAD_CONST 1
+      SET_ADD 2
+    """, consts=[1, 2])
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, {self._const_var(2)})
 
   def test_map_add(self):
-    block = [
-        opcodes.BUILD_MAP(0, 0, 0, None),
-        opcodes.LOAD_CONST(1, 0, 0, 1),
-        opcodes.LOAD_CONST(2, 0, 1, 2),
-        opcodes.LOAD_CONST(3, 0, 2, 3),
-        opcodes.MAP_ADD(4, 0, 2, None),
-        opcodes.NOP(5, 0)
-    ]
-    code = test_utils.FakeOrderedCode([block], [1, 2, 3])
-    frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
-    frame.stepn(5)
+    frame = self.run_block("""
+      BUILD_MAP 0
+      LOAD_CONST 0
+      LOAD_CONST 1
+      LOAD_CONST 2
+      MAP_ADD 2
+    """, consts=[1, 2, 3])
     target_var = frame._stack.peek(2)
     target = abstract.get_atomic_constant(target_var)
     self.assertEqual(target, {self._const_var(2): self._const_var(3)})
+
+
+class FunctionTest(FrameTestBase):
+  """Test making and calling functions."""
+
+  def _make_function(self, code, name):
+    module_frame = self._make_frame(code, name='__main__')
+    module_frame.run()
+    return _get(module_frame, name, _FrameFunction)
+
+  def _run_until_call(self, code):
+    def cond(frame):
+      return frame.current_opcode.name.startswith('CALL')
+    frame = self.run_frame_until(code, condition=cond)
+    return frame
+
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_make_function(self):
+    f = self._make_function("""
+      def f(x, /, y, z, *, a, b, c):
+        pass
+    """, 'f')
+    self.assertIsInstance(f, abstract.InterpreterFunction)
+    self.assertEqual(f.name, 'f')
+    sig = f.signatures[0]
+    self.assertEqual(repr(sig), 'def f(x, /, y, z, *, a, b, c) -> Any')
+
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_function_annotations(self):
+    f = self._make_function("""
+      def f(x: int, /, y: str, *, a: int, b: int = 1):
+        pass
+    """, 'f')
+    self.assertIsInstance(f, abstract.InterpreterFunction)
+    self.assertEqual(f.name, 'f')
+    sig = f.signatures[0]
+    self.assertEqual(repr(sig), 'def f(x, /, y, *, a, b) -> Any')
+
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_function_call_kwargs(self):
+    frame = self._run_until_call("""
+      def f(x, *, y):
+        pass
+      f(1, y=2)
+    """)
+    self.assertEqual(frame._kw_names, ('y',))
+    oparg = frame.current_opcode.arg  # pytype: disable=attribute-error
+    _, _, *args = frame._stack.popn(oparg + 2)
+    callargs = frame._make_function_args(args)
+    self.assertConstantVar(callargs.posargs[0], 1)
+    self.assertConstantVar(callargs.kwargs['y'], 2)
 
 
 if __name__ == '__main__':

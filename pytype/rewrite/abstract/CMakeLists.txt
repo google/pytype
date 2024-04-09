@@ -90,7 +90,6 @@ py_library(
     instances.py
   DEPS
     .base
-    .classes
 )
 
 py_test(
@@ -100,7 +99,6 @@ py_test(
     instances_test.py
   DEPS
     .base
-    .classes
     .instances
     pytype.rewrite.tests.test_utils
 )
@@ -120,7 +118,6 @@ py_test(
   SRCS
     internal_test.py
   DEPS
-    .classes
     .internal
     pytype.rewrite.tests.test_utils
 )
@@ -132,7 +129,6 @@ py_library(
     utils.py
   DEPS
     .base
-    .classes
 )
 
 py_test(
@@ -142,7 +138,6 @@ py_test(
     utils_test.py
   DEPS
     .base
-    .classes
     .utils
     pytype.rewrite.tests.test_utils
 )

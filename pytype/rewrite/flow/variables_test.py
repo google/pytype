@@ -19,6 +19,11 @@ class VariableTest(unittest.TestCase):
   def test_from_value(self):
     var = variables.Variable.from_value(0)
     assert_type(var, variables.Variable[int])
+    self.assertIsNone(var.name)
+
+  def test_from_value_with_name(self):
+    var = variables.Variable.from_value(0, name='Zero')
+    self.assertEqual(var.name, 'Zero')
 
   def test_multiple_bindings(self):
     var = variables.Variable((variables.Binding(0), variables.Binding('')))

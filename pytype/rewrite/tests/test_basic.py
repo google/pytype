@@ -1,4 +1,5 @@
 """Basic functional tests."""
+from pytype.rewrite.tests import test_utils
 from pytype.tests import test_base
 
 
@@ -29,6 +30,14 @@ class BasicTest(test_base.BaseTest):
       def f(x):
         return x
       f(0)
+    """)
+
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_function_kwargs(self):
+    self.Check("""
+      def f(x, *, y):
+        return x
+      f(0, y=1)
     """)
 
   def test_class(self):
@@ -65,6 +74,21 @@ class BasicTest(test_base.BaseTest):
       assert_type(0, "str")  # assert-type[e]
     """)
     self.assertErrorSequences(errors, {'e': ['Expected: str', 'Actual: int']})
+
+  def test_infer_class_body(self):
+    ty = self.Infer("""
+      class C:
+        def __init__(self):
+          self.x = 3
+        def f(self):
+          return self.x
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class C:
+        x: int
+        def __init__(self) -> None: ...
+        def f(self) -> int: ...
+    """)
 
 
 if __name__ == '__main__':

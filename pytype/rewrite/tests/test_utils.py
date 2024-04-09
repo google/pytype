@@ -1,5 +1,6 @@
 """Test utilities."""
 
+import re
 import sys
 import textwrap
 from typing import Sequence
@@ -45,6 +46,29 @@ class FakeOrderedCode(i4t.ProductionType[blocks.OrderedCode]):
     self.consts = consts
 
 
+# pylint: disable=invalid-name
+# Use camel-case to match the unittest.skip* methods.
+def skipIfPy(*versions, reason):
+  return unittest.skipIf(sys.version_info[:2] in versions, reason)
+
+
+def skipUnlessPy(*versions, reason):
+  return unittest.skipUnless(sys.version_info[:2] in versions, reason)
+
+
+def skipBeforePy(version, reason):
+  return unittest.skipIf(sys.version_info[:2] < version, reason)
+
+
+def skipFromPy(version, reason):
+  return unittest.skipUnless(sys.version_info[:2] < version, reason)
+
+
+def skipOnWin32(reason):
+  return unittest.skipIf(sys.platform == 'win32', reason)
+# pylint: enable=invalid-name
+
+
 def parse(src: str) -> blocks.OrderedCode:
   code = pyc.compile_src(
       src=textwrap.dedent(src),
@@ -55,3 +79,53 @@ def parse(src: str) -> blocks.OrderedCode:
   )
   ordered_code, unused_block_graph = blocks.process_code(code)
   return ordered_code
+
+
+def assemble_block(bytecode: str, *, consts=()) -> FakeOrderedCode:
+  """Generate a block of opcodes for tests.
+
+  Args:
+    bytecode: A block of opcodes
+    consts: A sequence of constants (co_consts in the compiled code)
+
+  Returns:
+    A FakeOrderedCode
+
+  The bytecode is a block of text, one opcode per line, in the format
+    # line <lineno>
+    OP_WITH_ARG arg  # comment
+    OP  # comment
+    ...
+
+  Blank lines are ignored.
+
+  The line numbers are optional, all opcodes will get lineno=1 if omitted. If a
+  line number is supplied, all following opcodes get that line number until
+  another line number is encountered.
+  """
+
+  lines = textwrap.dedent(bytecode).split('\n')
+  ret = []
+  idx, lineno = 0, 1
+  for line in lines:
+    if m := re.match(r'# line (\d+)', line.strip()):
+      lineno = int(m.group(1))
+      continue
+    line = re.sub(r'#.*$', '', line)  # allow comments
+    parts = line.split()
+    if not parts:
+      continue
+    if len(parts) == 1:
+      op, = parts
+      arg = None
+    else:
+      op, arg, *extra = parts
+      assert not extra, extra
+      arg = int(arg)
+    op_cls = getattr(opcodes, op)
+    if arg is not None:
+      ret.append(op_cls(idx, lineno, arg, None))
+    else:
+      ret.append(op_cls(idx, lineno))
+    idx += 1
+  return FakeOrderedCode([ret], consts)

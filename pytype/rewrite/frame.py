@@ -1,6 +1,5 @@
 """A frame of an abstract VM for type analysis of python bytecode."""
 
-import enum
 import logging
 from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
@@ -23,10 +22,8 @@ _AbstractVariable = variables.Variable[abstract.BaseValue]
 _VarMap = Mapping[str, _AbstractVariable]
 _FrameFunction = abstract.InterpreterFunction['Frame']
 
-
-class _Scope(enum.Enum):
-  ENCLOSING = enum.auto()
-  GLOBAL = enum.auto()
+# This enum will be used frequently, so alias it
+_Flags = pyc_marshal.Flags
 
 
 class _ShadowedNonlocals:
@@ -42,21 +39,17 @@ class _ShadowedNonlocals:
   def add_global(self, name: str) -> None:
     self._globals.add(name)
 
-  def has_scope(self, name: str, scope: _Scope) -> bool:
-    if scope is _Scope.ENCLOSING:
-      return name in self._enclosing
-    elif scope is _Scope.GLOBAL:
-      return name in self._globals
-    else:
-      raise ValueError(f'Unrecognized scope: {scope}')
+  def has_enclosing(self, name: str):
+    return name in self._enclosing
 
-  def get_names(self, scope: _Scope) -> FrozenSet[str]:
-    if scope is _Scope.ENCLOSING:
-      return frozenset(self._enclosing)
-    elif scope is _Scope.GLOBAL:
-      return frozenset(self._globals)
-    else:
-      raise NotImplementedError(f'Unrecognized scope: {scope}')
+  def has_global(self, name: str):
+    return name in self._globals
+
+  def get_global_names(self) -> FrozenSet[str]:
+    return frozenset(self._globals)
+
+  def get_enclosing_names(self) -> FrozenSet[str]:
+    return frozenset(self._enclosing)
 
 
 class Frame(frame_base.FrameBase[abstract.BaseValue]):
@@ -102,6 +95,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._classes: List[abstract.InterpreterClass] = []
     # All variables returned via RETURN_VALUE
     self._returns: List[_AbstractVariable] = []
+    # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
+    self._kw_names = ()
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -189,23 +184,41 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       self.store_local(name, var)
 
+  def _shadows_enclosing(self, name: str) -> bool:
+    """Does name shadow a variable from the enclosing scope?"""
+    return self._shadowed_nonlocals.has_enclosing(name)
+
+  def _shadows_global(self, name: str) -> bool:
+    """Does name shadow a variable from the global scope?"""
+    if self._is_module_frame:
+      # This is the global scope, and so `name` cannot shadow anything.
+      return False
+    return self._shadowed_nonlocals.has_global(name)
+
   def load_local(self, name) -> _AbstractVariable:
-    if (self._shadowed_nonlocals.has_scope(name, _Scope.ENCLOSING) or
-        (not self._is_module_frame and
-         self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL))):
+    if self._shadows_enclosing(name) or self._shadows_global(name):
       raise KeyError(name)
     return self._current_state.load_local(name)
 
   def load_enclosing(self, name) -> _AbstractVariable:
-    if self._shadowed_nonlocals.has_scope(name, _Scope.ENCLOSING):
+    if self._shadows_enclosing(name):
       return self._current_state.load_local(name)
     return self._initial_enclosing[name].with_name(name)
 
   def load_global(self, name) -> _AbstractVariable:
-    if (self._is_module_frame or
-        self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL)):
+    if self._shadows_global(name):
       return self._current_state.load_local(name)
-    return self._initial_globals[name].with_name(name)
+    try:
+      if self._is_module_frame:
+        return self._current_state.load_local(name)
+      else:
+        return self._initial_globals[name].with_name(name)
+    except KeyError:
+      return self.load_builtin(name)
+
+  def load_builtin(self, name) -> _AbstractVariable:
+    builtin = self._ctx.abstract_loader.load_builtin_by_name(name)
+    return builtin.to_variable(name)
 
   def load_deref(self, name) -> _AbstractVariable:
     # When a name from a parent frame is referenced in a child frame, we make a
@@ -231,7 +244,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     initial_enclosing = {}
     for name in func.enclosing_scope:
       if name in current_locals:
-        assert not self._shadowed_nonlocals.has_scope(name, _Scope.GLOBAL)
+        assert not self._shadows_global(name)
         initial_enclosing[name] = current_locals[name]
       else:
         initial_enclosing[name] = self._initial_enclosing[name]
@@ -240,7 +253,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       initial_globals = current_locals
     else:
       initial_globals = dict(self._initial_globals)
-      for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
+      for name in self._shadowed_nonlocals.get_global_names():
         initial_globals[name] = current_locals[name]
     return Frame(
         ctx=self._ctx,
@@ -286,10 +299,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if not frame:
       return
     # Store nonlocals.
-    for name in self._shadowed_nonlocals.get_names(_Scope.ENCLOSING):
+    for name in self._shadowed_nonlocals.get_enclosing_names():
       var = self._final_locals[name]
       frame.store_deref(name, var)
-    for name in self._shadowed_nonlocals.get_names(_Scope.GLOBAL):
+    for name in self._shadowed_nonlocals.get_global_names():
       var = self._final_locals[name]
       frame.store_global(name, var)
 
@@ -305,7 +318,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
                            abstract.BoundFunction)):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
-      elif func is self._ctx.singles.__build_class__:
+      elif func is self._ctx.consts.singles['__build_class__']:
         class_body, name = args.posargs
         builder = class_body.get_atomic_value(_FrameFunction)
         frame = builder.call(abstract.Args(frame=self))
@@ -316,6 +329,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
             functions=frame.functions,
             classes=frame.classes,
         )
+        log.info('Created class: %s', cls.name)
         self._classes.append(cls)
         ret_values.append(cls)
       else:
@@ -352,11 +366,29 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     nojump_state = self._current_state.with_condition(conditions.Condition())
     self._merge_state_into(nojump_state, opcode.next.index)
 
-  def byte_RESUME(self, opcode):
+  # ---------------------------------------------------------------
+  # Opcodes with no typing effects
+
+  def byte_NOP(self, opcode):
     del opcode  # unused
 
+  def byte_PRINT_EXPR(self, opcode):
+    del opcode  # unused
+    self._stack.pop_and_discard()
+
+  def byte_PRECALL(self, opcode):
+    # Internal cpython use
+    del opcode  # unused
+
+  def byte_RESUME(self, opcode):
+    # Internal cpython use
+    del opcode  # unused
+
+  # ---------------------------------------------------------------
+  # Load and store operations
+
   def byte_LOAD_CONST(self, opcode):
-    constant = abstract.PythonConstant(self._ctx, self._code.consts[opcode.arg])
+    constant = self._ctx.consts[self._code.consts[opcode.arg]]
     self._stack.push(constant.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
@@ -382,26 +414,60 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     full_name = f'{target.name}.{attr_name}'
     self.store_local(full_name, attr)
 
+  def _unpack_function_annotations(self, packed_annot):
+    if self._code.python_version >= (3, 10):
+      # In Python 3.10+, packed_annot is a tuple of variables:
+      # (param_name1, param_type1, param_name2, param_type2, ...)
+      annot_seq = abstract.get_atomic_constant(packed_annot, tuple)
+      double_num_annots = len(annot_seq)
+      assert not double_num_annots % 2
+      annot = {}
+      for i in range(double_num_annots // 2):
+        name = abstract.get_atomic_constant(annot_seq[i*2], str)
+        annot[name] = annot_seq[i*2 + 1]
+    else:
+      # Pre-3.10, packed_annot was a name->param_type dictionary.
+      annot = abstract.get_atomic_constant(packed_annot, dict)
+    return annot
+
   def byte_MAKE_FUNCTION(self, opcode):
-    if opcode.arg not in (0, pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS):
-      raise NotImplementedError('MAKE_FUNCTION not fully implemented')
+    # Aliases for readability
+    pop_const = lambda t: abstract.get_atomic_constant(self._stack.pop(), t)
+    arg = opcode.arg
+    # Get name and code object
     if self._code.python_version >= (3, 11):
-      code = abstract.get_atomic_constant(self._stack.pop(), blocks.OrderedCode)
+      code = pop_const(blocks.OrderedCode)
       name = code.qualname
     else:
-      name = abstract.get_atomic_constant(self._stack.pop(), str)
-      code = abstract.get_atomic_constant(self._stack.pop(), blocks.OrderedCode)
-    if opcode.arg & pyc_marshal.Flags.MAKE_FUNCTION_HAS_FREE_VARS:
-      freevars = abstract.get_atomic_constant(self._stack.pop())
+      name = pop_const(str)
+      code = pop_const(blocks.OrderedCode)
+    # Free vars
+    if arg & _Flags.MAKE_FUNCTION_HAS_FREE_VARS:
+      freevars = pop_const(tuple)
       enclosing_scope = tuple(freevar.name for freevar in freevars)
       assert all(enclosing_scope)
     else:
       enclosing_scope = ()
+    # Annotations
+    annot = {}
+    if arg & _Flags.MAKE_FUNCTION_HAS_ANNOTATIONS:
+      packed_annot = self._stack.pop()
+      annot = self._unpack_function_annotations(packed_annot)
+    # Defaults
+    pos_defaults, kw_defaults = (), {}
+    if arg & _Flags.MAKE_FUNCTION_HAS_POS_DEFAULTS:
+      pos_defaults = pop_const(tuple)
+    if arg & _Flags.MAKE_FUNCTION_HAS_KW_DEFAULTS:
+      packed_kw_def = self._stack.pop()
+      kw_defaults = packed_kw_def.get_atomic_value(abstract.ConstKeyDict)
+    # Make function
+    del annot, pos_defaults, kw_defaults  # TODO(b/241479600): Use these
     func = abstract.InterpreterFunction(
         self._ctx, name, code, enclosing_scope, self)
-    if not (
-        self._stack and
-        self._stack.top().has_atomic_value(self._ctx.singles.__build_class__)):
+    log.info('Created function: %s', func.name)
+    if not (self._stack and
+            self._stack.top().has_atomic_value(
+                self._ctx.consts.singles['__build_class__'])):
       # Class building makes and immediately calls a function that creates the
       # class body; we don't need to store this function for later analysis.
       self._functions.append(func)
@@ -409,7 +475,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_PUSH_NULL(self, opcode):
     del opcode  # unused
-    self._stack.push(self._ctx.singles.NULL.to_variable())
+    self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
 
   def byte_LOAD_NAME(self, opcode):
     name = opcode.argval
@@ -435,7 +501,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if self._code.python_version >= (3, 11) and opcode.arg & 1:
       # Compiler-generated marker that will be consumed in byte_CALL
       # We are loading a global and calling it as a function.
-      self._stack.push(self._ctx.singles.NULL.to_variable())
+      self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
     name = opcode.argval
     self._stack.push(self.load_global(name))
 
@@ -451,30 +517,50 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
-    self._stack.push(self._ctx.singles.NULL.to_variable())
+    self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
 
-  def byte_PRECALL(self, opcode):
-    del opcode  # unused
+  # ---------------------------------------------------------------
+  # Function and method calls
+
+  def byte_KW_NAMES(self, opcode):
+    # Stores a list of kw names to be retrieved by CALL
+    self._kw_names = opcode.argval
+
+  def _make_function_args(self, args):
+    """Unpack args into posargs and kwargs (3.11+)."""
+    if self._kw_names:
+      n_kw = len(self._kw_names)
+      posargs = tuple(args[:-n_kw])
+      kw_vals = args[-n_kw:]
+      kwargs = immutabledict.immutabledict(zip(self._kw_names, kw_vals))
+    else:
+      posargs = tuple(args)
+      kwargs = _EMPTY_MAP
+    self._kw_names = ()
+    return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
-    if not sentinel.has_atomic_value(self._ctx.singles.NULL):
+    if not sentinel.has_atomic_value(self._ctx.consts.singles['NULL']):
       raise NotImplementedError('CALL not fully implemented')
-    func_var, *args = rest
-    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
+    func, *args = rest
+    callargs = self._make_function_args(args)
+    self._call_function(func, callargs)
 
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
-    func_var = self._stack.pop()
-    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
+    func = self._stack.pop()
+    callargs = abstract.Args(posargs=tuple(args), frame=self)
+    self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
     args = self._stack.popn(opcode.arg)
-    func_var = self._stack.pop()
+    func = self._stack.pop()
     # pop the NULL off the stack (see LOAD_METHOD)
     self._stack.pop_and_discard()
-    self._call_function(func_var, abstract.Args(posargs=args, frame=self))
+    callargs = abstract.Args(posargs=tuple(args), frame=self)
+    self._call_function(func, callargs)
 
   # Pytype tracks variables in enclosing scopes by name rather than emulating
   # the runtime's approach with cells and freevars, so we can ignore the opcodes
@@ -486,7 +572,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     del opcode  # unused
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
-    self._stack.push(self._ctx.singles.__build_class__.to_variable())
+    self._stack.push(self._ctx.consts.singles['__build_class__'].to_variable())
 
   # ---------------------------------------------------------------
   # Build and extend collections
@@ -503,7 +589,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(constant.to_variable())
 
   def byte_BUILD_TUPLE(self, opcode):
-    self._build_collection_from_stack(opcode, tuple)
+    self._build_collection_from_stack(opcode, tuple, factory=abstract.Tuple)
 
   def byte_BUILD_LIST(self, opcode):
     self._build_collection_from_stack(opcode, list, factory=abstract.List)

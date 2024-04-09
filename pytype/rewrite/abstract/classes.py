@@ -4,15 +4,13 @@ import abc
 import dataclasses
 import logging
 
-from typing import Dict, Generic, List, Mapping, Optional, Protocol, Sequence, TypeVar
+from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
 import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 
 log = logging.getLogger(__name__)
-
-_T = TypeVar('_T')
 
 
 class _HasMembers(Protocol):
@@ -43,6 +41,14 @@ class SimpleClass(base.BaseValue):
     self.name = name
     self.members = members
     self.module = module
+    self._canonical_instance: Optional['FrozenInstance'] = None
+
+    if isinstance((init := members.get('__init__')),
+                  functions_lib.SimpleFunction):
+      # An __init__ method is required to return None.
+      for sig in init.signatures:
+        if 'return' not in sig.annotations:
+          sig.annotations['return'] = ctx.consts[None]
 
     # These methods are attributes of individual classes so that they can be
     # easily customized. For example, unittest.TestCase would want to add
@@ -56,38 +62,53 @@ class SimpleClass(base.BaseValue):
     self.initializers = ['__init__']
 
   def __repr__(self):
-    return f'SimpleClass({self.name})'
+    return f'SimpleClass({self.full_name})'
 
   @property
   def _attrs(self):
-    return (self.name, immutabledict.immutabledict(self.members))
+    return (self.module, self.name)
+
+  @property
+  def full_name(self):
+    if self.module:
+      return f'{self.module}.{self.name}'
+    else:
+      return self.name
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     return self.members.get(name)
 
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    # SimpleClass is used to model imported classes, which we treat as frozen.
+    log.info('Ignoring attribute set on %r: %s -> %r',
+             self, name, value)
+
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
+    log.info('Instantiating class %s', self.full_name)
+    if self._canonical_instance:
+      log.info('Reusing cached instance of class %s', self.full_name)
+      return self._canonical_instance
     for setup_method_name in self.setup_methods:
       setup_method = self.get_attribute(setup_method_name)
       if isinstance(setup_method, functions_lib.InterpreterFunction):
         _ = setup_method.bind_to(self).analyze()
     constructor = self.get_attribute(self.constructor)
     if constructor:
-      raise NotImplementedError('Custom __new__')
-    else:
-      instance = MutableInstance(self._ctx, self)
+      log.error('Custom __new__ not yet implemented')
+    instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
         _ = initializer.bind_to(instance).analyze()
-    return instance.freeze()
+    self._canonical_instance = frozen_instance = instance.freeze()
+    return frozen_instance
 
   def call(self, args: functions_lib.Args) -> ClassCallReturn:
     constructor = self.get_attribute(self.constructor)
     if constructor:
-      raise NotImplementedError('Custom __new__')
-    else:
-      instance = MutableInstance(self._ctx, self)
+      log.error('Custom __new__ not yet implemented')
+    instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
       initializer = self.get_attribute(initializer_name)
       if isinstance(initializer, functions_lib.InterpreterFunction):
@@ -112,6 +133,10 @@ class InterpreterClass(SimpleClass):
   def __repr__(self):
     return f'InterpreterClass({self.name})'
 
+  @property
+  def _attrs(self):
+    return (self.name, immutabledict.immutabledict(self.members))
+
 
 class BaseInstance(base.BaseValue):
   """Instance of a class."""
@@ -126,10 +151,6 @@ class BaseInstance(base.BaseValue):
   @abc.abstractmethod
   def set_attribute(self, name: str, value: base.BaseValue) -> None: ...
 
-  @property
-  def _attrs(self):
-    return (self.cls, immutabledict.immutabledict(self.members))
-
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     if name in self.members:
       return self.members[name]
@@ -137,26 +158,6 @@ class BaseInstance(base.BaseValue):
     if isinstance(cls_attribute, functions_lib.SimpleFunction):
       return cls_attribute.bind_to(self)
     return cls_attribute
-
-
-class PythonConstant(BaseInstance, Generic[_T]):
-  """Representation of a Python constant."""
-
-  def __init__(self, ctx: base.ContextType, constant: _T):
-    cls = ctx.abstract_loader.raw_type_to_value(type(constant))
-    super().__init__(ctx, cls, {})
-    self.constant = constant
-
-  def __repr__(self):
-    return f'PythonConstant({self.constant!r})'
-
-  @property
-  def _attrs(self):
-    return (self.constant,)
-
-  def set_attribute(self, name: str, value: base.BaseValue) -> None:
-    # TODO(b/241479600): Log an error.
-    raise NotImplementedError('Cannot set attribute on a constant')
 
 
 class MutableInstance(BaseInstance):
@@ -169,6 +170,10 @@ class MutableInstance(BaseInstance):
 
   def __repr__(self):
     return f'MutableInstance({self.cls.name})'
+
+  @property
+  def _attrs(self):
+    return (self.cls, immutabledict.immutabledict(self.members))
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
@@ -193,6 +198,12 @@ class FrozenInstance(BaseInstance):
 
   def __repr__(self):
     return f'FrozenInstance({self.cls.name})'
+
+  @property
+  def _attrs(self):
+    # Since a FrozenInstance is the canonical instance of its class and cannot
+    # change, the hash of the class is enough to uniquely identify it.
+    return (self.cls,)
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # The VM may try to set an attribute on a frozen instance in the process of

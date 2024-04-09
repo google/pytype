@@ -17,12 +17,15 @@ methods to implement `call` and `analyze`.
 
 import abc
 import dataclasses
+import logging
 from typing import Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
 
 import immutabledict
 from pytype.blocks import blocks
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
+
+log = logging.getLogger(__name__)
 
 _EMPTY_MAP = immutabledict.immutabledict()
 _ArgDict = Dict[str, base.AbstractVariableType]
@@ -31,6 +34,7 @@ _ArgDict = Dict[str, base.AbstractVariableType]
 class FrameType(Protocol):
   """Protocol for a VM frame."""
 
+  name: str
   final_locals: Mapping[str, base.BaseValue]
   stack: Sequence['FrameType']
 
@@ -51,7 +55,8 @@ _FrameT = TypeVar('_FrameT', bound=FrameType)
 @dataclasses.dataclass
 class Args(Generic[_FrameT]):
   """Arguments to one function call."""
-  posargs: Sequence[base.AbstractVariableType] = ()
+  posargs: Tuple[base.AbstractVariableType, ...] = ()
+  kwargs: Mapping[str, base.AbstractVariableType] = _EMPTY_MAP
   frame: Optional[_FrameT] = None
 
 
@@ -228,6 +233,7 @@ class Signature:
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Implement this properly, with error detection.
     argdict = dict(zip(self.param_names, args.posargs))
+    argdict.update(args.kwargs)
     return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
   def make_fake_args(self) -> MappedArgs[FrameType]:
@@ -236,7 +242,10 @@ class Signature:
       names.append(self.varargs_name)
     if self.kwargs_name:
       names.append(self.kwargs_name)
-    argdict = {name: self._ctx.singles.Any.to_variable() for name in names}
+    argdict = {}
+    for name in names:
+      typ = self.annotations.get(name, self._ctx.consts.Any)
+      argdict[name] = typ.instantiate().to_variable()
     return MappedArgs(signature=self, argdict=argdict)
 
 
@@ -292,11 +301,18 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
     self.module = module
 
   def __repr__(self):
-    return f'SimpleFunction({self._name})'
+    return f'SimpleFunction({self.full_name})'
 
   @property
   def name(self):
     return self._name
+
+  @property
+  def full_name(self):
+    if self.module:
+      return f'{self.module}.{self._name}'
+    else:
+      return self._name
 
   @property
   def signatures(self):
@@ -328,9 +344,12 @@ class SimpleFunction(BaseFunction[_HasReturnT]):
   def call(self, args: Args[FrameType]) -> _HasReturnT:
     return self.call_with_mapped_args(self.map_args(args))
 
+  def analyze_signature(self, sig: Signature) -> _HasReturnT:
+    assert sig in self.signatures
+    return self.call_with_mapped_args(sig.make_fake_args())
+
   def analyze(self) -> Sequence[_HasReturnT]:
-    return [self.call_with_mapped_args(sig.make_fake_args())
-            for sig in self.signatures]
+    return [self.analyze_signature(sig) for sig in self.signatures]
 
 
 class InterpreterFunction(SimpleFunction[_FrameT]):
@@ -354,6 +373,7 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     # A function saves a pointer to the frame it's defined in so that it has all
     # the context needed to call itself.
     self._parent_frame = parent_frame
+    self._call_cache = {}
 
   def __repr__(self):
     return f'InterpreterFunction({self.name})'
@@ -363,9 +383,22 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     return (self.name, self.code)
 
   def call_with_mapped_args(self, mapped_args: MappedArgs[_FrameT]) -> _FrameT:
+    log.info('Calling function:\n  Sig:  %s\n  Args: %s',
+             mapped_args.signature, mapped_args.argdict)
     parent_frame = mapped_args.frame or self._parent_frame
+    if parent_frame.final_locals is None:
+      k = None
+    else:
+      # If the parent frame has finished running, then the context of this call
+      # will not change, so we can cache the return value.
+      k = (parent_frame.name, immutabledict.immutabledict(mapped_args.argdict))
+      if k in self._call_cache:
+        log.info('Reusing cached return value of function %s', self.name)
+        return self._call_cache[k]
     frame = parent_frame.make_child_frame(self, mapped_args.argdict)
     frame.run()
+    if k:
+      self._call_cache[k] = frame
     return frame
 
   def bind_to(self, callself: base.BaseValue) -> 'BoundFunction[_FrameT]':
@@ -376,7 +409,8 @@ class PytdFunction(SimpleFunction[SimpleReturn]):
 
   def call_with_mapped_args(
       self, mapped_args: MappedArgs[FrameType]) -> SimpleReturn:
-    return SimpleReturn(self._ctx.singles.Any)
+    ret = mapped_args.signature.annotations['return'].instantiate()
+    return SimpleReturn(ret)
 
 
 class BoundFunction(BaseFunction[_HasReturnT]):
@@ -402,21 +436,20 @@ class BoundFunction(BaseFunction[_HasReturnT]):
 
   @property
   def signatures(self):
-    raise NotImplementedError('BoundFunction.signatures')
-
-  def _bind_mapped_args(
-      self, mapped_args: MappedArgs[_FrameT]) -> MappedArgs[_FrameT]:
-    argdict = dict(mapped_args.argdict)
-    argdict[mapped_args.signature.param_names[0]] = self.callself.to_variable()
-    return MappedArgs(mapped_args.signature, argdict, mapped_args.frame)
+    return self.underlying.signatures
 
   def call(self, args: Args[FrameType]) -> _HasReturnT:
-    mapped_args = self._bind_mapped_args(self.underlying.map_args(args))
-    return self.underlying.call_with_mapped_args(mapped_args)
+    new_posargs = (self.callself.to_variable(),) + args.posargs
+    args = dataclasses.replace(args, posargs=new_posargs)
+    return self.underlying.call(args)
+
+  def analyze_signature(self, sig: Signature) -> _HasReturnT:
+    assert sig in self.underlying.signatures
+    mapped_args = sig.make_fake_args()
+    argdict = dict(mapped_args.argdict)
+    argdict[mapped_args.signature.param_names[0]] = self.callself.to_variable()
+    bound_args = dataclasses.replace(mapped_args, argdict=argdict)
+    return self.underlying.call_with_mapped_args(bound_args)
 
   def analyze(self) -> Sequence[_HasReturnT]:
-    return [
-        self.underlying.call_with_mapped_args(
-            self._bind_mapped_args(sig.make_fake_args()))
-        for sig in self.underlying.signatures
-    ]
+    return [self.analyze_signature(sig) for sig in self.underlying.signatures]

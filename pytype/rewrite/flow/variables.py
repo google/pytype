@@ -31,8 +31,9 @@ class Variable(Generic[_T]):
   name: Optional[str] = None
 
   @classmethod
-  def from_value(cls, value: _T2) -> 'Variable[_T2]':
-    return cls((Binding(value),))
+  def from_value(
+      cls, value: _T2, *, name: Optional[str] = None) -> 'Variable[_T2]':
+    return cls(bindings=(Binding(value),), name=name)
 
   @property
   def values(self) -> Tuple[_T, ...]:

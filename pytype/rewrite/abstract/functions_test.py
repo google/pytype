@@ -12,6 +12,7 @@ class FakeFrame:
 
   def __init__(self, ctx):
     self.ctx = ctx
+    self.name = ''
     self.child_frames = []
     self.final_locals = {}
     self.stack = [self]
@@ -24,7 +25,7 @@ class FakeFrame:
     pass
 
   def get_return_value(self):
-    return self.ctx.singles.Any
+    return self.ctx.consts.Any
 
 
 def _get_const(src: str):
@@ -49,15 +50,21 @@ class SignatureTest(test_utils.PytdTestBase,
 
   def test_map_args(self):
     signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
-    x = classes.PythonConstant(self.ctx, 'x').to_variable()
-    y = classes.PythonConstant(self.ctx, 'y').to_variable()
-    args = signature.map_args(functions.Args([x, y]))
+    x = self.ctx.consts['x'].to_variable()
+    y = self.ctx.consts['y'].to_variable()
+    args = signature.map_args(functions.Args((x, y)))
     self.assertEqual(args.argdict, {'x': x, 'y': y})
 
   def test_fake_args(self):
-    signature = functions.Signature(self.ctx, 'f', ('x', 'y'))
+    annotations = {'x': self.ctx.abstract_loader.load_raw_type(int)}
+    signature = functions.Signature(self.ctx, 'f', ('x', 'y'),
+                                    annotations=annotations)
     args = signature.make_fake_args()
     self.assertEqual(set(args.argdict), {'x', 'y'})
+    x = args.argdict['x'].get_atomic_value()
+    self.assertIsInstance(x, classes.FrozenInstance)
+    self.assertEqual(x.cls.name, 'int')
+    self.assertEqual(args.argdict['y'].get_atomic_value(), self.ctx.consts.Any)
 
   def test_from_pytd_basic(self):
     sig = self.from_pytd('def f(): ...')
@@ -96,7 +103,7 @@ class InterpreterFunctionTest(test_utils.ContextfulTestBase):
     f = functions.InterpreterFunction(
         ctx=self.ctx, name='f', code=func_code, enclosing_scope=(),
         parent_frame=FakeFrame(self.ctx))
-    x = classes.PythonConstant(self.ctx, 0).to_variable()
+    x = self.ctx.consts[0].to_variable()
     mapped_args = f.map_args(functions.Args(posargs=(x,)))
     self.assertEqual(mapped_args.signature, f.signatures[0])
     self.assertEqual(mapped_args.argdict, {'x': x})
@@ -105,7 +112,7 @@ class InterpreterFunctionTest(test_utils.ContextfulTestBase):
     f = functions.InterpreterFunction(
         ctx=self.ctx, name='f', code=_get_const('def f(x): ...'),
         enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
-    x = classes.PythonConstant(self.ctx, 0).to_variable()
+    x = self.ctx.consts[0].to_variable()
     mapped_args = functions.MappedArgs(f.signatures[0], {'x': x})
     frame = f.call_with_mapped_args(mapped_args)
     assert_type(frame, FakeFrame)
@@ -129,13 +136,25 @@ class InterpreterFunctionTest(test_utils.ContextfulTestBase):
     self.assertIsInstance(frames[0], FakeFrame)
 
 
+class PytdFunctionTest(test_utils.PytdTestBase,
+                       test_utils.ContextfulTestBase):
+
+  def test_return(self):
+    pytd_func = self.build_pytd('def f() -> int: ...')
+    func = self.ctx.abstract_converter.pytd_function_to_value(pytd_func)
+    args = functions.MappedArgs(signature=func.signatures[0], argdict={})
+    ret = func.call_with_mapped_args(args).get_return_value()
+    self.assertIsInstance(ret, classes.FrozenInstance)
+    self.assertEqual(ret.cls.name, 'int')
+
+
 class BoundFunctionTest(test_utils.ContextfulTestBase):
 
   def test_call(self):
     f = functions.InterpreterFunction(
         ctx=self.ctx, name='f', code=_get_const('def f(self): ...'),
         enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
-    callself = classes.PythonConstant(self.ctx, 42)
+    callself = self.ctx.consts[42]
     bound_f = f.bind_to(callself)
     frame = bound_f.call(functions.Args())
     assert_type(frame, FakeFrame)
@@ -146,7 +165,7 @@ class BoundFunctionTest(test_utils.ContextfulTestBase):
     f = functions.InterpreterFunction(
         ctx=self.ctx, name='f', code=_get_const('def f(self): ...'),
         enclosing_scope=(), parent_frame=FakeFrame(self.ctx))
-    callself = classes.PythonConstant(self.ctx, 42)
+    callself = self.ctx.consts[42]
     bound_f = f.bind_to(callself)
     frames = bound_f.analyze()
     assert_type(frames, Sequence[FakeFrame])

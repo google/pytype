@@ -1,7 +1,6 @@
 from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions
 from pytype.rewrite.tests import test_utils
-from typing_extensions import assert_type
 
 import unittest
 
@@ -9,7 +8,7 @@ import unittest
 class ClassTest(test_utils.ContextfulTestBase):
 
   def test_get_attribute(self):
-    x = classes.PythonConstant(self.ctx, 5)
+    x = self.ctx.consts[5]
     cls = classes.SimpleClass(self.ctx, 'X', {'x': x})
     self.assertEqual(cls.get_attribute('x'), x)
 
@@ -28,49 +27,25 @@ class ClassTest(test_utils.ContextfulTestBase):
     self.assertEqual(instance.cls, cls)
 
 
-class PythonConstantTest(test_utils.ContextfulTestBase):
-
-  def test_equal(self):
-    c1 = classes.PythonConstant(self.ctx, 'a')
-    c2 = classes.PythonConstant(self.ctx, 'a')
-    self.assertEqual(c1, c2)
-
-  def test_not_equal(self):
-    c1 = classes.PythonConstant(self.ctx, 'a')
-    c2 = classes.PythonConstant(self.ctx, 'b')
-    self.assertNotEqual(c1, c2)
-
-  def test_constant_type(self):
-    c = classes.PythonConstant(self.ctx, 'a')
-    assert_type(c.constant, str)
-
-  def test_get_type_from_variable(self):
-    var = classes.PythonConstant(self.ctx, True).to_variable()
-    const = var.get_atomic_value(classes.PythonConstant[int]).constant
-    assert_type(const, int)
-
-
 class MutableInstanceTest(test_utils.ContextfulTestBase):
 
   def test_get_instance_attribute(self):
     cls = classes.SimpleClass(self.ctx, 'X', {})
     instance = classes.MutableInstance(self.ctx, cls)
-    instance.members['x'] = classes.PythonConstant(self.ctx, 3)
-    self.assertEqual(instance.get_attribute('x'),
-                     classes.PythonConstant(self.ctx, 3))
+    instance.members['x'] = self.ctx.consts[3]
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[3])
 
   def test_get_class_attribute(self):
     cls = classes.SimpleClass(
-        self.ctx, 'X', {'x': classes.PythonConstant(self.ctx, 3)})
+        self.ctx, 'X', {'x': self.ctx.consts[3]})
     instance = classes.MutableInstance(self.ctx, cls)
-    self.assertEqual(instance.get_attribute('x'),
-                     classes.PythonConstant(self.ctx, 3))
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[3])
 
   def test_set_attribute(self):
     cls = classes.SimpleClass(self.ctx, 'X', {})
     instance = classes.MutableInstance(self.ctx, cls)
-    instance.set_attribute('x', classes.PythonConstant(self.ctx, 3))
-    self.assertEqual(instance.members['x'], classes.PythonConstant(self.ctx, 3))
+    instance.set_attribute('x', self.ctx.consts[3])
+    self.assertEqual(instance.members['x'], self.ctx.consts[3])
 
 
 class FrozenInstanceTest(test_utils.ContextfulTestBase):
@@ -78,10 +53,9 @@ class FrozenInstanceTest(test_utils.ContextfulTestBase):
   def test_get_attribute(self):
     cls = classes.SimpleClass(self.ctx, 'X', {})
     mutable_instance = classes.MutableInstance(self.ctx, cls)
-    mutable_instance.set_attribute('x', classes.PythonConstant(self.ctx, 3))
+    mutable_instance.set_attribute('x', self.ctx.consts[3])
     instance = mutable_instance.freeze()
-    self.assertEqual(instance.get_attribute('x'),
-                     classes.PythonConstant(self.ctx, 3))
+    self.assertEqual(instance.get_attribute('x'), self.ctx.consts[3])
 
 
 if __name__ == '__main__':

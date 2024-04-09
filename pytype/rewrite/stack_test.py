@@ -1,5 +1,4 @@
 from pytype.rewrite import stack
-from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 
 import unittest
@@ -8,7 +7,7 @@ import unittest
 class DataStackTest(test_utils.ContextfulTestBase):
 
   def _var(self, val):
-    return abstract.PythonConstant(self.ctx, val).to_variable()
+    return self.ctx.consts[val].to_variable()
 
   def test_push(self):
     s = stack.DataStack()
@@ -19,7 +18,7 @@ class DataStackTest(test_utils.ContextfulTestBase):
   def test_pop(self):
     s = stack.DataStack()
     var = self._var(5)
-    var = abstract.PythonConstant(self.ctx, 5).to_variable()
+    var = self.ctx.consts[5].to_variable()
     s.push(var)
     popped = s.pop()
     self.assertEqual(popped, var)

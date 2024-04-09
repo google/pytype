@@ -160,6 +160,7 @@ def escape_ninja_path(path: str):
   """
   return re.sub(r'(?P<char>[\n :$])', r'$\g<char>', path)
 
+
 def get_imports_map(deps, module_to_imports_map, module_to_output):
   """Get a short path -> full path map for the given deps."""
   imports_map = {}

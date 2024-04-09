@@ -9,13 +9,12 @@ from pytype.rewrite.tests import test_utils
 import unittest
 
 
-def _make(src: str) -> abstract.BaseValue:
-  vm = vm_lib.VirtualMachine.from_source(textwrap.dedent(src))
-  vm._run_module()
-  return list(vm._module_frame.final_locals.values())[-1]
-
-
 class OutputTestBase(test_utils.ContextfulTestBase):
+
+  def make_value(self, src: str) -> abstract.BaseValue:
+    vm = vm_lib.VirtualMachine.from_source(textwrap.dedent(src), self.ctx)
+    vm._run_module()
+    return list(vm._module_frame.final_locals.values())[-1]
 
   def assertPytdEqual(self, pytd_node, expected_str):
     actual_str = pytd_utils.Print(pytd_node).strip()
@@ -26,7 +25,7 @@ class OutputTestBase(test_utils.ContextfulTestBase):
 class ClassToPytdDefTest(OutputTestBase):
 
   def test_constant(self):
-    cls = _make("""
+    cls = self.make_value("""
       class C:
         X = 0
     """)
@@ -37,7 +36,7 @@ class ClassToPytdDefTest(OutputTestBase):
     """)
 
   def test_method(self):
-    cls = _make("""
+    cls = self.make_value("""
       class C:
         def f(self):
           return 0
@@ -49,7 +48,7 @@ class ClassToPytdDefTest(OutputTestBase):
     """)
 
   def test_nested_class(self):
-    cls = _make("""
+    cls = self.make_value("""
       class C:
         class D:
           pass
@@ -61,7 +60,7 @@ class ClassToPytdDefTest(OutputTestBase):
     """)
 
   def test_instance_attribute(self):
-    cls = _make("""
+    cls = self.make_value("""
       class C:
         def __init__(self):
           self.x = 42
@@ -77,7 +76,7 @@ class ClassToPytdDefTest(OutputTestBase):
 class FunctionToPytdDefTest(OutputTestBase):
 
   def test_basic(self):
-    func = _make("""
+    func = self.make_value("""
       def f(x, /, y, *args, z, **kwargs):
         return 42
     """)
@@ -91,7 +90,7 @@ class FunctionToPytdDefTest(OutputTestBase):
   # signature objects.
   # pytype: disable=attribute-error
   def test_param_annotation(self):
-    func = _make("""
+    func = self.make_value("""
       def f(x):
         pass
     """)
@@ -101,7 +100,7 @@ class FunctionToPytdDefTest(OutputTestBase):
     self.assertPytdEqual(pytd_func, 'def f(x: C) -> None: ...')
 
   def test_return_annotation(self):
-    func = _make("""
+    func = self.make_value("""
       def f():
         pass
     """)
@@ -111,11 +110,11 @@ class FunctionToPytdDefTest(OutputTestBase):
     self.assertPytdEqual(pytd_func, 'def f() -> C: ...')
 
   def test_default(self):
-    func = _make("""
+    func = self.make_value("""
       def f(x):
         pass
     """)
-    func.signatures[0].defaults['x'] = abstract.PythonConstant(self.ctx, 0)
+    func.signatures[0].defaults['x'] = self.ctx.consts[0]
     pytd_func = self.ctx.pytd_converter.to_pytd_def(func)
     self.assertPytdEqual(pytd_func, 'def f(x = ...) -> None: ...')
   # pytype: enable=attribute-error
@@ -124,12 +123,11 @@ class FunctionToPytdDefTest(OutputTestBase):
 class ToPytdTypeTest(OutputTestBase):
 
   def test_any(self):
-    self.assertEqual(self.ctx.pytd_converter.to_pytd_type(self.ctx.singles.Any),
+    self.assertEqual(self.ctx.pytd_converter.to_pytd_type(self.ctx.consts.Any),
                      pytd.AnythingType())
 
   def test_constant(self):
-    t = self.ctx.pytd_converter.to_pytd_type(
-        abstract.PythonConstant(self.ctx, 0))
+    t = self.ctx.pytd_converter.to_pytd_type(self.ctx.consts[0])
     self.assertPytdEqual(t, 'int')
 
   def test_class(self):
@@ -148,7 +146,7 @@ class ToPytdTypeTest(OutputTestBase):
     self.assertPytdEqual(self.ctx.pytd_converter.to_pytd_type(instance), 'C')
 
   def test_precise_callable(self):
-    func = _make("""
+    func = self.make_value("""
       def f(x):
         pass
     """)
@@ -156,7 +154,7 @@ class ToPytdTypeTest(OutputTestBase):
                          'Callable[[Any], None]')
 
   def test_any_args_callable(self):
-    func = _make("""
+    func = self.make_value("""
       def f(*args):
         return 42
     """)
@@ -164,8 +162,8 @@ class ToPytdTypeTest(OutputTestBase):
                          'Callable[..., int]')
 
   def test_union(self):
-    union = abstract.Union(self.ctx, (abstract.PythonConstant(self.ctx, 0),
-                                      abstract.PythonConstant(self.ctx, None)))
+    union = abstract.Union(
+        self.ctx, (self.ctx.consts[0], self.ctx.consts[None]))
     self.assertPytdEqual(self.ctx.pytd_converter.to_pytd_type(union),
                          'Optional[int]')
 
@@ -173,9 +171,8 @@ class ToPytdTypeTest(OutputTestBase):
 class ToPytdInstanceTypeTest(OutputTestBase):
 
   def test_any(self):
-    self.assertEqual(
-        self.ctx.pytd_converter.to_pytd_type_of_instance(self.ctx.singles.Any),
-        pytd.AnythingType())
+    t = self.ctx.pytd_converter.to_pytd_type_of_instance(self.ctx.consts.Any)
+    self.assertEqual(t, pytd.AnythingType())
 
   def test_class(self):
     cls = abstract.SimpleClass(self.ctx, 'C', {})

@@ -1,5 +1,7 @@
 """Abstract -> pytd converter."""
 
+from typing import Union
+
 from pytype.pytd import pytd
 from pytype.pytd import pytd_utils
 from pytype.rewrite.abstract import abstract
@@ -30,7 +32,7 @@ class PytdConverter:
     """
     if isinstance(val, abstract.SimpleClass):
       return self._class_to_pytd_def(val)
-    elif isinstance(val, abstract.InterpreterFunction):
+    elif isinstance(val, (abstract.SimpleFunction, abstract.BoundFunction)):
       return self._function_to_pytd_def(val)
     else:
       raise NotImplementedError(
@@ -41,9 +43,12 @@ class PytdConverter:
     methods = []
     constants = []
     classes = []
+    instance = val.instantiate()
     for member_name, member_val in val.members.items():
       if member_name in _IGNORED_CLASS_ATTRIBUTES:
         continue
+      if isinstance(member_val, abstract.SimpleFunction):
+        member_val = member_val.bind_to(instance)
       try:
         member_type = self.to_pytd_def(member_val)
       except NotImplementedError:
@@ -59,7 +64,6 @@ class PytdConverter:
         )
         constants.append(
             pytd.Constant(name=member_name, type=class_member_type))
-    instance = val.instantiate()
     for member_name, member_val in instance.members.items():
       member_type = self.to_pytd_type(member_val)
       constants.append(pytd.Constant(name=member_name, type=member_type))
@@ -75,9 +79,8 @@ class PytdConverter:
         template=(),
     )
 
-  def _function_to_pytd_def(
-      self, val: abstract.InterpreterFunction) -> pytd.Function:
-    """Converts an abstract function to a pytd.Function."""
+  def _signature_to_pytd(self, sig: abstract.Signature) -> pytd.Signature:
+    """Converts a signature to a pytd.Signature."""
 
     def get_pytd(param_name):
       if param_name in sig.annotations:
@@ -85,59 +88,70 @@ class PytdConverter:
       else:
         return pytd.AnythingType()
 
+    params = []
+    for i, param_name in enumerate(sig.param_names):
+      if i < sig.posonly_count:
+        param_kind = pytd.ParameterKind.POSONLY
+      else:
+        param_kind = pytd.ParameterKind.REGULAR
+      params.append((param_name, param_kind))
+    params.extend((param_name, pytd.ParameterKind.KWONLY)
+                  for param_name in sig.kwonly_params)
+    pytd_params = tuple(pytd.Parameter(
+        name=param_name,
+        type=get_pytd(param_name),
+        kind=param_kind,
+        optional=param_name in sig.defaults,
+        mutated_type=None,
+    ) for param_name, param_kind in params)
+    if sig.varargs_name:
+      starargs = pytd.Parameter(
+          name=sig.varargs_name,
+          type=get_pytd(sig.varargs_name),
+          kind=pytd.ParameterKind.REGULAR,
+          optional=True,
+          mutated_type=None,
+      )
+    else:
+      starargs = None
+    if sig.kwargs_name:
+      starstarargs = pytd.Parameter(
+          name=sig.kwargs_name,
+          type=get_pytd(sig.kwargs_name),
+          kind=pytd.ParameterKind.REGULAR,
+          optional=True,
+          mutated_type=None,
+      )
+    else:
+      starstarargs = None
+    if 'return' in sig.annotations:
+      ret_type = self.to_pytd_type_of_instance(sig.annotations['return'])
+    else:
+      ret_type = pytd.AnythingType()
+    return pytd.Signature(
+        params=pytd_params,
+        starargs=starargs,
+        starstarargs=starstarargs,
+        return_type=ret_type,
+        exceptions=(),
+        template=(),
+    )
+
+  def _function_to_pytd_def(
+      self,
+      val: Union[abstract.SimpleFunction, abstract.BoundFunction],
+  ) -> pytd.Function:
+    """Converts an abstract function to a pytd.Function."""
     pytd_sigs = []
     for sig in val.signatures:
-      params = []
-      for i, param_name in enumerate(sig.param_names):
-        if i < sig.posonly_count:
-          param_kind = pytd.ParameterKind.POSONLY
-        else:
-          param_kind = pytd.ParameterKind.REGULAR
-        params.append((param_name, param_kind))
-      params.extend((param_name, pytd.ParameterKind.KWONLY)
-                    for param_name in sig.kwonly_params)
-      pytd_params = tuple(pytd.Parameter(
-          name=param_name,
-          type=get_pytd(param_name),
-          kind=param_kind,
-          optional=param_name in sig.defaults,
-          mutated_type=None,
-      ) for param_name, param_kind in params)
-      if sig.varargs_name:
-        starargs = pytd.Parameter(
-            name=sig.varargs_name,
-            type=get_pytd(sig.varargs_name),
-            kind=pytd.ParameterKind.REGULAR,
-            optional=True,
-            mutated_type=None,
-        )
-      else:
-        starargs = None
-      if sig.kwargs_name:
-        starstarargs = pytd.Parameter(
-            name=sig.kwargs_name,
-            type=get_pytd(sig.kwargs_name),
-            kind=pytd.ParameterKind.REGULAR,
-            optional=True,
-            mutated_type=None,
-        )
-      else:
-        starstarargs = None
-      if 'return' in sig.annotations:
-        ret_type = self.to_pytd_type_of_instance(sig.annotations['return'])
-      else:
-        func_frame = val.call_with_mapped_args(sig.make_fake_args())
-        ret_type = self.to_pytd_type(func_frame.get_return_value())
-      pytd_sigs.append(pytd.Signature(
-          params=pytd_params,
-          starargs=starargs,
-          starstarargs=starstarargs,
-          return_type=ret_type,
-          exceptions=(),
-          template=(),
-      ))
+      pytd_sig = self._signature_to_pytd(sig)
+      if 'return' not in sig.annotations:
+        ret = val.analyze_signature(sig)
+        ret_type = self.to_pytd_type(ret.get_return_value())
+        pytd_sig = pytd_sig.Replace(return_type=ret_type)
+      pytd_sigs.append(pytd_sig)
     return pytd.Function(
-        name=val.code.name,
+        name=val.name.rsplit('.', 1)[-1],
         signatures=tuple(pytd_sigs),
         kind=pytd.MethodKind.METHOD,
     )
@@ -153,7 +167,7 @@ class PytdConverter:
     Args:
       val: The abstract value.
     """
-    if val is self._ctx.singles.Any:
+    if val is self._ctx.consts.Any:
       return pytd.AnythingType()
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type(v) for v in val.options)
@@ -205,8 +219,10 @@ class PytdConverter:
     Args:
       val: The abstract value.
     """
-    if val is self._ctx.singles.Any:
+    if val is self._ctx.consts.Any:
       return pytd.AnythingType()
+    elif val is self._ctx.consts[None]:
+      return pytd.NamedType('builtins.NoneType')
     elif isinstance(val, abstract.Union):
       return pytd_utils.JoinTypes(self.to_pytd_type_of_instance(v)
                                   for v in val.options)

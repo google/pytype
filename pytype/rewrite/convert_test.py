@@ -24,11 +24,11 @@ class PytdTypeToValueTest(ConverterTestBase):
 
   def test_anything_type(self):
     abstract_value = self.conv.pytd_type_to_value(pytd.AnythingType())
-    self.assertEqual(abstract_value, self.ctx.singles.Any)
+    self.assertEqual(abstract_value, self.ctx.consts.singles['Any'])
 
   def test_nothing_type(self):
     abstract_value = self.conv.pytd_type_to_value(pytd.NothingType())
-    self.assertEqual(abstract_value, self.ctx.singles.Never)
+    self.assertEqual(abstract_value, self.ctx.consts.singles['Never'])
 
 
 class PytdFunctionToValueTest(ConverterTestBase):

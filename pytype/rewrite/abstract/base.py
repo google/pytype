@@ -1,8 +1,7 @@
 """Base abstract representation of Python values."""
 
 import abc
-import dataclasses
-from typing import Any, Dict, Optional, Protocol, Sequence, Tuple
+from typing import Any, Generic, Optional, Protocol, Sequence, Tuple, TypeVar
 
 from pytype import config
 from pytype import load_pytd
@@ -12,22 +11,7 @@ from pytype.rewrite.flow import variables
 from pytype.types import types
 from typing_extensions import Self
 
-
-@dataclasses.dataclass(init=False)
-class Singletons:
-  """Singleton abstract values."""
-
-  # For readability, we give these the same name as the value they represent.
-  # pylint: disable=invalid-name
-  Any: 'Singleton'
-  __build_class__: 'Singleton'
-  Never: 'Singleton'
-  NULL: 'Singleton'
-  # pylint: enable=invalid-name
-
-  def __init__(self, ctx: 'ContextType'):
-    for field in dataclasses.fields(self):
-      setattr(self, field.name, Singleton(ctx, field.name))
+_T = TypeVar('_T')
 
 
 class ContextType(Protocol):
@@ -35,15 +19,20 @@ class ContextType(Protocol):
   options: config.Options
   pytd_loader: load_pytd.Loader
 
-  singles: Singletons
   errorlog: Any
   abstract_converter: Any
   abstract_loader: Any
   pytd_converter: Any
+  consts: Any
 
 
 class BaseValue(types.BaseValue, abc.ABC):
   """Base class for abstract values."""
+
+  # For convenience, we want the 'name' attribute to be available on all values.
+  # Setting it as a class attribute gives subclasses the most flexibility in how
+  # to define it.
+  name = ''
 
   def __init__(self, ctx: ContextType):
     self._ctx = ctx
@@ -62,14 +51,18 @@ class BaseValue(types.BaseValue, abc.ABC):
     `self._ctx`.
     """
 
+  @property
+  def full_name(self):
+    return self.name
+
   def __eq__(self, other):
     return self.__class__ == other.__class__ and self._attrs == other._attrs
 
   def __hash__(self):
     return hash((self.__class__, self._ctx) + self._attrs)
 
-  def to_variable(self: Self) -> variables.Variable[Self]:
-    return variables.Variable.from_value(self)
+  def to_variable(self, name: Optional[str] = None) -> variables.Variable[Self]:
+    return variables.Variable.from_value(self, name=name)
 
   def get_attribute(self, name: str) -> Optional['BaseValue']:
     del name  # unused
@@ -92,21 +85,44 @@ class BaseValue(types.BaseValue, abc.ABC):
     return self._ctx.pytd_converter.to_pytd_type_of_instance(self)
 
 
-class Singleton(BaseValue):
-  """Singleton value."""
+class PythonConstant(BaseValue, Generic[_T]):
+  """Representation of a Python constant.
 
-  _INSTANCES: Dict[Tuple[ContextType, str], 'Singleton'] = {}
+  DO NOT INSTANTIATE THIS CLASS DIRECTLY! Doing so will create extra copies of
+  constants, potentially causing subtle bugs. Instead, fetch the canonical
+  instance of the constant using ctx.consts[constant].
+  """
+
+  def __init__(
+      self, ctx: ContextType, constant: _T, allow_direct_instantiation=False):
+    if self.__class__ is PythonConstant and not allow_direct_instantiation:
+      raise ValueError('Do not instantiate PythonConstant directly. Use '
+                       'ctx.consts[constant] instead.')
+    super().__init__(ctx)
+    self.constant = constant
+
+  def __repr__(self):
+    return f'PythonConstant({self.constant!r})'
+
+  @property
+  def _attrs(self):
+    return (self.constant,)
+
+
+class Singleton(BaseValue):
+  """Singleton value.
+
+  DO NOT INSTANTIATE THIS CLASS DIRECTLY! Doing so will create extra copies of
+  singletons, potentially causing subtle bugs. Instead, fetch the canonical
+  instance of the singleton using ctx.consts.singles[name].
+  """
+
   name: str
 
-  def __new__(cls, ctx: ContextType, name: str):
-    key = (ctx, name)
-    if key in cls._INSTANCES:
-      return cls._INSTANCES[key]
-    self = super().__new__(cls)
-    cls._INSTANCES[key] = self
-    return self
-
-  def __init__(self, ctx, name):
+  def __init__(self, ctx, name, allow_direct_instantiation=False):
+    if self.__class__ is Singleton and not allow_direct_instantiation:
+      raise ValueError('Do not instantiate Singleton directly. Use '
+                       'ctx.consts.singles[name] instead.')
     super().__init__(ctx)
     self.name = name
 
