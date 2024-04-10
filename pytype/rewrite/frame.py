@@ -571,6 +571,40 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     callargs = abstract.Args(posargs=tuple(args), frame=self)
     self._call_function(func, callargs)
 
+  def _unpack_starargs(self, starargs):
+    # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
+    # does not yet handle indefinite iterables.
+    posargs = starargs.get_atomic_value()
+    if isinstance(posargs, abstract.FunctionArgTuple):
+      # This has already been converted
+      pass
+    elif isinstance(posargs, abstract.Tuple):
+      posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
+    elif isinstance(posargs, tuple):
+      posargs = abstract.FunctionArgTuple(self._ctx, posargs)
+    else:
+      assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
+    return posargs
+
+  def _unpack_starstarargs(self, starstarargs):
+    kwargs = abstract.get_atomic_constant(starstarargs, dict)
+    return {abstract.get_atomic_constant(k, str): v
+            for k, v in kwargs.items()}
+
+  def byte_CALL_FUNCTION_EX(self, opcode):
+    if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
+      starstarargs = self._stack.pop()
+      kwargs = self._unpack_starstarargs(starstarargs)
+    else:
+      kwargs = _EMPTY_MAP
+    starargs = self._stack.pop()
+    posargs = self._unpack_starargs(starargs).constant
+    func = self._stack.pop()
+    if self._code.python_version >= (3, 11):
+      self._stack.pop_and_discard()
+    callargs = abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
+    self._call_function(func, callargs)
+
   def byte_CALL_METHOD(self, opcode):
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()

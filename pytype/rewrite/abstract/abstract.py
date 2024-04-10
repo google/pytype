@@ -37,6 +37,7 @@ Set = _containers.Set
 Tuple = _containers.Tuple
 
 ConstKeyDict = _internal.ConstKeyDict
+FunctionArgTuple = _internal.FunctionArgTuple
 Splat = _internal.Splat
 
 get_atomic_constant = _utils.get_atomic_constant

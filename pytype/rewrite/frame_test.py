@@ -635,6 +635,16 @@ class FunctionTest(FrameTestBase):
     self.assertConstantVar(callargs.posargs[0], 1)
     self.assertConstantVar(callargs.kwargs['y'], 2)
 
+  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
+  def test_call_function_ex_no_crash(self):
+    frame = self._make_frame("""
+      def f(x, y, z):
+        pass
+      a = (1, 2)
+      f(*a, z=3)
+    """)
+    frame.run()
+
 
 if __name__ == '__main__':
   unittest.main()
