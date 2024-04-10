@@ -221,7 +221,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       return self.load_builtin(name)
 
   def load_builtin(self, name) -> _AbstractVariable:
-    builtin = self._ctx.abstract_loader.load_builtin_by_name(name)
+    builtin = self._ctx.abstract_loader.load_builtin(name)
     return builtin.to_variable(name)
 
   def load_deref(self, name) -> _AbstractVariable:
@@ -392,8 +392,15 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   # Load and store operations
 
   def byte_LOAD_CONST(self, opcode):
-    constant = self._ctx.consts[self._code.consts[opcode.arg]]
-    self._stack.push(constant.to_variable())
+    const = self._code.consts[opcode.arg]
+    if isinstance(const, tuple):
+      # Tuple literals with all primitive elements are stored as a single raw
+      # constant; we need to wrap each element in a variable for consistency
+      # with tuples created via BUILD_TUPLE
+      val = self._ctx.abstract_loader.build_tuple(const)
+    else:
+      val = self._ctx.consts[const]
+    self._stack.push(val.to_variable())
 
   def byte_RETURN_VALUE(self, opcode):
     self._returns.append(self._stack.pop())
@@ -524,6 +531,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
 
+  def byte_IMPORT_NAME(self, opcode):
+    full_name = opcode.argval
+    unused_level_var, unused_fromlist = self._stack.popn(2)
+    module = abstract.Module(self._ctx, full_name)
+    return self._stack.push(module.to_variable())
+
   # ---------------------------------------------------------------
   # Function and method calls
 
@@ -556,6 +569,40 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
     callargs = abstract.Args(posargs=tuple(args), frame=self)
+    self._call_function(func, callargs)
+
+  def _unpack_starargs(self, starargs):
+    # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
+    # does not yet handle indefinite iterables.
+    posargs = starargs.get_atomic_value()
+    if isinstance(posargs, abstract.FunctionArgTuple):
+      # This has already been converted
+      pass
+    elif isinstance(posargs, abstract.Tuple):
+      posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
+    elif isinstance(posargs, tuple):
+      posargs = abstract.FunctionArgTuple(self._ctx, posargs)
+    else:
+      assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
+    return posargs
+
+  def _unpack_starstarargs(self, starstarargs):
+    kwargs = abstract.get_atomic_constant(starstarargs, dict)
+    return {abstract.get_atomic_constant(k, str): v
+            for k, v in kwargs.items()}
+
+  def byte_CALL_FUNCTION_EX(self, opcode):
+    if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
+      starstarargs = self._stack.pop()
+      kwargs = self._unpack_starstarargs(starstarargs)
+    else:
+      kwargs = _EMPTY_MAP
+    starargs = self._stack.pop()
+    posargs = self._unpack_starargs(starargs).constant
+    func = self._stack.pop()
+    if self._code.python_version >= (3, 11):
+      self._stack.pop_and_discard()
+    callargs = abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
     self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
@@ -615,6 +662,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # to abstract objects because they are used internally to construct function
     # call args.
     keys = abstract.get_atomic_constant(keys, tuple)
+    # Unpack the keys into raw strings.
+    keys = [abstract.get_atomic_constant(k, str) for k in keys]
     assert len(keys) == n_elts
     vals = self._stack.popn(n_elts)
     ret = dict(zip(keys, vals))

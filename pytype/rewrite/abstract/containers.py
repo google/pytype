@@ -1,4 +1,4 @@
-"""Abstract representations of class instances."""
+"""Abstract representations of builtin containers."""
 
 import logging
 

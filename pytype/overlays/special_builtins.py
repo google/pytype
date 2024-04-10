@@ -776,6 +776,8 @@ class ClassMethod(BuiltinClass):
     arg = args.posargs[0]
     if not _check_method_decorator_arg(arg, "classmethod", self.ctx):
       return node, self.ctx.new_unsolvable(node)
+    if any(isinstance(v, ClassMethodInstance) for v in arg.data):
+      return node, arg
     for d in arg.data:
       d.is_classmethod = True
       d.is_attribute_of_class = True

@@ -8,8 +8,8 @@ py_library(
   DEPS
     .base
     .classes
+    .containers
     .functions
-    .instances
     .internal
     .utils
 )
@@ -63,6 +63,26 @@ py_test(
 
 py_library(
   NAME
+    containers
+  SRCS
+    containers.py
+  DEPS
+    .base
+)
+
+py_test(
+  NAME
+    containers_test
+  SRCS
+    containers_test.py
+  DEPS
+    .base
+    .containers
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
     functions
   SRCS
     functions.py
@@ -80,26 +100,6 @@ py_test(
   DEPS
     .classes
     .functions
-    pytype.rewrite.tests.test_utils
-)
-
-py_library(
-  NAME
-    instances
-  SRCS
-    instances.py
-  DEPS
-    .base
-)
-
-py_test(
-  NAME
-    instances_test
-  SRCS
-    instances_test.py
-  DEPS
-    .base
-    .instances
     pytype.rewrite.tests.test_utils
 )
 

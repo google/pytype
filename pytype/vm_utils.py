@@ -526,6 +526,12 @@ def make_class(node, props, ctx):
             annotations_dict, ctx).to_variable(node)
         class_dict.members["__annotations__"] = annotations_member
         class_dict.pyval["__annotations__"] = annotations_member
+    if "__init_subclass__" in class_dict.members:
+      # __init_subclass__ is automatically promoted to a classmethod
+      underlying = class_dict.pyval["__init_subclass__"]
+      _, method = ctx.vm.load_special_builtin("classmethod").call(
+          node, func=None, args=function.Args(posargs=(underlying,)))
+      class_dict.pyval["__init_subclass__"] = method
     try:
       class_type = props.class_type or abstract.InterpreterClass
       assert issubclass(class_type, abstract.InterpreterClass)

@@ -1,6 +1,6 @@
 """Abstract types used internally by pytype."""
 
-from typing import Any, Dict, Sequence
+from typing import Dict, Sequence, Tuple
 
 import immutabledict
 
@@ -17,7 +17,7 @@ class ConstKeyDict(base.BaseValue):
   Used by the python interpreter to construct function args.
   """
 
-  def __init__(self, ctx: base.ContextType, constant: Dict[Any, _Variable]):
+  def __init__(self, ctx: base.ContextType, constant: Dict[str, _Variable]):
     super().__init__(ctx)
     assert isinstance(constant, dict), constant
     self.constant = constant
@@ -28,6 +28,22 @@ class ConstKeyDict(base.BaseValue):
   @property
   def _attrs(self):
     return (immutabledict.immutabledict(self.constant),)
+
+
+class FunctionArgTuple(base.BaseValue):
+  """Representation of a function arg tuple."""
+
+  def __init__(self, ctx: base.ContextType, constant: Tuple[_Variable, ...]):
+    super().__init__(ctx)
+    assert isinstance(constant, tuple), constant
+    self.constant = constant
+
+  def __repr__(self):
+    return f"FunctionArgTuple({self.constant!r})"
+
+  @property
+  def _attrs(self):
+    return (self.constant,)
 
 
 class Splat(base.BaseValue):
