@@ -85,7 +85,8 @@ class SimpleClass(base.BaseValue):
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
     if self._canonical_instance:
-      log.info('Getting cached instance of class %s', self.full_name)
+      if self.module not in ('builtins', 'typing'):
+        log.info('Getting cached instance of class %s', self.full_name)
       return self._canonical_instance
     log.info('Instantiating class %s', self.full_name)
     for setup_method_name in self.setup_methods:
