@@ -3,7 +3,14 @@ from pytype.rewrite.tests import test_utils
 from pytype.tests import test_base
 
 
-class BasicTest(test_base.BaseTest):
+class RewriteTest(test_base.BaseTest):
+
+  def setUp(self):
+    super().setUp()
+    self.options.tweak(use_rewrite=True)
+
+
+class BasicTest(RewriteTest):
   """Basic functional tests."""
 
   def setUp(self):
@@ -90,6 +97,10 @@ class BasicTest(test_base.BaseTest):
         def f(self) -> int: ...
     """)
 
+
+class ImportsTest(RewriteTest):
+  """Import tests."""
+
   def test_import(self):
     self.Check("""
       import os
@@ -100,6 +111,38 @@ class BasicTest(test_base.BaseTest):
   def test_builtins(self):
     self.Check("""
       assert_type(__builtins__.int, "Type[int]")
+    """)
+
+  def test_dotted_import(self):
+    self.Check("""
+      import os.path
+      assert_type(os.path, "module")
+    """)
+
+  @test_base.skip('Not yet implemented')
+  def test_from_import(self):
+    self.Check("""
+      from os import name, path
+      assert_type(name, "str")
+      assert_type(path, "module")
+    """)
+
+  @test_base.skip('Not yet implemented')
+  def test_errors(self):
+    self.CheckWithErrors("""
+      import nonsense  # import-error
+      import os.nonsense  # import-error
+      from os import nonsense  # import-error
+    """)
+
+  def test_aliases(self):
+    self.Check("""
+      import os as so
+      assert_type(so.name, "str")
+
+      # Not yet implemented:
+      # import os.path as path1
+      # from os import path as path2
     """)
 
 
