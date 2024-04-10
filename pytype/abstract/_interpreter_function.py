@@ -186,9 +186,6 @@ class InterpreterFunction(_function_base.SignedFunction):
     self.last_frame = None  # for BuildClass
     self._store_call_records = False
     self.is_class_builder = False  # Will be set by BuildClass.
-    if name.endswith(".__init_subclass__"):
-      # __init_subclass__ is automatically promoted to a classmethod
-      self.is_classmethod = True
     # Whether to cache the return value irrespective of call args
     self.cache_return = False
 

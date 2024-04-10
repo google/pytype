@@ -583,6 +583,16 @@ class ClassesTestPython3Feature(test_base.BaseTest):
         x: int
     """)
 
+  def test_init_subclass_super(self):
+    self.Check("""
+      class A:
+        def __init_subclass__(cls):
+          pass
+      class B(A):
+        def __init_subclass__(cls):
+          super().__init_subclass__()
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
