@@ -593,6 +593,18 @@ class ClassesTestPython3Feature(test_base.BaseTest):
           super().__init_subclass__()
     """)
 
+  def test_init_subclass_explicit_classmethod(self):
+    ty = self.Infer("""
+      class Foo:
+        @classmethod
+        def __init_subclass__(cls):
+          pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class Foo:
+        def __init_subclass__(cls) -> None: ...
+    """)
+
 
 if __name__ == "__main__":
   test_base.main()
