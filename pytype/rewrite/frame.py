@@ -221,7 +221,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       return self.load_builtin(name)
 
   def load_builtin(self, name) -> _AbstractVariable:
-    builtin = self._ctx.abstract_loader.load_builtin_by_name(name)
+    builtin = self._ctx.abstract_loader.load_builtin(name)
     return builtin.to_variable(name)
 
   def load_deref(self, name) -> _AbstractVariable:
@@ -530,6 +530,12 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # retrieve a bound method, we push the NULL
     self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
     self._stack.push(self._load_attr(instance_var, method_name))
+
+  def byte_IMPORT_NAME(self, opcode):
+    full_name = opcode.argval
+    unused_level_var, unused_fromlist = self._stack.popn(2)
+    module = abstract.Module(self._ctx, full_name)
+    return self._stack.push(module.to_variable())
 
   # ---------------------------------------------------------------
   # Function and method calls

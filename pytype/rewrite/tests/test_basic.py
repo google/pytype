@@ -90,6 +90,18 @@ class BasicTest(test_base.BaseTest):
         def f(self) -> int: ...
     """)
 
+  def test_import(self):
+    self.Check("""
+      import os
+      assert_type(os.__name__, str)  # attribute of the 'module' class
+      assert_type(os.name, str)  # attribute of the 'os' module
+    """)
+
+  def test_builtins(self):
+    self.Check("""
+      assert_type(__builtins__.int, "Type[int]")
+    """)
+
 
 if __name__ == '__main__':
   test_base.main()

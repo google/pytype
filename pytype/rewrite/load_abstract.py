@@ -63,7 +63,7 @@ class AbstractLoader:
     else:
       raise NotImplementedError(f'I do not know how to load {pytd_node}')
 
-  def load_builtin_by_name(self, name: str) -> abstract.BaseValue:
+  def load_builtin(self, name: str) -> abstract.BaseValue:
     if name in self._special_builtins:
       return self._special_builtins[name]
     pytd_node = self._pytd_loader.lookup_pytd('builtins', name)
@@ -73,11 +73,17 @@ class AbstractLoader:
       return self.consts[eval(name)]  # pylint: disable=eval-used
     return self._load_pytd_node(pytd_node)
 
+  def load_value(self, module: str, name: str) -> abstract.BaseValue:
+    if module == 'builtins':
+      return self.load_builtin(name)
+    pytd_node = self._pytd_loader.lookup_pytd(module, name)
+    return self._load_pytd_node(pytd_node)
+
   def get_module_globals(self) -> Dict[str, abstract.BaseValue]:
     """Gets a module's initial global namespace."""
     return {
         # TODO(b/324464265): Represent __builtins__ as a module.
-        '__builtins__': self.consts.Any,
+        '__builtins__': abstract.Module(self._ctx, 'builtins'),
         '__name__': self.consts['__main__'],
         '__file__': self.consts[self._ctx.options.input],
         '__doc__': self.consts[None],

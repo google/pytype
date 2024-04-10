@@ -80,8 +80,7 @@ class SimpleClass(base.BaseValue):
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # SimpleClass is used to model imported classes, which we treat as frozen.
-    log.info('Ignoring attribute set on %r: %s -> %r',
-             self, name, value)
+    log.info('Ignoring attribute set on %r: %s -> %r', self, name, value)
 
   def instantiate(self) -> 'FrozenInstance':
     """Creates an instance of this class."""
@@ -208,5 +207,30 @@ class FrozenInstance(BaseInstance):
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # The VM may try to set an attribute on a frozen instance in the process of
     # analyzing a class's methods. This is fine; we just ignore it.
-    log.info('Ignoring attribute set on %r: %s -> %r',
-             self, name, value)
+    log.info('Ignoring attribute set on %r: %s -> %r', self, name, value)
+
+
+class Module(BaseInstance):
+  """A module."""
+
+  def __init__(self, ctx: base.ContextType, name: str):
+    cls = ctx.abstract_loader.load_builtin('module')
+    super().__init__(ctx, cls, members={})
+    self.name = name
+
+  def __repr__(self):
+    return f'Module({self.name})'
+
+  @property
+  def _attrs(self):
+    return (self.name,)
+
+  def set_attribute(self, name: str, value: base.BaseValue) -> None:
+    # We don't allow modifying imported modules.
+    log.info('Ignoring attribute set on %r: %s -> %r', self, name, value)
+
+  def get_attribute(self, name: str) -> Optional[base.BaseValue]:
+    try:
+      return self._ctx.abstract_loader.load_value(self.name, name)
+    except KeyError:
+      return super().get_attribute(name)

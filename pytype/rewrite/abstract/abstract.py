@@ -17,6 +17,7 @@ SimpleClass = _classes.SimpleClass
 BaseInstance = _classes.BaseInstance
 FrozenInstance = _classes.FrozenInstance
 InterpreterClass = _classes.InterpreterClass
+Module = _classes.Module
 MutableInstance = _classes.MutableInstance
 
 Args = _functions.Args
