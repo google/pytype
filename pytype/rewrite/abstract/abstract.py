@@ -2,8 +2,8 @@
 
 from pytype.rewrite.abstract import base as _base
 from pytype.rewrite.abstract import classes as _classes
+from pytype.rewrite.abstract import containers as _containers
 from pytype.rewrite.abstract import functions as _functions
-from pytype.rewrite.abstract import instances as _instances
 from pytype.rewrite.abstract import internal as _internal
 from pytype.rewrite.abstract import utils as _utils
 
@@ -31,10 +31,10 @@ Signature = _functions.Signature
 SimpleFunction = _functions.SimpleFunction
 SimpleReturn = _functions.SimpleReturn
 
-Dict = _instances.Dict
-List = _instances.List
-Set = _instances.Set
-Tuple = _instances.Tuple
+Dict = _containers.Dict
+List = _containers.List
+Set = _containers.Set
+Tuple = _containers.Tuple
 
 ConstKeyDict = _internal.ConstKeyDict
 Splat = _internal.Splat
