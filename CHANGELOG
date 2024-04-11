@@ -1,3 +1,19 @@
+Version 2024.04.11:
+
+Updates:
+* Change error message hint to suggest `X | None` rather than `Optional[X]`.
+
+Bug fixes:
+* Take the 'maybe_missing_members' attribute into account when setting up enum
+  classes.
+* Fix a bug in signature compatibility checking.
+* Teach main.py how to fix unescaped spaces in command-line arguments.
+* Fix return type of exit() and quit().
+* Update pytype_runner.py - change escape_ninja_path to escape all the ninja
+  path escape-needing characters
+* Modify type annotations for coroutines as soon as they are created.
+* Fully promote __init_subclass__ to a classmethod.
+
 Version 2024.03.19:
 
 Updates:
