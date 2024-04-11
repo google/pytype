@@ -58,5 +58,23 @@ class FrozenInstanceTest(test_utils.ContextfulTestBase):
     self.assertEqual(instance.get_attribute('x'), self.ctx.consts[3])
 
 
+class ModuleTest(test_utils.ContextfulTestBase):
+
+  def test_instance_attribute(self):
+    attr = classes.Module(self.ctx, 'os').get_attribute('name')
+    self.assertIsInstance(attr, classes.FrozenInstance)
+    self.assertEqual(attr.cls.name, 'str')
+
+  def test_class_attribute(self):
+    attr = classes.Module(self.ctx, 'os').get_attribute('__name__')
+    self.assertIsInstance(attr, classes.FrozenInstance)
+    self.assertEqual(attr.cls.name, 'str')
+
+  def test_submodule(self):
+    attr = classes.Module(self.ctx, 'os').get_attribute('path')
+    self.assertIsInstance(attr, classes.Module)
+    self.assertEqual(attr.name, 'os.path')
+
+
 if __name__ == '__main__':
   unittest.main()

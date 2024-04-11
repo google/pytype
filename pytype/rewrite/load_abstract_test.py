@@ -50,6 +50,11 @@ class LoadValueTest(test_utils.ContextfulTestBase):
     self.assertIsInstance(name, abstract.FrozenInstance)
     self.assertEqual(name.cls.name, 'str')
 
+  def test_submodule(self):
+    submodule = self.ctx.abstract_loader.load_value('os', 'path')
+    self.assertIsInstance(submodule, abstract.Module)
+    self.assertEqual(submodule.name, 'os.path')
+
 
 class LoadRawTypeTest(test_utils.ContextfulTestBase):
 

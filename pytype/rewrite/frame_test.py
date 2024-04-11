@@ -1,5 +1,7 @@
 from typing import Mapping, Type, TypeVar, cast, get_origin
 
+from unittest import mock
+
 from pytype.pyc import opcodes
 from pytype.rewrite import frame as frame_lib
 from pytype.rewrite.abstract import abstract
@@ -636,14 +638,23 @@ class FunctionTest(FrameTestBase):
     self.assertConstantVar(callargs.kwargs['y'], 2)
 
   @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
-  def test_call_function_ex_no_crash(self):
+  def test_call_function_ex_callargs(self):
+    """Test unpacking of concrete *args and **args."""
     frame = self._make_frame("""
       def f(x, y, z):
         pass
       a = (1, 2)
-      f(*a, z=3)
+      kw = {'z': 3}
+      f(*a, **kw)
     """)
-    frame.run()
+    with mock.patch.object(
+        frame_lib.Frame, '_call_function', wraps=frame._call_function
+    ) as mock_call:
+      frame.run()
+    (_, callargs), _ = mock_call.call_args_list[0]
+    self.assertConstantVar(callargs.posargs[0], 1)
+    self.assertConstantVar(callargs.posargs[1], 2)
+    self.assertConstantVar(callargs.kwargs['z'], 3)
 
 
 if __name__ == '__main__':

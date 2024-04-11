@@ -533,8 +533,17 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_IMPORT_NAME(self, opcode):
     full_name = opcode.argval
-    unused_level_var, unused_fromlist = self._stack.popn(2)
-    module = abstract.Module(self._ctx, full_name)
+    unused_level_var, fromlist = self._stack.popn(2)
+    # The IMPORT_NAME for an "import a.b.c" will push the module "a".
+    # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
+    # two cases are distinguished by whether fromlist is None or not.
+    try:
+      abstract.get_atomic_constant(fromlist, None)
+    except ValueError:
+      module_name = full_name
+    else:
+      module_name = full_name.split('.', 1)[0]  # "a.b.c" -> "a"
+    module = abstract.Module(self._ctx, module_name)
     return self._stack.push(module.to_variable())
 
   # ---------------------------------------------------------------
@@ -601,6 +610,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     posargs = self._unpack_starargs(starargs).constant
     func = self._stack.pop()
     if self._code.python_version >= (3, 11):
+      # the compiler puts a NULL on the stack before function calls
       self._stack.pop_and_discard()
     callargs = abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
     self._call_function(func, callargs)
@@ -697,6 +707,30 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
     target.setitem(key, val)
+
+  def byte_LIST_EXTEND(self, opcode):
+    count = opcode.arg
+    val = self._stack.pop()
+    target_var = self._stack.peek(count)
+    target = target_var.get_atomic_value()
+    target.extend(val)
+
+  def byte_DICT_MERGE(self, opcode):
+    # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
+    return self.byte_DICT_UPDATE(opcode)
+
+  def byte_DICT_UPDATE(self, opcode):
+    count = opcode.arg
+    val = self._stack.pop()
+    target_var = self._stack.peek(count)
+    target = target_var.get_atomic_value()
+    target.update(val)
+
+  def byte_LIST_TO_TUPLE(self, opcode):
+    target_var = self._stack.pop()
+    target = abstract.get_atomic_constant(target_var, list)
+    ret = abstract.Tuple(self._ctx, tuple(target)).to_variable()
+    self._stack.push(ret)
 
   # ---------------------------------------------------------------
   # Branches and jumps

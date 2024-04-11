@@ -5,6 +5,8 @@ import logging
 from typing import Dict as _Dict, List as _List, Set as _Set, Tuple as _Tuple
 
 from pytype.rewrite.abstract import base
+from pytype.rewrite.abstract import internal
+from pytype.rewrite.abstract import utils
 
 log = logging.getLogger(__name__)
 
@@ -25,6 +27,19 @@ class List(base.PythonConstant[_List[_Variable]]):
   def append(self, val: _Variable):
     self.constant.append(val)
 
+  def extend(self, val: _Variable):
+    try:
+      const = utils.get_atomic_constant(val)
+      if not isinstance(const, list):
+        const = None
+    except ValueError:
+      const = None
+
+    if const:
+      self.constant.extend(const)
+    else:
+      self.constant.append(internal.Splat(self._ctx, val).to_variable())
+
 
 class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
   """Representation of a Python dict."""
@@ -34,12 +49,26 @@ class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
   ):
     assert isinstance(constant, dict), constant
     super().__init__(ctx, constant)
+    self.indefinite = False
 
   def __repr__(self):
     return f'Dict({self.constant!r})'
 
   def setitem(self, key, val):
     self.constant[key] = val
+
+  def update(self, val: _Variable):
+    try:
+      const = utils.get_atomic_constant(val)
+      if not isinstance(const, dict):
+        const = None
+    except ValueError:
+      const = None
+
+    if const:
+      self.constant.update(const)
+    else:
+      self.indefinite = True
 
 
 class Set(base.PythonConstant[_Set[_Variable]]):

@@ -107,3 +107,9 @@ class AbstractConverter:
           f'Abstract conversion not yet implemented for {typ}')
     else:
       raise ValueError(f'Cannot convert {typ} to an abstract value')
+
+  def pytd_alias_to_value(self, alias: pytd.Alias) -> abstract.BaseValue:
+    if isinstance(alias.type, pytd.Module):
+      return abstract.Module(self._ctx, alias.type.module_name)
+    raise NotImplementedError(
+        f'Abstract conversion not yet implemented for {alias}')

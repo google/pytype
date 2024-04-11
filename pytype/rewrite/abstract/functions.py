@@ -57,6 +57,8 @@ class Args(Generic[_FrameT]):
   """Arguments to one function call."""
   posargs: Tuple[base.AbstractVariableType, ...] = ()
   kwargs: Mapping[str, base.AbstractVariableType] = _EMPTY_MAP
+  starargs: Optional[base.AbstractVariableType] = None
+  starstarargs: Optional[base.AbstractVariableType] = None
   frame: Optional[_FrameT] = None
 
 

@@ -68,6 +68,8 @@ py_library(
     containers.py
   DEPS
     .base
+    .internal
+    .utils
 )
 
 py_test(

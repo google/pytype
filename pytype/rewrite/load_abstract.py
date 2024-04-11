@@ -60,6 +60,8 @@ class AbstractLoader:
     elif isinstance(pytd_node, pytd.Constant):
       typ = self._ctx.abstract_converter.pytd_type_to_value(pytd_node.type)
       return typ.instantiate()
+    elif isinstance(pytd_node, pytd.Alias):
+      return self._ctx.abstract_converter.pytd_alias_to_value(pytd_node)
     else:
       raise NotImplementedError(f'I do not know how to load {pytd_node}')
 

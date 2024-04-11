@@ -92,5 +92,14 @@ class PytdClassToValueTest(ConverterTestBase):
     self.assertEqual(nested_class.name, 'D')
 
 
+class PytdAliasToValueTest(ConverterTestBase):
+
+  def test_alias(self):
+    alias = self.build_pytd('import os.path', name='os.path')
+    module = self.conv.pytd_alias_to_value(alias)
+    self.assertIsInstance(module, abstract.Module)
+    self.assertEqual(module.name, 'os.path')
+
+
 if __name__ == '__main__':
   unittest.main()
