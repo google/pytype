@@ -1,6 +1,6 @@
 """Abstract types used internally by pytype."""
 
-from typing import Dict, Sequence, Tuple
+from typing import Dict, Tuple
 
 import immutabledict
 
@@ -54,9 +54,9 @@ class Splat(base.BaseValue):
   (x, *ys, z) in starargs) and let the function arg matcher unpack them.
   """
 
-  def __init__(self, ctx: base.ContextType, iterable: Sequence[_Variable]):
+  def __init__(self, ctx: base.ContextType, iterable: _Variable):
     super().__init__(ctx)
-    self.iterable = tuple(iterable)
+    self.iterable = iterable
 
   def __repr__(self):
     return f"splat({self.iterable!r})"
