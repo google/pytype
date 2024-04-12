@@ -77,6 +77,11 @@ class Variable(Generic[_T]):
   def with_name(self, name: Optional[str]) -> 'Variable[_T]':
     return dataclasses.replace(self, name=name)
 
+  def with_value(self, value: _T2) -> 'Variable[_T2]':
+    assert len(self.bindings) == 1
+    new_binding = dataclasses.replace(self.bindings[0], value=value)
+    return dataclasses.replace(self, bindings=(new_binding,))
+
   def __repr__(self):
     bindings = ' | '.join(repr(b) for b in self.bindings)
     if self.name:
