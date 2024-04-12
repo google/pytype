@@ -537,12 +537,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
     # two cases are distinguished by whether fromlist is None or not.
-    try:
-      abstract.get_atomic_constant(fromlist, None)
-    except ValueError:
-      module_name = full_name
-    else:
+    if fromlist.has_atomic_value(self._ctx.consts[None]):
       module_name = full_name.split('.', 1)[0]  # "a.b.c" -> "a"
+    else:
+      module_name = full_name
     module = abstract.Module(self._ctx, module_name)
     return self._stack.push(module.to_variable())
 
