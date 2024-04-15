@@ -127,7 +127,6 @@ class ImportsTest(RewriteTest):
       assert_type(os.path, "module")
     """)
 
-  @test_base.skip('Not yet implemented')
   def test_from_import(self):
     self.Check("""
       from os import name, path
@@ -148,9 +147,11 @@ class ImportsTest(RewriteTest):
       import os as so
       assert_type(so.name, "str")
 
-      # Not yet implemented:
-      # import os.path as path1
-      # from os import path as path2
+      import os.path as path1
+      assert_type(path1, "module")
+
+      from os import path as path2
+      assert_type(path2, "module")
     """)
 
 

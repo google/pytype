@@ -547,7 +547,13 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       module_name = full_name
     module = abstract.Module(self._ctx, module_name)
-    return self._stack.push(module.to_variable())
+    self._stack.push(module.to_variable())
+
+  def byte_IMPORT_FROM(self, opcode):
+    attr_name = opcode.argval
+    module = self._stack.top().get_atomic_value()
+    attr = module.get_attribute(attr_name)
+    self._stack.push(attr.to_variable())
 
   # ---------------------------------------------------------------
   # Function and method calls
@@ -720,7 +726,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_DICT_MERGE(self, opcode):
     # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
-    return self.byte_DICT_UPDATE(opcode)
+    self.byte_DICT_UPDATE(opcode)
 
   def byte_DICT_UPDATE(self, opcode):
     count = opcode.arg
