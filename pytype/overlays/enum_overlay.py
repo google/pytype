@@ -338,13 +338,34 @@ class EnumMetaInit(abstract.SimpleFunction):
     # to `unsolvable` if the enum has no members. Technically, `__new__` should
     # not accept any arguments, because it will always fail if the enum has no
     # members. But `unsolvable` is much simpler to implement and use.
+    value_types = [member_type, cls]
+    # If this enum class defines the _missing_ classmethod, then widen the value
+    # type to include the type of the value parameter in _missing_.
+    if "_missing_" in cls:
+      if isinstance(cls, abstract.PyTDClass):
+        missing_sigs = []
+        with self.ctx.allow_recursive_convert():
+          missing_var = cls.load_lazy_attribute("_missing_")
+        for missing in missing_var.data:
+          if isinstance(missing, abstract.PyTDFunction):
+            missing_sigs.extend(sig.signature for sig in missing.signatures)
+      else:
+        missing_sigs = []
+        for val in cls.members["_missing_"].data:
+          if isinstance(val, special_builtins.ClassMethodInstance):
+            for missing in val.func.data:
+              if isinstance(missing, abstract.SignedFunction):
+                missing_sigs.append(missing.signature)
+      for missing_sig in missing_sigs:
+        value_type = missing_sig.annotations.get(
+            "value", self.ctx.convert.unsolvable)
+        value_types.append(value_type)
     return overlay_utils.make_method(
         ctx=self.ctx,
         node=node,
         name="__new__",
         params=[
-            overlay_utils.Param("value",
-                                abstract.Union([member_type, cls], self.ctx))
+            overlay_utils.Param("value", abstract.Union(value_types, self.ctx))
         ],
         return_type=cls)
 

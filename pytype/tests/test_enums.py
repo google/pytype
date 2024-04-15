@@ -1415,6 +1415,30 @@ class EnumOverlayTest(test_base.BaseTest):
         assert_type(foo.MyEnum.B.value_alias, foo.Attr)
       """)
 
+  def test_missing(self):
+    self.Check("""
+      import enum
+      class E(enum.Enum):
+        X = 42
+        @classmethod
+        def _missing_(cls, value: object) -> "E":
+          return cls.X
+      assert_type(E("FOO"), E)
+    """)
+
+  def test_missing_pyi(self):
+    with self.DepTree([("foo.pyi", """
+      import enum
+      class E(enum.Enum):
+        X = 42
+        @classmethod
+        def _missing_(cls, value: object) -> E: ...
+    """)]):
+      self.Check("""
+        import foo
+        assert_type(foo.E("FOO"), foo.E)
+      """)
+
 
 if __name__ == "__main__":
   test_base.main()
