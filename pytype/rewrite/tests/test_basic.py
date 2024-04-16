@@ -142,12 +142,11 @@ class ImportsTest(RewriteTest):
       assert_type(path, "module")
     """)
 
-  @test_base.skip('Not yet implemented')
   def test_errors(self):
     self.CheckWithErrors("""
       import nonsense  # import-error
       import os.nonsense  # import-error
-      from os import nonsense  # import-error
+      from os import nonsense  # module-attr
     """)
 
   def test_aliases(self):

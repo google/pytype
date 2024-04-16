@@ -48,6 +48,7 @@ py_library(
   DEPS
     .base
     .functions
+    pytype.types.types
 )
 
 py_test(

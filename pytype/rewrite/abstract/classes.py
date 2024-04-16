@@ -9,6 +9,7 @@ from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 import immutabledict
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
+from pytype.types import types
 
 log = logging.getLogger(__name__)
 
@@ -211,7 +212,7 @@ class FrozenInstance(BaseInstance):
     log.info('Ignoring attribute set on %r: %s -> %r', self, name, value)
 
 
-class Module(BaseInstance):
+class Module(BaseInstance, types.Module):
   """A module."""
 
   def __init__(self, ctx: base.ContextType, name: str):

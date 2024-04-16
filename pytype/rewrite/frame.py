@@ -546,13 +546,25 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       module_name = full_name.split('.', 1)[0]  # "a.b.c" -> "a"
     else:
       module_name = full_name
-    module = abstract.Module(self._ctx, module_name)
+    if self._ctx.pytd_loader.import_name(module_name):
+      module = abstract.Module(self._ctx, module_name)
+    else:
+      self._ctx.errorlog.import_error(self.stack, module_name)
+      module = self._ctx.consts.Any
+    if (full_name != module_name and
+        not self._ctx.pytd_loader.import_name(full_name)):
+      # Even if we're only importing "a", make sure "a.b.c" is valid.
+      self._ctx.errorlog.import_error(self.stack, full_name)
     self._stack.push(module.to_variable())
 
   def byte_IMPORT_FROM(self, opcode):
     attr_name = opcode.argval
     module = self._stack.top().get_atomic_value()
     attr = module.get_attribute(attr_name)
+    if not attr:
+      module_binding = module.to_variable().bindings[0]
+      self._ctx.errorlog.attribute_error(self.stack, module_binding, attr_name)
+      attr = self._ctx.consts.Any
     self._stack.push(attr.to_variable())
 
   # ---------------------------------------------------------------
