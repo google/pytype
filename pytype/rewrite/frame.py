@@ -600,6 +600,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
     elif isinstance(posargs, tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs)
+    elif abstract.is_any(posargs):
+      return self._ctx.abstract_loader.load_raw_type(dict).instantiate()
     else:
       assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
     return posargs
@@ -616,12 +618,21 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       kwargs = _EMPTY_MAP
     starargs = self._stack.pop()
-    posargs = self._unpack_starargs(starargs).constant
+    unpacked_starargs = self._unpack_starargs(starargs)
+    if isinstance(
+        unpacked_starargs, (abstract.Tuple, abstract.FunctionArgTuple)):
+      # We have a concrete tuple we are unpacking; move it into posargs
+      posargs = unpacked_starargs.constant
+      starargs = None
+    else:
+      # We have an indefinite tuple; leave it in starargs
+      posargs = ()
     func = self._stack.pop()
     if self._code.python_version >= (3, 11):
       # the compiler puts a NULL on the stack before function calls
       self._stack.pop_and_discard()
-    callargs = abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
+    callargs = abstract.Args(
+        posargs=posargs, kwargs=kwargs, starargs=starargs, frame=self)
     self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):

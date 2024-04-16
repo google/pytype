@@ -55,6 +55,14 @@ class BasicTest(RewriteTest):
         foo('abc', *args)
     """)
 
+  def test_function_only_varargs(self):
+    self.Check("""
+      def foo(*args):
+        pass
+      def bar(*args):
+        foo(*args)
+    """)
+
   def test_class(self):
     self.Check("""
       class C:

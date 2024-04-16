@@ -42,3 +42,4 @@ Splat = _internal.Splat
 
 get_atomic_constant = _utils.get_atomic_constant
 join_values = _utils.join_values
+is_any = _utils.is_any
