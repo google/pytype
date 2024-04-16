@@ -35,3 +35,7 @@ def join_values(
     return values[0]
   else:
     return ctx.consts.Any
+
+
+def is_any(value: base.BaseValue):
+  return isinstance(value, base.Singleton) and value.name == 'Any'

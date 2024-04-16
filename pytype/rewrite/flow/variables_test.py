@@ -126,6 +126,12 @@ class VariableTest(unittest.TestCase):
     x = variables.Variable(bindings=())
     self.assertFalse(x.has_atomic_value(5))
 
+  def test_with_value(self):
+    x = variables.Variable.from_value(5)
+    y = x.with_value('test')
+    assert_type(y, variables.Variable[str])
+    self.assertEqual(y.get_atomic_value(), 'test')
+
 
 if __name__ == '__main__':
   unittest.main()

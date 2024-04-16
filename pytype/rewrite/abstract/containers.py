@@ -24,21 +24,21 @@ class List(base.PythonConstant[_List[_Variable]]):
   def __repr__(self):
     return f'List({self.constant!r})'
 
-  def append(self, val: _Variable):
-    self.constant.append(val)
+  def append(self, var: _Variable) -> 'List':
+    return List(self._ctx, self.constant + [var])
 
-  def extend(self, val: _Variable):
+  def extend(self, var: _Variable) -> base.BaseValue:
     try:
-      const = utils.get_atomic_constant(val)
-      if not isinstance(const, list):
-        const = None
+      val = var.get_atomic_value()
     except ValueError:
-      const = None
-
-    if const:
-      self.constant.extend(const)
+      # This list has multiple possible values, so it is no longer a constant.
+      return self._ctx.abstract_loader.load_raw_type(list).instantiate()
+    if isinstance(val, List):
+      new_constant = self.constant + val.constant
     else:
-      self.constant.append(internal.Splat(self._ctx, val).to_variable())
+      splat = internal.Splat(self._ctx, val)
+      new_constant = self.constant + [splat.to_variable()]
+    return List(self._ctx, new_constant)
 
 
 class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
@@ -54,21 +54,16 @@ class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
   def __repr__(self):
     return f'Dict({self.constant!r})'
 
-  def setitem(self, key, val):
-    self.constant[key] = val
+  def setitem(self, key: _Variable, val: _Variable) -> 'Dict':
+    return Dict(self._ctx, {**self.constant, key: val})
 
-  def update(self, val: _Variable):
+  def update(self, var: _Variable) -> base.BaseValue:
     try:
-      const = utils.get_atomic_constant(val)
-      if not isinstance(const, dict):
-        const = None
+      val = utils.get_atomic_constant(var, dict)
     except ValueError:
-      const = None
-
-    if const:
-      self.constant.update(const)
-    else:
-      self.indefinite = True
+      # This dict has multiple possible values, so it is no longer a constant.
+      return self._ctx.abstract_loader.load_raw_type(dict).instantiate()
+    return Dict(self._ctx, {**self.constant, **val})
 
 
 class Set(base.PythonConstant[_Set[_Variable]]):
@@ -81,8 +76,8 @@ class Set(base.PythonConstant[_Set[_Variable]]):
   def __repr__(self):
     return f'Set({self.constant!r})'
 
-  def add(self, val: _Variable):
-    self.constant.add(val)
+  def add(self, val: _Variable) -> 'Set':
+    return Set(self._ctx, self.constant | {val})
 
 
 class Tuple(base.PythonConstant[_Tuple[_Variable, ...]]):

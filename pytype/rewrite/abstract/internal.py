@@ -54,7 +54,7 @@ class Splat(base.BaseValue):
   (x, *ys, z) in starargs) and let the function arg matcher unpack them.
   """
 
-  def __init__(self, ctx: base.ContextType, iterable: _Variable):
+  def __init__(self, ctx: base.ContextType, iterable: base.BaseValue):
     super().__init__(ctx)
     self.iterable = iterable
 

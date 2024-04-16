@@ -165,14 +165,14 @@ class ImportTest(test_base.BaseTest):
       d.create_file(file_utils.replace_separator("path/to/__init__.pyi"), "")
       d.create_file(file_utils.replace_separator("path/__init__.pyi"), "")
       ty = self.Infer("""
-      import nonexistant_path.to.my_module  # doesn't exist
+      import nonexistent_path.to.my_module  # doesn't exist
       def foo():
         return path.to.my_module.qqsv()
       """, report_errors=False,
                       pythonpath=[d.path])
       self.assertTypesMatchPytd(ty, """
         from typing import Any
-        nonexistant_path = ...  # type: Any
+        nonexistent_path = ...  # type: Any
         def foo() -> Any: ...
       """)
 
@@ -618,7 +618,7 @@ class ImportTest(test_base.BaseTest):
         ty, """
       import os
       class Foo:
-        def kill(__pid: int, __signal: int) -> None: ...
+        def kill(pid: int, signal: int, /) -> None: ...
     """)
 
   def test_match_against_imported(self):

@@ -1,5 +1,4 @@
 """Basic functional tests."""
-from pytype.rewrite.tests import test_utils
 from pytype.tests import test_base
 
 
@@ -30,21 +29,6 @@ class BasicTest(RewriteTest):
         x = None
         def g():
           return x
-    """)
-
-  def test_function_parameter(self):
-    self.Check("""
-      def f(x):
-        return x
-      f(0)
-    """)
-
-  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
-  def test_function_kwargs(self):
-    self.Check("""
-      def f(x, *, y):
-        return x
-      f(0, y=1)
     """)
 
   def test_class(self):
@@ -119,7 +103,6 @@ class ImportsTest(RewriteTest):
       assert_type(os.path, "module")
     """)
 
-  @test_base.skip('Not yet implemented')
   def test_from_import(self):
     self.Check("""
       from os import name, path
@@ -127,12 +110,11 @@ class ImportsTest(RewriteTest):
       assert_type(path, "module")
     """)
 
-  @test_base.skip('Not yet implemented')
   def test_errors(self):
     self.CheckWithErrors("""
       import nonsense  # import-error
       import os.nonsense  # import-error
-      from os import nonsense  # import-error
+      from os import nonsense  # module-attr
     """)
 
   def test_aliases(self):
@@ -140,9 +122,11 @@ class ImportsTest(RewriteTest):
       import os as so
       assert_type(so.name, "str")
 
-      # Not yet implemented:
-      # import os.path as path1
-      # from os import path as path2
+      import os.path as path1
+      assert_type(path1, "module")
+
+      from os import path as path2
+      assert_type(path2, "module")
     """)
 
 

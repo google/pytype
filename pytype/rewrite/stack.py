@@ -53,6 +53,13 @@ class DataStack:
       self._stack_size_error(f'peek value {n} places down')
     return self._stack[-n]
 
+  def replace(self, n: int, var: _AbstractVariable) -> None:
+    if n <= 0:
+      raise IndexError(f'replace(n) requires positive n, got: {n}')
+    if n > len(self._stack):
+      self._stack_size_error(f'replace value {n} places down')
+    self._stack[-n] = var
+
   def _stack_size_error(self, msg):
     msg = f'Trying to {msg} in a stack of size {len(self._stack)}'
     raise IndexError(msg)

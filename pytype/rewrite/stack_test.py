@@ -82,10 +82,24 @@ class DataStackTest(test_utils.ContextfulTestBase):
 
   def test_peek_error(self):
     s = stack.DataStack()
-    with self.assertRaises(IndexError):
-      s.peek(0)
-    with self.assertRaises(IndexError):
-      s.peek(1)
+    for n in (0, 1):
+      with self.subTest(n=n):
+        with self.assertRaises(IndexError):
+          s.peek(n)
+
+  def test_replace(self):
+    s = stack.DataStack()
+    s.push(self._var(5))
+    s.replace(1, self._var(3))
+    self.assertEqual(s.top(), self._var(3))
+
+  def test_replace_error(self):
+    s = stack.DataStack()
+    s.push(self._var(5))
+    for n in (0, 2):
+      with self.subTest(n=n):
+        with self.assertRaises(IndexError):
+          s.replace(n, self._var(3))
 
   def test_rotn(self):
     s = stack.DataStack()

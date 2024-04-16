@@ -48,6 +48,7 @@ py_library(
   DEPS
     .base
     .functions
+    pytype.types.types
 )
 
 py_test(
@@ -80,6 +81,8 @@ py_test(
   DEPS
     .base
     .containers
+    .internal
+    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 

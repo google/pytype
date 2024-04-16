@@ -22,6 +22,11 @@ class Binding(Generic[_T]):
       return f'Bind[{self.value}]'
     return f'Bind[{self.value} if {self.condition}]'
 
+  @property
+  def data(self):
+    # Temporary alias for 'value' for compatibility with current pytype.
+    return self.value
+
 
 @_frozen_dataclass
 class Variable(Generic[_T]):
@@ -38,6 +43,11 @@ class Variable(Generic[_T]):
   @property
   def values(self) -> Tuple[_T, ...]:
     return tuple(b.value for b in self.bindings)
+
+  @property
+  def data(self):
+    # Temporary alias for 'values' for compatibility with current pytype.
+    return self.values
 
   def display_name(self) -> str:
     return f'variable {self.name}' if self.name else 'anonymous variable'
@@ -76,6 +86,11 @@ class Variable(Generic[_T]):
 
   def with_name(self, name: Optional[str]) -> 'Variable[_T]':
     return dataclasses.replace(self, name=name)
+
+  def with_value(self, value: _T2) -> 'Variable[_T2]':
+    assert len(self.bindings) == 1
+    new_binding = dataclasses.replace(self.bindings[0], value=value)
+    return dataclasses.replace(self, bindings=(new_binding,))
 
   def __repr__(self):
     bindings = ' | '.join(repr(b) for b in self.bindings)

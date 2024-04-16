@@ -370,6 +370,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     nojump_state = self._current_state.with_condition(conditions.Condition())
     self._merge_state_into(nojump_state, opcode.next.index)
 
+  def _replace_atomic_stack_value(
+      self, n, new_value: abstract.BaseValue) -> None:
+    cur_var = self._stack.peek(n)
+    self._stack.replace(n, cur_var.with_value(new_value))
+
   # ---------------------------------------------------------------
   # Opcodes with no typing effects
 
@@ -537,14 +542,30 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # The IMPORT_NAME for an "import a.b.c" will push the module "a".
     # However, for "from a.b.c import Foo" it'll push the module "a.b.c". Those
     # two cases are distinguished by whether fromlist is None or not.
-    try:
-      abstract.get_atomic_constant(fromlist, None)
-    except ValueError:
-      module_name = full_name
-    else:
+    if fromlist.has_atomic_value(self._ctx.consts[None]):
       module_name = full_name.split('.', 1)[0]  # "a.b.c" -> "a"
-    module = abstract.Module(self._ctx, module_name)
-    return self._stack.push(module.to_variable())
+    else:
+      module_name = full_name
+    if self._ctx.pytd_loader.import_name(module_name):
+      module = abstract.Module(self._ctx, module_name)
+    else:
+      self._ctx.errorlog.import_error(self.stack, module_name)
+      module = self._ctx.consts.Any
+    if (full_name != module_name and
+        not self._ctx.pytd_loader.import_name(full_name)):
+      # Even if we're only importing "a", make sure "a.b.c" is valid.
+      self._ctx.errorlog.import_error(self.stack, full_name)
+    self._stack.push(module.to_variable())
+
+  def byte_IMPORT_FROM(self, opcode):
+    attr_name = opcode.argval
+    module = self._stack.top().get_atomic_value()
+    attr = module.get_attribute(attr_name)
+    if not attr:
+      module_binding = module.to_variable().bindings[0]
+      self._ctx.errorlog.attribute_error(self.stack, module_binding, attr_name)
+      attr = self._ctx.consts.Any
+    self._stack.push(attr.to_variable())
 
   # ---------------------------------------------------------------
   # Function and method calls
@@ -580,39 +601,81 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     callargs = abstract.Args(posargs=tuple(args), frame=self)
     self._call_function(func, callargs)
 
-  def _unpack_starargs(self, starargs):
+  def _unpack_starargs(self, starargs) -> abstract.BaseValue:
     # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
     # does not yet handle indefinite iterables.
     posargs = starargs.get_atomic_value()
     if isinstance(posargs, abstract.FunctionArgTuple):
       # This has already been converted
       pass
+    elif isinstance(posargs, abstract.FrozenInstance):
+      # This is indefinite; leave it as-is
+      pass
     elif isinstance(posargs, abstract.Tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
     elif isinstance(posargs, tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs)
+    elif abstract.is_any(posargs):
+      return self._ctx.abstract_loader.load_raw_type(tuple).instantiate()
     else:
       assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
     return posargs
 
-  def _unpack_starstarargs(self, starstarargs):
-    kwargs = abstract.get_atomic_constant(starstarargs, dict)
-    return {abstract.get_atomic_constant(k, str): v
-            for k, v in kwargs.items()}
+  def _unpack_starstarargs(self, starstarargs) -> abstract.BaseValue:
+    kwargs = starstarargs.get_atomic_value()
+    if isinstance(kwargs, abstract.ConstKeyDict):
+      # This has already been converted
+      pass
+    elif isinstance(kwargs, abstract.FrozenInstance):
+      # This is indefinite; leave it as-is
+      pass
+    elif isinstance(kwargs, abstract.PythonConstant):
+      assert isinstance(kwargs.constant, dict)
+      kwargs = abstract.ConstKeyDict(self._ctx, {
+          abstract.get_atomic_constant(k, str): v
+          for k, v in kwargs.constant.items()
+      })
+    elif abstract.is_any(kwargs):
+      kwargs = self._ctx.abstract_loader.load_raw_type(dict).instantiate()
+    else:
+      assert False, f'unexpected kwargs type: {kwargs}: {type(kwargs)}'
+    return kwargs
 
   def byte_CALL_FUNCTION_EX(self, opcode):
+    # Convert **kwargs
     if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       starstarargs = self._stack.pop()
-      kwargs = self._unpack_starstarargs(starstarargs)
+      unpacked_starstarargs = self._unpack_starstarargs(starstarargs)
+      if isinstance(
+          unpacked_starstarargs, (abstract.Dict, abstract.ConstKeyDict)):
+        # We have a concrete dict we are unpacking; move it into kwargs
+        kwargs = unpacked_starstarargs.constant
+        starstarargs = None
+      else:
+        # We have an indefinite dict, leave it in starstarargs
+        kwargs = _EMPTY_MAP
     else:
       kwargs = _EMPTY_MAP
+      starstarargs = None
+    # Convert *args
     starargs = self._stack.pop()
-    posargs = self._unpack_starargs(starargs).constant
+    unpacked_starargs = self._unpack_starargs(starargs)
+    if isinstance(
+        unpacked_starargs, (abstract.Tuple, abstract.FunctionArgTuple)):
+      # We have a concrete tuple we are unpacking; move it into posargs
+      posargs = unpacked_starargs.constant
+      starargs = None
+    else:
+      # We have an indefinite tuple; leave it in starargs
+      posargs = ()
+    # Retrieve and call the function
     func = self._stack.pop()
     if self._code.python_version >= (3, 11):
       # the compiler puts a NULL on the stack before function calls
       self._stack.pop_and_discard()
-    callargs = abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
+    callargs = abstract.Args(
+        posargs=posargs, kwargs=kwargs, starargs=starargs,
+        starstarargs=starstarargs, frame=self)
     self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
@@ -689,7 +752,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target_var = self._stack.peek(count)
     # We should only have one binding; the target is generated by the compiler.
     target = target_var.get_atomic_value()
-    target.append(val)
+    self._replace_atomic_stack_value(count, target.append(val))
 
   def byte_SET_ADD(self, opcode):
     # Used by the compiler e.g. for {x for x in ...}
@@ -697,7 +760,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     val = self._stack.pop()
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    target.add(val)
+    self._replace_atomic_stack_value(count, target.add(val))
 
   def byte_MAP_ADD(self, opcode):
     # Used by the compiler e.g. for {x, y for x, y in ...}
@@ -706,25 +769,25 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     key, val = self._stack.popn(2)
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    target.setitem(key, val)
+    self._replace_atomic_stack_value(count, target.setitem(key, val))
 
   def byte_LIST_EXTEND(self, opcode):
     count = opcode.arg
     val = self._stack.pop()
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    target.extend(val)
+    self._replace_atomic_stack_value(count, target.extend(val))
 
   def byte_DICT_MERGE(self, opcode):
     # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
-    return self.byte_DICT_UPDATE(opcode)
+    self.byte_DICT_UPDATE(opcode)
 
   def byte_DICT_UPDATE(self, opcode):
     count = opcode.arg
     val = self._stack.pop()
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    target.update(val)
+    self._replace_atomic_stack_value(count, target.update(val))
 
   def byte_LIST_TO_TUPLE(self, opcode):
     target_var = self._stack.pop()

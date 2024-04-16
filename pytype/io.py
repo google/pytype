@@ -286,14 +286,17 @@ def process_one_file(options):
       write_pickle(ret.ast, options, ret.context.loader)
 
   if options.unused_imports_info_files:
-    # Sort the paths to make the output stable.
-    cwd = os.getcwd()
-    unused_paths = sorted(ret.context.loader.get_unused_imports_map_paths())
-    with options.open_function(
-        options.unused_imports_info_files, "wt", encoding="utf-8"
-    ) as f:
-      for unused_path in unused_paths:
-        f.write(f"{os.path.relpath(unused_path, cwd)}\n")
+    if options.use_rewrite:
+      pass  # not implemented yet
+    else:
+      # Sort the paths to make the output stable.
+      cwd = os.getcwd()
+      unused_paths = sorted(ret.context.loader.get_unused_imports_map_paths())
+      with options.open_function(
+          options.unused_imports_info_files, "wt", encoding="utf-8"
+      ) as f:
+        for unused_path in unused_paths:
+          f.write(f"{os.path.relpath(unused_path, cwd)}\n")
   exit_status = handle_errors(ret.context.errorlog, options)
 
   # Touch output file upon success.
