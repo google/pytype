@@ -236,6 +236,11 @@ class Signature:
     # TODO(b/241479600): Implement this properly, with error detection.
     argdict = dict(zip(self.param_names, args.posargs))
     argdict.update(args.kwargs)
+    def add_arg(k, v):
+      if k:
+        argdict[k] = v or self._ctx.consts.Any.to_variable()
+    add_arg(self.varargs_name, args.starargs)
+    add_arg(self.kwargs_name, args.starstarargs)
     return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
   def make_fake_args(self) -> MappedArgs[FrameType]:

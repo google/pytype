@@ -601,34 +601,63 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     callargs = abstract.Args(posargs=tuple(args), frame=self)
     self._call_function(func, callargs)
 
-  def _unpack_starargs(self, starargs):
+  def _unpack_starargs(self, starargs) -> abstract.BaseValue:
     # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
     # does not yet handle indefinite iterables.
     posargs = starargs.get_atomic_value()
     if isinstance(posargs, abstract.FunctionArgTuple):
       # This has already been converted
       pass
+    elif isinstance(posargs, abstract.FrozenInstance):
+      # This is indefinite; leave it as-is
+      pass
     elif isinstance(posargs, abstract.Tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
     elif isinstance(posargs, tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs)
     elif abstract.is_any(posargs):
-      return self._ctx.abstract_loader.load_raw_type(dict).instantiate()
+      return self._ctx.abstract_loader.load_raw_type(tuple).instantiate()
     else:
       assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
     return posargs
 
-  def _unpack_starstarargs(self, starstarargs):
-    kwargs = abstract.get_atomic_constant(starstarargs, dict)
-    return {abstract.get_atomic_constant(k, str): v
-            for k, v in kwargs.items()}
+  def _unpack_starstarargs(self, starstarargs) -> abstract.BaseValue:
+    kwargs = starstarargs.get_atomic_value()
+    if isinstance(kwargs, abstract.ConstKeyDict):
+      # This has already been converted
+      pass
+    elif isinstance(kwargs, abstract.FrozenInstance):
+      # This is indefinite; leave it as-is
+      pass
+    elif isinstance(kwargs, abstract.PythonConstant):
+      assert isinstance(kwargs.constant, dict)
+      kwargs = abstract.ConstKeyDict(self._ctx, {
+          abstract.get_atomic_constant(k, str): v
+          for k, v in kwargs.constant.items()
+      })
+    elif abstract.is_any(kwargs):
+      kwargs = self._ctx.abstract_loader.load_raw_type(dict).instantiate()
+    else:
+      assert False, f'unexpected kwargs type: {kwargs}: {type(kwargs)}'
+    return kwargs
 
   def byte_CALL_FUNCTION_EX(self, opcode):
+    # Convert **kwargs
     if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       starstarargs = self._stack.pop()
-      kwargs = self._unpack_starstarargs(starstarargs)
+      unpacked_starstarargs = self._unpack_starstarargs(starstarargs)
+      if isinstance(
+          unpacked_starstarargs, (abstract.Dict, abstract.ConstKeyDict)):
+        # We have a concrete dict we are unpacking; move it into kwargs
+        kwargs = unpacked_starstarargs.constant
+        starstarargs = None
+      else:
+        # We have an indefinite dict, leave it in starstarargs
+        kwargs = _EMPTY_MAP
     else:
       kwargs = _EMPTY_MAP
+      starstarargs = None
+    # Convert *args
     starargs = self._stack.pop()
     unpacked_starargs = self._unpack_starargs(starargs)
     if isinstance(
@@ -639,12 +668,14 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     else:
       # We have an indefinite tuple; leave it in starargs
       posargs = ()
+    # Retrieve and call the function
     func = self._stack.pop()
     if self._code.python_version >= (3, 11):
       # the compiler puts a NULL on the stack before function calls
       self._stack.pop_and_discard()
     callargs = abstract.Args(
-        posargs=posargs, kwargs=kwargs, starargs=starargs, frame=self)
+        posargs=posargs, kwargs=kwargs, starargs=starargs,
+        starstarargs=starstarargs, frame=self)
     self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
