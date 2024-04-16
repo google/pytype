@@ -1,6 +1,14 @@
 """Builtin values with special behavior."""
 
+from typing import Optional, Sequence
+
 from pytype.rewrite.abstract import abstract
+
+
+def _stack(
+    frame: Optional[abstract.FrameType]
+) -> Optional[Sequence[abstract.FrameType]]:
+  return frame.stack if frame else None
 
 
 class AssertType(abstract.SimpleFunction[abstract.SimpleReturn]):
@@ -24,6 +32,24 @@ class AssertType(abstract.SimpleFunction[abstract.SimpleReturn]):
     except ValueError:
       expected = pp.print_type_of_instance(typ.get_atomic_value())
     if actual != expected:
-      stack = frame.stack if (frame := mapped_args.frame) else None
+      stack = _stack(mapped_args.frame)
       self._ctx.errorlog.assert_type(stack, actual, expected)
+    return abstract.SimpleReturn(self._ctx.consts[None])
+
+
+class RevealType(abstract.SimpleFunction[abstract.SimpleReturn]):
+  """reveal_type implementation."""
+
+  def __init__(self, ctx: abstract.ContextType):
+    signature = abstract.Signature(
+        ctx=ctx, name='reveal_type', param_names=('object',))
+    super().__init__(
+        ctx=ctx, name='reveal_type', signatures=(signature,), module='builtins')
+
+  def call_with_mapped_args(
+      self, mapped_args: abstract.MappedArgs[abstract.FrameType],
+  ) -> abstract.SimpleReturn:
+    obj = mapped_args.argdict['object']
+    stack = _stack(mapped_args.frame)
+    self._ctx.errorlog.reveal_type(stack, node=None, var=obj)
     return abstract.SimpleReturn(self._ctx.consts[None])

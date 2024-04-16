@@ -29,7 +29,6 @@ class FunctionCallTest(RewriteTest):
       f(0, y=1)
     """)
 
-  @test_utils.skipBeforePy((3, 11), 'Relies on 3.11+ bytecode')
   def test_function_varargs(self):
     self.Check("""
       def foo(x: str, *args):

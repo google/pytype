@@ -49,6 +49,7 @@ class AbstractLoader:
     self.consts = Constants(ctx)
     self._special_builtins = {
         'assert_type': special_builtins.AssertType(self._ctx),
+        'reveal_type': special_builtins.RevealType(self._ctx),
     }
     self._special_builtins['NoneType'] = self.consts[None]
 
