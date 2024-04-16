@@ -91,6 +91,14 @@ class PytdClassToValueTest(ConverterTestBase):
     self.assertIsInstance(nested_class, abstract.SimpleClass)
     self.assertEqual(nested_class.name, 'D')
 
+  def test_bases(self):
+    pytd_cls = self.build_pytd("""
+      class C: ...
+      class D(C): ...
+    """, 'D')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    self.assertEqual(cls.bases, (abstract.SimpleClass(self.ctx, 'C', {}),))
+
 
 class PytdAliasToValueTest(ConverterTestBase):
 

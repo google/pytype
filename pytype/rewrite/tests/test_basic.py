@@ -81,6 +81,18 @@ class BasicTest(RewriteTest):
         def f(self) -> int: ...
     """)
 
+  def test_inheritance(self):
+    ty = self.Infer("""
+      class C:
+        pass
+      class D(C):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class C: ...
+      class D(C): ...
+    """)
+
 
 class ImportsTest(RewriteTest):
   """Import tests."""

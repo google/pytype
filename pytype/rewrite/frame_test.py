@@ -475,6 +475,19 @@ class FrameTest(FrameTestBase):
     frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
     frame.run()  # Should not crash
 
+  def test_class_bases(self):
+    frame = self._make_frame("""
+      class C:
+        pass
+      class D(C):
+        pass
+    """)
+    frame.run()
+    c = _get(frame, 'C', abstract.InterpreterClass)
+    d = _get(frame, 'D', abstract.InterpreterClass)
+    self.assertFalse(c.bases)
+    self.assertEqual(d.bases, [c])
+
 
 class BuildConstantsTest(FrameTestBase):
 

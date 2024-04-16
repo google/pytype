@@ -67,10 +67,11 @@ class PytdConverter:
     for member_name, member_val in instance.members.items():
       member_type = self.to_pytd_type(member_val)
       constants.append(pytd.Constant(name=member_name, type=member_type))
+    bases = tuple(self.to_pytd_type_of_instance(base) for base in val.bases)
     return pytd.Class(
         name=val.name,
         keywords=(),
-        bases=(),
+        bases=bases,
         methods=tuple(methods),
         constants=tuple(constants),
         classes=tuple(classes),

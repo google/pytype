@@ -36,11 +36,13 @@ class SimpleClass(base.BaseValue):
       ctx: base.ContextType,
       name: str,
       members: Dict[str, base.BaseValue],
+      bases: Sequence['SimpleClass'] = (),
       module: Optional[str] = None,
   ):
     super().__init__(ctx)
     self.name = name
     self.members = members
+    self.bases = bases
     self.module = module
     self._canonical_instance: Optional['FrozenInstance'] = None
 
@@ -121,11 +123,14 @@ class InterpreterClass(SimpleClass):
   """Class defined in the current module."""
 
   def __init__(
-      self, ctx: base.ContextType, name: str,
+      self,
+      ctx: base.ContextType,
+      name: str,
       members: Dict[str, base.BaseValue],
+      bases: Sequence[SimpleClass],
       functions: Sequence[functions_lib.InterpreterFunction],
       classes: Sequence['InterpreterClass']):
-    super().__init__(ctx, name, members)
+    super().__init__(ctx, name, members, bases)
     # Functions and classes defined in this class's body. Unlike 'members',
     # ignores the effects of post-definition transformations like decorators.
     self.functions = functions

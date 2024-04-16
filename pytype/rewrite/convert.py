@@ -30,9 +30,10 @@ class AbstractConverter:
         ctx=self._ctx,
         name=name,
         members=members,
+        bases=(),
         module=module or None)
-    # Cache the class early so that references to it in its members don't cause
-    # infinite recursion.
+    # Cache the class early so that references to it in its members and bases
+    # don't cause infinite recursion.
     self._cache.classes[cls] = abstract_class
     for method in cls.methods:
       abstract_class.members[method.name] = (
@@ -43,6 +44,18 @@ class AbstractConverter:
     for nested_class in cls.classes:
       abstract_class.members[nested_class.name] = (
           self.pytd_class_to_value(nested_class))
+    bases = []
+    for base in cls.bases:
+      if isinstance(base, pytd.GenericType):
+        # TODO(b/292160579): Handle generics.
+        base = base.base_type
+      if isinstance(base, pytd.ClassType):
+        base = base.cls
+      if isinstance(base, pytd.Class):
+        bases.append(self.pytd_class_to_value(base))
+      else:
+        raise NotImplementedError(f"I can't handle this base class: {base}")
+    abstract_class.bases = tuple(bases)
     return abstract_class
 
   def pytd_function_to_value(

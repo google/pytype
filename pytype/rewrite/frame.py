@@ -310,6 +310,31 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       var = self._final_locals[name]
       frame.store_global(name, var)
 
+  def _build_class(self, args: abstract.Args) -> abstract.InterpreterClass:
+    builder = args.posargs[0].get_atomic_value(_FrameFunction)
+    name = abstract.get_atomic_constant(args.posargs[1], str)
+
+    base_vars = args.posargs[2:]
+    bases = []
+    for base_var in base_vars:
+      try:
+        base = base_var.get_atomic_value(abstract.SimpleClass)
+      except ValueError as e:
+        raise NotImplementedError('Unexpected base class') from e
+      bases.append(base)
+
+    frame = builder.call(abstract.Args(frame=self))
+    cls = abstract.InterpreterClass(
+        ctx=self._ctx,
+        name=name,
+        members=dict(frame.final_locals),
+        bases=bases,
+        functions=frame.functions,
+        classes=frame.classes,
+    )
+    log.info('Created class: %s', cls.name)
+    return cls
+
   def _call_function(
       self,
       func_var: _AbstractVariable,
@@ -323,17 +348,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
       elif func is self._ctx.consts.singles['__build_class__']:
-        class_body, name = args.posargs
-        builder = class_body.get_atomic_value(_FrameFunction)
-        frame = builder.call(abstract.Args(frame=self))
-        cls = abstract.InterpreterClass(
-            ctx=self._ctx,
-            name=abstract.get_atomic_constant(name, str),
-            members=dict(frame.final_locals),
-            functions=frame.functions,
-            classes=frame.classes,
-        )
-        log.info('Created class: %s', cls.name)
+        cls = self._build_class(args)
         self._classes.append(cls)
         ret_values.append(cls)
       else:
