@@ -99,6 +99,16 @@ class PytdClassToValueTest(ConverterTestBase):
     cls = self.conv.pytd_class_to_value(pytd_cls)
     self.assertEqual(cls.bases, (abstract.SimpleClass(self.ctx, 'C', {}),))
 
+  def test_metaclass(self):
+    pytd_cls = self.build_pytd("""
+      class Meta(type): ...
+      class C(metaclass=Meta): ...
+    """, 'C')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    metaclass = cls.metaclass
+    self.assertIsNotNone(metaclass)
+    self.assertEqual(metaclass.name, 'Meta')
+
 
 class PytdAliasToValueTest(ConverterTestBase):
 

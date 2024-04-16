@@ -323,12 +323,21 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         raise NotImplementedError('Unexpected base class') from e
       bases.append(base)
 
+    keywords = {}
+    for kw, var in args.kwargs.items():
+      try:
+        val = var.get_atomic_value()
+      except ValueError as e:
+        raise NotImplementedError('Unexpected keyword value') from e
+      keywords[kw] = val
+
     frame = builder.call(abstract.Args(frame=self))
     cls = abstract.InterpreterClass(
         ctx=self._ctx,
         name=name,
         members=dict(frame.final_locals),
         bases=bases,
+        keywords=keywords,
         functions=frame.functions,
         classes=frame.classes,
     )

@@ -26,11 +26,13 @@ class AbstractConverter:
     # TODO(b/324464265): Handle keywords, bases, decorators, slots, template
     module, _, name = cls.name.rpartition('.')
     members = {}
+    keywords = {kw: self.pytd_type_to_value(val) for kw, val in cls.keywords}
     abstract_class = abstract.SimpleClass(
         ctx=self._ctx,
         name=name,
         members=members,
         bases=(),
+        keywords=keywords,
         module=module or None)
     # Cache the class early so that references to it in its members and bases
     # don't cause infinite recursion.

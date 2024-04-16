@@ -13,6 +13,8 @@ from pytype.types import types
 
 log = logging.getLogger(__name__)
 
+_EMPTY_MAP = immutabledict.immutabledict()
+
 
 class _HasMembers(Protocol):
 
@@ -37,12 +39,14 @@ class SimpleClass(base.BaseValue):
       name: str,
       members: Dict[str, base.BaseValue],
       bases: Sequence['SimpleClass'] = (),
+      keywords: Mapping[str, base.BaseValue] = _EMPTY_MAP,
       module: Optional[str] = None,
   ):
     super().__init__(ctx)
     self.name = name
     self.members = members
     self.bases = bases
+    self.keywords = keywords
     self.module = module
     self._canonical_instance: Optional['FrozenInstance'] = None
 
@@ -77,6 +81,10 @@ class SimpleClass(base.BaseValue):
       return f'{self.module}.{self.name}'
     else:
       return self.name
+
+  @property
+  def metaclass(self) -> Optional[base.BaseValue]:
+    return self.keywords.get('metaclass')
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     return self.members.get(name)
@@ -128,9 +136,10 @@ class InterpreterClass(SimpleClass):
       name: str,
       members: Dict[str, base.BaseValue],
       bases: Sequence[SimpleClass],
+      keywords: Mapping[str, base.BaseValue],
       functions: Sequence[functions_lib.InterpreterFunction],
       classes: Sequence['InterpreterClass']):
-    super().__init__(ctx, name, members, bases)
+    super().__init__(ctx, name, members, bases, keywords)
     # Functions and classes defined in this class's body. Unlike 'members',
     # ignores the effects of post-definition transformations like decorators.
     self.functions = functions

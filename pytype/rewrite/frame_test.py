@@ -488,6 +488,18 @@ class FrameTest(FrameTestBase):
     self.assertFalse(c.bases)
     self.assertEqual(d.bases, [c])
 
+  def test_metaclass(self):
+    frame = self._make_frame("""
+      class Meta(type):
+        pass
+      class C(metaclass=Meta):
+        pass
+    """)
+    frame.run()
+    meta = _get(frame, 'Meta', abstract.InterpreterClass)
+    c = _get(frame, 'C', abstract.InterpreterClass)
+    self.assertEqual(c.metaclass, meta)
+
 
 class BuildConstantsTest(FrameTestBase):
 
