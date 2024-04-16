@@ -6,14 +6,12 @@ import logging
 
 from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
-import immutabledict
+from pytype import datatypes
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 from pytype.types import types
 
 log = logging.getLogger(__name__)
-
-_EMPTY_MAP = immutabledict.immutabledict()
 
 
 class _HasMembers(Protocol):
@@ -39,7 +37,7 @@ class SimpleClass(base.BaseValue):
       name: str,
       members: Dict[str, base.BaseValue],
       bases: Sequence['SimpleClass'] = (),
-      keywords: Mapping[str, base.BaseValue] = _EMPTY_MAP,
+      keywords: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
       module: Optional[str] = None,
   ):
     super().__init__(ctx)
@@ -150,7 +148,7 @@ class InterpreterClass(SimpleClass):
 
   @property
   def _attrs(self):
-    return (self.name, immutabledict.immutabledict(self.members))
+    return (self.name, datatypes.immutabledict(self.members))
 
 
 class BaseInstance(base.BaseValue):
@@ -188,7 +186,7 @@ class MutableInstance(BaseInstance):
 
   @property
   def _attrs(self):
-    return (self.cls, immutabledict.immutabledict(self.members))
+    return (self.cls, datatypes.immutabledict(self.members))
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
@@ -209,7 +207,7 @@ class FrozenInstance(BaseInstance):
 
   def __init__(self, ctx: base.ContextType, instance: MutableInstance):
     super().__init__(
-        ctx, instance.cls, immutabledict.immutabledict(instance.members))
+        ctx, instance.cls, datatypes.immutabledict(instance.members))
 
   def __repr__(self):
     return f'FrozenInstance({self.cls.name})'

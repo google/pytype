@@ -5,8 +5,14 @@ import contextlib
 import itertools
 from typing import Dict, Optional, TypeVar
 
+import immutabledict
+
 _K = TypeVar("_K")
 _V = TypeVar("_V")
+
+# Public alias for immutabledict to save users the extra import.
+immutabledict = immutabledict.immutabledict
+EMPTY_MAP = immutabledict()
 
 
 class UnionFind:

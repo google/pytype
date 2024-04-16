@@ -48,6 +48,7 @@ py_library(
   DEPS
     .base
     .functions
+    pytype.utils
     pytype.types.types
 )
 
@@ -93,6 +94,7 @@ py_library(
     functions.py
   DEPS
     .base
+    pytype.utils
     pytype.blocks.blocks
     pytype.pytd.pytd
 )

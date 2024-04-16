@@ -20,14 +20,13 @@ import dataclasses
 import logging
 from typing import Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
 
-import immutabledict
+from pytype import datatypes
 from pytype.blocks import blocks
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
 
 log = logging.getLogger(__name__)
 
-_EMPTY_MAP = immutabledict.immutabledict()
 _ArgDict = Dict[str, base.AbstractVariableType]
 
 
@@ -56,7 +55,7 @@ _FrameT = TypeVar('_FrameT', bound=FrameType)
 class Args(Generic[_FrameT]):
   """Arguments to one function call."""
   posargs: Tuple[base.AbstractVariableType, ...] = ()
-  kwargs: Mapping[str, base.AbstractVariableType] = _EMPTY_MAP
+  kwargs: Mapping[str, base.AbstractVariableType] = datatypes.EMPTY_MAP
   starargs: Optional[base.AbstractVariableType] = None
   starstarargs: Optional[base.AbstractVariableType] = None
   frame: Optional[_FrameT] = None
@@ -116,8 +115,8 @@ class Signature:
       varargs_name: Optional[str] = None,
       kwonly_params: Tuple[str, ...] = (),
       kwargs_name: Optional[str] = None,
-      defaults: Mapping[str, base.BaseValue] = _EMPTY_MAP,
-      annotations: Mapping[str, base.BaseValue] = _EMPTY_MAP,
+      defaults: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
+      annotations: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
   ):
     self._ctx = ctx
     self.name = name
@@ -398,7 +397,7 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     else:
       # If the parent frame has finished running, then the context of this call
       # will not change, so we can cache the return value.
-      k = (parent_frame.name, immutabledict.immutabledict(mapped_args.argdict))
+      k = (parent_frame.name, datatypes.immutabledict(mapped_args.argdict))
       if k in self._call_cache:
         log.info('Reusing cached return value of function %s', self.name)
         return self._call_cache[k]

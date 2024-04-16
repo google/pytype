@@ -79,6 +79,7 @@ py_library(
   DEPS
     .context
     .stack
+    pytype.utils
     pytype.blocks.blocks
     pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow

@@ -3,8 +3,8 @@
 import logging
 from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
-import immutabledict
 from pycnite import marshal as pyc_marshal
+from pytype import datatypes
 from pytype.blocks import blocks
 from pytype.rewrite import context
 from pytype.rewrite import stack
@@ -14,8 +14,6 @@ from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
 
 log = logging.getLogger(__name__)
-
-_EMPTY_MAP = immutabledict.immutabledict()
 
 # Type aliases
 _AbstractVariable = variables.Variable[abstract.BaseValue]
@@ -67,9 +65,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       name: str,
       code: blocks.OrderedCode,
       *,
-      initial_locals: _VarMap = _EMPTY_MAP,
-      initial_enclosing: _VarMap = _EMPTY_MAP,
-      initial_globals: _VarMap = _EMPTY_MAP,
+      initial_locals: _VarMap = datatypes.EMPTY_MAP,
+      initial_enclosing: _VarMap = datatypes.EMPTY_MAP,
+      initial_globals: _VarMap = datatypes.EMPTY_MAP,
       f_back: Optional['Frame'] = None,
   ):
     super().__init__(code, initial_locals)
@@ -154,7 +152,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Set the current state to None so that the load_* and store_* methods
     # cannot be used to modify finalized locals.
     self._current_state = None
-    self.final_locals = immutabledict.immutabledict({
+    self.final_locals = datatypes.immutabledict({
         name: abstract.join_values(self._ctx, var.values)
         for name, var in self._final_locals.items()})
 
@@ -604,10 +602,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       n_kw = len(self._kw_names)
       posargs = tuple(args[:-n_kw])
       kw_vals = args[-n_kw:]
-      kwargs = immutabledict.immutabledict(zip(self._kw_names, kw_vals))
+      kwargs = datatypes.immutabledict(zip(self._kw_names, kw_vals))
     else:
       posargs = tuple(args)
-      kwargs = _EMPTY_MAP
+      kwargs = datatypes.EMPTY_MAP
     self._kw_names = ()
     return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
 
@@ -677,9 +675,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         starstarargs = None
       else:
         # We have an indefinite dict, leave it in starstarargs
-        kwargs = _EMPTY_MAP
+        kwargs = datatypes.EMPTY_MAP
     else:
-      kwargs = _EMPTY_MAP
+      kwargs = datatypes.EMPTY_MAP
       starstarargs = None
     # Convert *args
     starargs = self._stack.pop()
