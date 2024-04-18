@@ -94,6 +94,9 @@ py_library(
     functions.py
   DEPS
     .base
+    .containers
+    .internal
+    .utils
     pytype.utils
     pytype.blocks.blocks
     pytype.pytd.pytd

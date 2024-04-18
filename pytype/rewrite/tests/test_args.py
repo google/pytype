@@ -68,6 +68,22 @@ class FunctionCallTest(RewriteTest):
       f(*a, **b)
     """)
 
+  @test_base.skip('Does not yet work with fake args.')
+  def test_unpack_posargs(self):
+    self.Check("""
+      def f(x, y, z):
+        g(*x, *y, *z)
+
+      def g(*args):
+        h(*args)
+
+      def h(p, q, r, s, t, u):
+        return u
+
+      ret = f((1, 2), (3, 4), (5, 6))
+      assert_type(ret, int)
+    """)
+
 
 if __name__ == '__main__':
   test_base.main()

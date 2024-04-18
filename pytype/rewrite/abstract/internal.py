@@ -1,5 +1,6 @@
 """Abstract types used internally by pytype."""
 
+import collections
 from typing import Dict, Tuple
 
 import immutabledict
@@ -57,6 +58,13 @@ class Splat(base.BaseValue):
   def __init__(self, ctx: base.ContextType, iterable: base.BaseValue):
     super().__init__(ctx)
     self.iterable = iterable
+
+  def get_concrete_iterable(self):
+    if (isinstance(self.iterable, base.PythonConstant) and
+        isinstance(self.iterable.constant, collections.abc.Iterable)):
+      return self.iterable.constant
+    else:
+      raise ValueError("Not a concrete iterable")
 
   def __repr__(self):
     return f"splat({self.iterable!r})"

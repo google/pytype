@@ -16,18 +16,22 @@ methods to implement `call` and `analyze`.
 """
 
 import abc
+import collections
 import dataclasses
 import logging
-from typing import Dict, Generic, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
+from typing import Any, Dict, Generic, List, Mapping, Optional, Protocol, Sequence, Tuple, TypeVar
 
 from pytype import datatypes
 from pytype.blocks import blocks
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import base
+from pytype.rewrite.abstract import containers
+from pytype.rewrite.abstract import internal
 
 log = logging.getLogger(__name__)
 
-_ArgDict = Dict[str, base.AbstractVariableType]
+_Var = base.AbstractVariableType
+_ArgDict = Dict[str, _Var]
 
 
 class FrameType(Protocol):
@@ -40,7 +44,7 @@ class FrameType(Protocol):
   def make_child_frame(
       self,
       func: 'InterpreterFunction',
-      initial_locals: Mapping[str, base.AbstractVariableType],
+      initial_locals: Mapping[str, _Var],
   ) -> 'FrameType': ...
 
   def run(self) -> None: ...
@@ -51,14 +55,230 @@ class FrameType(Protocol):
 _FrameT = TypeVar('_FrameT', bound=FrameType)
 
 
+def _unpack_splats(elts):
+  """Unpack any concrete splats and splice them into the sequence."""
+  ret = []
+  for e in elts:
+    try:
+      splat = e.get_atomic_value(internal.Splat)
+      ret.extend(splat.get_concrete_iterable())
+    except ValueError:
+      # Leave an indefinite splat intact
+      ret.append(e)
+  return tuple(ret)
+
+
 @dataclasses.dataclass
 class Args(Generic[_FrameT]):
   """Arguments to one function call."""
-  posargs: Tuple[base.AbstractVariableType, ...] = ()
-  kwargs: Mapping[str, base.AbstractVariableType] = datatypes.EMPTY_MAP
-  starargs: Optional[base.AbstractVariableType] = None
-  starstarargs: Optional[base.AbstractVariableType] = None
+  posargs: Tuple[_Var, ...] = ()
+  kwargs: Mapping[str, _Var] = datatypes.EMPTY_MAP
+  starargs: Optional[_Var] = None
+  starstarargs: Optional[_Var] = None
   frame: Optional[_FrameT] = None
+
+  def get_concrete_starargs(self) -> Tuple[Any, ...]:
+    """Returns a concrete tuple from starargs or raises ValueError."""
+    if self.starargs is None:
+      raise ValueError('No starargs to convert')
+    starargs = self.starargs.get_atomic_value(internal.FunctionArgTuple)  # pytype: disable=attribute-error
+    return _unpack_splats(starargs.constant)
+
+  def get_concrete_starstarargs(self) -> Mapping[str, Any]:
+    """Returns a concrete dict from starstarargs or raises ValueError."""
+    if self.starstarargs is None:
+      raise ValueError('No starstarargs to convert')
+    starstarargs = self.starstarargs.get_atomic_value(internal.ConstKeyDict)  # pytype: disable=attribute-error
+    return starstarargs.constant
+
+
+class _ArgMapper:
+  """Map args into a signature."""
+
+  def __init__(self, ctx: base.ContextType, args: Args, sig: 'Signature'):
+    self._ctx = ctx
+    self.args = args
+    self.sig = sig
+    self.argdict: _ArgDict = {}
+
+  def _expand_positional_args(self):
+    """Unpack concrete splats in posargs."""
+    new_posargs = _unpack_splats(self.args.posargs)
+    self.args = dataclasses.replace(self.args, posargs=new_posargs)
+
+  def _expand_typed_star(self, star, n) -> List[_Var]:
+    """Convert *xs: Sequence[T] -> [T, T, ...]."""
+    del star  # not implemented yet
+    return [self._ctx.consts.Any.to_variable() for _ in range(n)]
+
+  def _splats_to_any(self, seq) -> Tuple[_Var, ...]:
+    any_ = self._ctx.consts.Any
+    return tuple(
+        any_.to_variable() if v.is_atomic(internal.Splat) else v
+        for v in seq)
+
+  def _partition_starargs_tuple(
+      self, starargs_tuple
+  ) -> Tuple[List[_Var], List[_Var], List[_Var]]:
+    """Partition a sequence like a, b, c, *middle, x, y, z."""
+    pre = []
+    post = []
+    stars = collections.deque(starargs_tuple)
+    while stars and not stars[0].is_atomic(internal.Splat):
+      pre.append(stars.popleft())
+    while stars and not stars[-1].is_atomic(internal.Splat):
+      post.append(stars.pop())
+    post.reverse()
+    return pre, list(stars), post
+
+  def _get_required_posarg_count(self) -> int:
+    """Find out how many params in sig need to be filled by arg.posargs."""
+    # Iterate through param_names until we hit the first kwarg or default,
+    # since python does not let non-required posargs follow those.
+    required_posargs = 0
+    for p in self.sig.param_names:
+      if p in self.args.kwargs or p in self.sig.defaults:
+        break
+      required_posargs += 1
+    return required_posargs
+
+  def _unpack_starargs(self) -> Tuple[Tuple[_Var, ...], Optional[_Var]]:
+    """Adjust *args and posargs based on function signature."""
+    posargs = self.args.posargs
+    indef_starargs = False
+    if self.args.starargs is None:
+      # There is nothing to unpack, but we might want to move unused posargs
+      # into sig.varargs_name
+      starargs_tuple = ()
+    else:
+      try:
+        starargs_tuple = _unpack_splats(self.args.get_concrete_starargs())
+      except ValueError:
+        # We don't have a concrete starargs. We still need to use this to fill
+        # in missing posargs or absorb extra ones.
+        starargs_tuple = ()
+        indef_starargs = True
+
+    # Attempt to adjust the starargs into the missing posargs.
+    pre, stars, post = self._partition_starargs_tuple(starargs_tuple)
+    n_matched = len(posargs) + len(pre) + len(post)
+    n_required_posargs = self._get_required_posarg_count()
+    posarg_delta = n_required_posargs - n_matched
+
+    if stars and not post:
+      star = stars[-1]
+      if self.sig.varargs_name:
+        # If the invocation ends with `*args`, return it to match against *args
+        # in the function signature. For f(<k args>, *xs, ..., *ys), transform
+        # to f(<k args>, *ys) since ys is an indefinite tuple anyway and will
+        # match against all remaining posargs.
+        star = star.get_atomic_value(internal.Splat)
+        return posargs + tuple(pre), star.iterable.to_variable()
+      else:
+        # If we do not have a `*args` in self.sig, just expand the
+        # terminal splat to as many args as needed and then drop it.
+        mid = self._expand_typed_star(star, posarg_delta)
+        return posargs + tuple(pre + mid), None
+    elif posarg_delta <= len(stars):
+      # We have too many args; don't do *xs expansion. Go back to matching from
+      # the start and treat every entry in starargs_tuple as length 1.
+      n_params = len(self.sig.param_names)
+      all_args = posargs + starargs_tuple
+      if not self.sig.varargs_name:
+        # If the function sig has no *args, return everything in posargs
+        pos = self._splats_to_any(all_args)
+        return pos, None
+      # Don't unwrap splats here because f(*xs, y) is not the same as f(xs, y).
+      # TODO(mdemello): Ideally, since we are matching call f(*xs, y) against
+      # sig f(x, y) we should raise an error here.
+      pos = self._splats_to_any(all_args[:n_params])
+      star = []
+      for var in all_args[n_params:]:
+        if var.is_atomic(internal.Splat):
+          # TODO(rewrite): Fix this!
+          star.append(self._ctx.consts.Any.to_variable())
+        else:
+          star.append(var)
+      if star:
+        return pos, containers.Tuple(self._ctx, tuple(star)).to_variable()
+      else:
+        return pos, None
+    elif stars:
+      if len(stars) == 1:
+        # Special case (<pre>, *xs) and (*xs, <post>) to fill in the type of xs
+        # in every remaining arg.
+        mid = self._expand_typed_star(stars[0], posarg_delta)
+      else:
+        # If we have (*xs, <k args>, *ys) remaining, and more than k+2 params to
+        # match, don't try to match the intermediate params to any range, just
+        # match all k+2 to Any
+        mid = [self._ctx.consts.Any.to_variable() for _ in range(posarg_delta)]
+      return posargs + tuple(pre + mid + post), None
+    elif posarg_delta and indef_starargs:
+      # Fill in *required* posargs if needed; don't override the default posargs
+      # with indef starargs yet because we aren't capturing the type of *args
+      if posarg_delta > 0:
+        extra = self._expand_typed_star(self.args.starargs, posarg_delta)
+        return posargs + tuple(extra), None
+      elif self.sig.varargs_name:
+        posargs = posargs[:n_required_posargs]
+        return posargs, self.args.starargs
+      else:
+        # We have too many posargs *and* no *args in the sig to absorb them, so
+        # just do nothing and handle the error downstream.
+        return posargs, self.args.starargs
+
+    else:
+      # We have **kwargs but no *args in the invocation
+      return posargs + tuple(pre), None
+
+  def _map_posargs(self):
+    posargs, starargs = self._unpack_starargs()
+    argdict = dict(zip(self.sig.param_names, posargs))
+    self.argdict.update(argdict)
+    if self.sig.varargs_name:
+      # Make sure kwargs_name is bound to something
+      if starargs is None:
+        starargs = self._ctx.consts.Any.to_variable()
+      self.argdict[self.sig.varargs_name] = starargs
+
+  def _unpack_starstarargs(self):
+    """Adjust **args and kwargs based on function signature."""
+    if self.args.starstarargs is None:
+      # Nothing to unpack
+      return self.args.kwargs, None
+    try:
+      starstarargs_dict = self.args.get_concrete_starstarargs()
+    except ValueError:
+      # We have a non-concrete starstarargs
+      return self.args.kwargs, self.args.starstarargs
+    # Unpack **args into kwargs, overwriting named args for now
+    # TODO(mdemello): raise an error if we have a conflict
+    kwargs = {**self.args.kwargs}
+    starstarargs_dict = {**starstarargs_dict}
+    for k in self.sig.param_names:
+      if k in starstarargs_dict:
+        kwargs[k] = starstarargs_dict[k]
+        del starstarargs_dict[k]
+    # Pack the unused entries in starstarargs back into an abstract value
+    starstarargs = internal.ConstKeyDict(self._ctx, starstarargs_dict)
+    return kwargs, starstarargs.to_variable()
+
+  def _map_kwargs(self):
+    kwargs, starstarargs = self._unpack_starstarargs()
+    # Copy kwargs into argdict
+    self.argdict.update(kwargs)
+    # Make sure kwargs_name is bound to something
+    if self.sig.kwargs_name:
+      if starstarargs is None:
+        starstarargs = internal.ConstKeyDict(self._ctx, {}).to_variable()
+      self.argdict[self.sig.kwargs_name] = starstarargs
+
+  def map_args(self):
+    self._expand_positional_args()
+    self._map_kwargs()
+    self._map_posargs()
+    return self.argdict
 
 
 @dataclasses.dataclass
@@ -233,13 +453,7 @@ class Signature:
 
   def map_args(self, args: Args[_FrameT]) -> MappedArgs[_FrameT]:
     # TODO(b/241479600): Implement this properly, with error detection.
-    argdict = dict(zip(self.param_names, args.posargs))
-    argdict.update(args.kwargs)
-    def add_arg(k, v):
-      if k:
-        argdict[k] = v or self._ctx.consts.Any.to_variable()
-    add_arg(self.varargs_name, args.starargs)
-    add_arg(self.kwargs_name, args.starstarargs)
+    argdict = _ArgMapper(self._ctx, args, self).map_args()
     return MappedArgs(signature=self, argdict=argdict, frame=args.frame)
 
   def make_fake_args(self) -> MappedArgs[FrameType]:

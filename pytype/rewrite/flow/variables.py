@@ -60,7 +60,7 @@ class Variable(Generic[_T]):
 
   def get_atomic_value(self, typ=None):
     """Gets this variable's value if there's exactly one, errors otherwise."""
-    if len(self.bindings) != 1:
+    if not self.is_atomic():
       desc = 'many' if len(self.bindings) > 1 else 'few'
       raise ValueError(
           f'Too {desc} bindings for {self.display_name()}: {self.bindings}')
@@ -71,8 +71,13 @@ class Variable(Generic[_T]):
           f'{runtime_type.__name__}, got {value.__class__.__name__}')
     return value
 
+  def is_atomic(self, typ: Optional[Type[_T]] = None) -> bool:
+    if len(self.bindings) != 1:
+      return False
+    return True if typ is None else isinstance(self.values[0], typ)
+
   def has_atomic_value(self, value: Any) -> bool:
-    return len(self.values) == 1 and self.values[0] == value
+    return self.is_atomic() and self.values[0] == value
 
   def with_condition(self, condition: conditions.Condition) -> 'Variable[_T]':
     """Adds a condition, 'and'-ing it with any existing."""
