@@ -111,13 +111,7 @@ class _ArgMapper:
     del star  # not implemented yet
     return [self._ctx.consts.Any.to_variable() for _ in range(n)]
 
-  def _splats_to_any(self, seq) -> Tuple[_Var, ...]:
-    any_ = self._ctx.consts.Any
-    return tuple(
-        any_.to_variable() if v.is_atomic(internal.Splat) else v
-        for v in seq)
-
-  def _partition_starargs_tuple(
+  def _partition_args_tuple(
       self, starargs_tuple
   ) -> Tuple[List[_Var], List[_Var], List[_Var]]:
     """Partition a sequence like a, b, c, *middle, x, y, z."""
@@ -160,8 +154,9 @@ class _ArgMapper:
         indef_starargs = True
 
     # Attempt to adjust the starargs into the missing posargs.
-    pre, stars, post = self._partition_starargs_tuple(starargs_tuple)
-    n_matched = len(posargs) + len(pre) + len(post)
+    all_posargs = posargs + starargs_tuple
+    pre, stars, post = self._partition_args_tuple(all_posargs)
+    n_matched = len(pre) + len(post)
     n_required_posargs = self._get_required_posarg_count()
     posarg_delta = n_required_posargs - n_matched
 
@@ -173,32 +168,24 @@ class _ArgMapper:
         # to f(<k args>, *ys) since ys is an indefinite tuple anyway and will
         # match against all remaining posargs.
         star = star.get_atomic_value(internal.Splat)
-        return posargs + tuple(pre), star.iterable.to_variable()
+        return tuple(pre), star.iterable.to_variable()
       else:
         # If we do not have a `*args` in self.sig, just expand the
         # terminal splat to as many args as needed and then drop it.
         mid = self._expand_typed_star(star, posarg_delta)
-        return posargs + tuple(pre + mid), None
+        return tuple(pre + mid), None
     elif posarg_delta <= len(stars):
       # We have too many args; don't do *xs expansion. Go back to matching from
       # the start and treat every entry in starargs_tuple as length 1.
       n_params = len(self.sig.param_names)
-      all_args = posargs + starargs_tuple
       if not self.sig.varargs_name:
         # If the function sig has no *args, return everything in posargs
-        pos = self._splats_to_any(all_args)
-        return pos, None
+        return all_posargs, None
       # Don't unwrap splats here because f(*xs, y) is not the same as f(xs, y).
       # TODO(mdemello): Ideally, since we are matching call f(*xs, y) against
       # sig f(x, y) we should raise an error here.
-      pos = self._splats_to_any(all_args[:n_params])
-      star = []
-      for var in all_args[n_params:]:
-        if var.is_atomic(internal.Splat):
-          # TODO(rewrite): Fix this!
-          star.append(self._ctx.consts.Any.to_variable())
-        else:
-          star.append(var)
+      pos = all_posargs[:n_params]
+      star = all_posargs[n_params:]
       if star:
         return pos, containers.Tuple(self._ctx, tuple(star)).to_variable()
       else:
@@ -213,7 +200,7 @@ class _ArgMapper:
         # match, don't try to match the intermediate params to any range, just
         # match all k+2 to Any
         mid = [self._ctx.consts.Any.to_variable() for _ in range(posarg_delta)]
-      return posargs + tuple(pre + mid + post), None
+      return tuple(pre + mid + post), None
     elif posarg_delta and indef_starargs:
       # Fill in *required* posargs if needed; don't override the default posargs
       # with indef starargs yet because we aren't capturing the type of *args
@@ -221,8 +208,7 @@ class _ArgMapper:
         extra = self._expand_typed_star(self.args.starargs, posarg_delta)
         return posargs + tuple(extra), None
       elif self.sig.varargs_name:
-        posargs = posargs[:n_required_posargs]
-        return posargs, self.args.starargs
+        return posargs[:n_required_posargs], self.args.starargs
       else:
         # We have too many posargs *and* no *args in the sig to absorb them, so
         # just do nothing and handle the error downstream.
@@ -230,7 +216,7 @@ class _ArgMapper:
 
     else:
       # We have **kwargs but no *args in the invocation
-      return posargs + tuple(pre), None
+      return tuple(pre), None
 
   def _map_posargs(self):
     posargs, starargs = self._unpack_starargs()
