@@ -7,6 +7,7 @@ import logging
 from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
 from pytype import datatypes
+from pytype.pytd import mro as mro_lib
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 from pytype.types import types
@@ -47,6 +48,7 @@ class SimpleClass(base.BaseValue):
     self.keywords = keywords
     self.module = module
     self._canonical_instance: Optional['FrozenInstance'] = None
+    self._mro: Optional[Sequence['SimpleClass']] = None
 
     if isinstance((init := members.get('__init__')),
                   functions_lib.SimpleFunction):
@@ -85,7 +87,12 @@ class SimpleClass(base.BaseValue):
     return self.keywords.get('metaclass')
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
-    return self.members.get(name)
+    if name in self.members:
+      return self.members[name]
+    mro = self.mro()
+    if len(mro) > 1:
+      return mro[1].get_attribute(name)
+    return None
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # SimpleClass is used to model imported classes, which we treat as frozen.
@@ -123,6 +130,20 @@ class SimpleClass(base.BaseValue):
       if isinstance(initializer, functions_lib.InterpreterFunction):
         _ = initializer.bind_to(instance).call(args)
     return ClassCallReturn(instance)
+
+  def mro(self) -> Sequence['SimpleClass']:
+    if self._mro:
+      return self._mro
+    if self.full_name == 'builtins.object':
+      self._mro = mro = [self]
+      return mro
+    bases = list(self.bases)
+    obj_type = self._ctx.abstract_loader.load_raw_type(object)
+    if not bases or bases[-1] != obj_type:
+      bases.append(obj_type)
+    mro_bases = [[self]] + [list(base.mro()) for base in bases] + [bases]
+    self._mro = mro = mro_lib.MROMerge(mro_bases)
+    return mro
 
 
 class InterpreterClass(SimpleClass):

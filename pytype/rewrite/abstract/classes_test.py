@@ -16,6 +16,12 @@ class ClassTest(test_utils.ContextfulTestBase):
     cls = classes.SimpleClass(self.ctx, 'X', {})
     self.assertIsNone(cls.get_attribute('x'))
 
+  def test_get_parent_attribute(self):
+    x = self.ctx.consts[5]
+    parent = classes.SimpleClass(self.ctx, 'Parent', {'x': x})
+    child = classes.SimpleClass(self.ctx, 'Child', {}, bases=[parent])
+    self.assertEqual(child.get_attribute('x'), x)
+
   def test_instantiate(self):
     cls = classes.SimpleClass(self.ctx, 'X', {})
     instance = cls.instantiate()
@@ -25,6 +31,13 @@ class ClassTest(test_utils.ContextfulTestBase):
     cls = classes.SimpleClass(self.ctx, 'X', {})
     instance = cls.call(functions.Args()).get_return_value()
     self.assertEqual(instance.cls, cls)
+
+  def test_mro(self):
+    parent = classes.SimpleClass(self.ctx, 'Parent', {})
+    child = classes.SimpleClass(self.ctx, 'Child', {}, bases=[parent])
+    self.assertEqual(
+        child.mro(),
+        [child, parent, self.ctx.abstract_loader.load_raw_type(object)])
 
 
 class MutableInstanceTest(test_utils.ContextfulTestBase):

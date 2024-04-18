@@ -49,6 +49,7 @@ py_library(
     .base
     .functions
     pytype.utils
+    pytype.pytd.pytd
     pytype.types.types
 )
 
