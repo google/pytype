@@ -41,7 +41,7 @@ class ListTest(BaseTest):
 
   def test_extend_splat(self):
     l1 = containers.List(self.ctx, [self.const_var("a")])
-    l2 = self.ctx.abstract_loader.load_raw_type(list).instantiate()
+    l2 = self.ctx.types[list].instantiate()
     l3 = l1.extend(l2.to_variable())
     self.assertIsInstance(l3, containers.List)
     self.assertEqual(
@@ -54,8 +54,7 @@ class ListTest(BaseTest):
     l3 = containers.List(self.ctx, [self.const_var("c")])
     var = variables.Variable((variables.Binding(l2), variables.Binding(l3)))
     l4 = l1.extend(var)
-    self.assertEqual(
-        l4, self.ctx.abstract_loader.load_raw_type(list).instantiate())
+    self.assertEqual(l4, self.ctx.types[list].instantiate())
 
 
 class DictTest(BaseTest):
@@ -80,7 +79,7 @@ class DictTest(BaseTest):
 
   def test_update_indefinite(self):
     d1 = containers.Dict(self.ctx, {})
-    indef = self.ctx.abstract_loader.load_raw_type(dict).instantiate()
+    indef = self.ctx.types[dict].instantiate()
     d2 = d1.update(indef.to_variable())
     self.assertIsInstance(d2, containers.Dict)
     self.assertEqual(d2.constant, {})

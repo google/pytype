@@ -26,8 +26,7 @@ class SplatTest(test_utils.ContextfulTestBase):
 
   def test_basic(self):
     # Basic smoke test, remove when we have some real functionality to test.
-    cls = self.ctx.abstract_loader.load_raw_type(tuple)
-    seq = cls.instantiate()
+    seq = self.ctx.types[tuple].instantiate()
     x = internal.Splat(self.ctx, seq)
     self.assertEqual(x.iterable, seq)
 

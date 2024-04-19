@@ -56,7 +56,7 @@ class SignatureTest(test_utils.PytdTestBase,
     self.assertEqual(args.argdict, {'x': x, 'y': y})
 
   def test_fake_args(self):
-    annotations = {'x': self.ctx.abstract_loader.load_raw_type(int)}
+    annotations = {'x': self.ctx.types[int]}
     signature = functions.Signature(self.ctx, 'f', ('x', 'y'),
                                     annotations=annotations)
     args = signature.make_fake_args()

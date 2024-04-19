@@ -39,6 +39,20 @@ class Constants:
     return self._consts[const]
 
 
+class Types:
+  """Wrapper for AbstractLoader.load_raw_types.
+
+  We use this method all the time, so we provide a convenient wrapper for it.
+  For consistency, this wrapper has the same interface as Constants above.
+  """
+
+  def __init__(self, ctx: abstract.ContextType):
+    self._ctx = ctx
+
+  def __getitem__(self, raw_type: Type[_Any]) -> abstract.BaseValue:
+    return self._ctx.abstract_loader.load_raw_type(raw_type)
+
+
 class AbstractLoader:
   """Abstract loader."""
 
@@ -47,6 +61,7 @@ class AbstractLoader:
     self._pytd_loader = pytd_loader
 
     self.consts = Constants(ctx)
+    self.types = Types(ctx)
     self._special_builtins = {
         'assert_type': special_builtins.AssertType(self._ctx),
         'reveal_type': special_builtins.RevealType(self._ctx),
@@ -95,6 +110,8 @@ class AbstractLoader:
 
   def load_raw_type(self, typ: Type[_Any]) -> abstract.BaseValue:
     """Converts a raw type to an abstract value.
+
+    For convenience, this method can also be called via ctx.types[typ].
 
     Args:
       typ: The type.

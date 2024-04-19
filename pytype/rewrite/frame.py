@@ -638,7 +638,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     elif isinstance(posargs, tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs)
     elif abstract.is_any(posargs):
-      return self._ctx.abstract_loader.load_raw_type(tuple).instantiate()
+      return self._ctx.types[tuple].instantiate()
     else:
       assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
     return posargs

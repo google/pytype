@@ -111,7 +111,7 @@ class AbstractConverter:
     elif isinstance(typ, pytd.TypeParameter):
       return self._ctx.consts.Any
     elif isinstance(typ, pytd.Literal):
-      return self._ctx.abstract_loader.load_raw_type(type(typ.value))
+      return self._ctx.types[type(typ.value)]
     elif isinstance(typ, pytd.Annotated):
       # We discard the Annotated wrapper for now, but we will need to keep track
       # of it because Annotated is a special form that can be used in generic

@@ -138,7 +138,7 @@ class SimpleClass(base.BaseValue):
       self._mro = mro = [self]
       return mro
     bases = list(self.bases)
-    obj_type = self._ctx.abstract_loader.load_raw_type(object)
+    obj_type = self._ctx.types[object]
     if not bases or bases[-1] != obj_type:
       bases.append(obj_type)
     mro_bases = [[self]] + [list(base.mro()) for base in bases] + [bases]

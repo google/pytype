@@ -35,9 +35,7 @@ class ClassTest(test_utils.ContextfulTestBase):
   def test_mro(self):
     parent = classes.SimpleClass(self.ctx, 'Parent', {})
     child = classes.SimpleClass(self.ctx, 'Child', {}, bases=[parent])
-    self.assertEqual(
-        child.mro(),
-        [child, parent, self.ctx.abstract_loader.load_raw_type(object)])
+    self.assertEqual(child.mro(), [child, parent, self.ctx.types[object]])
 
 
 class MutableInstanceTest(test_utils.ContextfulTestBase):

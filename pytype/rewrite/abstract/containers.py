@@ -32,7 +32,7 @@ class List(base.PythonConstant[_List[_Variable]]):
       val = var.get_atomic_value()
     except ValueError:
       # This list has multiple possible values, so it is no longer a constant.
-      return self._ctx.abstract_loader.load_raw_type(list).instantiate()
+      return self._ctx.types[list].instantiate()
     if isinstance(val, List):
       new_constant = self.constant + val.constant
     else:

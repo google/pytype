@@ -24,6 +24,7 @@ class ContextType(Protocol):
   abstract_loader: Any
   pytd_converter: Any
   consts: Any
+  types: Any
 
 
 class BaseValue(types.BaseValue, abc.ABC):
