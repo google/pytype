@@ -45,25 +45,57 @@ class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
   """Representation of a Python dict."""
 
   def __init__(
-      self, ctx: base.ContextType, constant: _Dict[_Variable, _Variable]
+      self, ctx: base.ContextType, constant: _Dict[_Variable, _Variable],
+      indefinite: bool = False
   ):
     assert isinstance(constant, dict), constant
     super().__init__(ctx, constant)
-    self.indefinite = False
+    self.indefinite = indefinite
 
   def __repr__(self):
-    return f'Dict({self.constant!r})'
+    indef = '+' if self.indefinite else ''
+    return f'Dict({indef}{self.constant!r})'
+
+  @classmethod
+  def any_dict(cls, ctx):
+    return cls(ctx, {}, indefinite=True)
 
   def setitem(self, key: _Variable, val: _Variable) -> 'Dict':
     return Dict(self._ctx, {**self.constant, key: val})
 
   def update(self, var: _Variable) -> base.BaseValue:
     try:
-      val = utils.get_atomic_constant(var, dict)
+      val = var.get_atomic_value()
     except ValueError:
-      # This dict has multiple possible values, so it is no longer a constant.
-      return self._ctx.abstract_loader.load_raw_type(dict).instantiate()
-    return Dict(self._ctx, {**self.constant, **val})
+      # The update var has multiple possible values, so we cannot merge it into
+      # the constant dict. We also don't know if items have been overwritten, so
+      # we need to discard self.constant
+      return Dict.any_dict(self._ctx)
+
+    if not hasattr(val, 'constant'):
+      # This is an object with no concrete python value
+      return Dict.any_dict(self._ctx)
+    elif isinstance(val, Dict):
+      new_items = val.constant
+    elif isinstance(val, internal.FunctionArgDict):
+      new_items = {
+          self._ctx.consts[k].to_variable(): v
+          for k, v in val.constant.items()
+      }
+    else:
+      raise ValueError('Unexpected dict update:', val)
+
+    return Dict(
+        self._ctx, {**self.constant, **new_items},
+        self.indefinite or val.indefinite
+    )
+
+  def to_function_arg_dict(self) -> internal.FunctionArgDict:
+    new_const = {
+        utils.get_atomic_constant(k, str): v
+        for k, v in self.constant.items()
+    }
+    return internal.FunctionArgDict(self._ctx, new_const, self.indefinite)
 
 
 class Set(base.PythonConstant[_Set[_Variable]]):

@@ -176,6 +176,8 @@ class PytdConverter:
       return pytd_utils.JoinTypes(self.to_pytd_type(v) for v in val.options)
     elif isinstance(val, abstract.PythonConstant):
       return pytd.NamedType(f'builtins.{val.constant.__class__.__name__}')
+    elif isinstance(val, abstract.FunctionArgDict):
+      return pytd.NamedType('builtins.dict')
     elif isinstance(val, abstract.SimpleClass):
       return pytd.GenericType(
           base_type=pytd.NamedType('builtins.type'),

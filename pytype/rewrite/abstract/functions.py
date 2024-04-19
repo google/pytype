@@ -88,7 +88,7 @@ class Args(Generic[_FrameT]):
     """Returns a concrete dict from starstarargs or raises ValueError."""
     if self.starstarargs is None:
       raise ValueError('No starstarargs to convert')
-    starstarargs = self.starstarargs.get_atomic_value(internal.ConstKeyDict)  # pytype: disable=attribute-error
+    starstarargs = self.starstarargs.get_atomic_value(internal.FunctionArgDict)  # pytype: disable=attribute-error
     return starstarargs.constant
 
 
@@ -230,34 +230,41 @@ class _ArgMapper:
 
   def _unpack_starstarargs(self):
     """Adjust **args and kwargs based on function signature."""
-    if self.args.starstarargs is None:
-      # Nothing to unpack
-      return self.args.kwargs, None
-    try:
-      starstarargs_dict = self.args.get_concrete_starstarargs()
-    except ValueError:
-      # We have a non-concrete starstarargs
-      return self.args.kwargs, self.args.starstarargs
+    starstarargs_var = self.args.starstarargs
+    if starstarargs_var is None:
+      # There is nothing to unpack, but we might want to move unused kwargs into
+      # sig.kwargs_name
+      starstarargs = internal.FunctionArgDict(self._ctx, {})
+    else:
+      # Do not catch the error; this should always succeed
+      starstarargs = starstarargs_var.get_atomic_value(internal.FunctionArgDict)
     # Unpack **args into kwargs, overwriting named args for now
     # TODO(mdemello): raise an error if we have a conflict
-    kwargs = {**self.args.kwargs}
-    starstarargs_dict = {**starstarargs_dict}
+    kwargs_dict = {**self.args.kwargs}
+    starstarargs_dict = {**starstarargs.constant}
     for k in self.sig.param_names:
       if k in starstarargs_dict:
-        kwargs[k] = starstarargs_dict[k]
+        kwargs_dict[k] = starstarargs_dict[k]
         del starstarargs_dict[k]
+      elif starstarargs.indefinite:
+        kwargs_dict[k] = self._ctx.consts.Any.to_variable()
+    # Absorb extra kwargs into the sig's **args if present
+    if self.sig.kwargs_name:
+      extra = set(kwargs_dict) - set(self.sig.param_names)
+      for k in extra:
+        starstarargs_dict[k] = kwargs_dict[k]
+        del kwargs_dict[k]
     # Pack the unused entries in starstarargs back into an abstract value
-    starstarargs = internal.ConstKeyDict(self._ctx, starstarargs_dict)
-    return kwargs, starstarargs.to_variable()
+    new_starstarargs = internal.FunctionArgDict(
+        self._ctx, starstarargs_dict, starstarargs.indefinite)
+    return kwargs_dict, new_starstarargs.to_variable()
 
   def _map_kwargs(self):
     kwargs, starstarargs = self._unpack_starstarargs()
     # Copy kwargs into argdict
     self.argdict.update(kwargs)
-    # Make sure kwargs_name is bound to something
+    # Bind kwargs_name to remaining **args
     if self.sig.kwargs_name:
-      if starstarargs is None:
-        starstarargs = internal.ConstKeyDict(self._ctx, {}).to_variable()
       self.argdict[self.sig.kwargs_name] = starstarargs
 
   def map_args(self):

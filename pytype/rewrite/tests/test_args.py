@@ -83,6 +83,44 @@ class FunctionCallTest(RewriteTest):
       assert_type(ret, int)
     """)
 
+  def test_indef_starstarargs(self):
+    self.Check("""
+      def f(**args):
+        return g(**args)
+
+      def g(x, y, z):
+        return z
+    """)
+
+  def test_forward_starstarargs(self):
+    self.Check("""
+      def f(**args):
+        return g(**args)
+
+      def g(**args):
+        return h(**args)
+
+      def h(p, q, r):
+        return r
+
+      args = {'p': 1, 'q': 2, 'r': 3, 's': 4}
+      ret = f(**args)
+      assert_type(ret, int)
+    """)
+
+  def test_capture_starstarargs(self):
+    self.Check("""
+      def f(**args):
+        return g(args)
+
+      def g(args):
+        return args
+
+      args = {'p': 1, 'q': 2, 'r': 3, 's': 4}
+      ret = f(**args)
+      assert_type(ret, dict)
+    """)
+
 
 if __name__ == '__main__':
   test_base.main()

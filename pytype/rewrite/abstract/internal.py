@@ -12,25 +12,6 @@ from pytype.rewrite.abstract import base
 _Variable = base.AbstractVariableType
 
 
-class ConstKeyDict(base.BaseValue):
-  """Dictionary with constant literal keys.
-
-  Used by the python interpreter to construct function args.
-  """
-
-  def __init__(self, ctx: base.ContextType, constant: Dict[str, _Variable]):
-    super().__init__(ctx)
-    assert isinstance(constant, dict), constant
-    self.constant = constant
-
-  def __repr__(self):
-    return f"ConstKeyDict({self.constant!r})"
-
-  @property
-  def _attrs(self):
-    return (immutabledict.immutabledict(self.constant),)
-
-
 class FunctionArgTuple(base.BaseValue):
   """Representation of a function arg tuple."""
 
@@ -45,6 +26,40 @@ class FunctionArgTuple(base.BaseValue):
   @property
   def _attrs(self):
     return (self.constant,)
+
+
+class FunctionArgDict(base.BaseValue):
+  """Representation of a function kwarg dict."""
+
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      constant: Dict[str, _Variable],
+      indefinite: bool = False
+  ):
+    self._ctx = ctx
+    self._check_keys(constant)
+    self.constant = constant
+    self.indefinite = indefinite
+
+  @classmethod
+  def any_kwargs(cls, ctx):
+    """Return a new kwargs dict with only indefinite values."""
+    return cls(ctx, {}, indefinite=True)
+
+  def _check_keys(self, constant: Dict[str, _Variable]):
+    """Runtime check to ensure the invariant."""
+    assert isinstance(constant, dict), constant
+    if not all(isinstance(k, str) for k in constant):
+      raise ValueError("Passing a non-string key to a function arg dict")
+
+  def __repr__(self):
+    indef = "+" if self.indefinite else ""
+    return f"FunctionArgDict({indef}{self.constant!r})"
+
+  @property
+  def _attrs(self):
+    return (immutabledict.immutabledict(self.constant), self.indefinite)
 
 
 class Splat(base.BaseValue):

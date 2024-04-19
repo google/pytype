@@ -82,7 +82,9 @@ class DictTest(BaseTest):
     d1 = containers.Dict(self.ctx, {})
     indef = self.ctx.abstract_loader.load_raw_type(dict).instantiate()
     d2 = d1.update(indef.to_variable())
-    self.assertEqual(d2, indef)
+    self.assertIsInstance(d2, containers.Dict)
+    self.assertEqual(d2.constant, {})
+    self.assertTrue(d2.indefinite)
 
   def test_update_multiple_bindings(self):
     d1 = containers.Dict(self.ctx, {})
@@ -90,8 +92,16 @@ class DictTest(BaseTest):
     d3 = containers.Dict(self.ctx, {self.const_var("c"): self.const_var("d")})
     var = variables.Variable((variables.Binding(d2), variables.Binding(d3)))
     d4 = d1.update(var)
-    self.assertEqual(
-        d4, self.ctx.abstract_loader.load_raw_type(dict).instantiate())
+    self.assertIsInstance(d4, containers.Dict)
+    self.assertEqual(d4.constant, {})
+    self.assertTrue(d4.indefinite)
+
+  def test_update_from_arg_dict(self):
+    d1 = containers.Dict(self.ctx, {})
+    d2 = internal.FunctionArgDict(self.ctx, {"a": self.const_var("b")})
+    d3 = d1.update(d2.to_variable())
+    self.assertIsInstance(d3, containers.Dict)
+    self.assertEqual(d3.constant, {self.const_var("a"): self.const_var("b")})
 
 
 class SetTest(BaseTest):

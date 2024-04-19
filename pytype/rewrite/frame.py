@@ -497,7 +497,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       pos_defaults = pop_const(tuple)
     if arg & _Flags.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       packed_kw_def = self._stack.pop()
-      kw_defaults = packed_kw_def.get_atomic_value(abstract.ConstKeyDict)
+      kw_defaults = packed_kw_def.get_atomic_value(abstract.Dict)
     # Make function
     del annot, pos_defaults, kw_defaults  # TODO(b/241479600): Use these
     func = abstract.InterpreterFunction(
@@ -643,22 +643,15 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
     return posargs
 
-  def _unpack_starstarargs(self, starstarargs) -> abstract.BaseValue:
+  def _unpack_starstarargs(self, starstarargs) -> abstract.FunctionArgDict:
     kwargs = starstarargs.get_atomic_value()
-    if isinstance(kwargs, abstract.ConstKeyDict):
+    if isinstance(kwargs, abstract.FunctionArgDict):
       # This has already been converted
       pass
-    elif isinstance(kwargs, abstract.FrozenInstance):
-      # This is indefinite; leave it as-is
-      pass
-    elif isinstance(kwargs, abstract.PythonConstant):
-      assert isinstance(kwargs.constant, dict)
-      kwargs = abstract.ConstKeyDict(self._ctx, {
-          abstract.get_atomic_constant(k, str): v
-          for k, v in kwargs.constant.items()
-      })
+    elif isinstance(kwargs, abstract.Dict):
+      kwargs = kwargs.to_function_arg_dict()
     elif abstract.is_any(kwargs):
-      kwargs = self._ctx.abstract_loader.load_raw_type(dict).instantiate()
+      kwargs = abstract.FunctionArgDict.any_kwargs(self._ctx)
     else:
       assert False, f'unexpected kwargs type: {kwargs}: {type(kwargs)}'
     return kwargs
@@ -668,14 +661,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       starstarargs = self._stack.pop()
       unpacked_starstarargs = self._unpack_starstarargs(starstarargs)
-      if isinstance(
-          unpacked_starstarargs, (abstract.Dict, abstract.ConstKeyDict)):
-        # We have a concrete dict we are unpacking; move it into kwargs
-        kwargs = unpacked_starstarargs.constant
-        starstarargs = None
+      # If we have a concrete dict we are unpacking; move it into kwargs (if
+      # not, .constant will be {} anyway, so we don't need to check here.)
+      kwargs = unpacked_starstarargs.constant
+      if unpacked_starstarargs.indefinite:
+        # We also have **args, apart from the concrete kv pairs we moved into
+        # kwargs, that need to be preserved.
+        starstarargs = (
+            abstract.FunctionArgDict.any_kwargs(self._ctx).to_variable())
       else:
-        # We have an indefinite dict, leave it in starstarargs
-        kwargs = datatypes.EMPTY_MAP
+        starstarargs = None
     else:
       kwargs = datatypes.EMPTY_MAP
       starstarargs = None
@@ -757,12 +752,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # to abstract objects because they are used internally to construct function
     # call args.
     keys = abstract.get_atomic_constant(keys, tuple)
-    # Unpack the keys into raw strings.
-    keys = [abstract.get_atomic_constant(k, str) for k in keys]
     assert len(keys) == n_elts
     vals = self._stack.popn(n_elts)
     ret = dict(zip(keys, vals))
-    ret = abstract.ConstKeyDict(self._ctx, ret)
+    ret = abstract.Dict(self._ctx, ret)
     self._stack.push(ret.to_variable())
 
   def byte_LIST_APPEND(self, opcode):

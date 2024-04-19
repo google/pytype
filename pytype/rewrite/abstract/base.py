@@ -161,4 +161,5 @@ class Union(BaseValue):
   def instantiate(self):
     return Union(self._ctx, tuple(o.instantiate() for o in self.options))
 
+
 AbstractVariableType = variables.Variable[BaseValue]

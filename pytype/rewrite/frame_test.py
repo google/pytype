@@ -566,11 +566,11 @@ class BuildConstantsTest(FrameTestBase):
       b = 2
       c = 3
       constant = {'a': a, 'b': b, 'c': c}
-    """, typ=abstract.ConstKeyDict)
+    """, typ=abstract.Dict)
     self.assertEqual(constant.constant, {
-        'a': self._const_var(1, 'a'),
-        'b': self._const_var(2, 'b'),
-        'c': self._const_var(3, 'c'),
+        self._const_var('a'): self._const_var(1, 'a'),
+        self._const_var('b'): self._const_var(2, 'b'),
+        self._const_var('c'): self._const_var(3, 'c'),
     })
 
 
