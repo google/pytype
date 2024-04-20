@@ -786,12 +786,45 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.setitem(key, val))
 
+  def _unpack_list_extension(self, var: _AbstractVariable) -> abstract.List:
+    try:
+      val = var.get_atomic_value()
+    except ValueError:
+      # This list has multiple possible values, so it is no longer a constant.
+      return abstract.List(
+          self._ctx, [abstract.Splat.any(self._ctx).to_variable()])
+    if isinstance(val, abstract.List):
+      return val
+    else:
+      return abstract.List(
+          self._ctx, [abstract.Splat(self._ctx, val).to_variable()])
+
   def byte_LIST_EXTEND(self, opcode):
     count = opcode.arg
-    val = self._stack.pop()
+    update_var = self._stack.pop()
+    update = self._unpack_list_extension(update_var)
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    self._replace_atomic_stack_value(count, target.extend(val))
+    self._replace_atomic_stack_value(count, target.extend(update))
+
+  def _unpack_dict_update(
+      self, var: _AbstractVariable
+  ) -> Optional[abstract.Dict]:
+    try:
+      val = var.get_atomic_value()
+    except ValueError:
+      return None
+    if isinstance(val, abstract.Dict):
+      return val
+    elif isinstance(val, abstract.FunctionArgDict):
+      return abstract.Dict.from_function_arg_dict(self._ctx, val)
+    elif abstract.is_any(val):
+      return None
+    elif isinstance(val, abstract.BaseInstance):
+      # This is an object with no concrete python value
+      return None
+    else:
+      raise ValueError('Unexpected dict update:', val)
 
   def byte_DICT_MERGE(self, opcode):
     # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
@@ -799,10 +832,18 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_DICT_UPDATE(self, opcode):
     count = opcode.arg
-    val = self._stack.pop()
+    update_var = self._stack.pop()
+    update = self._unpack_dict_update(update_var)
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    self._replace_atomic_stack_value(count, target.update(val))
+    if update is None:
+      # The update var has multiple possible values, or no constant, so we
+      # cannot merge it into the constant dict. We also don't know if existing
+      # items have been overwritten, so we need to return a new 'any' dict.
+      ret = abstract.Dict.any_dict(self._ctx)
+    else:
+      ret = target.update(update)
+    self._replace_atomic_stack_value(count, ret)
 
   def byte_LIST_TO_TUPLE(self, opcode):
     target_var = self._stack.pop()

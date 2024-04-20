@@ -43,7 +43,7 @@ class FunctionArgDict(base.BaseValue):
     self.indefinite = indefinite
 
   @classmethod
-  def any_kwargs(cls, ctx):
+  def any_kwargs(cls, ctx: base.ContextType):
     """Return a new kwargs dict with only indefinite values."""
     return cls(ctx, {}, indefinite=True)
 
@@ -73,6 +73,10 @@ class Splat(base.BaseValue):
   def __init__(self, ctx: base.ContextType, iterable: base.BaseValue):
     super().__init__(ctx)
     self.iterable = iterable
+
+  @classmethod
+  def any(cls, ctx: base.ContextType):
+    return cls(ctx, ctx.consts.Any)
 
   def get_concrete_iterable(self):
     if (isinstance(self.iterable, base.PythonConstant) and

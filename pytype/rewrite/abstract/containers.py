@@ -27,17 +27,8 @@ class List(base.PythonConstant[_List[_Variable]]):
   def append(self, var: _Variable) -> 'List':
     return List(self._ctx, self.constant + [var])
 
-  def extend(self, var: _Variable) -> base.BaseValue:
-    try:
-      val = var.get_atomic_value()
-    except ValueError:
-      # This list has multiple possible values, so it is no longer a constant.
-      return self._ctx.types[list].instantiate()
-    if isinstance(val, List):
-      new_constant = self.constant + val.constant
-    else:
-      splat = internal.Splat(self._ctx, val)
-      new_constant = self.constant + [splat.to_variable()]
+  def extend(self, val: 'List') -> 'List':
+    new_constant = self.constant + val.constant
     return List(self._ctx, new_constant)
 
 
@@ -60,33 +51,22 @@ class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
   def any_dict(cls, ctx):
     return cls(ctx, {}, indefinite=True)
 
+  @classmethod
+  def from_function_arg_dict(
+      cls, ctx: base.ContextType, val: internal.FunctionArgDict
+  ) -> 'Dict':
+    new_constant = {
+        ctx.consts[k].to_variable(): v
+        for k, v in val.constant.items()
+    }
+    return cls(ctx, new_constant, val.indefinite)
+
   def setitem(self, key: _Variable, val: _Variable) -> 'Dict':
     return Dict(self._ctx, {**self.constant, key: val})
 
-  def update(self, var: _Variable) -> base.BaseValue:
-    try:
-      val = var.get_atomic_value()
-    except ValueError:
-      # The update var has multiple possible values, so we cannot merge it into
-      # the constant dict. We also don't know if items have been overwritten, so
-      # we need to discard self.constant
-      return Dict.any_dict(self._ctx)
-
-    if not hasattr(val, 'constant'):
-      # This is an object with no concrete python value
-      return Dict.any_dict(self._ctx)
-    elif isinstance(val, Dict):
-      new_items = val.constant
-    elif isinstance(val, internal.FunctionArgDict):
-      new_items = {
-          self._ctx.consts[k].to_variable(): v
-          for k, v in val.constant.items()
-      }
-    else:
-      raise ValueError('Unexpected dict update:', val)
-
+  def update(self, val: 'Dict') -> base.BaseValue:
     return Dict(
-        self._ctx, {**self.constant, **new_items},
+        self._ctx, {**self.constant, **val.constant},
         self.indefinite or val.indefinite
     )
 
