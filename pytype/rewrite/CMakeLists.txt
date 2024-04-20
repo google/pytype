@@ -73,11 +73,35 @@ py_test(
 
 py_library(
   NAME
+    function_call_helper
+  SRCS
+    function_call_helper.py
+  DEPS
+    .context
+    pytype.utils
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.flow.flow
+)
+
+py_test(
+  NAME
+    function_call_helper_test
+  SRCS
+    function_call_helper_test.py
+  DEPS
+    .frame
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
     frame
   SRCS
     frame.py
   DEPS
     .context
+    .function_call_helper
     .stack
     pytype.utils
     pytype.blocks.blocks

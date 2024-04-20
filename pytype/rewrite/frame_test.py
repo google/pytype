@@ -30,7 +30,6 @@ class FrameTestBase(test_utils.ContextfulTestBase):
           name: value.to_variable() for name, value in module_globals.items()}
     else:
       initial_locals = initial_globals = {}
-    self._kw_names = ()
     return frame_lib.Frame(self.ctx, name, code, initial_locals=initial_locals,
                            initial_globals=initial_globals)
 
@@ -655,10 +654,10 @@ class FunctionTest(FrameTestBase):
         pass
       f(1, y=2)
     """)
-    self.assertEqual(frame._kw_names, ('y',))
+    self.assertEqual(frame._call_helper._kw_names, ('y',))
     oparg = frame.current_opcode.arg  # pytype: disable=attribute-error
     _, _, *args = frame._stack.popn(oparg + 2)
-    callargs = frame._make_function_args(args)
+    callargs = frame._call_helper.make_function_args(args)
     self.assertConstantVar(callargs.posargs[0], 1)
     self.assertConstantVar(callargs.kwargs['y'], 2)
 

@@ -1,6 +1,5 @@
 """A frame of an abstract VM for type analysis of python bytecode."""
 
-import itertools
 import logging
 from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
@@ -8,6 +7,7 @@ from pycnite import marshal as pyc_marshal
 from pytype import datatypes
 from pytype.blocks import blocks
 from pytype.rewrite import context
+from pytype.rewrite import function_call_helper
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import conditions
@@ -94,8 +94,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._classes: List[abstract.InterpreterClass] = []
     # All variables returned via RETURN_VALUE
     self._returns: List[_AbstractVariable] = []
-    # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
-    self._kw_names = ()
+    # Handler for function calls.
+    self._call_helper = function_call_helper.FunctionCallHelper(ctx, self)
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -309,70 +309,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       var = self._final_locals[name]
       frame.store_global(name, var)
 
-  def _build_class(self, args: abstract.Args) -> abstract.InterpreterClass:
-    builder = args.posargs[0].get_atomic_value(_FrameFunction)
-    name_var = args.posargs[1]
-    name = abstract.get_atomic_constant(name_var, str)
-
-    base_vars = args.posargs[2:]
-    bases = []
-    for base_var in base_vars:
-      try:
-        base = base_var.get_atomic_value(abstract.SimpleClass)
-      except ValueError as e:
-        raise NotImplementedError('Unexpected base class') from e
-      bases.append(base)
-
-    keywords = {}
-    for kw, var in args.kwargs.items():
-      try:
-        val = var.get_atomic_value()
-      except ValueError as e:
-        raise NotImplementedError('Unexpected keyword value') from e
-      keywords[kw] = val
-
-    frame = builder.call(abstract.Args(frame=self))
-    members = dict(frame.final_locals)
-    metaclass_instance = None
-    for metaclass in itertools.chain([keywords.get('metaclass')],
-                                     (base.metaclass for base in bases)):
-      if not metaclass:
-        continue
-      metaclass_new = metaclass.get_attribute('__new__')
-      if metaclass_new.full_name == 'builtins.type.__new__':
-        continue
-      # The metaclass has overridden type.__new__. Invoke the custom __new__
-      # method to construct the class.
-      metaclass_var = metaclass.to_variable()
-      bases_var = abstract.Tuple(self._ctx, tuple(base_vars)).to_variable()
-      members_var = abstract.Dict(
-          self._ctx, {self._ctx.consts[k].to_variable(): v.to_variable()
-                      for k, v in members.items()}
-      ).to_variable()
-      args = abstract.Args(
-          posargs=(metaclass_var, name_var, bases_var, members_var),
-          frame=self)
-      metaclass_instance = metaclass_new.call(args).get_return_value()
-      break
-    if metaclass_instance and metaclass_instance.full_name == name:
-      cls = metaclass_instance
-    else:
-      cls = abstract.InterpreterClass(
-          ctx=self._ctx,
-          name=name,
-          members=members,
-          bases=bases,
-          keywords=keywords,
-          functions=frame.functions,
-          classes=frame.classes,
-      )
-    log.info('Created class: %r', cls)
-    return cls
-
   def _call_function(
       self,
       func_var: _AbstractVariable,
-      args: abstract.Args,
+      args: abstract.Args['Frame'],
   ) -> None:
     ret_values = []
     for func in func_var.values:
@@ -380,7 +320,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
       elif func is self._ctx.consts.singles['__build_class__']:
-        cls = self._build_class(args)
+        cls = self._call_helper.build_class(args)
+        log.info('Created class: %r', cls)
         self._classes.append(cls)
         ret_values.append(cls)
       else:
@@ -619,27 +560,14 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_KW_NAMES(self, opcode):
     # Stores a list of kw names to be retrieved by CALL
-    self._kw_names = opcode.argval
-
-  def _make_function_args(self, args):
-    """Unpack args into posargs and kwargs (3.11+)."""
-    if self._kw_names:
-      n_kw = len(self._kw_names)
-      posargs = tuple(args[:-n_kw])
-      kw_vals = args[-n_kw:]
-      kwargs = datatypes.immutabledict(zip(self._kw_names, kw_vals))
-    else:
-      posargs = tuple(args)
-      kwargs = datatypes.EMPTY_MAP
-    self._kw_names = ()
-    return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
+    self._call_helper.set_kw_names(opcode.argval)
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
     if not sentinel.has_atomic_value(self._ctx.consts.singles['NULL']):
       raise NotImplementedError('CALL not fully implemented')
     func, *args = rest
-    callargs = self._make_function_args(args)
+    callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
   def byte_CALL_FUNCTION(self, opcode):
@@ -648,76 +576,18 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     callargs = abstract.Args(posargs=tuple(args), frame=self)
     self._call_function(func, callargs)
 
-  def _unpack_starargs(self, starargs) -> abstract.BaseValue:
-    # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
-    # does not yet handle indefinite iterables.
-    posargs = starargs.get_atomic_value()
-    if isinstance(posargs, abstract.FunctionArgTuple):
-      # This has already been converted
-      pass
-    elif isinstance(posargs, abstract.FrozenInstance):
-      # This is indefinite; leave it as-is
-      pass
-    elif isinstance(posargs, abstract.Tuple):
-      posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
-    elif isinstance(posargs, tuple):
-      posargs = abstract.FunctionArgTuple(self._ctx, posargs)
-    elif abstract.is_any(posargs):
-      return self._ctx.types[tuple].instantiate()
-    else:
-      assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
-    return posargs
-
-  def _unpack_starstarargs(self, starstarargs) -> abstract.FunctionArgDict:
-    kwargs = starstarargs.get_atomic_value()
-    if isinstance(kwargs, abstract.FunctionArgDict):
-      # This has already been converted
-      pass
-    elif isinstance(kwargs, abstract.Dict):
-      kwargs = kwargs.to_function_arg_dict()
-    elif abstract.is_any(kwargs):
-      kwargs = abstract.FunctionArgDict.any_kwargs(self._ctx)
-    else:
-      assert False, f'unexpected kwargs type: {kwargs}: {type(kwargs)}'
-    return kwargs
-
   def byte_CALL_FUNCTION_EX(self, opcode):
-    # Convert **kwargs
     if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       starstarargs = self._stack.pop()
-      unpacked_starstarargs = self._unpack_starstarargs(starstarargs)
-      # If we have a concrete dict we are unpacking; move it into kwargs (if
-      # not, .constant will be {} anyway, so we don't need to check here.)
-      kwargs = unpacked_starstarargs.constant
-      if unpacked_starstarargs.indefinite:
-        # We also have **args, apart from the concrete kv pairs we moved into
-        # kwargs, that need to be preserved.
-        starstarargs = (
-            abstract.FunctionArgDict.any_kwargs(self._ctx).to_variable())
-      else:
-        starstarargs = None
     else:
-      kwargs = datatypes.EMPTY_MAP
       starstarargs = None
-    # Convert *args
     starargs = self._stack.pop()
-    unpacked_starargs = self._unpack_starargs(starargs)
-    if isinstance(
-        unpacked_starargs, (abstract.Tuple, abstract.FunctionArgTuple)):
-      # We have a concrete tuple we are unpacking; move it into posargs
-      posargs = unpacked_starargs.constant
-      starargs = None
-    else:
-      # We have an indefinite tuple; leave it in starargs
-      posargs = ()
+    callargs = self._call_helper.make_function_args_ex(starargs, starstarargs)
     # Retrieve and call the function
     func = self._stack.pop()
     if self._code.python_version >= (3, 11):
       # the compiler puts a NULL on the stack before function calls
       self._stack.pop_and_discard()
-    callargs = abstract.Args(
-        posargs=posargs, kwargs=kwargs, starargs=starargs,
-        starstarargs=starstarargs, frame=self)
     self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
