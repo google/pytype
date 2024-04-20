@@ -142,5 +142,29 @@ class ImportsTest(RewriteTest):
     """)
 
 
+@test_base.skip('Under construction')
+class EnumTest(RewriteTest):
+  """Enum tests."""
+
+  def test_member(self):
+    self.Check("""
+      import enum
+      class E(enum.Enum):
+        X = 42
+      assert_type(E.X, E)
+    """)
+
+  def test_member_pyi(self):
+    with self.DepTree([('foo.pyi', """
+      import enum
+      class E(enum.Enum):
+        X = 42
+    """)]):
+      self.Check("""
+        import foo
+        assert_type(foo.E.X, foo.E)
+      """)
+
+
 if __name__ == '__main__':
   test_base.main()

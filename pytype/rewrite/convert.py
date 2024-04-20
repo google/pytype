@@ -1,5 +1,7 @@
 """Conversion from pytd to abstract representations of Python values."""
 
+from typing import Optional, Tuple
+
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import abstract
 
@@ -38,8 +40,10 @@ class AbstractConverter:
     # don't cause infinite recursion.
     self._cache.classes[cls] = abstract_class
     for method in cls.methods:
-      abstract_class.members[method.name] = (
-          self.pytd_function_to_value(method))
+      # For consistency with InterpreterFunction, prepend the class name.
+      full_name = f'{name}.{method.name}'
+      method_value = self.pytd_function_to_value(method, (module, full_name))
+      abstract_class.members[method.name] = method_value
     for constant in cls.constants:
       constant_type = self.pytd_type_to_value(constant.type)
       abstract_class.members[constant.name] = constant_type.instantiate()
@@ -61,11 +65,15 @@ class AbstractConverter:
     return abstract_class
 
   def pytd_function_to_value(
-      self, func: pytd.Function) -> abstract.PytdFunction:
+      self, func: pytd.Function, func_name: Optional[Tuple[str, str]] = None,
+  ) -> abstract.PytdFunction:
     """Converts a pytd function to an abstract function."""
     if func in self._cache.funcs:
       return self._cache.funcs[func]
-    module, _, name = func.name.rpartition('.')
+    if func_name:
+      module, name = func_name
+    else:
+      module, _, name = func.name.rpartition('.')
     signatures = tuple(
         abstract.Signature.from_pytd(self._ctx, name, pytd_sig)
         for pytd_sig in func.signatures)

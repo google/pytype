@@ -596,8 +596,8 @@ class InterpreterFunction(SimpleFunction[_FrameT]):
     return (self.name, self.code)
 
   def call_with_mapped_args(self, mapped_args: MappedArgs[_FrameT]) -> _FrameT:
-    log.info('Calling function:\n  Sig:  %s\n  Args: %s',
-             mapped_args.signature, mapped_args.argdict)
+    log.info('Calling function %s:\n  Sig:  %s\n  Args: %s',
+             self.full_name, mapped_args.signature, mapped_args.argdict)
     parent_frame = mapped_args.frame or self._parent_frame
     if parent_frame.final_locals is None:
       k = None
@@ -622,6 +622,8 @@ class PytdFunction(SimpleFunction[SimpleReturn]):
 
   def call_with_mapped_args(
       self, mapped_args: MappedArgs[FrameType]) -> SimpleReturn:
+    log.info('Calling function %s:\n  Sig:  %s\n  Args: %s',
+             self.full_name, mapped_args.signature, mapped_args.argdict)
     ret = mapped_args.signature.annotations['return'].instantiate()
     return SimpleReturn(ret)
 

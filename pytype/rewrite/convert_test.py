@@ -65,7 +65,8 @@ class PytdClassToValueTest(ConverterTestBase):
     self.assertEqual(set(cls.members), {'f'})
     f = cls.members['f']
     self.assertIsInstance(f, abstract.PytdFunction)
-    self.assertEqual(repr(f.signatures[0]), 'def f(self: C, x: Any) -> None')
+    self.assertEqual(f.module, '<test>')
+    self.assertEqual(repr(f.signatures[0]), 'def C.f(self: C, x: Any) -> None')
 
   def test_constant(self):
     pytd_cls = self.build_pytd("""

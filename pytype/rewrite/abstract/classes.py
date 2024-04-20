@@ -110,7 +110,7 @@ class SimpleClass(base.BaseValue):
       if isinstance(setup_method, functions_lib.InterpreterFunction):
         _ = setup_method.bind_to(self).analyze()
     constructor = self.get_attribute(self.constructor)
-    if constructor:
+    if constructor and constructor.full_name != 'builtins.object.__new__':
       log.error('Custom __new__ not yet implemented')
     instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:

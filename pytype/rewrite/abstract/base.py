@@ -137,6 +137,9 @@ class Singleton(BaseValue):
   def instantiate(self) -> 'Singleton':
     return self
 
+  def get_attribute(self, name: str) -> 'Singleton':
+    return self
+
 
 class Union(BaseValue):
   """Union of values."""

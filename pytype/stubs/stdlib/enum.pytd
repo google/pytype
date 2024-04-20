@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple, Type, TypeVar, Union
+from typing import Any, Dict, Iterable, Iterator, Self, Tuple, Type, TypeVar, Union
 
 _T = TypeVar('_T')
 _EnumType = TypeVar('_EnumType', bound=Type[Enum])
@@ -8,6 +8,9 @@ class EnumMeta(type, Iterable):
   def __getitem__(cls: EnumMeta, name: str) -> Any: ...
   def __contains__(self, member: Enum) -> bool: ...
   def __len__(self) -> int: ...
+  def __new__(
+      metacls: type[Self], cls: str, bases: tuple[type, ...], classdict: dict[str, Any], **kwds: Any
+  ) -> Self: ...
 
 class Enum(metaclass=EnumMeta):
   __members__: collections.OrderedDict[str, Enum]
