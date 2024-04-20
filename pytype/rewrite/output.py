@@ -32,7 +32,7 @@ class PytdConverter:
     """
     if isinstance(val, abstract.SimpleClass):
       return self._class_to_pytd_def(val)
-    elif isinstance(val, (abstract.SimpleFunction, abstract.BoundFunction)):
+    elif isinstance(val, abstract.BaseFunction):
       return self._function_to_pytd_def(val)
     else:
       raise NotImplementedError(

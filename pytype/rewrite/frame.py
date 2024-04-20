@@ -376,9 +376,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   ) -> None:
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, (abstract.SimpleFunction,
-                           abstract.InterpreterClass,
-                           abstract.BoundFunction)):
+      if isinstance(func, (abstract.BaseFunction, abstract.InterpreterClass)):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
       elif func is self._ctx.consts.singles['__build_class__']:
