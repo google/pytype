@@ -756,6 +756,21 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     ret = abstract.Tuple(self._ctx, tuple(target)).to_variable()
     self._stack.push(ret)
 
+  def byte_FORMAT_VALUE(self, opcode):
+    if opcode.arg & pyc_marshal.Flags.FVS_MASK:
+      self._stack.pop_and_discard()
+    # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
+    # push a new string onto the stack.
+    self._stack.pop_and_discard()
+    ret = self._ctx.types[str].instantiate().to_variable()
+    self._stack.push(ret)
+
+  def byte_BUILD_STRING(self, opcode):
+    # Pop n arguments off the stack and build a string out of them
+    self._stack.popn(opcode.arg)
+    ret = self._ctx.types[str].instantiate().to_variable()
+    self._stack.push(ret)
+
   # ---------------------------------------------------------------
   # Branches and jumps
 

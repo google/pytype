@@ -150,6 +150,18 @@ class ImportsTest(RewriteTest):
       assert_type(a, list)
     """)
 
+  def test_fstrings(self):
+    self.Check("""
+      x = 1
+      y = 2
+      z = (
+        f'x = {x}'
+        ' and '
+        f'y = {y}'
+      )
+      assert_type(z, str)
+    """)
+
 
 @test_base.skip('Under construction')
 class EnumTest(RewriteTest):
