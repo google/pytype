@@ -610,6 +610,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_LOAD_BUILD_CLASS(self, opcode):
     self._stack.push(self._ctx.consts.singles['__build_class__'].to_variable())
 
+  def byte_BINARY_SUBSCR(self, opcode):
+    obj_var, subscr_var = self._stack.popn(2)
+    try:
+      obj = obj_var.get_atomic_value(abstract.SimpleClass)
+    except ValueError as e:
+      msg = 'BINARY_SUBSCR only implemented for type annotations.'
+      raise NotImplementedError(msg) from e
+    ret = obj.set_type_parameters(subscr_var)
+    self._stack.push(ret.to_variable())
+
   # ---------------------------------------------------------------
   # Build and extend collections
 

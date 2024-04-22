@@ -141,6 +141,15 @@ class ImportsTest(RewriteTest):
       assert_type(path2, "module")
     """)
 
+  def test_type_subscript(self):
+    self.Check("""
+      IntList = list[int]
+      def f(xs: IntList) -> list[str]:
+        return ["hello world"]
+      a = f([1, 2, 3])
+      assert_type(a, list)
+    """)
+
 
 @test_base.skip('Under construction')
 class EnumTest(RewriteTest):

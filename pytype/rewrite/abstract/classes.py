@@ -145,6 +145,12 @@ class SimpleClass(base.BaseValue):
     self._mro = mro = mro_lib.MROMerge(mro_bases)
     return mro
 
+  def set_type_parameters(self, params):
+    # A dummy implementation to let type annotations with parameters not crash.
+    del params  # not implemented yet
+    # We eventually want to return a new class with the type parameters set
+    return self
+
 
 class InterpreterClass(SimpleClass):
   """Class defined in the current module."""
