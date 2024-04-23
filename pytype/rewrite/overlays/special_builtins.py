@@ -3,6 +3,7 @@
 from typing import Optional, Sequence
 
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.overlays import overlays
 
 
 def _stack(
@@ -11,20 +12,15 @@ def _stack(
   return frame.stack if frame else None
 
 
-class AssertType(abstract.SimpleFunction[abstract.SimpleReturn]):
+@overlays.register_function('builtins', 'assert_type')
+class AssertType(abstract.PytdFunction):
   """assert_type implementation."""
-
-  def __init__(self, ctx: abstract.ContextType):
-    signature = abstract.Signature(
-        ctx=ctx, name='assert_type', param_names=('variable', 'type'))
-    super().__init__(
-        ctx=ctx, name='assert_type', signatures=(signature,), module='builtins')
 
   def call_with_mapped_args(
       self, mapped_args: abstract.MappedArgs[abstract.FrameType],
   ) -> abstract.SimpleReturn:
-    var = mapped_args.argdict['variable']
-    typ = mapped_args.argdict['type']
+    var = mapped_args.argdict['val']
+    typ = mapped_args.argdict['typ']
     pp = self._ctx.errorlog.pretty_printer
     actual = pp.print_var_type(var, node=None)
     try:
@@ -37,19 +33,14 @@ class AssertType(abstract.SimpleFunction[abstract.SimpleReturn]):
     return abstract.SimpleReturn(self._ctx.consts[None])
 
 
-class RevealType(abstract.SimpleFunction[abstract.SimpleReturn]):
+@overlays.register_function('builtins', 'reveal_type')
+class RevealType(abstract.PytdFunction):
   """reveal_type implementation."""
-
-  def __init__(self, ctx: abstract.ContextType):
-    signature = abstract.Signature(
-        ctx=ctx, name='reveal_type', param_names=('object',))
-    super().__init__(
-        ctx=ctx, name='reveal_type', signatures=(signature,), module='builtins')
 
   def call_with_mapped_args(
       self, mapped_args: abstract.MappedArgs[abstract.FrameType],
   ) -> abstract.SimpleReturn:
-    obj = mapped_args.argdict['object']
+    obj = mapped_args.argdict['obj']
     stack = _stack(mapped_args.frame)
     self._ctx.errorlog.reveal_type(stack, node=None, var=obj)
     return abstract.SimpleReturn(self._ctx.consts[None])

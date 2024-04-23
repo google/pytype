@@ -58,6 +58,7 @@ py_library(
   DEPS
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.overlays.overlays
 )
 
 py_test(
@@ -131,7 +132,6 @@ py_library(
     pytype.load_pytd
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
-    pytype.rewrite.overlays.overlays
 )
 
 py_test(

@@ -4,6 +4,7 @@ from typing import Optional, Tuple
 
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.overlays import overlays
 
 
 class _Cache:
@@ -20,6 +21,7 @@ class AbstractConverter:
   def __init__(self, ctx: abstract.ContextType):
     self._ctx = ctx
     self._cache = _Cache()
+    overlays.initialize()
 
   def pytd_class_to_value(self, cls: pytd.Class) -> abstract.SimpleClass:
     """Converts a pytd class to an abstract class."""
@@ -77,7 +79,8 @@ class AbstractConverter:
     signatures = tuple(
         abstract.Signature.from_pytd(self._ctx, name, pytd_sig)
         for pytd_sig in func.signatures)
-    abstract_func = abstract.PytdFunction(
+    builder = overlays.FUNCTIONS.get((module, name), abstract.PytdFunction)
+    abstract_func = builder(
         ctx=self._ctx,
         name=name,
         signatures=signatures,
