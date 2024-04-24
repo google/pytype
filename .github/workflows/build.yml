@@ -55,7 +55,7 @@ jobs:
     # used to build Python there.  It is the latter that determines
     # the wheel's platform tag.
     # https://github.com/actions/virtual-environments/issues/696
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       matrix:
         python_version: ['3.8', '3.9', '3.10', '3.11']

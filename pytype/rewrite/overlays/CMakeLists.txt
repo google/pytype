@@ -4,7 +4,28 @@ py_library(
   NAME
     overlays
   DEPS
+    ._overlays
+    .enum_overlay
     .special_builtins
+)
+
+py_library(
+  NAME
+    _overlays
+  SRCS
+    overlays.py
+  DEPS
+    pytype.rewrite.abstract.abstract
+)
+
+py_library(
+  NAME
+    enum_overlay
+  SRCS
+    enum_overlay.py
+  DEPS
+    ._overlays
+    pytype.rewrite.abstract.abstract
 )
 
 py_library(
@@ -13,6 +34,7 @@ py_library(
   SRCS
     special_builtins.py
   DEPS
+    ._overlays
     pytype.rewrite.abstract.abstract
 )
 
@@ -22,7 +44,6 @@ py_test(
   SRCS
     special_builtins_test.py
   DEPS
-    .special_builtins
-    pytype.rewrite.context
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
 )

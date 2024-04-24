@@ -1,11 +1,10 @@
 """Loads abstract representations of imported objects."""
 
-from typing import Any as _Any, Dict, Tuple, Type
+from typing import Any, Dict, Tuple, Type
 
 from pytype import load_pytd
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import abstract
-from pytype.rewrite.overlays import special_builtins
 
 
 class Constants:
@@ -23,7 +22,7 @@ class Constants:
 
   def __init__(self, ctx: abstract.ContextType):
     self._ctx = ctx
-    self._consts: Dict[_Any, abstract.PythonConstant] = {}
+    self._consts: Dict[Any, abstract.PythonConstant] = {}
     self.singles: Dict[str, abstract.Singleton] = {}
 
     for single in self._SINGLETONS:
@@ -32,11 +31,30 @@ class Constants:
     # We use Any all the time, so alias it for convenience.
     self.Any = self.singles['Any']  # pylint: disable=invalid-name
 
-  def __getitem__(self, const: _Any):
+  def __getitem__(self, const: Any):
     if const not in self._consts:
       self._consts[const] = abstract.PythonConstant(
           self._ctx, const, allow_direct_instantiation=True)
     return self._consts[const]
+
+
+# This is a workaround for a weird pytype crash caused by the use of 'Any' as an
+# attribute name.
+Constants: Any
+
+
+class Types:
+  """Wrapper for AbstractLoader.load_raw_types.
+
+  We use this method all the time, so we provide a convenient wrapper for it.
+  For consistency, this wrapper has the same interface as Constants above.
+  """
+
+  def __init__(self, ctx: abstract.ContextType):
+    self._ctx = ctx
+
+  def __getitem__(self, raw_type: Type[Any]) -> abstract.BaseValue:
+    return self._ctx.abstract_loader.load_raw_type(raw_type)
 
 
 class AbstractLoader:
@@ -47,10 +65,7 @@ class AbstractLoader:
     self._pytd_loader = pytd_loader
 
     self.consts = Constants(ctx)
-    self._special_builtins = {
-        'assert_type': special_builtins.AssertType(self._ctx),
-    }
-    self._special_builtins['NoneType'] = self.consts[None]
+    self.types = Types(ctx)
 
   def _load_pytd_node(self, pytd_node: pytd.Node) -> abstract.BaseValue:
     if isinstance(pytd_node, pytd.Class):
@@ -66,8 +81,8 @@ class AbstractLoader:
       raise NotImplementedError(f'I do not know how to load {pytd_node}')
 
   def load_builtin(self, name: str) -> abstract.BaseValue:
-    if name in self._special_builtins:
-      return self._special_builtins[name]
+    if name == 'NoneType':
+      return self.consts[None]
     pytd_node = self._pytd_loader.lookup_pytd('builtins', name)
     if isinstance(pytd_node, pytd.Constant):
       # This usage of eval is safe, as we've already checked that this is the
@@ -92,8 +107,10 @@ class AbstractLoader:
         '__package__': self.consts[None],
     }
 
-  def load_raw_type(self, typ: Type[_Any]) -> abstract.BaseValue:
+  def load_raw_type(self, typ: Type[Any]) -> abstract.BaseValue:
     """Converts a raw type to an abstract value.
+
+    For convenience, this method can also be called via ctx.types[typ].
 
     Args:
       typ: The type.
@@ -107,7 +124,7 @@ class AbstractLoader:
     pytd_node = self._pytd_loader.lookup_pytd(typ.__module__, typ.__name__)
     return self._load_pytd_node(pytd_node)
 
-  def build_tuple(self, const: Tuple[_Any, ...]) -> abstract.Tuple:
+  def build_tuple(self, const: Tuple[Any, ...]) -> abstract.Tuple:
     """Convert a raw constant tuple to an abstract value."""
     ret = []
     for e in const:

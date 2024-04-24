@@ -6,7 +6,8 @@ import logging
 
 from typing import Dict, List, Mapping, Optional, Protocol, Sequence
 
-import immutabledict
+from pytype import datatypes
+from pytype.pytd import mro as mro_lib
 from pytype.rewrite.abstract import base
 from pytype.rewrite.abstract import functions as functions_lib
 from pytype.types import types
@@ -36,13 +37,18 @@ class SimpleClass(base.BaseValue):
       ctx: base.ContextType,
       name: str,
       members: Dict[str, base.BaseValue],
+      bases: Sequence['SimpleClass'] = (),
+      keywords: Mapping[str, base.BaseValue] = datatypes.EMPTY_MAP,
       module: Optional[str] = None,
   ):
     super().__init__(ctx)
     self.name = name
     self.members = members
+    self.bases = bases
+    self.keywords = keywords
     self.module = module
     self._canonical_instance: Optional['FrozenInstance'] = None
+    self._mro: Optional[Sequence['SimpleClass']] = None
 
     if isinstance((init := members.get('__init__')),
                   functions_lib.SimpleFunction):
@@ -76,8 +82,17 @@ class SimpleClass(base.BaseValue):
     else:
       return self.name
 
+  @property
+  def metaclass(self) -> Optional[base.BaseValue]:
+    return self.keywords.get('metaclass')
+
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
-    return self.members.get(name)
+    if name in self.members:
+      return self.members[name]
+    mro = self.mro()
+    if len(mro) > 1:
+      return mro[1].get_attribute(name)
+    return None
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # SimpleClass is used to model imported classes, which we treat as frozen.
@@ -95,7 +110,7 @@ class SimpleClass(base.BaseValue):
       if isinstance(setup_method, functions_lib.InterpreterFunction):
         _ = setup_method.bind_to(self).analyze()
     constructor = self.get_attribute(self.constructor)
-    if constructor:
+    if constructor and constructor.full_name != 'builtins.object.__new__':
       log.error('Custom __new__ not yet implemented')
     instance = MutableInstance(self._ctx, self)
     for initializer_name in self.initializers:
@@ -116,16 +131,40 @@ class SimpleClass(base.BaseValue):
         _ = initializer.bind_to(instance).call(args)
     return ClassCallReturn(instance)
 
+  def mro(self) -> Sequence['SimpleClass']:
+    if self._mro:
+      return self._mro
+    if self.full_name == 'builtins.object':
+      self._mro = mro = [self]
+      return mro
+    bases = list(self.bases)
+    obj_type = self._ctx.types[object]
+    if not bases or bases[-1] != obj_type:
+      bases.append(obj_type)
+    mro_bases = [[self]] + [list(base.mro()) for base in bases] + [bases]
+    self._mro = mro = mro_lib.MROMerge(mro_bases)
+    return mro
+
+  def set_type_parameters(self, params):
+    # A dummy implementation to let type annotations with parameters not crash.
+    del params  # not implemented yet
+    # We eventually want to return a new class with the type parameters set
+    return self
+
 
 class InterpreterClass(SimpleClass):
   """Class defined in the current module."""
 
   def __init__(
-      self, ctx: base.ContextType, name: str,
+      self,
+      ctx: base.ContextType,
+      name: str,
       members: Dict[str, base.BaseValue],
+      bases: Sequence[SimpleClass],
+      keywords: Mapping[str, base.BaseValue],
       functions: Sequence[functions_lib.InterpreterFunction],
       classes: Sequence['InterpreterClass']):
-    super().__init__(ctx, name, members)
+    super().__init__(ctx, name, members, bases, keywords)
     # Functions and classes defined in this class's body. Unlike 'members',
     # ignores the effects of post-definition transformations like decorators.
     self.functions = functions
@@ -136,7 +175,7 @@ class InterpreterClass(SimpleClass):
 
   @property
   def _attrs(self):
-    return (self.name, immutabledict.immutabledict(self.members))
+    return (self.name, datatypes.immutabledict(self.members))
 
 
 class BaseInstance(base.BaseValue):
@@ -174,7 +213,7 @@ class MutableInstance(BaseInstance):
 
   @property
   def _attrs(self):
-    return (self.cls, immutabledict.immutabledict(self.members))
+    return (self.cls, datatypes.immutabledict(self.members))
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
@@ -195,7 +234,7 @@ class FrozenInstance(BaseInstance):
 
   def __init__(self, ctx: base.ContextType, instance: MutableInstance):
     super().__init__(
-        ctx, instance.cls, immutabledict.immutabledict(instance.members))
+        ctx, instance.cls, datatypes.immutabledict(instance.members))
 
   def __repr__(self):
     return f'FrozenInstance({self.cls.name})'

@@ -65,7 +65,8 @@ class PytdClassToValueTest(ConverterTestBase):
     self.assertEqual(set(cls.members), {'f'})
     f = cls.members['f']
     self.assertIsInstance(f, abstract.PytdFunction)
-    self.assertEqual(repr(f.signatures[0]), 'def f(self: C, x: Any) -> None')
+    self.assertEqual(f.module, '<test>')
+    self.assertEqual(repr(f.signatures[0]), 'def C.f(self: C, x: Any) -> None')
 
   def test_constant(self):
     pytd_cls = self.build_pytd("""
@@ -90,6 +91,24 @@ class PytdClassToValueTest(ConverterTestBase):
     nested_class = cls.members['D']
     self.assertIsInstance(nested_class, abstract.SimpleClass)
     self.assertEqual(nested_class.name, 'D')
+
+  def test_bases(self):
+    pytd_cls = self.build_pytd("""
+      class C: ...
+      class D(C): ...
+    """, 'D')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    self.assertEqual(cls.bases, (abstract.SimpleClass(self.ctx, 'C', {}),))
+
+  def test_metaclass(self):
+    pytd_cls = self.build_pytd("""
+      class Meta(type): ...
+      class C(metaclass=Meta): ...
+    """, 'C')
+    cls = self.conv.pytd_class_to_value(pytd_cls)
+    metaclass = cls.metaclass
+    self.assertIsNotNone(metaclass)
+    self.assertEqual(metaclass.name, 'Meta')
 
 
 class PytdAliasToValueTest(ConverterTestBase):

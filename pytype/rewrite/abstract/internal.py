@@ -1,6 +1,7 @@
 """Abstract types used internally by pytype."""
 
-from typing import Dict, Tuple
+import collections
+from typing import Dict, Optional, Tuple
 
 import immutabledict
 
@@ -11,39 +12,57 @@ from pytype.rewrite.abstract import base
 _Variable = base.AbstractVariableType
 
 
-class ConstKeyDict(base.BaseValue):
-  """Dictionary with constant literal keys.
-
-  Used by the python interpreter to construct function args.
-  """
-
-  def __init__(self, ctx: base.ContextType, constant: Dict[str, _Variable]):
-    super().__init__(ctx)
-    assert isinstance(constant, dict), constant
-    self.constant = constant
-
-  def __repr__(self):
-    return f"ConstKeyDict({self.constant!r})"
-
-  @property
-  def _attrs(self):
-    return (immutabledict.immutabledict(self.constant),)
-
-
 class FunctionArgTuple(base.BaseValue):
   """Representation of a function arg tuple."""
 
-  def __init__(self, ctx: base.ContextType, constant: Tuple[_Variable, ...]):
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      constant: Tuple[_Variable, ...] = (),
+      indefinite: bool = False,
+  ):
     super().__init__(ctx)
     assert isinstance(constant, tuple), constant
     self.constant = constant
+    self.indefinite = indefinite
 
   def __repr__(self):
-    return f"FunctionArgTuple({self.constant!r})"
+    indef = "+" if self.indefinite else ""
+    return f"FunctionArgTuple({indef}{self.constant!r})"
 
   @property
   def _attrs(self):
-    return (self.constant,)
+    return (self.constant, self.indefinite)
+
+
+class FunctionArgDict(base.BaseValue):
+  """Representation of a function kwarg dict."""
+
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      constant: Optional[Dict[str, _Variable]] = None,
+      indefinite: bool = False,
+  ):
+    super().__init__(ctx)
+    constant = constant or {}
+    self._check_keys(constant)
+    self.constant = constant
+    self.indefinite = indefinite
+
+  def _check_keys(self, constant: Dict[str, _Variable]):
+    """Runtime check to ensure the invariant."""
+    assert isinstance(constant, dict), constant
+    if not all(isinstance(k, str) for k in constant):
+      raise ValueError("Passing a non-string key to a function arg dict")
+
+  def __repr__(self):
+    indef = "+" if self.indefinite else ""
+    return f"FunctionArgDict({indef}{self.constant!r})"
+
+  @property
+  def _attrs(self):
+    return (immutabledict.immutabledict(self.constant), self.indefinite)
 
 
 class Splat(base.BaseValue):
@@ -57,6 +76,17 @@ class Splat(base.BaseValue):
   def __init__(self, ctx: base.ContextType, iterable: base.BaseValue):
     super().__init__(ctx)
     self.iterable = iterable
+
+  @classmethod
+  def any(cls, ctx: base.ContextType):
+    return cls(ctx, ctx.consts.Any)
+
+  def get_concrete_iterable(self):
+    if (isinstance(self.iterable, base.PythonConstant) and
+        isinstance(self.iterable.constant, collections.abc.Iterable)):
+      return self.iterable.constant
+    else:
+      raise ValueError("Not a concrete iterable")
 
   def __repr__(self):
     return f"splat({self.iterable!r})"

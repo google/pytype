@@ -36,7 +36,7 @@ List = _containers.List
 Set = _containers.Set
 Tuple = _containers.Tuple
 
-ConstKeyDict = _internal.ConstKeyDict
+FunctionArgDict = _internal.FunctionArgDict
 FunctionArgTuple = _internal.FunctionArgTuple
 Splat = _internal.Splat
 

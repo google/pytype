@@ -34,6 +34,7 @@ class Context:
   abstract_loader: load_abstract.AbstractLoader
   pytd_converter: output.PytdConverter
   consts: load_abstract.Constants
+  types: load_abstract.Types
 
   def __init__(
       self,
@@ -48,5 +49,6 @@ class Context:
     self.abstract_loader = load_abstract.AbstractLoader(self, self.pytd_loader)
     self.pytd_converter = output.PytdConverter(self)
 
-    # We access these all the time, so create a convenient alias.
+    # We access these all the time, so create convenient aliases.
     self.consts = self.abstract_loader.consts
+    self.types = self.abstract_loader.types

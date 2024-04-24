@@ -3,10 +3,11 @@
 import logging
 from typing import Any, FrozenSet, List, Mapping, Optional, Sequence, Set, Type
 
-import immutabledict
 from pycnite import marshal as pyc_marshal
+from pytype import datatypes
 from pytype.blocks import blocks
 from pytype.rewrite import context
+from pytype.rewrite import function_call_helper
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import conditions
@@ -14,8 +15,6 @@ from pytype.rewrite.flow import frame_base
 from pytype.rewrite.flow import variables
 
 log = logging.getLogger(__name__)
-
-_EMPTY_MAP = immutabledict.immutabledict()
 
 # Type aliases
 _AbstractVariable = variables.Variable[abstract.BaseValue]
@@ -67,9 +66,9 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       name: str,
       code: blocks.OrderedCode,
       *,
-      initial_locals: _VarMap = _EMPTY_MAP,
-      initial_enclosing: _VarMap = _EMPTY_MAP,
-      initial_globals: _VarMap = _EMPTY_MAP,
+      initial_locals: _VarMap = datatypes.EMPTY_MAP,
+      initial_enclosing: _VarMap = datatypes.EMPTY_MAP,
+      initial_globals: _VarMap = datatypes.EMPTY_MAP,
       f_back: Optional['Frame'] = None,
   ):
     super().__init__(code, initial_locals)
@@ -95,8 +94,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._classes: List[abstract.InterpreterClass] = []
     # All variables returned via RETURN_VALUE
     self._returns: List[_AbstractVariable] = []
-    # Function kwnames are stored in the vm by KW_NAMES and retrieved by CALL
-    self._kw_names = ()
+    # Handler for function calls.
+    self._call_helper = function_call_helper.FunctionCallHelper(ctx, self)
 
   def __repr__(self):
     return f'Frame({self.name})'
@@ -154,7 +153,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # Set the current state to None so that the load_* and store_* methods
     # cannot be used to modify finalized locals.
     self._current_state = None
-    self.final_locals = immutabledict.immutabledict({
+    self.final_locals = datatypes.immutabledict({
         name: abstract.join_values(self._ctx, var.values)
         for name, var in self._final_locals.items()})
 
@@ -313,27 +312,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def _call_function(
       self,
       func_var: _AbstractVariable,
-      args: abstract.Args,
+      args: abstract.Args['Frame'],
   ) -> None:
     ret_values = []
     for func in func_var.values:
-      if isinstance(func, (abstract.SimpleFunction,
-                           abstract.InterpreterClass,
-                           abstract.BoundFunction)):
+      if isinstance(func, (abstract.BaseFunction, abstract.InterpreterClass)):
         ret = func.call(args)
         ret_values.append(ret.get_return_value())
       elif func is self._ctx.consts.singles['__build_class__']:
-        class_body, name = args.posargs
-        builder = class_body.get_atomic_value(_FrameFunction)
-        frame = builder.call(abstract.Args(frame=self))
-        cls = abstract.InterpreterClass(
-            ctx=self._ctx,
-            name=abstract.get_atomic_constant(name, str),
-            members=dict(frame.final_locals),
-            functions=frame.functions,
-            classes=frame.classes,
-        )
-        log.info('Created class: %s', cls.name)
+        cls = self._call_helper.build_class(args)
+        log.info('Created class: %r', cls)
         self._classes.append(cls)
         ret_values.append(cls)
       else:
@@ -475,7 +463,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       pos_defaults = pop_const(tuple)
     if arg & _Flags.MAKE_FUNCTION_HAS_KW_DEFAULTS:
       packed_kw_def = self._stack.pop()
-      kw_defaults = packed_kw_def.get_atomic_value(abstract.ConstKeyDict)
+      kw_defaults = packed_kw_def.get_atomic_value(abstract.Dict)
     # Make function
     del annot, pos_defaults, kw_defaults  # TODO(b/241479600): Use these
     func = abstract.InterpreterFunction(
@@ -572,110 +560,44 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_KW_NAMES(self, opcode):
     # Stores a list of kw names to be retrieved by CALL
-    self._kw_names = opcode.argval
-
-  def _make_function_args(self, args):
-    """Unpack args into posargs and kwargs (3.11+)."""
-    if self._kw_names:
-      n_kw = len(self._kw_names)
-      posargs = tuple(args[:-n_kw])
-      kw_vals = args[-n_kw:]
-      kwargs = immutabledict.immutabledict(zip(self._kw_names, kw_vals))
-    else:
-      posargs = tuple(args)
-      kwargs = _EMPTY_MAP
-    self._kw_names = ()
-    return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self)
+    self._call_helper.set_kw_names(opcode.argval)
 
   def byte_CALL(self, opcode):
     sentinel, *rest = self._stack.popn(opcode.arg + 2)
     if not sentinel.has_atomic_value(self._ctx.consts.singles['NULL']):
       raise NotImplementedError('CALL not fully implemented')
     func, *args = rest
-    callargs = self._make_function_args(args)
+    callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
-    callargs = abstract.Args(posargs=tuple(args), frame=self)
+    callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
-  def _unpack_starargs(self, starargs) -> abstract.BaseValue:
-    # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
-    # does not yet handle indefinite iterables.
-    posargs = starargs.get_atomic_value()
-    if isinstance(posargs, abstract.FunctionArgTuple):
-      # This has already been converted
-      pass
-    elif isinstance(posargs, abstract.FrozenInstance):
-      # This is indefinite; leave it as-is
-      pass
-    elif isinstance(posargs, abstract.Tuple):
-      posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
-    elif isinstance(posargs, tuple):
-      posargs = abstract.FunctionArgTuple(self._ctx, posargs)
-    elif abstract.is_any(posargs):
-      return self._ctx.abstract_loader.load_raw_type(tuple).instantiate()
-    else:
-      assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
-    return posargs
-
-  def _unpack_starstarargs(self, starstarargs) -> abstract.BaseValue:
-    kwargs = starstarargs.get_atomic_value()
-    if isinstance(kwargs, abstract.ConstKeyDict):
-      # This has already been converted
-      pass
-    elif isinstance(kwargs, abstract.FrozenInstance):
-      # This is indefinite; leave it as-is
-      pass
-    elif isinstance(kwargs, abstract.PythonConstant):
-      assert isinstance(kwargs.constant, dict)
-      kwargs = abstract.ConstKeyDict(self._ctx, {
-          abstract.get_atomic_constant(k, str): v
-          for k, v in kwargs.constant.items()
-      })
-    elif abstract.is_any(kwargs):
-      kwargs = self._ctx.abstract_loader.load_raw_type(dict).instantiate()
-    else:
-      assert False, f'unexpected kwargs type: {kwargs}: {type(kwargs)}'
-    return kwargs
+  def byte_CALL_FUNCTION_KW(self, opcode):
+    kwnames_var = self._stack.pop()
+    args = self._stack.popn(opcode.arg)
+    func = self._stack.pop()
+    kwnames = [abstract.get_atomic_constant(key, str)
+               for key in abstract.get_atomic_constant(kwnames_var, tuple)]
+    self._call_helper.set_kw_names(kwnames)
+    callargs = self._call_helper.make_function_args(args)
+    self._call_function(func, callargs)
 
   def byte_CALL_FUNCTION_EX(self, opcode):
-    # Convert **kwargs
     if opcode.arg & _Flags.CALL_FUNCTION_EX_HAS_KWARGS:
       starstarargs = self._stack.pop()
-      unpacked_starstarargs = self._unpack_starstarargs(starstarargs)
-      if isinstance(
-          unpacked_starstarargs, (abstract.Dict, abstract.ConstKeyDict)):
-        # We have a concrete dict we are unpacking; move it into kwargs
-        kwargs = unpacked_starstarargs.constant
-        starstarargs = None
-      else:
-        # We have an indefinite dict, leave it in starstarargs
-        kwargs = _EMPTY_MAP
     else:
-      kwargs = _EMPTY_MAP
       starstarargs = None
-    # Convert *args
     starargs = self._stack.pop()
-    unpacked_starargs = self._unpack_starargs(starargs)
-    if isinstance(
-        unpacked_starargs, (abstract.Tuple, abstract.FunctionArgTuple)):
-      # We have a concrete tuple we are unpacking; move it into posargs
-      posargs = unpacked_starargs.constant
-      starargs = None
-    else:
-      # We have an indefinite tuple; leave it in starargs
-      posargs = ()
+    callargs = self._call_helper.make_function_args_ex(starargs, starstarargs)
     # Retrieve and call the function
     func = self._stack.pop()
     if self._code.python_version >= (3, 11):
       # the compiler puts a NULL on the stack before function calls
       self._stack.pop_and_discard()
-    callargs = abstract.Args(
-        posargs=posargs, kwargs=kwargs, starargs=starargs,
-        starstarargs=starstarargs, frame=self)
     self._call_function(func, callargs)
 
   def byte_CALL_METHOD(self, opcode):
@@ -697,6 +619,16 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_LOAD_BUILD_CLASS(self, opcode):
     self._stack.push(self._ctx.consts.singles['__build_class__'].to_variable())
+
+  def byte_BINARY_SUBSCR(self, opcode):
+    obj_var, subscr_var = self._stack.popn(2)
+    try:
+      obj = obj_var.get_atomic_value(abstract.SimpleClass)
+    except ValueError as e:
+      msg = 'BINARY_SUBSCR only implemented for type annotations.'
+      raise NotImplementedError(msg) from e
+    ret = obj.set_type_parameters(subscr_var)
+    self._stack.push(ret.to_variable())
 
   # ---------------------------------------------------------------
   # Build and extend collections
@@ -735,12 +667,10 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # to abstract objects because they are used internally to construct function
     # call args.
     keys = abstract.get_atomic_constant(keys, tuple)
-    # Unpack the keys into raw strings.
-    keys = [abstract.get_atomic_constant(k, str) for k in keys]
     assert len(keys) == n_elts
     vals = self._stack.popn(n_elts)
     ret = dict(zip(keys, vals))
-    ret = abstract.ConstKeyDict(self._ctx, ret)
+    ret = abstract.Dict(self._ctx, ret)
     self._stack.push(ret.to_variable())
 
   def byte_LIST_APPEND(self, opcode):
@@ -771,12 +701,47 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.setitem(key, val))
 
+  def _unpack_list_extension(self, var: _AbstractVariable) -> abstract.List:
+    try:
+      val = var.get_atomic_value()
+    except ValueError:
+      # This list has multiple possible values, so it is no longer a constant.
+      return abstract.List(
+          self._ctx, [abstract.Splat.any(self._ctx).to_variable()])
+    if isinstance(val, abstract.List):
+      return val
+    else:
+      return abstract.List(
+          self._ctx, [abstract.Splat(self._ctx, val).to_variable()])
+
   def byte_LIST_EXTEND(self, opcode):
     count = opcode.arg
-    val = self._stack.pop()
+    update_var = self._stack.pop()
+    update = self._unpack_list_extension(update_var)
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    self._replace_atomic_stack_value(count, target.extend(val))
+    self._replace_atomic_stack_value(count, target.extend(update))
+
+  def _unpack_dict_update(
+      self, var: _AbstractVariable
+  ) -> Optional[abstract.Dict]:
+    try:
+      val = var.get_atomic_value()
+    except ValueError:
+      return None
+    if isinstance(val, abstract.Dict):
+      return val
+    elif isinstance(val, abstract.FunctionArgDict):
+      if val.indefinite:
+        return None
+      return abstract.Dict.from_function_arg_dict(self._ctx, val)
+    elif abstract.is_any(val):
+      return None
+    elif isinstance(val, abstract.BaseInstance):
+      # This is an object with no concrete python value
+      return None
+    else:
+      raise ValueError('Unexpected dict update:', val)
 
   def byte_DICT_MERGE(self, opcode):
     # DICT_MERGE is like DICT_UPDATE but raises an exception for duplicate keys.
@@ -784,15 +749,38 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def byte_DICT_UPDATE(self, opcode):
     count = opcode.arg
-    val = self._stack.pop()
+    update_var = self._stack.pop()
+    update = self._unpack_dict_update(update_var)
     target_var = self._stack.peek(count)
     target = target_var.get_atomic_value()
-    self._replace_atomic_stack_value(count, target.update(val))
+    if update is None:
+      # The update var has multiple possible values, or no constant, so we
+      # cannot merge it into the constant dict. We also don't know if existing
+      # items have been overwritten, so we need to return a new 'any' dict.
+      ret = self._ctx.types[dict].instantiate()
+    else:
+      ret = target.update(update)
+    self._replace_atomic_stack_value(count, ret)
 
   def byte_LIST_TO_TUPLE(self, opcode):
     target_var = self._stack.pop()
     target = abstract.get_atomic_constant(target_var, list)
     ret = abstract.Tuple(self._ctx, tuple(target)).to_variable()
+    self._stack.push(ret)
+
+  def byte_FORMAT_VALUE(self, opcode):
+    if opcode.arg & pyc_marshal.Flags.FVS_MASK:
+      self._stack.pop_and_discard()
+    # FORMAT_VALUE pops, formats and pushes back a string, so we just need to
+    # push a new string onto the stack.
+    self._stack.pop_and_discard()
+    ret = self._ctx.types[str].instantiate().to_variable()
+    self._stack.push(ret)
+
+  def byte_BUILD_STRING(self, opcode):
+    # Pop n arguments off the stack and build a string out of them
+    self._stack.popn(opcode.arg)
+    ret = self._ctx.types[str].instantiate().to_variable()
     self._stack.push(ret)
 
   # ---------------------------------------------------------------

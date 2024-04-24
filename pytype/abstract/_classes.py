@@ -42,8 +42,6 @@ class BuildClass(_base.BaseValue):
     args = args.simplify(node, self.ctx)
     funcvar, name = args.posargs[0:2]
     kwargs = args.namedargs
-    # TODO(mdemello): Check if there are any changes between python2 and
-    # python3 in the final metaclass computation.
     # TODO(b/123450483): Any remaining kwargs need to be passed to the
     # metaclass.
     metaclass = kwargs.get("metaclass", None)

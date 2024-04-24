@@ -24,6 +24,7 @@ class ContextType(Protocol):
   abstract_loader: Any
   pytd_converter: Any
   consts: Any
+  types: Any
 
 
 class BaseValue(types.BaseValue, abc.ABC):
@@ -136,6 +137,9 @@ class Singleton(BaseValue):
   def instantiate(self) -> 'Singleton':
     return self
 
+  def get_attribute(self, name: str) -> 'Singleton':
+    return self
+
 
 class Union(BaseValue):
   """Union of values."""
@@ -160,5 +164,6 @@ class Union(BaseValue):
 
   def instantiate(self):
     return Union(self._ctx, tuple(o.instantiate() for o in self.options))
+
 
 AbstractVariableType = variables.Variable[BaseValue]

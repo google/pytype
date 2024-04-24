@@ -30,7 +30,6 @@ class FrameTestBase(test_utils.ContextfulTestBase):
           name: value.to_variable() for name, value in module_globals.items()}
     else:
       initial_locals = initial_globals = {}
-    self._kw_names = ()
     return frame_lib.Frame(self.ctx, name, code, initial_locals=initial_locals,
                            initial_globals=initial_globals)
 
@@ -475,6 +474,31 @@ class FrameTest(FrameTestBase):
     frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
     frame.run()  # Should not crash
 
+  def test_class_bases(self):
+    frame = self._make_frame("""
+      class C:
+        pass
+      class D(C):
+        pass
+    """)
+    frame.run()
+    c = _get(frame, 'C', abstract.InterpreterClass)
+    d = _get(frame, 'D', abstract.InterpreterClass)
+    self.assertFalse(c.bases)
+    self.assertEqual(d.bases, [c])
+
+  def test_metaclass(self):
+    frame = self._make_frame("""
+      class Meta(type):
+        pass
+      class C(metaclass=Meta):
+        pass
+    """)
+    frame.run()
+    meta = _get(frame, 'Meta', abstract.InterpreterClass)
+    c = _get(frame, 'C', abstract.InterpreterClass)
+    self.assertEqual(c.metaclass, meta)
+
 
 class BuildConstantsTest(FrameTestBase):
 
@@ -541,11 +565,11 @@ class BuildConstantsTest(FrameTestBase):
       b = 2
       c = 3
       constant = {'a': a, 'b': b, 'c': c}
-    """, typ=abstract.ConstKeyDict)
+    """, typ=abstract.Dict)
     self.assertEqual(constant.constant, {
-        'a': self._const_var(1, 'a'),
-        'b': self._const_var(2, 'b'),
-        'c': self._const_var(3, 'c'),
+        self._const_var('a'): self._const_var(1, 'a'),
+        self._const_var('b'): self._const_var(2, 'b'),
+        self._const_var('c'): self._const_var(3, 'c'),
     })
 
 
@@ -630,10 +654,10 @@ class FunctionTest(FrameTestBase):
         pass
       f(1, y=2)
     """)
-    self.assertEqual(frame._kw_names, ('y',))
+    self.assertEqual(frame._call_helper._kw_names, ('y',))
     oparg = frame.current_opcode.arg  # pytype: disable=attribute-error
     _, _, *args = frame._stack.popn(oparg + 2)
-    callargs = frame._make_function_args(args)
+    callargs = frame._call_helper.make_function_args(args)
     self.assertConstantVar(callargs.posargs[0], 1)
     self.assertConstantVar(callargs.kwargs['y'], 2)
 

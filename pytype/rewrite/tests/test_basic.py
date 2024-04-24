@@ -81,6 +81,18 @@ class BasicTest(RewriteTest):
         def f(self) -> int: ...
     """)
 
+  def test_inheritance(self):
+    ty = self.Infer("""
+      class C:
+        pass
+      class D(C):
+        pass
+    """)
+    self.assertTypesMatchPytd(ty, """
+      class C: ...
+      class D(C): ...
+    """)
+
 
 class ImportsTest(RewriteTest):
   """Import tests."""
@@ -128,6 +140,51 @@ class ImportsTest(RewriteTest):
       from os import path as path2
       assert_type(path2, "module")
     """)
+
+  def test_type_subscript(self):
+    self.Check("""
+      IntList = list[int]
+      def f(xs: IntList) -> list[str]:
+        return ["hello world"]
+      a = f([1, 2, 3])
+      assert_type(a, list)
+    """)
+
+  def test_fstrings(self):
+    self.Check("""
+      x = 1
+      y = 2
+      z = (
+        f'x = {x}'
+        ' and '
+        f'y = {y}'
+      )
+      assert_type(z, str)
+    """)
+
+
+@test_base.skip('Under construction')
+class EnumTest(RewriteTest):
+  """Enum tests."""
+
+  def test_member(self):
+    self.Check("""
+      import enum
+      class E(enum.Enum):
+        X = 42
+      assert_type(E.X, E)
+    """)
+
+  def test_member_pyi(self):
+    with self.DepTree([('foo.pyi', """
+      import enum
+      class E(enum.Enum):
+        X = 42
+    """)]):
+      self.Check("""
+        import foo
+        assert_type(foo.E.X, foo.E)
+      """)
 
 
 if __name__ == '__main__':

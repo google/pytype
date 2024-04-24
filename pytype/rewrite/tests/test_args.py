@@ -68,6 +68,60 @@ class FunctionCallTest(RewriteTest):
       f(*a, **b)
     """)
 
+  @test_utils.skipBeforePy((3, 9), 'Relies on 3.9+ bytecode')
+  def test_unpack_posargs(self):
+    self.Check("""
+      def f(x, y, z):
+        return g(*x, *y, *z)
+
+      def g(*args):
+        return h(*args)
+
+      def h(p, q, r, s, t, u):
+        return u
+
+      ret = f((1, 2), (3, 4), (5, 6))
+      assert_type(ret, int)
+    """)
+
+  def test_indef_starstarargs(self):
+    self.Check("""
+      def f(**args):
+        return g(**args)
+
+      def g(x, y, z):
+        return z
+    """)
+
+  def test_forward_starstarargs(self):
+    self.Check("""
+      def f(**args):
+        return g(**args)
+
+      def g(**args):
+        return h(**args)
+
+      def h(p, q, r):
+        return r
+
+      args = {'p': 1, 'q': 2, 'r': 3, 's': 4}
+      ret = f(**args)
+      assert_type(ret, int)
+    """)
+
+  def test_capture_starstarargs(self):
+    self.Check("""
+      def f(**args):
+        return g(args)
+
+      def g(args):
+        return args
+
+      args = {'p': 1, 'q': 2, 'r': 3, 's': 4}
+      ret = f(**args)
+      assert_type(ret, dict)
+    """)
+
 
 if __name__ == '__main__':
   test_base.main()

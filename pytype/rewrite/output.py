@@ -32,7 +32,7 @@ class PytdConverter:
     """
     if isinstance(val, abstract.SimpleClass):
       return self._class_to_pytd_def(val)
-    elif isinstance(val, (abstract.SimpleFunction, abstract.BoundFunction)):
+    elif isinstance(val, abstract.BaseFunction):
       return self._function_to_pytd_def(val)
     else:
       raise NotImplementedError(
@@ -67,10 +67,13 @@ class PytdConverter:
     for member_name, member_val in instance.members.items():
       member_type = self.to_pytd_type(member_val)
       constants.append(pytd.Constant(name=member_name, type=member_type))
+    keywords = tuple((k, self.to_pytd_type_of_instance(v))
+                     for k, v in val.keywords.items())
+    bases = tuple(self.to_pytd_type_of_instance(base) for base in val.bases)
     return pytd.Class(
         name=val.name,
-        keywords=(),
-        bases=(),
+        keywords=keywords,
+        bases=bases,
         methods=tuple(methods),
         constants=tuple(constants),
         classes=tuple(classes),
@@ -173,6 +176,8 @@ class PytdConverter:
       return pytd_utils.JoinTypes(self.to_pytd_type(v) for v in val.options)
     elif isinstance(val, abstract.PythonConstant):
       return pytd.NamedType(f'builtins.{val.constant.__class__.__name__}')
+    elif isinstance(val, abstract.FunctionArgDict):
+      return pytd.NamedType('builtins.dict')
     elif isinstance(val, abstract.SimpleClass):
       return pytd.GenericType(
           base_type=pytd.NamedType('builtins.type'),

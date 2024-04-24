@@ -1,7 +1,10 @@
 """Conversion from pytd to abstract representations of Python values."""
 
+from typing import Optional, Tuple
+
 from pytype.pytd import pytd
 from pytype.rewrite.abstract import abstract
+from pytype.rewrite.overlays import overlays
 
 
 class _Cache:
@@ -18,6 +21,7 @@ class AbstractConverter:
   def __init__(self, ctx: abstract.ContextType):
     self._ctx = ctx
     self._cache = _Cache()
+    overlays.initialize()
 
   def pytd_class_to_value(self, cls: pytd.Class) -> abstract.SimpleClass:
     """Converts a pytd class to an abstract class."""
@@ -26,35 +30,57 @@ class AbstractConverter:
     # TODO(b/324464265): Handle keywords, bases, decorators, slots, template
     module, _, name = cls.name.rpartition('.')
     members = {}
+    keywords = {kw: self.pytd_type_to_value(val) for kw, val in cls.keywords}
     abstract_class = abstract.SimpleClass(
         ctx=self._ctx,
         name=name,
         members=members,
+        bases=(),
+        keywords=keywords,
         module=module or None)
-    # Cache the class early so that references to it in its members don't cause
-    # infinite recursion.
+    # Cache the class early so that references to it in its members and bases
+    # don't cause infinite recursion.
     self._cache.classes[cls] = abstract_class
     for method in cls.methods:
-      abstract_class.members[method.name] = (
-          self.pytd_function_to_value(method))
+      # For consistency with InterpreterFunction, prepend the class name.
+      full_name = f'{name}.{method.name}'
+      method_value = self.pytd_function_to_value(method, (module, full_name))
+      abstract_class.members[method.name] = method_value
     for constant in cls.constants:
       constant_type = self.pytd_type_to_value(constant.type)
       abstract_class.members[constant.name] = constant_type.instantiate()
     for nested_class in cls.classes:
       abstract_class.members[nested_class.name] = (
           self.pytd_class_to_value(nested_class))
+    bases = []
+    for base in cls.bases:
+      if isinstance(base, pytd.GenericType):
+        # TODO(b/292160579): Handle generics.
+        base = base.base_type
+      if isinstance(base, pytd.ClassType):
+        base = base.cls
+      if isinstance(base, pytd.Class):
+        bases.append(self.pytd_class_to_value(base))
+      else:
+        raise NotImplementedError(f"I can't handle this base class: {base}")
+    abstract_class.bases = tuple(bases)
     return abstract_class
 
   def pytd_function_to_value(
-      self, func: pytd.Function) -> abstract.PytdFunction:
+      self, func: pytd.Function, func_name: Optional[Tuple[str, str]] = None,
+  ) -> abstract.PytdFunction:
     """Converts a pytd function to an abstract function."""
     if func in self._cache.funcs:
       return self._cache.funcs[func]
-    module, _, name = func.name.rpartition('.')
+    if func_name:
+      module, name = func_name
+    else:
+      module, _, name = func.name.rpartition('.')
     signatures = tuple(
         abstract.Signature.from_pytd(self._ctx, name, pytd_sig)
         for pytd_sig in func.signatures)
-    abstract_func = abstract.PytdFunction(
+    builder = overlays.FUNCTIONS.get((module, name), abstract.PytdFunction)
+    abstract_func = builder(
         ctx=self._ctx,
         name=name,
         signatures=signatures,
@@ -96,7 +122,7 @@ class AbstractConverter:
     elif isinstance(typ, pytd.TypeParameter):
       return self._ctx.consts.Any
     elif isinstance(typ, pytd.Literal):
-      return self._ctx.abstract_loader.load_raw_type(type(typ.value))
+      return self._ctx.types[type(typ.value)]
     elif isinstance(typ, pytd.Annotated):
       # We discard the Annotated wrapper for now, but we will need to keep track
       # of it because Annotated is a special form that can be used in generic

@@ -72,6 +72,18 @@ class ClassToPytdDefTest(OutputTestBase):
           def __init__(self) -> None: ...
     """)
 
+  def test_metaclass(self):
+    cls = self.make_value("""
+      class Meta(type):
+        pass
+      class C(metaclass=Meta):
+        pass
+    """)
+    pytd_cls = self.ctx.pytd_converter.to_pytd_def(cls)
+    self.assertPytdEqual(pytd_cls, """
+      class C(metaclass=Meta): ...
+    """)
+
 
 class FunctionToPytdDefTest(OutputTestBase):
 
