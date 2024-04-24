@@ -1,9 +1,0 @@
-[submodule "typeshed"]
-	path = typeshed
-	url = https://github.com/python/typeshed.git
-[submodule "googletest"]
-	path = googletest
-	url = https://github.com/google/googletest
-[submodule "pybind11"]
-	path = pybind11
-	url = https://github.com/pybind/pybind11

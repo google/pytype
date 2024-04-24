@@ -163,7 +163,6 @@ class ImportsTest(RewriteTest):
     """)
 
 
-@test_base.skip('Under construction')
 class EnumTest(RewriteTest):
   """Enum tests."""
 
@@ -175,6 +174,7 @@ class EnumTest(RewriteTest):
       assert_type(E.X, E)
     """)
 
+  @test_base.skip('Under construction')
   def test_member_pyi(self):
     with self.DepTree([('foo.pyi', """
       import enum
