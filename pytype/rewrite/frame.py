@@ -8,6 +8,7 @@ from pytype import datatypes
 from pytype.blocks import blocks
 from pytype.rewrite import context
 from pytype.rewrite import function_call_helper
+from pytype.rewrite import operators
 from pytype.rewrite import stack
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import conditions
@@ -329,7 +330,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._stack.push(
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
 
-  def _load_attr(
+  def load_attr(
       self, target_var: _AbstractVariable, attr_name: str) -> _AbstractVariable:
     if target_var.name:
       name = f'{target_var.name}.{attr_name}'
@@ -344,7 +345,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       for target in target_var.values:
         attr = target.get_attribute(attr_name)
         if not attr:
-          raise NotImplementedError('Attribute error') from e
+          raise AttributeError(attr_name) from e
         # TODO(b/241479600): If there's a condition on the target binding, we
         # should copy it.
         attr_bindings.append(variables.Binding(attr))
@@ -512,7 +513,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_LOAD_ATTR(self, opcode):
     attr_name = opcode.argval
     target_var = self._stack.pop()
-    self._stack.push(self._load_attr(target_var, attr_name))
+    self._stack.push(self.load_attr(target_var, attr_name))
 
   def byte_LOAD_METHOD(self, opcode):
     method_name = opcode.argval
@@ -522,7 +523,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
     self._stack.push(self._ctx.consts.singles['NULL'].to_variable())
-    self._stack.push(self._load_attr(instance_var, method_name))
+    self._stack.push(self.load_attr(instance_var, method_name))
 
   def byte_IMPORT_NAME(self, opcode):
     full_name = opcode.argval
@@ -610,15 +611,157 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_LOAD_BUILD_CLASS(self, opcode):
     self._stack.push(self._ctx.consts.singles['__build_class__'].to_variable())
 
+  # ---------------------------------------------------------------
+  # Operators
+
+  def unary_operator(self, name):
+    x = self._stack.pop()
+    f = self.load_attr(x, name)
+    self._call_function(f, abstract.Args())
+
+  def binary_operator(self, name):
+    (x, y) = self._stack.popn(2)
+    ret = operators.call_binary(self._ctx, name, x, y)
+    self._stack.push(ret)
+
+  def inplace_operator(self, name):
+    (x, y) = self._stack.popn(2)
+    ret = operators.call_inplace(self._ctx, self, name, x, y)
+    self._stack.push(ret)
+
+  def byte_UNARY_NEGATIVE(self, opcode):
+    self.unary_operator('__neg__')
+
+  def byte_UNARY_POSITIVE(self, opcode):
+    self.unary_operator('__pos__')
+
+  def byte_UNARY_INVERT(self, opcode):
+    self.unary_operator('__invert__')
+
+  def byte_BINARY_MATRIX_MULTIPLY(self, opcode):
+    self.binary_operator('__matmul__')
+
+  def byte_BINARY_ADD(self, opcode):
+    self.binary_operator('__add__')
+
+  def byte_BINARY_SUBTRACT(self, opcode):
+    self.binary_operator('__sub__')
+
+  def byte_BINARY_MULTIPLY(self, opcode):
+    self.binary_operator('__mul__')
+
+  def byte_BINARY_MODULO(self, opcode):
+    self.binary_operator('__mod__')
+
+  def byte_BINARY_LSHIFT(self, opcode):
+    self.binary_operator('__lshift__')
+
+  def byte_BINARY_RSHIFT(self, opcode):
+    self.binary_operator('__rshift__')
+
+  def byte_BINARY_AND(self, opcode):
+    self.binary_operator('__and__')
+
+  def byte_BINARY_XOR(self, opcode):
+    self.binary_operator('__xor__')
+
+  def byte_BINARY_OR(self, opcode):
+    self.binary_operator('__or__')
+
+  def byte_BINARY_FLOOR_DIVIDE(self, opcode):
+    self.binary_operator('__floordiv__')
+
+  def byte_BINARY_TRUE_DIVIDE(self, opcode):
+    self.binary_operator('__truediv__')
+
+  def byte_BINARY_POWER(self, opcode):
+    self.binary_operator('__pow__')
+
   def byte_BINARY_SUBSCR(self, opcode):
     obj_var, subscr_var = self._stack.popn(2)
     try:
+      # See if we are specialising a generic class
       obj = obj_var.get_atomic_value(abstract.SimpleClass)
-    except ValueError as e:
-      msg = 'BINARY_SUBSCR only implemented for type annotations.'
-      raise NotImplementedError(msg) from e
+    except ValueError:
+      # If not, proceed with the regular binary operator call
+      return self.binary_operator('__getitem__')
     ret = obj.set_type_parameters(subscr_var)
     self._stack.push(ret.to_variable())
+
+  def byte_INPLACE_MATRIX_MULTIPLY(self, opcode):
+    self.inplace_operator('__imatmul__')
+
+  def byte_INPLACE_ADD(self, opcode):
+    self.inplace_operator('__iadd__')
+
+  def byte_INPLACE_SUBTRACT(self, opcode):
+    self.inplace_operator('__isub__')
+
+  def byte_INPLACE_MULTIPLY(self, opcode):
+    self.inplace_operator('__imul__')
+
+  def byte_INPLACE_MODULO(self, opcode):
+    self.inplace_operator('__imod__')
+
+  def byte_INPLACE_POWER(self, opcode):
+    self.inplace_operator('__ipow__')
+
+  def byte_INPLACE_LSHIFT(self, opcode):
+    self.inplace_operator('__ilshift__')
+
+  def byte_INPLACE_RSHIFT(self, opcode):
+    self.inplace_operator('__irshift__')
+
+  def byte_INPLACE_AND(self, opcode):
+    self.inplace_operator('__iand__')
+
+  def byte_INPLACE_XOR(self, opcode):
+    self.inplace_operator('__ixor__')
+
+  def byte_INPLACE_OR(self, opcode):
+    self.inplace_operator('__ior__')
+
+  def byte_INPLACE_FLOOR_DIVIDE(self, opcode):
+    self.inplace_operator('__ifloordiv__')
+
+  def byte_INPLACE_TRUE_DIVIDE(self, opcode):
+    self.inplace_operator('__itruediv__')
+
+  def byte_BINARY_OP(self, opcode):
+    """Implementation of BINARY_OP opcode."""
+    # Python 3.11 unified a lot of BINARY_* and INPLACE_* opcodes into a single
+    # BINARY_OP. The underlying operations remain unchanged, so we can just
+    # dispatch to them.
+    binops = [
+        self.byte_BINARY_ADD,
+        self.byte_BINARY_AND,
+        self.byte_BINARY_FLOOR_DIVIDE,
+        self.byte_BINARY_LSHIFT,
+        self.byte_BINARY_MATRIX_MULTIPLY,
+        self.byte_BINARY_MULTIPLY,
+        self.byte_BINARY_MODULO,  # NB_REMAINDER in 3.11
+        self.byte_BINARY_OR,
+        self.byte_BINARY_POWER,
+        self.byte_BINARY_RSHIFT,
+        self.byte_BINARY_SUBTRACT,
+        self.byte_BINARY_TRUE_DIVIDE,
+        self.byte_BINARY_XOR,
+        self.byte_INPLACE_ADD,
+        self.byte_INPLACE_AND,
+        self.byte_INPLACE_FLOOR_DIVIDE,
+        self.byte_INPLACE_LSHIFT,
+        self.byte_INPLACE_MATRIX_MULTIPLY,
+        self.byte_INPLACE_MULTIPLY,
+        self.byte_INPLACE_MODULO,  # NB_INPLACE_REMAINDER in 3.11
+        self.byte_INPLACE_OR,
+        self.byte_INPLACE_POWER,
+        self.byte_INPLACE_RSHIFT,
+        self.byte_INPLACE_SUBTRACT,
+        self.byte_INPLACE_TRUE_DIVIDE,
+        self.byte_INPLACE_XOR,
+    ]
+    binop = binops[opcode.arg]
+    binop(opcode)
 
   # ---------------------------------------------------------------
   # Build and extend collections

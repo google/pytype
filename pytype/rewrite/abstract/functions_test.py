@@ -29,6 +29,10 @@ class FakeFrame:
   def get_return_value(self):
     return self.ctx.consts.Any
 
+  def load_attr(self, target_var, attr_name):
+    del target_var, attr_name  # unused
+    return self.ctx.consts.Any.to_variable()
+
 
 def _get_const(src: str):
   module_code = test_utils.parse(src)

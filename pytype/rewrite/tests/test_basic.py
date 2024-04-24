@@ -93,6 +93,56 @@ class BasicTest(RewriteTest):
       class D(C): ...
     """)
 
+  def test_fstrings(self):
+    self.Check("""
+      x = 1
+      y = 2
+      z = (
+        f'x = {x}'
+        ' and '
+        f'y = {y}'
+      )
+      assert_type(z, str)
+    """)
+
+
+class OperatorsTest(RewriteTest):
+  """Operator tests."""
+
+  def test_type_subscript(self):
+    self.Check("""
+      IntList = list[int]
+      def f(xs: IntList) -> list[str]:
+        return ["hello world"]
+      a = f([1, 2, 3])
+      assert_type(a, list)
+    """)
+
+  def test_binop(self):
+    self.Check("""
+      x = 1
+      y = 2
+      z = x + y
+    """)
+
+  def test_inplace_binop(self):
+    self.Check("""
+      class A:
+        def __iadd__(self, other):
+          return self
+      x = A()
+      y = A()
+      x += y
+      assert_type(x, A)
+    """)
+
+  def test_inplace_fallback(self):
+    self.Check("""
+      x = 1
+      y = 2
+      x -= y
+    """)
+
 
 class ImportsTest(RewriteTest):
   """Import tests."""
@@ -139,27 +189,6 @@ class ImportsTest(RewriteTest):
 
       from os import path as path2
       assert_type(path2, "module")
-    """)
-
-  def test_type_subscript(self):
-    self.Check("""
-      IntList = list[int]
-      def f(xs: IntList) -> list[str]:
-        return ["hello world"]
-      a = f([1, 2, 3])
-      assert_type(a, list)
-    """)
-
-  def test_fstrings(self):
-    self.Check("""
-      x = 1
-      y = 2
-      z = (
-        f'x = {x}'
-        ' and '
-        f'y = {y}'
-      )
-      assert_type(z, str)
     """)
 
 
