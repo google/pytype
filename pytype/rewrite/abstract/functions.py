@@ -53,6 +53,8 @@ class FrameType(Protocol):
 
   def get_return_value(self) -> base.BaseValue: ...
 
+  def load_attr(self, target_var: _Var, attr_name: str) -> _Var: ...
+
 
 _FrameT = TypeVar('_FrameT', bound=FrameType)
 

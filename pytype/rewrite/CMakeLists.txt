@@ -103,6 +103,7 @@ py_library(
   DEPS
     .context
     .function_call_helper
+    .operators
     .stack
     pytype.utils
     pytype.blocks.blocks
@@ -117,7 +118,7 @@ py_test(
     frame_test.py
   DEPS
     .frame
-    pytype.blocks.blocks
+    .operators
     pytype.pyc.pyc
     pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
@@ -164,6 +165,28 @@ py_test(
     .vm
     pytype.pytd.pytd
     pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
+)
+
+py_library(
+  NAME
+    operators
+  SRCS
+    operators.py
+  DEPS
+    pytype.pytd.pytd
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.flow.flow
+)
+
+py_test(
+  NAME
+    operators_test
+  SRCS
+    operators_test.py
+  DEPS
+    .operators
+    pytype.rewrite.flow.flow
     pytype.rewrite.tests.test_utils
 )
 

@@ -4,6 +4,7 @@ from unittest import mock
 
 from pytype.pyc import opcodes
 from pytype.rewrite import frame as frame_lib
+from pytype.rewrite import operators
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.tests import test_utils
 from typing_extensions import assert_type
@@ -679,6 +680,18 @@ class FunctionTest(FrameTestBase):
     self.assertConstantVar(callargs.posargs[0], 1)
     self.assertConstantVar(callargs.posargs[1], 2)
     self.assertConstantVar(callargs.kwargs['z'], 3)
+
+  def test_inplace_fallback(self):
+    """Test inplace operator falling back to non-inplace."""
+    frame = self._make_frame("""
+      a = 1
+      a += 2
+    """)
+    with mock.patch.object(operators, 'call_binary') as mock_call:
+      frame.run()
+    posargs, _ = mock_call.call_args_list[0]
+    op = posargs[1]
+    self.assertEqual(op, '__add__')
 
 
 if __name__ == '__main__':
