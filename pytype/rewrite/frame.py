@@ -574,7 +574,17 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def byte_CALL_FUNCTION(self, opcode):
     args = self._stack.popn(opcode.arg)
     func = self._stack.pop()
-    callargs = abstract.Args(posargs=tuple(args), frame=self)
+    callargs = self._call_helper.make_function_args(args)
+    self._call_function(func, callargs)
+
+  def byte_CALL_FUNCTION_KW(self, opcode):
+    kwnames_var = self._stack.pop()
+    args = self._stack.popn(opcode.arg)
+    func = self._stack.pop()
+    kwnames = [abstract.get_atomic_constant(key, str)
+               for key in abstract.get_atomic_constant(kwnames_var, tuple)]
+    self._call_helper.set_kw_names(kwnames)
+    callargs = self._call_helper.make_function_args(args)
     self._call_function(func, callargs)
 
   def byte_CALL_FUNCTION_EX(self, opcode):
