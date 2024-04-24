@@ -213,7 +213,7 @@ class MutableInstance(BaseInstance):
 
   @property
   def _attrs(self):
-    return (self.cls, datatypes.immutabledict(self.members))
+    return (self.cls.full_name, datatypes.immutabledict(self.members))
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     if name in self.members:
@@ -242,8 +242,8 @@ class FrozenInstance(BaseInstance):
   @property
   def _attrs(self):
     # Since a FrozenInstance is the canonical instance of its class and cannot
-    # change, the hash of the class is enough to uniquely identify it.
-    return (self.cls,)
+    # change, the class is enough to uniquely identify it.
+    return (self.cls.full_name,)
 
   def set_attribute(self, name: str, value: base.BaseValue) -> None:
     # The VM may try to set an attribute on a frozen instance in the process of

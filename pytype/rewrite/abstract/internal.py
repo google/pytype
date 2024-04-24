@@ -44,7 +44,7 @@ class FunctionArgDict(base.BaseValue):
       constant: Optional[Dict[str, _Variable]] = None,
       indefinite: bool = False,
   ):
-    super().__init__(ctx)
+    self._ctx = ctx
     constant = constant or {}
     self._check_keys(constant)
     self.constant = constant

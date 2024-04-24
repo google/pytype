@@ -40,6 +40,8 @@ class FrameType(Protocol):
   name: str
   final_locals: Mapping[str, base.BaseValue]
   stack: Sequence['FrameType']
+  functions: Sequence['InterpreterFunction']
+  classes: Sequence[Any]
 
   def make_child_frame(
       self,
