@@ -1,12 +1,12 @@
 """Function call helper used by VM frames."""
 
-import itertools
 from typing import Generic, Optional, Sequence, TypeVar
 
 from pytype import datatypes
 from pytype.rewrite import context
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
+from pytype.rewrite.overlays import overlays
 
 _Var = variables.Variable[abstract.BaseValue]
 _FrameT = TypeVar('_FrameT')
@@ -134,38 +134,17 @@ class FunctionCallHelper(Generic[_FrameT]):
 
     frame = builder.call(abstract.Args(frame=self._frame))
     members = dict(frame.final_locals)
-    metaclass_instance = None
-    for metaclass in itertools.chain([keywords.get('metaclass')],
-                                     (base.metaclass for base in bases)):
-      if not metaclass:
-        continue
-      metaclass_new = metaclass.get_attribute('__new__')
-      if (not isinstance(metaclass_new, abstract.BaseFunction) or
-          metaclass_new.full_name == 'builtins.type.__new__'):
-        continue
-      # The metaclass has overridden type.__new__. Invoke the custom __new__
-      # method to construct the class.
-      metaclass_var = metaclass.to_variable()
-      bases_var = abstract.Tuple(self._ctx, tuple(base_vars)).to_variable()
-      members_var = abstract.Dict(
-          self._ctx, {self._ctx.consts[k].to_variable(): v.to_variable()
-                      for k, v in members.items()}
-      ).to_variable()
-      args = abstract.Args(
-          posargs=(metaclass_var, name_var, bases_var, members_var),
-          frame=self._frame)
-      metaclass_instance = metaclass_new.call(args).get_return_value()
+    cls = abstract.InterpreterClass(
+        ctx=self._ctx,
+        name=name,
+        members=members,
+        bases=bases,
+        keywords=keywords,
+        functions=frame.functions,
+        classes=frame.classes,
+    )
+    for base in bases:
+      if base.full_name in overlays.CLASS_TRANSFORMS:
+        overlays.CLASS_TRANSFORMS[base.full_name](self._ctx, cls)
       break
-    if metaclass_instance and metaclass_instance.full_name == name:
-      cls = metaclass_instance
-    else:
-      cls = abstract.InterpreterClass(
-          ctx=self._ctx,
-          name=name,
-          members=members,
-          bases=bases,
-          keywords=keywords,
-          functions=frame.functions,
-          classes=frame.classes,
-      )
     return cls

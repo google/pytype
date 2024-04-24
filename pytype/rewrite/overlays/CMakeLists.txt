@@ -44,6 +44,7 @@ py_test(
   SRCS
     enum_overlay_test.py
   DEPS
+    .enum_overlay
     pytype.rewrite.abstract.abstract
     pytype.rewrite.tests.test_utils
 )

@@ -10,8 +10,11 @@ from pytype.rewrite.abstract import abstract
 
 _FuncTypeType = Type[abstract.PytdFunction]
 _FuncTypeTypeT = TypeVar('_FuncTypeTypeT', bound=_FuncTypeType)
+_ClsTransformFunc = Callable[[abstract.ContextType, abstract.SimpleClass], None]
+_ClsTransformFuncT = TypeVar('_ClsTransformFuncT', bound=_ClsTransformFunc)
 
 FUNCTIONS: Dict[Tuple[str, str], _FuncTypeType] = {}
+CLASS_TRANSFORMS: Dict[str, _ClsTransformFunc] = {}
 
 
 def register_function(
@@ -19,6 +22,15 @@ def register_function(
   def register(func_builder: _FuncTypeTypeT) -> _FuncTypeTypeT:
     FUNCTIONS[(module, name)] = func_builder
     return func_builder
+  return register
+
+
+def register_class_transform(
+    *, inheritance_hook: str
+) -> Callable[[_ClsTransformFuncT], _ClsTransformFuncT]:
+  def register(transformer: _ClsTransformFuncT) -> _ClsTransformFuncT:
+    CLASS_TRANSFORMS[inheritance_hook] = transformer
+    return transformer
   return register
 
 
