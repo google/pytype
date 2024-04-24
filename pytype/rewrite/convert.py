@@ -64,6 +64,9 @@ class AbstractConverter:
       else:
         raise NotImplementedError(f"I can't handle this base class: {base}")
     abstract_class.bases = tuple(bases)
+    for base in bases:
+      if base.full_name in overlays.CLASS_TRANSFORMS:
+        overlays.CLASS_TRANSFORMS[base.full_name](self._ctx, abstract_class)
     return abstract_class
 
   def pytd_function_to_value(

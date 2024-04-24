@@ -1,3 +1,5 @@
+from typing import cast
+
 from pytype.rewrite.abstract import classes
 from pytype.rewrite.abstract import functions
 from pytype.rewrite.tests import test_utils
@@ -36,6 +38,20 @@ class ClassTest(test_utils.ContextfulTestBase):
     parent = classes.SimpleClass(self.ctx, 'Parent', {})
     child = classes.SimpleClass(self.ctx, 'Child', {}, bases=[parent])
     self.assertEqual(child.mro(), [child, parent, self.ctx.types[object]])
+
+  def test_metaclass(self):
+    type_type = cast(classes.SimpleClass, self.ctx.types[type])
+    meta = classes.SimpleClass(self.ctx, 'Meta', {}, bases=[type_type])
+    cls = classes.SimpleClass(self.ctx, 'C', {}, keywords={'metaclass': meta})
+    self.assertEqual(cls.metaclass, meta)
+
+  def test_inherited_metaclass(self):
+    type_type = cast(classes.SimpleClass, self.ctx.types[type])
+    meta = classes.SimpleClass(self.ctx, 'Meta', {}, bases=[type_type])
+    parent = classes.SimpleClass(self.ctx, 'Parent', {},
+                                 keywords={'metaclass': meta})
+    child = classes.SimpleClass(self.ctx, 'Child', {}, bases=[parent])
+    self.assertEqual(child.metaclass, meta)
 
 
 class MutableInstanceTest(test_utils.ContextfulTestBase):

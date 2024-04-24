@@ -84,7 +84,10 @@ class SimpleClass(base.BaseValue):
 
   @property
   def metaclass(self) -> Optional[base.BaseValue]:
-    return self.keywords.get('metaclass')
+    for cls in self.mro():
+      if 'metaclass' in cls.keywords:
+        return cls.keywords['metaclass']
+    return None
 
   def get_attribute(self, name: str) -> Optional[base.BaseValue]:
     if name in self.members:

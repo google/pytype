@@ -82,6 +82,7 @@ py_library(
     pytype.utils
     pytype.rewrite.abstract.abstract
     pytype.rewrite.flow.flow
+    pytype.rewrite.overlays.overlays
 )
 
 py_test(
