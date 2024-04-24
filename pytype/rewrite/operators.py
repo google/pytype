@@ -6,7 +6,7 @@ from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
 # Type aliases
-_Variable = variables.Variable[abstract.BaseValue]
+_Var = variables.Variable[abstract.BaseValue]
 _Binding = variables.Binding[abstract.BaseValue]
 
 log = logging.getLogger(__name__)
@@ -15,9 +15,9 @@ log = logging.getLogger(__name__)
 def call_binary(
     ctx: abstract.ContextType,
     name: str,
-    x: _Variable,
-    y: _Variable,
-) -> _Variable:
+    x: _Var,
+    y: _Var,
+) -> _Var:
   """Map a binary operator to "magic methods" (__add__ etc.)."""
   del x, y
   log.debug("Calling binary operator %s", name)
@@ -28,9 +28,9 @@ def call_inplace(
     ctx: abstract.ContextType,
     frame: abstract.FrameType,
     iname: str,
-    x: _Variable,
-    y: _Variable,
-) -> _Variable:
+    x: _Var,
+    y: _Var,
+) -> _Var:
   """Try to call a method like __iadd__, possibly fall back to __add__."""
   assert iname.startswith("__i")
   try:

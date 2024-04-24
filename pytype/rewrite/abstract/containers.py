@@ -11,20 +11,20 @@ from pytype.rewrite.abstract import utils
 log = logging.getLogger(__name__)
 
 # Type aliases
-_Variable = base.AbstractVariableType
+_Var = base.AbstractVariableType
 
 
-class List(base.PythonConstant[_List[_Variable]]):
+class List(base.PythonConstant[_List[_Var]]):
   """Representation of a Python list."""
 
-  def __init__(self, ctx: base.ContextType, constant: _List[_Variable]):
+  def __init__(self, ctx: base.ContextType, constant: _List[_Var]):
     assert isinstance(constant, list), constant
     super().__init__(ctx, constant)
 
   def __repr__(self):
     return f'List({self.constant!r})'
 
-  def append(self, var: _Variable) -> 'List':
+  def append(self, var: _Var) -> 'List':
     return List(self._ctx, self.constant + [var])
 
   def extend(self, val: 'List') -> 'List':
@@ -32,11 +32,11 @@ class List(base.PythonConstant[_List[_Variable]]):
     return List(self._ctx, new_constant)
 
 
-class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
+class Dict(base.PythonConstant[_Dict[_Var, _Var]]):
   """Representation of a Python dict."""
 
   def __init__(
-      self, ctx: base.ContextType, constant: _Dict[_Variable, _Variable],
+      self, ctx: base.ContextType, constant: _Dict[_Var, _Var],
   ):
     assert isinstance(constant, dict), constant
     super().__init__(ctx, constant)
@@ -55,7 +55,7 @@ class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
     }
     return cls(ctx, new_constant)
 
-  def setitem(self, key: _Variable, val: _Variable) -> 'Dict':
+  def setitem(self, key: _Var, val: _Var) -> 'Dict':
     return Dict(self._ctx, {**self.constant, key: val})
 
   def update(self, val: 'Dict') -> base.BaseValue:
@@ -69,24 +69,24 @@ class Dict(base.PythonConstant[_Dict[_Variable, _Variable]]):
     return internal.FunctionArgDict(self._ctx, new_const)
 
 
-class Set(base.PythonConstant[_Set[_Variable]]):
+class Set(base.PythonConstant[_Set[_Var]]):
   """Representation of a Python set."""
 
-  def __init__(self, ctx: base.ContextType, constant: _Set[_Variable]):
+  def __init__(self, ctx: base.ContextType, constant: _Set[_Var]):
     assert isinstance(constant, set), constant
     super().__init__(ctx, constant)
 
   def __repr__(self):
     return f'Set({self.constant!r})'
 
-  def add(self, val: _Variable) -> 'Set':
+  def add(self, val: _Var) -> 'Set':
     return Set(self._ctx, self.constant | {val})
 
 
-class Tuple(base.PythonConstant[_Tuple[_Variable, ...]]):
+class Tuple(base.PythonConstant[_Tuple[_Var, ...]]):
   """Representation of a Python tuple."""
 
-  def __init__(self, ctx: base.ContextType, constant: _Tuple[_Variable, ...]):
+  def __init__(self, ctx: base.ContextType, constant: _Tuple[_Var, ...]):
     assert isinstance(constant, tuple), constant
     super().__init__(ctx, constant)
 

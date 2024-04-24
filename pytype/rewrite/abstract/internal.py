@@ -9,7 +9,7 @@ from pytype.rewrite.abstract import base
 
 
 # Type aliases
-_Variable = base.AbstractVariableType
+_Var = base.AbstractVariableType
 
 
 class FunctionArgTuple(base.BaseValue):
@@ -18,7 +18,7 @@ class FunctionArgTuple(base.BaseValue):
   def __init__(
       self,
       ctx: base.ContextType,
-      constant: Tuple[_Variable, ...] = (),
+      constant: Tuple[_Var, ...] = (),
       indefinite: bool = False,
   ):
     super().__init__(ctx)
@@ -41,7 +41,7 @@ class FunctionArgDict(base.BaseValue):
   def __init__(
       self,
       ctx: base.ContextType,
-      constant: Optional[Dict[str, _Variable]] = None,
+      constant: Optional[Dict[str, _Var]] = None,
       indefinite: bool = False,
   ):
     self._ctx = ctx
@@ -50,7 +50,7 @@ class FunctionArgDict(base.BaseValue):
     self.constant = constant
     self.indefinite = indefinite
 
-  def _check_keys(self, constant: Dict[str, _Variable]):
+  def _check_keys(self, constant: Dict[str, _Var]):
     """Runtime check to ensure the invariant."""
     assert isinstance(constant, dict), constant
     if not all(isinstance(k, str) for k in constant):
