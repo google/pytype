@@ -8,7 +8,7 @@ from pytype.rewrite import context
 from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
-_AbstractVariable = variables.Variable[abstract.BaseValue]
+_Var = variables.Variable[abstract.BaseValue]
 _FrameT = TypeVar('_FrameT')
 
 
@@ -24,9 +24,7 @@ class FunctionCallHelper(Generic[_FrameT]):
   def set_kw_names(self, kw_names: Sequence[str]) -> None:
     self._kw_names = kw_names
 
-  def make_function_args(
-      self, args: Sequence[_AbstractVariable],
-  ) -> abstract.Args[_FrameT]:
+  def make_function_args(self, args: Sequence[_Var]) -> abstract.Args[_FrameT]:
     """Unpack args into posargs and kwargs (3.11+)."""
     if self._kw_names:
       n_kw = len(self._kw_names)
@@ -39,8 +37,7 @@ class FunctionCallHelper(Generic[_FrameT]):
     self._kw_names = ()
     return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self._frame)
 
-  def _unpack_starargs(
-      self, starargs: _AbstractVariable) -> abstract.FunctionArgTuple:
+  def _unpack_starargs(self, starargs: _Var) -> abstract.FunctionArgTuple:
     """Unpacks variable positional arguments."""
     # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
     # does not yet handle indefinite iterables.
@@ -62,7 +59,7 @@ class FunctionCallHelper(Generic[_FrameT]):
     return posargs
 
   def _unpack_starstarargs(
-      self, starstarargs: _AbstractVariable) -> abstract.FunctionArgDict:
+      self, starstarargs: _Var) -> abstract.FunctionArgDict:
     """Unpacks variable keyword arguments."""
     kwargs = starstarargs.get_atomic_value()
     if isinstance(kwargs, abstract.FunctionArgDict):
@@ -81,8 +78,8 @@ class FunctionCallHelper(Generic[_FrameT]):
 
   def make_function_args_ex(
       self,
-      starargs: _AbstractVariable,
-      starstarargs: Optional[_AbstractVariable],
+      starargs: _Var,
+      starstarargs: Optional[_Var],
   ) -> abstract.Args[_FrameT]:
     """Makes function args from variable positional and keyword arguments."""
     # Convert *args

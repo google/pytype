@@ -4,16 +4,18 @@ from typing import Any, Sequence, Type, TypeVar, get_origin, overload
 
 from pytype.rewrite.abstract import base
 
+
+_Var = base.AbstractVariableType
 _T = TypeVar('_T')
 
 
 @overload
-def get_atomic_constant(var: base.AbstractVariableType, typ: Type[_T]) -> _T:
+def get_atomic_constant(var: _Var, typ: Type[_T]) -> _T:
   ...
 
 
 @overload
-def get_atomic_constant(var: base.AbstractVariableType, typ: None = ...) -> Any:
+def get_atomic_constant(var: _Var, typ: None = ...) -> Any:
   ...
 
 

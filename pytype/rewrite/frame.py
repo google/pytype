@@ -18,8 +18,8 @@ from pytype.rewrite.flow import variables
 log = logging.getLogger(__name__)
 
 # Type aliases
-_AbstractVariable = variables.Variable[abstract.BaseValue]
-_VarMap = Mapping[str, _AbstractVariable]
+_Var = variables.Variable[abstract.BaseValue]
+_VarMap = Mapping[str, _Var]
 _FrameFunction = abstract.InterpreterFunction['Frame']
 
 # This enum will be used frequently, so alias it
@@ -94,7 +94,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._functions: List[_FrameFunction] = []
     self._classes: List[abstract.InterpreterClass] = []
     # All variables returned via RETURN_VALUE
-    self._returns: List[_AbstractVariable] = []
+    self._returns: List[_Var] = []
     # Handler for function calls.
     self._call_helper = function_call_helper.FunctionCallHelper(ctx, self)
 
@@ -161,23 +161,23 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def _log_stack(self):
     log.debug('stack: %r', self._stack)
 
-  def store_local(self, name: str, var: _AbstractVariable) -> None:
+  def store_local(self, name: str, var: _Var) -> None:
     self._current_state.store_local(name, var)
 
-  def store_enclosing(self, name: str, var: _AbstractVariable) -> None:
+  def store_enclosing(self, name: str, var: _Var) -> None:
     # We shadow the name from the enclosing scope. We will merge it into f_back
     # when the current frame finishes.
     self._current_state.store_local(name, var)
     self._shadowed_nonlocals.add_enclosing(name)
 
-  def store_global(self, name: str, var: _AbstractVariable) -> None:
+  def store_global(self, name: str, var: _Var) -> None:
     # We allow modifying globals only when executing the module frame.
     # Otherwise, we shadow the global in current frame. Either way, the behavior
     # is equivalent to storing the global as a local.
     self._current_state.store_local(name, var)
     self._shadowed_nonlocals.add_global(name)
 
-  def store_deref(self, name: str, var: _AbstractVariable) -> None:
+  def store_deref(self, name: str, var: _Var) -> None:
     # When a name from a parent frame is referenced in a child frame, we make a
     # conceptual distinction between the parent's local scope and the child's
     # enclosing scope. However, at runtime, writing to both is the same
@@ -199,17 +199,17 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       return False
     return self._shadowed_nonlocals.has_global(name)
 
-  def load_local(self, name) -> _AbstractVariable:
+  def load_local(self, name) -> _Var:
     if self._shadows_enclosing(name) or self._shadows_global(name):
       raise KeyError(name)
     return self._current_state.load_local(name)
 
-  def load_enclosing(self, name) -> _AbstractVariable:
+  def load_enclosing(self, name) -> _Var:
     if self._shadows_enclosing(name):
       return self._current_state.load_local(name)
     return self._initial_enclosing[name].with_name(name)
 
-  def load_global(self, name) -> _AbstractVariable:
+  def load_global(self, name) -> _Var:
     if self._shadows_global(name):
       return self._current_state.load_local(name)
     try:
@@ -220,11 +220,11 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     except KeyError:
       return self.load_builtin(name)
 
-  def load_builtin(self, name) -> _AbstractVariable:
+  def load_builtin(self, name) -> _Var:
     builtin = self._ctx.abstract_loader.load_builtin(name)
     return builtin.to_variable(name)
 
-  def load_deref(self, name) -> _AbstractVariable:
+  def load_deref(self, name) -> _Var:
     # When a name from a parent frame is referenced in a child frame, we make a
     # conceptual distinction between the parent's local scope and the child's
     # enclosing scope. However, at runtime, reading from both is the same
@@ -238,7 +238,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
   def make_child_frame(
       self,
       func: _FrameFunction,
-      initial_locals: Mapping[str, _AbstractVariable],
+      initial_locals: Mapping[str, _Var],
   ) -> 'Frame':
     if self._final_locals:
       current_locals = {
@@ -312,7 +312,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
 
   def _call_function(
       self,
-      func_var: _AbstractVariable,
+      func_var: _Var,
       args: abstract.Args['Frame'],
   ) -> None:
     ret_values = []
@@ -331,7 +331,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
         variables.Variable(tuple(variables.Binding(v) for v in ret_values)))
 
   def load_attr(
-      self, target_var: _AbstractVariable, attr_name: str) -> _AbstractVariable:
+      self, target_var: _Var, attr_name: str) -> _Var:
     if target_var.name:
       name = f'{target_var.name}.{attr_name}'
     else:
@@ -834,7 +834,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     target = target_var.get_atomic_value()
     self._replace_atomic_stack_value(count, target.setitem(key, val))
 
-  def _unpack_list_extension(self, var: _AbstractVariable) -> abstract.List:
+  def _unpack_list_extension(self, var: _Var) -> abstract.List:
     try:
       val = var.get_atomic_value()
     except ValueError:
@@ -856,7 +856,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     self._replace_atomic_stack_value(count, target.extend(update))
 
   def _unpack_dict_update(
-      self, var: _AbstractVariable
+      self, var: _Var
   ) -> Optional[abstract.Dict]:
     try:
       val = var.get_atomic_value()

@@ -6,22 +6,22 @@ from pytype.rewrite.abstract import abstract
 from pytype.rewrite.flow import variables
 
 
-_AbstractVariable = variables.Variable[abstract.BaseValue]  # typing alias
+_Var = variables.Variable[abstract.BaseValue]  # typing alias
 
 
 class DataStack:
   """Data stack."""
 
   def __init__(self):
-    self._stack: List[_AbstractVariable] = []
+    self._stack: List[_Var] = []
 
-  def push(self, var: _AbstractVariable) -> None:
+  def push(self, var: _Var) -> None:
     self._stack.append(var)
 
-  def pop(self) -> _AbstractVariable:
+  def pop(self) -> _Var:
     return self._stack.pop()
 
-  def popn(self, n: int) -> Sequence[_AbstractVariable]:
+  def popn(self, n: int) -> Sequence[_Var]:
     if not n:
       return ()
     if len(self._stack) < n:
@@ -43,17 +43,17 @@ class DataStack:
     rot = self._stack[-n:-1]
     self._stack = self._stack[:-n] + [top] + rot
 
-  def top(self) -> _AbstractVariable:
+  def top(self) -> _Var:
     return self._stack[-1]
 
-  def peek(self, n: int) -> _AbstractVariable:
+  def peek(self, n: int) -> _Var:
     if n <= 0:
       raise IndexError(f'peek(n) requires positive n, got: {n}')
     if n > len(self._stack):
       self._stack_size_error(f'peek value {n} places down')
     return self._stack[-n]
 
-  def replace(self, n: int, var: _AbstractVariable) -> None:
+  def replace(self, n: int, var: _Var) -> None:
     if n <= 0:
       raise IndexError(f'replace(n) requires positive n, got: {n}')
     if n > len(self._stack):
