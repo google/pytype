@@ -1,7 +1,7 @@
 """Abstract types used internally by pytype."""
 
 import collections
-from typing import Dict, Tuple
+from typing import Dict, Optional, Tuple
 
 import immutabledict
 
@@ -15,17 +15,24 @@ _Variable = base.AbstractVariableType
 class FunctionArgTuple(base.BaseValue):
   """Representation of a function arg tuple."""
 
-  def __init__(self, ctx: base.ContextType, constant: Tuple[_Variable, ...]):
+  def __init__(
+      self,
+      ctx: base.ContextType,
+      constant: Tuple[_Variable, ...] = (),
+      indefinite: bool = False,
+  ):
     super().__init__(ctx)
     assert isinstance(constant, tuple), constant
     self.constant = constant
+    self.indefinite = indefinite
 
   def __repr__(self):
-    return f"FunctionArgTuple({self.constant!r})"
+    indef = "+" if self.indefinite else ""
+    return f"FunctionArgTuple({indef}{self.constant!r})"
 
   @property
   def _attrs(self):
-    return (self.constant,)
+    return (self.constant, self.indefinite)
 
 
 class FunctionArgDict(base.BaseValue):
@@ -34,18 +41,14 @@ class FunctionArgDict(base.BaseValue):
   def __init__(
       self,
       ctx: base.ContextType,
-      constant: Dict[str, _Variable],
-      indefinite: bool = False
+      constant: Optional[Dict[str, _Variable]] = None,
+      indefinite: bool = False,
   ):
     self._ctx = ctx
+    constant = constant or {}
     self._check_keys(constant)
     self.constant = constant
     self.indefinite = indefinite
-
-  @classmethod
-  def any_kwargs(cls, ctx: base.ContextType):
-    """Return a new kwargs dict with only indefinite values."""
-    return cls(ctx, {}, indefinite=True)
 
   def _check_keys(self, constant: Dict[str, _Variable]):
     """Runtime check to ensure the invariant."""

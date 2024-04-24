@@ -39,7 +39,8 @@ class FunctionCallHelper(Generic[_FrameT]):
     self._kw_names = ()
     return abstract.Args(posargs=posargs, kwargs=kwargs, frame=self._frame)
 
-  def _unpack_starargs(self, starargs: _AbstractVariable) -> abstract.BaseValue:
+  def _unpack_starargs(
+      self, starargs: _AbstractVariable) -> abstract.FunctionArgTuple:
     """Unpacks variable positional arguments."""
     # TODO(b/331853896): This follows vm_utils.ensure_unpacked_starargs, but
     # does not yet handle indefinite iterables.
@@ -48,14 +49,14 @@ class FunctionCallHelper(Generic[_FrameT]):
       # This has already been converted
       pass
     elif isinstance(posargs, abstract.FrozenInstance):
-      # This is indefinite; leave it as-is
-      pass
+      # This is indefinite.
+      posargs = abstract.FunctionArgTuple(self._ctx, indefinite=True)
     elif isinstance(posargs, abstract.Tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs.constant)
     elif isinstance(posargs, tuple):
       posargs = abstract.FunctionArgTuple(self._ctx, posargs)
     elif abstract.is_any(posargs):
-      return self._ctx.types[tuple].instantiate()
+      posargs = abstract.FunctionArgTuple(self._ctx, indefinite=True)
     else:
       assert False, f'unexpected posargs type: {posargs}: {type(posargs)}'
     return posargs
@@ -67,10 +68,13 @@ class FunctionCallHelper(Generic[_FrameT]):
     if isinstance(kwargs, abstract.FunctionArgDict):
       # This has already been converted
       pass
+    elif isinstance(kwargs, abstract.FrozenInstance):
+      # This is indefinite.
+      kwargs = abstract.FunctionArgDict(self._ctx, indefinite=True)
     elif isinstance(kwargs, abstract.Dict):
       kwargs = kwargs.to_function_arg_dict()
     elif abstract.is_any(kwargs):
-      kwargs = abstract.FunctionArgDict.any_kwargs(self._ctx)
+      kwargs = abstract.FunctionArgDict(self._ctx, indefinite=True)
     else:
       assert False, f'unexpected kwargs type: {kwargs}: {type(kwargs)}'
     return kwargs
@@ -83,26 +87,22 @@ class FunctionCallHelper(Generic[_FrameT]):
     """Makes function args from variable positional and keyword arguments."""
     # Convert *args
     unpacked_starargs = self._unpack_starargs(starargs)
-    if isinstance(
-        unpacked_starargs, (abstract.Tuple, abstract.FunctionArgTuple)):
+    if unpacked_starargs.indefinite:
+      # We have an indefinite tuple; leave it in starargs
+      posargs = ()
+      starargs = unpacked_starargs.to_variable()
+    else:
       # We have a concrete tuple we are unpacking; move it into posargs
       posargs = unpacked_starargs.constant
       starargs = None
-    else:
-      # We have an indefinite tuple; leave it in starargs
-      posargs = ()
     # Convert **kwargs
     if starstarargs:
       unpacked_starstarargs = self._unpack_starstarargs(starstarargs)
-      # If we have a concrete dict we are unpacking; move it into kwargs (if
-      # not, .constant will be {} anyway, so we don't need to check here.)
-      kwargs = unpacked_starstarargs.constant
       if unpacked_starstarargs.indefinite:
-        # We also have **kwargs, apart from the concrete kv pairs we moved into
-        # kwargs, that need to be preserved.
-        starstarargs = (
-            abstract.FunctionArgDict.any_kwargs(self._ctx).to_variable())
+        kwargs = datatypes.EMPTY_MAP
+        starstarargs = unpacked_starstarargs.to_variable()
       else:
+        kwargs = unpacked_starstarargs.constant
         starstarargs = None
     else:
       kwargs = datatypes.EMPTY_MAP

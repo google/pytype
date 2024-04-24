@@ -722,6 +722,8 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
     if isinstance(val, abstract.Dict):
       return val
     elif isinstance(val, abstract.FunctionArgDict):
+      if val.indefinite:
+        return None
       return abstract.Dict.from_function_arg_dict(self._ctx, val)
     elif abstract.is_any(val):
       return None
@@ -745,7 +747,7 @@ class Frame(frame_base.FrameBase[abstract.BaseValue]):
       # The update var has multiple possible values, or no constant, so we
       # cannot merge it into the constant dict. We also don't know if existing
       # items have been overwritten, so we need to return a new 'any' dict.
-      ret = abstract.Dict.any_dict(self._ctx)
+      ret = self._ctx.types[dict].instantiate()
     else:
       ret = target.update(update)
     self._replace_atomic_stack_value(count, ret)

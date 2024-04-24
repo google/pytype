@@ -138,20 +138,16 @@ class _ArgMapper:
 
   def _unpack_starargs(self) -> Tuple[Tuple[_Var, ...], Optional[_Var]]:
     """Adjust *args and posargs based on function signature."""
+    starargs_var = self.args.starargs
     posargs = self.args.posargs
-    indef_starargs = False
-    if self.args.starargs is None:
+    if starargs_var is None:
       # There is nothing to unpack, but we might want to move unused posargs
       # into sig.varargs_name
-      starargs_tuple = ()
+      starargs = internal.FunctionArgTuple(self._ctx, ())
     else:
-      try:
-        starargs_tuple = _unpack_splats(self.args.get_concrete_starargs())
-      except ValueError:
-        # We don't have a concrete starargs. We still need to use this to fill
-        # in missing posargs or absorb extra ones.
-        starargs_tuple = ()
-        indef_starargs = True
+      # Do not catch the error; this should always succeed
+      starargs = starargs_var.get_atomic_value(internal.FunctionArgTuple)
+    starargs_tuple = starargs.constant
 
     # Attempt to adjust the starargs into the missing posargs.
     all_posargs = posargs + starargs_tuple
@@ -201,18 +197,18 @@ class _ArgMapper:
         # match all k+2 to Any
         mid = [self._ctx.consts.Any.to_variable() for _ in range(posarg_delta)]
       return tuple(pre + mid + post), None
-    elif posarg_delta and indef_starargs:
+    elif posarg_delta and starargs.indefinite:
       # Fill in *required* posargs if needed; don't override the default posargs
       # with indef starargs yet because we aren't capturing the type of *args
       if posarg_delta > 0:
-        extra = self._expand_typed_star(self.args.starargs, posarg_delta)
+        extra = self._expand_typed_star(starargs_var, posarg_delta)
         return posargs + tuple(extra), None
       elif self.sig.varargs_name:
-        return posargs[:n_required_posargs], self.args.starargs
+        return posargs[:n_required_posargs], starargs_var
       else:
         # We have too many posargs *and* no *args in the sig to absorb them, so
         # just do nothing and handle the error downstream.
-        return posargs, self.args.starargs
+        return posargs, starargs_var
 
     else:
       # We have **kwargs but no *args in the invocation
