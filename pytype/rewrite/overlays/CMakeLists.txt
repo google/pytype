@@ -18,6 +18,16 @@ py_library(
     pytype.rewrite.abstract.abstract
 )
 
+py_test(
+  NAME
+    overlays_test
+  SRCS
+    overlays_test.py
+  DEPS
+    ._overlays
+    pytype.rewrite.abstract.abstract
+)
+
 py_library(
   NAME
     enum_overlay
@@ -26,6 +36,16 @@ py_library(
   DEPS
     ._overlays
     pytype.rewrite.abstract.abstract
+)
+
+py_test(
+  NAME
+    enum_overlay_test
+  SRCS
+    enum_overlay_test.py
+  DEPS
+    pytype.rewrite.abstract.abstract
+    pytype.rewrite.tests.test_utils
 )
 
 py_library(
