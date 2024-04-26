@@ -685,7 +685,7 @@ class Converter(utils.ContextWeakrefMixin):
     if (module == "typing" and not self.ctx.vm.frame or
         module not in overlay_dict.overlays):
       return None
-    overlay = self.ctx.vm.import_module(module, module, 0)
+    overlay = self.ctx.vm.import_module(module, module, 0, bypass_strict=True)
     if overlay.get_module(member_name) is not overlay:
       return None
     return overlay.maybe_load_member(member_name)
