@@ -1159,13 +1159,17 @@ class VirtualMachine:
     """Retrieve a kwargs dictionary from the stack. Used by call_function."""
     return state.pop()
 
-  def import_module(self, name, full_name, level):
+  def import_module(self, name, full_name, level, bypass_strict=False):
     """Import a module and return the module object or None."""
     if self.ctx.options.strict_import:
       # Do not import new modules if we aren't in an IMPORT statement.
       # The exception is if we have an implicit "package" module (e.g.
       # `import a.b.c` adds `a.b` to the list of instantiable modules.)
-      if not (self._importing or self.ctx.loader.has_module_prefix(full_name)):
+      if not (
+          self._importing
+          or self.ctx.loader.has_module_prefix(full_name)
+          or bypass_strict
+      ):
         return None
     try:
       module = self._import_module(name, level)

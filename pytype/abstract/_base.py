@@ -277,8 +277,9 @@ class BaseValue(utils.ContextWeakrefMixin, types.BaseValue):
       # that heterogeneous tuple annotations work. We need the isinstance()
       # check to distinguish PyTDClass(tuple) from ParameterizedClass(tuple);
       # the latter appears here when a generic type alias is being substituted.
-      typing = self.ctx.vm.import_module("typing", "typing",
-                                         0).get_module("Tuple")
+      typing = self.ctx.vm.import_module(
+          "typing", "typing", 0, bypass_strict=True
+      ).get_module("Tuple")
       typing.load_lazy_attribute("Tuple")
       return abstract_utils.get_atomic_value(typing.members["Tuple"])
     return _make("AnnotationContainer", self.name, self.ctx, self)
