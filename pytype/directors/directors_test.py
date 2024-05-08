@@ -118,11 +118,11 @@ class DirectorTestCase(unittest.TestCase):
     self._director = directors.Director(
         src_tree, self._errorlog, _TEST_FILENAME, disable)
 
-  def _should_report(self, expected, lineno, error_name="test-error",
+  def _should_report(self, expected, line, error_name="test-error",
                      filename=_TEST_FILENAME):
     error = errors.Error.for_test(
         errors.SEVERITY_ERROR, "message", error_name, filename=filename,
-        lineno=lineno)
+        line=line)
     self.assertEqual(
         expected,
         self._director.filter_error(error))
@@ -307,7 +307,7 @@ class DirectorTest(DirectorTestCase):
       self.assertLessEqual(1, len(self._errorlog))
       error = list(self._errorlog)[0]
       self.assertEqual(_TEST_FILENAME, error._filename)
-      self.assertEqual(1, error.lineno)
+      self.assertEqual(1, error.line)
       self.assertRegex(str(error), message_regex)
 
     check_warning("Unknown pytype directive.*disalbe.*",

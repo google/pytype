@@ -26,12 +26,12 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_init(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     lineno=123, methodname="foo", keyword="here")
+                     line=123, methodname="foo", keyword="here")
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
     self.assertEqual("foo.py", e._filename)
-    self.assertEqual(123, e._lineno)
+    self.assertEqual(123, e._line)
     self.assertEqual("foo", e._methodname)
     self.assertEqual("here", e.keyword)
 
@@ -44,7 +44,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
     self.assertIsNone(e._filename)
-    self.assertEqual(0, e._lineno)
+    self.assertEqual(0, e._line)
     self.assertIsNone(e._methodname)
     self.assertEqual("here", e.keyword)
     # Opcode of None.
@@ -55,7 +55,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
     self.assertEqual("foo.py", e._filename)
-    self.assertEqual(123, e._lineno)
+    self.assertEqual(123, e._line)
     self.assertEqual("foo", e._methodname)
     self.assertEqual("here", e.keyword)
 
@@ -107,7 +107,7 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_str(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     lineno=123, methodname="foo")
+                     line=123, methodname="foo")
     message = "an error message on 'here'"
     error = "File \"foo.py\", line 123, in foo: " + message + " [test-error]"
     self.assertEqual(error, str(e))
@@ -155,7 +155,7 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_color(self):
     e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     lineno=123, methodname="foo", keyword="here")
+                     line=123, methodname="foo", keyword="here")
     color_snippet = "'here' [\x1b[1m\x1b[31mtest-error\x1b[39m\x1b[0m]"
     self.assertIn(color_snippet, e.as_string(color=True))
     self.assertNotIn(color_snippet, e.as_string())
@@ -229,7 +229,7 @@ class ErrorLogTest(unittest.TestCase):
     errorlog.error(stack, "error_with_stack")
     errorlog.error([], "error_without_stack")
     unique_errors = errorlog.unique_sorted_errors()
-    unique_errors = [(error.message, error.filename, error.lineno)
+    unique_errors = [(error.message, error.filename, error.line)
                      for error in unique_errors
                     ]
     self.assertEqual(
