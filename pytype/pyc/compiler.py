@@ -42,11 +42,11 @@ class CompileError(Exception):
     if match:
       self.error = match.group(1)
       self.filename = match.group(2)
-      self.lineno = int(match.group(3))
+      self.line = int(match.group(3))
     else:
       self.error = msg
       self.filename = None
-      self.lineno = 1
+      self.line = 1
 
 
 def compile_src_string_to_pyc_string(

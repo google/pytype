@@ -17,7 +17,7 @@ class ErrorLogTest(test_base.BaseTest):
       d = int(int)  # wrong-arg-types[.another_mark]
     """)
     self.assertEqual(
-        {mark: (e.lineno, e.name) for mark, e in err.marks.items()},
+        {mark: (e.line, e.name) for mark, e in err.marks.items()},
         {".mark": (2, "unsupported-operands"),
          ".another_mark": (4, "wrong-arg-types")})
     self.assertEqual(err.expected, {

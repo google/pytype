@@ -180,7 +180,7 @@ class Error:
               function call.
     details: Optionally, a string of message details.
     filename: The file in which the error occurred.
-    lineno: The line number at which the error occurred.
+    line: The line number at which the error occurred.
     message: The error message string.
     methodname: The method in which the error occurred.
     severity: The error level (error or warning), an integer.
@@ -195,7 +195,7 @@ class Error:
     opcode_name: Optionally, the name of the opcode that raised the error.
   """
 
-  def __init__(self, severity, message, filename=None, lineno=0,
+  def __init__(self, severity, message, filename=None, line=0,
                methodname=None, details=None, traceback=None, keyword=None,
                keyword_context=None, bad_call=None, opcode_name=None):
     name = _CURRENT_ERROR_NAME.get()
@@ -209,7 +209,7 @@ class Error:
     self._details = details
     # Optional information about error position.
     self._filename = filename
-    self._lineno = lineno or 0
+    self._line = line or 0
     self._methodname = methodname
     self._traceback = traceback
     self._keyword_context = keyword_context
@@ -236,7 +236,7 @@ class Error:
       return cls(severity, message, **kwargs)
     else:
       return cls(severity, message, filename=opcode.code.filename,
-                 lineno=opcode.line, methodname=opcode.code.name,
+                 line=opcode.line, methodname=opcode.code.name,
                  opcode_name=opcode.__class__.__name__,
                  traceback=_make_traceback_str(stack), **kwargs)
 
@@ -251,8 +251,8 @@ class Error:
     return self._name
 
   @property
-  def lineno(self):
-    return self._lineno
+  def line(self):
+    return self._line
 
   @property
   def filename(self):
@@ -301,18 +301,18 @@ class Error:
 
     if self._filename:
       return "File \"%s\", line %d%s" % (self._filename,
-                                         self._lineno,
+                                         self._line,
                                          method)
-    elif self._lineno:
-      return "Line %d%s" % (self._lineno, method)
+    elif self._line:
+      return "Line %d%s" % (self._line, method)
     else:
       return ""
 
   def __str__(self):
     return self.as_string()
 
-  def set_lineno(self, line):
-    self._lineno = line
+  def set_line(self, line):
+    self._line = line
 
   def as_string(self, *, color=False):
     """Format the error as a friendly string, optionally with shell coloring."""
@@ -336,7 +336,7 @@ class Error:
           severity=self._severity,
           message=self._message,
           filename=self._filename,
-          lineno=self._lineno,
+          line=self._line,
           methodname=self._methodname,
           details=self._details,
           keyword=self._keyword,
@@ -398,12 +398,12 @@ class ErrorLog:
     self._add(Error.with_stack(stack, SEVERITY_WARNING, message % args))
 
   def error(self, stack, message, details=None, keyword=None, bad_call=None,
-            keyword_context=None, lineno=None):
+            keyword_context=None, line=None):
     err = Error.with_stack(stack, SEVERITY_ERROR, message, details=details,
                            keyword=keyword, bad_call=bad_call,
                            keyword_context=keyword_context)
-    if lineno:
-      err.set_lineno(lineno)
+    if line:
+      err.set_line(line)
     self._add(err)
 
   @contextlib.contextmanager
@@ -431,7 +431,7 @@ class ErrorLog:
         details = error._details
       csv_file.writerow(
           [error._filename,
-           error._lineno,
+           error._line,
            error._name,
            error._message,
            details])
@@ -441,7 +441,7 @@ class ErrorLog:
       print(error.as_string(color=color), file=fi)
 
   def unique_sorted_errors(self):
-    """Gets the unique errors in this log, sorted on filename and lineno."""
+    """Gets the unique errors in this log, sorted on filename and line."""
     unique_errors = {}
     for error in self._sorted_errors():
       error_without_traceback = str(error.drop_traceback())
@@ -473,7 +473,7 @@ class ErrorLog:
     return sum(unique_errors.values(), [])
 
   def _sorted_errors(self):
-    return sorted(self._errors, key=lambda x: (x.filename or "", x.lineno))
+    return sorted(self._errors, key=lambda x: (x.filename or "", x.line))
 
   def print_to_stderr(self, *, color=True):
     self.print_to_file(sys.stderr, color=color)
@@ -872,37 +872,37 @@ class VmErrorLog(ErrorLog):
     self.error(stack, msg, keyword=name, details=details)
 
   @_error_name("invalid-directive")
-  def invalid_directive(self, filename, lineno, message):
+  def invalid_directive(self, filename, line, message):
     self._add(Error(
-        SEVERITY_WARNING, message, filename=filename, lineno=lineno))
+        SEVERITY_WARNING, message, filename=filename, line=line))
 
   @_error_name("late-directive")
-  def late_directive(self, filename, lineno, name):
+  def late_directive(self, filename, line, name):
     message = f"{name} disabled from here to the end of the file"
     details = ("Consider limiting this directive's scope or moving it to the "
                "top of the file.")
     self._add(Error(SEVERITY_WARNING, message, details=details,
-                    filename=filename, lineno=lineno))
+                    filename=filename, line=line))
 
   @_error_name("not-supported-yet")
   def not_supported_yet(self, stack, feature, details=None):
     self.error(stack, f"{feature} not supported yet", details=details)
 
   @_error_name("python-compiler-error")
-  def python_compiler_error(self, filename, lineno, message):
+  def python_compiler_error(self, filename, line, message):
     self._add(Error(
-        SEVERITY_ERROR, message, filename=filename, lineno=lineno))
+        SEVERITY_ERROR, message, filename=filename, line=line))
 
   @_error_name("recursion-error")
   def recursion_error(self, stack, name):
     self.error(stack, f"Detected recursion in {name}", keyword=name)
 
   @_error_name("redundant-function-type-comment")
-  def redundant_function_type_comment(self, filename, lineno):
+  def redundant_function_type_comment(self, filename, line):
     self._add(Error(
         SEVERITY_ERROR,
         "Function type comments cannot be used with annotations",
-        filename=filename, lineno=lineno))
+        filename=filename, line=line))
 
   @_error_name("invalid-function-type-comment")
   def invalid_function_type_comment(self, stack, comment, details=None):
@@ -910,10 +910,10 @@ class VmErrorLog(ErrorLog):
                details=details)
 
   @_error_name("ignored-type-comment")
-  def ignored_type_comment(self, filename, lineno, comment):
+  def ignored_type_comment(self, filename, line, comment):
     self._add(Error(
         SEVERITY_WARNING, f"Stray type comment: {comment}",
-        filename=filename, lineno=lineno))
+        filename=filename, line=line))
 
   @_error_name("invalid-typevar")
   def invalid_typevar(self, stack, comment, bad_call=None):
@@ -1142,7 +1142,7 @@ class VmErrorLog(ErrorLog):
   def incomplete_match(self, stack, line, cases, details=None):
     cases = ", ".join(str(x) for x in cases)
     msg = f"The match is missing the following cases: {cases}"
-    self.error(stack, msg, details=details, lineno=line)
+    self.error(stack, msg, details=details, line=line)
 
   @_error_name("redundant-match")
   def redundant_match(self, stack, case, details=None):

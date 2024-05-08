@@ -2910,7 +2910,7 @@ class ErrorTest(test_base.UnitTest):
     with self.assertRaisesRegex(parser.ParseError, "File.*foo.pyi"):
       parser.parse_pyi(src, "foo.pyi", "foo")
 
-  def test_lineno(self):
+  def test_line(self):
     src = textwrap.dedent("""
       class A:
         __slots__ = 0

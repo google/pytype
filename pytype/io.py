@@ -207,7 +207,7 @@ def check_or_generate_pyi(options) -> AnalysisResult:
   except utils.UsageError:
     raise
   except pyc.CompileError as e:
-    compiler_error = (options.input, e.lineno, e.error)
+    compiler_error = (options.input, e.line, e.error)
   except constant_folding.ConstantError as e:
     compiler_error = (options.input, e.lineno, e.message)
   except IndentationError as e:
@@ -399,7 +399,7 @@ def wrap_pytype_exceptions(exception_type, filename=""):
     raise exception_type(f"Pytype usage error: {e}") from e
   except pyc.CompileError as e:
     raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, e.lineno, e.error)) from e
+                         (filename, e.line, e.error)) from e
   except libcst.ParserSyntaxError as e:
     # TODO(rechen): We can get rid of this branch once we delete
     # directors.parser_libcst.

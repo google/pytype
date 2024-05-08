@@ -960,17 +960,17 @@ def process_function_type_comment(node, op, func, ctx):
   if not op.annotation:
     return
 
-  comment, lineno = op.annotation
+  comment, line = op.annotation
 
   # It is an error to use a type comment on an annotated function.
   if func.signature.annotations:
-    ctx.errorlog.redundant_function_type_comment(op.code.filename, lineno)
+    ctx.errorlog.redundant_function_type_comment(op.code.filename, line)
     return
 
   # Parse the comment, use a fake Opcode that is similar to the original
   # opcode except that it is set to the line number of the type comment.
   # This ensures that errors are printed with an accurate line number.
-  fake_stack = ctx.vm.simple_stack(op.at_line(lineno))
+  fake_stack = ctx.vm.simple_stack(op.at_line(line))
   m = _FUNCTION_TYPE_COMMENT_RE.match(comment)
   if not m:
     ctx.errorlog.invalid_function_type_comment(fake_stack, comment)

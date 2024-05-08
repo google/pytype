@@ -12,13 +12,13 @@ class TestCompileError(unittest.TestCase):
   def test_error_matches_re(self):
     e = pyc.CompileError("some error (foo.py, line 123)")
     self.assertEqual("foo.py", e.filename)
-    self.assertEqual(123, e.lineno)
+    self.assertEqual(123, e.line)
     self.assertEqual("some error", e.error)
 
   def test_error_does_not_match_re(self):
     e = pyc.CompileError("some error in foo.py at line 123")
     self.assertIsNone(e.filename)
-    self.assertEqual(1, e.lineno)
+    self.assertEqual(1, e.line)
     self.assertEqual("some error in foo.py at line 123", e.error)
 
 
@@ -47,7 +47,7 @@ class TestPyc(test_base.UnitTest):
     with self.assertRaises(pyc.CompileError) as ctx:
       self._compile("\nfoo ==== bar--")
     self.assertEqual("test_input.py", ctx.exception.filename)
-    self.assertEqual(2, ctx.exception.lineno)
+    self.assertEqual(2, ctx.exception.line)
     self.assertEqual("invalid syntax", ctx.exception.error)
 
   def test_lineno(self):

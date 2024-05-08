@@ -283,19 +283,19 @@ class Director:
       self._variable_annotations.add_annotation(
           annot.start_line, annot.name, annot.annotation)
 
-    for lineno, decorators in visitor.decorators.items():
+    for line, decorators in visitor.decorators.items():
       for decorator_lineno, decorator_name in decorators:
-        self._decorators[lineno].append(decorator_name)
-        self._decorated_functions[decorator_lineno] = lineno
+        self._decorators[line].append(decorator_name)
+        self._decorated_functions[decorator_lineno] = line
 
     if visitor.defs_start is not None:
       disables = list(self._disables.items())
       # Add "# type: ignore" to the list of disables that we check.
       disables.append(("Type checking", self._ignore))
       for name, lineset in disables:
-        lineno = lineset.get_disable_after(visitor.defs_start)
-        if lineno is not None:
-          self._errorlog.late_directive(self._filename, lineno, name)
+        line = lineset.get_disable_after(visitor.defs_start)
+        if line is not None:
+          self._errorlog.late_directive(self._filename, line, name)
 
   def _process_type(
       self, line: int, data: str, open_ended: bool,
@@ -426,18 +426,18 @@ class Director:
     """
     # Always report errors that aren't for this file or do not have a line
     # number.
-    if error.filename != self._filename or error.lineno is None:
+    if error.filename != self._filename or error.line is None:
       return True
     if (error.name == "bad-return-type" and
         error.opcode_name == "RETURN_VALUE" and
-        error.lineno not in self.return_lines):
+        error.line not in self.return_lines):
       # We have an implicit "return None". Adjust the line number to the last
       # line of the function.
-      _, end = self._function_ranges.find_outermost(error.lineno)
+      _, end = self._function_ranges.find_outermost(error.line)
       if end:
-        error.set_lineno(end)
+        error.set_line(end)
     # Treat line=0 as below the file, so we can filter it.
-    line = error.lineno or sys.maxsize
+    line = error.line or sys.maxsize
     # Report the error if it isn't subject to any ignore or disable.
     return (line not in self._ignore and
             line not in self._disables[_ALL_ERRORS] and

@@ -175,14 +175,14 @@ class Base:
             x.parent = self.parent
         self.parent = None
 
-    def get_lineno(self):
+    def get_line(self):
         """Return the line number which generated the invocant node."""
         node = self
         while not isinstance(node, Leaf):
             if not node.children:
                 return
             node = node.children[0]
-        return node.lineno
+        return node.line
 
     def changed(self):
         if self.parent:
@@ -314,7 +314,7 @@ class Node(Base):
 
         Takes a type constant (a symbol number >= 256) and a sequence of child
         nodes.  The 'context' keyword argument is ignored -- its presence
-        simplifies some callers, but in reality the information (prefix, lineno,
+        simplifies some callers, but in reality the information (prefix, line,
         column) is kept in the Leaf nodes (this information is used by the
         __str__ method, which is derived from the children of the node, and
         utlimately from the Leaf nodes.
@@ -432,7 +432,7 @@ class Leaf(Base):
 
     # Default values for instance variables
     _prefix = ""  # Whitespace and comments preceding this token in the input
-    lineno = 0    # Line where this token starts in the input
+    line = 0    # Line where this token starts in the input
     column = 0    # Column where this token starts in the input
 
     def __init__(self, type, value,
@@ -443,7 +443,7 @@ class Leaf(Base):
         Initializer.
 
         Takes a type constant (a token number < 256), a string value, and an
-        optional context keyword argument (prefix, (lineno, column)). If the
+        optional context keyword argument (prefix, (line, column)). If the
         prefix keyword argument is provided, it overrides the prefix derived
         from the context. The prefix is the text that appears before the value
         (e.g., blanks and comments).
@@ -451,7 +451,7 @@ class Leaf(Base):
         """
         assert 0 <= type < 256, type
         if context is not None:
-            self._prefix, (self.lineno, self.column) = context
+            self._prefix, (self.line, self.column) = context
         self.type = type
         self.value = value
         if prefix is not None:
@@ -479,7 +479,7 @@ class Leaf(Base):
     def clone(self):
         """Return a cloned (deep) copy of self."""
         l = Leaf(self.type, self.value,
-                 (self.prefix, (self.lineno, self.column)),
+                 (self.prefix, (self.line, self.column)),
                  fixers_applied=self.fixers_applied)
         try:
             l.label = self.label[:]

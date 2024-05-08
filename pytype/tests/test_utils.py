@@ -357,7 +357,7 @@ class ErrorMatcher:
     expected = copy.deepcopy(self.expected)
 
     for error in self.errorlog.unique_sorted_errors():
-      errs = expected[error.lineno]
+      errs = expected[error.line]
       for i, (code, mark) in enumerate(errs):
         if code == error.name:
           if mark:
@@ -367,8 +367,8 @@ class ErrorMatcher:
       else:
         if errs:
           code, mark = errs[0]
-          exp = _format_error(error.lineno, code, mark)
-          actual = _format_error(error.lineno, error.name)
+          exp = _format_error(error.line, code, mark)
+          actual = _format_error(error.line, error.name)
           self._fail(
               f"Error does not match:\nExpected: {exp}\nActual: {actual}"
           )
