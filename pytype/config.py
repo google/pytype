@@ -101,7 +101,7 @@ class Options:
     if unknown_options:
       raise ValueError(f"Unrecognized options: {', '.join(unknown_options)}")
     options = argument_parser.parse_args(
-        [input_filename or "dummpy_input_file"])
+        [input_filename or "dummy_input_file"])
     for k, v in kwargs.items():
       setattr(options, k, v)
     return cls(options)
