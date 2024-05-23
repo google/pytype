@@ -48,7 +48,7 @@ class ErrorTest(unittest.TestCase):
     self.assertIsNone(e._methodname)
     self.assertEqual("here", e.keyword)
     # Opcode of None.
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     e = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, _MESSAGE,
                                 keyword="here")
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
@@ -62,14 +62,14 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_no_traceback_stack_len_1(self):
     # Stack of length 1
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     error = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, "")
     self.assertIsNone(error._traceback)
 
   @errors._error_name(_TEST_ERROR)
   def test_no_traceback_no_opcode(self):
     # Frame without opcode
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     stack = [frame_state.SimpleFrame(), frame_state.SimpleFrame(op)]
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
     self.assertIsNone(error._traceback)
@@ -101,22 +101,32 @@ class ErrorTest(unittest.TestCase):
 
   def test_no_error_name(self):
     # It is illegal to create an error outside of an @error_name annotation.
-    self.assertRaises(AssertionError, errors.Error, errors.SEVERITY_ERROR,
-                      _MESSAGE)
+    self.assertRaises(
+        AssertionError, errors.Error, errors.SEVERITY_ERROR, _MESSAGE
+    )
 
   @errors._error_name(_TEST_ERROR)
   def test_str(self):
-    e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     line=123, methodname="foo")
+    e = errors.Error(
+        errors.SEVERITY_ERROR,
+        _MESSAGE,
+        filename="foo.py",
+        line=123,
+        methodname="foo",
+    )
     message = "an error message on 'here'"
-    error = "File \"foo.py\", line 123, in foo: " + message + " [test-error]"
+    error = (
+        "foo.py:123:0: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: "
+        + message
+        + " [test-error]"
+    )
     self.assertEqual(error, str(e))
 
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv(self):
     errorlog = make_errorlog()
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
-    message, details = "This is an error", "with\nsome\ndetails: \"1\", 2, 3"
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
+    message, details = "This is an error", 'with\nsome\ndetails: "1", 2, 3'
     errorlog.error(op.to_stack(), message, details + "0")
     errorlog.error(op.to_stack(), message, details + "1")
     with test_utils.Tempdir() as d:
@@ -167,7 +177,7 @@ class ErrorLogTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_error(self):
     errorlog = make_errorlog()
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     errorlog.error(op.to_stack(), f"unknown attribute {'xyz'}")
     self.assertEqual(len(errorlog), 1)
     e = list(errorlog)[0]  # iterate the log and save the first error.
@@ -189,7 +199,7 @@ class ErrorLogTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_warn(self):
     errorlog = make_errorlog()
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     errorlog.warn(op.to_stack(), "unknown attribute %s", "xyz")
     self.assertEqual(len(errorlog), 1)
     e = list(errorlog)[0]  # iterate the log and save the first error.
@@ -255,11 +265,11 @@ class ErrorLogTest(unittest.TestCase):
   def test_unique_errors(self):
     errorlog = make_errorlog()
     current_frame = frame_state.SimpleFrame(
-        test_utils.FakeOpcode("foo.py", 123, "foo"))
+        test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo"))
     backframe1 = frame_state.SimpleFrame(
-        test_utils.FakeOpcode("foo.py", 1, "bar"))
+        test_utils.FakeOpcode("foo.py", 1, 1, 0, 0, "bar"))
     backframe2 = frame_state.SimpleFrame(
-        test_utils.FakeOpcode("foo.py", 2, "baz"))
+        test_utils.FakeOpcode("foo.py", 2, 2, 0, 0, "baz"))
     errorlog.error([backframe1, current_frame], "error")
     errorlog.error([backframe2, current_frame], "error")
     # Keep both errors, since the tracebacks are different.
@@ -270,7 +280,7 @@ class ErrorLogTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_color_print_to_stderr(self):
     errorlog = make_errorlog()
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     errorlog.error(op.to_stack(), f"unknown attribute {'xyz'}")
     self.assertEqual(len(errorlog), 1)
 
@@ -283,7 +293,7 @@ class ErrorLogTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_color_print_to_file(self):
     errorlog = make_errorlog()
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     errorlog.error(op.to_stack(), f"unknown attribute {'xyz'}")
     self.assertEqual(len(errorlog), 1)
 

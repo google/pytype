@@ -166,7 +166,10 @@ class LoadStoreTest(FrameTestBase):
 class FrameTest(FrameTestBase):
 
   def test_run_no_crash(self):
-    block = [opcodes.LOAD_CONST(0, 0, 0, None), opcodes.RETURN_VALUE(1, 0)]
+    block = [
+        opcodes.LOAD_CONST(0, 0, 0, 0, 0, 0, None),
+        opcodes.RETURN_VALUE(1, 0),
+    ]
     code = test_utils.FakeOrderedCode([block], [None])
     frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
     frame.run()
@@ -176,7 +179,10 @@ class FrameTest(FrameTestBase):
     assert_type(frame.final_locals, Mapping[str, abstract.BaseValue])
 
   def test_load_const(self):
-    block = [opcodes.LOAD_CONST(0, 0, 0, 42), opcodes.RETURN_VALUE(1, 0)]
+    block = [
+        opcodes.LOAD_CONST(0, 0, 0, 0, 0, 0, 42),
+        opcodes.RETURN_VALUE(1, 0),
+    ]
     code = test_utils.FakeOrderedCode([block], [42])
     frame = frame_lib.Frame(self.ctx, 'test', code.Seal())
     frame.step()
@@ -455,15 +461,15 @@ class FrameTest(FrameTestBase):
     # These just pass through to the underlying DataStack, which is well tested,
     # so we don't bother checking the stack contents here.
     block = [
-        opcodes.LOAD_CONST(1, 0, 0, 1),  # 1
-        opcodes.LOAD_CONST(2, 0, 1, 2),  # 2
-        opcodes.LOAD_CONST(3, 0, 2, 3),  # 3
+        opcodes.LOAD_CONST(1, 0, 0, 0, 0, 0, 1),  # 1
+        opcodes.LOAD_CONST(2, 0, 0, 0, 0, 1, 2),  # 2
+        opcodes.LOAD_CONST(3, 0, 0, 0, 0, 2, 3),  # 3
         opcodes.DUP_TOP(4, 0),           # 4
         opcodes.DUP_TOP_TWO(5, 0),       # 6
         opcodes.ROT_TWO(6, 0),           # 6
         opcodes.ROT_THREE(7, 0),         # 6
         opcodes.ROT_FOUR(8, 0),          # 6
-        opcodes.ROT_N(9, 0, 2, 2),       # 6
+        opcodes.ROT_N(9, 0, 0, 0, 0, 2, 2),       # 6
         opcodes.POP_TOP(10, 0),          # 5
         opcodes.POP_TOP(11, 0),          # 4
         opcodes.POP_TOP(12, 0),          # 3

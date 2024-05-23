@@ -43,6 +43,8 @@ _ELLIPSIS = object()
 
 _FuncT = TypeVar("_FuncT", bound=Callable)
 
+_ERROR_RED_HIGHLIGHTED = utils.COLOR_ERROR_NAME_TEMPLATE % "error"
+
 
 def _error_name(name) -> Callable[[_FuncT], _FuncT]:
   """Decorate a function so that it binds the current error name."""
@@ -195,7 +197,8 @@ class Error:
     opcode_name: Optionally, the name of the opcode that raised the error.
   """
 
-  def __init__(self, severity, message, filename=None, line=0,
+  def __init__(self, severity, message, filename=None, line=0, endline=0,
+               col=0, endcol=0,
                methodname=None, details=None, traceback=None, keyword=None,
                keyword_context=None, bad_call=None, opcode_name=None):
     name = _CURRENT_ERROR_NAME.get()
@@ -210,6 +213,9 @@ class Error:
     # Optional information about error position.
     self._filename = filename
     self._line = line or 0
+    self._endline = endline or 0
+    self._col = col or 0
+    self._endcol = endcol or 0
     self._methodname = methodname
     self._traceback = traceback
     self._keyword_context = keyword_context
@@ -236,7 +242,8 @@ class Error:
       return cls(severity, message, **kwargs)
     else:
       return cls(severity, message, filename=opcode.code.filename,
-                 line=opcode.line, methodname=opcode.code.name,
+                 line=opcode.line, endline=opcode.endline, col=opcode.col,
+                 endcol=opcode.endcol, methodname=opcode.code.name,
                  opcode_name=opcode.__class__.__name__,
                  traceback=_make_traceback_str(stack), **kwargs)
 
@@ -297,14 +304,23 @@ class Error:
 
   def _position(self):
     """Return human-readable filename + line number."""
-    method = f", in {self._methodname}" if self._methodname else ""
+    method = f"in {self._methodname}" if self._methodname else ""
 
     if self._filename:
-      return "File \"%s\", line %d%s" % (self._filename,
-                                         self._line,
-                                         method)
+      return "%s:%d:%d: %s: %s" % (
+          self._filename,
+          self._line,
+          self._col,
+          _ERROR_RED_HIGHLIGHTED,
+          method,
+      )
     elif self._line:
-      return "Line %d%s" % (self._line, method)
+      return "%d:%d: %s: %s" % (
+          self._line,
+          self._col,
+          _ERROR_RED_HIGHLIGHTED,
+          method,
+      )
     else:
       return ""
 

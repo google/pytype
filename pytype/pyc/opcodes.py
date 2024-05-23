@@ -39,14 +39,17 @@ class OpcodeMetadata:
 class Opcode:
   """An opcode without arguments."""
 
-  __slots__ = ("line", "index", "prev", "next", "target", "block_target",
-               "code", "annotation", "folded", "metadata",
-               "push_exc_block", "pop_exc_block")
+  __slots__ = ("line", "endline", "col", "endcol", "index", "prev", "next",
+               "target", "block_target", "code", "annotation", "folded",
+               "metadata", "push_exc_block", "pop_exc_block")
   _FLAGS = 0
 
-  def __init__(self, index, line):
+  def __init__(self, index, line, endline=None, col=None, endcol=None):
     self.index = index
     self.line = line
+    self.endline = endline
+    self.col = col
+    self.endcol = endcol
     self.prev = None
     self.next = None
     self.target = None
@@ -164,8 +167,8 @@ class OpcodeWithArg(Opcode):
 
   __slots__ = ("arg", "argval")
 
-  def __init__(self, index, line, arg, argval):
-    super().__init__(index, line)
+  def __init__(self, index, line, endline, col, endcol, arg, argval):
+    super().__init__(index, line, endline, col, endcol)
     self.arg = arg
     self.argval = argval
 
@@ -1022,9 +1025,9 @@ def _make_opcodes(ops: List[pycnite.types.Opcode]):
   for op in ops:
     cls = g[op.name]
     if cls.has_argument():
-      opcode = cls(0, op.line, op.arg, op.argval)
+      opcode = cls(0, op.line, op.endline, op.col, op.endcol, op.arg, op.argval)
     else:
-      opcode = cls(0, op.line)
+      opcode = cls(0, op.line, op.endline, op.col, op.endcol)
     offset_to_op[op.offset] = opcode
   return offset_to_op
 
@@ -1032,7 +1035,9 @@ def _make_opcodes(ops: List[pycnite.types.Opcode]):
 def _add_exception_block(offset_to_op, e):
   """Adds opcodes marking an exception block."""
   start_op = offset_to_op[e.start]
-  setup_op = SETUP_EXCEPT_311(-1, start_op.line, -1, -1)
+  setup_op = SETUP_EXCEPT_311(
+      -1, start_op.line, start_op.endline, start_op.col, start_op.endcol, -1, -1
+  )
   setup_op.stack_depth = e.depth
   offset_to_op[e.start - 0.5] = setup_op
   target_op = offset_to_op[e.target]
@@ -1046,7 +1051,7 @@ def _add_exception_block(offset_to_op, e):
   else:
     end = e.end
   end_op = offset_to_op[end]
-  pop_op = POP_BLOCK(-1, end_op.line)
+  pop_op = POP_BLOCK(-1, end_op.line, end_op.endline, end_op.col, end_op.endcol)
   offset_to_op[end + 0.5] = pop_op
 
 

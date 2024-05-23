@@ -124,7 +124,7 @@ def assemble_block(bytecode: str, *, consts=()) -> FakeOrderedCode:
       arg = int(arg)
     op_cls = getattr(opcodes, op)
     if arg is not None:
-      ret.append(op_cls(idx, lineno, arg, None))
+      ret.append(op_cls(idx, lineno, lineno, 0, 0, arg, None))
     else:
       ret.append(op_cls(idx, lineno))
     idx += 1

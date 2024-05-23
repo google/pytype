@@ -20,10 +20,10 @@ class TestUtilsTest(unittest.TestCase):
       RETURN_VALUE
     """
     expected = [
-        opcodes.BUILD_SET(0, 1, 0, None),
-        opcodes.LOAD_CONST(1, 1, 0, 1),
-        opcodes.LOAD_CONST(2, 2, 1, 2),
-        opcodes.SET_ADD(3, 2, 2, None),
+        opcodes.BUILD_SET(0, 1, 1, 0, 0, 0, None),
+        opcodes.LOAD_CONST(1, 1, 1, 0, 0, 0, 1),
+        opcodes.LOAD_CONST(2, 2, 2, 0, 0, 1, 2),
+        opcodes.SET_ADD(3, 2, 2, 0, 0, 2, None),
         opcodes.RETURN_VALUE(4, 3)
     ]
     actual = test_utils.assemble_block(block)

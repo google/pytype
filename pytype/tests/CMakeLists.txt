@@ -600,6 +600,15 @@ py_test(
 
 py_test(
   NAME
+    test_errors_format
+  SRCS
+    test_errors_format.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_tracebacks1
   SRCS
     test_tracebacks1.py
