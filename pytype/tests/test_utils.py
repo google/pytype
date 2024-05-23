@@ -81,9 +81,12 @@ class FakeCode:
 class FakeOpcode:
   """Util class for generating fake Opcode for testing."""
 
-  def __init__(self, filename, line, methodname):
+  def __init__(self, filename, line, endline, col, endcol, methodname):
     self.code = FakeCode(filename, methodname)
     self.line = line
+    self.endline = endline
+    self.col = col
+    self.endcol = endcol
     self.name = "FAKE_OPCODE"
 
   def to_stack(self):
@@ -91,8 +94,12 @@ class FakeOpcode:
 
 
 def fake_stack(length):
-  return [frame_state.SimpleFrame(FakeOpcode("foo.py", i, "function%d" % i))
-          for i in range(length)]
+  return [
+      frame_state.SimpleFrame(
+          FakeOpcode("foo.py", i, i, i, i, "function%d" % i)
+      )
+      for i in range(length)
+  ]
 
 
 class FakePrettyPrinter(pretty_printer_base.PrettyPrinterBase):
@@ -395,6 +402,21 @@ class ErrorMatcher:
     if matchers:
       self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
+  def _assert_diagnostic_messages(self, matchers):
+    """Assert error messages."""
+    assert self.marks is not None
+    for mark, error in self.marks.items():
+      try:
+        matcher = matchers.pop(mark)
+      except KeyError:
+        self._fail(f"No matcher for mark {mark}")
+      error_as_string = error.as_string()
+      if not matcher.match(error_as_string):
+        self._fail("Bad error message for mark %s: expected %r, got %r" %
+                   (mark, matcher, error_as_string))
+    if matchers:
+      self._fail(f"Marks not found in code: {', '.join(matchers)}")
+
   def assert_error_regexes(self, expected_regexes):
     matchers = {k: RegexMatcher(v) for k, v in expected_regexes.items()}
     self._assert_error_messages(matchers)
@@ -402,6 +424,12 @@ class ErrorMatcher:
   def assert_error_sequences(self, expected_sequences):
     matchers = {k: SequenceMatcher(v) for k, v in expected_sequences.items()}
     self._assert_error_messages(matchers)
+
+  def assert_diagnostic_regexes(self, expected_diagnostic_regexes):
+    matchers = {
+        k: RegexMatcher(v) for k, v in expected_diagnostic_regexes.items()
+    }
+    self._assert_diagnostic_messages(matchers)
 
   def _parse_comment(self, comment):
     comment = comment.strip()

@@ -19,7 +19,10 @@ def _make_vm(src: str) -> vm_lib.VirtualMachine:
 class VmTest(unittest.TestCase):
 
   def test_run_module_frame(self):
-    block = [opcodes.LOAD_CONST(0, 0, 0, None), opcodes.RETURN_VALUE(0, 0)]
+    block = [
+        opcodes.LOAD_CONST(0, 0, 0, 0, 0, 0, None),
+        opcodes.RETURN_VALUE(0, 0, 0, 0, 0),
+    ]
     code = test_utils.FakeOrderedCode([block], [None])
     vm = vm_lib.VirtualMachine(context.Context(), code.Seal(), {})
     self.assertIsNone(vm._module_frame)

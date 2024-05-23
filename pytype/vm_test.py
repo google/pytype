@@ -69,7 +69,7 @@ class TraceTest(TraceVmTestBase):
 
   def test_empty_data(self):
     """Test that we can trace values without data."""
-    op = test_utils.FakeOpcode("foo.py", 123, "foo")
+    op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
     self.ctx.vm.trace_opcode(op, "x", 42)
     self.assertEqual(self.ctx.vm.opcode_traces, [(op, "x", (None,))])
 
