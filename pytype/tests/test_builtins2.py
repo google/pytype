@@ -438,6 +438,49 @@ class BuiltinTests2(test_base.BaseTest):
       x9 = ...  # type: Iterator[int]
     """)
 
+  def test_iter_with_sentinel(self):
+    ty = self.Infer("""
+      from typing import Union
+
+      i = 0
+
+      def it1() -> str:
+        global i
+        i += 1
+        return str(i)
+
+      def it2() -> Union[int, None]:
+        global i
+        i += 1
+        return None if i == 5 else i
+
+      def it3() -> Union[int, str]:
+        global i
+        i += 1
+        return str(i) if i == 5 else i
+
+      x1 = iter(it1, '3')
+      x2 = iter(it2, None)
+      x2b = iter(it2, 9)
+      x3 = iter(it3, 9)
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+      from typing import Iterator, Optional, Union
+
+      i: int
+      x1: Iterator[str]
+      x2: Iterator[int]
+      x2b: Iterator[Optional[int]]
+      x3: Iterator[Union[int, str]]
+
+      def it1() -> str: ...
+      def it2() -> Optional[int]: ...
+      def it3() -> Union[int, str]: ...
+    """,
+    )
+
   def test_list_init(self):
     ty = self.Infer("""
       l1 = list()
