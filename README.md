@@ -1,7 +1,7 @@
 [![CI](https://github.com/google/pytype/workflows/CI/badge.svg?branch=main)](https://github.com/google/pytype/actions)
 [![PyPI - Wheel](https://img.shields.io/pypi/wheel/pytype)](https://pypi.org/project/pytype/#files)
 
-# pytype - 🦆✔
+# pytype - 🦆✔ Duckie!
 
 <!--* freshness: { owner: 'rechen' reviewed: '2023-05-19' } *-->
 
