@@ -310,14 +310,14 @@ class Error:
       return "%s:%d:%d: %s: %s" % (
           self._filename,
           self._line,
-          self._col,
+          self._col + 1,  # TODO: b/338455486 - pycnite should pass in 1-based
           _ERROR_RED_HIGHLIGHTED,
           method,
       )
     elif self._line:
       return "%d:%d: %s: %s" % (
           self._line,
-          self._col,
+          self._col + 1,  # TODO: b/338455486 - pycnite should pass in 1-based
           _ERROR_RED_HIGHLIGHTED,
           method,
       )

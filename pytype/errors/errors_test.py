@@ -116,7 +116,7 @@ class ErrorTest(unittest.TestCase):
     )
     message = "an error message on 'here'"
     error = (
-        "foo.py:123:0: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: "
+        "foo.py:123:1: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: "
         + message
         + " [test-error]"
     )

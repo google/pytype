@@ -16,7 +16,7 @@ class ErrorTest(test_base.BaseTest):
         errors,
         {
             "e": (
-                r"dummy_input_file:3:2:"
+                r"dummy_input_file:3:3:"
                 r" \x1b\[1m\x1b\[31merror\x1b\[39m\x1b\[0m: in f: No attribute"
                 r" 'foobar' on int \[attribute-error\]"
             )
