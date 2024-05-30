@@ -46,9 +46,10 @@ class ErrorLogTest(test_base.BaseTest):
 
   def test_populate_marks(self):
     # Test that assert_error_regexes populates self.marks if not already done.
-    matcher = test_utils.ErrorMatcher("x = 0")
+    src = "x = 0"
+    matcher = test_utils.ErrorMatcher(src)
     self.assertIsNone(matcher.marks)
-    errorlog = errors.VmErrorLog(test_utils.FakePrettyPrinter())
+    errorlog = errors.VmErrorLog(test_utils.FakePrettyPrinter(), src)
     matcher.assert_errors_match_expected(errorlog)
     self.assertErrorRegexes(matcher, {})
     self.assertIsNotNone(matcher.marks)

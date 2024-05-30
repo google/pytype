@@ -1,4 +1,5 @@
 """Basic tests for accessing typegraph metrics from Python."""
+
 import textwrap
 
 from pytype import context
@@ -8,12 +9,8 @@ from pytype.tests import test_base
 
 class MetricsTest(test_base.BaseTest):
 
-  def setUp(self):
-    super().setUp()
-    self.ctx = context.Context(options=self.options, loader=self.loader)
-
-  def run_program(self, src):
-    return self.ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
+  def run_program(self, src, ctx):
+    return ctx.vm.run_program(textwrap.dedent(src), "", maximum_depth=10)
 
   def assertNotEmpty(self, container, msg=None):
     if not container:
@@ -21,12 +18,16 @@ class MetricsTest(test_base.BaseTest):
       self.fail(msg=msg)
 
   def test_basics(self):
-    self.run_program("""
+    src = """
         def foo(x: str) -> int:
           return x + 1
         a = foo(1)
-    """)
-    metrics = self.ctx.program.calculate_metrics()
+    """
+    ctx = context.Context(
+        options=self.options, loader=self.loader, src=src
+    )
+    self.run_program(src, ctx)
+    metrics = ctx.program.calculate_metrics()
     # No specific numbers are used to prevent this from being a change detector.
     self.assertIsInstance(metrics, typegraph.cfg.Metrics)
     self.assertGreater(metrics.binding_count, 0)

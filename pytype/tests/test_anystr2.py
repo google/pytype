@@ -44,8 +44,8 @@ class AnyStrTest(test_base.BaseTest):
 
   def test_missing_import(self):
     self.CheckWithErrors("""
-      def f(x: AnyStr) -> AnyStr:  # name-error
-        return x
+      def f(x: AnyStr):  # name-error
+        pass
     """)
 
   def test_generic_inheritance(self):

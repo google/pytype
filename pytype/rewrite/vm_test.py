@@ -24,7 +24,7 @@ class VmTest(unittest.TestCase):
         opcodes.RETURN_VALUE(0, 0, 0, 0, 0),
     ]
     code = test_utils.FakeOrderedCode([block], [None])
-    vm = vm_lib.VirtualMachine(context.Context(), code.Seal(), {})
+    vm = vm_lib.VirtualMachine(context.Context(src=''), code.Seal(), {})
     self.assertIsNone(vm._module_frame)
     vm._run_module()
     self.assertIsNotNone(vm._module_frame)

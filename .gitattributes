@@ -1,2 +1,0 @@
-# Tell GitHub to use Python syntax highlighting for `.pytd` files
-*.pytd linguist-language=python

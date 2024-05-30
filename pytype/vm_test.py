@@ -53,7 +53,7 @@ class VmTestBase(test_base.BaseTest, test_utils.MakeCodeMixin):
     self.ctx = self.make_context()
 
   def make_context(self):
-    return context.Context(options=self.options, loader=self.loader)
+    return context.Context(options=self.options, loader=self.loader, src="")
 
 
 class TraceVmTestBase(VmTestBase):

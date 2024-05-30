@@ -33,7 +33,7 @@ class Analysis:
 def check_types(src, options, loader, init_maximum_depth=INIT_MAXIMUM_DEPTH,
                 maximum_depth=None):
   """Verify the Python code."""
-  ctx = context.Context(options, loader)
+  ctx = context.Context(options, loader, src=src)
   loc, defs = ctx.vm.run_program(src, options.input, init_maximum_depth)
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)
   snapshotter.take_snapshot("analyze:check_types:tracer")
@@ -64,7 +64,7 @@ def infer_types(src,
   Raises:
     AssertionError: In case of a bad parameter combination.
   """
-  ctx = context.Context(options, loader)
+  ctx = context.Context(options, loader, src=src)
   loc, defs = ctx.vm.run_program(src, options.input, init_maximum_depth)
   log.info("===Done running definitions and module-level code===")
   snapshotter = metrics.get_metric("memory", metrics.Snapshot)

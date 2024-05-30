@@ -402,7 +402,7 @@ class ErrorMatcher:
     if matchers:
       self._fail(f"Marks not found in code: {', '.join(matchers)}")
 
-  def _assert_diagnostic_messages(self, matchers):
+  def assert_diagnostic_messages(self, matchers):
     """Assert error messages."""
     assert self.marks is not None
     for mark, error in self.marks.items():
@@ -410,8 +410,12 @@ class ErrorMatcher:
         matcher = matchers.pop(mark)
       except KeyError:
         self._fail(f"No matcher for mark {mark}")
+      if isinstance(matcher, str):
+        match = matcher.__eq__
+      else:
+        match = matcher.match
       error_as_string = error.as_string()
-      if not matcher.match(error_as_string):
+      if not match(error_as_string):
         self._fail("Bad error message for mark %s: expected %r, got %r" %
                    (mark, matcher, error_as_string))
     if matchers:
@@ -429,7 +433,7 @@ class ErrorMatcher:
     matchers = {
         k: RegexMatcher(v) for k, v in expected_diagnostic_regexes.items()
     }
-    self._assert_diagnostic_messages(matchers)
+    self.assert_diagnostic_messages(matchers)
 
   def _parse_comment(self, comment):
     comment = comment.strip()
@@ -500,9 +504,11 @@ def skipOnWin32(reason):
   return unittest.skipIf(sys.platform == "win32", reason)
 
 
-def make_context(options):
+def make_context(options, src=""):
   """Create a minimal context for tests."""
-  return context.Context(options=options, loader=load_pytd.Loader(options))
+  return context.Context(
+      options=options, loader=load_pytd.Loader(options), src=src
+  )
 
 
 def test_data_file(filename):

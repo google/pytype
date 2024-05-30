@@ -40,11 +40,13 @@ class Context:
       self,
       options: Optional[config.Options] = None,
       pytd_loader: Optional[load_pytd.Loader] = None,
+      *,
+      src: str,
   ):
     self.options = options or config.Options.create()
     self.pytd_loader = pytd_loader or load_pytd.create_loader(self.options)
 
-    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self))
+    self.errorlog = errors.VmErrorLog(pretty_printer.PrettyPrinter(self), src)
     self.abstract_converter = convert.AbstractConverter(self)
     self.abstract_loader = load_abstract.AbstractLoader(self, self.pytd_loader)
     self.pytd_converter = output.PytdConverter(self)

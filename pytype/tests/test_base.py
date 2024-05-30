@@ -216,6 +216,9 @@ class BaseTest(unittest.TestCase):
   def assertDiagnosticRegexes(self, matcher, expected_errors):
     matcher.assert_diagnostic_regexes(expected_errors)
 
+  def assertDiagnosticMessages(self, matcher, expected_errors):
+    matcher.assert_diagnostic_messages(expected_errors)
+
   def _PickleAst(self, ast, module_name):
     assert module_name
     ast = serialize_ast.PrepareForExport(module_name, ast, self.loader)
