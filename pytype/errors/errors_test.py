@@ -18,15 +18,21 @@ _MESSAGE = "an error message on 'here'"
 
 
 def make_errorlog():
-  return errors.VmErrorLog(test_utils.FakePrettyPrinter())
+  return errors.VmErrorLog(test_utils.FakePrettyPrinter(), src="")
 
 
 class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_init(self):
-    e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     line=123, methodname="foo", keyword="here")
+    e = errors.Error(
+        errors.SEVERITY_ERROR,
+        _MESSAGE,
+        filename="foo.py",
+        line=123,
+        methodname="foo",
+        keyword="here",
+    )
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
@@ -38,8 +44,9 @@ class ErrorTest(unittest.TestCase):
   @errors._error_name(_TEST_ERROR)
   def test_with_stack(self):
     # Opcode of None.
-    e = errors.Error.with_stack(None, errors.SEVERITY_ERROR, _MESSAGE,
-                                keyword="here")
+    e = errors.Error.with_stack(
+        None, errors.SEVERITY_ERROR, _MESSAGE, keyword="here"
+    )
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
@@ -49,8 +56,9 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual("here", e.keyword)
     # Opcode of None.
     op = test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
-    e = errors.Error.with_stack(op.to_stack(), errors.SEVERITY_ERROR, _MESSAGE,
-                                keyword="here")
+    e = errors.Error.with_stack(
+        op.to_stack(), errors.SEVERITY_ERROR, _MESSAGE, keyword="here"
+    )
     self.assertEqual(errors.SEVERITY_ERROR, e._severity)
     self.assertEqual(_MESSAGE, e._message)
     self.assertEqual(e._name, _TEST_ERROR)
@@ -102,7 +110,7 @@ class ErrorTest(unittest.TestCase):
   def test_no_error_name(self):
     # It is illegal to create an error outside of an @error_name annotation.
     self.assertRaises(
-        AssertionError, errors.Error, errors.SEVERITY_ERROR, _MESSAGE
+        AssertionError, errors.Error, errors.SEVERITY_ERROR, _MESSAGE, src=""
     )
 
   @errors._error_name(_TEST_ERROR)
@@ -111,16 +119,22 @@ class ErrorTest(unittest.TestCase):
         errors.SEVERITY_ERROR,
         _MESSAGE,
         filename="foo.py",
-        line=123,
+        line=1,
+        endline=1,
+        col=1,
+        endcol=2,
         methodname="foo",
+        src="",
     )
-    message = "an error message on 'here'"
-    error = (
-        "foo.py:123:1: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: "
-        + message
-        + " [test-error]"
+    self.assertEqual(
+        str(e),
+        textwrap.dedent("""\
+      foo.py:1:2: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: an error message on 'here' [test-error]
+
+
+       \x1b[1m\x1b[31m~\x1b[39m\x1b[0m
+    """),
     )
-    self.assertEqual(error, str(e))
 
   @errors._error_name(_TEST_ERROR)
   def test_write_to_csv(self):
@@ -164,8 +178,15 @@ class ErrorTest(unittest.TestCase):
 
   @errors._error_name(_TEST_ERROR)
   def test_color(self):
-    e = errors.Error(errors.SEVERITY_ERROR, _MESSAGE, filename="foo.py",
-                     line=123, methodname="foo", keyword="here")
+    e = errors.Error(
+        errors.SEVERITY_ERROR,
+        _MESSAGE,
+        filename="foo.py",
+        line=123,
+        methodname="foo",
+        keyword="here",
+        src="",
+    )
     color_snippet = "'here' [\x1b[1m\x1b[31mtest-error\x1b[39m\x1b[0m]"
     self.assertIn(color_snippet, e.as_string(color=True))
     self.assertNotIn(color_snippet, e.as_string())
@@ -190,11 +211,14 @@ class ErrorLogTest(unittest.TestCase):
   def test_error_with_details(self):
     errorlog = make_errorlog()
     errorlog.error(None, "My message", "one\ntwo")
-    self.assertEqual(textwrap.dedent("""
+    self.assertEqual(
+        textwrap.dedent("""
         My message [test-error]
           one
           two
-        """).lstrip(), str(errorlog))
+        """).lstrip(),
+        str(errorlog),
+    )
 
   @errors._error_name(_TEST_ERROR)
   def test_warn(self):

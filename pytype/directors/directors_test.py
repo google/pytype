@@ -112,9 +112,9 @@ class DirectorTestCase(unittest.TestCase):
 
   def _create(self, src, disable=()):
     self.num_lines = len(src.rstrip().splitlines())
-    src = textwrap.dedent(src)
-    src_tree = directors.parse_src(src, self.python_version)
-    self._errorlog = errors.VmErrorLog(test_utils.FakePrettyPrinter())
+    self.src = textwrap.dedent(src)
+    src_tree = directors.parse_src(self.src, self.python_version)
+    self._errorlog = errors.VmErrorLog(test_utils.FakePrettyPrinter(), self.src)
     self._director = directors.Director(
         src_tree, self._errorlog, _TEST_FILENAME, disable)
 
@@ -122,7 +122,7 @@ class DirectorTestCase(unittest.TestCase):
                      filename=_TEST_FILENAME):
     error = errors.Error.for_test(
         errors.SEVERITY_ERROR, "message", error_name, filename=filename,
-        line=line)
+        line=line, src=self.src)
     self.assertEqual(
         expected,
         self._director.filter_error(error))

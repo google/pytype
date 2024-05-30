@@ -33,7 +33,7 @@ class VirtualMachine:
   def from_source(
       cls, src: str, ctx: Optional[context.Context] = None,
   ) -> 'VirtualMachine':
-    ctx = ctx or context.Context()
+    ctx = ctx or context.Context(src=src)
     code = _get_bytecode(src, ctx.options)
     initial_globals = ctx.abstract_loader.get_module_globals()
     return cls(ctx, code, initial_globals)

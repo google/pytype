@@ -19,7 +19,7 @@ class ContextfulTestBase(unittest.TestCase):
 
   def setUp(self):
     super().setUp()
-    self.ctx = context.Context()
+    self.ctx = context.Context(src='')
 
 
 class PytdTestBase(parser_test_base.ParserTest):

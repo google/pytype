@@ -5,7 +5,7 @@ import csv
 import io
 import logging
 import sys
-from typing import Callable, IO, Iterable, Optional, Sequence, TypeVar, Union
+from typing import Callable, IO, Iterable, List, Optional, Sequence, TypeVar, Union
 
 from pytype import debug
 from pytype import pretty_printer_base
@@ -197,10 +197,24 @@ class Error:
     opcode_name: Optionally, the name of the opcode that raised the error.
   """
 
-  def __init__(self, severity, message, filename=None, line=0, endline=0,
-               col=0, endcol=0,
-               methodname=None, details=None, traceback=None, keyword=None,
-               keyword_context=None, bad_call=None, opcode_name=None):
+  def __init__(
+      self,
+      severity,
+      message,
+      filename=None,
+      line=0,
+      endline=0,
+      col=0,
+      endcol=0,
+      src="",
+      methodname=None,
+      details=None,
+      traceback=None,
+      keyword=None,
+      keyword_context=None,
+      bad_call=None,
+      opcode_name=None,
+  ):
     name = _CURRENT_ERROR_NAME.get()
     assert name, ("Errors must be created from a caller annotated "
                   "with @error_name.")
@@ -208,6 +222,7 @@ class Error:
     self._severity = severity
     self._message = message
     self._name = name
+    self._src = src
     # Optional information about the error.
     self._details = details
     # Optional information about error position.
@@ -241,11 +256,19 @@ class Error:
     if opcode is None:
       return cls(severity, message, **kwargs)
     else:
-      return cls(severity, message, filename=opcode.code.filename,
-                 line=opcode.line, endline=opcode.endline, col=opcode.col,
-                 endcol=opcode.endcol, methodname=opcode.code.name,
-                 opcode_name=opcode.__class__.__name__,
-                 traceback=_make_traceback_str(stack), **kwargs)
+      return cls(
+          severity,
+          message,
+          filename=opcode.code.filename,
+          line=opcode.line,
+          endline=opcode.endline,
+          col=opcode.col,
+          endcol=opcode.endcol,
+          methodname=opcode.code.name,
+          opcode_name=opcode.__class__.__name__,
+          traceback=_make_traceback_str(stack),
+          **kwargs,
+      )
 
   @classmethod
   def for_test(cls, severity, message, name, **kwargs):
@@ -302,6 +325,84 @@ class Error:
   def keyword_context(self):
     return self._keyword_context
 
+  def _find_all_line_split(self, begin_line: int, end_line: int) -> List[int]:
+    """Finds all index of line boundaries between begin_line and end_line.
+
+    Due to the possibility of the endline of the error message being on the
+    last line of the source code, last line will be the last index, and not past
+    the last index.
+
+    Args:
+      begin_line: The begin line of which we want to find the index of.
+      end_line: The end line of which we want to find the index of.
+
+    Returns:
+      A list of indicies for the line boundaries.
+    """
+    curr_line = 0
+    curr_idx = 0
+    point_idx = []
+    while curr_line < begin_line:
+      curr_idx = self._src.find("\n", curr_idx) + 1
+      curr_line += 1
+    point_idx.append(curr_idx)
+
+    while curr_line < end_line:
+      curr_idx = self._src.find("\n", curr_idx) + 1
+      point_idx.append(curr_idx)
+      curr_line += 1
+    curr_idx = self._src.find("\n", curr_idx)
+    # Last line index will be not past the last line, it'll be the last char
+    # of the last line.
+    curr_idx = len(self._src) if curr_idx == -1 else curr_idx
+    point_idx.append(curr_idx)
+
+    return point_idx
+
+  def _visualize_failed_lines(self) -> str:
+    """Visualize the line with the errors, highlighting the exact error loc."""
+    if not self._filename or not self._line:
+      return ""
+    point_idx = self._find_all_line_split(self._line - 1, self._endline - 1)
+    if self._line == self._endline:
+      return (
+          self._src[point_idx[0] : point_idx[-1]]
+          + "\n"
+          + " " * self._col
+          + (
+              utils.COLOR_ERROR_NAME_TEMPLATE
+              % ("~" * (self._endcol - self._col))
+          )
+      )
+
+    concat_code_with_red_lines = [
+        self._src[point_idx[0] : point_idx[1]],
+        " " * self._col,
+        (
+            utils.COLOR_ERROR_NAME_TEMPLATE
+            % ("~" * (point_idx[1] - point_idx[0] - self._col - 1))
+        ),
+        "\n",
+    ]
+    for i in range(1, len(point_idx) - 2):
+      concat_code_with_red_lines.append(
+          self._src[point_idx[i] : point_idx[i + 1]]
+      )
+      concat_code_with_red_lines.append(
+          utils.COLOR_ERROR_NAME_TEMPLATE
+          % ("~" * (point_idx[i + 1] - point_idx[i] - 1))
+      )
+      concat_code_with_red_lines.append("\n")
+    concat_code_with_red_lines.append(self._src[point_idx[-2] : point_idx[-1]])
+    concat_code_with_red_lines.append("\n")
+    concat_code_with_red_lines.append(
+        utils.COLOR_ERROR_NAME_TEMPLATE % ("~" * self._endcol)
+    )
+    return "".join(concat_code_with_red_lines)
+
+  def get_unique_representation(self):
+    return (self._position(), self._message, self._details, self._name)
+
   def _position(self):
     """Return human-readable filename + line number."""
     method = f"in {self._methodname}" if self._methodname else ""
@@ -342,6 +443,9 @@ class Error:
     text = "{}{} [{}]".format(pos, self._message.replace("\n", "\n  "), name)
     if self._details:
       text += "\n  " + self._details.replace("\n", "\n  ")
+    visualized = self._visualize_failed_lines()
+    if visualized:
+      text += "\n\n" + visualized + "\n"
     if self._traceback:
       text += "\n" + self._traceback
     return text
@@ -353,19 +457,24 @@ class Error:
           message=self._message,
           filename=self._filename,
           line=self._line,
+          endline=self._endline,
+          col=self._col,
+          endcol=self._endcol,
           methodname=self._methodname,
           details=self._details,
           keyword=self._keyword,
-          traceback=None)
+          traceback=None,
+          src=self._src)
 
 
 class ErrorLog:
   """A stream of errors."""
 
-  def __init__(self):
+  def __init__(self, src: str):
     self._errors = []
     # An error filter (initially None)
     self._filter = None
+    self._src = src
 
   def __len__(self):
     return len(self._errors)
@@ -411,13 +520,30 @@ class ErrorLog:
       self._errors.append(error)
 
   def warn(self, stack, message, *args):
-    self._add(Error.with_stack(stack, SEVERITY_WARNING, message % args))
+    self._add(
+        Error.with_stack(stack, SEVERITY_WARNING, message % args, src=self._src)
+    )
 
-  def error(self, stack, message, details=None, keyword=None, bad_call=None,
-            keyword_context=None, line=None):
-    err = Error.with_stack(stack, SEVERITY_ERROR, message, details=details,
-                           keyword=keyword, bad_call=bad_call,
-                           keyword_context=keyword_context)
+  def error(
+      self,
+      stack,
+      message,
+      details=None,
+      keyword=None,
+      bad_call=None,
+      keyword_context=None,
+      line=None,
+  ):
+    err = Error.with_stack(
+        stack,
+        SEVERITY_ERROR,
+        message,
+        details=details,
+        keyword=keyword,
+        bad_call=bad_call,
+        keyword_context=keyword_context,
+        src=self._src,
+    )
     if line:
       err.set_line(line)
     self._add(err)
@@ -460,7 +586,7 @@ class ErrorLog:
     """Gets the unique errors in this log, sorted on filename and line."""
     unique_errors = {}
     for error in self._sorted_errors():
-      error_without_traceback = str(error.drop_traceback())
+      error_without_traceback = error.get_unique_representation()
       if error_without_traceback not in unique_errors:
         unique_errors[error_without_traceback] = [error]
         continue
@@ -503,8 +629,8 @@ class ErrorLog:
 class VmErrorLog(ErrorLog):
   """ErrorLog with methods for adding specific pytype errors."""
 
-  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase):
-    super().__init__()
+  def __init__(self, pp: pretty_printer_base.PrettyPrinterBase, src: str):
+    super().__init__(src)
     self._pp = pp
 
   @property
@@ -889,16 +1015,31 @@ class VmErrorLog(ErrorLog):
 
   @_error_name("invalid-directive")
   def invalid_directive(self, filename, line, message):
-    self._add(Error(
-        SEVERITY_WARNING, message, filename=filename, line=line))
+    self._add(
+        Error(
+            SEVERITY_WARNING,
+            message,
+            src=self._src,
+            filename=filename,
+            line=line,
+        )
+    )
 
   @_error_name("late-directive")
   def late_directive(self, filename, line, name):
     message = f"{name} disabled from here to the end of the file"
     details = ("Consider limiting this directive's scope or moving it to the "
                "top of the file.")
-    self._add(Error(SEVERITY_WARNING, message, details=details,
-                    filename=filename, line=line))
+    self._add(
+        Error(
+            SEVERITY_WARNING,
+            message,
+            src=self._src,
+            details=details,
+            filename=filename,
+            line=line,
+        )
+    )
 
   @_error_name("not-supported-yet")
   def not_supported_yet(self, stack, feature, details=None):
@@ -906,8 +1047,11 @@ class VmErrorLog(ErrorLog):
 
   @_error_name("python-compiler-error")
   def python_compiler_error(self, filename, line, message):
-    self._add(Error(
-        SEVERITY_ERROR, message, filename=filename, line=line))
+    self._add(
+        Error(
+            SEVERITY_ERROR, message, filename=filename, line=line, src=self._src
+        )
+    )
 
   @_error_name("recursion-error")
   def recursion_error(self, stack, name):
@@ -915,10 +1059,15 @@ class VmErrorLog(ErrorLog):
 
   @_error_name("redundant-function-type-comment")
   def redundant_function_type_comment(self, filename, line):
-    self._add(Error(
-        SEVERITY_ERROR,
-        "Function type comments cannot be used with annotations",
-        filename=filename, line=line))
+    self._add(
+        Error(
+            SEVERITY_ERROR,
+            "Function type comments cannot be used with annotations",
+            filename=filename,
+            line=line,
+            src=self._src,
+        )
+    )
 
   @_error_name("invalid-function-type-comment")
   def invalid_function_type_comment(self, stack, comment, details=None):
@@ -927,9 +1076,15 @@ class VmErrorLog(ErrorLog):
 
   @_error_name("ignored-type-comment")
   def ignored_type_comment(self, filename, line, comment):
-    self._add(Error(
-        SEVERITY_WARNING, f"Stray type comment: {comment}",
-        filename=filename, line=line))
+    self._add(
+        Error(
+            SEVERITY_WARNING,
+            f"Stray type comment: {comment}",
+            filename=filename,
+            line=line,
+            src=self._src,
+        )
+    )
 
   @_error_name("invalid-typevar")
   def invalid_typevar(self, stack, comment, bad_call=None):

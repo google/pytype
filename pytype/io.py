@@ -195,6 +195,7 @@ def check_or_generate_pyi(options) -> AnalysisResult:
   loader = load_pytd.create_loader(options)
   compiler_error = None
   other_error_info = ""
+  src = ""
   try:
     src = read_source_file(options.input, options.open_function)
     if options.check:
@@ -235,7 +236,7 @@ def check_or_generate_pyi(options) -> AnalysisResult:
     return AnalysisResult(ctx, ast, result)
 
   # check_py/generate_pyi has raised an exception.
-  ctx = context.Context(options, loader)
+  ctx = context.Context(options, loader, src=src)
   if compiler_error:
     ctx.errorlog.python_compiler_error(*compiler_error)
   ast = pytd_builtins.GetDefaultAst(
