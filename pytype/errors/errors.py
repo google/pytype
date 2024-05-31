@@ -361,7 +361,7 @@ class Error:
 
   def _visualize_failed_lines(self) -> str:
     """Visualize the line with the errors, highlighting the exact error loc."""
-    if not self._filename or not self._line:
+    if not self._filename or not self._line or not self._src:
       return ""
     point_idx = self._find_all_line_split(self._line - 1, self._endline - 1)
     if self._line == self._endline:

@@ -129,11 +129,7 @@ class ErrorTest(unittest.TestCase):
     self.assertEqual(
         str(e),
         textwrap.dedent("""\
-      foo.py:1:2: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: an error message on 'here' [test-error]
-
-
-       \x1b[1m\x1b[31m~\x1b[39m\x1b[0m
-    """),
+      foo.py:1:2: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: an error message on 'here' [test-error]"""),
     )
 
   @errors._error_name(_TEST_ERROR)
