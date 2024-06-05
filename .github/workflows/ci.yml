@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+        python-version: ['3.8', '3.9', '3.10', '3.11']
+        experimental: [false]
+        include:
+          - os: ubuntu-20.04
+            python-version: '3.12'
+            experimental: true
+    steps:
+    - name: Cancel previous
+      uses: styfle/cancel-workflow-action@0.12.1
+      with:
+        access_token: ${{ github.token }}
+    
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: setup python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        allow-prereleases: true
+
+    - name: Install system packages
+      run: |
+        sudo apt-get install bison cmake flex g++
+
+    - name: Install Dependencies
+      run: pip install -r requirements.txt
+
+    # We have to put continue-on-error at the step level rather than the job
+    # level because the UI is broken:
+    # https://github.com/github-community/community/discussions/15452.
+
+    - name: Run Tests
+      run: python build_scripts/ci_script.py
+      continue-on-error: ${{ matrix.experimental }}
