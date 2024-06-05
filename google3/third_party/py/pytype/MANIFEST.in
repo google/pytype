@@ -1,0 +1,4 @@
+include LICENSE
+include pyproject.toml
+include pytype/test_data/*
+include pytype/typegraph/*
