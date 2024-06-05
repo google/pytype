@@ -1,0 +1,50 @@
+name: CI (Windows)
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest]
+        python-url: ['https://www.python.org/ftp/python/3.10.5/python-3.10.5-amd64.exe']
+        experimental: [true]
+        
+    runs-on: ${{ matrix.os }}
+
+    steps:
+    - name: Cancel previous
+      uses: styfle/cancel-workflow-action@0.12.1
+      with:
+        access_token: ${{ github.token }}
+    
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+
+    - name: Download Python
+      run: Invoke-WebRequest -Uri ${{ matrix.python-url }} -OutFile python-installer.exe
+
+    - name: Install Python
+      run: .\python-installer /quiet /passive Include_debug=1 PrependPath=1 TargetDir=C:\Python | more
+          
+    - uses: ilammy/msvc-dev-cmd@v1
+
+    # We have to put continue-on-error at the step level rather than the job
+    # level because the UI is broken:
+    # https://github.com/github-community/community/discussions/15452.
+
+    - name: Test
+      run: | 
+        set LIB=C:\Python\Libs;%LIB%
+        set TYPESHED_HOME=%cd%\typeshed
+        set PATH=C:\Python;C:\Python\Scripts;%PATH%
+        pip install -r requirements.txt
+        python build_scripts/ci_script.py
+      shell: cmd
+      continue-on-error: ${{ matrix.experimental }}
