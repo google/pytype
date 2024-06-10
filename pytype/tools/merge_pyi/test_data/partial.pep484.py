@@ -1,7 +1,7 @@
-def f1(a, b : int):
+def f1(a: e1, b: e2) -> r1:
     pass
 
-def f2(a, b) -> int:
+def f2(a: e1, b: e2) -> r2:
     pass
 
 def f3(a) -> r3:
