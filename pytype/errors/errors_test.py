@@ -86,21 +86,27 @@ class ErrorTest(unittest.TestCase):
   def test_traceback(self):
     stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 1)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
-    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""
+    self.assertMultiLineEqual(
+        error._traceback,
+        textwrap.dedent("""
       Called from (traceback):
         line 0, in function0
         line 1, in function1
-        line 2, in function2""").lstrip())
+        line 2, in function2""").lstrip(),
+    )
 
   @errors._error_name(_TEST_ERROR)
   def test_truncated_traceback(self):
     stack = test_utils.fake_stack(errors.MAX_TRACEBACK_LENGTH + 2)
     error = errors.Error.with_stack(stack, errors.SEVERITY_ERROR, "")
-    self.assertMultiLineEqual(error._traceback, textwrap.dedent("""
+    self.assertMultiLineEqual(
+        error._traceback,
+        textwrap.dedent("""
       Called from (traceback):
         line 0, in function0
         ...
-        line 3, in function3""").lstrip())
+        line 3, in function3""").lstrip(),
+    )
 
   def test__error_name(self):
     # This should be true as long as at least one method is annotated with
@@ -128,8 +134,10 @@ class ErrorTest(unittest.TestCase):
     )
     self.assertEqual(
         str(e),
-        textwrap.dedent("""\
-      foo.py:1:2: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: an error message on 'here' [test-error]"""),
+        textwrap.dedent(
+            """foo.py:1:2: \x1b[1m\x1b[31merror\x1b[39m\x1b[0m: in foo: """
+            + """an error message on 'here' [test-error]"""
+        ),
     )
 
   @errors._error_name(_TEST_ERROR)
@@ -164,13 +172,16 @@ class ErrorTest(unittest.TestCase):
       with open(filename, "w") as fi:
         errorlog.print_to_csv_file(fi)
       with open(filename) as fi:
-        (_, _, _, _, actual_details), = list(csv.reader(fi, delimiter=","))
-        self.assertMultiLineEqual(actual_details, textwrap.dedent("""
+        ((_, _, _, _, actual_details),) = list(csv.reader(fi, delimiter=","))
+        self.assertMultiLineEqual(
+            actual_details,
+            textwrap.dedent("""
           some
           details
 
           Called from (traceback):
-            line 0, in function0""").lstrip())
+            line 0, in function0""").lstrip(),
+        )
 
   @errors._error_name(_TEST_ERROR)
   def test_color(self):
@@ -259,12 +270,11 @@ class ErrorLogTest(unittest.TestCase):
     errorlog.error(stack, "error_with_stack")
     errorlog.error([], "error_without_stack")
     unique_errors = errorlog.unique_sorted_errors()
-    unique_errors = [(error.message, error.filename, error.line)
-                     for error in unique_errors
-                    ]
+    unique_errors = [
+        (error.message, error.filename, error.line) for error in unique_errors
+    ]
     self.assertEqual(
-        [("error_without_stack", None, 0),
-         ("error_with_stack", "foo.py", 0)],
+        [("error_without_stack", None, 0), ("error_with_stack", "foo.py", 0)],
         unique_errors,
     )
 
@@ -277,19 +287,25 @@ class ErrorLogTest(unittest.TestCase):
     # Keep the error with a shorter traceback.
     unique_errors = errorlog.unique_sorted_errors()
     self.assertEqual(len(unique_errors), 1)
-    self.assertMultiLineEqual(unique_errors[0]._traceback, textwrap.dedent("""
+    self.assertMultiLineEqual(
+        unique_errors[0]._traceback,
+        textwrap.dedent("""
       Called from (traceback):
-        line 1, in function1""").lstrip())
+        line 1, in function1""").lstrip(),
+    )
 
   @errors._error_name(_TEST_ERROR)
   def test_unique_errors(self):
     errorlog = make_errorlog()
     current_frame = frame_state.SimpleFrame(
-        test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo"))
+        test_utils.FakeOpcode("foo.py", 123, 123, 0, 0, "foo")
+    )
     backframe1 = frame_state.SimpleFrame(
-        test_utils.FakeOpcode("foo.py", 1, 1, 0, 0, "bar"))
+        test_utils.FakeOpcode("foo.py", 1, 1, 0, 0, "bar")
+    )
     backframe2 = frame_state.SimpleFrame(
-        test_utils.FakeOpcode("foo.py", 2, 2, 0, 0, "baz"))
+        test_utils.FakeOpcode("foo.py", 2, 2, 0, 0, "baz")
+    )
     errorlog.error([backframe1, current_frame], "error")
     errorlog.error([backframe2, current_frame], "error")
     # Keep both errors, since the tracebacks are different.
@@ -327,7 +343,8 @@ class ErrorLogTest(unittest.TestCase):
 class ErrorDocTest(unittest.TestCase):
   dirname = path_utils.dirname
   ERROR_FILE_PATH = path_utils.join(
-      dirname(dirname(errors.__file__)), "../docs/errors.md")
+      dirname(dirname(errors.__file__)), "../docs/errors.md"
+  )
 
   def _check_and_get_documented_errors(self):
     with open(self.ERROR_FILE_PATH) as f:
@@ -336,15 +353,19 @@ class ErrorDocTest(unittest.TestCase):
     counts = collections.Counter(entries)
     if any(count > 1 for count in counts.values()):
       raise AssertionError(
-          "These errors.md entries have duplicates:\n  " +
-          "\n  ".join(name for name, count in counts.items() if count > 1))
+          "These errors.md entries have duplicates:\n  "
+          + "\n  ".join(name for name, count in counts.items() if count > 1)
+      )
     sorted_entries = sorted(entries)
     if sorted_entries != entries:
       raise AssertionError(
-          "These errors.md entries are out of alphabetical order:\n  " +
-          "\n  ".join(
-              actual for expected, actual in zip(sorted_entries, entries)
-              if expected != actual))
+          "These errors.md entries are out of alphabetical order:\n  "
+          + "\n  ".join(
+              actual
+              for expected, actual in zip(sorted_entries, entries)
+              if expected != actual
+          )
+      )
     return set(entries)
 
   def test_error_doc(self):
@@ -353,13 +374,16 @@ class ErrorDocTest(unittest.TestCase):
     undocumented_errors = all_errors - documented_errors
     if undocumented_errors:
       raise AssertionError(
-          "These errors are missing entries in errors.md:\n  " +
-          "\n  ".join(undocumented_errors) + "\n")
+          "These errors are missing entries in errors.md:\n  "
+          + "\n  ".join(undocumented_errors)
+          + "\n"
+      )
     deprecated_errors = documented_errors - all_errors
     if deprecated_errors:
       raise AssertionError(
-          "These errors.md entries do not correspond to errors:\n  " +
-          "\n  ".join(deprecated_errors))
+          "These errors.md entries do not correspond to errors:\n  "
+          + "\n  ".join(deprecated_errors)
+      )
 
 
 if __name__ == "__main__":

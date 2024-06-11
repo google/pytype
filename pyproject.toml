@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=40.8.0", "ninja", "wheel", "pybind11>=2.10.1"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytype]
+inputs = [
+    "pytype/*.py",
+    "pytype/overlays/",
+    "pytype/pyc/",
+    "pytype/pyi/",
+    "pytype/pytd/",
+    "pytype/tools/",
+    "pytype/typegraph/",
+    "pytype_extensions/**/*.py",
+]
+exclude = [
+    "**/*_test.py",
+    "**/test_*.py",
+    "**/*_test_*.py",
+    "pytype/tools/merge_pyi/test_data/",
+    "pytype/tools/xref/testdata/",
+]
