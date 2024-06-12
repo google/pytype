@@ -3,8 +3,12 @@
 import textwrap
 
 from pytype.tests import test_base
+from pytype.tests import test_utils
 
 
+@test_utils.skipBeforePy(
+    (3, 11), "py versions lower than 3.11 doesn't have column information "
+)
 class ErrorTest(test_base.BaseTest):
   """Tests for errors."""
 
