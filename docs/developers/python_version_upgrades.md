@@ -31,10 +31,10 @@ updated to accept the new version.
 
 #### opcode changes
 
-If the new version adds or removes any opcodes, then an updated opcode mapping
-should be added to
-[pytype/pyc/opcodes.py][pyc.opcodes.python_3_7_mapping] and new opcodes
-implemented in [pytype/vm.py][vm.VirtualMachine.byte_LOAD_METHOD].
+If the new version adds or removes any opcodes, then updated opcodes should be
+added to [pytype/pyc/opcodes.py][pyc.opcodes], an opcode mapping to
+[pycnite/mapping.py][pycnite.mapping] and new opcodes implemented in
+[pytype/vm.py][vm.VirtualMachine.byte_LOAD_METHOD].
 
 TIP: [pytype/pyc/generate_opcode_diffs.py][pyc.generate_opcode_diffs] will
 generate the changes you need to make to opcodes.py, as well as
@@ -65,7 +65,7 @@ https://github.com/python/cpython/blob/master/Python/ceval.c).
 #### magic numbers
 
 Magic numbers for the new version should be copied from the
-[CPython source code][cpython-source] to [pytype/pyc/magic.py][pyc.magic].
+[CPython source code][cpython-source] to [pycnite/magic.py][pycnite.magic].
 
 ### regression tests
 
@@ -105,14 +105,17 @@ and by searching for "New in version 3.x" in the
 [cpython-opcode]: https://github.com/python/cpython/blob/master/Lib/opcode.py
 
 <!-- References with different internal and external versions -->
+<!-- mdformat off(mdformat adds/removes newlines, which make these harder to read) -->
 
 [cpython-source]: https://github.com/python/cpython/blob/beba1a808000d5fc445cb28eab96bdb4cdb7c959/Lib/importlib/_bootstrap_external.py#L245
 
 [pyc.generate_opcode_diffs]: https://github.com/google/pytype/blob/main/pytype/pyc/generate_opcode_diffs.py
 
-[pyc.magic]: https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/pytype/pyc/magic.py#L97
+[pyc.opcodes]: https://github.com/google/pytype/blob/6516ebd5def4ac507a5449b0c57297a53b7e9a9f/pytype/pyc/opcodes.py#L201-L1018
 
-[pyc.opcodes.python_3_7_mapping]: https://github.com/google/pytype/blob/ee51995a1c5937cb4ebee291acb2e049fb0f81cc/pytype/pyc/opcodes.py#L1101
+[pycnite.mapping]: https://github.com/google/pycnite/blob/25326a096278a8372e03bbefab8fa4b725f96245/pycnite/mapping.py#L196
+
+[pycnite.magic]: https://github.com/google/pycnite/blob/25326a096278a8372e03bbefab8fa4b725f96245/pycnite/magic.py#L20
 
 [test_data.simple]: https://github.com/google/pytype/blob/main/pytype/test_data/simple.py
 

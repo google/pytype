@@ -40,6 +40,7 @@ disable=
   import-outside-toplevel,
   inconsistent-return-statements,
   invalid-name,
+  line-too-long,
   method-hidden,
   missing-docstring,
   modified-iterating-dict,

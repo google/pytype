@@ -27,10 +27,18 @@ not generate a new stub implementation for vm.py.
 """
 
 import json
+import opcode
 import subprocess
 import sys
 import tempfile
 import textwrap
+
+
+# Starting with Python 3.12, `dis` collections contain pseudo instructions and
+# instrumented instructions. These are opcodes with values >= MIN_PSEUDO_OPCODE
+# and >= MIN_INSTRUMENTED_OPCODE.
+# Pytype doesn't care about those, so we ignore them here.
+_MIN_INSTRUMENTED_OPCODE = getattr(opcode, 'MIN_INSTRUMENTED_OPCODE', 237)
 
 
 def generate_diffs(argv):
@@ -57,11 +65,8 @@ def generate_diffs(argv):
         'HAS_JABS': dis.hasjabs,
         'HAS_LOCAL': dis.haslocal,
         'HAS_FREE': dis.hasfree,
-        'HAS_NARGS': dis.hasnargs,
+        'HAS_NARGS': getattr(dis, 'hasnargs', []), # Removed in Python 3.12
       }
-      for attr in dis.__all__:
-        if attr.startswith('has'):
-          output[attr] = getattr(dis, attr)
       print(json.dumps(output))
     """))
     f.flush()
@@ -77,8 +82,6 @@ def generate_diffs(argv):
   #   index: ('CHANGE', old opcode at this index, new opcode at this index)
   #   index: ('FLAG_CHANGE', opcode)
   #   index: ('ADD', new opcode)
-  num_opcodes = len(dis1['opname'])
-  assert num_opcodes == len(dis2['opname'])
   changed = {}
   impl_changed = set()
   name_unchanged = set()
@@ -86,7 +89,7 @@ def generate_diffs(argv):
   def is_unset(opname_entry):
     return opname_entry == f'<{i}>'
 
-  for i in range(num_opcodes):
+  for i in range(_MIN_INSTRUMENTED_OPCODE - 1):
     opname1 = dis1['opname'][i]
     opname2 = dis2['opname'][i]
     if opname1 == opname2:
@@ -133,54 +136,82 @@ def generate_diffs(argv):
         continue
       flags.append(k)
     if flags:
-      cls.append('  FLAGS = ' + ' | '.join(flags))
+      cls.append('  _FLAGS = ' + ' | '.join(flags))
     cls.append('  __slots__ = ()')
     classes.append(cls)
 
-  # Generate a mapping diff.
-  diffs = []
-  for op, diff in sorted(changed.items()):
-    if diff[0] == 'DELETE':
-      name = diff[1]
-      diffs.append(f'{op}: None,  # was {name} in {version1}')
-    elif diff[0] == 'CHANGE':
-      old_name, new_name = diff[1:]  # pytype: disable=bad-unpacking
-      diffs.append(f'{op}: {new_name},  # was {old_name} in {version1}')
-    elif diff[0] == 'ADD':
-      name = diff[1]
-      diffs.append(f'{op}: {name},')
-    else:
-      assert diff[0] == 'FLAG_CHANGE'
-
   # Generate stub implementations.
   stubs = []
-  for op, diff in sorted(changed.items()):
+  for _, diff in sorted(changed.items()):
     if diff[0] == 'DELETE':
       continue
     name = diff[-1]
     if name in impl_changed:
       continue
-    stubs.append([f'def byte_{name}(self, state, op):',
-                  '  del op',
-                  '  return state'])
+    stubs.append(
+        [f'def byte_{name}(self, state, op):', '  del op', '  return state']
+    )
 
-  return classes, diffs, stubs, sorted(impl_changed)
+  # Generate a mapping diff.
+  mapping = []
+  for op, diff in sorted(changed.items()):
+    if diff[0] == 'DELETE':
+      name = diff[1]
+      mapping.append(f'{op}: None,  # was {name} in {version1}')
+    elif diff[0] == 'CHANGE':
+      old_name, new_name = diff[1:]  # pytype: disable=bad-unpacking
+      mapping.append(f'{op}: "{new_name}",  # was {old_name} in {version1}')
+    elif diff[0] == 'ADD':
+      name = diff[1]
+      mapping.append(f'{op}: "{name}",')
+    else:
+      assert diff[0] == 'FLAG_CHANGE'
+
+  # Generate arg type diff
+  arg_types = []
+  for _, diff in sorted(changed.items()):
+    if diff[0] == 'DELETE':
+      continue
+    name = diff[-1]
+    old_type = _get_arg_type(dis1, name)
+    new_type = _get_arg_type(dis2, name)
+    if new_type != old_type:
+      arg_types.append(f'"{name}": {new_type},')
+
+  return classes, stubs, sorted(impl_changed), mapping, arg_types
+
+
+def _get_arg_type(dis, opname):
+  all_types = ['CONST', 'NAME', 'JREL', 'JABS', 'LOCAL', 'FREE', 'NARGS']
+  for t in all_types:
+    k = f'HAS_{t}'
+    if k in dis and opname in dis['opmap'] and dis['opmap'][opname] in dis[k]:
+      return t
+  return None
 
 
 def main(argv):
-  classes, diff, stubs, impl_changed = generate_diffs(argv)
+  classes, stubs, impl_changed, mapping, arg_types = generate_diffs(argv)
+  print('==== PYTYPE CHANGES ====\n')
   print('---- NEW OPCODES (pyc/opcodes.py) ----\n')
   print('\n\n\n'.join('\n'.join(cls) for cls in classes))
   if impl_changed:
-    print('\nNOTE: Delete the old class definitions for the following '
-          'modified opcodes: ' + ', '.join(impl_changed))
-  print('\n---- OPCODE MAPPING DIFF (pyc/opcodes.py) ----\n')
-  print('    ' + '\n    '.join(diff))
+    print(
+        '\nNOTE: Delete the old class definitions for the following '
+        'modified opcodes: '
+        + ', '.join(impl_changed)
+    )
   print('\n---- OPCODE STUB IMPLEMENTATIONS (vm.py) ----\n')
   print('\n\n'.join('  ' + '\n  '.join(stub) for stub in stubs))
   if impl_changed:
     print('\nNOTE: The implementations of the following modified opcodes may '
           'need to be updated: ' + ', '.join(impl_changed))
+
+  print('\n\n==== PYCNITE CHANGES ====\n')
+  print('---- OPCODE MAPPING DIFF (mapping.py) ----\n')
+  print('    ' + '\n    '.join(mapping))
+  print('\n---- OPCODE ARG TYPE DIFF (mapping.py) ----\n')
+  print('    ' + '\n    '.join(arg_types))
 
 
 if __name__ == '__main__':

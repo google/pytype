@@ -1,9 +1,8 @@
 """Opcode definitions."""
 
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional, Tuple, cast
 
 import attrs
-
 from pycnite import bytecode
 import pycnite.types
 
@@ -86,6 +85,12 @@ class Opcode:
   @property
   def name(self):
     return self.__class__.__name__
+
+  @classmethod
+  def for_python_version(
+      cls, version: Tuple[int, int]  # pylint: disable=unused-argument
+  ):
+    return cls
 
   @classmethod
   def has_const(cls):
@@ -440,9 +445,24 @@ class SETUP_ANNOTATIONS(Opcode):
   __slots__ = ()
 
 
-class YIELD_VALUE(Opcode):
-  _FLAGS = HAS_JUNKNOWN
+class YIELD_VALUE(OpcodeWithArg):
+  """YIELD_VALUE opcode, for different Python versions."""
+
+  _FLAGS = HAS_ARGUMENT
   __slots__ = ()
+
+  @classmethod
+  def for_python_version(cls, version: Tuple[int, int]):
+    if version <= (3, 11):
+
+      # Intentionally use the same class name, so that __class__.__name__ stays
+      # the same, which is used in several parts of the code.
+      class YIELD_VALUE(Opcode):  # pylint: disable=redefined-outer-name
+        _FLAGS = HAS_JUNKNOWN
+        __slots__ = ()
+
+      return YIELD_VALUE
+    return cls
 
 
 class POP_BLOCK(Opcode):
@@ -580,12 +600,12 @@ class JUMP_ABSOLUTE(OpcodeWithArg):
 
 
 class POP_JUMP_IF_FALSE(OpcodeWithArg):
-  _FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
 class POP_JUMP_IF_TRUE(OpcodeWithArg):
-  _FLAGS = HAS_JABS|HAS_ARGUMENT
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
   __slots__ = ()
 
 
@@ -1018,12 +1038,96 @@ class POP_JUMP_BACKWARD_IF_TRUE(OpcodeWithArg):
   __slots__ = ()
 
 
-def _make_opcodes(ops: List[pycnite.types.Opcode]):
+class INTERPRETER_EXIT(Opcode):
+  __slots__ = ()
+
+
+class END_FOR(Opcode):
+  __slots__ = ()
+
+
+class END_SEND(Opcode):
+  __slots__ = ()
+
+
+class RESERVED(Opcode):
+  __slots__ = ()
+
+
+class BINARY_SLICE(Opcode):
+  __slots__ = ()
+
+
+class STORE_SLICE(Opcode):
+  __slots__ = ()
+
+
+class CLEANUP_THROW(Opcode):
+  __slots__ = ()
+
+
+class LOAD_LOCALS(Opcode):
+  __slots__ = ()
+
+
+class RETURN_CONST(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_CONST
+  __slots__ = ()
+
+
+class LOAD_FAST_CHECK(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_LOCAL
+  __slots__ = ()
+
+
+class POP_JUMP_IF_NOT_NONE(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class POP_JUMP_IF_NONE(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_JREL
+  __slots__ = ()
+
+
+class LOAD_SUPER_ATTR(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_NAME
+  __slots__ = ()
+
+
+class LOAD_FAST_AND_CLEAR(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_LOCAL
+  __slots__ = ()
+
+
+class CALL_INTRINSIC_1(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class CALL_INTRINSIC_2(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT
+  __slots__ = ()
+
+
+class LOAD_FROM_DICT_OR_GLOBALS(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_NAME
+  __slots__ = ()
+
+
+class LOAD_FROM_DICT_OR_DEREF(OpcodeWithArg):
+  _FLAGS = HAS_ARGUMENT | HAS_FREE
+  __slots__ = ()
+
+
+def _make_opcodes(
+    ops: List[pycnite.types.Opcode], python_version: Tuple[int, int]
+):
   """Convert pycnite opcodes to pytype opcodes."""
   g = globals()
   offset_to_op = {}
   for op in ops:
-    cls = g[op.name]
+    cls = g[op.name].for_python_version(python_version)
     if cls.has_argument():
       opcode = cls(0, op.line, op.endline, op.col, op.endcol, op.arg, op.argval)
     else:
@@ -1164,7 +1268,7 @@ def _add_jump_targets(ops, offset_to_index):
 
 def build_opcodes(dis_code: pycnite.types.DisassembledCode) -> List[Opcode]:
   """Build a list of opcodes from pycnite opcodes."""
-  offset_to_op = _make_opcodes(dis_code.opcodes)
+  offset_to_op = _make_opcodes(dis_code.opcodes, dis_code.python_version)
   if dis_code.exception_table:
     _add_setup_except(offset_to_op, dis_code.exception_table)
   ops, offset_to_idx = _make_opcode_list(offset_to_op, dis_code.python_version)

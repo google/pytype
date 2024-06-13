@@ -2277,10 +2277,12 @@ class VirtualMachine:
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False)
 
   def byte_POP_JUMP_IF_TRUE(self, state, op):
+    # TODO: b/345717799 - May need an update for 3.12
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=True,
                             pop=vm_utils.PopBehavior.ALWAYS)
 
   def byte_POP_JUMP_IF_FALSE(self, state, op):
+    # TODO: b/345717799 - May need an update for 3.12
     return vm_utils.jump_if(state, op, self.ctx, jump_if_val=False,
                             pop=vm_utils.PopBehavior.ALWAYS)
 
@@ -2647,6 +2649,7 @@ class VirtualMachine:
 
   def byte_YIELD_VALUE(self, state, op):
     """Yield a value from a generator."""
+    # TODO: b/345717799 - May need an update for 3.12
     state, yield_value = state.pop()
     yield_variable = self.frame.yield_variable.AssignToNewVariable(state.node)
     yield_variable.PasteVariable(yield_value, state.node)
@@ -3375,3 +3378,93 @@ class VirtualMachine:
 
   def byte_POP_JUMP_BACKWARD_IF_TRUE(self, state, op):
     return self.byte_POP_JUMP_IF_TRUE(state, op)
+
+  def byte_INTERPRETER_EXIT(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_END_FOR(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_END_SEND(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_RESERVED(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_BINARY_SLICE(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_STORE_SLICE(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_CLEANUP_THROW(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_LOAD_LOCALS(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_RETURN_CONST(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_LOAD_FAST_CHECK(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_POP_JUMP_IF_NOT_NONE(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_POP_JUMP_IF_NONE(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_LOAD_SUPER_ATTR(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_LOAD_FAST_AND_CLEAR(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_CALL_INTRINSIC_1(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_CALL_INTRINSIC_2(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_LOAD_FROM_DICT_OR_GLOBALS(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
+
+  def byte_LOAD_FROM_DICT_OR_DEREF(self, state, op):
+    # TODO: b/345717799 - Implement
+    del op
+    return state
