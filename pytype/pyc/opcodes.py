@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple, cast
 import attrs
 from pycnite import bytecode
 import pycnite.types
+from typing_extensions import override
 
 
 # We define all-uppercase classes, to match their opcode names:
@@ -452,6 +453,7 @@ class YIELD_VALUE(OpcodeWithArg):
   __slots__ = ()
 
   @classmethod
+  @override
   def for_python_version(cls, version: Tuple[int, int]):
     if version <= (3, 11):
 
