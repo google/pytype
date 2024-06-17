@@ -26,7 +26,7 @@ def f6(x:e6=int) -> r6:
     pass
 
 # static analysis would give error here
-def f7(x : int=int):
+def f7(x:e7=int) -> r7:
     pass
 
 def f8(x:e8={1:2}) -> r8:

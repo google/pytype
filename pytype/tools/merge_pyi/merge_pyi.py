@@ -23,6 +23,7 @@ def _merge_csts(*, py_tree, pyi_tree):
   vis.store_stub_in_context(context, pyi_tree)
   return vis(
       context,
+      overwrite_existing_annotations=True,
       strict_posargs_matching=False,
       strict_annotation_matching=True,
   ).transform_module(py_tree)
