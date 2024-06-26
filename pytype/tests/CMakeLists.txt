@@ -106,6 +106,15 @@ py_test(
 
 py_test(
   NAME
+    test_match_case
+  SRCS
+    test_match_case.py
+  DEPS
+    .test_base
+)
+
+py_test(
+  NAME
     test_decorators1
   SRCS
     test_decorators1.py
