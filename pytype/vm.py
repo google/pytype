@@ -1858,7 +1858,14 @@ class VirtualMachine:
     return state.push(ret)
 
   def byte_COMPARE_OP(self, state, op):
-    return self._compare_op(state, op.arg, op)
+    # In 3.12+ the oparg contains the jump mask and the actual comparison
+    # operator is in the last 4 bits.
+    # See: https://github.com/python/cpython/pull/100924
+    if self.ctx.python_version >= (3, 12):
+      op_arg = op.arg >> 4
+    else:
+      op_arg = op.arg
+    return self._compare_op(state, op_arg, op)
 
   def byte_IS_OP(self, state, op):
     if op.arg:
