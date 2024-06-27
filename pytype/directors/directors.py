@@ -429,7 +429,7 @@ class Director:
     if error.filename != self._filename or error.line is None:
       return True
     if (error.name == "bad-return-type" and
-        error.opcode_name == "RETURN_VALUE" and
+        error.opcode_name in ("RETURN_VALUE", "RETURN_CONST") and
         error.line not in self.return_lines):
       # We have an implicit "return None". Adjust the line number to the last
       # line of the function.

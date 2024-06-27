@@ -281,7 +281,7 @@ class VirtualMachine:
     if state.why in ("reraise", "Never"):
       state = state.set_why("exception")
     implicit_return = (
-        op.name == "RETURN_VALUE" and
+        op.name in ("RETURN_VALUE", "RETURN_CONST") and
         op.line not in self._director.return_lines)
     if len(self.frames) <= 2:
       # We do exhaustiveness checking only when doing a top-level analysis of
@@ -2736,9 +2736,8 @@ class VirtualMachine:
       retvar = var
     frame.return_variable.PasteVariable(retvar, node)
 
-  def byte_RETURN_VALUE(self, state, op):
+  def _return_value(self, state, var):
     """Get and check the return value."""
-    state, var = state.pop()
     if self.frame.check_return:
       if (self.frame.f_code.has_generator() or
           self.frame.f_code.has_coroutine() or
@@ -2757,6 +2756,18 @@ class VirtualMachine:
       self.ctx.errorlog.any_return_type(self.frames)
     self._set_frame_return(state.node, self.frame, var)
     return state.set_why("return")
+
+  def byte_RETURN_VALUE(self, state, op):
+    state, var = state.pop()
+    return self._return_value(state, var)
+
+  def byte_RETURN_CONST(self, state, op):
+    try:
+      raw_const = self.frame.f_code.consts[op.arg]
+      const = self.ctx.convert.constant_to_var(raw_const, node=state.node)
+    except IndexError:
+      const = self.ctx.new_unsolvable(state.node)
+    return self._return_value(state, const)
 
   def byte_IMPORT_STAR(self, state, op):
     """Pops a module and stores all its contents in locals()."""
@@ -3415,11 +3426,6 @@ class VirtualMachine:
     return state
 
   def byte_LOAD_LOCALS(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
-
-  def byte_RETURN_CONST(self, state, op):
     # TODO: b/345717799 - Implement
     del op
     return state

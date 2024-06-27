@@ -122,7 +122,7 @@ def adjust_returns(code, block_returns):
   rets = {k: iter(v) for k, v in block_returns}
   for block in code.order:
     for op in block:
-      if op.__class__.__name__ == "RETURN_VALUE":
+      if op.__class__.__name__ in ("RETURN_VALUE", "RETURN_CONST"):
         if op.line in rets:
           lines = rets[op.line]
           new_line = next(lines, None)

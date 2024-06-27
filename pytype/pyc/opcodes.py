@@ -1073,7 +1073,7 @@ class LOAD_LOCALS(Opcode):
 
 
 class RETURN_CONST(OpcodeWithArg):
-  _FLAGS = HAS_ARGUMENT | HAS_CONST
+  _FLAGS = HAS_ARGUMENT | HAS_CONST | NO_NEXT
   __slots__ = ()
 
 
