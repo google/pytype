@@ -1858,14 +1858,7 @@ class VirtualMachine:
     return state.push(ret)
 
   def byte_COMPARE_OP(self, state, op):
-    # In 3.12+ the oparg contains the jump mask and the actual comparison
-    # operator is in the last 4 bits.
-    # See: https://github.com/python/cpython/pull/100924
-    if self.ctx.python_version >= (3, 12):
-      op_arg = op.arg >> 4
-    else:
-      op_arg = op.arg
-    return self._compare_op(state, op_arg, op)
+    return self._compare_op(state, op.arg, op)
 
   def byte_IS_OP(self, state, op):
     if op.arg:
@@ -1883,6 +1876,8 @@ class VirtualMachine:
 
   def byte_LOAD_ATTR(self, state, op):
     """Pop an object, and retrieve a named attribute from it."""
+    if self.ctx.python_version >= (3, 12) and op.arg & 1:
+      return self._load_method(state, op)
     name = op.argval
     state, obj = state.pop()
     log.debug("LOAD_ATTR: %r %r", obj, name)
@@ -2994,18 +2989,21 @@ class VirtualMachine:
     ret_var = self._get_generator_return(state.node, generator)
     return state.push(ret_var)
 
-  def byte_LOAD_METHOD(self, state, op):
+  def _load_method(self, state, op):
     """Implementation of the LOAD_METHOD opcode."""
     name = op.argval
     state, self_obj = state.pop()
     state, result = self.load_attr(state, self_obj, name)
-    # https://docs.python.org/3/library/dis.html#opcode-LOAD_METHOD says that
+    # https://docs.python.org/3.11/library/dis.html#opcode-LOAD_METHOD says that
     # this opcode should push two values onto the stack: either the unbound
     # method and its `self` or NULL and the bound method. Since we always
     # retrieve a bound method, we push the NULL
     state = self._push_null(state)
     self.trace_opcode(op, name, (self_obj, result))
     return state.push(result)
+
+  def byte_LOAD_METHOD(self, state, op):
+    return self._load_method(state, op)
 
   def _store_new_var_in_local(self, state, var, new_var):
     """Assign a new var to a variable in locals."""
