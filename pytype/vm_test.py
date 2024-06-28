@@ -78,23 +78,40 @@ class TraceTest(TraceVmTestBase):
       x = 1  # line 1
       y = x  # line 2
     """).lstrip()
-    # Compiles to:
-    #     0 LOAD_CONST     0 (1)
-    #     3 STORE_NAME     0 (x)
-    #
-    #     6 LOAD_NAME      0 (x)
-    #     9 STORE_NAME     1 (y)
-    #    12 LOAD_CONST     1 (None)
-    #    15 RETURN_VALUE
+    if self.ctx.python_version >= (3, 12):
+      # Compiles to:
+      #     2 LOAD_CONST     0 (1)
+      #     4 STORE_NAME     0 (x)
+      #
+      #     6 LOAD_NAME      0 (x)
+      #     8 STORE_NAME     1 (y)
+      #    10 RETURN_CONST   1 (None)
+      expected = [
+          # (opcode, line number, symbol)
+          ("LOAD_CONST", 1, 1),
+          ("STORE_NAME", 1, "x"),
+          ("LOAD_NAME", 2, "x"),
+          ("STORE_NAME", 2, "y"),
+          ("RETURN_CONST", 2, None)
+      ]
+    else:
+      # Compiles to:
+      #     0 LOAD_CONST     0 (1)
+      #     3 STORE_NAME     0 (x)
+      #
+      #     6 LOAD_NAME      0 (x)
+      #     9 STORE_NAME     1 (y)
+      #    12 LOAD_CONST     1 (None)
+      #    15 RETURN_VALUE
+      expected = [
+          # (opcode, line number, symbol)
+          ("LOAD_CONST", 1, 1),
+          ("STORE_NAME", 1, "x"),
+          ("LOAD_NAME", 2, "x"),
+          ("STORE_NAME", 2, "y"),
+          ("LOAD_CONST", 2, None)
+      ]
     self.ctx.vm.run_program(src, "", maximum_depth=10)
-    expected = [
-        # (opcode, line number, symbol)
-        ("LOAD_CONST", 1, 1),
-        ("STORE_NAME", 1, "x"),
-        ("LOAD_NAME", 2, "x"),
-        ("STORE_NAME", 2, "y"),
-        ("LOAD_CONST", 2, None)
-    ]
     actual = [(op.name, op.line, symbol)
               for op, symbol, _ in self.ctx.vm.opcode_traces]
     self.assertEqual(actual, expected)

@@ -2765,6 +2765,7 @@ class VirtualMachine:
 
   def byte_RETURN_CONST(self, state, op):
     const = self.ctx.convert.constant_to_var(op.argval, node=state.node)
+    self.trace_opcode(op, op.argval, const)
     return self._return_value(state, const)
 
   def byte_IMPORT_STAR(self, state, op):
