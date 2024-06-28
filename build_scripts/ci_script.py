@@ -53,7 +53,10 @@ def main():
   s5 = STEP(name="Type Check",
             command=(['python'] if sys.platform == 'win32' else []) +
                [os.path.join("out", "bin", "pytype"), "-j", "auto"])
-  _run_steps([s1, s2, s3, s4, s5])
+  steps = [s1, s2, s3, s4, s5]
+  if os.environ.get("LINT") == "false":
+    steps.remove(s1)
+  _run_steps(steps)
   print("\n*** All build steps completed successfully! ***\n")
 
 

@@ -12,6 +12,7 @@ jobs:
 
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-20.04]
         python-version: ['3.8', '3.9', '3.10', '3.11']
@@ -47,5 +48,7 @@ jobs:
     # https://github.com/github-community/community/discussions/15452.
 
     - name: Run Tests
+      env:
+        LINT: ${{ matrix.python-version == '3.11' }}
       run: python build_scripts/ci_script.py
       continue-on-error: ${{ matrix.experimental }}
