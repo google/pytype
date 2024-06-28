@@ -1858,7 +1858,7 @@ class VirtualMachine:
     return state.push(ret)
 
   def byte_COMPARE_OP(self, state, op):
-    return self._compare_op(state, op.arg, op)
+    return self._compare_op(state, op.argval, op)
 
   def byte_IS_OP(self, state, op):
     if op.arg:
