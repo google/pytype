@@ -22,9 +22,8 @@ class MatchCaseTest(test_base.BaseTest):
       def test(x: bool) -> A | B:
         return A('a')
       match test(True):
-        case A(a): # Currently this case statements is not matched.
-          # TODO(b/346840739) - add suppression for unsupported-operands
-          print(a + 1)
+        case A(a):     # This case statement should be type checked
+          print(a + 1) # unsupported-operands
     """)
 
 

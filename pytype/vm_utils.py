@@ -1120,7 +1120,7 @@ def match_class(
     # an AnnotationContainer rather than a Class
     cls = cls.base_cls
   if _var_maybe_unknown(obj_var):
-    instance_var = ctx.vm.init_class(node, cls)
+    bindings = ctx.vm.init_class(node, cls).bindings
     success = None
   else:
     # Check both whether any binding of `obj_var` matches, and whether all of
@@ -1131,7 +1131,9 @@ def match_class(
     total = ctx.matcher(node).compute_one_match(
         obj_var, cls, match_all_views=True)
     if m.success:
-      instance_var = obj_var
+      bindings = list(itertools.chain(
+          *map(lambda x: x.view.values(), m.good_matches)
+      ))
       success = True if total.success else None
     else:
       return ClassMatch(False, None)
@@ -1147,7 +1149,7 @@ def match_class(
     keys = cls.match_args[:posarg_count] + keys
   ret = [ctx.program.NewVariable() for _ in keys]
   for i, k in enumerate(keys):
-    for b in instance_var.bindings:
+    for b in bindings:
       _, v = ctx.attribute_handler.get_attribute(node, b.data, k, b)
       if not v:
         # We are missing a key
