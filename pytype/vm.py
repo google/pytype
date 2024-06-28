@@ -2764,11 +2764,7 @@ class VirtualMachine:
     return self._return_value(state, var)
 
   def byte_RETURN_CONST(self, state, op):
-    try:
-      raw_const = self.frame.f_code.consts[op.arg]
-      const = self.ctx.convert.constant_to_var(raw_const, node=state.node)
-    except IndexError:
-      const = self.ctx.new_unsolvable(state.node)
+    const = self.ctx.convert.constant_to_var(op.argval, node=state.node)
     return self._return_value(state, const)
 
   def byte_IMPORT_STAR(self, state, op):
