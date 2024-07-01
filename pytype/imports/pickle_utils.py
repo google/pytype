@@ -53,7 +53,7 @@ class LoadPickleError(Exception):
     msg = f"Error loading pickle file: {self.filename}"
     super().__init__(msg)
 
-Encoder = msgspec.msgpack.Encoder()
+Encoder = msgspec.msgpack.Encoder(order="deterministic")
 AstDecoder = msgspec.msgpack.Decoder(type=serialize_ast.SerializableAst)
 BuiltinsDecoder = msgspec.msgpack.Decoder(type=serialize_ast.ModuleBundle)
 

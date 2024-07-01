@@ -104,6 +104,18 @@ class SerializeAstTest(test_base.UnitTest):
 
       result = pickle_utils.SerializeAndSave(ast, pickled_ast_filename)
 
+      # Check that the serialized set literal has deterministic ordering.
+      with open(pickled_ast_filename, "rb") as f:
+        serialized_content = f.read()
+      # This content depends on:
+      #  *  What names the example 'module1.pyi' references.
+      #  *  The implementation details of msgpack - we give it some leeway of
+      #     "up to 5 arbitrary bytes in between" but we do still make the
+      #     assumption that it serializes strings as-is.
+      self.assertRegex(
+          serialized_content, rb"bool.{1,5}int.{1,5}list.{1,5}object"
+      )
+
       self.assertIsNone(result)
       serialized_ast = pickle_utils.LoadAst(pickled_ast_filename)
       self.assertTrue(serialized_ast.ast)
