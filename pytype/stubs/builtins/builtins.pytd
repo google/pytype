@@ -867,6 +867,8 @@ class int(SupportsInt, SupportsFloat, SupportsAbs[int]):
     def to_bytes(self, length: int, byteorder: str, *, signed: bool = ...) -> bytes: ...
     @classmethod
     def from_bytes(cls, bytes: Sequence[int], byteorder: str, *, signed: bool = ...) -> int: ...
+    if sys.version_info >= (3, 12):
+        def is_integer(self) -> Literal[True]: ...
 
 class float(SupportsInt, SupportsFloat, SupportsAbs):
     __slots__ = []
@@ -1322,6 +1324,9 @@ IOError = OSError
 class ImportError(StandardError):
     name: str
     path: str
+    msg: str  # undocumented
+    if sys.version_info >= (3, 12):
+        name_from: str | None  # undocumented
 
 class ImportWarning(Warning):
     pass
