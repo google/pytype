@@ -2351,7 +2351,10 @@ class VirtualMachine:
     self.frame.states[target] = state.merge_into(self.frame.states.get(target))
 
   def byte_FOR_ITER(self, state, op):
-    self.store_jump(op.target, state.pop_and_discard())
+    if self.ctx.python_version >= (3, 12):
+      self.store_jump(op.target, state)
+    else:
+      self.store_jump(op.target, state.pop_and_discard())
     state, f = self.load_attr(state, state.top(), "__next__")
     state = state.push(f)
     return self.call_function_from_stack(state, 0, None, None)
@@ -3398,9 +3401,7 @@ class VirtualMachine:
     return state
 
   def byte_END_FOR(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    return state.pop_and_discard().pop_and_discard()
 
   def byte_END_SEND(self, state, op):
     # TODO: b/345717799 - Implement
