@@ -1228,8 +1228,7 @@ class AbstractMatcher(utils.ContextWeakrefMixin):
       self, instance_param, class_param, subst, view
   ):
     if instance_param.bindings and instance_param not in view:
-      binding, = instance_param.bindings
-      assert isinstance(binding.data, abstract.Unsolvable), binding.data
+      binding = instance_param.bindings[0]
       view = view.copy()
       view[instance_param] = binding
     subst = self.match_var_against_type(

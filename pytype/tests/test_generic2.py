@@ -1379,6 +1379,39 @@ class GenericFeatureTest(test_base.BaseTest):
         x: bool
     """)
 
+  def test_use_super_with_mismatching_generic_type(self):
+    # Check that this doesn't crash. The type of `base` is declared incorrectly,
+    # but the following line used to cause a crash despite having the #ignore.
+    ty = self.Infer("""
+      from typing import Generic, List, Optional, TypeVar
+
+      T = TypeVar('T')
+
+      class Foo(Generic[T]):
+        def __init__(self, default: Optional[T]):
+          pass
+
+      class MultiFoo(Generic[T], Foo[List[T]]):
+        def test(self) -> None:
+          base: Foo[T]
+          base = super(MultiFoo, self)  # type: ignore[assignment]
+    """)
+    self.assertTypesMatchPytd(
+        ty,
+        """
+        from typing import Generic, List, Optional, TypeVar
+
+        T = TypeVar('T')
+
+        class Foo(Generic[T]):
+            def __init__(self, default: Optional[T]) -> None:
+                self = Foo[T]
+
+        class MultiFoo(Generic[T], Foo[List[T]]):
+            def test(self) -> None: ...
+        """,
+    )
+
 
 if __name__ == "__main__":
   test_base.main()
