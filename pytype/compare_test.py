@@ -54,8 +54,10 @@ class InstanceTest(CompareTestBase):
     self.assertFalsy(i)
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
-        self._node, abstract_utils.T,
-        self._convert.object_type.to_variable(self._ctx.root_node))
+        self._node,
+        abstract_utils.T,
+        self._convert.object_type.to_variable(self._ctx.root_node),
+    )
     self.assertAmbiguous(i)
 
   def test_compatible_with_set(self):
@@ -64,8 +66,10 @@ class InstanceTest(CompareTestBase):
     self.assertFalsy(i)
     # Once a type parameter is set, list is compatible with True and False.
     i.merge_instance_type_parameter(
-        self._node, abstract_utils.T,
-        self._convert.object_type.to_variable(self._ctx.root_node))
+        self._node,
+        abstract_utils.T,
+        self._convert.object_type.to_variable(self._ctx.root_node),
+    )
     self.assertAmbiguous(i)
 
   def test_compatible_with_none(self):
@@ -102,16 +106,20 @@ class TupleTest(CompareTestBase):
     index = self._convert.constant_to_var(0)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
-    self.assertIs(abstract_utils.get_atomic_value(var),
-                  abstract_utils.get_atomic_value(self._var))
+    self.assertIs(
+        abstract_utils.get_atomic_value(var),
+        abstract_utils.get_atomic_value(self._var),
+    )
 
   def test_getitem__abstract_index(self):
     t = self._ctx.convert.tuple_to_value((self._var,))
     index = self._convert.build_int(self._node)
     node, var = t.cls.getitem_slot(self._node, index)
     self.assertIs(node, self._node)
-    self.assertIs(abstract_utils.get_atomic_value(var),
-                  abstract_utils.get_atomic_value(self._var))
+    self.assertIs(
+        abstract_utils.get_atomic_value(var),
+        abstract_utils.get_atomic_value(self._var),
+    )
 
   def test_cmp_rel__equal(self):
     tup = self._convert.constant_to_value((3, 1))
@@ -146,10 +154,11 @@ class TupleTest(CompareTestBase):
       self.assertIsNone(compare.cmp_rel(self._ctx, op, tup2, tup1))
 
   def test_cmp_rel__prefix_equal(self):
-    tup1 = self._ctx.convert.tuple_to_value(
-        (self._convert.constant_to_value(3).to_variable(self._node),
-         self._convert.constant_to_value(1).to_variable(self._node),
-         self._convert.primitive_instances[int].to_variable(self._node)))
+    tup1 = self._ctx.convert.tuple_to_value((
+        self._convert.constant_to_value(3).to_variable(self._node),
+        self._convert.constant_to_value(1).to_variable(self._node),
+        self._convert.primitive_instances[int].to_variable(self._node),
+    ))
     tup2 = self._convert.constant_to_value((3, 1))
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
@@ -165,10 +174,11 @@ class TupleTest(CompareTestBase):
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__prefix_not_equal(self):
-    tup1 = self._ctx.convert.tuple_to_value(
-        (self._convert.constant_to_value(3).to_variable(self._node),
-         self._convert.constant_to_value(1).to_variable(self._node),
-         self._convert.primitive_instances[int].to_variable(self._node)))
+    tup1 = self._ctx.convert.tuple_to_value((
+        self._convert.constant_to_value(3).to_variable(self._node),
+        self._convert.constant_to_value(1).to_variable(self._node),
+        self._convert.primitive_instances[int].to_variable(self._node),
+    ))
     tup2 = self._convert.constant_to_value((4, 2))
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.LT, tup1, tup2))
     self.assertIs(False, compare.cmp_rel(self._ctx, slots.LT, tup2, tup1))
@@ -184,9 +194,10 @@ class TupleTest(CompareTestBase):
     self.assertIs(True, compare.cmp_rel(self._ctx, slots.GT, tup2, tup1))
 
   def test_cmp_rel__prefix_unknown(self):
-    tup1 = self._ctx.convert.tuple_to_value(
-        (self._convert.constant_to_value(3).to_variable(self._node),
-         self._convert.primitive_instances[int].to_variable(self._node)))
+    tup1 = self._ctx.convert.tuple_to_value((
+        self._convert.constant_to_value(3).to_variable(self._node),
+        self._convert.primitive_instances[int].to_variable(self._node),
+    ))
     tup2 = self._convert.constant_to_value((3, 1))
     for op in (slots.LT, slots.LE, slots.EQ, slots.NE, slots.GE, slots.GT):
       self.assertIsNone(compare.cmp_rel(self._ctx, op, tup1, tup2))
@@ -225,15 +236,17 @@ class DictTest(CompareTestBase):
 
   def test_compatible_with__after_unambiguous_update(self):
     unambiguous_dict = abstract.Dict(self._ctx)
-    unambiguous_dict.set_str_item(self._node, "a",
-                                  self._ctx.new_unsolvable(self._node))
+    unambiguous_dict.set_str_item(
+        self._node, "a", self._ctx.new_unsolvable(self._node)
+    )
     self._d.update(self._node, unambiguous_dict)
     self.assertTruthy(self._d)
 
   def test_compatible_with__after_ambiguous_update(self):
     ambiguous_dict = abstract.Dict(self._ctx)
     ambiguous_dict.merge_instance_type_parameter(
-        self._node, abstract_utils.K, self._ctx.new_unsolvable(self._node))
+        self._node, abstract_utils.K, self._ctx.new_unsolvable(self._node)
+    )
     ambiguous_dict.is_concrete = False
     self._d.update(self._node, ambiguous_dict)
     self.assertAmbiguous(self._d)
@@ -246,34 +259,42 @@ class DictTest(CompareTestBase):
 
   def test_pop(self):
     self._d.set_str_item(self._node, "a", self._var)
-    node, ret = self._d.pop_slot(self._node,
-                                 self._convert.build_string(self._node, "a"))
+    node, ret = self._d.pop_slot(
+        self._node, self._convert.build_string(self._node, "a")
+    )
     self.assertFalsy(self._d)
     self.assertIs(node, self._node)
     self.assertIs(ret, self._var)
 
   def test_pop_with_default(self):
     self._d.set_str_item(self._node, "a", self._var)
-    node, ret = self._d.pop_slot(self._node,
-                                 self._convert.build_string(self._node, "a"),
-                                 self._convert.none.to_variable(
-                                     self._node))  # default is ignored
+    node, ret = self._d.pop_slot(
+        self._node,
+        self._convert.build_string(self._node, "a"),
+        self._convert.none.to_variable(self._node),
+    )  # default is ignored
     self.assertFalsy(self._d)
     self.assertIs(node, self._node)
     self.assertIs(ret, self._var)
 
   def test_bad_pop(self):
     self._d.set_str_item(self._node, "a", self._var)
-    self.assertRaises(error_types.DictKeyMissing, self._d.pop_slot, self._node,
-                      self._convert.build_string(self._node, "b"))
+    self.assertRaises(
+        error_types.DictKeyMissing,
+        self._d.pop_slot,
+        self._node,
+        self._convert.build_string(self._node, "b"),
+    )
     self.assertTruthy(self._d)
 
   def test_bad_pop_with_default(self):
     val = self._convert.primitive_instances[int]
     self._d.set_str_item(self._node, "a", val.to_variable(self._node))
-    node, ret = self._d.pop_slot(self._node,
-                                 self._convert.build_string(self._node, "b"),
-                                 self._convert.none.to_variable(self._node))
+    node, ret = self._d.pop_slot(
+        self._node,
+        self._convert.build_string(self._node, "b"),
+        self._convert.none.to_variable(self._node),
+    )
     self.assertTruthy(self._d)
     self.assertIs(node, self._node)
     self.assertListEqual(ret.data, [self._convert.none])
@@ -283,7 +304,8 @@ class DictTest(CompareTestBase):
     self._d.set_str_item(self._node, "a", val.to_variable(self._node))
     ambiguous_key = self._convert.primitive_instances[str]
     node, ret = self._d.pop_slot(
-        self._node, ambiguous_key.to_variable(self._node))
+        self._node, ambiguous_key.to_variable(self._node)
+    )
     self.assertAmbiguous(self._d)
     self.assertIs(node, self._node)
     self.assertListEqual(ret.data, [val])
@@ -294,7 +316,8 @@ class DictTest(CompareTestBase):
     ambiguous_key = self._convert.primitive_instances[str]
     default_var = self._convert.none.to_variable(self._node)
     node, ret = self._d.pop_slot(
-        self._node, ambiguous_key.to_variable(self._node), default_var)
+        self._node, ambiguous_key.to_variable(self._node), default_var
+    )
     self.assertAmbiguous(self._d)
     self.assertIs(node, self._node)
     self.assertSetEqual(set(ret.data), {val, self._convert.none})
@@ -303,8 +326,10 @@ class DictTest(CompareTestBase):
     ambiguous_key = self._convert.primitive_instances[str]
     val = self._convert.primitive_instances[int]
     node, _ = self._d.setitem_slot(
-        self._node, ambiguous_key.to_variable(self._node),
-        val.to_variable(self._node))
+        self._node,
+        ambiguous_key.to_variable(self._node),
+        val.to_variable(self._node),
+    )
     _, ret = self._d.pop_slot(node, self._convert.build_string(node, "a"))
     self.assertAmbiguous(self._d)
     self.assertListEqual(ret.data, [val])
@@ -313,10 +338,15 @@ class DictTest(CompareTestBase):
     ambiguous_key = self._convert.primitive_instances[str]
     val = self._convert.primitive_instances[int]
     node, _ = self._d.setitem_slot(
-        self._node, ambiguous_key.to_variable(self._node),
-        val.to_variable(self._node))
-    _, ret = self._d.pop_slot(node, self._convert.build_string(node, "a"),
-                              self._convert.none.to_variable(node))
+        self._node,
+        ambiguous_key.to_variable(self._node),
+        val.to_variable(self._node),
+    )
+    _, ret = self._d.pop_slot(
+        node,
+        self._convert.build_string(node, "a"),
+        self._convert.none.to_variable(node),
+    )
     self.assertAmbiguous(self._d)
     self.assertSetEqual(set(ret.data), {val, self._convert.none})
 
@@ -327,7 +357,8 @@ class FunctionTest(CompareTestBase):
     pytd_sig = pytd.Signature((), None, None, pytd.AnythingType(), (), ())
     sig = abstract.PyTDSignature("f", pytd_sig, self._ctx)
     f = abstract.PyTDFunction(
-        "f", (sig,), pytd.MethodKind.METHOD, (), self._ctx)
+        "f", (sig,), pytd.MethodKind.METHOD, (), self._ctx
+    )
     self.assertTruthy(f)
 
 

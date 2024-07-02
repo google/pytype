@@ -3,7 +3,6 @@
 import collections
 import logging
 import os
-
 from typing import Dict, List, Optional, Tuple
 
 from pytype.platform_utils import path_utils
@@ -53,6 +52,7 @@ class ImportsMapBuilder:
 
     Args:
       imports_map: The map returned by _read_imports_map.
+
     Returns:
       A list of invalid entries, in the form (short_path, long_path)
     """
@@ -62,11 +62,14 @@ class ImportsMapBuilder:
         if not path_utils.exists(path):
           errors.append((short_path, path))
     if errors:
-      log.error("Invalid imports_map entries (checking from root dir: %s)",
-                path_utils.abspath("."))
+      log.error(
+          "Invalid imports_map entries (checking from root dir: %s)",
+          path_utils.abspath("."),
+      )
       for short_path, path in errors:
-        log.error("  file does not exist: %r (mapped from %r)",
-                  path, short_path)
+        log.error(
+            "  file does not exist: %r (mapped from %r)", path, short_path
+        )
     return errors
 
   def _finalize(
@@ -77,8 +80,12 @@ class ImportsMapBuilder:
     # first path for each.
     for short_path, paths in imports_multimap.items():
       if len(paths) > 1:
-        log.warning("Multiple files for %r => %r ignoring %r",
-                    short_path, paths[0], paths[1:])
+        log.warning(
+            "Multiple files for %r => %r ignoring %r",
+            short_path,
+            paths[0],
+            paths[1:],
+        )
     imports_map = {
         short_path: path_utils.abspath(paths[0])
         for short_path, paths in imports_multimap.items()
@@ -103,17 +110,18 @@ class ImportsMapBuilder:
       # ["foo", "bar", "quux"] and we want to add foo/__init__.py and
       # foo/bar/__init__.py
       for i in range(1, len(short_path_pieces)):
-        intermediate_dir_init = path_utils.join(*(short_path_pieces[:i] +
-                                                  ["__init__"]))
-        if (intermediate_dir_init not in imports_map and
-            intermediate_dir_init not in dir_paths):
+        intermediate_dir_init = path_utils.join(
+            *(short_path_pieces[:i] + ["__init__"])
+        )
+        if (
+            intermediate_dir_init not in imports_map
+            and intermediate_dir_init not in dir_paths
+        ):
           log.warning("Created empty __init__ %r", intermediate_dir_init)
           dir_paths[intermediate_dir_init] = os.devnull
     return dir_paths
 
-  def build_from_file(
-      self, path: Optional[str]
-  ) -> Optional[ImportsMapType]:
+  def build_from_file(self, path: Optional[str]) -> Optional[ImportsMapType]:
     """Create an ImportsMap from a .imports_info file.
 
     Builds a dict of short_path to full name
@@ -121,6 +129,7 @@ class ImportsMapBuilder:
              "$GENDIR/rulename~~pytype-gen/path_to_file.py~~pytype"
     Args:
       path: The file with the info (may be None, for do-nothing)
+
     Returns:
       Dict of .py short_path to list of .pytd path or None if no path
     Raises:
@@ -142,6 +151,7 @@ class ImportsMapBuilder:
     Args:
       items: A list of (short_path, full_path) tuples.
       path: The file from which the items were read (for error messages)
+
     Returns:
       Dict of .py short_path to list of .pytd path or None if no items
     Raises:

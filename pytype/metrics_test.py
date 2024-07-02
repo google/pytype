@@ -111,7 +111,7 @@ class ReentrantStopWatchTest(unittest.TestCase):
     t1 = c._time
     t2 = d._time
     d._merge(c)
-    self.assertLess(abs(t1+t2-d._time), 0.000001)
+    self.assertLess(abs(t1 + t2 - d._time), 0.000001)
 
 
 class StopWatchTest(unittest.TestCase):
@@ -221,7 +221,8 @@ class DistributionTest(unittest.TestCase):
     d = metrics.Distribution("foo")
     self.assertEqual(
         "foo: total=0.0, count=0, min=None, max=None, mean=None, stdev=None",
-        str(d))
+        str(d),
+    )
     # This test is delicate because it is checking the string output of
     # floating point calculations.  This specific data set was chosen because
     # the number of samples is a power of two (thus the division is exact) and
@@ -229,8 +230,8 @@ class DistributionTest(unittest.TestCase):
     d.add(1)
     d.add(5)
     self.assertEqual(
-        "foo: total=6.0, count=2, min=1, max=5, mean=3.0, stdev=2.0",
-        str(d))
+        "foo: total=6.0, count=2, min=1, max=5, mean=3.0, stdev=2.0", str(d)
+    )
 
   def test_disabled(self):
     metrics._prepare_for_test(enabled=False)

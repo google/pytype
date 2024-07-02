@@ -26,9 +26,7 @@ input/output.
 from typing import Any, Dict, FrozenSet, Tuple
 
 import attrs
-
 from pycnite import marshal as pyc_marshal
-
 from pytype.pyc import opcodes
 from pytype.pyc import pyc
 
@@ -73,6 +71,7 @@ class ConstantError(Exception):
 @attrs.define
 class _Constant:
   """A folded python constant."""
+
   typ: Tuple[str, Any]
   value: Any
   elements: Any
@@ -89,6 +88,7 @@ class _Constant:
 @attrs.define
 class _Collection:
   """A linear collection (e.g. list, tuple, set)."""
+
   types: FrozenSet[Any]
   values: Tuple[Any, ...]
   elements: Tuple[Any, ...]
@@ -97,6 +97,7 @@ class _Collection:
 @attrs.define
 class _Map:
   """A dictionary."""
+
   key_types: FrozenSet[Any]
   keys: Tuple[Any, ...]
   value_types: FrozenSet[Any]
@@ -121,7 +122,8 @@ class _CollectionBuilder:
     return _Collection(
         types=frozenset(self.types),
         values=tuple(reversed(self.values)),
-        elements=tuple(reversed(self.elements)))
+        elements=tuple(reversed(self.elements)),
+    )
 
 
 class _MapBuilder:
@@ -147,7 +149,8 @@ class _MapBuilder:
         keys=tuple(reversed(self.keys)),
         value_types=frozenset(self.value_types),
         values=tuple(reversed(self.values)),
-        elements=self.elements)
+        elements=self.elements,
+    )
 
 
 class _Stack:
@@ -168,8 +171,9 @@ class _Stack:
 
   def _preserve_constant(self, c):
     if c and (
-        not isinstance(c.op, opcodes.LOAD_CONST) or
-        isinstance(c.op, opcodes.BUILD_STRING)):
+        not isinstance(c.op, opcodes.LOAD_CONST)
+        or isinstance(c.op, opcodes.BUILD_STRING)
+    ):
       self.consts[id(c.op)] = c
 
   def clear(self):
@@ -333,13 +337,17 @@ class _FoldConstants:
             other_tag, other_et = other.typ
             if other_tag == 'tuple':
               # Deconstruct the tuple built in opcodes.LOAD_CONST above
-              other_elts = tuple(_Constant(('prim', e), v, None, other.op)
-                                 for (_, e), v in zip(other_et, other.value))
+              other_elts = tuple(
+                  _Constant(('prim', e), v, None, other.op)
+                  for (_, e), v in zip(other_et, other.value)
+              )
             elif other_tag == 'prim':
               if other_et == str:
                 other_et = {other.typ}
-                other_elts = tuple(_Constant(('prim', str), v, None, other.op)
-                                   for v in other.value)
+                other_elts = tuple(
+                    _Constant(('prim', str), v, None, other.op)
+                    for v in other.value
+                )
               else:
                 # We have some malformed code, e.g. [*42]
                 name = other_et.__name__
@@ -428,7 +436,7 @@ def to_literal(typ, always_tuple=False):
   def union(params):
     ret = tuple(sorted(expand(params), key=str))
     if len(ret) == 1 and not always_tuple:
-      ret, = ret  # pylint: disable=self-assigning-variable
+      (ret,) = ret  # pylint: disable=self-assigning-variable
     return ret
 
   tag, params = typ
@@ -469,7 +477,7 @@ def from_literal(tup):
       k, v = vals
       return (tag, (union(k), union(v)))
     else:
-      vals, = vals  # pylint: disable=self-assigning-variable
+      (vals,) = vals  # pylint: disable=self-assigning-variable
       return (tag, union(vals))
   else:
     return tuple(expand(tup))
@@ -547,7 +555,7 @@ def build_folded_type(ctx, state, const):
     # issues down the line.
     str_key = ctx.convert.str_type.instantiate(node)
     if elements is not None and len(elements) < MAX_VAR_SIZE:
-      for (k, v) in elements.items():
+      for k, v in elements.items():
         _, v = build_pyval(state, v)
         k_var = ctx.convert.constant_to_var(k)
         m.setitem(node, k_var, v)

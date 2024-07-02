@@ -36,8 +36,7 @@ class TypeSolver:
     self.builtins = builtins
     self.protocols = protocols
 
-  def match_unknown_against_protocol(self, matcher,
-                                     solver, unknown, complete):
+  def match_unknown_against_protocol(self, matcher, solver, unknown, complete):
     """Given an ~unknown, match it against a class.
 
     Args:
@@ -46,17 +45,21 @@ class TypeSolver:
       unknown: The unknown class to match
       complete: A complete class to match against. (E.g. a built-in or a user
         defined class)
+
     Returns:
       An instance of pytd.booleq.BooleanTerm.
     """
 
     assert is_unknown(unknown)
     assert is_complete(complete)
-    type_params = {p.type_param: matcher.type_parameter(unknown, complete, p)
-                   for p in complete.template}
+    type_params = {
+        p.type_param: matcher.type_parameter(unknown, complete, p)
+        for p in complete.template
+    }
     subst = type_params.copy()
     implication = matcher.match_Protocol_against_Unknown(
-        complete, unknown, subst)
+        complete, unknown, subst
+    )
     if implication is not booleq.FALSE and type_params:
       # If we're matching against a templated class (E.g. list[T]), record the
       # fact that we'll also have to solve the type parameters.
@@ -74,6 +77,7 @@ class TypeSolver:
         with "~" - the rest of the name is typically the same as complete.name.
       complete: A complete class to match against. (E.g. a built-in or a user
         defined class)
+
     Returns:
       An instance of pytd.booleq.BooleanTerm.
     Raises:
@@ -93,21 +97,25 @@ class TypeSolver:
     """Match the record of a method call against the formal signature."""
     assert is_partial(call_record)
     assert is_complete(complete)
-    formula = (
-        matcher.match_Function_against_Function(call_record, complete, {}))
+    formula = matcher.match_Function_against_Function(call_record, complete, {})
     if formula is booleq.FALSE:
       cartesian = call_record.Visit(visitors.ExpandSignatures())
       for signature in cartesian.signatures:
         formula = matcher.match_Signature_against_Function(
-            signature, complete, {})
+            signature, complete, {}
+        )
         if formula is booleq.FALSE:
           faulty_signature = pytd_utils.Print(signature)
           break
       else:
         faulty_signature = ""
-      raise FlawedQuery("Bad call\n{}{}\nagainst:\n{}".format(
-          escape.unpack_partial(call_record.name),
-          faulty_signature, pytd_utils.Print(complete)))
+      raise FlawedQuery(
+          "Bad call\n{}{}\nagainst:\n{}".format(
+              escape.unpack_partial(call_record.name),
+              faulty_signature,
+              pytd_utils.Print(complete),
+          )
+      )
     solver.always_true(formula)
 
   def solve(self):
@@ -139,22 +147,26 @@ class TypeSolver:
 
     protocol_classes_and_aliases = set(self.protocols.classes)
     for alias in self.protocols.aliases:
-      if (not isinstance(alias.type, pytd.AnythingType)
-          and alias.name != "protocols.Protocol"):
+      if (
+          not isinstance(alias.type, pytd.AnythingType)
+          and alias.name != "protocols.Protocol"
+      ):
         protocol_classes_and_aliases.add(alias.type.cls)
 
     # solve equations from protocols first
     for protocol in protocol_classes_and_aliases:
       for unknown in unknown_classes:
         self.match_unknown_against_protocol(
-            factory_protocols, solver_protocols, unknown, protocol)
+            factory_protocols, solver_protocols, unknown, protocol
+        )
 
     # also solve partial equations
     for complete in complete_classes.union(self.builtins.classes):
       for partial in partial_classes:
         if escape.unpack_partial(partial.name) == complete.name:
           self.match_partial_against_complete(
-              factory_partial, solver_partial, partial, complete)
+              factory_partial, solver_partial, partial, complete
+          )
 
     partial_functions = set()
     complete_functions = set()
@@ -167,21 +179,26 @@ class TypeSolver:
       for complete in complete_functions.union(self.builtins.functions):
         if escape.unpack_partial(partial.name) == complete.name:
           self.match_call_record(
-              factory_partial, solver_partial, partial, complete)
+              factory_partial, solver_partial, partial, complete
+          )
 
-    log.info("=========== Equations to solve =============\n%s",
-             solver_protocols)
+    log.info(
+        "=========== Equations to solve =============\n%s", solver_protocols
+    )
     log.info("=========== Equations to solve (end) =======")
     solved_protocols = solver_protocols.solve()
-    log.info("=========== Call trace equations to solve =============\n%s",
-             solver_partial)
+    log.info(
+        "=========== Call trace equations to solve =============\n%s",
+        solver_partial,
+    )
     log.info("=========== Call trace equations to solve (end) =======")
     solved_partial = solver_partial.solve()
     merged_solution = {}
     for unknown in itertools.chain(solved_protocols, solved_partial):
       if unknown in solved_protocols and unknown in solved_partial:
         merged_solution[unknown] = solved_protocols[unknown].union(
-            solved_partial[unknown])
+            solved_partial[unknown]
+        )
         # remove Any from set if present
         # if no restrictions are present, it will be labeled Any later
         # otherwise, Any will override other restrictions that were found
@@ -209,8 +226,9 @@ def solve(ast, builtins_pytd, protocols_pytd):
   builtins_pytd = visitors.LookupClasses(builtins_pytd)
   protocols_pytd = visitors.LookupClasses(protocols_pytd)
   ast = visitors.LookupClasses(ast, builtins_pytd)
-  return TypeSolver(
-      ast, builtins_pytd, protocols_pytd).solve(), extract_local(ast)
+  return TypeSolver(ast, builtins_pytd, protocols_pytd).solve(), extract_local(
+      ast
+  )
 
 
 def extract_local(ast):
@@ -221,7 +239,8 @@ def extract_local(ast):
       functions=tuple(f for f in ast.functions if is_complete(f)),
       constants=tuple(c for c in ast.constants if is_complete(c)),
       type_params=ast.type_params,
-      aliases=ast.aliases)
+      aliases=ast.aliases,
+  )
 
 
 def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
@@ -241,8 +260,11 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
       type_param_name = unknown + "." + string_type + "." + t.name
       if type_param_name in mapping and depth < MAX_DEPTH:
         string_type_params = mapping[type_param_name]
-        parameters.append(convert_string_type_list(
-            string_type_params, unknown, mapping, global_lookup, depth + 1))
+        parameters.append(
+            convert_string_type_list(
+                string_type_params, unknown, mapping, global_lookup, depth + 1
+            )
+        )
       else:
         parameters.append(pytd.AnythingType())
     return pytd.GenericType(base_type, tuple(parameters))
@@ -250,24 +272,30 @@ def convert_string_type(string_type, unknown, mapping, global_lookup, depth=0):
     return base_type
 
 
-def convert_string_type_list(types_as_string, unknown, mapping,
-                             global_lookup, depth=0):
+def convert_string_type_list(
+    types_as_string, unknown, mapping, global_lookup, depth=0
+):
   """Like convert_string_type, but operate on a list."""
   if not types_as_string or booleq.Solver.ANY_VALUE in types_as_string:
     # If we didn't find a solution for a type (the list of matches is empty)
     # then report it as "?", not as "nothing", because the latter is confusing.
     return pytd.AnythingType()
-  return pytd_utils.JoinTypes(convert_string_type(type_as_string, unknown,
-                                                  mapping, global_lookup, depth)
-                              for type_as_string in types_as_string)
+  return pytd_utils.JoinTypes(
+      convert_string_type(
+          type_as_string, unknown, mapping, global_lookup, depth
+      )
+      for type_as_string in types_as_string
+  )
 
 
 def insert_solution(result, mapping, global_lookup):
   """Replace ~unknown types in a pytd with the actual (solved) types."""
   subst = {
-      unknown: convert_string_type_list(types_as_strings, unknown,
-                                        mapping, global_lookup)
-      for unknown, types_as_strings in mapping.items()}
+      unknown: convert_string_type_list(
+          types_as_strings, unknown, mapping, global_lookup
+      )
+      for unknown, types_as_strings in mapping.items()
+  }
   result = result.Visit(optimize.RenameUnknowns(subst))
   # We remove duplicates here (even though Optimize does so again) because
   # it's much faster before the string types are replaced.
@@ -283,8 +311,9 @@ def convert_pytd(ast, builtins_pytd, protocols_pytd):
   lookup = pytd_utils.Concat(builtins_pytd, result)
   result = insert_solution(result, mapping, lookup)
   if log.isEnabledFor(logging.INFO):
-    log.info("=========== solve result =============\n%s",
-             pytd_utils.Print(result))
+    log.info(
+        "=========== solve result =============\n%s", pytd_utils.Print(result)
+    )
     log.info("=========== solve result (end) =============")
   return result
 
@@ -296,10 +325,12 @@ def log_info_mapping(mapping: Dict[str, AbstractSet[str]]) -> None:
     log.debug("=========== (possible types) ===========")
     for unknown, possible_types in sorted(mapping.items()):
       if len(possible_types) > cutoff:
-        log.debug("%s can be   %s, ... (total: %d)", unknown,
-                  ", ".join(sorted(possible_types)[0:cutoff]),
-                  len(possible_types))
+        log.debug(
+            "%s can be   %s, ... (total: %d)",
+            unknown,
+            ", ".join(sorted(possible_types)[0:cutoff]),
+            len(possible_types),
+        )
       else:
-        log.debug("%s can be %s", unknown,
-                  ", ".join(sorted(possible_types)))
+        log.debug("%s can be %s", unknown, ", ".join(sorted(possible_types)))
     log.debug("=========== (end of possible types) ===========")

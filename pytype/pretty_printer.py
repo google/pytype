@@ -20,7 +20,8 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
     generic = pytd_utils.MakeClassOrContainerType(
         t.to_pytd_type_of_instance().base_type,
         t.formal_type_parameters.keys(),
-        False)
+        False,
+    )
     with convert.set_output_mode(convert.OutputMode.DETAILED):
       return self.print_pytd(generic)
 
@@ -28,20 +29,25 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
     """Print abstract value t as a pytd type."""
     assert isinstance(t, abstract.BaseValue)
     convert = self.ctx.pytd_convert
-    if isinstance(t, (abstract.Unknown, abstract.Unsolvable,
-                      abstract.Class)) or t.is_late_annotation():
+    if (
+        isinstance(t, (abstract.Unknown, abstract.Unsolvable, abstract.Class))
+        or t.is_late_annotation()
+    ):
       with convert.set_output_mode(convert.OutputMode.DETAILED):
         return self.print_pytd(t.to_pytd_type_of_instance(instance=instance))
     elif isinstance(t, abstract.Union):
       return self.join_printed_types(
-          self.print_type_of_instance(o) for o in t.options)
+          self.print_type_of_instance(o) for o in t.options
+      )
     elif t.is_concrete:
       typ = typing.cast(abstract.PythonConstant, t)
       return re.sub(
-          r"(\\n|\s)+", " ",
-          typ.str_of_constant(self.print_type_of_instance))
-    elif (isinstance(t, (abstract.AnnotationClass, abstract.Singleton)) or
-          t.cls == t):
+          r"(\\n|\s)+", " ", typ.str_of_constant(self.print_type_of_instance)
+      )
+    elif (
+        isinstance(t, (abstract.AnnotationClass, abstract.Singleton))
+        or t.cls == t
+    ):
       return t.name
     else:
       return f"<instance of {self.print_type_of_instance(t.cls, t)}>"
@@ -71,7 +77,8 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
       typ = pytd_utils.JoinTypes(
           b.data.to_pytd_type()
           for b in abstract_utils.expand_type_parameter_instances(var.bindings)
-          if node.HasCombination([b]))
+          if node.HasCombination([b])
+      )
     return self.print_pytd(typ)
 
   def show_variable(self, var: cfg.Variable) -> str:
@@ -80,8 +87,7 @@ class PrettyPrinter(pretty_printer_base.PrettyPrinterBase):
       return self.print_pytd(pytd.NothingType())
     val = var.data[0]
     name = self.ctx.vm.get_var_name(var)
-    typ = self.join_printed_types(
-        self.print_type(t) for t in var.data)
+    typ = self.join_printed_types(self.print_type(t) for t in var.data)
     if name:
       return f"'{name}: {typ}'"
     elif len(var.data) == 1 and hasattr(val, "pyval"):

@@ -40,13 +40,23 @@ _FUNCTION_TYPE_COMMENT_RE = re.compile(r"^\((.*)\)\s*->\s*(\S.*?)\s*$")
 
 # Classes supporting pattern matching without an explicit __match_args__
 _BUILTIN_MATCHERS = (
-    "bool", "bytearray", "bytes", "dict", "float", "frozenset", "int", "list",
-    "set", "str", "tuple"
+    "bool",
+    "bytearray",
+    "bytes",
+    "dict",
+    "float",
+    "frozenset",
+    "int",
+    "list",
+    "set",
+    "str",
+    "tuple",
 )
 
 
 class PopBehavior(enum.Enum):
   """Ways in which a JUMP_IF opcode may pop a value off the stack."""
+
   NONE = enum.auto()  # does not pop
   OR = enum.auto()  # pops when the jump is not taken
   ALWAYS = enum.auto()  # always pops
@@ -93,6 +103,7 @@ class FindIgnoredTypeComments:
 
 class FinallyStateTracker:
   """Track return state for try/except/finally blocks."""
+
   # Used in vm.run_frame()
 
   RETURN_STATES = ("return", "exception")
@@ -114,9 +125,11 @@ class FinallyStateTracker:
 
   def check_early_exit(self, state) -> bool:
     """Check if we are exiting the frame from within an except block."""
-    return (state.block_stack and
-            any(x.type == "finally" for x in state.block_stack) and
-            state.why in self.RETURN_STATES)
+    return (
+        state.block_stack
+        and any(x.type == "finally" for x in state.block_stack)
+        and state.why in self.RETURN_STATES
+    )
 
   def __repr__(self):
     return repr(self.stack)
@@ -138,8 +151,10 @@ class _NameInInnerClassErrorDetails(_NameErrorDetails):
     self._class_name = class_name
 
   def to_error_message(self):
-    return (f"Cannot reference {self._attr!r} from class {self._class_name!r} "
-            "before the class is fully defined")
+    return (
+        f"Cannot reference {self._attr!r} from class {self._class_name!r} "
+        "before the class is fully defined"
+    )
 
 
 class _NameInOuterClassErrorDetails(_NameErrorDetails):
@@ -157,8 +172,10 @@ class _NameInOuterClassErrorDetails(_NameErrorDetails):
       full_class_name = f"{self._prefix}.{self._class_name}"
     else:
       full_class_name = self._class_name
-    return (f"Use {full_attr_name!r} to reference {self._attr!r} from class "
-            f"{full_class_name!r}")
+    return (
+        f"Use {full_attr_name!r} to reference {self._attr!r} from class "
+        f"{full_class_name!r}"
+    )
 
 
 class _NameInOuterFunctionErrorDetails(_NameErrorDetails):
@@ -172,12 +189,16 @@ class _NameInOuterFunctionErrorDetails(_NameErrorDetails):
 
   def to_error_message(self):
     keyword = "global" if "global" in self._outer_scope else "nonlocal"
-    return (f"Add `{keyword} {self._attr}` in {self._inner_scope} to reference "
-            f"{self._attr!r} from {self._outer_scope}")
+    return (
+        f"Add `{keyword} {self._attr}` in {self._inner_scope} to reference "
+        f"{self._attr!r} from {self._outer_scope}"
+    )
 
 
 def _get_scopes(
-    state, names: Sequence[str], ctx,
+    state,
+    names: Sequence[str],
+    ctx,
 ) -> Sequence[Union[abstract.InterpreterClass, abstract.InterpreterFunction]]:
   """Gets the class or function objects for a sequence of nested scope names.
 
@@ -190,8 +211,8 @@ def _get_scopes(
 
   Arguments:
     state: The current state.
-    names: A sequence of names for consecutive nested scopes in the module
-      under analysis. Must start with a module-level name.
+    names: A sequence of names for consecutive nested scopes in the module under
+      analysis. Must start with a module-level name.
     ctx: The current context.
 
   Returns:
@@ -221,15 +242,19 @@ def _get_scopes(
       else:
         break
     try:
-      scopes.append(abstract_utils.get_atomic_value(
-          var, (abstract.InterpreterClass, abstract.InterpreterFunction)))
+      scopes.append(
+          abstract_utils.get_atomic_value(
+              var, (abstract.InterpreterClass, abstract.InterpreterFunction)
+          )
+      )
     except abstract_utils.ConversionError:
       break
   return scopes
 
 
 def get_name_error_details(
-    state, name: str, ctx) -> Optional[_NameErrorDetails]:
+    state, name: str, ctx
+) -> Optional[_NameErrorDetails]:
   """Gets a detailed error message for [name-error]."""
   # 'name' is not defined in the current scope. To help the user better
   # understand UnboundLocalError and other similarly confusing errors, we look
@@ -274,7 +299,8 @@ def get_name_error_details(
   # Scope 'None' represents the global scope.
   prefix, class_name_parts = None, []
   for scope in itertools.chain(
-      reversed(_get_scopes(state, parts, ctx)), [None]):  # pytype: disable=wrong-arg-types
+      reversed(_get_scopes(state, parts, ctx)), [None]
+  ):  # pytype: disable=wrong-arg-types
     if class_name_parts:
       # We have located a class that 'name' is defined in and are now
       # constructing the name by which the class should be referenced.
@@ -296,9 +322,10 @@ def get_name_error_details(
         # 'scope' (rather than a different function with the same name) only
         # when 'last_frame' is empty, since the latter being empty means that
         # 'scope' is actively under analysis.
-        if ((scope.last_frame and name in scope.last_frame.f_locals.pyval) or
-            (not scope.last_frame and
-             name in ctx.vm.annotated_locals[scope.name.rsplit(".", 1)[-1]])):
+        if (scope.last_frame and name in scope.last_frame.f_locals.pyval) or (
+            not scope.last_frame
+            and name in ctx.vm.annotated_locals[scope.name.rsplit(".", 1)[-1]]
+        ):
           outer_scope = f"function {clean(scope.name)!r}"
       else:
         try:
@@ -313,14 +340,19 @@ def get_name_error_details(
         elif ctx.python_version >= (3, 11):
           inner_scope = f"class {clean(class_frames[0].func.data.name)!r}"
         else:
-          class_name = ".".join(parts + [
-              class_frame.func.data.name
-              for class_frame in reversed(class_frames)])
+          class_name = ".".join(
+              parts
+              + [
+                  class_frame.func.data.name
+                  for class_frame in reversed(class_frames)
+              ]
+          )
           inner_scope = f"class {class_name!r}"
         return _NameInOuterFunctionErrorDetails(name, outer_scope, inner_scope)
   if class_name_parts:
     return _NameInOuterClassErrorDetails(
-        name, prefix, ".".join(reversed(class_name_parts)))
+        name, prefix, ".".join(reversed(class_name_parts))
+    )
 
   # Check if 'name' is defined in one of the classes with their own frames.
   if class_frames:
@@ -333,8 +365,9 @@ def get_name_error_details(
         if ctx.python_version >= (3, 11):
           class_name = clean(frame.func.data.name)
         else:
-          class_parts = [part.func.data.name
-                         for part in reversed(class_frames[i+1:])]
+          class_parts = [
+              part.func.data.name for part in reversed(class_frames[i + 1 :])
+          ]
           class_name = ".".join(parts + class_parts)
         return _NameInInnerClassErrorDetails(name, class_name)
   return None
@@ -352,11 +385,16 @@ def log_opcode(op, state, frame, stack_size):
   block_stack_rep = repper(state.block_stack)
   if frame.module_name:
     name = frame.f_code.name
-    log.info("%s | index: %d, %r, module: %s line: %d",
-             indent, op.index, name, frame.module_name, op.line)
+    log.info(
+        "%s | index: %d, %r, module: %s line: %d",
+        indent,
+        op.index,
+        name,
+        frame.module_name,
+        op.line,
+    )
   else:
-    log.info("%s | index: %d, line: %d",
-             indent, op.index, op.line)
+    log.info("%s | index: %d, line: %d", indent, op.index, op.line)
   log.info("%s | data_stack: %s", indent, stack_rep)
   log.info("%s | data_stack: %s", indent, [x.data for x in state.data_stack])
   log.info("%s | block_stack: %s", indent, block_stack_rep)
@@ -379,8 +417,10 @@ def _process_base_class(node, base, ctx):
     else:
       new_base.AddBinding(base_val, {b}, node)
   base = new_base
-  if not any(isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
-             for t in base.data):
+  if not any(
+      isinstance(t, (abstract.Class, abstract.AMBIGUOUS_OR_EMPTY))
+      for t in base.data
+  ):
     ctx.errorlog.base_class_error(ctx.vm.frames, base)
   return base
 
@@ -427,9 +467,15 @@ def _expand_generic_protocols(node, bases, ctx):
         if abstract_utils.is_generic_protocol(b.data):
           protocol_base.AddBinding(b.data.base_cls, {b}, node)
           generic_base.AddBinding(
-              abstract.ParameterizedClass(generic_cls,
-                                          b.data.formal_type_parameters,
-                                          ctx, b.data.template), {b}, node)
+              abstract.ParameterizedClass(
+                  generic_cls,
+                  b.data.formal_type_parameters,
+                  ctx,
+                  b.data.template,
+              ),
+              {b},
+              node,
+          )
         else:
           protocol_base.PasteBinding(b)
       expanded_bases.append(generic_base)
@@ -494,8 +540,9 @@ def make_class(node, props, ctx):
     # in Python 3.
     base = ctx.convert.object_type
     bases = [base.to_variable(ctx.root_node)]
-  if (isinstance(class_dict, abstract.Unsolvable) or
-      not isinstance(class_dict, abstract.PythonConstant)):
+  if isinstance(class_dict, abstract.Unsolvable) or not isinstance(
+      class_dict, abstract.PythonConstant
+  ):
     # An unsolvable appears here if the vm hit maximum depth and gave up on
     # analyzing the class we're now building. Otherwise, if class_dict isn't
     # a constant, then it's an abstract dictionary, and we don't have enough
@@ -507,40 +554,57 @@ def make_class(node, props, ctx):
       if cls_var:
         # This way of declaring metaclasses no longer works in Python 3.
         ctx.errorlog.ignored_metaclass(
-            ctx.vm.frames, name,
-            cls_var.data[0].full_name if cls_var.bindings else "Any")
-    if cls_var and all(v.data.full_name == "builtins.type"
-                       for v in cls_var.bindings):
+            ctx.vm.frames,
+            name,
+            cls_var.data[0].full_name if cls_var.bindings else "Any",
+        )
+    if cls_var and all(
+        v.data.full_name == "builtins.type" for v in cls_var.bindings
+    ):
       cls_var = None
     # pylint: disable=g-long-ternary
-    cls = abstract_utils.get_atomic_value(
-        cls_var, default=ctx.convert.unsolvable) if cls_var else None
-    if ("__annotations__" not in class_dict.members and
-        name in ctx.vm.annotated_locals):
+    cls = (
+        abstract_utils.get_atomic_value(cls_var, default=ctx.convert.unsolvable)
+        if cls_var
+        else None
+    )
+    if (
+        "__annotations__" not in class_dict.members
+        and name in ctx.vm.annotated_locals
+    ):
       # Stores type comments in an __annotations__ member as if they were
       # PEP 526-style variable annotations, so that we can type-check
       # attribute assignments.
       annotations_dict = ctx.vm.annotated_locals[name]
       if any(local.typ for local in annotations_dict.values()):
         annotations_member = abstract.AnnotationsDict(
-            annotations_dict, ctx).to_variable(node)
+            annotations_dict, ctx
+        ).to_variable(node)
         class_dict.members["__annotations__"] = annotations_member
         class_dict.pyval["__annotations__"] = annotations_member
     if "__init_subclass__" in class_dict.members:
       # __init_subclass__ is automatically promoted to a classmethod
       underlying = class_dict.pyval["__init_subclass__"]
       _, method = ctx.vm.load_special_builtin("classmethod").call(
-          node, func=None, args=function.Args(posargs=(underlying,)))
+          node, func=None, args=function.Args(posargs=(underlying,))
+      )
       class_dict.pyval["__init_subclass__"] = method
     try:
       class_type = props.class_type or abstract.InterpreterClass
       assert issubclass(class_type, abstract.InterpreterClass)
       val = class_type(
-          name, bases, class_dict.pyval, cls, ctx.vm.current_opcode,
-          props.undecorated_methods, ctx)
+          name,
+          bases,
+          class_dict.pyval,
+          cls,
+          ctx.vm.current_opcode,
+          props.undecorated_methods,
+          ctx,
+      )
       _check_final_members(val, class_dict.pyval, ctx)
-      overriding_checks.check_overriding_members(val, bases, class_dict.pyval,
-                                                 ctx.matcher(node), ctx)
+      overriding_checks.check_overriding_members(
+          val, bases, class_dict.pyval, ctx.matcher(node), ctx
+      )
       val.decorators = props.decorators or []
     except mro.MROError as e:
       ctx.errorlog.mro_error(ctx.vm.frames, name, e.mro_seqs)
@@ -565,8 +629,9 @@ def _check_defaults(node, method, ctx):
   try:
     _, errors = function.match_all_args(ctx, node, method, args)
   except error_types.FailedFunctionCall as e:
-    raise AssertionError("Unexpected argument matching error: %s" %
-                         e.__class__.__name__) from e
+    raise AssertionError(
+        "Unexpected argument matching error: %s" % e.__class__.__name__
+    ) from e
   for e, arg_name, value in errors:
     bad_param = e.bad_call.bad_param
     expected_type = bad_param.typ
@@ -581,16 +646,31 @@ def _check_defaults(node, method, ctx):
       should_report = True
     if should_report:
       ctx.errorlog.annotation_type_mismatch(
-          ctx.vm.frames, expected_type, value.to_binding(node), arg_name,
-          bad_param.error_details)
+          ctx.vm.frames,
+          expected_type,
+          value.to_binding(node),
+          arg_name,
+          bad_param.error_details,
+      )
 
 
-def make_function(name, node, code, globs, defaults, kw_defaults, closure,
-                  annotations, opcode, ctx):
+def make_function(
+    name,
+    node,
+    code,
+    globs,
+    defaults,
+    kw_defaults,
+    closure,
+    annotations,
+    opcode,
+    ctx,
+):
   """Create a function or closure given the arguments."""
   if closure:
     closure = tuple(
-        c for c in abstract_utils.get_atomic_python_constant(closure))
+        c for c in abstract_utils.get_atomic_python_constant(closure)
+    )
     log.info("closure: %r", closure)
   if not name:
     name = abstract_utils.get_atomic_python_constant(code).qualname
@@ -606,13 +686,15 @@ def make_function(name, node, code, globs, defaults, kw_defaults, closure,
       kw_defaults=kw_defaults,
       closure=closure,
       annotations=annotations,
-      ctx=ctx)
+      ctx=ctx,
+  )
   var = ctx.program.NewVariable()
   var.AddBinding(val, code.bindings, node)
   _check_defaults(node, val, ctx)
   if val.signature.annotations:
     ctx.vm.functions_type_params_check.append(
-        (val, ctx.vm.frame.current_opcode))
+        (val, ctx.vm.frame.current_opcode)
+    )
   return var
 
 
@@ -640,7 +722,8 @@ def update_excluded_types(node, ctx):
     typ = local.get_type(node, name)
     if typ:
       func.signature.excluded_types.update(
-          p.name for p in ctx.annotation_utils.get_type_parameters(typ))
+          p.name for p in ctx.annotation_utils.get_type_parameters(typ)
+      )
 
 
 def push_block(state, t, level=None, *, index=0):
@@ -675,8 +758,11 @@ def _overrides(subcls, supercls, attr):
         break
       if isinstance(cls, mixin.LazyMembers):
         cls.load_lazy_attribute(attr)
-      if (isinstance(cls, abstract.SimpleValue) and attr in cls.members and
-          cls.members[attr].bindings):
+      if (
+          isinstance(cls, abstract.SimpleValue)
+          and attr in cls.members
+          and cls.members[attr].bindings
+      ):
         return True
   return False
 
@@ -691,7 +777,8 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
     # reasonable to assume that, e.g., "hello " + y is a string, even though
     # y could define __radd__.
     return node, ctx.program.NewVariable(
-        [ctx.convert.unsolvable], [xval, yval], node)
+        [ctx.convert.unsolvable], [xval, yval], node
+    )
   options = [(xval, yval, name)]
   if rname:
     options.append((yval, xval, rname))
@@ -701,25 +788,27 @@ def _call_binop_on_bindings(node, name, xval, yval, ctx):
       options.reverse()
   error = None
   for left_val, right_val, attr_name in options:
-    if (isinstance(left_val.data, abstract.Class) and
-        attr_name == "__getitem__"):
+    if isinstance(left_val.data, abstract.Class) and attr_name == "__getitem__":
       # We're parameterizing a type annotation. Set valself to None to
       # differentiate this action from a real __getitem__ call on the class.
       valself = None
     else:
       valself = left_val
     node, attr_var = ctx.attribute_handler.get_attribute(
-        node, left_val.data, attr_name, valself)
+        node, left_val.data, attr_name, valself
+    )
     if attr_var and attr_var.bindings:
       args = function.Args(posargs=(right_val.AssignToNewVariable(),))
       try:
         return function.call_function(
-            ctx, node, attr_var, args, fallback_to_unsolvable=False,
-            strict_filter=len(attr_var.bindings) > 1)
-      except (
-          error_types.DictKeyMissing,
-          error_types.FailedFunctionCall
-      ) as e:
+            ctx,
+            node,
+            attr_var,
+            args,
+            fallback_to_unsolvable=False,
+            strict_filter=len(attr_var.bindings) > 1,
+        )
+      except (error_types.DictKeyMissing, error_types.FailedFunctionCall) as e:
         # It's possible that this call failed because the function returned
         # NotImplemented.  See, e.g.,
         # test_operators.ReverseTest.check_reverse(), in which 1 {op} Bar() ends
@@ -744,7 +833,8 @@ def _get_annotation(node, var, ctx):
     return None
   with ctx.errorlog.checkpoint() as record:
     annot = ctx.annotation_utils.extract_annotation(
-        node, var, "varname", ctx.vm.simple_stack())
+        node, var, "varname", ctx.vm.simple_stack()
+    )
   if record.errors:
     return None
   return annot
@@ -776,12 +866,12 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
     for yval in y.bindings:
       try:
         node, ret = _call_binop_on_bindings(state.node, name, xval, yval, ctx)
-      except (
-          error_types.DictKeyMissing,
-          error_types.FailedFunctionCall
-      ) as e:
-        if (report_errors and e > error and
-            state.node.HasCombination([xval, yval])):
+      except (error_types.DictKeyMissing, error_types.FailedFunctionCall) as e:
+        if (
+            report_errors
+            and e > error
+            and state.node.HasCombination([xval, yval])
+        ):
           error = e
       else:
         if ret:
@@ -790,8 +880,11 @@ def call_binary_operator(state, name, x, y, report_errors, ctx):
   # Python 3.10 supports writing union types as A | B | ...
   # Only try this as a fallback otherwise we miss overriding of __or__
   if ctx.python_version >= (3, 10) and name == "__or__":
-    fail = (error or not results
-            or isinstance(results[0].data[0], abstract.Unsolvable))
+    fail = (
+        error
+        or not results
+        or isinstance(results[0].data[0], abstract.Unsolvable)
+    )
     if fail:
       ret = _maybe_union(state.node, x, y, ctx)
       if ret:
@@ -823,13 +916,15 @@ def call_inplace_operator(state, iname, x, y, ctx):
     name = iname.replace("i", "", 1)  # __iadd__ -> __add__ etc.
     state = state.forward_cfg_node(f"BinOp:{name}")
     state, ret = call_binary_operator(
-        state, name, x, y, report_errors=True, ctx=ctx)
+        state, name, x, y, report_errors=True, ctx=ctx
+    )
   else:
     # TODO(b/159039220): If x is a Variable with distinct types, both __add__
     # and __iadd__ might happen.
     try:
-      state, ret = ctx.vm.call_function_with_state(state, attr, (y,),
-                                                   fallback_to_unsolvable=False)
+      state, ret = ctx.vm.call_function_with_state(
+          state, attr, (y,), fallback_to_unsolvable=False
+      )
     except error_types.FailedFunctionCall as e:
       ctx.errorlog.invalid_function_call(ctx.vm.frames, e)
       state, ret = e.get_return(state)
@@ -840,8 +935,10 @@ def check_for_deleted(state, name, var, ctx):
   for x in var.Data(state.node):
     if isinstance(x, abstract.Deleted):
       # Referencing a deleted variable
-      details = (f"\nVariable {name} has been used after it has been deleted"
-                 f" (line {x.line}).")
+      details = (
+          f"\nVariable {name} has been used after it has been deleted"
+          f" (line {x.line})."
+      )
       ctx.errorlog.name_error(ctx.vm.frames, name, details=details)
 
 
@@ -859,6 +956,7 @@ def load_closure_cell(state, op, check_bindings, ctx):
       into a closure.
     check_bindings: Whether to check the retrieved value for bindings.
     ctx: The current context.
+
   Returns:
     A new state.
   """
@@ -902,6 +1000,7 @@ def jump_if(state, op, ctx, *, jump_if_val, pop=PopBehavior.NONE):
     jump_if_val: Indicates what value leads to a jump. The non-jump state is
       reached by the value's negation. Use frame_state.NOT_NONE for `not None`.
     pop: Whether and how the opcode pops a value off the stack.
+
   Returns:
     The new FrameState.
   """
@@ -927,7 +1026,8 @@ def jump_if(state, op, ctx, *, jump_if_val, pop=PopBehavior.NONE):
     if jump:
       assert jump.binding
       else_state = state.forward_cfg_node(
-          "Jump", jump.binding).forward_cfg_node("Jump")
+          "Jump", jump.binding
+      ).forward_cfg_node("Jump")
     else:
       else_state = state.forward_cfg_node("Jump")
     ctx.vm.store_jump(op.target, else_state)
@@ -982,15 +1082,18 @@ def process_function_type_comment(node, op, func, ctx):
     annot = args.strip()
     try:
       ctx.annotation_utils.eval_multi_arg_annotation(
-          node, func, annot, fake_stack)
+          node, func, annot, fake_stack
+      )
     except abstract_utils.ConversionError:
       ctx.errorlog.invalid_function_type_comment(
-          fake_stack, annot, details="Must be constant.")
+          fake_stack, annot, details="Must be constant."
+      )
 
   ret = ctx.convert.build_string(None, return_type)
   func.signature.set_annotation(
       "return",
-      ctx.annotation_utils.extract_annotation(node, ret, "return", fake_stack))
+      ctx.annotation_utils.extract_annotation(node, ret, "return", fake_stack),
+  )
 
 
 def _merge_tuple_bindings(var, ctx):
@@ -1009,13 +1112,15 @@ def _merge_tuple_bindings(var, ctx):
 
 # Helper functions for match_* and unpack_iterable
 def _var_is_fixed_length_tuple(var: cfg.Variable) -> bool:
-  return (all(isinstance(d, abstract.Tuple) for d in var.data) and
-          all(d.tuple_length == var.data[0].tuple_length for d in var.data))
+  return all(isinstance(d, abstract.Tuple) for d in var.data) and all(
+      d.tuple_length == var.data[0].tuple_length for d in var.data
+  )
 
 
 def _var_maybe_unknown(var: cfg.Variable) -> bool:
-  return (any(isinstance(x, abstract.Unsolvable) for x in var.data) or
-          all(isinstance(x, abstract.Unknown) for x in var.data))
+  return any(isinstance(x, abstract.Unsolvable) for x in var.data) or all(
+      isinstance(x, abstract.Unknown) for x in var.data
+  )
 
 
 def _convert_keys(keys_var: cfg.Variable):
@@ -1027,10 +1132,12 @@ def match_sequence(obj_var: cfg.Variable) -> bool:
   """See if var is a sequence for pattern matching."""
   return (
       abstract_utils.match_atomic_python_constant(
-          obj_var, collections.abc.Iterable) or
-      abstract_utils.is_var_indefinite_iterable(obj_var) or
-      _var_is_fixed_length_tuple(obj_var) or
-      _var_maybe_unknown(obj_var))
+          obj_var, collections.abc.Iterable
+      )
+      or abstract_utils.is_var_indefinite_iterable(obj_var)
+      or _var_is_fixed_length_tuple(obj_var)
+      or _var_maybe_unknown(obj_var)
+  )
 
 
 def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
@@ -1038,9 +1145,11 @@ def match_mapping(node, obj_var: cfg.Variable, ctx) -> bool:
   mapping = ctx.convert.lookup_value("typing", "Mapping")
   return (
       abstract_utils.match_atomic_python_constant(
-          obj_var, collections.abc.Mapping) or
-      ctx.matcher(node).compute_one_match(obj_var, mapping).success or
-      _var_maybe_unknown(obj_var))
+          obj_var, collections.abc.Mapping
+      )
+      or ctx.matcher(node).compute_one_match(obj_var, mapping).success
+      or _var_maybe_unknown(obj_var)
+  )
 
 
 def match_keys(
@@ -1050,10 +1159,12 @@ def match_keys(
   keys = _convert_keys(keys_var)
   if _var_maybe_unknown(obj_var):
     return ctx.convert.build_tuple(
-        node, [ctx.new_unsolvable(node) for _ in keys])
+        node, [ctx.new_unsolvable(node) for _ in keys]
+    )
   try:
     mapping = abstract_utils.get_atomic_python_constant(
-        obj_var, collections.abc.Mapping)
+        obj_var, collections.abc.Mapping
+    )
   except abstract_utils.ConversionError:
     # We have an abstract mapping
     ret = [ctx.program.NewVariable() for _ in keys]
@@ -1084,8 +1195,12 @@ class ClassMatch:
 
 
 def _match_builtin_class(
-    node, success: Optional[bool], cls: abstract.Class, keys: Tuple[str, ...],
-    posarg_count: int, ctx
+    node,
+    success: Optional[bool],
+    cls: abstract.Class,
+    keys: Tuple[str, ...],
+    posarg_count: int,
+    ctx,
 ) -> ClassMatch:
   """Match a builtin class with a single posarg constructor."""
   assert success is not False  # pylint: disable=g-bool-id-comparison
@@ -1106,13 +1221,14 @@ def match_class(
     cls_var: cfg.Variable,
     keys_var: cfg.Variable,
     posarg_count: int,
-    ctx
+    ctx,
 ) -> ClassMatch:
   """Pick attributes out of a class instance for pattern matching."""
   keys = _convert_keys(keys_var)
   try:
     cls = abstract_utils.get_atomic_value(
-        cls_var, (abstract.Class, abstract.AnnotationContainer))
+        cls_var, (abstract.Class, abstract.AnnotationContainer)
+    )
   except abstract_utils.ConversionError:
     return ClassMatch(success=None, values=None)
   if isinstance(cls, abstract.AnnotationContainer):
@@ -1126,14 +1242,14 @@ def match_class(
     # Check both whether any binding of `obj_var` matches, and whether all of
     # them do. If all bindings match then return True since the pattern will
     # always succeed.
-    m = ctx.matcher(node).compute_one_match(
-        obj_var, cls, match_all_views=False)
+    m = ctx.matcher(node).compute_one_match(obj_var, cls, match_all_views=False)
     total = ctx.matcher(node).compute_one_match(
-        obj_var, cls, match_all_views=True)
+        obj_var, cls, match_all_views=True
+    )
     if m.success:
-      bindings = list(itertools.chain(
-          *map(lambda x: x.view.values(), m.good_matches)
-      ))
+      bindings = list(
+          itertools.chain(*map(lambda x: x.view.values(), m.good_matches))
+      )
       success = True if total.success else None
     else:
       return ClassMatch(False, None)
@@ -1143,8 +1259,9 @@ def match_class(
       return _match_builtin_class(node, success, cls, keys, posarg_count, ctx)
 
     if posarg_count > len(cls.match_args):
-      ctx.errorlog.match_posargs_count(ctx.vm.frames, cls, posarg_count,
-                                       len(cls.match_args))
+      ctx.errorlog.match_posargs_count(
+          ctx.vm.frames, cls, posarg_count, len(cls.match_args)
+      )
       return ClassMatch(False, None)
     keys = cls.match_args[:posarg_count] + keys
   ret = [ctx.program.NewVariable() for _ in keys]
@@ -1184,7 +1301,8 @@ def unpack_iterable(node, var, ctx):
   elements = []
   try:
     itr = abstract_utils.get_atomic_python_constant(
-        var, collections.abc.Iterable)
+        var, collections.abc.Iterable
+    )
   except abstract_utils.ConversionError:
     if abstract_utils.is_var_indefinite_iterable(var):
       elements.append(abstract.Splat(ctx, var).to_variable(node))
@@ -1256,8 +1374,10 @@ def ensure_unpacked_starargs(node, starargs, ctx):
   """Unpack starargs if it has not been done already."""
   # TODO(mdemello): If we *have* unpacked the arg in a previous opcode will it
   # always have a single binding?
-  if not any(isinstance(x, abstract.Tuple) and x.is_unpacked_function_args
-             for x in starargs.data):
+  if not any(
+      isinstance(x, abstract.Tuple) and x.is_unpacked_function_args
+      for x in starargs.data
+  ):
     seq = unpack_iterable(node, starargs, ctx)
     starargs = build_function_args_tuple(node, seq, ctx)
   return starargs
@@ -1290,9 +1410,12 @@ def _binding_to_coroutine(state, b, bad_bindings, ret, top, ctx):
   if b not in bad_bindings:  # this is already a coroutine
     ret.PasteBinding(b)
     return state
-  if ctx.matcher(state.node).match_var_against_type(
-      b.variable, ctx.convert.generator_type, {},
-      {b.variable: b}) is not None:
+  if (
+      ctx.matcher(state.node).match_var_against_type(
+          b.variable, ctx.convert.generator_type, {}, {b.variable: b}
+      )
+      is not None
+  ):
     # This is a generator; convert it to a coroutine. This conversion is
     # necessary even though generator-based coroutines convert their return
     # values themselves because __await__ can return a generator.
@@ -1305,7 +1428,8 @@ def _binding_to_coroutine(state, b, bad_bindings, ret, top, ctx):
     ret.PasteBinding(b)
     return state
   _, await_method = ctx.attribute_handler.get_attribute(
-      state.node, b.data, "__await__", b)
+      state.node, b.data, "__await__", b
+  )
   if await_method is None or not await_method.bindings:
     # We don't need to log an error here; byte_GET_AWAITABLE will check
     # that the final result is awaitable.
@@ -1338,8 +1462,12 @@ def to_coroutine(state, obj, top, ctx):
   """
   bad_bindings = []
   for b in obj.bindings:
-    if ctx.matcher(state.node).match_var_against_type(
-        obj, ctx.convert.coroutine_type, {}, {obj: b}) is None:
+    if (
+        ctx.matcher(state.node).match_var_against_type(
+            obj, ctx.convert.coroutine_type, {}, {obj: b}
+        )
+        is None
+    ):
       bad_bindings.append(b)
   if not bad_bindings:  # there are no non-coroutines
     return state, obj

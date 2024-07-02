@@ -92,7 +92,7 @@ class TraceTest(TraceVmTestBase):
           ("STORE_NAME", 1, "x"),
           ("LOAD_NAME", 2, "x"),
           ("STORE_NAME", 2, "y"),
-          ("RETURN_CONST", 2, None)
+          ("RETURN_CONST", 2, None),
       ]
     else:
       # Compiles to:
@@ -109,11 +109,13 @@ class TraceTest(TraceVmTestBase):
           ("STORE_NAME", 1, "x"),
           ("LOAD_NAME", 2, "x"),
           ("STORE_NAME", 2, "y"),
-          ("LOAD_CONST", 2, None)
+          ("LOAD_CONST", 2, None),
       ]
     self.ctx.vm.run_program(src, "", maximum_depth=10)
-    actual = [(op.name, op.line, symbol)
-              for op, symbol, _ in self.ctx.vm.opcode_traces]
+    actual = [
+        (op.name, op.line, symbol)
+        for op, symbol, _ in self.ctx.vm.opcode_traces
+    ]
     self.assertEqual(actual, expected)
 
 
@@ -123,12 +125,14 @@ class AnnotationsTest(VmTestBase):
   def test_record_local_ops(self):
     self.ctx.vm.run_program("v: int = None", "", maximum_depth=10)
     self.assertEqual(
-        self.ctx.vm.local_ops, {
+        self.ctx.vm.local_ops,
+        {
             "<module>": [
                 vm.LocalOp(name="v", op=vm.LocalOp.Op.ASSIGN),
-                vm.LocalOp(name="v", op=vm.LocalOp.Op.ANNOTATE)
+                vm.LocalOp(name="v", op=vm.LocalOp.Op.ANNOTATE),
             ]
-        })
+        },
+    )
 
 
 if __name__ == "__main__":

@@ -6,11 +6,9 @@ import logging
 import os
 import sys
 import traceback
-
 from typing import Optional
 
 import libcst
-
 from pytype import __version__
 from pytype import analyze
 from pytype import config
@@ -67,12 +65,15 @@ def _set_verbosity_from(posarg):
   Returns:
     The decorator.
   """
+
   def decorator(f):
     def wrapper(*args, **kwargs):
       options = kwargs.get("options", args[posarg])
       with config.verbosity_from(options):
         return f(*args, **kwargs)
+
     return wrapper
+
   return decorator
 
 
@@ -80,10 +81,7 @@ def _set_verbosity_from(posarg):
 def _call(analyze_types, src, options, loader):
   """Helper function to call analyze.check/infer_types."""
   loader = loader or load_pytd.create_loader(options)
-  return analyze_types(
-      src=src,
-      options=options,
-      loader=loader)
+  return analyze_types(src=src, options=options, loader=loader)
 
 
 def check_py(src, options=None, loader=None):
@@ -125,12 +123,14 @@ def generate_pyi_ast(
     ret = _call(infer_types, src, options, loader)
     mod = ret.ast
     mod.Visit(visitors.VerifyVisitor())
-    mod = optimize.Optimize(mod,
-                            ret.ast_deps,
-                            lossy=False,
-                            use_abcs=False,
-                            max_union=7,
-                            remove_mutable=False)
+    mod = optimize.Optimize(
+        mod,
+        ret.ast_deps,
+        lossy=False,
+        use_abcs=False,
+        max_union=7,
+        remove_mutable=False,
+    )
     mod = pytd_utils.CanonicalOrdering(mod)
   ret.ast = mod
   return ret
@@ -226,8 +226,11 @@ def check_or_generate_pyi(options) -> AnalysisResult:
       log.warning("***Caught exception: %s", str(e), exc_info=True)
       if not options.check:
         other_error_info = (
-            "# Caught error in pytype: " + str(e).replace("\n", "\n#")
-            + "\n# " + "\n# ".join(traceback.format_exc().splitlines()))
+            "# Caught error in pytype: "
+            + str(e).replace("\n", "\n#")
+            + "\n# "
+            + "\n# ".join(traceback.format_exc().splitlines())
+        )
     else:
       prefix = str(e.args[0]) if e.args else ""
       e.args = (f"{prefix}\nFile: {options.input}",) + e.args[1:]
@@ -240,7 +243,8 @@ def check_or_generate_pyi(options) -> AnalysisResult:
   if compiler_error:
     ctx.errorlog.python_compiler_error(*compiler_error)
   ast = pytd_builtins.GetDefaultAst(
-      parser.PyiOptions.from_toplevel_options(options))
+      parser.PyiOptions.from_toplevel_options(options)
+  )
   result = pytd_builtins.DEFAULT_SRC + other_error_info
   return AnalysisResult(ctx, ast, result)
 
@@ -316,7 +320,8 @@ def write_pickle(ast, options, loader=None):
   except parser.ParseError as e:
     if options.nofail:
       ast = serialize_ast.PrepareForExport(
-          options.module_name, loader.get_default_ast(), loader)
+          options.module_name, loader.get_default_ast(), loader
+      )
       log.warning("***Caught exception: %s", str(e), exc_info=True)
     else:
       raise
@@ -370,7 +375,8 @@ def parse_pyi(options):
   ast = loader.finish_and_verify_ast(ast)
   if options.output:
     result = "# Internal AST parsed and postprocessed from {}\n\n{}".format(
-        options.input, pytd_utils.Print(ast))
+        options.input, pytd_utils.Print(ast)
+    )
     _write_pyi_output(options, result, options.output)
   return ast
 
@@ -399,22 +405,30 @@ def wrap_pytype_exceptions(exception_type, filename=""):
   except utils.UsageError as e:
     raise exception_type(f"Pytype usage error: {e}") from e
   except pyc.CompileError as e:
-    raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, e.line, e.error)) from e
+    raise exception_type(
+        "Error reading file %s at line %s: %s" % (filename, e.line, e.error)
+    ) from e
   except libcst.ParserSyntaxError as e:
     # TODO(rechen): We can get rid of this branch once we delete
     # directors.parser_libcst.
-    raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, e.raw_line, e.message)) from e
+    raise exception_type(
+        "Error reading file %s at line %s: %s"
+        % (filename, e.raw_line, e.message)
+    ) from e
   except SyntaxError as e:
-    raise exception_type("Error reading file %s at line %s: %s" %
-                         (filename, e.lineno, e.msg)) from e
+    raise exception_type(
+        "Error reading file %s at line %s: %s" % (filename, e.lineno, e.msg)
+    ) from e
   except directors.SkipFileError as e:
-    raise exception_type("Pytype could not analyze file %s: "
-                         "'# skip-file' directive found" % filename) from e
+    raise exception_type(
+        "Pytype could not analyze file %s: '# skip-file' directive found"
+        % filename
+    ) from e
   except pickle_utils.LoadPickleError as e:
-    raise exception_type(f"Error analyzing file {filename}: Could not load "
-                         f"serialized dependency {e.filename}") from e
+    raise exception_type(
+        f"Error analyzing file {filename}: Could not load "
+        f"serialized dependency {e.filename}"
+    ) from e
   except Exception as e:  # pylint: disable=broad-except
     msg = f"Pytype error: {e.__class__.__name__}: {e.args[0]}"
     raise exception_type(msg).with_traceback(e.__traceback__)

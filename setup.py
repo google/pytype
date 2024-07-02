@@ -18,7 +18,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 #
 # This is appended, so if already available in site-packages, that is used
 # instead
-sys.path.append(os.path.join(here, "pybind11"))
+sys.path.append(os.path.join(here, 'pybind11'))
 
 from pybind11.setup_helpers import Pybind11Extension  # pylint: disable=g-import-not-at-top,wrong-import-position
 
@@ -28,24 +28,25 @@ def get_typegraph_ext():
   return Pybind11Extension(
       'pytype.typegraph.cfg',
       sources=[
-          "pytype/typegraph/cfg.cc",
-          "pytype/typegraph/cfg_logging.cc",
-          "pytype/typegraph/pylogging.cc",
-          "pytype/typegraph/reachable.cc",
-          "pytype/typegraph/solver.cc",
-          "pytype/typegraph/typegraph.cc",
+          'pytype/typegraph/cfg.cc',
+          'pytype/typegraph/cfg_logging.cc',
+          'pytype/typegraph/pylogging.cc',
+          'pytype/typegraph/reachable.cc',
+          'pytype/typegraph/solver.cc',
+          'pytype/typegraph/typegraph.cc',
       ],
       depends=[
-          "pytype/typegraph/cfg_logging.h",
-          "pytype/typegraph/map_util.h",
-          "pytype/typegraph/memory_util.h",
-          "pytype/typegraph/pylogging.h",
-          "pytype/typegraph/reachable.h",
-          "pytype/typegraph/solver.h",
-          "pytype/typegraph/typegraph.h",
+          'pytype/typegraph/cfg_logging.h',
+          'pytype/typegraph/map_util.h',
+          'pytype/typegraph/memory_util.h',
+          'pytype/typegraph/pylogging.h',
+          'pytype/typegraph/reachable.h',
+          'pytype/typegraph/solver.h',
+          'pytype/typegraph/typegraph.h',
       ],
       cxx_std=11,
   )
+
 
 def copy_typeshed():
   """Windows install workaround: copy typeshed if the symlink doesn't work."""
@@ -82,15 +83,17 @@ def scan_package_data(path, pattern, check):
 
 
 def get_data_files():
-  builtins = scan_package_data(['stubs', 'builtins'], '*.pytd',
-                               check=['attr', '*.pytd'])
-  stdlib = scan_package_data(['stubs', 'stdlib'], '*.pytd',
-                             check=['*.pytd'])
-  typeshed = (scan_package_data(['typeshed'], '*.pyi',
-                                check=['stdlib', '*.pyi']) +
-              ['typeshed/stdlib/VERSIONS'] +
-              scan_package_data(['typeshed'], 'METADATA.toml',
-                                check=['stubs', 'six', 'METADATA.toml']))
+  builtins = scan_package_data(
+      ['stubs', 'builtins'], '*.pytd', check=['attr', '*.pytd']
+  )
+  stdlib = scan_package_data(['stubs', 'stdlib'], '*.pytd', check=['*.pytd'])
+  typeshed = (
+      scan_package_data(['typeshed'], '*.pyi', check=['stdlib', '*.pyi'])
+      + ['typeshed/stdlib/VERSIONS']
+      + scan_package_data(
+          ['typeshed'], 'METADATA.toml', check=['stubs', 'six', 'METADATA.toml']
+      )
+  )
   merge_pyi_grammar = ['tools/merge_pyi/Grammar.txt']
   return builtins + stdlib + typeshed + merge_pyi_grammar
 
@@ -102,7 +105,9 @@ def get_long_description():
   # Fix relative links to the pytype docs.
   return re.sub(
       r'\[(.+)\]: docs/',
-      r'[\g<1>]: https://github.com/google/pytype/blob/main/docs/', desc)
+      r'[\g<1>]: https://github.com/google/pytype/blob/main/docs/',
+      desc,
+  )
 
 
 copy_typeshed()
