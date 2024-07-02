@@ -55,8 +55,9 @@ class PytypeTest(test_base.UnitTest):
   def _data_path(self, filename):
     if path_utils.dirname(filename) == self.tmp_dir:
       return filename
-    return path_utils.join(self.pytype_dir,
-                           file_utils.replace_separator("test_data/"), filename)
+    return path_utils.join(
+        self.pytype_dir, file_utils.replace_separator("test_data/"), filename
+    )
 
   def _tmp_path(self, filename):
     return path_utils.join(self.tmp_dir, filename)
@@ -67,7 +68,8 @@ class PytypeTest(test_base.UnitTest):
   def _make_file(self, contents, extension):
     contents = textwrap.dedent(contents)
     path = self._tmp_path(
-        hashlib.md5(contents.encode("utf-8")).hexdigest() + extension)
+        hashlib.md5(contents.encode("utf-8")).hexdigest() + extension
+    )
     with open(path, "w") as f:
       print(contents, file=f)
     return path
@@ -80,7 +82,8 @@ class PytypeTest(test_base.UnitTest):
         arg += "=" + str(value)
       pytype_args.append(arg)
     return subprocess.Popen(  # pylint: disable=consider-using-with
-        pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pytype_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
 
   def _run_pytype(self, pytype_args_dict):
     """A single command-line call to the pytype binary.
@@ -93,9 +96,8 @@ class PytypeTest(test_base.UnitTest):
 
     Args:
       pytype_args_dict: A dictionary of the arguments to pass to pytype, minus
-       the binary name. For example, to run
-          pytype simple.py --output=-
-       the arguments should be {"simple.py": self.INCLUDE, "--output": "-"}
+        the binary name. For example, to run pytype simple.py --output=- the
+        arguments should be {"simple.py": self.INCLUDE, "--output": "-"}
     """
     with self._create_pytype_subprocess(pytype_args_dict) as p:
       self.stdout, self.stderr = (s.decode("utf-8") for s in p.communicate())
@@ -104,7 +106,8 @@ class PytypeTest(test_base.UnitTest):
   def _parse_string(self, string):
     """A wrapper for parser.parse_string that inserts the python version."""
     return parser.parse_string(
-        string, options=parser.PyiOptions(python_version=self.python_version))
+        string, options=parser.PyiOptions(python_version=self.python_version)
+    )
 
   def assertOutputStateMatches(self, **has_output):
     """Check that the output state matches expectations.
@@ -127,18 +130,23 @@ class PytypeTest(test_base.UnitTest):
         if len(value) > 50:
           value = value[:47] + "..."
         self.assertFalse(
-            output_value, f"Unexpected output to {output_type}: {value!r}")
+            output_value, f"Unexpected output to {output_type}: {value!r}"
+        )
 
   def assertHasErrors(self, *expected_errors):
     with open(self.errors_csv) as f:
       errors = list(csv.reader(f, delimiter=","))
     num, expected_num = len(errors), len(expected_errors)
     try:
-      self.assertEqual(num, expected_num,
-                       "Expected %d errors, got %d" % (expected_num, num))
+      self.assertEqual(
+          num, expected_num, "Expected %d errors, got %d" % (expected_num, num)
+      )
       for error, expected_error in zip(errors, expected_errors):
-        self.assertEqual(expected_error, error[2],
-                         f"Expected {expected_error!r}, got {error[2]!r}")
+        self.assertEqual(
+            expected_error,
+            error[2],
+            f"Expected {expected_error!r}, got {error[2]!r}",
+        )
     except:
       print("\n".join(" | ".join(error) for error in errors), file=sys.stderr)
       raise
@@ -153,7 +161,8 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--return-success"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(
-        stdout=False, stderr=bool(expected_errors), returncode=False)
+        stdout=False, stderr=bool(expected_errors), returncode=False
+    )
     self.assertHasErrors(*expected_errors)
 
   def _infer_types_and_check_errors(self, filename, expected_errors):
@@ -163,7 +172,8 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--return-success"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(
-        stdout=True, stderr=bool(expected_errors), returncode=False)
+        stdout=True, stderr=bool(expected_errors), returncode=False
+    )
     self.assertHasErrors(*expected_errors)
 
   def assertInferredPyiEquals(self, expected_pyi=None, filename=None):
@@ -171,10 +181,18 @@ class PytypeTest(test_base.UnitTest):
     if filename:
       with open(self._data_path(filename)) as f:
         expected_pyi = f.read()
-    message = ("\n==Expected pyi==\n" + expected_pyi +
-               "\n==Actual pyi==\n" + self.stdout)
-    self.assertTrue(pytd_utils.ASTeq(self._parse_string(self.stdout),
-                                     self._parse_string(expected_pyi)), message)
+    message = (
+        "\n==Expected pyi==\n"
+        + expected_pyi
+        + "\n==Actual pyi==\n"
+        + self.stdout
+    )
+    self.assertTrue(
+        pytd_utils.ASTeq(
+            self._parse_string(self.stdout), self._parse_string(expected_pyi)
+        ),
+        message,
+    )
 
   def generate_pickled_simple_file(self, pickle_name, verify_pickle=True):
     pickled_location = path_utils.join(self.tmp_dir, pickle_name)
@@ -253,7 +271,7 @@ class PytypeTest(test_base.UnitTest):
     self.assertOutputStateMatches(stdout=False, stderr=True, returncode=True)
 
   def test_input_output_pair(self):
-    self.pytype_args[self._data_path("simple.py") +":-"] = self.INCLUDE
+    self.pytype_args[self._data_path("simple.py") + ":-"] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
     self.assertInferredPyiEquals(filename="simple.pyi")
@@ -279,7 +297,8 @@ class PytypeTest(test_base.UnitTest):
   def test_generate_builtins(self):
     self.pytype_args["--generate-builtins"] = self._tmp_path("builtins.py")
     self.pytype_args["--python_version"] = utils.format_version(
-        sys.version_info[:2])
+        sys.version_info[:2]
+    )
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
@@ -347,10 +366,13 @@ class PytypeTest(test_base.UnitTest):
     self._check_types_and_errors("simple.py", [])
 
   def test_return_type(self):
-    self._check_types_and_errors(self._make_py_file("""
+    self._check_types_and_errors(
+        self._make_py_file("""
       def f() -> int:
         return "foo"
-    """), ["bad-return-type"])
+    """),
+        ["bad-return-type"],
+    )
 
   def test_usage_error(self):
     self._setup_checking(self._make_py_file("""
@@ -379,7 +401,8 @@ class PytypeTest(test_base.UnitTest):
 
   def test_infer_pytype_errors(self):
     self._infer_types_and_check_errors(
-        "bad.py", ["unsupported-operands", "name-error"])
+        "bad.py", ["unsupported-operands", "name-error"]
+    )
     self.assertInferredPyiEquals(filename="bad.pyi")
 
   def test_infer_compiler_error(self):
@@ -412,8 +435,11 @@ class PytypeTest(test_base.UnitTest):
       pyi = f.read()
     with open(self._data_path("simple.pyi")) as f:
       expected_pyi = f.read()
-    self.assertTrue(pytd_utils.ASTeq(self._parse_string(pyi),
-                                     self._parse_string(expected_pyi)))
+    self.assertTrue(
+        pytd_utils.ASTeq(
+            self._parse_string(pyi), self._parse_string(expected_pyi)
+        )
+    )
 
   def test_parse_pyi(self):
     self.pytype_args[self._data_path("complex.pyi")] = self.INCLUDE
@@ -425,17 +451,38 @@ class PytypeTest(test_base.UnitTest):
     """Test pytype on a real-world program."""
     self.pytype_args["--quick"] = self.INCLUDE
     self.pytype_args["--strict-undefined-checks"] = self.INCLUDE
-    self._infer_types_and_check_errors("pytree.py", [
-        "import-error", "import-error", "attribute-error", "attribute-error",
-        "attribute-error", "name-error", "name-error", "signature-mismatch",
-        "signature-mismatch"])
+    self._infer_types_and_check_errors(
+        "pytree.py",
+        [
+            "import-error",
+            "import-error",
+            "attribute-error",
+            "attribute-error",
+            "attribute-error",
+            "name-error",
+            "name-error",
+            "signature-mismatch",
+            "signature-mismatch",
+        ],
+    )
     ast = self._parse_string(self.stdout)
-    self.assertListEqual(["convert", "generate_matches", "type_repr"],
-                         [f.name for f in ast.functions])
     self.assertListEqual(
-        ["Base", "BasePattern", "Leaf", "LeafPattern", "NegatedPattern", "Node",
-         "NodePattern", "WildcardPattern"],
-        [c.name for c in ast.classes])
+        ["convert", "generate_matches", "type_repr"],
+        [f.name for f in ast.functions],
+    )
+    self.assertListEqual(
+        [
+            "Base",
+            "BasePattern",
+            "Leaf",
+            "LeafPattern",
+            "NegatedPattern",
+            "Node",
+            "NodePattern",
+            "WildcardPattern",
+        ],
+        [c.name for c in ast.classes],
+    )
 
   def test_no_analyze_annotated(self):
     filename = self._make_py_file("""
@@ -450,8 +497,9 @@ class PytypeTest(test_base.UnitTest):
         return 42
     """)
     self.pytype_args["--analyze-annotated"] = self.INCLUDE
-    self._infer_types_and_check_errors(self._data_path(filename),
-                                       ["bad-return-type"])
+    self._infer_types_and_check_errors(
+        self._data_path(filename), ["bad-return-type"]
+    )
 
   def test_generate_and_use_builtins(self):
     """Test for --generate-builtins."""
@@ -499,10 +547,13 @@ class PytypeTest(test_base.UnitTest):
       y = csv.writer
       z = asyncio.Future
     """)
-    pyi = self._make_file("""
+    pyi = self._make_file(
+        """
       import datetime
       x = ...  # type: datetime.tzinfo
-    """, extension=".pyi")
+    """,
+        extension=".pyi",
+    )
     # Use builtins pickle with an imports map
     self._reset_pytype_args()
     self._setup_checking(src)
@@ -512,7 +563,9 @@ class PytypeTest(test_base.UnitTest):
         f"""
       typing {null_device}
       foo {pyi}
-    """, extension="")
+    """,
+        extension="",
+    )
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=False, stderr=False, returncode=False)
 
@@ -529,8 +582,9 @@ class PytypeTest(test_base.UnitTest):
     self.pytype_args["--timeout"] = 60
     self.pytype_args["--output"] = "-"
     self.pytype_args["--quick"] = self.INCLUDE
-    self.pytype_args[self._data_path(
-        file_utils.replace_separator("perf/iso.py"))] = self.INCLUDE
+    self.pytype_args[
+        self._data_path(file_utils.replace_separator("perf/iso.py"))
+    ] = self.INCLUDE
     self._run_pytype(self.pytype_args)
     self.assertOutputStateMatches(stdout=True, stderr=False, returncode=False)
 

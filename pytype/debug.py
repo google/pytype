@@ -10,7 +10,6 @@ import traceback
 
 from pytype import utils
 from pytype.typegraph import cfg_utils
-
 import tabulate
 
 
@@ -34,10 +33,17 @@ def _ascii_tree(out, node, p1, p2, seen, get_children, get_description=None):
     out.write(p1 + text + "\n")
     seen.add(node)
     for i, c in enumerate(children):
-      last = (i == len(children) - 1)
+      last = i == len(children) - 1
       out.write(p2 + "|\n")
-      _ascii_tree(out, c, p2 + "+-", p2 + ("  " if last else "| "),
-                  seen, get_children, get_description)
+      _ascii_tree(
+          out,
+          c,
+          p2 + "+-",
+          p2 + ("  " if last else "| "),
+          seen,
+          get_children,
+          get_description,
+      )
 
 
 def ascii_tree(node, get_children, get_description=None):
@@ -71,9 +77,10 @@ def prettyprint_binding_set(binding_set, indent_level=0, label=""):
   if not binding_set:
     return start + " }"
   return "\n".join(
-      [start] +
-      [prettyprint_binding(x, indent_level + 2) for x in binding_set] +
-      [indent + "}"])
+      [start]
+      + [prettyprint_binding(x, indent_level + 2) for x in binding_set]
+      + [indent + "}"]
+  )
 
 
 def prettyprint_binding_nested(binding, indent_level=0):
@@ -93,9 +100,9 @@ def prettyprint_binding_nested(binding, indent_level=0):
     for i, source_set in enumerate(origin.source_sets):
       for j, source in enumerate(source_set):
         s += prettyprint_binding_nested(source, indent_level + 4)
-        if j < len(source_set)-1:
+        if j < len(source_set) - 1:
           s += f"{indent}    AND\n"
-      if i < len(origin.source_sets)-1:
+      if i < len(origin.source_sets) - 1:
         s += f"{indent}  OR\n"
   return s
 
@@ -120,13 +127,15 @@ def prettyprint_cfg_node(node, decorate_after_node=0, full=False):
   bindings = collections.defaultdict(list)
   for b in node.bindings:
     bindings[b.variable.id].append(name(b.data))
-  b = ", ".join(["%d:%s" % (k, "|".join(v))
-                 for k, v in sorted(bindings.items())])
+  b = ", ".join(
+      ["%d:%s" % (k, "|".join(v)) for k, v in sorted(bindings.items())]
+  )
   return repr(node) + " [" + b + "]"
 
 
-def prettyprint_cfg_tree(root, decorate_after_node=0, full=False,
-                         forward=False):
+def prettyprint_cfg_tree(
+    root, decorate_after_node=0, full=False, forward=False
+):
   """Pretty print a cfg tree with the bindings at each node.
 
   Args:
@@ -173,9 +182,10 @@ def _pretty_variable(var):
       prefix = "    "
 
     for origin in value.origins:
-      src = utils.pretty_dnf([[str(v) for v in source_set]
-                              for source_set in origin.source_sets])
-      lines.append("%s%s @%d" %(prefix, src, origin.where.id))
+      src = utils.pretty_dnf(
+          [[str(v) for v in source_set] for source_set in origin.source_sets]
+      )
+      lines.append("%s%s @%d" % (prefix, src, origin.where.id))
   return "\n".join(lines)
 
 
@@ -190,8 +200,10 @@ def program_to_text(program):
   Returns:
     A string representing all of the data for this program.
   """
+
   def label(node):
     return "<%d>%s" % (node.id, node.name)
+
   s = io.StringIO()
   seen = set()
   for node in cfg_utils.order_nodes(program.cfg_nodes):
@@ -250,8 +262,11 @@ def root_cause(binding, node, seen=()):
 
 def stack_trace(indent_level=0, limit=100):
   indent = " " * indent_level
-  stack = [frame for frame in traceback.extract_stack()
-           if "/errors.py" not in frame[0] and "/debug.py" not in frame[0]]
+  stack = [
+      frame
+      for frame in traceback.extract_stack()
+      if "/errors.py" not in frame[0] and "/debug.py" not in frame[0]
+  ]
   tb = traceback.format_list(stack[-limit:])
   tb = [indent + re.sub(r"/usr/.*/pytype/", "", x) for x in tb]
   return "\n  ".join(tb)
@@ -270,7 +285,9 @@ def _setup_tabulate():
       linebelow=None,
       headerrow=tabulate.DataRow("", "│", ""),
       datarow=tabulate.DataRow("", "│", ""),
-      padding=1, with_header_hide=None)
+      padding=1,
+      with_header_hide=None,
+  )
   # pytype: enable=module-attr
 
 
@@ -292,7 +309,8 @@ def show_ordered_code(code, extra_col=None):
     end = start
     ids = lambda xs: [x.id for x in xs]
     block_lines.append(
-        f"block: {block.id} -> {ids(block.outgoing)} <- {ids(block.incoming)}")
+        f"block: {block.id} -> {ids(block.outgoing)} <- {ids(block.incoming)}"
+    )
     for op in block:
       end += 1
       op_lines.append([
@@ -305,12 +323,22 @@ def show_ordered_code(code, extra_col=None):
           "✓" if op.pop_exc_block else "",
           op.next and op.next.index,
           op.line,
-          extra_col.get(op.index)
+          extra_col.get(op.index),
       ])
     boundaries.append((start, end))
     start = end
-  headers = ["ix", "op", "arg", "tgt", "btgt", ">exc", "<exc", "next", "line",
-             "extra"]
+  headers = [
+      "ix",
+      "op",
+      "arg",
+      "tgt",
+      "btgt",
+      ">exc",
+      "<exc",
+      "next",
+      "line",
+      "extra",
+  ]
   block_table = tabulate.tabulate(op_lines, headers, tablefmt="presto")
   block_table = block_table.split("\n")
   tab = [[block_table[0]]]
@@ -358,9 +386,11 @@ def trace(name, *trace_args):
   Args:
     name: module name, usually `__name__`
     *trace_args: function arguments to log
+
   Returns:
     a decorator
   """
+
   def decorator(f):
     def wrapper(*args, **kwargs):
       t = tracer(name)
@@ -380,7 +410,9 @@ def trace(name, *trace_args):
       t.debug("%s: -> %s", f.__name__, show(ret))
       t.debug("%s: }", f.__name__)
       return ret
+
     return wrapper
+
   return decorator
 
 

@@ -38,22 +38,32 @@ class ModuleUtilsTest(unittest.TestCase):
   def test_path_to_module_name(self):
     self.assertIsNone(
         module_utils.path_to_module_name(
-            file_utils.replace_separator("../foo.py")))
+            file_utils.replace_separator("../foo.py")
+        )
+    )
     self.assertIsNone(
         module_utils.path_to_module_name(
-            file_utils.replace_separator("x/y/foo.txt")))
+            file_utils.replace_separator("x/y/foo.txt")
+        )
+    )
     self.assertEqual(
         "x.y.z",
         module_utils.path_to_module_name(
-            file_utils.replace_separator("x/y/z.pyi")))
+            file_utils.replace_separator("x/y/z.pyi")
+        ),
+    )
     self.assertEqual(
         "x.y.z",
         module_utils.path_to_module_name(
-            file_utils.replace_separator("x/y/z.pytd")))
+            file_utils.replace_separator("x/y/z.pytd")
+        ),
+    )
     self.assertEqual(
         "x.y.z",
         module_utils.path_to_module_name(
-            file_utils.replace_separator("x/y/z/__init__.pyi")))
+            file_utils.replace_separator("x/y/z/__init__.pyi")
+        ),
+    )
 
 
 # Because TestInferModule expands a lot of paths:
@@ -65,44 +75,54 @@ class TestInferModule(unittest.TestCase):
 
   def assert_module_equal(self, module, path, target, name, kind="Local"):
     self.assertEqual(
-        module.path.rstrip(path_utils.sep), path.rstrip(path_utils.sep))
+        module.path.rstrip(path_utils.sep), path.rstrip(path_utils.sep)
+    )
     self.assertEqual(module.target, target)
     self.assertEqual(module.name, name)
     self.assertEqual(module.kind, kind)
 
   def test_simple_name(self):
     mod = module_utils.infer_module(
-        expand(file_utils.replace_separator("foo/bar.py")), [expand("foo")])
+        expand(file_utils.replace_separator("foo/bar.py")), [expand("foo")]
+    )
     self.assert_module_equal(mod, expand("foo"), "bar.py", "bar")
 
   def test_name_in_package(self):
     mod = module_utils.infer_module(
-        expand(file_utils.replace_separator("foo/bar/baz.py")), [expand("foo")])
-    self.assert_module_equal(mod, expand("foo"),
-                             file_utils.replace_separator("bar/baz.py"),
-                             "bar.baz")
+        expand(file_utils.replace_separator("foo/bar/baz.py")), [expand("foo")]
+    )
+    self.assert_module_equal(
+        mod,
+        expand("foo"),
+        file_utils.replace_separator("bar/baz.py"),
+        "bar.baz",
+    )
 
   def test_multiple_paths(self):
     pythonpath = [
         expand("foo"),
         expand(file_utils.replace_separator("bar/baz")),
-        expand("bar")
+        expand("bar"),
     ]
     mod = module_utils.infer_module(
-        expand(file_utils.replace_separator("bar/baz/qux.py")), pythonpath)
-    self.assert_module_equal(mod,
-                             expand(file_utils.replace_separator("bar/baz")),
-                             "qux.py", "qux")
+        expand(file_utils.replace_separator("bar/baz/qux.py")), pythonpath
+    )
+    self.assert_module_equal(
+        mod, expand(file_utils.replace_separator("bar/baz")), "qux.py", "qux"
+    )
     mod = module_utils.infer_module(
-        expand(file_utils.replace_separator("bar/qux.py")), pythonpath)
+        expand(file_utils.replace_separator("bar/qux.py")), pythonpath
+    )
     self.assert_module_equal(mod, expand("bar"), "qux.py", "qux")
 
   def test_not_found(self):
     mod = module_utils.infer_module(
-        expand(file_utils.replace_separator("bar/baz.py")), ["foo"])
+        expand(file_utils.replace_separator("bar/baz.py")), ["foo"]
+    )
     expected_target = expand(file_utils.replace_separator("bar/baz.py"))
     expected_name, _ = path_utils.splitext(
-        expected_target.replace(path_utils.sep, "."))
+        expected_target.replace(path_utils.sep, ".")
+    )
     self.assert_module_equal(mod, "", expected_target, expected_name)
 
 

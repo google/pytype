@@ -15,8 +15,8 @@ class Module:
     path: The path to the module, e.g., foo/.
     target: The filename relative to the path, e.g., bar/baz.py.
     name: The module name, e.g., bar.baz.
-    kind: The module kind: Builtin, Direct, Local, or System.
-      See https://github.com/google/importlab/blob/main/importlab/resolve.py.
+    kind: The module kind: Builtin, Direct, Local, or System. See
+      https://github.com/google/importlab/blob/main/importlab/resolve.py.
     full_path: The full path to the module (path + target).
   """
 
@@ -49,7 +49,7 @@ def infer_module(filename, pythonpath):
     if not path.endswith(path_utils.sep):
       path += path_utils.sep
     if filename.startswith(path):
-      filename = filename[len(path):]
+      filename = filename[len(path) :]
       break
   else:
     # We have not found filename relative to anywhere in pythonpath.
@@ -105,7 +105,7 @@ def get_absolute_name(prefix, relative_name):
   ndots = len(relative_name) - len(name)
   if ndots > len(path):
     return None
-  prefix = "".join([p + "." for p in path[:len(path) + 1 - ndots]])
+  prefix = "".join([p + "." for p in path[: len(path) + 1 - ndots]])
   return prefix + name
 
 

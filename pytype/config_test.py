@@ -16,11 +16,14 @@ class ConfigTest(unittest.TestCase):
   def test_basic(self):
     version = sys.version_info[:2]
     argv = [
-        "-V", utils.format_version(version),
+        "-V",
+        utils.format_version(version),
         "--use-pickled-files",
-        "-o", "out.pyi",
-        "--pythonpath", f"foo{os.pathsep}bar",
-        "test.py"
+        "-o",
+        "out.pyi",
+        "--pythonpath",
+        f"foo{os.pathsep}bar",
+        "test.py",
     ]
     opts = config.Options(argv, command_line=True)
     self.assertEqual(opts.python_version, version)
@@ -32,8 +35,10 @@ class ConfigTest(unittest.TestCase):
   def test_create(self):
     version = sys.version_info[:2]
     opts = config.Options.create(
-        input_filename="foo.py", python_version=utils.format_version(version),
-        use_pickled_files=True)
+        input_filename="foo.py",
+        python_version=utils.format_version(version),
+        use_pickled_files=True,
+    )
     self.assertEqual(opts.input, "foo.py")
     self.assertEqual(opts.use_pickled_files, True)
     self.assertEqual(opts.python_version, version)
@@ -81,7 +86,7 @@ class ConfigTest(unittest.TestCase):
     for arg1, arg2 in [
         ("--check", "--output=foo"),
         ("--output-errors-csv=foo", "--no-report-errors"),
-        ("--pythonpath=foo", "--imports_info=bar")
+        ("--pythonpath=foo", "--imports_info=bar"),
     ]:
       self._test_arg_conflict(arg1, arg2)
 
@@ -101,8 +106,7 @@ class PostprocessorTest(unittest.TestCase):
   def make(self, names, input_options, set_output=True):
     opt_map = {k: f"--{k.replace('_', '-')}" for k in names}
     out = self.output_options if set_output else None
-    return config.Postprocessor(
-        names, opt_map, input_options, out).process()
+    return config.Postprocessor(names, opt_map, input_options, out).process()
 
   def test_input(self):
     input_options = types.SimpleNamespace(input=["test.py"])
@@ -118,7 +122,8 @@ class PostprocessorTest(unittest.TestCase):
   def test_io_pair_input(self):
     # The duplicate output is ignored, since we're only processing the input.
     input_options = types.SimpleNamespace(
-        input=[f"in.py{os.pathsep}out.pyi"], output="out2.pyi")
+        input=[f"in.py{os.pathsep}out.pyi"], output="out2.pyi"
+    )
     self.make({"input"}, input_options)
     self.assertEqual(self.output_options.input, "in.py")
     with self.assertRaises(AttributeError):
@@ -133,7 +138,8 @@ class PostprocessorTest(unittest.TestCase):
 
   def test_io_pair_multiple_output(self):
     input_options = types.SimpleNamespace(
-        input=[f"in.py{os.pathsep}out.pyi"], output="out2.pyi")
+        input=[f"in.py{os.pathsep}out.pyi"], output="out2.pyi"
+    )
     with self.assertRaises(config.PostprocessingError):
       self.make({"output"}, input_options)
 
@@ -146,8 +152,10 @@ class PostprocessorTest(unittest.TestCase):
   def test_subset(self):
     python_version = sys.version_info[:2]
     input_options = types.SimpleNamespace(
-        pythonpath=".", python_version=utils.format_version(python_version),
-        validate_version=True)
+        pythonpath=".",
+        python_version=utils.format_version(python_version),
+        validate_version=True,
+    )
     self.make({"python_version", "validate_version"}, input_options)
     with self.assertRaises(AttributeError):
       _ = self.output_options.pythonpath  # not processed
@@ -163,36 +171,44 @@ class PostprocessorTest(unittest.TestCase):
     input_options = types.SimpleNamespace(
         disable="import-error,attribute-error",
         python_version=utils.format_version(python_version),
-        validate_version=True)
-    self.make({"disable", "python_version", "validate_version"}, input_options,
-              set_output=False)
+        validate_version=True,
+    )
+    self.make(
+        {"disable", "python_version", "validate_version"},
+        input_options,
+        set_output=False,
+    )
     self.assertSequenceEqual(
-        input_options.disable, ["import-error", "attribute-error"])
+        input_options.disable, ["import-error", "attribute-error"]
+    )
     self.assertTupleEqual(input_options.python_version, python_version)
 
   def test_typeshed_default(self):
     input_options = types.SimpleNamespace(
-        typeshed=None, precompiled_builtins=None)
+        typeshed=None, precompiled_builtins=None
+    )
     self.make({"typeshed", "precompiled_builtins"}, input_options)
     # We only care that `None` was replaced.
     self.assertIsNotNone(self.output_options.typeshed)
 
   def test_typeshed_with_precompiled_builtins(self):
     input_options = types.SimpleNamespace(
-        typeshed=None, precompiled_builtins="builtins")
+        typeshed=None, precompiled_builtins="builtins"
+    )
     self.make({"typeshed", "precompiled_builtins"}, input_options)
     self.assertIs(self.output_options.typeshed, False)
 
   def test_typeshed(self):
     input_options = types.SimpleNamespace(
-        typeshed=False, precompiled_builtins=None)
+        typeshed=False, precompiled_builtins=None
+    )
     self.make({"typeshed", "precompiled_builtins"}, input_options)
     self.assertIs(self.output_options.typeshed, False)
 
   def test_enable_only(self):
     input_options = types.SimpleNamespace(
-        disable=None,
-        enable_only="import-error,attribute-error")
+        disable=None, enable_only="import-error,attribute-error"
+    )
     self.make({"disable", "enable_only"}, input_options)
     self.assertIn("python-compiler-error", self.output_options.disable)
     self.assertNotIn("import-error", self.output_options.disable)
@@ -201,16 +217,20 @@ class PostprocessorTest(unittest.TestCase):
   def test_disable_and_enable_only(self):
     input_options = types.SimpleNamespace(
         disable="import-error,attribute-error",
-        enable_only="bad-slots,bad-unpacking")
+        enable_only="bad-slots,bad-unpacking",
+    )
     with self.assertRaises(config.PostprocessingError) as _:
       self.make({"disable", "enable_only"}, input_options)
 
   def test_python_version_default(self):
     input_options = types.SimpleNamespace(
-        python_version=None, validate_version=True)
+        python_version=None, validate_version=True
+    )
     self.make({"python_version", "validate_version"}, input_options)
-    self.assertEqual(self.output_options.python_version,
-                     (sys.version_info.major, sys.version_info.minor))
+    self.assertEqual(
+        self.output_options.python_version,
+        (sys.version_info.major, sys.version_info.minor),
+    )
 
   def test_unknown_option(self):
     with self.assertRaises(ValueError):
@@ -233,11 +253,14 @@ class PostprocessorTest(unittest.TestCase):
 
   def test_imports_map_conflict(self):
     with self.assertRaises(config.PostprocessingError):
-      config.Options.create(imports_map="/foo/bar",
-                            imports_map_items=[("foo", "/dev/null")])
+      config.Options.create(
+          imports_map="/foo/bar", imports_map_items=[("foo", "/dev/null")]
+      )
 
   def test_pickle_metadata(self):
-    input_options = types.SimpleNamespace(pickle_metadata="meta,data",)
+    input_options = types.SimpleNamespace(
+        pickle_metadata="meta,data",
+    )
     self.make({"pickle_metadata"}, input_options, set_output=False)
     self.assertSequenceEqual(input_options.pickle_metadata, ["meta", "data"])
 

@@ -17,13 +17,13 @@ class AccessTrackingDictTest(unittest.TestCase):
 
   def test_get(self):
     v = self.d["a"]
-    item, = self.d.accessed_subset.items()
+    (item,) = self.d.accessed_subset.items()
     self.assertEqual(item, ("a", 1))
     self.assertEqual(v, 1)
 
   def test_set(self):
     self.d["a"] = 3
-    item, = self.d.accessed_subset.items()
+    (item,) = self.d.accessed_subset.items()
     self.assertEqual(item, ("a", 1))
     self.assertEqual(self.d["a"], 3)
 
@@ -33,7 +33,7 @@ class AccessTrackingDictTest(unittest.TestCase):
 
   def test_del(self):
     del self.d["a"]
-    item, = self.d.accessed_subset.items()
+    (item,) = self.d.accessed_subset.items()
     self.assertEqual(item, ("a", 1))
     with self.assertRaises(KeyError):
       _ = self.d["a"]
@@ -41,7 +41,7 @@ class AccessTrackingDictTest(unittest.TestCase):
   def test_repeat_access(self):
     self.d["a"] = 3
     v = self.d["a"]
-    item, = self.d.accessed_subset.items()
+    (item,) = self.d.accessed_subset.items()
     self.assertEqual(item, ("a", 1))
     self.assertEqual(v, 3)
 

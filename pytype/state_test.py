@@ -22,9 +22,7 @@ class FakeValue:
 
   def __init__(self, name, true_compat, false_compat):
     self._name = name
-    self.compatible = {
-        True: true_compat,
-        False: false_compat}
+    self.compatible = {True: true_compat, False: false_compat}
 
   def __str__(self):
     return self._name
@@ -122,8 +120,7 @@ class ConditionTest(ConditionTestBase):
     y = self.new_binding()
     z = self.new_binding()
     c = frame_state.Condition(self._node, [[x, y], [z]])
-    self.check_binding("x=? y=? | z=?", c.binding,
-                       p=p, x=x, y=y, z=z)
+    self.check_binding("x=? y=? | z=?", c.binding, p=p, x=x, y=y, z=z)
 
 
 class RestrictConditionTest(ConditionTestBase):
@@ -145,10 +142,20 @@ class RestrictConditionTest(ConditionTestBase):
     var.AddBinding(AMBIGUOUS)
     true_cond = frame_state.restrict_condition(self._node, var, True)
     false_cond = frame_state.restrict_condition(self._node, var, False)
-    self.check_binding("v0=T | v2=?", true_cond.binding, v0=var.bindings[0],
-                       v1=var.bindings[1], v2=var.bindings[2])
-    self.check_binding("v1=F | v2=?", false_cond.binding, v0=var.bindings[0],
-                       v1=var.bindings[1], v2=var.bindings[2])
+    self.check_binding(
+        "v0=T | v2=?",
+        true_cond.binding,
+        v0=var.bindings[0],
+        v1=var.bindings[1],
+        v2=var.bindings[2],
+    )
+    self.check_binding(
+        "v1=F | v2=?",
+        false_cond.binding,
+        v0=var.bindings[0],
+        v1=var.bindings[1],
+        v2=var.bindings[2],
+    )
 
   def test_no_bindings(self):
     var = self._program.NewVariable()

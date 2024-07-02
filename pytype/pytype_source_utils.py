@@ -53,6 +53,7 @@ def _load_data_file(filename, text):
   Arguments:
     filename: the path, relative to "pytype/"
     text: whether to load the file as text or bytes.
+
   Returns:
     The contents of the file as a bytestring
   Raises:
@@ -97,6 +98,7 @@ def list_pytype_files(suffix):
 
   Arguments:
     suffix: the path, relative to "pytype/"
+
   Yields:
     The filenames, relative to pytype/{suffix}
   Raises:
@@ -121,4 +123,4 @@ def list_pytype_files(suffix):
       except ValueError:
         pass
       else:
-        yield filename[i + len(directory):]
+        yield filename[i + len(directory) :]

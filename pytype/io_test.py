@@ -62,7 +62,7 @@ class IOTest(unittest.TestCase):
 
   def test_check_py(self):
     errorlog = io.check_py("undefined_var").context.errorlog
-    error, = errorlog.unique_sorted_errors()
+    (error,) = errorlog.unique_sorted_errors()
     self.assertEqual(error.name, "name-error")
 
   def test_check_py_with_options(self):
@@ -79,13 +79,11 @@ class IOTest(unittest.TestCase):
   def test_generate_pyi_with_options(self):
     with self._tmpfile("x: int") as pyi:
       pyi_name, _ = path_utils.splitext(path_utils.basename(pyi.name))
-      with self._tmpfile(
-          f"{pyi_name} {pyi.name}") as imports_map:
+      with self._tmpfile(f"{pyi_name} {pyi.name}") as imports_map:
         src = "import {mod}; y = {mod}.x".format(mod=pyi_name)
         options = config.Options.create(imports_map=imports_map.name)
         _, pyi_string = io.generate_pyi(src, options)
-    self.assertEqual(pyi_string,
-                     f"import {pyi_name}\n\ny: int\n")
+    self.assertEqual(pyi_string, f"import {pyi_name}\n\ny: int\n")
 
   def test_generate_pyi__overload_order(self):
     _, pyi_string = io.generate_pyi(textwrap.dedent("""
@@ -97,14 +95,17 @@ class IOTest(unittest.TestCase):
       def f(x):
         return __any_object__
     """.lstrip("\n")))
-    self.assertMultiLineEqual(pyi_string, textwrap.dedent("""
+    self.assertMultiLineEqual(
+        pyi_string,
+        textwrap.dedent("""
       from typing import overload
 
       @overload
       def f(x: None) -> None: ...
       @overload
       def f(x) -> int: ...
-    """.lstrip("\n")))
+    """.lstrip("\n")),
+    )
 
   def test_check_or_generate_pyi__check(self):
     with self._tmpfile("") as f:
@@ -126,15 +127,18 @@ class IOTest(unittest.TestCase):
         return builtins_io.StringIO("x = 0.0")
       else:
         return open(filename, *args, **kwargs)  # pylint: disable=consider-using-with
+
     options = config.Options.create(
-        "my_amazing_file.py", check=False, open_function=mock_open)
+        "my_amazing_file.py", check=False, open_function=mock_open
+    )
     ret = io.check_or_generate_pyi(options)
     self.assertEqual(ret.pyi, "x: float\n")
 
   def test_write_pickle(self):
     ast = pytd.TypeDeclUnit(None, (), (), (), (), ())
     options = config.Options.create(
-        output="/dev/null" if sys.platform != "win32" else "NUL")
+        output="/dev/null" if sys.platform != "win32" else "NUL"
+    )
     io.write_pickle(ast, options)  # just make sure we don't crash
 
   def test_unused_imports_info_files(self):
