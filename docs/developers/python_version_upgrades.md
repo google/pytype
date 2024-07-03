@@ -67,6 +67,13 @@ https://github.com/python/cpython/blob/master/Python/ceval.c).
 Magic numbers for the new version should be copied from the
 [CPython source code][cpython-source] to [pycnite/magic.py][pycnite.magic].
 
+#### stubs
+
+We maintain custom pytd stubs for some modules in
+[pytype/stubs/{builtins,stdlib}][stubs]. Compare them to the
+[typeshed versions][typeshed] and make sure all types for the new Python version
+are present in our stubs.
+
 ### regression tests
 
 For the open-source project, navigate to the root of your cloned pytype
@@ -116,6 +123,10 @@ and by searching for "New in version 3.x" in the
 [pycnite.mapping]: https://github.com/google/pycnite/blob/25326a096278a8372e03bbefab8fa4b725f96245/pycnite/mapping.py#L196
 
 [pycnite.magic]: https://github.com/google/pycnite/blob/25326a096278a8372e03bbefab8fa4b725f96245/pycnite/magic.py#L20
+
+[stubs]: https://github.com/google/pytype/tree/main/pytype/stubs
+
+[typeshed]: https://github.com/python/typeshed
 
 [test_data.simple]: https://github.com/google/pytype/blob/main/pytype/test_data/simple.py
 
