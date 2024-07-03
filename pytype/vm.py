@@ -3698,14 +3698,17 @@ class VirtualMachine:
     return state
 
   def byte_BINARY_SLICE(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    state, (obj, start, end) = state.popn(3)
+    subscr = self.ctx.convert.build_slice(state.node, start, end)
+    state, ret = vm_utils.call_binary_operator(
+        state, "__getitem__", obj, subscr, report_errors=True, ctx=self.ctx)
+    return state.push(ret)
 
   def byte_STORE_SLICE(self, state, op):
-    # TODO: b/345717799 - Implement
-    del op
-    return state
+    state, (val, obj, start, end) = state.popn(4)
+    state = state.forward_cfg_node("StoreSlice")
+    subscr = self.ctx.convert.build_slice(state.node, start, end)
+    return self.store_subscr(state, obj, subscr, val)
 
   def byte_CLEANUP_THROW(self, state, op):
     # TODO: b/345717799 - Implement
